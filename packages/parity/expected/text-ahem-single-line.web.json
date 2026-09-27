@@ -1,0 +1,227 @@
+{
+  "fixture": "text-ahem-single-line",
+  "chrome": "145.0.7632.6",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "devicePixelRatio": 1,
+  "nodes": [
+    {
+      "id": "html",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 121
+    },
+    {
+      "id": "body",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 121
+    },
+    {
+      "id": "t1",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 30
+    },
+    {
+      "id": "t1:text0",
+      "kind": "text",
+      "hasBox": true,
+      "x": 0,
+      "y": 5,
+      "width": 80,
+      "height": 20
+    },
+    {
+      "id": "t2",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 30,
+      "width": 400,
+      "height": 10
+    },
+    {
+      "id": "t2:text0",
+      "kind": "text",
+      "hasBox": true,
+      "x": 0,
+      "y": 30,
+      "width": 40,
+      "height": 10
+    },
+    {
+      "id": "t3",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 40,
+      "width": 400,
+      "height": 25
+    },
+    {
+      "id": "t3:text0",
+      "kind": "text",
+      "hasBox": true,
+      "x": 0,
+      "y": 47,
+      "width": 30,
+      "height": 10
+    },
+    {
+      "id": "t4",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 65,
+      "width": 30,
+      "height": 10
+    },
+    {
+      "id": "t4:text0",
+      "kind": "text",
+      "hasBox": true,
+      "x": 0,
+      "y": 65,
+      "width": 60,
+      "height": 10
+    },
+    {
+      "id": "t5",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 75,
+      "width": 400,
+      "height": 16
+    },
+    {
+      "id": "t5:text0",
+      "kind": "text",
+      "hasBox": true,
+      "x": 0,
+      "y": 75,
+      "width": 48,
+      "height": 16
+    },
+    {
+      "id": "flex",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 91,
+      "width": 400,
+      "height": 20
+    },
+    {
+      "id": "fi1",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 91,
+      "width": 20,
+      "height": 20
+    },
+    {
+      "id": "fi1:text0",
+      "kind": "text",
+      "hasBox": true,
+      "x": 0,
+      "y": 96,
+      "width": 20,
+      "height": 10
+    },
+    {
+      "id": "fi2",
+      "kind": "element",
+      "hasBox": true,
+      "x": 20,
+      "y": 91,
+      "width": 326,
+      "height": 20
+    },
+    {
+      "id": "fi2:text0",
+      "kind": "text",
+      "hasBox": true,
+      "x": 20,
+      "y": 96,
+      "width": 50,
+      "height": 10
+    },
+    {
+      "id": "fi3",
+      "kind": "element",
+      "hasBox": true,
+      "x": 346,
+      "y": 91,
+      "width": 54,
+      "height": 20
+    },
+    {
+      "id": "fi3:text0",
+      "kind": "text",
+      "hasBox": true,
+      "x": 348,
+      "y": 96,
+      "width": 50,
+      "height": 10
+    },
+    {
+      "id": "shrinky",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 111,
+      "width": 50,
+      "height": 10
+    },
+    {
+      "id": "sh1",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 111,
+      "width": 40,
+      "height": 10
+    },
+    {
+      "id": "sh1:text0",
+      "kind": "text",
+      "hasBox": true,
+      "x": 0,
+      "y": 111,
+      "width": 40,
+      "height": 10
+    },
+    {
+      "id": "sh2",
+      "kind": "element",
+      "hasBox": true,
+      "x": 40,
+      "y": 111,
+      "width": 40,
+      "height": 10
+    },
+    {
+      "id": "sh2:text0",
+      "kind": "text",
+      "hasBox": true,
+      "x": 40,
+      "y": 111,
+      "width": 40,
+      "height": 10
+    }
+  ]
+}

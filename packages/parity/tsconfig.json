@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "outDir": "dist",
+    "types": ["node"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "customConditions": ["dragon-internal"]
+  },
+  "include": ["src", "test", "../../scripts"],
+  "references": [{ "path": "../layout" }, { "path": "../dragon" }]
+}

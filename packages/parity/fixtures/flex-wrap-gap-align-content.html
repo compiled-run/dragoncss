@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.w { display: flex; flex-wrap: wrap; width: 200px; height: 150px; row-gap: 10px; column-gap: 7px; }
+.center { align-content: center; height: 100px; }
+.between { align-content: space-between; height: 100px; }
+.start { align-content: flex-start; height: 80px; }
+.auto { display: flex; flex-flow: row wrap; width: 130px; gap: 5px 10px; }
+.item { width: 60px; height: 20px; }
+.grow { flex-grow: 1; width: 50px; height: 10px; }
+.tall { width: 60px; height: 30px; }
+.stretchy { width: 60px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="normal" class="w"><div data-dragon-id="n1" class="item"></div><div data-dragon-id="n2" class="item"></div><div data-dragon-id="n3" class="item"></div><div data-dragon-id="n4" class="item"></div><div data-dragon-id="n5" class="item"></div><div data-dragon-id="n6" class="item"></div><div data-dragon-id="n7" class="item"></div></div>
+<div data-dragon-id="center" class="w center"><div data-dragon-id="k1" class="item"></div><div data-dragon-id="k2" class="item"></div><div data-dragon-id="k3" class="item"></div><div data-dragon-id="k4" class="item"></div><div data-dragon-id="k5" class="item"></div></div>
+<div data-dragon-id="between" class="w between"><div data-dragon-id="t1" class="item"></div><div data-dragon-id="t2" class="item"></div><div data-dragon-id="t3" class="item"></div><div data-dragon-id="t4" class="item"></div><div data-dragon-id="t5" class="item"></div><div data-dragon-id="t6" class="item"></div><div data-dragon-id="t7" class="item"></div></div>
+<div data-dragon-id="start" class="w start"><div data-dragon-id="s1" class="tall"></div><div data-dragon-id="s2" class="stretchy"></div><div data-dragon-id="s3" class="item"></div><div data-dragon-id="s4" class="stretchy"></div></div>
+<div data-dragon-id="auto" class="auto"><div data-dragon-id="u1" class="grow"></div><div data-dragon-id="u2" class="grow"></div><div data-dragon-id="u3" class="grow"></div></div>
+</body>
+</html>

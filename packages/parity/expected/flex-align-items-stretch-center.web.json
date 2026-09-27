@@ -1,0 +1,209 @@
+{
+  "fixture": "flex-align-items-stretch-center",
+  "chrome": "145.0.7632.6",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "devicePixelRatio": 1,
+  "nodes": [
+    {
+      "id": "html",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 233
+    },
+    {
+      "id": "body",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 233
+    },
+    {
+      "id": "rs",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 300,
+      "height": 101
+    },
+    {
+      "id": "rs1",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 30,
+      "height": 101
+    },
+    {
+      "id": "rs2",
+      "kind": "element",
+      "hasBox": true,
+      "x": 30,
+      "y": 0,
+      "width": 30,
+      "height": 20
+    },
+    {
+      "id": "rs3",
+      "kind": "element",
+      "hasBox": true,
+      "x": 60,
+      "y": 0,
+      "width": 30,
+      "height": 50
+    },
+    {
+      "id": "rs4",
+      "kind": "element",
+      "hasBox": true,
+      "x": 90,
+      "y": 10,
+      "width": 30,
+      "height": 81
+    },
+    {
+      "id": "rs5",
+      "kind": "element",
+      "hasBox": true,
+      "x": 120,
+      "y": 0,
+      "width": 30,
+      "height": 110
+    },
+    {
+      "id": "rs6",
+      "kind": "element",
+      "hasBox": true,
+      "x": 150,
+      "y": 81,
+      "width": 30,
+      "height": 20
+    },
+    {
+      "id": "rs7",
+      "kind": "element",
+      "hasBox": true,
+      "x": 180,
+      "y": 0,
+      "width": 30,
+      "height": 21
+    },
+    {
+      "id": "rs8",
+      "kind": "element",
+      "hasBox": true,
+      "x": 210,
+      "y": 40.5,
+      "width": 30,
+      "height": 20
+    },
+    {
+      "id": "rc",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 101,
+      "width": 300,
+      "height": 101
+    },
+    {
+      "id": "rc1",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 141.5,
+      "width": 30,
+      "height": 20
+    },
+    {
+      "id": "rc2",
+      "kind": "element",
+      "hasBox": true,
+      "x": 30,
+      "y": 141,
+      "width": 30,
+      "height": 21
+    },
+    {
+      "id": "rc3",
+      "kind": "element",
+      "hasBox": true,
+      "x": 60,
+      "y": 151.5,
+      "width": 30,
+      "height": 0
+    },
+    {
+      "id": "rc4",
+      "kind": "element",
+      "hasBox": true,
+      "x": 90,
+      "y": 101,
+      "width": 30,
+      "height": 101
+    },
+    {
+      "id": "rc5",
+      "kind": "element",
+      "hasBox": true,
+      "x": 120,
+      "y": 141,
+      "width": 30,
+      "height": 21
+    },
+    {
+      "id": "ah",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 202,
+      "width": 310,
+      "height": 31
+    },
+    {
+      "id": "ah1",
+      "kind": "element",
+      "hasBox": true,
+      "x": 5,
+      "y": 207,
+      "width": 30,
+      "height": 21
+    },
+    {
+      "id": "ah2",
+      "kind": "element",
+      "hasBox": true,
+      "x": 35,
+      "y": 207,
+      "width": 30,
+      "height": 21
+    },
+    {
+      "id": "ah3",
+      "kind": "element",
+      "hasBox": true,
+      "x": 65,
+      "y": 207.5,
+      "width": 30,
+      "height": 20
+    },
+    {
+      "id": "ah4",
+      "kind": "element",
+      "hasBox": true,
+      "x": 95,
+      "y": 217,
+      "width": 30,
+      "height": 1
+    }
+  ]
+}

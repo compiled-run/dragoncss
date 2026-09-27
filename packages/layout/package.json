@@ -1,0 +1,10 @@
+{
+  "name": "@dragon/layout",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Dragon's layout engine: block and flexbox with Chrome LayoutUnit arithmetic.",
+  "type": "module",
+  "license": "MIT",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {}
+}

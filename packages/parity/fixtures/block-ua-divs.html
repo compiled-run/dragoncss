@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+.a { height: 20px; }
+.b { height: 10px; }
+.c { height: 15px; }
+.gone { display: none; height: 50px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="outer">
+<div data-dragon-id="a" class="a"></div>
+<div data-dragon-id="gone" class="gone"><div data-dragon-id="gone-child" class="b"></div></div>
+<div data-dragon-id="inner"><div data-dragon-id="b" class="b"></div><div data-dragon-id="c" class="c"></div></div>
+</div>
+<div data-dragon-id="empty"></div>
+<div data-dragon-id="last" class="b"></div>
+</body>
+</html>

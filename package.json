@@ -6,11 +6,17 @@
   "engines": { "node": ">=24" },
   "scripts": {
     "typecheck": "tsc -b",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run",
+    "grammar:gen": "node scripts/gen-css-grammar.ts",
+    "ua:capture": "node --conditions=dragon-internal scripts/capture-ua-defaults.ts",
+    "parity:capture": "node --conditions=dragon-internal packages/parity/src/cli/capture.ts",
+    "parity:report": "node --conditions=dragon-internal packages/parity/src/cli/report.ts",
+    "layout:vectors": "node --conditions=dragon-internal packages/parity/src/cli/vectors.ts"
   },
   "devDependencies": {
+    "@types/node": "^24.12.2",
+    "@webref/css": "8.7.5",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.5",
-    "@types/node": "^24.12.2"
+    "vitest": "^4.1.5"
   }
 }

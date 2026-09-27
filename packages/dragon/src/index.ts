@@ -1,3 +1,32 @@
-export type SupportStatus = 'exact' | 'caveat' | 'approx' | 'unsupported' | 'no-effect';
-
-export type Target = 'web' | 'ios' | 'android' | 'email';
+// Public entry of the `dragon` package (docs/api.md §1-§2). Internal helpers live in internal.ts behind the dragon-internal condition.
+export type {
+  ArtifactState,
+  CheckReport,
+  Compiled,
+  ComponentDefinition,
+  Configured,
+  Dependency,
+  Diagnostic,
+  DiagnosticCode,
+  DocumentEntry,
+  DraftTree,
+  ElementNode,
+  ExplainQuery,
+  ExplainResult,
+  FrontEndResult,
+  GeneratedFile,
+  Project,
+  Range,
+  SourceFile,
+  SourceRef,
+  SourceSnapshot,
+  Span,
+  StyleUse,
+  SupportStatus,
+  Target,
+  Targets,
+  TextNode,
+  TreeNode,
+} from './types.ts';
+export { createProject } from './project.ts';
+export { TREE_SCHEMA_REVISION } from './analysis/input.ts';

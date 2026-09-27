@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.box { box-sizing: content-box; width: 100px; height: 50px; padding: 10px 5px 15px 20px; border: 3px solid; margin-left: 12px; }
+.box2 { width: 200px; padding: 4px; border-width: 1px 2px 3px 4px; border-style: solid; }
+.auto { padding: 6px 9px; border: 2px solid; }
+.child { height: 10px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="box" class="box"><div data-dragon-id="box-child" class="child"></div></div>
+<div data-dragon-id="box2" class="box2"><div data-dragon-id="box2-a" class="child"></div><div data-dragon-id="box2-b" class="child"></div></div>
+<div data-dragon-id="auto" class="auto"><div data-dragon-id="auto-child" class="child"></div></div>
+</body>
+</html>

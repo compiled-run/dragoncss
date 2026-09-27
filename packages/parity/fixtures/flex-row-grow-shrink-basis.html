@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.row { display: flex; height: 20px; }
+.w101 { width: 101px; }
+.w300 { width: 300px; }
+.w200 { width: 200px; }
+.grow { flex-grow: 1; }
+.basis50 { flex-basis: 50px; }
+.c1 { flex: 1 1 30%; }
+.c2 { flex: 2 1 10px; padding: 0 5px; }
+.c3 { flex: 0 0 20px; }
+.c4 { flex: 1; }
+.d1 { width: 100px; flex-shrink: 2; }
+.d2 { width: 80px; }
+.d3 { flex-basis: 70px; flex-shrink: 0.5; box-sizing: border-box; padding: 0 10px; }
+.e1 { flex-grow: 0.25; flex-basis: 40px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="rowA" class="row w101"><div data-dragon-id="a1" class="grow"></div><div data-dragon-id="a2" class="grow"></div><div data-dragon-id="a3" class="grow"></div></div>
+<div data-dragon-id="rowB" class="row w101"><div data-dragon-id="b1" class="basis50"></div><div data-dragon-id="b2" class="basis50"></div><div data-dragon-id="b3" class="basis50"></div></div>
+<div data-dragon-id="rowC" class="row w300"><div data-dragon-id="c1" class="c1"></div><div data-dragon-id="c2" class="c2"></div><div data-dragon-id="c3" class="c3"></div><div data-dragon-id="c4" class="c4"></div></div>
+<div data-dragon-id="rowD" class="row w200"><div data-dragon-id="d1" class="d1"></div><div data-dragon-id="d2" class="d2"></div><div data-dragon-id="d3" class="d3"></div></div>
+<div data-dragon-id="rowE" class="row w200"><div data-dragon-id="e1" class="e1"></div><div data-dragon-id="e2" class="e1"></div></div>
+<div data-dragon-id="rowF" class="row"><div data-dragon-id="f1" class="grow"></div><div data-dragon-id="f2" class="grow d2"></div></div>
+</body>
+</html>

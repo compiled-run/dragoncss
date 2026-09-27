@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.row { display: flex; width: 300px; height: 101px; }
+.stretch { align-items: stretch; }
+.center { align-items: center; }
+.i { width: 30px; }
+.h20 { height: 20px; }
+.h21 { height: 21px; }
+.maxh { max-height: 50px; }
+.minh { min-height: 110px; }
+.m10 { margin: 10px 0; }
+.self-start { align-self: flex-start; }
+.self-end { align-self: flex-end; }
+.self-center { align-self: center; }
+.self-stretch { align-self: stretch; }
+.autoh { display: flex; width: 300px; padding: 3px; border: 2px solid; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="rs" class="row stretch"><div data-dragon-id="rs1" class="i"></div><div data-dragon-id="rs2" class="i h20"></div><div data-dragon-id="rs3" class="i maxh"></div><div data-dragon-id="rs4" class="i m10"></div><div data-dragon-id="rs5" class="i minh"></div><div data-dragon-id="rs6" class="i self-end h20"></div><div data-dragon-id="rs7" class="i self-start h21"></div><div data-dragon-id="rs8" class="i self-center h20"></div></div>
+<div data-dragon-id="rc" class="row center"><div data-dragon-id="rc1" class="i h20"></div><div data-dragon-id="rc2" class="i h21"></div><div data-dragon-id="rc3" class="i"></div><div data-dragon-id="rc4" class="i self-stretch"></div><div data-dragon-id="rc5" class="i m10 h21"></div></div>
+<div data-dragon-id="ah" class="autoh"><div data-dragon-id="ah1" class="i h21"></div><div data-dragon-id="ah2" class="i"></div><div data-dragon-id="ah3" class="i self-center h20"></div><div data-dragon-id="ah4" class="i m10"></div></div>
+</body>
+</html>

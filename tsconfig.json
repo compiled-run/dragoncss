@@ -1,4 +1,10 @@
 {
   "files": [],
-  "references": [{ "path": "packages/dragon" }]
+  "references": [
+    { "path": "packages/layout" },
+    { "path": "packages/layout/test" },
+    { "path": "packages/dragon" },
+    { "path": "packages/dragon/test" },
+    { "path": "packages/parity" }
+  ]
 }

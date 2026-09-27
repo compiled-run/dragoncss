@@ -1,0 +1,65 @@
+{
+  "fixture": "block-border-box",
+  "chrome": "145.0.7632.6",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "devicePixelRatio": 1,
+  "nodes": [
+    {
+      "id": "html",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 92
+    },
+    {
+      "id": "body",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 92
+    },
+    {
+      "id": "bb",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 120,
+      "height": 60
+    },
+    {
+      "id": "bb-child",
+      "kind": "element",
+      "hasBox": true,
+      "x": 15,
+      "y": 15,
+      "width": 90,
+      "height": 10
+    },
+    {
+      "id": "small",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 60,
+      "width": 20,
+      "height": 20
+    },
+    {
+      "id": "pct",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 80,
+      "width": 200,
+      "height": 12
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "fixture": "block-ua-divs",
+  "chrome": "145.0.7632.6",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "devicePixelRatio": 1,
+  "nodes": [
+    {
+      "id": "html",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 71
+    },
+    {
+      "id": "body",
+      "kind": "element",
+      "hasBox": true,
+      "x": 8,
+      "y": 8,
+      "width": 384,
+      "height": 55
+    },
+    {
+      "id": "outer",
+      "kind": "element",
+      "hasBox": true,
+      "x": 8,
+      "y": 8,
+      "width": 384,
+      "height": 45
+    },
+    {
+      "id": "a",
+      "kind": "element",
+      "hasBox": true,
+      "x": 8,
+      "y": 8,
+      "width": 384,
+      "height": 20
+    },
+    {
+      "id": "gone",
+      "kind": "element",
+      "hasBox": false,
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0
+    },
+    {
+      "id": "gone-child",
+      "kind": "element",
+      "hasBox": false,
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0
+    },
+    {
+      "id": "inner",
+      "kind": "element",
+      "hasBox": true,
+      "x": 8,
+      "y": 28,
+      "width": 384,
+      "height": 25
+    },
+    {
+      "id": "b",
+      "kind": "element",
+      "hasBox": true,
+      "x": 8,
+      "y": 28,
+      "width": 384,
+      "height": 10
+    },
+    {
+      "id": "c",
+      "kind": "element",
+      "hasBox": true,
+      "x": 8,
+      "y": 38,
+      "width": 384,
+      "height": 15
+    },
+    {
+      "id": "empty",
+      "kind": "element",
+      "hasBox": true,
+      "x": 8,
+      "y": 53,
+      "width": 384,
+      "height": 0
+    },
+    {
+      "id": "last",
+      "kind": "element",
+      "hasBox": true,
+      "x": 8,
+      "y": 53,
+      "width": 384,
+      "height": 10
+    }
+  ]
+}

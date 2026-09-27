@@ -5,5 +5,16 @@
   "description": "Regular CSS for native apps, tested against the browser.",
   "type": "module",
   "license": "MIT",
-  "exports": { ".": "./src/index.ts" }
+  "exports": {
+    ".": {
+      "dragon-internal": "./src/internal.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "css-tree": "3.2.1"
+  },
+  "devDependencies": {
+    "@dragon/layout": "workspace:*"
+  }
 }
