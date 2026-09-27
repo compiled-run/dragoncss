@@ -18,3 +18,5 @@ export type { DeviationFault } from './chrome-deviations.ts';
 export { PLATFORM_RULES } from './platform-rules.ts';
 export type { MeasurerChoice } from './platform.ts';
 export { measurerFor, REFERENCE_PLATFORM } from './platform.ts';
+export type { SnappedRect } from './snap.ts';
+export { snapEdges, snapRect } from './snap.ts';

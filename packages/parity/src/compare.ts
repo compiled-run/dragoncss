@@ -82,6 +82,12 @@ export function compareLayout(capture: WebCapture, absolute: ReadonlyMap<string,
     if (!pass) problems.push(`${n.id}: edge delta ${JSON.stringify(delta)} exceeds ${GATE_DEVICE_PX} device px`);
     nodes.push({ id: n.id, kind: n.kind, chrome: c, dragon: px, delta, pass, exactLu });
   }
+  const anonymous = anonymousComparison(absolute, input, seen, problems);
+  return { pass: problems.length === 0, nodes, anonymous, problems };
+}
+
+/** Anonymous boxes only Dragon has: each passes only if every text line inside it is a compared Chrome node. */
+function anonymousComparison(absolute: ReadonlyMap<string, LayoutRect>, input: LayoutInput, seen: ReadonlySet<string>, problems: string[]): AnonymousBox[] {
   const anonymousInput = anonymousBoxes(input);
   const anonymous: AnonymousBox[] = [];
   for (const id of absolute.keys()) {
@@ -96,5 +102,65 @@ export function compareLayout(capture: WebCapture, absolute: ReadonlyMap<string,
     if (lines.length === 0 || uncompared.length > 0) problems.push(`${id}: anonymous box whose text lines are not all compared with Chrome (${uncompared.join(', ') || 'no lines'})`);
     anonymous.push({ id, lines });
   }
+  return anonymous;
+}
+
+/** A node of the DPR lane: the Chrome edges in CSS px, the engine edges in zoomed LU (1/64 device px) and in CSS px. */
+export type ZoomedNodeComparison = NodeComparison & { readonly dragonLu: Edges | null };
+
+export type ZoomedComparison = {
+  readonly pass: boolean;
+  readonly nodes: readonly ZoomedNodeComparison[];
+  readonly anonymous: readonly AnonymousBox[];
+  readonly problems: readonly string[];
+};
+
+/**
+ * A Chrome CSS px edge equals an engine edge in zoomed LU when the LU nearest to px * 64 * DPR is the engine's, and px * 64 * DPR
+ * lies within ZOOMED_LU_READBACK of it. Chrome reports zoomed LU divided by the DPR in float, so the readback carries float error
+ * far below 1 LU; a value off by one LU or more is never exact.
+ */
+export const ZOOMED_LU_READBACK = 1 / 16;
+
+export function exactInZoomedLu(cssPx: number, lu: number, dpr: number): boolean {
+  const z = cssPx * LU_PER_PX * dpr;
+  return Math.round(z) === lu && Math.abs(z - lu) <= ZOOMED_LU_READBACK;
+}
+
+/**
+ * The DPR lane (native-strategy.md section 2): engine output in zoomed LU against Chrome captured at the same DPR. The gate is the
+ * same GATE_DEVICE_PX on |delta css px| * DPR; exactness is judged in zoomed LU. compareLayout (DPR 1 lanes) is unchanged.
+ */
+export function compareZoomedLayout(capture: WebCapture, absolute: ReadonlyMap<string, LayoutRect>, input: LayoutInput, env: Environment): ZoomedComparison {
+  const problems: string[] = [];
+  const nodes: ZoomedNodeComparison[] = [];
+  const seen = new Set<string>();
+  const dpr = env.devicePixelRatio;
+  if (capture.devicePixelRatio !== dpr) problems.push(`capture DPR ${capture.devicePixelRatio} is not the case DPR ${dpr}`);
+  if (input.devicePixelRatio !== dpr) problems.push(`layout input DPR ${input.devicePixelRatio} is not the case DPR ${dpr}`);
+  if (capture.direction !== env.direction) problems.push(`capture direction ${capture.direction} is not the case direction ${env.direction}`);
+  for (const n of capture.nodes) {
+    seen.add(n.id);
+    const d = absolute.get(n.id);
+    if (!n.hasBox) {
+      if (d !== undefined) problems.push(`${n.id}: Chrome generates no box but Dragon laid one out`);
+      continue;
+    }
+    if (d === undefined) {
+      problems.push(`${n.id}: Chrome has a box but Dragon has none`);
+      nodes.push({ id: n.id, kind: n.kind, chrome: chromeEdges(n), dragon: null, delta: null, pass: false, exactLu: false, dragonLu: null });
+      continue;
+    }
+    const c = chromeEdges(n);
+    const raw = { left: d.x, top: d.y, right: d.x + d.width, bottom: d.y + d.height };
+    const scale = LU_PER_PX * dpr;
+    const px = { left: raw.left / scale, top: raw.top / scale, right: raw.right / scale, bottom: raw.bottom / scale };
+    const delta = { left: px.left - c.left, top: px.top - c.top, right: px.right - c.right, bottom: px.bottom - c.bottom };
+    const pass = [delta.left, delta.top, delta.right, delta.bottom].every((v) => Math.abs(v) * dpr <= GATE_DEVICE_PX);
+    const exactLu = exactInZoomedLu(c.left, raw.left, dpr) && exactInZoomedLu(c.top, raw.top, dpr) && exactInZoomedLu(c.right, raw.right, dpr) && exactInZoomedLu(c.bottom, raw.bottom, dpr);
+    if (!pass) problems.push(`${n.id}: edge delta ${JSON.stringify(delta)} exceeds ${GATE_DEVICE_PX} device px`);
+    nodes.push({ id: n.id, kind: n.kind, chrome: c, dragon: px, delta, pass, exactLu, dragonLu: raw });
+  }
+  const anonymous = anonymousComparison(absolute, input, seen, problems);
   return { pass: problems.length === 0, nodes, anonymous, problems };
 }

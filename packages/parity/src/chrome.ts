@@ -16,6 +16,11 @@ export const CHROME_ARGS: readonly string[] = [
   '--hide-scrollbars',
 ];
 
+/** The flags of a launch at a forced device scale factor: CHROME_ARGS with only --force-device-scale-factor set to N. */
+export function chromeArgsAt(forceDeviceScaleFactor: number): readonly string[] {
+  return CHROME_ARGS.map((a) => (a === '--force-device-scale-factor=1' ? `--force-device-scale-factor=${forceDeviceScaleFactor}` : a));
+}
+
 let ahemFace: string | null = null;
 
 export function ahemFontFace(): string {
@@ -26,8 +31,9 @@ export function ahemFontFace(): string {
   return ahemFace;
 }
 
-export async function launchChrome(): Promise<Browser> {
-  const browser = await chromium.launch({ args: [...CHROME_ARGS] });
+/** Launches the pinned Chrome; forceDeviceScaleFactor is 1 for every milestone-1 lane and N for a device-DPR capture. */
+export async function launchChrome(forceDeviceScaleFactor: number = 1): Promise<Browser> {
+  const browser = await chromium.launch({ args: [...chromeArgsAt(forceDeviceScaleFactor)] });
   const version = browser.version();
   if (version !== CHROME_VERSION) {
     await browser.close();

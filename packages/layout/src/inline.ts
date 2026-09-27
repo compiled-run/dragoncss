@@ -3,7 +3,7 @@
 // Every leaf shares one font, line-height and text-wrap-mode: without inline elements they all inherit from one box.
 import type { LayoutBox, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
-import { add, divInt, floorToWholePx, fromCssPx, lineHeightFromNumber, max, min, mulInt, sub, ZERO } from './units.ts';
+import { add, divInt, floorToWholePx, fromFloatRound, lineHeightFromNumber, max, min, mulInt, sub, ZERO } from './units.ts';
 import type { Frag, Placed, Point } from './box.ts';
 import type { Ctx } from './block.ts';
 import { directionOf } from './block.ts';
@@ -99,7 +99,7 @@ function resolveLineHeight(t: TextLeaf, normal: LU): LU {
   const lh = t.lineHeight;
   if (lh.kind === 'normal') return normal;
   if (lh.kind === 'number') return lineHeightFromNumber(t.font.size, lh.value);
-  return fromCssPx(lh.value);
+  return fromFloatRound(lh.value);
 }
 
 // css-text-3 §5.1 with UAX #14 LB8 and LB18: a soft wrap opportunity follows a space or U+200B (after any spaces that follow it).

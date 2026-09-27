@@ -57,10 +57,41 @@ export function snapBorderWidth(cssPx: number, devicePixelRatio: number): LU {
   return fromCssPx(snapped / devicePixelRatio);
 }
 
+// Device zoom (vectors/README.md, Device pixel ratios): at DPR N Chrome multiplies CSS lengths and font sizes by N and lays out in
+// zoomed px, so one zoomed px is one device px and one LU is 1/64 device px.
+
+/** A CSS length at zoom N: Blink CSSToLengthConversionData::ZoomedComputedPixels, value * zoom in double (Length keeps it as float). */
+export function zoomCssPx(px: number, zoom: number): number {
+  return px * zoom;
+}
+
+/** A viewport length at zoom N: the window is a whole number of device px, rounded up (Chrome 145 measured at 2.625; T008 note). */
+export function zoomViewportPx(px: number, zoom: number): number {
+  return Math.ceil(px * zoom);
+}
+
+/** A computed font size at zoom N: Blink FontSize::getComputedSizeFromSpecifiedSize, float(size) * zoom in float. */
+export function zoomFontSize(sizePx: number, zoom: number): number {
+  return Math.fround(Math.fround(sizePx) * zoom);
+}
+
+/** Blink LayoutUnit::FromFloatRound(float): round(float(v) * 64), halves away from zero. */
+export function fromFloatRound(px: number): LU {
+  return saturate(roundHalfAwayFromZero(Math.fround(px) * LU_PER_PX));
+}
+
 /** Whole CSS px as LU, for integer-pixel metrics such as rounded font ascent. */
 export function fromWholePx(n: number): LU {
   if (!Number.isInteger(n)) throw new Error(`whole px expected, got ${n}`);
   return saturate(n * LU_PER_PX);
+}
+
+/**
+ * Zoomed LU to whole device px, halves toward +infinity (Blink LayoutUnit::Round): floor((lu + 32) / 64). LU are 1/64 device px at
+ * every DPR (layout.ts zoomInput), so the result is a device px edge; it stays a number.
+ */
+export function snapEdge(lu: LU): number {
+  return Math.floor((lu + LU_PER_PX / 2) / LU_PER_PX);
 }
 
 /** LayoutUnit::ToFloat. */
