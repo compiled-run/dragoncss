@@ -1,0 +1,469 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Dragon CSS milestone 1: regular CSS proven against Chrome on a Linux lane"
+  slug: "milestone-1"
+  kind: existing_plan # specific | open_ended | existing_plan | recovery | audit
+  tranche: "Profiles, TypeScript compiler to resolved native properties (boxes, flex, colour, basic text), Chrome capture harness, Linux Taffy lane, side-by-side report; iOS simulator lane is the next milestone."
+  status: active # active | blocked | done
+  oracle:
+    signal: "pnpm test green: at least 100 box and flex fixtures pass compile -> Taffy -> Chrome comparison at 1 device pixel; report generated; exact profile entries each name a passing fixture"
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Final audit maps the oracle to test output, the report artifact and profile entries"
+  intake:
+    original_request: "Make a new project dragon / dragon css: regular CSS, tested really well across platforms, as much CSS as possible."
+    interpreted_outcome: "A first working slice that compiles regular CSS to style tables and proves layout parity with Chrome automatically."
+    input_shape: existing_plan # vague | specific | existing_plan | recovery | audit
+    audience: unknown
+    authority: requested # requested | approved | inferred | needs_approval | blocked
+    proof_type: test # test | demo | artifact | metric | review | source_backed_answer | decision
+    completion_proof: "Oracle met and audited."
+    likely_misfire: "Claiming support without passing tests, building iOS before the Linux proof, letting screenshots or AI decide, narrowing fixtures to pass."
+    blind_spots_considered: []
+    existing_plan_facts:
+      - "Plan and evidence: docs/research (T025 direction, T018 design, testing-plan.md, css-support.md, draft profile)."
+      - "Owner: separate project named Dragon CSS, npm package dragon (1.0.0-alpha prereleases), Markless first consumer."
+      - "Build time in TypeScript with yuku; thin Swift/Kotlin runtime; Taffy for layout pending measurement."
+      - "Owner 2026-09-26: agents must work well with it, like StyleX (locality, predictable merging, typed errors)."
+      - "Owner 2026-09-26: compile straight to native properties (generated Swift using platform mechanisms); only the layout engine is an on-device library."
+      - "Owner 2026-09-26: DX goal is that people focus on one platform and it just works on the other; find the pitfalls to avoid."
+      - "Owner 2026-09-26: Dragon needs semantic analysis of CSS itself (symbols, references, typed values, variable graph, cascade, join with the element tree); the compiler is built on it."
+      - "Owner 2026-09-26: the dragon npm package needs a defined API surface; primary audience assumed to be framework and tool authors (import { x } from \"dragon\")."
+      - "Owner-approved design principles 2026-09-26 (goal.md): resolve every style per reachable state at build time; generate parity tests per component state; compiler owns platform choices (text runs, inherited text styles, borders, shadows, z-index, hover); web output compiled from the same result when a native target is configured; fonts declared once and checked; platform defaults (safe-area root, keyboard avoidance, 100vh)."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  exact_human_approval_can_terminal_wait: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  # installed | bundled_not_installed | missing | unknown
+  # missing and bundled_not_installed use PM fallback; unknown requires one exact-role attempt before fallback.
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  # none | local | unknown
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/milestone-1/"
+    command: "node /Users/jacksm5pro/.claude/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-1"
+
+active_task: T019
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: queued
+    reasoning_hint: medium
+    objective: "Validate the plan against the building blocks and pin exact APIs: yuku CSS scanning (@tsrx/yuku), lightningcss npm for values, Taffy (crate API, gentest fixture format and generator, licence), Playwright geometry and computed-style capture, the Ahem font (source and licence), and how to run Taffy from Node (small Rust CLI vs napi vs wasm)."
+    inputs:
+      - "docs/research/testing-plan.md, T018-styling-design.md, T025-styling-direction.md, css-support.md"
+      - "~/dev/open-source/markless (read-only) for yuku usage; ~/dev/open-source/yuku, yuku-tsrx"
+    constraints:
+      - "Read-only except docs/goals/milestone-1/notes/T001-building-blocks.md."
+      - "Cite sources and versions; say what was run versus read."
+      - "Also settle (from pitfalls.md): does Taffy support direction/RTL; licence of Blink html.css versus capturing computed UA values; which font metrics each engine uses for line-height: normal; Taffy WebAssembly speed."
+    expected_output:
+      - "API facts per building block with versions and licences"
+      - "Recommended way to run Taffy from the Node test suite"
+      - "Risks for the first slice"
+    receipt: null
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "After T001, T008 (pitfalls) and T009 (API surface), turn the plan into the first Worker package: largest safe vertical slice from profile to compiler to Taffy lane to Chrome comparison on a handful of flex fixtures."
+    inputs:
+      - "T001 receipt and notes"
+    constraints:
+      - "Do not implement. Give exact allowed_files, verify commands and stop_if."
+    expected_output:
+      - "Worker package"
+    receipt: null
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: medium
+    objective: "Execute the first vertical slice selected by T002."
+    allowed_files: []
+    verify:
+      - "pnpm typecheck"
+      - "pnpm test"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "A fixture only passes by loosening a tolerance or skipping it."
+      - "Verification fails twice."
+    receipt: null
+  - id: T004
+    type: pm
+    assignee: PM
+    status: blocked
+    objective: "iOS simulator lane (next milestone): blocked until the owner accepts the Xcode licence (sudo xcodebuild -license accept)."
+    receipt:
+      result: blocked
+      blocked_reason: "Owner action: Xcode licence not accepted on this Mac as of 2026-09-26; out of scope for milestone 1."
+  - id: T005
+    type: scout
+    assignee: Scout
+    status: queued
+    reasoning_hint: high
+    objective: "Design and run an agent evaluation: agents complete styling tasks in raw CSS under the Dragon rules versus StyleX-style typed objects; measure first-try pass rate against the Dragon checks and the Chrome comparison, and which diagnostics agents fix reliably."
+    inputs:
+      - "docs/research/T023-stylex.md, T030-agent-guardrails.md, T016-styling-dx.md"
+    constraints:
+      - "Runs after the first vertical slice exists (needs the compiler and comparison)."
+      - "Read-only except docs/goals/milestone-1/notes/T005-agent-eval.md and scratch fixtures."
+    expected_output:
+      - "Pass rates per input style with task list and method"
+      - "Recommendation on an optional typed-object input and diagnostic wording"
+    receipt: null
+  - id: T006
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Collect real-world cross-platform styling pitfalls: the 'works on web, broken on iOS or Android' bugs that React Native, Expo, NativeWind, React Strict DOM, Lynx, Tamagui, Flutter and Capacitor users hit."
+    inputs:
+      - "docs/research/css-support.md, T029-support-evidence.md, T016-styling-dx.md"
+    constraints:
+      - "Read-only except docs/goals/milestone-1/notes/T006-platform-pitfalls.md. Cite URL and access date (issue trackers, docs, posts)."
+      - "Cover layout defaults, text and fonts, borders and shadows, overflow and clipping, stacking, positioning in scroll views, keyboard and safe areas, viewport units, touch versus hover, focus, scrolling, images, font loading, right-to-left, dark mode, pixel rounding, text scaling breaking layouts, performance cliffs (offscreen shadows, blur, large lists), and dev-versus-production differences."
+    expected_output:
+      - "Ranked pitfall list with evidence and how often it bites"
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "21 ranked cross-platform pitfalls with evidence. Top 10: Android text descender clipping and line-height model (nine years, RN 0.78/0.81); keyboard avoidance (111 RN issue titles); shadows (overflow hidden kills iOS shadow, Android elevation only, iOS offscreen cost); flex defaults differing from CSS; rounded corners not clipping children and per-side border colours on Android; custom font naming and silent bold fallback on Android; safe areas and Android 15/16 edge-to-edge; z-index vs elevation (draw order vs hit testing); large text sizes breaking fixed heights (Android 14 nonlinear scaling); release-only style breaks and dark-mode launch flashes. React Strict DOM alone closes the defaults gap, at runtime. No tool checks output against a browser, turns platform limits into build errors, or auto-splits shadow and clip layers. Dragon lever for the top pitfall: reproduce the browser's half-leading line-height split and test with tight line heights."
+      evidence:
+        - notes/T006-platform-pitfalls.md
+  - id: T007
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Find Dragon-specific DX pitfalls in the current design: where a developer writing web-first CSS would be surprised on native, or the reverse, and how the tool should prevent the surprise without the developer thinking about it."
+    inputs:
+      - "docs/research/T025-styling-direction.md, T018-styling-design.md, css-support.md, testing-plan.md, T030-agent-guardrails.md; README.md and AGENTS.md (compile straight to native properties)"
+    constraints:
+      - "Read-only except docs/goals/milestone-1/notes/T007-dragon-dx-pitfalls.md."
+      - "Cover: the restricted selector rule surprising web developers; web defaults versus Taffy defaults; errors appearing only when building for a phone versus while developing on web; support-profile updates breaking existing builds; escape hatches; performance surprises from generated code; hot reload; interaction with headless component libraries; tokens and theming; images and fonts as assets; and what 'focus on one platform' means in practice (which platform the developer previews, and how the other stays green)."
+    expected_output:
+      - "Pitfall list with the default behaviour that removes each one"
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "24 Dragon-specific pitfalls in three tiers. Tier A: native errors only for targets named in the command (fix: configured targets checked on every compile, shown in editor, dev overlay and typecheck); defaults nobody wrote (Taffy flex/border-box/shrink 1 vs Chrome's UA stylesheet; UIKit dark mode, language-driven RTL, no root scrolling, content under the notch; fix: pinned Chrome UA subset as the lowest native layer and explicit web meanings); hot reload vs generated Swift (fix: dev-only applier reading the property list, proven identical to generated Swift); selector errors moving between files (fix: prove ownership from the per-module scope hash). Proposed live parity overlay: Taffy as WebAssembly in the web dev server outlining boxes native would lay out differently. Owner decisions: fail typecheck for any configured target (yes); copy the browser's built-in styles onto native (yes); support-list removals warn for one release first. Research inconsistencies to fix: rem base 16 vs 17, table vs generated Swift, grid on iOS, select in theme example."
+      evidence:
+        - notes/T007-dragon-dx-pitfalls.md
+  - id: T008
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Synthesize T006 and T007 into docs/research/pitfalls.md, answering first: which pitfalls can be removed by design (so they cannot happen), especially through semantic analysis of the whole component tree; then which need a default, a build error or a generated test."
+    inputs:
+      - "notes/T006-platform-pitfalls.md, notes/T007-dragon-dx-pitfalls.md"
+    constraints:
+      - "Write only docs/research/pitfalls.md. Plain words first; pseudocode for the key defaults; flag owner decisions."
+      - "Evaluate these candidate by-design decisions (owner direction 2026-09-26) against every pitfall: (1) resolve every element's styles for every reachable state at build time from semantic analysis; (2) generate parity tests per component per state (plus largest text size and right-to-left) from the analysis; (3) the compiler owns platform choices: text-run versus view from context, auto-wrapping loose text, writing inherited text styles onto every text node, per-platform border and shadow implementations with shadowPath set from known geometry, z-index resolved to sibling order, :hover limited to hover-capable devices; (4) web output compiled from the same result when a native target is configured, so the browser preview shows what the phone gets (flag as the main owner decision); (5) fonts declared once and checked at build (missing weights fail); (6) platform defaults: safe-area root scroll container, keyboard avoidance, 100vh as visible screen. Say which pitfalls each removes, what it costs, and anything it cannot remove."
+    expected_output:
+      - "docs/research/pitfalls.md"
+    receipt:
+      result: done
+      harness: claude-code
+      decision: "approved"
+      full_outcome_complete: false
+      rationale: "docs/research/pitfalls.md: 45 pitfalls (21 real-world, 24 Dragon-specific) classed 24 removed by design, 14 web-matching default, 5 build error, 2 generated test; permanent small differences labelled caveat (font rasterisation, focus-ring look, nested scroll gestures, anti-aliasing, old-device speed). Key finding on principle 4: if Chrome renders only Dragon's compiled web output, a Dragon resolution bug is identical on both sides and passes; Chrome must also render the developer's original CSS and match (goal line should say both). Refinements: resolve per condition and dedupe states by property-list hash; capture Chrome's UA values instead of copying html.css; half-leading from font metrics with matching web @font-face overrides; viewport-fit governs safe-area insets; 100vh = visible screen, emitted as 100dvh on web; generated launch background; targets carry minimum OS versions. Research contradictions resolved (rem 16; generated Swift in release, property list for tests/dev/web; grid unsupported until a fixture passes; theme example uses buttons; configured targets; captured UA subset; Dragon-prefixed codes). Five owner decisions, all recommended yes. Milestone 1 scope additions listed."
+      evidence:
+        - docs/research/pitfalls.md
+  - id: T009
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Design the public API surface of the dragon package before the first code slice: audiences, export map, compile() input and output, the versioned element-tree input format, support-data query API, testing helper for adopters, CLI, and what stays internal."
+    inputs:
+      - "Owner question 2026-09-26: what is the actual dragon API surface; is it for framework authors?"
+      - "README.md, AGENTS.md, docs/research (T018 design, T030 guardrails, testing-plan.md, pitfalls.md), goal.md design principles"
+      - "notes/T010-api-precedent.md, T011-api-by-design.md, T012-api-integration.md, T018-css-semantic-analysis.md, docs/research/platform-playbook.md (run first)"
+      - "Owner structural questions to design from: remove pitfalls by design instead of documenting them; use semantic analysis so the tool decides platform choices; developers focus on one platform and it just works on the other; agents work with it as well as with StyleX; framework-neutral; compile straight to native properties; one compiler result for web output, native code and test data."
+    constraints:
+      - "Write only docs/api.md."
+      - "Pseudocode for each export; the element-tree format as a versioned schema with an example from a real component (states, classes from state, ui attributes, source locations); stability tiers (stable, experimental, internal); what app developers touch versus framework authors."
+      - "Keep the surface small; everything not needed by an adopter stays internal."
+      - "Every API choice states which owner structural question it serves and which pitfalls it removes by design."
+      - "Backends must be able to use any technique a platform engineer would: native properties, custom layers or drawables, shaders (SwiftUI shader effects, Android RuntimeShader/AGSL), text-engine features, and runtime helpers written in logic (see T017 technique model when available)."
+      - "Owner 2026-09-26: must support other targets (Android and more). The resolved result and every core type speak CSS, never a platform (no UIKit or Android terms in the core); each target is a backend: support profile, code generator, layout binding, test lane. Show the same component through ios, android, web and email backends to prove nothing platform-specific leaks into the core."
+    expected_output:
+      - "docs/api.md"
+      - "Owner decisions in plain words"
+    receipt:
+      result: done
+      harness: claude-code
+      decision: "approved"
+      full_outcome_complete: false
+      rationale: "docs/api.md (918 lines; agent stalled after writing, file complete with all 7 sections and receipt): summary and layers; export map with signatures (config-owned targets, pure synchronous compile with a frozen result, web/swift/kotlin/properties/explain/authoredCss, watch/update paint vs structure; front ends dragon/tsrx, dragon/jsx, dragon/html kept out of core; dragon/tree@1 schema with a real example; diagnostics with codes, UTF-16 offsets and 1-based lines, structured fixes; dragon/support; dragon/testing parityCases; language service; overlay; CLI; agent guidance; native packages); backend technique model with one component through ios, android, web and email; CSS analyzer internal with explain public; stability policy (no plugin/AST API, no runtime class matching in 1.x); six owner decisions (all recommended yes); milestone 1 slice."
+      evidence:
+        - docs/api.md
+  - id: T010
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Research compiler and library API precedent that framework authors adopt, and intermediate-format precedent for the element-tree input."
+    inputs:
+      - "Owner structural questions to design from: remove pitfalls by design instead of documenting them; use semantic analysis so the tool decides platform choices; developers focus on one platform and it just works on the other; agents work with it as well as with StyleX; framework-neutral; compile straight to native properties; one compiler result for web output, native code and test data."
+    constraints:
+      - "Read-only except docs/goals/milestone-1/notes/T010-api-precedent.md. Cite URL, version and access date."
+      - "APIs: lightningcss (transform, bundle, visitors, targets), PostCSS, Tailwind v4 engine and @tailwindcss/node, StyleX Babel plugin and unplugin, vanilla-extract, Panda CSS, Lynx css-defines, react-native-css compiler, Taffy and Yoga APIs, browser-compat-data and web-features, Babel and SWC plugin APIs, unplugin, Vue compiler-sfc, Svelte compiler, Mitosis JSON, the yuku analyzer."
+      - "Intermediate formats: ESTree, unist and hast, Vue template AST, Svelte AST, Mitosis JSON, SWC AST; versioning, stability promises, source spans, extensibility."
+      - "What made adoption easy or painful for framework authors (issues, blog posts); stability tiers; error and diagnostic objects; sync versus async; WASM versus native bindings; bundle size."
+    expected_output:
+      - "Precedent table and lessons"
+      - "Candidate shapes for compile(), diagnostics and the tree format"
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "Adopted APIs are one synchronous call taking and returning plain data (lightningcss transform, Svelte compile, react-native-css compile); Tailwind's set-up-once-then-rebuild suits dev servers; StyleX returns rule data turned into CSS by a second call (closest to Dragon's one result, several outputs). Pain is mostly native-binding install failures, tools depending on unstable internals (Tailwind __unstable__loadDesignSystem), and plugin systems fragmenting the ecosystem (StyleX six-plus bundler plugins, SWC plugin breakage). Diagnostics are weak everywhere (lightningcss keeps width: 1foo silently, no per-declaration spans; react-native-css warnings unlocated; only Svelte and Vue have codes; nobody ships fix objects): Dragon's clearest opening. Span units inconsistent across tools; pick UTF-16 offsets with 1-based line and column. yuku: byte offsets, no codes, no WASM analyzer, native bindings only macOS arm64 and Linux x64, so keep it out of core compile() in a front-end entry. Recommend pure synchronous compile() returning one frozen result (web(), swift(), properties(), explain()), targets from config, diagnostics with code, profile severity, structured fix, docs link, dropping always an error; tree JSON with dragon/tree@1, finite states with structured when, required spans, producer data slot, additive changes within a major; no AST plugin API in 1.x."
+      evidence:
+        - notes/T010-api-precedent.md
+  - id: T011
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Research how the API shape itself can remove pitfalls by design: what the input must carry so the compiler can decide every platform choice, and whether Dragon should take an element tree or the framework source itself and run semantic analysis (yuku)."
+    inputs:
+      - "Owner structural questions to design from: remove pitfalls by design instead of documenting them; use semantic analysis so the tool decides platform choices; developers focus on one platform and it just works on the other; agents work with it as well as with StyleX; framework-neutral; compile straight to native properties; one compiler result for web output, native code and test data."
+      - "docs/research/pitfalls.md (when written), T018-styling-design.md, T025-styling-direction.md, goal.md design principles; ~/dev/open-source/yuku (analyzer API), ~/dev/open-source/markless packages/compiler (how Markless builds its semantic graph), ~/dev/open-source/frameless"
+    constraints:
+      - "Read-only except docs/goals/milestone-1/notes/T011-api-by-design.md."
+      - "Answer: tree-in versus source-in versus both (framework front ends such as dragon/tsrx or dragon/jsx built on yuku); what semantics the tree needs (elements, text context, states and how classes and attributes vary with state, component ownership, source spans, dynamic values); how to make wrong use impossible (targets from one config, diagnostics cannot be ignored, no per-call escape flags); how a React Native style runtime-matching mode would fit the same API; how the web output being compiled from the same result is exposed."
+      - "Each answer with Dragon-idiom pseudocode, and which pitfalls it removes."
+    expected_output:
+      - "Structural API recommendations with pseudocode"
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "Both, layered: the compiler accepts only a versioned element tree (dragon/tree v1); Dragon ships front ends (dragon/tsrx, dragon/jsx, dragon/html) on the yuku analyzer; Markless produces the tree from its semantic graph; every tree goes through one validator so no producer claims more than it proved. Key missing semantic: the finite value set of class and data-* bindings (with source evidence) or open; framework-neutral literal dataflow; unknown values a selector reads are build errors, unread ones allowed. Wrong use impossible: targets only from config, compile() takes no options, a target with errors returns no output, no ignore comments, escapes (@supports, @media (os:)) listed in the build summary, byte-identical output with a digest. One resolved result feeds web CSS, Swift and test data; project.watch()/update() return paint or structure changes; explain() per element per state; project.authoredCss() for the second Chrome reference. React Native mode: lookup-table output only; no on-device class matching (react-native-css #462 failure class). Open for T009: ownership per file vs per component (tree carries both); finite-value coverage unmeasured."
+      evidence:
+        - notes/T011-api-by-design.md
+  - id: T012
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Research the integration surfaces that let app developers never think about Dragon: config, bundler plugins, editor and language server, dev overlay, CLI, agent surfaces, testing helper, native packaging."
+    inputs:
+      - "Owner structural questions to design from: remove pitfalls by design instead of documenting them; use semantic analysis so the tool decides platform choices; developers focus on one platform and it just works on the other; agents work with it as well as with StyleX; framework-neutral; compile straight to native properties; one compiler result for web output, native code and test data."
+      - "docs/research/T030-agent-guardrails.md, testing-plan.md, T016-styling-dx.md"
+    constraints:
+      - "Read-only except docs/goals/milestone-1/notes/T012-api-integration.md. Cite URL and access date."
+      - "Precedent: Tailwind v4 (Vite plugin, IntelliSense, zero config), StyleX unplugin, NativeWind setup, Expo config and prebuild, Lynx tooling, TypeScript language service plugins and Volar, vscode-css-languageservice custom data, llms.txt and MCP for tools, Swift Package Manager and Maven packaging for native pieces."
+      - "Propose: the config file (or none), what the framework integration owns versus Dragon, CLI commands, the editor story, the dev overlay hook, the testing helper API for adopters, and generated agent guidance, with pseudocode."
+    expected_output:
+      - "Integration surface design with precedent"
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "Targets and minimum OS versions live in the framework's config with a Dragon-owned schema and check; dragon.config.ts only without a framework; project created once, compile() takes no targets; a target with errors emits no native code. Dragon is a library with no bundler plugin: the framework owns module graph, HMR transport, overlay injection and its check command; Dragon owns resolution, diagnostics, web CSS, property list, generated Swift, a language-service library, the overlay custom element, the parity layer, parityCases(project) test helper (no tolerance option), generated AGENTS.md section plus llms.txt, optional MCP wrapping the CLI, and native packages (Swift package with prebuilt Taffy XCFramework plus debug-only applier; Android library on Maven with Taffy per ABI; versions locked). CLI: check, support, explain, parity, init, escapes, upgrade --check, all with --json. tsc does not load editor plugins, so framework check commands must run dragon check. A framework conformance suite proves wiring. Owner decisions: targets in framework config (yes); own bundler plugin (no); parity overlay in first dev release (opt-in until measured); MCP in first release (no)."
+      evidence:
+        - notes/T012-api-integration.md
+  - id: T013
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Cross-model critique (Codex gpt-6-astra) of docs/api.md against the owner's structural questions and the precedent research."
+    inputs:
+      - "docs/api.md, notes/T010-api-precedent.md, T011-api-by-design.md, T012-api-integration.md, docs/research/pitfalls.md, goal.md"
+    constraints:
+      - "Read-only. Findings with severity, section, problem and concrete fix."
+    expected_output:
+      - "Ranked findings; approved or rejected"
+    receipt:
+      result: done
+      harness: codex
+      decision: "rejected"
+      full_outcome_complete: false
+      rationale: "gpt-6-astra (run directly: the dispatcher exits in seconds from this repo): 4 blocking, 20 major, 1 minor. Blocking: compiler cannot obtain CSS text (spans without source snapshots); the tree cannot express reachability (no condition algebra, multi-state bindings, argument-to-state links, initial values, branch predicates); PropertyList and NativePlan are separate so generated code and test data can disagree; dedup by Dragon's own hash can hide the bug the Chrome oracle should catch, and box-only comparison misses paint. Major: evidence validation cannot prove completeness; front-end diagnostics can be dropped; no binding ABI (setters, instances, repeat keys, lifecycle); no document entry graph or stylesheet order; public components with forwarded classes unworkable; dynamic value wire format; web()/properties() return output even on errors; target-reader type restriction ineffective (TypeScript probe); parityCases lacks a fixture driver; web normalizations (vh to dvh, font overrides) conflict with authored-equals-compiled; watch/update semantics; diagnostics spans not globally resolvable; querySupport lacks context; email's interactive flag leaks into the core; per-declaration technique choice ignores composition and fidelity-first ordering; additions-only schema policy insufficient; warn-before-remove conflicts with fail-closed; lightningcss breaks the pure-TS core promise; release runtime helpers contradict 'only Taffy on device'; adapter contract missing. Minor: owner decisions bundled. PM adjudication: all accepted."
+      evidence:
+        - notes/T013-api-critique.json
+  - id: T014
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "iOS (UIKit) engineering playbook: for every feature group in docs/research/css-support.md, the best-matching native technique, its fidelity to the CSS spec and Chrome, minimum OS version, performance cost, and the workaround or logic-based approach where plain properties fall short."
+    inputs:
+      - "Owner 2026-09-26: the core thinks in CSS; each backend needs senior platform-engineer knowledge of the best technique to match each CSS feature, the workarounds, and how to achieve the same result when plain properties cannot (custom drawing, shaders, text-engine features, runtime logic). There is always something; if it cannot be done in styles it may be done in logic."
+      - "docs/research/css-support.md, T029-support-evidence.md, pitfalls.md"
+    constraints:
+      - "Read-only except docs/goals/milestone-1/notes/T014-ios-playbook.md. Cite Apple, Android or vendor docs, WWDC and Android Dev Summit talks, and open-source implementations with URL and access date; mark unverified."
+      - "Cover Core Animation layers (CAShapeLayer, CAGradientLayer incl. conic, CAReplicatorLayer, masks), Core Image and Metal (CIFilter on layer contents, MTKView, SwiftUI shader effects colorEffect/distortionEffect/layerEffect hosted in UIKit), UIVisualEffectView, TextKit 2 (inline formatting, NSTextAttachment for inline boxes, paragraph style line height and baseline offset for half-leading, hyphenation, text-wrap balance), UIFontMetrics, UIColor dynamic providers, UIPointerInteraction for hover, safe areas and keyboard layout guides, UIView animations and Core Animation for transitions and keyframes, shadowPath, rasterization, scroll view behaviours (sticky, snap)."
+      - "Per feature: technique, fidelity (exact, near, approximate), minimum OS, cost (main thread, offscreen passes, memory), public API only (no private API), and whether it upgrades the current support-table status. Include small code sketches."
+    expected_output:
+      - "Per-feature technique table"
+      - "List of support-table rows that can be upgraded, with the technique"
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "iOS playbook over every css-support.md group with technique, fidelity, min iOS, cost; 41 upgradeable rows (proposed until fixtures pass; nothing compiled: Xcode licence). CALayer filters/compositingFilter/backgroundFilters are unsupported on iOS (Apple docs), but outcomes are reachable: colour filters folded into colours at build time (exact, sRGB linear maps); blend modes via a Core Graphics paint island (all 16 CSS modes); blur on snapshots of static content; exact backdrop blur needs snapshot plus Core Image/Metal (most expensive). SwiftUI layerEffect/colorEffect cannot render UIKit-backed content (Apple docs): dead end. Group opacity default matches CSS. iOS 26 UIView.cornerConfiguration gives per-corner circular radii; elliptical needs a path mask. text-wrap balance as a small runtime search (Chrome balances up to 6 lines); pretty ~ .pushOut. Exact half-leading via TextKit 1 layout-manager delegate; line-height normal from bundled font files at build; word-spacing via kerning on spaces; inline-block via view-based text attachments (iOS 15); dashed/dotted per Blink rules; exact keyframe easing, steps(), linear(), scroll-driven animation, sticky, scroll snap. Corrections: visibility must not use isHidden on containers; box-shadow must be clipped out of the border box."
+      evidence:
+        - notes/T014-ios-playbook.md
+  - id: T015
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Android (Views) engineering playbook: for every feature group in docs/research/css-support.md, the best-matching native technique, its fidelity to the CSS spec and Chrome, minimum OS version, performance cost, and the workaround or logic-based approach where plain properties fall short."
+    inputs:
+      - "Owner 2026-09-26: the core thinks in CSS; each backend needs senior platform-engineer knowledge of the best technique to match each CSS feature, the workarounds, and how to achieve the same result when plain properties cannot (custom drawing, shaders, text-engine features, runtime logic). There is always something; if it cannot be done in styles it may be done in logic."
+      - "docs/research/css-support.md, T029-support-evidence.md, pitfalls.md"
+    constraints:
+      - "Read-only except docs/goals/milestone-1/notes/T015-android-playbook.md. Cite Apple, Android or vendor docs, WWDC and Android Dev Summit talks, and open-source implementations with URL and access date; mark unverified."
+      - "Cover Canvas and custom Drawable and Outline providers (per-side borders, dashed, radius clipping of children), RenderEffect (blur, color filters, chains), RuntimeShader and AGSL (API 33+) as a paint-worklet equivalent, BlendMode, elevation versus drawn shadows (setShadowLayer, ambient and spot colors), Spans (LineHeightSpan, ReplacementSpan for inline boxes, letter spacing), fallback line height and includeFontPadding, font families and variable fonts, WindowInsets and edge-to-edge, animators and transitions, nested scrolling and sticky via CoordinatorLayout or ItemDecoration, pixel snapping and hairlines, API-level fragmentation."
+      - "Per feature: technique, fidelity (exact, near, approximate), minimum OS, cost (main thread, offscreen passes, memory), public API only (no private API), and whether it upgrades the current support-table status. Include small code sketches."
+    expected_output:
+      - "Per-feature technique table"
+      - "List of support-table rows that can be upgraded, with the technique"
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "Android playbook over every css-support.md group (technique, fidelity, min API, cost). Paint: one Dragon-owned drawable for background, borders and shadows; filters via RenderEffect (API 31); blend and isolation via layer blending (API 29); AGSL RuntimeShader and arbitrary clipping (API 33); backdrop via setBackdropRenderEffect only in 37.2. Conflict to settle on emulators: docs say blur mask filters unsupported with hardware acceleration, React Native ships drawn shadows on them since Android 9. Text: override font padding, whole-paragraph breaking and theme hyphenation per text node; CSS half-leading via a custom LineHeightSpan (as Compose does) with error diffusion; a Dragon text view owning its layout to stop descender clipping; balance by search; word-spacing via Paint.setWordSpacing (API 29). New pitfalls: colour animator interpolation differs from CSS; View.INVISIBLE hides the subtree unlike CSS visibility; containers clip children by default; overlong words always break; force-dark must be disabled; developer animation scale; elegantTextHeight flips in 15 and is ignored in 16; edge-to-edge opt-out removed in 16. Recommend min Android 10 (API 29) with tiers at 31, 33, 35, 37.2 (device share unverified). 30 upgrade candidates (7 caveat to exact, 8 approx to caveat, 8 unsupported to caveat)."
+      evidence:
+        - notes/T015-android-playbook.md
+  - id: T016
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "macOS (AppKit) and cross-platform text engineering playbook: for every feature group in docs/research/css-support.md, the best-matching native technique, its fidelity to the CSS spec and Chrome, minimum OS version, performance cost, and the workaround or logic-based approach where plain properties fall short."
+    inputs:
+      - "Owner 2026-09-26: the core thinks in CSS; each backend needs senior platform-engineer knowledge of the best technique to match each CSS feature, the workarounds, and how to achieve the same result when plain properties cannot (custom drawing, shaders, text-engine features, runtime logic). There is always something; if it cannot be done in styles it may be done in logic."
+      - "docs/research/css-support.md, T029-support-evidence.md, pitfalls.md"
+    constraints:
+      - "Read-only except docs/goals/milestone-1/notes/T016-macos-text-playbook.md. Cite Apple, Android or vendor docs, WWDC and Android Dev Summit talks, and open-source implementations with URL and access date; mark unverified."
+      - "Cover AppKit and CALayer on macOS (layer filters and compositingFilter are supported on macOS, Core Image, NSVisualEffectView, hover and cursor, focus rings), then compare text engines across Chrome (LayoutNG), TextKit 2 and Android StaticLayout: line breaking, hyphenation, half-leading, font metrics for line-height normal, bidi, ligatures, and what can be made to match Chrome by configuration versus custom layout."
+      - "Per feature: technique, fidelity (exact, near, approximate), minimum OS, cost (main thread, offscreen passes, memory), public API only (no private API), and whether it upgrades the current support-table status. Include small code sketches."
+    expected_output:
+      - "Per-feature technique table"
+      - "List of support-table rows that can be upgraded, with the technique"
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "macOS: layer filters, background filters and compositing filters are supported (NSView.contentFilters/backgroundFilters/compositingFilter; costs in-process layer rendering), so filter, mix-blend-mode (15 Core Image blend filters), clip-path and conic gradients can move to caveat pending colour-space and backgroundFilters probes. AppKit owns a view's own layer (transform, anchorPoint, masksToBounds, shadow, filters undefined since 10.13), so paint goes on Dragon-owned sublayers; skew, matrix, transform-origin and scale/rotate with child views drop to caveat. Hover exact via NSTrackingArea; cursor subset; authored outline exact, outline auto approximate; sticky needs own code. Text: Chrome's line-height normal metrics differ per OS (Core Text on macOS; typo metrics only with USE_TYPO_METRICS else hhea on Linux/Android; DirectWrite on Windows) and rounds ascent, descent and line gap to whole pixels (plus a 15% ascent hack for Times/Helvetica/Courier on macOS); @font-face ascent/descent/line-gap overrides make every Chrome agree (pitfalls.md 4.3 must round like Chrome). Hyphenation and fallback share Core Text calls with AppKit, so they need a macOS Chrome reference. Letter spacing: Android splits it half before and after; Apple should use kCTTrackingAttributeName. Strategy: native engines for breaking, shaping, fallback, bidi, selection, accessibility, editing, with a Dragon-owned line box (Chrome rounding, text-box-trim) applied via NSLayoutManagerDelegate, custom NSTextLayoutFragment and LineHeightSpan.chooseHeight; not own HarfBuzz/ICU4X layout for 1.0. Owner decisions: macOS minimum (propose 13) and priority; text strategy."
+      evidence:
+        - notes/T016-macos-text-playbook.md
+  - id: T017
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Synthesize the three playbooks into docs/research/platform-playbook.md and propose support-table upgrades; define the backend technique model (property set, custom layer or drawable, shader, text-engine feature, runtime helper) that the API design must allow."
+    inputs:
+      - "notes/T014-ios-playbook.md, T015-android-playbook.md, T016-macos-text-playbook.md, docs/research/css-support.md"
+    constraints:
+      - "Write only docs/research/platform-playbook.md. Every proposed upgrade stays proposed until a parity fixture passes (no claim without a test)."
+    expected_output:
+      - "docs/research/platform-playbook.md"
+      - "Upgrade list and technique model"
+    receipt:
+      result: done
+      harness: claude-code
+      decision: "approved"
+      full_outcome_complete: false
+      rationale: "docs/research/platform-playbook.md: six technique kinds (native property; Dragon-owned paint incl. paint islands and snapshots; shader; text-engine hook; build-time fold; runtime helper), each with support row, fidelity, min OS, cost and proof; status only from fixtures; the core stays CSS-only and exposes platform-free analysis facts; the compiler picks the cheapest applicable technique at or below the declared minimum OS, else a build error with a fix; every runtime helper has a TypeScript reference tested against Chrome on Linux plus shared vectors for native ports. Cross-platform matrix (iOS, Android, macOS) and merged upgrades (41 iOS, 30 Android, 17 macOS upgrades, 3 macOS downgrades for transforms), all proposed. 18 new pitfalls; 8 conflicts resolved (overlong-word helper rejected, text-wrap pretty unsupported everywhere). Corrections listed for pitfalls.md (Chrome rounding in half-leading, per-line hook) and css-support.md. Text: native engines with a Dragon-owned line box. Minimums iOS 15, Android API 29 (tiers 31/33/35/37.2), macOS 13. 26 probes, 1-5 Linux-runnable now. Five owner decisions, all recommended yes."
+      evidence:
+        - docs/research/platform-playbook.md
+  - id: T018
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Research and design CSS semantic analysis for Dragon: symbols and references across files (custom properties, classes, keyframes, layers, font families, container names), typed values against property grammars, the custom-property dependency graph (chains, cycles, build-time known versus state-driven), cascade analysis (which declarations can win, specificity-only conflicts, dead rules), and the joint analysis with the element tree (which selectors match which elements in which states, parent relationships, text context)."
+    inputs:
+      - "Owner 2026-09-26: we need semantic analysis for CSS itself, like yuku's analyzer for JavaScript."
+      - "~/dev/open-source/yuku and yuku-tsrx (existing CSS scanner and analyzer design), notes/T010-api-precedent.md, T011-api-by-design.md, docs/research/pitfalls.md, T018-styling-design.md"
+    constraints:
+      - "Read-only except docs/goals/milestone-1/notes/T018-css-semantic-analysis.md. Cite URL, version and access date."
+      - "Survey: css-tree lexer and mdn-data grammars, lightningcss (typed values, dependencies, CSS modules), vscode-css-languageservice (symbols, references), stylelint, Svelte and Vue unused-selector analysis, Tailwind v4 design system, Parcel, rust cssparser and Stylo, webref and @webref/css, any CSS language servers with cross-file analysis."
+      - "Design the analyzer model with Dragon-idiom pseudocode (queries such as definitionsOf('--surface'), readersOf, typeOf, dependencyGraph, winnersFor(element, state), matchesFor(selector)); say which pitfalls and owner structural questions each capability serves."
+      - "Recommend where it lives: a CSS analyzer inside yuku (Zig, beside the JavaScript analyzer and existing CSS scanner) versus TypeScript inside Dragon versus TypeScript first then yuku; include binary-coverage, speed, reuse and iteration-speed evidence."
+    expected_output:
+      - "Survey table and gap"
+      - "Analyzer model with queries"
+      - "Placement recommendation"
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "Build the CSS analyzer in TypeScript inside Dragon now; move parts into yuku (Zig) only when a measurement shows it is too slow (proposed 50 ms full compile, 16 ms per edit), the table format holds a release, and yuku ships Dragon's platforms plus WASM. yuku has no CSS code; yuku-tsrx's scanner records only rule boundaries and scope insertion, so a Zig analyzer would be a new front end. Speed is not the constraint (css-tree parsed about 1 MB in 135 ms and checked 15,469 declarations in 46 ms; lightningcss 13 ms). Survey: lightningcss 1.33.0 passes width: 1foo silently; css-tree 3.2.1 rejects it but skips anything with var() (111 unchecked on the Markless site) and misjudges @font-face descriptors; css-tree plus @webref/css 8.7.5 grammars validates correctly on tested values; vscode-css-languageservice is single-file and missed 1foo and undefined var(); stylelint, Svelte, Vue, Biome, Tailwind v4, Stylo each cover one slice. Model: names (definitions and uses across files), types after var() substitution per state, custom-property graph (constant, environment, state-driven, open; cycles are errors), cascade (winner per element and state, specificity-only conflicts, never-winning rules), join with the element tree (matches, ownership, inherited text, inline runs), explain() shared by editors, overlay and agents; per condition, not per combination. Owner question: keep the analyzer internal in milestone 1 with only explain public (recommended)."
+      evidence:
+        - notes/T018-css-semantic-analysis.md
+  - id: T019
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Revise docs/api.md to resolve every finding in notes/T013-api-critique.json (F1-F25), keeping the owner's structural questions as the design test."
+    inputs:
+      - "notes/T013-api-critique.json; docs/api.md; notes T010, T011, T012, T018; docs/research/platform-playbook.md, pitfalls.md; goal.md"
+    allowed_files:
+      - "docs/api.md"
+    verify:
+      - "test -s docs/api.md"
+      - "grep -q '## Critique resolution' docs/api.md"
+      - "pnpm typecheck"
+    constraints:
+      - "Where a finding exposes scope the owner has not decided, record it as an owner decision in plain words instead of guessing."
+      - "Prefer shrinking the 1.x public surface over specifying more of it; mark anything not needed in milestone 1 as experimental or internal."
+      - "Add a Critique resolution section with one line per finding."
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Verification fails twice."
+    receipt: null
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit the milestone against the oracle."
+    inputs:
+      - "All receipts, test output, report artifact, profile entries"
+    constraints:
+      - "Reject if any exact profile entry lacks a passing fixture, fewer than 100 fixtures pass, or tolerances were loosened."
+    expected_output:
+      - "complete or not_complete; full_outcome_complete true or false"
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []

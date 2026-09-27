@@ -1,0 +1,9 @@
+{
+  "name": "dragon",
+  "version": "1.0.0-alpha.0",
+  "private": true,
+  "description": "Regular CSS for native apps, tested against the browser.",
+  "type": "module",
+  "license": "MIT",
+  "exports": { ".": "./src/index.ts" }
+}

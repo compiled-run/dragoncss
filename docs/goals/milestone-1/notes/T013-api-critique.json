@@ -1,0 +1,181 @@
+{
+  "decision": "rejected",
+  "summary": "The architecture points in the right direction, but the proposed contracts cannot yet support complete semantic resolution, safe framework integration, or the claimed parity guarantees. Several guarantees are contradicted by the signatures. pnpm typecheck passed; pnpm test exited 0 with no test files because --passWithNoTests is enabled. An in-memory TypeScript probe confirmed the target-reader restriction is ineffective.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "blocking",
+      "section": "docs/api.md §§2.1–2.3: compiler inputs, source files and spans",
+      "problem": "The compiler cannot obtain its CSS input. Module.styles contains spans but no text, DragonTree.files contains only paths and hashes, and host.readFile is explicitly limited to fonts and images. validateTree likewise cannot inspect evidence literals. Reading disk implicitly would also ignore unsaved editor contents and break snapshot determinism.",
+      "concrete_fix": "Include immutable source snapshots in the input, with canonical file identifiers, text and verified hashes. Define stylesheet extraction, virtual files, import resolution and dependency reporting. Validate spans against those snapshots and include their contents in the digest."
+    },
+    {
+      "id": "F2",
+      "severity": "blocking",
+      "section": "docs/api.md §2.3: State, BindingValue, branch, widget and switch example; §4",
+      "problem": "The tree cannot express the reachability claimed by the example. Branch arms have no predicates; bindings can map one state but cannot express a function of multiple states; and no field connects ToggleRoot's checked argument to the widget's checked state. State has no initial value. Consequently, the claimed four reachable states and email's checked=false initial rendering cannot be derived from this payload.",
+      "concrete_fix": "Define the condition algebra, qualified state references, state aliases across component arguments, initial assignments and branch predicates. Specify map completeness and typed value identity. Preserve per-property symbolic conditions as recommended by T018, rather than requiring a Cartesian table of complete styles. Add an executable, unabridged switch example."
+    },
+    {
+      "id": "F3",
+      "severity": "blocking",
+      "section": "docs/api.md §2.1: PropertyList; §§3.1–3.4: backend planning",
+      "problem": "The proposed test data is the CSS received by a backend, while generated code comes from a separate NativePlan. It therefore does not establish the owner's requirement that generated native properties and test data cannot disagree. PropertyList also lacks generated-node topology, node kinds, text content and measurement inputs; generated node IDs alone cannot describe text merging or a shadow/clip split.",
+      "concrete_fix": "Define the stages explicitly: resolved CSS, backend lowering and output projections. Generate native code and its expected property dumps from the same lowered operations. Keep platform operations inside the backend, while providing sufficient versioned topology, content and measurement data for the layout lane. Specify which invariant each lane actually proves."
+    },
+    {
+      "id": "F4",
+      "severity": "blocking",
+      "section": "docs/api.md §§2.1 and 2.6: authoredCss and parity deduplication",
+      "problem": "Deduplicating tests by Dragon's resolved-property hash can defeat the independent Chrome oracle. If a compiler bug incorrectly resolves open and closed states identically, deduplication can remove the state that would expose the bug. Identical styles also do not imply identical text or structure. Furthermore, comparing only boxes cannot catch a wrong color or another paint-only cascade error copied into both generated outputs.",
+      "concrete_fix": "Validate authored behavior for every reachable source condition before deduplicating native executions. Include structure, content, environment and relevant observable values in any equivalence criterion. Compare computed values and numeric paint evidence for supported non-layout features. Add a deliberately faulty resolver fixture to prove that the oracle detects these errors."
+    },
+    {
+      "id": "F5",
+      "severity": "major",
+      "section": "docs/api.md §§2.2–2.3: evidence validation",
+      "problem": "Finding claimed literals at evidence spans cannot prove that a producer found every write, every caller or every possible value. A producer can omit a write and still satisfy the stated validator. The promise that no producer can claim more than it proved is therefore false, even after source text is supplied.",
+      "concrete_fix": "Separate structural validation from semantic trust. Specify producer obligations, completeness boundaries and a conformance suite. Restore T011's generated domain checks at runtime boundaries and typed native setters. Fail closed on unknown analysis results, and describe evidence spans as provenance unless Dragon independently verifies the complete analysis."
+    },
+    {
+      "id": "F6",
+      "severity": "major",
+      "section": "docs/api.md §2.2: front-end example; §2.3: validateTree",
+      "problem": "The front-end example discards diagnostics while claiming they are merged automatically: compile receives only tree, and DragonTree has no diagnostic field. A front end that recovers from unsupported syntax can consequently lose its errors. validateTree also returns a DragonTree unconditionally, including when validation fails.",
+      "concrete_fix": "Use an explicit front-end result containing the tree, source snapshot and diagnostics, and make compile consume that result. Alternatively, require a validated input envelope that cannot omit front-end failures. Make validation return a success/failure union, with no validated tree on failure."
+    },
+    {
+      "id": "F7",
+      "severity": "major",
+      "section": "docs/api.md §§2.1, 2.3 and 2.11: framework-to-output integration",
+      "problem": "There is no binding ABI connecting SiteId, framework state and generated output. Static hostAttributes cannot describe which web attributes change when a binding changes. Native setter signatures, node registration, mounting, removal and state initialization are unspecified. Repeated component instances also have no runtime key/address model, despite patches and the overlay addressing nodes by NodeId.",
+      "concrete_fix": "Return a versioned binding and node manifest covering template IDs, instance paths, repeat keys, generated-node mappings, typed setter names and inputs, initial application and lifecycle operations. Provide one complete framework integration example that updates an ancestor-dependent style and two independent instances of the same component."
+    },
+    {
+      "id": "F8",
+      "severity": "major",
+      "section": "docs/api.md §2.3: modules, ownership, projections and program roots",
+      "problem": "The tree carries component definitions but no explicit application/document entry graph. It does not identify the document root used for root tokens and platform defaults. Cross-module stylesheet order is undefined. Module.styles has no component ownership association, and forwarded class values are bare strings even though the example relies on retaining the caller's scope identity. Component IDs alone do not resolve these ambiguities.",
+      "concrete_fix": "Define document entrypoints, root instances, ordered stylesheet uses and cross-tree linking rules. Associate scoped stylesheet uses with their owners and preserve class-symbol provenance through forwarding. Specify the ancestry used for matching, inheritance and projection with examples involving multiple components in one module and identically named classes in different modules."
+    },
+    {
+      "id": "F9",
+      "severity": "major",
+      "section": "docs/api.md §§2.3 and 6: public components and forwarded classes",
+      "problem": "Public components are checked with open parameters, but any selector reading an open class binding causes an error. This leaves reusable headless components with class forwarding without a workable publish contract. Requiring complete class strings to be finite also rejects cases where the relevant predicate is known, such as a guaranteed base class plus an unrelated caller-supplied class string.",
+      "concrete_fix": "Define a library artifact and linking contract: validate local rules at publication, preserve unresolved parameter requirements, and specialize against consumer call sites. Analyze selector predicates or known class membership where possible instead of demanding every complete class string. Include a publish-and-consume fixture for a class-forwarding headless component."
+    },
+    {
+      "id": "F10",
+      "severity": "major",
+      "section": "docs/api.md §2.3: dynamic CSS values; §§3.4 and 4",
+      "problem": "A dynamic value labeled <length> or <color> has no specified wire representation, units, range, validation or generated evaluation contract. A type label does not prevent a CSS string from reaching native code. The statement that the progress example is fine on every target also bypasses context-sensitive backend support and proof. Continuous inputs cannot be covered by enumerating finite states.",
+      "concrete_fix": "Define a structured CSS value algebra and residual expression representation with typed runtime inputs. Specify validation, dependencies, update propagation and backend eligibility. Distinguish finite style decisions from continuous value evaluation, and require proven lowering algorithms for the latter. Reject dynamic expressions without such a lowering."
+    },
+    {
+      "id": "F11",
+      "severity": "major",
+      "section": "docs/api.md §2.1: output readers and Blocked",
+      "problem": "web() always returns publishable-looking output, even for invalid CSS or unresolved state, although the exception is justified only for development. properties() likewise always returns data for an erroneous target. There is no contract for whether either contains partial output, authored fallback or the last successful result. Integrations can therefore ship incomplete output while satisfying the return types.",
+      "concrete_fix": "Make checked production artifacts unavailable for affected targets when compilation fails. Expose development preview output separately, with explicit validity and current-versus-last-successful digest metadata. Apply an equally explicit blocked/partial distinction to property data."
+    },
+    {
+      "id": "F12",
+      "severity": "major",
+      "section": "docs/api.md §2.1: kotlin() and email() type restrictions",
+      "problem": "The this: Compiled<T & {...}> signatures do not enforce configured targets. In a strict TypeScript probe, Compiled<{web: {}; ios: {minimum: '15'}}> accepted both kotlin() and email(); only swift('macos') failed. Structural compatibility between the Compiled instantiations defeats the documented guarantee.",
+      "concrete_fix": "Expose target readers through a mapped output type indexed only by configured targets, or use conditional reader members with an enforceable target witness. Add compile-time negative cases for every unconfigured reader, alongside runtime validation for JavaScript callers."
+    },
+    {
+      "id": "F13",
+      "severity": "major",
+      "section": "docs/api.md §2.6: parityCases",
+      "problem": "parityCases has no rendering/state-driving adapter or fixture-data contract. A tree containing dynamic text, repeats and parameters cannot supply actual content or instantiate framework behavior by itself. The environment shape also omits DPR and explicit pointer, hover and reduced-motion inputs. Lane names do not identify which configured target, OS floor or reference environment is being proved.",
+      "concrete_fix": "Specify either a complete Dragon-owned fixture renderer or a framework fixture-driver interface. Define content inputs, state application, settling, target/lane binding and environment coverage. Reports must distinguish complete coverage, requested subsets and unavailable required lanes; a default Taffy run must not imply that native backends were verified."
+    },
+    {
+      "id": "F14",
+      "severity": "major",
+      "section": "docs/api.md §§2.1 and 2.6: web normalization and authored equality; §6",
+      "problem": "The contract requires authored CSS and generated web CSS to produce identical boxes while deliberately changing semantics such as vh to dvh and font metrics through overrides. Those changes can legitimately alter boxes. The unresolved text-scaling policy compounds this contradiction; it is not merely an implementation detail.",
+      "concrete_fix": "Specify the semantic reference for each approved normalization. Preserve a strict authored comparison for unchanged CSS semantics and independently test any owner-approved normalization against an explicit reference policy. Do not solve the conflict by weakening tolerances or suppressing mismatches. Settle text-size behavior before promising universal authored equality."
+    },
+    {
+      "id": "F15",
+      "severity": "major",
+      "section": "docs/api.md §2.1: watch/update; §2.7: language-service updates",
+      "problem": "Updates are keyed by path but replace DragonTree values that can contain many files and components; replacement and removal semantics are undefined. There is no asset-only invalidation, dependency list, initial snapshot contract, patch base digest or recovery from invalid edits. The language service cannot remove files. IDs based on authored order also do not define identity preservation across insertion and reordering.",
+      "concrete_fix": "Define revisioned project snapshots and atomic update transactions with explicit ownership of files and modules. Report dependencies, invalidate changed assets and dependents, and include base/next digests plus resynchronization behavior. Specify identity preservation and error recovery, and require incremental-versus-fresh equivalence after additions, removals and failed edits."
+    },
+    {
+      "id": "F16",
+      "severity": "major",
+      "section": "docs/api.md §2.4: diagnostics; §4: explain",
+      "problem": "Diagnostic spans contain tree-local numeric file IDs, but check returns only an array and CLI JSON promises the same objects without a source registry. Every diagnostic and explanation winner requires an authored span, which cannot represent configuration failures, malformed input or synthetic defaults. Explain also has one winner/value per state despite target-folded conditions producing different winners, and its public query cannot address the file position accepted by the CLI.",
+      "concrete_fix": "Define globally resolvable, revisioned source references and explicit authored, inherited, built-in, generated and unlocated origins. Make fixes carry source-version preconditions. Return explanations per target and condition, with structured not-found/invalid-query results and a documented source-position-to-instance lookup."
+    },
+    {
+      "id": "F17",
+      "severity": "major",
+      "section": "docs/api.md §2.5: querySupport",
+      "problem": "Support selection depends on element facts such as subtree contents, geometry and clipping, yet querySupport accepts only a declaration and target and returns an unconditional status and technique. It cannot distinguish an applicable exact technique from one whose preconditions are unknown. The minimum option also lacks a defined relationship to Android SDK floors, email clients and per-target configuration.",
+      "concrete_fix": "Separate context-free support possibilities from contextual support decisions. Return explicit requirements or a needs-context result when facts are missing, and allow querying a compiled element/state for a definitive answer. Use normalized per-target configuration and attach proof to the applicable value subset, context and environment."
+    },
+    {
+      "id": "F18",
+      "severity": "major",
+      "section": "docs/api.md §§3.1 and 3.5: TargetEnvironment and email; §2.1: web()",
+      "problem": "interactive is not a CSS media feature, yet it enters the supposedly CSS-only core and deletes application states for email. Lack of runtime interaction does not imply checked=false: an email can be rendered with checked=true from supplied data. More generally, target folding creates distinct resolved variants, but the single web() result has no defined relationship to previews of conflicting iOS, Android and email environments.",
+      "concrete_fix": "Keep application assignments and state reachability in the semantic input. Let a static backend require explicit render-time assignments or reject unresolved runtime dependencies. Represent CSS environment conditions separately. Define actual web output versus native-target preview projections, while continuing to check every configured target."
+    },
+    {
+      "id": "F19",
+      "severity": "major",
+      "section": "docs/api.md §§3.1–3.3: technique selection",
+      "problem": "Choosing the cheapest applicable technique independently for each declaration does not define a valid combined plan. Techniques can compete for the same layer, clipping boundary or text representation. The API also omits the playbook's preferFidelity: exact ordering, allowing a cheaper approximation to beat an available exact implementation.",
+      "concrete_fix": "Select a compatible plan for the affected element/subtree, with declared technique requirements and composition constraints. Prefer proven fidelity before cost, with deterministic tie-breaking. Test interacting features together, including opacity, clipping, shadows, transforms and text hooks, rather than treating isolated row proofs as composition proofs."
+    },
+    {
+      "id": "F20",
+      "severity": "major",
+      "section": "docs/api.md §§1, 2.3 and 5: stability and schema evolution",
+      "problem": "Additions-only is not a sufficient compatibility policy. Adding a node kind under dragon/tree@1 breaks older @1 consumers because unknown kinds are errors; adding required fields or union variants similarly affects producers and exhaustive consumers. The payload has no minor feature negotiation. Diagnostic redirects are also promised without an alias representation that preserves existing code-based consumers.",
+      "concrete_fix": "Define compatible additions precisely, including optional-field defaults and exhaustive-union policy. Add schema capability negotiation or require a new schema version for unsupported constructs. Specify producer/consumer compatibility windows and diagnostic alias behavior, and test old producer/new compiler and new producer/old compiler combinations."
+    },
+    {
+      "id": "F21",
+      "severity": "major",
+      "section": "docs/api.md §§2.4–2.5 and 5: support demotions",
+      "problem": "The one-release warning period conflicts with fail-closed support. If a row loses its proof or implementation, continuing to emit output with a warning violates both missing-data-means-unsupported and dropping-is-an-error. The exception for output that was wrong does not cover missing or invalidated proof. Exact-to-approximate and supported-to-unsupported transitions are also conflated.",
+      "concrete_fix": "Define a status-transition matrix. Permit deprecation warnings only while the existing implementation remains available and proven at its advertised fidelity. Missing proof or missing output must block immediately. Treat compatibility policy, fidelity changes and proof invalidation as separate events in upgrade reports."
+    },
+    {
+      "id": "F22",
+      "severity": "major",
+      "section": "docs/api.md §§2 and 4: pure TypeScript core and web lowering",
+      "problem": "The package promises that importing dragon installs no native code and works synchronously in browsers, but web lowering uses lightningcss without a dependency or initialization contract. T010 identifies lightningcss's native binding and WASM differences. Isolating yuku behind optional front-end subpaths does not resolve this second dependency.",
+      "concrete_fix": "Specify the dependency graph and browser-safe web-lowering implementation, including initialization and asset loading. Keep native-only packages outside the core import/install path. Add package-consumer smoke checks for synchronous compilation in Node and a browser host without yuku or native bindings."
+    },
+    {
+      "id": "F23",
+      "severity": "major",
+      "section": "docs/api.md §§2.11 and 3.2: release runtime boundary",
+      "problem": "The document claims Taffy is the only on-device library while requiring DragonRuntime and an Android runtime containing balance search, sticky clamps, transition reversal and other CSS algorithms. Those are substantive release runtime responsibilities, not merely package naming. This leaves an owner-approved architectural constraint unresolved.",
+      "concrete_fix": "State exactly which code is generated, which helpers are linked and which runtime inputs those helpers may evaluate. If the only-library constraint remains literal, emit required helper code with the backend output and keep the external runtime dependency limited to layout. Otherwise obtain an explicit owner revision rather than asserting both contracts hold."
+    },
+    {
+      "id": "F24",
+      "severity": "major",
+      "section": "docs/api.md §§2.9, 6 and 7: integration adapter and milestone slice",
+      "problem": "The CLI depends on a framework dragon adapter that is never specified. A target config alone cannot provide source discovery, trees, diagnostics or native lockfile information. integrationConformance is deferred, while milestone 1 claims to exercise real public shapes primarily through static HTML fixtures. That leaves multi-component linking, state bindings and error propagation untested before their schemas are treated as settled.",
+      "concrete_fix": "Define a minimal adapter contract and whether check paths filters reporting or changes analysis scope. In milestone 1, exercise the public entry point with multi-file, correlated-state, projection, invalid-input and inherited-text fixtures in addition to the required layout corpus. Keep unexercised dynamic contracts experimental; defer broad front ends and dev tooling rather than claiming the schema will need no redesign."
+    },
+    {
+      "id": "F25",
+      "severity": "minor",
+      "section": "docs/api.md §6: owner decisions; §§1 and 5",
+      "problem": "Several owner choices are bundled or framed as false binaries. Keeping analyzer tables private does not require keeping a stable read-only query facade private. Allowing backend authors does not require trusting their support claims without conformance tests. Calling Dragon as a library does not preclude optional adapters. The proposed OS defaults also conflict with required minimum fields, and the text-size decision affects public contracts despite being called nonblocking.",
+      "concrete_fix": "Separate internal representation stability, public query coverage, backend certification, adapter distribution and platform-floor policy into independent decisions. Recommend private tables, narrow stable queries and test-gated backends. Define normalized default floors explicitly and settle text-size semantics before freezing environment and parity types."
+    }
+  ]
+}
