@@ -5,10 +5,28 @@ These are recorded 2026-09-26. The owner said "take the recommendations", so eac
 ## Direction
 
 - **Separate project:** Dragon CSS lives in its own repo. The npm package is `dragon`, published as `1.0.0-alpha.x` prereleases. Markless is the first user.
-- **Regular CSS is the one authoring model.** On native targets, a selector may test only its own element, parents in the same component, and app-wide conditions. Anything else is a build error with a fix. StyleX-style object input is not added, unless the agent evaluation shows it helps.
-- **Compile straight to native properties,** using platform mechanisms where they exist. The only on-device library is layout (Taffy, if its measurement passes). Any runtime helper Dragon needs ships as part of the generated output or a small runtime; see the API design for the exact boundary.
+- **Regular CSS is the one authoring model.** On native targets, a selector may test only its own element, parents in the same component, and app-wide conditions. Anything else is a build error with a fix. StyleX-style object input is not added, unless the agent evaluation shows it helps. The evaluation ran on 2026-09-27 (notes/T005-agent-eval.md §8). Typed objects passed 7/15 on the first try against 5/15 for CSS, below the pre-registered bar of CSS + 5. Both styles failed on the same over-strict support rows, so Dragon stays CSS-only.
+- **Compile straight to native properties,** using platform mechanisms where they exist. The only on-device library is layout, and it is Dragon's own engine (see Layout engine below). Any runtime helper Dragon needs ships as part of the generated output or a small runtime; see the API design for the exact boundary.
 - **Build-time code is TypeScript.** The CSS analyzer is built in TypeScript inside Dragon, and moves into yuku (Zig) only if measurements require it. It stays internal in 1.x; only `explain()` is public.
 - **Every target is a backend.** The core speaks only CSS. Backends choose among six kinds of technique: native property, Dragon-owned paint, shader, text-engine hook, build-time fold, runtime helper. They prefer proven fidelity first, then cost.
+
+## Layout engine (2026-09-26)
+
+- **Dragon owns its layout engine, written in TypeScript. Taffy is not used,** neither upstream nor as a fork. The owner's reasons: Taffy is partial (no inline layout, fixed or sticky positioning, tables, multi-column, vertical writing modes or flex `order`), it makes its own assumptions (flex and border-box defaults), and flaws cannot be made impossible by design in someone else's engine.
+- **The engine takes a fully specified input.** Every field is required and comes from the compiler's CSS resolution; there are no engine defaults. It follows the CSS specification algorithms and matches Chrome's arithmetic.
+- **The TypeScript engine is the reference for native layout.** On-device versions (Swift, then Kotlin) are generated or ported in the native milestones and must reproduce it exactly on shared test vectors.
+
+## Linux lane scope for milestone 1 (2026-09-27)
+
+The owner asked the PM to research and decide (notes/T033-linux-lane.md).
+- **What milestone 1 proves:** Dragon's layout engine is platform-free TypeScript and gives the same numbers on any OS. The Chrome oracle is captured on macOS Chrome 145.0.7632.6. Reports and the final audit say exactly that. They do not claim a Linux run.
+- **What is platform-dependent (corrected 2026-09-27, T036):** most box geometry in the corpus does not depend on the OS: all laid-out text is Ahem and nothing scrolls. Text baselines and line boxes do. Blink rounds font metrics differently per platform. On Linux (`font_metrics.cc`, lines 114-126 at the pinned tag) it moves 1 px from ascent to descent at some Ahem sizes the corpus uses. On macOS, two measured rules apply: metric halves round down, and font sizes are truncated to hundredths. So Linux baselines are expected to differ by up to 1 px, which has not been measured. The default font-family string also differs (`Times` against `Times New Roman`). The macOS rules are held in a platform-rule registry with exact test nodes, keyed to `darwin-arm64`.
+- **Making it portable (S5):** captures record the platform. The fixture environment sets the root font-family to Ahem, so no capture depends on the OS's default font. Any remaining UA data is keyed by platform. A Linux CI workflow file is written, but not pushed.
+- **First real Linux run:** it happens when the owner approves either a local runtime (Apple `container` or Lima) or a push to CI. Linux captures are committed under their own platform key (`linux-x64`). Computed values must equal the macOS reference, except values from the platform UA dataset. Chrome-dual must be exact on Linux. Geometry is judged per platform against the Chrome captured on that platform. The workflow file (`.github/workflows/parity.yml`, manual trigger only) is written, but not pushed.
+
+## iOS caveat cap for milestone 1 (2026-09-27)
+
+- **Owner acknowledged:** 221 iOS paint and overflow support rows (colours, borders, backgrounds, overflow clipping) stay `caveat`, not `exact`, in milestone 1. Chrome proves the computed values, but no native paint lane exists. They can become `exact` only through the simulator lane in the next milestone, which needs the Xcode licence accepted.
 
 ## Pitfalls handled by design (docs/research/pitfalls.md §6)
 

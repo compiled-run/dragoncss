@@ -1,5 +1,7 @@
 # Testing plan: proving CSS works the same on web and on phones, without a human doing QA
 
+> **Updated 2026-09-26 (owner decision, docs/decisions.md "Layout engine"):** Taffy and Rust are not used. Dragon owns its layout engine in TypeScript. Where this plan below still says "Taffy", read "Dragon's layout engine". Taffy's gentest HTML may still be re-captured as Chrome-oracle fixtures (MIT notice), never as an engine. The layout tolerance is decision 13: 1 device pixel per box edge.
+
 Judge note for the native-targets goal, 2026-09-26. Built from the testing landscape research (`T035-testing-landscape.md`), the repo test-infrastructure survey (`T036-test-infra.md`), the support tables (`css-support.md`, `css-support-profile.draft.json`) and the guardrail design (`T030-agent-guardrails.md`). Research only: nothing here exists yet, and every command and file name below is a proposal.
 
 New facts since those notes: `compiled-run/markless` is public (checked with `gh api` today), so standard GitHub runners, macOS included, cost nothing; concurrency caps still apply. The owner expects the CSS compiler to become its own project, working name **dragon** (an npm name the owner holds): a build-time compiler in TypeScript on top of yuku, small Swift and Kotlin runtimes that apply style tables, and Taffy for layout. Markless consumes it. This replaces the earlier "build the styling package inside Markless first" default in `css-support.md`.
@@ -55,11 +57,11 @@ Output is `expected/<fixture>.web.json`, committed and regenerated only by an ex
 
 Reuse: the capture walk copies `inventoryCandidates` in `packages/analyzer/src/playwright.ts` (one `evaluateAll` over every element). If dragon is its own repo, the capture script lives in dragon; Markless reuses the analyzer probe for its integration lane.
 
-### Layer 2: Linux Taffy lane
+### Layer 2: Linux Dragon layout lane
 
-The dragon compiler turns the fixture's CSS into the same style table the phone would receive. A small program on the pinned Taffy revision (the same revision the iOS xcframework links) builds a Taffy tree from that table, measures text with an Ahem function (width = characters × font size), lays out at the fixture's viewport, and writes `actual/<fixture>.taffy.json`. Compare with Chrome: exact in Taffy's rounded mode, or within 0.01 px unrounded.
+The dragon compiler turns the fixture's CSS into a fully specified layout input: every field is set by the compiler, and the engine has no defaults. Dragon's own TypeScript layout engine (`packages/layout`) lays it out at the fixture's viewport, using Chrome's LayoutUnit arithmetic (1/64 px fixed point) and an Ahem measure (width = characters × font size). It is compared with Chrome on each absolute box edge. The gate is owner decision 13: at most 1 device pixel. Exact 1/64 px matches and unrounded deltas are reported for information only. An earlier sub-pixel unrounded default is superseded, because Chrome itself only produces 1/64 px (0.015625) steps.
 
-This lane is what makes the per-PR gate cheap. Researched default: ship the Taffy runner as a prebuilt WebAssembly build so Node runs it with no Rust toolchain for contributors; the Rust source and revision pin live next to the xcframework build. It also re-runs Taffy's own Chrome-generated fixtures through dragon's table format (section 5).
+This lane is what makes the per-PR gate cheap. It needs only Node, with no native toolchain. The same engine is the reference that on-device versions must reproduce exactly on shared vectors (`packages/layout/vectors`).
 
 ### Layer 3: simulator numeric lane
 

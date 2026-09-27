@@ -15,7 +15,7 @@ Every feature Dragon claims to support is backed by a passing test that compares
    - `env(safe-area-inset-*)` becomes the safe-area insets;
    - class changes driven by state become "when this value changes, set these properties".
 
-   The only library on the device is the layout engine (Taffy, pending a size and speed measurement), because positions depend on real content and screen size. Nothing on the device parses CSS or matches selectors. The same "which properties go on which element" result is also written out as plain data for the test lanes.
+   The only library on the device is the layout engine (Dragon's own, with a TypeScript reference that native versions must reproduce exactly), because positions depend on real content and screen size. Nothing on the device parses CSS or matches selectors. The same "which properties go on which element" result is also written out as plain data for the test lanes.
 3. **Proof:** Chrome records every box and resolved value. A Linux lane runs the compiled property list through the layout engine, and a simulator lane dumps what the native views actually got. Both are compared number by number. Side-by-side screenshots are published as evidence.
 
 ## Status

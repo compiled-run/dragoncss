@@ -1,12 +1,15 @@
 # Dragon CSS milestone 1: regular CSS, proven against Chrome on a Linux lane
 
+> Scope note (2026-09-27, docs/decisions.md): the oracle lane is macOS-captured Chrome 145.0.7632.6 (darwin-arm64) plus the platform-free Dragon layout lane. The Linux lane workflow is written but not run.
+
 ## Objective
 
 Build the first working, tested slice of Dragon CSS:
 - support profiles (web and iOS);
 - a TypeScript compiler that turns CSS plus an element tree into a per-element list of resolved native properties, for boxes, flex, colours and basic text (the same result later generates Swift that sets those properties directly);
 - a Chrome capture harness;
-- a Linux lane that lays the resolved property list out with Taffy and compares every box with Chrome, number by number;
+- Dragon's own layout engine in TypeScript (block and flexbox for this milestone), with a fully specified input and no hidden defaults;
+- a Linux lane that lays the resolved property list out with that engine and compares every box with Chrome, number by number;
 - a side-by-side report.
 
 A support-profile entry becomes `exact` only when its comparison test passes.
@@ -21,18 +24,18 @@ A support-profile entry becomes `exact` only when its comparison test passes.
 - **Audience:** the owner, then tools that compile templates (Markless first).
 - **Authority:** `requested`.
 - **Proof type:** `test`.
-- **Goal oracle:** `pnpm test` runs a corpus of box and flex fixtures through compile, Taffy layout and a Chrome comparison, and passes within 1 device pixel. The report shows each fixture side by side with per-node differences. Each support-profile entry marked `exact` names a fixture that passes.
+- **Goal oracle:** `pnpm test` runs a corpus of box and flex fixtures through compile, Dragon layout and a Chrome comparison, and passes within 1 device pixel. The report shows each fixture side by side with per-node differences. Each support-profile entry marked `exact` names a fixture that passes.
 - **Likely misfire:**
   - claiming support without a passing test;
   - building an iOS runtime before the Linux proof exists;
   - letting screenshots or AI judgement decide pass or fail;
   - quietly narrowing fixtures to make things pass.
 - **Blind spots:**
-  - Taffy defaults differ from the web's (flex, border-box), so the compiler must emit web defaults;
+  - the layout engine must take every value explicitly from the compiler, never assume a default;
   - text measurement (use the Ahem font for the layout corpus);
-  - Taffy is Rust, so the Linux lane needs a small Rust binary or a WebAssembly build;
+  - the TypeScript engine becomes the reference for native layout, so its arithmetic must be portable (Chrome's 1/64 px fixed point) and its cases exportable as shared vectors;
   - the Xcode licence is not accepted on the owner's Mac, which blocks simulator work;
-  - licences for the Taffy fixtures, WPT and Ahem.
+  - licences for WPT and Ahem.
 
 ## Design principles (owner-approved 2026-09-26)
 
@@ -63,7 +66,9 @@ These are meant to remove pitfalls by design, so they cannot happen, instead of 
 
 ## Goal Oracle
 
-`pnpm test` is green. A layout corpus of at least 100 box and flex fixtures, including ones adapted from Taffy's Chrome-generated corpus with licence notice, passes the Chrome-vs-Taffy comparison at 1 device pixel. The side-by-side report is generated. Profile entries flip to `exact` only through passing tests.
+`pnpm test` is green. A layout corpus of at least 100 box and flex fixtures, passes the Chrome-vs-Dragon-layout comparison at 1 device pixel. The side-by-side report is generated. Profile entries flip to `exact` only through passing tests.
+
+Lane scope (docs/decisions.md, 2026-09-27): the Chrome oracle is captured on macOS, and the layout engine is platform-free. A real Linux run needs owner approval of a runtime or CI push, and it is not required for milestone 1.
 
 ## Goal Kind
 
@@ -71,8 +76,8 @@ These are meant to remove pitfalls by design, so they cannot happen, instead of 
 
 ## Current Tranche
 
-1. Validate the plan against the building blocks: yuku's CSS scanner, lightningcss, Taffy, Playwright and Ahem.
-2. Then the profiles, compiler, harness, Linux lane and report.
+1. Validate the plan against the building blocks: css-tree with webref grammars, Playwright and Ahem (done, T001).
+2. Then the profiles, compiler, Dragon layout engine, harness, Linux lane and report.
 3. The iOS simulator lane is the next milestone. It stays blocked until the owner accepts the Xcode licence.
 
 ## Non-Negotiable Constraints
@@ -80,7 +85,7 @@ These are meant to remove pitfalls by design, so they cannot happen, instead of 
 - **Follow AGENTS.md:** no claim without a test; numbers decide pass or fail; never loosen tolerances or skip tests.
 - **Stay inside this repo** (`~/dev/open-source/dragon`). Read Markless and yuku; don't edit them.
 - **No publishing, no pushes, no remotes** without an owner directive.
-- **Build-time code is TypeScript;** Rust only for the Taffy lane binary.
+- **All Dragon code in this milestone is TypeScript,** including the layout engine. No Rust, no Taffy (owner, 2026-09-26: a partial engine built on someone else's assumptions cannot make flaws impossible by design).
 - **Agents must work well with it.** The owner, 2026-09-26: "agents work really well with StyleX". So:
   - styles stay local to the element;
   - merging is predictable, with a warning on conflicts decided only by specificity;

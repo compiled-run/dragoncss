@@ -420,7 +420,7 @@ Generated helpers may evaluate only precompiled operations over typed state, con
 
 The core compiler and web emitter are synchronous TypeScript/JavaScript. The proposed dependency path is `dragon -> Dragon analysis/emitter -> pinned browser-safe parser/grammar data`. T018's css-tree plus webref proposal supplies grammar matching after variable substitution; it does not supply support facts. Web serialization/lowering for the milestone subset is Dragon-owned TypeScript. Lightning CSS is removed from this required path, and there is no hidden WASM initialization, binary download or top-level await.
 
-Native front-end packages, if the owner chooses Dragon-maintained source readers, must be separately installed optional packages; an export subpath alone does not isolate installation dependencies. Yuku belongs there, not in the core dependency graph. The Taffy CLI/WASM belongs to test/layout tooling and does not load on importing the compiler. Before a browser-safe claim ships, package-consumer tests must import and synchronously compile in Node and a browser worker without yuku, Lightning CSS, Node built-ins, native bindings or an implicit asset fetch.
+Native front-end packages, if the owner chooses Dragon-maintained source readers, must be separately installed optional packages; an export subpath alone does not isolate installation dependencies. Yuku belongs there, not in the core dependency graph. The Dragon layout engine is a separate internal TypeScript module used by the test lanes; it does not load on importing the compiler. Before a browser-safe claim ships, package-consumer tests must import and synchronously compile in Node and a browser worker without yuku, Lightning CSS, Node built-ins, native bindings or an implicit asset fetch.
 
 ## 5. CSS analysis and backend selection
 
@@ -481,6 +481,8 @@ Every diagnostic transport includes the revisioned source registry from the chec
 
 Messages, severities and support reasons come from the shared diagnostic catalogue and profiles. A missing implementation, lost proof or dropped declaration is an error. A warning can describe a measured approximation, a specificity conflict, a proven implementation's scheduled deprecation or a cost; it cannot mean the style was omitted. Frameworks render the same objects in editor, terminal and eventual overlay without rewording them.
 
+Milestone 1 adds `formatDiagnostics(diagnostics, sources)` alongside `formatDiagnostic`. It groups diagnostics that are identical except for their target into one block that lists the targets. Diagnostic objects themselves stay one per target.
+
 ### 6.2 Explanations address targets and conditions
 
 ```ts
@@ -500,6 +502,25 @@ type ExplainResult<K extends string> =
 Each explained case names its element, instance, target and symbolic condition, winning origin, losing origins/reasons, custom-property chain, typed CSS value and contextual support decision. Partial assignments leave the other conditions visible. A source-position query first finds authored nodes/declarations, then their linked instances; an ambiguous position returns candidates, never an arbitrary instance. Stale revisions, invalid states and unknown targets are invalid queries. Synthetic defaults and inheritance use `Origin`. A future CLI position query converts 1-based line/column through the same source registry and calls this API.
 
 ### 6.3 Possibilities are not contextual support
+
+Milestone 1 shape (exported from the default entry):
+
+```ts
+type NormalizedTarget = { kind: 'web' } | { kind: 'ios'; minimum: string };
+type SupportQuery<K extends string> =
+  | { kind: 'possibilities'; target: NormalizedTarget; css: string }
+  | { kind: 'resolved'; result: Compiled<K>; target: NoInfer<K>; node: string; instance: string; assignment: Assignment; property: string };
+type SupportCandidate = { feature: string; context: string; status: Exclude<Status, 'unsupported'>;
+  proofs: readonly { lane: string; cases: readonly string[]; tolerance: 'gate-1-device-px' | 'dual-exact' }[] };
+type SupportAnswer =
+  | { kind: 'needs-context'; declaration: string; candidates: readonly SupportCandidate[] }
+  | { kind: 'unsupported'; declaration: string; reason: string }
+  | { kind: 'decided'; cases: readonly { assignment: Assignment; decision: SupportCandidate | null }[] }
+  | { kind: 'blocked'; diagnostics: readonly Diagnostic[] }
+  | { kind: 'invalid-query'; diagnostics: readonly Diagnostic[] };
+```
+
+A declaration with any supported row answers `needs-context`, listing its contexts. A declaration with no row answers `unsupported`.
 
 ```ts
 export function querySupport<K extends string>(query:
@@ -531,7 +552,7 @@ The oracle has three distinct checks:
 
 No source case may be removed because Dragon resolved it to the same properties as another. In milestone 1, do not deduplicate case execution. Any later optimization first captures authored behavior for every case and proves equivalence using structure, text/content, environment, relevant computed values and numeric observables; only then may it share a native execution. Reports retain every covered source case. A deliberate faulty resolver that collapses checked/unchecked values, plus a color-only faulty resolver, must make the harness fail before it is trusted.
 
-Boxes use the milestone's one-device-pixel gate. Supported non-layout claims additionally require numeric computed-value and paint evidence: for example color channels and pixel-region differences with profile-owned thresholds. Screenshots and AI judgment are evidence only. A Taffy pass does not certify paint. Never widen tolerances, delete a check or skip a case to obtain a pass.
+Boxes use the milestone's one-device-pixel gate. Supported non-layout claims additionally require numeric computed-value and paint evidence: for example color channels and pixel-region differences with profile-owned thresholds. Screenshots and AI judgment are evidence only. A layout pass does not certify paint. Never widen tolerances, delete a check or skip a case to obtain a pass.
 
 Reports distinguish complete required coverage, a requested subset, mismatches and unavailable required lanes. Subsets cannot upgrade whole-profile claims. Linux layout verification names its actual scope; iOS simulator coverage is unavailable until that lane runs. A required unavailable lane fails that run rather than being counted as a pass. Known unsupported cases may be recorded separately as negative tests, but do not count toward passing parity coverage.
 
@@ -587,7 +608,7 @@ Upgrade reports must separate deprecation, fidelity change, proof invalidation a
 
 ## 10. Milestone 1 acceptance and deferred work
 
-The implementation package must exercise the public compile/check entry point, not just an internal resolver. Its required corpus remains at least 100 box/flex fixtures through compile, Taffy and Chrome at one device pixel, plus the side-by-side report and profile-to-passing-fixture links. The API does not reduce that oracle.
+The implementation package must exercise the public compile/check entry point, not just an internal resolver. Its required corpus remains at least 100 box/flex fixtures through compile, Dragon layout and Chrome at one device pixel, plus the side-by-side report and profile-to-passing-fixture links. The API does not reduce that oracle.
 
 The milestone-1 `dragon/tree@0` subset includes document entries, modules, component definitions and ordered stylesheet uses; element nodes with static and finite conditional classes/attributes; literal text nodes; component-call nodes with finite arguments and state aliases; named-slot projection nodes; and branch nodes with explicit predicates and both arms. Calls, aliases, projections and branches are in scope. Dynamic text, keyed repeats, continuous application values and published library artifacts are deferred; raw HTML and unknown node kinds are rejected.
 
@@ -604,6 +625,31 @@ Forwarded library classes after publication and consumer linking remain a later 
 The harness also needs seeded resolver failures, color-only errors, explicit topology/text mappings, deterministic repeated compilation, and Node/browser consumer checks. Full snapshot replacement must match a fresh compile after removal and failed-edit recovery. Required checks are not claimed as present merely because this document specifies them.
 
 The first slice keeps CSS tables, profile storage, backend plans and the fixture driver internal. It implements only enough semantic analysis for proven boxes, flex, colors and basic text, with Ahem for layout. Font packaging, screen defaults, native generation and device tests follow later. No support status or native release promise is inferred from the examples. No separate Dragon release runtime, broad source front ends, overlay, HMR protocol or general plugin API is needed to meet this milestone.
+
+### 10.1 Milestone 1 implementation readings
+
+These record how the milestone 1 implementation reads this design. Reviews T027, T029 and T031 accepted each one.
+
+- `DocumentEntry.rootInstance` names the root component. The root instance path is the document id.
+- Component arguments are parameters on the definition, with per-call `args`.
+- `ExplainQuery` is limited to element plus instance, with an optional partial assignment. Source-position queries and choose-instance are deferred.
+- In a component-scoped stylesheet, every compound selector must contain a class. Renaming class tokens per owner is then an exact model of scoping. Tag-only rules, such as `body`, belong in document-scoped sheets.
+- `white-space` is a shorthand (webref 8.7.5) over `white-space-collapse` and `text-wrap-mode`. Milestone 1 supports collapse plus wrap. The compiler collapses whitespace and writes the collapsed text onto each text node.
+- The compiler creates anonymous boxes for loose text, never the layout engine. Text nodes carry every inherited text property, with origins.
+- Inline elements (`span` and similar), mixed fonts on one line, and `text-align: justify` are outside milestone 1.
+- `text-align` is read from the block container that holds the text (css-text-3 §7.1). Each text node also carries it with an inherited origin, and the lowering asserts the two are equal.
+- Whitespace-only text that survives collapsing is addressed `<element>:space<k>`.
+- `display: none` subtrees follow one lowering rule everywhere (S4a, C4).
+- The internal fixture environment carries `direction`, for the right-to-left coverage in §7. Profile contexts carry a direction facet, and flex text contexts carry a main-axis facet, so a left-to-right proof never covers right-to-left.
+- `ExplainedCase.cascade` includes `'environment'`. The root direction comes from the fixture environment and is reported truthfully, in ltr as well. A type test pins the union.
+- Paint-only longhands (colours) are keyed `@paint/<direction>` rather than by formatting context. A structural test proves they never reach the layout input.
+- In the harness, the environment direction reaches Chrome through `:where(html){direction:rtl}`, applied identically to both renderings. Emitted CSS writes `direction` on every element.
+- A U+200B at the end of a right-to-left paragraph (optionally followed by spaces) is refused as `DRAGON_UNSUPPORTED_BIDI`. Neutral characters are never laid out as ltr.
+- `overflow` accepts `visible` and `hidden` on both axes. Any pair that computes to `auto`, `scroll` or `clip` is refused.
+- An empty declaration (`;`) inside a rule block and top-level `<!-- -->` are accepted as Chrome accepts them. Every other non-declaration child of a rule block, and every nested rule, is a diagnostic.
+- A stylesheet use or resolution that names an absent source or asset, or an asset whose bytes do not match its hash, is a typed diagnostic that blocks every output.
+- The fixture environment sets the root font-family to Ahem (cascade `'environment'`), the same way it sets direction. Chrome references, the UA dataset and the platform font rules are keyed by platform (reference: `darwin-arm64`). A platform with no dataset or rules is refused, never given another platform's values.
+- The Linux lane scope follows [decisions.md](decisions.md): the Chrome oracle is captured on macOS, and the layout engine is platform-free.
 
 ## Owner decisions
 
