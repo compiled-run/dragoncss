@@ -114,7 +114,7 @@ function gap(id: string, get: Get, p: Longhand): GapValue {
 const ALIGN_ITEMS: readonly AlignItems[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
 
 export function lowerStyle(el: ResolvedElement, faults: CompilerFaults): LayoutStyle {
-  const id = el.node.id;
+  const id = el.element.address;
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
@@ -182,8 +182,8 @@ function lowerText(parent: ResolvedElement, id: string, text: string): TextLeaf 
 export function lowerTree(el: ResolvedElement, faults: CompilerFaults): LayoutBox {
   return {
     kind: 'box',
-    id: el.node.id,
+    id: el.element.address,
     style: lowerStyle(el, faults),
-    children: el.children.map((c) => (c.kind === 'element' ? lowerTree(c, faults) : lowerText(el, c.node.id, c.text))),
+    children: el.children.map((c) => (c.kind === 'element' ? lowerTree(c, faults) : lowerText(el, c.node.address, c.text))),
   };
 }

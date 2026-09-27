@@ -1,0 +1,5 @@
+.card { width: 200px; padding: 8px; border: 1px solid #888; color: #123456; }
+.card.compact { padding: 2px; }
+.row { height: 50px; background-color: #f00; }
+.head { padding: 3px; color: #a00; }
+.content { display: flex; flex-direction: column; color: #0a0; }

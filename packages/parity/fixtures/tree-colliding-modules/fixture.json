@@ -1,0 +1,41 @@
+{
+  "sources": ["app.dg", "nav.dg", "list.dg", "doc.css", "nav.css", "list.css"],
+  "modules": [{ "id": "app", "source": "app.dg" }, { "id": "nav", "source": "nav.dg" }, { "id": "list", "source": "list.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "nav", "file": "nav.css", "scope": "Nav" },
+    { "id": "list", "file": "list.css", "scope": "List" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "nav", "list"] },
+  "components": [
+    {
+      "id": "App", "module": "app", "at": "component App",
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "call": "Nav", "id": "nav", "at": "<Nav nav />" },
+            { "call": "List", "id": "list", "at": "<List list />" }
+          ] }
+        ] }
+      ]
+    },
+    {
+      "id": "Nav", "module": "nav", "at": "component Nav",
+      "root": [
+        { "el": "div", "id": "bar", "at": "<div bar", "class": ["nav.row"], "children": [
+          { "el": "div", "id": "home", "at": "<div home", "class": ["nav.item"] },
+          { "el": "div", "id": "about", "at": "<div about", "class": ["nav.item"] }
+        ] }
+      ]
+    },
+    {
+      "id": "List", "module": "list", "at": "component List",
+      "root": [
+        { "el": "div", "id": "items", "at": "<div items", "class": ["list.items"], "children": [
+          { "el": "div", "id": "one", "at": "<div one", "class": ["list.row"] },
+          { "el": "div", "id": "two", "at": "<div two", "class": ["list.row"] }
+        ] }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+.chip { display: flex; padding: 4px; }
+.label { width: 70px; height: 16px; background-color: #0cf; margin-left: 6px; }

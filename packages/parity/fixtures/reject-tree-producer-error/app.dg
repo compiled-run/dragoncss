@@ -1,0 +1,3 @@
+component App {
+  <html><body><div box class="toggle" /><div broken class=" </body></html>
+}

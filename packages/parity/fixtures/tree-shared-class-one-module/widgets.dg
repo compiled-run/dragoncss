@@ -1,0 +1,16 @@
+component App {
+  <html>
+    <body>
+      <Badge badge />
+      <Chip chip />
+    </body>
+  </html>
+}
+
+component Badge {
+  <div badge class="badge"><div label class="label" /></div>
+}
+
+component Chip {
+  <div chip class="chip"><div label class="label" /></div>
+}

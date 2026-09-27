@@ -1,0 +1,51 @@
+{
+  "sources": ["toggle.dg", "doc.css", "toggle.css"],
+  "modules": [{ "id": "toggle", "source": "toggle.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "toggle", "file": "toggle.css", "scope": "Toggle" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "toggle"] },
+  "components": [
+    {
+      "id": "App", "module": "toggle", "at": "component App",
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "call": "Toggle", "id": "t", "at": "<Toggle t />" }
+          ] }
+        ] }
+      ]
+    },
+    {
+      "id": "Toggle", "module": "toggle", "at": "component Toggle",
+      "states": [
+        { "id": "checked", "domain": [false, true], "initial": false, "at": "checked: boolean = false" },
+        { "id": "disabled", "domain": [false, true], "initial": false, "at": "disabled: boolean = false" },
+        { "id": "level", "domain": [0, 1, 2], "initial": 1, "at": "level: 0 | 1 | 2 = 1" }
+      ],
+      "root": [
+        { "el": "div", "id": "root", "at": "<div root", "class": [
+            "toggle.toggle",
+            { "when": { "and": [["checked", true], { "not": ["disabled", true] }] }, "class": "toggle.active", "at": "checked && !disabled ? 'active' : ''" },
+            { "when": { "and": [["disabled", true], { "not": ["checked", true] }] }, "class": "toggle.dim", "at": "disabled && !checked ? 'dim' : ''" },
+            { "choice": [
+              { "when": ["level", 0], "class": "toggle.level-0" },
+              { "when": ["level", 1], "class": "toggle.level-1" },
+              { "when": ["level", 2], "class": "toggle.level-2" }
+            ], "at": "level-{level}" }
+          ],
+          "attr": [
+            { "name": "ui-level", "choice": [
+              { "when": ["level", 0], "value": "0" },
+              { "when": ["level", 1], "value": "1" },
+              { "when": ["level", 2], "value": "2" }
+            ], "at": "ui-level={level}" }
+          ],
+          "children": [
+            { "el": "div", "id": "track", "at": "<div track", "class": ["toggle.track"] }
+          ] }
+      ]
+    }
+  ]
+}

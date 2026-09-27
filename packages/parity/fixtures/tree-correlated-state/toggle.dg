@@ -1,0 +1,13 @@
+component App {
+  <html>
+    <body>
+      <Toggle t />
+    </body>
+  </html>
+}
+
+component Toggle(checked: boolean = false, disabled: boolean = false, level: 0 | 1 | 2 = 1) {
+  <div root class="toggle {checked && !disabled ? 'active' : ''} {disabled && !checked ? 'dim' : ''} level-{level}" ui-level={level}>
+    <div track class="track" />
+  </div>
+}

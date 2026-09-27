@@ -1,0 +1,3 @@
+component App {
+  <html><body><div box class="toggle" />{@html "<b>bold</b>"}</body></html>
+}

@@ -1,0 +1,39 @@
+{
+  "sources": ["widgets.dg", "doc.css", "badge.css", "chip.css"],
+  "modules": [{ "id": "widgets", "source": "widgets.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "badge", "file": "badge.css", "scope": "Badge" },
+    { "id": "chip", "file": "chip.css", "scope": "Chip" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "badge", "chip"] },
+  "components": [
+    {
+      "id": "App", "module": "widgets", "at": "component App",
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "call": "Badge", "id": "badge", "at": "<Badge badge />" },
+            { "call": "Chip", "id": "chip", "at": "<Chip chip />" }
+          ] }
+        ] }
+      ]
+    },
+    {
+      "id": "Badge", "module": "widgets", "at": "component Badge",
+      "root": [
+        { "el": "div", "id": "badge", "at": "<div badge", "class": ["badge.badge"], "children": [
+          { "el": "div", "id": "label", "at": ["<div label", 0], "class": ["badge.label"] }
+        ] }
+      ]
+    },
+    {
+      "id": "Chip", "module": "widgets", "at": "component Chip",
+      "root": [
+        { "el": "div", "id": "chip", "at": "<div chip", "class": ["chip.chip"], "children": [
+          { "el": "div", "id": "label", "at": ["<div label", 1], "class": ["chip.label"] }
+        ] }
+      ]
+    }
+  ]
+}

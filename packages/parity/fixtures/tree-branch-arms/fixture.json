@@ -1,0 +1,45 @@
+{
+  "sources": ["view.dg", "doc.css", "view.css"],
+  "modules": [{ "id": "view", "source": "view.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "view", "file": "view.css", "scope": "App" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "view"] },
+  "components": [
+    {
+      "id": "App", "module": "view", "at": "component App",
+      "states": [{ "id": "mode", "domain": ["list", "grid", "empty"], "initial": "list", "at": "mode: \"list\" | \"grid\" | \"empty\" = \"list\"" }],
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "if": ["mode", "empty"], "id": "outer", "at": "{mode === \"empty\"",
+              "then": [{ "el": "div", "id": "empty", "at": "<div empty", "class": ["view.empty"] }],
+              "else": [
+                { "el": "div", "id": "items", "at": "<div items", "class": [
+                    "view.items",
+                    { "choice": [
+                      { "when": ["mode", "list"], "class": "view.list" },
+                      { "when": ["mode", "grid"], "class": "view.grid" },
+                      { "when": ["mode", "empty"], "class": null }
+                    ], "at": "{mode}" }
+                  ],
+                  "children": [
+                    { "if": ["mode", "grid"], "id": "inner", "at": "{mode === \"grid\"",
+                      "then": [
+                        { "el": "div", "id": "c1", "at": "<div c1", "class": ["view.cell"] },
+                        { "el": "div", "id": "c2", "at": "<div c2", "class": ["view.cell"] },
+                        { "el": "div", "id": "c3", "at": "<div c3", "class": ["view.cell"] }
+                      ],
+                      "else": [
+                        { "el": "div", "id": "r1", "at": "<div r1", "class": ["view.row"] },
+                        { "el": "div", "id": "r2", "at": "<div r2", "class": ["view.row"] }
+                      ] }
+                  ] }
+              ] }
+          ] }
+        ] }
+      ]
+    }
+  ]
+}

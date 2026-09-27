@@ -1,0 +1,15 @@
+component App {
+  <html>
+    <body>
+      <div class="bar">
+        <Button b1 size="s" primary={true} gap={0} />
+        <Button b2 size="m" primary={false} gap={4} />
+        <Button b3 size="l" primary={true} gap={4} />
+      </div>
+    </body>
+  </html>
+}
+
+component Button(size: "s" | "m" | "l", primary: boolean, gap: 0 | 4) {
+  <div btn class="btn {size} {primary ? 'primary' : ''} {gap === 4 ? 'spaced' : ''}" />
+}

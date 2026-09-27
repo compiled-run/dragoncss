@@ -1,0 +1,19 @@
+component App(open: boolean = false) {
+  <html>
+    <body>
+      <div class="panel">
+        <Disclosure first expanded={open} />
+        <Disclosure second expanded={open} />
+        <Disclosure free />
+      </div>
+    </body>
+  </html>
+}
+document open = true
+
+component Disclosure(expanded: boolean = false) {
+  <div box class="disclosure {expanded ? 'open' : ''}">
+    <div head class="head" />
+    {expanded ? <div body class="body" /> : null}
+  </div>
+}

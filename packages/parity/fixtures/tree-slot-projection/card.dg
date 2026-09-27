@@ -1,0 +1,17 @@
+component App {
+  <html>
+    <body>
+      <Card card>
+        <slot header><div title class="row title" /></slot>
+        <slot body><div first class="row" /><div second class="row wide" /></slot>
+      </Card>
+    </body>
+  </html>
+}
+
+component Card(compact: boolean = false) slots(header, body) {
+  <div frame class="card {compact ? 'compact' : ''}">
+    <div head class="row head">{header}</div>
+    <div content class="content">{body}</div>
+  </div>
+}

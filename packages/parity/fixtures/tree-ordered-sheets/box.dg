@@ -1,0 +1,11 @@
+component App {
+  <html>
+    <body>
+      <Box box />
+    </body>
+  </html>
+}
+
+component Box styles(base.css, theme.css) {
+  <div frame class="box"><div inner class="inner" /></div>
+}

@@ -1,0 +1,3 @@
+component Nav {
+  <div bar class="row"><div home class="item" /><div about class="item" /></div>
+}

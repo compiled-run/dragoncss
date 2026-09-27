@@ -1,0 +1,6 @@
+.empty { height: 40px; width: 90px; background-color: #fee; }
+.items { padding: 3px; background-color: #f4f4f4; }
+.items.grid { display: flex; flex-wrap: wrap; width: 70px; }
+.items.list { width: 120px; }
+.cell { width: 30px; height: 30px; margin: 2px; background-color: #ccf; }
+.row { height: 12px; margin-bottom: 2px; background-color: #cfc; }

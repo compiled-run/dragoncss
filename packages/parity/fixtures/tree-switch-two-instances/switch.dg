@@ -1,0 +1,17 @@
+component App {
+  <html>
+    <body>
+      <div class="stack">
+        <Switch a />
+        <Switch b />
+      </div>
+    </body>
+  </html>
+}
+
+component Switch(checked: boolean = false, disabled: boolean = false) {
+  <div trigger class="switch {checked && !disabled ? 'on' : ''}" ui-checked={checked} ui-disabled={disabled}>
+    <div knob class="knob" />
+    <div label class="label">{checked ? "On" : "Off"}</div>
+  </div>
+}

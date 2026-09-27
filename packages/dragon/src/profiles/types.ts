@@ -7,21 +7,34 @@ import type { SupportStatus, Target } from '../types.ts';
  */
 export type ProofAspect = 'layout' | 'computed-value';
 export type ProofLane = 'linux-dragon-layout' | 'chrome-dual';
-export type Proof = { readonly aspect: ProofAspect; readonly lane: ProofLane; readonly fixtures: readonly string[] };
 
-/** One support fact. `feature` is "<property>:<keyword>" or "<property>:<value type>", e.g. "width:<percentage>". */
-export type ProfileRow = { readonly feature: string; readonly status: SupportStatus; readonly proofs: readonly Proof[] };
+/** docs/api.md §6.3: a proof names its value subset, context and the parity cases that passed its lane in the same run. */
+export type Proof = {
+  readonly aspect: ProofAspect;
+  readonly lane: ProofLane;
+  readonly valueSubset: string;
+  readonly context: string;
+  readonly cases: readonly string[];
+};
+
+/** One support fact for a feature ("<property>:<keyword>" or "<property>:<value type>") in one formatting context. */
+export type ProfileRow = { readonly feature: string; readonly context: string; readonly status: SupportStatus; readonly proofs: readonly Proof[] };
 
 export type SupportProfile = { readonly target: Target; readonly revision: string; readonly rows: readonly ProfileRow[] };
 
 /** Missing data means unsupported (AGENTS.md). */
-export function statusOf(profile: SupportProfile, feature: string): SupportStatus {
-  const row = profile.rows.find((r) => r.feature === feature);
+export function statusOf(profile: SupportProfile, feature: string, context: string): SupportStatus {
+  const row = profile.rows.find((r) => r.feature === feature && r.context === context);
   return row === undefined ? 'unsupported' : row.status;
 }
 
+/** The contexts in which a feature has a supported row. */
+export function provenContexts(profile: SupportProfile, feature: string): string[] {
+  return profile.rows.filter((r) => r.feature === feature && r.status !== 'unsupported').map((r) => r.context);
+}
+
 export function supportedValuesFor(profile: SupportProfile, property: string): string[] {
-  return profile.rows
+  return [...new Set(profile.rows
     .filter((r) => r.status !== 'unsupported' && r.feature.startsWith(`${property}:`))
-    .map((r) => r.feature.slice(property.length + 1));
+    .map((r) => r.feature.slice(property.length + 1)))];
 }

@@ -1,0 +1,39 @@
+{
+  "sources": ["panel.dg", "doc.css", "app.css", "disclosure.css"],
+  "modules": [{ "id": "panel", "source": "panel.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "app", "file": "app.css", "scope": "App" },
+    { "id": "disclosure", "file": "disclosure.css", "scope": "Disclosure" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "app", "disclosure"], "initial": [{ "instance": "doc", "state": "open", "value": true }] },
+  "components": [
+    {
+      "id": "App", "module": "panel", "at": "component App",
+      "states": [{ "id": "open", "domain": [false, true], "initial": false, "at": "open: boolean = false" }],
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "el": "div", "id": "panel", "at": "<div class=\"panel\">", "class": ["app.panel"], "children": [
+              { "call": "Disclosure", "id": "first", "at": "<Disclosure first expanded={open} />", "aliases": [{ "local": "expanded", "caller": "open" }] },
+              { "call": "Disclosure", "id": "second", "at": "<Disclosure second expanded={open} />", "aliases": [{ "local": "expanded", "caller": "open" }] },
+              { "call": "Disclosure", "id": "free", "at": "<Disclosure free />" }
+            ] }
+          ] }
+        ] }
+      ]
+    },
+    {
+      "id": "Disclosure", "module": "panel", "at": "component Disclosure",
+      "states": [{ "id": "expanded", "domain": [false, true], "initial": false, "at": "expanded: boolean = false" }],
+      "root": [
+        { "el": "div", "id": "box", "at": "<div box", "class": ["disclosure.disclosure", { "when": ["expanded", true], "class": "disclosure.open", "at": "expanded ? 'open' : ''" }], "children": [
+          { "el": "div", "id": "head", "at": "<div head", "class": ["disclosure.head"] },
+          { "if": ["expanded", true], "id": "more", "at": "{expanded ? <div body", "then": [
+            { "el": "div", "id": "body", "at": "<div body", "class": ["disclosure.body"] }
+          ], "else": [] }
+        ] }
+      ]
+    }
+  ]
+}

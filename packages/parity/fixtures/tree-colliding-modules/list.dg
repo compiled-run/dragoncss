@@ -1,0 +1,3 @@
+component List {
+  <div items class="items"><div one class="row" /><div two class="row" /></div>
+}

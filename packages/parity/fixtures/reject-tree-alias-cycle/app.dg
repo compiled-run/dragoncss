@@ -1,0 +1,9 @@
+component App {
+  <html><body>
+    <Toggle a checked={doc/b.checked} />
+    <Toggle b checked={doc/a.checked} />
+  </body></html>
+}
+component Toggle(checked: boolean = false) {
+  <div box class="toggle" />
+}

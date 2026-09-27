@@ -7,7 +7,7 @@ import { INHERITED, LONGHANDS } from '../src/css/properties.ts';
 import { properties, webrefVersion } from '../src/css/grammar.generated.ts';
 import { NO_FAULTS } from '../src/faults.ts';
 import { borderWidthKeywords, chromeVersion, computed, userAgentLonghands } from '../src/ua/chrome-145.generated.ts';
-import type { ElementNode } from '../src/types.ts';
+import type { LinkedElement } from '../src/analysis/link.ts';
 
 describe('captured Chrome defaults and the webref grammar', () => {
   it('pin Chrome 145.0.7632.6 and @webref/css 8.7.5', () => {
@@ -38,8 +38,11 @@ describe('UA versus initial origin, per tag and longhand', () => {
     });
   });
 
-  const origin = { source: { uri: 'u', revision: 'r', hash: 'h' }, start: 0, end: 0 };
-  const el = (id: string, tag: string, children: ElementNode[] = []): ElementNode => ({ kind: 'element', id, tag, classes: [], attributes: [], children, origin });
+  const origin = { kind: 'unlocated', reason: 'test' } as const;
+  const el = (id: string, tag: string, children: LinkedElement[] = []): LinkedElement => ({
+    kind: 'element', address: id, instance: 'doc', owner: 'App', tag, classes: [], attributes: new Map(), children,
+    node: { kind: 'element', id, tag, classes: [], attributes: [], children: [], origin },
+  });
   const root = resolveTree(el('html', 'html', [el('body', 'body', [el('div', 'div')])]), [], NO_FAULTS);
   const body = root.children[0];
   const div = body !== undefined && body.kind === 'element' ? body.children[0] : undefined;
@@ -67,9 +70,24 @@ describe('dependency boundaries', () => {
   const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
   const files = (d: string): string[] =>
     readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? files(join(d, e.name)) : e.name.endsWith('.ts') ? [join(d, e.name)] : []));
-  it('the web emitter reads only the resolved result: no ios lowering and no @dragon/layout', () => {
+  it('the web emitter reads only the resolved result: no ios lowering, no @dragon/layout, and no selector matching', () => {
     const text = readFileSync(join(src, 'emit', 'web-css.ts'), 'utf8');
     expect(text).not.toMatch(/lower\/ios-layout|@dragon\/layout/);
+    const imports = [...text.matchAll(/^import .*$/gm)].map((m) => m[0]);
+    expect(imports).toEqual([
+      "import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';",
+      "import { serializeColor } from '../css/color.ts';",
+      "import { LONGHANDS } from '../css/properties.ts';",
+      "import type { CssValue } from '../css/stylesheet.ts';",
+      "import type { GeneratedFile } from '../types.ts';",
+    ]);
+    expect(text).not.toMatch(/selectorMatches|compoundMatches|\.selectors|\.classes|\.attributes|parseStylesheet|resolveTree/);
+  });
+  it('diagnostics are built only from the catalogue: no other source file sets a severity or a why', () => {
+    for (const f of files(src)) {
+      if (f.endsWith(join('diagnostics', 'catalogue.ts')) || f.endsWith('types.ts')) continue;
+      expect(readFileSync(f, 'utf8'), f).not.toMatch(/severity: '(error|warning|info)'|\bwhy: '/);
+    }
   });
   it('colour conversion and rounding live only in css/color.ts', () => {
     for (const f of files(src)) {

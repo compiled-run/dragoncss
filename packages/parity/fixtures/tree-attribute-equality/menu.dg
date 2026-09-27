@@ -1,0 +1,10 @@
+component App(phase: "closed" | "opening" | "open" = "closed") {
+  <html>
+    <body>
+      <div menu class="menu" ui-phase={phase}>
+        <div i1 class="menu-item" />
+        <div i2 class="menu-item" />
+      </div>
+    </body>
+  </html>
+}

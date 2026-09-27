@@ -1,0 +1,50 @@
+{
+  "sources": ["switch.dg", "doc.css", "app.css", "switch.css"],
+  "modules": [{ "id": "switch", "source": "switch.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "app", "file": "app.css", "scope": "App" },
+    { "id": "switch", "file": "switch.css", "scope": "Switch" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "app", "switch"] },
+  "components": [
+    {
+      "id": "App", "module": "switch", "at": "component App",
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "el": "div", "id": "stack", "at": "<div class=\"stack\">", "class": ["app.stack"], "children": [
+              { "call": "Switch", "id": "a", "at": "<Switch a />" },
+              { "call": "Switch", "id": "b", "at": "<Switch b />" }
+            ] }
+          ] }
+        ] }
+      ]
+    },
+    {
+      "id": "Switch", "module": "switch", "at": "component Switch",
+      "states": [
+        { "id": "checked", "domain": [false, true], "initial": false, "at": "checked: boolean = false" },
+        { "id": "disabled", "domain": [false, true], "initial": false, "at": "disabled: boolean = false" }
+      ],
+      "root": [
+        { "el": "div", "id": "trigger", "at": "<div trigger", "class": [
+            "switch.switch",
+            { "when": { "and": [["checked", true], { "not": ["disabled", true] }] }, "class": "switch.on", "at": "checked && !disabled ? 'on' : ''" }
+          ],
+          "attr": [
+            { "name": "ui-checked", "when": ["checked", true], "value": "", "at": "ui-checked={checked}" },
+            { "name": "ui-disabled", "when": ["disabled", true], "value": "", "at": "ui-disabled={disabled}" }
+          ],
+          "children": [
+            { "el": "div", "id": "knob", "at": "<div knob", "class": ["switch.knob"] },
+            { "el": "div", "id": "label", "at": "<div label", "class": ["switch.label"], "children": [
+              { "if": ["checked", true], "id": "state", "at": "{checked ? \"On\" : \"Off\"}",
+                "then": [{ "text": "On", "id": "on", "at": "\"On\"" }],
+                "else": [{ "text": "Off", "id": "off", "at": "\"Off\"" }] }
+            ] }
+          ] }
+      ]
+    }
+  ]
+}

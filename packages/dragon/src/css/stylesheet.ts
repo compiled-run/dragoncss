@@ -2,6 +2,7 @@
 // and expands the milestone shorthands into longhands.
 import { generate, parse } from 'css-tree';
 import type { CssNode, List } from 'css-tree';
+import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import type { ColorSyntax, Rgba8 } from './color.ts';
 import { parseColorNode } from './color.ts';
@@ -19,7 +20,9 @@ export type CssValue =
   | { readonly kind: 'color'; readonly value: Rgba8; readonly syntax: ColorSyntax }
   | { readonly kind: 'other'; readonly type: string; readonly text: string };
 
-export type Compound = { readonly tag: string | null; readonly classes: readonly string[] };
+/** [ui-name] (value null) or [ui-name="value"]. */
+export type AttributeTest = { readonly name: string; readonly value: string | null };
+export type Compound = { readonly tag: string | null; readonly classes: readonly string[]; readonly attributes: readonly AttributeTest[] };
 /** Right-to-left: parts[0] is the subject; each later part is joined to the previous by its combinator. */
 export type Selector = {
   readonly parts: readonly { readonly compound: Compound; readonly combinator: ' ' | '>' | null }[];
@@ -42,7 +45,16 @@ export type Declaration = {
   readonly order: number;
 };
 
-export type Rule = { readonly selectors: readonly Selector[]; readonly declarations: readonly Declaration[] };
+/** A class selector in this rule matches only class symbols with this owner and sheet (docs/api.md §3.1). */
+export type Rule = {
+  readonly sheet: string;
+  readonly owner: string;
+  readonly selectors: readonly Selector[];
+  readonly declarations: readonly Declaration[];
+};
+
+/** One stylesheet use: its id, the owner its class symbols belong to, and whether it is component-scoped. */
+export type SheetUse = { readonly id: string; readonly owner: string; readonly scope: 'component' | 'document' };
 
 const CSS_WIDE = new Set(['inherit', 'initial', 'unset', 'revert', 'revert-layer']);
 const LINE_STYLES = new Set(['none', 'hidden', 'dotted', 'dashed', 'solid', 'double', 'groove', 'ridge', 'inset', 'outset']);
@@ -60,40 +72,53 @@ function spanOf(node: CssNode, base: Span): Span {
   return { source: base.source, start: base.start + loc.start.offset, end: base.start + loc.end.offset };
 }
 
-export function parseStylesheet(text: string, base: Span, orderStart: number, diagnostics: Diagnostic[]): Rule[] {
+export function parseStylesheet(text: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[]): Rule[] {
   const errors: { message: string; offset: number }[] = [];
   const ast = parse(text, { positions: true, parseValue: true, onParseError: (e) => errors.push({ message: e.message, offset: e.offset }) });
   for (const e of errors) {
-    diagnostics.push(diag('DRAGON_CSS_PARSE', `CSS parse error: ${e.message}`, { source: base.source, start: base.start + e.offset, end: base.start + e.offset }, 'Fix the CSS syntax at this location.'));
+    const at = { source: base.source, start: base.start + e.offset, end: base.start + e.offset };
+    diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error: ${e.message}` }));
   }
   const rules: Rule[] = [];
   let order = orderStart;
   for (const node of list(ast, 'children')) {
     if (node.type === 'Atrule') {
-      diagnostics.push(diag('DRAGON_UNSUPPORTED_AT_RULE', `@${String(node['name'])} is not supported in milestone 1`, spanOf(node, base), 'Remove the at-rule.'));
+      const span = spanOf(node, base);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
+        origin: authored(span),
+        message: `@${String(node['name'])} is not supported in milestone 1`,
+        edits: [{ span, replacement: '' }],
+      }));
       continue;
     }
     if (node.type !== 'Rule') continue;
     const prelude = node['prelude'] as CssNode;
-    const selectors = parseSelectorList(prelude, base, diagnostics);
+    const selectors = parseSelectorList(prelude, base, use, diagnostics);
     const declarations: Declaration[] = [];
     for (const d of list(node['block'] as CssNode, 'children')) {
       if (d.type !== 'Declaration') continue;
-      const parsed = parseDeclaration(d, base, order++, diagnostics);
+      const parsed = parseDeclaration(d, base, text, order++, diagnostics);
       if (parsed !== null) declarations.push(parsed);
     }
-    if (selectors !== null) rules.push({ selectors, declarations });
+    if (selectors !== null) rules.push({ sheet: use.id, owner: use.owner, selectors, declarations });
   }
   return rules;
 }
 
-// Selectors Level 4 §16 specificity, for the S1 subset: type and class compounds joined by descendant or child combinators.
-function parseSelectorList(prelude: CssNode, base: Span, diagnostics: Diagnostic[]): Selector[] | null {
+const SELECTOR_FIX = 'Use class compounds, optionally with a tag and [ui-*] or [ui-*="value"], joined by descendant or child combinators.';
+
+// Selectors Level 4 §16 specificity: type, class and attribute compounds joined by descendant or child combinators. In a
+// component-scoped sheet every compound needs a class, so it can only match elements carrying the owner's symbols.
+function parseSelectorList(prelude: CssNode, base: Span, use: SheetUse, diagnostics: Diagnostic[]): Selector[] | null {
   const out: Selector[] = [];
   let ok = true;
+  const refuse = (node: CssNode, message: string): void => {
+    ok = false;
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin: authored(spanOf(node, base)), message, manual: SELECTOR_FIX }));
+  };
   for (const sel of list(prelude, 'children')) {
-    const compounds: { compound: { tag: string | null; classes: string[] }; combinator: ' ' | '>' | null }[] = [];
-    let current = { tag: null as string | null, classes: [] as string[] };
+    const compounds: { compound: { tag: string | null; classes: string[]; attributes: AttributeTest[] }; combinator: ' ' | '>' | null }[] = [];
+    let current = { tag: null as string | null, classes: [] as string[], attributes: [] as AttributeTest[] };
     let pending: ' ' | '>' | null = null;
     let types = 0;
     let classes = 0;
@@ -104,16 +129,29 @@ function parseSelectorList(prelude: CssNode, base: Span, diagnostics: Diagnostic
       } else if (part.type === 'ClassSelector') {
         current.classes.push(String(part['name']));
         classes++;
+      } else if (part.type === 'AttributeSelector') {
+        const name = String((part['name'] as CssNode)['name']).toLowerCase();
+        const matcher = part['matcher'] as string | null;
+        const valueNode = part['value'] as CssNode | null;
+        if (!/^ui-[a-z0-9-]+$/.test(name) || part['flags'] !== null || (matcher !== null && matcher !== '=')) {
+          refuse(part, `attribute selector "${generate(part)}" is not supported: only [ui-*] and [ui-*="value"]`);
+          continue;
+        }
+        const value = valueNode === null ? null : valueNode.type === 'String' ? String(valueNode['value']) : String(valueNode['name']);
+        current.attributes.push({ name, value });
+        classes++;
       } else if (part.type === 'Combinator' && (part['name'] === ' ' || part['name'] === '>')) {
         compounds.push({ compound: current, combinator: pending });
         pending = part['name'] as ' ' | '>';
-        current = { tag: null, classes: [] };
+        current = { tag: null, classes: [], attributes: [] };
       } else {
-        ok = false;
-        diagnostics.push(diag('DRAGON_UNSUPPORTED_SELECTOR', `selector part "${generate(part)}" is not supported in milestone 1`, spanOf(part, base), 'Use type and class selectors, optionally joined by descendant or child combinators.'));
+        refuse(part, `selector part "${generate(part)}" is not supported in milestone 1`);
       }
     }
     compounds.push({ compound: current, combinator: pending });
+    if (use.scope === 'component' && compounds.some((c) => c.compound.classes.length === 0)) {
+      refuse(sel, `every compound of "${generate(sel)}" needs a class in a component-scoped sheet, so it can only match the owner's elements`);
+    }
     const rightToLeft = compounds.reverse().map((c, i, all) => ({
       compound: c.compound,
       combinator: i === 0 ? null : (all[i - 1] as { combinator: ' ' | '>' | null }).combinator,
@@ -123,18 +161,30 @@ function parseSelectorList(prelude: CssNode, base: Span, diagnostics: Diagnostic
   return ok ? out : null;
 }
 
-function parseDeclaration(d: CssNode, base: Span, order: number, diagnostics: Diagnostic[]): Declaration | null {
+function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: number, diagnostics: Diagnostic[]): Declaration | null {
   const property = String(d['property']).toLowerCase();
   const span = spanOf(d, base);
   const valueNode = d['value'] as CssNode;
   const valueSpan = spanOf(valueNode, base);
   const text = generate(valueNode);
   if (d['important'] !== false) {
-    diagnostics.push(diag('DRAGON_UNSUPPORTED_IMPORTANT', `!important on ${property} is not supported`, span, 'Remove !important; order and specificity decide.'));
+    const local = sheetText.slice(span.start - base.start, span.end - base.start);
+    const bang = local.lastIndexOf('!');
+    let from = bang;
+    while (from > 0 && /\s/.test(local[from - 1] as string)) from--;
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_IMPORTANT', {
+      origin: authored(span),
+      message: `!important on ${property} is not supported`,
+      edits: [{ span: { source: span.source, start: span.start + from, end: span.end }, replacement: '' }],
+    }));
     return null;
   }
   if (!isLonghand(property) && !isShorthand(property)) {
-    diagnostics.push(diag('DRAGON_UNSUPPORTED_PROPERTY', `${property} is not supported in milestone 1`, span, 'Remove the declaration.'));
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_PROPERTY', {
+      origin: authored(span),
+      message: `${property} is not supported in milestone 1`,
+      edits: [{ span, replacement: '' }],
+    }));
     return null;
   }
   const tokens = list(valueNode, 'children').filter((n) => n.type !== 'WhiteSpace');
@@ -142,7 +192,11 @@ function parseDeclaration(d: CssNode, base: Span, order: number, diagnostics: Di
   if (!wide) {
     const match = webrefLexer().matchProperty(property, valueNode);
     if (match.error !== null) {
-      diagnostics.push(diag('DRAGON_CSS_INVALID_VALUE', `"${text}" is not a valid value for ${property} (@webref/css grammar)`, valueSpan, `Use a value that matches the ${property} grammar.`));
+      diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', {
+        origin: authored(valueSpan),
+        message: `"${text}" is not a valid value for ${property} (@webref/css grammar)`,
+        manual: `Use a value that matches the ${property} grammar.`,
+      }));
       return null;
     }
   }
@@ -150,7 +204,7 @@ function parseDeclaration(d: CssNode, base: Span, order: number, diagnostics: Di
   for (const t of tokens) {
     const v = wide ? toValue(t, property) : tokenValue(t, property);
     if (typeof v === 'string') {
-      diagnostics.push(diag('DRAGON_UNSUPPORTED_VALUE', `${property}: ${generate(t)} is unsupported: ${v}`, spanOf(t, base), COLOR_FIX));
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${v}`, manual: COLOR_FIX }));
       return null;
     }
     values.push(v);
@@ -161,7 +215,7 @@ function parseDeclaration(d: CssNode, base: Span, order: number, diagnostics: Di
       ? [{ property, value: property === 'font-family' ? familyValue(tokens) : (values[0] as CssValue), explicit: true }]
       : expandShorthand(property, values);
   if (isLonghand(property) && !wide && values.length !== 1 && property !== 'font-family') {
-    diagnostics.push(diag('DRAGON_UNSUPPORTED_VALUE', `multi-token value "${text}" for ${property} is not supported in milestone 1`, valueSpan, 'Use a single value.'));
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(valueSpan), message: `multi-token value "${text}" for ${property} is not supported in milestone 1`, manual: 'Use a single value.' }));
     return null;
   }
   return { property, text, span, valueSpan, longhands, order };
@@ -310,17 +364,13 @@ function expandShorthand(property: string, values: CssValue[]): LonghandValue[] 
   throw new Error(`no expansion for shorthand ${property}`);
 }
 
-export function diag(code: Diagnostic['code'], message: string, span: Span | null, fix: string | null, targets: Diagnostic['targets'] = []): Diagnostic {
-  return { code, severity: 'error', message, span, targets, fix };
-}
-
 /** Feature key for the support profile: a keyword, or the value type with its unit. */
 export function featureOf(property: Longhand, v: CssValue): string {
   switch (v.kind) {
     case 'keyword':
       return `${property}:${v.value}`;
     case 'length':
-      return v.unit === 'px' ? `${property}:<length>` : `${property}:<length ${v.unit}>`;
+      return v.unit === 'px' ? `${property}:<length-px>` : `${property}:<length-${v.unit}>`;
     case 'percentage':
       return `${property}:<percentage>`;
     case 'number':

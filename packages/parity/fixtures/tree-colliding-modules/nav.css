@@ -1,0 +1,2 @@
+.row { display: flex; height: 20px; background-color: #222; }
+.item { width: 30px; margin-right: 4px; background-color: #999; }

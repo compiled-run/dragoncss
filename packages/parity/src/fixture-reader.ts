@@ -2,7 +2,7 @@
 // <head> is not part of the element tree: it generates no boxes. Text node ids are "<parent id>:text<k>".
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import type { ElementNode, FrontEndResult, SourceRef, Span, TreeNode } from 'dragon';
+import type { ElementNode, FrontEndResult, Origin, SourceRef, TreeNode } from 'dragon';
 import { TREE_SCHEMA_REVISION } from 'dragon';
 import { repoPath } from './paths.ts';
 
@@ -112,10 +112,13 @@ export function compiledFixtureHtml(html: string, css: string, classOf: Readonly
 
 const isBlankText = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
 
-export function readFixture(id: string): { html: string; input: FrontEndResult } {
+export function readHtmlFixture(id: string): { html: string; input: FrontEndResult } {
   const html = readFileSync(repoPath(`packages/parity/fixtures/${id}.html`), 'utf8');
   return { html, input: fixtureToInput(id, html) };
 }
+
+/** The document id of every parity fixture; class symbols of its document-scoped sheet are owned by it. */
+export const DOCUMENT_ID = 'doc';
 
 export function fixtureToInput(id: string, html: string): FrontEndResult {
   const { root, style } = parseFixtureHtml(html);
@@ -124,15 +127,16 @@ export function fixtureToInput(id: string, html: string): FrontEndResult {
     revision: 'fixture',
     hash: `sha256:${createHash('sha256').update(html, 'utf8').digest('hex')}`,
   };
-  const span = (start: number, end: number): Span => ({ source: ref, start, end });
+  const origin = (start: number, end: number): Origin => ({ kind: 'authored', span: { source: ref, start, end } });
   if (root.tag !== 'html') throw new Error('root must be <html>');
+  const always = { kind: 'true' } as const;
   const convert = (el: RawElement): ElementNode => {
     const id = el.attrs.get('data-dragon-id');
     if (id === undefined) throw new Error(`<${el.tag}> at ${el.start} needs data-dragon-id`);
     const classAttr = el.attrs.get('class');
     const attributes = [...el.attrs.entries()]
       .filter(([k]) => k !== 'data-dragon-id' && k !== 'class')
-      .map(([name, value]) => ({ name, value }));
+      .map(([name, value]) => ({ name, value: [{ when: always, value }], origin: origin(el.start, el.openEnd) }));
     const children: TreeNode[] = [];
     let k = 0;
     for (const c of el.children) {
@@ -140,17 +144,18 @@ export function fixtureToInput(id: string, html: string): FrontEndResult {
         if (c.tag === 'head') continue;
         children.push(convert(c));
       } else if (!isBlankText(c.text)) {
-        children.push({ kind: 'text', id: `${id}:text${k++}`, text: c.text, origin: span(c.start, c.end) });
+        children.push({ kind: 'text', id: `${id}-text${k++}`, text: c.text, origin: origin(c.start, c.end) });
       }
     }
+    const names = classAttr === undefined ? [] : classAttr.split(/\s+/).filter((c) => c !== '');
     return {
       kind: 'element',
       id,
       tag: el.tag,
-      classes: classAttr === undefined ? [] : classAttr.split(/\s+/).filter((c) => c !== ''),
+      classes: names.map((name) => ({ value: [{ when: always, value: { owner: DOCUMENT_ID, sheet: 'sheet', name } }], origin: origin(el.start, el.openEnd) })),
       attributes,
       children,
-      origin: span(el.start, el.end),
+      origin: origin(el.start, el.end),
     };
   };
   const tree = convert(root);
@@ -168,9 +173,9 @@ export function fixtureToInput(id: string, html: string): FrontEndResult {
       schema: 'dragon/tree@0',
       schemaRevision: TREE_SCHEMA_REVISION,
       modules: [{ id: 'fixture', source: ref.uri }],
-      components: [{ id: 'Fixture', module: 'fixture', root: [tree] }],
-      documents: [{ id: 'doc', rootInstance: 'Fixture', documentElement: tree.id, styles: ['sheet'], initial: [] }],
-      styles: [{ id: 'sheet', css: span(style.start, style.end), scope: { kind: 'document' } }],
+      components: [{ id: 'Fixture', module: 'fixture', params: [], states: [], slots: [], root: [tree], origin: origin(0, html.length) }],
+      documents: [{ id: DOCUMENT_ID, rootInstance: 'Fixture', documentElement: tree.id, styles: ['sheet'], initial: [] }],
+      styles: [{ id: 'sheet', css: { source: ref, start: style.start, end: style.end }, scope: { kind: 'document' } }],
     },
     completeness: 'closed-application',
   };

@@ -1,0 +1,43 @@
+{
+  "sources": ["card.dg", "doc.css", "app.css", "card.css"],
+  "modules": [{ "id": "card", "source": "card.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "app", "file": "app.css", "scope": "App" },
+    { "id": "card", "file": "card.css", "scope": "Card" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "app", "card"] },
+  "components": [
+    {
+      "id": "App", "module": "card", "at": "component App",
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "call": "Card", "id": "card", "at": "<Card card>", "slots": {
+              "header": [{ "el": "div", "id": "title", "at": "<div title", "class": ["app.row", "app.title"] }],
+              "body": [
+                { "el": "div", "id": "first", "at": "<div first", "class": ["app.row"] },
+                { "el": "div", "id": "second", "at": "<div second", "class": ["app.row", "app.wide"] }
+              ]
+            } }
+          ] }
+        ] }
+      ]
+    },
+    {
+      "id": "Card", "module": "card", "at": "component Card",
+      "states": [{ "id": "compact", "domain": [false, true], "initial": false, "at": "compact: boolean = false" }],
+      "slots": [{ "name": "header", "at": "header," }, { "name": "body", "at": " body)" }],
+      "root": [
+        { "el": "div", "id": "frame", "at": "<div frame", "class": ["card.card", { "when": ["compact", true], "class": "card.compact", "at": "compact ? 'compact' : ''" }], "children": [
+          { "el": "div", "id": "head", "at": "<div head", "class": ["card.row", "card.head"], "children": [
+            { "slot": "header", "id": "header-slot", "at": "{header}" }
+          ] },
+          { "el": "div", "id": "content", "at": "<div content", "class": ["card.content"], "children": [
+            { "slot": "body", "id": "body-slot", "at": "{body}" }
+          ] }
+        ] }
+      ]
+    }
+  ]
+}

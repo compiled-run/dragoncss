@@ -1,0 +1,2 @@
+.row { display: flex; height: 10px; margin-bottom: 2px; background-color: #eee; }
+.row.sel { height: 16px; background-color: #9cf; }

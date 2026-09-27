@@ -1,0 +1,30 @@
+{
+  "sources": ["box.dg", "doc.css", "base.css", "theme.css"],
+  "modules": [{ "id": "box", "source": "box.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "base", "file": "base.css", "scope": "Box" },
+    { "id": "theme", "file": "theme.css", "scope": "Box" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "base", "theme"] },
+  "components": [
+    {
+      "id": "App", "module": "box", "at": "component App",
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "call": "Box", "id": "box", "at": "<Box box />" }
+          ] }
+        ] }
+      ]
+    },
+    {
+      "id": "Box", "module": "box", "at": "component Box",
+      "root": [
+        { "el": "div", "id": "frame", "at": "<div frame", "class": ["base.box", "theme.box"], "children": [
+          { "el": "div", "id": "inner", "at": "<div inner", "class": ["base.inner", "theme.inner"] }
+        ] }
+      ]
+    }
+  ]
+}

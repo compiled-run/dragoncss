@@ -3,7 +3,7 @@ import * as publicEntry from '../src/index.ts';
 import { createProject } from '../src/index.ts';
 import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, webClassMap } from '../src/internal.ts';
 import { LONGHANDS } from '../src/css/properties.ts';
-import { div, inputFor } from './helpers.ts';
+import { div, expectCatalogued, explainOne, inputFor, text as textNode } from './helpers.ts';
 
 const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1 } as const;
 const ios = () => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' } } });
@@ -15,12 +15,14 @@ describe('createProject().compile() and check()', () => {
     expect(c.ok).toBe(true);
     expect(c.targets.ios).toBe('checked');
     expect(c.outputs.ios.kind).toBe('analysis-only');
-    const p = iosLayoutProjection(c, ENV);
+    const p = iosLayoutProjection(c, ENV, []);
     expect(p.kind).toBe('ready');
-    expect(c.explain({ target: 'ios', node: 'a', property: 'width' })).toMatchObject({ kind: 'resolved', value: '50px', origin: 'author' });
-    expect(c.explain({ target: 'ios', node: 'body', property: 'margin-top' })).toMatchObject({ value: '8px', origin: 'user-agent' });
-    expect(c.explain({ target: 'ios', node: 'a', property: 'min-width' })).toMatchObject({ value: 'auto', origin: 'initial' });
-    expect(compiledFeatures(c, 'ios')).toEqual(['height:<length>', 'width:<length>']);
+    const width = explainOne(c, 'ios', 'a', 'width');
+    expect(width).toMatchObject({ value: '50px', cascade: 'author', support: { feature: 'width:<length-px>', context: 'block', status: 'exact' } });
+    expect(width.origin.kind === 'authored' && css.slice(width.origin.span.start, width.origin.span.end)).toBe('width: 50px');
+    expect(explainOne(c, 'ios', 'body', 'margin-top')).toMatchObject({ value: '8px', cascade: 'user-agent', origin: { kind: 'builtin', entry: 'body margin-top' } });
+    expect(explainOne(c, 'ios', 'a', 'min-width')).toMatchObject({ value: 'auto', cascade: 'initial', origin: { kind: 'builtin' } });
+    expect(compiledFeatures(c, 'ios', [])).toEqual(['height:<length-px>@block', 'width:<length-px>@block']);
     expect(Object.isFrozen(c)).toBe(true);
   });
 
@@ -29,13 +31,14 @@ describe('createProject().compile() and check()', () => {
     const c = ios().compile(inputFor(css, (r) => [div(r, 'g', ['g'])]));
     expect(c.ok).toBe(false);
     const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
-    expect(d).toBeDefined();
-    if (d === undefined || d.span === null) throw new Error('no span');
-    expect(css.slice(d.span.start, d.span.end)).toBe('grid');
-    expect(d.targets).toEqual(['ios']);
-    expect(d.fix).toMatch(/block|flex|none/);
+    if (d === undefined || d.origin.kind !== 'authored') throw new Error('no span');
+    expect(css.slice(d.origin.span.start, d.origin.span.end)).toBe('grid');
+    expect(d.target).toBe('ios');
+    expect(d.fix !== null && 'manual' in d.fix ? d.fix.manual : '').toMatch(/block|flex|none/);
+    expect(d.profile).toMatchObject({ target: 'ios', feature: 'display:grid', status: 'unsupported' });
+    expectCatalogued(c.diagnostics);
     expect(c.outputs.ios.kind).toBe('blocked');
-    expect(iosLayoutProjection(c, ENV).kind).toBe('blocked');
+    expect(iosLayoutProjection(c, ENV, []).kind).toBe('blocked');
   });
 
   it('check() reports the same diagnostics without outputs', () => {
@@ -62,7 +65,7 @@ describe('createProject().compile() and check()', () => {
     expect(text).toContain('  width: 1px;');
     expect(text).toContain('  height: 33.3px;');
     expect(text).toContain('  margin-top: 8px;');
-    expect(webClassMap(c)).toEqual(new Map([['html', 'dg0'], ['body', 'dg1'], ['a', 'dg2']]));
+    expect(webClassMap(c, [])).toEqual(new Map([['html', 'dg0'], ['body', 'dg1'], ['a', 'dg2']]));
     expect(Object.keys(c).sort()).not.toContain('classOf');
   });
 
@@ -76,8 +79,7 @@ describe('createProject().compile() and check()', () => {
 
   it('checks longhands a shorthand fills (S1 must-fix 3): border: 3px sets border-*-style: none, which no profile supports', () => {
     const c = ios().compile(inputFor('.a { border: 3px; }', (r) => [div(r, 'a', ['a'])]));
-    expect(compiledFeatures(c, 'ios')).toContain('border-top-style:none');
-    expect(compiledFeatures(c, 'ios')).toContain('border-top-color:currentcolor');
+    expect(c.diagnostics.map((d) => d.message)).toContainEqual(expect.stringMatching(/^border-top-color: currentcolor \(set by border\)|^border-top-style: none \(set by border\)/));
     const d = c.diagnostics.find((x) => x.message.startsWith('border-top-style: none (set by border)'));
     expect(d?.code).toBe('DRAGON_UNSUPPORTED_VALUE');
     expect(c.outputs.ios.kind).toBe('blocked');
@@ -85,14 +87,20 @@ describe('createProject().compile() and check()', () => {
 
   it('resolves colours to channels, inherits color and resolves currentcolor borders', () => {
     const css = 'body { color: hsl(120 50% 50%); } .a { background-color: #a1b2c37f; border: 1px solid; border-left-color: rgba(10, 20, 30, 0.3); }';
-    const c = ios().compile(inputFor(css, (r) => [div(r, 'a', ['a'])]));
+    const input = inputFor(css, (r) => [div(r, 'a', ['a'])]);
+    // The profiles prove color:<hsl()> only on flex items, so the enforcing compile blocks body; resolution is tested unenforced.
+    const unproven = ios().compile(input).diagnostics;
+    expect(unproven.map((d) => d.code)).toEqual(['DRAGON_UNPROVEN_CONTEXT']);
+    expect(unproven[0]?.message).toMatch(/color:<hsl\(\)> on body is used in the block context, which ios has not proven \(proven: flex-row\)/);
+    expectCatalogued(unproven);
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive' }).compile(input);
     expect(c.ok).toBe(true);
-    const colors = resolvedColors(c)?.get('a');
+    const colors = resolvedColors(c, [])?.get('a');
     expect(colors?.color).toEqual({ r: 64, g: 191, b: 64, alpha: 255 });
     expect(colors?.['background-color']).toEqual({ r: 161, g: 178, b: 195, alpha: 127 });
     expect(colors?.['border-top-color']).toEqual({ r: 64, g: 191, b: 64, alpha: 255 });
     expect(colors?.['border-left-color']).toEqual({ r: 10, g: 20, b: 30, alpha: 77 });
-    expect(c.explain({ target: 'ios', node: 'a', property: 'color' })).toMatchObject({ value: 'rgb(64, 191, 64)', origin: 'inherited' });
+    expect(explainOne(c, 'ios', 'a', 'color')).toMatchObject({ value: 'rgb(64, 191, 64)', cascade: 'inherited', origin: { kind: 'inherited', element: 'body' } });
   });
 
   it('refuses colour syntax outside the milestone subset with DRAGON_UNSUPPORTED_VALUE on its span', () => {
@@ -100,9 +108,9 @@ describe('createProject().compile() and check()', () => {
       const css = `.a { color: ${value}; }`;
       const c = createProject({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' } } }).compile(inputFor(css, (r) => [div(r, 'a', ['a'])]));
       const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
-      if (d === undefined || d.span === null) throw new Error(`${value}: no diagnostic`);
-      expect(css.slice(d.span.start, d.span.end)).toBe(value);
-      expect(d.targets).toEqual([]);
+      if (d === undefined || d.origin.kind !== 'authored') throw new Error(`${value}: no diagnostic`);
+      expect(css.slice(d.origin.span.start, d.origin.span.end)).toBe(value);
+      expect(d.target).toBeNull();
       expect(c.outputs.web.kind).toBe('blocked');
       expect(c.outputs.ios.kind).toBe('blocked');
     }
@@ -111,10 +119,10 @@ describe('createProject().compile() and check()', () => {
   it('internal faults: variant collapse ignores the last class of a compound; colour-only moves red channels only', () => {
     const css = '.a { width: 10px; } .a.on { width: 20px; }';
     const input = inputFor(css, (r) => [div(r, 'a', ['a'])]);
-    const project = (faults: typeof NO_FAULTS) => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults });
-    expect(project(NO_FAULTS).compile(input).explain({ target: 'ios', node: 'a', property: 'width' })).toMatchObject({ value: '10px' });
-    expect(project({ ...NO_FAULTS, variantCollapse: true }).compile(input).explain({ target: 'ios', node: 'a', property: 'width' })).toMatchObject({ value: '20px' });
-    const faulty = resolvedColors(project({ ...NO_FAULTS, colourOnly: true }).compile(input))?.get('a');
+    const project = (faults: typeof NO_FAULTS) => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults, profiles: 'enforce' });
+    expect(explainOne(project(NO_FAULTS).compile(input), 'ios', 'a', 'width')).toMatchObject({ value: '10px' });
+    expect(explainOne(project({ ...NO_FAULTS, variantCollapse: true }).compile(input), 'ios', 'a', 'width')).toMatchObject({ value: '20px' });
+    const faulty = resolvedColors(project({ ...NO_FAULTS, colourOnly: true }).compile(input), [])?.get('a');
     expect(faulty?.color).toEqual({ r: 1, g: 0, b: 0, alpha: 255 });
     expect(faulty?.['background-color']).toEqual({ r: 0, g: 0, b: 0, alpha: 0 });
   });
@@ -130,7 +138,7 @@ describe('createProject().compile() and check()', () => {
     const bad = inputFor('.a{}', () => [], { hash: 'sha256:00' });
     expect(ios().check(bad).diagnostics.map((d) => d.code)).toContain('DRAGON_SOURCE_HASH_MISMATCH');
     const good = inputFor('.a{}', () => []);
-    const withError = { ...good, diagnostics: [{ code: 'DRAGON_INPUT_INVALID' as const, severity: 'error' as const, message: 'parse failed', span: null, targets: [], fix: null }] };
+    const withError = { ...good, diagnostics: [{ code: 'PRODUCER_SYNTAX', severity: 'error' as const, target: null, origin: { kind: 'unlocated' as const, reason: 'test' }, message: 'parse failed', why: '', related: [], fix: null, profile: null }] };
     const r = ios().compile(withError);
     expect(r.diagnostics.map((d) => d.code)).toContain('DRAGON_PRODUCER_ERROR');
     expect(r.outputs.ios.kind).toBe('blocked');
@@ -143,7 +151,7 @@ describe('createProject().compile() and check()', () => {
 
   it('rejects unsupported elements, attributes, selectors and !important', () => {
     const css = '#x { width: 1px; } .a { height: 1px !important; }';
-    const c = ios().compile(inputFor(css, (r) => [{ ...div(r, 'a', ['a']), tag: 'span', attributes: [{ name: 'style', value: 'width:1px' }] }]));
+    const c = ios().compile(inputFor(css, (r) => [{ ...div(r, 'a', ['a']), tag: 'span', attributes: [{ name: 'style', value: [{ when: { kind: 'true' }, value: 'width:1px' }], origin: { kind: 'unlocated', reason: 'test' } }] }]));
     expect(c.diagnostics.map((d) => d.code).sort()).toEqual([
       'DRAGON_UNSUPPORTED_ATTRIBUTE', 'DRAGON_UNSUPPORTED_ELEMENT', 'DRAGON_UNSUPPORTED_IMPORTANT', 'DRAGON_UNSUPPORTED_SELECTOR',
     ]);
@@ -151,9 +159,11 @@ describe('createProject().compile() and check()', () => {
 
   it('cascades by specificity then order, and writes inherited text styles onto text nodes', () => {
     const css = 'div { width: 1px; } .a { width: 2px; } div { width: 3px; } body { font-family: Ahem; font-size: 20px; line-height: 1.5; }';
-    const c = ios().compile(inputFor(css, (r) => [div(r, 'a', ['a'], [{ kind: 'text', id: 'a:text0', text: '  XX \n X ', origin: { source: r, start: 0, end: 0 } }])]));
-    expect(c.explain({ target: 'ios', node: 'a', property: 'width' })).toMatchObject({ value: '2px' });
-    const p = iosLayoutProjection(c, ENV);
+    const c = ios().compile(inputFor(css, (r) => [div(r, 'a', ['a'], [textNode(r, 't', '  XX \n X ')])]));
+    const width = explainOne(c, 'ios', 'a', 'width');
+    expect(width).toMatchObject({ value: '2px' });
+    expect(width.losing.length).toBe(2);
+    const p = iosLayoutProjection(c, ENV, []);
     if (p.kind !== 'ready') throw new Error(p.reason);
     const a = p.input.root.children[0]?.kind === 'box' ? p.input.root.children[0].children[0] : undefined;
     const text = a?.kind === 'box' ? a.children[0] : undefined;
@@ -161,7 +171,7 @@ describe('createProject().compile() and check()', () => {
   });
 
   it('the public entry exposes only the public API', () => {
-    expect(Object.keys(publicEntry).sort()).toEqual(['TREE_SCHEMA_REVISION', 'createProject']);
+    expect(Object.keys(publicEntry).sort()).toEqual(['TREE_SCHEMA_REVISION', 'createProject', 'formatDiagnostic']);
   });
 });
 
@@ -181,8 +191,9 @@ describe('webref grammar range checks for milestone properties', () => {
       const c = ios().check(inputFor(css, (r) => [div(r, 'a', ['a'])]));
       expect(c.diagnostics.map((d) => d.code)).toEqual(['DRAGON_CSS_INVALID_VALUE']);
       const d = c.diagnostics[0];
-      if (d === undefined || d.span === null) throw new Error('no span');
-      expect(css.slice(d.span.start, d.span.end)).toBe(value);
+      if (d === undefined || d.origin.kind !== 'authored') throw new Error('no span');
+      expect(css.slice(d.origin.span.start, d.origin.span.end)).toBe(value);
+      expectCatalogued(c.diagnostics);
     });
   }
   it('negative margins are valid CSS', () => {

@@ -1,0 +1,14 @@
+{
+  "sources": ["app.dg", "doc.css", "toggle.css"],
+  "modules": [{ "id": "app", "source": "app.dg" }],
+  "styles": [{ "id": "doc", "file": "doc.css", "scope": "document" }, { "id": "toggle", "file": "toggle.css", "scope": "App" }],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "toggle"] },
+  "producerDiagnostics": [{ "code": "PARSE_UNTERMINATED_ATTRIBUTE", "message": "unterminated attribute value; the element was dropped", "file": "app.dg", "at": "<div broken class=\"" }],
+  "components": [
+    { "id": "App", "module": "app", "at": "component App", "root": [
+      { "el": "html", "id": "html", "at": "<html>", "children": [{ "el": "body", "id": "body", "at": "<body>", "children": [
+        { "el": "div", "id": "box", "at": "<div box", "class": ["toggle.toggle"] }
+      ] }] }
+    ] }
+  ]
+}

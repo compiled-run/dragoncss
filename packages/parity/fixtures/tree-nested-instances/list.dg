@@ -1,0 +1,25 @@
+component App {
+  <html>
+    <body>
+      <List list />
+    </body>
+  </html>
+}
+
+component List {
+  <div items class="list">
+    <Row r1 />
+    <Row r2 />
+    <Row r3 />
+  </div>
+}
+
+component Row(selected: boolean = false) {
+  <div line class="row {selected ? 'sel' : ''}">
+    <Dot dot />
+  </div>
+}
+
+component Dot {
+  <div mark class="dot" />
+}

@@ -5,10 +5,19 @@ import type { DiagnosticCode, Environment } from 'dragon';
 export const ENVIRONMENT: Environment = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1 };
 
 export type FixtureSpec =
-  | { readonly id: string; readonly kind: 'layout'; readonly gate: 'default' }
-  | { readonly id: string; readonly kind: 'reject'; readonly expect: { readonly code: DiagnosticCode; readonly spanText: string } };
+  | { readonly id: string; readonly format: 'html' | 'tree'; readonly kind: 'layout'; readonly gate: 'default' }
+  | {
+      readonly id: string;
+      readonly format: 'html' | 'tree';
+      readonly kind: 'reject';
+      /** spanText null: the diagnostic is unlocated. */
+      readonly expect: { readonly code: DiagnosticCode; readonly spanText: string | null };
+    };
 
-const layout = (id: string): FixtureSpec => ({ id, kind: 'layout', gate: 'default' });
+const layout = (id: string): FixtureSpec => ({ id, format: 'html', kind: 'layout', gate: 'default' });
+const tree = (id: string): FixtureSpec => ({ id, format: 'tree', kind: 'layout', gate: 'default' });
+const reject = (id: string, code: DiagnosticCode, spanText: string | null): FixtureSpec => ({ id, format: 'html', kind: 'reject', expect: { code, spanText } });
+const rejectTree = (id: string, code: DiagnosticCode, spanText: string | null): FixtureSpec => ({ id, format: 'tree', kind: 'reject', expect: { code, spanText } });
 
 export const FIXTURES: readonly FixtureSpec[] = [
   layout('block-ua-divs'),
@@ -45,7 +54,27 @@ export const FIXTURES: readonly FixtureSpec[] = [
   layout('flex-nested'),
   layout('flex-percent-definite'),
   layout('flex-stretch-percent-minmax'),
-  { id: 'reject-display-grid', kind: 'reject', expect: { code: 'DRAGON_UNSUPPORTED_VALUE', spanText: 'grid' } },
-  { id: 'reject-color-lab', kind: 'reject', expect: { code: 'DRAGON_UNSUPPORTED_VALUE', spanText: 'lab(50% 40 59)' } },
-  { id: 'reject-shorthand-filled', kind: 'reject', expect: { code: 'DRAGON_UNSUPPORTED_VALUE', spanText: '3px' } },
+  layout('flex-distribution-grid'),
+  tree('tree-switch-two-instances'),
+  tree('tree-correlated-state'),
+  tree('tree-controlled-aliases'),
+  tree('tree-branch-arms'),
+  tree('tree-slot-projection'),
+  tree('tree-shared-class-one-module'),
+  tree('tree-colliding-modules'),
+  tree('tree-ordered-sheets'),
+  tree('tree-ordered-sheets-reversed'),
+  tree('tree-param-args'),
+  tree('tree-nested-instances'),
+  tree('tree-attribute-equality'),
+  reject('reject-display-grid', 'DRAGON_UNSUPPORTED_VALUE', 'grid'),
+  reject('reject-color-lab', 'DRAGON_UNSUPPORTED_VALUE', 'lab(50% 40 59)'),
+  reject('reject-shorthand-filled', 'DRAGON_UNSUPPORTED_VALUE', '3px'),
+  reject('reject-unproven-context', 'DRAGON_UNPROVEN_CONTEXT', 'auto'),
+  rejectTree('reject-tree-alias-cycle', 'DRAGON_ALIAS_CYCLE', '<Toggle a checked={doc/b.checked} />'),
+  rejectTree('reject-tree-choice-overlap', 'DRAGON_CHOICE_OVERLAP', "{checked ? 'on' : ''} {checked || true ? 'off' : ''}"),
+  rejectTree('reject-tree-unknown-state', 'DRAGON_STATE_UNKNOWN', "hovered ? 'on' : ''"),
+  rejectTree('reject-tree-initial-domain', 'DRAGON_STATE_VALUE_DOMAIN', 'checked: boolean = "false"'),
+  rejectTree('reject-tree-producer-error', 'DRAGON_PRODUCER_ERROR', '<div broken class="'),
+  rejectTree('reject-tree-raw-html', 'DRAGON_TREE_RAW_HTML', '{@html "<b>bold</b>"}'),
 ];

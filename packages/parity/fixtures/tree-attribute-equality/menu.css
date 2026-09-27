@@ -1,0 +1,7 @@
+.menu { width: 90px; padding: 2px; background-color: #eee; }
+.menu[ui-phase] { border: 1px solid #333; }
+.menu[ui-phase="closed"] > .menu-item { height: 0px; }
+.menu[ui-phase="opening"] > .menu-item { height: 6px; }
+.menu[ui-phase="open"] > .menu-item { height: 12px; }
+.menu[ui-phase="open"] { width: 110px; }
+.menu-item { margin-bottom: 1px; background-color: #cde; }

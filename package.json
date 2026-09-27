@@ -11,7 +11,8 @@
     "ua:capture": "node --conditions=dragon-internal scripts/capture-ua-defaults.ts",
     "parity:capture": "node --conditions=dragon-internal packages/parity/src/cli/capture.ts",
     "parity:report": "node --conditions=dragon-internal packages/parity/src/cli/report.ts",
-    "layout:vectors": "node --conditions=dragon-internal packages/parity/src/cli/vectors.ts"
+    "layout:vectors": "node --conditions=dragon-internal packages/parity/src/cli/vectors.ts",
+    "profile:rows": "node --conditions=dragon-internal scripts/gen-profile-rows.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",

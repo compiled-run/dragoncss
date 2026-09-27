@@ -38,3 +38,76 @@ export function isShorthand(name: string): name is Shorthand {
 }
 
 export const SIDES = ['top', 'right', 'bottom', 'left'] as const;
+
+/**
+ * What each longhand affects, for proof classification (docs/api.md §4.1, §6.3). layout: box geometry, proven by the layout
+ * lanes. paint: pixels no milestone-1 lane renders natively, so iOS rows for it are capped at caveat. border-*-style is both:
+ * none/hidden zero the border width, and every other style paints.
+ */
+export const PROPERTY_ASPECTS: { readonly [P in Longhand]: { readonly layout: boolean; readonly paint: boolean } } = {
+  display: { layout: true, paint: false },
+  position: { layout: true, paint: false },
+  'overflow-x': { layout: true, paint: false },
+  'overflow-y': { layout: true, paint: false },
+  direction: { layout: true, paint: false },
+  'box-sizing': { layout: true, paint: false },
+  width: { layout: true, paint: false },
+  height: { layout: true, paint: false },
+  'min-width': { layout: true, paint: false },
+  'min-height': { layout: true, paint: false },
+  'max-width': { layout: true, paint: false },
+  'max-height': { layout: true, paint: false },
+  'margin-top': { layout: true, paint: false },
+  'margin-right': { layout: true, paint: false },
+  'margin-bottom': { layout: true, paint: false },
+  'margin-left': { layout: true, paint: false },
+  'padding-top': { layout: true, paint: false },
+  'padding-right': { layout: true, paint: false },
+  'padding-bottom': { layout: true, paint: false },
+  'padding-left': { layout: true, paint: false },
+  'border-top-width': { layout: true, paint: false },
+  'border-right-width': { layout: true, paint: false },
+  'border-bottom-width': { layout: true, paint: false },
+  'border-left-width': { layout: true, paint: false },
+  'border-top-style': { layout: true, paint: true },
+  'border-right-style': { layout: true, paint: true },
+  'border-bottom-style': { layout: true, paint: true },
+  'border-left-style': { layout: true, paint: true },
+  'border-top-color': { layout: false, paint: true },
+  'border-right-color': { layout: false, paint: true },
+  'border-bottom-color': { layout: false, paint: true },
+  'border-left-color': { layout: false, paint: true },
+  'flex-direction': { layout: true, paint: false },
+  'flex-wrap': { layout: true, paint: false },
+  'flex-grow': { layout: true, paint: false },
+  'flex-shrink': { layout: true, paint: false },
+  'flex-basis': { layout: true, paint: false },
+  order: { layout: true, paint: false },
+  'justify-content': { layout: true, paint: false },
+  'align-items': { layout: true, paint: false },
+  'align-self': { layout: true, paint: false },
+  'align-content': { layout: true, paint: false },
+  'row-gap': { layout: true, paint: false },
+  'column-gap': { layout: true, paint: false },
+  'font-size': { layout: true, paint: false },
+  'font-family': { layout: true, paint: false },
+  'line-height': { layout: true, paint: false },
+  'text-align': { layout: true, paint: false },
+  color: { layout: false, paint: true },
+  'background-color': { layout: false, paint: true },
+};
+
+/**
+ * Which formatting context a longhand's row key names (M2): container properties name the element's own flex line mode,
+ * text properties the text context, and every other longhand the context the element's box takes part in.
+ */
+export const PROPERTY_ROLE: { readonly [P in Longhand]: 'item' | 'container' | 'text' } = Object.fromEntries(
+  LONGHANDS.map((p) => [
+    p,
+    ['flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap'].includes(p)
+      ? 'container'
+      : ['font-size', 'font-family', 'line-height', 'text-align'].includes(p)
+        ? 'text'
+        : 'item',
+  ]),
+) as { readonly [P in Longhand]: 'item' | 'container' | 'text' };

@@ -1,0 +1,7 @@
+.switch { display: flex; width: 120px; height: 20px; padding: 2px; margin-bottom: 4px; background-color: #ddd; }
+.switch[ui-checked] { background-color: #cfe; }
+.switch[ui-disabled] { color: #999; padding: 4px; }
+.switch.on { border: 2px solid #0a0; }
+.switch[ui-checked] .knob { margin-left: 30px; }
+.knob { width: 16px; height: 16px; background-color: #555; }
+.label { margin-left: 4px; font-family: Ahem; font-size: 10px; line-height: 16px; }

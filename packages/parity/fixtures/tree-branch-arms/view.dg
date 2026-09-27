@@ -1,0 +1,13 @@
+component App(mode: "list" | "grid" | "empty" = "list") {
+  <html>
+    <body>
+      {mode === "empty"
+        ? <div empty class="empty" />
+        : <div items class="items {mode}">
+            {mode === "grid"
+              ? <div c1 class="cell" /><div c2 class="cell" /><div c3 class="cell" />
+              : <div r1 class="row" /><div r2 class="row" />}
+          </div>}
+    </body>
+  </html>
+}

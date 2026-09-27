@@ -7,6 +7,8 @@ export type CompilerFaults = {
   readonly variantCollapse: boolean;
   /** The resolver moves every resolved colour's red channel by one step and changes nothing else. */
   readonly colourOnly: boolean;
+  /** The resolver ignores the state on this element address: its classes and attributes keep their initial-assignment values. */
+  readonly stateCollapse: string | null;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null };

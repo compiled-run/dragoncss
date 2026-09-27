@@ -1,7 +1,6 @@
 // Typed refusals. The engine never falls back or guesses; a fixture that hits one of these fails.
 
 export type UnsupportedCode =
-  | 'margin-collapse'
   | 'multi-line-text'
   | 'percent-height-flex'
   | 'percent-gap'
@@ -18,7 +17,6 @@ export type UnsupportedCode =
   | 'flex-basis-content'
   | 'flex-align-value'
   | 'flex-justify-value'
-  | 'flex-align-content-value'
   | 'flex-wrap-indefinite-main'
   | 'flex-intrinsic-wrap-column';
 

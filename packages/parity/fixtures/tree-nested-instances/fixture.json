@@ -1,0 +1,46 @@
+{
+  "sources": ["list.dg", "doc.css", "list.css", "row.css", "dot.css"],
+  "modules": [{ "id": "list", "source": "list.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "list", "file": "list.css", "scope": "List" },
+    { "id": "row", "file": "row.css", "scope": "Row" },
+    { "id": "dot", "file": "dot.css", "scope": "Dot" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "list", "row", "dot"], "initial": [{ "instance": "doc/list/r2", "state": "selected", "value": true }] },
+  "components": [
+    {
+      "id": "App", "module": "list", "at": "component App",
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "call": "List", "id": "list", "at": "<List list />" }
+          ] }
+        ] }
+      ]
+    },
+    {
+      "id": "List", "module": "list", "at": "component List",
+      "root": [
+        { "el": "div", "id": "items", "at": "<div items", "class": ["list.list"], "children": [
+          { "call": "Row", "id": "r1", "at": "<Row r1 />" },
+          { "call": "Row", "id": "r2", "at": "<Row r2 />" },
+          { "call": "Row", "id": "r3", "at": "<Row r3 />" }
+        ] }
+      ]
+    },
+    {
+      "id": "Row", "module": "list", "at": "component Row",
+      "states": [{ "id": "selected", "domain": [false, true], "initial": false, "at": "selected: boolean = false" }],
+      "root": [
+        { "el": "div", "id": "line", "at": "<div line", "class": ["row.row", { "when": ["selected", true], "class": "row.sel", "at": "selected ? 'sel' : ''" }], "children": [
+          { "call": "Dot", "id": "dot", "at": "<Dot dot />" }
+        ] }
+      ]
+    },
+    {
+      "id": "Dot", "module": "list", "at": "component Dot",
+      "root": [{ "el": "div", "id": "mark", "at": "<div mark", "class": ["dot.dot"] }]
+    }
+  ]
+}

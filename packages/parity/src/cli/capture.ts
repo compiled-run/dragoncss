@@ -1,12 +1,14 @@
-// Regenerates packages/parity/expected/*.web.json from live Chrome and packages/parity/emitted/*.css from the compiler.
-// Run with: pnpm run parity:capture
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { createProject, WEB_CSS_PATH } from 'dragon';
+// Regenerates packages/parity/expected/<case>.web.json from live Chrome (the authored rendering of every case) and
+// packages/parity/emitted/<fixture>.css from the compiler. Run with: pnpm run parity:capture
+import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { WEB_CSS_PATH } from 'dragon';
 import { captureFixture, captureJson } from '../capture.ts';
+import { casesOf } from '../cases.ts';
 import { launchChrome } from '../chrome.ts';
-import { PROJECT_ID, readFixture } from '../fixture-reader.ts';
+import { emittedPath, expectedPath } from '../committed.ts';
 import { ENVIRONMENT, FIXTURES } from '../fixtures.ts';
 import { repoPath } from '../paths.ts';
+import { compileFixture } from '../pipeline.ts';
 
 const expectedDir = repoPath('packages/parity/expected');
 const emittedDir = repoPath('packages/parity/emitted');
@@ -17,14 +19,13 @@ const browser = await launchChrome();
 try {
   for (const spec of FIXTURES) {
     if (spec.kind !== 'layout') continue;
-    const html = readFileSync(repoPath(`packages/parity/fixtures/${spec.id}.html`), 'utf8');
-    const capture = await captureFixture(browser, spec.id, html, ENVIRONMENT);
-    writeFileSync(`${expectedDir}/${spec.id}.web.json`, captureJson(capture));
-    const compiled = createProject({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} } }).compile(readFixture(spec.id).input);
+    const { input, compiled } = compileFixture(spec);
+    const cases = casesOf(spec, input);
+    for (const c of cases) writeFileSync(expectedPath(c.id), captureJson(await captureFixture(browser, c.id, c.authoredHtml, ENVIRONMENT)));
     const web = compiled.outputs.web;
     const css = web.kind === 'ready' ? web.files.find((f) => f.path === WEB_CSS_PATH) : undefined;
-    if (css !== undefined) writeFileSync(`${emittedDir}/${spec.id}.css`, css.text);
-    console.log(`captured ${spec.id} (${capture.nodes.length} nodes)${css === undefined ? '; web output not ready, no CSS written' : ''}`);
+    if (css !== undefined) writeFileSync(emittedPath(spec.id), css.text);
+    console.log(`captured ${spec.id} (${cases.length} case${cases.length === 1 ? '' : 's'})${css === undefined ? '; web output not ready, no CSS written' : ''}`);
   }
 } finally {
   await browser.close();

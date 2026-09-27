@@ -1,0 +1,31 @@
+{
+  "sources": ["menu.dg", "doc.css", "menu.css"],
+  "modules": [{ "id": "menu", "source": "menu.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "menu", "file": "menu.css", "scope": "App" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "menu"] },
+  "components": [
+    {
+      "id": "App", "module": "menu", "at": "component App",
+      "states": [{ "id": "phase", "domain": ["closed", "opening", "open"], "initial": "closed", "at": "phase: \"closed\" | \"opening\" | \"open\" = \"closed\"" }],
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "el": "div", "id": "menu", "at": "<div menu", "class": ["menu.menu"], "attr": [
+              { "name": "ui-phase", "choice": [
+                { "when": ["phase", "closed"], "value": "closed" },
+                { "when": ["phase", "opening"], "value": "opening" },
+                { "when": ["phase", "open"], "value": "open" }
+              ], "at": "ui-phase={phase}" }
+            ], "children": [
+              { "el": "div", "id": "i1", "at": "<div i1", "class": ["menu.menu-item"] },
+              { "el": "div", "id": "i2", "at": "<div i2", "class": ["menu.menu-item"] }
+            ] }
+          ] }
+        ] }
+      ]
+    }
+  ]
+}

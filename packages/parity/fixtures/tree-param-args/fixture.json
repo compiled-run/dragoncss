@@ -1,0 +1,46 @@
+{
+  "sources": ["buttons.dg", "doc.css", "app.css", "button.css"],
+  "modules": [{ "id": "buttons", "source": "buttons.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "app", "file": "app.css", "scope": "App" },
+    { "id": "button", "file": "button.css", "scope": "Button" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "app", "button"] },
+  "components": [
+    {
+      "id": "App", "module": "buttons", "at": "component App",
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "el": "div", "id": "bar", "at": "<div class=\"bar\">", "class": ["app.bar"], "children": [
+              { "call": "Button", "id": "b1", "at": "<Button b1", "args": { "size": "s", "primary": true, "gap": 0 } },
+              { "call": "Button", "id": "b2", "at": "<Button b2", "args": { "size": "m", "primary": false, "gap": 4 } },
+              { "call": "Button", "id": "b3", "at": "<Button b3", "args": { "size": "l", "primary": true, "gap": 4 } }
+            ] }
+          ] }
+        ] }
+      ]
+    },
+    {
+      "id": "Button", "module": "buttons", "at": "component Button",
+      "params": [
+        { "id": "size", "domain": ["s", "m", "l"], "at": "size: \"s\" | \"m\" | \"l\"" },
+        { "id": "primary", "domain": [true, false], "at": "primary: boolean" },
+        { "id": "gap", "domain": [0, 4], "at": "gap: 0 | 4" }
+      ],
+      "root": [
+        { "el": "div", "id": "btn", "at": "<div btn", "class": [
+          "button.btn",
+          { "choice": [
+            { "when": ["size", "s"], "class": "button.s" },
+            { "when": ["size", "m"], "class": "button.m" },
+            { "when": ["size", "l"], "class": "button.l" }
+          ], "at": "{size}" },
+          { "when": ["primary", true], "class": "button.primary", "at": "primary ? 'primary' : ''" },
+          { "when": ["gap", 4], "class": "button.spaced", "at": "gap === 4 ? 'spaced' : ''" }
+        ] }
+      ]
+    }
+  ]
+}

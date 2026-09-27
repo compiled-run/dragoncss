@@ -1,0 +1,4 @@
+.disclosure { width: 150px; border: 1px solid #999; margin-bottom: 3px; }
+.disclosure.open { border-color: #06c; width: 180px; }
+.head { height: 10px; background-color: #ccc; }
+.body { height: 25px; background-color: #eef; }

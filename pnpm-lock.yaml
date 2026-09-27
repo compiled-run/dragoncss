@@ -38,6 +38,9 @@ importers:
       '@dragon/layout':
         specifier: workspace:*
         version: link:../layout
+      css-tree:
+        specifier: 3.2.1
+        version: 3.2.1
       dragon:
         specifier: workspace:*
         version: link:../dragon

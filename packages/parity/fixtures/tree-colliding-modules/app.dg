@@ -1,0 +1,8 @@
+component App {
+  <html>
+    <body>
+      <Nav nav />
+      <List list />
+    </body>
+  </html>
+}
