@@ -11,7 +11,7 @@ type WebrefEntry = {
   initial?: string;
   inherited?: string;
 };
-type WebrefCss = { properties: WebrefEntry[]; types: WebrefEntry[] };
+type WebrefCss = { properties: WebrefEntry[]; types: WebrefEntry[]; functions: WebrefEntry[] };
 
 const require = createRequire(import.meta.url);
 const webrefDir = dirname(require.resolve('@webref/css/package.json'));
@@ -32,11 +32,13 @@ const SUBSET = [
   'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
   'flex', 'flex-flow', 'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
   'justify-content', 'align-items', 'align-self', 'align-content', 'gap', 'row-gap', 'column-gap',
-  'font-size', 'font-family', 'line-height', 'text-align',
+  'font-size', 'font-family', 'line-height', 'text-align', 'color', 'background-color',
 ] as const;
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));
 const typesByName = new Map(css.types.map((t) => [t.name, t]));
+// Functional notations such as <rgb()> are listed under webref's functions, keyed with their parentheses.
+const functionsByName = new Map(css.functions.map((f) => [f.name, f]));
 const refPattern = /<'([^']+)'>|<([a-zA-Z0-9-]+(?:\(\))?)(?:\s*\[[^\]]*\])?>/g;
 
 const properties = new Map<string, WebrefEntry>();
@@ -53,7 +55,7 @@ while (queue.length > 0) {
     syntax = p.syntax;
   } else {
     if (types.has(next.name)) continue;
-    const t = typesByName.get(next.name);
+    const t = next.name.endsWith('()') ? functionsByName.get(next.name) : typesByName.get(next.name);
     if (t === undefined || t.syntax === undefined) continue; // css-tree generic (length, percentage, number, ...)
     types.set(next.name, t.syntax);
     syntax = t.syntax;

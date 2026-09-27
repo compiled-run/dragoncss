@@ -36,9 +36,14 @@ export async function launchChrome(): Promise<Browser> {
   return browser;
 }
 
-/** Opens a page at the given viewport, loads the HTML with the Ahem face injected, and waits for fonts and two frames. */
-export async function openPage(browser: Browser, html: string, viewport: { width: number; height: number }): Promise<Page> {
-  const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+export type PageEnvironment = { readonly viewport: { readonly width: number; readonly height: number }; readonly devicePixelRatio: number };
+
+/** Opens a page in the case environment, loads the HTML with the Ahem face injected, and waits for fonts and two frames. */
+export async function openPage(browser: Browser, html: string, env: PageEnvironment): Promise<Page> {
+  const context = await browser.newContext({
+    viewport: { width: env.viewport.width, height: env.viewport.height },
+    deviceScaleFactor: env.devicePixelRatio,
+  });
   const page = await context.newPage();
   const injected = html.replace(/<head>/i, `<head><style data-dragon-harness>${ahemFontFace()}</style>`);
   if (injected === html) throw new Error('fixture HTML has no <head>');
@@ -49,6 +54,6 @@ export async function openPage(browser: Browser, html: string, viewport: { width
     await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
   });
   const dpr = await page.evaluate(() => window.devicePixelRatio);
-  if (dpr !== 1) throw new Error(`device pixel ratio must be 1, got ${dpr}`);
+  if (dpr !== env.devicePixelRatio) throw new Error(`device pixel ratio must be ${env.devicePixelRatio}, got ${dpr}`);
   return page;
 }

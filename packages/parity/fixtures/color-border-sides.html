@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; color: navy; }
+.box { width: 50px; height: 20px; margin: 3px; }
+.sides { border-style: solid; border-width: 1px 2px 3px 4px; border-color: red green blue; }
+.four { border: 2px solid; border-color: #111 #222 #333 #444; }
+.one { border: thin dashed olive; }
+.mixed { border-top: 3px solid hsl(200, 50%, 40%); border-right: 1px solid; border-bottom: 5px double rgb(1 2 3); border-left: thick solid rgba(255, 0, 0, 0.5); color: teal; }
+.long { border-style: solid; border-top-color: gold; border-right-color: currentcolor; border-bottom-color: transparent; border-left-color: #0000; }
+.outer { color: maroon; border: 2px solid; padding: 3px; }
+.inner { border: 1px solid; border-left-color: inherit; }
+.cc { color: currentcolor; border: 1px solid; }
+.dotted { border: 2px dotted currentcolor; color: purple; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="sides" class="box sides"></div>
+<div data-dragon-id="four" class="box four"></div>
+<div data-dragon-id="one" class="box one"></div>
+<div data-dragon-id="mixed" class="box mixed"></div>
+<div data-dragon-id="long" class="box long"></div>
+<div data-dragon-id="outer" class="outer"><div data-dragon-id="inner" class="box inner"><div data-dragon-id="cc" class="box cc"></div></div></div>
+<div data-dragon-id="dotted" class="box dotted"></div>
+</body>
+</html>

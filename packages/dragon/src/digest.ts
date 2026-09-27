@@ -17,7 +17,7 @@ export function sha256Hex(text: string): string {
   padded.set(data);
   padded[data.length] = 0x80;
   const view = new DataView(padded.buffer);
-  view.setUint32(padded.length - 8, Math.floor(bitLength / 0x100000000));
+  view.setUint32(padded.length - 8, (bitLength - (bitLength >>> 0)) / 0x100000000);
   view.setUint32(padded.length - 4, bitLength >>> 0);
   const h = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
   const w = new Uint32Array(64);

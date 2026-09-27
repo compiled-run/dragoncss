@@ -1,27 +1,37 @@
-// One fixture end to end: public compile -> internal ios layout projection -> validator -> Dragon layout -> compare with Chrome.
+// One fixture end to end through the public compile entry, then both lanes:
+//   linux-dragon-layout: internal ios layout projection -> validator -> Dragon layout -> 1 device px against authored Chrome;
+//   chrome-dual: Dragon's web output rendered in Chrome against the authored rendering, boxes and computed values exactly.
+import type { Browser } from 'playwright';
 import type { LayoutInput, LayoutRect, LayoutUnsupported } from '@dragon/layout';
 import { absoluteRects, ahemMeasurer, layout, validateLayoutInput } from '@dragon/layout';
-import type { Diagnostic } from 'dragon';
-import type { LoweringFaults } from 'dragon';
-import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS } from 'dragon';
+import type { CompilerFaults, Diagnostic } from 'dragon';
+import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, WEB_CSS_PATH, webClassMap } from 'dragon';
 import type { WebCapture } from './capture.ts';
+import { captureFixture } from './capture.ts';
 import type { Comparison } from './compare.ts';
 import { compareLayout } from './compare.ts';
-import { readFixture, PROJECT_ID } from './fixture-reader.ts';
+import type { DualComparison } from './dual.ts';
+import { compareDual } from './dual.ts';
+import { compiledFixtureHtml, PROJECT_ID, readFixture } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
-import { VIEWPORT } from './fixtures.ts';
+import { ENVIRONMENT } from './fixtures.ts';
 
 export type DiagnosticSummary = { readonly code: string; readonly message: string; readonly spanText: string | null; readonly targets: readonly string[] };
+
+export type LaneStatus = 'pass' | 'fail' | 'not-run';
 
 export type FixtureOutcome = {
   readonly id: string;
   readonly kind: FixtureSpec['kind'];
   readonly status: 'pass' | 'fail';
   readonly reason: string | null;
+  readonly lanes: { readonly 'linux-dragon-layout': LaneStatus; readonly 'chrome-dual': LaneStatus };
   readonly diagnostics: readonly DiagnosticSummary[];
   readonly unsupported: LayoutUnsupported | null;
   readonly comparison: Comparison | null;
-  readonly features: readonly string[];
+  readonly dual: DualComparison | null;
+  readonly features: { readonly ios: readonly string[]; readonly web: readonly string[] };
+  readonly webCss: string | null;
   readonly vector: { readonly input: LayoutInput; readonly output: readonly LayoutRect[] } | null;
 };
 
@@ -34,44 +44,79 @@ function summarize(html: string, diagnostics: readonly Diagnostic[]): Diagnostic
   }));
 }
 
-export function runFixture(spec: FixtureSpec, capture: WebCapture | null, faults: LoweringFaults = NO_FAULTS): FixtureOutcome {
+export type RunOptions = {
+  /** The live (or committed) authored capture; required for layout fixtures. */
+  readonly authored: WebCapture | null;
+  readonly faults: CompilerFaults;
+};
+
+export async function runFixture(spec: FixtureSpec, browser: Browser, opts: RunOptions = { authored: null, faults: NO_FAULTS }): Promise<FixtureOutcome> {
   const { html, input } = readFixture(spec.id);
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' } } }, { faults });
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: opts.faults });
   const compiled = project.compile(input);
   const diagnostics = summarize(html, compiled.diagnostics);
-  const features = compiledFeatures(compiled, 'ios');
-  const base = { id: spec.id, kind: spec.kind, diagnostics, features, unsupported: null, comparison: null, vector: null };
-  const projection = iosLayoutProjection(compiled, VIEWPORT);
+  const features = { ios: compiledFeatures(compiled, 'ios'), web: compiledFeatures(compiled, 'web') };
+  const projection = iosLayoutProjection(compiled, ENVIRONMENT);
+  const webOut = compiled.outputs.web;
+  const webCss = webOut.kind === 'ready' ? (webOut.files.find((f) => f.path === WEB_CSS_PATH)?.text ?? null) : null;
+  const base = { id: spec.id, kind: spec.kind, diagnostics, features, webCss, unsupported: null, comparison: null, dual: null, vector: null };
+  const notRun = { 'linux-dragon-layout': 'not-run', 'chrome-dual': 'not-run' } as const;
 
   if (spec.kind === 'reject') {
-    const hit = diagnostics.find((d) => d.code === spec.expect.code && d.spanText === spec.expect.spanText && d.targets.includes('ios'));
-    const blocked = compiled.outputs.ios.kind === 'blocked' && compiled.targets.ios === 'blocked';
-    const ok = hit !== undefined && blocked && projection.kind === 'blocked' && !compiled.ok;
+    const hit = diagnostics.find((d) => d.code === spec.expect.code && d.spanText === spec.expect.spanText && (d.targets.length === 0 || d.targets.includes('ios')));
+    const blocked = compiled.outputs.ios.kind === 'blocked' && compiled.targets.ios === 'blocked' && webOut.kind === 'blocked' && compiled.targets.web === 'blocked';
+    const ok = hit !== undefined && blocked && projection.kind === 'blocked' && webCss === null && !compiled.ok;
     return {
       ...base,
+      lanes: notRun,
       status: ok ? 'pass' : 'fail',
-      reason: ok ? null : `expected ${spec.expect.code} on "${spec.expect.spanText}" with a blocked ios output and no layout projection`,
+      reason: ok ? null : `expected ${spec.expect.code} on "${spec.expect.spanText}" with blocked ios and web outputs, no layout projection and no web files`,
     };
   }
 
+  const fail = (reason: string, extra: Partial<FixtureOutcome> = {}): FixtureOutcome => ({ ...base, lanes: notRun, status: 'fail', reason, ...extra });
   if (compiled.outputs.ios.kind === 'blocked' || projection.kind === 'blocked') {
-    return { ...base, status: 'fail', reason: `ios output blocked: ${diagnostics.map((d) => `${d.code} ${d.message}`).join('; ')}` };
+    return fail(`ios output blocked: ${diagnostics.map((d) => `${d.code} ${d.message}`).join('; ')}`);
   }
+  if (webCss === null) return fail(`web output not ready: ${diagnostics.map((d) => `${d.code} ${d.message}`).join('; ')}`);
+  if (opts.authored === null) return fail('no authored Chrome capture');
+  const authored = opts.authored;
+
+  // Lane linux-dragon-layout.
   const validated = validateLayoutInput(JSON.parse(JSON.stringify(projection.input)));
-  if (!validated.ok) {
-    return { ...base, status: 'fail', reason: `layout input rejected: ${validated.errors.map((e) => `${e.path} ${e.code}`).join('; ')}` };
-  }
+  if (!validated.ok) return fail(`layout input rejected: ${validated.errors.map((e) => `${e.path} ${e.code}`).join('; ')}`);
   const result = layout(validated.input, ahemMeasurer);
+  let layoutStatus: LaneStatus;
+  let comparison: Comparison | null = null;
+  let unsupported: LayoutUnsupported | null = null;
+  const reasons: string[] = [];
   if (result.kind === 'unsupported') {
-    return { ...base, status: 'fail', unsupported: result.unsupported, reason: `LayoutUnsupported ${result.unsupported.code} at ${result.unsupported.nodeId} (${result.unsupported.specSection}): ${result.unsupported.detail}` };
+    unsupported = result.unsupported;
+    layoutStatus = 'fail';
+    reasons.push(`linux-dragon-layout: LayoutUnsupported ${unsupported.code} at ${unsupported.nodeId} (${unsupported.specSection}): ${unsupported.detail}`);
+  } else {
+    comparison = compareLayout(authored, absoluteRects(validated.input, result.boxes), ENVIRONMENT);
+    layoutStatus = comparison.pass ? 'pass' : 'fail';
+    if (!comparison.pass) reasons.push(`linux-dragon-layout: ${comparison.problems.join('; ')}`);
   }
-  if (capture === null) return { ...base, status: 'fail', reason: 'no Chrome capture' };
-  const comparison = compareLayout(capture, absoluteRects(validated.input, result.boxes));
+
+  // Lane chrome-dual.
+  const classOf = webClassMap(compiled);
+  const colors = resolvedColors(compiled);
+  if (classOf === null || colors === null) return fail('the compiled result has no web class map or resolved colours');
+  const compiledCapture = await captureFixture(browser, spec.id, compiledFixtureHtml(html, webCss, classOf), ENVIRONMENT);
+  const dual = compareDual(authored, compiledCapture, colors);
+  if (!dual.pass) reasons.push(`chrome-dual: ${dual.problems.join('; ')}`);
+
+  const pass = layoutStatus === 'pass' && dual.pass;
   return {
     ...base,
-    status: comparison.pass ? 'pass' : 'fail',
-    reason: comparison.pass ? null : comparison.problems.join('; '),
+    lanes: { 'linux-dragon-layout': layoutStatus, 'chrome-dual': dual.pass ? 'pass' : 'fail' },
+    status: pass ? 'pass' : 'fail',
+    reason: pass ? null : reasons.join(' | '),
+    unsupported,
     comparison,
-    vector: { input: validated.input, output: result.boxes },
+    dual,
+    vector: layoutStatus === 'pass' && result.kind === 'ok' ? { input: validated.input, output: result.boxes } : null,
   };
 }

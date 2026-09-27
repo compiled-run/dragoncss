@@ -3,7 +3,6 @@
 export type UnsupportedCode =
   | 'margin-collapse'
   | 'multi-line-text'
-  | 'percent-height-definite'
   | 'percent-height-flex'
   | 'percent-gap'
   | 'anonymous-block'
@@ -15,14 +14,13 @@ export type UnsupportedCode =
   | 'flex-reverse'
   | 'flex-wrap-reverse'
   | 'flex-order'
-  | 'flex-auto-margin'
   | 'flex-baseline'
   | 'flex-basis-content'
   | 'flex-align-value'
   | 'flex-justify-value'
   | 'flex-align-content-value'
   | 'flex-wrap-indefinite-main'
-  | 'flex-intrinsic-wrap';
+  | 'flex-intrinsic-wrap-column';
 
 export type LayoutUnsupported = {
   readonly code: UnsupportedCode;

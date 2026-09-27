@@ -4,6 +4,7 @@
    "width": 400,
    "height": 300
   },
+  "devicePixelRatio": 1,
   "root": {
    "kind": "box",
    "id": "html",

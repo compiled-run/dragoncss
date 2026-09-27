@@ -3,6 +3,8 @@
 import { generate, parse } from 'css-tree';
 import type { CssNode, List } from 'css-tree';
 import type { Diagnostic, Span } from '../types.ts';
+import type { ColorSyntax, Rgba8 } from './color.ts';
+import { parseColorNode } from './color.ts';
 import { webrefLexer } from './lexer.ts';
 import type { Longhand } from './properties.ts';
 import { isLonghand, isShorthand, SIDES } from './properties.ts';
@@ -13,6 +15,8 @@ export type CssValue =
   | { readonly kind: 'percentage'; readonly value: number }
   | { readonly kind: 'number'; readonly value: number }
   | { readonly kind: 'family'; readonly value: string }
+  /** A resolved legacy sRGB colour; transparent and currentcolor stay keywords. */
+  | { readonly kind: 'color'; readonly value: Rgba8; readonly syntax: ColorSyntax }
   | { readonly kind: 'other'; readonly type: string; readonly text: string };
 
 export type Compound = { readonly tag: string | null; readonly classes: readonly string[] };
@@ -142,7 +146,15 @@ function parseDeclaration(d: CssNode, base: Span, order: number, diagnostics: Di
       return null;
     }
   }
-  const values = tokens.map((t) => toValue(t, property));
+  const values: CssValue[] = [];
+  for (const t of tokens) {
+    const v = wide ? toValue(t, property) : tokenValue(t, property);
+    if (typeof v === 'string') {
+      diagnostics.push(diag('DRAGON_UNSUPPORTED_VALUE', `${property}: ${generate(t)} is unsupported: ${v}`, spanOf(t, base), COLOR_FIX));
+      return null;
+    }
+    values.push(v);
+  }
   const longhands = wide
     ? expandWide(property, values[0] as CssValue)
     : isLonghand(property)
@@ -153,6 +165,26 @@ function parseDeclaration(d: CssNode, base: Span, order: number, diagnostics: Di
     return null;
   }
   return { property, text, span, valueSpan, longhands, order };
+}
+
+const COLOR_FIX = 'Use a named colour, a 3, 4, 6 or 8 digit hex colour, rgb(), rgba(), hsl(), hsla(), transparent or currentcolor.';
+
+function isColorBearing(property: string): boolean {
+  return property === 'color' || property === 'background-color' || property.startsWith('border') && (property.endsWith('-color') || !property.endsWith('-width') && !property.endsWith('-style'));
+}
+
+// css-color-4 §4: <color> tokens resolve to 8-bit channels here (color.ts); anything outside the subset is refused.
+function tokenValue(node: CssNode, property: string): CssValue | string {
+  if (!isColorBearing(property)) return toValue(node, property);
+  if (node.type === 'Identifier') {
+    const name = String(node['name']).toLowerCase();
+    if (!property.endsWith('color') && (LINE_STYLES.has(name) || LINE_WIDTH_KEYWORDS.has(name))) return toValue(node, property);
+  } else if (node.type !== 'Hash' && node.type !== 'Function') {
+    return toValue(node, property);
+  }
+  const c = parseColorNode(node);
+  if (!c.ok) return c.reason;
+  return c.kind === 'keyword' ? { kind: 'keyword', value: c.keyword } : { kind: 'color', value: c.value, syntax: c.syntax };
 }
 
 function toValue(node: CssNode, property: string): CssValue {
@@ -295,6 +327,8 @@ export function featureOf(property: Longhand, v: CssValue): string {
       return property === 'order' ? `${property}:<integer>` : `${property}:<number>`;
     case 'family':
       return `${property}:${v.value}`;
+    case 'color':
+      return `${property}:<${v.syntax}>`;
     case 'other':
       return `${property}:<${v.type}>`;
   }

@@ -21,11 +21,13 @@ export function layout(input: LayoutInput, measurer: TextMeasurer): LayoutResult
   const icbWidth = fromCssPx(input.viewport.width);
   const icbHeight = fromCssPx(input.viewport.height);
   try {
-    const inline = blockLevelInlineSize(root, icbWidth);
-    const r = layoutContents({ measurer }, root, {
+    const ctx = { measurer, devicePixelRatio: input.devicePixelRatio };
+    const inline = blockLevelInlineSize(ctx, root, icbWidth);
+    const r = layoutContents(ctx, root, {
       cbInline: icbWidth,
       borderBoxWidth: inline.borderBoxWidth,
       forcedBorderBoxHeight: null,
+      forcedHeightDefinite: false,
       heightBasis: { kind: 'definite', value: icbHeight },
       formattingContextRoot: true,
     });

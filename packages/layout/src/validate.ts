@@ -1,7 +1,7 @@
 // Runtime validator for LayoutInput. The schema's inferred type must equal the declared input types exactly.
 import type { LayoutBox, LayoutInput, LayoutStyle, TextLeaf } from './input.ts';
 
-type NumberRule = { readonly t: 'number'; readonly min: number; readonly integer: boolean };
+type NumberRule = { readonly t: 'number'; readonly min: number; readonly exclusiveMin: boolean; readonly integer: boolean };
 type StringRule = { readonly t: 'string' };
 type LiteralRule<V extends string> = { readonly t: 'literal'; readonly values: readonly V[] };
 type ObjectRule = { readonly t: 'object'; readonly fields: { readonly [k: string]: Rule } };
@@ -22,9 +22,10 @@ type Infer<R> = R extends NumberRule
           ? { [K in keyof V]: Simplify<{ readonly kind: K } & { readonly [P in keyof V[K]]: Infer<V[K][P]> }> }[keyof V]
           : never;
 
-const num = (minimum: number): NumberRule => ({ t: 'number', min: minimum, integer: false });
-const anyNum: NumberRule = { t: 'number', min: -Infinity, integer: false };
-const int: NumberRule = { t: 'number', min: -Infinity, integer: true };
+const num = (minimum: number): NumberRule => ({ t: 'number', min: minimum, exclusiveMin: false, integer: false });
+const positive: NumberRule = { t: 'number', min: 0, exclusiveMin: true, integer: false };
+const anyNum: NumberRule = { t: 'number', min: -Infinity, exclusiveMin: false, integer: false };
+const int: NumberRule = { t: 'number', min: -Infinity, exclusiveMin: false, integer: true };
 const str: StringRule = { t: 'string' };
 function lit<const V extends string>(...values: V[]): LiteralRule<V> {
   return { t: 'literal', values };
@@ -158,8 +159,8 @@ function checkRule(value: unknown, rule: Rule, path: string, errors: ValidationE
     case 'number':
       if (typeof value !== 'number' || !Number.isFinite(value)) {
         errors.push({ path, code: 'wrong-type', message: 'expected a finite number' });
-      } else if (value < rule.min) {
-        errors.push({ path, code: 'bad-value', message: `expected a number >= ${rule.min}` });
+      } else if (value < rule.min || (rule.exclusiveMin && value === rule.min)) {
+        errors.push({ path, code: 'bad-value', message: `expected a number ${rule.exclusiveMin ? '>' : '>='} ${rule.min}` });
       } else if (rule.integer && !Number.isInteger(value)) {
         errors.push({ path, code: 'bad-value', message: 'expected an integer' });
       }
@@ -239,7 +240,7 @@ export function validateLayoutInput(json: unknown): ValidationResult {
   if (!isRecord(json)) {
     return { ok: false, errors: [{ path: '$', code: 'wrong-type', message: 'expected an object' }] };
   }
-  checkFields(json, { viewport: obj({ width: num(0), height: num(0) }) }, '$', errors, ['root']);
+  checkFields(json, { viewport: obj({ width: num(0), height: num(0) }), devicePixelRatio: positive }, '$', errors, ['root']);
   if (!Object.prototype.hasOwnProperty.call(json, 'root')) {
     errors.push({ path: '$.root', code: 'missing-key', message: 'missing required key "root"' });
   } else {

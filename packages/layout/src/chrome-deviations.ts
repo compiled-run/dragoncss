@@ -19,4 +19,12 @@ export const chromeDeviations: readonly ChromeDeviation[] = [
     fixture: 'text-ahem-single-line',
     node: 't3:text0',
   },
+  {
+    id: 'min-max-end-margin',
+    specSection: 'CSS2 §8.3.1, §10.6.3',
+    spec: 'A parent with auto height and non-zero min-height does not collapse its bottom margin with its last child; that margin then counts toward the parent content height.',
+    blink: 'Chrome 145 (measured) leaves the end margins out of the auto height; they collapse through the parent bottom when min/max-height leave the height unchanged and are dropped when min/max-height change it.',
+    fixture: 'margin-collapse-min-height',
+    node: 'p9',
+  },
 ];

@@ -14,6 +14,7 @@ export type MinSizeValue = Px | Percent | Auto;
 export type MaxSizeValue = Px | Percent | NoneValue;
 export type MarginValue = Px | Percent | Auto;
 export type PaddingValue = Px | Percent;
+/** The computed border width in CSS px before device-pixel snapping, which the engine applies for the environment. */
 export type BorderWidthValue = Px;
 export type FlexBasisValue = Px | Percent | Auto | ContentValue;
 export type GapValue = Px | Percent | NormalValue;
@@ -124,5 +125,7 @@ export type LayoutBox = {
 
 export type LayoutInput = {
   readonly viewport: { readonly width: number; readonly height: number };
+  /** Device pixels per CSS px in the target environment; border widths snap to whole device px (css-values-4 §6.1). */
+  readonly devicePixelRatio: number;
   readonly root: LayoutBox;
 };

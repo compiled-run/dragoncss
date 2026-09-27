@@ -8,8 +8,10 @@ import { diag, featureOf, parseStylesheet } from './css/stylesheet.ts';
 import { validateInput } from './analysis/input.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
 import { resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
-import type { LoweringFaults } from './lower/ios-layout.ts';
-import { LoweringError, lowerTree, NO_FAULTS } from './lower/ios-layout.ts';
+import { emitWebCss } from './emit/web-css.ts';
+import type { CompilerFaults } from './faults.ts';
+import { NO_FAULTS } from './faults.ts';
+import { LoweringError, lowerTree } from './lower/ios-layout.ts';
 import { iosProfile } from './profiles/ios.ts';
 import type { SupportProfile } from './profiles/types.ts';
 import { statusOf, supportedValuesFor } from './profiles/types.ts';
@@ -39,8 +41,13 @@ const PROFILES: { readonly [T in KnownTarget]: SupportProfile } = { web: webProf
 
 /** Internal-only data kept beside a compiled result; never reachable from the public entry. */
 export type InternalRecord = {
-  readonly iosLayout: LayoutBox | null;
+  /** The ios lowered layout tree; border widths are computed CSS px, which the engine snaps for the environment's DPR. */
+  readonly iosLowered: LayoutBox | null;
   readonly featuresByTarget: ReadonlyMap<Target, readonly string[]>;
+  /** Stage-1 result, for the harness's colour-channel check. */
+  readonly resolved: ResolvedElement | null;
+  /** Element id to generated class of the ready web output. */
+  readonly webClassOf: ReadonlyMap<string, string> | null;
 };
 
 const records = new WeakMap<object, InternalRecord>();
@@ -49,7 +56,7 @@ export function internalRecord(compiled: object): InternalRecord | undefined {
   return records.get(compiled);
 }
 
-export type InternalOptions = { readonly faults: LoweringFaults };
+export type InternalOptions = { readonly faults: CompilerFaults };
 
 function deepFreeze<T>(v: T): T {
   if (v !== null && typeof v === 'object' && !Object.isFrozen(v) && !(v instanceof Uint8Array)) {
@@ -95,7 +102,7 @@ function checkElements(el: ElementNode, diagnostics: Diagnostic[]): void {
   for (const c of el.children) if (c.kind === 'element') checkElements(c, diagnostics);
 }
 
-/** Checks each explicitly authored longhand against every configured target's profile. */
+/** Checks every longhand a declaration sets, including those a shorthand fills with initial values, against each target's profile. */
 function checkSupport(rules: readonly Rule[], targets: readonly KnownTarget[], diagnostics: Diagnostic[]): Map<Target, string[]> {
   const features = new Map<Target, string[]>();
   for (const t of targets) features.set(t, []);
@@ -105,7 +112,6 @@ function checkSupport(rules: readonly Rule[], targets: readonly KnownTarget[], d
       if (seen.has(d)) continue;
       seen.add(d);
       for (const lh of d.longhands) {
-        if (!lh.explicit) continue;
         const feature = featureOf(lh.property, lh.value);
         for (const t of targets) {
           const status = statusOf(PROFILES[t], feature);
@@ -114,7 +120,7 @@ function checkSupport(rules: readonly Rule[], targets: readonly KnownTarget[], d
             const values = supportedValuesFor(PROFILES[t], lh.property);
             diagnostics.push(diag(
               'DRAGON_UNSUPPORTED_VALUE',
-              `${lh.property}: ${valueToString(lh.value)} is unsupported on ${t} (support profile ${PROFILES[t].revision})`,
+              `${lh.property}: ${valueToString(lh.value)}${lh.explicit ? '' : ` (set by ${d.property})`} is unsupported on ${t} (support profile ${PROFILES[t].revision})`,
               d.valueSpan,
               values.length > 0 ? `Use one of: ${values.join(', ')}.` : `Remove ${d.property}; ${t} supports no value of ${lh.property} yet.`,
               [t],
@@ -149,6 +155,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
   let resolved: ResolvedElement | null = null;
   let features = new Map<Target, string[]>();
   let iosLayout: LayoutBox | null = null;
+  let web: ReturnType<typeof emitWebCss> | null = null;
   const dependencies: Dependency[] = [];
   const valid = configDiagnostics.length === 0 ? validateInput(input, config.projectId, diagnostics) : null;
   if (valid !== null) {
@@ -168,7 +175,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     checkElements(valid.root, diagnostics);
     features = checkSupport(rules, targets, diagnostics);
     if (!diagnostics.some((d) => blocksTarget(d, 'ios') && d.targets.length === 0)) {
-      resolved = resolveTree(valid.root, rules);
+      resolved = resolveTree(valid.root, rules, options.faults);
     }
     if (resolved !== null && targets.includes('ios') && !diagnostics.some((d) => blocksTarget(d, 'ios'))) {
       try {
@@ -194,7 +201,11 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     status[key] = blocking.length > 0 ? 'blocked' : 'checked';
     if (blocking.length > 0) outputs[key] = { kind: 'blocked', diagnostics: blocking };
     else if (t === 'ios') outputs[key] = { kind: 'analysis-only', digest, reason: 'Milestone 1 iOS output is analysis-only: its layout projection feeds the internal Linux lane; no Swift is emitted.' };
-    else outputs[key] = { kind: 'analysis-only', digest, reason: 'The web emitter arrives in S2.' };
+    else if (resolved === null) throw new Error('a checked web target always has a resolved result');
+    else {
+      web = emitWebCss(resolved, digest);
+      outputs[key] = { kind: 'ready', digest, files: web.files };
+    }
   }
   if (diagnostics.some((d) => d.severity === 'error' && d.targets.length === 0)) iosLayout = null;
   const report: CheckReport<K> = {
@@ -206,7 +217,17 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     diagnostics,
     targets: status,
   };
-  return { report, outputs, resolved, record: { iosLayout: status['ios' as K] === 'checked' ? iosLayout : null, featuresByTarget: features } };
+  return {
+    report,
+    outputs,
+    resolved,
+    record: {
+      iosLowered: status['ios' as K] === 'checked' ? iosLayout : null,
+      featuresByTarget: features,
+      resolved,
+      webClassOf: web === null ? null : web.classOf,
+    },
+  };
 }
 
 function findNode(el: ElementNode, id: string): ElementNode | null {

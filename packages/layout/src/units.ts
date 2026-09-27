@@ -46,6 +46,17 @@ export function fromPxCeil(px: number): LU {
   return saturate(Math.ceil(Math.fround(Math.fround(px) * LU_PER_PX)));
 }
 
+/**
+ * Blink StyleBuilderConverter::ConvertBorderWidth (css-values-4 §6.1 line-width snapping): a width of at least one device px
+ * floors to whole device px, a thinner non-zero width becomes one device px. S1 measured thin/medium/thick and fractional
+ * widths at DPR 1; other ratios are unverified against Chrome.
+ */
+export function snapBorderWidth(cssPx: number, devicePixelRatio: number): LU {
+  const device = cssPx * devicePixelRatio;
+  const snapped = device >= 1 ? Math.floor(device) : device > 0 ? 1 : 0;
+  return fromCssPx(snapped / devicePixelRatio);
+}
+
 /** Whole CSS px as LU, for integer-pixel metrics such as rounded font ascent. */
 export function fromWholePx(n: number): LU {
   if (!Number.isInteger(n)) throw new Error(`whole px expected, got ${n}`);
@@ -191,8 +202,8 @@ export function isFiniteFactorSum(total: FactorSum): boolean {
   return Number.isFinite(total);
 }
 
-// Content distribution (css-align-3 §5.3). Chrome 145 places item k at a cumulative share of the free space, measured in
-// notes/T023-slice-1.md: space-between rounds halves up, space-around and space-evenly truncate. Shares of positive amounts only.
+// Content distribution (css-align-3 §5.3). Chrome 145 places item or line k at a truncated leading share plus a rounded cumulative
+// share of the free space; notes/T026-slice-2.md pins this over 2,280 justify-content and align-content probes. Positive amounts only.
 
 /** round(total * k / parts), halves up: the offset before item k under justify-content: space-between. */
 export function cumulativeShareRounded(total: LU, k: number, parts: number): LU {
@@ -204,4 +215,16 @@ export function cumulativeShareRounded(total: LU, k: number, parts: number): LU 
 export function cumulativeShareTruncated(total: LU, numerator: number, denominator: number): LU {
   if (total < 0 || denominator <= 0) throw new Error('cumulativeShareTruncated needs a non-negative total and a positive denominator');
   return saturate(Math.trunc((total * numerator) / denominator));
+}
+
+export type DistributedMode = 'space-between' | 'space-around' | 'space-evenly';
+
+/**
+ * Offset before item k of n under a distributed alignment (Blink ContentDistributionSpaceBetweenChildren accumulated per item):
+ * space-between round(free*k/(n-1)); space-around trunc(free/2n) + round(free*k/n); space-evenly trunc(free/(n+1)) + round(free*k/(n+1)).
+ */
+export function distributedOffset(mode: DistributedMode, free: LU, n: number, k: number): LU {
+  if (mode === 'space-between') return n > 1 ? cumulativeShareRounded(free, k, n - 1) : ZERO;
+  if (mode === 'space-around') return add(cumulativeShareTruncated(free, 1, 2 * n), cumulativeShareRounded(free, k, n));
+  return add(cumulativeShareTruncated(free, 1, n + 1), cumulativeShareRounded(free, k, n + 1));
 }

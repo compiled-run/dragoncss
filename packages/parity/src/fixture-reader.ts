@@ -8,7 +8,7 @@ import { repoPath } from './paths.ts';
 
 export const PROJECT_ID = 'dragon-parity';
 
-type RawElement = { tag: string; attrs: Map<string, string>; children: (RawElement | RawText)[]; start: number; end: number };
+type RawElement = { tag: string; attrs: Map<string, string>; children: (RawElement | RawText)[]; start: number; openEnd: number; end: number };
 type RawText = { text: string; start: number; end: number };
 
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"' };
@@ -49,7 +49,7 @@ export function parseFixtureHtml(html: string): { root: RawElement; style: { sta
         if (attrs.has(m[1] as string)) throw new Error(`duplicate attribute ${m[1]}`);
         attrs.set(m[1] as string, decode(m[2] as string));
       }
-      const el: RawElement = { tag: open[1] as string, attrs, children: [], start: i, end: -1 };
+      const el: RawElement = { tag: open[1] as string, attrs, children: [], start: i, openEnd: i + open[0].length, end: -1 };
       i += open[0].length;
       const parent = stack[stack.length - 1];
       if (parent === undefined) {
@@ -78,6 +78,36 @@ export function parseFixtureHtml(html: string): { root: RawElement; style: { sta
   }
   if (stack.length > 0 || root === null || style === null) throw new Error('unclosed elements, no root, or no <style>');
   return { root, style };
+}
+
+const escapeAttr = (s: string): string => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+
+/**
+ * The compiled rendering of a fixture for the chrome-dual lane: the same markup and text, with each element's class
+ * attribute replaced by its generated class and the stylesheet text replaced by Dragon's web output.
+ */
+export function compiledFixtureHtml(html: string, css: string, classOf: ReadonlyMap<string, string>): string {
+  const { root, style } = parseFixtureHtml(html);
+  const edits: { start: number; end: number; text: string }[] = [{ start: style.start, end: style.end, text: `\n${css}` }];
+  const visit = (el: RawElement): void => {
+    const id = el.attrs.get('data-dragon-id');
+    if (id !== undefined) {
+      const cls = classOf.get(id);
+      if (cls === undefined) throw new Error(`no generated class for ${id}`);
+      const attrs = [...el.attrs.entries()].filter(([k]) => k !== 'class').map(([k, v]) => ` ${k}="${escapeAttr(v)}"`).join('');
+      edits.push({ start: el.start, end: el.openEnd, text: `<${el.tag}${attrs} class="${cls}">` });
+    }
+    for (const c of el.children) if ('tag' in c) visit(c);
+  };
+  visit(root);
+  edits.sort((a, b) => a.start - b.start);
+  let out = '';
+  let at = 0;
+  for (const e of edits) {
+    out += html.slice(at, e.start) + e.text;
+    at = e.end;
+  }
+  return out + html.slice(at);
 }
 
 const isBlankText = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';

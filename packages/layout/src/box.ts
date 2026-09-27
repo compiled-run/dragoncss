@@ -1,7 +1,7 @@
 // Shared box-model resolution: padding, border, margins, box-sizing and min/max (CSS2 §8, §10.4, §10.7; css-sizing-3).
 import type { BoxSizing, LayoutBox, LayoutStyle, MarginValue, MaxSizeValue, MinSizeValue, PaddingValue, SizeValue } from './input.ts';
 import type { LU } from './units.ts';
-import { add, clampNegativeToZero, fromCssPx, max, min, percentOf, sub, ZERO } from './units.ts';
+import { add, clampNegativeToZero, fromCssPx, max, min, percentOf, snapBorderWidth, sub, ZERO } from './units.ts';
 import { unsupported } from './unsupported.ts';
 
 export type Edges = { readonly top: LU; readonly right: LU; readonly bottom: LU; readonly left: LU };
@@ -28,13 +28,13 @@ export function resolvePadding(style: LayoutStyle, cbInline: LU): Edges {
   };
 }
 
-// CSS2 §8.5.1: border widths arrive as computed px (zero when the style is none).
-export function resolveBorder(style: LayoutStyle): Edges {
+// CSS2 §8.5.1: border widths arrive as computed px (zero when the style is none) and snap to the environment's device px.
+export function resolveBorder(style: LayoutStyle, devicePixelRatio: number): Edges {
   return {
-    top: fromCssPx(style.borderTopWidth.value),
-    right: fromCssPx(style.borderRightWidth.value),
-    bottom: fromCssPx(style.borderBottomWidth.value),
-    left: fromCssPx(style.borderLeftWidth.value),
+    top: snapBorderWidth(style.borderTopWidth.value, devicePixelRatio),
+    right: snapBorderWidth(style.borderRightWidth.value, devicePixelRatio),
+    bottom: snapBorderWidth(style.borderBottomWidth.value, devicePixelRatio),
+    left: snapBorderWidth(style.borderLeftWidth.value, devicePixelRatio),
   };
 }
 
@@ -88,14 +88,16 @@ export function inlineMinMax(style: LayoutStyle, cbInline: LU, borderPadding: LU
   };
 }
 
-/** A height-like percentage: resolves only against an indefinite basis in S1 (as auto); definite bases are S2. */
-function percentBlockUnsupported(box: LayoutBox, basis: HeightBasis, prop: string): void {
-  if (basis.kind === 'definite') {
-    unsupported('percent-height-definite', box.id, 'CSS2 §10.5', `${prop} percentage against a definite containing block (S2)`);
-  }
+/**
+ * CSS2 §10.5: the basis for a height-like percentage, or null when the containing block's height is indefinite (the
+ * percentage then behaves as auto, 0 or none). A flexed or stretched size that §9.8 does not make definite is refused.
+ */
+function percentBlockBasis(box: LayoutBox, basis: HeightBasis, prop: string): LU | null {
+  if (basis.kind === 'definite') return basis.value;
   if (basis.kind === 'flex-dependent') {
-    unsupported('percent-height-flex', box.id, 'css-flexbox-1 §9.8', `${prop} percentage against a flexed or stretched size (S2)`);
+    unsupported('percent-height-flex', box.id, 'css-flexbox-1 §9.8', `${prop} percentage against a flexed or stretched size that is not definite`);
   }
+  return null;
 }
 
 /** The specified block size in border-box terms, or null when it behaves as auto (CSS2 §10.5). */
@@ -103,8 +105,8 @@ export function specifiedBlockSize(box: LayoutBox, basis: HeightBasis, borderPad
   const h = box.style.height;
   if (h.kind === 'auto') return null;
   if (h.kind === 'percent') {
-    percentBlockUnsupported(box, basis, 'height');
-    return null;
+    const b = percentBlockBasis(box, basis, 'height');
+    return b === null ? null : borderBoxFromSpecified(percentOf(b, h.value), borderPadding, box.style.boxSizing);
   }
   return borderBoxFromSpecified(fromCssPx(h.value), borderPadding, box.style.boxSizing);
 }
@@ -114,15 +116,17 @@ export function blockMinMax(box: LayoutBox, basis: HeightBasis, borderPadding: L
   const s = box.style;
   let lo = borderPadding;
   if (s.minHeight.kind === 'px') lo = borderBoxFromSpecified(fromCssPx(s.minHeight.value), borderPadding, s.boxSizing);
-  else if (s.minHeight.kind === 'percent') percentBlockUnsupported(box, basis, 'min-height');
+  else if (s.minHeight.kind === 'percent') {
+    const b = percentBlockBasis(box, basis, 'min-height');
+    if (b !== null) lo = borderBoxFromSpecified(percentOf(b, s.minHeight.value), borderPadding, s.boxSizing);
+  }
   let hi: LU | null = null;
   if (s.maxHeight.kind === 'px') hi = borderBoxFromSpecified(fromCssPx(s.maxHeight.value), borderPadding, s.boxSizing);
-  else if (s.maxHeight.kind === 'percent') percentBlockUnsupported(box, basis, 'max-height');
+  else if (s.maxHeight.kind === 'percent') {
+    const b = percentBlockBasis(box, basis, 'max-height');
+    if (b !== null) hi = borderBoxFromSpecified(percentOf(b, s.maxHeight.value), borderPadding, s.boxSizing);
+  }
   return { min: lo, max: hi };
-}
-
-export function hasNonTrivialBlockMinMax(mm: MinMax, borderPadding: LU): boolean {
-  return mm.max !== null || mm.min > borderPadding;
 }
 
 export function contentBox(borderBox: LU, borderPadding: LU): LU {
@@ -133,7 +137,7 @@ export function visibleChildren(box: LayoutBox): readonly (LayoutBox | import('.
   return box.children.filter((c) => c.kind === 'text' || c.style.display !== 'none');
 }
 
-// css-writing-modes-4 §2.1: S1 lays out left-to-right only.
+// css-writing-modes-4 §2.1: left-to-right only until S4.
 export function requireLtr(box: LayoutBox): void {
   if (box.style.direction !== 'ltr') unsupported('direction-rtl', box.id, 'css-writing-modes-4 §2.1', 'direction: rtl arrives in S4');
 }

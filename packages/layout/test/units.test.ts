@@ -60,10 +60,16 @@ describe('content distribution shares (Chrome 145 probes, raw LU)', () => {
     expect(u.cumulativeShareRounded(lu(1), 1, 2)).toBe(1);
     expect(u.cumulativeShareRounded(lu(3), 1, 2)).toBe(2);
   });
-  it('space-around truncates (2k+1)/(2n) of the free space', () => {
-    expect([0, 1, 2].map((k) => u.cumulativeShareTruncated(lu(7040), 2 * k + 1, 6))).toEqual([1173, 3520, 5866]);
+  it('space-around: trunc(free/2n) plus round(free*k/n)', () => {
+    expect([0, 1, 2].map((k) => u.distributedOffset('space-around', lu(7040), 3, k))).toEqual([1173, 3520, 5866]);
+    expect([0, 1].map((k) => u.distributedOffset('space-around', lu(29), 2, k))).toEqual([7, 22]);
+    expect([0, 1, 2, 3].map((k) => u.distributedOffset('space-around', lu(1107), 4, k))).toEqual([138, 415, 692, 968]);
   });
-  it('space-evenly truncates (k+1)/(n+1) of the free space', () => {
-    expect([0, 1, 2, 3, 4, 5].map((k) => u.cumulativeShareTruncated(lu(9152), k + 1, 7))).toEqual([1307, 2614, 3922, 5229, 6537, 7844]);
+  it('space-evenly: trunc(free/(n+1)) plus round(free*k/(n+1))', () => {
+    expect([0, 1, 2, 3, 4, 5].map((k) => u.distributedOffset('space-evenly', lu(9152), 6, k))).toEqual([1307, 2614, 3922, 5229, 6537, 7844]);
+    expect([0, 1, 2, 3].map((k) => u.distributedOffset('space-evenly', lu(1107), 4, k))).toEqual([221, 442, 664, 885]);
+  });
+  it('space-between: round(free*k/(n-1))', () => {
+    expect([0, 1, 2, 3].map((k) => u.distributedOffset('space-between', lu(1107), 4, k))).toEqual([0, 369, 738, 1107]);
   });
 });

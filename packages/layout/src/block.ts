@@ -1,4 +1,4 @@
-// Block formatting: box contents, block-level widths and heights, S1 margin collapsing, and single-line inline content.
+// Block formatting: box contents, block-level widths and heights, margin collapsing, and single-line inline content.
 import type { LayoutBox, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import {
@@ -8,8 +8,8 @@ import {
   fromCssPx,
   lineHeightFromNumber,
   max,
+  min,
   sub,
-  sum,
   ZERO,
 } from './units.ts';
 import type { Edges, Frag, HeightBasis, Placed } from './box.ts';
@@ -18,7 +18,6 @@ import {
   borderBoxFromSpecified,
   constrain,
   contentBox,
-  hasNonTrivialBlockMinMax,
   inlineMinMax,
   INDEFINITE,
   requireLtr,
@@ -34,7 +33,7 @@ import { layoutFlexContainer } from './flex.ts';
 import type { TextMeasurer } from './text.ts';
 import { unsupported } from './unsupported.ts';
 
-export type Ctx = { readonly measurer: TextMeasurer };
+export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number };
 
 export type ContentsArgs = {
   /** Inline size of the containing block, the basis for percentage padding and margins. */
@@ -42,6 +41,8 @@ export type ContentsArgs = {
   readonly borderBoxWidth: LU;
   /** A border-box height fixed by a flex container, or null. */
   readonly forcedBorderBoxHeight: LU | null;
+  /** css-flexbox-1 §9.8: whether a forced height counts as definite for the box's percentage-height children. */
+  readonly forcedHeightDefinite: boolean;
   /** The containing block's block size, for this box's percentage heights. */
   readonly heightBasis: HeightBasis;
   /** True when the box establishes an independent formatting context (root, flex item). */
@@ -50,18 +51,38 @@ export type ContentsArgs = {
 
 export type ContentsResult = {
   readonly frag: Frag;
-  /** Margins from descendants that adjoin this box's top margin (CSS2 §8.3.1). */
-  readonly escapeTop: readonly LU[];
-  readonly escapeBottom: readonly LU[];
+  /** Margins of descendants that adjoin this box's top margin (CSS2 §8.3.1); for a collapse-through box, all of them. */
+  readonly escapeTop: Strut;
+  /** Margins of descendants that adjoin this box's bottom margin. */
+  readonly escapeBottom: Strut;
   readonly collapseThrough: boolean;
 };
+
+/** A set of adjoining vertical margins, kept as Blink NGMarginStrut does: the largest positive and the most negative. */
+export type Strut = { readonly positive: LU; readonly negative: LU };
+
+export const EMPTY_STRUT: Strut = { positive: ZERO, negative: ZERO };
+
+// CSS2 §8.3.1: a margin joins a collapsed set.
+function joinMargin(s: Strut, margin: LU): Strut {
+  return margin < 0 ? { positive: s.positive, negative: min(s.negative, margin) } : { positive: max(s.positive, margin), negative: s.negative };
+}
+
+function joinStruts(a: Strut, b: Strut): Strut {
+  return { positive: max(a.positive, b.positive), negative: min(a.negative, b.negative) };
+}
+
+// CSS2 §8.3.1: the collapsed margin is the largest positive margin plus the most negative one (Blink NGMarginStrut::Sum).
+function collapsed(s: Strut): LU {
+  return add(s.positive, s.negative);
+}
 
 // CSS2 §10.6.3 and §10.7: lays out a box at a given border-box width and resolves its used height.
 export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): ContentsResult {
   requireLtr(box);
   const s = box.style;
   const pad = resolvePadding(s, a.cbInline);
-  const bor = resolveBorder(s);
+  const bor = resolveBorder(s, ctx.devicePixelRatio);
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
   const vbp = sumEdges(bor.top, bor.bottom, pad.top, pad.bottom);
   const contentWidth = contentBox(a.borderBoxWidth, hbp);
@@ -70,15 +91,10 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
   const fixedBorderBox = a.forcedBorderBoxHeight !== null
     ? a.forcedBorderBoxHeight
     : specified === null ? null : constrain(specified, minMax);
-  const childBasis: HeightBasis = a.forcedBorderBoxHeight !== null
-    ? { kind: 'flex-dependent' }
-    : fixedBorderBox === null ? INDEFINITE : { kind: 'definite', value: contentBox(fixedBorderBox, vbp) };
+  const childBasis: HeightBasis = fixedBorderBox === null
+    ? INDEFINITE
+    : a.forcedBorderBoxHeight !== null && !a.forcedHeightDefinite ? { kind: 'flex-dependent' } : { kind: 'definite', value: contentBox(fixedBorderBox, vbp) };
 
-  let contentHeight: LU;
-  let placed: readonly Placed[];
-  let escapeTop: readonly LU[] = [];
-  let escapeBottom: readonly LU[] = [];
-  let hasContent = true;
   if (s.display === 'flex') {
     const r = layoutFlexContainer(ctx, box, {
       pad,
@@ -90,56 +106,30 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
         max: minMax.max === null ? null : contentBox(minMax.max, vbp),
       },
       childBasis,
-      sizeIsFlexDependent: a.forcedBorderBoxHeight !== null,
+      sizeIsFlexDependent: a.forcedBorderBoxHeight !== null && !a.forcedHeightDefinite,
     });
-    contentHeight = r.contentHeight;
-    placed = r.placed;
-  } else {
-    const canCollapseTop = !a.formattingContextRoot && bor.top === 0 && pad.top === 0;
-    const canCollapseBottom = !a.formattingContextRoot && bor.bottom === 0 && pad.bottom === 0 && fixedBorderBox === null;
-    const r = layoutBlockFlow(ctx, box, {
-      contentWidth,
-      origin: { x: add(bor.left, pad.left), y: add(bor.top, pad.top) },
-      canCollapseTop,
-      canCollapseBottom,
-      childBasis,
-    });
-    contentHeight = r.contentHeight;
-    placed = r.placed;
-    escapeTop = r.escapeTop;
-    escapeBottom = r.escapeBottom;
-    hasContent = r.hasContent;
-    if (hasNonZero(escapeBottom) && hasNonTrivialBlockMinMax(minMax, vbp)) {
-      unsupported('margin-collapse', box.id, 'CSS2 §8.3.1', 'bottom margin collapsing through a box with min-height or max-height (S2)');
-    }
+    const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
+    return { frag: { id: box.id, width: a.borderBoxWidth, height, children: r.placed }, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
   }
 
-  const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(contentHeight, vbp), minMax);
-  const collapseThrough = !a.formattingContextRoot && s.display === 'block' && !hasContent && height === 0 && vbp === 0;
-  if (!hasContent && !collapseThrough && hasNonZero(escapeTop)) {
-    unsupported('margin-collapse', box.id, 'CSS2 §8.3.1', 'child margins adjoining the top of a box without in-flow content (S2)');
+  const canCollapseTop = !a.formattingContextRoot && bor.top === 0 && pad.top === 0;
+  const r = layoutBlockFlow(ctx, box, {
+    contentWidth,
+    origin: { x: add(bor.left, pad.left), y: add(bor.top, pad.top) },
+    canCollapseTop,
+    childBasis,
+  });
+  // CSS2 §10.6.3: the end margins count toward the height unless they can adjoin this box's bottom margin.
+  const bottomAdjoins = !a.formattingContextRoot && bor.bottom === 0 && pad.bottom === 0 && fixedBorderBox === null;
+  const intrinsic = bottomAdjoins ? r.cursor : add(r.cursor, collapsed(r.endStrut));
+  const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(intrinsic, vbp), minMax);
+  const collapseThrough = !a.formattingContextRoot && !r.hasContent && height === 0 && vbp === 0;
+  if (collapseThrough) {
+    return { frag: { id: box.id, width: a.borderBoxWidth, height, children: r.placed }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough };
   }
-  return {
-    frag: { id: box.id, width: a.borderBoxWidth, height, children: placed },
-    escapeTop,
-    escapeBottom: collapseThrough ? [] : escapeBottom,
-    collapseThrough,
-  };
-}
-
-function hasNonZero(values: readonly LU[]): boolean {
-  return values.some((v) => v !== 0);
-}
-
-// CSS2 §8.3.1 (S1 subset): a collapsed set may hold at most one non-zero margin and no negative ones; otherwise S2.
-function resolveCollapsed(nodeId: string, set: readonly LU[]): LU {
-  let nonZero = 0;
-  for (const v of set) {
-    if (v < 0) unsupported('margin-collapse', nodeId, 'CSS2 §8.3.1', 'negative adjoining vertical margin (S2)');
-    if (v !== 0) nonZero++;
-  }
-  if (nonZero > 1) unsupported('margin-collapse', nodeId, 'CSS2 §8.3.1', 'two non-zero adjoining vertical margins (S2)');
-  return sum(set);
+  // Chrome deviation min-max-end-margin: when min-height or max-height changes the height, the end margins neither escape nor count.
+  const escapeBottom = bottomAdjoins && height === add(intrinsic, vbp) ? r.endStrut : EMPTY_STRUT;
+  return { frag: { id: box.id, width: a.borderBoxWidth, height, children: r.placed }, escapeTop: r.escapeTop, escapeBottom, collapseThrough };
 }
 
 export type BlockLevelResult = {
@@ -152,12 +142,13 @@ export type BlockLevelResult = {
 
 // CSS2 §10.3.3: block-level, non-replaced width and horizontal margins in normal flow (LTR).
 export function blockLevelInlineSize(
+  ctx: Ctx,
   box: LayoutBox,
   cbInline: LU,
 ): { readonly borderBoxWidth: LU; readonly marginLeft: LU; readonly marginTop: LU; readonly marginBottom: LU } {
   const s = box.style;
   const pad = resolvePadding(s, cbInline);
-  const bor = resolveBorder(s);
+  const bor = resolveBorder(s, ctx.devicePixelRatio);
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
   const ml = resolveMargin(s.marginLeft, cbInline);
   const mr = resolveMargin(s.marginRight, cbInline);
@@ -179,19 +170,20 @@ type FlowArgs = {
   readonly contentWidth: LU;
   readonly origin: { readonly x: LU; readonly y: LU };
   readonly canCollapseTop: boolean;
-  readonly canCollapseBottom: boolean;
   readonly childBasis: HeightBasis;
 };
 
 type FlowResult = {
-  readonly contentHeight: LU;
+  /** Bottom border edge of the last in-flow box with content, relative to the content box top. */
+  readonly cursor: LU;
   readonly placed: readonly Placed[];
-  readonly escapeTop: readonly LU[];
-  readonly escapeBottom: readonly LU[];
+  readonly escapeTop: Strut;
+  /** Margins after the last in-flow content, not yet resolved. */
+  readonly endStrut: Strut;
   readonly hasContent: boolean;
 };
 
-// CSS2 §9.4.1 and §10.6.3: stacks block-level children, collapsing adjoining vertical margins (S1 subset of §8.3.1).
+// CSS2 §9.4.1 and §8.3.1: stacks block-level children, collapsing adjoining vertical margins.
 function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   const kids = visibleChildren(box);
   const texts = kids.filter((k): k is TextLeaf => k.kind === 'text');
@@ -200,55 +192,42 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     return layoutSingleLine(ctx, box, texts, a);
   }
   const placed: Placed[] = [];
-  let pending: LU[] = [];
+  let strut = EMPTY_STRUT;
   let cursor = ZERO;
   let seen = false;
-  let escapeTop: readonly LU[] = [];
+  let escapeTop = EMPTY_STRUT;
   for (const kid of kids) {
     if (kid.kind !== 'box') continue;
-    const inline = blockLevelInlineSize(kid, a.contentWidth);
+    const inline = blockLevelInlineSize(ctx, kid, a.contentWidth);
     const c = layoutContents(ctx, kid, {
       cbInline: a.contentWidth,
       borderBoxWidth: inline.borderBoxWidth,
       forcedBorderBoxHeight: null,
+      forcedHeightDefinite: false,
       heightBasis: a.childBasis,
-      formattingContextRoot: false,
+      formattingContextRoot: kid.style.display !== 'block',
     });
-    const set = [...pending, inline.marginTop, ...c.escapeTop];
+    const before = joinStruts(joinMargin(strut, inline.marginTop), c.escapeTop);
     let y: LU;
     if (c.collapseThrough) {
-      if (inline.marginTop !== 0 || inline.marginBottom !== 0 || hasNonZero(c.escapeTop)) {
-        unsupported('margin-collapse', kid.id, 'CSS2 §8.3.1', 'a zero-height box with non-zero margins collapses through (S2)');
-      }
-      y = !seen && a.canCollapseTop ? ZERO : add(cursor, resolveCollapsed(box.id, set));
-      pending = [...set, inline.marginBottom, ...c.escapeBottom];
-    } else if (!seen && a.canCollapseTop) {
-      resolveCollapsed(box.id, set);
-      escapeTop = set;
-      y = ZERO;
-      cursor = c.frag.height;
-      seen = true;
-      pending = [inline.marginBottom, ...c.escapeBottom];
+      // CSS2 §8.3.1: a collapse-through box sits where it would with a non-zero bottom border, or at the parent's top.
+      y = !seen && a.canCollapseTop ? ZERO : add(cursor, collapsed(before));
+      strut = joinMargin(before, inline.marginBottom);
     } else {
-      y = add(cursor, resolveCollapsed(box.id, set));
+      if (!seen && a.canCollapseTop) {
+        escapeTop = before;
+        y = ZERO;
+      } else {
+        y = add(cursor, collapsed(before));
+      }
       cursor = add(y, c.frag.height);
       seen = true;
-      pending = [inline.marginBottom, ...c.escapeBottom];
+      strut = joinStruts(joinMargin(EMPTY_STRUT, inline.marginBottom), c.escapeBottom);
     }
     placed.push({ frag: c.frag, x: add(a.origin.x, inline.marginLeft), y: add(a.origin.y, y) });
   }
-  if (!seen) {
-    if (a.canCollapseTop) {
-      resolveCollapsed(box.id, pending);
-      return { contentHeight: ZERO, placed, escapeTop: pending, escapeBottom: [], hasContent: false };
-    }
-    return { contentHeight: resolveCollapsed(box.id, pending), placed, escapeTop: [], escapeBottom: [], hasContent: false };
-  }
-  if (a.canCollapseBottom) {
-    resolveCollapsed(box.id, pending);
-    return { contentHeight: cursor, placed, escapeTop, escapeBottom: pending, hasContent: true };
-  }
-  return { contentHeight: add(cursor, resolveCollapsed(box.id, pending)), placed, escapeTop, escapeBottom: [], hasContent: true };
+  if (!seen && a.canCollapseTop) return { cursor: ZERO, placed, escapeTop: strut, endStrut: EMPTY_STRUT, hasContent: false };
+  return { cursor, placed, escapeTop, endStrut: strut, hasContent: seen };
 }
 
 // CSS2 §10.8.1 with css-inline-3 §4: one line box of Ahem text; Blink floors the top half-leading to whole px.
@@ -282,7 +261,7 @@ function layoutSingleLine(ctx: Ctx, box: LayoutBox, texts: readonly TextLeaf[], 
   if (x > a.contentWidth && breakable) {
     unsupported('multi-line-text', box.id, 'css-text-3 §5', 'text wider than its line with a break opportunity wraps (S3)');
   }
-  return { contentHeight: lineHeight, placed, escapeTop: [], escapeBottom: [], hasContent: true };
+  return { cursor: lineHeight, placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: true };
 }
 
 function sameLineHeight(a: TextLeaf, b: TextLeaf): boolean {

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.outer { display: flex; width: 301px; height: 97px; column-gap: 3px; }
+.side { flex: 1 1 0px; min-width: 0; display: flex; flex-direction: column; row-gap: 2px; padding: 1px; }
+.main { flex: 2 1 0px; display: flex; flex-direction: column; border: 1px solid; }
+.bar { flex: 0 0 13px; display: flex; column-gap: 1px; }
+.cell { flex-grow: 1; }
+.cell2 { flex-grow: 2; }
+.fill { flex-grow: 1; display: flex; align-items: center; justify-content: space-between; }
+.dot { width: 7px; height: 7px; }
+.inner-col { display: flex; flex-direction: column; flex-grow: 1; justify-content: space-evenly; }
+.leaf { height: 5px; margin: 0 3px; }
+.foot { height: 11px; display: flex; }
+.foot-a { flex: 1 1 33%; }
+.foot-b { flex: 1 1 33%; margin-left: -4px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="outer" class="outer">
+<div data-dragon-id="side" class="side"><div data-dragon-id="s1" class="bar"><div data-dragon-id="s1a" class="cell"></div><div data-dragon-id="s1b" class="cell2"></div><div data-dragon-id="s1c" class="cell"></div></div><div data-dragon-id="s2" class="inner-col"><div data-dragon-id="s2a" class="leaf"></div><div data-dragon-id="s2b" class="leaf"></div><div data-dragon-id="s2c" class="leaf"></div></div></div>
+<div data-dragon-id="main" class="main"><div data-dragon-id="m1" class="bar"><div data-dragon-id="m1a" class="cell"></div><div data-dragon-id="m1b" class="cell"></div><div data-dragon-id="m1c" class="cell"></div></div><div data-dragon-id="m2" class="fill"><div data-dragon-id="m2a" class="dot"></div><div data-dragon-id="m2b" class="dot"></div><div data-dragon-id="m2c" class="dot"></div><div data-dragon-id="m2d" class="dot"></div></div><div data-dragon-id="m3" class="foot"><div data-dragon-id="m3a" class="foot-a"></div><div data-dragon-id="m3b" class="foot-b"></div></div></div>
+</div>
+</body>
+</html>

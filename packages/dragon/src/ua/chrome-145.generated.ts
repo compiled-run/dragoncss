@@ -9,6 +9,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
+    "background-color": "rgba(0, 0, 0, 0)",
     "border-bottom-color": "rgb(0, 0, 0)",
     "border-bottom-style": "none",
     "border-bottom-width": "0px",
@@ -22,6 +23,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "border-top-style": "none",
     "border-top-width": "0px",
     "box-sizing": "content-box",
+    "color": "rgb(0, 0, 0)",
     "column-gap": "normal",
     "direction": "ltr",
     "display": "block",
@@ -59,6 +61,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
+    "background-color": "rgba(0, 0, 0, 0)",
     "border-bottom-color": "rgb(0, 0, 0)",
     "border-bottom-style": "none",
     "border-bottom-width": "0px",
@@ -72,6 +75,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "border-top-style": "none",
     "border-top-width": "0px",
     "box-sizing": "content-box",
+    "color": "rgb(0, 0, 0)",
     "column-gap": "normal",
     "direction": "ltr",
     "display": "block",
@@ -109,6 +113,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
+    "background-color": "rgba(0, 0, 0, 0)",
     "border-bottom-color": "rgb(0, 0, 0)",
     "border-bottom-style": "none",
     "border-bottom-width": "0px",
@@ -122,6 +127,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "border-top-style": "none",
     "border-top-width": "0px",
     "box-sizing": "content-box",
+    "color": "rgb(0, 0, 0)",
     "column-gap": "normal",
     "direction": "ltr",
     "display": "block",
@@ -159,6 +165,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "align-content": "normal",
     "align-items": "normal",
     "align-self": "auto",
+    "background-color": "rgba(0, 0, 0, 0)",
     "border-bottom-color": "rgb(0, 0, 0)",
     "border-bottom-style": "none",
     "border-bottom-width": "0px",
@@ -172,6 +179,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "border-top-style": "none",
     "border-top-width": "0px",
     "box-sizing": "content-box",
+    "color": "rgb(0, 0, 0)",
     "column-gap": "normal",
     "direction": "ltr",
     "display": "inline",
@@ -205,6 +213,14 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "text-align": "start",
     "width": "auto",
   },
+};
+
+/** Longhands a Chrome UA rule sets per tag: the captured value differs from the value under "<longhand>: initial". */
+export const userAgentLonghands: { readonly [T in CapturedTag]: readonly string[] } = {
+  "html": [],
+  "body": ["display","margin-bottom","margin-left","margin-right","margin-top"],
+  "div": ["display"],
+  "dragon-unstyled": [],
 };
 
 /** Computed border widths for the line-width keywords, read with border-style: solid. */

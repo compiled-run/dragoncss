@@ -1,9 +1,10 @@
 // Numeric comparison of Dragon's layout with Chrome: 1 device pixel on every absolute edge (owner decision 13).
 import type { LayoutRect } from '@dragon/layout';
 import { LU_PER_PX } from '@dragon/layout';
+import type { Environment } from 'dragon';
 import type { CapturedNode, WebCapture } from './capture.ts';
 
-/** Owner decision 13: boxes must match within one physical screen pixel. DPR is 1 in this lane. Fixtures cannot override it. */
+/** Owner decision 13: boxes must match within one physical screen pixel. Fixtures cannot override it. */
 export const GATE_DEVICE_PX = 1;
 
 export type Edges = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
@@ -38,10 +39,12 @@ function dragonEdges(r: LayoutRect): { px: Edges; raw: Edges } {
   };
 }
 
-export function compareLayout(capture: WebCapture, absolute: ReadonlyMap<string, LayoutRect>): Comparison {
+/** The gate is in device pixels, so a CSS px delta is scaled by the case environment's device pixel ratio. */
+export function compareLayout(capture: WebCapture, absolute: ReadonlyMap<string, LayoutRect>, env: Environment): Comparison {
   const problems: string[] = [];
   const nodes: NodeComparison[] = [];
   const seen = new Set<string>();
+  if (capture.devicePixelRatio !== env.devicePixelRatio) problems.push(`capture DPR ${capture.devicePixelRatio} is not the case DPR ${env.devicePixelRatio}`);
   for (const n of capture.nodes) {
     seen.add(n.id);
     const d = absolute.get(n.id);
@@ -57,7 +60,7 @@ export function compareLayout(capture: WebCapture, absolute: ReadonlyMap<string,
     const c = chromeEdges(n);
     const { px, raw } = dragonEdges(d);
     const delta = { left: px.left - c.left, top: px.top - c.top, right: px.right - c.right, bottom: px.bottom - c.bottom };
-    const pass = [delta.left, delta.top, delta.right, delta.bottom].every((v) => Math.abs(v) <= GATE_DEVICE_PX);
+    const pass = [delta.left, delta.top, delta.right, delta.bottom].every((v) => Math.abs(v) * env.devicePixelRatio <= GATE_DEVICE_PX);
     const exactLu = raw.left === c.left * LU_PER_PX && raw.top === c.top * LU_PER_PX && raw.right === c.right * LU_PER_PX && raw.bottom === c.bottom * LU_PER_PX;
     if (!pass) problems.push(`${n.id}: edge delta ${JSON.stringify(delta)} exceeds ${GATE_DEVICE_PX} device px`);
     nodes.push({ id: n.id, kind: n.kind, chrome: c, dragon: px, delta, pass, exactLu });

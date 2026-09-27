@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { validateLayoutInput } from '../src/index.ts';
 import { box } from './helpers.ts';
 
-const good = { viewport: { width: 400, height: 300 }, root: box('root', {}, [box('a', {})]) };
+const good = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root: box('root', {}, [box('a', {})]) };
 
 function clone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v)) as T;

@@ -24,15 +24,8 @@ import type { Longhand } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
 import { valueToString } from '../analysis/resolve.ts';
+import type { CompilerFaults } from '../faults.ts';
 import { borderWidthKeywords } from '../ua/chrome-145.generated.ts';
-
-/** Internal fault switches used only by the parity harness to prove it can fail. */
-export type LoweringFaults = { readonly swapBoxSizing: boolean };
-
-export const NO_FAULTS: LoweringFaults = { swapBoxSizing: false };
-
-/** The reference environment of the milestone-1 Linux lane (Chrome at DPR 1). */
-export const REFERENCE_DEVICE_PIXEL_RATIO = 1;
 
 export class LoweringError extends Error {
   readonly nodeId: string;
@@ -86,7 +79,7 @@ function margin(id: string, get: Get, p: Longhand): MarginValue {
   return size(id, get, p);
 }
 
-// css-backgrounds-3 §3.3 with css-values-4 line-width snapping: none/hidden computes to 0; widths >= 1 device px floor to whole device px.
+// css-backgrounds-3 §3.3: none/hidden computes to 0. Device-pixel snapping depends on the environment, so the engine applies it.
 function borderWidth(id: string, get: Get, side: 'top' | 'right' | 'bottom' | 'left'): { readonly kind: 'px'; readonly value: number } {
   const style = keyword(id, get, `border-${side}-style` as Longhand, ['none', 'hidden', 'solid', 'dotted', 'dashed', 'double', 'groove', 'ridge', 'inset', 'outset']);
   if (style === 'none' || style === 'hidden') return { kind: 'px', value: 0 };
@@ -96,9 +89,7 @@ function borderWidth(id: string, get: Get, side: 'top' | 'right' | 'bottom' | 'l
   if (v.kind === 'length' && v.unit === 'px') px = v.value;
   else if (v.kind === 'keyword' && borderWidthKeywords[v.value] !== undefined) px = Number.parseFloat(borderWidthKeywords[v.value] as string);
   else return fail(id, p, v, 'px | thin | medium | thick');
-  const devicePx = px * REFERENCE_DEVICE_PIXEL_RATIO;
-  const snapped = devicePx >= 1 ? Math.floor(devicePx) : devicePx > 0 ? 1 : 0;
-  return { kind: 'px', value: snapped / REFERENCE_DEVICE_PIXEL_RATIO };
+  return { kind: 'px', value: px };
 }
 
 function number(id: string, get: Get, p: Longhand): number {
@@ -122,7 +113,7 @@ function gap(id: string, get: Get, p: Longhand): GapValue {
 
 const ALIGN_ITEMS: readonly AlignItems[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
 
-export function lowerStyle(el: ResolvedElement, faults: LoweringFaults): LayoutStyle {
+export function lowerStyle(el: ResolvedElement, faults: CompilerFaults): LayoutStyle {
   const id = el.node.id;
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
@@ -188,7 +179,7 @@ function lowerText(parent: ResolvedElement, id: string, text: string): TextLeaf 
   return { kind: 'text', id, text, font: { family: 'Ahem', size: fs.value }, lineHeight };
 }
 
-export function lowerTree(el: ResolvedElement, faults: LoweringFaults): LayoutBox {
+export function lowerTree(el: ResolvedElement, faults: CompilerFaults): LayoutBox {
   return {
     kind: 'box',
     id: el.node.id,

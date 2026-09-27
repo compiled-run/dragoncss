@@ -10,7 +10,7 @@ export const LONGHANDS = [
   'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
   'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
   'justify-content', 'align-items', 'align-self', 'align-content', 'row-gap', 'column-gap',
-  'font-size', 'font-family', 'line-height', 'text-align',
+  'font-size', 'font-family', 'line-height', 'text-align', 'color', 'background-color',
 ] as const;
 
 export type Longhand = (typeof LONGHANDS)[number];
@@ -22,7 +22,12 @@ export const SHORTHANDS = [
 
 export type Shorthand = (typeof SHORTHANDS)[number];
 
-export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>(['direction', 'font-size', 'font-family', 'line-height', 'text-align']);
+export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>(['direction', 'font-size', 'font-family', 'line-height', 'text-align', 'color']);
+
+/** Longhands whose values are <color>; their channels are checked against Chrome exactly. */
+export const COLOR_LONGHANDS = ['color', 'background-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'] as const satisfies readonly Longhand[];
+
+export type ColorLonghand = (typeof COLOR_LONGHANDS)[number];
 
 export function isLonghand(name: string): name is Longhand {
   return (LONGHANDS as readonly string[]).includes(name);
