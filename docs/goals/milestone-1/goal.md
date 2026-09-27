@@ -1,4 +1,4 @@
-# Dragon CSS milestone 1: regular CSS, proven against Chrome on a Linux lane
+# Dragon CSS milestone 1: regular CSS, proven against Chrome (macOS-captured reference; Linux lane workflow written, not run)
 
 > Scope note (2026-09-27, docs/decisions.md): the oracle lane is macOS-captured Chrome 145.0.7632.6 (darwin-arm64) plus the platform-free Dragon layout lane. The Linux lane workflow is written but not run.
 

@@ -8,7 +8,7 @@ goal:
   slug: "milestone-1"
   kind: existing_plan # specific | open_ended | existing_plan | recovery | audit
   tranche: "Profiles, TypeScript compiler to resolved native properties (boxes, flex, colour, basic text), Chrome capture harness, Dragon TypeScript layout engine, Linux lane (linux-dragon-layout), side-by-side report; iOS simulator lane is the next milestone."
-  status: active # active | blocked | done
+  status: done # active | blocked | done
   oracle:
     signal: "pnpm test green: at least 100 box and flex fixtures pass compile -> Dragon layout -> Chrome comparison at 1 device pixel; report generated; exact profile entries each name a passing fixture"
     cadence: "after each Worker package and at final audit"
@@ -71,7 +71,7 @@ visual_board:
     url: "http://goalbuddy.localhost:41737/milestone-1/"
     command: "node /Users/jacksm5pro/.claude/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-1"
 
-active_task: T041
+active_task: null
 
 tasks:
   - id: T001
@@ -3814,7 +3814,7 @@ tasks:
   - id: T041
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Final re-audit after T040 and the PM items from notes/T999-final-audit-1.md: re-check only the changed items (retired deviation, platform.test.ts, owner acknowledgement of the iOS caveat cap in decisions.md, annotated title) plus a full pnpm test twice and report cmp; decide complete and full_outcome_complete, stating the Oracle lane sentence verbatim."
     inputs:
@@ -3823,8 +3823,16 @@ tasks:
       - "Read-only."
     expected_output:
       - "complete or not_complete; full_outcome_complete true or false"
-    receipt: null
-
+    receipt:
+      result: done
+      harness: claude-code
+      decision: complete
+      full_outcome_complete: true
+      rationale: "Final re-audit at e83cb0a in a /tmp clone. Oracle holds: 791/791 twice from clean builds; 116 layout fixtures (111 hand-written) pass at 1 device px; 137/137 fixtures, 258/258 cases, 8671/8671 nodes exact; failed 0; unsupportedCodes []; 2137 exact rows all link to passing cases; reports byte-identical; regeneration with live Chrome capture gives no diff; green with git remotes added. Round-1 blockers closed. Oracle lane: macOS-captured Chrome 145.0.7632.6 (darwin-arm64) plus the platform-free Dragon layout lane; Linux lane unavailable (not run). The goal title's original Linux-lane clause is not met; it is descoped by the recorded owner-delegated decision (docs/decisions.md, 'Linux lane scope for milestone 1', 2026-09-27)."
+      evidence:
+        - "/tmp/t041 logs"
+        - packages/parity/out/report.json
+        - docs/decisions.md
 checks:
   dirty_fingerprint: unknown
   last_verification:
