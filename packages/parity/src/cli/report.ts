@@ -25,4 +25,6 @@ const d = s.dual;
 console.log(`${s.passed}/${s.fixtures} fixtures pass, ${s.layoutFixtures} layout (${s.handWrittenLayoutFixtures} hand-written, ${s.generatedLayoutFixtures} generated; ${s.cases} cases, ${s.casesPassed} pass; ${s.casesByDirection.map((x) => `${x.direction} ${x.passed}/${x.cases}`).join(', ')}); layout ${s.exactLuNodes}/${s.comparedNodes} nodes exact at 1/64 px (text ${s.textNodesExact}/${s.textNodes}, lines ${s.lineNodesExact}/${s.lineNodes}, ${s.anonymousBoxes.length} anonymous boxes); dual boxes ${d.boxesEqual}/${d.boxesCompared}, values ${d.valuesEqual}/${d.valuesCompared}, channels ${d.channelsEqual}/${d.channelsCompared}`);
 console.log(`failed ${s.failed}; unsupportedCodes ${JSON.stringify(s.unsupportedCodes)}; platform ${report.run.platform}; ${report.run.unavailableLanes.map((l) => `${l.lane} (${l.platform}): ${l.status}`).join('; ')}`);
 for (const o of outcomes) if (o.status === 'fail') console.log(`FAIL ${o.id}: ${o.reason}`);
+const n = report.nativeLanes;
+console.log(n.present ? `native lanes (${n.source}): ${n.lanes.filter((l) => l.met).length}/${n.lanes.length} met; ${n.lanes.filter((l) => !l.met).map((l) => `${l.target} ${l.lane} ${l.state}`).join(', ')}` : `native lanes: ${n.source} is absent, none met`);
 if (s.failed > 0) process.exitCode = 1;

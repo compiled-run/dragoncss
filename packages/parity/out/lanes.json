@@ -1,0 +1,742 @@
+{
+  "schema": "dragon.lanes/1",
+  "tolerances": {
+    "gateDevicePx": 1,
+    "channelDelta": 0
+  },
+  "sharedDprs": [
+    2,
+    3
+  ],
+  "extras": [
+    {
+      "dpr": 2.625,
+      "name": "android-extra-420dpi",
+      "platform": "android"
+    }
+  ],
+  "sampleRules": [
+    "interior",
+    "border",
+    "outside",
+    "radius",
+    "clip",
+    "edge"
+  ],
+  "dumpFaults": [
+    "edge-plus-2-device-px",
+    "edge-plus-1-device-px",
+    "applied-changed",
+    "applied-missing",
+    "channel-delta-1",
+    "missing-node",
+    "snap-disabled"
+  ],
+  "parity": {
+    "pass": true,
+    "problems": []
+  },
+  "targets": [
+    {
+      "target": "ios",
+      "dprs": [
+        2,
+        3
+      ],
+      "projection": "nativeLayoutProjection",
+      "lanes": [
+        {
+          "lane": "layout-vectors-host",
+          "where": "host",
+          "state": "pass",
+          "reason": null,
+          "sets": [
+            {
+              "dpr": 1,
+              "role": "top-level",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 2.625,
+              "role": "extra",
+              "extra": "android-extra-420dpi",
+              "cases": 261
+            }
+          ],
+          "corpora": [
+            {
+              "corpus": "p1",
+              "suite": "units",
+              "cases": 320000
+            },
+            {
+              "corpus": "p1",
+              "suite": "engine",
+              "cases": 20258
+            },
+            {
+              "corpus": "p1",
+              "suite": "library",
+              "cases": 22000
+            },
+            {
+              "corpus": "extended",
+              "suite": "engine-dpr",
+              "cases": 783
+            },
+            {
+              "corpus": "extended",
+              "suite": "units-m2",
+              "cases": 120000
+            },
+            {
+              "corpus": "extended",
+              "suite": "snap",
+              "cases": 20783
+            }
+          ],
+          "caseListSha256": "c0bef97d590723c944e95775a5a2fe90cbf72e9db42babd948c26b82673a8616",
+          "totalCases": 504868,
+          "run": {
+            "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+            "suites": [
+              {
+                "corpus": "p1",
+                "suite": "vectors",
+                "declared": 258,
+                "total": 258,
+                "pass": 258
+              },
+              {
+                "corpus": "p1",
+                "suite": "units",
+                "declared": 320000,
+                "total": 320000,
+                "pass": 320000
+              },
+              {
+                "corpus": "p1",
+                "suite": "engine",
+                "declared": 20258,
+                "total": 20258,
+                "pass": 20258
+              },
+              {
+                "corpus": "p1",
+                "suite": "library",
+                "declared": 22000,
+                "total": 22000,
+                "pass": 22000
+              },
+              {
+                "corpus": "extended",
+                "suite": "vectors-m2",
+                "declared": 3,
+                "total": 3,
+                "pass": 3
+              },
+              {
+                "corpus": "extended",
+                "suite": "vectors-dpr",
+                "declared": 783,
+                "total": 783,
+                "pass": 783
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-dpr",
+                "declared": 783,
+                "total": 783,
+                "pass": 783
+              },
+              {
+                "corpus": "extended",
+                "suite": "units-m2",
+                "declared": 120000,
+                "total": 120000,
+                "pass": 120000
+              },
+              {
+                "corpus": "extended",
+                "suite": "snap",
+                "declared": 20783,
+                "total": 20783,
+                "pass": 20783
+              }
+            ],
+            "digests": {
+              "p1": "ae0f408734f43bb2594f0acfb2418e7d9cf608956b752fd764178131248af38e",
+              "extended": "b9b2fb6b9b0e0c32ce5fcb60e106ca0e9764cad46686632016dba467e7e2d2cc"
+            }
+          }
+        },
+        {
+          "lane": "layout-vectors-device",
+          "where": "device",
+          "state": "not run",
+          "reason": "device lanes run from P5 (simulator and emulator); the tools are installed, so this is not blocked",
+          "sets": [
+            {
+              "dpr": 1,
+              "role": "top-level",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 2.625,
+              "role": "extra",
+              "extra": "android-extra-420dpi",
+              "cases": 261
+            }
+          ],
+          "corpora": [
+            {
+              "corpus": "p1",
+              "suite": "units",
+              "cases": 320000
+            },
+            {
+              "corpus": "p1",
+              "suite": "engine",
+              "cases": 20258
+            },
+            {
+              "corpus": "p1",
+              "suite": "library",
+              "cases": 22000
+            },
+            {
+              "corpus": "extended",
+              "suite": "engine-dpr",
+              "cases": 783
+            },
+            {
+              "corpus": "extended",
+              "suite": "units-m2",
+              "cases": 120000
+            },
+            {
+              "corpus": "extended",
+              "suite": "snap",
+              "cases": 20783
+            }
+          ],
+          "caseListSha256": "c0bef97d590723c944e95775a5a2fe90cbf72e9db42babd948c26b82673a8616",
+          "totalCases": 504868,
+          "run": null
+        },
+        {
+          "lane": "device-frames",
+          "where": "device",
+          "state": "not run",
+          "reason": "device lanes run from P5 (simulator and emulator); the tools are installed, so this is not blocked",
+          "sets": [
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            }
+          ],
+          "corpora": [],
+          "caseListSha256": "4412f42901e7de8275b248bffd82f2509831fa82941671e89d7ef2695c910080",
+          "totalCases": 522,
+          "run": null
+        },
+        {
+          "lane": "device-applied",
+          "where": "device",
+          "state": "not run",
+          "reason": "device lanes run from P5 (simulator and emulator); the tools are installed, so this is not blocked",
+          "sets": [
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            }
+          ],
+          "corpora": [],
+          "caseListSha256": "4412f42901e7de8275b248bffd82f2509831fa82941671e89d7ef2695c910080",
+          "totalCases": 522,
+          "run": null
+        },
+        {
+          "lane": "device-lines",
+          "where": "device",
+          "state": "not run",
+          "reason": "device lanes run from P5 (simulator and emulator); the tools are installed, so this is not blocked",
+          "sets": [
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            }
+          ],
+          "corpora": [],
+          "caseListSha256": "4412f42901e7de8275b248bffd82f2509831fa82941671e89d7ef2695c910080",
+          "totalCases": 522,
+          "run": null
+        },
+        {
+          "lane": "device-pixels",
+          "where": "device",
+          "state": "not run",
+          "reason": "device lanes run from P5 (simulator and emulator); the tools are installed, so this is not blocked",
+          "sets": [
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            }
+          ],
+          "corpora": [],
+          "caseListSha256": "4412f42901e7de8275b248bffd82f2509831fa82941671e89d7ef2695c910080",
+          "totalCases": 522,
+          "run": null
+        }
+      ],
+      "referenceProof": [
+        {
+          "dpr": 2,
+          "role": "shared",
+          "cases": 261,
+          "valid": 261,
+          "chrome": 261,
+          "engine": 261,
+          "chromeCompared": 8795,
+          "engineCompared": 8850
+        },
+        {
+          "dpr": 3,
+          "role": "shared",
+          "cases": 261,
+          "valid": 261,
+          "chrome": 261,
+          "engine": 261,
+          "chromeCompared": 8795,
+          "engineCompared": 8850
+        }
+      ]
+    },
+    {
+      "target": "android",
+      "dprs": [
+        2,
+        3,
+        2.625
+      ],
+      "projection": "nativeLayoutProjection",
+      "lanes": [
+        {
+          "lane": "layout-vectors-host",
+          "where": "host",
+          "state": "pass",
+          "reason": null,
+          "sets": [
+            {
+              "dpr": 1,
+              "role": "top-level",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 2.625,
+              "role": "extra",
+              "extra": "android-extra-420dpi",
+              "cases": 261
+            }
+          ],
+          "corpora": [
+            {
+              "corpus": "p1",
+              "suite": "units",
+              "cases": 320000
+            },
+            {
+              "corpus": "p1",
+              "suite": "engine",
+              "cases": 20258
+            },
+            {
+              "corpus": "p1",
+              "suite": "library",
+              "cases": 22000
+            },
+            {
+              "corpus": "extended",
+              "suite": "engine-dpr",
+              "cases": 783
+            },
+            {
+              "corpus": "extended",
+              "suite": "units-m2",
+              "cases": 120000
+            },
+            {
+              "corpus": "extended",
+              "suite": "snap",
+              "cases": 20783
+            }
+          ],
+          "caseListSha256": "c0bef97d590723c944e95775a5a2fe90cbf72e9db42babd948c26b82673a8616",
+          "totalCases": 504868,
+          "run": {
+            "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18",
+            "suites": [
+              {
+                "corpus": "p1",
+                "suite": "vectors",
+                "declared": 258,
+                "total": 258,
+                "pass": 258
+              },
+              {
+                "corpus": "p1",
+                "suite": "units",
+                "declared": 320000,
+                "total": 320000,
+                "pass": 320000
+              },
+              {
+                "corpus": "p1",
+                "suite": "engine",
+                "declared": 20258,
+                "total": 20258,
+                "pass": 20258
+              },
+              {
+                "corpus": "p1",
+                "suite": "library",
+                "declared": 22000,
+                "total": 22000,
+                "pass": 22000
+              },
+              {
+                "corpus": "extended",
+                "suite": "vectors-m2",
+                "declared": 3,
+                "total": 3,
+                "pass": 3
+              },
+              {
+                "corpus": "extended",
+                "suite": "vectors-dpr",
+                "declared": 783,
+                "total": 783,
+                "pass": 783
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-dpr",
+                "declared": 783,
+                "total": 783,
+                "pass": 783
+              },
+              {
+                "corpus": "extended",
+                "suite": "units-m2",
+                "declared": 120000,
+                "total": 120000,
+                "pass": 120000
+              },
+              {
+                "corpus": "extended",
+                "suite": "snap",
+                "declared": 20783,
+                "total": 20783,
+                "pass": 20783
+              }
+            ],
+            "digests": {
+              "p1": "ae0f408734f43bb2594f0acfb2418e7d9cf608956b752fd764178131248af38e",
+              "extended": "b9b2fb6b9b0e0c32ce5fcb60e106ca0e9764cad46686632016dba467e7e2d2cc"
+            }
+          }
+        },
+        {
+          "lane": "layout-vectors-device",
+          "where": "device",
+          "state": "not run",
+          "reason": "device lanes run from P5 (simulator and emulator); the tools are installed, so this is not blocked",
+          "sets": [
+            {
+              "dpr": 1,
+              "role": "top-level",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 2.625,
+              "role": "extra",
+              "extra": "android-extra-420dpi",
+              "cases": 261
+            }
+          ],
+          "corpora": [
+            {
+              "corpus": "p1",
+              "suite": "units",
+              "cases": 320000
+            },
+            {
+              "corpus": "p1",
+              "suite": "engine",
+              "cases": 20258
+            },
+            {
+              "corpus": "p1",
+              "suite": "library",
+              "cases": 22000
+            },
+            {
+              "corpus": "extended",
+              "suite": "engine-dpr",
+              "cases": 783
+            },
+            {
+              "corpus": "extended",
+              "suite": "units-m2",
+              "cases": 120000
+            },
+            {
+              "corpus": "extended",
+              "suite": "snap",
+              "cases": 20783
+            }
+          ],
+          "caseListSha256": "c0bef97d590723c944e95775a5a2fe90cbf72e9db42babd948c26b82673a8616",
+          "totalCases": 504868,
+          "run": null
+        },
+        {
+          "lane": "device-frames",
+          "where": "device",
+          "state": "not run",
+          "reason": "device lanes run from P5 (simulator and emulator); the tools are installed, so this is not blocked",
+          "sets": [
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 2.625,
+              "role": "extra",
+              "extra": "android-extra-420dpi",
+              "cases": 261
+            }
+          ],
+          "corpora": [],
+          "caseListSha256": "6a8f130615bb3b204a4a9eb89ed56aefc320b01f15ebeff385770438036c0a4c",
+          "totalCases": 783,
+          "run": null
+        },
+        {
+          "lane": "device-applied",
+          "where": "device",
+          "state": "not run",
+          "reason": "device lanes run from P5 (simulator and emulator); the tools are installed, so this is not blocked",
+          "sets": [
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 2.625,
+              "role": "extra",
+              "extra": "android-extra-420dpi",
+              "cases": 261
+            }
+          ],
+          "corpora": [],
+          "caseListSha256": "6a8f130615bb3b204a4a9eb89ed56aefc320b01f15ebeff385770438036c0a4c",
+          "totalCases": 783,
+          "run": null
+        },
+        {
+          "lane": "device-lines",
+          "where": "device",
+          "state": "not run",
+          "reason": "device lanes run from P5 (simulator and emulator); the tools are installed, so this is not blocked",
+          "sets": [
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 2.625,
+              "role": "extra",
+              "extra": "android-extra-420dpi",
+              "cases": 261
+            }
+          ],
+          "corpora": [],
+          "caseListSha256": "6a8f130615bb3b204a4a9eb89ed56aefc320b01f15ebeff385770438036c0a4c",
+          "totalCases": 783,
+          "run": null
+        },
+        {
+          "lane": "device-pixels",
+          "where": "device",
+          "state": "not run",
+          "reason": "device lanes run from P5 (simulator and emulator); the tools are installed, so this is not blocked",
+          "sets": [
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 261
+            },
+            {
+              "dpr": 2.625,
+              "role": "extra",
+              "extra": "android-extra-420dpi",
+              "cases": 261
+            }
+          ],
+          "corpora": [],
+          "caseListSha256": "6a8f130615bb3b204a4a9eb89ed56aefc320b01f15ebeff385770438036c0a4c",
+          "totalCases": 783,
+          "run": null
+        }
+      ],
+      "referenceProof": [
+        {
+          "dpr": 2,
+          "role": "shared",
+          "cases": 261,
+          "valid": 261,
+          "chrome": 261,
+          "engine": 261,
+          "chromeCompared": 8795,
+          "engineCompared": 8850
+        },
+        {
+          "dpr": 3,
+          "role": "shared",
+          "cases": 261,
+          "valid": 261,
+          "chrome": 261,
+          "engine": 261,
+          "chromeCompared": 8795,
+          "engineCompared": 8850
+        },
+        {
+          "dpr": 2.625,
+          "role": "extra",
+          "cases": 261,
+          "valid": 261,
+          "chrome": 261,
+          "engine": 261,
+          "chromeCompared": 8795,
+          "engineCompared": 8850
+        }
+      ]
+    }
+  ]
+}

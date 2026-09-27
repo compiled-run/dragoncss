@@ -1,0 +1,309 @@
+// The four native dump checks (docs/research/native-strategy.md 3.1): (a) frames and lines against Chrome at the same DPR within
+// GATE_DEVICE_PX, (b) applied against expected exactly, (c) pixel samples against Chrome's pixels (channel delta GATE_CHANNEL_DELTA,
+// edge positions within GATE_DEVICE_PX), (d) frames against snapRect of the TS engine frames exactly. Tolerances are imported only.
+import type { LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
+import { absoluteRects, LU_PER_PX, snapEdges } from '@dragon/layout';
+import type { WebCapture } from './capture.ts';
+import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
+import type { DumpEdges, DumpFrame, DumpLine, DumpNode, DumpSample, JsonValue, NativeDump } from './native-dump.ts';
+import { frameOf, REFERENCE_LANE } from './native-dump.ts';
+import type { SamplePoint } from './samples.ts';
+import { ruleKind } from './samples.ts';
+
+export type CheckResult = { readonly pass: boolean; readonly compared: number; readonly problems: readonly string[] };
+
+const result = (compared: number, problems: readonly string[]): CheckResult => ({ pass: problems.length === 0, compared, problems });
+
+/** A Chrome line node id "<text>:line<j>". */
+function lineRef(id: string): { readonly text: string; readonly index: number } | null {
+  const m = /^(.*):line(\d+)$/.exec(id);
+  return m === null ? null : { text: m[1] as string, index: Number(m[2]) };
+}
+
+const edgesOfFrame = (f: DumpFrame): { left: number; top: number; right: number; bottom: number } => ({ left: f.x, top: f.y, right: f.x + f.width, bottom: f.y + f.height });
+
+// ---------------------------------------------------------------- (a) frames and lines against Chrome
+
+export function checkAgainstChrome(dump: NativeDump, capture: WebCapture): CheckResult {
+  const problems: string[] = [];
+  const dpr = dump.case.dpr;
+  if (capture.devicePixelRatio !== dpr) problems.push(`capture DPR ${capture.devicePixelRatio} is not the dump DPR ${dpr}`);
+  if (dump.device.scale !== dpr) problems.push(`device scale ${dump.device.scale} is not the case DPR ${dpr}`);
+  if (capture.direction !== dump.case.direction) problems.push(`capture direction ${capture.direction} is not the dump direction ${dump.case.direction}`);
+  // A capture's fixture field is its case id (capture.ts).
+  if (capture.fixture !== dump.case.id) problems.push(`capture of case ${capture.fixture} is not the dump case ${dump.case.id}`);
+  const byId = new Map(dump.nodes.map((n) => [n.id, n]));
+  const seen = new Set<string>();
+  let compared = 0;
+  const gate = (id: string, chrome: WebCapture['nodes'][number], frame: DumpFrame): void => {
+    compared++;
+    const e = edgesOfFrame(frame);
+    const delta = [e.left - chrome.x, e.top - chrome.y, e.right - (chrome.x + chrome.width), e.bottom - (chrome.y + chrome.height)];
+    if (!delta.every((d) => Math.abs(d) * dpr <= GATE_DEVICE_PX)) problems.push(`${id}: edge delta ${JSON.stringify(delta)} css px exceeds ${GATE_DEVICE_PX} device px at DPR ${dpr}`);
+  };
+  for (const c of capture.nodes) {
+    seen.add(c.id);
+    if (c.kind === 'line') {
+      const ref = lineRef(c.id);
+      const line = ref === null ? undefined : byId.get(ref.text)?.lines[ref.index];
+      if (line === undefined) {
+        problems.push(`${c.id}: Chrome has a line box the dump does not have`);
+        continue;
+      }
+      gate(c.id, c, line.frame);
+      continue;
+    }
+    const n = byId.get(c.id);
+    if (!c.hasBox) {
+      if (n !== undefined) problems.push(`${c.id}: Chrome generates no box but the dump has one`);
+      continue;
+    }
+    if (n === undefined) {
+      problems.push(`${c.id}: Chrome has a box but the dump has no node ${c.id}`);
+      continue;
+    }
+    gate(c.id, c, n.frame);
+  }
+  for (const n of dump.nodes) {
+    n.lines.forEach((_, j) => {
+      if (seen.has(n.id) && !seen.has(`${n.id}:line${j}`)) problems.push(`${n.id}:line${j}: the dump has a line box Chrome does not have`);
+    });
+    if (seen.has(n.id)) continue;
+    if (n.kind !== 'anonymous') {
+      problems.push(`${n.id}: the dump has a node Chrome does not have`);
+      continue;
+    }
+    // An anonymous box only Dragon has passes only if every text line inside it is a compared Chrome node.
+    const lines = dump.nodes.filter((t) => t.parent === n.id && t.kind === 'text').flatMap((t) => t.lines.map((_, j) => `${t.id}:line${j}`));
+    const uncompared = lines.filter((l) => !seen.has(l));
+    if (lines.length === 0 || uncompared.length > 0) problems.push(`${n.id}: anonymous box whose text lines are not all compared with Chrome (${uncompared.join(', ') || 'no lines'})`);
+  }
+  return result(compared, problems);
+}
+
+// ---------------------------------------------------------------- (b) applied against expected
+
+export type ExpectedApplied = ReadonlyMap<string, { readonly [key: string]: JsonValue }>;
+
+function canonical(v: JsonValue): string {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
+  const o = v as { readonly [k: string]: JsonValue };
+  return `{${Object.keys(o).sort().map((k) => `${JSON.stringify(k)}:${canonical(o[k] as JsonValue)}`).join(',')}}`;
+}
+
+/** Every expected node's applied map equals the dump's, key for key and value for value; no tolerance. */
+export function checkApplied(dump: NativeDump, expected: ExpectedApplied): CheckResult {
+  const problems: string[] = [];
+  const byId = new Map(dump.nodes.map((n) => [n.id, n]));
+  let compared = 0;
+  for (const [id, want] of expected) {
+    const n = byId.get(id);
+    if (n === undefined) {
+      problems.push(`${id}: expected applied values, but the dump has no node ${id}`);
+      continue;
+    }
+    for (const k of Object.keys(want).sort()) {
+      compared++;
+      if (!Object.hasOwn(n.applied, k)) problems.push(`${id}: applied key ${k} is missing`);
+      else if (canonical(n.applied[k] as JsonValue) !== canonical(want[k] as JsonValue)) problems.push(`${id}: applied ${k} is ${canonical(n.applied[k] as JsonValue)}, expected ${canonical(want[k] as JsonValue)}`);
+    }
+    for (const k of Object.keys(n.applied).sort()) if (!Object.hasOwn(want, k)) problems.push(`${id}: applied key ${k} is not expected`);
+  }
+  for (const n of dump.nodes) if (!expected.has(n.id) && Object.keys(n.applied).length > 0) problems.push(`${n.id}: applied values on a node with no expected entry`);
+  return result(compared, problems);
+}
+
+// ---------------------------------------------------------------- (c) pixel samples against Chrome
+
+/** An RGBA8 image, rows top to bottom. */
+export type RgbaImage = { readonly width: number; readonly height: number; readonly data: Uint8Array };
+
+export function pixelAt(img: RgbaImage, x: number, y: number): readonly [number, number, number, number] {
+  if (x < 0 || y < 0 || x >= img.width || y >= img.height) throw new Error(`pixel ${x},${y} is outside the ${img.width}x${img.height} image`);
+  const i = (y * img.width + x) * 4;
+  return [img.data[i] as number, img.data[i + 1] as number, img.data[i + 2] as number, img.data[i + 3] as number];
+}
+
+/** What a native harness writes for the generated points: the capture's pixel at each point. */
+export function readSamples(img: RgbaImage, points: readonly SamplePoint[]): DumpSample[] {
+  return points.map((p) => ({ x: p.x, y: p.y, rgba: [...pixelAt(img, p.x, p.y)], rule: p.rule }));
+}
+
+/**
+ * Distance in device px from the first (outside) sample of a scanline to the edge: the sum of (1 - coverage), coverage being
+ * (c - outside) / (inside - outside) on the channel the reference shows the most contrast in. Null when that channel has none.
+ */
+function edgeDistance(colors: readonly (readonly number[])[], channel: number): number | null {
+  const bg = (colors[0] as readonly number[])[channel] as number;
+  const fg = (colors[colors.length - 1] as readonly number[])[channel] as number;
+  if (fg === bg) return null;
+  return colors.reduce((s, c) => s + (1 - Math.min(1, Math.max(0, ((c[channel] as number) - bg) / (fg - bg)))), 0);
+}
+
+/** The generated points must be the dump's samples in order; colours equal within GATE_CHANNEL_DELTA; edges within GATE_DEVICE_PX. */
+export function checkPixels(samples: readonly DumpSample[], points: readonly SamplePoint[], chrome: RgbaImage): CheckResult {
+  const problems: string[] = [];
+  if (samples.length !== points.length) problems.push(`the dump has ${samples.length} samples, the generator ${points.length}`);
+  points.forEach((p, i) => {
+    const s = samples[i];
+    if (s !== undefined && (s.x !== p.x || s.y !== p.y || s.rule !== p.rule)) problems.push(`sample ${i} is ${s.rule} at ${s.x},${s.y}, the generator's is ${p.rule} at ${p.x},${p.y}`);
+  });
+  if (problems.length > 0) return result(0, problems);
+  let compared = 0;
+  const colourCheck = (s: DumpSample): void => {
+    compared++;
+    const c = pixelAt(chrome, s.x, s.y);
+    if (!s.rgba.every((v, k) => Math.abs(v - (c[k] as number)) <= GATE_CHANNEL_DELTA)) problems.push(`${s.rule} at ${s.x},${s.y}: native ${JSON.stringify(s.rgba)}, Chrome ${JSON.stringify(c)} (channel delta limit ${GATE_CHANNEL_DELTA})`);
+  };
+  for (let i = 0; i < samples.length;) {
+    const s = samples[i] as DumpSample;
+    if (ruleKind(s.rule) !== 'edge') {
+      colourCheck(s);
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j < samples.length && (samples[j] as DumpSample).rule === s.rule) j++;
+    const line = samples.slice(i, j);
+    const chromeColors = line.map((x) => pixelAt(chrome, x.x, x.y));
+    const first = chromeColors[0] as readonly number[];
+    const last = chromeColors[chromeColors.length - 1] as readonly number[];
+    const channel = [0, 1, 2, 3].reduce((best, k) => (Math.abs((last[k] as number) - (first[k] as number)) > Math.abs((last[best] as number) - (first[best] as number)) ? k : best), 0);
+    const want = edgeDistance(chromeColors, channel);
+    if (want === null) {
+      // No contrast across the edge in Chrome: every point is a colour sample.
+      for (const x of line) colourCheck(x);
+    } else {
+      compared++;
+      const got = edgeDistance(line.map((x) => x.rgba), channel);
+      if (got === null) problems.push(`${s.rule}: Chrome shows an edge ${want.toFixed(3)} device px along the scanline, the native capture none`);
+      else if (Math.abs(got - want) > GATE_DEVICE_PX) problems.push(`${s.rule}: edge at ${got.toFixed(3)} device px, Chrome ${want.toFixed(3)}; exceeds ${GATE_DEVICE_PX} device px`);
+    }
+    i = j;
+  }
+  return result(compared, problems);
+}
+
+// ---------------------------------------------------------------- (d) frames against snapRect of the engine
+
+const isLineRect = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(`${r.parent}:line`);
+const sameEdges = (a: DumpEdges, b: DumpEdges): boolean => a.left === b.left && a.top === b.top && a.right === b.right && a.bottom === b.bottom;
+const sameFrame = (a: DumpFrame, b: DumpFrame): boolean => a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+
+/** deviceEdges equal snapRect of the engine's absolute rects, and every frame is exactly its deviceEdges / scale. */
+export function checkAgainstEngine(dump: NativeDump, engine: readonly LayoutRect[]): CheckResult {
+  const problems: string[] = [];
+  const snapped = snapEdges(engine);
+  const byId = new Map(dump.nodes.map((n) => [n.id, n]));
+  const want = new Map<string, number>();
+  let compared = 0;
+  const one = (id: string, got: { readonly frame: DumpFrame; readonly deviceEdges: DumpEdges }, s: DumpEdges): void => {
+    compared++;
+    if (!sameEdges(got.deviceEdges, s)) problems.push(`${id}: deviceEdges ${JSON.stringify(got.deviceEdges)}, snapRect of the engine ${JSON.stringify({ left: s.left, top: s.top, right: s.right, bottom: s.bottom })}`);
+    if (!sameFrame(got.frame, frameOf(got.deviceEdges, dump.device.scale))) problems.push(`${id}: frame ${JSON.stringify(got.frame)} is not deviceEdges / scale ${dump.device.scale}`);
+  };
+  engine.forEach((r, i) => {
+    const s = snapped[i] as DumpEdges & { id: string };
+    if (isLineRect(r)) {
+      const ref = lineRef(r.id);
+      const line = ref === null ? undefined : byId.get(ref.text)?.lines[ref.index];
+      want.set(r.parent as string, (want.get(r.parent as string) ?? 0) + 1);
+      if (line === undefined) problems.push(`${r.id}: the engine has a line box the dump does not have`);
+      else one(r.id, line, s);
+      return;
+    }
+    if (!want.has(r.id)) want.set(r.id, 0);
+    const n = byId.get(r.id);
+    if (n === undefined) problems.push(`${r.id}: the engine laid out ${r.id} but the dump has no such node`);
+    else one(r.id, n, s);
+  });
+  for (const n of dump.nodes) {
+    if (!want.has(n.id)) problems.push(`${n.id}: the dump has a node the engine did not lay out`);
+    else if (n.lines.length !== want.get(n.id)) problems.push(`${n.id}: the dump has ${n.lines.length} line boxes, the engine ${want.get(n.id)}`);
+  }
+  return result(compared, problems);
+}
+
+// ---------------------------------------------------------------- the TS engine plus snapRect reference dump
+
+/** Faults a reference dump can carry, for the negative tests; the proof itself uses none. */
+export type ReferenceFaults = { readonly snap: 'on' | 'off' };
+export const NO_REFERENCE_FAULTS: ReferenceFaults = { snap: 'on' };
+
+export type ReferenceCase = {
+  readonly platform: 'ios' | 'android';
+  readonly caseId: string;
+  readonly fixture: string;
+  readonly dpr: number;
+  readonly direction: 'ltr' | 'rtl';
+  readonly compilerDigest: string;
+  readonly input: LayoutInput;
+  readonly engine: readonly LayoutRect[];
+};
+
+function nodeKinds(input: LayoutInput): Map<string, DumpNode['kind']> {
+  const out = new Map<string, DumpNode['kind']>();
+  const walk = (b: LayoutBox): void => {
+    out.set(b.id, b.boxType === 'anonymous' ? 'anonymous' : 'element');
+    for (const c of b.children) {
+      if (c.kind === 'box') walk(c);
+      else out.set(c.id, 'text');
+    }
+  };
+  walk(input.root);
+  return out;
+}
+
+/**
+ * The dump a platform would write if it applied the engine's frames through the shared snap: the TS engine output, snapped by
+ * snapRect. With snap off, the platform writes the unsnapped frame and truncates edges to ints (the planted snap fault).
+ */
+export function referenceDump(c: ReferenceCase, faults: ReferenceFaults = NO_REFERENCE_FAULTS): NativeDump {
+  const kinds = nodeKinds(c.input);
+  const snapped = snapEdges(c.engine);
+  const abs = absoluteRects(c.engine);
+  const geometry = (r: LayoutRect, i: number): { frame: DumpFrame; deviceEdges: DumpEdges } => {
+    if (faults.snap === 'on') {
+      const s = snapped[i] as DumpEdges;
+      const deviceEdges = { left: s.left, top: s.top, right: s.right, bottom: s.bottom };
+      return { frame: frameOf(deviceEdges, c.dpr), deviceEdges };
+    }
+    const a = abs.get(r.id) as LayoutRect;
+    const scale = LU_PER_PX * c.dpr;
+    return {
+      frame: { x: a.x / scale, y: a.y / scale, width: a.width / scale, height: a.height / scale },
+      deviceEdges: { left: Math.trunc(a.x / LU_PER_PX), top: Math.trunc(a.y / LU_PER_PX), right: Math.trunc((a.x + a.width) / LU_PER_PX), bottom: Math.trunc((a.y + a.height) / LU_PER_PX) },
+    };
+  };
+  const lines = new Map<string, DumpLine[]>();
+  const nodes: { node: Omit<DumpNode, 'lines'>; id: string }[] = [];
+  c.engine.forEach((r, i) => {
+    const g = geometry(r, i);
+    if (isLineRect(r)) {
+      const list = lines.get(r.parent as string) ?? [];
+      list.push({ ...g, baseline: null, start: null, end: null });
+      lines.set(r.parent as string, list);
+      return;
+    }
+    const kind = kinds.get(r.id);
+    if (kind === undefined) throw new Error(`${c.caseId}: engine rect ${r.id} is not a node of the layout input`);
+    nodes.push({ id: r.id, node: { id: r.id, parent: r.parent, kind, native: 'ts-reference', ...g, applied: {} } });
+  });
+  return {
+    schema: 'dragon.native-dump/1',
+    lane: REFERENCE_LANE,
+    case: { id: c.caseId, fixture: c.fixture, dpr: c.dpr, viewport: { width: c.input.viewport.width, height: c.input.viewport.height }, direction: c.direction, compilerDigest: c.compilerDigest, expectedDigest: null },
+    device: { platform: c.platform, os: 'none', model: 'ts-engine', abi: 'none', scale: c.dpr, toolchain: 'packages/layout (TypeScript reference)', renderer: 'none' },
+    units: 'css-px',
+    nodes: nodes.map((n) => ({ ...n.node, lines: lines.get(n.id) ?? [] })),
+    pixels: null,
+    timing: null,
+  };
+}
+
+// ---------------------------------------------------------------- planted dump faults
+
+/** The dump faults the checks must catch, the same on every native target (native-strategy.md 3.1, 3.3; T009 P3 item 6). */
+export const DUMP_FAULTS = ['edge-plus-2-device-px', 'edge-plus-1-device-px', 'applied-changed', 'applied-missing', 'channel-delta-1', 'missing-node', 'snap-disabled'] as const;
+export type DumpFault = (typeof DUMP_FAULTS)[number];

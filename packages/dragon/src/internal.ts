@@ -21,6 +21,7 @@ export type { CompilerFaults } from './faults.ts';
 export { NO_FAULTS } from './faults.ts';
 export { iosProfile } from './profiles/ios.ts';
 export { webProfile } from './profiles/web.ts';
+export { androidProfile } from './profiles/android.ts';
 export type { Proof, ProofAspect, ProofLane, ProfileRow, SupportProfile } from './profiles/types.ts';
 export { statusOf } from './profiles/types.ts';
 export { sha256Hex } from './digest.ts';
@@ -74,22 +75,30 @@ export function compiledCases(compiled: object): readonly { readonly assignment:
   return record === undefined ? [] : record.cases.map((c) => ({ assignment: c.assignment, isInitial: c.isInitial }));
 }
 
-/** The ios backend's layout projection of one case for one environment; only a checked ios output has one. */
-export function iosLayoutProjection(compiled: object, environment: Environment, assignment: Assignment): LayoutProjection {
+/**
+ * The native layout projection of one case for one environment, shared by every native target (native-strategy.md 3.9 item 13):
+ * one lowered tree from the checked native output, so ios and android lay out the same engine input.
+ */
+export function nativeLayoutProjection(compiled: object, environment: Environment, assignment: Assignment): LayoutProjection {
   const c = caseOf(compiled, assignment);
   if (typeof c === 'string') return { kind: 'blocked', reason: c };
   const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
   if (record.direction !== environment.direction) return { kind: 'blocked', reason: `the result was resolved for direction ${record.direction}, not ${environment.direction}` };
   if (record.rootFont !== environment.rootFont) return { kind: 'blocked', reason: `the result was resolved for root font ${record.rootFont}, not ${environment.rootFont}` };
-  if (c.iosLowered === null) return { kind: 'blocked', reason: 'the ios output is blocked or not configured' };
+  if (c.nativeLowered === null) return { kind: 'blocked', reason: 'the ios output is blocked or not configured' };
   return {
     kind: 'ready',
     input: {
       viewport: { width: environment.viewport.width, height: environment.viewport.height },
       devicePixelRatio: environment.devicePixelRatio,
-      root: c.iosLowered,
+      root: c.nativeLowered,
     },
   };
+}
+
+/** The ios backend's layout projection: the shared native projection. */
+export function iosLayoutProjection(compiled: object, environment: Environment, assignment: Assignment): LayoutProjection {
+  return nativeLayoutProjection(compiled, environment, assignment);
 }
 
 /** Profile row keys ("<feature>@<context>") the case uses on a target, sorted. */

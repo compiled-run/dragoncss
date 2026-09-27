@@ -8,6 +8,7 @@ import type { CapturedNode, WebCapture } from './capture.ts';
 
 /** Owner decision 13: boxes must match within one physical screen pixel. Fixtures cannot override it. */
 export const GATE_DEVICE_PX = 1;
+export const GATE_CHANNEL_DELTA = 0;
 
 export type Edges = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
 

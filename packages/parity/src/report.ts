@@ -10,6 +10,8 @@ import { GATE_DEVICE_PX } from './compare.ts';
 import { ENVIRONMENT, FIXTURES } from './fixtures.ts';
 import type { CaseOutcome, FixtureOutcome } from './pipeline.ts';
 import { repoPath } from './paths.ts';
+import type { LanesFile } from './lanes.ts';
+import { LANES_JSON, readLanesFile } from './lanes.ts';
 
 /** docs/decisions.md, Linux lane scope (2026-09-27), quoted in every report. */
 export const SCOPE = 'Dragon\'s layout engine is platform-free TypeScript and gives the same numbers on any OS. The Chrome oracle is captured on macOS Chrome 145.0.7632.6. Reports and the final audit say exactly that. They do not claim a Linux run.';
@@ -90,7 +92,29 @@ export type Report = {
   /** Per case, the row keys ("<feature>@<context>") whose proofs name it, per target. */
   readonly caseRows: readonly { readonly case: string; readonly ios: readonly string[]; readonly web: readonly string[] }[];
   readonly fixtures: readonly FixtureOutcome[];
+  /** The native lanes as out/lanes.json records them (parity:lanes); a lane that did not pass is not met. */
+  readonly nativeLanes: NativeLanes;
 };
+
+export type NativeLanes = {
+  readonly source: string;
+  readonly present: boolean;
+  readonly parity: { readonly pass: boolean; readonly problems: readonly string[] } | null;
+  readonly lanes: readonly { readonly target: string; readonly lane: string; readonly state: string; readonly met: boolean; readonly cases: number; readonly reason: string | null }[];
+  readonly referenceProof: readonly { readonly target: string; readonly dpr: number; readonly role: string; readonly cases: number; readonly chrome: number; readonly engine: number }[];
+};
+
+/** The Native lanes section from a lanes file; without one, nothing is met. */
+export function nativeLanesSection(f: LanesFile | null): NativeLanes {
+  if (f === null) return { source: LANES_JSON, present: false, parity: null, lanes: [], referenceProof: [] };
+  return {
+    source: LANES_JSON,
+    present: true,
+    parity: f.parity,
+    lanes: f.targets.flatMap((t) => t.lanes.map((l) => ({ target: t.target, lane: l.lane, state: l.state, met: l.state === 'pass', cases: l.totalCases, reason: l.reason }))),
+    referenceProof: f.targets.flatMap((t) => (t.referenceProof ?? []).map((r) => ({ target: t.target, dpr: r.dpr, role: r.role, cases: r.cases, chrome: r.chrome, engine: r.engine }))),
+  };
+}
 
 function registryNodes(outcomes: readonly FixtureOutcome[], nodes: readonly { readonly branch: string; readonly fixture: string; readonly node: string }[]): RegistryNode[] {
   return nodes.map((n) => ({
@@ -170,6 +194,7 @@ export function buildReport(outcomes: readonly FixtureOutcome[]): Report {
     profileRows: rows,
     caseRows: allCases.map((c) => ({ case: c.id, ios: proves('ios', c.id), web: proves('web', c.id) })),
     fixtures: outcomes.map((o) => ({ ...o, webCss: { ltr: null, rtl: null }, cases: o.cases.map((c) => ({ ...c, vector: null, topology: null })) })),
+    nativeLanes: nativeLanesSection(readLanesFile()),
   };
 }
 
@@ -216,8 +241,47 @@ export function renderHtml(r: Report): string {
       parts.push('</table>');
     }
   }
+  parts.push(nativeLanesHtml(r.nativeLanes));
   parts.push('</body></html>\n');
   return parts.join('\n');
+}
+
+const stateText = (l: NativeLanes['lanes'][number]): string => (l.met ? 'pass' : `${l.state}: not met`);
+
+function nativeLanesHtml(n: NativeLanes): string {
+  const parts = ['<section id="native-lanes"><h2>Native lanes</h2>'];
+  if (!n.present) parts.push(`<p class="fail">${esc(n.source)} is absent: every native lane is not met.</p>`);
+  else {
+    parts.push(`<p>From ${esc(n.source)}. A lane that did not pass is not met. Lane parity: ${n.parity?.pass === true ? 'pass' : `fail (${esc((n.parity?.problems ?? []).join('; '))})`}.</p>`);
+    parts.push('<table><tr><th>target</th><th>lane</th><th>state</th><th>cases</th><th>reason</th></tr>');
+    for (const l of n.lanes) parts.push(`<tr><td class="id">${esc(l.target)}</td><td class="id">${esc(l.lane)}</td><td class="${l.met ? 'pass' : 'fail'}">${esc(stateText(l))}</td><td>${l.cases}</td><td class="id">${esc(l.reason ?? '')}</td></tr>`);
+    parts.push('</table><p>Reference proof (TS engine plus snapRect dumps): checks (a) against Chrome at the DPR and (d) against the engine.</p>');
+    parts.push('<table><tr><th>target</th><th>DPR</th><th>cases</th><th>(a)</th><th>(d)</th></tr>');
+    for (const r of n.referenceProof) parts.push(`<tr><td class="id">${esc(r.target)}</td><td>${r.dpr} (${esc(r.role)})</td><td>${r.cases}</td><td>${r.chrome}/${r.cases}</td><td>${r.engine}/${r.cases}</td></tr>`);
+    parts.push('</table>');
+  }
+  parts.push('</section>');
+  return parts.join('');
+}
+
+function nativeLanesSummary(n: NativeLanes): string[] {
+  if (!n.present) return ['## Native lanes', '', `${n.source} is absent: every native lane is not met.`, ''];
+  return [
+    '## Native lanes',
+    '',
+    `From ${n.source}. A lane that did not pass is not met. Lane parity: ${n.parity?.pass === true ? 'pass' : `fail (${(n.parity?.problems ?? []).join('; ')})`}.`,
+    '',
+    '| Target | Lane | State | Cases |',
+    '|---|---|---|---|',
+    ...n.lanes.map((l) => `| ${l.target} | ${l.lane} | ${stateText(l)} | ${l.cases} |`),
+    '',
+    'Reference proof (TS engine plus snapRect dumps; (a) against Chrome at the DPR, (d) against the engine):',
+    '',
+    '| Target | DPR | Cases | (a) | (d) |',
+    '|---|---|---|---|---|',
+    ...n.referenceProof.map((r) => `| ${r.target} | ${r.dpr} (${r.role}) | ${r.cases} | ${r.chrome}/${r.cases} | ${r.engine}/${r.cases} |`),
+    '',
+  ];
 }
 
 /** The counts the final audit checks, with the scope wording and the unavailable Linux lane (docs/decisions.md). */
@@ -267,6 +331,7 @@ export function renderSummary(r: Report): string {
     '',
     'Screenshots: none. The drawings in index.html are evidence, not a gate, and no assertion reads them.',
     '',
+    ...nativeLanesSummary(r.nativeLanes),
   ];
   return lines.join('\n');
 }

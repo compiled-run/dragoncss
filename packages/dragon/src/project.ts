@@ -65,8 +65,8 @@ export type InternalCase = {
   readonly assignment: Assignment;
   readonly isInitial: boolean;
   readonly resolved: ResolvedElement | null;
-  /** The ios lowered layout tree; border widths are computed CSS px, which the engine snaps for the environment's DPR. */
-  readonly iosLowered: LayoutBox | null;
+  /** The native lowered layout tree (the ios lowering); border widths are computed CSS px, which the engine snaps for the environment's DPR. */
+  readonly nativeLowered: LayoutBox | null;
   readonly webClassOf: ReadonlyMap<string, string> | null;
   /** Profile row keys ("<feature>@<context>") this case uses, per target, sorted. */
   readonly features: ReadonlyMap<Target, readonly string[]>;
@@ -455,7 +455,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
         assignment: c.assignment,
         isInitial: c.isInitial,
         resolved: c.resolved,
-        iosLowered: iosChecked ? (lowered.get(c.key) ?? null) : null,
+        nativeLowered: iosChecked ? (lowered.get(c.key) ?? null) : null,
         webClassOf: webClasses === null ? null : (webClasses.get(c.key) ?? null),
         features: new Map(targets.map((t) => [t, [...new Set(c.used.map((u) => u.key))].sort()])),
       })),
