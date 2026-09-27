@@ -87,6 +87,17 @@ describe('bidi in rtl paragraphs (UAX #9): only strong-L letters, space and U+20
     expect(r.kind === 'unsupported' && r.unsupported).toMatchObject({ code: 'bidi-neutral', nodeId: 't1', specSection: 'UAX #9 L1' });
     expect(para('ltr', 'XX', '\u200b').kind).toBe('ok');
   });
+  it('M3 (UAX #9 L1): U+200B followed only by spaces or U+200B at the paragraph end raises bidi-neutral, in one leaf or across leaves', () => {
+    for (const leaves of [['AB\u200b '], ['AB \u200b '], ['AB\u200b', ' '], ['AB', '\u200b', ' \u200b']]) {
+      const r = para('rtl', ...leaves);
+      expect(r.kind === 'unsupported' && r.unsupported.code, JSON.stringify(leaves)).toBe('bidi-neutral');
+      expect(r.kind === 'unsupported' && r.unsupported.specSection, JSON.stringify(leaves)).toBe('UAX #9 L1');
+    }
+    // A trailing space-only leaf after letters, and U+200B followed by a letter, keep logical order.
+    expect(para('rtl', 'AB', ' ').kind).toBe('ok');
+    expect(para('rtl', 'AB\u200b C').kind).toBe('ok');
+    expect(para('ltr', 'AB\u200b ').kind).toBe('ok');
+  });
 });
 
 describe('order (css-flexbox-1 §5.4, fixture flex-order)', () => {

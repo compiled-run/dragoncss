@@ -3,7 +3,7 @@
 export const webrefVersion = "8.7.5";
 
 /** Longhands and shorthands the compiler reads, with their webref initial and inherited fields. */
-export const subset: readonly string[] = ["align-content","align-items","align-self","background-color","border","border-bottom","border-bottom-color","border-bottom-style","border-bottom-width","border-color","border-left","border-left-color","border-left-style","border-left-width","border-right","border-right-color","border-right-style","border-right-width","border-style","border-top","border-top-color","border-top-style","border-top-width","border-width","box-sizing","color","column-gap","direction","display","flex","flex-basis","flex-direction","flex-flow","flex-grow","flex-shrink","flex-wrap","font-family","font-size","gap","height","justify-content","line-height","margin","margin-bottom","margin-left","margin-right","margin-top","max-height","max-width","min-height","min-width","order","overflow","overflow-x","overflow-y","padding","padding-bottom","padding-left","padding-right","padding-top","position","row-gap","text-align","text-wrap-mode","white-space","white-space-collapse","width"];
+export const subset: readonly string[] = ["align-content","align-items","align-self","background-color","border","border-bottom","border-bottom-color","border-bottom-style","border-bottom-width","border-color","border-left","border-left-color","border-left-style","border-left-width","border-right","border-right-color","border-right-style","border-right-width","border-style","border-top","border-top-color","border-top-style","border-top-width","border-width","bottom","box-sizing","color","column-gap","direction","display","flex","flex-basis","flex-direction","flex-flow","flex-grow","flex-shrink","flex-wrap","font-family","font-size","gap","height","justify-content","left","line-height","margin","margin-bottom","margin-left","margin-right","margin-top","max-height","max-width","min-height","min-width","order","overflow","overflow-x","overflow-y","padding","padding-bottom","padding-left","padding-right","padding-top","position","right","row-gap","text-align","text-wrap-mode","top","white-space","white-space-collapse","width"];
 
 export type PropertyGrammar = { readonly syntax: string; readonly initial: string; readonly inherited: string };
 
@@ -32,6 +32,7 @@ export const properties: { readonly [name: string]: PropertyGrammar } = {
   "border-top-style": { syntax: "<line-style>", initial: "none", inherited: "no" },
   "border-top-width": { syntax: "<line-width>", initial: "medium", inherited: "no" },
   "border-width": { syntax: "<'border-top-width'>{1,4}", initial: "see individual properties", inherited: "see individual properties" },
+  "bottom": { syntax: "auto | <length-percentage> | <anchor()> | <anchor-size()>", initial: "auto", inherited: "no" },
   "box-sizing": { syntax: "content-box | border-box", initial: "content-box", inherited: "no" },
   "color": { syntax: "<color>", initial: "CanvasText", inherited: "yes" },
   "column-gap": { syntax: "normal | <length-percentage [0,∞]> | <line-width>", initial: "normal", inherited: "no" },
@@ -49,6 +50,7 @@ export const properties: { readonly [name: string]: PropertyGrammar } = {
   "gap": { syntax: "<'row-gap'> <'column-gap'>?", initial: "see individual properties", inherited: "no" },
   "height": { syntax: "auto | <box-size> | <anchor-size()>", initial: "auto", inherited: "no" },
   "justify-content": { syntax: "normal | <content-distribution> | <overflow-position>? [ <content-position> | left | right ]", initial: "normal", inherited: "no" },
+  "left": { syntax: "auto | <length-percentage> | <anchor()> | <anchor-size()>", initial: "auto", inherited: "no" },
   "line-height": { syntax: "normal | <number [0,∞]> | <length-percentage [0,∞]>", initial: "normal", inherited: "yes" },
   "margin": { syntax: "<'margin-top'>{1,4}", initial: "0", inherited: "no" },
   "margin-bottom": { syntax: "<length-percentage> | auto | <anchor-size()>", initial: "0", inherited: "no" },
@@ -70,9 +72,11 @@ export const properties: { readonly [name: string]: PropertyGrammar } = {
   "padding-right": { syntax: "<length-percentage [0,∞]>", initial: "0", inherited: "no" },
   "padding-top": { syntax: "<length-percentage [0,∞]>", initial: "0", inherited: "no" },
   "position": { syntax: "static | relative | absolute | sticky | fixed | <running()>", initial: "static", inherited: "no" },
+  "right": { syntax: "auto | <length-percentage> | <anchor()> | <anchor-size()>", initial: "auto", inherited: "no" },
   "row-gap": { syntax: "normal | <length-percentage [0,∞]> | <line-width>", initial: "normal", inherited: "no" },
   "text-align": { syntax: "start | end | left | right | center | <string> | justify | match-parent | justify-all", initial: "start", inherited: "yes" },
   "text-wrap-mode": { syntax: "wrap | nowrap", initial: "wrap", inherited: "yes" },
+  "top": { syntax: "auto | <length-percentage> | <anchor()> | <anchor-size()>", initial: "auto", inherited: "no" },
   "white-space": { syntax: "normal | pre | pre-wrap | pre-line | <'white-space-collapse'> || <'text-wrap-mode'> || <'white-space-trim'>", initial: "normal", inherited: "see individual properties" },
   "white-space-collapse": { syntax: "collapse | discard | preserve | preserve-breaks | preserve-spaces | break-spaces", initial: "collapse", inherited: "yes" },
   "white-space-trim": { syntax: "none | discard-before || discard-after || discard-inner", initial: "none", inherited: "no" },
@@ -83,7 +87,9 @@ export const types: { readonly [name: string]: string } = {
   "absolute-size": "[ xx-small | x-small | small | medium | large | x-large | xx-large | xxx-large ]",
   "alpha()": "alpha([from <color>] [ / [<alpha-value> | none] ]? )",
   "alpha-value": "<number> | <percentage>",
+  "anchor()": "anchor( <anchor-name>? && <anchor-side>, <length-percentage>? )",
   "anchor-name": "<dashed-ident>",
+  "anchor-side": "inside | outside | top | left | right | bottom | start | end | self-start | self-end | <percentage> | center",
   "anchor-size": "width | height | block | inline | self-block | self-inline",
   "anchor-size()": "anchor-size( [ <anchor-name> || <anchor-size> ]? , <length-percentage>? )",
   "baseline-position": "[ first | last ]? && baseline",

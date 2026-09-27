@@ -63,6 +63,29 @@ function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set
   }
 }
 
+// CSS2 §9.2.1.1 and §10.3.7: an absolutely positioned box beside text would take its static position inside the text's inline
+// formatting context, which milestone 1 does not lay out (the engine's abspos-in-inline); an absolutely positioned root has no
+// in-flow box for the initial containing block. Both are refused on every target at the position declaration.
+function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const refuse = (target: ResolvedElement, message: string): void => {
+    const v = target.props.get('position') as ResolvedValue;
+    const origin = v.declaration === null ? target.element.node.origin : authored(v.declaration.valueSpan);
+    for (const t of targets) {
+      const id = `${t}|position|${JSON.stringify(origin)}|${target.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: 'Wrap the text beside the absolutely positioned element in its own element, or position a descendant of the root instead.' }));
+    }
+  };
+  if (isRoot && keywordOf(el.props.get('position') as ResolvedValue) === 'absolute') refuse(el, `position: absolute on the root element ${el.element.address} is not supported in milestone 1`);
+  if (!el.children.some((c) => c.kind === 'text')) return;
+  for (const c of el.children) {
+    if (c.kind !== 'element' || keywordOf(c.props.get('display') as ResolvedValue) === 'none') continue;
+    if (keywordOf(c.props.get('position') as ResolvedValue) !== 'absolute') continue;
+    refuse(c, `position: absolute on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out`);
+  }
+}
+
 /** Walks one resolved case and records the refusals above; reported deduplicates them across cases. Text in a display: none
  * subtree is never laid out (CSS2 §9.2.4), so only the overflow check reaches it. */
 export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
@@ -70,6 +93,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     checkOverflow(el, targets, diagnostics, reported);
     if (!here) checkBidi(el, diagnostics, reported);
+    if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     for (const c of el.children) if (c.kind === 'element') walk(c, here);
   };
   walk(root, false);

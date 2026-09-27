@@ -2,7 +2,7 @@
 import type { Direction, LayoutBox, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, divInt, max, min, sub, ZERO } from './units.ts';
-import type { Edges, Frag, HeightBasis, Placed } from './box.ts';
+import type { Edges, Frag, HeightBasis, OutOfFlow, Placed } from './box.ts';
 import {
   blockMinMax,
   borderBoxFromSpecified,
@@ -20,6 +20,7 @@ import {
 } from './box.ts';
 import { layoutFlexContainer } from './flex.ts';
 import { layoutInline } from './inline.ts';
+import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffset } from './position.ts';
 import type { TextMeasurer } from './text.ts';
 
 /** Seeded engine errors, so the parity harness can prove it fails (docs/api.md §7). The product runs with NO_ENGINE_FAULTS. */
@@ -34,9 +35,33 @@ export type EngineFaults = {
   readonly baselineFromBorderTop: boolean;
   /** A scroll container flex item keeps the content-based automatic minimum size instead of 0. */
   readonly scrollMinAuto: boolean;
+  /** An absolutely positioned box is laid out in flow, as if its position were static. */
+  readonly absposInFlow: boolean;
+  /** The containing block of an absolutely positioned box is its content box instead of its padding box (px padding only). */
+  readonly cbIgnoresPadding: boolean;
+  /** The static position in block flow ignores rtl: the box always starts at the parent's left content edge. */
+  readonly staticPosLtr: boolean;
+  /** A relative offset in block flow also moves the following siblings. */
+  readonly relativeShiftsFlow: boolean;
+  /** Ahem ascent and descent round exact halves up instead of down (platform rule ahem-metric-half-down off). */
+  readonly metricHalfUp: boolean;
+  /** Ahem advances and metrics use the computed font size instead of trunc(size x 100) / 100 (platform rule font-size-truncation off). */
+  readonly untruncatedFontSize: boolean;
 };
 
-export const NO_ENGINE_FAULTS: EngineFaults = { breakOffByOne: false, rtlAsLtr: false, ignoreOrder: false, baselineFromBorderTop: false, scrollMinAuto: false };
+export const NO_ENGINE_FAULTS: EngineFaults = {
+  breakOffByOne: false,
+  rtlAsLtr: false,
+  ignoreOrder: false,
+  baselineFromBorderTop: false,
+  scrollMinAuto: false,
+  absposInFlow: false,
+  cbIgnoresPadding: false,
+  staticPosLtr: false,
+  relativeShiftsFlow: false,
+  metricHalfUp: false,
+  untruncatedFontSize: false,
+};
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
 
@@ -96,6 +121,7 @@ function clampScrollBaseline(box: LayoutBox, baseline: LU | null, height: LU): L
 // CSS2 §10.6.3 and §10.7: lays out a box at a given border-box width and resolves its used height.
 export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): ContentsResult {
   const s = box.style;
+  checkOutOfFlowSiblings(ctx, box);
   const pad = resolvePadding(s, a.cbInline);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
@@ -124,7 +150,7 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
       sizeIsFlexDependent: a.forcedBorderBoxHeight !== null && !a.forcedHeightDefinite,
     });
     const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
-    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed };
+    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
     return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
   }
 
@@ -142,11 +168,11 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
   const baseline = clampScrollBaseline(box, r.baseline, height);
   const collapseThrough = !a.formattingContextRoot && !r.hasContent && height === 0 && vbp === 0;
   if (collapseThrough) {
-    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough };
+    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough };
   }
   // Chrome deviation min-max-end-margin: when min-height or max-height changes the height, the end margins neither escape nor count.
   const escapeBottom = bottomAdjoins && height === add(intrinsic, vbp) ? r.endStrut : EMPTY_STRUT;
-  return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed }, escapeTop: r.escapeTop, escapeBottom, collapseThrough };
+  return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow }, escapeTop: r.escapeTop, escapeBottom, collapseThrough };
 }
 
 export type BlockLevelResult = {
@@ -207,6 +233,7 @@ type FlowResult = {
   readonly hasContent: boolean;
   /** The first baseline relative to the border-box top, or null. */
   readonly baseline: LU | null;
+  readonly outOfFlow: readonly OutOfFlow[];
 };
 
 // CSS2 §9.4.1 and §8.3.1: stacks block-level children, collapsing adjoining vertical margins. css-align-3 §9.1: the first
@@ -218,7 +245,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     // CSS2 §9.2.1.1: the compiler wraps text beside block boxes in anonymous boxes; validateLayoutInput rejects anything else.
     if (texts.length !== kids.length) throw new Error(`${box.id} mixes text and boxes; validateLayoutInput rejects this input`);
     const r = layoutInline(ctx, box, texts, a.contentWidth, a.origin);
-    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: true, baseline: r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline) };
+    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: true, baseline: r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline), outOfFlow: [] };
   }
   const direction = directionOf(ctx, box);
   const placed: Placed[] = [];
@@ -227,8 +254,21 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   let seen = false;
   let escapeTop = EMPTY_STRUT;
   let baseline: LU | null = null;
+  const outOfFlow: OutOfFlow[] = [];
   for (const kid of kids) {
     if (kid.kind !== 'box') continue;
+    if (isOutOfFlow(ctx, kid)) {
+      // CSS2 §10.3.7 static position (Blink HandleOutOfFlowPositioned): the parent's content start edge in its direction, at the
+      // flow position, which includes the pending margins once the parent's block offset is fixed (measured).
+      const rtl = direction === 'rtl' && !ctx.faults.staticPosLtr;
+      const sy = !seen && a.canCollapseTop ? ZERO : add(cursor, collapsed(strut));
+      outOfFlow.push({
+        box: kid,
+        x: rtl ? { offset: add(a.origin.x, a.contentWidth), edge: 'far' } : { offset: a.origin.x, edge: 'near' },
+        y: { offset: add(a.origin.y, sy), edge: 'near' },
+      });
+      continue;
+    }
     const inline = blockLevelInlineSize(ctx, kid, a.contentWidth, direction);
     const c = layoutContents(ctx, kid, {
       cbInline: a.contentWidth,
@@ -257,10 +297,13 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     }
     const at = { frag: c.frag, x: add(a.origin.x, inline.marginLeft), y: add(a.origin.y, y) };
     if (baseline === null && c.frag.baseline !== null) baseline = add(at.y, c.frag.baseline);
-    placed.push(at);
+    // CSS2 §9.4.3: a relative offset moves the box after layout; the flow, margins and baselines keep its in-flow position.
+    const offset = relativeOffset(kid, a.contentWidth, a.childBasis, direction);
+    placed.push({ frag: at.frag, x: add(at.x, offset.dx), y: add(at.y, offset.dy) });
+    if (ctx.faults.relativeShiftsFlow && !c.collapseThrough) cursor = add(cursor, offset.dy);
   }
-  if (!seen && a.canCollapseTop) return { cursor: ZERO, placed, escapeTop: strut, endStrut: EMPTY_STRUT, hasContent: false, baseline };
-  return { cursor, placed, escapeTop, endStrut: strut, hasContent: seen, baseline };
+  if (!seen && a.canCollapseTop) return { cursor: ZERO, placed, escapeTop: strut, endStrut: EMPTY_STRUT, hasContent: false, baseline, outOfFlow };
+  return { cursor, placed, escapeTop, endStrut: strut, hasContent: seen, baseline, outOfFlow };
 }
 
 export type { Edges };

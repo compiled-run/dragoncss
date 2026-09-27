@@ -41,8 +41,13 @@ function checkRtlText(box: LayoutBox, leaves: readonly TextLeaf[]): void {
   for (const t of leaves) {
     if (!RTL_SAFE.test(t.text)) unsupported('bidi-neutral', t.id, 'UAX #9 W1-W7, N1-N2', `text in the rtl paragraph of ${box.id} holds a character other than A-Z, a-z, space and U+200B`);
   }
-  const last = leaves[leaves.length - 1] as TextLeaf;
-  if (last.text.endsWith('\u200b')) unsupported('bidi-neutral', last.id, 'UAX #9 L1', `U+200B ends the rtl paragraph of ${box.id} and would take the paragraph direction`);
+  // UAX #9 L1: the whitespace sequence ending the paragraph (spaces and U+200B) takes the paragraph level, so a U+200B in it
+  // becomes its own fragment; the leaf holding the first such U+200B is named.
+  const chars = leaves.flatMap((t) => [...t.text].map((ch) => ({ id: t.id, ch })));
+  let k = chars.length;
+  while (k > 0 && ((chars[k - 1] as { ch: string }).ch === ' ' || (chars[k - 1] as { ch: string }).ch === '\u200b')) k--;
+  const zwsp = chars.slice(k).find((c) => c.ch === '\u200b');
+  if (zwsp !== undefined) unsupported('bidi-neutral', zwsp.id, 'UAX #9 L1', `U+200B in the whitespace that ends the rtl paragraph of ${box.id} would take the paragraph direction`);
 }
 
 // CSS2 §10.8: the leaves of one inline formatting context must share their font and line-height (no inline elements yet).
@@ -208,8 +213,8 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf
       right = max(right, add(p.x, p.width));
       bottom = max(bottom, add(p.y, p.height));
     }
-    const children: Placed[] = own.map((p, j) => ({ frag: { id: `${t.id}:line${j}`, width: p.width, height: p.height, baseline: null, children: [] }, x: sub(p.x, left), y: sub(p.y, top) }));
-    const frag: Frag = { id: t.id, width: sub(right, left), height: sub(bottom, top), baseline: null, children };
+    const children: Placed[] = own.map((p, j) => ({ frag: { id: `${t.id}:line${j}`, width: p.width, height: p.height, baseline: null, children: [], outOfFlow: [] }, x: sub(p.x, left), y: sub(p.y, top) }));
+    const frag: Frag = { id: t.id, width: sub(right, left), height: sub(bottom, top), baseline: null, children, outOfFlow: [] };
     placed.push({ frag, x: add(origin.x, left), y: add(origin.y, top) });
   });
   return { height: mulInt(run.lineHeight, lines.length), placed, firstBaseline: lines.length === 0 ? null : add(run.halfLeading, run.ascent) };

@@ -5,11 +5,13 @@ import { add, fromCssPx, max, min, sum, ZERO, mulInt } from './units.ts';
 import { borderBoxFromSpecified, resolveBorder, sumEdges } from './box.ts';
 import type { Ctx } from './block.ts';
 import { inlineIntrinsicSize } from './inline.ts';
+import { isOutOfFlow } from './position.ts';
 import { unsupported } from './unsupported.ts';
 
 export type IntrinsicKind = 'min' | 'max';
 
-// css-sizing-3 §5.1: the min-content or max-content inline size of a box's content box.
+// css-sizing-3 §5.1: the min-content or max-content inline size of a box's content box. Absolutely positioned children take no
+// part (CSS2 §9.3.1).
 export function intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
   const kids = box.children;
   if (box.style.display === 'flex') return flexIntrinsicContent(ctx, box, kind);
@@ -19,7 +21,7 @@ export function intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: Intri
     return inlineIntrinsicSize(ctx, box, texts, kind);
   }
   let widest = ZERO;
-  for (const k of kids) if (k.kind === 'box') widest = max(widest, inlineContribution(ctx, k, kind));
+  for (const k of kids) if (k.kind === 'box' && !isOutOfFlow(ctx, k)) widest = max(widest, inlineContribution(ctx, k, kind));
   return widest;
 }
 
@@ -44,7 +46,7 @@ export function inlineContribution(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind
 // largest for a multi-line container. §9.9.2 (column, single-line): the largest contribution.
 function flexIntrinsicContent(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
   const s = box.style;
-  const items = box.children.filter((k): k is LayoutBox => k.kind === 'box');
+  const items = box.children.filter((k): k is LayoutBox => k.kind === 'box' && !isOutOfFlow(ctx, k));
   const contributions = items.map((k) => inlineContribution(ctx, k, kind));
   const isRow = s.flexDirection === 'row' || s.flexDirection === 'row-reverse';
   if (!isRow && s.flexWrap !== 'nowrap') unsupported('flex-intrinsic-wrap-column', box.id, 'css-flexbox-1 §9.9.2', 'intrinsic inline size of a multi-line column flex container');

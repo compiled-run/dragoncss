@@ -1,5 +1,7 @@
 // Stage 3 of docs/api.md §4.1 for web: CSS emitted from the resolved result (stage 1), never from a backend lowering.
-// One rule per element with every milestone longhand written, so the output does not depend on the UA stylesheet.
+// One rule per element with every milestone longhand written, so the output does not depend on the UA stylesheet. The inset
+// longhands are the one exception: they are written when any of them is not auto. Auto is their initial value and no Chrome UA
+// rule sets them on a supported tag (ua.test.ts), so leaving them out gives the same computed values.
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
 import { LONGHANDS } from '../css/properties.ts';
@@ -13,6 +15,16 @@ export type WebEmit = {
 };
 
 export const WEB_CSS_PATH = 'dragon.css';
+
+/** CSS2 §9.3.2 box offsets, written only when one of them is not auto. */
+export const INSET_LONGHANDS: readonly (typeof LONGHANDS)[number][] = ['top', 'right', 'bottom', 'left'];
+
+function writesInsets(el: ResolvedElement): boolean {
+  return INSET_LONGHANDS.some((p) => {
+    const v = (el.props.get(p) as ResolvedValue).value;
+    return !(v.kind === 'keyword' && v.value === 'auto');
+  });
+}
 
 /** A CSS <number> without exponent notation, so every emitted value is valid CSS text. */
 function cssNumber(n: number): string {
@@ -65,7 +77,8 @@ export function emitWebCss(cases: readonly { readonly key: string; readonly root
     const map = new Map<string, string>();
     classOf.set(c.key, map);
     const visit = (el: ResolvedElement): void => {
-      const decls = LONGHANDS.map((p) => `  ${p}: ${valueText((el.props.get(p) as ResolvedValue).value)};`);
+      const insets = writesInsets(el);
+      const decls = LONGHANDS.filter((p) => insets || !INSET_LONGHANDS.includes(p)).map((p) => `  ${p}: ${valueText((el.props.get(p) as ResolvedValue).value)};`);
       const variant = `${el.element.address}\u0000${decls.join('\n')}`;
       let cls = variants.get(variant);
       if (cls === undefined) {

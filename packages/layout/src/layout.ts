@@ -1,11 +1,16 @@
-// Entry point: lays out a validated LayoutInput and returns boxes in preorder, relative to the parent border box, in LU.
-import type { LayoutInput } from './input.ts';
+// Entry point: lays out a validated LayoutInput and returns boxes relative to the parent border box, in LU: the in-flow boxes in
+// preorder, then each absolutely positioned box (after its parent and containing block) with its subtree.
+import type { LayoutBox, LayoutInput } from './input.ts';
 import type { LU } from './units.ts';
-import { add, fromCssPx } from './units.ts';
-import type { Frag } from './box.ts';
-import type { EngineFaults } from './block.ts';
+import { add, fromCssPx, sub, ZERO } from './units.ts';
+import type { Frag, OutOfFlow } from './box.ts';
+import { resolveBorder } from './box.ts';
+import type { Ctx, EngineFaults } from './block.ts';
 import { blockLevelInlineSize, directionOf, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
+import type { ContainingBlock } from './position.ts';
+import { layoutAbsolute, relativeOffset } from './position.ts';
 import type { TextMeasurer } from './text.ts';
+import { ahemMeasurerWith } from './text.ts';
 import type { LayoutUnsupported } from './unsupported.ts';
 import { UnsupportedSignal } from './unsupported.ts';
 
@@ -22,14 +27,22 @@ export function layout(input: LayoutInput, measurer: TextMeasurer): LayoutResult
   return layoutWithFaults(input, measurer, NO_ENGINE_FAULTS);
 }
 
+/** An absolutely positioned box waiting for placement: its parent's absolute border-box origin and its static position there. */
+type Pending = { readonly oof: OutOfFlow; readonly parent: string; readonly originX: LU; readonly originY: LU };
+
+type Placement = { readonly boxes: LayoutRect[]; readonly absolute: Map<string, { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU }>; readonly pending: Pending[] };
+
 /** layout with seeded engine errors; only the parity harness's planted tests pass anything but NO_ENGINE_FAULTS. */
 export function layoutWithFaults(input: LayoutInput, measurer: TextMeasurer, faults: EngineFaults): LayoutResult {
   const root = input.root;
   const icbWidth = fromCssPx(input.viewport.width);
   const icbHeight = fromCssPx(input.viewport.height);
   try {
-    const ctx = { measurer, devicePixelRatio: input.devicePixelRatio, faults };
-    const inline = blockLevelInlineSize(ctx, root, icbWidth, directionOf(ctx, root));
+    // Planted platform-rule faults replace the Ahem measurer's two macOS rules (platform-rules.ts).
+    const m = faults.metricHalfUp || faults.untruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }) : measurer;
+    const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults };
+    const icbDirection = directionOf(ctx, root);
+    const inline = blockLevelInlineSize(ctx, root, icbWidth, icbDirection);
     const r = layoutContents(ctx, root, {
       cbInline: icbWidth,
       borderBoxWidth: inline.borderBoxWidth,
@@ -38,18 +51,75 @@ export function layoutWithFaults(input: LayoutInput, measurer: TextMeasurer, fau
       heightBasis: { kind: 'definite', value: icbHeight },
       formattingContextRoot: true,
     });
-    const boxes: LayoutRect[] = [];
-    flatten(r.frag, null, inline.marginLeft, inline.marginTop, boxes);
-    return { kind: 'ok', boxes };
+    const offset = relativeOffset(root, icbWidth, { kind: 'definite', value: icbHeight }, icbDirection);
+    const out: Placement = { boxes: [], absolute: new Map(), pending: [] };
+    flatten(r.frag, null, add(inline.marginLeft, offset.dx), add(inline.marginTop, offset.dy), ZERO, ZERO, out);
+    placeOutOfFlow(ctx, input, out, { x: ZERO, y: ZERO, width: icbWidth, height: icbHeight, direction: icbDirection });
+    return { kind: 'ok', boxes: out.boxes };
   } catch (e) {
     if (e instanceof UnsupportedSignal) return { kind: 'unsupported', unsupported: e.unsupported };
     throw e;
   }
 }
 
-function flatten(frag: Frag, parent: string | null, x: LU, y: LU, out: LayoutRect[]): void {
-  out.push({ id: frag.id, parent, x, y, width: frag.width, height: frag.height });
-  for (const c of frag.children) flatten(c.frag, frag.id, c.x, c.y, out);
+function flatten(frag: Frag, parent: string | null, x: LU, y: LU, parentX: LU, parentY: LU, out: Placement): void {
+  const absX = add(parentX, x);
+  const absY = add(parentY, y);
+  out.boxes.push({ id: frag.id, parent, x, y, width: frag.width, height: frag.height });
+  out.absolute.set(frag.id, { x: absX, y: absY, width: frag.width, height: frag.height });
+  for (const oof of frag.outOfFlow) out.pending.push({ oof, parent: frag.id, originX: absX, originY: absY });
+  for (const c of frag.children) flatten(c.frag, frag.id, c.x, c.y, absX, absY, out);
+}
+
+/** Every box's parent in the input tree. */
+function parents(root: LayoutBox): Map<string, LayoutBox> {
+  const out = new Map<string, LayoutBox>();
+  const walk = (b: LayoutBox): void => {
+    for (const c of b.children) {
+      if (c.kind !== 'box') continue;
+      out.set(c.id, b);
+      walk(c);
+    }
+  };
+  walk(root);
+  return out;
+}
+
+// CSS2 §10.1 items 4 and 1: the containing block of an absolutely positioned box is the padding box of its nearest positioned
+// ancestor, or the initial containing block (planted fault cbIgnoresPadding uses the content box, px padding only).
+function containingBlock(ctx: Ctx, box: LayoutBox, parentOf: Map<string, LayoutBox>, out: Placement, icb: ContainingBlock): ContainingBlock {
+  let at = parentOf.get(box.id);
+  while (at !== undefined && at.style.position === 'static') at = parentOf.get(at.id);
+  if (at === undefined) return icb;
+  const r = out.absolute.get(at.id);
+  if (r === undefined) throw new Error(`containing block ${at.id} of ${box.id} is not placed yet`);
+  const bor = resolveBorder(at.style, ctx.devicePixelRatio);
+  const s = at.style;
+  const pad = (v: typeof s.paddingLeft): LU => (ctx.faults.cbIgnoresPadding && v.kind === 'px' ? fromCssPx(v.value) : ZERO);
+  const left = add(bor.left, pad(s.paddingLeft));
+  const top = add(bor.top, pad(s.paddingTop));
+  const right = add(bor.right, pad(s.paddingRight));
+  const bottom = add(bor.bottom, pad(s.paddingBottom));
+  return {
+    x: add(r.x, left),
+    y: add(r.y, top),
+    width: sub(sub(r.width, left), right),
+    height: sub(sub(r.height, top), bottom),
+    direction: directionOf(ctx, at),
+  };
+}
+
+/** Places each pending absolutely positioned box in order; boxes found inside one are queued after it. */
+function placeOutOfFlow(ctx: Ctx, input: LayoutInput, out: Placement, icb: ContainingBlock): void {
+  const parentOf = parents(input.root);
+  for (let i = 0; i < out.pending.length; i++) {
+    const p = out.pending[i] as Pending;
+    const cb = containingBlock(ctx, p.oof.box, parentOf, out, icb);
+    const staticX = { offset: add(p.originX, p.oof.x.offset), edge: p.oof.x.edge };
+    const staticY = { offset: add(p.originY, p.oof.y.offset), edge: p.oof.y.edge };
+    const r = layoutAbsolute(ctx, p.oof.box, cb, staticX, staticY);
+    flatten(r.frag, p.parent, sub(r.x, p.originX), sub(r.y, p.originY), p.originX, p.originY, out);
+  }
 }
 
 /** Absolute border-box edges in LU: parent offsets are summed in integers before any conversion. */
@@ -57,9 +127,9 @@ export function absoluteRects(boxes: readonly LayoutRect[]): Map<string, LayoutR
   const abs = new Map<string, LayoutRect>();
   for (const b of boxes) {
     const parent = b.parent === null ? undefined : abs.get(b.parent);
-    const px = parent === undefined ? (0 as LU) : parent.x;
-    const py = parent === undefined ? (0 as LU) : parent.y;
-    abs.set(b.id, { id: b.id, parent: b.parent, x: add(px, b.x), y: add(py, b.y), width: b.width, height: b.height });
+    const px0 = parent === undefined ? (0 as LU) : parent.x;
+    const py0 = parent === undefined ? (0 as LU) : parent.y;
+    abs.set(b.id, { id: b.id, parent: b.parent, x: add(px0, b.x), y: add(py0, b.y), width: b.width, height: b.height });
   }
   return abs;
 }

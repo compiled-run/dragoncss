@@ -46,6 +46,7 @@ const auto = { auto: {} } as const;
 const size = tagged({ ...px(0), ...percent(0), ...auto });
 const maxSize = tagged({ ...px(0), ...percent(0), none: {} });
 const margin = tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...auto });
+const inset = tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...auto });
 const padding = tagged({ ...px(0), ...percent(0) });
 const border = tagged({ ...px(0) });
 const gap = tagged({ ...px(0), ...percent(0), normal: {} });
@@ -60,7 +61,11 @@ const alignItemsValues = [
 
 export const styleSchema = obj({
   display: lit('block', 'flex'),
-  position: lit('static'),
+  position: lit('static', 'relative', 'absolute'),
+  top: inset,
+  right: inset,
+  bottom: inset,
+  left: inset,
   overflowX: lit('visible', 'hidden'),
   overflowY: lit('visible', 'hidden'),
   direction: lit('ltr', 'rtl'),
@@ -250,6 +255,10 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
 const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign'>]: LayoutStyle[K] } = {
   display: 'block',
   position: 'static',
+  top: { kind: 'auto' },
+  right: { kind: 'auto' },
+  bottom: { kind: 'auto' },
+  left: { kind: 'auto' },
   overflowX: 'visible',
   overflowY: 'visible',
   boxSizing: 'content-box',
@@ -338,8 +347,13 @@ export function validateLayoutInput(json: unknown): ValidationResult {
     errors.push({ path: '$.root', code: 'missing-key', message: 'missing required key "root"' });
   } else {
     checkNode(json['root'], '$.root', errors, new Set(), null);
-    if (isRecord(json['root']) && json['root']['kind'] !== 'box') {
+    const root = json['root'];
+    if (isRecord(root) && root['kind'] !== 'box') {
       errors.push({ path: '$.root.kind', code: 'bad-value', message: 'the root must be a box' });
+    }
+    // CSS2 §10.1: the root box is laid out in the initial containing block; the engine places it in flow.
+    if (isRecord(root) && isRecord(root['style']) && root['style']['position'] === 'absolute') {
+      errors.push({ path: '$.root.style.position', code: 'bad-value', message: 'the root box cannot be absolutely positioned' });
     }
   }
   if (errors.length > 0) return { ok: false, errors };

@@ -11,6 +11,8 @@ export type CompilerFaults = {
   readonly stateCollapse: string | null;
   /** The resolver does not write the inherited font-size onto text nodes: each text node's font-size reverts to its initial value. */
   readonly dropInheritedText: boolean;
+  /** The resolver gives the root direction ltr whatever the environment direction (M4). */
+  readonly ignoreEnvironmentDirection: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false };

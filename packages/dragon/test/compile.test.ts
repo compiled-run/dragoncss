@@ -4,7 +4,8 @@ import * as publicEntry from '../src/index.ts';
 import { createProject } from '../src/index.ts';
 import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, webClassMap } from '../src/internal.ts';
 import { LONGHANDS } from '../src/css/properties.ts';
-import { div, expectCatalogued, explainOne, inputFor, text as textNode } from './helpers.ts';
+import type { Diagnostic } from '../src/index.ts';
+import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text as textNode } from './helpers.ts';
 
 const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr' } as const;
 const ios = () => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' } } });
@@ -62,7 +63,8 @@ describe('createProject().compile() and check()', () => {
     const rules = text.split('\n').filter((l) => l.endsWith('{'));
     expect(rules).toEqual(['.dg0 {', '.dg1 {', '.dg2 {']);
     expect(text).not.toMatch(/\.a\b|\.b\b|body|html/);
-    for (const p of LONGHANDS) expect(text.split(`  ${p}: `).length - 1, p).toBe(3);
+    // Every longhand is written on every rule, except the insets, which are written only when one of them is not auto.
+    for (const p of LONGHANDS) expect(text.split(`  ${p}: `).length - 1, p).toBe(['top', 'right', 'bottom', 'left'].includes(p) ? 0 : 3);
     expect(text).toContain('  width: 1px;');
     expect(text).toContain('  height: 33.3px;');
     expect(text).toContain('  margin-top: 8px;');
@@ -78,22 +80,22 @@ describe('createProject().compile() and check()', () => {
     expect(g.outputs.web.kind).toBe('blocked');
   });
 
-  it('checks longhands a shorthand fills (S1 must-fix 3): border: 3px sets border-*-style: none, which no profile supports', () => {
-    const c = ios().compile(inputFor('.a { border: 3px; }', (r) => [div(r, 'a', ['a'])]));
-    expect(c.diagnostics.map((d) => d.message)).toContainEqual(expect.stringMatching(/^border-top-color: currentcolor \(set by border\)|^border-top-style: none \(set by border\)/));
-    const d = c.diagnostics.find((x) => x.message.startsWith('border-top-style: none (set by border)'));
-    expect(d?.code).toBe('DRAGON_UNSUPPORTED_VALUE');
+  it('checks longhands a shorthand fills (S1 must-fix 3): border: 3px sets border-*-style: none, proven in block flow but not on a relatively positioned box', () => {
+    // S4b generator G1 proves every initial value in block and flex contexts, so the filled longhands pass there.
+    expect(ios().compile(inputFor('.a { border: 3px; }', (r) => [div(r, 'a', ['a'])])).diagnostics).toEqual([]);
+    const input = inputFor('.a { position: relative; border: 3px; }', (r) => [div(r, 'a', ['a'])]);
+    const c = ios().compile(input);
+    const d = c.diagnostics.find((x) => x.message.startsWith('border-top-style:none on a is used in the relative-in-block/ltr context'));
+    expect(d?.code).toBe('DRAGON_UNPROVEN_CONTEXT');
+    expect(spanTextOf(input, d as Diagnostic)).toBe('3px');
     expect(c.outputs.ios.kind).toBe('blocked');
   });
 
   it('resolves colours to channels, inherits color and resolves currentcolor borders', () => {
     const css = 'body { color: hsl(120 50% 50%); } .a { background-color: #a1b2c37f; border: 1px solid; border-left-color: rgba(10, 20, 30, 0.3); }';
     const input = inputFor(css, (r) => [div(r, 'a', ['a'])]);
-    // The profiles prove color:<hsl()> only on flex items, so the enforcing compile blocks body; resolution is tested unenforced.
-    const unproven = ios().compile(input).diagnostics;
-    expect(unproven.map((d) => d.code)).toEqual(['DRAGON_UNPROVEN_CONTEXT']);
-    expect(unproven[0]?.message).toMatch(/color:<hsl\(\)> on body is used in the block\/ltr context, which ios has not proven \(proven: flex-row\/ltr\)/);
-    expectCatalogued(unproven);
+    // S4b: colour rows are keyed @paint/<direction>, not by formatting context, so the enforcing compile accepts hsl() on body.
+    expect(ios().compile(input).diagnostics).toEqual([]);
     const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
     expect(c.ok).toBe(true);
     const colors = resolvedColors(c, [])?.get('a');

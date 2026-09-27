@@ -138,6 +138,11 @@ export function roundFontMetricToWholePx(px: number): LU {
   return fromWholePx(Math.ceil(Math.fround(px) - 0.5));
 }
 
+/** Planted fault metricHalfUp: Blink's SkScalarRoundToScalar rounding (halves up), which the macOS oracle does not show. */
+export function roundFontMetricHalfUpToWholePx(px: number): LU {
+  return fromWholePx(Math.floor(Math.fround(px) + 0.5));
+}
+
 /**
  * The size the font instance is created at: Blink keys and creates font platform data at the font size times 100, truncated
  * (FontCacheKey precision multiplier), so 10.625px shapes and measures as 10.62px. Measured on the Chrome 145 oracle
@@ -149,8 +154,13 @@ export function platformFontSize(fontSizePx: number): number {
 
 /** Ahem text advance: float sum of per-glyph advances at the platform font size, then LayoutUnit::FromFloatCeil (ShapeResult::SnappedWidth). */
 export function textAdvance(glyphCount: number, fontSizePx: number): LU {
+  return textAdvanceAt(glyphCount, platformFontSize(fontSizePx));
+}
+
+/** textAdvance at a font instance size already chosen by the caller. */
+export function textAdvanceAt(glyphCount: number, instanceSizePx: number): LU {
   let width = Math.fround(0);
-  const advance = Math.fround(platformFontSize(fontSizePx));
+  const advance = Math.fround(instanceSizePx);
   for (let i = 0; i < glyphCount; i++) width = Math.fround(width + advance);
   return fromPxCeil(width);
 }

@@ -251,7 +251,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         props.set(p, { ...r, span: w.declaration.span, ...author });
       } else if (inherited && parent === null && p === 'direction') {
         // docs/api.md §7: the environment direction is the root's base direction; the harness gives both renderings the same one.
-        props.set(p, { value: { kind: 'keyword', value: environment.direction }, origin: 'environment', span: null, ...none });
+        props.set(p, { value: { kind: 'keyword', value: faults.ignoreEnvironmentDirection ? 'ltr' : environment.direction }, origin: 'environment', span: null, ...none });
       } else if (inherited) {
         props.set(p, parent === null ? (userAgentValue(tag, p) === null ? fromParent(p) : defaultFor(p)) : fromParent(p));
       } else {

@@ -12,3 +12,5 @@ export type { ValidationError, ValidationErrorCode, ValidationResult } from './v
 export { validateLayoutInput } from './validate.ts';
 export type { ChromeDeviation } from './chrome-deviations.ts';
 export { chromeDeviations } from './chrome-deviations.ts';
+export type { PlatformRule } from './platform-rules.ts';
+export { platformRules } from './platform-rules.ts';

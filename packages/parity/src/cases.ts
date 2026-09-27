@@ -1,6 +1,6 @@
 // Parity cases (docs/api.md §7): one per reachable assignment of every fixture and environment, never deduplicated or factored.
-// HTML fixtures have one left-to-right case, rendered from the file itself; tree fixtures are rendered by the parity-owned renderer,
-// once per assignment in each environment direction.
+// HTML fixtures have one case per declared environment direction, rendered from the file itself; tree fixtures are rendered by the
+// parity-owned renderer, once per assignment in each environment direction.
 import type { Assignment, Environment, FrontEndResult } from 'dragon';
 import { compiledFixtureHtml, readHtmlFixture } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
@@ -29,8 +29,16 @@ export function fixtureInput(spec: FixtureSpec): FrontEndResult {
 export function casesOf(spec: FixtureSpec, input: FrontEndResult): ParityCase[] {
   if (spec.format === 'html') {
     const { html } = readHtmlFixture(spec.id);
-    const environment = environmentsOf(spec)[0] as Environment;
-    return [{ id: spec.id, fixture: spec.id, index: 0, environment, assignment: [], isInitial: true, authoredHtml: html, compiledHtml: (css, classOf) => compiledFixtureHtml(html, css, classOf) }];
+    return environmentsOf(spec).map((environment) => ({
+      id: `${spec.id}${directionSuffix(environment.direction)}`,
+      fixture: spec.id,
+      index: 0,
+      environment,
+      assignment: [],
+      isInitial: true,
+      authoredHtml: html,
+      compiledHtml: (css: string, classOf: ReadonlyMap<string, string>) => compiledFixtureHtml(html, css, classOf),
+    }));
   }
   const model = authoredModel(input);
   return environmentsOf(spec).flatMap((environment) => model.assignments.map((assignment, index) => ({

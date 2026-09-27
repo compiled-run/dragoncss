@@ -1,0 +1,1204 @@
+{
+  "generator": "scripts/gen-granularity-fixtures.ts",
+  "rule": "T005 recommendation 1 by proof (notes/T036-s4a-review-s4b-plan.md): fixtures are generated from this selection, every generated fixture must pass or be reported, and none is removed after running.",
+  "environments": [
+    "ltr",
+    "rtl"
+  ],
+  "fixtures": [
+    "profile-initial-values-box",
+    "profile-initial-values-text",
+    "gap-contexts",
+    "color-syntax-matrix"
+  ],
+  "g1": {
+    "fixtures": [
+      "profile-initial-values-box",
+      "profile-initial-values-text"
+    ],
+    "selected": [
+      {
+        "longhand": "display",
+        "value": "block",
+        "source": "captured UA display",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "position",
+        "value": "static",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "top",
+        "value": "auto",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "right",
+        "value": "auto",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "bottom",
+        "value": "auto",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "left",
+        "value": "auto",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "overflow-x",
+        "value": "visible",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "overflow-y",
+        "value": "visible",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "direction",
+        "value": "ltr",
+        "source": "webref initial",
+        "role": "container",
+        "contexts": [
+          "not-flex-container",
+          "flex-row-single-line",
+          "flex-row-multi-line",
+          "flex-column-single-line",
+          "flex-column-multi-line"
+        ],
+        "unbuildable": [
+          "every */rtl facet (direction: ltr sets the facet itself)"
+        ]
+      },
+      {
+        "longhand": "box-sizing",
+        "value": "content-box",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "width",
+        "value": "auto",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "height",
+        "value": "auto",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "min-width",
+        "value": "auto",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "min-height",
+        "value": "auto",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "max-width",
+        "value": "none",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "max-height",
+        "value": "none",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "margin-top",
+        "value": "0",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "margin-right",
+        "value": "0",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "margin-bottom",
+        "value": "0",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "margin-left",
+        "value": "0",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "padding-top",
+        "value": "0",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "padding-right",
+        "value": "0",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "padding-bottom",
+        "value": "0",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "padding-left",
+        "value": "0",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "border-top-width",
+        "value": "medium",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "border-right-width",
+        "value": "medium",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "border-bottom-width",
+        "value": "medium",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "border-left-width",
+        "value": "medium",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "border-top-style",
+        "value": "none",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "border-right-style",
+        "value": "none",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "border-bottom-style",
+        "value": "none",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "border-left-style",
+        "value": "none",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "border-top-color",
+        "value": "currentcolor",
+        "source": "webref initial",
+        "role": "paint",
+        "contexts": [
+          "paint"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "border-right-color",
+        "value": "currentcolor",
+        "source": "webref initial",
+        "role": "paint",
+        "contexts": [
+          "paint"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "border-bottom-color",
+        "value": "currentcolor",
+        "source": "webref initial",
+        "role": "paint",
+        "contexts": [
+          "paint"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "border-left-color",
+        "value": "currentcolor",
+        "source": "webref initial",
+        "role": "paint",
+        "contexts": [
+          "paint"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "flex-direction",
+        "value": "row",
+        "source": "webref initial",
+        "role": "container",
+        "contexts": [
+          "not-flex-container",
+          "flex-row-single-line",
+          "flex-row-multi-line"
+        ],
+        "unbuildable": [
+          "flex-column-single-line (the value overrides the context's own declaration)",
+          "flex-column-multi-line (the value overrides the context's own declaration)"
+        ]
+      },
+      {
+        "longhand": "flex-wrap",
+        "value": "nowrap",
+        "source": "webref initial",
+        "role": "container",
+        "contexts": [
+          "not-flex-container",
+          "flex-row-single-line",
+          "flex-column-single-line"
+        ],
+        "unbuildable": [
+          "flex-row-multi-line (the value overrides the context's own declaration)",
+          "flex-column-multi-line (the value overrides the context's own declaration)"
+        ]
+      },
+      {
+        "longhand": "flex-grow",
+        "value": "0",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "flex-shrink",
+        "value": "1",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "flex-basis",
+        "value": "auto",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "order",
+        "value": "0",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "justify-content",
+        "value": "normal",
+        "source": "webref initial",
+        "role": "container",
+        "contexts": [
+          "not-flex-container",
+          "flex-row-single-line",
+          "flex-row-multi-line",
+          "flex-column-single-line",
+          "flex-column-multi-line"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "align-items",
+        "value": "normal",
+        "source": "webref initial",
+        "role": "container",
+        "contexts": [
+          "not-flex-container",
+          "flex-row-single-line",
+          "flex-row-multi-line",
+          "flex-column-single-line",
+          "flex-column-multi-line"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "align-self",
+        "value": "auto",
+        "source": "webref initial",
+        "role": "item",
+        "contexts": [
+          "block",
+          "flex-row",
+          "flex-column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "align-content",
+        "value": "normal",
+        "source": "webref initial",
+        "role": "container",
+        "contexts": [
+          "not-flex-container",
+          "flex-row-single-line",
+          "flex-row-multi-line",
+          "flex-column-single-line",
+          "flex-column-multi-line"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "row-gap",
+        "value": "normal",
+        "source": "webref initial",
+        "role": "container",
+        "contexts": [
+          "not-flex-container",
+          "flex-row-single-line",
+          "flex-row-multi-line",
+          "flex-column-single-line",
+          "flex-column-multi-line"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "column-gap",
+        "value": "normal",
+        "source": "webref initial",
+        "role": "container",
+        "contexts": [
+          "not-flex-container",
+          "flex-row-single-line",
+          "flex-row-multi-line",
+          "flex-column-single-line",
+          "flex-column-multi-line"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "line-height",
+        "value": "normal",
+        "source": "webref initial",
+        "role": "text",
+        "contexts": [
+          "text-in-block",
+          "text-in-anonymous-block",
+          "text-in-flex-item/row",
+          "text-in-flex-item/column",
+          "text-as-anonymous-flex-item/row",
+          "text-as-anonymous-flex-item/column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "text-align",
+        "value": "start",
+        "source": "webref initial",
+        "role": "text",
+        "contexts": [
+          "text-in-block",
+          "text-in-anonymous-block",
+          "text-in-flex-item/row",
+          "text-in-flex-item/column",
+          "text-as-anonymous-flex-item/row",
+          "text-as-anonymous-flex-item/column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "white-space-collapse",
+        "value": "collapse",
+        "source": "webref initial",
+        "role": "text",
+        "contexts": [
+          "text-in-block",
+          "text-in-anonymous-block",
+          "text-in-flex-item/row",
+          "text-in-flex-item/column",
+          "text-as-anonymous-flex-item/row",
+          "text-as-anonymous-flex-item/column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "text-wrap-mode",
+        "value": "wrap",
+        "source": "webref initial",
+        "role": "text",
+        "contexts": [
+          "text-in-block",
+          "text-in-anonymous-block",
+          "text-in-flex-item/row",
+          "text-in-flex-item/column",
+          "text-as-anonymous-flex-item/row",
+          "text-as-anonymous-flex-item/column"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "background-color",
+        "value": "transparent",
+        "source": "webref initial",
+        "role": "paint",
+        "contexts": [
+          "paint"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "justify-content",
+        "value": "flex-start",
+        "source": "T036 required",
+        "role": "container",
+        "contexts": [
+          "not-flex-container",
+          "flex-row-single-line",
+          "flex-row-multi-line",
+          "flex-column-single-line",
+          "flex-column-multi-line"
+        ],
+        "unbuildable": []
+      },
+      {
+        "longhand": "align-items",
+        "value": "stretch",
+        "source": "T036 required",
+        "role": "container",
+        "contexts": [
+          "not-flex-container",
+          "flex-row-single-line",
+          "flex-row-multi-line",
+          "flex-column-single-line",
+          "flex-column-multi-line"
+        ],
+        "unbuildable": []
+      }
+    ],
+    "rejected": [
+      {
+        "longhand": "font-size",
+        "value": "medium",
+        "reason": "DRAGON_LOWERING_FAILED: font-size: medium on x:text0 has no layout mapping (expected px)"
+      },
+      {
+        "longhand": "font-family",
+        "value": "depends on user agent",
+        "reason": "DRAGON_UNSUPPORTED_FONT: font-family: depends on user agent on x:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))"
+      },
+      {
+        "longhand": "color",
+        "value": "CanvasText",
+        "reason": "DRAGON_UNSUPPORTED_VALUE: color: CanvasText is unsupported: the colour keyword canvastext is not supported in milestone 1 (system colours depend on the platform)"
+      }
+    ],
+    "notBuilt": [
+      "root and display-none item contexts: the generator authors values only in the contexts the role allows"
+    ]
+  },
+  "g2": {
+    "fixture": "gap-contexts",
+    "declarations": [
+      "gap: 7px",
+      "gap: 0px",
+      "row-gap: 5px",
+      "row-gap: 0px",
+      "column-gap: 6px",
+      "column-gap: 0px"
+    ],
+    "contexts": [
+      "flex-row-single-line",
+      "flex-row-multi-line",
+      "flex-column-single-line",
+      "flex-column-multi-line"
+    ],
+    "itemsPerContainer": 3
+  },
+  "g3": {
+    "fixture": "color-syntax-matrix",
+    "longhands": [
+      "border-top-color",
+      "border-right-color",
+      "border-bottom-color",
+      "border-left-color",
+      "color",
+      "background-color"
+    ],
+    "syntaxes": [
+      {
+        "id": "hex3",
+        "value": "#abc"
+      },
+      {
+        "id": "hex4",
+        "value": "#0f08"
+      },
+      {
+        "id": "hex6",
+        "value": "#a1b2c3"
+      },
+      {
+        "id": "hex8",
+        "value": "#102030e6"
+      },
+      {
+        "id": "rgb",
+        "value": "rgb(10.4, 20.6, 30.5)"
+      },
+      {
+        "id": "rgba",
+        "value": "rgba(1, 2, 3, 0.3)"
+      },
+      {
+        "id": "hsl",
+        "value": "hsl(6, 50%, 50%)"
+      },
+      {
+        "id": "hsla",
+        "value": "hsla(300, 100%, 25%, 0.5)"
+      },
+      {
+        "id": "named",
+        "value": "tomato"
+      },
+      {
+        "id": "transparent",
+        "value": "transparent"
+      },
+      {
+        "id": "currentcolor",
+        "value": "currentcolor"
+      },
+      {
+        "id": "inherit",
+        "value": "inherit"
+      },
+      {
+        "id": "initial",
+        "value": "initial"
+      }
+    ],
+    "selected": [
+      {
+        "longhand": "border-top-color",
+        "syntax": "hex3",
+        "value": "#abc"
+      },
+      {
+        "longhand": "border-top-color",
+        "syntax": "hex4",
+        "value": "#0f08"
+      },
+      {
+        "longhand": "border-top-color",
+        "syntax": "hex6",
+        "value": "#a1b2c3"
+      },
+      {
+        "longhand": "border-top-color",
+        "syntax": "hex8",
+        "value": "#102030e6"
+      },
+      {
+        "longhand": "border-top-color",
+        "syntax": "rgb",
+        "value": "rgb(10.4, 20.6, 30.5)"
+      },
+      {
+        "longhand": "border-top-color",
+        "syntax": "rgba",
+        "value": "rgba(1, 2, 3, 0.3)"
+      },
+      {
+        "longhand": "border-top-color",
+        "syntax": "hsl",
+        "value": "hsl(6, 50%, 50%)"
+      },
+      {
+        "longhand": "border-top-color",
+        "syntax": "hsla",
+        "value": "hsla(300, 100%, 25%, 0.5)"
+      },
+      {
+        "longhand": "border-top-color",
+        "syntax": "named",
+        "value": "tomato"
+      },
+      {
+        "longhand": "border-top-color",
+        "syntax": "transparent",
+        "value": "transparent"
+      },
+      {
+        "longhand": "border-top-color",
+        "syntax": "currentcolor",
+        "value": "currentcolor"
+      },
+      {
+        "longhand": "border-top-color",
+        "syntax": "inherit",
+        "value": "inherit"
+      },
+      {
+        "longhand": "border-top-color",
+        "syntax": "initial",
+        "value": "initial"
+      },
+      {
+        "longhand": "border-right-color",
+        "syntax": "hex3",
+        "value": "#abc"
+      },
+      {
+        "longhand": "border-right-color",
+        "syntax": "hex4",
+        "value": "#0f08"
+      },
+      {
+        "longhand": "border-right-color",
+        "syntax": "hex6",
+        "value": "#a1b2c3"
+      },
+      {
+        "longhand": "border-right-color",
+        "syntax": "hex8",
+        "value": "#102030e6"
+      },
+      {
+        "longhand": "border-right-color",
+        "syntax": "rgb",
+        "value": "rgb(10.4, 20.6, 30.5)"
+      },
+      {
+        "longhand": "border-right-color",
+        "syntax": "rgba",
+        "value": "rgba(1, 2, 3, 0.3)"
+      },
+      {
+        "longhand": "border-right-color",
+        "syntax": "hsl",
+        "value": "hsl(6, 50%, 50%)"
+      },
+      {
+        "longhand": "border-right-color",
+        "syntax": "hsla",
+        "value": "hsla(300, 100%, 25%, 0.5)"
+      },
+      {
+        "longhand": "border-right-color",
+        "syntax": "named",
+        "value": "tomato"
+      },
+      {
+        "longhand": "border-right-color",
+        "syntax": "transparent",
+        "value": "transparent"
+      },
+      {
+        "longhand": "border-right-color",
+        "syntax": "currentcolor",
+        "value": "currentcolor"
+      },
+      {
+        "longhand": "border-right-color",
+        "syntax": "inherit",
+        "value": "inherit"
+      },
+      {
+        "longhand": "border-right-color",
+        "syntax": "initial",
+        "value": "initial"
+      },
+      {
+        "longhand": "border-bottom-color",
+        "syntax": "hex3",
+        "value": "#abc"
+      },
+      {
+        "longhand": "border-bottom-color",
+        "syntax": "hex4",
+        "value": "#0f08"
+      },
+      {
+        "longhand": "border-bottom-color",
+        "syntax": "hex6",
+        "value": "#a1b2c3"
+      },
+      {
+        "longhand": "border-bottom-color",
+        "syntax": "hex8",
+        "value": "#102030e6"
+      },
+      {
+        "longhand": "border-bottom-color",
+        "syntax": "rgb",
+        "value": "rgb(10.4, 20.6, 30.5)"
+      },
+      {
+        "longhand": "border-bottom-color",
+        "syntax": "rgba",
+        "value": "rgba(1, 2, 3, 0.3)"
+      },
+      {
+        "longhand": "border-bottom-color",
+        "syntax": "hsl",
+        "value": "hsl(6, 50%, 50%)"
+      },
+      {
+        "longhand": "border-bottom-color",
+        "syntax": "hsla",
+        "value": "hsla(300, 100%, 25%, 0.5)"
+      },
+      {
+        "longhand": "border-bottom-color",
+        "syntax": "named",
+        "value": "tomato"
+      },
+      {
+        "longhand": "border-bottom-color",
+        "syntax": "transparent",
+        "value": "transparent"
+      },
+      {
+        "longhand": "border-bottom-color",
+        "syntax": "currentcolor",
+        "value": "currentcolor"
+      },
+      {
+        "longhand": "border-bottom-color",
+        "syntax": "inherit",
+        "value": "inherit"
+      },
+      {
+        "longhand": "border-bottom-color",
+        "syntax": "initial",
+        "value": "initial"
+      },
+      {
+        "longhand": "border-left-color",
+        "syntax": "hex3",
+        "value": "#abc"
+      },
+      {
+        "longhand": "border-left-color",
+        "syntax": "hex4",
+        "value": "#0f08"
+      },
+      {
+        "longhand": "border-left-color",
+        "syntax": "hex6",
+        "value": "#a1b2c3"
+      },
+      {
+        "longhand": "border-left-color",
+        "syntax": "hex8",
+        "value": "#102030e6"
+      },
+      {
+        "longhand": "border-left-color",
+        "syntax": "rgb",
+        "value": "rgb(10.4, 20.6, 30.5)"
+      },
+      {
+        "longhand": "border-left-color",
+        "syntax": "rgba",
+        "value": "rgba(1, 2, 3, 0.3)"
+      },
+      {
+        "longhand": "border-left-color",
+        "syntax": "hsl",
+        "value": "hsl(6, 50%, 50%)"
+      },
+      {
+        "longhand": "border-left-color",
+        "syntax": "hsla",
+        "value": "hsla(300, 100%, 25%, 0.5)"
+      },
+      {
+        "longhand": "border-left-color",
+        "syntax": "named",
+        "value": "tomato"
+      },
+      {
+        "longhand": "border-left-color",
+        "syntax": "transparent",
+        "value": "transparent"
+      },
+      {
+        "longhand": "border-left-color",
+        "syntax": "currentcolor",
+        "value": "currentcolor"
+      },
+      {
+        "longhand": "border-left-color",
+        "syntax": "inherit",
+        "value": "inherit"
+      },
+      {
+        "longhand": "border-left-color",
+        "syntax": "initial",
+        "value": "initial"
+      },
+      {
+        "longhand": "color",
+        "syntax": "hex3",
+        "value": "#abc"
+      },
+      {
+        "longhand": "color",
+        "syntax": "hex4",
+        "value": "#0f08"
+      },
+      {
+        "longhand": "color",
+        "syntax": "hex6",
+        "value": "#a1b2c3"
+      },
+      {
+        "longhand": "color",
+        "syntax": "hex8",
+        "value": "#102030e6"
+      },
+      {
+        "longhand": "color",
+        "syntax": "rgb",
+        "value": "rgb(10.4, 20.6, 30.5)"
+      },
+      {
+        "longhand": "color",
+        "syntax": "rgba",
+        "value": "rgba(1, 2, 3, 0.3)"
+      },
+      {
+        "longhand": "color",
+        "syntax": "hsl",
+        "value": "hsl(6, 50%, 50%)"
+      },
+      {
+        "longhand": "color",
+        "syntax": "hsla",
+        "value": "hsla(300, 100%, 25%, 0.5)"
+      },
+      {
+        "longhand": "color",
+        "syntax": "named",
+        "value": "tomato"
+      },
+      {
+        "longhand": "color",
+        "syntax": "transparent",
+        "value": "transparent"
+      },
+      {
+        "longhand": "color",
+        "syntax": "currentcolor",
+        "value": "currentcolor"
+      },
+      {
+        "longhand": "color",
+        "syntax": "inherit",
+        "value": "inherit"
+      },
+      {
+        "longhand": "color",
+        "syntax": "initial",
+        "value": "initial"
+      },
+      {
+        "longhand": "background-color",
+        "syntax": "hex3",
+        "value": "#abc"
+      },
+      {
+        "longhand": "background-color",
+        "syntax": "hex4",
+        "value": "#0f08"
+      },
+      {
+        "longhand": "background-color",
+        "syntax": "hex6",
+        "value": "#a1b2c3"
+      },
+      {
+        "longhand": "background-color",
+        "syntax": "hex8",
+        "value": "#102030e6"
+      },
+      {
+        "longhand": "background-color",
+        "syntax": "rgb",
+        "value": "rgb(10.4, 20.6, 30.5)"
+      },
+      {
+        "longhand": "background-color",
+        "syntax": "rgba",
+        "value": "rgba(1, 2, 3, 0.3)"
+      },
+      {
+        "longhand": "background-color",
+        "syntax": "hsl",
+        "value": "hsl(6, 50%, 50%)"
+      },
+      {
+        "longhand": "background-color",
+        "syntax": "hsla",
+        "value": "hsla(300, 100%, 25%, 0.5)"
+      },
+      {
+        "longhand": "background-color",
+        "syntax": "named",
+        "value": "tomato"
+      },
+      {
+        "longhand": "background-color",
+        "syntax": "transparent",
+        "value": "transparent"
+      },
+      {
+        "longhand": "background-color",
+        "syntax": "currentcolor",
+        "value": "currentcolor"
+      },
+      {
+        "longhand": "background-color",
+        "syntax": "inherit",
+        "value": "inherit"
+      },
+      {
+        "longhand": "background-color",
+        "syntax": "initial",
+        "value": "initial"
+      }
+    ],
+    "rejected": []
+  }
+}

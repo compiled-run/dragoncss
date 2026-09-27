@@ -4,6 +4,7 @@ import type { TextContext } from './analysis/context.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
 import type { Rgba8 } from './css/color.ts';
+import type { CssValue } from './css/stylesheet.ts';
 import { TRANSPARENT } from './css/color.ts';
 import type { ColorLonghand, TextLonghand } from './css/properties.ts';
 import { COLOR_LONGHANDS, TEXT_LONGHANDS } from './css/properties.ts';
@@ -101,8 +102,8 @@ export type ElementColors = { readonly [P in ColorLonghand]: Rgba8 };
 // css-color-4 §4.4 and §6.3: used colours per element; transparent is rgba(0, 0, 0, 0) and currentcolor is the element's color.
 function usedColors(el: ResolvedElement): ElementColors {
   const color = el.props.get('color');
-  if (color === undefined || color.value.kind !== 'color') throw new Error(`${el.element.address}: color did not resolve to channels`);
-  const own = color.value.value;
+  if (color === undefined) throw new Error(`${el.element.address}: color did not resolve`);
+  const own = colorChannels(color.value, el.element.address);
   const out = {} as { [P in ColorLonghand]: Rgba8 };
   for (const p of COLOR_LONGHANDS) {
     const v = (el.props.get(p) as NonNullable<typeof color>).value;
@@ -112,6 +113,13 @@ function usedColors(el: ResolvedElement): ElementColors {
     else throw new Error(`${el.element.address}: ${p} did not resolve to a colour`);
   }
   return out;
+}
+
+/** The channels of a resolved color value: a colour, or transparent (rgba(0, 0, 0, 0)); currentcolor on color resolves as inherit. */
+function colorChannels(v: CssValue, address: string): Rgba8 {
+  if (v.kind === 'color') return v.value;
+  if (v.kind === 'keyword' && v.value === 'transparent') return TRANSPARENT;
+  throw new Error(`${address}: color did not resolve to channels`);
 }
 
 /** Dragon's resolved colour channels per element address in one case; null when the case did not resolve. */
@@ -187,8 +195,8 @@ export function resolvedTextColors(compiled: object, assignment: Assignment): Re
       if (ch.kind === 'element') walk(ch);
       else {
         const v = ch.props.get('color');
-        if (v === undefined || v.value.kind !== 'color') throw new Error(`${ch.node.address}: color did not resolve to channels`);
-        out.set(ch.node.address, v.value.value);
+        if (v === undefined) throw new Error(`${ch.node.address}: color did not resolve`);
+        out.set(ch.node.address, colorChannels(v.value, ch.node.address));
       }
     }
   };

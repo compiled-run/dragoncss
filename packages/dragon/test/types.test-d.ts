@@ -62,3 +62,17 @@ export type Options = import('../src/index.ts').InternalOptions;
 export type Env = import('../src/index.ts').Environment;
 // @ts-expect-error createProject takes no direction option
 export const withDirection = createProject({ projectId: 'p', targets: { web: {} } }, { direction: 'rtl' });
+
+// M2 (T036): the exact unions of ExplainedCase.cascade and Origin are pinned; a widening or narrowing fails the typecheck.
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+type PinnedOrigin =
+  | { readonly kind: 'authored'; readonly span: import('../src/index.ts').Span }
+  | { readonly kind: 'inherited'; readonly element: string; readonly from: import('../src/index.ts').Origin }
+  | { readonly kind: 'builtin'; readonly dataset: string; readonly entry: string }
+  | { readonly kind: 'generated'; readonly pass: string; readonly causes: readonly import('../src/index.ts').Origin[] }
+  | { readonly kind: 'unlocated'; readonly reason: string };
+export const cascadeUnion: Equal<import('../src/index.ts').ExplainedCase['cascade'], 'author' | 'inherited' | 'user-agent' | 'initial' | 'environment'> = true;
+export const originUnion: Equal<import('../src/index.ts').Origin, PinnedOrigin> = true;
+export const originKinds: Equal<import('../src/index.ts').Origin['kind'], 'authored' | 'inherited' | 'builtin' | 'generated' | 'unlocated'> = true;
+// @ts-expect-error a cascade union without 'environment' is not the pinned union
+export const narrowed: Equal<import('../src/index.ts').ExplainedCase['cascade'], 'author' | 'inherited' | 'user-agent' | 'initial'> = true;

@@ -37,7 +37,20 @@ export type BoxContext =
   | 'flex-column-multi-line'
   | 'not-flex-container';
 
-export type FormattingContext = `${BoxContext}/${DirectionFacet}` | TextContext;
+/** The context an element's box takes part in: the root, or its parent's formatting context. */
+export type ItemBase = 'root' | 'block' | 'flex-row' | 'flex-column' | 'display-none';
+
+/**
+ * Row contexts. Item properties of a positioned box carry the positioning scheme: a relative box its parent's context and
+ * direction (its containing block); an absolute box the context and direction of its parent (which gives its static position)
+ * and the direction of its containing block. Paint properties carry only the element's direction.
+ */
+export type FormattingContext =
+  | `${BoxContext}/${DirectionFacet}`
+  | `relative-in-${ItemBase}/${DirectionFacet}`
+  | `absolute-in-${ItemBase}/${DirectionFacet}/cb-${DirectionFacet}`
+  | `paint/${DirectionFacet}`
+  | TextContext;
 
 const keyword = (el: ResolvedElement, p: Longhand): string => {
   const v = (el.props.get(p) as ResolvedValue).value;
@@ -57,21 +70,32 @@ const axisFacet = (flexContainer: ResolvedElement): AxisFacet => (keyword(flexCo
  * parent) and the parent's direction (the root's own). Container properties: the element's own flex line mode and direction.
  * Text properties are keyed per text node instead (textContext).
  */
-export function formattingContext(property: Longhand, el: ResolvedElement, parent: ResolvedElement | null): FormattingContext {
+export function formattingContext(property: Longhand, el: ResolvedElement, ancestors: readonly ResolvedElement[]): FormattingContext {
   const role = PROPERTY_ROLE[property];
   if (role === 'text') throw new Error(`${property} is keyed per text node (textContext)`);
+  if (role === 'paint') return `paint/${directionFacet(el)}`;
+  const parent = ancestors.length === 0 ? null : (ancestors[ancestors.length - 1] as ResolvedElement);
   if (role === 'container') {
     const own = directionFacet(el);
     if (keyword(el, 'display') !== 'flex') return `not-flex-container/${own}`;
     const single = keyword(el, 'flex-wrap') === 'nowrap';
     return `flex-${axisFacet(el)}-${single ? 'single' : 'multi'}-line/${own}`;
   }
-  if (parent === null) return `root/${directionFacet(el)}`;
-  const dir = directionFacet(parent);
-  const display = keyword(parent, 'display');
-  if (display === 'none') return `display-none/${dir}`;
-  if (display === 'flex') return `flex-${axisFacet(parent)}/${dir}`;
-  return `block/${dir}`;
+  const base: ItemBase = parent === null ? 'root' : keyword(parent, 'display') === 'none' ? 'display-none' : keyword(parent, 'display') === 'flex' ? `flex-${axisFacet(parent)}` : 'block';
+  const dir = directionFacet(parent === null ? el : parent);
+  const position = keyword(el, 'position');
+  if (position === 'relative') return `relative-in-${base}/${dir}`;
+  if (position === 'absolute') return `absolute-in-${base}/${dir}/cb-${containingBlockDirection(el, ancestors)}`;
+  return `${base}/${dir}`;
+}
+
+/** CSS2 §10.1: the nearest positioned ancestor, or the initial containing block, whose direction is the root's. */
+function containingBlockDirection(el: ResolvedElement, ancestors: readonly ResolvedElement[]): DirectionFacet {
+  for (let i = ancestors.length - 1; i >= 0; i--) {
+    const a = ancestors[i] as ResolvedElement;
+    if (keyword(a, 'position') !== 'static') return directionFacet(a);
+  }
+  return directionFacet(ancestors.length === 0 ? el : (ancestors[0] as ResolvedElement));
 }
 
 /** The context of the text children of insertion parent el, whose own parent is parent; the facet is el's direction. */
@@ -81,7 +105,8 @@ export function textContext(el: ResolvedElement, parent: ResolvedElement | null)
   if (display === 'none') return `text-in-display-none/${dir}`;
   if (display === 'flex') return `text-as-anonymous-flex-item/${axisFacet(el)}/${dir}`;
   if (el.children.some((c) => c.kind === 'element' && keyword(c, 'display') !== 'none')) return `text-in-anonymous-block/${dir}`;
-  if (parent !== null && keyword(parent, 'display') === 'flex') return `text-in-flex-item/${axisFacet(parent)}/${dir}`;
+  // css-flexbox-1 §4.1: an absolutely positioned child of a flex container is not a flex item.
+  if (parent !== null && keyword(parent, 'display') === 'flex' && keyword(el, 'position') !== 'absolute') return `text-in-flex-item/${axisFacet(parent)}/${dir}`;
   return `text-in-block/${dir}`;
 }
 
@@ -111,7 +136,7 @@ export function usedKeys(root: ResolvedElement): UsedKey[] {
       const v = el.props.get(p) as ResolvedValue;
       if (v.declaration === null || v.declared === null) continue;
       const feature = featureOf(p, v.declared);
-      const context = formattingContext(p, el, parent === undefined ? null : parent);
+      const context = formattingContext(p, el, chain);
       out.push({ key: rowKey(feature, context), feature, context, property: p, declaration: v.declaration, address: el.element.address });
     }
     for (const c of el.children) {

@@ -1,0 +1,6 @@
+.frame { display: flex; position: relative; width: 150px; height: 60px; border: 1px solid #000; padding: 4px; column-gap: 5px; }
+.panel { width: 50px; background-color: #ccc; }
+.panel[ui-open] { position: absolute; top: 5px; width: auto; }
+.panel[ui-open][ui-side="start"] { left: 3px; }
+.panel[ui-open][ui-side="end"] { right: 3px; bottom: 2px; }
+.sib { width: 30px; height: 10px; background-color: #999; }

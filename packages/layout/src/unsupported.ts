@@ -7,6 +7,7 @@ export type UnsupportedCode =
   | 'text-align'
   | 'text-glyph'
   | 'bidi-neutral'
+  | 'abspos-in-inline'
   | 'flex-baseline'
   | 'flex-basis-content'
   | 'flex-wrap-indefinite-main'

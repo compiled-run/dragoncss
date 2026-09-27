@@ -54,6 +54,7 @@ export const chromeDeviations: readonly ChromeDeviation[] = [
     branches: [
       { id: 'row-wrap-reverse', description: 'a row container: a 30px item in a 20px line sits flush with the bottom (cross-start), 10px above the top, not flush with the top (block-start)' },
       { id: 'column-wrap-reverse', description: 'an ltr column container: a 30px item in a 20px line sits flush with the right (cross-start), not the left (inline-start)' },
+      { id: 'column-wrap-reverse-rtl', description: 'an rtl column container: a 30px item in a 20px line sits flush with the left (cross-start), not the right (inline-start)' },
     ],
     nodes: [
       { branch: 'row-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'am-a' },
@@ -62,6 +63,25 @@ export const chromeDeviations: readonly ChromeDeviation[] = [
       { branch: 'column-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'amc-a' },
       { branch: 'column-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'amc-b' },
       { branch: 'column-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'amc-c' },
+      { branch: 'column-wrap-reverse-rtl', fixture: 'flex-auto-margins-reverse-overflow', node: 'amr-a' },
+      { branch: 'column-wrap-reverse-rtl', fixture: 'flex-auto-margins-reverse-overflow', node: 'amr-b' },
+      { branch: 'column-wrap-reverse-rtl', fixture: 'flex-auto-margins-reverse-overflow', node: 'amr-c' },
+    ],
+  },
+  {
+    id: 'wrap-reverse-baseline-line',
+    specSection: 'css-flexbox-1 §8.5',
+    spec: "A flex container's first main-axis baseline comes from its first flex line: the shared baseline of that line's baseline-aligned items, or else the startmost item. Lines are numbered from cross-start, so under wrap-reverse the first line of a row container is the bottom one.",
+    blink: 'Chrome 145 (measured) takes the baseline of a wrap-reverse row container from its block-start (top) line, the last flex line.',
+    branches: [
+      { id: 'shared-baseline', description: 'the top line has baseline-aligned items: the container baseline is their shared baseline, so a baseline-aligned sibling lines up with the top line' },
+      { id: 'startmost-item', description: 'the top line has no baseline-aligned item: the container baseline is its first item in flow order' },
+    ],
+    nodes: [
+      { branch: 'shared-baseline', fixture: 'flex-baseline-nested-reverse', node: 'f2a' },
+      { branch: 'shared-baseline', fixture: 'flex-order-baseline-wrap-reverse', node: 'o3a' },
+      { branch: 'startmost-item', fixture: 'flex-baseline-nested-reverse', node: 'f1a' },
+      { branch: 'startmost-item', fixture: 'flex-baseline-nested-reverse', node: 'f4a' },
     ],
   },
 ];

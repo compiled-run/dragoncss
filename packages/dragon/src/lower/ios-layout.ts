@@ -9,6 +9,7 @@ import type {
   FlexDirection,
   FlexWrap,
   GapValue,
+  InsetValue,
   JustifyContent,
   LayoutBox,
   LayoutStyle,
@@ -17,6 +18,7 @@ import type {
   Overflow,
   MaxSizeValue,
   PaddingValue,
+  Position,
   SizeValue,
   TextAlign,
   TextLeaf,
@@ -82,6 +84,11 @@ function margin(id: string, get: Get, p: Longhand): MarginValue {
   return size(id, get, p);
 }
 
+// CSS2 §9.3.2: box offsets are px, a percentage or auto.
+function inset(id: string, get: Get, p: Longhand): InsetValue {
+  return size(id, get, p);
+}
+
 // css-backgrounds-3 §3.3: none/hidden computes to 0. Device-pixel snapping depends on the environment, so the engine applies it.
 function borderWidth(id: string, get: Get, side: 'top' | 'right' | 'bottom' | 'left'): { readonly kind: 'px'; readonly value: number } {
   const style = keyword(id, get, `border-${side}-style` as Longhand, ['none', 'hidden', 'solid', 'dotted', 'dashed', 'double', 'groove', 'ridge', 'inset', 'outset']);
@@ -140,7 +147,11 @@ function lowerStyleFrom(id: string, get: Get, faults: CompilerFaults): LayoutSty
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
     display: keyword<Display>(id, get, 'display', ['block', 'flex']),
-    position: keyword(id, get, 'position', ['static']),
+    position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute']),
+    top: inset(id, get, 'top'),
+    right: inset(id, get, 'right'),
+    bottom: inset(id, get, 'bottom'),
+    left: inset(id, get, 'left'),
     overflowX: keyword<Overflow>(id, get, 'overflow-x', ['visible', 'hidden']),
     overflowY: keyword<Overflow>(id, get, 'overflow-y', ['visible', 'hidden']),
     direction: keyword(id, get, 'direction', ['ltr', 'rtl']),

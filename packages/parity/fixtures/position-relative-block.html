@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.c { width: 200px; border: 1px solid #000; margin-bottom: 2px; }
+.r { position: relative; height: 10px; width: 50px; background-color: #ccc; }
+.sib { height: 10px; background-color: #eee; }
+.px { left: 10px; top: 5px; }
+.neg { left: -7px; top: -3px; }
+.lr { left: 10px; right: 20px; }
+.tb { top: 6px; bottom: 9px; }
+.ronly { right: 20px; bottom: 7px; }
+.lonly { left: 13px; }
+.frac { left: 3.3px; top: 1.7px; }
+.auto { left: auto; right: auto; top: auto; bottom: auto; }
+.zero { left: 0; top: 0; }
+.rtl { direction: rtl; }
+.ltr { direction: ltr; }
+.nested { left: 4px; top: 2px; height: auto; width: 100px; padding: 3px; }
+.inner { position: relative; left: 5px; top: 1px; height: 8px; width: 20px; background-color: #999; }
+.am { margin-left: auto; margin-right: auto; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="c"><div data-dragon-id="a1" class="r px"></div><div data-dragon-id="s1" class="sib"></div><div data-dragon-id="a2" class="r neg"></div><div data-dragon-id="s2" class="sib"></div></div>
+<div data-dragon-id="c2" class="c"><div data-dragon-id="b1" class="r lr"></div><div data-dragon-id="b2" class="r tb"></div><div data-dragon-id="b3" class="r ronly"></div><div data-dragon-id="b4" class="r lonly"></div></div>
+<div data-dragon-id="c3" class="c rtl"><div data-dragon-id="d1" class="r lr"></div><div data-dragon-id="d2" class="r lonly"></div><div data-dragon-id="d3" class="r ronly"></div><div data-dragon-id="d4" class="r lr ltr"></div></div>
+<div data-dragon-id="c4" class="c ltr"><div data-dragon-id="e1" class="r lr rtl"></div><div data-dragon-id="e2" class="r frac"></div><div data-dragon-id="e3" class="r auto"></div><div data-dragon-id="e4" class="r zero"></div></div>
+<div data-dragon-id="c5" class="c"><div data-dragon-id="f1" class="r nested"><div data-dragon-id="f1a" class="inner"></div><div data-dragon-id="f1b" class="sib"></div></div><div data-dragon-id="f2" class="r lr am"></div></div>
+</body>
+</html>

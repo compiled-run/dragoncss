@@ -1,0 +1,46 @@
+{
+  "sources": ["app.dg", "doc.css", "app.css"],
+  "modules": [{ "id": "app", "source": "app.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "app", "file": "app.css", "scope": "App" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "app"] },
+  "components": [
+    {
+      "id": "App", "module": "app", "at": "component App",
+      "states": [
+        { "id": "open", "domain": [false, true], "initial": false, "at": "open: boolean = false" },
+        { "id": "side", "domain": ["start", "end"], "initial": "start", "at": "side: \"start\" | \"end\" = \"start\"" }
+      ],
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "el": "div", "id": "frame", "at": "<div frame", "class": ["app.frame"], "children": [
+              { "el": "div", "id": "panel", "at": "<div panel", "class": ["app.panel"], "attr": [
+                { "name": "ui-open", "when": ["open", true], "value": "", "at": "ui-open={open}" },
+                { "name": "ui-side", "choice": [
+                  { "when": ["side", "start"], "value": "start" },
+                  { "when": ["side", "end"], "value": "end" }
+                ], "at": "ui-side={side}" }
+              ], "children": [{ "text": "PP PP PPP", "id": "panel-text", "at": "PP PP PPP" }] },
+              { "el": "div", "id": "sib", "at": "<div sib", "class": ["app.sib"] }
+            ] }
+          ] }
+        ] }
+      ]
+    }
+  ],
+  "expected": {
+    "freeStates": [
+      { "instance": "doc", "state": "open", "domain": [false, true] },
+      { "instance": "doc", "state": "side", "domain": ["start", "end"] }
+    ],
+    "cases": 4,
+    "initial": [{ "instance": "doc", "state": "open", "value": false }, { "instance": "doc", "state": "side", "value": "start" }],
+    "textTopology": [
+      { "address": "panel:text0", "component": "App", "template": "panel-text", "at": "PP PP PPP", "ownerInstance": "doc", "insertionParent": "panel", "context": { "ltr": "text-in-flex-item/row/ltr", "rtl": "text-in-flex-item/row/rtl" }, "when": [["doc", "open", false]] },
+      { "address": "panel:text0", "component": "App", "template": "panel-text", "at": "PP PP PPP", "ownerInstance": "doc", "insertionParent": "panel", "context": { "ltr": "text-in-block/ltr", "rtl": "text-in-block/rtl" }, "when": [["doc", "open", true]] }
+    ]
+  }
+}

@@ -41,4 +41,37 @@ describe('validateLayoutInput', () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.errors.map((e) => e.code).sort()).toEqual(['bad-value', 'duplicate-id']);
   });
+
+  it('S4b: rejects bad position and inset fields, a missing inset, and an absolutely positioned root', () => {
+    const bad = clone(good) as unknown as { root: { style: Record<string, unknown>; children: { style: Record<string, unknown> }[] } };
+    const kid = bad.root.children[0] as { style: Record<string, unknown> };
+    kid.style['position'] = 'fixed';
+    kid.style['top'] = { kind: 'em', value: 1 };
+    kid.style['left'] = { kind: 'px', value: Number.NaN };
+    delete kid.style['bottom'];
+    const r = validateLayoutInput(bad);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.map((e) => `${e.path} ${e.code}`).sort()).toEqual([
+        '$.root.children[0].style.bottom missing-key',
+        '$.root.children[0].style.left.value wrong-type',
+        '$.root.children[0].style.position bad-value',
+        '$.root.children[0].style.top.kind unknown-tag',
+      ]);
+    }
+    for (const position of ['sticky', 'fixed']) {
+      const b = clone(good) as unknown as { root: { style: Record<string, unknown> } };
+      b.root.style['position'] = position;
+      expect(validateLayoutInput(b).ok, position).toBe(false);
+    }
+    const absRoot = clone(good) as unknown as { root: { style: Record<string, unknown> } };
+    absRoot.root.style['position'] = 'absolute';
+    const a = validateLayoutInput(absRoot);
+    expect(a.ok).toBe(false);
+    if (!a.ok) expect(a.errors).toEqual([expect.objectContaining({ path: '$.root.style.position', code: 'bad-value' })]);
+    const relRoot = clone(good) as unknown as { root: { style: Record<string, unknown> } };
+    relRoot.root.style['position'] = 'relative';
+    relRoot.root.style['top'] = { kind: 'percent', value: -5 };
+    expect(validateLayoutInput(relRoot).ok).toBe(true);
+  });
 });

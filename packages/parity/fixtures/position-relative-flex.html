@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.f { display: flex; width: 150px; border: 1px solid #000; margin-bottom: 3px; }
+.i { width: 20px; height: 10px; background-color: #ccc; }
+.r { position: relative; }
+.a { left: 5px; top: 3px; }
+.b { right: 9px; left: 5px; bottom: 2px; }
+.pc { top: 10%; left: 10%; }
+.def { height: 40px; }
+.col { flex-direction: column; }
+.rev { flex-direction: row-reverse; }
+.wrap { flex-wrap: wrap; width: 50px; }
+.grow { flex-grow: 1; }
+.ctr { justify-content: center; align-items: center; }
+.rtl { direction: rtl; }
+.o { order: -1; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="f1" class="f"><div data-dragon-id="f1a" class="i r a"></div><div data-dragon-id="f1b" class="i"></div><div data-dragon-id="f1c" class="i r b grow"></div></div>
+<div data-dragon-id="f2" class="f rtl"><div data-dragon-id="f2a" class="i r a"></div><div data-dragon-id="f2b" class="i r b"></div><div data-dragon-id="f2c" class="i"></div></div>
+<div data-dragon-id="f3" class="f def ctr"><div data-dragon-id="f3a" class="i r pc"></div><div data-dragon-id="f3b" class="i r b o"></div></div>
+<div data-dragon-id="f4" class="f col def"><div data-dragon-id="f4a" class="i r pc"></div><div data-dragon-id="f4b" class="i r b"></div><div data-dragon-id="f4c" class="i"></div></div>
+<div data-dragon-id="f5" class="f rev"><div data-dragon-id="f5a" class="i r a"></div><div data-dragon-id="f5b" class="i"></div></div>
+<div data-dragon-id="f6" class="f wrap"><div data-dragon-id="f6a" class="i r a"></div><div data-dragon-id="f6b" class="i r b"></div><div data-dragon-id="f6c" class="i"></div><div data-dragon-id="f6d" class="i r pc"></div></div>
+<div data-dragon-id="f7" class="f r a"><div data-dragon-id="f7a" class="i r a"></div><div data-dragon-id="f7b" class="i"></div></div>
+</body>
+</html>

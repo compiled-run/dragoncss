@@ -124,7 +124,6 @@ function refuseNode(node: CssNode, base: Span, text: string, where: string, diag
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
       origin: authored(span),
       message: `@${String(node['name'])} in ${where} is not supported in milestone 1`,
-      edits: [{ span, replacement: '' }],
     }));
     return;
   }

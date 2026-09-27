@@ -4,7 +4,7 @@ import { chromeDeviations } from '@dragon/layout';
 import { CHROME_VERSION, PLAYWRIGHT_VERSION } from './chrome.ts';
 import type { Edges } from './compare.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
-import { ENVIRONMENT } from './fixtures.ts';
+import { ENVIRONMENT, FIXTURES } from './fixtures.ts';
 import type { CaseOutcome, FixtureOutcome } from './pipeline.ts';
 import { repoPath } from './paths.ts';
 
@@ -24,6 +24,8 @@ export type Report = {
     readonly layoutFixtures: number;
     readonly treeFixtures: number;
     readonly rejectFixtures: number;
+    /** Layout fixtures written by scripts/gen-granularity-fixtures.ts from its committed selection. */
+    readonly generatedFixtures: readonly string[];
     readonly passed: number;
     readonly failed: number;
     readonly cases: number;
@@ -83,6 +85,7 @@ export function buildReport(outcomes: readonly FixtureOutcome[]): Report {
       layoutFixtures: outcomes.filter((o) => o.kind === 'layout').length,
       treeFixtures: outcomes.filter((o) => o.kind === 'layout' && o.format === 'tree').length,
       rejectFixtures: outcomes.filter((o) => o.kind === 'reject').length,
+      generatedFixtures: outcomes.filter((o) => FIXTURES.some((f) => f.id === o.id && f.kind === 'layout' && f.source === 'generated')).map((o) => o.id),
       passed: outcomes.filter((o) => o.status === 'pass').length,
       failed: outcomes.filter((o) => o.status === 'fail').length,
       cases: allCases.length,
@@ -129,9 +132,9 @@ export function renderHtml(r: Report): string {
   parts.push('body{font:13px system-ui,sans-serif;margin:16px}figure{display:inline-block;margin:0 12px 8px 0}svg{border:1px solid #999;background:#fff}');
   parts.push('rect{fill:rgba(40,110,220,.08);stroke:#246;stroke-width:.5}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:2px 6px;text-align:right}');
   parts.push('.fail{color:#b00}.pass{color:#070}td.id{text-align:left}</style></head><body>');
-  parts.push(`<h1>Dragon parity (S4a)</h1><p>Lanes ${r.run.lanes.join(' and ')}; Chrome ${esc(r.run.chrome)} via Playwright ${esc(r.run.playwright)}; viewport ${r.run.viewport.width}x${r.run.viewport.height} at DPR ${r.run.devicePixelRatio}; layout gate ${r.run.gateDevicePx} device px per edge (${esc(r.run.gateSource)}); dual rule: ${esc(r.run.dualRule)}. Screenshots are not used; these drawings are evidence only.</p>`);
+  parts.push(`<h1>Dragon parity (S4b)</h1><p>Lanes ${r.run.lanes.join(' and ')}; Chrome ${esc(r.run.chrome)} via Playwright ${esc(r.run.playwright)}; viewport ${r.run.viewport.width}x${r.run.viewport.height} at DPR ${r.run.devicePixelRatio}; layout gate ${r.run.gateDevicePx} device px per edge (${esc(r.run.gateSource)}); dual rule: ${esc(r.run.dualRule)}. Screenshots are not used; these drawings are evidence only.</p>`);
   const d = r.summary.dual;
-  parts.push(`<p>${r.summary.passed}/${r.summary.fixtures} fixtures pass (${r.summary.layoutFixtures} layout, of which ${r.summary.treeFixtures} tree; ${r.summary.rejectFixtures} reject); ${r.summary.casesPassed}/${r.summary.cases} cases pass (${r.summary.casesByDirection.map((d) => `${d.direction} ${d.passed}/${d.cases}`).join(', ')}). Layout lane: ${r.summary.exactLuNodes}/${r.summary.comparedNodes} compared nodes match Chrome exactly at 1/64 px (informational), of them text nodes ${r.summary.textNodesExact}/${r.summary.textNodes} and per-line text fragments ${r.summary.lineNodesExact}/${r.summary.lineNodes}; ${r.summary.anonymousBoxes.length} anonymous boxes (Dragon only, listed per case). Dual lane: boxes ${d.boxesEqual}/${d.boxesCompared}, computed values ${d.valuesEqual}/${d.valuesCompared}, colour channels ${d.channelsEqual}/${d.channelsCompared}.</p>`);
+  parts.push(`<p>${r.summary.passed}/${r.summary.fixtures} fixtures pass (${r.summary.layoutFixtures} layout, of which ${r.summary.treeFixtures} tree and ${r.summary.generatedFixtures.length} generated; ${r.summary.rejectFixtures} reject); ${r.summary.casesPassed}/${r.summary.cases} cases pass (${r.summary.casesByDirection.map((d) => `${d.direction} ${d.passed}/${d.cases}`).join(', ')}). Layout lane: ${r.summary.exactLuNodes}/${r.summary.comparedNodes} compared nodes match Chrome exactly at 1/64 px (informational), of them text nodes ${r.summary.textNodesExact}/${r.summary.textNodes} and per-line text fragments ${r.summary.lineNodesExact}/${r.summary.lineNodes}; ${r.summary.anonymousBoxes.length} anonymous boxes (Dragon only, listed per case). Dual lane: boxes ${d.boxesEqual}/${d.boxesCompared}, computed values ${d.valuesEqual}/${d.valuesCompared}, colour channels ${d.channelsEqual}/${d.channelsCompared}.</p>`);
   for (const f of r.fixtures) {
     const perEnv = f.environments.map((e) => `${e.direction}: ${e.expected} declared, ${e.renderer} rendered, ${e.dragon} enumerated by Dragon`).join('; ');
     parts.push(`<h2 id="${esc(f.id)}">${esc(f.id)} <span class="${f.status}">${f.status}</span></h2><p>${f.format} ${f.kind} fixture; ${f.cases.length} case(s)${perEnv === '' ? '' : ` (${esc(perEnv)})`}</p>`);

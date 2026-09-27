@@ -1,7 +1,7 @@
 // The longhands the milestone-1 compiler resolves per element, and the shorthands it expands into them.
 
 export const LONGHANDS = [
-  'display', 'position', 'overflow-x', 'overflow-y', 'direction', 'box-sizing',
+  'display', 'position', 'top', 'right', 'bottom', 'left', 'overflow-x', 'overflow-y', 'direction', 'box-sizing',
   'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height',
   'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
   'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
@@ -55,6 +55,10 @@ export const SIDES = ['top', 'right', 'bottom', 'left'] as const;
 export const PROPERTY_ASPECTS: { readonly [P in Longhand]: { readonly layout: boolean; readonly paint: boolean } } = {
   display: { layout: true, paint: false },
   position: { layout: true, paint: false },
+  top: { layout: true, paint: false },
+  right: { layout: true, paint: false },
+  bottom: { layout: true, paint: false },
+  left: { layout: true, paint: false },
   // overflow: hidden also clips painting, which no milestone-1 lane renders natively.
   'overflow-x': { layout: true, paint: true },
   'overflow-y': { layout: true, paint: true },
@@ -108,19 +112,24 @@ export const PROPERTY_ASPECTS: { readonly [P in Longhand]: { readonly layout: bo
   'background-color': { layout: false, paint: true },
 };
 
+/** The role of a longhand in its row key (M2): which formatting context, if any, the row names. */
+export type PropertyRole = 'item' | 'container' | 'text' | 'paint';
+
+const CONTAINER_LONGHANDS: readonly Longhand[] = ['flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap', 'direction'];
+const TEXT_ROLE_LONGHANDS: readonly Longhand[] = ['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode'];
+
 /**
  * Which formatting context a longhand's row key names (M2): container properties name the element's own flex line mode, text
- * properties the context of each text node they reach (analysis/context.ts), and every other longhand the context the
- * element's box takes part in. direction is a container property: the element's own inline flow, text alignment and flex axes
- * read it, while its own box is placed by its parent's direction.
+ * properties the context of each text node they reach (analysis/context.ts), paint properties only the element's direction
+ * (their value is resolved without layout, T036), and every other longhand the context the element's box takes part in.
+ * paint is derived from PROPERTY_ASPECTS: exactly the longhands with a paint aspect and no layout aspect. direction is a
+ * container property: the element's own inline flow, text alignment and flex axes read it, while its own box is placed by its
+ * parent's direction.
  */
-export const PROPERTY_ROLE: { readonly [P in Longhand]: 'item' | 'container' | 'text' } = Object.fromEntries(
-  LONGHANDS.map((p) => [
-    p,
-    ['flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap', 'direction'].includes(p)
-      ? 'container'
-      : ['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode'].includes(p)
-        ? 'text'
-        : 'item',
-  ]),
-) as { readonly [P in Longhand]: 'item' | 'container' | 'text' };
+export const PROPERTY_ROLE: { readonly [P in Longhand]: PropertyRole } = Object.fromEntries(
+  LONGHANDS.map((p) => {
+    const a = PROPERTY_ASPECTS[p];
+    const role: PropertyRole = !a.layout && a.paint ? 'paint' : CONTAINER_LONGHANDS.includes(p) ? 'container' : TEXT_ROLE_LONGHANDS.includes(p) ? 'text' : 'item';
+    return [p, role];
+  }),
+) as { readonly [P in Longhand]: PropertyRole };

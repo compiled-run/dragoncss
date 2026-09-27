@@ -6,8 +6,27 @@ import { unsupported } from './unsupported.ts';
 
 export type Edges = { readonly top: LU; readonly right: LU; readonly bottom: LU; readonly left: LU };
 
-/** baseline: the first baseline (css-align-3 §9.1) as an offset from the border-box top, or null when the box has none. */
-export type Frag = { readonly id: string; readonly width: LU; readonly height: LU; readonly baseline: LU | null; readonly children: readonly Placed[] };
+/** Which side of the margin box sits at a static position, physically: left or top, the centre, right or bottom. */
+export type StaticEdge = 'near' | 'center' | 'far';
+
+/** One axis of a static position (css-position-3 §4.1), relative to the parent's border box. */
+export type StaticAxis = { readonly offset: LU; readonly edge: StaticEdge };
+
+/** An absolutely positioned child with the static position its parent computed for it; laid out once its containing block is. */
+export type OutOfFlow = { readonly box: LayoutBox; readonly x: StaticAxis; readonly y: StaticAxis };
+
+/**
+ * baseline: the first baseline (css-align-3 §9.1) as an offset from the border-box top, or null when the box has none.
+ * outOfFlow: the box's absolutely positioned children, in document order.
+ */
+export type Frag = {
+  readonly id: string;
+  readonly width: LU;
+  readonly height: LU;
+  readonly baseline: LU | null;
+  readonly children: readonly Placed[];
+  readonly outOfFlow: readonly OutOfFlow[];
+};
 export type Placed = { readonly frag: Frag; readonly x: LU; readonly y: LU };
 
 /** How a box's percentage block sizes can resolve against its containing block. */

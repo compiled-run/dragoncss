@@ -28,7 +28,7 @@ import {
   sum,
   ZERO,
 } from './units.ts';
-import type { Edges, Frag, HeightBasis, MinMax, Placed } from './box.ts';
+import type { Edges, Frag, HeightBasis, MinMax, OutOfFlow, Placed, StaticAxis } from './box.ts';
 import {
   borderBoxFromSpecified,
   constrain,
@@ -42,6 +42,7 @@ import {
 import type { Ctx } from './block.ts';
 import { directionOf, layoutContents } from './block.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
+import { isOutOfFlow, relativeOffset } from './position.ts';
 import { unsupported } from './unsupported.ts';
 
 export type FlexArgs = {
@@ -55,7 +56,7 @@ export type FlexArgs = {
 };
 
 /** baseline: the container's first baseline (css-flexbox-1 §8.5) from its content-box top, or null with no items. */
-export type FlexResult = { readonly contentHeight: LU; readonly placed: readonly Placed[]; readonly baseline: LU | null };
+export type FlexResult = { readonly contentHeight: LU; readonly placed: readonly Placed[]; readonly baseline: LU | null; readonly outOfFlow: readonly OutOfFlow[] };
 
 /** A position along one axis in flow terms: from the writing-mode start edge of that axis. */
 type FlowPosition = 'start' | 'end' | 'center';
@@ -121,10 +122,13 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
     crossStartIsPhysical: isRow ? true : ltr,
   };
   const boxes: LayoutBox[] = [];
+  const absolute: LayoutBox[] = [];
   for (const k of box.children) {
     // css-flexbox-1 §4: the compiler wraps text in anonymous flex items; validateLayoutInput rejects text in a flex container.
     if (k.kind === 'text') throw new Error(`${k.id} is text directly in flex container ${box.id}; validateLayoutInput rejects this input`);
-    boxes.push(k);
+    // css-flexbox-1 §4.1: an absolutely positioned child is not a flex item.
+    if (isOutOfFlow(ctx, k)) absolute.push(k);
+    else boxes.push(k);
   }
   // css-flexbox-1 §5.4: order-modified document order, stable for equal values (planted fault ignoreOrder keeps document order).
   const ordered = ctx.faults.ignoreOrder ? boxes : boxes.map((b, i) => ({ b, i })).sort((x, y) => x.b.style.order - y.b.style.order || x.i - y.i).map((x) => x.b);
@@ -207,6 +211,9 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
   const contentLeft = add(a.bor.left, a.pad.left);
   const contentTop = add(a.bor.top, a.pad.top);
   let containerBaseline: LU | null = null;
+  // Chrome deviation wrap-reverse-baseline-line: a row container's baseline comes from its block-start (top) line, which is the
+  // last flex line under wrap-reverse.
+  const baselineLine = isRow && axes.wrapReverse ? lines.length - 1 : 0;
   lines.forEach((line, lineIndex) => {
     const flowItems = axes.reverse ? [...line.items].reverse() : line.items;
     const n = flowItems.length;
@@ -264,18 +271,46 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
         x: add(contentLeft, isRow ? mainPos : crossPos),
         y: add(contentTop, isRow ? crossPos : mainPos),
       };
-      placed.push(at);
-      // css-flexbox-1 §8.5: the first line's shared baseline, or else the baseline of its first item in flow order.
-      if (lineIndex === 0 && containerBaseline === null) {
+      // css-flexbox-1 §8.5: the baseline line's shared baseline, or else the baseline of its first item in flow order.
+      if (lineIndex === baselineLine && containerBaseline === null) {
         if (isRow && groupCount > 0) containerBaseline = add(contentTop, add(linePhysical, groupBaseline));
         else if (k === 0) containerBaseline = add(at.y, sub(ownBaseline(r.frag), baselineFault(ctx, item)));
       }
+      // CSS2 §9.4.3 against the container's content box: a relative offset moves the item after alignment, never the baselines.
+      const offset = relativeOffset(item.box, a.contentWidth, itemHeightBasis, directionOf(ctx, box));
+      placed.push({ frag: at.frag, x: add(at.x, offset.dx), y: add(at.y, offset.dy) });
       cursor = add(cursor, add(mainBorderBox, item.mainMargins));
       if (item.autoMainEnd) cursor = add(cursor, autoShare());
       cursor = add(cursor, mainGap);
     });
   });
-  return { contentHeight: isRow ? containerCross : mainInner, placed, baseline: containerBaseline };
+  const content = { left: contentLeft, top: contentTop, width: a.contentWidth, height: isRow ? containerCross : (mainInner as LU) };
+  const outOfFlow = absolute.map((child) => staticPosition(ctx, box, child, axes, content));
+  return { contentHeight: isRow ? containerCross : mainInner, placed, baseline: containerBaseline, outOfFlow };
+}
+
+/** One axis of a static position in flow terms: the flow position along a content-box range whose flow start is near or far. */
+function staticAxis(position: FlowPosition, lo: LU, size: LU, startIsNear: boolean): StaticAxis {
+  if (position === 'center') return { offset: startIsNear ? add(lo, divInt(size, 2)) : sub(add(lo, size), divInt(size, 2)), edge: 'center' };
+  const near = (position === 'start') === startIsNear;
+  return near ? { offset: lo, edge: 'near' } : { offset: add(lo, size), edge: 'far' };
+}
+
+/**
+ * css-flexbox-1 §4.1: the static position of an absolutely positioned child is that of the sole flex item of a container of its
+ * used size: justify-content on the main axis and align-self on the cross axis, from the flow start of each axis. Measured in
+ * Chrome 145: space-between acts as flex-start and space-around and space-evenly as center; stretch acts as flex-start and
+ * baseline as start; align-content has no effect. A centre is the content box start plus LayoutUnit / 2 from the flow start.
+ */
+function staticPosition(ctx: Ctx, container: LayoutBox, child: LayoutBox, axes: Axes, content: { readonly left: LU; readonly top: LU; readonly width: LU; readonly height: LU }): OutOfFlow {
+  const flexStart: FlowPosition = axes.reverse ? 'end' : 'start';
+  const j = justifyFlow(container.style.justifyContent, axes);
+  const main: FlowPosition = j === 'space-between' ? flexStart : j === 'space-around' || j === 'space-evenly' ? 'center' : j;
+  const align = effectiveAlign(ctx, container, child, axes);
+  const cross: FlowPosition = align === 'stretch' ? (axes.wrapReverse ? 'end' : 'start') : align === 'baseline' ? 'start' : align;
+  const xAxis = axes.isRow ? staticAxis(main, content.left, content.width, axes.mainStartIsPhysical) : staticAxis(cross, content.left, content.width, axes.crossStartIsPhysical);
+  const yAxis = axes.isRow ? staticAxis(cross, content.top, content.height, axes.crossStartIsPhysical) : staticAxis(main, content.top, content.height, axes.mainStartIsPhysical);
+  return { box: child, x: xAxis, y: yAxis };
 }
 
 /** css-align-3 §9.3: a box with no baseline set synthesizes one from its border box: the line-under (bottom) edge. */
@@ -714,6 +749,8 @@ function alignContent(box: LayoutBox, axes: Axes, lines: Line[], free: LU, gap: 
   if (v === 'baseline') unsupported('flex-baseline', box.id, 'css-align-3 §9.3', 'align-content: baseline (not yet supported)');
   const flowLines = axes.wrapReverse ? [...lines].reverse() : lines;
   const n = flowLines.length;
+  // A container whose children are all absolutely positioned has no flex lines to align.
+  if (n === 0) return;
   const flexStart: FlowPosition = axes.wrapReverse ? 'end' : 'start';
   let position: FlowPosition | DistributedMode | 'stretch';
   if (v === 'normal' || v === 'stretch') position = free > 0 ? 'stretch' : flexStart;

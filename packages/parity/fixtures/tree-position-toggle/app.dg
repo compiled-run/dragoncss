@@ -1,0 +1,10 @@
+component App(open: boolean = false, side: "start" | "end" = "start") {
+  <html>
+    <body>
+      <div frame class="frame">
+        <div panel class="panel" ui-open={open} ui-side={side}>PP PP PPP</div>
+        <div sib class="sib" />
+      </div>
+    </body>
+  </html>
+}

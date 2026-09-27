@@ -4,6 +4,10 @@ import type { LayoutBox, LayoutStyle, TextLeaf } from '../src/index.ts';
 export const divStyle: LayoutStyle = {
   display: 'block',
   position: 'static',
+  top: { kind: 'auto' },
+  right: { kind: 'auto' },
+  bottom: { kind: 'auto' },
+  left: { kind: 'auto' },
   overflowX: 'visible',
   overflowY: 'visible',
   direction: 'ltr',

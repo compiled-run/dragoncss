@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.c { display: flex; position: relative; width: 150px; border: 1px solid #000; margin-bottom: 3px; column-gap: 7px; row-gap: 3px; }
+.i { width: 30px; height: 10px; background-color: #ccc; }
+.a { position: absolute; width: 60px; height: 40px; background-color: #fcc; }
+.o1 { order: -5; }
+.o2 { order: 3; }
+.wrap { flex-wrap: wrap; width: 70px; }
+.sb { justify-content: space-between; }
+.g { flex-grow: 1; }
+.bl { align-items: baseline; }
+.t { font-size: 20px; }
+.fit { display: flex; }
+.col { flex-direction: column; }
+.rtl { direction: rtl; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="c sb"><div data-dragon-id="c1a" class="i"></div><div data-dragon-id="a1" class="a o1"></div><div data-dragon-id="c1b" class="i"></div><div data-dragon-id="a2" class="a o2"></div><div data-dragon-id="c1c" class="i"></div></div>
+<div data-dragon-id="c2" class="c wrap"><div data-dragon-id="c2a" class="i"></div><div data-dragon-id="a3" class="a"></div><div data-dragon-id="c2b" class="i"></div><div data-dragon-id="c2c" class="i g"></div></div>
+<div data-dragon-id="c3" class="c bl"><div data-dragon-id="a4" class="a t">XX</div><div data-dragon-id="c3a">XX</div><div data-dragon-id="c3b" class="t">X</div></div>
+<div data-dragon-id="p4" class="fit"><div data-dragon-id="c4" class="c"><div data-dragon-id="c4a" class="i"></div><div data-dragon-id="a5" class="a"></div></div></div>
+<div data-dragon-id="p5" class="fit"><div data-dragon-id="c5" class="c col"><div data-dragon-id="c5a" class="i"></div><div data-dragon-id="a6" class="a"></div><div data-dragon-id="c5b" class="i"></div></div></div>
+<div data-dragon-id="c6" class="c rtl sb"><div data-dragon-id="a7" class="a"></div><div data-dragon-id="c6a" class="i"></div><div data-dragon-id="c6b" class="i o2"></div></div>
+<div data-dragon-id="c7" class="c"><div data-dragon-id="a8" class="a"></div></div>
+</body>
+</html>
