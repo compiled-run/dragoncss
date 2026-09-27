@@ -1,6 +1,7 @@
 // Internal entry for the parity harness, selected by the "dragon-internal" export condition. Not a public API.
 import type { LayoutInput } from '@dragon/layout';
 import type { TextContext } from './analysis/context.ts';
+import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
 import type { Rgba8 } from './css/color.ts';
@@ -9,7 +10,7 @@ import { TRANSPARENT } from './css/color.ts';
 import type { ColorLonghand, TextLonghand } from './css/properties.ts';
 import { COLOR_LONGHANDS, TEXT_LONGHANDS } from './css/properties.ts';
 import type { InternalCase } from './project.ts';
-import { caseByAssignment, internalRecord, valueOrigin } from './project.ts';
+import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
 import type { Assignment, Origin, Target } from './types.ts';
 
@@ -23,7 +24,12 @@ export { webProfile } from './profiles/web.ts';
 export type { Proof, ProofAspect, ProofLane, ProfileRow, SupportProfile } from './profiles/types.ts';
 export { statusOf } from './profiles/types.ts';
 export { sha256Hex } from './digest.ts';
-export { chromeVersion } from './ua/chrome-145.generated.ts';
+export { chromeVersion } from './ua/chrome-145.darwin-arm64.generated.ts';
+export type { UaDataset, UaDatasetChoice } from './ua/datasets.ts';
+export { REFERENCE_PLATFORM, ReferencePlatformUnavailable, referenceDataset, uaDatasetFor } from './ua/datasets.ts';
+export type { RootFont } from './analysis/resolve.ts';
+export { COMMITTED_PROFILES } from './project.ts';
+export type { SupportProfiles } from './project.ts';
 export type { ColorLonghand, Longhand } from './css/properties.ts';
 export { COLOR_LONGHANDS, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE } from './css/properties.ts';
 export type { Rgba8 } from './css/color.ts';
@@ -47,6 +53,8 @@ export type Environment = {
   readonly viewport: { readonly width: number; readonly height: number };
   readonly devicePixelRatio: number;
   readonly direction: 'ltr' | 'rtl';
+  /** The root font of the environment: 'ahem' in the parity fixture environment, 'ua-default' for fixtures that compare UA fonts. */
+  readonly rootFont: RootFont;
 };
 
 export type LayoutProjection =
@@ -72,6 +80,7 @@ export function iosLayoutProjection(compiled: object, environment: Environment, 
   if (typeof c === 'string') return { kind: 'blocked', reason: c };
   const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
   if (record.direction !== environment.direction) return { kind: 'blocked', reason: `the result was resolved for direction ${record.direction}, not ${environment.direction}` };
+  if (record.rootFont !== environment.rootFont) return { kind: 'blocked', reason: `the result was resolved for root font ${record.rootFont}, not ${environment.rootFont}` };
   if (c.iosLowered === null) return { kind: 'blocked', reason: 'the ios output is blocked or not configured' };
   return {
     kind: 'ready',
@@ -155,6 +164,7 @@ export function textTopology(compiled: object, assignment: Assignment): readonly
   const c = caseOf(compiled, assignment);
   if (typeof c === 'string' || c.resolved === null) return null;
   const root = c.resolved;
+  const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
   const out: TextTopologyEntry[] = [];
   const walk = (el: ResolvedElement, parent: ResolvedElement | null): void => {
     for (const ch of el.children) {
@@ -166,7 +176,7 @@ export function textTopology(compiled: object, assignment: Assignment): readonly
       for (const p of TEXT_LONGHANDS) {
         const v = ch.props.get(p);
         inherited[p] = v !== undefined && v.origin === 'inherited'
-          ? { kind: 'inherited', element: el.element.address, from: valueOrigin(root, el.element.address, p) }
+          ? { kind: 'inherited', element: el.element.address, from: originOfValue(record, root, el.element.address, p) }
           : { kind: 'builtin', dataset: `@webref/css ${webrefVersion} initial`, entry: p };
       }
       out.push({

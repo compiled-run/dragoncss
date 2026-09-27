@@ -30,7 +30,7 @@ import type { CssValue } from '../css/stylesheet.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, valueToString } from '../analysis/resolve.ts';
 import type { CompilerFaults } from '../faults.ts';
-import { borderWidthKeywords } from '../ua/chrome-145.generated.ts';
+import type { UaDataset } from '../ua/datasets.ts';
 
 export class LoweringError extends Error {
   readonly nodeId: string;
@@ -90,14 +90,14 @@ function inset(id: string, get: Get, p: Longhand): InsetValue {
 }
 
 // css-backgrounds-3 §3.3: none/hidden computes to 0. Device-pixel snapping depends on the environment, so the engine applies it.
-function borderWidth(id: string, get: Get, side: 'top' | 'right' | 'bottom' | 'left'): { readonly kind: 'px'; readonly value: number } {
+function borderWidth(id: string, get: Get, side: 'top' | 'right' | 'bottom' | 'left', ua: UaDataset): { readonly kind: 'px'; readonly value: number } {
   const style = keyword(id, get, `border-${side}-style` as Longhand, ['none', 'hidden', 'solid', 'dotted', 'dashed', 'double', 'groove', 'ridge', 'inset', 'outset']);
   if (style === 'none' || style === 'hidden') return { kind: 'px', value: 0 };
   const p = `border-${side}-width` as Longhand;
   const v = get(p);
   let px: number;
   if (v.kind === 'length' && v.unit === 'px') px = v.value;
-  else if (v.kind === 'keyword' && borderWidthKeywords[v.value] !== undefined) px = Number.parseFloat(borderWidthKeywords[v.value] as string);
+  else if (v.kind === 'keyword' && ua.borderWidthKeywords[v.value] !== undefined) px = Number.parseFloat(ua.borderWidthKeywords[v.value] as string);
   else return fail(id, p, v, 'px | thin | medium | thick');
   return { kind: 'px', value: px };
 }
@@ -123,14 +123,14 @@ function gap(id: string, get: Get, p: Longhand): GapValue {
 
 const ALIGN_ITEMS: readonly AlignItems[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
 
-export function lowerStyle(el: ResolvedElement, faults: CompilerFaults): LayoutStyle {
+export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset): LayoutStyle {
   const id = el.element.address;
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   // css-overflow-3 §3.3: overflow on html or body propagates to the viewport, which the engine does not model.
   if ((el.element.tag === 'html' || el.element.tag === 'body') && (keywordOf(get('overflow-x')) !== 'visible' || keywordOf(get('overflow-y')) !== 'visible')) {
     throw new LoweringError(id, 'overflow-x', `overflow on <${el.element.tag}> ${id} propagates to the viewport, which the layout engine does not model`);
   }
-  return lowerStyleFrom(id, get, faults);
+  return lowerStyleFrom(id, get, faults, ua);
 }
 
 const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '');
@@ -142,7 +142,7 @@ function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allow
   return keyword(id, get, p, allowed);
 }
 
-function lowerStyleFrom(id: string, get: Get, faults: CompilerFaults): LayoutStyle {
+function lowerStyleFrom(id: string, get: Get, faults: CompilerFaults, ua: UaDataset): LayoutStyle {
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
@@ -170,10 +170,10 @@ function lowerStyleFrom(id: string, get: Get, faults: CompilerFaults): LayoutSty
     paddingRight: padding(id, get, 'padding-right'),
     paddingBottom: padding(id, get, 'padding-bottom'),
     paddingLeft: padding(id, get, 'padding-left'),
-    borderTopWidth: borderWidth(id, get, 'top'),
-    borderRightWidth: borderWidth(id, get, 'right'),
-    borderBottomWidth: borderWidth(id, get, 'bottom'),
-    borderLeftWidth: borderWidth(id, get, 'left'),
+    borderTopWidth: borderWidth(id, get, 'top', ua),
+    borderRightWidth: borderWidth(id, get, 'right', ua),
+    borderBottomWidth: borderWidth(id, get, 'bottom', ua),
+    borderLeftWidth: borderWidth(id, get, 'left', ua),
     flexDirection: keyword<FlexDirection>(id, get, 'flex-direction', ['row', 'row-reverse', 'column', 'column-reverse']),
     flexWrap: keyword<FlexWrap>(id, get, 'flex-wrap', ['nowrap', 'wrap', 'wrap-reverse']),
     flexGrow: number(id, get, 'flex-grow'),
@@ -194,12 +194,21 @@ function lowerStyleFrom(id: string, get: Get, faults: CompilerFaults): LayoutSty
   };
 }
 
+const AHEM_EXPECTED = 'Ahem (the milestone-1 layout font)';
+
+/** The lowering's font refusal for a text node, or null: the analysis reports it for every case before any lowering (T005 rec 3). */
+export function textFontProblem(t: ResolvedText): string | null {
+  const family = (t.props.get('font-family') as ResolvedValue).value;
+  if (family.kind === 'family' && family.value === 'Ahem') return null;
+  return `font-family: ${valueToString(family)} on ${t.node.address} has no layout mapping (expected ${AHEM_EXPECTED})`;
+}
+
 // goal.md principle 3: the text node carries its inherited text styles, so the lowering reads the text node and never its parent.
 function lowerText(t: ResolvedText): TextLeaf {
   const id = t.node.address;
   const get = (p: TextLonghand): CssValue => (t.props.get(p) as ResolvedValue).value;
   const family = get('font-family');
-  if (family.kind !== 'family' || family.value !== 'Ahem') fail(id, 'font-family', family, 'Ahem (the milestone-1 layout font)');
+  if (textFontProblem(t) !== null) fail(id, 'font-family', family, AHEM_EXPECTED);
   const fs = get('font-size');
   if (fs.kind !== 'length' || fs.unit !== 'px') fail(id, 'font-size', fs, 'px');
   const lh = get('line-height');
@@ -234,11 +243,11 @@ export function assertTextCarriesContainer(container: LayoutStyle, containerId: 
 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box inherits the inherited properties of its enclosing box and takes the
 // initial value of every other property; it is block-level (a block container, blockified as a flex item).
-function anonymousBox(parent: ResolvedElement, id: string, texts: readonly ResolvedText[], faults: CompilerFaults): LayoutBox {
+function anonymousBox(parent: ResolvedElement, id: string, texts: readonly ResolvedText[], faults: CompilerFaults, ua: UaDataset): LayoutBox {
   const values = new Map<Longhand, CssValue>();
-  for (const p of LONGHANDS) values.set(p, INHERITED.has(p) ? (parent.props.get(p) as ResolvedValue).value : initialValue(p));
+  for (const p of LONGHANDS) values.set(p, INHERITED.has(p) ? (parent.props.get(p) as ResolvedValue).value : initialValue(p, ua));
   values.set('display', { kind: 'keyword', value: 'block' });
-  const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, faults);
+  const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, faults, ua);
   for (const t of texts) assertTextCarriesContainer(style, id, t);
   return { kind: 'box', id, boxType: 'anonymous', style, children: texts.map(lowerText) };
 }
@@ -247,9 +256,9 @@ function anonymousBox(parent: ResolvedElement, id: string, texts: readonly Resol
  * The layout tree of a document. display: none subtrees generate no boxes (CSS2 §9.2.4), so they are omitted wherever they occur
  * (C4) and a display: none root has no layout tree.
  */
-export function lowerTree(root: ResolvedElement, faults: CompilerFaults): LayoutBox {
+export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset): LayoutBox {
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
-  return lowerBox(root, faults);
+  return lowerBox(root, faults, ua);
 }
 
 /**
@@ -257,22 +266,22 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults): Layout
  * wrapped in anonymous boxes "<element>:anon<k>", one per maximal text sequence; display: none children are omitted, so they never
  * split a text sequence. The engine never creates boxes.
  */
-function lowerBox(el: ResolvedElement, faults: CompilerFaults): LayoutBox {
+function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset): LayoutBox {
   const id = el.element.address;
   const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
-  const style = lowerStyle(el, faults);
+  const style = lowerStyle(el, faults, ua);
   const wrap = kids.some((c) => c.kind === 'text') && (displayOf(el) === 'flex' || kids.some((c) => c.kind === 'element'));
   const children: (LayoutBox | TextLeaf)[] = [];
   let run: ResolvedText[] = [];
   let anon = 0;
   const flush = (): void => {
-    if (run.length > 0) children.push(anonymousBox(el, `${id}:anon${anon++}`, run, faults));
+    if (run.length > 0) children.push(anonymousBox(el, `${id}:anon${anon++}`, run, faults, ua));
     run = [];
   };
   for (const c of kids) {
     if (c.kind === 'element') {
       flush();
-      children.push(lowerBox(c, faults));
+      children.push(lowerBox(c, faults, ua));
     } else if (wrap) run.push(c);
     else {
       assertTextCarriesContainer(style, id, c);

@@ -1,8 +1,12 @@
 // The parity corpus. Every fixture is attempted in every run; none carries its own tolerance.
 import type { DiagnosticCode, Environment } from 'dragon';
 
-/** The reference environment of every case in this lane (docs/api.md §7): an input to the projection, the engine and Chrome. */
-export const ENVIRONMENT: Environment = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr' };
+/**
+ * The reference environment of every case in this lane (docs/api.md §7, §10.1): an input to the projection, the engine and Chrome.
+ * The root font-family is Ahem, so no capture depends on the platform's default font; fixtures that compare Chrome's UA font
+ * declare rootFont 'ua-default' and compare against the keyed UA dataset.
+ */
+export const ENVIRONMENT: Environment = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ahem' };
 
 /** The same environment right-to-left (docs/api.md §7): every tree fixture case also runs here, as its own case ("<case>-rtl"). */
 export const RTL_ENVIRONMENT: Environment = { ...ENVIRONMENT, direction: 'rtl' };
@@ -11,7 +15,7 @@ export const RTL_ENVIRONMENT: Environment = { ...ENVIRONMENT, direction: 'rtl' }
  * in the directions they declare (left-to-right unless the registry says otherwise). */
 export function environmentsOf(spec: FixtureSpec): readonly Environment[] {
   if (spec.kind !== 'layout') return [ENVIRONMENT];
-  return spec.environments.map((d) => (d === 'rtl' ? RTL_ENVIRONMENT : ENVIRONMENT));
+  return spec.environments.map((d) => ({ ...(d === 'rtl' ? RTL_ENVIRONMENT : ENVIRONMENT), rootFont: spec.rootFont }));
 }
 
 /** The case id suffix of a direction: none for ltr, "-rtl" for rtl. */
@@ -25,27 +29,30 @@ export type FixtureSpec =
       readonly gate: 'default';
       /** The environment directions the fixture runs in, each with its own cases and captures ('<case>-rtl' for rtl). */
       readonly environments: readonly Environment['direction'][];
-      /** hand-written, or written by scripts/gen-granularity-fixtures.ts from its committed selection. */
+      /** hand-written, or written by a committed generator (scripts/gen-*.ts) from its committed selection. */
       readonly source: 'hand-written' | 'generated';
+      /** The environment root font: 'ahem', or 'ua-default' for a fixture that compares Chrome's UA font with the keyed dataset. */
+      readonly rootFont: Environment['rootFont'];
     }
   | {
       readonly id: string;
       readonly format: 'html' | 'tree';
       readonly kind: 'reject';
-      /** spanText null: the diagnostic is unlocated. */
-      readonly expect: { readonly code: DiagnosticCode; readonly spanText: string | null };
+      /** spanText null: the diagnostic is unlocated. messagePrefix: the diagnostic message must start with it (M4), or null. */
+      readonly expect: { readonly code: DiagnosticCode; readonly spanText: string | null; readonly messagePrefix: string | null };
     };
 
-const layout = (id: string, environments: readonly Environment['direction'][] = ['ltr']): FixtureSpec => ({ id, format: 'html', kind: 'layout', gate: 'default', environments, source: 'hand-written' });
+const layout = (id: string, environments: readonly Environment['direction'][] = ['ltr'], rootFont: Environment['rootFont'] = 'ahem'): FixtureSpec => ({ id, format: 'html', kind: 'layout', gate: 'default', environments, source: 'hand-written', rootFont });
 /** An HTML fixture that runs in both environment directions (every position-* and flex-abspos-* fixture). */
 const both = (id: string): FixtureSpec => layout(id, ['ltr', 'rtl']);
-const generated = (id: string): FixtureSpec => ({ id, format: 'html', kind: 'layout', gate: 'default', environments: ['ltr', 'rtl'], source: 'generated' });
-const tree = (id: string): FixtureSpec => ({ id, format: 'tree', kind: 'layout', gate: 'default', environments: ['ltr', 'rtl'], source: 'hand-written' });
-const reject = (id: string, code: DiagnosticCode, spanText: string | null): FixtureSpec => ({ id, format: 'html', kind: 'reject', expect: { code, spanText } });
-const rejectTree = (id: string, code: DiagnosticCode, spanText: string | null): FixtureSpec => ({ id, format: 'tree', kind: 'reject', expect: { code, spanText } });
+const generated = (id: string): FixtureSpec => ({ id, format: 'html', kind: 'layout', gate: 'default', environments: ['ltr', 'rtl'], source: 'generated', rootFont: 'ahem' });
+const tree = (id: string): FixtureSpec => ({ id, format: 'tree', kind: 'layout', gate: 'default', environments: ['ltr', 'rtl'], source: 'hand-written', rootFont: 'ahem' });
+const reject = (id: string, code: DiagnosticCode, spanText: string | null, messagePrefix: string | null = null): FixtureSpec => ({ id, format: 'html', kind: 'reject', expect: { code, spanText, messagePrefix } });
+const rejectTree = (id: string, code: DiagnosticCode, spanText: string | null): FixtureSpec => ({ id, format: 'tree', kind: 'reject', expect: { code, spanText, messagePrefix: null } });
 
 export const FIXTURES: readonly FixtureSpec[] = [
-  layout('block-ua-divs'),
+  // The one fixture that compares Chrome's UA root font: its font-family values come from the keyed UA dataset.
+  layout('block-ua-divs', ['ltr'], 'ua-default'),
   layout('block-content-box-padding-border'),
   layout('block-border-box'),
   layout('block-percent-width-padding'),
@@ -140,10 +147,12 @@ export const FIXTURES: readonly FixtureSpec[] = [
   layout('flex-baseline-nested-reverse'),
   layout('flex-auto-margins-reverse-overflow'),
   layout('flex-order-baseline-wrap-reverse'),
+  both('flex-baseline-column-wrap-reverse'),
   generated('profile-initial-values-box'),
   generated('profile-initial-values-text'),
   generated('gap-contexts'),
   generated('color-syntax-matrix'),
+  generated('baseline-source-matrix'),
   tree('tree-switch-two-instances'),
   tree('tree-correlated-state'),
   tree('tree-controlled-aliases'),
@@ -161,7 +170,8 @@ export const FIXTURES: readonly FixtureSpec[] = [
   tree('tree-position-toggle'),
   reject('reject-display-grid', 'DRAGON_UNSUPPORTED_VALUE', 'grid'),
   reject('reject-color-lab', 'DRAGON_UNSUPPORTED_VALUE', 'lab(50% 40 59)'),
-  reject('reject-shorthand-filled', 'DRAGON_UNPROVEN_CONTEXT', '3px'),
+  // M4: the implicitly filled longhand is named at the start of the message.
+  reject('reject-shorthand-filled', 'DRAGON_UNPROVEN_CONTEXT', '3px', 'border-top-style:none'),
   reject('reject-unproven-context', 'DRAGON_UNPROVEN_CONTEXT', 'auto'),
   rejectTree('reject-tree-alias-cycle', 'DRAGON_ALIAS_CYCLE', '<Toggle a checked={doc/b.checked} />'),
   rejectTree('reject-tree-choice-overlap', 'DRAGON_CHOICE_OVERLAP', "{checked ? 'on' : ''} {checked || true ? 'off' : ''}"),

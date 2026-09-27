@@ -19,7 +19,7 @@ export const platformRules: readonly PlatformRule[] = [
     id: 'ahem-metric-half-down',
     platform: 'darwin-arm64',
     rule: 'Ahem ascent and descent round to the nearest whole px, with an exact half rounded down (units.ts roundFontMetricToWholePx).',
-    source: 'Blink font_metrics.cc at 145.0.7632.6 rounds with SkScalarRoundToScalar (halves up, lines 111-112), so the half-down result on macOS is taken to come from the CoreText metric values; inferred, not traced. Lines 114-126 move 1 px from ascent to descent on Linux, ChromeOS, Android and Fuchsia, which this rule does not claim.',
+    source: 'third_party/blink/renderer/platform/fonts/font_metrics.cc at 145.0.7632.6 rounds with SkScalarRoundToScalar (halves up, lines 111-112), so the half-down result on macOS is taken to come from the CoreText metric values; inferred, not traced. Lines 114-126 move 1 px from ascent to descent on Linux, ChromeOS, Android and Fuchsia, which this rule does not claim.',
     fault: 'metricHalfUp',
     branches: [{ id: 'half-down', description: 'a descent of exactly n + 0.5 px rounds to n: 12.5px, 17.5px and 22.5px Ahem have glyph boxes 12, 17 and 22 px tall, not 13, 18 and 23' }],
     nodes: [
@@ -32,7 +32,7 @@ export const platformRules: readonly PlatformRule[] = [
     id: 'font-size-truncation',
     platform: 'darwin-arm64',
     rule: 'Glyph advances and metrics use the font size times 100, truncated (units.ts platformFontSize); line-height numbers still multiply the computed size.',
-    source: 'Measured on the Chrome 145 oracle (notes/T035-slice-4a.md); consistent with a font cache precision multiplier of 100, not read from Blink source.',
+    source: 'third_party/blink/renderer/platform/fonts/font_description.cc lines 268-279 at 145.0.7632.6 (EffectiveFontSize: floorf(size * PrecisionMultiplier()) / PrecisionMultiplier()) with font_cache_key.h line 53 (kFontSizePrecisionMultiplier = 100). The code is not platform-specific, but the rule is measured only on darwin-arm64 (notes/T035-slice-4a.md), so it is keyed there.',
     fault: 'untruncatedFontSize',
     branches: [{ id: 'size-truncation', description: '10.625px measures as 10.62px, 10.629px as 10.62px and 11.1111px as 11.11px: advances end 1 LU short, and the 10.629px glyph box is 10 px tall, not 11' }],
     nodes: [
@@ -42,3 +42,6 @@ export const platformRules: readonly PlatformRule[] = [
     ],
   },
 ];
+
+/** The platform rules per capture platform. A platform with no entry has no rules, and its measurer is refused (platform.ts). */
+export const PLATFORM_RULES: ReadonlyMap<string, readonly PlatformRule[]> = new Map([['darwin-arm64', platformRules]]);

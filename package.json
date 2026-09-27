@@ -12,7 +12,9 @@
     "parity:capture": "node --conditions=dragon-internal packages/parity/src/cli/capture.ts",
     "parity:report": "node --conditions=dragon-internal packages/parity/src/cli/report.ts",
     "layout:vectors": "node --conditions=dragon-internal packages/parity/src/cli/vectors.ts",
-    "profile:rows": "node --conditions=dragon-internal scripts/gen-profile-rows.ts"
+    "profile:rows": "node --conditions=dragon-internal scripts/gen-profile-rows.ts",
+    "parity:platform-check": "node --conditions=dragon-internal packages/parity/src/cli/platform-check.ts",
+    "build": "node scripts/build-dist.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",

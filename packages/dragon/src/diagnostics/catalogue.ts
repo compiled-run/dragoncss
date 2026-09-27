@@ -9,12 +9,17 @@ export type CatalogueEntry = {
   readonly severity: 'error' | 'warning' | 'info';
   readonly message: string;
   readonly why: string;
+  /**
+   * The why of a refusal raised on a computed value (analysis/computed-checks.ts) rather than by the support profile: the value
+   * may be proven elsewhere, but its computed result or where it applies is outside what milestone 1 lays out.
+   */
+  readonly computedWhy: string | null;
   readonly fix: CatalogueFix;
 };
 
 const manual = (title: string, text: string): CatalogueFix => ({ kind: 'manual', title, manual: text });
 const edit = (title: string): CatalogueFix => ({ kind: 'edit', title });
-const error = (message: string, why: string, fix: CatalogueFix): CatalogueEntry => ({ severity: 'error', message, why, fix });
+const error = (message: string, why: string, fix: CatalogueFix, computedWhy: string | null = null): CatalogueEntry => ({ severity: 'error', message, why, computedWhy, fix });
 
 export const CATALOGUE: { readonly [C in DiagnosticCode]: CatalogueEntry } = {
   DRAGON_CONFIG_INVALID: error('The project configuration is invalid.', 'Targets and project identity must be known before anything compiles.', manual('Fix the configuration', 'Configure { ios: { minimum: "15.0" } } and/or { web: {} } with a non-empty projectId.')),
@@ -31,7 +36,7 @@ export const CATALOGUE: { readonly [C in DiagnosticCode]: CatalogueEntry } = {
   DRAGON_UNSUPPORTED_SELECTOR: error('This selector is not supported.', 'Scoped selectors may test only their own element and same-owner ancestors through class, type, descendant, child and ui-* attribute parts.', manual('Rewrite the selector', 'Use class compounds, optionally with a tag and [ui-*] or [ui-*="value"], joined by descendant or child combinators.')),
   DRAGON_UNSUPPORTED_IMPORTANT: error('!important is not supported.', 'Order and specificity decide the cascade in milestone 1.', edit('Remove !important')),
   DRAGON_UNSUPPORTED_PROPERTY: error('This property is not supported.', 'The compiler resolves only the milestone-1 longhands and their shorthands.', edit('Remove the declaration')),
-  DRAGON_UNSUPPORTED_VALUE: error('This value is not supported on a configured target.', 'The target\'s support profile has no passing proof for this value.', manual('Use a supported value', 'Use a value the target profile supports.')),
+  DRAGON_UNSUPPORTED_VALUE: error('This value is not supported on a configured target.', 'The target\'s support profile has no passing proof for this value.', manual('Use a supported value', 'Use a value the target profile supports.'), 'Milestone 1 refuses this value where its computed result or placement needs layout the engine does not model, so Dragon never guesses what Chrome would do.'),
   DRAGON_UNSUPPORTED_ELEMENT: error('This element is not supported.', 'Milestone 1 captures browser defaults only for html, body and div.', manual('Use a div', 'Use html, body or div.')),
   DRAGON_UNSUPPORTED_ATTRIBUTE: error('This attribute is not supported.', 'Only ui-* attributes take part in selector matching; other attributes could style elements invisibly.', manual('Use a ui-* attribute or a class', 'Move styling into the stylesheet and select with classes or ui-* attributes.')),
   DRAGON_UNSUPPORTED_FONT: error('This font is not supported by the layout lane.', 'The milestone-1 layout lane measures text only with Ahem.', manual('Use Ahem', 'Set font-family: Ahem on text for the milestone-1 layout lane.')),
@@ -53,6 +58,7 @@ export const CATALOGUE: { readonly [C in DiagnosticCode]: CatalogueEntry } = {
   DRAGON_CLASS_OWNER: error('Class symbol from another owner.', 'An element may carry only its own component\'s or its document\'s class symbols (docs/api.md §3.1).', manual('Use an own class', 'Declare the class in a style use owned by the element\'s component or the document.')),
   DRAGON_UNPROVEN_CONTEXT: error('This value is not proven in this formatting context.', 'Profile rows are proven per formatting context; another context may behave differently (docs/api.md §6.3).', manual('Use a proven context', 'Use the value only in a proven context, or add a passing fixture for this one.')),
   DRAGON_UNSUPPORTED_NESTED_RULE: error('Nested style rules are not supported.', 'Milestone 1 resolves only top-level style rules; a nested rule (css-nesting-1) would change which declarations apply, so it is never dropped silently.', manual('Un-nest the rule', 'Write the nested rule as its own top-level rule with the full selector, for example .card .title instead of & .title inside .card.')),
+  DRAGON_MISSING_ASSET: error('A referenced source or asset is missing from the snapshot or does not match its hash.', 'Every source, stylesheet and asset the input refers to must be in the snapshot with bytes matching its hash; a missing or changed file would change the output without a trace.', manual('Supply the referenced file', 'Add the source or asset to the snapshot with its sha256 hash, or remove the reference.')),
   DRAGON_UNSUPPORTED_BIDI: error('This right-to-left text needs bidirectional reordering.', 'In a right-to-left paragraph, digits, punctuation and other neutral characters are reordered by the Unicode bidirectional algorithm (UAX #9), and U+200B at the end takes the paragraph direction; milestone 1 lays out only letters, spaces and U+200B there and never guesses.', manual('Use letters in right-to-left text', 'Use only A-Z, a-z, spaces and U+200B (not at the end) in right-to-left text, or set direction: ltr on its block.')),
 };
 
@@ -65,6 +71,8 @@ export type DiagnosticInit = {
   readonly edits?: readonly { readonly span: Span; readonly replacement: string }[];
   /** Replaces the catalogue's manual instruction with a located one. */
   readonly manual?: string;
+  /** 'computed-value' for a refusal of a computed value: the diagnostic takes the catalogue's computedWhy. */
+  readonly basis?: 'profile' | 'computed-value';
   readonly profile?: ProofRef | null;
 };
 
@@ -84,7 +92,7 @@ export function diagnostic(code: DiagnosticCode, init: DiagnosticInit): Diagnost
     target: init.target === undefined ? null : init.target,
     origin: init.origin,
     message: init.message,
-    why: entry.why,
+    why: init.basis === 'computed-value' ? computedWhyOf(code) : entry.why,
     related: init.related === undefined ? [] : init.related,
     fix,
     profile: init.profile === undefined ? null : init.profile,
@@ -93,3 +101,9 @@ export function diagnostic(code: DiagnosticCode, init: DiagnosticInit): Diagnost
 
 export const authored = (span: Span): Origin => ({ kind: 'authored', span });
 export const unlocated = (reason: string): Origin => ({ kind: 'unlocated', reason });
+
+function computedWhyOf(code: DiagnosticCode): string {
+  const w = CATALOGUE[code].computedWhy;
+  if (w === null) throw new Error(`${code} has no computed-value why in the catalogue`);
+  return w;
+}

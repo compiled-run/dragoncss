@@ -11,7 +11,11 @@ const K = new Uint32Array([
 ]);
 
 export function sha256Hex(text: string): string {
-  const data = utf8(text);
+  return sha256HexBytes(utf8(text));
+}
+
+/** SHA-256 of raw bytes (assets). */
+export function sha256HexBytes(data: Uint8Array): string {
   const bitLength = data.length * 8;
   const padded = new Uint8Array(((data.length + 9 + 63) >> 6) << 6);
   padded.set(data);

@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "build",
+    "composite": false,
+    "incremental": false,
+    "emitDeclarationOnly": false,
+    "declaration": true,
+    "rewriteRelativeImportExtensions": true,
+    "removeComments": true,
+    "stripInternal": true,
+    "paths": { "@dragon/layout": ["../layout/build/index.d.ts"] }
+  },
+  "include": ["src"],
+  "exclude": ["src/internal.ts"]
+}

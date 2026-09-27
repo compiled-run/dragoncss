@@ -1,5 +1,6 @@
 // formatDiagnostic (docs/api.md §6.1): one human-readable rendering of the shared diagnostic object, located through the
 // report's revisioned source registry. Offsets are UTF-16 code units; lines and columns are 1-based.
+import { canonicalJson } from '../digest.ts';
 import type { Diagnostic, Fix, Origin, SourceFile, Span } from '../types.ts';
 
 function position(span: Span, sources: readonly SourceFile[]): string {
@@ -44,4 +45,39 @@ export function formatDiagnostic(diagnostic: Diagnostic, sources: readonly Sourc
   for (const r of diagnostic.related) lines.push(`  related: ${where(r.origin, sources)}: ${r.message}`);
   if (diagnostic.fix !== null) lines.push(`  fix: ${fixText(diagnostic.fix)}`);
   return lines.join('\n');
+}
+
+/** A diagnostic with its target left out, the identity formatDiagnostics groups by (a profile reference names the target too). */
+function withoutTarget(d: Diagnostic): string {
+  return canonicalJson({ ...d, target: null, profile: d.profile === null ? null : { ...d.profile, target: null } });
+}
+
+/**
+ * T005 rec 5 (docs/api.md §6.1): renders diagnostics that are identical except for their target as one block that lists the
+ * targets, in first-occurrence order. A block of one diagnostic is exactly formatDiagnostic's text. Diagnostic objects stay one
+ * per target; this only changes the human rendering.
+ */
+export function formatDiagnostics(diagnostics: readonly Diagnostic[], sources: readonly SourceFile[]): string {
+  const groups = new Map<string, Diagnostic[]>();
+  for (const d of diagnostics) {
+    const key = withoutTarget(d);
+    const g = groups.get(key);
+    if (g === undefined) groups.set(key, [d]);
+    else g.push(d);
+  }
+  const blocks: string[] = [];
+  for (const g of groups.values()) {
+    const first = g[0] as Diagnostic;
+    if (g.length === 1) {
+      blocks.push(formatDiagnostic(first, sources));
+      continue;
+    }
+    const targets = g.map((d) => (d.target === null ? 'all targets' : d.target));
+    const text = formatDiagnostic({ ...first, target: null }, sources).split('\n');
+    const head = text[0] as string;
+    const at = head.indexOf(` ${first.code}: `);
+    text[0] = `${head.slice(0, at + first.code.length + 1)} [${targets.join(', ')}]${head.slice(at + first.code.length + 1)}`;
+    blocks.push(text.join('\n'));
+  }
+  return blocks.join('\n');
 }

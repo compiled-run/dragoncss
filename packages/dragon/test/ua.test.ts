@@ -6,12 +6,14 @@ import { defaultOrigin, parseValueText, resolveTree, valueToString } from '../sr
 import { INHERITED, LONGHANDS } from '../src/css/properties.ts';
 import { properties, webrefVersion } from '../src/css/grammar.generated.ts';
 import { NO_FAULTS } from '../src/faults.ts';
-import { borderWidthKeywords, chromeVersion, computed, userAgentLonghands } from '../src/ua/chrome-145.generated.ts';
+import { borderWidthKeywords, chromeVersion, computed, platform, userAgentLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
+import { referenceDataset } from '../src/ua/datasets.ts';
 import type { LinkedElement } from '../src/analysis/link.ts';
 
 describe('captured Chrome defaults and the webref grammar', () => {
-  it('pin Chrome 145.0.7632.6 and @webref/css 8.7.5', () => {
+  it('pin Chrome 145.0.7632.6 and @webref/css 8.7.5, captured on darwin-arm64', () => {
     expect(chromeVersion).toBe('145.0.7632.6');
+    expect(platform).toBe('darwin-arm64');
     expect(webrefVersion).toBe('8.7.5');
   });
   it('cover every longhand for html, body, div and an element with no UA rules', () => {
@@ -43,7 +45,7 @@ describe('UA versus initial origin, per tag and longhand', () => {
     kind: 'element', address: id, instance: 'doc', owner: 'App', tag, classes: [], attributes: new Map(), children,
     node: { kind: 'element', id, tag, classes: [], attributes: [], children: [], origin },
   });
-  const root = resolveTree(el('html', 'html', [el('body', 'body', [el('div', 'div')])]), [], NO_FAULTS, { direction: 'ltr' });
+  const root = resolveTree(el('html', 'html', [el('body', 'body', [el('div', 'div')])]), [], NO_FAULTS, { direction: 'ltr', rootFont: 'ua-default', ua: referenceDataset() });
   const body = root.children[0];
   const div = body !== undefined && body.kind === 'element' ? body.children[0] : undefined;
   const byTag = { html: root, body, div } as const;
@@ -53,7 +55,7 @@ describe('UA versus initial origin, per tag and longhand', () => {
       if (r === undefined || r.kind !== 'element') throw new Error(tag);
       for (const p of LONGHANDS) {
         const v = r.props.get(p);
-        const expected = defaultOrigin(tag, p, tag === 'html');
+        const expected = defaultOrigin(tag, p, tag === 'html', referenceDataset(), 'ua-default');
         expect(v?.origin, `${tag} ${p}`).toBe(expected);
         expect(expected === 'user-agent', `${tag} ${p}`).toBe(userAgentLonghands[tag].includes(p));
         if (expected === 'user-agent') expect(valueToString(v?.value ?? { kind: 'keyword', value: '?' })).toBe(valueToString(parseValueText(p, computed[tag][p] as string)));
@@ -65,7 +67,7 @@ describe('UA versus initial origin, per tag and longhand', () => {
     expect(root.props.get('display')).toMatchObject({ value: { kind: 'keyword', value: 'block' }, origin: 'initial' });
   });
   it('the root direction is the environment direction (docs/api.md §7), with origin environment, and it is inherited', () => {
-    const rtl = resolveTree(el('html', 'html', [el('body', 'body')]), [], NO_FAULTS, { direction: 'rtl' });
+    const rtl = resolveTree(el('html', 'html', [el('body', 'body')]), [], NO_FAULTS, { direction: 'rtl', rootFont: 'ua-default', ua: referenceDataset() });
     expect(rtl.props.get('direction')).toMatchObject({ value: { kind: 'keyword', value: 'rtl' }, origin: 'environment', declaration: null });
     expect(root.props.get('direction')).toMatchObject({ value: { kind: 'keyword', value: 'ltr' }, origin: 'environment', declaration: null });
     const b = rtl.children[0];

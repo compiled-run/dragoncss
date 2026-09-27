@@ -7,12 +7,13 @@ import type { FrontEndResult } from '../src/index.ts';
 import { createProject } from '../src/index.ts';
 import { applyFix, CATALOGUE, compiledFeatures, createProjectWith, iosLayoutProjection, LONGHANDS, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, textTopology, WEB_CSS_PATH } from '../src/internal.ts';
 import { initialValue } from '../src/analysis/resolve.ts';
-import { computed, userAgentLonghands } from '../src/ua/chrome-145.generated.ts';
+import { computed, userAgentLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
+import { referenceDataset } from '../src/ua/datasets.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
-const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1 } as const;
+const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, rootFont: 'ua-default' } as const;
 const project = (direction: 'ltr' | 'rtl' = 'ltr', profiles: 'enforce' | 'derive' = 'derive', faults = NO_FAULTS) =>
   createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults, profiles, direction });
 
@@ -135,7 +136,7 @@ describe('the web emitter and the inset longhands', () => {
       for (const p of ['top', 'right', 'bottom', 'left']) {
         expect(userAgentLonghands[tag], `${tag} ${p}`).not.toContain(p);
         expect(computed[tag][p], `${tag} ${p}`).toBe('auto');
-        expect(initialValue(p as (typeof LONGHANDS)[number])).toEqual({ kind: 'keyword', value: 'auto' });
+        expect(initialValue(p as (typeof LONGHANDS)[number], referenceDataset())).toEqual({ kind: 'keyword', value: 'auto' });
       }
     }
   });

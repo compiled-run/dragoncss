@@ -1,4 +1,4 @@
-// Public entry of the `dragon` package (docs/api.md §1-§2, §6.1). Internal helpers live in internal.ts behind the dragon-internal condition.
+// Public entry of the `dragon` package (docs/api.md §1-§2, §6.1, §6.3).
 export type {
   ArtifactState,
   Assignment,
@@ -24,6 +24,7 @@ export type {
   ExplainResult,
   Fix,
   FrontEndResult,
+  NormalizedTarget,
   GeneratedFile,
   Origin,
   Param,
@@ -41,6 +42,9 @@ export type {
   StateAlias,
   StateRef,
   StyleUse,
+  SupportAnswer,
+  SupportCandidate,
+  SupportQuery,
   SupportStatus,
   Target,
   Targets,
@@ -48,5 +52,6 @@ export type {
   TreeNode,
 } from './types.ts';
 export { createProject } from './project.ts';
-export { formatDiagnostic } from './diagnostics/format.ts';
+export { formatDiagnostic, formatDiagnostics } from './diagnostics/format.ts';
+export { querySupport } from './support.ts';
 export { TREE_SCHEMA_REVISION } from './analysis/input.ts';

@@ -1,18 +1,38 @@
-// Deterministic report: report.json (numbers) and index.html (side-by-side boxes). No timestamps or absolute paths.
+// Deterministic report: report.json (numbers), index.html (side-by-side boxes) and summary.md (the counts the audit reads). No
+// timestamps or absolute paths; the drawings are evidence, not a gate, and no assertion reads them.
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { chromeDeviations } from '@dragon/layout';
-import { CHROME_VERSION, PLAYWRIGHT_VERSION } from './chrome.ts';
+import { chromeDeviations, platformRules } from '@dragon/layout';
+import { iosProfile, webProfile } from 'dragon';
+import { CHROME_ARGS, CHROME_VERSION, PLAYWRIGHT_VERSION } from './chrome.ts';
+import { BROWSER_FLAVOUR, hostPlatform, LINUX_LANE, REFERENCE_PLATFORM } from './platform.ts';
 import type { Edges } from './compare.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
 import { ENVIRONMENT, FIXTURES } from './fixtures.ts';
 import type { CaseOutcome, FixtureOutcome } from './pipeline.ts';
 import { repoPath } from './paths.ts';
 
+/** docs/decisions.md, Linux lane scope (2026-09-27), quoted in every report. */
+export const SCOPE = 'Dragon\'s layout engine is platform-free TypeScript and gives the same numbers on any OS. The Chrome oracle is captured on macOS Chrome 145.0.7632.6. Reports and the final audit say exactly that. They do not claim a Linux run.';
+export const ORACLE_LANE = 'macOS-captured Chrome 145.0.7632.6 (darwin-arm64) plus the platform-free Dragon layout lane';
+
+type NodeExactness = { readonly case: string; readonly exactLu: boolean; readonly pass: boolean };
+type RegistryNode = { readonly branch: string; readonly fixture: string; readonly node: string; readonly results: readonly NodeExactness[] };
+
 export type Report = {
   readonly run: {
     readonly lanes: readonly ['linux-dragon-layout', 'chrome-dual'];
+    /** Lanes the milestone names but this run could not execute, reported as unavailable, never as passed. */
+    readonly unavailableLanes: readonly (typeof LINUX_LANE)[];
+    readonly oracleLane: string;
+    readonly scope: string;
     readonly chrome: string;
     readonly playwright: string;
+    readonly browser: string;
+    readonly platform: string;
+    readonly referencePlatform: string;
+    readonly flags: readonly string[];
+    /** The environment root font of the layout fixtures, and the fixtures that keep Chrome's UA font instead. */
+    readonly rootFont: { readonly default: 'ahem'; readonly uaDefault: readonly string[] };
     readonly viewport: { readonly width: number; readonly height: number };
     readonly devicePixelRatio: number;
     readonly gateDevicePx: number;
@@ -24,8 +44,10 @@ export type Report = {
     readonly layoutFixtures: number;
     readonly treeFixtures: number;
     readonly rejectFixtures: number;
-    /** Layout fixtures written by scripts/gen-granularity-fixtures.ts from its committed selection. */
+    /** Layout fixtures written by a committed generator (scripts/gen-*.ts) from its committed selection. */
     readonly generatedFixtures: readonly string[];
+    readonly handWrittenLayoutFixtures: number;
+    readonly generatedLayoutFixtures: number;
     readonly passed: number;
     readonly failed: number;
     readonly cases: number;
@@ -60,20 +82,52 @@ export type Report = {
     };
     readonly unsupportedCodes: readonly string[];
   };
-  readonly deviations: typeof chromeDeviations;
+  /** Every Chrome deviation and platform rule with its branches, and each registered node's exactness in every case that has it. */
+  readonly deviations: readonly { readonly id: string; readonly specSection: string; readonly spec: string; readonly blink: string; readonly fault: string; readonly finding: { readonly kind: 'distinguished' } | { readonly kind: 'contradicted'; readonly detail: string }; readonly branches: readonly { readonly id: string; readonly description: string }[]; readonly nodes: readonly RegistryNode[]; readonly controls: readonly (RegistryNode & { readonly reason: string })[] }[];
+  readonly platformRules: readonly { readonly id: string; readonly platform: string; readonly rule: string; readonly source: string; readonly fault: string; readonly branches: readonly { readonly id: string; readonly description: string }[]; readonly nodes: readonly RegistryNode[] }[];
+  /** Every committed profile row with the case ids its proofs name, and whether each id is a passing case of this report. */
+  readonly profileRows: readonly { readonly target: 'ios' | 'web'; readonly feature: string; readonly context: string; readonly status: string; readonly proofs: readonly { readonly lane: string; readonly aspect: string; readonly cases: readonly string[] }[]; readonly casesPassingInReport: boolean }[];
+  /** Per case, the row keys ("<feature>@<context>") whose proofs name it, per target. */
+  readonly caseRows: readonly { readonly case: string; readonly ios: readonly string[]; readonly web: readonly string[] }[];
   readonly fixtures: readonly FixtureOutcome[];
 };
+
+function registryNodes(outcomes: readonly FixtureOutcome[], nodes: readonly { readonly branch: string; readonly fixture: string; readonly node: string }[]): RegistryNode[] {
+  return nodes.map((n) => ({
+    ...n,
+    results: (outcomes.find((o) => o.id === n.fixture)?.cases ?? []).flatMap((c) => (c.comparison?.nodes ?? []).filter((x) => x.id === n.node).map((x) => ({ case: c.id, exactLu: x.exactLu, pass: x.pass }))),
+  }));
+}
 
 export function buildReport(outcomes: readonly FixtureOutcome[]): Report {
   const allCases: CaseOutcome[] = outcomes.flatMap((o) => o.cases);
   const nodes = allCases.flatMap((o) => (o.comparison === null ? [] : o.comparison.nodes));
   const duals = allCases.flatMap((o) => (o.dual === null ? [] : [o.dual]));
   const total = (f: (d: (typeof duals)[number]) => number): number => duals.reduce((s, d) => s + f(d), 0);
+  const passing = new Set(allCases.filter((c) => c.status === 'pass').map((c) => c.id));
+  const rows = [['ios', iosProfile] as const, ['web', webProfile] as const].flatMap(([target, profile]) => profile.rows.map((r) => ({
+    target,
+    feature: r.feature,
+    context: r.context,
+    status: r.status,
+    proofs: r.proofs.map((p) => ({ lane: p.lane, aspect: p.aspect, cases: p.cases })),
+    casesPassingInReport: r.proofs.every((p) => p.cases.length > 0 && p.cases.every((id) => passing.has(id))),
+  })));
+  const proves = (target: 'ios' | 'web', id: string): string[] => rows.filter((r) => r.target === target && r.proofs.some((p) => p.cases.includes(id))).map((r) => `${r.feature}@${r.context}`);
+  const layoutSpecs = FIXTURES.filter((f) => f.kind === 'layout');
   return {
     run: {
       lanes: ['linux-dragon-layout', 'chrome-dual'],
+      unavailableLanes: [LINUX_LANE],
+      oracleLane: ORACLE_LANE,
+      scope: SCOPE,
       chrome: CHROME_VERSION,
       playwright: PLAYWRIGHT_VERSION,
+      browser: BROWSER_FLAVOUR,
+      platform: hostPlatform(),
+      referencePlatform: REFERENCE_PLATFORM,
+      flags: CHROME_ARGS,
+      rootFont: { default: 'ahem', uaDefault: layoutSpecs.filter((f) => f.kind === 'layout' && f.rootFont === 'ua-default').map((f) => f.id) },
       viewport: { width: ENVIRONMENT.viewport.width, height: ENVIRONMENT.viewport.height },
       devicePixelRatio: ENVIRONMENT.devicePixelRatio,
       gateDevicePx: GATE_DEVICE_PX,
@@ -86,6 +140,8 @@ export function buildReport(outcomes: readonly FixtureOutcome[]): Report {
       treeFixtures: outcomes.filter((o) => o.kind === 'layout' && o.format === 'tree').length,
       rejectFixtures: outcomes.filter((o) => o.kind === 'reject').length,
       generatedFixtures: outcomes.filter((o) => FIXTURES.some((f) => f.id === o.id && f.kind === 'layout' && f.source === 'generated')).map((o) => o.id),
+      handWrittenLayoutFixtures: outcomes.filter((o) => FIXTURES.some((f) => f.id === o.id && f.kind === 'layout' && f.source === 'hand-written')).length,
+      generatedLayoutFixtures: outcomes.filter((o) => FIXTURES.some((f) => f.id === o.id && f.kind === 'layout' && f.source === 'generated')).length,
       passed: outcomes.filter((o) => o.status === 'pass').length,
       failed: outcomes.filter((o) => o.status === 'fail').length,
       cases: allCases.length,
@@ -109,7 +165,10 @@ export function buildReport(outcomes: readonly FixtureOutcome[]): Report {
       },
       unsupportedCodes: [...new Set(allCases.flatMap((o) => (o.unsupported === null ? [] : [o.unsupported.code])))].sort(),
     },
-    deviations: chromeDeviations,
+    deviations: chromeDeviations.map((d) => ({ ...d, nodes: registryNodes(outcomes, d.nodes), controls: d.controls.map((c) => ({ ...registryNodes(outcomes, [{ branch: 'control', fixture: c.fixture, node: c.node }])[0] as RegistryNode, reason: c.reason })) })),
+    platformRules: platformRules.map((r) => ({ ...r, nodes: registryNodes(outcomes, r.nodes) })),
+    profileRows: rows,
+    caseRows: allCases.map((c) => ({ case: c.id, ios: proves('ios', c.id), web: proves('web', c.id) })),
     fixtures: outcomes.map((o) => ({ ...o, webCss: { ltr: null, rtl: null }, cases: o.cases.map((c) => ({ ...c, vector: null, topology: null })) })),
   };
 }
@@ -132,7 +191,7 @@ export function renderHtml(r: Report): string {
   parts.push('body{font:13px system-ui,sans-serif;margin:16px}figure{display:inline-block;margin:0 12px 8px 0}svg{border:1px solid #999;background:#fff}');
   parts.push('rect{fill:rgba(40,110,220,.08);stroke:#246;stroke-width:.5}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:2px 6px;text-align:right}');
   parts.push('.fail{color:#b00}.pass{color:#070}td.id{text-align:left}</style></head><body>');
-  parts.push(`<h1>Dragon parity (S4b)</h1><p>Lanes ${r.run.lanes.join(' and ')}; Chrome ${esc(r.run.chrome)} via Playwright ${esc(r.run.playwright)}; viewport ${r.run.viewport.width}x${r.run.viewport.height} at DPR ${r.run.devicePixelRatio}; layout gate ${r.run.gateDevicePx} device px per edge (${esc(r.run.gateSource)}); dual rule: ${esc(r.run.dualRule)}. Screenshots are not used; these drawings are evidence only.</p>`);
+  parts.push(`<h1>Dragon parity (S5)</h1><p>Scope: ${esc(r.run.scope)} Oracle lane: ${esc(r.run.oracleLane)}. ${r.run.unavailableLanes.map((l) => `${esc(l.lane)} (${esc(l.platform)}): ${esc(l.status)}`).join('; ')}.</p><p>Lanes ${r.run.lanes.join(' and ')}; Chrome ${esc(r.run.chrome)} (${esc(r.run.browser)}) via Playwright ${esc(r.run.playwright)} on ${esc(r.run.platform)} (reference ${esc(r.run.referencePlatform)}); flags ${esc(r.run.flags.join(' '))}; viewport ${r.run.viewport.width}x${r.run.viewport.height} at DPR ${r.run.devicePixelRatio}; root font Ahem (Chrome's UA font in ${esc(r.run.rootFont.uaDefault.join(', '))}); layout gate ${r.run.gateDevicePx} device px per edge (${esc(r.run.gateSource)}); dual rule: ${esc(r.run.dualRule)}. Screenshots are not used; these drawings are evidence, not a gate.</p>`);
   const d = r.summary.dual;
   parts.push(`<p>${r.summary.passed}/${r.summary.fixtures} fixtures pass (${r.summary.layoutFixtures} layout, of which ${r.summary.treeFixtures} tree and ${r.summary.generatedFixtures.length} generated; ${r.summary.rejectFixtures} reject); ${r.summary.casesPassed}/${r.summary.cases} cases pass (${r.summary.casesByDirection.map((d) => `${d.direction} ${d.passed}/${d.cases}`).join(', ')}). Layout lane: ${r.summary.exactLuNodes}/${r.summary.comparedNodes} compared nodes match Chrome exactly at 1/64 px (informational), of them text nodes ${r.summary.textNodesExact}/${r.summary.textNodes} and per-line text fragments ${r.summary.lineNodesExact}/${r.summary.lineNodes}; ${r.summary.anonymousBoxes.length} anonymous boxes (Dragon only, listed per case). Dual lane: boxes ${d.boxesEqual}/${d.boxesCompared}, computed values ${d.valuesEqual}/${d.valuesCompared}, colour channels ${d.channelsEqual}/${d.channelsCompared}.</p>`);
   for (const f of r.fixtures) {
@@ -161,9 +220,61 @@ export function renderHtml(r: Report): string {
   return parts.join('\n');
 }
 
+/** The counts the final audit checks, with the scope wording and the unavailable Linux lane (docs/decisions.md). */
+export function renderSummary(r: Report): string {
+  const s = r.summary;
+  const d = s.dual;
+  const exactRows = r.profileRows.filter((x) => x.status === 'exact');
+  const lines = [
+    '# Dragon parity summary',
+    '',
+    `Scope (docs/decisions.md): ${r.run.scope}`,
+    '',
+    `Oracle lane: ${r.run.oracleLane}.`,
+    '',
+    ...r.run.unavailableLanes.map((l) => `Linux lane (${l.platform}): ${l.status}. The workflow is ${l.workflow}.`),
+    '',
+    `Run: Chrome ${r.run.chrome} (${r.run.browser}) via Playwright ${r.run.playwright} on ${r.run.platform}; reference platform ${r.run.referencePlatform}; flags ${r.run.flags.join(' ')}; viewport ${r.run.viewport.width}x${r.run.viewport.height}, DPR ${r.run.devicePixelRatio}; root font Ahem (Chrome's UA font in ${r.run.rootFont.uaDefault.join(', ')}).`,
+    '',
+    '| Count | Value |',
+    '|---|---|',
+    `| Fixtures | ${s.fixtures} (${s.layoutFixtures} layout, ${s.rejectFixtures} reject) |`,
+    `| Layout fixtures | ${s.layoutFixtures} |`,
+    `| Hand-written layout fixtures | ${s.handWrittenLayoutFixtures} |`,
+    `| Generated layout fixtures | ${s.generatedLayoutFixtures} (${s.generatedFixtures.join(', ')}) |`,
+    `| Tree layout fixtures | ${s.treeFixtures} |`,
+    `| Passed | ${s.passed} |`,
+    `| Failed | ${s.failed} |`,
+    `| Cases | ${s.cases} (${s.casesPassed} pass; ${s.casesByDirection.map((x) => `${x.direction} ${x.passed}/${x.cases}`).join(', ')}) |`,
+    `| linux-dragon-layout gate | ${r.run.gateDevicePx} device px per edge |`,
+    `| Nodes exact at 1/64 px (informational) | ${s.exactLuNodes}/${s.comparedNodes} (text ${s.textNodesExact}/${s.textNodes}, lines ${s.lineNodesExact}/${s.lineNodes}) |`,
+    `| Anonymous boxes | ${s.anonymousBoxes.length} |`,
+    `| chrome-dual | boxes ${d.boxesEqual}/${d.boxesCompared}, values ${d.valuesEqual}/${d.valuesCompared}, channels ${d.channelsEqual}/${d.channelsCompared} |`,
+    `| unsupportedCodes | ${JSON.stringify(s.unsupportedCodes)} |`,
+    `| Profile rows | ${r.profileRows.length} (${exactRows.length} exact; ${r.profileRows.filter((x) => !x.casesPassingInReport).length} with a proof case that is not a passing case of this report) |`,
+    '',
+    '## Chrome deviations and platform rules',
+    '',
+    '| Entry | Branch | Nodes | Exact at 1/64 px |',
+    '|---|---|---|---|',
+    ...[...r.deviations, ...r.platformRules].flatMap((e) => e.branches.map((b) => {
+      const nodes = e.nodes.filter((n) => n.branch === b.id);
+      const results = nodes.flatMap((n) => n.results);
+      return `| ${e.id} | ${b.id} | ${nodes.map((n) => `${n.fixture}: ${n.node}`).join(', ')} | ${results.filter((x) => x.exactLu).length}/${results.length} |`;
+    })),
+    '',
+    ...r.deviations.filter((e) => e.finding.kind === 'contradicted').map((e) => `Finding for the final audit: ${e.id} is contradicted by its spec-reading fault ${e.fault}. ${e.finding.kind === 'contradicted' ? e.finding.detail : ''}`),
+    '',
+    'Screenshots: none. The drawings in index.html are evidence, not a gate, and no assertion reads them.',
+    '',
+  ];
+  return lines.join('\n');
+}
+
 export function writeReport(r: Report): void {
   const dir = repoPath('packages/parity/out');
   mkdirSync(dir, { recursive: true });
   writeFileSync(`${dir}/report.json`, `${JSON.stringify(r, null, 2)}\n`);
   writeFileSync(`${dir}/index.html`, renderHtml(r));
+  writeFileSync(`${dir}/summary.md`, renderSummary(r));
 }

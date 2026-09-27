@@ -11,6 +11,19 @@
       "default": "./src/index.ts"
     }
   },
+  "files": [
+    "build/**/*.js",
+    "build/**/*.d.ts"
+  ],
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./build/index.d.ts",
+        "default": "./build/index.js"
+      }
+    },
+    "types": "./build/index.d.ts"
+  },
   "dependencies": {
     "css-tree": "3.2.1"
   },

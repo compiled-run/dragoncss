@@ -1,0 +1,526 @@
+{
+  "generator": "scripts/gen-baseline-source-matrix.ts",
+  "rule": "T039 M1: every flex container mode and a block container as a baseline source; each selected source must pass both lanes in both environments, and a refused source is listed with its typed code. None is dropped after running.",
+  "environments": [
+    "ltr",
+    "rtl"
+  ],
+  "fixtures": [
+    "baseline-source-matrix"
+  ],
+  "items": [
+    {
+      "letter": "A",
+      "size": 20
+    },
+    {
+      "letter": "B",
+      "size": 12
+    },
+    {
+      "letter": "C",
+      "size": 16
+    },
+    {
+      "letter": "D",
+      "size": 10
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-row-nowrap-ltr",
+      "kind": "flex",
+      "flexDirection": "row",
+      "flexWrap": "nowrap",
+      "direction": "ltr",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-row-nowrap-ltr-bl",
+      "kind": "flex",
+      "flexDirection": "row",
+      "flexWrap": "nowrap",
+      "direction": "ltr",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-row-nowrap-rtl",
+      "kind": "flex",
+      "flexDirection": "row",
+      "flexWrap": "nowrap",
+      "direction": "rtl",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-row-nowrap-rtl-bl",
+      "kind": "flex",
+      "flexDirection": "row",
+      "flexWrap": "nowrap",
+      "direction": "rtl",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-row-wrap-ltr",
+      "kind": "flex",
+      "flexDirection": "row",
+      "flexWrap": "wrap",
+      "direction": "ltr",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-wrap-ltr-bl",
+      "kind": "flex",
+      "flexDirection": "row",
+      "flexWrap": "wrap",
+      "direction": "ltr",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-wrap-rtl",
+      "kind": "flex",
+      "flexDirection": "row",
+      "flexWrap": "wrap",
+      "direction": "rtl",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-wrap-rtl-bl",
+      "kind": "flex",
+      "flexDirection": "row",
+      "flexWrap": "wrap",
+      "direction": "rtl",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-wrap-reverse-ltr",
+      "kind": "flex",
+      "flexDirection": "row",
+      "flexWrap": "wrap-reverse",
+      "direction": "ltr",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-wrap-reverse-ltr-bl",
+      "kind": "flex",
+      "flexDirection": "row",
+      "flexWrap": "wrap-reverse",
+      "direction": "ltr",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-wrap-reverse-rtl",
+      "kind": "flex",
+      "flexDirection": "row",
+      "flexWrap": "wrap-reverse",
+      "direction": "rtl",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-wrap-reverse-rtl-bl",
+      "kind": "flex",
+      "flexDirection": "row",
+      "flexWrap": "wrap-reverse",
+      "direction": "rtl",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-reverse-nowrap-ltr",
+      "kind": "flex",
+      "flexDirection": "row-reverse",
+      "flexWrap": "nowrap",
+      "direction": "ltr",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-row-reverse-nowrap-ltr-bl",
+      "kind": "flex",
+      "flexDirection": "row-reverse",
+      "flexWrap": "nowrap",
+      "direction": "ltr",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-row-reverse-nowrap-rtl",
+      "kind": "flex",
+      "flexDirection": "row-reverse",
+      "flexWrap": "nowrap",
+      "direction": "rtl",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-row-reverse-nowrap-rtl-bl",
+      "kind": "flex",
+      "flexDirection": "row-reverse",
+      "flexWrap": "nowrap",
+      "direction": "rtl",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-row-reverse-wrap-ltr",
+      "kind": "flex",
+      "flexDirection": "row-reverse",
+      "flexWrap": "wrap",
+      "direction": "ltr",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-reverse-wrap-ltr-bl",
+      "kind": "flex",
+      "flexDirection": "row-reverse",
+      "flexWrap": "wrap",
+      "direction": "ltr",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-reverse-wrap-rtl",
+      "kind": "flex",
+      "flexDirection": "row-reverse",
+      "flexWrap": "wrap",
+      "direction": "rtl",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-reverse-wrap-rtl-bl",
+      "kind": "flex",
+      "flexDirection": "row-reverse",
+      "flexWrap": "wrap",
+      "direction": "rtl",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-reverse-wrap-reverse-ltr",
+      "kind": "flex",
+      "flexDirection": "row-reverse",
+      "flexWrap": "wrap-reverse",
+      "direction": "ltr",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-reverse-wrap-reverse-ltr-bl",
+      "kind": "flex",
+      "flexDirection": "row-reverse",
+      "flexWrap": "wrap-reverse",
+      "direction": "ltr",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-reverse-wrap-reverse-rtl",
+      "kind": "flex",
+      "flexDirection": "row-reverse",
+      "flexWrap": "wrap-reverse",
+      "direction": "rtl",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-row-reverse-wrap-reverse-rtl-bl",
+      "kind": "flex",
+      "flexDirection": "row-reverse",
+      "flexWrap": "wrap-reverse",
+      "direction": "rtl",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-nowrap-ltr",
+      "kind": "flex",
+      "flexDirection": "column",
+      "flexWrap": "nowrap",
+      "direction": "ltr",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-column-nowrap-ltr-bl",
+      "kind": "flex",
+      "flexDirection": "column",
+      "flexWrap": "nowrap",
+      "direction": "ltr",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-column-nowrap-rtl",
+      "kind": "flex",
+      "flexDirection": "column",
+      "flexWrap": "nowrap",
+      "direction": "rtl",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-column-nowrap-rtl-bl",
+      "kind": "flex",
+      "flexDirection": "column",
+      "flexWrap": "nowrap",
+      "direction": "rtl",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-column-wrap-ltr",
+      "kind": "flex",
+      "flexDirection": "column",
+      "flexWrap": "wrap",
+      "direction": "ltr",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-wrap-ltr-bl",
+      "kind": "flex",
+      "flexDirection": "column",
+      "flexWrap": "wrap",
+      "direction": "ltr",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-wrap-rtl",
+      "kind": "flex",
+      "flexDirection": "column",
+      "flexWrap": "wrap",
+      "direction": "rtl",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-wrap-rtl-bl",
+      "kind": "flex",
+      "flexDirection": "column",
+      "flexWrap": "wrap",
+      "direction": "rtl",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-wrap-reverse-ltr",
+      "kind": "flex",
+      "flexDirection": "column",
+      "flexWrap": "wrap-reverse",
+      "direction": "ltr",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-wrap-reverse-ltr-bl",
+      "kind": "flex",
+      "flexDirection": "column",
+      "flexWrap": "wrap-reverse",
+      "direction": "ltr",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-wrap-reverse-rtl",
+      "kind": "flex",
+      "flexDirection": "column",
+      "flexWrap": "wrap-reverse",
+      "direction": "rtl",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-wrap-reverse-rtl-bl",
+      "kind": "flex",
+      "flexDirection": "column",
+      "flexWrap": "wrap-reverse",
+      "direction": "rtl",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-reverse-nowrap-ltr",
+      "kind": "flex",
+      "flexDirection": "column-reverse",
+      "flexWrap": "nowrap",
+      "direction": "ltr",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-column-reverse-nowrap-ltr-bl",
+      "kind": "flex",
+      "flexDirection": "column-reverse",
+      "flexWrap": "nowrap",
+      "direction": "ltr",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-column-reverse-nowrap-rtl",
+      "kind": "flex",
+      "flexDirection": "column-reverse",
+      "flexWrap": "nowrap",
+      "direction": "rtl",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-column-reverse-nowrap-rtl-bl",
+      "kind": "flex",
+      "flexDirection": "column-reverse",
+      "flexWrap": "nowrap",
+      "direction": "rtl",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 1
+    },
+    {
+      "id": "s-column-reverse-wrap-ltr",
+      "kind": "flex",
+      "flexDirection": "column-reverse",
+      "flexWrap": "wrap",
+      "direction": "ltr",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-reverse-wrap-ltr-bl",
+      "kind": "flex",
+      "flexDirection": "column-reverse",
+      "flexWrap": "wrap",
+      "direction": "ltr",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-reverse-wrap-rtl",
+      "kind": "flex",
+      "flexDirection": "column-reverse",
+      "flexWrap": "wrap",
+      "direction": "rtl",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-reverse-wrap-rtl-bl",
+      "kind": "flex",
+      "flexDirection": "column-reverse",
+      "flexWrap": "wrap",
+      "direction": "rtl",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-reverse-wrap-reverse-ltr",
+      "kind": "flex",
+      "flexDirection": "column-reverse",
+      "flexWrap": "wrap-reverse",
+      "direction": "ltr",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-reverse-wrap-reverse-ltr-bl",
+      "kind": "flex",
+      "flexDirection": "column-reverse",
+      "flexWrap": "wrap-reverse",
+      "direction": "ltr",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-reverse-wrap-reverse-rtl",
+      "kind": "flex",
+      "flexDirection": "column-reverse",
+      "flexWrap": "wrap-reverse",
+      "direction": "rtl",
+      "baselineAligned": false,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-column-reverse-wrap-reverse-rtl-bl",
+      "kind": "flex",
+      "flexDirection": "column-reverse",
+      "flexWrap": "wrap-reverse",
+      "direction": "rtl",
+      "baselineAligned": true,
+      "items": 4,
+      "lines": 2
+    },
+    {
+      "id": "s-block-ltr",
+      "kind": "block",
+      "direction": "ltr",
+      "items": 2,
+      "lines": 2
+    },
+    {
+      "id": "s-block-rtl",
+      "kind": "block",
+      "direction": "rtl",
+      "items": 2,
+      "lines": 2
+    }
+  ],
+  "refused": []
+}

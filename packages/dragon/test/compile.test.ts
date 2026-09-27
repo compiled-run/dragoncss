@@ -7,7 +7,7 @@ import { LONGHANDS } from '../src/css/properties.ts';
 import type { Diagnostic } from '../src/index.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text as textNode } from './helpers.ts';
 
-const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr' } as const;
+const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
 const ios = () => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' } } });
 
 describe('createProject().compile() and check()', () => {
@@ -85,7 +85,9 @@ describe('createProject().compile() and check()', () => {
     expect(ios().compile(inputFor('.a { border: 3px; }', (r) => [div(r, 'a', ['a'])])).diagnostics).toEqual([]);
     const input = inputFor('.a { position: relative; border: 3px; }', (r) => [div(r, 'a', ['a'])]);
     const c = ios().compile(input);
-    const d = c.diagnostics.find((x) => x.message.startsWith('border-top-style:none on a is used in the relative-in-block/ltr context'));
+    // T005 rec 2: the message starts with the filled longhand, names the shorthand declaration, and says what is unproven.
+    const d = c.diagnostics.find((x) => x.message.startsWith('border-top-style:none (set by border: 3px) on a is used in the relative-in-block/ltr context'));
+    expect(d?.message).toMatch(/border sets border-top-style, which is unproven here/);
     expect(d?.code).toBe('DRAGON_UNPROVEN_CONTEXT');
     expect(spanTextOf(input, d as Diagnostic)).toBe('3px');
     expect(c.outputs.ios.kind).toBe('blocked');
@@ -174,11 +176,11 @@ describe('createProject().compile() and check()', () => {
   });
 
   it('the public entry exposes only the public API', () => {
-    expect(Object.keys(publicEntry).sort()).toEqual(['TREE_SCHEMA_REVISION', 'createProject', 'formatDiagnostic']);
+    expect(Object.keys(publicEntry).sort()).toEqual(['TREE_SCHEMA_REVISION', 'createProject', 'formatDiagnostic', 'formatDiagnostics', 'querySupport']);
   });
 
   it('MF2: the default-condition entry exports none of the internal switches, and createProject takes no options', () => {
-    for (const name of ['createProjectWith', 'InternalOptions', 'NO_FAULTS', 'applyFix', 'textTopology', 'iosLayoutProjection']) expect(name in publicEntry, name).toBe(false);
+    for (const name of ['createProjectWith', 'InternalOptions', 'NO_FAULTS', 'applyFix', 'textTopology', 'iosLayoutProjection', 'REFERENCE_PLATFORM', 'uaDatasetFor', 'COMMITTED_PROFILES']) expect(name in publicEntry, name).toBe(false);
     expect(createProject.length).toBe(1);
     const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { exports: Record<string, Record<string, string>> };
     expect(pkg.exports).toEqual({ '.': { 'dragon-internal': './src/internal.ts', default: './src/index.ts' } });

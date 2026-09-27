@@ -76,3 +76,26 @@ export const originUnion: Equal<import('../src/index.ts').Origin, PinnedOrigin> 
 export const originKinds: Equal<import('../src/index.ts').Origin['kind'], 'authored' | 'inherited' | 'builtin' | 'generated' | 'unlocated'> = true;
 // @ts-expect-error a cascade union without 'environment' is not the pinned union
 export const narrowed: Equal<import('../src/index.ts').ExplainedCase['cascade'], 'author' | 'inherited' | 'user-agent' | 'initial'> = true;
+
+// S5 (f2): querySupport's resolved queries take the target from the compiled result (NoInfer), so absent target keys are errors.
+import { querySupport } from '../src/index.ts';
+import type { NormalizedTarget, SupportAnswer, SupportCandidate } from '../src/index.ts';
+const webOnly = createProject({ projectId: 'p', targets: { web: {} } }).compile(input);
+export const resolvedWeb: SupportAnswer = querySupport({ kind: 'resolved', result: webOnly, target: 'web', node: 'a', instance: 'doc', assignment: [], property: 'width' });
+// @ts-expect-error an ios query on a web-only result: ios is not a configured key
+export const resolvedIos: SupportAnswer = querySupport({ kind: 'resolved', result: webOnly, target: 'ios', node: 'a', instance: 'doc', assignment: [], property: 'width' });
+// @ts-expect-error android is not a key of any result
+export const resolvedAndroid: SupportAnswer = querySupport({ kind: 'resolved', result: both, target: 'android', node: 'a', instance: 'doc', assignment: [], property: 'width' });
+export const resolvedBoth: SupportAnswer = querySupport({ kind: 'resolved', result: both, target: 'ios', node: 'a', instance: 'doc', assignment: [], property: 'width' });
+// @ts-expect-error resolved queries take an assignment, not a condition
+export const withCondition: SupportAnswer = querySupport({ kind: 'resolved', result: webOnly, target: 'web', node: 'a', instance: 'doc', condition: { kind: 'true' }, property: 'width' });
+export const possibleIos: SupportAnswer = querySupport({ kind: 'possibilities', target: { kind: 'ios', minimum: '15.0' }, css: 'gap: 7px' });
+// @ts-expect-error an ios normalized target needs its minimum
+export const noMinimumTarget: NormalizedTarget = { kind: 'ios' };
+// @ts-expect-error a candidate is never unsupported
+export const unsupportedCandidate: SupportCandidate = { feature: 'display:grid', context: 'block/ltr', status: 'unsupported', proofs: [] };
+// @ts-expect-error the proof tolerance is one of the two named tolerances, never free-form
+export const freeTolerance: SupportCandidate = { feature: 'width:<length-px>', context: 'block/ltr', status: 'exact', proofs: [{ lane: 'chrome-dual', cases: [], tolerance: '2px' }] };
+// S5 (b): the platform and root font of the reference environment stay internal.
+// @ts-expect-error createProject takes no platform option
+export const withPlatform = createProject({ projectId: 'p', targets: { web: {} } }, { platform: 'linux-x64' });

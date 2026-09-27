@@ -14,3 +14,7 @@ export type { ChromeDeviation } from './chrome-deviations.ts';
 export { chromeDeviations } from './chrome-deviations.ts';
 export type { PlatformRule } from './platform-rules.ts';
 export { platformRules } from './platform-rules.ts';
+export type { DeviationFault } from './chrome-deviations.ts';
+export { PLATFORM_RULES } from './platform-rules.ts';
+export type { MeasurerChoice } from './platform.ts';
+export { measurerFor, REFERENCE_PLATFORM } from './platform.ts';

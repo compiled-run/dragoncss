@@ -38,3 +38,10 @@ export function supportedValuesFor(profile: SupportProfile, property: string): s
     .filter((r) => r.status !== 'unsupported' && r.feature.startsWith(`${property}:`))
     .map((r) => r.feature.slice(property.length + 1)))];
 }
+
+/** The value subsets of a property with a supported row in one context, sorted (T005 rec 6: alternatives in context). */
+export function supportedValuesIn(profile: SupportProfile, property: string, context: string): string[] {
+  return [...new Set(profile.rows
+    .filter((r) => r.status !== 'unsupported' && r.context === context && r.feature.startsWith(`${property}:`))
+    .map((r) => r.feature.slice(property.length + 1)))].sort();
+}

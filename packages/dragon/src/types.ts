@@ -240,3 +240,34 @@ export interface Project<K extends string> {
   compile(input: FrontEndResult): Compiled<K>;
   check(input: FrontEndResult): CheckReport<K>;
 }
+
+/** A normalized target for possibilities queries (docs/api.md §6.3). */
+export type NormalizedTarget = { readonly kind: 'web' } | { readonly kind: 'ios'; readonly minimum: string };
+
+/** docs/api.md §6.3: a possibilities query needs no compiled result; a resolved query reads one checked element in its cases. */
+export type SupportQuery<K extends string> =
+  | { readonly kind: 'possibilities'; readonly target: NormalizedTarget; readonly css: string }
+  | {
+      readonly kind: 'resolved';
+      readonly result: Compiled<K>;
+      readonly target: NoInfer<K>;
+      readonly node: string;
+      readonly instance: string;
+      readonly assignment: Assignment;
+      readonly property: string;
+    };
+
+/** A profile-backed candidate: the feature in one context with its proofs, never unsupported. */
+export type SupportCandidate = {
+  readonly feature: string;
+  readonly context: string;
+  readonly status: Exclude<SupportStatus, 'unsupported'>;
+  readonly proofs: readonly { readonly lane: string; readonly cases: readonly string[]; readonly tolerance: 'gate-1-device-px' | 'dual-exact' }[];
+};
+
+export type SupportAnswer =
+  | { readonly kind: 'needs-context'; readonly declaration: string; readonly candidates: readonly SupportCandidate[] }
+  | { readonly kind: 'unsupported'; readonly declaration: string; readonly reason: string }
+  | { readonly kind: 'decided'; readonly cases: readonly { readonly assignment: Assignment; readonly decision: SupportCandidate | null }[] }
+  | { readonly kind: 'blocked'; readonly diagnostics: readonly Diagnostic[] }
+  | { readonly kind: 'invalid-query'; readonly diagnostics: readonly Diagnostic[] };

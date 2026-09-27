@@ -1,0 +1,45 @@
+# Linux parity lane (docs/decisions.md, Linux lane scope). Manual trigger only; this file is committed but not pushed.
+# It captures Chrome on linux-x64 into its own platform key and checks it against the committed macOS reference with
+# parity:platform-check. It never writes the reference platform's captures or datasets.
+name: parity-linux
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Set up pnpm 10.33.2
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Playwright 1.58.2 Chromium
+        run: |
+          test "$(pnpm --filter @dragon/parity exec playwright --version)" = "Version 1.58.2"
+          pnpm --filter @dragon/parity exec playwright install --with-deps chromium
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Platform-free suites (packages/layout, packages/dragon)
+        run: pnpm exec vitest run packages/layout packages/dragon
+      - name: Capture Chrome into the linux-x64 key
+        run: pnpm run parity:capture
+      - name: Platform check against the reference captures
+        run: pnpm run parity:platform-check linux-x64
+      - name: Upload the captures and the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-linux-x64
+          path: |
+            packages/parity/expected/linux-x64
+            packages/parity/out

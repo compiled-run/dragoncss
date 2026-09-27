@@ -9,7 +9,7 @@ import { linkDocument } from '../src/analysis/link.ts';
 import { collapseInlineRun } from '../src/analysis/resolve.ts';
 import { div, expectCatalogued, explainOne, inputFor, text } from './helpers.ts';
 
-const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr' } as const;
+const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
 const derive = () => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' });
 

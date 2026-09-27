@@ -211,9 +211,10 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
   const contentLeft = add(a.bor.left, a.pad.left);
   const contentTop = add(a.bor.top, a.pad.top);
   let containerBaseline: LU | null = null;
-  // Chrome deviation wrap-reverse-baseline-line: a row container's baseline comes from its block-start (top) line, which is the
-  // last flex line under wrap-reverse.
-  const baselineLine = isRow && axes.wrapReverse ? lines.length - 1 : 0;
+  // Chrome deviation wrap-reverse-baseline-line: Blink reverses the lines under wrap-reverse (ApplyReversals) and takes the
+  // baseline from the first line after it: for a row the block-start (top) line, for a column the inline-start line; both are
+  // the last flex line here. The planted spec reading (css-flexbox-1 §8.5) uses the cross-start line.
+  const baselineLine = axes.wrapReverse && !ctx.faults.wrapReverseBaselineSpec ? lines.length - 1 : 0;
   lines.forEach((line, lineIndex) => {
     const flowItems = axes.reverse ? [...line.items].reverse() : line.items;
     const n = flowItems.length;
@@ -254,7 +255,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
       if (participates(item)) {
         crossInLine = sub(groupBaseline, baselineOf(item).offset);
       } else {
-        const flow = add(crossAxisOffset(item, sub(line.cross, add(crossSize, item.crossMargins)), axes), item.crossStart);
+        const flow = add(crossAxisOffset(ctx, item, sub(line.cross, add(crossSize, item.crossMargins)), axes), item.crossStart);
         crossInLine = axes.crossStartIsPhysical ? flow : sub(sub(line.cross, flow), crossSize);
       }
       const r = layoutContents(ctx, item.box, {
@@ -688,10 +689,11 @@ function stretchedCrossSize(item: Item, lineCross: LU, isRow: boolean, percentBa
 // css-flexbox-1 §8.1 and §9.6 step 13, in flow terms: auto cross margins take positive space (Blink LayoutUnit / 2 when both are
 // auto) and otherwise the item aligns by align-self (css-align-3 §6.1, unsafe; Blink LayoutUnit / 2 for center). A stretch item
 // that cannot stretch sits at flex-start, which wrap-reverse puts at the flow end.
-function crossAxisOffset(item: Item, available: LU, axes: Axes): LU {
+function crossAxisOffset(ctx: Ctx, item: Item, available: LU, axes: Axes): LU {
   if (item.autoCrossStart || item.autoCrossEnd) {
-    // Chrome deviation auto-margin-overflow-cross-start: with no positive space the item sits at the cross-start edge.
-    if (available <= 0) return axes.wrapReverse ? available : ZERO;
+    // Chrome deviation auto-margin-overflow-cross-start: with no positive space the item sits at the cross-start edge. The
+    // planted spec reading (css-flexbox-1 §9.6 step 13) keeps it at the writing-mode start edge.
+    if (available <= 0) return axes.wrapReverse && !ctx.faults.autoMarginOverflowSpec ? available : ZERO;
     if (item.autoCrossStart && item.autoCrossEnd) return divInt(available, 2);
     return item.autoCrossStart ? available : ZERO;
   }

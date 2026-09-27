@@ -7,6 +7,7 @@ import type { Browser } from 'playwright';
 import type { Environment } from 'dragon';
 import { LONGHANDS } from 'dragon';
 import { CHROME_VERSION, openPage } from './chrome.ts';
+import { BROWSER_FLAVOUR, hostPlatform } from './platform.ts';
 
 export type CapturedNode = {
   readonly id: string;
@@ -24,6 +25,9 @@ export type CapturedNode = {
 export type WebCapture = {
   readonly fixture: string;
   readonly chrome: string;
+  /** The Playwright browser build and the capture platform (process.platform-process.arch). */
+  readonly browser: string;
+  readonly platform: string;
   readonly viewport: { readonly width: number; readonly height: number };
   readonly devicePixelRatio: number;
   /** The environment direction the harness gave the document (docs/api.md §7). */
@@ -64,6 +68,8 @@ export async function captureFixture(browser: Browser, fixture: string, html: st
     return {
       fixture,
       chrome: CHROME_VERSION,
+      browser: BROWSER_FLAVOUR,
+      platform: hostPlatform(),
       viewport: { width: env.viewport.width, height: env.viewport.height },
       devicePixelRatio: env.devicePixelRatio,
       direction: env.direction,

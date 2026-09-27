@@ -9,7 +9,7 @@ import type { WebCapture } from '../src/capture.ts';
 import { captureFixture, captureJson } from '../src/capture.ts';
 import type { ParityCase } from '../src/cases.ts';
 import { CHROME_VERSION, harnessStyle, launchChrome } from '../src/chrome.ts';
-import { emittedPath, expectedPath } from '../src/committed.ts';
+import { emittedPath, expectedDir, expectedPath } from '../src/committed.ts';
 import { GATE_DEVICE_PX } from '../src/compare.ts';
 import { ENVIRONMENT, environmentsOf, FIXTURES, RTL_ENVIRONMENT } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
@@ -19,13 +19,17 @@ import { fixtureInput } from '../src/cases.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import { readTreeExpectation } from '../src/tree-fixture.ts';
 import { deriveRows } from '../src/profile-rows.ts';
-import { buildReport, writeReport } from '../src/report.ts';
+import { buildReport, renderSummary, writeReport } from '../src/report.ts';
+import { hostPlatform, REFERENCE_PLATFORM, requireReferencePlatform } from '../src/platform.ts';
+import type { FrontEndResult } from 'dragon';
 
 let browser: Browser;
 const outcomes = new Map<string, FixtureOutcome>();
 const captures = new Map<string, WebCapture>();
 
 beforeAll(async () => {
+  // Off the reference platform the suite fails here with "reference platform darwin-arm64 required; Linux lane unavailable".
+  requireReferencePlatform(hostPlatform());
   // A missing or wrong Chromium throws here and fails the run; it never skips.
   browser = await launchChrome();
   expect(browser.version()).toBe(CHROME_VERSION);
@@ -49,7 +53,7 @@ const recorded = async (c: ParityCase): Promise<WebCapture> => {
 };
 const describeAssignment = (a: Assignment): string => a.map((e) => `${e.state.instance}.${e.state.state}=${JSON.stringify(e.value)}`).join(',');
 
-describe.sequential('S4b parity: Chrome 145 vs Dragon, every case of every fixture in every environment (layout lane at 1 device px, dual lane exact)', () => {
+describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixture in every environment (layout lane at 1 device px, dual lane exact)', () => {
   it('the gate is owner decision 13: one device pixel, never per fixture', () => {
     expect(GATE_DEVICE_PX).toBe(1);
     for (const f of FIXTURES) if (f.kind === 'layout') expect(f.gate).toBe('default');
@@ -74,11 +78,18 @@ describe.sequential('S4b parity: Chrome 145 vs Dragon, every case of every fixtu
       else expect(f.environments.length, f.id).toBeGreaterThan(0);
       expect(environmentsOf(f).map((e) => e.direction), f.id).toEqual(f.environments);
     }
-    // The generator selection is a committed file, and it names exactly the fixtures registered as generated.
-    const selection = JSON.parse(readFileSync(repoPath('packages/parity/generated/granularity-selection.json'), 'utf8')) as { generator: string; fixtures: string[] };
-    expect(selection.generator).toBe('scripts/gen-granularity-fixtures.ts');
-    expect(FIXTURES.filter((f) => f.kind === 'layout' && f.source === 'generated').map((f) => f.id).sort()).toEqual([...selection.fixtures].sort());
-    for (const id of selection.fixtures) expect(specFor(id), id).toMatchObject({ kind: 'layout', source: 'generated', environments: ['ltr', 'rtl'] });
+    // The generator selections are committed files, and together they name exactly the fixtures registered as generated.
+    const selections = [['granularity-selection.json', 'scripts/gen-granularity-fixtures.ts'], ['baseline-source-selection.json', 'scripts/gen-baseline-source-matrix.ts']].map(([file, generator]) => {
+      const sel = JSON.parse(readFileSync(repoPath(`packages/parity/generated/${file}`), 'utf8')) as { generator: string; fixtures: string[] };
+      expect(sel.generator).toBe(generator);
+      return sel;
+    });
+    expect(readdirSync(repoPath('packages/parity/generated')).sort()).toEqual(['baseline-source-selection.json', 'granularity-selection.json']);
+    const generatedIds = selections.flatMap((x) => x.fixtures);
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && f.source === 'generated').map((f) => f.id).sort()).toEqual([...generatedIds].sort());
+    for (const id of generatedIds) expect(specFor(id), id).toMatchObject({ kind: 'layout', source: 'generated', environments: ['ltr', 'rtl'], rootFont: 'ahem' });
+    // Every layout fixture runs on the Ahem root environment except the ones that compare Chrome's UA font.
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && f.rootFont === 'ua-default').map((f) => f.id)).toEqual(['block-ua-divs']);
   });
 
   for (const spec of FIXTURES) {
@@ -123,13 +134,14 @@ describe.sequential('S4b parity: Chrome 145 vs Dragon, every case of every fixtu
         expect(outcome.cases).toEqual([]);
         expect(existsSync(emittedPath(spec.id, 'ltr'))).toBe(false);
         expect(existsSync(emittedPath(spec.id, 'rtl'))).toBe(false);
-        expect(readdirSync(repoPath('packages/parity/expected')).filter((f) => f.startsWith(`${spec.id}.`) || f.startsWith(`${spec.id}#`))).toEqual([]);
+        expect(readdirSync(expectedDir()).filter((f) => f.startsWith(`${spec.id}.`) || f.startsWith(`${spec.id}#`))).toEqual([]);
       }
     });
   }
 
-  it('committed captures are exactly the cases of this run', () => {
-    const files = readdirSync(repoPath('packages/parity/expected')).filter((f) => f.endsWith('.web.json')).sort();
+  it('committed captures are exactly the cases of this run, under the reference platform key only', () => {
+    expect(readdirSync(repoPath('packages/parity/expected'))).toEqual([REFERENCE_PLATFORM]);
+    const files = readdirSync(expectedDir()).filter((f) => f.endsWith('.web.json')).sort();
     expect(files).toEqual(allCases().map((c) => `${c.id}.web.json`).sort());
   });
 
@@ -389,28 +401,89 @@ describe.sequential('S4b parity: Chrome 145 vs Dragon, every case of every fixtu
     }
   });
 
-  it('every Chrome deviation and platform rule branch (MF5) has a node, and every node passed and matches Chrome exactly at 1/64 px in this run', () => {
+  it('every Chrome deviation and platform rule branch (MF5) has a node, and every node and control passed and matches Chrome exactly at 1/64 px in every case of this run; each entry cites Blink at 145.0.7632.6 or says it is measured', () => {
+    const exactIn = (fixture: string, node: string): boolean[] => (outcomes.get(fixture)?.cases ?? []).flatMap((c) => c.comparison?.nodes ?? []).filter((x) => x.id === node).map((x) => x.exactLu);
     for (const d of [...chromeDeviations, ...platformRules]) {
       expect(d.branches.length, d.id).toBeGreaterThan(0);
       for (const b of d.branches) expect(d.nodes.filter((n) => n.branch === b.id).length, `${d.id} branch ${b.id}`).toBeGreaterThan(0);
       for (const n of d.nodes) {
         expect(d.branches.map((b) => b.id), `${d.id} ${n.node}`).toContain(n.branch);
         expect(outcomes.get(n.fixture)?.status, `${d.id} -> ${n.fixture}`).toBe('pass');
-        const node = outcomes.get(n.fixture)?.cases.flatMap((c) => c.comparison?.nodes ?? []).find((x) => x.id === n.node);
-        expect(node?.exactLu, `${d.id} ${n.branch} -> ${n.node} matches Chrome at 1/64 px`).toBe(true);
+        const exact = exactIn(n.fixture, n.node);
+        expect(exact.length, `${d.id} ${n.node} is compared`).toBeGreaterThan(0);
+        expect(exact.every((x) => x), `${d.id} ${n.branch} -> ${n.node} matches Chrome at 1/64 px`).toBe(true);
       }
     }
+    for (const d of chromeDeviations) {
+      for (const c of d.controls) expect(exactIn(c.fixture, c.node).every((x) => x) && exactIn(c.fixture, c.node).length > 0, `${d.id} control ${c.node}`).toBe(true);
+      expect(d.blink, d.id).toMatch(/^(third_party\/blink\/\S+\.(cc|h)\b.*\blines? \d+.*145\.0\.7632\.6|.*145\.0\.7632\.6.*\blines? \d+|measured; source not located)/);
+    }
+    for (const r of platformRules) expect(r.source, r.id).toMatch(/third_party\/blink\/\S+\.(cc|h)\b.*145\.0\.7632\.6|measured; source not located/);
     const branchOf = (id: string, node: string) => chromeDeviations.find((d) => d.id === id)?.nodes.find((n) => n.node === node)?.branch;
-    expect(['p4', 'p6', 'p9'].map((p) => branchOf('min-max-end-margin', p))).toEqual(['dropped', 'dropped', 'dropped']);
-    expect(['p5', 'p7'].map((p) => branchOf('min-max-end-margin', p))).toEqual(['collapsed-through', 'collapsed-through']);
+    // T038 M2: the spec reading of min-max-end-margin showed p4, p6 and p7 do not distinguish Blink from it; they are controls now.
+    expect(['p9', 'x6'].map((p) => branchOf('min-max-end-margin', p))).toEqual(['dropped', 'dropped']);
+    expect(['p5', 'x5'].map((p) => branchOf('min-max-end-margin', p))).toEqual(['collapsed-through', 'collapsed-through']);
+    expect(chromeDeviations.find((d) => d.id === 'min-max-end-margin')?.controls.map((c) => c.node)).toEqual(['p4', 'p6', 'p7']);
     // T036: the rtl column branch of auto-margin-overflow-cross-start has its own nodes.
     expect(chromeDeviations.find((d) => d.id === 'auto-margin-overflow-cross-start')?.branches.map((b) => b.id)).toContain('column-wrap-reverse-rtl');
     expect(['amr-a', 'amr-b', 'amr-c'].map((n) => branchOf('auto-margin-overflow-cross-start', n))).toEqual(['column-wrap-reverse-rtl', 'column-wrap-reverse-rtl', 'column-wrap-reverse-rtl']);
+    // T039 M1: wrap-reverse-baseline-line covers rows and both column directions.
+    expect(chromeDeviations.find((d) => d.id === 'wrap-reverse-baseline-line')?.branches.map((b) => b.id)).toEqual(['shared-baseline', 'startmost-item', 'column-wrap-reverse', 'column-wrap-reverse-rtl']);
     // M1: the two macOS font rules are platform rules keyed to the capture platform, each with its planted fault.
     expect(platformRules.map((r) => [r.id, r.platform, r.fault, r.branches.map((b) => b.id)])).toEqual([
       ['ahem-metric-half-down', 'darwin-arm64', 'metricHalfUp', ['half-down']],
       ['font-size-truncation', 'darwin-arm64', 'untruncatedFontSize', ['size-truncation']],
     ]);
+  });
+
+  for (const d of chromeDeviations) {
+    const claim = d.finding.kind === 'distinguished'
+      ? 'makes every registered node non-exact at 1/64 px in every case and fails the gate where the gap is over 1 px'
+      : 'leaves every registered node exact, as S5 recorded (the nodes do not distinguish Blink from the spec; flagged for T999)';
+    it(`Chrome deviation ${d.id} (M2): the spec-reading fault ${d.fault} ${claim}; controls keep their place in their frame; with the fault off every node is exact`, async () => {
+      let overGate = 0;
+      for (const fixture of [...new Set([...d.nodes.map((n) => n.fixture), ...d.controls.map((c) => c.fixture)])]) {
+        const faulty = await runFixture(specFor(fixture), browser, { authored: recorded, faults: NO_FAULTS, engineFaults: { ...NO_ENGINE_FAULTS, [d.fault]: true }, profiles: 'enforce' });
+        const main = outcomes.get(fixture)?.cases ?? [];
+        const mainNodes = main.flatMap((c) => c.comparison?.nodes ?? []);
+        for (const n of d.nodes.filter((x) => x.fixture === fixture)) {
+          const hits = faulty.cases.flatMap((c) => c.comparison?.nodes ?? []).filter((x) => x.id === n.node);
+          expect(hits.length, `${d.fault} -> ${n.node} is compared`).toBeGreaterThan(0);
+          for (const h of hits) {
+            if (d.finding.kind === 'contradicted') {
+              expect(h.exactLu, `${d.fault} -> ${n.node} stays exact: the spec reading gives the same rect`).toBe(true);
+              continue;
+            }
+            expect(h.exactLu, `${d.fault} -> ${n.node} is not exact`).toBe(false);
+            const gap = h.delta === null ? Infinity : Math.max(Math.abs(h.delta.left), Math.abs(h.delta.top), Math.abs(h.delta.right), Math.abs(h.delta.bottom));
+            if (gap > GATE_DEVICE_PX) {
+              overGate++;
+              expect(h.pass, `${d.fault} -> ${n.node} fails the gate at ${gap} px`).toBe(false);
+            }
+          }
+          for (const m of mainNodes.filter((x) => x.id === n.node)) expect(m.exactLu, `${n.node} with the fault off`).toBe(true);
+        }
+        // A control keeps its rect relative to its frame under the spec reading: the two readings agree on it.
+        for (const c of d.controls.filter((x) => x.fixture === fixture)) {
+          faulty.cases.forEach((fc, i) => {
+            const rel = (nodes: readonly { id: string; dragon: { left: number; top: number; right: number; bottom: number } | null }[]) => {
+              const a = nodes.find((x) => x.id === c.node)?.dragon;
+              const f = nodes.find((x) => x.id === c.relativeTo)?.dragon;
+              if (a === undefined || f === undefined || a === null || f === null) throw new Error(`${c.node} or ${c.relativeTo} missing`);
+              return [a.left - f.left, a.top - f.top, a.right - f.left, a.bottom - f.top];
+            };
+            expect(rel(fc.comparison?.nodes ?? []), `control ${c.node} in ${c.relativeTo}`).toEqual(rel(main[i]?.comparison?.nodes ?? []));
+          });
+        }
+      }
+      // The half-leading spec reading is a half px, inside the gate; the other distinguished entries move nodes by whole px beyond it.
+      if (d.finding.kind === 'distinguished' && d.id !== 'half-leading-floor') expect(overGate, d.id).toBeGreaterThan(0);
+      if (d.id === 'half-leading-floor') expect(overGate).toBe(0);
+    });
+  }
+  it('S5 records exactly one contradicted deviation, auto-margin-overflow-cross-start, with its nodes kept for T999', () => {
+    expect(chromeDeviations.map((d) => [d.id, d.finding.kind])).toEqual([['half-leading-floor', 'distinguished'], ['min-max-end-margin', 'distinguished'], ['auto-margin-overflow-cross-start', 'contradicted'], ['wrap-reverse-baseline-line', 'distinguished']]);
+    expect(chromeDeviations.find((d) => d.id === 'auto-margin-overflow-cross-start')?.nodes.length).toBe(9);
   });
 
   it('case counts (MF1, per environment): each tree fixture declares by hand its free states, case count and initial assignment; renderer and Dragon agree in both directions', () => {
@@ -467,9 +540,11 @@ describe.sequential('S4b parity: Chrome 145 vs Dragon, every case of every fixtu
         }
       }
     }
-    // The harness gives the environment direction to both renderings identically, and ltr adds nothing to the page.
+    // The harness gives the environment direction and root font to both renderings identically; ltr adds no direction rule.
     expect(harnessStyle(RTL_ENVIRONMENT)).toBe(`${harnessStyle(ENVIRONMENT)}:where(html){direction:rtl}`);
     expect(harnessStyle(ENVIRONMENT)).not.toMatch(/direction/);
+    expect(harnessStyle(ENVIRONMENT)).toMatch(/:where\(html\)\{font-family:Ahem\}$/);
+    expect(harnessStyle({ ...ENVIRONMENT, rootFont: 'ua-default' })).not.toMatch(/font-family:Ahem\}/);
   });
 
   it('text topology (docs/api.md §10): every tree case equals the declared mapping; projected text keeps its owner and inherits from its insertion parent', () => {
@@ -535,17 +610,69 @@ describe.sequential('S4b parity: Chrome 145 vs Dragon, every case of every fixtu
     }
   });
 
-  it('writes the report: at least 105 layout fixtures (at least 20 new hand-written positioning fixtures, at most 4 generated), every case listed with its direction and passing, anonymous boxes and line fragments listed', () => {
+  it('determinism (S5 (c)): every fixture in both environments gives the same digest, diagnostics, web CSS, layout projection, vectors and report when compiled twice and with every order-free list shuffled', async () => {
+    // Order-free lists: snapshot sources, assets and resolutions, tree modules, components and style use definitions. The document's
+    // style order (document.styles) is ordered: the cascade reads it.
+    const shuffle = <T>(xs: readonly T[]): T[] => (xs.length < 2 ? [...xs] : [...xs.slice(1), xs[0] as T].reverse());
+    const shuffled = (input: FrontEndResult): FrontEndResult => ({
+      ...input,
+      snapshot: { ...input.snapshot, sources: shuffle(input.snapshot.sources), assets: shuffle(input.snapshot.assets), resolutions: shuffle(input.snapshot.resolutions) },
+      tree: input.tree === null ? null : { ...input.tree, modules: shuffle(input.tree.modules), components: shuffle(input.tree.components), styles: shuffle(input.tree.styles) },
+    });
+    const canonicalDiagnostics = (o: FixtureOutcome): string[] => o.diagnostics.map((d) => JSON.stringify(d)).sort();
+    const stable = (o: FixtureOutcome): string => JSON.stringify({ ...o, diagnostics: canonicalDiagnostics(o) });
+    let permuted = 0;
+    for (const spec of FIXTURES) {
+      const input = fixtureInput(spec);
+      const moved = shuffled(input);
+      if (JSON.stringify(moved) !== JSON.stringify(input)) permuted++;
+      for (const e of environmentsOf(spec)) {
+        const a = compileFixture(spec, NO_FAULTS, 'enforce', e.direction).compiled;
+        const b = compileFixture(spec, NO_FAULTS, 'enforce', e.direction).compiled;
+        const c = compileFixture(spec, NO_FAULTS, 'enforce', e.direction, shuffled).compiled;
+        for (const x of [b, c]) {
+          expect(x.digest, `${spec.id} ${e.direction}`).toBe(a.digest);
+          expect(JSON.stringify(x.outputs), `${spec.id} ${e.direction}`).toBe(JSON.stringify(a.outputs));
+          expect(x.diagnostics.map((d) => JSON.stringify(d)).sort(), spec.id).toEqual(a.diagnostics.map((d) => JSON.stringify(d)).sort());
+          expect(JSON.stringify(x.dependencies), spec.id).toBe(JSON.stringify(a.dependencies));
+        }
+      }
+      // Both lanes again on the shuffled input: every case outcome (projection, vector, comparisons, CSS) and the report equal.
+      const again = await runFixture(spec, browser, { authored: recorded, faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce', transformInput: shuffled });
+      const main = outcomes.get(spec.id) as FixtureOutcome;
+      expect(stable(again), spec.id).toBe(stable(main));
+      expect(JSON.stringify(buildReport([again]).fixtures), spec.id).toBe(JSON.stringify(buildReport([main]).fixtures));
+    }
+    expect(permuted, 'tree fixtures have several sources, modules, components and style uses to reorder').toBeGreaterThanOrEqual(10);
+  });
+
+  it('determinism negative: swapping two ordered stylesheet uses with conflicting rules changes the digest and the emitted CSS', () => {
+    const spec = specFor('tree-ordered-sheets');
+    const swap = (input: FrontEndResult): FrontEndResult => {
+      if (input.tree === null) throw new Error('no tree');
+      const doc = input.tree.documents[0] as NonNullable<FrontEndResult['tree']>['documents'][number];
+      expect(doc.styles.length).toBeGreaterThanOrEqual(2);
+      return { ...input, tree: { ...input.tree, documents: [{ ...doc, styles: [...doc.styles].reverse() }] } };
+    };
+    const a = compileFixture(spec).compiled;
+    const b = compileFixture(spec, NO_FAULTS, 'enforce', 'ltr', swap).compiled;
+    expect(b.digest).not.toBe(a.digest);
+    const css = (c: typeof a): string => (c.outputs.web.kind === 'ready' ? (c.outputs.web.files[0] as { text: string }).text.split('\n').slice(1).join('\n') : 'blocked');
+    expect(css(b)).not.toBe(css(a));
+  });
+
+  it('writes the report and summary.md: at least 114 layout fixtures, at least 110 hand-written; failed 0; unsupportedCodes []; every case in both environments passes both lanes; platform darwin-arm64; the Linux lane unavailable (not run); every exact row linked to passing cases', () => {
     const ordered = FIXTURES.map((f) => outcomes.get(f.id)).filter((o): o is FixtureOutcome => o !== undefined);
     expect(ordered.length).toBe(FIXTURES.length);
     const report = buildReport(ordered);
     writeReport(report);
-    expect(report.summary.fixtures).toBeGreaterThanOrEqual(120);
-    expect(report.summary.layoutFixtures).toBeGreaterThanOrEqual(105);
+    expect(report.summary.fixtures).toBeGreaterThanOrEqual(137);
+    expect(report.summary.layoutFixtures).toBeGreaterThanOrEqual(114);
+    expect(report.summary.handWrittenLayoutFixtures).toBeGreaterThanOrEqual(110);
+    expect(report.summary.handWrittenLayoutFixtures + report.summary.generatedLayoutFixtures).toBe(report.summary.layoutFixtures);
     const layoutSpecs = FIXTURES.filter((f) => f.kind === 'layout');
     const positioning = layoutSpecs.filter((f) => f.source === 'hand-written' && f.format === 'html' && /^(position|flex-abspos)-/.test(f.id));
     expect(positioning.length).toBeGreaterThanOrEqual(20);
-    expect(report.summary.generatedFixtures.length).toBeLessThanOrEqual(4);
     expect(report.summary.generatedFixtures).toEqual(layoutSpecs.filter((f) => f.source === 'generated').map((f) => f.id));
     for (const id of report.summary.generatedFixtures) expect(report.fixtures.find((f) => f.id === id)?.status, id).toBe('pass');
     expect(report.summary.lineNodes).toBeGreaterThan(0);
@@ -568,6 +695,38 @@ describe.sequential('S4b parity: Chrome 145 vs Dragon, every case of every fixtu
     for (const d of report.summary.casesByDirection) expect(d.passed, d.direction).toBe(d.cases);
     for (const f of report.fixtures) for (const c of f.cases) expect(['ltr', 'rtl'], c.id).toContain(c.direction);
     expect(report.summary.treeFixtures).toBeGreaterThanOrEqual(9);
+    // (a) run metadata, the unavailable Linux lane and the scope wording.
+    expect(report.run.platform).toBe('darwin-arm64');
+    expect(report.run.referencePlatform).toBe('darwin-arm64');
+    expect(report.run.browser).toBe('chromium-headless-shell');
+    expect(report.run.flags).toContain('--force-device-scale-factor=1');
+    expect(report.run.unavailableLanes).toEqual([{ lane: 'linux-chrome', platform: 'linux-x64', status: 'unavailable (not run)', workflow: '.github/workflows/parity.yml (workflow_dispatch only, not pushed)' }]);
+    expect(report.run.rootFont).toEqual({ default: 'ahem', uaDefault: ['block-ua-divs'] });
+    // Every exact profile row links to at least one passing case id that exists in the report, and every case links back.
+    const reportCases = new Set(report.fixtures.flatMap((f) => f.cases.filter((c) => c.status === 'pass').map((c) => c.id)));
+    const exact = report.profileRows.filter((r) => r.status === 'exact');
+    expect(exact.length).toBeGreaterThan(1000);
+    for (const r of report.profileRows) {
+      expect(r.casesPassingInReport, `${r.target} ${r.feature}@${r.context}`).toBe(true);
+      for (const pr of r.proofs) {
+        expect(pr.cases.length).toBeGreaterThan(0);
+        for (const id of pr.cases) expect(reportCases.has(id), id).toBe(true);
+      }
+    }
+    for (const cr of report.caseRows) for (const key of [...cr.ios, ...cr.web]) expect(report.profileRows.some((r) => `${r.feature}@${r.context}` === key && r.proofs.some((x) => x.cases.includes(cr.case))), `${cr.case} ${key}`).toBe(true);
+    expect(report.caseRows.length).toBe(report.summary.cases);
+    // Deviations and platform rules with branch, node and exactness in the report.
+    for (const d of [...report.deviations, ...report.platformRules]) for (const n of d.nodes) expect(n.results.length > 0 && n.results.every((x) => x.exactLu), `${d.id} ${n.node}`).toBe(true);
+    // summary.md: the scope wording, the unavailable Linux lane and the counts the audit checks.
+    const summary = readFileSync(repoPath('packages/parity/out/summary.md'), 'utf8');
+    expect(summary).toBe(renderSummary(report));
+    expect(summary).toContain('Linux lane (linux-x64): unavailable (not run).');
+    expect(summary).toContain('They do not claim a Linux run.');
+    expect(summary).toContain(`| Layout fixtures | ${report.summary.layoutFixtures} |`);
+    expect(summary).toContain(`| Hand-written layout fixtures | ${report.summary.handWrittenLayoutFixtures} |`);
+    expect(summary).toContain('| Failed | 0 |');
+    expect(summary).toContain('| unsupportedCodes | [] |');
+    expect(summary).toContain('evidence, not a gate');
   });
 });
 
@@ -586,11 +745,11 @@ describe('renderer isolation', () => {
     ]);
   });
 
-  it('direction reaches Chrome only through the harness environment injection, applied identically to both renderings', () => {
+  it('direction and the root font reach Chrome only through the harness environment injection, applied identically to both renderings', () => {
     // The renderers and fixture readers never write a direction or a dir attribute into the markup.
     for (const file of ['render.ts', 'cases.ts', 'tree-fixture.ts', 'fixture-reader.ts', 'dual.ts', 'capture.ts']) {
       const text = readFileSync(repoPath(`packages/parity/src/${file}`), 'utf8');
-      expect(text, file).not.toMatch(/\bdir=|direction:\s*rtl|:where\(html\)/);
+      expect(text, file).not.toMatch(/\bdir=|direction:\s*rtl|:where\(html\)|font-family:\s*Ahem/);
     }
     // One place injects the harness style, and both the authored and the compiled rendering are captured through it in the case environment.
     const src = readdirSync(repoPath('packages/parity/src')).filter((f) => f.endsWith('.ts')).map((f) => [f, readFileSync(repoPath(`packages/parity/src/${f}`), 'utf8')] as const);

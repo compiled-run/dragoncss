@@ -7,16 +7,21 @@ import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule, Selector } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
-import type { CapturedTag } from '../ua/chrome-145.generated.ts';
-import { computed as capturedUa, userAgentLonghands } from '../ua/chrome-145.generated.ts';
+import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
 import type { Span } from '../types.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 
-/** environment: the root's direction, seeded from the reference environment (docs/api.md §7), never from an author declaration. */
+/** environment: the root's direction and font, seeded from the reference environment (docs/api.md §7), never from an author declaration. */
 export type Origin = 'author' | 'inherited' | 'user-agent' | 'initial' | 'environment';
 
-/** The environment facts resolution reads: the document's base direction, given to the root element. */
-export type ResolveEnvironment = { readonly direction: 'ltr' | 'rtl' };
+/**
+ * The environment facts resolution reads: the document's base direction and root font, given to the root element, and the Chrome
+ * UA dataset of the reference platform. rootFont 'ahem' is the parity fixture environment (docs/api.md §10.1); 'ua-default'
+ * leaves the root font-family at the dataset's value.
+ */
+export type ResolveEnvironment = { readonly direction: 'ltr' | 'rtl'; readonly rootFont: RootFont; readonly ua: UaDataset };
+
+export type RootFont = 'ahem' | 'ua-default';
 
 export type ResolvedValue = {
   readonly value: CssValue;
@@ -77,25 +82,25 @@ export function parseValueText(property: Longhand, text: string): CssValue {
 
 // css-cascade-5 §7.1: initial values come from the pinned @webref/css grammar. color (CanvasText, css-color-4 §6.2) and
 // font-family (UA-dependent, css-fonts-4 §2.1) have environment-dependent initial values, taken from Chrome's captured root.
-export function initialValue(property: Longhand): CssValue {
-  if (property === 'color' || property === 'font-family') return parseValueText(property, capturedUa.html[property] as string);
+export function initialValue(property: Longhand, ua: UaDataset): CssValue {
+  if (property === 'color' || property === 'font-family') return parseValueText(property, ua.computed.html[property] as string);
   const g = grammar[property];
   if (g === undefined) throw new Error(`no webref entry for ${property}`);
   return parseValueText(property, g.initial);
 }
 
 // css-cascade-5 §6.3 (user-agent origin): the captured table pins, per tag, the longhands a Chrome UA rule sets.
-function userAgentValue(tag: CapturedTag, property: Longhand): CssValue | null {
-  if (!userAgentLonghands[tag].includes(property)) return null;
-  const own = capturedUa[tag][property];
+function userAgentValue(tag: CapturedTag, property: Longhand, ua: UaDataset): CssValue | null {
+  if (!ua.userAgentLonghands[tag].includes(property)) return null;
+  const own = ua.computed[tag][property];
   if (own === undefined) throw new Error(`no captured value for ${tag} ${property}`);
   return parseValueText(property, own);
 }
 
 /** Origin of every longhand on an element with no author rules, as the resolver decides it; pinned by ua.test.ts. */
-export function defaultOrigin(tag: CapturedTag, property: Longhand, isRoot: boolean): Origin {
-  if (userAgentValue(tag, property) !== null) return 'user-agent';
-  if (isRoot && property === 'direction') return 'environment';
+export function defaultOrigin(tag: CapturedTag, property: Longhand, isRoot: boolean, ua: UaDataset, rootFont: RootFont): Origin {
+  if (userAgentValue(tag, property, ua) !== null) return 'user-agent';
+  if (isRoot && (property === 'direction' || (property === 'font-family' && rootFont === 'ahem'))) return 'environment';
   return INHERITED.has(property) && !isRoot ? 'inherited' : 'initial';
 }
 
@@ -228,13 +233,13 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     const tag = el.tag as CapturedTag;
     const none = { declaration: null, declared: null, losing: [] } as const;
     const fromParent = (p: Longhand): ResolvedValue => {
-      if (parent === null) return { value: parseValueText(p, capturedUa.html[p] as string), origin: 'initial', span: null, ...none };
+      if (parent === null) return { value: parseValueText(p, environment.ua.computed.html[p] as string), origin: 'initial', span: null, ...none };
       const pv = parent.props.get(p) as ResolvedValue;
       return { value: pv.value, origin: 'inherited', span: pv.span, ...none };
     };
     const defaultFor = (p: Longhand): ResolvedValue => {
-      const ua = userAgentValue(tag, p);
-      return ua === null ? { value: initialValue(p), origin: 'initial', span: null, ...none } : { value: ua, origin: 'user-agent', span: null, ...none };
+      const ua = userAgentValue(tag, p, environment.ua);
+      return ua === null ? { value: initialValue(p, environment.ua), origin: 'initial', span: null, ...none } : { value: ua, origin: 'user-agent', span: null, ...none };
     };
     for (const p of LONGHANDS) {
       const w = winners.get(p);
@@ -247,13 +252,16 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       } else if (w !== undefined && w.value.kind === 'keyword') {
         const kw = w.value.value;
         const useInherit = kw === 'inherit' || currentColorOnColor || (kw === 'unset' && inherited);
-        const r = useInherit ? fromParent(p) : { value: initialValue(p), origin: 'initial' as const, span: null };
+        const r = useInherit ? fromParent(p) : { value: initialValue(p, environment.ua), origin: 'initial' as const, span: null };
         props.set(p, { ...r, span: w.declaration.span, ...author });
       } else if (inherited && parent === null && p === 'direction') {
         // docs/api.md §7: the environment direction is the root's base direction; the harness gives both renderings the same one.
         props.set(p, { value: { kind: 'keyword', value: faults.ignoreEnvironmentDirection ? 'ltr' : environment.direction }, origin: 'environment', span: null, ...none });
+      } else if (parent === null && p === 'font-family' && environment.rootFont === 'ahem') {
+        // docs/api.md §10.1: the fixture environment sets the root font-family to Ahem, as the harness does in both renderings.
+        props.set(p, { value: { kind: 'family', value: 'Ahem' }, origin: 'environment', span: null, ...none });
       } else if (inherited) {
-        props.set(p, parent === null ? (userAgentValue(tag, p) === null ? fromParent(p) : defaultFor(p)) : fromParent(p));
+        props.set(p, parent === null ? (userAgentValue(tag, p, environment.ua) === null ? fromParent(p) : defaultFor(p)) : fromParent(p));
       } else {
         props.set(p, defaultFor(p));
       }
@@ -291,7 +299,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         continue;
       }
       const text = collapsed.get(kid) as string;
-      if (text.length > 0) self.children.push({ kind: 'text', node: kid, text, props: textProps(props, faults) });
+      if (text.length > 0) self.children.push({ kind: 'text', node: kid, text, props: textProps(props, faults, environment.ua) });
     }
     return self;
   };
@@ -299,14 +307,14 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
 }
 
 // goal.md principle 3: a text node carries each inherited text property itself, inherited from its insertion parent.
-function textProps(parent: ReadonlyMap<Longhand, ResolvedValue>, faults: CompilerFaults): Map<TextLonghand, ResolvedValue> {
+function textProps(parent: ReadonlyMap<Longhand, ResolvedValue>, faults: CompilerFaults, ua: UaDataset): Map<TextLonghand, ResolvedValue> {
   const out = new Map<TextLonghand, ResolvedValue>();
   for (const p of TEXT_LONGHANDS) {
     const pv = parent.get(p) as ResolvedValue;
     out.set(p, { value: pv.value, origin: 'inherited', span: pv.span, declaration: null, declared: null, losing: [] });
   }
   // Planted fault dropInheritedText: the text node's font-size is its initial value (medium, 16px computed in Chrome's root).
-  if (faults.dropInheritedText) out.set('font-size', { value: parseValueText('font-size', capturedUa.html['font-size'] as string), origin: 'initial', span: null, declaration: null, declared: null, losing: [] });
+  if (faults.dropInheritedText) out.set('font-size', { value: parseValueText('font-size', ua.computed.html['font-size'] as string), origin: 'initial', span: null, declaration: null, declared: null, losing: [] });
   return out;
 }
 

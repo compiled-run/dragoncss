@@ -56,6 +56,17 @@ export type Rule = {
 /** One stylesheet use: its id, the owner its class symbols belong to, and whether it is component-scoped. */
 export type SheetUse = { readonly id: string; readonly owner: string; readonly scope: 'component' | 'document' };
 
+/**
+ * T005 rec 3: the rules inside an unsupported at-rule, parsed with its block unwrapped. They are analysed so their diagnostics can be
+ * reported with the at-rule, and never resolved into outputs. diagnostics: what parsing the enclosed block itself reported.
+ */
+export type EnclosedRules = { readonly atRule: Diagnostic; readonly span: Span; readonly rules: readonly Rule[]; readonly diagnostics: readonly Diagnostic[] };
+
+type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse };
+
+/** Where a node that is not a style rule or declaration sits: top level (or inside a top-level at-rule), or in a rule block. */
+type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top' };
+
 const CSS_WIDE = new Set(['inherit', 'initial', 'unset', 'revert', 'revert-layer']);
 const LINE_STYLES = new Set(['none', 'hidden', 'dotted', 'dashed', 'solid', 'double', 'groove', 'ridge', 'inset', 'outset']);
 const LINE_WIDTH_KEYWORDS = new Set(['thin', 'medium', 'thick', 'hairline']);
@@ -81,7 +92,7 @@ function spanOf(node: CssNode, base: Span): Span {
   return { source: base.source, start: base.start + loc.start.offset, end: base.start + loc.end.offset };
 }
 
-export function parseStylesheet(text: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[]): Rule[] {
+export function parseStylesheet(text: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = []): Rule[] {
   const errors: { message: string; offset: number }[] = [];
   const ast = parse(text, { positions: true, parseValue: true, onParseError: (e) => errors.push({ message: e.message, offset: e.offset }) });
   for (const e of errors) {
@@ -89,26 +100,30 @@ export function parseStylesheet(text: string, base: Span, use: SheetUse, orderSt
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error: ${e.message}` }));
   }
   const rules: Rule[] = [];
-  let order = orderStart;
+  const st: ParseState = { order: orderStart, base, text, use };
   for (const node of list(ast, 'children')) {
     if (node.type !== 'Rule') {
-      refuseNode(node, base, text, 'the stylesheet', diagnostics);
+      refuseNode(node, st, { label: 'the stylesheet', selectors: 'top' }, diagnostics, enclosed);
       continue;
     }
-    const prelude = node['prelude'] as CssNode;
-    const selectors = parseSelectorList(prelude, base, use, diagnostics);
-    const declarations: Declaration[] = [];
-    for (const d of list(node['block'] as CssNode, 'children')) {
-      if (d.type !== 'Declaration') {
-        refuseNode(d, base, text, 'a rule block', diagnostics);
-        continue;
-      }
-      const parsed = parseDeclaration(d, base, text, order++, diagnostics);
-      if (parsed !== null) declarations.push(parsed);
-    }
-    if (selectors !== null) rules.push({ sheet: use.id, owner: use.owner, selectors, declarations });
+    const rule = parseRule(node, st, diagnostics, enclosed);
+    if (rule !== null) rules.push(rule);
   }
   return rules;
+}
+
+function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[]): Rule | null {
+  const selectors = parseSelectorList(node['prelude'] as CssNode, st.base, st.use, diagnostics);
+  const declarations: Declaration[] = [];
+  for (const d of list(node['block'] as CssNode, 'children')) {
+    if (d.type !== 'Declaration') {
+      refuseNode(d, st, { label: 'a rule block', selectors }, diagnostics, enclosed);
+      continue;
+    }
+    const parsed = parseDeclaration(d, st.base, st.text, st.order++, diagnostics);
+    if (parsed !== null) declarations.push(parsed);
+  }
+  return selectors === null ? null : { sheet: st.use.id, owner: st.use.owner, selectors, declarations };
 }
 
 /** css-syntax-3 §5.4: an empty declaration (a lone ";") and the <!-- --> tokens produce no rule or declaration in the CSSOM. */
@@ -116,15 +131,44 @@ const EMPTY_RAW = /^[\s;]*$/;
 
 // Every node that is not a style rule at the top level, or not a declaration in a rule block, is diagnosed: css-nesting-1 nested
 // rules, nested and top-level at-rules, and anything the parser kept as raw text. Nothing is dropped silently.
-function refuseNode(node: CssNode, base: Span, text: string, where: string, diagnostics: Diagnostic[]): void {
+function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagnostic[], enclosed: EnclosedRules[]): void {
+  const { base, text } = st;
+  const where = at.label;
   const span = spanOf(node, base);
   if (where === 'the stylesheet' && (node.type === 'CDO' || node.type === 'CDC')) return;
   if (node.type === 'Raw' && EMPTY_RAW.test(String(node['value']))) return;
   if (node.type === 'Atrule') {
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
+    const refusal = diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
       origin: authored(span),
       message: `@${String(node['name'])} in ${where} is not supported in milestone 1`,
-    }));
+    });
+    diagnostics.push(refusal);
+    const block = node['block'] as CssNode | null | undefined;
+    if (block === null || block === undefined) return;
+    // T005 rec 3: the enclosed rules are parsed with the block unwrapped, for analysis only.
+    const inner: Diagnostic[] = [];
+    const rules: Rule[] = [];
+    const label = `@${String(node['name'])}`;
+    if (at.selectors === 'top') {
+      for (const c of list(block, 'children')) {
+        if (c.type === 'Rule') {
+          const r = parseRule(c, st, inner, enclosed);
+          if (r !== null) rules.push(r);
+        } else if (c.type !== 'Declaration') refuseNode(c, st, { label, selectors: 'top' }, inner, enclosed);
+      }
+    } else {
+      const declarations: Declaration[] = [];
+      for (const c of list(block, 'children')) {
+        if (c.type !== 'Declaration') {
+          refuseNode(c, st, { label, selectors: at.selectors }, inner, enclosed);
+          continue;
+        }
+        const parsed = parseDeclaration(c, base, text, st.order++, inner);
+        if (parsed !== null) declarations.push(parsed);
+      }
+      if (at.selectors !== null) rules.push({ sheet: st.use.id, owner: st.use.owner, selectors: at.selectors, declarations });
+    }
+    enclosed.push({ atRule: refusal, span, rules, diagnostics: inner });
     return;
   }
   if (node.type === 'Rule') {

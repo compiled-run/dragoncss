@@ -1,4 +1,6 @@
 {
+ "platform": "darwin-arm64",
+ "measurer": "ahem/darwin-arm64",
  "input": {
   "viewport": {
    "width": 400,

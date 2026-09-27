@@ -3,7 +3,7 @@
 //   chrome-dual: Dragon's web output rendered in Chrome against the authored rendering, boxes and computed values exactly.
 import type { Browser } from 'playwright';
 import type { EngineFaults, LayoutInput, LayoutRect, LayoutUnsupported } from '@dragon/layout';
-import { absoluteRects, ahemMeasurer, layoutWithFaults, validateLayoutInput } from '@dragon/layout';
+import { absoluteRects, layoutWithFaults, measurerFor, validateLayoutInput } from '@dragon/layout';
 import type { Assignment, CompilerFaults, Compiled, Diagnostic, Environment, FrontEndResult, Origin, Scalar, TextTopologyEntry } from 'dragon';
 import { compiledCases, compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, textTopology, WEB_CSS_PATH, webClassMap } from 'dragon';
 import type { WebCapture } from './capture.ts';
@@ -17,6 +17,7 @@ import { compareDual } from './dual.ts';
 import { PROJECT_ID } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { ENVIRONMENT, environmentsOf } from './fixtures.ts';
+import { REFERENCE_PLATFORM } from './platform.ts';
 import { authoredModel } from './render.ts';
 import type { TreeExpectation } from './tree-fixture.ts';
 import { readTreeExpectation } from './tree-fixture.ts';
@@ -99,11 +100,21 @@ export type RunOptions = {
   readonly engineFaults: EngineFaults;
   /** Only scripts/gen-profile-rows.ts derives: it finds which cases pass before the rows exist. */
   readonly profiles: 'enforce' | 'derive';
+  /** The determinism check (S5 (c)) compiles an order-shuffled copy of the fixture input; every other run passes the input as read. */
+  readonly transformInput?: (input: FrontEndResult) => FrontEndResult;
 };
 
-export function compileFixture(spec: FixtureSpec, faults: CompilerFaults = NO_FAULTS, profiles: 'enforce' | 'derive' = 'enforce', direction: Direction = 'ltr'): { input: FrontEndResult; compiled: Compiled<'ios' | 'web'> } {
-  const input = fixtureInput(spec);
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} } }, { faults, profiles, direction });
+/** The engine measurer of the reference platform; any other platform is refused (docs/decisions.md). */
+function referenceMeasurer() {
+  const m = measurerFor(REFERENCE_PLATFORM);
+  if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
+  return m.measurer;
+}
+
+export function compileFixture(spec: FixtureSpec, faults: CompilerFaults = NO_FAULTS, profiles: 'enforce' | 'derive' = 'enforce', direction: Direction = 'ltr', transformInput: (input: FrontEndResult) => FrontEndResult = (i) => i): { input: FrontEndResult; compiled: Compiled<'ios' | 'web'> } {
+  const input = transformInput(fixtureInput(spec));
+  const rootFont = spec.kind === 'layout' ? spec.rootFont : 'ahem';
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} } }, { faults, profiles, direction, platform: REFERENCE_PLATFORM, rootFont });
   return { input, compiled: project.compile(input) };
 }
 
@@ -114,7 +125,7 @@ const webCssOf = (compiled: Compiled<'ios' | 'web'>): string | null => {
 
 export async function runFixture(spec: FixtureSpec, browser: Browser, opts: RunOptions): Promise<FixtureOutcome> {
   const environments = environmentsOf(spec);
-  const compiledBy = new Map(environments.map((e) => [e.direction, compileFixture(spec, opts.faults, opts.profiles, e.direction)] as const));
+  const compiledBy = new Map(environments.map((e) => [e.direction, compileFixture(spec, opts.faults, opts.profiles, e.direction, opts.transformInput)] as const));
   const { input, compiled } = compiledBy.get('ltr') as { input: FrontEndResult; compiled: Compiled<'ios' | 'web'> };
   const rtl = compiledBy.get('rtl');
   const diagnostics = summarize(input, compiled.diagnostics);
@@ -122,14 +133,15 @@ export async function runFixture(spec: FixtureSpec, browser: Browser, opts: RunO
   const dragonCases = compiledCases(compiled).length;
 
   if (spec.kind === 'reject') {
-    const hit = diagnostics.find((d) => d.code === spec.expect.code && d.spanText === spec.expect.spanText && (d.target === null || d.target === 'ios'));
+    const prefix = spec.expect.messagePrefix;
+    const hit = diagnostics.find((d) => d.code === spec.expect.code && d.spanText === spec.expect.spanText && (d.target === null || d.target === 'ios') && (prefix === null || d.message.startsWith(prefix)));
     const blocked = compiled.outputs.ios.kind === 'blocked' && compiled.targets.ios === 'blocked' && compiled.outputs.web.kind === 'blocked' && compiled.targets.web === 'blocked';
     const noProjection = compiledCases(compiled).every((c) => iosLayoutProjection(compiled, ENVIRONMENT, c.assignment).kind === 'blocked') && iosLayoutProjection(compiled, ENVIRONMENT, []).kind === 'blocked';
     const ok = hit !== undefined && blocked && noProjection && webCss.ltr === null && !compiled.ok;
     return {
       id: spec.id, format: spec.format, kind: spec.kind, diagnostics, webCss, expectedCases: 0, rendererCases: 0, dragonCases, environments: [], cases: [],
       status: ok ? 'pass' : 'fail',
-      reason: ok ? null : `expected ${spec.expect.code} on ${JSON.stringify(spec.expect.spanText)} with blocked ios and web outputs, no layout projection and no web files; got ${diagnostics.map((d) => `${d.code} ${JSON.stringify(d.spanText)}`).join(', ')}`,
+      reason: ok ? null : `expected ${spec.expect.code} on ${JSON.stringify(spec.expect.spanText)}${prefix === null ? '' : ` with a message starting ${JSON.stringify(prefix)}`} with blocked ios and web outputs, no layout projection and no web files; got ${diagnostics.map((d) => `${d.code} ${JSON.stringify(d.spanText)}`).join(', ')}`,
     };
   }
 
@@ -236,7 +248,7 @@ async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss:
   // Lane linux-dragon-layout.
   const validated = validateLayoutInput(JSON.parse(JSON.stringify(projection.input)));
   if (!validated.ok) return fail(`layout input rejected: ${validated.errors.map((e) => `${e.path} ${e.code}`).join('; ')}`);
-  const result = layoutWithFaults(validated.input, ahemMeasurer, opts.engineFaults);
+  const result = layoutWithFaults(validated.input, referenceMeasurer(), opts.engineFaults);
   let layoutStatus: LaneStatus;
   let comparison: Comparison | null = null;
   let unsupported: LayoutUnsupported | null = null;

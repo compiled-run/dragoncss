@@ -40,14 +40,17 @@ export type PageEnvironment = {
   readonly viewport: { readonly width: number; readonly height: number };
   readonly devicePixelRatio: number;
   readonly direction: 'ltr' | 'rtl';
+  /** 'ahem': the fixture environment sets the root font-family to Ahem (docs/api.md §10.1); 'ua-default' keeps Chrome's. */
+  readonly rootFont: 'ahem' | 'ua-default';
 };
 
 /**
- * The environment direction as the document's base direction (docs/api.md §7), injected identically into the authored and the
- * compiled rendering. A zero-specificity rule on the root sets only direction: a dir attribute would also set unicode-bidi.
+ * The environment root font and direction (docs/api.md §7, §10.1), injected identically into the authored and the compiled
+ * rendering. Zero-specificity rules on the root set only font-family and direction: a dir attribute would also set unicode-bidi,
+ * and any authored rule on html wins over them.
  */
 export function harnessStyle(env: PageEnvironment): string {
-  return `${ahemFontFace()}${env.direction === 'rtl' ? ':where(html){direction:rtl}' : ''}`;
+  return `${ahemFontFace()}${env.rootFont === 'ahem' ? ':where(html){font-family:Ahem}' : ''}${env.direction === 'rtl' ? ':where(html){direction:rtl}' : ''}`;
 }
 
 /** Opens a page in the case environment, loads the HTML with the harness style injected, and waits for fonts and two frames. */

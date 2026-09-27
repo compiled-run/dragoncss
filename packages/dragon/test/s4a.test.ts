@@ -7,6 +7,7 @@ import { createProject } from '../src/index.ts';
 import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/internal.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../src/analysis/resolve.ts';
 import { initialValue } from '../src/analysis/resolve.ts';
+import { referenceDataset } from '../src/ua/datasets.ts';
 import { INHERITED, LONGHANDS } from '../src/css/properties.ts';
 import type { Longhand } from '../src/css/properties.ts';
 import type { CssValue } from '../src/css/stylesheet.ts';
@@ -14,7 +15,7 @@ import { assertTextCarriesContainer, lowerStyle } from '../src/lower/ios-layout.
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
-const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1 } as const;
+const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, rootFont: 'ua-default' } as const;
 const project = (direction: 'ltr' | 'rtl', profiles: 'enforce' | 'derive' = 'derive') => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles, direction });
 
 function projection(input: FrontEndResult, direction: 'ltr' | 'rtl' = 'ltr'): LayoutBox {
@@ -51,13 +52,16 @@ describe('B1: the environment direction (docs/api.md §7)', () => {
     expect(iosLayoutProjection(rtl, { ...ENV, direction: 'ltr' }, []).kind).toBe('blocked');
     expect(ltr.digest).not.toBe(rtl.digest);
   });
-  it('MF2: Environment, direction and the internal options stay off the public entry; createProject compiles for ltr', () => {
-    expect(Object.keys(publicEntry).sort()).toEqual(['TREE_SCHEMA_REVISION', 'createProject', 'formatDiagnostic']);
+  it('MF2: Environment, direction, platform and the internal options stay off the public entry; createProject compiles for ltr on the reference platform', () => {
+    // S5 adds exactly formatDiagnostics (T005 rec 5) and querySupport (docs/api.md §6.3).
+    expect(Object.keys(publicEntry).sort()).toEqual(['TREE_SCHEMA_REVISION', 'createProject', 'formatDiagnostic', 'formatDiagnostics', 'querySupport']);
     expect(createProject.length).toBe(1);
     const index = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
-    expect(index).not.toMatch(/Environment|InternalOptions|direction/);
+    expect(index).not.toMatch(/Environment|InternalOptions|direction|platform|rootFont/);
     const c = createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }).compile(input());
     expect(c.digest).toBe(createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' }).compile(input()).digest);
+    expect(c.digest).toBe(createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', platform: 'darwin-arm64', rootFont: 'ua-default' }).compile(input()).digest);
+    expect(c.digest).not.toBe(createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', rootFont: 'ahem' }).compile(input()).digest);
   });
 });
 
@@ -136,10 +140,10 @@ describe('C3: anonymous boxes take the inherited longhands of their parent and e
           const fake: ResolvedElement = {
             kind: 'element',
             element: { kind: 'element', address: a.id, instance: 'doc', owner: 'App', tag: 'div', classes: [], attributes: new Map(), children: [], node: { kind: 'element', id: a.id, tag: 'div', classes: [], attributes: [], children: [], origin: { kind: 'unlocated', reason: 'test' } } },
-            props: new Map(LONGHANDS.map((p) => [p, { value: INHERITED.has(p) ? keywordOrValue(parent, p) : p === 'display' ? { kind: 'keyword', value: 'block' } : initialValue(p), origin: 'initial', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue])),
+            props: new Map(LONGHANDS.map((p) => [p, { value: INHERITED.has(p) ? keywordOrValue(parent, p) : p === 'display' ? { kind: 'keyword', value: 'block' } : initialValue(p, referenceDataset()), origin: 'initial', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue])),
             children: [],
           };
-          expect(a.style, a.id).toEqual(lowerStyle(fake, NO_FAULTS));
+          expect(a.style, a.id).toEqual(lowerStyle(fake, NO_FAULTS, referenceDataset()));
           expect([a.style.direction, a.style.textAlign], a.id).toEqual([parent.style.direction, parent.style.textAlign]);
         }
       }
@@ -152,7 +156,7 @@ function keywordOrValue(parent: LayoutBox, p: Longhand): CssValue {
   const style = parent.style as LayoutStyle;
   if (p === 'direction') return { kind: 'keyword', value: style.direction };
   if (p === 'text-align') return { kind: 'keyword', value: style.textAlign };
-  return initialValue(p);
+  return initialValue(p, referenceDataset());
 }
 
 describe('C4: one display: none rule, the subtree is omitted wherever it occurs (CSS2 §9.2.4)', () => {
@@ -231,6 +235,7 @@ describe('C6: nested rules and every other non-declaration child of a rule block
   it('the parser has no silent skip left: every non-Rule and non-Declaration node goes through refuseNode', () => {
     const src = readFileSync(new URL('../src/css/stylesheet.ts', import.meta.url), 'utf8');
     expect(src).not.toMatch(/type !== 'Declaration'\) continue|type !== 'Rule'\) continue/);
-    expect(src.match(/refuseNode\(/g)?.length).toBe(3);
+    // The definition, the top-level and rule-block callers, and the two callers inside an unsupported at-rule (T005 rec 3).
+    expect(src.match(/refuseNode\(/g)?.length).toBe(5);
   });
 });

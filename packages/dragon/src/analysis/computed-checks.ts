@@ -35,7 +35,7 @@ function checkOverflow(el: ResolvedElement, targets: readonly string[], diagnost
       const id = `${t}|${span.source.uri}|${span.start}|${el.element.address}`;
       if (reported.has(id)) continue;
       reported.add(id);
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), target: t, message, manual: 'Use overflow: hidden on both axes, on an element other than html and body.' }));
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), target: t, message, manual: 'Use overflow: hidden on both axes, on an element other than html and body.', basis: 'computed-value' }));
     }
   }
 }
@@ -63,9 +63,11 @@ function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set
   }
 }
 
-// CSS2 §9.2.1.1 and §10.3.7: an absolutely positioned box beside text would take its static position inside the text's inline
-// formatting context, which milestone 1 does not lay out (the engine's abspos-in-inline); an absolutely positioned root has no
-// in-flow box for the initial containing block. Both are refused on every target at the position declaration.
+// CSS2 §9.2.1.1 and §10.3.7: an absolutely positioned box beside text in a block container would take its static position inside
+// the text's inline formatting context, which milestone 1 does not lay out (the engine's abspos-in-inline). In a flex container the
+// text is an anonymous flex item (css-flexbox-1 §4) and the box is not a flex item (§4.1); that combination has no fixture, so it is
+// refused too. An absolutely positioned root has no in-flow box for the initial containing block. All are refused on every target
+// at the position declaration.
 function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const refuse = (target: ResolvedElement, message: string): void => {
     const v = target.props.get('position') as ResolvedValue;
@@ -74,7 +76,7 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
       const id = `${t}|position|${JSON.stringify(origin)}|${target.element.address}`;
       if (reported.has(id)) continue;
       reported.add(id);
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: 'Wrap the text beside the absolutely positioned element in its own element, or position a descendant of the root instead.' }));
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: 'Wrap the text beside the absolutely positioned element in its own element, or position a descendant of the root instead.', basis: 'computed-value' }));
     }
   };
   if (isRoot && keywordOf(el.props.get('position') as ResolvedValue) === 'absolute') refuse(el, `position: absolute on the root element ${el.element.address} is not supported in milestone 1`);
@@ -82,7 +84,9 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
   for (const c of el.children) {
     if (c.kind !== 'element' || keywordOf(c.props.get('display') as ResolvedValue) === 'none') continue;
     if (keywordOf(c.props.get('position') as ResolvedValue) !== 'absolute') continue;
-    refuse(c, `position: absolute on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out`);
+    refuse(c, keywordOf(el.props.get('display') as ResolvedValue) === 'flex'
+      ? `position: absolute on ${c.element.address} beside text in the flex container ${el.element.address}: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination`
+      : `position: absolute on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out`);
   }
 }
 

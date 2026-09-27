@@ -1,7 +1,7 @@
 // Structural validation of the FrontEndResult and the milestone-1 dragon/tree@0 subset (docs/api.md §2.1, §3.1-3.4, §10):
 // schema, source hashes and spans, unique ids, references, domains, conditions and per-template ownership. Linking,
 // aliases and reachability are checked in link.ts.
-import { sha256Hex } from '../digest.ts';
+import { sha256Hex, sha256HexBytes } from '../digest.ts';
 import { authored, diagnostic, unlocated } from '../diagnostics/catalogue.ts';
 import type {
   CallNode,
@@ -109,6 +109,51 @@ export function validateInput(input: FrontEndResult, projectId: string, diagnost
     }
     sources.set(s.ref.uri, s);
   }
+  // docs/api.md §10.1: every asset matches its hash, and every resolution names a source or asset in the snapshot.
+  const missing = (reason: string, message: string): void => {
+    diagnostics.push(diagnostic('DRAGON_MISSING_ASSET', { origin: unlocated(reason), message }));
+  };
+  let snapshotOk = true;
+  const assets = new Set<string>();
+  if (!Array.isArray(input.snapshot.assets) || !Array.isArray(input.snapshot.resolutions)) {
+    invalid('snapshot assets and resolutions must be lists');
+    return null;
+  }
+  for (const a of input.snapshot.assets) {
+    if (!exactKeys(a, ['id', 'hash', 'bytes']) || !isString(a.id) || !isString(a.hash) || !(a.bytes instanceof Uint8Array)) {
+      invalid('each asset needs exactly id, hash and bytes (a Uint8Array)');
+      return null;
+    }
+    if (assets.has(a.id)) {
+      diagnostics.push(diagnostic('DRAGON_TREE_DUPLICATE_ID', { origin: unlocated(`asset ${a.id}`), message: `asset ${a.id} appears twice in the snapshot` }));
+      snapshotOk = false;
+    }
+    assets.add(a.id);
+    const expected = `sha256:${sha256HexBytes(a.bytes)}`;
+    if (a.hash !== expected) {
+      missing(`asset ${a.id}`, `the bytes of asset ${a.id} hash to ${expected}, not ${a.hash}`);
+      snapshotOk = false;
+    }
+  }
+  for (const r of input.snapshot.resolutions) {
+    if (!exactKeys(r, ['from', 'specifier', 'kind', 'to']) || !exactKeys(r.from, ['uri', 'revision', 'hash']) || !isString(r.specifier)
+      || !['source', 'css', 'asset'].includes(String(r.kind)) || !(r.to === null || isString(r.to))) {
+      invalid('each resolution needs exactly from {uri, revision, hash}, specifier, kind (source, css or asset) and to (a string or null)');
+      return null;
+    }
+    const what = `resolution of "${r.specifier}" from ${r.from.uri}`;
+    if (!sources.has(r.from.uri)) {
+      missing(what, `the ${what} starts in a source that is not in the snapshot`);
+      snapshotOk = false;
+    }
+    if (r.to === null) {
+      missing(what, `the ${what} is unresolved (to is null)`);
+      snapshotOk = false;
+    } else if (r.kind === 'asset' ? !assets.has(r.to) : !sources.has(r.to)) {
+      missing(what, `the ${what} names ${r.kind === 'asset' ? 'asset' : 'source'} ${r.to}, which is not in the snapshot`);
+      snapshotOk = false;
+    }
+  }
   const checkSpan = (span: unknown, what: string): boolean => {
     const ok = exactKeys(span, ['source', 'start', 'end']) && exactKeys(span['source'], ['uri', 'revision', 'hash']);
     const sp = span as Span;
@@ -190,7 +235,7 @@ export function validateInput(input: FrontEndResult, projectId: string, diagnost
     invalid('tree modules, components, documents and styles must be lists');
     return null;
   }
-  if (!sourcesOk) ok = false;
+  if (!sourcesOk || !snapshotOk) ok = false;
   const refError = (origin: Origin, message: string): void => {
     ok = false;
     diagnostics.push(diagnostic('DRAGON_TREE_REFERENCE', { origin, message }));
@@ -241,7 +286,11 @@ export function validateInput(input: FrontEndResult, projectId: string, diagnost
     }
     if (styles.has(s.id)) duplicate(unlocated(`style use ${s.id}`), `style use id ${s.id} is declared twice`);
     styles.set(s.id, s);
-    if (!checkSpan(s.css, `style use ${s.id}`)) ok = false;
+    const cssSource = isRecord(s.css) && isRecord(s.css.source) ? s.css.source.uri : undefined;
+    if (isString(cssSource) && !sources.has(cssSource)) {
+      missing(`style use ${s.id}`, `style use ${s.id} names source ${cssSource}, which is not in the snapshot`);
+      ok = false;
+    } else if (!checkSpan(s.css, `style use ${s.id}`)) ok = false;
     if (s.scope.kind === 'component') {
       if (!exactKeys(s.scope, ['kind', 'owner']) || !components.has(s.scope.owner)) refError(unlocated(`style use ${s.id}`), `style use ${s.id} is owned by unknown component ${String((s.scope as { owner?: unknown }).owner)}`);
       else styleOwner.set(s.id, s.scope.owner);

@@ -69,7 +69,8 @@ function buildRun(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[]): Run {
   const glyphHeight = add(add(metrics.ascent, metrics.descent), metrics.lineGap);
   const lineHeight = resolveLineHeight(first, glyphHeight);
   // Blink CalculateLeadingSpace: ((line_height - font height) / 2).Floor(), so a line-height below the glyphs gives negative leading.
-  const halfLeading = floorToWholePx(divInt(sub(lineHeight, glyphHeight), 2));
+  // The planted spec reading of deviation half-leading-floor (CSS2 §10.8.1) keeps the exact half.
+  const halfLeading = ctx.faults.halfLeadingSpec ? divInt(sub(lineHeight, glyphHeight), 2) : floorToWholePx(divInt(sub(lineHeight, glyphHeight), 2));
   return { leaves, chars, wrap: first.textWrapMode === 'wrap', lineHeight, ascent: metrics.ascent, descent: metrics.descent, halfLeading };
 }
 

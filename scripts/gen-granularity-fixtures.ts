@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { createProjectWith, LONGHANDS, NO_FAULTS, PROPERTY_ROLE } from '../packages/dragon/src/internal.ts';
 import type { Longhand } from '../packages/dragon/src/internal.ts';
 import { properties as grammar } from '../packages/dragon/src/css/grammar.generated.ts';
-import { computed as ua } from '../packages/dragon/src/ua/chrome-145.generated.ts';
+import { computed as ua } from '../packages/dragon/src/ua/chrome-145.darwin-arm64.generated.ts';
 import { fixtureToInput, PROJECT_ID } from '../packages/parity/src/fixture-reader.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -26,7 +26,7 @@ function page(css: readonly string[], body: readonly string[]): string {
 /** Whether a declaration compiles on a div holding text, with no diagnostic and ready outputs; otherwise the first reason. */
 function compiles(declaration: string): { readonly ok: true } | { readonly ok: false; readonly reason: string } {
   const html = page([`.x { ${declaration} }`], ['<div data-dragon-id="x" class="x">XX</div>']);
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' });
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', rootFont: 'ahem' });
   const c = project.compile(fixtureToInput('granularity-probe', html));
   if (c.diagnostics.length > 0) return { ok: false, reason: `${c.diagnostics[0]?.code}: ${c.diagnostics[0]?.message}` };
   if (c.outputs.ios.kind === 'blocked' || c.outputs.web.kind !== 'ready') return { ok: false, reason: 'an output is blocked' };

@@ -111,7 +111,8 @@ export function expectCatalogued(diagnostics: readonly Diagnostic[]): void {
     const entry = CATALOGUE[d.code];
     expect(entry, d.code).toBeDefined();
     expect(d.severity, d.code).toBe(entry.severity);
-    expect(d.why, d.code).toBe(entry.why);
+    // A computed-value refusal takes the catalogue's computedWhy (M3); every other diagnostic takes its why.
+    expect([entry.why, entry.computedWhy], d.code).toContain(d.why);
     expect(d.fix, d.code).not.toBeNull();
     expect(d.fix !== null && 'manual' in d.fix ? 'manual' : 'edit', d.code).toBe(entry.fix.kind);
   }

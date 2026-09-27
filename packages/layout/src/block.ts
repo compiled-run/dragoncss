@@ -47,6 +47,14 @@ export type EngineFaults = {
   readonly metricHalfUp: boolean;
   /** Ahem advances and metrics use the computed font size instead of trunc(size x 100) / 100 (platform rule font-size-truncation off). */
   readonly untruncatedFontSize: boolean;
+  /** Spec reading of Chrome deviation half-leading-floor: the top half-leading is not floored to a whole px (CSS2 §10.8.1). */
+  readonly halfLeadingSpec: boolean;
+  /** Spec reading of Chrome deviation min-max-end-margin: CSS 2.1 §8.3.1, the last child bottom margin collapses with the parent only when its min-height is zero; otherwise it counts toward the content height. */
+  readonly minMaxEndMarginSpec: boolean;
+  /** Spec reading of Chrome deviation auto-margin-overflow-cross-start: an overflowing item with auto cross margins is flush with the writing-mode start edge (css-flexbox-1 §9.6 step 13). */
+  readonly autoMarginOverflowSpec: boolean;
+  /** Spec reading of Chrome deviation wrap-reverse-baseline-line: the container baseline comes from the cross-start line (css-flexbox-1 §8.5). */
+  readonly wrapReverseBaselineSpec: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -61,6 +69,10 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   relativeShiftsFlow: false,
   metricHalfUp: false,
   untruncatedFontSize: false,
+  halfLeadingSpec: false,
+  minMaxEndMarginSpec: false,
+  autoMarginOverflowSpec: false,
+  wrapReverseBaselineSpec: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
@@ -161,8 +173,10 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
     canCollapseTop,
     childBasis,
   });
-  // CSS2 §10.6.3: the end margins count toward the height unless they can adjoin this box's bottom margin.
-  const bottomAdjoins = !a.formattingContextRoot && bor.bottom === 0 && pad.bottom === 0 && fixedBorderBox === null;
+  // CSS2 §10.6.3: the end margins count toward the height unless they can adjoin this box's bottom margin. Under the planted
+  // spec reading of min-max-end-margin (CSS 2.1 §8.3.1), a non-zero min-height also keeps them from adjoining.
+  const specNoCollapse = ctx.faults.minMaxEndMarginSpec && minMax.min > vbp;
+  const bottomAdjoins = !a.formattingContextRoot && bor.bottom === 0 && pad.bottom === 0 && fixedBorderBox === null && !specNoCollapse;
   const intrinsic = bottomAdjoins ? r.cursor : add(r.cursor, collapsed(r.endStrut));
   const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(intrinsic, vbp), minMax);
   const baseline = clampScrollBaseline(box, r.baseline, height);
@@ -171,7 +185,7 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
     return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough };
   }
   // Chrome deviation min-max-end-margin: when min-height or max-height changes the height, the end margins neither escape nor count.
-  const escapeBottom = bottomAdjoins && height === add(intrinsic, vbp) ? r.endStrut : EMPTY_STRUT;
+  const escapeBottom = bottomAdjoins && (height === add(intrinsic, vbp) || ctx.faults.minMaxEndMarginSpec) ? r.endStrut : EMPTY_STRUT;
   return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow }, escapeTop: r.escapeTop, escapeBottom, collapseThrough };
 }
 

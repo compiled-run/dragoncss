@@ -39,6 +39,8 @@ export const DIAGNOSTIC_CODES = [
   // S4a.
   'DRAGON_UNSUPPORTED_NESTED_RULE',
   'DRAGON_UNSUPPORTED_BIDI',
+  // S5.
+  'DRAGON_MISSING_ASSET',
 ] as const;
 
 export type DiagnosticCode = (typeof DIAGNOSTIC_CODES)[number];

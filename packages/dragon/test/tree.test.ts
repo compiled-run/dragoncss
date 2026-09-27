@@ -5,7 +5,7 @@ import { createProject } from '../src/index.ts';
 import { compiledCases, createProjectWith, iosLayoutProjection, NO_FAULTS, webClassMap } from '../src/internal.ts';
 import { always, eq, expectCatalogued, not, Sources } from './helpers.ts';
 
-const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr' } as const;
+const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
 const web = () => createProject({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' } } });
 
 const sym = (owner: string, sheet: string, name: string) => ({ owner, sheet, name });

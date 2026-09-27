@@ -5,25 +5,27 @@ import { canonicalJson, sha256Hex } from './digest.ts';
 import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
 import type { Longhand } from './css/properties.ts';
-import type { Declaration, Rule } from './css/stylesheet.ts';
+import { PROPERTY_ROLE } from './css/properties.ts';
+import type { Declaration, EnclosedRules, Rule } from './css/stylesheet.ts';
 import { featureOf, parseStylesheet } from './css/stylesheet.ts';
 import type { UsedKey } from './analysis/context.ts';
-import { rowKey, usedKeys } from './analysis/context.ts';
+import { usedKeys } from './analysis/context.ts';
 import { checkComputed } from './analysis/computed-checks.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
-import type { ResolvedElement, ResolvedText, ResolvedValue } from './analysis/resolve.ts';
+import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
 import { resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
 import { emitWebCss } from './emit/web-css.ts';
 import type { CompilerFaults } from './faults.ts';
 import { NO_FAULTS } from './faults.ts';
-import { LoweringError, lowerTree } from './lower/ios-layout.ts';
+import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
 import { iosProfile } from './profiles/ios.ts';
 import type { SupportProfile } from './profiles/types.ts';
-import { provenContexts, statusOf, supportedValuesFor } from './profiles/types.ts';
+import { provenContexts, statusOf, supportedValuesFor, supportedValuesIn } from './profiles/types.ts';
 import { webProfile } from './profiles/web.ts';
-import { chromeVersion } from './ua/chrome-145.generated.ts';
+import type { UaDataset } from './ua/datasets.ts';
+import { REFERENCE_PLATFORM, ReferencePlatformUnavailable, uaDatasetFor } from './ua/datasets.ts';
 import type {
   ArtifactState,
   Assignment,
@@ -43,13 +45,21 @@ import type {
   TreeNode,
 } from './types.ts';
 
+/** @internal */
 export const COMPILER_VERSION = '1.0.0-alpha.0';
 const KNOWN_TARGETS = ['web', 'ios'] as const;
 type KnownTarget = (typeof KNOWN_TARGETS)[number];
 
-const PROFILES: { readonly [T in KnownTarget]: SupportProfile } = { web: webProfile, ios: iosProfile };
+/** @internal */
+export type SupportProfiles = { readonly [T in KnownTarget]: SupportProfile };
 
-/** One reachable assignment's results: stage-1 resolution, the ios lowering and the web class binding. */
+/** @internal The committed support profiles. */
+export const COMMITTED_PROFILES: SupportProfiles = { web: webProfile, ios: iosProfile };
+
+/**
+ * @internal
+ * One reachable assignment's results: stage-1 resolution, the ios lowering and the web class binding.
+ */
 export type InternalCase = {
   readonly key: string;
   readonly assignment: Assignment;
@@ -62,26 +72,55 @@ export type InternalCase = {
   readonly features: ReadonlyMap<Target, readonly string[]>;
 };
 
-/** Internal-only data kept beside a compiled result; never reachable from the public entry. */
+/**
+ * @internal
+ * Internal-only data kept beside a compiled result; never reachable from the public entry.
+ */
 export type InternalRecord = {
   readonly documentId: string | null;
   /** The environment direction every case was resolved for. */
   readonly direction: 'ltr' | 'rtl';
+  /** The reference platform whose UA dataset the result was resolved with, and the root font of its environment. */
+  readonly platform: string;
+  readonly rootFont: RootFont;
+  readonly profiles: SupportProfiles;
   readonly cases: readonly InternalCase[];
+  readonly linked: Linked | null;
 };
 
 const records = new WeakMap<object, InternalRecord>();
 
+/** @internal */
 export function internalRecord(compiled: object): InternalRecord | undefined {
   return records.get(compiled);
 }
 
 /**
+ * @internal
  * faults: seeded resolver and lowering errors. profiles 'derive' is used only by scripts/gen-profile-rows.ts: it records
  * row keys without enforcing the profiles, so the generator can find which cases pass before any row exists. direction: the
  * reference environment's direction (docs/api.md §7), which resolution gives the root; the public entry compiles for ltr.
+ * platform: the reference platform whose Chrome UA dataset is read (REFERENCE_PLATFORM when absent); a platform with no dataset
+ * is refused. rootFont: 'ahem' is the parity fixture environment, which sets the root font-family to Ahem (docs/api.md §10.1);
+ * the public entry uses 'ua-default'. supportProfiles: test-only replacement profiles.
  */
-export type InternalOptions = { readonly faults: CompilerFaults; readonly profiles: 'enforce' | 'derive'; readonly direction: 'ltr' | 'rtl' };
+export type InternalOptions = {
+  readonly faults: CompilerFaults;
+  readonly profiles: 'enforce' | 'derive';
+  readonly direction: 'ltr' | 'rtl';
+  readonly platform?: string;
+  readonly rootFont?: RootFont;
+  readonly supportProfiles?: SupportProfiles;
+};
+
+type Resolved = {
+  readonly faults: CompilerFaults;
+  readonly profiles: 'enforce' | 'derive';
+  readonly direction: 'ltr' | 'rtl';
+  readonly rootFont: RootFont;
+  readonly ua: UaDataset;
+  readonly supportProfiles: SupportProfiles;
+};
 
 function deepFreeze<T>(v: T): T {
   if (v !== null && typeof v === 'object' && !Object.isFrozen(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) {
@@ -140,8 +179,17 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
   }
 }
 
-/** Context-free check: every longhand any declaration sets, including shorthand-filled ones, needs a row in some context. */
-function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], diagnostics: Diagnostic[]): void {
+const list = (values: readonly string[]): string => (values.length <= 1 ? values.join('') : `${values.slice(0, -1).join(', ')} or ${values[values.length - 1] as string}`);
+
+/** The declaration text a shorthand-filled longhand came from, for messages (T005 rec 2). */
+const setBy = (d: Declaration, property: Longhand): string => (d.property === property ? '' : ` (set by ${d.property}: ${d.text})`);
+
+/**
+ * Context-free check: every longhand any declaration sets, including shorthand-filled ones, needs a row in some context. The
+ * message lists the property's supported values in each context the declaration applies in (T005 rec 6), from the used keys of
+ * the resolved cases; with none known it lists the supported values in any context.
+ */
+function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], profiles: SupportProfiles, used: readonly UsedKey[], diagnostics: Diagnostic[]): void {
   const seen = new Set<Declaration>();
   for (const rule of rules) {
     for (const d of rule.declarations) {
@@ -150,13 +198,20 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], di
       for (const lh of d.longhands) {
         const feature = featureOf(lh.property, lh.value);
         for (const t of targets) {
-          const profile = PROFILES[t];
+          const profile = profiles[t];
           if (provenContexts(profile, feature).length > 0) continue;
           const values = supportedValuesFor(profile, lh.property);
+          const contexts = [...new Set(used.filter((u) => u.declaration === d && u.property === lh.property).map((u) => u.context))].sort();
+          const alternatives = contexts.length > 0
+            ? contexts.map((ctx) => {
+              const inCtx = supportedValuesIn(profile, lh.property, ctx);
+              return inCtx.length > 0 ? `in ${ctx} use ${list(inCtx)}` : `no ${lh.property} value is proven in ${ctx}`;
+            }).join('; ')
+            : values.length > 0 ? `supported ${lh.property} values: ${list([...values].sort())}` : `no ${lh.property} value is supported`;
           diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
             origin: authored(d.valueSpan),
             target: t,
-            message: `${lh.property}: ${valueToString(lh.value)}${lh.explicit ? '' : ` (set by ${d.property})`} is unsupported on ${t} (support profile ${profile.revision})`,
+            message: `${lh.property}: ${valueToString(lh.value)}${setBy(d, lh.property)} is unsupported (support profile ${profile.revision}); ${alternatives}`,
             manual: values.length > 0 ? `Use one of: ${values.join(', ')}.` : `Remove ${d.property}; ${t} supports no value of ${lh.property} yet.`,
             profile: { target: t, profileRevision: profile.revision, feature, context: null, status: 'unsupported' },
           }));
@@ -166,6 +221,82 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], di
   }
 }
 
+/** The lowering's font refusal, reported for every laid-out text node of every case, whether or not another error blocks ios. */
+function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>): void {
+  const walk = (el: ResolvedElement): void => {
+    const display = (el.props.get('display') as ResolvedValue).value;
+    if (display.kind === 'keyword' && display.value === 'none') return;
+    for (const c of el.children) {
+      if (c.kind === 'element') {
+        walk(c);
+        continue;
+      }
+      const message = textFontProblem(c);
+      if (message === null) continue;
+      const id = `${c.node.address}|font-family|${message}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', { origin: c.node.node.origin, message, target: 'ios' }));
+    }
+  };
+  walk(root);
+}
+
+type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[] };
+
+/**
+ * Resolves and checks every case: computed-value refusals, fonts, then (when enforcing) the contextual check, where a feature
+ * proven only in other contexts blocks with the proven contexts, the alternatives in its own context (T005 rec 6) and, for a
+ * shorthand-filled longhand, the shorthand and what to write instead (T005 rec 2).
+ */
+function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[]): CaseResult[] {
+  const reported = new Set<string>();
+  const refused = new Set<string>();
+  const fonts = new Set<string>();
+  const out: CaseResult[] = [];
+  for (const c of linked.cases) {
+    const resolved = resolveTree(c.root, rules, options.faults, { direction: options.direction, rootFont: options.rootFont, ua: options.ua });
+    checkComputed(resolved, targets, diagnostics, refused);
+    if (targets.includes('ios')) checkFonts(resolved, diagnostics, fonts);
+    const used = usedKeys(resolved);
+    out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used });
+    if (options.profiles === 'derive') continue;
+    for (const u of used) {
+      for (const t of targets) {
+        const profile = options.supportProfiles[t];
+        if (statusOf(profile, u.feature, u.context) !== 'unsupported') continue;
+        const proven = provenContexts(profile, u.feature);
+        if (proven.length === 0) continue;
+        const id = `${t}|${u.key}|${u.declaration.span.start}|${u.declaration.span.source.uri}`;
+        if (reported.has(id)) continue;
+        reported.add(id);
+        const inCtx = supportedValuesIn(profile, u.property, u.context);
+        const alternatives = inCtx.length > 0 ? `${u.property} values proven in ${u.context}: ${list(inCtx)}` : `no ${u.property} value is proven in ${u.context}`;
+        let instead = '';
+        if (u.declaration.property !== u.property) {
+          const siblings = u.declaration.longhands.filter((lh) => lh.property !== u.property && PROPERTY_ROLE[lh.property] === PROPERTY_ROLE[u.property]
+            && statusOf(profile, featureOf(lh.property, lh.value), u.context) !== 'unsupported');
+          instead = siblings.length > 0
+            ? `; ${u.declaration.property} sets ${u.property}, which is unproven here, so write ${siblings.map((lh) => `${lh.property}: ${valueToString(lh.value)}`).join('; ')} instead of ${u.declaration.property}`
+            : `; ${u.declaration.property} sets ${u.property}, which is unproven here, and none of the other longhands it sets is proven in ${u.context}`;
+        }
+        diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', {
+          origin: authored(u.declaration.valueSpan),
+          target: t,
+          message: `${u.feature}${setBy(u.declaration, u.property)} on ${u.address} is used in the ${u.context} context, which is not proven (proven: ${proven.join(', ')}); ${alternatives}${instead}`,
+          manual: `Use ${u.feature} only in a proven context (${proven.join(', ')}), or add a passing parity fixture for ${u.context}.`,
+          related: [{ origin: authored(u.declaration.span), message: `declaration ${u.declaration.property}: ${u.declaration.text} applied to ${u.address}` }],
+          profile: { target: t, profileRevision: profile.revision, feature: u.feature, context: u.context, status: 'unsupported' },
+        }));
+      }
+    }
+  }
+  return out;
+}
+
+const inside = (o: Origin, e: EnclosedRules): boolean =>
+  o.kind === 'authored' && o.span.source.uri === e.span.source.uri && o.span.start >= e.span.start && o.span.end <= e.span.end;
+
 type Analysis<K extends string> = {
   readonly report: CheckReport<K>;
   readonly outputs: { [P in K]: ArtifactState };
@@ -173,26 +304,45 @@ type Analysis<K extends string> = {
   readonly linked: Linked | null;
 };
 
-function analyze<K extends string>(config: { projectId: string; targets: object }, configDiagnostics: readonly Diagnostic[], options: InternalOptions, input: FrontEndResult): Analysis<K> {
-  const targets = Object.keys(config.targets).filter((k): k is KnownTarget => (KNOWN_TARGETS as readonly string[]).includes(k));
+/** Order-free input lists sorted canonically, so the digest does not depend on their order (S5 (c)). */
+function canonicalInput(input: FrontEndResult): unknown {
+  const sorted = (v: unknown): unknown => (Array.isArray(v) ? [...v].sort((a, b) => (canonicalJson(a) < canonicalJson(b) ? -1 : canonicalJson(a) > canonicalJson(b) ? 1 : 0)) : v);
+  const raw = input as unknown as Record<string, unknown>;
+  const snap = raw['snapshot'];
+  const tree = raw['tree'];
+  const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+  return {
+    ...raw,
+    snapshot: isObj(snap) ? { ...snap, sources: sorted(snap['sources']), assets: sorted(snap['assets']), resolutions: sorted(snap['resolutions']) } : snap,
+    tree: isObj(tree) ? { ...tree, modules: sorted(tree['modules']), components: sorted(tree['components']), styles: sorted(tree['styles']) } : tree,
+  };
+}
+
+function analyze<K extends string>(config: { projectId: string; targets: object }, configDiagnostics: readonly Diagnostic[], options: Resolved, input: FrontEndResult): Analysis<K> {
+  const targets = Object.keys(config.targets).filter((k): k is KnownTarget => (KNOWN_TARGETS as readonly string[]).includes(k)).sort();
   const diagnostics: Diagnostic[] = [...configDiagnostics];
+  const profiles = options.supportProfiles;
   const digest = sha256Hex(canonicalJson({
     compiler: COMPILER_VERSION,
     webref: webrefVersion,
-    chrome: chromeVersion,
-    profiles: targets.map((t) => PROFILES[t]),
+    chrome: options.ua.chromeVersion,
+    // The reference platform of the UA dataset and the environment's root font are compilation inputs (docs/api.md §10.1).
+    platform: options.ua.platform,
+    rootFont: options.rootFont,
+    profiles: targets.map((t) => profiles[t]),
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
     direction: options.direction,
     config,
-    input,
+    input: canonicalInput(input),
   }));
   const dependencies: Dependency[] = [];
   let linked: Linked | null = null;
-  const cases: { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[] }[] = [];
+  let cases: CaseResult[] = [];
   const valid = configDiagnostics.length === 0 ? validateInput(input, config.projectId, diagnostics) : null;
   if (valid !== null) {
     const rules: Rule[] = [];
+    const enclosed: EnclosedRules[] = [];
     let order = 0;
     for (const useId of valid.document.styles) {
       const use = valid.styles.get(useId);
@@ -201,46 +351,49 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
       if (src === undefined) continue;
       dependencies.push({ kind: 'stylesheet', uri: src.ref.uri, hash: src.ref.hash });
       const sheet = { id: use.id, owner: valid.styleOwner.get(use.id) as string, scope: use.scope.kind };
-      const parsed = parseStylesheet(src.text.slice(use.css.start, use.css.end), use.css, sheet, order, diagnostics);
-      for (const r of parsed) for (const d of r.declarations) order = Math.max(order, d.order + 1);
+      const before = enclosed.length;
+      const parsed = parseStylesheet(src.text.slice(use.css.start, use.css.end), use.css, sheet, order, diagnostics, enclosed);
+      for (const r of [...parsed, ...enclosed.slice(before).flatMap((e) => e.rules)]) for (const d of r.declarations) order = Math.max(order, d.order + 1);
       rules.push(...parsed);
     }
-    for (const s of valid.sources.values()) dependencies.push({ kind: 'source', uri: s.ref.uri, hash: s.ref.hash });
+    for (const s of [...valid.sources.values()].sort((a, b) => (a.ref.uri < b.ref.uri ? -1 : a.ref.uri > b.ref.uri ? 1 : 0))) dependencies.push({ kind: 'source', uri: s.ref.uri, hash: s.ref.hash });
     for (const c of valid.components.values()) checkTemplates(c.root, diagnostics);
-    if (options.profiles === 'enforce') checkValues(rules, targets, diagnostics);
+    const valuesAt = diagnostics.length;
     linked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, diagnostics);
-    if (linked !== null && !diagnostics.some((d) => d.severity === 'error' && d.target === null)) {
-      const reported = new Set<string>();
-      const refused = new Set<string>();
-      for (const c of linked.cases) {
-        const resolved = resolveTree(c.root, rules, options.faults, { direction: options.direction });
-        checkComputed(resolved, targets, diagnostics, refused);
-        const used = usedKeys(resolved);
-        cases.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used });
-        if (options.profiles === 'derive') continue;
-        // Contextual check: a feature proven only in other formatting contexts blocks with the proven contexts named.
-        for (const u of used) {
-          for (const t of targets) {
-            const profile = PROFILES[t];
-            if (statusOf(profile, u.feature, u.context) !== 'unsupported') continue;
-            const proven = provenContexts(profile, u.feature);
-            if (proven.length === 0) continue;
-            const id = `${t}|${u.key}|${u.declaration.span.start}|${u.declaration.span.source.uri}`;
-            if (reported.has(id)) continue;
-            reported.add(id);
-            diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', {
-              origin: authored(u.declaration.valueSpan),
-              target: t,
-              message: `${u.feature} on ${u.address} is used in the ${u.context} context, which ${t} has not proven (proven: ${proven.join(', ')})`,
-              manual: `Use ${u.feature} only in a proven context (${proven.join(', ')}), or add a passing parity fixture for ${u.context}.`,
-              related: [{ origin: authored(u.declaration.span), message: `declaration applied to ${u.address}` }],
-              profile: { target: t, profileRevision: profile.revision, feature: u.feature, context: u.context, status: 'unsupported' },
-            }));
-          }
+    // An unsupported at-rule blocks every output but does not stop the analysis (T005 rec 3): every diagnostic comes in one pass.
+    const fatal = diagnostics.some((d) => d.severity === 'error' && d.target === null && d.code !== 'DRAGON_UNSUPPORTED_AT_RULE');
+    if (linked !== null && !fatal) {
+      cases = checkCases(linked, rules, targets, options, diagnostics);
+      if (options.profiles === 'enforce') {
+        const values: Diagnostic[] = [];
+        checkValues(rules, targets, profiles, cases.flatMap((c) => c.used), values);
+        diagnostics.splice(valuesAt, 0, ...values);
+      }
+      // T005 rec 3: the rules inside each unsupported at-rule are analysed with the block unwrapped, in a scratch pass whose
+      // diagnostics located inside the at-rule become its related entries. Nothing from this pass is resolved into an output.
+      if (enclosed.length > 0) {
+        const scratch: Diagnostic[] = [];
+        const unwrapped = enclosed.flatMap((e) => e.rules);
+        const scratchCases = checkCases(linked, [...rules, ...unwrapped], targets, options, scratch);
+        if (options.profiles === 'enforce') checkValues(unwrapped, targets, profiles, scratchCases.flatMap((c) => c.used), scratch);
+        for (const e of enclosed) {
+          const found = [...e.diagnostics, ...scratch.filter((d) => inside(d.origin, e))];
+          const related = found.map((d) => ({ origin: d.origin, message: `${d.code}${d.target === null ? '' : ` [${d.target}]`}: ${d.message}` }));
+          const at = diagnostics.indexOf(e.atRule);
+          if (at >= 0 && related.length > 0) diagnostics[at] = { ...e.atRule, related: [...e.atRule.related, ...related] };
         }
       }
     } else if (linked !== null) {
-      for (const c of linked.cases) cases.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved: null, used: [] });
+      if (options.profiles === 'enforce') {
+        const values: Diagnostic[] = [];
+        checkValues(rules, targets, profiles, [], values);
+        diagnostics.splice(valuesAt, 0, ...values);
+      }
+      cases = linked.cases.map((c) => ({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved: null, used: [] }));
+    } else if (options.profiles === 'enforce') {
+      const values: Diagnostic[] = [];
+      checkValues(rules, targets, profiles, [], values);
+      diagnostics.splice(valuesAt, 0, ...values);
     }
   }
   const lowered = new Map<string, LayoutBox>();
@@ -249,7 +402,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     for (const c of cases) {
       if (c.resolved === null) continue;
       try {
-        lowered.set(c.key, lowerTree(c.resolved, options.faults));
+        lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua));
       } catch (e) {
         if (!(e instanceof LoweringError)) throw e;
         const id = `${e.nodeId}|${e.property}|${e.message}`;
@@ -274,11 +427,12 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
       outputs[key] = { kind: 'ready', digest, files: web.files };
     }
   }
+  const byUri = (a: { ref: { uri: string } }, b: { ref: { uri: string } }): number => (a.ref.uri < b.ref.uri ? -1 : a.ref.uri > b.ref.uri ? 1 : 0);
   const report: CheckReport<K> = {
     ok: !diagnostics.some((d) => d.severity === 'error'),
     revision: input.snapshot.revision,
     digest,
-    sources: input.snapshot.sources.map((s) => ({ ref: { ...s.ref }, text: s.text, displayPath: s.displayPath })),
+    sources: [...input.snapshot.sources].sort(byUri).map((s) => ({ ref: { ...s.ref }, text: s.text, displayPath: s.displayPath })),
     dependencies,
     diagnostics,
     targets: status,
@@ -292,6 +446,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     record: {
       documentId: linked === null ? null : linked.documentId,
       direction: options.direction,
+      platform: options.ua.platform,
+      rootFont: options.rootFont,
+      profiles,
+      linked,
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,
@@ -305,7 +463,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
   };
 }
 
-function findResolved(root: ResolvedElement, address: string): { el: ResolvedElement; parent: ResolvedElement | null } | null {
+/** @internal */
+export function findResolved(root: ResolvedElement, address: string): { el: ResolvedElement; parent: ResolvedElement | null } | null {
   const walk = (el: ResolvedElement, parent: ResolvedElement | null): { el: ResolvedElement; parent: ResolvedElement | null } | null => {
     if (el.element.address === address) return { el, parent };
     for (const c of el.children) {
@@ -331,18 +490,18 @@ function originOfAddress(root: ResolvedElement, address: string): Origin {
 
 // docs/api.md §6.1: author values point at their declaration; inherited values name the element they came from; defaults
 // are built-in datasets, never invented spans.
-function valueOrigin(root: ResolvedElement, address: string, p: Longhand): Origin {
+function valueOrigin(root: ResolvedElement, address: string, p: Longhand, chromeVersion: string): Origin {
   const hit = findResolved(root, address);
   if (hit === null) return unlocated(`node ${address}`);
   const v = hit.el.props.get(p) as ResolvedValue;
   if (v.declaration !== null) return authored(v.declaration.span);
-  if (v.origin === 'inherited' && hit.parent !== null) return { kind: 'inherited', element: hit.parent.element.address, from: valueOrigin(root, hit.parent.element.address, p) };
+  if (v.origin === 'inherited' && hit.parent !== null) return { kind: 'inherited', element: hit.parent.element.address, from: valueOrigin(root, hit.parent.element.address, p, chromeVersion) };
   if (v.origin === 'user-agent') return { kind: 'builtin', dataset: `chrome-${chromeVersion} computed`, entry: `${hit.el.element.tag} ${p}` };
-  if (v.origin === 'environment') return { kind: 'builtin', dataset: 'reference environment', entry: `direction ${valueToString(v.value)}` };
+  if (v.origin === 'environment') return { kind: 'builtin', dataset: 'reference environment', entry: `${p} ${valueToString(v.value)}` };
   return { kind: 'builtin', dataset: `@webref/css ${webrefVersion} initial`, entry: p };
 }
 
-function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>): ExplainResult<K> {
+function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>, chromeVersion: string): ExplainResult<K> {
   const target = q.target as string;
   if (!(target in a.report.targets)) {
     return { kind: 'invalid-query', diagnostics: [diagnostic('DRAGON_CONFIG_INVALID', { origin: unlocated('explain query'), message: `target ${target} is not configured`, manual: 'Query a configured target.' })] };
@@ -371,7 +530,7 @@ function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>): Explai
     const v = hit === null ? undefined : hit.el.props.get(p);
     if (hit === null || v === undefined) continue;
     const used = v.declaration === null || v.declared === null ? null : usedKeys(c.resolved).find((u) => u.address === address && u.property === p);
-    const profile = PROFILES[target as KnownTarget];
+    const profile = a.record.profiles[target as KnownTarget];
     out.push({
       node: q.at.node,
       instance: q.at.instance,
@@ -380,7 +539,7 @@ function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>): Explai
       property: q.property,
       value: valueToString(v.value),
       cascade: v.origin,
-      origin: valueOrigin(c.resolved, address, p),
+      origin: valueOrigin(c.resolved, address, p, chromeVersion),
       losing: v.losing.map((d) => ({ origin: authored(d.span), reason: 'lower specificity or earlier in the style order' })),
       support: used === null || used === undefined ? null : { feature: used.feature, context: used.context, status: statusOf(profile, used.feature, used.context) },
     });
@@ -389,23 +548,35 @@ function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>): Explai
   return { kind: 'found', target: q.target, cases: out };
 }
 
+/** @internal */
 export function createProjectWith<const T extends Targets>(config: { projectId: string; targets: T }, options: InternalOptions): Project<Configured<T>> {
   type K = Configured<T>;
+  const platform = options.platform === undefined ? REFERENCE_PLATFORM : options.platform;
+  const choice = uaDatasetFor(platform);
+  if (choice.kind === 'refused') throw new ReferencePlatformUnavailable(platform, choice.reason);
+  const resolved: Resolved = {
+    faults: options.faults,
+    profiles: options.profiles,
+    direction: options.direction,
+    rootFont: options.rootFont === undefined ? 'ua-default' : options.rootFont,
+    ua: choice.dataset,
+    supportProfiles: options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles,
+  };
   const configDiagnostics = validateConfig(config);
   const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object };
   return deepFreeze({
     compile(input: FrontEndResult): Compiled<K> {
-      const a = analyze<K>(snapshotConfig, configDiagnostics, options, input);
+      const a = analyze<K>(snapshotConfig, configDiagnostics, resolved, input);
       const compiled: Compiled<K> = {
         ...a.report,
         outputs: a.outputs,
-        explain: (q: ExplainQuery<K>) => deepFreeze(explainIn<K>(a, q)),
+        explain: (q: ExplainQuery<K>) => deepFreeze(explainIn<K>(a, q, resolved.ua.chromeVersion)),
       };
       records.set(compiled, a.record);
       return deepFreeze(compiled);
     },
     check(input: FrontEndResult): CheckReport<K> {
-      return deepFreeze(analyze<K>(snapshotConfig, configDiagnostics, options, input).report);
+      return deepFreeze(analyze<K>(snapshotConfig, configDiagnostics, resolved, input).report);
     },
   });
 }
@@ -414,8 +585,13 @@ export function createProject<const T extends Targets>(config: { projectId: stri
   return createProjectWith(config, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' });
 }
 
-export { valueOrigin };
+/** @internal The origin of one resolved value, with the dataset of the result it came from. */
+export function originOfValue(record: InternalRecord, root: ResolvedElement, address: string, p: Longhand): Origin {
+  const choice = uaDatasetFor(record.platform);
+  return valueOrigin(root, address, p, choice.kind === 'ok' ? choice.dataset.chromeVersion : 'unknown');
+}
 
+/** @internal */
 export function caseByAssignment(record: InternalRecord, assignment: Assignment): InternalCase | undefined {
   const key = assignmentKey(assignment);
   return record.cases.find((c) => c.key === key);
