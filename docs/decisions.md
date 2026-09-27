@@ -36,4 +36,8 @@ These are recorded 2026-09-26. The owner said "take the recommendations", so eac
 
 ## API (docs/api.md)
 
-Recorded after the API revision and its re-review. The owner decisions in `docs/api.md` §6 are pending until then.
+16. **Framework source readers:** frameworks provide their element trees first. Optional Dragon-maintained source readers (TSRX, JSX, HTML) come after milestone 1.
+17. **Changing style values:** the first release supports a known set of states, such as on/off or open/closed. Arbitrary changing numbers, like progress from 0 to 1, come later with their own rules and tests.
+18. **Bundled fonts** use shared line heights and baselines on web and native, adopted only after tests prove the differences they cause are explained.
+19. **Minimum versions in configuration** default to decision 6. Projects only state them to raise the floor.
+20. **Researched defaults in `docs/api.md`:** public lookups are limited to `explain` and support queries in milestone 1. The interface for adding platform implementations stays private until several Dragon implementations pass their tests.

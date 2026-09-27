@@ -70,15 +70,15 @@ visual_board:
     url: "http://goalbuddy.localhost:41737/milestone-1/"
     command: "node /Users/jacksm5pro/.claude/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-1"
 
-active_task: T019
+active_task: T001
 
 tasks:
   - id: T001
     type: scout
     assignee: Scout
-    status: queued
+    status: active
     reasoning_hint: medium
-    objective: "Validate the plan against the building blocks and pin exact APIs: yuku CSS scanning (@tsrx/yuku), lightningcss npm for values, Taffy (crate API, gentest fixture format and generator, licence), Playwright geometry and computed-style capture, the Ahem font (source and licence), and how to run Taffy from Node (small Rust CLI vs napi vs wasm)."
+    objective: "Validate the plan against the building blocks and pin exact APIs: yuku CSS scanning (@tsrx/yuku), css-tree with @webref/css grammars for values (docs/api.md 4.4 removes lightningcss from the required path), Taffy (crate API, gentest fixture format and generator, licence), Playwright geometry and computed-style capture, the Ahem font (source and licence), and how to run Taffy from Node (small Rust CLI vs napi vs wasm)."
     inputs:
       - "docs/research/testing-plan.md, T018-styling-design.md, T025-styling-direction.md, css-support.md"
       - "~/dev/open-source/markless (read-only) for yuku usage; ~/dev/open-source/yuku, yuku-tsrx"
@@ -428,7 +428,7 @@ tasks:
   - id: T019
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Revise docs/api.md to resolve every finding in notes/T013-api-critique.json (F1-F25), keeping the owner's structural questions as the design test."
     inputs:
@@ -446,7 +446,68 @@ tasks:
     stop_if:
       - "Need files outside allowed_files."
       - "Verification fails twice."
-    receipt: null
+    receipt:
+      result: done
+      harness: codex
+      changed_files:
+        - docs/api.md
+      commands:
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "strict TypeScript and runtime check of the switch example"
+          status: pass
+      summary: "Revised docs/api.md (918 to 580 lines) for F1-F25: narrowed the public surface, clarified compiler and parity contracts, Critique resolution section, eight owner decisions."
+  - id: T020
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Re-review the revised docs/api.md against every T013 finding (Claude judge on a Codex revision) and the owner's structural questions."
+    inputs:
+      - "notes/T013-api-critique.json, docs/api.md, goal.md, docs/decisions.md"
+    constraints:
+      - "Read-only except notes/T020-api-rereview.md. Per finding: resolved, partially resolved or not resolved, with location. Check the owner decisions read in seconds and do not contradict docs/decisions.md."
+    expected_output:
+      - "Per-finding verdict; approved or rejected with a bounded fix list"
+    receipt:
+      result: done
+      harness: claude-code
+      decision: "rejected"
+      full_outcome_complete: false
+      rationale: "21 of 25 resolved; F2, F12, F24, F25 partial. Six doc-only fixes: owner decisions re-ask decisions.md items 5, 8 and overlap 6, and read as codes and jargon; the switch example fails tsc under noUncheckedIndexedAccess (L205, L208) and does not use tree@0 types; querySupport takes Compiled<string>, reopening the target-key hole; section 10 does not pin milestone-1 conformance cases or tree subset; the native-target preview default is unstated; update resolution lines."
+      evidence:
+        - notes/T020-api-rereview.md
+  - id: T021
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Apply the six-item fix list in notes/T020-api-rereview.md to docs/api.md."
+    inputs:
+      - "notes/T020-api-rereview.md, docs/api.md, docs/decisions.md, tsconfig.base.json"
+    allowed_files:
+      - "docs/api.md"
+    verify:
+      - "test -s docs/api.md"
+      - "grep -q \"## Critique resolution\" docs/api.md"
+      - "pnpm typecheck"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "A fix would contradict docs/decisions.md."
+      - "Verification fails twice."
+    receipt:
+      result: done
+      harness: codex
+      changed_files:
+        - docs/api.md
+      commands:
+        - cmd: "extracted switch example under strict, noUncheckedIndexedAccess, exactOptionalPropertyTypes"
+          status: pass
+        - cmd: "configured-target negative type cases"
+          status: pass
+        - cmd: "pnpm typecheck"
+          status: pass
+      summary: "Applied the T020 fix list: plain-words owner decisions without re-asking recorded ones (4 decisions plus researched defaults), switch example in tree@0 types compiling under repo settings, querySupport<K> over Compiled<K>, milestone-1 conformance cases and tree subset in section 10, native-target preview default stated, resolution lines updated. PM re-check in place of a further judge round: verified Compiled<K>, decisions section, resolution lines F2/F12/F24/F25, typecheck. Owner took the recommendations; recorded as decisions 16-20."
   - id: T999
     type: judge
     assignee: Judge
