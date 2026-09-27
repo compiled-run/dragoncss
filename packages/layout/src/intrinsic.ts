@@ -4,6 +4,7 @@ import type { LU } from './units.ts';
 import { add, fromCssPx, max, min, sum, ZERO, mulInt } from './units.ts';
 import { borderBoxFromSpecified, resolveBorder, requireLtr, sumEdges, visibleChildren } from './box.ts';
 import type { Ctx } from './block.ts';
+import { inlineIntrinsicSize } from './inline.ts';
 import { unsupported } from './unsupported.ts';
 
 export type IntrinsicKind = 'min' | 'max';
@@ -15,8 +16,8 @@ export function intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: Intri
   if (box.style.display === 'flex') return flexIntrinsicContent(ctx, box, kind);
   const texts = kids.filter((k): k is TextLeaf => k.kind === 'text');
   if (texts.length > 0) {
-    if (texts.length !== kids.length) unsupported('anonymous-block', box.id, 'CSS2 §9.2.1.1', 'block container mixes text and block children');
-    return textIntrinsic(ctx, box.id, texts, kind);
+    if (texts.length !== kids.length) throw new Error(`${box.id} mixes text and boxes; validateLayoutInput rejects this input`);
+    return inlineIntrinsicSize(ctx, box, texts, kind);
   }
   let widest = ZERO;
   for (const k of kids) if (k.kind === 'box') widest = max(widest, inlineContribution(ctx, k, kind));
@@ -40,27 +41,11 @@ export function inlineContribution(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind
   return add(size, add(margin(s.marginLeft), margin(s.marginRight)));
 }
 
-// css-text-3 §4.1: single-line text contributes its advance (max) or its widest unbreakable piece (min).
-function textIntrinsic(ctx: Ctx, nodeId: string, texts: readonly TextLeaf[], kind: IntrinsicKind): LU {
-  const widths: LU[] = [];
-  let widestPiece = ZERO;
-  for (const t of texts) {
-    const r = ctx.measurer.measure(t.text, t.font);
-    if (!r.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', r.reason);
-    widths.push(r.measure.width);
-    widestPiece = max(widestPiece, r.measure.minContentWidth);
-  }
-  if (kind === 'max') return sum(widths);
-  if (texts.length > 1) unsupported('multi-line-text', nodeId, 'css-text-3 §5', 'min-content of several adjacent text runs');
-  return widestPiece;
-}
-
 // css-flexbox-1 §9.9.1 (row): max-content sums item contributions plus gaps; min-content sums them for a single line and takes the
 // largest for a multi-line container. §9.9.2 (column, single-line): the largest contribution.
 function flexIntrinsicContent(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
   const s = box.style;
   const kids = visibleChildren(box);
-  for (const k of kids) if (k.kind === 'text') unsupported('anonymous-flex-item', k.id, 'css-flexbox-1 §4', 'text directly inside a flex container');
   const items = kids.filter((k): k is LayoutBox => k.kind === 'box');
   const contributions = items.map((k) => inlineContribution(ctx, k, kind));
   const isRow = s.flexDirection === 'row' || s.flexDirection === 'row-reverse';

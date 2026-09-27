@@ -12,7 +12,7 @@ import { rowKey, usedKeys } from './analysis/context.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
-import type { ResolvedElement, ResolvedValue } from './analysis/resolve.ts';
+import type { ResolvedElement, ResolvedText, ResolvedValue } from './analysis/resolve.ts';
 import { resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
 import { emitWebCss } from './emit/web-css.ts';
 import type { CompilerFaults } from './faults.ts';
@@ -177,6 +177,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     webref: webrefVersion,
     chrome: chromeVersion,
     profiles: targets.map((t) => PROFILES[t]),
+    // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
+    profilesMode: options.profiles,
     config,
     input,
   }));
@@ -309,9 +311,14 @@ function findResolved(root: ResolvedElement, address: string): { el: ResolvedEle
   return walk(root, null);
 }
 
+/** The authored origin of an element or text address; an anonymous box takes its enclosing element's. */
 function originOfAddress(root: ResolvedElement, address: string): Origin {
-  const hit = findResolved(root, address.replace(/:text\d+$/, ''));
-  return hit === null ? unlocated(`node ${address}`) : hit.el.element.node.origin;
+  const text = /^(.*):(?:text|space)\d+$/.exec(address);
+  const hit = findResolved(root, text === null ? address.replace(/:anon\d+$/, '') : (text[1] as string));
+  if (hit === null) return unlocated(`node ${address}`);
+  if (text === null) return hit.el.element.node.origin;
+  const t = hit.el.children.find((c): c is ResolvedText => c.kind === 'text' && c.node.address === address);
+  return t === undefined ? hit.el.element.node.origin : t.node.node.origin;
 }
 
 // docs/api.md §6.1: author values point at their declaration; inherited values name the element they came from; defaults
@@ -397,6 +404,8 @@ export function createProjectWith<const T extends Targets>(config: { projectId: 
 export function createProject<const T extends Targets>(config: { projectId: string; targets: T }): Project<Configured<T>> {
   return createProjectWith(config, { faults: NO_FAULTS, profiles: 'enforce' });
 }
+
+export { valueOrigin };
 
 export function caseByAssignment(record: InternalRecord, assignment: Assignment): InternalCase | undefined {
   const key = assignmentKey(assignment);

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w { width: 30px; }
+.normal { white-space: normal; }
+.longhands { white-space-collapse: collapse; text-wrap-mode: wrap; }
+.nw { white-space: nowrap; }
+.inherit-wrap { text-wrap-mode: wrap; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="w">  XX   XX
+   XX	XX  </div>
+<div data-dragon-id="b" class="w">XX&#8203;
+YY</div>
+<div data-dragon-id="c" class="w normal">
+	XX XX
+
+ XX
+</div>
+<div data-dragon-id="d" class="w longhands">XX    XX</div>
+<div data-dragon-id="e" class="nw"><div data-dragon-id="e1" class="w">XX  XX</div><div data-dragon-id="e2" class="w inherit-wrap">XX 
+ XX</div></div>
+</body>
+</html>

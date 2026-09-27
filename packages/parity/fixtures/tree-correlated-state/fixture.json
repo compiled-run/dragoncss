@@ -47,5 +47,19 @@
           ] }
       ]
     }
-  ]
+  ],
+  "expected": {
+    "freeStates": [
+      { "instance": "doc/t", "state": "checked", "domain": [false, true] },
+      { "instance": "doc/t", "state": "disabled", "domain": [false, true] },
+      { "instance": "doc/t", "state": "level", "domain": [0, 1, 2] }
+    ],
+    "cases": 12,
+    "initial": [
+      { "instance": "doc/t", "state": "checked", "value": false },
+      { "instance": "doc/t", "state": "disabled", "value": false },
+      { "instance": "doc/t", "state": "level", "value": 1 }
+    ],
+    "textTopology": []
+  }
 }

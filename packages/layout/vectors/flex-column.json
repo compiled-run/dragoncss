@@ -8,6 +8,7 @@
   "root": {
    "kind": "box",
    "id": "html",
+   "boxType": "element",
    "style": {
     "display": "block",
     "position": "static",
@@ -105,6 +106,7 @@
     {
      "kind": "box",
      "id": "body",
+     "boxType": "element",
      "style": {
       "display": "block",
       "position": "static",
@@ -202,6 +204,7 @@
       {
        "kind": "box",
        "id": "col",
+       "boxType": "element",
        "style": {
         "display": "flex",
         "position": "static",
@@ -301,6 +304,7 @@
         {
          "kind": "box",
          "id": "a",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -400,6 +404,7 @@
         {
          "kind": "box",
          "id": "b",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -498,6 +503,7 @@
         {
          "kind": "box",
          "id": "c",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -598,6 +604,7 @@
         {
          "kind": "box",
          "id": "d",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -699,6 +706,7 @@
       {
        "kind": "box",
        "id": "col2",
+       "boxType": "element",
        "style": {
         "display": "flex",
         "position": "static",
@@ -797,6 +805,7 @@
         {
          "kind": "box",
          "id": "x1",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -896,6 +905,7 @@
         {
          "kind": "box",
          "id": "y",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -994,6 +1004,7 @@
           {
            "kind": "box",
            "id": "y-inner",
+           "boxType": "element",
            "style": {
             "display": "block",
             "position": "static",
@@ -1095,6 +1106,7 @@
         {
          "kind": "box",
          "id": "z",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -1192,6 +1204,7 @@
           {
            "kind": "box",
            "id": "z-inner",
+           "boxType": "element",
            "style": {
             "display": "block",
             "position": "static",
@@ -1294,6 +1307,7 @@
         {
          "kind": "box",
          "id": "x2",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -1400,6 +1414,7 @@
  "output": [
   {
    "id": "html",
+   "parent": null,
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -1407,6 +1422,7 @@
   },
   {
    "id": "body",
+   "parent": "html",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -1414,6 +1430,7 @@
   },
   {
    "id": "col",
+   "parent": "body",
    "x": 0,
    "y": 0,
    "width": 12800,
@@ -1421,6 +1438,7 @@
   },
   {
    "id": "a",
+   "parent": "col",
    "x": 0,
    "y": 0,
    "width": 12800,
@@ -1428,6 +1446,7 @@
   },
   {
    "id": "b",
+   "parent": "col",
    "x": 0,
    "y": 1280,
    "width": 12800,
@@ -1435,6 +1454,7 @@
   },
   {
    "id": "c",
+   "parent": "col",
    "x": 4800,
    "y": 6400,
    "width": 3200,
@@ -1442,6 +1462,7 @@
   },
   {
    "id": "d",
+   "parent": "col",
    "x": 640,
    "y": 8640,
    "width": 11520,
@@ -1449,6 +1470,7 @@
   },
   {
    "id": "col2",
+   "parent": "body",
    "x": 0,
    "y": 9600,
    "width": 7040,
@@ -1456,6 +1478,7 @@
   },
   {
    "id": "x1",
+   "parent": "col2",
    "x": 320,
    "y": 320,
    "width": 6400,
@@ -1463,6 +1486,7 @@
   },
   {
    "id": "y",
+   "parent": "col2",
    "x": 4800,
    "y": 1280,
    "width": 1920,
@@ -1470,6 +1494,7 @@
   },
   {
    "id": "y-inner",
+   "parent": "y",
    "x": 0,
    "y": 0,
    "width": 1920,
@@ -1477,6 +1502,7 @@
   },
   {
    "id": "z",
+   "parent": "col2",
    "x": 320,
    "y": 2048,
    "width": 2560,
@@ -1484,6 +1510,7 @@
   },
   {
    "id": "z-inner",
+   "parent": "z",
    "x": 0,
    "y": 0,
    "width": 2560,
@@ -1491,6 +1518,7 @@
   },
   {
    "id": "x2",
+   "parent": "col2",
    "x": 320,
    "y": 2240,
    "width": 6400,

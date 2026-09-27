@@ -10,19 +10,27 @@ export const LONGHANDS = [
   'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
   'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
   'justify-content', 'align-items', 'align-self', 'align-content', 'row-gap', 'column-gap',
-  'font-size', 'font-family', 'line-height', 'text-align', 'color', 'background-color',
+  'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'background-color',
 ] as const;
 
 export type Longhand = (typeof LONGHANDS)[number];
 
 export const SHORTHANDS = [
   'margin', 'padding', 'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
-  'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow',
+  'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow', 'white-space',
 ] as const;
 
 export type Shorthand = (typeof SHORTHANDS)[number];
 
-export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>(['direction', 'font-size', 'font-family', 'line-height', 'text-align', 'color']);
+export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>(['direction', 'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color']);
+
+/**
+ * The inherited text properties every resolved text node carries itself (goal.md principle 3), each with an inherited Origin,
+ * so the lowering reads only the text node.
+ */
+export const TEXT_LONGHANDS = ['font-family', 'font-size', 'line-height', 'color', 'text-align', 'white-space-collapse', 'text-wrap-mode'] as const satisfies readonly Longhand[];
+
+export type TextLonghand = (typeof TEXT_LONGHANDS)[number];
 
 /** Longhands whose values are <color>; their channels are checked against Chrome exactly. */
 export const COLOR_LONGHANDS = ['color', 'background-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'] as const satisfies readonly Longhand[];
@@ -93,20 +101,23 @@ export const PROPERTY_ASPECTS: { readonly [P in Longhand]: { readonly layout: bo
   'font-family': { layout: true, paint: false },
   'line-height': { layout: true, paint: false },
   'text-align': { layout: true, paint: false },
+  'white-space-collapse': { layout: true, paint: false },
+  'text-wrap-mode': { layout: true, paint: false },
   color: { layout: false, paint: true },
   'background-color': { layout: false, paint: true },
 };
 
 /**
- * Which formatting context a longhand's row key names (M2): container properties name the element's own flex line mode,
- * text properties the text context, and every other longhand the context the element's box takes part in.
+ * Which formatting context a longhand's row key names (M2): container properties name the element's own flex line mode, text
+ * properties the context of each text node they reach (analysis/context.ts), and every other longhand the context the
+ * element's box takes part in.
  */
 export const PROPERTY_ROLE: { readonly [P in Longhand]: 'item' | 'container' | 'text' } = Object.fromEntries(
   LONGHANDS.map((p) => [
     p,
     ['flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap'].includes(p)
       ? 'container'
-      : ['font-size', 'font-family', 'line-height', 'text-align'].includes(p)
+      : ['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode'].includes(p)
         ? 'text'
         : 'item',
   ]),

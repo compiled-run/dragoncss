@@ -55,6 +55,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "position": "static",
     "row-gap": "normal",
     "text-align": "start",
+    "text-wrap-mode": "wrap",
+    "white-space-collapse": "collapse",
     "width": "auto",
   },
   "body": {
@@ -107,6 +109,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "position": "static",
     "row-gap": "normal",
     "text-align": "start",
+    "text-wrap-mode": "wrap",
+    "white-space-collapse": "collapse",
     "width": "auto",
   },
   "div": {
@@ -159,6 +163,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "position": "static",
     "row-gap": "normal",
     "text-align": "start",
+    "text-wrap-mode": "wrap",
+    "white-space-collapse": "collapse",
     "width": "auto",
   },
   "dragon-unstyled": {
@@ -211,6 +217,8 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "position": "static",
     "row-gap": "normal",
     "text-align": "start",
+    "text-wrap-mode": "wrap",
+    "white-space-collapse": "collapse",
     "width": "auto",
   },
 };

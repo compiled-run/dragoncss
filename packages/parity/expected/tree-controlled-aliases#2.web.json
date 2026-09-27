@@ -64,6 +64,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -125,6 +127,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -186,6 +190,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -247,6 +253,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -308,6 +316,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgb(204, 204, 204)"
       }
@@ -369,6 +379,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgb(238, 238, 255)"
       }
@@ -430,6 +442,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -491,6 +505,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgb(204, 204, 204)"
       }
@@ -552,6 +568,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgb(238, 238, 255)"
       }
@@ -613,6 +631,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -674,6 +694,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgb(204, 204, 204)"
       }

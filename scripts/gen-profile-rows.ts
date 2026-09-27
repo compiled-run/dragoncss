@@ -3,6 +3,7 @@
 // proof names, against the committed authored captures. The profiles are never enforced while deriving.
 // Run with: pnpm run profile:rows
 import { writeFileSync } from 'node:fs';
+import { NO_ENGINE_FAULTS } from '../packages/layout/src/block.ts';
 import { NO_FAULTS } from '../packages/dragon/src/faults.ts';
 import { launchChrome } from '../packages/parity/src/chrome.ts';
 import { committedAuthored } from '../packages/parity/src/committed.ts';
@@ -17,7 +18,7 @@ const cases: CaseOutcome[] = [];
 try {
   for (const spec of FIXTURES) {
     if (spec.kind !== 'layout') continue;
-    const outcome = await runFixture(spec, browser, { authored: committedAuthored, faults: NO_FAULTS, profiles: 'derive' });
+    const outcome = await runFixture(spec, browser, { authored: committedAuthored, faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'derive' });
     cases.push(...outcome.cases);
     for (const c of outcome.cases) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
   }

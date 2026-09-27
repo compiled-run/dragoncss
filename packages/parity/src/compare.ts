@@ -1,5 +1,7 @@
 // Numeric comparison of Dragon's layout with Chrome: 1 device pixel on every absolute edge (owner decision 13).
-import type { LayoutRect } from '@dragon/layout';
+// Every Chrome node is compared: elements, text nodes and their per-line fragments. A node only Dragon has passes only if it is
+// an anonymous box the compiler generated (Chrome exposes no node for it), and every text line inside it is a compared node.
+import type { LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
 import { LU_PER_PX } from '@dragon/layout';
 import type { Environment } from 'dragon';
 import type { CapturedNode, WebCapture } from './capture.ts';
@@ -11,7 +13,7 @@ export type Edges = { readonly left: number; readonly top: number; readonly righ
 
 export type NodeComparison = {
   readonly id: string;
-  readonly kind: 'element' | 'text';
+  readonly kind: CapturedNode['kind'];
   readonly chrome: Edges;
   readonly dragon: Edges | null;
   readonly delta: Edges | null;
@@ -20,9 +22,13 @@ export type NodeComparison = {
   readonly exactLu: boolean;
 };
 
+/** An anonymous box only Dragon has, and the Chrome-compared line fragments of the text inside it. */
+export type AnonymousBox = { readonly id: string; readonly lines: readonly string[] };
+
 export type Comparison = {
   readonly pass: boolean;
   readonly nodes: readonly NodeComparison[];
+  readonly anonymous: readonly AnonymousBox[];
   readonly problems: readonly string[];
 };
 
@@ -39,8 +45,18 @@ function dragonEdges(r: LayoutRect): { px: Edges; raw: Edges } {
   };
 }
 
+function anonymousBoxes(input: LayoutInput): Map<string, readonly string[]> {
+  const out = new Map<string, readonly string[]>();
+  const walk = (b: LayoutBox): void => {
+    if (b.boxType === 'anonymous') out.set(b.id, b.children.filter((c) => c.kind === 'text').map((c) => c.id));
+    for (const c of b.children) if (c.kind === 'box') walk(c);
+  };
+  walk(input.root);
+  return out;
+}
+
 /** The gate is in device pixels, so a CSS px delta is scaled by the case environment's device pixel ratio. */
-export function compareLayout(capture: WebCapture, absolute: ReadonlyMap<string, LayoutRect>, env: Environment): Comparison {
+export function compareLayout(capture: WebCapture, absolute: ReadonlyMap<string, LayoutRect>, input: LayoutInput, env: Environment): Comparison {
   const problems: string[] = [];
   const nodes: NodeComparison[] = [];
   const seen = new Set<string>();
@@ -65,6 +81,19 @@ export function compareLayout(capture: WebCapture, absolute: ReadonlyMap<string,
     if (!pass) problems.push(`${n.id}: edge delta ${JSON.stringify(delta)} exceeds ${GATE_DEVICE_PX} device px`);
     nodes.push({ id: n.id, kind: n.kind, chrome: c, dragon: px, delta, pass, exactLu });
   }
-  for (const id of absolute.keys()) if (!seen.has(id)) problems.push(`${id}: Dragon laid out a node Chrome does not have`);
-  return { pass: problems.length === 0, nodes, problems };
+  const anonymousInput = anonymousBoxes(input);
+  const anonymous: AnonymousBox[] = [];
+  for (const id of absolute.keys()) {
+    if (seen.has(id)) continue;
+    const leaves = anonymousInput.get(id);
+    if (leaves === undefined) {
+      problems.push(`${id}: Dragon laid out a node Chrome does not have`);
+      continue;
+    }
+    const lines = [...absolute.values()].filter((r) => r.parent !== null && leaves.includes(r.parent) && r.id.startsWith(`${r.parent}:line`)).map((r) => r.id);
+    const uncompared = lines.filter((l) => !seen.has(l));
+    if (lines.length === 0 || uncompared.length > 0) problems.push(`${id}: anonymous box whose text lines are not all compared with Chrome (${uncompared.join(', ') || 'no lines'})`);
+    anonymous.push({ id, lines });
+  }
+  return { pass: problems.length === 0, nodes, anonymous, problems };
 }

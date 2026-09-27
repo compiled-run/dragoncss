@@ -51,3 +51,9 @@ export const bothWeb = both.outputs.web;
 export const bothIos = both.outputs.ios;
 // @ts-expect-error Compiled<'ios' | 'web'> is not Compiled<'web'>: its explain results may name the ios target
 export const widened: Compiled<'web'> = both;
+
+// MF2: the public entry has no internal options: createProject takes the configuration only, and InternalOptions is not exported.
+// @ts-expect-error createProject takes no options argument
+export const withOptions = createProject({ projectId: 'p', targets: { web: {} } }, { profiles: 'derive' });
+// @ts-expect-error InternalOptions is internal (dragon-internal condition only)
+export type Options = import('../src/index.ts').InternalOptions;

@@ -1,5 +1,8 @@
 // Live capture of a fixture rendering in pinned Chrome: border boxes by data-dragon-id, text boxes by Range, and
-// getComputedStyle for every milestone longhand on each element.
+// getComputedStyle for every milestone longhand on each element. Each text node "<element>:text<k>" (k counts text nodes
+// that are not whitespace-only) is its Range bounding rect, followed by one "<text>:line<j>" node per Range client rect: one
+// per line the text shows on, in order. A whitespace-only text node is "<element>:space<k>" and is recorded only when it has
+// client rects.
 import type { Browser } from 'playwright';
 import type { Environment } from 'dragon';
 import { LONGHANDS } from 'dragon';
@@ -7,7 +10,7 @@ import { CHROME_VERSION, openPage } from './chrome.ts';
 
 export type CapturedNode = {
   readonly id: string;
-  readonly kind: 'element' | 'text';
+  readonly kind: 'element' | 'text' | 'line';
   /** False when the node generates no box (display: none), so Chrome reports no client rects. */
   readonly hasBox: boolean;
   readonly x: number;
@@ -40,12 +43,18 @@ export async function captureFixture(browser: Browser, fixture: string, html: st
         for (const p of props) computed[p] = cs.getPropertyValue(p);
         out.push({ id, kind: 'element', hasBox: el.getClientRects().length > 0, x: r.x, y: r.y, width: r.width, height: r.height, computed });
         let k = 0;
+        let spaces = 0;
         for (const child of Array.from(el.childNodes)) {
-          if (child.nodeType !== Node.TEXT_NODE || blank((child as Text).data)) continue;
+          if (child.nodeType !== Node.TEXT_NODE) continue;
           const range = document.createRange();
           range.selectNodeContents(child);
+          const rects = Array.from(range.getClientRects());
+          const isBlank = blank((child as Text).data);
+          const textId = isBlank ? `${id}:space${spaces++}` : `${id}:text${k++}`;
+          if (isBlank && rects.length === 0) continue;
           const t = range.getBoundingClientRect();
-          out.push({ id: `${id}:text${k++}`, kind: 'text', hasBox: range.getClientRects().length > 0, x: t.x, y: t.y, width: t.width, height: t.height, computed: null });
+          out.push({ id: textId, kind: 'text', hasBox: rects.length > 0, x: t.x, y: t.y, width: t.width, height: t.height, computed: null });
+          rects.forEach((r, j) => out.push({ id: `${textId}:line${j}`, kind: 'line', hasBox: true, x: r.x, y: r.y, width: r.width, height: r.height, computed: null }));
         }
       }
       return out;

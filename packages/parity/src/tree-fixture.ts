@@ -45,7 +45,35 @@ export type TreeFixtureFile = {
   }[];
   /** Errors the producer recovered from; they must propagate and block outputs. */
   readonly producerDiagnostics?: readonly { readonly code: string; readonly message: string; readonly file: string; readonly at: At }[];
+  /** Declared by hand for every layout tree fixture; checked against the renderer and Dragon, never derived from either. */
+  readonly expected?: TreeExpectation;
 };
+
+/** One text node of the declared topology; when lists the [instance, state, value] terms of the cases it appears in. */
+export type TopologySpec = {
+  readonly address: string;
+  readonly component: string;
+  readonly template: string;
+  /** The source text of the text node's authored origin. */
+  readonly at: string;
+  readonly ownerInstance: string;
+  readonly insertionParent: string;
+  readonly context: string;
+  readonly when?: readonly (readonly [string, string, Scalar])[];
+};
+
+/** MF1 and docs/api.md §10: the hand-declared free states, case count, initial assignment and text topology of a tree fixture. */
+export type TreeExpectation = {
+  readonly freeStates: readonly { readonly instance: string; readonly state: string; readonly domain: readonly Scalar[] }[];
+  readonly cases: number;
+  readonly initial: readonly { readonly instance: string; readonly state: string; readonly value: Scalar }[];
+  readonly textTopology: readonly TopologySpec[];
+};
+
+export function readTreeExpectation(id: string): TreeExpectation | null {
+  const spec = JSON.parse(readFileSync(repoPath(`packages/parity/fixtures/${id}/fixture.json`), 'utf8')) as TreeFixtureFile;
+  return spec.expected === undefined ? null : spec.expected;
+}
 
 export function readTreeFixture(id: string): FrontEndResult {
   const dir = `packages/parity/fixtures/${id}`;

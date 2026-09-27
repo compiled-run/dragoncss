@@ -41,5 +41,11 @@
         ] }
       ]
     }
-  ]
+  ],
+  "expected": {
+    "freeStates": [{ "instance": "doc", "state": "mode", "domain": ["list", "grid", "empty"] }],
+    "cases": 3,
+    "initial": [{ "instance": "doc", "state": "mode", "value": "list" }],
+    "textTopology": []
+  }
 }

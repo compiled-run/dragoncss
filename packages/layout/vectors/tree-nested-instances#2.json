@@ -8,6 +8,7 @@
   "root": {
    "kind": "box",
    "id": "html",
+   "boxType": "element",
    "style": {
     "display": "block",
     "position": "static",
@@ -105,6 +106,7 @@
     {
      "kind": "box",
      "id": "body",
+     "boxType": "element",
      "style": {
       "display": "block",
       "position": "static",
@@ -202,6 +204,7 @@
       {
        "kind": "box",
        "id": "list/items",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -300,6 +303,7 @@
         {
          "kind": "box",
          "id": "list/r1/line",
+         "boxType": "element",
          "style": {
           "display": "flex",
           "position": "static",
@@ -398,6 +402,7 @@
           {
            "kind": "box",
            "id": "list/r1/dot/mark",
+           "boxType": "element",
            "style": {
             "display": "block",
             "position": "static",
@@ -499,6 +504,7 @@
         {
          "kind": "box",
          "id": "list/r2/line",
+         "boxType": "element",
          "style": {
           "display": "flex",
           "position": "static",
@@ -597,6 +603,7 @@
           {
            "kind": "box",
            "id": "list/r2/dot/mark",
+           "boxType": "element",
            "style": {
             "display": "block",
             "position": "static",
@@ -698,6 +705,7 @@
         {
          "kind": "box",
          "id": "list/r3/line",
+         "boxType": "element",
          "style": {
           "display": "flex",
           "position": "static",
@@ -796,6 +804,7 @@
           {
            "kind": "box",
            "id": "list/r3/dot/mark",
+           "boxType": "element",
            "style": {
             "display": "block",
             "position": "static",
@@ -904,6 +913,7 @@
  "output": [
   {
    "id": "html",
+   "parent": null,
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -911,6 +921,7 @@
   },
   {
    "id": "body",
+   "parent": "html",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -918,6 +929,7 @@
   },
   {
    "id": "list/items",
+   "parent": "body",
    "x": 0,
    "y": 0,
    "width": 10112,
@@ -925,6 +937,7 @@
   },
   {
    "id": "list/r1/line",
+   "parent": "list/items",
    "x": 256,
    "y": 256,
    "width": 9600,
@@ -932,6 +945,7 @@
   },
   {
    "id": "list/r1/dot/mark",
+   "parent": "list/r1/line",
    "x": 192,
    "y": 0,
    "width": 384,
@@ -939,6 +953,7 @@
   },
   {
    "id": "list/r2/line",
+   "parent": "list/items",
    "x": 256,
    "y": 1024,
    "width": 9600,
@@ -946,6 +961,7 @@
   },
   {
    "id": "list/r2/dot/mark",
+   "parent": "list/r2/line",
    "x": 192,
    "y": 0,
    "width": 384,
@@ -953,6 +969,7 @@
   },
   {
    "id": "list/r3/line",
+   "parent": "list/items",
    "x": 256,
    "y": 2176,
    "width": 9600,
@@ -960,6 +977,7 @@
   },
   {
    "id": "list/r3/dot/mark",
+   "parent": "list/r3/line",
    "x": 192,
    "y": 0,
    "width": 384,

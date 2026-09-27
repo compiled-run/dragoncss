@@ -3,8 +3,8 @@ import { parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { parseColorNode, perturbColor, serializeColor } from '../css/color.ts';
 import { properties as grammar } from '../css/grammar.generated.ts';
-import type { Longhand } from '../css/properties.ts';
-import { COLOR_LONGHANDS, INHERITED, LONGHANDS } from '../css/properties.ts';
+import type { Longhand, TextLonghand } from '../css/properties.ts';
+import { COLOR_LONGHANDS, INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule, Selector } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { CapturedTag } from '../ua/chrome-145.generated.ts';
@@ -32,8 +32,16 @@ export type ResolvedElement = {
   readonly children: readonly (ResolvedElement | ResolvedText)[];
 };
 
-/** Literal text after CSS white-space: normal collapsing; whitespace-only runs are dropped. */
-export type ResolvedText = { readonly kind: 'text'; readonly node: LinkedText; readonly text: string };
+/**
+ * Literal text after white-space phase I collapsing over its inline formatting context (collapseInlineRun). Text that collapses
+ * to nothing is dropped. props: every inherited text property, taken from the insertion parent with origin inherited.
+ */
+export type ResolvedText = {
+  readonly kind: 'text';
+  readonly node: LinkedText;
+  readonly text: string;
+  readonly props: ReadonlyMap<TextLonghand, ResolvedValue>;
+};
 
 export const SUPPORTED_TAGS: ReadonlySet<string> = new Set(['html', 'body', 'div']);
 
@@ -65,7 +73,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
 
 // css-cascade-5 §7.1: initial values come from the pinned @webref/css grammar. color (CanvasText, css-color-4 §6.2) and
 // font-family (UA-dependent, css-fonts-4 §2.1) have environment-dependent initial values, taken from Chrome's captured root.
-function initialValue(property: Longhand): CssValue {
+export function initialValue(property: Longhand): CssValue {
   if (property === 'color' || property === 'font-family') return parseValueText(property, capturedUa.html[property] as string);
   const g = grammar[property];
   if (g === undefined) throw new Error(`no webref entry for ${property}`);
@@ -121,10 +129,51 @@ function beats(a: Candidate, b: Candidate): boolean {
   return a.declaration.order > b.declaration.order;
 }
 
-/** css-text-3 §4.1.1 white-space: normal. S1 lines are single, so leading and trailing spaces are removed too. */
-export function collapseWhiteSpace(text: string): string {
-  return text.replace(/[ \t\n\r\f]+/g, ' ').replace(/^ | $/g, '');
+const WHITE_SPACE = /[ \t\n\r\f]/;
+const ZWSP = '\u200b';
+
+/**
+ * css-text-3 §4.1.1 (white-space-collapse: collapse) over the text runs of one inline formatting context, in order: each
+ * sequence of white space, across run boundaries too, becomes one space kept by the run where the sequence starts; a sequence
+ * with a segment break next to U+200B is removed (§4.1.3). §4.1.2 then removes the spaces at the context's start and end,
+ * which always begin and end a line. Returns each run's collapsed text; "" means the run generates nothing.
+ */
+export function collapseInlineRun(texts: readonly string[]): string[] {
+  const chars: { ch: string; run: number }[] = [];
+  texts.forEach((t, run) => {
+    for (const ch of t) chars.push({ ch, run });
+  });
+  const out: { ch: string; run: number }[] = [];
+  let k = 0;
+  while (k < chars.length) {
+    const c = chars[k] as { ch: string; run: number };
+    if (!WHITE_SPACE.test(c.ch)) {
+      out.push(c);
+      k++;
+      continue;
+    }
+    let e = k;
+    let segmentBreak = false;
+    while (e < chars.length && WHITE_SPACE.test((chars[e] as { ch: string }).ch)) {
+      const ch = (chars[e] as { ch: string }).ch;
+      if (ch === '\n' || ch === '\r') segmentBreak = true;
+      e++;
+    }
+    const before = out[out.length - 1];
+    const after = chars[e];
+    const nextToZwsp = (before !== undefined && before.ch === ZWSP) || (after !== undefined && after.ch === ZWSP);
+    if (!(segmentBreak && nextToZwsp)) out.push({ ch: ' ', run: c.run });
+    k = e;
+  }
+  while (out.length > 0 && (out[0] as { ch: string }).ch === ' ') out.shift();
+  while (out.length > 0 && (out[out.length - 1] as { ch: string }).ch === ' ') out.pop();
+  return texts.map((_, run) => out.filter((c) => c.run === run).map((c) => c.ch).join(''));
 }
+
+const displayOf = (el: ResolvedElement): string => {
+  const v = (el.props.get('display') as ResolvedValue).value;
+  return v.kind === 'keyword' ? v.value : '';
+};
 
 // css-display-3 §2.7: the root element's display is blockified (Chrome reports block for html even under display: initial).
 function blockifyRoot(v: ResolvedValue): ResolvedValue {
@@ -195,16 +244,44 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       props,
       children: [],
     };
-    for (const child of el.children) {
-      if (child.kind === 'element') self.children.push(visit(child, here, self));
-      else {
-        const text = collapseWhiteSpace(child.text);
-        if (text.length > 0) self.children.push({ kind: 'text', node: child, text });
+    const kids: (ResolvedElement | LinkedText)[] = el.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
+    // An inline formatting context is a maximal sequence of text; display: none elements generate no box (CSS2 §9.2.4), so
+    // they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
+    const collapsed = new Map<LinkedText, string>();
+    let run: LinkedText[] = [];
+    const flush = (): void => {
+      const texts = collapseInlineRun(run.map((t) => t.text));
+      run.forEach((t, i) => collapsed.set(t, texts[i] as string));
+      run = [];
+    };
+    for (const kid of kids) {
+      if (kid.kind === 'text') run.push(kid);
+      else if (displayOf(kid) !== 'none') flush();
+    }
+    flush();
+    for (const kid of kids) {
+      if (kid.kind === 'element') {
+        self.children.push(kid);
+        continue;
       }
+      const text = collapsed.get(kid) as string;
+      if (text.length > 0) self.children.push({ kind: 'text', node: kid, text, props: textProps(props, faults) });
     }
     return self;
   };
   return visit(root, [], null);
+}
+
+// goal.md principle 3: a text node carries each inherited text property itself, inherited from its insertion parent.
+function textProps(parent: ReadonlyMap<Longhand, ResolvedValue>, faults: CompilerFaults): Map<TextLonghand, ResolvedValue> {
+  const out = new Map<TextLonghand, ResolvedValue>();
+  for (const p of TEXT_LONGHANDS) {
+    const pv = parent.get(p) as ResolvedValue;
+    out.set(p, { value: pv.value, origin: 'inherited', span: pv.span, declaration: null, declared: null, losing: [] });
+  }
+  // Planted fault dropInheritedText: the text node's font-size is its initial value (medium, 16px computed in Chrome's root).
+  if (faults.dropInheritedText) out.set('font-size', { value: parseValueText('font-size', capturedUa.html['font-size'] as string), origin: 'initial', span: null, declaration: null, declared: null, losing: [] });
+  return out;
 }
 
 export function valueToString(v: CssValue): string {

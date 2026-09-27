@@ -42,5 +42,19 @@
       "id": "Dot", "module": "list", "at": "component Dot",
       "root": [{ "el": "div", "id": "mark", "at": "<div mark", "class": ["dot.dot"] }]
     }
-  ]
+  ],
+  "expected": {
+    "freeStates": [
+      { "instance": "doc/list/r1", "state": "selected", "domain": [false, true] },
+      { "instance": "doc/list/r2", "state": "selected", "domain": [false, true] },
+      { "instance": "doc/list/r3", "state": "selected", "domain": [false, true] }
+    ],
+    "cases": 8,
+    "initial": [
+      { "instance": "doc/list/r1", "state": "selected", "value": false },
+      { "instance": "doc/list/r2", "state": "selected", "value": true },
+      { "instance": "doc/list/r3", "state": "selected", "value": false }
+    ],
+    "textTopology": []
+  }
 }

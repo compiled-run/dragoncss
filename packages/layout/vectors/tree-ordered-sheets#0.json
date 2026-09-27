@@ -8,6 +8,7 @@
   "root": {
    "kind": "box",
    "id": "html",
+   "boxType": "element",
    "style": {
     "display": "block",
     "position": "static",
@@ -105,6 +106,7 @@
     {
      "kind": "box",
      "id": "body",
+     "boxType": "element",
      "style": {
       "display": "block",
       "position": "static",
@@ -202,6 +204,7 @@
       {
        "kind": "box",
        "id": "box/frame",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -301,6 +304,7 @@
         {
          "kind": "box",
          "id": "box/inner",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -408,6 +412,7 @@
  "output": [
   {
    "id": "html",
+   "parent": null,
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -415,6 +420,7 @@
   },
   {
    "id": "body",
+   "parent": "html",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -422,6 +428,7 @@
   },
   {
    "id": "box/frame",
+   "parent": "body",
    "x": 0,
    "y": 0,
    "width": 4096,
@@ -429,6 +436,7 @@
   },
   {
    "id": "box/inner",
+   "parent": "box/frame",
    "x": 128,
    "y": 128,
    "width": 1920,

@@ -42,7 +42,16 @@ export const divStyle: LayoutStyle = {
 };
 
 export function box(id: string, style: Partial<LayoutStyle>, children: (LayoutBox | TextLeaf)[] = []): LayoutBox {
-  return { kind: 'box', id, style: { ...divStyle, ...style }, children };
+  return { kind: 'box', id, boxType: 'element', style: { ...divStyle, ...style }, children };
+}
+
+export function anon(id: string, style: Partial<LayoutStyle>, children: (LayoutBox | TextLeaf)[] = []): LayoutBox {
+  return { kind: 'box', id, boxType: 'anonymous', style: { ...divStyle, ...style }, children };
+}
+
+/** A 10px Ahem text leaf, already collapsed, with the inherited text properties the compiler writes onto it. */
+export function text(id: string, value: string, over: Partial<TextLeaf> = {}): TextLeaf {
+  return { kind: 'text', id, text: value, font: { family: 'Ahem', size: 10 }, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', ...over };
 }
 
 export const px = (value: number) => ({ kind: 'px', value }) as const;

@@ -27,5 +27,11 @@
         ] }
       ]
     }
-  ]
+  ],
+  "expected": {
+    "freeStates": [{ "instance": "doc", "state": "phase", "domain": ["closed", "opening", "open"] }],
+    "cases": 3,
+    "initial": [{ "instance": "doc", "state": "phase", "value": "closed" }],
+    "textTopology": []
+  }
 }

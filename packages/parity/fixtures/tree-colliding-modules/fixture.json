@@ -37,5 +37,6 @@
         ] }
       ]
     }
-  ]
+  ],
+  "expected": { "freeStates": [], "cases": 1, "initial": [], "textTopology": [] }
 }

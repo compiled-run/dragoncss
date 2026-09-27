@@ -8,6 +8,7 @@
   "root": {
    "kind": "box",
    "id": "html",
+   "boxType": "element",
    "style": {
     "display": "block",
     "position": "static",
@@ -105,6 +106,7 @@
     {
      "kind": "box",
      "id": "body",
+     "boxType": "element",
      "style": {
       "display": "block",
       "position": "static",
@@ -202,6 +204,7 @@
       {
        "kind": "box",
        "id": "bar",
+       "boxType": "element",
        "style": {
         "display": "flex",
         "position": "static",
@@ -299,6 +302,7 @@
         {
          "kind": "box",
          "id": "b1/btn",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -399,6 +403,7 @@
         {
          "kind": "box",
          "id": "b2/btn",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -499,6 +504,7 @@
         {
          "kind": "box",
          "id": "b3/btn",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -606,6 +612,7 @@
  "output": [
   {
    "id": "html",
+   "parent": null,
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -613,6 +620,7 @@
   },
   {
    "id": "body",
+   "parent": "html",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -620,6 +628,7 @@
   },
   {
    "id": "bar",
+   "parent": "body",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -627,6 +636,7 @@
   },
   {
    "id": "b1/btn",
+   "parent": "bar",
    "x": 192,
    "y": 192,
    "width": 1280,
@@ -634,6 +644,7 @@
   },
   {
    "id": "b2/btn",
+   "parent": "bar",
    "x": 1856,
    "y": 192,
    "width": 2560,
@@ -641,6 +652,7 @@
   },
   {
    "id": "b3/btn",
+   "parent": "bar",
    "x": 4800,
    "y": 192,
    "width": 3840,

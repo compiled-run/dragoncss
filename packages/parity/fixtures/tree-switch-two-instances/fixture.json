@@ -46,5 +46,26 @@
           ] }
       ]
     }
-  ]
+  ],
+  "expected": {
+    "freeStates": [
+      { "instance": "doc/a", "state": "checked", "domain": [false, true] },
+      { "instance": "doc/a", "state": "disabled", "domain": [false, true] },
+      { "instance": "doc/b", "state": "checked", "domain": [false, true] },
+      { "instance": "doc/b", "state": "disabled", "domain": [false, true] }
+    ],
+    "cases": 16,
+    "initial": [
+      { "instance": "doc/a", "state": "checked", "value": false },
+      { "instance": "doc/a", "state": "disabled", "value": false },
+      { "instance": "doc/b", "state": "checked", "value": false },
+      { "instance": "doc/b", "state": "disabled", "value": false }
+    ],
+    "textTopology": [
+      { "address": "a/label:text0", "component": "Switch", "template": "on", "at": "\"On\"", "ownerInstance": "doc/a", "insertionParent": "a/label", "context": "text-in-flex-item", "when": [["doc/a", "checked", true]] },
+      { "address": "a/label:text0", "component": "Switch", "template": "off", "at": "\"Off\"", "ownerInstance": "doc/a", "insertionParent": "a/label", "context": "text-in-flex-item", "when": [["doc/a", "checked", false]] },
+      { "address": "b/label:text0", "component": "Switch", "template": "on", "at": "\"On\"", "ownerInstance": "doc/b", "insertionParent": "b/label", "context": "text-in-flex-item", "when": [["doc/b", "checked", true]] },
+      { "address": "b/label:text0", "component": "Switch", "template": "off", "at": "\"Off\"", "ownerInstance": "doc/b", "insertionParent": "b/label", "context": "text-in-flex-item", "when": [["doc/b", "checked", false]] }
+    ]
+  }
 }

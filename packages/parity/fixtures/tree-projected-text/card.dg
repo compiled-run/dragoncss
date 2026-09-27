@@ -1,0 +1,17 @@
+component App {
+  <html>
+    <body>
+      <Card card>
+        <slot title>XX XX XX</slot>
+        <slot body><div note class="note">NN NN</div>ZZ ZZ ZZ</slot>
+      </Card>
+    </body>
+  </html>
+}
+
+component Card(size: "small" | "large" = "small", dense: boolean = false) slots(title, body) {
+  <div frame class="card {size}">
+    <div head class="head {dense ? 'dense' : ''}">{title} YY</div>
+    <div content class="content">{body}</div>
+  </div>
+}

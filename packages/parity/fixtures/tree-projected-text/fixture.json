@@ -1,0 +1,64 @@
+{
+  "sources": ["card.dg", "doc.css", "app.css", "card.css"],
+  "modules": [{ "id": "card", "source": "card.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "app", "file": "app.css", "scope": "App" },
+    { "id": "card", "file": "card.css", "scope": "Card" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "app", "card"] },
+  "components": [
+    {
+      "id": "App", "module": "card", "at": "component App",
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "call": "Card", "id": "card", "at": "<Card card>", "slots": {
+              "title": [{ "text": "XX XX XX", "id": "title-text", "at": "XX XX XX" }],
+              "body": [
+                { "el": "div", "id": "note", "at": "<div note", "class": ["app.note"], "children": [{ "text": "NN NN", "id": "note-text", "at": "NN NN" }] },
+                { "text": "ZZ ZZ ZZ", "id": "body-text", "at": "ZZ ZZ ZZ" }
+              ]
+            } }
+          ] }
+        ] }
+      ]
+    },
+    {
+      "id": "Card", "module": "card", "at": "component Card",
+      "states": [
+        { "id": "size", "domain": ["small", "large"], "initial": "small", "at": "size: \"small\" | \"large\" = \"small\"" },
+        { "id": "dense", "domain": [false, true], "initial": false, "at": "dense: boolean = false" }
+      ],
+      "slots": [{ "name": "title", "at": "title," }, { "name": "body", "at": " body)" }],
+      "root": [
+        { "el": "div", "id": "frame", "at": "<div frame", "class": [
+            "card.card",
+            { "choice": [{ "when": ["size", "small"], "class": null }, { "when": ["size", "large"], "class": "card.large" }], "at": "{size}" }
+          ], "children": [
+          { "el": "div", "id": "head", "at": "<div head", "class": ["card.head", { "when": ["dense", true], "class": "card.dense", "at": "dense ? 'dense' : ''" }], "children": [
+            { "slot": "title", "id": "title-slot", "at": "{title}" },
+            { "text": " YY", "id": "yy", "at": " YY" }
+          ] },
+          { "el": "div", "id": "content", "at": "<div content", "class": ["card.content"], "children": [
+            { "slot": "body", "id": "body-slot", "at": "{body}" }
+          ] }
+        ] }
+      ]
+    }
+  ],
+  "expected": {
+    "freeStates": [
+      { "instance": "doc/card", "state": "size", "domain": ["small", "large"] },
+      { "instance": "doc/card", "state": "dense", "domain": [false, true] }
+    ],
+    "cases": 4,
+    "initial": [{ "instance": "doc/card", "state": "size", "value": "small" }, { "instance": "doc/card", "state": "dense", "value": false }],
+    "textTopology": [
+      { "address": "card/head:text0", "component": "App", "template": "title-text", "at": "XX XX XX", "ownerInstance": "doc", "insertionParent": "card/head", "context": "text-in-block" },
+      { "address": "card/head:text1", "component": "Card", "template": "yy", "at": " YY", "ownerInstance": "doc/card", "insertionParent": "card/head", "context": "text-in-block" },
+      { "address": "note:text0", "component": "App", "template": "note-text", "at": "NN NN", "ownerInstance": "doc", "insertionParent": "note", "context": "text-in-block" },
+      { "address": "card/content:text0", "component": "App", "template": "body-text", "at": "ZZ ZZ ZZ", "ownerInstance": "doc", "insertionParent": "card/content", "context": "text-in-anonymous-block" }
+    ]
+  }
+}

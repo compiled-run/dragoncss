@@ -60,6 +60,15 @@ const CSS_WIDE = new Set(['inherit', 'initial', 'unset', 'revert', 'revert-layer
 const LINE_STYLES = new Set(['none', 'hidden', 'dotted', 'dashed', 'solid', 'double', 'groove', 'ridge', 'inset', 'outset']);
 const LINE_WIDTH_KEYWORDS = new Set(['thin', 'medium', 'thick', 'hairline']);
 const NUMBER_PROPERTIES = new Set<string>(['flex-grow', 'flex-shrink', 'order', 'line-height']);
+const WHITE_SPACE_TRIM = new Set(['none', 'discard-before', 'discard-after', 'discard-inner']);
+const WHITE_SPACE_COLLAPSE = new Set(['collapse', 'discard', 'preserve', 'preserve-breaks', 'preserve-spaces', 'break-spaces']);
+/** css-text-4 §3: the white-space keywords that set both longhands. */
+const WHITE_SPACE_KEYWORDS: { readonly [k: string]: readonly [string, string] } = {
+  normal: ['collapse', 'wrap'],
+  pre: ['preserve', 'nowrap'],
+  'pre-wrap': ['preserve', 'wrap'],
+  'pre-line': ['preserve-breaks', 'wrap'],
+};
 
 function list(node: CssNode, key: string): CssNode[] {
   const v = node[key] as List<CssNode> | null | undefined;
@@ -209,6 +218,17 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     }
     values.push(v);
   }
+  // css-text-4 §3: white-space-trim is not a Dragon longhand and Chrome does not implement it, so a white-space value that sets it
+  // is refused rather than dropped.
+  const trim = property === 'white-space' && !wide ? tokens.find((t) => t.type === 'Identifier' && WHITE_SPACE_TRIM.has(String(t['name']).toLowerCase())) : undefined;
+  if (trim !== undefined) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+      origin: authored(spanOf(trim, base)),
+      message: `white-space: ${generate(trim)} sets white-space-trim, which milestone 1 does not support`,
+      manual: 'Use white-space: normal or nowrap.',
+    }));
+    return null;
+  }
   const longhands = wide
     ? expandWide(property, values[0] as CssValue)
     : isLonghand(property)
@@ -284,6 +304,7 @@ const SHORTHAND_LONGHANDS: { readonly [s: string]: readonly Longhand[] } = {
   'flex-flow': ['flex-direction', 'flex-wrap'],
   gap: ['row-gap', 'column-gap'],
   overflow: ['overflow-x', 'overflow-y'],
+  'white-space': ['white-space-collapse', 'text-wrap-mode'],
 };
 
 function borderLonghands(property: string): Longhand[] {
@@ -304,7 +325,7 @@ function expandWide(property: string, value: CssValue): LonghandValue[] {
 
 const kw = (value: string): CssValue => ({ kind: 'keyword', value });
 
-// css-box-4 §4, css-backgrounds-3 §3, css-flexbox-1 §7.1, css-align-3 §8.3, css-overflow-3 §3: shorthand expansion.
+// css-box-4 §4, css-backgrounds-3 §3, css-flexbox-1 §7.1, css-align-3 §8.3, css-overflow-3 §3, css-text-4 §3: shorthand expansion.
 function expandShorthand(property: string, values: CssValue[]): LonghandValue[] {
   const explicit = (p: Longhand, value: CssValue): LonghandValue => ({ property: p, value, explicit: true });
   const implicit = (p: Longhand, value: CssValue): LonghandValue => ({ property: p, value, explicit: false });
@@ -360,6 +381,18 @@ function expandShorthand(property: string, values: CssValue[]): LonghandValue[] 
     const [first, second = first] = values as [CssValue, CssValue?];
     const names = SHORTHAND_LONGHANDS[property] as readonly Longhand[];
     return [explicit(names[0] as Longhand, first), explicit(names[1] as Longhand, second as CssValue)];
+  }
+  if (property === 'white-space') {
+    const only = values[0] as CssValue;
+    const pair = values.length === 1 && only.kind === 'keyword' ? WHITE_SPACE_KEYWORDS[only.value] : undefined;
+    if (pair !== undefined) return [explicit('white-space-collapse', kw(pair[0])), explicit('text-wrap-mode', kw(pair[1]))];
+    // <'white-space-collapse'> || <'text-wrap-mode'>: an omitted longhand takes its initial value.
+    const collapse = values.find((v) => v.kind === 'keyword' && WHITE_SPACE_COLLAPSE.has(v.value));
+    const wrap = values.find((v) => v.kind === 'keyword' && (v.value === 'wrap' || v.value === 'nowrap'));
+    return [
+      collapse === undefined ? implicit('white-space-collapse', kw('collapse')) : explicit('white-space-collapse', collapse),
+      wrap === undefined ? implicit('text-wrap-mode', kw('wrap')) : explicit('text-wrap-mode', wrap),
+    ];
   }
   throw new Error(`no expansion for shorthand ${property}`);
 }

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import * as publicEntry from '../src/index.ts';
 import { createProject } from '../src/index.ts';
@@ -167,11 +168,27 @@ describe('createProject().compile() and check()', () => {
     if (p.kind !== 'ready') throw new Error(p.reason);
     const a = p.input.root.children[0]?.kind === 'box' ? p.input.root.children[0].children[0] : undefined;
     const text = a?.kind === 'box' ? a.children[0] : undefined;
-    expect(text).toEqual({ kind: 'text', id: 'a:text0', text: 'XX X', font: { family: 'Ahem', size: 20 }, lineHeight: { kind: 'number', value: 1.5 } });
+    expect(text).toEqual({ kind: 'text', id: 'a:text0', text: 'XX X', font: { family: 'Ahem', size: 20 }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' });
   });
 
   it('the public entry exposes only the public API', () => {
     expect(Object.keys(publicEntry).sort()).toEqual(['TREE_SCHEMA_REVISION', 'createProject', 'formatDiagnostic']);
+  });
+
+  it('MF2: the default-condition entry exports none of the internal switches, and createProject takes no options', () => {
+    for (const name of ['createProjectWith', 'InternalOptions', 'NO_FAULTS', 'applyFix', 'textTopology', 'iosLayoutProjection']) expect(name in publicEntry, name).toBe(false);
+    expect(createProject.length).toBe(1);
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { exports: Record<string, Record<string, string>> };
+    expect(pkg.exports).toEqual({ '.': { 'dragon-internal': './src/internal.ts', default: './src/index.ts' } });
+  });
+
+  it('MF2: the compilation digest covers the profiles mode, so a derive-mode result never shares a digest with an enforced one', () => {
+    const input = inputFor('.a { width: 1px; }', (r) => [div(r, 'a', ['a'])]);
+    const config = { projectId: 'test', targets: { ios: { minimum: '15.0' } } } as const;
+    const enforced = createProjectWith(config, { faults: NO_FAULTS, profiles: 'enforce' }).compile(input);
+    const derived = createProjectWith(config, { faults: NO_FAULTS, profiles: 'derive' }).compile(input);
+    expect(enforced.digest).toBe(ios().compile(input).digest);
+    expect(derived.digest).not.toBe(enforced.digest);
   });
 });
 

@@ -8,6 +8,7 @@
   "root": {
    "kind": "box",
    "id": "html",
+   "boxType": "element",
    "style": {
     "display": "block",
     "position": "static",
@@ -105,6 +106,7 @@
     {
      "kind": "box",
      "id": "body",
+     "boxType": "element",
      "style": {
       "display": "block",
       "position": "static",
@@ -202,6 +204,7 @@
       {
        "kind": "box",
        "id": "badge/badge",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -299,6 +302,7 @@
         {
          "kind": "box",
          "id": "badge/label",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -401,6 +405,7 @@
       {
        "kind": "box",
        "id": "chip/chip",
+       "boxType": "element",
        "style": {
         "display": "flex",
         "position": "static",
@@ -498,6 +503,7 @@
         {
          "kind": "box",
          "id": "chip/label",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -605,6 +611,7 @@
  "output": [
   {
    "id": "html",
+   "parent": null,
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -612,6 +619,7 @@
   },
   {
    "id": "body",
+   "parent": "html",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -619,6 +627,7 @@
   },
   {
    "id": "badge/badge",
+   "parent": "body",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -626,6 +635,7 @@
   },
   {
    "id": "badge/label",
+   "parent": "badge/badge",
    "x": 128,
    "y": 128,
    "width": 2560,
@@ -633,6 +643,7 @@
   },
   {
    "id": "chip/chip",
+   "parent": "body",
    "x": 0,
    "y": 896,
    "width": 25600,
@@ -640,6 +651,7 @@
   },
   {
    "id": "chip/label",
+   "parent": "chip/chip",
    "x": 640,
    "y": 256,
    "width": 4480,

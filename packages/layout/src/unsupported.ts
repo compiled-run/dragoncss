@@ -1,11 +1,8 @@
 // Typed refusals. The engine never falls back or guesses; a fixture that hits one of these fails.
 
 export type UnsupportedCode =
-  | 'multi-line-text'
   | 'percent-height-flex'
   | 'percent-gap'
-  | 'anonymous-block'
-  | 'anonymous-flex-item'
   | 'mixed-inline-font'
   | 'text-align'
   | 'text-glyph'

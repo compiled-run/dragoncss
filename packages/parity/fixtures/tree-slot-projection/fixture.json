@@ -39,5 +39,11 @@
         ] }
       ]
     }
-  ]
+  ],
+  "expected": {
+    "freeStates": [{ "instance": "doc/card", "state": "compact", "domain": [false, true] }],
+    "cases": 2,
+    "initial": [{ "instance": "doc/card", "state": "compact", "value": false }],
+    "textTopology": []
+  }
 }

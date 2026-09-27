@@ -19,11 +19,13 @@ import type {
   SizeValue,
   TextAlign,
   TextLeaf,
+  TextWrapMode,
 } from '@dragon/layout';
-import type { Longhand } from '../css/properties.ts';
+import type { Longhand, TextLonghand } from '../css/properties.ts';
+import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
-import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
-import { valueToString } from '../analysis/resolve.ts';
+import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
+import { initialValue, valueToString } from '../analysis/resolve.ts';
 import type { CompilerFaults } from '../faults.ts';
 import { borderWidthKeywords } from '../ua/chrome-145.generated.ts';
 
@@ -114,8 +116,10 @@ function gap(id: string, get: Get, p: Longhand): GapValue {
 const ALIGN_ITEMS: readonly AlignItems[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
 
 export function lowerStyle(el: ResolvedElement, faults: CompilerFaults): LayoutStyle {
-  const id = el.element.address;
-  const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
+  return lowerStyleFrom(el.element.address, (p) => (el.props.get(p) as ResolvedValue).value, faults);
+}
+
+function lowerStyleFrom(id: string, get: Get, faults: CompilerFaults): LayoutStyle {
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
@@ -163,9 +167,10 @@ export function lowerStyle(el: ResolvedElement, faults: CompilerFaults): LayoutS
   };
 }
 
-// Inherited text styles are written onto every text node (goal.md principle 3), so the engine needs no inheritance.
-function lowerText(parent: ResolvedElement, id: string, text: string): TextLeaf {
-  const get: Get = (p) => (parent.props.get(p) as ResolvedValue).value;
+// goal.md principle 3: the text node carries its inherited text styles, so the lowering reads the text node and never its parent.
+function lowerText(t: ResolvedText): TextLeaf {
+  const id = t.node.address;
+  const get = (p: TextLonghand): CssValue => (t.props.get(p) as ResolvedValue).value;
   const family = get('font-family');
   if (family.kind !== 'family' || family.value !== 'Ahem') fail(id, 'font-family', family, 'Ahem (the milestone-1 layout font)');
   const fs = get('font-size');
@@ -176,14 +181,51 @@ function lowerText(parent: ResolvedElement, id: string, text: string): TextLeaf 
   else if (lh.kind === 'number') lineHeight = { kind: 'number', value: lh.value };
   else if (lh.kind === 'length' && lh.unit === 'px') lineHeight = { kind: 'px', value: lh.value };
   else return fail(id, 'line-height', lh, 'normal | <number> | px');
-  return { kind: 'text', id, text, font: { family: 'Ahem', size: fs.value }, lineHeight };
+  const collapse = get('white-space-collapse');
+  if (collapse.kind !== 'keyword' || collapse.value !== 'collapse') fail(id, 'white-space-collapse', collapse, 'collapse');
+  const wrap = get('text-wrap-mode');
+  if (wrap.kind !== 'keyword' || (wrap.value !== 'wrap' && wrap.value !== 'nowrap')) return fail(id, 'text-wrap-mode', wrap, 'wrap | nowrap');
+  return { kind: 'text', id, text: t.text, font: { family: 'Ahem', size: fs.value }, lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: wrap.value as TextWrapMode };
 }
 
+const displayOf = (el: ResolvedElement): string => {
+  const v = (el.props.get('display') as ResolvedValue).value;
+  return v.kind === 'keyword' ? v.value : '';
+};
+
+// CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box inherits the inherited properties of its enclosing box and takes the
+// initial value of every other property; it is block-level (a block container, blockified as a flex item).
+function anonymousBox(parent: ResolvedElement, id: string, texts: readonly ResolvedText[], faults: CompilerFaults): LayoutBox {
+  const values = new Map<Longhand, CssValue>();
+  for (const p of LONGHANDS) values.set(p, INHERITED.has(p) ? (parent.props.get(p) as ResolvedValue).value : initialValue(p));
+  values.set('display', { kind: 'keyword', value: 'block' });
+  return { kind: 'box', id, boxType: 'anonymous', style: lowerStyleFrom(id, (p) => values.get(p) as CssValue, faults), children: texts.map(lowerText) };
+}
+
+/**
+ * The layout tree of one resolved element. Text beside visible element boxes, or directly in a flex container, is wrapped in
+ * anonymous boxes "<element>:anon<k>", one per maximal text sequence; display: none elements generate no box (CSS2 §9.2.4), so
+ * beside text they are left out rather than splitting it. The engine never creates boxes.
+ */
 export function lowerTree(el: ResolvedElement, faults: CompilerFaults): LayoutBox {
-  return {
-    kind: 'box',
-    id: el.element.address,
-    style: lowerStyle(el, faults),
-    children: el.children.map((c) => (c.kind === 'element' ? lowerTree(c, faults) : lowerText(el, c.node.address, c.text))),
+  const id = el.element.address;
+  const texts = el.children.filter((c): c is ResolvedText => c.kind === 'text');
+  const kids = texts.length === 0 ? el.children : el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
+  const wrap = texts.length > 0 && (displayOf(el) === 'flex' || kids.some((c) => c.kind === 'element'));
+  const children: (LayoutBox | TextLeaf)[] = [];
+  let run: ResolvedText[] = [];
+  let anon = 0;
+  const flush = (): void => {
+    if (run.length > 0) children.push(anonymousBox(el, `${id}:anon${anon++}`, run, faults));
+    run = [];
   };
+  for (const c of kids) {
+    if (c.kind === 'element') {
+      flush();
+      children.push(lowerTree(c, faults));
+    } else if (wrap) run.push(c);
+    else children.push(lowerText(c));
+  }
+  flush();
+  return { kind: 'box', id, boxType: 'element', style: lowerStyle(el, faults), children };
 }

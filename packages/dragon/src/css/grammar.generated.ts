@@ -3,7 +3,7 @@
 export const webrefVersion = "8.7.5";
 
 /** Longhands and shorthands the compiler reads, with their webref initial and inherited fields. */
-export const subset: readonly string[] = ["align-content","align-items","align-self","background-color","border","border-bottom","border-bottom-color","border-bottom-style","border-bottom-width","border-color","border-left","border-left-color","border-left-style","border-left-width","border-right","border-right-color","border-right-style","border-right-width","border-style","border-top","border-top-color","border-top-style","border-top-width","border-width","box-sizing","color","column-gap","direction","display","flex","flex-basis","flex-direction","flex-flow","flex-grow","flex-shrink","flex-wrap","font-family","font-size","gap","height","justify-content","line-height","margin","margin-bottom","margin-left","margin-right","margin-top","max-height","max-width","min-height","min-width","order","overflow","overflow-x","overflow-y","padding","padding-bottom","padding-left","padding-right","padding-top","position","row-gap","text-align","width"];
+export const subset: readonly string[] = ["align-content","align-items","align-self","background-color","border","border-bottom","border-bottom-color","border-bottom-style","border-bottom-width","border-color","border-left","border-left-color","border-left-style","border-left-width","border-right","border-right-color","border-right-style","border-right-width","border-style","border-top","border-top-color","border-top-style","border-top-width","border-width","box-sizing","color","column-gap","direction","display","flex","flex-basis","flex-direction","flex-flow","flex-grow","flex-shrink","flex-wrap","font-family","font-size","gap","height","justify-content","line-height","margin","margin-bottom","margin-left","margin-right","margin-top","max-height","max-width","min-height","min-width","order","overflow","overflow-x","overflow-y","padding","padding-bottom","padding-left","padding-right","padding-top","position","row-gap","text-align","text-wrap-mode","white-space","white-space-collapse","width"];
 
 export type PropertyGrammar = { readonly syntax: string; readonly initial: string; readonly inherited: string };
 
@@ -72,6 +72,10 @@ export const properties: { readonly [name: string]: PropertyGrammar } = {
   "position": { syntax: "static | relative | absolute | sticky | fixed | <running()>", initial: "static", inherited: "no" },
   "row-gap": { syntax: "normal | <length-percentage [0,∞]> | <line-width>", initial: "normal", inherited: "no" },
   "text-align": { syntax: "start | end | left | right | center | <string> | justify | match-parent | justify-all", initial: "start", inherited: "yes" },
+  "text-wrap-mode": { syntax: "wrap | nowrap", initial: "wrap", inherited: "yes" },
+  "white-space": { syntax: "normal | pre | pre-wrap | pre-line | <'white-space-collapse'> || <'text-wrap-mode'> || <'white-space-trim'>", initial: "normal", inherited: "see individual properties" },
+  "white-space-collapse": { syntax: "collapse | discard | preserve | preserve-breaks | preserve-spaces | break-spaces", initial: "collapse", inherited: "yes" },
+  "white-space-trim": { syntax: "none | discard-before || discard-after || discard-inner", initial: "none", inherited: "no" },
   "width": { syntax: "auto | <box-size> | <anchor-size()>", initial: "auto", inherited: "no" },
 };
 

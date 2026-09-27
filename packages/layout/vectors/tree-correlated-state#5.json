@@ -8,6 +8,7 @@
   "root": {
    "kind": "box",
    "id": "html",
+   "boxType": "element",
    "style": {
     "display": "block",
     "position": "static",
@@ -105,6 +106,7 @@
     {
      "kind": "box",
      "id": "body",
+     "boxType": "element",
      "style": {
       "display": "block",
       "position": "static",
@@ -202,6 +204,7 @@
       {
        "kind": "box",
        "id": "t/root",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -301,6 +304,7 @@
         {
          "kind": "box",
          "id": "t/track",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -408,6 +412,7 @@
  "output": [
   {
    "id": "html",
+   "parent": null,
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -415,6 +420,7 @@
   },
   {
    "id": "body",
+   "parent": "html",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -422,6 +428,7 @@
   },
   {
    "id": "t/root",
+   "parent": "body",
    "x": 640,
    "y": 0,
    "width": 6656,
@@ -429,6 +436,7 @@
   },
   {
    "id": "t/track",
+   "parent": "t/root",
    "x": 128,
    "y": 384,
    "width": 640,

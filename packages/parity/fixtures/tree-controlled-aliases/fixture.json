@@ -35,5 +35,14 @@
         ] }
       ]
     }
-  ]
+  ],
+  "expected": {
+    "freeStates": [
+      { "instance": "doc", "state": "open", "domain": [false, true] },
+      { "instance": "doc/free", "state": "expanded", "domain": [false, true] }
+    ],
+    "cases": 4,
+    "initial": [{ "instance": "doc", "state": "open", "value": true }, { "instance": "doc/free", "state": "expanded", "value": false }],
+    "textTopology": []
+  }
 }

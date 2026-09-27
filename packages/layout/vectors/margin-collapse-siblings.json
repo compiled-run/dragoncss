@@ -8,6 +8,7 @@
   "root": {
    "kind": "box",
    "id": "html",
+   "boxType": "element",
    "style": {
     "display": "block",
     "position": "static",
@@ -105,6 +106,7 @@
     {
      "kind": "box",
      "id": "body",
+     "boxType": "element",
      "style": {
       "display": "block",
       "position": "static",
@@ -202,6 +204,7 @@
       {
        "kind": "box",
        "id": "wrap",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -299,6 +302,7 @@
         {
          "kind": "box",
          "id": "a",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -398,6 +402,7 @@
         {
          "kind": "box",
          "id": "b",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -497,6 +502,7 @@
         {
          "kind": "box",
          "id": "c",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -596,6 +602,7 @@
         {
          "kind": "box",
          "id": "d",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -695,6 +702,7 @@
         {
          "kind": "box",
          "id": "e",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -794,6 +802,7 @@
         {
          "kind": "box",
          "id": "f",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -893,6 +902,7 @@
         {
          "kind": "box",
          "id": "g",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -992,6 +1002,7 @@
         {
          "kind": "box",
          "id": "h",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -1098,6 +1109,7 @@
  "output": [
   {
    "id": "html",
+   "parent": null,
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -1105,6 +1117,7 @@
   },
   {
    "id": "body",
+   "parent": "html",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -1112,6 +1125,7 @@
   },
   {
    "id": "wrap",
+   "parent": "body",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -1119,6 +1133,7 @@
   },
   {
    "id": "a",
+   "parent": "wrap",
    "x": 64,
    "y": 64,
    "width": 25472,
@@ -1126,6 +1141,7 @@
   },
   {
    "id": "b",
+   "parent": "wrap",
    "x": 64,
    "y": 1472,
    "width": 25472,
@@ -1133,6 +1149,7 @@
   },
   {
    "id": "c",
+   "parent": "wrap",
    "x": 64,
    "y": 2400,
    "width": 25472,
@@ -1140,6 +1157,7 @@
   },
   {
    "id": "d",
+   "parent": "wrap",
    "x": 64,
    "y": 2528,
    "width": 25472,
@@ -1147,6 +1165,7 @@
   },
   {
    "id": "e",
+   "parent": "wrap",
    "x": 64,
    "y": 2736,
    "width": 25472,
@@ -1154,6 +1173,7 @@
   },
   {
    "id": "f",
+   "parent": "wrap",
    "x": 64,
    "y": 4227,
    "width": 25472,
@@ -1161,6 +1181,7 @@
   },
   {
    "id": "g",
+   "parent": "wrap",
    "x": 64,
    "y": 5468,
    "width": 25472,
@@ -1168,6 +1189,7 @@
   },
   {
    "id": "h",
+   "parent": "wrap",
    "x": 64,
    "y": 4572,
    "width": 25472,

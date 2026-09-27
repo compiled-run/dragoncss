@@ -64,6 +64,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -125,6 +127,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -186,6 +190,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgb(34, 34, 34)"
       }
@@ -247,6 +253,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgb(153, 153, 153)"
       }
@@ -308,6 +316,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgb(153, 153, 153)"
       }
@@ -369,6 +379,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -430,6 +442,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgb(238, 238, 238)"
       }
@@ -491,6 +505,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgb(238, 238, 238)"
       }

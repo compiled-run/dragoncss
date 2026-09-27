@@ -88,8 +88,9 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
   const kids = visibleChildren(box);
   const boxes: LayoutBox[] = [];
   for (const k of kids) {
-    if (k.kind === 'text') unsupported('anonymous-flex-item', k.id, 'css-flexbox-1 §4', 'text directly inside a flex container (S3)');
-    else boxes.push(k);
+    // css-flexbox-1 §4: the compiler wraps text in anonymous flex items; validateLayoutInput rejects text in a flex container.
+    if (k.kind === 'text') throw new Error(`${k.id} is text directly in flex container ${box.id}; validateLayoutInput rejects this input`);
+    boxes.push(k);
   }
   const mainGap = gapValue(box, isRow ? s.columnGap : s.rowGap);
   const crossGap = gapValue(box, isRow ? s.rowGap : s.columnGap);

@@ -107,6 +107,8 @@ export const textLeafSchema = obj({
   text: str,
   font: obj({ family: lit('Ahem'), size: num(0) }),
   lineHeight: tagged({ normal: {}, number: { value: num(0) }, px: { value: num(0) } }),
+  whiteSpaceCollapse: lit('collapse'),
+  textWrapMode: lit('wrap', 'nowrap'),
 });
 
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
@@ -120,7 +122,10 @@ export type ValidationErrorCode =
   | 'wrong-type'
   | 'unknown-tag'
   | 'bad-value'
-  | 'duplicate-id';
+  | 'duplicate-id'
+  | 'mixed-children'
+  | 'text-in-flex'
+  | 'uncollapsed-text';
 
 export type ValidationError = { readonly path: string; readonly code: ValidationErrorCode; readonly message: string };
 
@@ -221,7 +226,7 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     errors.push({ path: `${path}.kind`, code: 'unknown-tag', message: 'expected kind box | text' });
     return;
   }
-  checkFields(value, { id: str, style: styleSchema }, path, errors, ['kind', 'children']);
+  checkFields(value, { id: str, boxType: lit('element', 'anonymous'), style: styleSchema }, path, errors, ['kind', 'children']);
   if (!Object.prototype.hasOwnProperty.call(value, 'children')) {
     errors.push({ path: `${path}.children`, code: 'missing-key', message: 'missing required key "children"' });
     return;
@@ -232,6 +237,29 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     return;
   }
   children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids));
+  checkInlineContent(value, children, path, errors);
+}
+
+const UNCOLLAPSED = /[\t\n\r\f]| {2}/;
+
+// CSS2 §9.2.1.1, css-flexbox-1 §4 and css-text-3 §4.1.1: the compiler wraps text beside boxes, and text in a flex container, in
+// anonymous boxes, and applies white-space phase I collapsing; the engine never does either.
+function checkInlineContent(box: Record<string, unknown>, children: readonly unknown[], path: string, errors: ValidationError[]): void {
+  const texts = children.filter((c): c is Record<string, unknown> => isRecord(c) && c['kind'] === 'text');
+  if (texts.length === 0) return;
+  if (texts.length !== children.length) {
+    errors.push({ path: `${path}.children`, code: 'mixed-children', message: 'a box has either text children or box children; wrap the text in anonymous boxes' });
+  }
+  const style = box['style'];
+  if (isRecord(style) && style['display'] === 'flex') {
+    errors.push({ path: `${path}.children`, code: 'text-in-flex', message: 'text directly in a flex container must be wrapped in an anonymous flex item' });
+  }
+  const strings = texts.map((t) => t['text']).filter((t): t is string => typeof t === 'string');
+  if (strings.length !== texts.length || !texts.every((t) => t['whiteSpaceCollapse'] === 'collapse')) return;
+  const joined = strings.join('');
+  if (strings.some((t) => t === '') || UNCOLLAPSED.test(joined) || joined.startsWith(' ') || joined.endsWith(' ')) {
+    errors.push({ path: `${path}.children`, code: 'uncollapsed-text', message: 'white-space-collapse: collapse text must arrive collapsed: no empty runs, tabs, segment breaks, doubled spaces or edge spaces' });
+  }
 }
 
 /** Rejects missing keys, extra keys, wrong tags, out-of-range numbers and duplicate ids. */

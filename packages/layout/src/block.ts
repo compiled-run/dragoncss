@@ -1,17 +1,7 @@
-// Block formatting: box contents, block-level widths and heights, margin collapsing, and single-line inline content.
+// Block formatting: box contents, block-level widths and heights, margin collapsing, and inline content (inline.ts).
 import type { LayoutBox, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
-import {
-  add,
-  divInt,
-  floorToWholePx,
-  fromCssPx,
-  lineHeightFromNumber,
-  max,
-  min,
-  sub,
-  ZERO,
-} from './units.ts';
+import { add, divInt, max, min, sub, ZERO } from './units.ts';
 import type { Edges, Frag, HeightBasis, Placed } from './box.ts';
 import {
   blockMinMax,
@@ -30,10 +20,18 @@ import {
   visibleChildren,
 } from './box.ts';
 import { layoutFlexContainer } from './flex.ts';
+import { layoutInline } from './inline.ts';
 import type { TextMeasurer } from './text.ts';
-import { unsupported } from './unsupported.ts';
 
-export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number };
+/** Seeded engine errors, so the parity harness can prove it fails (docs/api.md §7). The product runs with NO_ENGINE_FAULTS. */
+export type EngineFaults = {
+  /** Line breaking accepts one more glyph advance than the line has, so every break lands one glyph late. */
+  readonly breakOffByOne: boolean;
+};
+
+export const NO_ENGINE_FAULTS: EngineFaults = { breakOffByOne: false };
+
+export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
 
 export type ContentsArgs = {
   /** Inline size of the containing block, the basis for percentage padding and margins. */
@@ -188,8 +186,10 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   const kids = visibleChildren(box);
   const texts = kids.filter((k): k is TextLeaf => k.kind === 'text');
   if (texts.length > 0) {
-    if (texts.length !== kids.length) unsupported('anonymous-block', box.id, 'CSS2 §9.2.1.1', 'block container mixes text and block children (S3)');
-    return layoutSingleLine(ctx, box, texts, a);
+    // CSS2 §9.2.1.1: the compiler wraps text beside block boxes in anonymous boxes; validateLayoutInput rejects anything else.
+    if (texts.length !== kids.length) throw new Error(`${box.id} mixes text and boxes; validateLayoutInput rejects this input`);
+    const r = layoutInline(ctx, box, texts, a.contentWidth, a.origin);
+    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: true };
   }
   const placed: Placed[] = [];
   let strut = EMPTY_STRUT;
@@ -228,55 +228,6 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   }
   if (!seen && a.canCollapseTop) return { cursor: ZERO, placed, escapeTop: strut, endStrut: EMPTY_STRUT, hasContent: false };
   return { cursor, placed, escapeTop, endStrut: strut, hasContent: seen };
-}
-
-// CSS2 §10.8.1 with css-inline-3 §4: one line box of Ahem text; Blink floors the top half-leading to whole px.
-function layoutSingleLine(ctx: Ctx, box: LayoutBox, texts: readonly TextLeaf[], a: FlowArgs): FlowResult {
-  const align = box.style.textAlign;
-  if (align !== 'start' && align !== 'left') unsupported('text-align', box.id, 'css-text-3 §7.1', `text-align: ${align} (S3)`);
-  const first = texts[0] as TextLeaf;
-  for (const t of texts) {
-    if (t.font.size !== first.font.size || !sameLineHeight(t, first)) {
-      unsupported('mixed-inline-font', t.id, 'CSS2 §10.8', 'text runs with different fonts or line-heights in one line (S3)');
-    }
-  }
-  const metrics = ctx.measurer.metrics(first.font);
-  const glyphHeight = add(add(metrics.ascent, metrics.descent), metrics.lineGap);
-  const lineHeight = resolveLineHeight(first, glyphHeight);
-  const halfLeading = floorToWholePx(divInt(sub(lineHeight, glyphHeight), 2));
-  const placed: Placed[] = [];
-  let x = ZERO;
-  let breakable = false;
-  for (const t of texts) {
-    const m = ctx.measurer.measure(t.text, t.font);
-    if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
-    breakable = breakable || m.measure.hasBreakOpportunity;
-    placed.push({
-      frag: { id: t.id, width: m.measure.width, height: add(metrics.ascent, metrics.descent), children: [] },
-      x: add(a.origin.x, x),
-      y: add(a.origin.y, halfLeading),
-    });
-    x = add(x, m.measure.width);
-  }
-  if (x > a.contentWidth && breakable) {
-    unsupported('multi-line-text', box.id, 'css-text-3 §5', 'text wider than its line with a break opportunity wraps (S3)');
-  }
-  return { cursor: lineHeight, placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: true };
-}
-
-function sameLineHeight(a: TextLeaf, b: TextLeaf): boolean {
-  const x = a.lineHeight;
-  const y = b.lineHeight;
-  if (x.kind === 'normal' || y.kind === 'normal') return x.kind === y.kind;
-  return x.kind === y.kind && x.value === y.value;
-}
-
-// CSS2 §10.8.1: normal uses the font's ascent + descent + line gap; numbers multiply the font size.
-function resolveLineHeight(t: TextLeaf, normal: LU): LU {
-  const lh = t.lineHeight;
-  if (lh.kind === 'normal') return normal;
-  if (lh.kind === 'number') return lineHeightFromNumber(t.font.size, lh.value);
-  return fromCssPx(lh.value);
 }
 
 export type { Edges };

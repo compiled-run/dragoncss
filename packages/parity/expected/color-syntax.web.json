@@ -64,6 +64,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -125,6 +127,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(102, 51, 153)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -186,6 +190,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(102, 51, 153)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -247,6 +253,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(85, 107, 47)",
         "background-color": "rgb(255, 99, 71)"
       }
@@ -308,6 +316,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(170, 187, 204)",
         "background-color": "rgb(255, 0, 170)"
       }
@@ -369,6 +379,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgba(170, 187, 204, 0.867)",
         "background-color": "rgba(0, 255, 0, 0.533)"
       }
@@ -430,6 +442,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(161, 178, 195)",
         "background-color": "rgb(11, 28, 45)"
       }
@@ -491,6 +505,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgba(161, 178, 195, 0.498)",
         "background-color": "rgba(16, 32, 48, 0.9)"
       }
@@ -552,6 +568,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(10, 21, 31)",
         "background-color": "rgb(77, 129, 255)"
       }
@@ -613,6 +631,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(255, 0, 20)",
         "background-color": "rgba(0, 2, 3, 0.125)"
       }
@@ -674,6 +694,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgba(1, 2, 3, 0.3)",
         "background-color": "rgba(26, 51, 77, 0.996)"
       }
@@ -735,6 +757,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgba(11, 20, 255, 0.333)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -796,6 +820,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(255, 9, 0)",
         "background-color": "rgb(255, 42, 0)"
       }
@@ -857,6 +883,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(191, 77, 64)",
         "background-color": "rgb(191, 93, 64)"
       }
@@ -918,6 +946,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(0, 255, 255)",
         "background-color": "rgb(194, 190, 112)"
       }
@@ -979,6 +1009,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(179, 201, 156)",
         "background-color": "rgba(255, 0, 128, 0.4)"
       }
@@ -1040,6 +1072,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgba(128, 0, 128, 0.5)",
         "background-color": "rgb(247, 248, 249)"
       }
@@ -1101,6 +1135,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(195, 68, 18)",
         "background-color": "rgba(191, 64, 64, 0.25)"
       }
@@ -1162,6 +1198,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(102, 51, 153)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -1223,6 +1261,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(255, 127, 80)",
         "background-color": "rgb(255, 127, 80)"
       }
@@ -1284,6 +1324,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(18, 52, 86)",
         "background-color": "rgba(0, 0, 0, 0)"
       }
@@ -1345,6 +1387,8 @@
         "font-family": "Times",
         "line-height": "normal",
         "text-align": "start",
+        "white-space-collapse": "collapse",
+        "text-wrap-mode": "wrap",
         "color": "rgb(18, 52, 86)",
         "background-color": "rgba(0, 0, 0, 0)"
       }

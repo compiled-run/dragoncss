@@ -9,6 +9,8 @@ export type CompilerFaults = {
   readonly colourOnly: boolean;
   /** The resolver ignores the state on this element address: its classes and attributes keep their initial-assignment values. */
   readonly stateCollapse: string | null;
+  /** The resolver does not write the inherited font-size onto text nodes: each text node's font-size reverts to its initial value. */
+  readonly dropInheritedText: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false };

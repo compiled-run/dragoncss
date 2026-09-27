@@ -108,17 +108,31 @@ export type LayoutStyle = {
 
 export type TextFont = { readonly family: 'Ahem'; readonly size: number };
 
+/** css-text-4 §3.1 white-space-collapse: only collapse is supported; the compiler has already applied phase I collapsing. */
+export type WhiteSpaceCollapse = 'collapse';
+/** css-text-4 §5.1 text-wrap-mode. */
+export type TextWrapMode = 'wrap' | 'nowrap';
+
+/** A text run with every inherited text property written on it by the compiler (goal.md principle 3). */
 export type TextLeaf = {
   readonly kind: 'text';
   readonly id: string;
+  /** Text after white-space phase I collapsing (css-text-3 §4.1.1): no tabs, segment breaks or doubled spaces. */
   readonly text: string;
   readonly font: TextFont;
   readonly lineHeight: LineHeightValue;
+  readonly whiteSpaceCollapse: WhiteSpaceCollapse;
+  readonly textWrapMode: TextWrapMode;
 };
 
+/** element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4). */
+export type BoxType = 'element' | 'anonymous';
+
+/** Children are either all boxes or all text leaves: the compiler wraps mixed text in anonymous boxes. */
 export type LayoutBox = {
   readonly kind: 'box';
   readonly id: string;
+  readonly boxType: BoxType;
   readonly style: LayoutStyle;
   readonly children: readonly (LayoutBox | TextLeaf)[];
 };

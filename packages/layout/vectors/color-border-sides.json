@@ -8,6 +8,7 @@
   "root": {
    "kind": "box",
    "id": "html",
+   "boxType": "element",
    "style": {
     "display": "block",
     "position": "static",
@@ -105,6 +106,7 @@
     {
      "kind": "box",
      "id": "body",
+     "boxType": "element",
      "style": {
       "display": "block",
       "position": "static",
@@ -202,6 +204,7 @@
       {
        "kind": "box",
        "id": "sides",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -302,6 +305,7 @@
       {
        "kind": "box",
        "id": "four",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -402,6 +406,7 @@
       {
        "kind": "box",
        "id": "one",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -502,6 +507,7 @@
       {
        "kind": "box",
        "id": "mixed",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -602,6 +608,7 @@
       {
        "kind": "box",
        "id": "long",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -702,6 +709,7 @@
       {
        "kind": "box",
        "id": "outer",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -799,6 +807,7 @@
         {
          "kind": "box",
          "id": "inner",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -898,6 +907,7 @@
           {
            "kind": "box",
            "id": "cc",
+           "boxType": "element",
            "style": {
             "display": "block",
             "position": "static",
@@ -1002,6 +1012,7 @@
       {
        "kind": "box",
        "id": "dotted",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -1107,6 +1118,7 @@
  "output": [
   {
    "id": "html",
+   "parent": null,
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -1114,6 +1126,7 @@
   },
   {
    "id": "body",
+   "parent": "html",
    "x": 0,
    "y": 192,
    "width": 25600,
@@ -1121,6 +1134,7 @@
   },
   {
    "id": "sides",
+   "parent": "body",
    "x": 192,
    "y": 0,
    "width": 3584,
@@ -1128,6 +1142,7 @@
   },
   {
    "id": "four",
+   "parent": "body",
    "x": 192,
    "y": 1728,
    "width": 3456,
@@ -1135,6 +1150,7 @@
   },
   {
    "id": "one",
+   "parent": "body",
    "x": 192,
    "y": 3456,
    "width": 3328,
@@ -1142,6 +1158,7 @@
   },
   {
    "id": "mixed",
+   "parent": "body",
    "x": 192,
    "y": 5056,
    "width": 3584,
@@ -1149,6 +1166,7 @@
   },
   {
    "id": "long",
+   "parent": "body",
    "x": 192,
    "y": 7040,
    "width": 3584,
@@ -1156,6 +1174,7 @@
   },
   {
    "id": "outer",
+   "parent": "body",
    "x": 0,
    "y": 8896,
    "width": 25600,
@@ -1163,6 +1182,7 @@
   },
   {
    "id": "inner",
+   "parent": "outer",
    "x": 512,
    "y": 512,
    "width": 3328,
@@ -1170,6 +1190,7 @@
   },
   {
    "id": "cc",
+   "parent": "inner",
    "x": 256,
    "y": 256,
    "width": 3328,
@@ -1177,6 +1198,7 @@
   },
   {
    "id": "dotted",
+   "parent": "body",
    "x": 192,
    "y": 11520,
    "width": 3456,

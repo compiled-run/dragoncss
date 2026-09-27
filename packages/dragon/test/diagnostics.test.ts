@@ -84,6 +84,28 @@ describe('guarded fixes', () => {
     expect(applyFix({ title: 't', manual: 'do it' }, c.sources)).toEqual({ kind: 'manual', instruction: 'do it' });
   });
 
+  it('MF3: two edits that start at one offset in one source, either an insertion, are refused as stale in both orders', () => {
+    const files = [...src.files.values()];
+    const css = src.ref('app.css');
+    const at = (start: number, end: number, replacement: string) => ({ span: { source: css, start, end }, replacement });
+    const pairs = [
+      [at(3, 3, 'X'), at(3, 3, 'Y')],
+      [at(3, 3, 'Y'), at(3, 3, 'X')],
+      [at(3, 3, 'X'), at(3, 5, 'Z')],
+      [at(3, 5, 'Z'), at(3, 3, 'X')],
+    ];
+    for (const edits of pairs) {
+      const r = applyFix({ title: 'two edits', edits }, files);
+      expect(r.kind, JSON.stringify(edits.map((e) => [e.span.start, e.span.end, e.replacement]))).toBe('stale');
+      expect(r.kind === 'stale' && r.reason).toMatch(/offset 3/);
+    }
+    // An insertion where another edit ends, or two edits at different offsets, has one result whatever the order.
+    for (const edits of [[at(1, 3, 'Q'), at(3, 3, 'X')], [at(3, 3, 'X'), at(1, 3, 'Q')]]) {
+      const r = applyFix({ title: 'adjacent', edits }, files);
+      expect(r.kind === 'applied' && r.texts.get(css.uri)).toBe(`.QX{ width: 10px; height: 1px !important; }\n.b { float: left; }\n`);
+    }
+  });
+
   it('formatDiagnostic locates origins through the source registry, lines and columns 1-based', () => {
     const c = both().compile(input(src));
     const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_PROPERTY') as Diagnostic;

@@ -8,6 +8,7 @@
   "root": {
    "kind": "box",
    "id": "html",
+   "boxType": "element",
    "style": {
     "display": "block",
     "position": "static",
@@ -105,6 +106,7 @@
     {
      "kind": "box",
      "id": "body",
+     "boxType": "element",
      "style": {
       "display": "block",
       "position": "static",
@@ -202,6 +204,7 @@
       {
        "kind": "box",
        "id": "box",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -301,6 +304,7 @@
         {
          "kind": "box",
          "id": "box-child",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -402,6 +406,7 @@
       {
        "kind": "box",
        "id": "box2",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -500,6 +505,7 @@
         {
          "kind": "box",
          "id": "box2-a",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -599,6 +605,7 @@
         {
          "kind": "box",
          "id": "box2-b",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -700,6 +707,7 @@
       {
        "kind": "box",
        "id": "auto",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -797,6 +805,7 @@
         {
          "kind": "box",
          "id": "auto-child",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -903,6 +912,7 @@
  "output": [
   {
    "id": "html",
+   "parent": null,
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -910,6 +920,7 @@
   },
   {
    "id": "body",
+   "parent": "html",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -917,6 +928,7 @@
   },
   {
    "id": "box",
+   "parent": "body",
    "x": 768,
    "y": 0,
    "width": 8384,
@@ -924,6 +936,7 @@
   },
   {
    "id": "box-child",
+   "parent": "box",
    "x": 1472,
    "y": 832,
    "width": 6400,
@@ -931,6 +944,7 @@
   },
   {
    "id": "box2",
+   "parent": "body",
    "x": 0,
    "y": 5184,
    "width": 13696,
@@ -938,6 +952,7 @@
   },
   {
    "id": "box2-a",
+   "parent": "box2",
    "x": 512,
    "y": 320,
    "width": 12800,
@@ -945,6 +960,7 @@
   },
   {
    "id": "box2-b",
+   "parent": "box2",
    "x": 512,
    "y": 960,
    "width": 12800,
@@ -952,6 +968,7 @@
   },
   {
    "id": "auto",
+   "parent": "body",
    "x": 0,
    "y": 7232,
    "width": 25600,
@@ -959,6 +976,7 @@
   },
   {
    "id": "auto-child",
+   "parent": "auto",
    "x": 704,
    "y": 512,
    "width": 24192,

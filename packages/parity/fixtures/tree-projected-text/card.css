@@ -1,0 +1,5 @@
+.card { width: 50px; padding: 2px; border: 1px solid #333; }
+.head { color: #a00; margin-bottom: 3px; }
+.card.large .head { font-size: 20px; }
+.head.dense { line-height: 7px; }
+.content { color: #0a0; line-height: 1.5; }

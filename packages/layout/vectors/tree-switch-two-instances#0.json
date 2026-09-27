@@ -8,6 +8,7 @@
   "root": {
    "kind": "box",
    "id": "html",
+   "boxType": "element",
    "style": {
     "display": "block",
     "position": "static",
@@ -105,6 +106,7 @@
     {
      "kind": "box",
      "id": "body",
+     "boxType": "element",
      "style": {
       "display": "block",
       "position": "static",
@@ -202,6 +204,7 @@
       {
        "kind": "box",
        "id": "stack",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -299,6 +302,7 @@
         {
          "kind": "box",
          "id": "a/trigger",
+         "boxType": "element",
          "style": {
           "display": "flex",
           "position": "static",
@@ -398,6 +402,7 @@
           {
            "kind": "box",
            "id": "a/knob",
+           "boxType": "element",
            "style": {
             "display": "block",
             "position": "static",
@@ -498,6 +503,7 @@
           {
            "kind": "box",
            "id": "a/label",
+           "boxType": "element",
            "style": {
             "display": "block",
             "position": "static",
@@ -603,7 +609,9 @@
              "lineHeight": {
               "kind": "px",
               "value": 16
-             }
+             },
+             "whiteSpaceCollapse": "collapse",
+             "textWrapMode": "wrap"
             }
            ]
           }
@@ -612,6 +620,7 @@
         {
          "kind": "box",
          "id": "b/trigger",
+         "boxType": "element",
          "style": {
           "display": "flex",
           "position": "static",
@@ -711,6 +720,7 @@
           {
            "kind": "box",
            "id": "b/knob",
+           "boxType": "element",
            "style": {
             "display": "block",
             "position": "static",
@@ -811,6 +821,7 @@
           {
            "kind": "box",
            "id": "b/label",
+           "boxType": "element",
            "style": {
             "display": "block",
             "position": "static",
@@ -916,7 +927,9 @@
              "lineHeight": {
               "kind": "px",
               "value": 16
-             }
+             },
+             "whiteSpaceCollapse": "collapse",
+             "textWrapMode": "wrap"
             }
            ]
           }
@@ -932,6 +945,7 @@
  "output": [
   {
    "id": "html",
+   "parent": null,
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -939,6 +953,7 @@
   },
   {
    "id": "body",
+   "parent": "html",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -946,6 +961,7 @@
   },
   {
    "id": "stack",
+   "parent": "body",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -953,6 +969,7 @@
   },
   {
    "id": "a/trigger",
+   "parent": "stack",
    "x": 256,
    "y": 256,
    "width": 7936,
@@ -960,6 +977,7 @@
   },
   {
    "id": "a/knob",
+   "parent": "a/trigger",
    "x": 128,
    "y": 128,
    "width": 1024,
@@ -967,6 +985,7 @@
   },
   {
    "id": "a/label",
+   "parent": "a/trigger",
    "x": 1408,
    "y": 128,
    "width": 1920,
@@ -974,13 +993,23 @@
   },
   {
    "id": "a/label:text0",
+   "parent": "a/label",
    "x": 0,
    "y": 192,
    "width": 1920,
    "height": 640
   },
   {
+   "id": "a/label:text0:line0",
+   "parent": "a/label:text0",
+   "x": 0,
+   "y": 0,
+   "width": 1920,
+   "height": 640
+  },
+  {
    "id": "b/trigger",
+   "parent": "stack",
    "x": 256,
    "y": 2048,
    "width": 7936,
@@ -988,6 +1017,7 @@
   },
   {
    "id": "b/knob",
+   "parent": "b/trigger",
    "x": 128,
    "y": 128,
    "width": 1024,
@@ -995,6 +1025,7 @@
   },
   {
    "id": "b/label",
+   "parent": "b/trigger",
    "x": 1408,
    "y": 128,
    "width": 1920,
@@ -1002,8 +1033,17 @@
   },
   {
    "id": "b/label:text0",
+   "parent": "b/label",
    "x": 0,
    "y": 192,
+   "width": 1920,
+   "height": 640
+  },
+  {
+   "id": "b/label:text0:line0",
+   "parent": "b/label:text0",
+   "x": 0,
+   "y": 0,
    "width": 1920,
    "height": 640
   }

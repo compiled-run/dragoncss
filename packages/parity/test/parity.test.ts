@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { chromeDeviations } from '@dragon/layout';
+import { chromeDeviations, NO_ENGINE_FAULTS } from '@dragon/layout';
 import type { Assignment, ProfileRow } from 'dragon';
 import { CATALOGUE, iosProfile, NO_FAULTS, PROPERTY_ASPECTS, webProfile } from 'dragon';
 import type { Longhand } from 'dragon';
@@ -14,7 +14,10 @@ import { GATE_DEVICE_PX } from '../src/compare.ts';
 import { ENVIRONMENT, FIXTURES } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 import type { CaseOutcome, FixtureOutcome } from '../src/pipeline.ts';
-import { runFixture } from '../src/pipeline.ts';
+import { caseCountProblems, runFixture, topologyProblems } from '../src/pipeline.ts';
+import { fixtureInput } from '../src/cases.ts';
+import { compileFixture } from '../src/pipeline.ts';
+import { readTreeExpectation } from '../src/tree-fixture.ts';
 import { deriveRows } from '../src/profile-rows.ts';
 import { buildReport, writeReport } from '../src/report.ts';
 
@@ -46,7 +49,7 @@ const recorded = async (c: ParityCase): Promise<WebCapture> => {
 };
 const describeAssignment = (a: Assignment): string => a.map((e) => `${e.state.instance}.${e.state.state}=${JSON.stringify(e.value)}`).join(',');
 
-describe.sequential('S3a parity: Chrome 145 vs Dragon, every case of every fixture (layout lane at 1 device px, dual lane exact)', () => {
+describe.sequential('S3b parity: Chrome 145 vs Dragon, every case of every fixture (layout lane at 1 device px, dual lane exact)', () => {
   it('the gate is owner decision 13: one device pixel, never per fixture', () => {
     expect(GATE_DEVICE_PX).toBe(1);
     for (const f of FIXTURES) if (f.kind === 'layout') expect(f.gate).toBe('default');
@@ -72,7 +75,7 @@ describe.sequential('S3a parity: Chrome 145 vs Dragon, every case of every fixtu
         expect(captureJson(capture), `${c.id}: the live capture must equal the committed expected file`).toBe(readFileSync(expectedPath(c.id), 'utf8'));
         return capture;
       };
-      const outcome = await runFixture(spec, browser, { authored: live, faults: NO_FAULTS, profiles: 'enforce' });
+      const outcome = await runFixture(spec, browser, { authored: live, faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
       outcomes.set(spec.id, outcome);
       expect(outcome.reason).toBeNull();
       expect(outcome.status).toBe('pass');
@@ -105,7 +108,7 @@ describe.sequential('S3a parity: Chrome 145 vs Dragon, every case of every fixtu
   });
 
   it('planted fault: swapping content-box and border-box in the ios lowering fails the layout gate', async () => {
-    const faulty = await runFixture(specFor('block-content-box-padding-border'), browser, { authored: recorded, faults: { ...NO_FAULTS, swapBoxSizing: true }, profiles: 'enforce' });
+    const faulty = await runFixture(specFor('block-content-box-padding-border'), browser, { authored: recorded, faults: { ...NO_FAULTS, swapBoxSizing: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
     const c = faulty.cases[0] as CaseOutcome;
     expect(faulty.status).toBe('fail');
     expect(c.lanes['linux-dragon-layout']).toBe('fail');
@@ -114,7 +117,7 @@ describe.sequential('S3a parity: Chrome 145 vs Dragon, every case of every fixtu
   });
 
   it('planted fault: a resolver that collapses compound-class variants fails the dual check', async () => {
-    const faulty = await runFixture(specFor('cascade-compound-variants'), browser, { authored: recorded, faults: { ...NO_FAULTS, variantCollapse: true }, profiles: 'enforce' });
+    const faulty = await runFixture(specFor('cascade-compound-variants'), browser, { authored: recorded, faults: { ...NO_FAULTS, variantCollapse: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
     const c = faulty.cases[0] as CaseOutcome;
     expect(faulty.status).toBe('fail');
     expect(c.lanes['chrome-dual']).toBe('fail');
@@ -123,7 +126,7 @@ describe.sequential('S3a parity: Chrome 145 vs Dragon, every case of every fixtu
   });
 
   it('planted fault: a colour-only resolver error fails the dual check on channels while the layout lane passes', async () => {
-    const faulty = await runFixture(specFor('color-syntax'), browser, { authored: recorded, faults: { ...NO_FAULTS, colourOnly: true }, profiles: 'enforce' });
+    const faulty = await runFixture(specFor('color-syntax'), browser, { authored: recorded, faults: { ...NO_FAULTS, colourOnly: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
     const c = faulty.cases[0] as CaseOutcome;
     expect(faulty.status).toBe('fail');
     expect(c.lanes['linux-dragon-layout']).toBe('pass');
@@ -136,7 +139,7 @@ describe.sequential('S3a parity: Chrome 145 vs Dragon, every case of every fixtu
   });
 
   it('planted fault: stateCollapse on a/trigger fails exactly the non-initial cases of instance a, and the initial cases pass', async () => {
-    const faulty = await runFixture(specFor('tree-switch-two-instances'), browser, { authored: recorded, faults: { ...NO_FAULTS, stateCollapse: 'a/trigger' }, profiles: 'enforce' });
+    const faulty = await runFixture(specFor('tree-switch-two-instances'), browser, { authored: recorded, faults: { ...NO_FAULTS, stateCollapse: 'a/trigger' }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
     expect(faulty.status).toBe('fail');
     expect(faulty.cases.length).toBe(16);
     const aAtInitial = (c: CaseOutcome): boolean => c.assignment.filter((e) => e.state.instance === 'doc/a').every((e) => e.value === false);
@@ -157,6 +160,26 @@ describe.sequential('S3a parity: Chrome 145 vs Dragon, every case of every fixtu
     }
     const initial = faulty.cases.find((c) => c.isInitial);
     expect(initial?.status).toBe('pass');
+  });
+
+  it('planted fault dropInheritedText: text font-size reverts to its initial value and the multi-line fixture fails the layout lane', async () => {
+    const faulty = await runFixture(specFor('text-wrap-spaces'), browser, { authored: recorded, faults: { ...NO_FAULTS, dropInheritedText: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
+    const c = faulty.cases[0] as CaseOutcome;
+    expect(faulty.status).toBe('fail');
+    expect(c.lanes['linux-dragon-layout']).toBe('fail');
+    expect(c.lanes['chrome-dual']).toBe('pass');
+    expect(c.comparison?.problems.some((p) => /^w1:text0:line0: /.test(p))).toBe(true);
+    expect(outcomes.get('text-wrap-spaces')?.status).toBe('pass');
+  });
+
+  it('planted engine fault breakOffByOne: a break one glyph late fails text-wrap-spaces on the layout lane', async () => {
+    const faulty = await runFixture(specFor('text-wrap-spaces'), browser, { authored: recorded, faults: NO_FAULTS, engineFaults: { breakOffByOne: true }, profiles: 'enforce' });
+    const c = faulty.cases[0] as CaseOutcome;
+    expect(faulty.status).toBe('fail');
+    expect(c.lanes['linux-dragon-layout']).toBe('fail');
+    expect(c.lanes['chrome-dual']).toBe('pass');
+    expect(c.comparison?.problems.some((p) => /^w5:text0:line\d+: /.test(p))).toBe(true);
+    expect(outcomes.get('text-wrap-spaces')?.cases[0]?.lanes).toEqual({ 'linux-dragon-layout': 'pass', 'chrome-dual': 'pass' });
   });
 
   it('profile proofs (M1): every row and proof names exactly the cases that passed its lane and use its key; every used key has a row', () => {
@@ -202,30 +225,97 @@ describe.sequential('S3a parity: Chrome 145 vs Dragon, every case of every fixtu
     }
   });
 
-  it('row keys carry the formatting context (M2, M3, M9): <length-px>, and iOS text rows are single-line-text', () => {
+  it('row keys carry the formatting context (M2, M3): <length-px>; text rows are keyed by text contexts, never single-line-text', () => {
+    const textContexts = ['text-in-block', 'text-in-flex-item', 'text-in-anonymous-block', 'text-as-anonymous-flex-item'];
     for (const profile of [iosProfile, webProfile]) {
       for (const row of profile.rows) {
         expect(row.feature, row.feature).not.toMatch(/<length>/);
-        if (/^(font-family|font-size|line-height|text-align):/.test(row.feature)) expect(row.context, row.feature).toBe('single-line-text');
-        else expect(row.context, row.feature).not.toBe('single-line-text');
+        expect(row.context, row.feature).not.toBe('single-line-text');
+        if (/^(font-family|font-size|line-height|text-align|white-space-collapse|text-wrap-mode):/.test(row.feature)) expect(textContexts, row.feature).toContain(row.context);
+        else expect(row.context, row.feature).not.toMatch(/^text-/);
       }
     }
-    expect(iosProfile.rows.filter((r) => r.feature.startsWith('font-family:Ahem')).map((r) => r.context)).toEqual(['single-line-text']);
+    expect(iosProfile.rows.filter((r) => r.feature.startsWith('font-family:Ahem')).map((r) => r.context).sort()).toEqual([...textContexts].sort());
     expect(iosProfile.rows.some((r) => r.feature === 'width:<length-px>' && r.context === 'block')).toBe(true);
     expect(iosProfile.rows.some((r) => r.feature === 'margin-top:auto' && r.context === 'block')).toBe(false);
   });
 
-  it('every Chrome deviation node, across all branches (M5), passed and matches Chrome exactly at 1/64 px in this run', () => {
+  it('every text row context is proven by a passing case where a text node in that context wraps to 2 or more lines', () => {
+    const cases = allCases();
+    for (const [target, profile] of [['ios', iosProfile], ['web', webProfile]] as const) {
+      const contexts = [...new Set(profile.rows.filter((r) => r.context.startsWith('text-')).map((r) => r.context))];
+      expect(contexts.length).toBeGreaterThan(0);
+      for (const context of contexts) {
+        const proofCases = new Set(profile.rows.filter((r) => r.context === context).flatMap((r) => r.proofs.flatMap((p) => p.cases)));
+        const wrapped = cases.filter((c) => proofCases.has(c.id) && c.status === 'pass' && c.textLines.some((t) => t.context === context && t.lines >= 2));
+        expect(wrapped.length, `${target} ${context}: a proving case with a text node on 2 or more lines`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('every Chrome deviation branch (M5) has a node, and every node passed and matches Chrome exactly at 1/64 px in this run', () => {
     for (const d of chromeDeviations) {
-      expect(outcomes.get(d.fixture)?.status, `${d.id} -> ${d.fixture}`).toBe('pass');
-      expect(d.nodes.length, d.id).toBeGreaterThan(0);
+      expect(d.branches.length, d.id).toBeGreaterThan(0);
+      for (const b of d.branches) expect(d.nodes.filter((n) => n.branch === b.id).length, `${d.id} branch ${b.id}`).toBeGreaterThan(0);
       for (const n of d.nodes) {
-        const node = outcomes.get(d.fixture)?.cases.flatMap((c) => c.comparison?.nodes ?? []).find((x) => x.id === n.node);
+        expect(d.branches.map((b) => b.id), `${d.id} ${n.node}`).toContain(n.branch);
+        expect(outcomes.get(n.fixture)?.status, `${d.id} -> ${n.fixture}`).toBe('pass');
+        const node = outcomes.get(n.fixture)?.cases.flatMap((c) => c.comparison?.nodes ?? []).find((x) => x.id === n.node);
         expect(node?.exactLu, `${d.id} ${n.branch} -> ${n.node} matches Chrome at 1/64 px`).toBe(true);
       }
     }
-    const branches = chromeDeviations.find((d) => d.id === 'min-max-end-margin')?.nodes.map((n) => n.node);
-    for (const p of ['p4', 'p5', 'p6', 'p9']) expect(branches, p).toContain(p);
+    const branchOf = (id: string, node: string) => chromeDeviations.find((d) => d.id === id)?.nodes.find((n) => n.node === node)?.branch;
+    expect(['p4', 'p6', 'p9'].map((p) => branchOf('min-max-end-margin', p))).toEqual(['dropped', 'dropped', 'dropped']);
+    expect(['p5', 'p7'].map((p) => branchOf('min-max-end-margin', p))).toEqual(['collapsed-through', 'collapsed-through']);
+  });
+
+  it('case counts (MF1): each tree fixture declares by hand its free states, case count and initial assignment; renderer and Dragon agree', () => {
+    const trees = FIXTURES.filter((f) => f.format === 'tree' && f.kind === 'layout');
+    expect(trees.length).toBeGreaterThanOrEqual(13);
+    for (const spec of trees) {
+      const declared = readTreeExpectation(spec.id);
+      if (declared === null) throw new Error(`${spec.id} declares no expectations`);
+      const o = outcomes.get(spec.id) as FixtureOutcome;
+      expect([o.expectedCases, o.rendererCases, o.dragonCases, o.cases.length], spec.id).toEqual([declared.cases, declared.cases, declared.cases, declared.cases]);
+      const initial = o.cases.filter((c) => c.isInitial);
+      expect(initial.length, spec.id).toBe(1);
+      expect((initial[0] as CaseOutcome).assignment.map((e) => ({ instance: e.state.instance, state: e.state.state, value: e.value })), spec.id).toEqual(declared.initial);
+      const { input, compiled } = compileFixture(spec);
+      expect(caseCountProblems(declared, input, compiled), spec.id).toEqual([]);
+      // A declaration that disagrees in any of the three parts is caught against both the renderer and Dragon.
+      const wrongCount = caseCountProblems({ ...declared, cases: declared.cases + 1 }, input, compiled);
+      expect(wrongCount.some((p) => p.includes('renderer')) && wrongCount.some((p) => p.includes('Dragon')), spec.id).toBe(true);
+      if (declared.freeStates.length > 0) {
+        const first = declared.freeStates[0] as (typeof declared.freeStates)[number];
+        const flipped = { ...declared, initial: declared.initial.map((e, i) => (i === 0 ? { ...e, value: first.domain.find((v) => v !== e.value) as typeof e.value } : e)) };
+        const wrongInitial = caseCountProblems(flipped, input, compiled);
+        expect(wrongInitial.some((p) => p.includes("renderer's initial")) && wrongInitial.some((p) => p.includes("Dragon's initial")), spec.id).toBe(true);
+        const wrongDomain = caseCountProblems({ ...declared, freeStates: [{ ...first, domain: [...first.domain].reverse() }, ...declared.freeStates.slice(1)] }, input, compiled);
+        expect(wrongDomain.some((p) => p.includes('renderer free states')) && wrongDomain.some((p) => p.includes("Dragon's free states")), spec.id).toBe(true);
+      }
+    }
+  });
+
+  it('text topology (docs/api.md §10): every tree case equals the declared mapping; projected text keeps its owner and inherits from its insertion parent', () => {
+    for (const spec of FIXTURES.filter((f) => f.format === 'tree' && f.kind === 'layout')) {
+      const declared = readTreeExpectation(spec.id);
+      if (declared === null) throw new Error(spec.id);
+      const o = outcomes.get(spec.id) as FixtureOutcome;
+      expect(topologyProblems(declared, fixtureInput(spec), o.cases), spec.id).toEqual([]);
+    }
+    const projected = outcomes.get('tree-projected-text') as FixtureOutcome;
+    expect(projected.cases.length).toBe(4);
+    for (const c of projected.cases) {
+      const title = c.topology?.find((t) => t.address === 'card/head:text0');
+      expect(title, c.id).toMatchObject({ component: 'App', template: 'title-text', ownerInstance: 'doc', insertionParent: 'card/head', context: 'text-in-block' });
+      for (const origin of Object.values(title?.inherited ?? {})) expect(origin, c.id).toMatchObject({ kind: 'inherited', element: 'card/head' });
+      expect(c.topology?.find((t) => t.address === 'card/head:text1'), c.id).toMatchObject({ component: 'Card', ownerInstance: 'doc/card', insertionParent: 'card/head' });
+    }
+    // The insertion parent's state changes the projected text's size: small vs large puts it on 2 vs 3 lines.
+    expect(projected.cases.map((c) => c.textLines.find((t) => t.address === 'card/head:text0')?.lines)).toEqual([2, 2, 3, 3]);
+    const tampered = { ...(readTreeExpectation('tree-projected-text') as NonNullable<ReturnType<typeof readTreeExpectation>>) };
+    const wrongOwner = { ...tampered, textTopology: tampered.textTopology.map((t) => (t.address === 'card/head:text0' ? { ...t, component: 'Card' } : t)) };
+    expect(topologyProblems(wrongOwner, fixtureInput(specFor('tree-projected-text')), projected.cases).length).toBe(4);
   });
 
   it('distribution (M4): flex-distribution-grid passes, and the S1 truncation model mismatches committed nodes in every mode', () => {
@@ -266,18 +356,24 @@ describe.sequential('S3a parity: Chrome 145 vs Dragon, every case of every fixtu
     }
   });
 
-  it('writes the report: at least 50 fixtures, every case listed and passing, case counts equal the domain products', () => {
+  it('writes the report: at least 67 fixtures (57 layout), every case listed and passing, anonymous boxes and line fragments listed', () => {
     const ordered = FIXTURES.map((f) => outcomes.get(f.id)).filter((o): o is FixtureOutcome => o !== undefined);
     expect(ordered.length).toBe(FIXTURES.length);
     const report = buildReport(ordered);
     writeReport(report);
-    expect(report.summary.fixtures).toBeGreaterThanOrEqual(50);
+    expect(report.summary.fixtures).toBeGreaterThanOrEqual(67);
+    expect(report.summary.layoutFixtures).toBeGreaterThanOrEqual(57);
+    expect(report.summary.lineNodes).toBeGreaterThan(0);
+    expect(report.summary.lineNodesExact).toBe(report.summary.lineNodes);
+    expect(report.summary.anonymousBoxes.length).toBeGreaterThan(0);
+    for (const a of report.summary.anonymousBoxes) expect(a.lines.length, a.id).toBeGreaterThan(0);
     expect(report.summary.failed).toBe(0);
     expect(report.summary.unsupportedCodes).toEqual([]);
     expect(report.summary.casesPassed).toBe(report.summary.cases);
     for (const o of ordered) for (const c of o.cases) expect(c.lanes, c.id).toEqual({ 'linux-dragon-layout': 'pass', 'chrome-dual': 'pass' });
     for (const cc of report.summary.caseCounts) {
       expect(cc.cases.length, cc.fixture).toBe(cc.expected);
+      expect(cc.renderer, cc.fixture).toBe(cc.expected);
       expect(cc.dragon, cc.fixture).toBe(cc.expected);
     }
     expect(report.summary.caseCounts.find((c) => c.fixture === 'tree-switch-two-instances')?.cases.length).toBe(16);

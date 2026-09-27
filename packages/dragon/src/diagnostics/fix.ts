@@ -29,7 +29,13 @@ export function applyFix(fix: Fix, sources: readonly SourceFile[]): FixResult {
   for (const [uri, edits] of bySource) {
     const sorted = [...edits].sort((a, b) => a.start - b.start);
     for (let i = 1; i < sorted.length; i++) {
-      if ((sorted[i] as { start: number }).start < (sorted[i - 1] as { end: number }).end) return { kind: 'stale', reason: `overlapping edits in ${uri}` };
+      const prev = sorted[i - 1] as { start: number; end: number };
+      const next = sorted[i] as { start: number; end: number };
+      // MF3: two edits starting at one offset, one of them an insertion, have no order-independent result.
+      if (next.start === prev.start && (prev.start === prev.end || next.start === next.end)) {
+        return { kind: 'stale', reason: `two edits start at offset ${next.start} in ${uri} and one inserts, so their order is ambiguous` };
+      }
+      if (next.start < prev.end) return { kind: 'stale', reason: `overlapping edits in ${uri}` };
     }
     let text = (sources.find((s) => s.ref.uri === uri) as SourceFile).text;
     for (const e of sorted.reverse()) text = text.slice(0, e.start) + e.replacement + text.slice(e.end);

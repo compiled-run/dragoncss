@@ -104,7 +104,7 @@ describe('flex auto margins and distribution', () => {
   });
 });
 
-describe('engine refuses what S2 does not support', () => {
+describe('engine refuses what milestone 1 does not support yet', () => {
   it('percentage height against a stretched size that is not definite returns percent-height-flex', () => {
     const r = run(box('root', {}, [box('c', { display: 'flex' }, [box('i', {}, [box('k', { height: pct(50) })]), box('j', { height: px(10) })])]));
     expect(r.kind === 'unsupported' && r.unsupported.code).toBe('percent-height-flex');
@@ -112,11 +112,6 @@ describe('engine refuses what S2 does not support', () => {
   it('intrinsic inline size of a multi-line column container returns flex-intrinsic-wrap-column', () => {
     const r = run(box('root', {}, [box('h', { display: 'flex', alignItems: 'flex-start' }, [box('w', { display: 'flex', flexDirection: 'column', flexWrap: 'wrap', height: px(10) })])]));
     expect(r.kind === 'unsupported' && r.unsupported.code).toBe('flex-intrinsic-wrap-column');
-  });
-  it('wrapping text returns multi-line-text', () => {
-    const t = { kind: 'text', id: 't', text: 'XX XX', font: { family: 'Ahem', size: 10 }, lineHeight: { kind: 'normal' } } as const;
-    const r = run(box('root', {}, [box('a', { width: px(30) }, [t])]));
-    expect(r.kind === 'unsupported' && r.unsupported.code).toBe('multi-line-text');
   });
   it('rtl returns direction-rtl', () => {
     const r = run(box('root', { direction: 'rtl' }));

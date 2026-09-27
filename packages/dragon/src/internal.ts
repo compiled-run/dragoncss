@@ -1,13 +1,16 @@
 // Internal entry for the parity harness, selected by the "dragon-internal" export condition. Not a public API.
 import type { LayoutInput } from '@dragon/layout';
+import type { TextContext } from './analysis/context.ts';
+import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
 import type { Rgba8 } from './css/color.ts';
 import { TRANSPARENT } from './css/color.ts';
-import type { ColorLonghand } from './css/properties.ts';
-import { COLOR_LONGHANDS } from './css/properties.ts';
+import type { ColorLonghand, TextLonghand } from './css/properties.ts';
+import { COLOR_LONGHANDS, TEXT_LONGHANDS } from './css/properties.ts';
 import type { InternalCase } from './project.ts';
-import { caseByAssignment, internalRecord } from './project.ts';
-import type { Assignment, Target } from './types.ts';
+import { caseByAssignment, internalRecord, valueOrigin } from './project.ts';
+import { webrefVersion } from './css/grammar.generated.ts';
+import type { Assignment, Origin, Target } from './types.ts';
 
 export * from './index.ts';
 export { createProjectWith, COMPILER_VERSION } from './project.ts';
@@ -31,7 +34,9 @@ export { DIAGNOSTIC_CODES } from './diagnostics/codes.ts';
 export { applyFix } from './diagnostics/fix.ts';
 export type { FixResult } from './diagnostics/fix.ts';
 export { MAX_STATE_ASSIGNMENTS, assignmentKey } from './analysis/link.ts';
-export type { FormattingContext } from './analysis/context.ts';
+export type { FormattingContext, TextContext } from './analysis/context.ts';
+export { TEXT_LONGHANDS } from './css/properties.ts';
+export type { TextLonghand } from './css/properties.ts';
 
 /** The reference environment of one parity case (docs/api.md §7): viewport and device pixel ratio are inputs, not constants. */
 export type Environment = {
@@ -111,6 +116,75 @@ export function resolvedColors(compiled: object, assignment: Assignment): Readon
   const walk = (el: ResolvedElement): void => {
     out.set(el.element.address, usedColors(el));
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+  };
+  walk(c.resolved);
+  return out;
+}
+
+/** One laid-out text node of a case (docs/api.md §10, projected literal text): who authored it and where it is inserted. */
+export type TextTopologyEntry = {
+  readonly address: string;
+  /** The component whose template authored the text, and the template node id. */
+  readonly component: string;
+  readonly template: string;
+  readonly origin: Origin;
+  /** The instance that authored the text: projected text keeps its caller's. */
+  readonly ownerInstance: string;
+  /** The element the text is inserted under in the logical tree; its inherited styles come from here. */
+  readonly insertionParent: string;
+  readonly context: TextContext;
+  readonly inherited: { readonly [P in TextLonghand]: Origin };
+};
+
+/** The text topology of one case, in document order: every text node that survives white-space collapsing. */
+export function textTopology(compiled: object, assignment: Assignment): readonly TextTopologyEntry[] | null {
+  const c = caseOf(compiled, assignment);
+  if (typeof c === 'string' || c.resolved === null) return null;
+  const root = c.resolved;
+  const out: TextTopologyEntry[] = [];
+  const walk = (el: ResolvedElement, parent: ResolvedElement | null): void => {
+    for (const ch of el.children) {
+      if (ch.kind === 'element') {
+        walk(ch, el);
+        continue;
+      }
+      const inherited = {} as { [P in TextLonghand]: Origin };
+      for (const p of TEXT_LONGHANDS) {
+        const v = ch.props.get(p);
+        inherited[p] = v !== undefined && v.origin === 'inherited'
+          ? { kind: 'inherited', element: el.element.address, from: valueOrigin(root, el.element.address, p) }
+          : { kind: 'builtin', dataset: `@webref/css ${webrefVersion} initial`, entry: p };
+      }
+      out.push({
+        address: ch.node.address,
+        component: ch.node.owner,
+        template: ch.node.node.id,
+        origin: ch.node.node.origin,
+        ownerInstance: ch.node.instance,
+        insertionParent: el.element.address,
+        context: textContext(el, parent),
+        inherited,
+      });
+    }
+  };
+  walk(root, null);
+  return out;
+}
+
+/** Dragon's resolved colour channels of every laid-out text node in one case, keyed by text address. */
+export function resolvedTextColors(compiled: object, assignment: Assignment): ReadonlyMap<string, Rgba8> | null {
+  const c = caseOf(compiled, assignment);
+  if (typeof c === 'string' || c.resolved === null) return null;
+  const out = new Map<string, Rgba8>();
+  const walk = (el: ResolvedElement): void => {
+    for (const ch of el.children) {
+      if (ch.kind === 'element') walk(ch);
+      else {
+        const v = ch.props.get('color');
+        if (v === undefined || v.value.kind !== 'color') throw new Error(`${ch.node.address}: color did not resolve to channels`);
+        out.set(ch.node.address, v.value.value);
+      }
+    }
   };
   walk(c.resolved);
   return out;

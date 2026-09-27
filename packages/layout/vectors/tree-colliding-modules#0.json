@@ -8,6 +8,7 @@
   "root": {
    "kind": "box",
    "id": "html",
+   "boxType": "element",
    "style": {
     "display": "block",
     "position": "static",
@@ -105,6 +106,7 @@
     {
      "kind": "box",
      "id": "body",
+     "boxType": "element",
      "style": {
       "display": "block",
       "position": "static",
@@ -202,6 +204,7 @@
       {
        "kind": "box",
        "id": "nav/bar",
+       "boxType": "element",
        "style": {
         "display": "flex",
         "position": "static",
@@ -300,6 +303,7 @@
         {
          "kind": "box",
          "id": "nav/home",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -399,6 +403,7 @@
         {
          "kind": "box",
          "id": "nav/about",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -500,6 +505,7 @@
       {
        "kind": "box",
        "id": "list/items",
+       "boxType": "element",
        "style": {
         "display": "block",
         "position": "static",
@@ -598,6 +604,7 @@
         {
          "kind": "box",
          "id": "list/one",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -697,6 +704,7 @@
         {
          "kind": "box",
          "id": "list/two",
+         "boxType": "element",
          "style": {
           "display": "block",
           "position": "static",
@@ -803,6 +811,7 @@
  "output": [
   {
    "id": "html",
+   "parent": null,
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -810,6 +819,7 @@
   },
   {
    "id": "body",
+   "parent": "html",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -817,6 +827,7 @@
   },
   {
    "id": "nav/bar",
+   "parent": "body",
    "x": 0,
    "y": 0,
    "width": 25600,
@@ -824,6 +835,7 @@
   },
   {
    "id": "nav/home",
+   "parent": "nav/bar",
    "x": 0,
    "y": 0,
    "width": 1920,
@@ -831,6 +843,7 @@
   },
   {
    "id": "nav/about",
+   "parent": "nav/bar",
    "x": 2176,
    "y": 0,
    "width": 1920,
@@ -838,6 +851,7 @@
   },
   {
    "id": "list/items",
+   "parent": "body",
    "x": 0,
    "y": 1280,
    "width": 10624,
@@ -845,6 +859,7 @@
   },
   {
    "id": "list/one",
+   "parent": "list/items",
    "x": 192,
    "y": 192,
    "width": 10240,
@@ -852,6 +867,7 @@
   },
   {
    "id": "list/two",
+   "parent": "list/items",
    "x": 192,
    "y": 1088,
    "width": 10240,

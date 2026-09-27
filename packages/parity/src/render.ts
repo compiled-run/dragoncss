@@ -196,15 +196,19 @@ export function authoredModel(input: FrontEndResult): AuthoredModel {
     const head = classes.kind === 'authored'
       ? authoredCss.map((css) => `<style>${css}</style>`).join('')
       : `<style>${classes.css}</style>`;
-    const out = (nodes: readonly TreeNode[], inst: Inst): string => nodes.map((n) => {
+    // Each tree text node is written as its own DOM text node, text byte for byte: the HTML parser would merge adjacent text,
+    // so an empty comment (no box, no layout effect) separates text that follows text in the same parent.
+    type Part = { readonly text: boolean; readonly html: string };
+    const join = (parts: readonly Part[]): string => parts.map((p, i) => (p.text && i > 0 && (parts[i - 1] as Part).text ? `<!---->${p.html}` : p.html)).join('');
+    const out = (nodes: readonly TreeNode[], inst: Inst): Part[] => nodes.flatMap((n): Part[] => {
       switch (n.kind) {
         case 'text':
-          return escText(n.text);
+          return [{ text: true, html: escText(n.text) }];
         case 'call':
           return out((instances.get(`${inst.path}/${n.id}`) as Inst).component.root, instances.get(`${inst.path}/${n.id}`) as Inst);
         case 'projection': {
           const slot = inst.slots.get(n.slot);
-          return slot === undefined ? '' : out(slot.children, slot.caller);
+          return slot === undefined ? [] : out(slot.children, slot.caller);
         }
         case 'branch':
           return out(holds(n.when, inst) ? n.then : n.else, inst);
@@ -220,12 +224,12 @@ export function authoredModel(input: FrontEndResult): AuthoredModel {
           }
           const attrs = n.attributes.map((a) => [a.name, pick(a.value, inst)] as const).filter((a): a is readonly [string, string] => a[1] !== null);
           const open = `<${n.tag} data-dragon-id="${escAttr(address)}"${cls === '' ? '' : ` class="${escAttr(cls)}"`}${attrs.map(([k, v]) => ` ${k}="${escAttr(v)}"`).join('')}>`;
-          const inner = n.tag === 'html' ? `<head>${head}</head>${out(n.children, inst)}` : out(n.children, inst);
-          return `${open}${inner}</${n.tag}>`;
+          const inner = n.tag === 'html' ? `<head>${head}</head>${join(out(n.children, inst))}` : join(out(n.children, inst));
+          return [{ text: false, html: `${open}${inner}</${n.tag}>` }];
         }
       }
-    }).join('');
-    return `<!DOCTYPE html>\n${out(comp(doc.rootInstance).root, instances.get(doc.id) as Inst)}\n`;
+    });
+    return `<!DOCTYPE html>\n${join(out(comp(doc.rootInstance).root, instances.get(doc.id) as Inst))}\n`;
   };
   return { free, assignments, initialIndex, render };
 }

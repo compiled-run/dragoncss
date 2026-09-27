@@ -55,7 +55,19 @@ export type LinkedElement = {
   readonly children: readonly (LinkedElement | LinkedText)[];
 };
 
-export type LinkedText = { readonly kind: 'text'; readonly address: string; readonly node: TextNode; readonly instance: string; readonly text: string };
+/**
+ * Literal text in the logical tree. address: "<insertion parent>:text<k>" (k counts text that is not whitespace-only), or
+ * "<insertion parent>:space<k>" for whitespace-only text (k counts those), so no text node shares an address (MF4).
+ * owner and instance are the authoring component and instance: projected text keeps its caller's (docs/api.md §3.1).
+ */
+export type LinkedText = {
+  readonly kind: 'text';
+  readonly address: string;
+  readonly node: TextNode;
+  readonly instance: string;
+  readonly owner: string;
+  readonly text: string;
+};
 
 export type CaseTree = {
   /** Canonical key of the assignment: typed values, so true, "true" and 1 differ. */
@@ -319,7 +331,7 @@ export function linkDocument(valid: ValidInput, options: LinkOptions, diagnostic
             break;
           }
           case 'text':
-            out.push({ kind: 'text', address: '', node: n, instance: inst.path, text: n.text });
+            out.push({ kind: 'text', address: '', node: n, instance: inst.path, owner: inst.component.id, text: n.text });
             break;
           case 'call':
             out.push(...build((instances.get(`${inst.path}/${n.id}`) as Instance).component.root, instances.get(`${inst.path}/${n.id}`) as Instance));
@@ -346,8 +358,9 @@ export function linkDocument(valid: ValidInput, options: LinkOptions, diagnostic
 
 const BLANK = /^[ \t\n\r\f]*$/;
 
-/** Text children are addressed "<element address>:text<k>", counting only text that is not whitespace-only. */
+/** Text children are addressed "<element address>:text<k>", and whitespace-only text "<element address>:space<k>". */
 function numberTexts(parent: string, children: (LinkedElement | LinkedText)[]): (LinkedElement | LinkedText)[] {
   let k = 0;
-  return children.map((c) => (c.kind === 'text' && !BLANK.test(c.text) ? { ...c, address: `${parent}:text${k++}` } : c));
+  let blank = 0;
+  return children.map((c) => (c.kind !== 'text' ? c : { ...c, address: BLANK.test(c.text) ? `${parent}:space${blank++}` : `${parent}:text${k++}` }));
 }
