@@ -29,6 +29,9 @@ export type Frag = {
 };
 export type Placed = { readonly frag: Frag; readonly x: LU; readonly y: LU };
 
+/** A point in LU. */
+export type Point = { readonly x: LU; readonly y: LU };
+
 /** How a box's percentage block sizes can resolve against its containing block. */
 export type HeightBasis =
   | { readonly kind: 'indefinite' }

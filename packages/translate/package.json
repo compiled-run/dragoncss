@@ -1,0 +1,9 @@
+{
+  "name": "@dragon/translate",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Translates the TypeScript layout engine to Swift and Kotlin from a checked subset, and proves the translations bit for bit against the shared vectors and a differential corpus.",
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {}
+}

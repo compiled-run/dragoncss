@@ -4,7 +4,7 @@
 import type { LayoutBox, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, divInt, floorToWholePx, fromCssPx, lineHeightFromNumber, max, min, mulInt, sub, ZERO } from './units.ts';
-import type { Frag, Placed } from './box.ts';
+import type { Frag, Placed, Point } from './box.ts';
 import type { Ctx } from './block.ts';
 import { directionOf } from './block.ts';
 import { unsupported } from './unsupported.ts';
@@ -31,7 +31,20 @@ type Run = {
 type Line = { readonly start: number; readonly end: number; readonly visibleEnd: number };
 
 /** UAX #9: in an rtl paragraph these code points keep logical order without reordering (strong L letters, space, U+200B). */
-const RTL_SAFE = /^[A-Za-z \u200b]*$/u;
+export function isRtlSafe(text: string): boolean {
+  for (const ch of text) {
+    const cp = ch.codePointAt(0) as number;
+    const letter = (cp >= 0x41 && cp <= 0x5a) || (cp >= 0x61 && cp <= 0x7a);
+    if (!letter && cp !== SPACE && cp !== ZWSP) return false;
+  }
+  return true;
+}
+
+/** One code point of an rtl paragraph and the leaf it belongs to. */
+type LeafChar = { readonly id: string; readonly ch: string };
+
+/** Chars [start, end) between two soft wrap opportunities. */
+type Segment = { readonly start: number; readonly end: number };
 
 // UAX #9 with css-writing-modes-4 §2.4: in an rtl paragraph, strong-L letters with the spaces and U+200B between them form one
 // left-to-right run, so every line keeps logical order. Digits, punctuation and other neutrals would be reordered (W and N rules),
@@ -39,13 +52,13 @@ const RTL_SAFE = /^[A-Za-z \u200b]*$/u;
 // notes/T035-slice-4a.md). Both are refused rather than laid out as ltr.
 function checkRtlText(box: LayoutBox, leaves: readonly TextLeaf[]): void {
   for (const t of leaves) {
-    if (!RTL_SAFE.test(t.text)) unsupported('bidi-neutral', t.id, 'UAX #9 W1-W7, N1-N2', `text in the rtl paragraph of ${box.id} holds a character other than A-Z, a-z, space and U+200B`);
+    if (!isRtlSafe(t.text)) unsupported('bidi-neutral', t.id, 'UAX #9 W1-W7, N1-N2', `text in the rtl paragraph of ${box.id} holds a character other than A-Z, a-z, space and U+200B`);
   }
   // UAX #9 L1: the whitespace sequence ending the paragraph (spaces and U+200B) takes the paragraph level, so a U+200B in it
   // becomes its own fragment; the leaf holding the first such U+200B is named.
-  const chars = leaves.flatMap((t) => [...t.text].map((ch) => ({ id: t.id, ch })));
+  const chars = leaves.flatMap((t) => [...t.text].map((ch): LeafChar => ({ id: t.id, ch })));
   let k = chars.length;
-  while (k > 0 && ((chars[k - 1] as { ch: string }).ch === ' ' || (chars[k - 1] as { ch: string }).ch === '\u200b')) k--;
+  while (k > 0 && ((chars[k - 1] as LeafChar).ch === ' ' || (chars[k - 1] as LeafChar).ch === '\u200b')) k--;
   const zwsp = chars.slice(k).find((c) => c.ch === '\u200b');
   if (zwsp !== undefined) unsupported('bidi-neutral', zwsp.id, 'UAX #9 L1', `U+200B in the whitespace that ends the rtl paragraph of ${box.id} would take the paragraph direction`);
 }
@@ -100,8 +113,8 @@ function breaksAfter(run: Run, i: number): boolean {
 }
 
 /** Segments between soft wrap opportunities: [start, end), each ending with the spaces or U+200B that precede its opportunity. */
-function segments(run: Run): { readonly start: number; readonly end: number }[] {
-  const out: { start: number; end: number }[] = [];
+function segments(run: Run): Segment[] {
+  const out: Segment[] = [];
   let start = 0;
   for (let i = 0; i < run.chars.length; i++) {
     if (breaksAfter(run, i)) {
@@ -182,10 +195,10 @@ type Piece = { readonly x: LU; readonly y: LU; readonly width: LU; readonly heig
 
 // CSS2 §10.8 and css-text-3 §5: lays out the leaves in line boxes stacked at k times the line height. Each leaf becomes a
 // fragment covering its per-line pieces (<leaf>:line<j>); a leaf with nothing visible on any line has no fragment.
-export function layoutInline(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], available: LU, origin: { readonly x: LU; readonly y: LU }): InlineResult {
+export function layoutInline(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], available: LU, origin: Point): InlineResult {
   const run = buildRun(ctx, box, leaves);
   const lines = run.chars.length === 0 ? [] : breakLines(ctx, run, available);
-  const pieces: Piece[][] = leaves.map(() => []);
+  const pieces: Piece[][] = leaves.map((): Piece[] => []);
   const glyphHeight = add(run.ascent, run.descent);
   lines.forEach((line, k) => {
     const offset = alignOffset(ctx, box, sub(available, width(ctx, run, line.start, line.visibleEnd)));
@@ -214,7 +227,7 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf
       right = max(right, add(p.x, p.width));
       bottom = max(bottom, add(p.y, p.height));
     }
-    const children: Placed[] = own.map((p, j) => ({ frag: { id: `${t.id}:line${j}`, width: p.width, height: p.height, baseline: null, children: [], outOfFlow: [] }, x: sub(p.x, left), y: sub(p.y, top) }));
+    const children: Placed[] = own.map((p, j): Placed => ({ frag: { id: `${t.id}:line${j}`, width: p.width, height: p.height, baseline: null, children: [], outOfFlow: [] }, x: sub(p.x, left), y: sub(p.y, top) }));
     const frag: Frag = { id: t.id, width: sub(right, left), height: sub(bottom, top), baseline: null, children, outOfFlow: [] };
     placed.push({ frag, x: add(origin.x, left), y: add(origin.y, top) });
   });

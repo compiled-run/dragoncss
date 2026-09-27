@@ -1,0 +1,289 @@
+// The Kotlin prelude: the same audited helpers as the Swift prelude (native-strategy.md sections 1.4-1.6). Planted faults swap one
+// helper for the platform shortcut it exists to avoid; each has a Swift counterpart in prelude-swift.ts.
+import type { PreludeFault } from './faults.ts';
+
+export function kotlinPrelude(fault: PreludeFault | null): string {
+  const round = fault === 'platform-round'
+    ? 'fun jsRound(x: Double): Double = kotlin.math.round(x)'
+    : `/** ECMA-262 Math.round: halves toward +infinity, -0 kept for -0.5 <= x < 0 (kotlin.math.round rounds halves to even). */
+fun jsRound(x: Double): Double {
+  if (x.isNaN() || x.isInfinite()) return x
+  if (x >= -0.5 && x < 0.0) return -0.0
+  val r = kotlin.math.floor(x)
+  return if (x - r >= 0.5) r + 1.0 else r
+}`;
+  const strKey = fault === 'canonical-equality'
+    ? `fun jsStrKey(s: String): String = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFC)
+fun jsStrEq(a: String, b: String): Boolean = jsStrKey(a) == jsStrKey(b)`
+    : `/** Kotlin String equality is UTF-16 code-unit equality, as in JS. */
+@Suppress("NOTHING_TO_INLINE") inline fun jsStrKey(s: String): String = s
+@Suppress("NOTHING_TO_INLINE") inline fun jsStrEq(a: String, b: String): Boolean = a == b`;
+  const codePoints = fault === 'character-iteration'
+    ? `fun jsCodePoints(s: String): JsArray<String> {
+  val out = JsArray<String>()
+  for (c in s) out.add(c.toString())
+  return out
+}`
+    : `/** for...of over a string: code points, a lone surrogate as itself (ECMA-262 CodePointAt). */
+fun jsCodePoints(s: String): JsArray<String> {
+  val out = JsArray<String>()
+  var i = 0
+  while (i < s.length) {
+    val c = s[i]
+    if (c.isHighSurrogate() && i + 1 < s.length && s[i + 1].isLowSurrogate()) {
+      out.add(s.substring(i, i + 2))
+      i += 2
+    } else {
+      out.add(c.toString())
+      i += 1
+    }
+  }
+  return out
+}`;
+  const sort = fault === 'unstable-sort'
+    ? `fun <T> jsSort(a: JsArray<T>, cmp: (T, T) -> Double): JsArray<T> {
+  var i = 0
+  while (i < a.size) {
+    var m = i
+    var j = i + 1
+    while (j < a.size) { if (cmp(a[m], a[j]) > 0.0) m = j; j++ }
+    if (m != i) { val t = a[i]; a[i] = a[m]; a[m] = t }
+    i++
+  }
+  return a
+}`
+    : `/** Array.prototype.sort with a comparator: a stable merge sort, as ECMA-262 requires; NaN compares as 0. */
+fun <T> jsSort(a: JsArray<T>, cmp: (T, T) -> Double): JsArray<T> {
+  if (a.size < 2) return a
+  var v = ArrayList<T>(a)
+  var tmp = ArrayList<T>(a)
+  var width = 1
+  while (width < v.size) {
+    var lo = 0
+    while (lo < v.size) {
+      val mid = minOf(lo + width, v.size)
+      val hi = minOf(lo + 2 * width, v.size)
+      var i = lo
+      var j = mid
+      var k = lo
+      while (i < mid && j < hi) {
+        if (cmp(v[i], v[j]) > 0.0) { tmp[k] = v[j]; j++ } else { tmp[k] = v[i]; i++ }
+        k++
+      }
+      while (i < mid) { tmp[k] = v[i]; i++; k++ }
+      while (j < hi) { tmp[k] = v[j]; j++; k++ }
+      lo += 2 * width
+    }
+    val t = v
+    v = tmp
+    tmp = t
+    width *= 2
+  }
+  for (x in 0 until v.size) a[x] = v[x]
+  return a
+}`;
+  const mapKind = fault === 'unordered-map' ? 'HashMap' : 'LinkedHashMap';
+  return `package dev.dragon.layout
+
+/** JS arrays are shared, growable references. */
+typealias JsArray<T> = ArrayList<T>
+
+/** new Error(message) and the base of every translated error class. */
+open class JsError(val jsMessage: String) : RuntimeException(jsMessage)
+
+fun jsUnreachable(): Nothing = throw IllegalStateException("unreachable: TypeScript proved this switch exhaustive")
+
+/** A value TypeScript's narrowing or an \`as\` assertion says is present; absent is an invariant error, as JS would throw on use. */
+fun <T> jsUnwrap(x: T?): T = x ?: throw JsError("undefined value where TypeScript asserted one")
+
+// Numbers (section 1.5): IEEE binary64 everywhere (JVM strict since Java 17, JEP 306); only library functions need helpers.
+
+@Suppress("NOTHING_TO_INLINE") inline fun jsFround(x: Double): Double = x.toFloat().toDouble()
+@Suppress("NOTHING_TO_INLINE") inline fun jsTrunc(x: Double): Double = kotlin.math.truncate(x)
+@Suppress("NOTHING_TO_INLINE") inline fun jsFloor(x: Double): Double = kotlin.math.floor(x)
+@Suppress("NOTHING_TO_INLINE") inline fun jsCeil(x: Double): Double = kotlin.math.ceil(x)
+${round}
+fun jsIsInteger(x: Double): Boolean = x.isFinite() && kotlin.math.truncate(x) == x
+
+/** ECMA-262 Number::toString for integers below 2^53; other values use the JVM's digits in JS layout (see T005 limitations). */
+fun jsNumberToString(x: Double): String {
+  if (x.isNaN()) return "NaN"
+  if (x.isInfinite()) return if (x < 0) "-Infinity" else "Infinity"
+  if (x == 0.0) return "0"
+  if (jsIsInteger(x) && kotlin.math.abs(x) < 9007199254740992.0) return x.toLong().toString()
+  val bd = java.math.BigDecimal(java.lang.Double.toString(kotlin.math.abs(x))).stripTrailingZeros()
+  val digits = bd.unscaledValue().toString()
+  val n = digits.length - bd.scale()
+  val k = digits.length
+  val out = when {
+    k <= n && n <= 21 -> digits + "0".repeat(n - k)
+    0 < n && n <= 21 -> digits.substring(0, n) + "." + digits.substring(n)
+    -6 < n && n <= 0 -> "0." + "0".repeat(-n) + digits
+    else -> {
+      val e = n - 1
+      val es = if (e < 0) "-" + (-e) else "+" + e
+      if (k == 1) digits + "e" + es else digits.substring(0, 1) + "." + digits.substring(1) + "e" + es
+    }
+  }
+  return if (x < 0) "-" + out else out
+}
+
+/** (n).toString(16) for integers. */
+fun jsToStringRadix16(x: Double): String {
+  if (!(jsIsInteger(x) && kotlin.math.abs(x) < 9007199254740992.0)) throw JsError("toString(16) of a non-integer is outside the subset")
+  return java.lang.Long.toString(x.toLong(), 16)
+}
+
+fun jsToUpperCase(s: String): String = s.uppercase()
+
+// Strings (section 1.6).
+
+${strKey}
+
+${codePoints}
+
+/** "s".codePointAt(0). */
+fun jsCodePointAt0(s: String): Double? = if (s.isEmpty()) null else s.codePointAt(0).toDouble()
+
+// Arrays.
+
+fun <T> jsArrayOf(vararg items: T): JsArray<T> {
+  val out = JsArray<T>(items.size)
+  for (x in items) out.add(x)
+  return out
+}
+
+/** An array index: an integer in range, else absent (arr[1.5] and arr[-1] are undefined in JS). */
+fun <T> jsAt(a: JsArray<T>, i: Double): T? = if (i >= 0.0 && i < a.size.toDouble() && kotlin.math.truncate(i) == i) a[i.toInt()] else null
+fun <T> jsLength(a: JsArray<T>): Double = a.size.toDouble()
+fun <T> jsPush(a: JsArray<T>, x: T): Double { a.add(x); return a.size.toDouble() }
+fun <T, U> jsMap(a: JsArray<T>, f: (T) -> U): JsArray<U> {
+  val n = a.size
+  val out = JsArray<U>(n)
+  var i = 0
+  while (i < n) { out.add(f(a[i])); i++ }
+  return out
+}
+fun <T, U> jsMapI(a: JsArray<T>, f: (T, Double) -> U): JsArray<U> {
+  val n = a.size
+  val out = JsArray<U>(n)
+  var i = 0
+  while (i < n) { out.add(f(a[i], i.toDouble())); i++ }
+  return out
+}
+fun <T> jsForEach(a: JsArray<T>, f: (T) -> Unit) {
+  val n = a.size
+  var i = 0
+  while (i < n && i < a.size) { f(a[i]); i++ }
+}
+fun <T> jsForEachI(a: JsArray<T>, f: (T, Double) -> Unit) {
+  val n = a.size
+  var i = 0
+  while (i < n && i < a.size) { f(a[i], i.toDouble()); i++ }
+}
+fun <T> jsFilter(a: JsArray<T>, f: (T) -> Boolean): JsArray<T> {
+  val n = a.size
+  val out = JsArray<T>()
+  var i = 0
+  while (i < n) { val x = a[i]; if (f(x)) out.add(x); i++ }
+  return out
+}
+fun <T> jsFind(a: JsArray<T>, f: (T) -> Boolean): T? {
+  val n = a.size
+  var i = 0
+  while (i < n) { val x = a[i]; if (f(x)) return x; i++ }
+  return null
+}
+fun <T> jsSome(a: JsArray<T>, f: (T) -> Boolean): Boolean {
+  val n = a.size
+  var i = 0
+  while (i < n) { if (f(a[i])) return true; i++ }
+  return false
+}
+fun <T, U> jsFlatMap(a: JsArray<T>, f: (T) -> JsArray<U>): JsArray<U> {
+  val n = a.size
+  val out = JsArray<U>()
+  var i = 0
+  while (i < n) { out.addAll(f(a[i])); i++ }
+  return out
+}
+/** Array.prototype.slice(start). */
+fun <T> jsSlice(a: JsArray<T>, start: Double): JsArray<T> {
+  val len = a.size.toDouble()
+  val s = if (start.isNaN()) 0.0 else kotlin.math.truncate(start)
+  val from = if (s < 0) maxOf(len + s, 0.0) else minOf(s, len)
+  return JsArray(a.subList(from.toInt(), a.size))
+}
+fun <T> jsReverse(a: JsArray<T>): JsArray<T> { a.reverse(); return a }
+fun <T> jsCopy(a: JsArray<T>): JsArray<T> = JsArray(a)
+fun <T> jsConcatArrays(parts: List<JsArray<T>>): JsArray<T> {
+  val out = JsArray<T>()
+  for (p in parts) out.addAll(p)
+  return out
+}
+@Suppress("UNCHECKED_CAST")
+fun <U> jsCastArray(a: JsArray<*>): JsArray<U> {
+  val out = JsArray<U>(a.size)
+  for (x in a) out.add(x as U)
+  return out
+}
+
+${sort}
+
+// Maps (section 1.6): JS Map iterates in insertion order.
+
+class JsStringMap<V>() {
+  private val m = ${mapKind}<String, Pair<String, V>>()
+  constructor(entries: List<Pair<String, V>>) : this() { for ((k, v) in entries) set(k, v) }
+  fun get(k: String): V? = m[jsStrKey(k)]?.second
+  fun has(k: String): Boolean = m.containsKey(jsStrKey(k))
+  fun set(k: String, v: V): JsStringMap<V> {
+    val key = jsStrKey(k)
+    val old = m[key]
+    m[key] = Pair(old?.first ?: k, v)
+    return this
+  }
+  fun entries(): List<Pair<String, V>> = m.values.toList()
+}
+
+/** A key compared by identity. */
+class JsIdKey(val o: Any) {
+  override fun equals(other: Any?): Boolean = other is JsIdKey && other.o === o
+  override fun hashCode(): Int = System.identityHashCode(o)
+}
+
+class JsObjectMap<K : Any, V>() {
+  private val m = ${mapKind}<JsIdKey, Pair<K, V>>()
+  fun get(k: K): V? = m[JsIdKey(k)]?.second
+  fun has(k: K): Boolean = m.containsKey(JsIdKey(k))
+  fun set(k: K, v: V): JsObjectMap<K, V> {
+    m[JsIdKey(k)] = Pair(k, v)
+    return this
+  }
+  fun entries(): List<Pair<K, V>> = m.values.toList()
+}
+`;
+}
+
+/** Host helpers of the translated harness. */
+export function kotlinHost(): string {
+  return `package dev.dragon.layout
+
+/** The IEEE bit pattern of a double as 16 lowercase hex digits. */
+fun hostBitsHex(x: Double): String = java.lang.Long.toHexString(x.toRawBits()).padStart(16, '0')
+
+fun hostHexBits(s: String): Double {
+  if (s.length != 16 || !s.all { it in '0'..'9' || it in 'a'..'f' }) throw JsError("bad bit pattern")
+  return Double.fromBits(java.lang.Long.parseUnsignedLong(s, 16))
+}
+
+/** A JSON number token, correctly rounded (as JSON.parse). */
+fun hostParseNumber(s: String): Double = s.toDouble()
+
+fun hostFromCodePoints(cps: JsArray<Double>): String {
+  val sb = StringBuilder()
+  for (c in cps) sb.appendCodePoint(c.toInt())
+  return sb.toString()
+}
+`;
+}

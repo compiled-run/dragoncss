@@ -1,0 +1,46 @@
+{
+  "note": "Written by pnpm run native:gen. The differential corpus: one seed, one size and one generator for every native target (docs/research/native-strategy.md 1.7). Inputs and results are regenerated under packages/translate/out; this digest covers both.",
+  "seed": 20260927,
+  "unitsPerFunction": 20000,
+  "unitsFunctions": [
+    "fromCssPx",
+    "fromDouble",
+    "fromPxRound",
+    "fromPxCeil",
+    "snapBorderWidth",
+    "percentOf",
+    "roundFontMetricToWholePx",
+    "platformFontSize",
+    "textAdvance",
+    "lineHeightFromNumber",
+    "growShare",
+    "shrinkShare",
+    "fractionalFreeSpace",
+    "divInt",
+    "cumulativeShareRounded",
+    "distributedOffset"
+  ],
+  "mutatedVectors": 258,
+  "generatedTrees": 20000,
+  "libraryPerOperation": 2000,
+  "cases": {
+    "vectors": 258,
+    "units": 320000,
+    "engine": 20258,
+    "library": 22000
+  },
+  "engineSplit": {
+    "ok": 13906,
+    "unsupported": 6241,
+    "refused": 111,
+    "threw": 0,
+    "harnessError": 0
+  },
+  "digests": {
+    "vectors": "4b89b38c8fd17845f4bab16582a75b0d8733df2515800faacb6e2bc49d5aba7f",
+    "units": "25b75dd88e03cdc5e3e8af664a0b4f76fce1f97a8fcc59fbffd749fd3e2587b7",
+    "engine": "297d8bdf7133a3d6601bd27fbffdd784863384b58c47a4badf8350f546f23dcd",
+    "library": "52c5b758ed05c0fa96d033bf78fcce8a39604a6711f621ac3ad34f38c8133b5d"
+  },
+  "digest": "e2daf313e950329945e9fe0c942ac4f2d2606dd39f9511e834bafccefe301c59"
+}

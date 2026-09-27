@@ -1,0 +1,454 @@
+// The differential corpus (native-strategy.md section 1.7): one seed, one size and one generator for every target. Inputs are
+// JSON lines; expected results come from the translated harness run in TypeScript against the TypeScript engine.
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import type { EngineFaults } from '../../layout/src/block.ts';
+import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
+import type { LayoutBox, LayoutInput, LayoutStyle, TextLeaf } from '../../layout/src/input.ts';
+import { validateLayoutInput } from '../../layout/src/validate.ts';
+import { runEngineCase, runLibraryCase, runUnitsCase } from '../harness/harness.ts';
+import { bitsHex } from '../harness/host.ts';
+import { ROOT } from './generate.ts';
+
+export const CORPUS_SPEC = {
+  seed: 20260927,
+  unitsPerFunction: 20000,
+  generatedTrees: 20000,
+  libraryPerOperation: 2000,
+} as const;
+
+export const UNITS_FUNCTIONS = [
+  'fromCssPx', 'fromDouble', 'fromPxRound', 'fromPxCeil', 'snapBorderWidth', 'percentOf', 'roundFontMetricToWholePx', 'platformFontSize',
+  'textAdvance', 'lineHeightFromNumber', 'growShare', 'shrinkShare', 'fractionalFreeSpace', 'divInt', 'cumulativeShareRounded', 'distributedOffset',
+] as const;
+
+/** A small deterministic generator (mulberry32). */
+export class Rng {
+  private s: number;
+  constructor(seed: number) {
+    this.s = seed >>> 0;
+  }
+  next(): number {
+    this.s = (this.s + 0x6d2b79f5) >>> 0;
+    let t = this.s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  int(n: number): number {
+    return Math.floor(this.next() * n);
+  }
+  pick<T>(xs: readonly T[]): T {
+    return xs[this.int(xs.length)] as T;
+  }
+  chance(p: number): boolean {
+    return this.next() < p;
+  }
+}
+
+// ---------------------------------------------------------------- units corpus
+
+const EDGE = [0, -0, 0.5, -0.5, 1.5, -1.5, 2.5, -2.5, 1 / 64, 0.5 / 64, -0.5 / 64, 33554431.5, 33554432, 33554433, 4e7, -4e7, 2147483647, -2147483648, 2147483648, 1e300, -1e300, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.MIN_VALUE, 0.1, 0.2, 0.3, 100, 1e-7];
+
+function px(r: Rng): number {
+  const k = r.next();
+  if (k < 0.08) return r.pick(EDGE);
+  if (k < 0.3) return Math.round((r.next() * 2000 - 500) * 100) / 100;
+  if (k < 0.45) return Math.round(r.next() * 400 * 8) / 8;
+  if (k < 0.55) return (r.next() * 2 - 1) * 4e7;
+  if (k < 0.7) return Math.round(r.next() * 640) / 64 + (r.chance(0.5) ? 0.5 / 64 : 0);
+  if (k < 0.8) return Math.round(r.next() * 2000) / 2 - 500;
+  return r.next() * 1000 - 200;
+}
+
+function lu(r: Rng): number {
+  const k = r.next();
+  if (k < 0.05) return r.pick([0, -0, 2147483647, -2147483648, 1, -1, 64, -64, 32, -32]);
+  const v = Math.trunc(px(r) * 64);
+  return Number.isFinite(v) ? Math.max(-2147483648, Math.min(2147483647, v)) : 0;
+}
+
+function factor(r: Rng): number {
+  return r.pick([0, 0.5, 1, 2, 0.3333333, 1e-9, 1e9, r.next() * 5, Math.round(r.next() * 8) / 4]);
+}
+
+function unitsArgs(name: (typeof UNITS_FUNCTIONS)[number], r: Rng): (number | string)[] {
+  const pos = (): number => Math.abs(lu(r));
+  const small = (): number => 1 + r.int(12);
+  const size = (): number => (r.chance(0.1) ? r.pick([0, 0.5, 10.625, 12.5, 17.5, 10.629, 11.1111, Number.NaN, 1e6]) : Math.abs(px(r)) % 200);
+  switch (name) {
+    case 'fromCssPx':
+    case 'fromDouble':
+    case 'fromPxRound':
+    case 'fromPxCeil':
+      return [px(r)];
+    case 'snapBorderWidth':
+      return [r.chance(0.1) ? r.pick([0, 0.25, 0.5, 1, 1.5, 0.333333, 0.380952, 1e-9]) : Math.abs(px(r)) % 50, r.pick([1, 2, 3, 1.5, 2.625, 0.5])];
+    case 'percentOf':
+      return [lu(r), r.chance(0.1) ? r.pick([0, 100, 33.333333, 66.666667, 12.5, -50, 1e-5]) : Math.round(r.next() * 20000 - 5000) / 100];
+    case 'roundFontMetricToWholePx':
+    case 'platformFontSize':
+      return [size()];
+    case 'textAdvance':
+      return [r.int(300), size()];
+    case 'lineHeightFromNumber':
+      return [size(), r.chance(0.1) ? r.pick([0, 1, 1.2, 1.5, 0.5, 2.625]) : Math.round(r.next() * 400) / 100];
+    case 'growShare':
+      return [lu(r), factor(r), factor(r) * small()];
+    case 'shrinkShare':
+      return [lu(r), factor(r), pos(), factor(r) * pos()];
+    case 'fractionalFreeSpace':
+      return [lu(r), r.chance(0.1) ? r.pick([0, 1, 0.5, 0.9999999, 1e-9]) : r.next()];
+    case 'divInt':
+      return [lu(r), r.chance(0.05) ? r.pick([0, 0.5, -0, 3.5]) : small() * (r.chance(0.5) ? -1 : 1)];
+    case 'cumulativeShareRounded':
+      return [r.chance(0.02) ? -1 : pos(), r.int(12), r.chance(0.02) ? 0 : small()];
+    case 'distributedOffset':
+      return [r.pick(['space-between', 'space-around', 'space-evenly']), pos(), small(), r.int(12)];
+  }
+}
+
+export function unitsCases(): string[] {
+  const out: string[] = [];
+  UNITS_FUNCTIONS.forEach((name, i) => {
+    const r = new Rng(CORPUS_SPEC.seed * 31 + i);
+    for (let k = 0; k < CORPUS_SPEC.unitsPerFunction; k++) {
+      const args = unitsArgs(name, r).map((a) => (typeof a === 'string' ? a : bitsHex(a)));
+      out.push(JSON.stringify([name, ...args]));
+    }
+  });
+  return out;
+}
+
+// ---------------------------------------------------------------- engine corpus
+
+const FAULT_NAMES = Object.keys(NO_ENGINE_FAULTS) as (keyof EngineFaults)[];
+const DPRS = [1, 2, 2.625, 3];
+
+type MutableStyle = { -readonly [K in keyof LayoutStyle]: LayoutStyle[K] };
+type Json = Record<string, unknown>;
+
+function faultsFor(r: Rng): EngineFaults {
+  if (!r.chance(0.1)) return NO_ENGINE_FAULTS;
+  const f = r.pick(FAULT_NAMES);
+  return { ...NO_ENGINE_FAULTS, [f]: true };
+}
+
+const INITIAL: LayoutStyle = {
+  display: 'block', position: 'static', top: { kind: 'auto' }, right: { kind: 'auto' }, bottom: { kind: 'auto' }, left: { kind: 'auto' },
+  overflowX: 'visible', overflowY: 'visible', direction: 'ltr', boxSizing: 'content-box', width: { kind: 'auto' }, height: { kind: 'auto' },
+  minWidth: { kind: 'auto' }, minHeight: { kind: 'auto' }, maxWidth: { kind: 'none' }, maxHeight: { kind: 'none' },
+  marginTop: { kind: 'px', value: 0 }, marginRight: { kind: 'px', value: 0 }, marginBottom: { kind: 'px', value: 0 }, marginLeft: { kind: 'px', value: 0 },
+  paddingTop: { kind: 'px', value: 0 }, paddingRight: { kind: 'px', value: 0 }, paddingBottom: { kind: 'px', value: 0 }, paddingLeft: { kind: 'px', value: 0 },
+  borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
+  flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
+  alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
+};
+
+function len(r: Rng, min: number): number {
+  const v = r.chance(0.15)
+    ? r.pick([0, 0.5, 1, 0.015625, 0.25, 7.5, 10.625, 33.333, 100, 1e5])
+    : r.chance(0.5) ? r.int(120) : Math.round(r.next() * 2000) / 16;
+  return Math.max(min, min < 0 && r.chance(0.2) ? -v : v);
+}
+
+function pct(r: Rng): number {
+  return r.pick([0, 10, 25, 33.333333, 50, 66.666667, 100, 12.5, 150, Math.round(r.next() * 10000) / 100]);
+}
+
+type Size = LayoutStyle['width'];
+function sizeV(r: Rng, autoP: number): Size {
+  if (r.chance(autoP)) return { kind: 'auto' };
+  return r.chance(0.25) ? { kind: 'percent', value: pct(r) } : { kind: 'px', value: len(r, 0) };
+}
+
+function marginV(r: Rng): LayoutStyle['marginTop'] {
+  const k = r.next();
+  if (k < 0.55) return { kind: 'px', value: 0 };
+  if (k < 0.65) return { kind: 'auto' };
+  if (k < 0.72) return { kind: 'percent', value: r.chance(0.2) ? -pct(r) : pct(r) };
+  return { kind: 'px', value: len(r, -1e9) };
+}
+
+function randomStyle(r: Rng, flexParent: boolean, depth: number): LayoutStyle {
+  const s: MutableStyle = { ...INITIAL };
+  s.display = r.chance(0.4) ? 'flex' : 'block';
+  s.position = r.chance(0.82) ? 'static' : r.chance(0.5) ? 'relative' : 'absolute';
+  if (depth === 0 && s.position === 'absolute') s.position = 'static';
+  const inset = (): LayoutStyle['top'] => (r.chance(0.6) ? { kind: 'auto' } : r.chance(0.2) ? { kind: 'percent', value: pct(r) } : { kind: 'px', value: len(r, -1e9) });
+  if (s.position !== 'static') {
+    s.top = inset();
+    s.right = inset();
+    s.bottom = inset();
+    s.left = inset();
+  }
+  const ov = r.chance(0.12) ? 'hidden' : 'visible';
+  s.overflowX = ov;
+  s.overflowY = ov;
+  s.direction = r.chance(0.3) ? 'rtl' : 'ltr';
+  s.boxSizing = r.chance(0.3) ? 'border-box' : 'content-box';
+  s.width = sizeV(r, 0.55);
+  s.height = sizeV(r, 0.7);
+  s.minWidth = sizeV(r, 0.85);
+  s.minHeight = sizeV(r, 0.85);
+  s.maxWidth = r.chance(0.85) ? { kind: 'none' } : r.chance(0.3) ? { kind: 'percent', value: pct(r) } : { kind: 'px', value: len(r, 0) };
+  s.maxHeight = r.chance(0.85) ? { kind: 'none' } : r.chance(0.3) ? { kind: 'percent', value: pct(r) } : { kind: 'px', value: len(r, 0) };
+  s.marginTop = marginV(r);
+  s.marginRight = marginV(r);
+  s.marginBottom = marginV(r);
+  s.marginLeft = marginV(r);
+  const padV = (): LayoutStyle['paddingTop'] => (r.chance(0.6) ? { kind: 'px', value: 0 } : r.chance(0.15) ? { kind: 'percent', value: pct(r) } : { kind: 'px', value: len(r, 0) });
+  s.paddingTop = padV();
+  s.paddingRight = padV();
+  s.paddingBottom = padV();
+  s.paddingLeft = padV();
+  const bor = (): LayoutStyle['borderTopWidth'] => ({ kind: 'px', value: r.chance(0.6) ? 0 : r.pick([0.25, 0.5, 1, 1.5, 2, 3, 3.3, 10]) });
+  s.borderTopWidth = bor();
+  s.borderRightWidth = bor();
+  s.borderBottomWidth = bor();
+  s.borderLeftWidth = bor();
+  s.flexDirection = r.pick(['row', 'row-reverse', 'column', 'column-reverse']);
+  s.flexWrap = r.chance(s.flexDirection.startsWith('column') ? 0.85 : 0.5) ? 'nowrap' : r.pick(['wrap', 'wrap-reverse']);
+  if (flexParent || r.chance(0.2)) {
+    s.flexGrow = r.chance(0.5) ? 0 : r.pick([0.5, 1, 2, 3, 0.25, 1e-3, 1e6]);
+    s.flexShrink = r.chance(0.6) ? 1 : r.pick([0, 0.5, 2, 5]);
+    s.flexBasis = r.chance(0.6) ? { kind: 'auto' } : r.chance(0.03) ? { kind: 'content' } : r.chance(0.3) ? { kind: 'percent', value: pct(r) } : { kind: 'px', value: len(r, 0) };
+    s.order = r.chance(0.7) ? 0 : r.pick([-2, -1, 1, 2, 5]);
+    s.alignSelf = r.pick(['auto', 'auto', 'auto', 'normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end']);
+  }
+  s.justifyContent = r.pick(['normal', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly', 'stretch', 'start', 'end', 'left', 'right']);
+  s.alignItems = r.pick(['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end']);
+  s.alignContent = r.chance(0.02) ? 'baseline' : r.pick(['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly', 'start', 'end']);
+  const gap = (): LayoutStyle['rowGap'] => (r.chance(0.6) ? { kind: 'normal' } : r.chance(0.03) ? { kind: 'percent', value: pct(r) } : { kind: 'px', value: len(r, 0) });
+  s.rowGap = gap();
+  s.columnGap = gap();
+  s.textAlign = r.chance(0.03) ? 'justify' : r.pick(['start', 'start', 'end', 'left', 'right', 'center']);
+  return s;
+}
+
+const LETTERS = 'XXXXXXXXAbcdEfghIjklMnopQrstUvwxYz';
+
+function randomText(r: Rng, rtl: boolean): string {
+  // Most texts are Ahem glyphs; a minority carry the code points that must be refused or iterated exactly (U+200B, combining
+  // marks, precomposed letters, astral and CJK code points, and bidi neutrals, which an rtl paragraph refuses).
+  const special = r.chance(rtl ? 0.08 : 0.2);
+  const words: string[] = [];
+  const n = 1 + r.int(6);
+  for (let i = 0; i < n; i++) {
+    let w = '';
+    const wl = 1 + r.int(8);
+    for (let j = 0; j < wl; j++) {
+      const k = special ? r.next() : 0;
+      if (k < 0.8) w += LETTERS.charAt(r.int(LETTERS.length));
+      else if (k < 0.84) w += '\u200b';
+      else if (k < 0.88) w += r.pick(['1', '.', '-', "'"]);
+      else if (k < 0.92) w += 'e\u0301';
+      else if (k < 0.95) w += '\u00e9';
+      else if (k < 0.98) w += '\u{1F600}';
+      else w += '\u6f22';
+    }
+    words.push(w);
+  }
+  return words.join(' ');
+}
+
+function textLeaf(r: Rng, id: string, font: { size: number; lh: TextLeaf['lineHeight']; wrap: TextLeaf['textWrapMode'] }, rtl: boolean): TextLeaf {
+  return { kind: 'text', id, text: randomText(r, rtl), font: { family: 'Ahem', size: font.size }, lineHeight: font.lh, whiteSpaceCollapse: 'collapse', textWrapMode: font.wrap };
+}
+
+/** Ids: plain, and sometimes canonically equivalent pairs (U+00E9 and e + U+0301) that JS keeps distinct. */
+function idFor(r: Rng, n: number, canonical: boolean): string {
+  if (canonical && n % 2 === 1) return `n\u00e9${n >> 1}`;
+  if (canonical && n % 2 === 0 && n > 0) return `ne\u0301${(n >> 1) - 1}`;
+  return r.chance(0.02) ? `n${n}\u{1F600}` : `n${n}`;
+}
+
+function randomInput(r: Rng): LayoutInput {
+  const total = 1 + r.int(12);
+  const canonical = r.chance(0.08);
+  let made = 0;
+  const makeBox = (depth: number, flexParent: boolean): LayoutBox => {
+    const id = idFor(r, made, canonical);
+    made++;
+    const style = randomStyle(r, flexParent, depth);
+    const children: (LayoutBox | TextLeaf)[] = [];
+    const font = { size: r.pick([10, 10, 12.5, 16, 20, 10.625, 7.3, 13.33]), lh: r.chance(0.6) ? { kind: 'normal' } as const : r.chance(0.5) ? { kind: 'number', value: r.pick([1, 1.2, 1.5, 0.5, 2]) } as const : { kind: 'px', value: r.pick([5, 10, 15, 25, 12.5]) } as const, wrap: r.chance(0.85) ? 'wrap' as const : 'nowrap' as const };
+    if (made < total && r.chance(0.35) && style.display === 'block') {
+      const n = 1 + r.int(2);
+      for (let i = 0; i < n; i++) children.push(textLeaf(r, `${id}:t${i}`, font, style.direction === 'rtl'));
+      return { kind: 'box', id, boxType: 'element', style, children };
+    }
+    while (made < total && r.chance(0.75)) {
+      if (r.chance(0.15)) {
+        // Text beside boxes, or in a flex container, arrives wrapped in an anonymous box (CSS2 §9.2.1.1, css-flexbox-1 §4).
+        const aid = `${id}:anon${children.length}`;
+        const astyle: LayoutStyle = { ...INITIAL, direction: style.direction, textAlign: style.textAlign };
+        children.push({ kind: 'box', id: aid, boxType: 'anonymous', style: astyle, children: [textLeaf(r, `${aid}:t0`, font, style.direction === 'rtl')] });
+        continue;
+      }
+      children.push(makeBox(depth + 1, style.display === 'flex'));
+    }
+    return { kind: 'box', id, boxType: 'element', style, children };
+  };
+  const root = makeBox(0, false);
+  const dpr = r.pick(DPRS);
+  return { viewport: { width: r.chance(0.05) ? 0 : 100 + r.int(900), height: r.chance(0.05) ? 0 : 100 + r.int(900) }, devicePixelRatio: dpr, root };
+}
+
+// ---------------------------------------------------------------- library corpus
+
+const LIBRARY_OPS = ['round', 'trunc', 'floor', 'ceil', 'fround', 'isInteger', 'hex', 'sort', 'map', 'codePoints', 'equal'] as const;
+
+/** Strings whose code units differ while Swift or NFC comparison calls them equal, and astral and combining code points. */
+const STRING_POOL = ['a', 'b', 'K', '\u212a', '\u00e9', 'e\u0301', '\u00c5', 'A\u030a', '\u212b', 'x\u{1F600}', '\u{1F600}', '\u6f22', 'n0', 'n1', 'n0:line0', '\u200b', ' '];
+
+function libraryArgs(op: (typeof LIBRARY_OPS)[number], r: Rng): unknown[] {
+  const halves = (): number => (r.chance(0.5) ? r.int(40) - 20 + 0.5 : r.pick(EDGE));
+  switch (op) {
+    case 'round':
+    case 'trunc':
+    case 'floor':
+    case 'ceil':
+    case 'fround':
+      return [bitsHex(r.chance(0.6) ? halves() : px(r))];
+    case 'isInteger':
+      return [bitsHex(r.chance(0.5) ? r.int(100) - 50 : r.chance(0.5) ? halves() : r.pick(EDGE))];
+    case 'hex':
+      return [bitsHex(r.chance(0.8) ? r.int(0x110000) : r.int(2 ** 40))];
+    case 'sort': {
+      const n = 1 + r.int(12);
+      return [Array.from({ length: n }, (_, i) => [bitsHex(r.int(4) - (r.chance(0.2) ? 0.5 : 0)), `t${i}`])];
+    }
+    case 'map':
+      return [Array.from({ length: 1 + r.int(8) }, () => r.pick(STRING_POOL))];
+    case 'codePoints':
+      return [Array.from({ length: 1 + r.int(6) }, () => r.pick(STRING_POOL)).join('')];
+    case 'equal':
+      return [r.pick(STRING_POOL), r.pick(STRING_POOL)];
+  }
+}
+
+export function libraryCases(): string[] {
+  const out: string[] = [];
+  LIBRARY_OPS.forEach((op, i) => {
+    const r = new Rng(CORPUS_SPEC.seed * 37 + i);
+    for (let k = 0; k < CORPUS_SPEC.libraryPerOperation; k++) out.push(JSON.stringify([op, ...libraryArgs(op, r)]));
+  });
+  return out;
+}
+
+export type VectorCase = { readonly file: string; readonly line: string; readonly output: unknown; readonly measurer: string };
+
+export function vectorCases(): VectorCase[] {
+  const dir = join(ROOT, 'packages/layout/vectors');
+  return readdirSync(dir).filter((f) => f.endsWith('.json')).sort().map((file) => {
+    const v = JSON.parse(readFileSync(join(dir, file), 'utf8')) as { platform: string; measurer: string; input: unknown; output: unknown };
+    const valid = validateLayoutInput(v.input);
+    if (!valid.ok) throw new Error(`vector ${file} fails the validator`);
+    return { file, line: JSON.stringify({ platform: v.platform, faults: NO_ENGINE_FAULTS, input: v.input }), output: v.output, measurer: v.measurer };
+  });
+}
+
+/** One seeded mutation of a vector input: a length, a percentage, a flex factor, a direction or the DPR. */
+function mutate(input: Json, r: Rng): Json {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const copy = JSON.parse(JSON.stringify(input)) as Json;
+    const boxes: Json[] = [];
+    const walk = (b: Json): void => {
+      if (b['kind'] !== 'box') return;
+      if (b['boxType'] === 'element') boxes.push(b);
+      for (const c of b['children'] as Json[]) walk(c);
+    };
+    walk(copy['root'] as Json);
+    const kind = r.int(5);
+    const box = boxes.length > 0 ? r.pick(boxes) : null;
+    if (kind === 4 || box === null) {
+      copy['devicePixelRatio'] = r.pick([2, 2.625, 3, 1.5]);
+    } else {
+      const style = box['style'] as Json;
+      if (kind === 0) {
+        const k = r.pick(['width', 'height', 'marginTop', 'marginLeft', 'marginRight', 'paddingLeft', 'paddingTop', 'borderLeftWidth', 'minWidth', 'maxWidth', 'flexBasis', 'rowGap', 'columnGap']);
+        style[k] = k.startsWith('margin') ? { kind: 'px', value: len(r, -1e9) } : { kind: 'px', value: len(r, 0) };
+      } else if (kind === 1) {
+        const k = r.pick(['width', 'height', 'marginLeft', 'paddingRight', 'minHeight', 'maxWidth', 'flexBasis']);
+        style[k] = { kind: 'percent', value: pct(r) };
+      } else if (kind === 2) {
+        style[r.pick(['flexGrow', 'flexShrink'])] = r.pick([0, 0.5, 1, 2, 3, 0.25]);
+      } else {
+        style['direction'] = style['direction'] === 'rtl' ? 'ltr' : 'rtl';
+        // Anonymous children inherit direction.
+        for (const c of box['children'] as Json[]) if (c['kind'] === 'box' && c['boxType'] === 'anonymous') (c['style'] as Json)['direction'] = style['direction'];
+      }
+    }
+    if (validateLayoutInput(copy).ok) return copy;
+  }
+  return { ...input, devicePixelRatio: 2 };
+}
+
+export type EngineCorpus = { readonly lines: string[]; readonly mutated: number; readonly generated: number };
+
+export function engineCases(vectors: readonly VectorCase[]): EngineCorpus {
+  const r = new Rng(CORPUS_SPEC.seed);
+  const lines: string[] = [];
+  for (const v of vectors) {
+    const parsed = JSON.parse(v.line) as { platform: string; input: Json };
+    lines.push(JSON.stringify({ platform: parsed.platform, faults: faultsFor(r), input: mutate(parsed.input, r) }));
+  }
+  let generated = 0;
+  while (generated < CORPUS_SPEC.generatedTrees) {
+    const input = randomInput(r);
+    if (!validateLayoutInput(input).ok) continue;
+    const platform = r.chance(0.005) ? 'linux-x64' : 'darwin-arm64';
+    lines.push(JSON.stringify({ platform, faults: faultsFor(r), input }));
+    generated++;
+  }
+  return { lines, mutated: vectors.length, generated };
+}
+
+export type Split = { ok: number; unsupported: number; refused: number; threw: number; harnessError: number };
+
+export function split(results: readonly string[]): Split {
+  const s: Split = { ok: 0, unsupported: 0, refused: 0, threw: 0, harnessError: 0 };
+  for (const x of results) {
+    if (x.startsWith('["ok"')) s.ok++;
+    else if (x.startsWith('["unsupported"')) s.unsupported++;
+    else if (x.startsWith('["refused"')) s.refused++;
+    else if (x.startsWith('["threw"')) s.threw++;
+    else s.harnessError++;
+  }
+  return s;
+}
+
+export type Suite = { readonly name: 'vectors' | 'units' | 'engine' | 'library'; readonly mode: 'engine' | 'units' | 'library'; readonly lines: readonly string[]; readonly expected: readonly string[] };
+
+export type Corpus = {
+  readonly suites: readonly Suite[];
+  readonly vectors: readonly VectorCase[];
+  readonly engineSplit: Split;
+  readonly digest: string;
+  readonly digests: Readonly<Record<string, string>>;
+};
+
+export function buildCorpus(): Corpus {
+  const vectors = vectorCases();
+  const vLines = vectors.map((v) => v.line);
+  const units = unitsCases();
+  const engine = engineCases(vectors);
+  const library = libraryCases();
+  const suites: Suite[] = [
+    { name: 'vectors', mode: 'engine', lines: vLines, expected: vLines.map(runEngineCase) },
+    { name: 'units', mode: 'units', lines: units, expected: units.map(runUnitsCase) },
+    { name: 'engine', mode: 'engine', lines: engine.lines, expected: engine.lines.map(runEngineCase) },
+    { name: 'library', mode: 'library', lines: library, expected: library.map(runLibraryCase) },
+  ];
+  const digests: Record<string, string> = {};
+  const all = createHash('sha256');
+  for (const s of suites) {
+    const h = createHash('sha256');
+    for (let i = 0; i < s.lines.length; i++) h.update(s.lines[i] as string).update('\n').update(s.expected[i] as string).update('\n');
+    digests[s.name] = h.digest('hex');
+    all.update(`${s.name} ${digests[s.name]}\n`);
+  }
+  return { suites, vectors, engineSplit: split(suites[2]?.expected ?? []), digest: all.digest('hex'), digests };
+}

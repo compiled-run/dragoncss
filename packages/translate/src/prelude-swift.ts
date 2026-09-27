@@ -1,0 +1,361 @@
+// The Swift prelude: one audited helper per JavaScript library behaviour the engine relies on (native-strategy.md sections
+// 1.4-1.6). Planted faults swap one helper for the platform shortcut it exists to avoid.
+import type { PreludeFault } from './faults.ts';
+
+export function swiftPrelude(fault: PreludeFault | null): string {
+  const round = fault === 'platform-round'
+    ? `@inline(__always) public func jsRound(_ x: Double) -> Double { x.rounded() }`
+    : `/// ECMA-262 Math.round: halves toward +infinity, -0 kept for -0.5 <= x < 0.
+public func jsRound(_ x: Double) -> Double {
+  if x.isNaN || x.isInfinite { return x }
+  if x >= -0.5 && x < 0 { return -0.0 }
+  let r = x.rounded(.down)
+  return (x - r >= 0.5) ? r + 1 : r
+}`;
+  const equality = fault === 'canonical-equality'
+    ? `  public static func == (a: JsString, b: JsString) -> Bool {
+    if a.u.allSatisfy({ $0 < 0x80 }) && b.u.allSatisfy({ $0 < 0x80 }) { return a.u == b.u }
+    return a.description == b.description
+  }
+  public func hash(into h: inout Hasher) { h.combine(description) }`
+    : `  public static func == (a: JsString, b: JsString) -> Bool { a.u == b.u }
+  public func hash(into h: inout Hasher) { h.combine(u) }`;
+  const codePoints = fault === 'character-iteration'
+    ? `/// for...of over a string.
+public func jsCodePoints(_ s: JsString) -> JsArray<JsString> {
+  return JsArray(s.description.map { JsString(units: Array(String($0).utf16)) })
+}`
+    : `/// for...of over a string: code points, a lone surrogate as itself (ECMA-262 CodePointAt).
+public func jsCodePoints(_ s: JsString) -> JsArray<JsString> {
+  var out: [JsString] = []
+  let u = s.u
+  var i = 0
+  while i < u.count {
+    let c = u[i]
+    if c >= 0xD800 && c <= 0xDBFF && i + 1 < u.count && u[i + 1] >= 0xDC00 && u[i + 1] <= 0xDFFF {
+      out.append(JsString(units: [c, u[i + 1]]))
+      i += 2
+    } else {
+      out.append(JsString(units: [c]))
+      i += 1
+    }
+  }
+  return JsArray(out)
+}`;
+  const sort = fault === 'unstable-sort'
+    ? `/// Array.prototype.sort with a comparator.
+@discardableResult public func jsSort<T>(_ a: JsArray<T>, _ cmp: (T, T) throws -> Double) rethrows -> JsArray<T> {
+  var v = a.items
+  var i = 0
+  while i < v.count {
+    var m = i
+    var j = i + 1
+    while j < v.count { if try cmp(v[m], v[j]) > 0 { m = j }; j += 1 }
+    if m != i { v.swapAt(i, m) }
+    i += 1
+  }
+  a.items = v
+  return a
+}`
+    : `/// Array.prototype.sort with a comparator: a stable merge sort, as ECMA-262 requires; NaN compares as 0.
+@discardableResult public func jsSort<T>(_ a: JsArray<T>, _ cmp: (T, T) throws -> Double) rethrows -> JsArray<T> {
+  var v = a.items
+  if v.count < 2 { return a }
+  var tmp = v
+  var width = 1
+  while width < v.count {
+    var lo = 0
+    while lo < v.count {
+      let mid = min(lo + width, v.count)
+      let hi = min(lo + 2 * width, v.count)
+      var i = lo, j = mid, k = lo
+      while i < mid && j < hi {
+        if try cmp(v[i], v[j]) > 0 { tmp[k] = v[j]; j += 1 } else { tmp[k] = v[i]; i += 1 }
+        k += 1
+      }
+      while i < mid { tmp[k] = v[i]; i += 1; k += 1 }
+      while j < hi { tmp[k] = v[j]; j += 1; k += 1 }
+      lo += 2 * width
+    }
+    swap(&v, &tmp)
+    width *= 2
+  }
+  a.items = v
+  return a
+}`;
+  const maps = fault === 'unordered-map'
+    ? `/// Map with string keys.
+public final class JsStringMap<V> {
+  var d: [JsString: V] = [:]
+  public init() {}
+  public init(_ entries: [(JsString, V)]) { for (k, v) in entries { d[k] = v } }
+  public func get(_ k: JsString) -> V? { d[k] }
+  public func has(_ k: JsString) -> Bool { d[k] != nil }
+  @discardableResult public func set(_ k: JsString, _ v: V) -> JsStringMap<V> { d[k] = v; return self }
+  public var entries: [(JsString, V)] { d.map { ($0.key, $0.value) } }
+}
+
+/// Map with object keys, by identity.
+public final class JsObjectMap<K, V> {
+  var d: [ObjectIdentifier: (K, V)] = [:]
+  public init() {}
+  public func get(_ k: K) -> V? { d[ObjectIdentifier(k as AnyObject)]?.1 }
+  public func has(_ k: K) -> Bool { d[ObjectIdentifier(k as AnyObject)] != nil }
+  @discardableResult public func set(_ k: K, _ v: V) -> JsObjectMap<K, V> { d[ObjectIdentifier(k as AnyObject)] = (k, v); return self }
+  public var entries: [(K, V)] { d.values.map { ($0.0, $0.1) } }
+}`
+    : `/// Map with string keys: insertion-ordered, keyed by code units.
+public final class JsStringMap<V> {
+  var keys: [JsString] = []
+  var values: [V] = []
+  var index: [JsString: Int] = [:]
+  public init() {}
+  public init(_ entries: [(JsString, V)]) { for (k, v) in entries { set(k, v) } }
+  public func get(_ k: JsString) -> V? { if let i = index[k] { return values[i] }; return nil }
+  public func has(_ k: JsString) -> Bool { index[k] != nil }
+  @discardableResult public func set(_ k: JsString, _ v: V) -> JsStringMap<V> {
+    if let i = index[k] { values[i] = v } else { index[k] = keys.count; keys.append(k); values.append(v) }
+    return self
+  }
+  public var entries: [(JsString, V)] { Array(zip(keys, values)) }
+}
+
+/// Map with object keys: insertion-ordered, keyed by identity.
+public final class JsObjectMap<K, V> {
+  var keys: [K] = []
+  var values: [V] = []
+  var index: [ObjectIdentifier: Int] = [:]
+  public init() {}
+  public func get(_ k: K) -> V? { if let i = index[ObjectIdentifier(k as AnyObject)] { return values[i] }; return nil }
+  public func has(_ k: K) -> Bool { index[ObjectIdentifier(k as AnyObject)] != nil }
+  @discardableResult public func set(_ k: K, _ v: V) -> JsObjectMap<K, V> {
+    let id = ObjectIdentifier(k as AnyObject)
+    if let i = index[id] { values[i] = v } else { index[id] = keys.count; keys.append(k); values.append(v) }
+    return self
+  }
+  public var entries: [(K, V)] { Array(zip(keys, values)) }
+}`;
+  return `/// A JavaScript string: UTF-16 code units, compared and hashed by code unit (Swift String equality is canonical equivalence).
+public struct JsString: Hashable, CustomStringConvertible {
+  public var u: [UInt16]
+  public init(_ s: String) { u = Array(s.utf16) }
+  public init(units: [UInt16]) { u = units }
+  public var description: String { String(decoding: u, as: UTF16.self) }
+${equality}
+  public static func + (a: JsString, b: JsString) -> JsString { JsString(units: a.u + b.u) }
+  public static func += (a: inout JsString, b: JsString) { a.u.append(contentsOf: b.u) }
+}
+
+public func jsConcat(_ parts: JsString...) -> JsString {
+  var u: [UInt16] = []
+  for p in parts { u.append(contentsOf: p.u) }
+  return JsString(units: u)
+}
+
+/// new Error(message) and the base of every translated error class.
+open class JsError: Error, CustomStringConvertible {
+  public let message: JsString
+  public init(message: JsString) { self.message = message }
+  public var description: String { message.description }
+}
+
+@inline(never) public func jsUnreachable() -> Never { fatalError("unreachable: TypeScript proved this switch exhaustive") }
+
+/// A value TypeScript's narrowing or an \`as\` assertion says is present; absent is an invariant error, as JS would throw on use.
+@inline(__always) public func jsUnwrap<T>(_ x: T?) throws -> T {
+  guard let v = x else { throw JsError(message: JsString("undefined value where TypeScript asserted one")) }
+  return v
+}
+
+@inline(__always) public func jsPostInc(_ x: inout Double, _ d: Double) -> Double {
+  let old = x
+  x += d
+  return old
+}
+
+// Numbers (section 1.5): IEEE binary64 everywhere; only library functions need helpers.
+
+@inline(__always) public func jsFround(_ x: Double) -> Double { Double(Float(x)) }
+@inline(__always) public func jsTrunc(_ x: Double) -> Double { x.rounded(.towardZero) }
+@inline(__always) public func jsFloor(_ x: Double) -> Double { x.rounded(.down) }
+@inline(__always) public func jsCeil(_ x: Double) -> Double { x.rounded(.up) }
+${round}
+@inline(__always) public func jsIsInteger(_ x: Double) -> Bool { x.isFinite && x.rounded(.towardZero) == x }
+
+/// ECMA-262 Number::toString for integers below 2^53; other values use Swift's shortest round-trip digits in JS layout.
+public func jsNumberToString(_ x: Double) -> JsString {
+  if x.isNaN { return JsString("NaN") }
+  if x.isInfinite { return JsString(x < 0 ? "-Infinity" : "Infinity") }
+  if x == 0 { return JsString("0") }
+  if jsIsInteger(x) && abs(x) < 9007199254740992 { return JsString(String(Int64(x))) }
+  var s = String(x.magnitude)
+  var exp = 0
+  if let e = s.firstIndex(where: { $0 == "e" || $0 == "E" }) {
+    exp = Int(String(s[s.index(after: e)...].filter { $0 != "+" })) ?? 0
+    s = String(s[..<e])
+  }
+  let parts = s.split(separator: ".", omittingEmptySubsequences: false)
+  let intPart = String(parts[0])
+  let frac = parts.count > 1 ? String(parts[1]) : ""
+  var digits = intPart + frac
+  var n = intPart.count + exp
+  while digits.hasPrefix("0") && digits.count > 1 { digits.removeFirst(); n -= 1 }
+  while digits.hasSuffix("0") && digits.count > 1 { digits.removeLast() }
+  let k = digits.count
+  var out: String
+  if k <= n && n <= 21 { out = digits + String(repeating: "0", count: n - k) }
+  else if 0 < n && n <= 21 { out = String(digits.prefix(n)) + "." + String(digits.dropFirst(n)) }
+  else if -6 < n && n <= 0 { out = "0." + String(repeating: "0", count: -n) + digits }
+  else {
+    let e = n - 1
+    let es = e < 0 ? "-" + String(-e) : "+" + String(e)
+    out = k == 1 ? digits + "e" + es : String(digits.prefix(1)) + "." + String(digits.dropFirst()) + "e" + es
+  }
+  return JsString(x < 0 ? "-" + out : out)
+}
+
+/// (n).toString(16) for integers.
+public func jsToStringRadix16(_ x: Double) throws -> JsString {
+  guard jsIsInteger(x) && abs(x) < 9007199254740992 else { throw JsError(message: JsString("toString(16) of a non-integer is outside the subset")) }
+  let s = String(Int64(x.magnitude), radix: 16)
+  return JsString(x < 0 ? "-" + s : s)
+}
+
+public func jsToUpperCase(_ s: JsString) -> JsString { JsString(s.description.uppercased()) }
+
+// Strings (section 1.6).
+
+${codePoints}
+
+/// "s".codePointAt(0).
+public func jsCodePointAt0(_ s: JsString) -> Double? {
+  let u = s.u
+  if u.isEmpty { return nil }
+  let c = u[0]
+  if c >= 0xD800 && c <= 0xDBFF && u.count > 1 && u[1] >= 0xDC00 && u[1] <= 0xDFFF {
+    return Double((Int(c) - 0xD800) * 0x400 + (Int(u[1]) - 0xDC00) + 0x10000)
+  }
+  return Double(c)
+}
+
+// Arrays: JS arrays are shared references.
+
+public final class JsArray<T> {
+  public var items: [T]
+  public init(_ items: [T] = []) { self.items = items }
+}
+
+/// An array index: an integer in range, else absent (arr[1.5] and arr[-1] are undefined in JS).
+@inline(__always) public func jsAt<T>(_ a: JsArray<T>, _ i: Double) -> T? {
+  guard i >= 0 && i < Double(a.items.count) && i.rounded(.towardZero) == i else { return nil }
+  return a.items[Int(i)]
+}
+@inline(__always) public func jsLength<T>(_ a: JsArray<T>) -> Double { Double(a.items.count) }
+@discardableResult @inline(__always) public func jsPush<T>(_ a: JsArray<T>, _ x: T) -> Double { a.items.append(x); return Double(a.items.count) }
+public func jsMap<T, U>(_ a: JsArray<T>, _ f: (T) throws -> U) rethrows -> JsArray<U> {
+  let n = a.items.count
+  var out: [U] = []
+  out.reserveCapacity(n)
+  var i = 0
+  while i < n { out.append(try f(a.items[i])); i += 1 }
+  return JsArray(out)
+}
+public func jsMapI<T, U>(_ a: JsArray<T>, _ f: (T, Double) throws -> U) rethrows -> JsArray<U> {
+  let n = a.items.count
+  var out: [U] = []
+  out.reserveCapacity(n)
+  var i = 0
+  while i < n { out.append(try f(a.items[i], Double(i))); i += 1 }
+  return JsArray(out)
+}
+public func jsForEach<T>(_ a: JsArray<T>, _ f: (T) throws -> Void) rethrows {
+  let n = a.items.count
+  var i = 0
+  while i < n && i < a.items.count { try f(a.items[i]); i += 1 }
+}
+public func jsForEachI<T>(_ a: JsArray<T>, _ f: (T, Double) throws -> Void) rethrows {
+  let n = a.items.count
+  var i = 0
+  while i < n && i < a.items.count { try f(a.items[i], Double(i)); i += 1 }
+}
+public func jsFilter<T>(_ a: JsArray<T>, _ f: (T) throws -> Bool) rethrows -> JsArray<T> {
+  let n = a.items.count
+  var out: [T] = []
+  var i = 0
+  while i < n { let x = a.items[i]; if try f(x) { out.append(x) }; i += 1 }
+  return JsArray(out)
+}
+public func jsFind<T>(_ a: JsArray<T>, _ f: (T) throws -> Bool) rethrows -> T? {
+  let n = a.items.count
+  var i = 0
+  while i < n { let x = a.items[i]; if try f(x) { return x }; i += 1 }
+  return nil
+}
+public func jsSome<T>(_ a: JsArray<T>, _ f: (T) throws -> Bool) rethrows -> Bool {
+  let n = a.items.count
+  var i = 0
+  while i < n { if try f(a.items[i]) { return true }; i += 1 }
+  return false
+}
+public func jsFlatMap<T, U>(_ a: JsArray<T>, _ f: (T) throws -> JsArray<U>) rethrows -> JsArray<U> {
+  let n = a.items.count
+  var out: [U] = []
+  var i = 0
+  while i < n { out.append(contentsOf: try f(a.items[i]).items); i += 1 }
+  return JsArray(out)
+}
+/// Array.prototype.slice(start).
+public func jsSlice<T>(_ a: JsArray<T>, _ start: Double) -> JsArray<T> {
+  let len = Double(a.items.count)
+  let s = start.isNaN ? 0 : start.rounded(.towardZero)
+  let from = s < 0 ? max(len + s, 0) : min(s, len)
+  return JsArray(Array(a.items[Int(from)...]))
+}
+@discardableResult public func jsReverse<T>(_ a: JsArray<T>) -> JsArray<T> { a.items.reverse(); return a }
+public func jsCopy<T>(_ a: JsArray<T>) -> JsArray<T> { JsArray(a.items) }
+public func jsConcatArrays<T>(_ parts: [JsArray<T>]) -> JsArray<T> { JsArray(parts.flatMap { $0.items }) }
+public func jsCastArray<T, U>(_ a: JsArray<T>, _ to: U.Type) -> JsArray<U> { JsArray(a.items.map { $0 as! U }) }
+
+${sort}
+
+// Maps (section 1.6): JS Map iterates in insertion order; Swift Dictionary does not, so it only indexes.
+
+${maps}
+`;
+}
+
+/** Host helpers of the translated harness: bit patterns and number text. */
+export function swiftHost(): string {
+  return `/// The IEEE bit pattern of a double as 16 lowercase hex digits.
+func hostBitsHex(_ x: Double) -> JsString {
+  let s = String(x.bitPattern, radix: 16)
+  return JsString(String(repeating: "0", count: 16 - s.count) + s)
+}
+
+func hostHexBits(_ s: JsString) throws -> Double {
+  guard s.u.count == 16, let b = UInt64(s.description, radix: 16) else { throw JsError(message: JsString("bad bit pattern")) }
+  return Double(bitPattern: b)
+}
+
+/// A JSON number token, correctly rounded (as JSON.parse).
+func hostParseNumber(_ s: JsString) throws -> Double {
+  guard let v = Double(s.description) else { throw JsError(message: JsString("bad number")) }
+  return v
+}
+
+func hostFromCodePoints(_ cps: JsArray<Double>) -> JsString {
+  var u: [UInt16] = []
+  for c in cps.items {
+    let v = Int(c)
+    if v >= 0x10000 {
+      let w = v - 0x10000
+      u.append(UInt16(0xD800 + (w >> 10)))
+      u.append(UInt16(0xDC00 + (w & 0x3FF)))
+    } else {
+      u.append(UInt16(v))
+    }
+  }
+  return JsString(units: u)
+}
+`;
+}

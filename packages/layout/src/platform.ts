@@ -12,7 +12,10 @@ export type MeasurerChoice =
   | { readonly kind: 'ok'; readonly platform: string; readonly key: string; readonly measurer: TextMeasurer; readonly rules: readonly PlatformRule[] }
   | { readonly kind: 'refused'; readonly code: 'no-platform-rules'; readonly platform: string; readonly detail: string };
 
-const MEASURERS: ReadonlyMap<string, { readonly key: string; readonly measurer: TextMeasurer }> = new Map([
+/** A registered measurer and its key. */
+type MeasurerEntry = { readonly key: string; readonly measurer: TextMeasurer };
+
+const MEASURERS: ReadonlyMap<string, MeasurerEntry> = new Map([
   ['darwin-arm64', { key: 'ahem/darwin-arm64', measurer: ahemMeasurer }],
 ]);
 

@@ -2,7 +2,7 @@
 import type { Direction, LayoutBox, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, divInt, max, min, sub, ZERO } from './units.ts';
-import type { Edges, Frag, HeightBasis, OutOfFlow, Placed } from './box.ts';
+import type { Edges, Frag, HeightBasis, OutOfFlow, Placed, Point } from './box.ts';
 import {
   blockMinMax,
   borderBoxFromSpecified,
@@ -194,14 +194,12 @@ export type BlockLevelResult = {
   readonly contents: ContentsResult;
 };
 
+/** The used border-box width and margins of a block-level box. */
+export type BlockLevelInline = { readonly borderBoxWidth: LU; readonly marginLeft: LU; readonly marginTop: LU; readonly marginBottom: LU };
+
 // CSS2 §10.3.3: block-level, non-replaced width and horizontal margins in normal flow. The containing block's direction decides
 // which margin is the start margin; when over-constrained the end margin is ignored (margin-left in rtl).
-export function blockLevelInlineSize(
-  ctx: Ctx,
-  box: LayoutBox,
-  cbInline: LU,
-  cbDirection: Direction,
-): { readonly borderBoxWidth: LU; readonly marginLeft: LU; readonly marginTop: LU; readonly marginBottom: LU } {
+export function blockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU, cbDirection: Direction): BlockLevelInline {
   const s = box.style;
   const pad = resolvePadding(s, cbInline);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
@@ -229,7 +227,7 @@ export function blockLevelInlineSize(
 
 type FlowArgs = {
   readonly contentWidth: LU;
-  readonly origin: { readonly x: LU; readonly y: LU };
+  readonly origin: Point;
   readonly canCollapseTop: boolean;
   readonly childBasis: HeightBasis;
 };
@@ -306,7 +304,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       seen = true;
       strut = joinStruts(joinMargin(EMPTY_STRUT, inline.marginBottom), c.escapeBottom);
     }
-    const at = { frag: c.frag, x: add(a.origin.x, inline.marginLeft), y: add(a.origin.y, y) };
+    const at: Placed = { frag: c.frag, x: add(a.origin.x, inline.marginLeft), y: add(a.origin.y, y) };
     if (baseline === null && c.frag.baseline !== null) baseline = add(at.y, c.frag.baseline);
     // CSS2 §9.4.3: a relative offset moves the box after layout; the flow, margins and baselines keep its in-flow position.
     const offset = relativeOffset(kid, a.contentWidth, a.childBasis, direction);

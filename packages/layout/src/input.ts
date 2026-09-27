@@ -146,8 +146,11 @@ export type LayoutBox = {
   readonly children: readonly (LayoutBox | TextLeaf)[];
 };
 
+/** The initial containing block in CSS px. */
+export type Viewport = { readonly width: number; readonly height: number };
+
 export type LayoutInput = {
-  readonly viewport: { readonly width: number; readonly height: number };
+  readonly viewport: Viewport;
   /** Device pixels per CSS px in the target environment; border widths snap to whole device px (css-values-4 §6.1). */
   readonly devicePixelRatio: number;
   readonly root: LayoutBox;

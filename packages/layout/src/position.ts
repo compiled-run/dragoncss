@@ -51,11 +51,14 @@ function blockInset(box: LayoutBox, v: InsetValue, basis: HeightBasis): LU | nul
   return null;
 }
 
+/** A relative offset in LU. */
+export type RelativeOffset = { readonly dx: LU; readonly dy: LU };
+
 /**
  * CSS2 §9.4.3: the offset of a relatively positioned box from its in-flow position. top wins over bottom; left wins over right
  * when the containing block is ltr and right wins when it is rtl; one auto side is minus the other; both auto is zero.
  */
-export function relativeOffset(box: LayoutBox, cbInline: LU, cbBlock: HeightBasis, cbDirection: Direction): { readonly dx: LU; readonly dy: LU } {
+export function relativeOffset(box: LayoutBox, cbInline: LU, cbBlock: HeightBasis, cbDirection: Direction): RelativeOffset {
   if (box.style.position !== 'relative') return { dx: ZERO, dy: ZERO };
   const s = box.style;
   const left = inset(s.left, cbInline);
@@ -77,11 +80,14 @@ export type ContainingBlock = { readonly x: LU; readonly y: LU; readonly width: 
 /** A static position edge in the containing block's writing mode. */
 type LogicalEdge = 'start' | 'center' | 'end';
 
+/** A range along one axis of the containing block. */
+type StaticRange = { readonly start: LU; readonly size: LU };
+
 /**
  * css-position-3 §4.1 with both insets auto: the inset-modified containing block from the static position. A start edge gives
  * [static, size], an end edge [0, static], a centre the largest range centred on it (Blink: twice the smaller distance).
  */
-function staticRange(s: LU, edge: LogicalEdge, size: LU): { readonly start: LU; readonly size: LU } {
+function staticRange(s: LU, edge: LogicalEdge, size: LU): StaticRange {
   if (edge === 'start') return { start: s, size: sub(size, s) };
   if (edge === 'end') return { start: ZERO, size: s };
   const half = min(s, sub(size, s));
@@ -133,13 +139,16 @@ function logicalEdge(edge: StaticEdge, reversed: boolean): LogicalEdge {
   return (edge === 'near') !== reversed ? 'start' : 'end';
 }
 
+/** An absolutely positioned border box in absolute LU, with its fragment. */
+export type AbsoluteResult = { readonly x: LU; readonly y: LU; readonly frag: Frag };
+
 /**
  * CSS2 §10.3.7 and §10.6.4 with css-position-3 §4: lays out an absolutely positioned box in its containing block (padding box),
  * given its static position in absolute LU. Inline sizes and offsets are solved in the containing block's direction; auto
  * widths shrink to fit the inset-modified containing block, auto heights with both insets set stretch (and are definite).
  * Returns the border box in absolute LU and its fragment.
  */
-export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, staticX: StaticAxis, staticY: StaticAxis): { readonly x: LU; readonly y: LU; readonly frag: Frag } {
+export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, staticX: StaticAxis, staticY: StaticAxis): AbsoluteResult {
   const s = box.style;
   const rtl = cb.direction === 'rtl';
   const pad = resolvePadding(s, cb.width);

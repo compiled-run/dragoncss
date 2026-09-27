@@ -2,7 +2,7 @@
 // alignment (§8.3, §9.4 step 8). Chrome 145 computes every offset in flow coordinates, from the writing-mode start edge of each
 // axis: a reverse direction reverses the items and swaps flex-start and flex-end, and wrap-reverse does the same for the lines and
 // the cross axis (measured, notes/T035-slice-4a.md). Flow offsets are then mapped to physical ones.
-import type { AlignItems, JustifyContent, LayoutBox, LayoutStyle } from './input.ts';
+import type { AlignItems, JustifyContent, LayoutBox, LayoutStyle, Percent, Px } from './input.ts';
 import type { DistributedMode, FactorSum, LU } from './units.ts';
 import {
   add,
@@ -96,6 +96,12 @@ type Item = {
 
 type Line = { readonly items: Item[]; cross: LU; flowOffset: LU };
 
+/** An item's baseline in the cross axis: offset from its border-box start edge, toStart and toEnd to its cross margin edges. */
+type ItemBaseline = { readonly toStart: LU; readonly toEnd: LU; readonly offset: LU };
+
+/** The container's content box, relative to its border box. */
+type ContentRect = { readonly left: LU; readonly top: LU; readonly width: LU; readonly height: LU };
+
 /** The flex container's axes: which physical side each flow start is on, and how reverse and wrap-reverse remap alignment. */
 type Axes = {
   readonly isRow: boolean;
@@ -131,7 +137,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
     else boxes.push(k);
   }
   // css-flexbox-1 §5.4: order-modified document order, stable for equal values (planted fault ignoreOrder keeps document order).
-  const ordered = ctx.faults.ignoreOrder ? boxes : boxes.map((b, i) => ({ b, i })).sort((x, y) => x.b.style.order - y.b.style.order || x.i - y.i).map((x) => x.b);
+  const ordered = ctx.faults.ignoreOrder ? boxes : [...boxes].sort((x, y) => x.style.order - y.style.order);
   const mainGap = gapValue(box, isRow ? s.columnGap : s.rowGap);
   const crossGap = gapValue(box, isRow ? s.rowGap : s.columnGap);
   const crossInner: LU | null = isRow ? a.definiteInnerHeight : a.contentWidth;
@@ -174,7 +180,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
   }
   const crossOf = (i: Item): LU => hypoCross.get(i) as LU;
   const participates = (i: Item): boolean => i.align === 'baseline' && !i.autoCrossStart && !i.autoCrossEnd;
-  const baselineOf = (i: Item): { toStart: LU; toEnd: LU; offset: LU } => itemBaseline(ctx, i, axes, isRow ? (hypoFrag.get(i) as Frag) : null, crossOf(i));
+  const baselineOf = (i: Item): ItemBaseline => itemBaseline(ctx, i, axes, isRow ? (hypoFrag.get(i) as Frag) : null, crossOf(i));
 
   // §9.4 steps 7-8: line cross sizes; a single-line container with a definite cross size uses it. In a row container the
   // baseline-sharing group needs its largest distances to the cross-start and cross-end margin edges.
@@ -222,7 +228,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
     const free = sub(mainInner as LU, used);
     // §9.5 step 12: positive free space goes to main-axis auto margins, which leaves none for justify-content.
     let autoCount = 0;
-    for (const i of flowItems) autoCount += Number(i.autoMainStart) + Number(i.autoMainEnd);
+    for (const i of flowItems) autoCount += (i.autoMainStart ? 1 : 0) + (i.autoMainEnd ? 1 : 0);
     const autoFree = autoCount > 0 && free > 0;
     let autoSeen = 0;
     const autoShare = (): LU => {
@@ -285,7 +291,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
       cursor = add(cursor, mainGap);
     });
   });
-  const content = { left: contentLeft, top: contentTop, width: a.contentWidth, height: isRow ? containerCross : (mainInner as LU) };
+  const content: ContentRect = { left: contentLeft, top: contentTop, width: a.contentWidth, height: isRow ? containerCross : (mainInner as LU) };
   const outOfFlow = absolute.map((child) => staticPosition(ctx, box, child, axes, content));
   return { contentHeight: isRow ? containerCross : mainInner, placed, baseline: containerBaseline, outOfFlow };
 }
@@ -303,7 +309,7 @@ function staticAxis(position: FlowPosition, lo: LU, size: LU, startIsNear: boole
  * Chrome 145: space-between acts as flex-start and space-around and space-evenly as center; stretch acts as flex-start and
  * baseline as start; align-content has no effect. A centre is the content box start plus LayoutUnit / 2 from the flow start.
  */
-function staticPosition(ctx: Ctx, container: LayoutBox, child: LayoutBox, axes: Axes, content: { readonly left: LU; readonly top: LU; readonly width: LU; readonly height: LU }): OutOfFlow {
+function staticPosition(ctx: Ctx, container: LayoutBox, child: LayoutBox, axes: Axes, content: ContentRect): OutOfFlow {
   const flexStart: FlowPosition = axes.reverse ? 'end' : 'start';
   const j = justifyFlow(container.style.justifyContent, axes);
   const main: FlowPosition = j === 'space-between' ? flexStart : j === 'space-around' || j === 'space-evenly' ? 'center' : j;
@@ -330,7 +336,7 @@ function baselineFault(ctx: Ctx, item: Item): LU {
  * first baseline comes from the item's content (bottom border edge when it has none); in a column container Chrome synthesizes
  * it at the left border edge for every item (measured, notes/T035-slice-4a.md).
  */
-function itemBaseline(ctx: Ctx, item: Item, axes: Axes, frag: Frag | null, crossSize: LU): { toStart: LU; toEnd: LU; offset: LU } {
+function itemBaseline(ctx: Ctx, item: Item, axes: Axes, frag: Frag | null, crossSize: LU): ItemBaseline {
   const m = item.margin;
   if (axes.isRow) {
     const b = sub(ownBaseline(frag as Frag), baselineFault(ctx, item));
@@ -528,7 +534,7 @@ function buildItem(
   };
 }
 
-function lengthAgainst(v: { readonly kind: 'px' | 'percent'; readonly value: number }, basis: LU): LU {
+function lengthAgainst(v: Px | Percent, basis: LU): LU {
   return v.kind === 'px' ? fromCssPx(v.value) : percentOf(basis, v.value);
 }
 
@@ -672,7 +678,7 @@ function stretchedCrossSize(item: Item, lineCross: LU, isRow: boolean, percentBa
   const s = item.box.style;
   const minProp = isRow ? s.minHeight : s.minWidth;
   const maxProp = isRow ? s.maxHeight : s.maxWidth;
-  const resolve = (v: { readonly kind: 'px' | 'percent'; readonly value: number }, prop: string): LU | null => {
+  const resolve = (v: Px | Percent, prop: string): LU | null => {
     if (v.kind === 'px') return fromCssPx(v.value);
     const basis = percentMainHeight(item.box, percentBasis, prop);
     return basis === null ? null : percentOf(basis, v.value);

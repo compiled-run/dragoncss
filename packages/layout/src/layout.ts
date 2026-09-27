@@ -3,7 +3,7 @@
 import type { LayoutBox, LayoutInput } from './input.ts';
 import type { LU } from './units.ts';
 import { add, fromCssPx, sub, ZERO } from './units.ts';
-import type { Frag, OutOfFlow } from './box.ts';
+import type { Frag, OutOfFlow, StaticAxis } from './box.ts';
 import { resolveBorder } from './box.ts';
 import type { Ctx, EngineFaults } from './block.ts';
 import { blockLevelInlineSize, directionOf, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
@@ -30,7 +30,10 @@ export function layout(input: LayoutInput, measurer: TextMeasurer): LayoutResult
 /** An absolutely positioned box waiting for placement: its parent's absolute border-box origin and its static position there. */
 type Pending = { readonly oof: OutOfFlow; readonly parent: string; readonly originX: LU; readonly originY: LU };
 
-type Placement = { readonly boxes: LayoutRect[]; readonly absolute: Map<string, { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU }>; readonly pending: Pending[] };
+/** A border box in absolute LU. */
+type AbsoluteRect = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
+
+type Placement = { readonly boxes: LayoutRect[]; readonly absolute: Map<string, AbsoluteRect>; readonly pending: Pending[] };
 
 /** layout with seeded engine errors; only the parity harness's planted tests pass anything but NO_ENGINE_FAULTS. */
 export function layoutWithFaults(input: LayoutInput, measurer: TextMeasurer, faults: EngineFaults): LayoutResult {
@@ -115,8 +118,8 @@ function placeOutOfFlow(ctx: Ctx, input: LayoutInput, out: Placement, icb: Conta
   for (let i = 0; i < out.pending.length; i++) {
     const p = out.pending[i] as Pending;
     const cb = containingBlock(ctx, p.oof.box, parentOf, out, icb);
-    const staticX = { offset: add(p.originX, p.oof.x.offset), edge: p.oof.x.edge };
-    const staticY = { offset: add(p.originY, p.oof.y.offset), edge: p.oof.y.edge };
+    const staticX: StaticAxis = { offset: add(p.originX, p.oof.x.offset), edge: p.oof.x.edge };
+    const staticY: StaticAxis = { offset: add(p.originY, p.oof.y.offset), edge: p.oof.y.edge };
     const r = layoutAbsolute(ctx, p.oof.box, cb, staticX, staticY);
     flatten(r.frag, p.parent, sub(r.x, p.originX), sub(r.y, p.originY), p.originX, p.originY, out);
   }

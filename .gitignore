@@ -5,3 +5,7 @@ dist-test/
 .DS_Store
 packages/parity/out/
 build/
+packages/translate/out/
+packages/layout/generated/swift/.build/
+packages/layout/generated/swift/.swiftpm/
+packages/layout/generated/kotlin/build/
