@@ -2,7 +2,7 @@
 import type { LayoutBox, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, fromCssPx, max, min, sum, ZERO, mulInt } from './units.ts';
-import { borderBoxFromSpecified, resolveBorder, requireLtr, sumEdges, visibleChildren } from './box.ts';
+import { borderBoxFromSpecified, resolveBorder, sumEdges } from './box.ts';
 import type { Ctx } from './block.ts';
 import { inlineIntrinsicSize } from './inline.ts';
 import { unsupported } from './unsupported.ts';
@@ -11,8 +11,7 @@ export type IntrinsicKind = 'min' | 'max';
 
 // css-sizing-3 §5.1: the min-content or max-content inline size of a box's content box.
 export function intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
-  requireLtr(box);
-  const kids = visibleChildren(box);
+  const kids = box.children;
   if (box.style.display === 'flex') return flexIntrinsicContent(ctx, box, kind);
   const texts = kids.filter((k): k is TextLeaf => k.kind === 'text');
   if (texts.length > 0) {
@@ -45,8 +44,7 @@ export function inlineContribution(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind
 // largest for a multi-line container. §9.9.2 (column, single-line): the largest contribution.
 function flexIntrinsicContent(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
   const s = box.style;
-  const kids = visibleChildren(box);
-  const items = kids.filter((k): k is LayoutBox => k.kind === 'box');
+  const items = box.children.filter((k): k is LayoutBox => k.kind === 'box');
   const contributions = items.map((k) => inlineContribution(ctx, k, kind));
   const isRow = s.flexDirection === 'row' || s.flexDirection === 'row-reverse';
   if (!isRow && s.flexWrap !== 'nowrap') unsupported('flex-intrinsic-wrap-column', box.id, 'css-flexbox-1 §9.9.2', 'intrinsic inline size of a multi-line column flex container');

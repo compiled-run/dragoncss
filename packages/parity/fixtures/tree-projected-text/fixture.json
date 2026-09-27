@@ -55,10 +55,10 @@
     "cases": 4,
     "initial": [{ "instance": "doc/card", "state": "size", "value": "small" }, { "instance": "doc/card", "state": "dense", "value": false }],
     "textTopology": [
-      { "address": "card/head:text0", "component": "App", "template": "title-text", "at": "XX XX XX", "ownerInstance": "doc", "insertionParent": "card/head", "context": "text-in-block" },
-      { "address": "card/head:text1", "component": "Card", "template": "yy", "at": " YY", "ownerInstance": "doc/card", "insertionParent": "card/head", "context": "text-in-block" },
-      { "address": "note:text0", "component": "App", "template": "note-text", "at": "NN NN", "ownerInstance": "doc", "insertionParent": "note", "context": "text-in-block" },
-      { "address": "card/content:text0", "component": "App", "template": "body-text", "at": "ZZ ZZ ZZ", "ownerInstance": "doc", "insertionParent": "card/content", "context": "text-in-anonymous-block" }
+      { "address": "card/head:text0", "component": "App", "template": "title-text", "at": "XX XX XX", "ownerInstance": "doc", "insertionParent": "card/head", "context": { "ltr": "text-in-block/ltr", "rtl": "text-in-block/rtl" } },
+      { "address": "card/head:text1", "component": "Card", "template": "yy", "at": " YY", "ownerInstance": "doc/card", "insertionParent": "card/head", "context": { "ltr": "text-in-block/ltr", "rtl": "text-in-block/rtl" } },
+      { "address": "note:text0", "component": "App", "template": "note-text", "at": "NN NN", "ownerInstance": "doc", "insertionParent": "note", "context": { "ltr": "text-in-block/ltr", "rtl": "text-in-block/rtl" } },
+      { "address": "card/content:text0", "component": "App", "template": "body-text", "at": "ZZ ZZ ZZ", "ownerInstance": "doc", "insertionParent": "card/content", "context": { "ltr": "text-in-anonymous-block/ltr", "rtl": "text-in-anonymous-block/rtl" } }
     ]
   }
 }

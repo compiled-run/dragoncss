@@ -6,14 +6,9 @@ export type UnsupportedCode =
   | 'mixed-inline-font'
   | 'text-align'
   | 'text-glyph'
-  | 'direction-rtl'
-  | 'flex-reverse'
-  | 'flex-wrap-reverse'
-  | 'flex-order'
+  | 'bidi-neutral'
   | 'flex-baseline'
   | 'flex-basis-content'
-  | 'flex-align-value'
-  | 'flex-justify-value'
   | 'flex-wrap-indefinite-main'
   | 'flex-intrinsic-wrap-column';
 

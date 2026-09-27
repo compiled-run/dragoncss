@@ -59,10 +59,10 @@ const alignItemsValues = [
 ] as const;
 
 export const styleSchema = obj({
-  display: lit('block', 'flex', 'none'),
+  display: lit('block', 'flex'),
   position: lit('static'),
-  overflowX: lit('visible'),
-  overflowY: lit('visible'),
+  overflowX: lit('visible', 'hidden'),
+  overflowY: lit('visible', 'hidden'),
   direction: lit('ltr', 'rtl'),
   boxSizing: lit('content-box', 'border-box'),
   width: size,
@@ -125,7 +125,8 @@ export type ValidationErrorCode =
   | 'duplicate-id'
   | 'mixed-children'
   | 'text-in-flex'
-  | 'uncollapsed-text';
+  | 'uncollapsed-text'
+  | 'anonymous-shape';
 
 export type ValidationError = { readonly path: string; readonly code: ValidationErrorCode; readonly message: string };
 
@@ -208,7 +209,7 @@ function checkRule(value: unknown, rule: Rule, path: string, errors: ValidationE
   }
 }
 
-function checkNode(value: unknown, path: string, errors: ValidationError[], ids: Set<string>): void {
+function checkNode(value: unknown, path: string, errors: ValidationError[], ids: Set<string>, parentId: string | null): void {
   if (!isRecord(value)) {
     errors.push({ path, code: 'wrong-type', message: 'expected a box or text object' });
     return;
@@ -236,8 +237,72 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     errors.push({ path: `${path}.children`, code: 'wrong-type', message: 'expected an array' });
     return;
   }
-  children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids));
+  children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null));
   checkInlineContent(value, children, path, errors);
+  const style = value['style'];
+  if (isRecord(style) && style['overflowX'] !== style['overflowY']) {
+    errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be equal: css-overflow-3 §3.1 computes visible beside hidden to auto' });
+  }
+  if (value['boxType'] === 'anonymous') checkAnonymous(value, children, path, errors, parentId);
+}
+
+/** CSS2 §9.2.1.1 and css-flexbox-1 §4: the initial value of every non-inherited LayoutStyle field an anonymous box must carry. */
+const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign'>]: LayoutStyle[K] } = {
+  display: 'block',
+  position: 'static',
+  overflowX: 'visible',
+  overflowY: 'visible',
+  boxSizing: 'content-box',
+  width: { kind: 'auto' },
+  height: { kind: 'auto' },
+  minWidth: { kind: 'auto' },
+  minHeight: { kind: 'auto' },
+  maxWidth: { kind: 'none' },
+  maxHeight: { kind: 'none' },
+  marginTop: { kind: 'px', value: 0 },
+  marginRight: { kind: 'px', value: 0 },
+  marginBottom: { kind: 'px', value: 0 },
+  marginLeft: { kind: 'px', value: 0 },
+  paddingTop: { kind: 'px', value: 0 },
+  paddingRight: { kind: 'px', value: 0 },
+  paddingBottom: { kind: 'px', value: 0 },
+  paddingLeft: { kind: 'px', value: 0 },
+  borderTopWidth: { kind: 'px', value: 0 },
+  borderRightWidth: { kind: 'px', value: 0 },
+  borderBottomWidth: { kind: 'px', value: 0 },
+  borderLeftWidth: { kind: 'px', value: 0 },
+  flexDirection: 'row',
+  flexWrap: 'nowrap',
+  flexGrow: 0,
+  flexShrink: 1,
+  flexBasis: { kind: 'auto' },
+  order: 0,
+  justifyContent: 'normal',
+  alignItems: 'normal',
+  alignSelf: 'auto',
+  alignContent: 'normal',
+  rowGap: { kind: 'normal' },
+  columnGap: { kind: 'normal' },
+};
+
+// CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box wraps a run of text only. It holds at least one text leaf and no box, its
+// id is "<parent id>:anon<k>", and it inherits direction and text-align while every other field is its initial value.
+function checkAnonymous(box: Record<string, unknown>, children: readonly unknown[], path: string, errors: ValidationError[], parentId: string | null): void {
+  const bad = (message: string): void => {
+    errors.push({ path, code: 'anonymous-shape', message });
+  };
+  if (children.length === 0 || !children.every((c) => isRecord(c) && c['kind'] === 'text')) bad('an anonymous box holds one or more text leaves and no boxes');
+  const id = box['id'];
+  if (parentId === null || typeof id !== 'string' || !new RegExp(`^${escapeRegExp(parentId)}:anon\\d+$`).test(id)) bad('an anonymous box id is "<parent id>:anon<k>"');
+  const style = box['style'];
+  if (!isRecord(style)) return;
+  for (const [key, initial] of Object.entries(ANONYMOUS_INITIAL)) {
+    if (JSON.stringify(style[key]) !== JSON.stringify(initial)) bad(`an anonymous box takes the initial ${key} (${JSON.stringify(initial)}), not ${JSON.stringify(style[key])}`);
+  }
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 const UNCOLLAPSED = /[\t\n\r\f]| {2}/;
@@ -272,7 +337,7 @@ export function validateLayoutInput(json: unknown): ValidationResult {
   if (!Object.prototype.hasOwnProperty.call(json, 'root')) {
     errors.push({ path: '$.root', code: 'missing-key', message: 'missing required key "root"' });
   } else {
-    checkNode(json['root'], '$.root', errors, new Set());
+    checkNode(json['root'], '$.root', errors, new Set(), null);
     if (isRecord(json['root']) && json['root']['kind'] !== 'box') {
       errors.push({ path: '$.root.kind', code: 'bad-value', message: 'the root must be a box' });
     }

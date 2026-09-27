@@ -57,3 +57,8 @@ export const widened: Compiled<'web'> = both;
 export const withOptions = createProject({ projectId: 'p', targets: { web: {} } }, { profiles: 'derive' });
 // @ts-expect-error InternalOptions is internal (dragon-internal condition only)
 export type Options = import('../src/index.ts').InternalOptions;
+// S4a: the environment, and its direction, stay internal: the public entry compiles for the ltr reference environment only.
+// @ts-expect-error Environment is internal (dragon-internal condition only)
+export type Env = import('../src/index.ts').Environment;
+// @ts-expect-error createProject takes no direction option
+export const withDirection = createProject({ projectId: 'p', targets: { web: {} } }, { direction: 'rtl' });

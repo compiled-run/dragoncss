@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.r { display: flex; width: 150px; margin-bottom: 3px; column-gap: 2px; }
+.i { width: 20px; height: 8px; background-color: #999; }
+.t { height: 12px; }
+.o-2 { order: -2; } .o-1 { order: -1; } .o1 { order: 1; } .o2 { order: 2; } .o3 { order: 3; }
+.sb { justify-content: space-between; }
+.w { display: flex; flex-wrap: wrap; width: 70px; row-gap: 3px; margin-bottom: 3px; }
+.col { display: flex; flex-direction: column; width: 50px; margin-bottom: 3px; align-items: flex-end; }
+.g { flex-grow: 1; }
+.anon { display: flex; width: 120px; margin-bottom: 3px; }
+.anon > div { width: 15px; height: 10px; background-color: #999; }
+.rtl { direction: rtl; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="r1" class="r"><div data-dragon-id="r1a" class="i o2"></div><div data-dragon-id="r1b" class="i o-1 t"></div><div data-dragon-id="r1c" class="i"></div><div data-dragon-id="r1d" class="i o-1"></div><div data-dragon-id="r1e" class="i o1"></div></div>
+<div data-dragon-id="r2" class="r sb"><div data-dragon-id="r2a" class="i o3"></div><div data-dragon-id="r2b" class="i"></div><div data-dragon-id="r2c" class="i o-2 g"></div><div data-dragon-id="r2d" class="i o3"></div></div>
+<div data-dragon-id="w1" class="w"><div data-dragon-id="w1a" class="i o1"></div><div data-dragon-id="w1b" class="i t"></div><div data-dragon-id="w1c" class="i o-1"></div><div data-dragon-id="w1d" class="i"></div><div data-dragon-id="w1e" class="i o-2"></div></div>
+<div data-dragon-id="c1" class="col"><div data-dragon-id="c1a" class="i o1"></div><div data-dragon-id="c1b" class="i t"></div><div data-dragon-id="c1c" class="i o-1"></div></div>
+<div data-dragon-id="a1" class="anon">XX<div data-dragon-id="a1a" class="o-1"></div>YY YY<div data-dragon-id="a1b" class="o1"></div>ZZ<div data-dragon-id="a1c"></div></div>
+<div data-dragon-id="r3" class="r rtl"><div data-dragon-id="r3a" class="i o1"></div><div data-dragon-id="r3b" class="i"></div><div data-dragon-id="r3c" class="i o-1"></div></div>
+</body>
+</html>

@@ -28,8 +28,17 @@ export type Report = {
     readonly failed: number;
     readonly cases: number;
     readonly casesPassed: number;
-    /** Per layout fixture: cases declared (by hand for tree fixtures), rendered, enumerated by Dragon, and every case id. */
-    readonly caseCounts: readonly { readonly fixture: string; readonly expected: number; readonly renderer: number; readonly dragon: number; readonly cases: readonly string[] }[];
+    /** Per layout fixture: cases declared (by hand for tree fixtures), rendered, enumerated by Dragon, per environment and in total, and every case id. */
+    readonly caseCounts: readonly {
+      readonly fixture: string;
+      readonly expected: number;
+      readonly renderer: number;
+      readonly dragon: number;
+      readonly environments: readonly { readonly direction: 'ltr' | 'rtl'; readonly expected: number; readonly renderer: number; readonly dragon: number }[];
+      readonly cases: readonly string[];
+    }[];
+    /** Cases per environment direction, and how many passed. */
+    readonly casesByDirection: readonly { readonly direction: 'ltr' | 'rtl'; readonly cases: number; readonly passed: number }[];
     readonly comparedNodes: number;
     readonly exactLuNodes: number;
     /** Compared text nodes (Range bounding rects) and per-line text fragments (Range client rects), and how many are exact. */
@@ -78,7 +87,8 @@ export function buildReport(outcomes: readonly FixtureOutcome[]): Report {
       failed: outcomes.filter((o) => o.status === 'fail').length,
       cases: allCases.length,
       casesPassed: allCases.filter((c) => c.status === 'pass').length,
-      caseCounts: outcomes.filter((o) => o.kind === 'layout').map((o) => ({ fixture: o.id, expected: o.expectedCases, renderer: o.rendererCases, dragon: o.dragonCases, cases: o.cases.map((c) => c.id) })),
+      caseCounts: outcomes.filter((o) => o.kind === 'layout').map((o) => ({ fixture: o.id, expected: o.expectedCases, renderer: o.rendererCases, dragon: o.dragonCases, environments: o.environments, cases: o.cases.map((c) => c.id) })),
+      casesByDirection: (['ltr', 'rtl'] as const).map((direction) => ({ direction, cases: allCases.filter((c) => c.direction === direction).length, passed: allCases.filter((c) => c.direction === direction && c.status === 'pass').length })),
       comparedNodes: nodes.length,
       exactLuNodes: nodes.filter((n) => n.exactLu).length,
       textNodes: nodes.filter((n) => n.kind === 'text').length,
@@ -97,7 +107,7 @@ export function buildReport(outcomes: readonly FixtureOutcome[]): Report {
       unsupportedCodes: [...new Set(allCases.flatMap((o) => (o.unsupported === null ? [] : [o.unsupported.code])))].sort(),
     },
     deviations: chromeDeviations,
-    fixtures: outcomes.map((o) => ({ ...o, webCss: null, cases: o.cases.map((c) => ({ ...c, vector: null, topology: null })) })),
+    fixtures: outcomes.map((o) => ({ ...o, webCss: { ltr: null, rtl: null }, cases: o.cases.map((c) => ({ ...c, vector: null, topology: null })) })),
   };
 }
 
@@ -119,16 +129,17 @@ export function renderHtml(r: Report): string {
   parts.push('body{font:13px system-ui,sans-serif;margin:16px}figure{display:inline-block;margin:0 12px 8px 0}svg{border:1px solid #999;background:#fff}');
   parts.push('rect{fill:rgba(40,110,220,.08);stroke:#246;stroke-width:.5}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:2px 6px;text-align:right}');
   parts.push('.fail{color:#b00}.pass{color:#070}td.id{text-align:left}</style></head><body>');
-  parts.push(`<h1>Dragon parity (S3b)</h1><p>Lanes ${r.run.lanes.join(' and ')}; Chrome ${esc(r.run.chrome)} via Playwright ${esc(r.run.playwright)}; viewport ${r.run.viewport.width}x${r.run.viewport.height} at DPR ${r.run.devicePixelRatio}; layout gate ${r.run.gateDevicePx} device px per edge (${esc(r.run.gateSource)}); dual rule: ${esc(r.run.dualRule)}. Screenshots are not used; these drawings are evidence only.</p>`);
+  parts.push(`<h1>Dragon parity (S4a)</h1><p>Lanes ${r.run.lanes.join(' and ')}; Chrome ${esc(r.run.chrome)} via Playwright ${esc(r.run.playwright)}; viewport ${r.run.viewport.width}x${r.run.viewport.height} at DPR ${r.run.devicePixelRatio}; layout gate ${r.run.gateDevicePx} device px per edge (${esc(r.run.gateSource)}); dual rule: ${esc(r.run.dualRule)}. Screenshots are not used; these drawings are evidence only.</p>`);
   const d = r.summary.dual;
-  parts.push(`<p>${r.summary.passed}/${r.summary.fixtures} fixtures pass (${r.summary.layoutFixtures} layout, of which ${r.summary.treeFixtures} tree; ${r.summary.rejectFixtures} reject); ${r.summary.casesPassed}/${r.summary.cases} cases pass. Layout lane: ${r.summary.exactLuNodes}/${r.summary.comparedNodes} compared nodes match Chrome exactly at 1/64 px (informational), of them text nodes ${r.summary.textNodesExact}/${r.summary.textNodes} and per-line text fragments ${r.summary.lineNodesExact}/${r.summary.lineNodes}; ${r.summary.anonymousBoxes.length} anonymous boxes (Dragon only, listed per case). Dual lane: boxes ${d.boxesEqual}/${d.boxesCompared}, computed values ${d.valuesEqual}/${d.valuesCompared}, colour channels ${d.channelsEqual}/${d.channelsCompared}.</p>`);
+  parts.push(`<p>${r.summary.passed}/${r.summary.fixtures} fixtures pass (${r.summary.layoutFixtures} layout, of which ${r.summary.treeFixtures} tree; ${r.summary.rejectFixtures} reject); ${r.summary.casesPassed}/${r.summary.cases} cases pass (${r.summary.casesByDirection.map((d) => `${d.direction} ${d.passed}/${d.cases}`).join(', ')}). Layout lane: ${r.summary.exactLuNodes}/${r.summary.comparedNodes} compared nodes match Chrome exactly at 1/64 px (informational), of them text nodes ${r.summary.textNodesExact}/${r.summary.textNodes} and per-line text fragments ${r.summary.lineNodesExact}/${r.summary.lineNodes}; ${r.summary.anonymousBoxes.length} anonymous boxes (Dragon only, listed per case). Dual lane: boxes ${d.boxesEqual}/${d.boxesCompared}, computed values ${d.valuesEqual}/${d.valuesCompared}, colour channels ${d.channelsEqual}/${d.channelsCompared}.</p>`);
   for (const f of r.fixtures) {
-    parts.push(`<h2 id="${esc(f.id)}">${esc(f.id)} <span class="${f.status}">${f.status}</span></h2><p>${f.format} ${f.kind} fixture; ${f.cases.length} case(s): ${f.expectedCases} declared, ${f.rendererCases} rendered, ${f.dragonCases} enumerated by Dragon</p>`);
+    const perEnv = f.environments.map((e) => `${e.direction}: ${e.expected} declared, ${e.renderer} rendered, ${e.dragon} enumerated by Dragon`).join('; ');
+    parts.push(`<h2 id="${esc(f.id)}">${esc(f.id)} <span class="${f.status}">${f.status}</span></h2><p>${f.format} ${f.kind} fixture; ${f.cases.length} case(s)${perEnv === '' ? '' : ` (${esc(perEnv)})`}</p>`);
     if (f.reason !== null) parts.push(`<p class="fail">${esc(f.reason)}</p>`);
     for (const d of f.diagnostics) parts.push(`<p>${esc(d.code)}: ${esc(d.message)}${d.spanText === null ? '' : ` at "${esc(d.spanText)}"`}</p>`);
     for (const c of f.cases) {
       const assignment = c.assignment.map((a) => `${a.state.instance}.${a.state.state}=${JSON.stringify(a.value)}`).join(', ');
-      parts.push(`<h3 id="${esc(c.id)}">${esc(c.id)} <span class="${c.status}">${c.status}</span></h3><p>${assignment === '' ? 'no states' : esc(assignment)}${c.isInitial ? ' (initial)' : ''}; linux-dragon-layout: ${c.lanes['linux-dragon-layout']}; chrome-dual: ${c.lanes['chrome-dual']}${c.dual === null ? '' : ` (boxes ${c.dual.boxesEqual}/${c.dual.boxesCompared}, values ${c.dual.valuesEqual}/${c.dual.valuesCompared}, channels ${c.dual.channelsEqual}/${c.dual.channelsCompared})`}</p>`);
+      parts.push(`<h3 id="${esc(c.id)}">${esc(c.id)} <span class="${c.status}">${c.status}</span></h3><p>direction ${c.direction}; ${assignment === '' ? 'no states' : esc(assignment)}${c.isInitial ? ' (initial)' : ''}; linux-dragon-layout: ${c.lanes['linux-dragon-layout']}; chrome-dual: ${c.lanes['chrome-dual']}${c.dual === null ? '' : ` (boxes ${c.dual.boxesEqual}/${c.dual.boxesCompared}, values ${c.dual.valuesEqual}/${c.dual.valuesCompared}, channels ${c.dual.channelsEqual}/${c.dual.channelsCompared})`}</p>`);
       if (c.reason !== null) parts.push(`<p class="fail">${esc(c.reason)}</p>`);
       if (c.comparison === null) continue;
       for (const a of c.comparison.anonymous) parts.push(`<p>anonymous box ${esc(a.id)} (Dragon only): text lines ${esc(a.lines.join(', '))}, each compared with Chrome</p>`);

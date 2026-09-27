@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; direction: rtl; }
+.box { width: 55px; }
+.c { text-align: center; }
+.r { text-align: right; }
+.e { text-align: end; }
+.l { text-align: left; }
+.s { text-align: start; }
+.over { width: 25px; }
+.odd { width: 50.3px; }
+.pad { width: 61px; padding: 0 3px 0 7px; border-left: 2px solid #000; }
+.parent { text-align: center; width: 73px; }
+.h { display: none; }
+.lh { line-height: 17px; width: 45px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c" class="box c">XX XX XXX X</div>
+<div data-dragon-id="r" class="box r">XX XX XXX X</div>
+<div data-dragon-id="e" class="box e">XX XX XXX X</div>
+<div data-dragon-id="l" class="box l">XX XX XXX X</div>
+<div data-dragon-id="s" class="box s">XX XX XXX X</div>
+<div data-dragon-id="d" class="box">XX XXX XX XXXX X</div>
+<div data-dragon-id="co" class="over c">XXXXX XX</div>
+<div data-dragon-id="ro" class="over r">XXXXX XX</div>
+<div data-dragon-id="so" class="over s">XXXXX XX</div>
+<div data-dragon-id="lo" class="over l">XXXXX XX</div>
+<div data-dragon-id="eo" class="over e">XXXXX XX</div>
+<div data-dragon-id="codd" class="odd c">XX XX XXX</div>
+<div data-dragon-id="rodd" class="odd r">XX XX XXX</div>
+<div data-dragon-id="sodd" class="odd">XX XX XXX</div>
+<div data-dragon-id="cpad" class="pad c">XXX XX X XXXX</div>
+<div data-dragon-id="spad" class="pad">XXX XX X XXXX</div>
+<div data-dragon-id="parent" class="parent"><div data-dragon-id="child">XX XXXX XXX</div></div>
+<div data-dragon-id="multi" class="box">XX<div data-dragon-id="mh" class="h"></div> XXX<div data-dragon-id="mh2" class="h"></div> X XXXX</div>
+<div data-dragon-id="zw" class="box">XX YY&#x200B;ZZ WW&#x200B;VVVVV X</div>
+<div data-dragon-id="lh" class="lh">XX XXX XX</div>
+</body>
+</html>

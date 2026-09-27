@@ -17,7 +17,7 @@ const renderedDoc = '<!DOCTYPE html><html><head></head><body></body></html>';
 
 const browser = await launchChrome();
 try {
-  const hidden = await openPage(browser, hiddenDoc, { viewport: { width: 400, height: 300 }, devicePixelRatio: 1 });
+  const hidden = await openPage(browser, hiddenDoc, { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr' });
   const { out: values, initial } = await hidden.evaluate(
     ({ tags, props }) => {
       const out: Record<string, Record<string, string>> = {};
@@ -42,7 +42,7 @@ try {
       Array.from(document.querySelectorAll('[data-border]')).map((e) => [e.getAttribute('data-border'), getComputedStyle(e).borderTopWidth]),
     ),
   );
-  const rendered = await openPage(browser, renderedDoc, { viewport: { width: 400, height: 300 }, devicePixelRatio: 1 });
+  const rendered = await openPage(browser, renderedDoc, { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr' });
   const htmlDisplay = await rendered.evaluate(() => {
     const el = document.documentElement;
     const own = getComputedStyle(el).display;

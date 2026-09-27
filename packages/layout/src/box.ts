@@ -6,7 +6,8 @@ import { unsupported } from './unsupported.ts';
 
 export type Edges = { readonly top: LU; readonly right: LU; readonly bottom: LU; readonly left: LU };
 
-export type Frag = { readonly id: string; readonly width: LU; readonly height: LU; readonly children: readonly Placed[] };
+/** baseline: the first baseline (css-align-3 §9.1) as an offset from the border-box top, or null when the box has none. */
+export type Frag = { readonly id: string; readonly width: LU; readonly height: LU; readonly baseline: LU | null; readonly children: readonly Placed[] };
 export type Placed = { readonly frag: Frag; readonly x: LU; readonly y: LU };
 
 /** How a box's percentage block sizes can resolve against its containing block. */
@@ -133,11 +134,7 @@ export function contentBox(borderBox: LU, borderPadding: LU): LU {
   return clampNegativeToZero(sub(borderBox, borderPadding));
 }
 
-export function visibleChildren(box: LayoutBox): readonly (LayoutBox | import('./input.ts').TextLeaf)[] {
-  return box.children.filter((c) => c.kind === 'text' || c.style.display !== 'none');
-}
-
-// css-writing-modes-4 §2.1: left-to-right only until S4.
-export function requireLtr(box: LayoutBox): void {
-  if (box.style.direction !== 'ltr') unsupported('direction-rtl', box.id, 'css-writing-modes-4 §2.1', 'direction: rtl arrives in S4');
+/** css-overflow-3 §3: overflow hidden (on both axes, as the validator requires) makes the box a scroll container. */
+export function isScrollContainer(style: LayoutStyle): boolean {
+  return style.overflowX === 'hidden';
 }

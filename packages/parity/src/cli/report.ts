@@ -18,6 +18,6 @@ const report = buildReport(outcomes);
 writeReport(report);
 const s = report.summary;
 const d = s.dual;
-console.log(`${s.passed}/${s.fixtures} fixtures pass (${s.cases} cases, ${s.casesPassed} pass); layout ${s.exactLuNodes}/${s.comparedNodes} nodes exact at 1/64 px (text ${s.textNodesExact}/${s.textNodes}, lines ${s.lineNodesExact}/${s.lineNodes}, ${s.anonymousBoxes.length} anonymous boxes); dual boxes ${d.boxesEqual}/${d.boxesCompared}, values ${d.valuesEqual}/${d.valuesCompared}, channels ${d.channelsEqual}/${d.channelsCompared}`);
+console.log(`${s.passed}/${s.fixtures} fixtures pass, ${s.layoutFixtures} layout (${s.cases} cases, ${s.casesPassed} pass; ${s.casesByDirection.map((x) => `${x.direction} ${x.passed}/${x.cases}`).join(', ')}); layout ${s.exactLuNodes}/${s.comparedNodes} nodes exact at 1/64 px (text ${s.textNodesExact}/${s.textNodes}, lines ${s.lineNodesExact}/${s.lineNodes}, ${s.anonymousBoxes.length} anonymous boxes); dual boxes ${d.boxesEqual}/${d.boxesCompared}, values ${d.valuesEqual}/${d.valuesCompared}, channels ${d.channelsEqual}/${d.channelsCompared}`);
 for (const o of outcomes) if (o.status === 'fail') console.log(`FAIL ${o.id}: ${o.reason}`);
 if (s.failed > 0) process.exitCode = 1;

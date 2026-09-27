@@ -41,7 +41,7 @@ export function textParent(id: string): string {
 export function compareDual(authored: WebCapture, compiled: WebCapture, colors: ReadonlyMap<string, ElementColors>, textColors: ReadonlyMap<string, Rgba8>): DualComparison {
   const problems: string[] = [];
   const nodes: DualNode[] = [];
-  if (authored.devicePixelRatio !== compiled.devicePixelRatio || authored.viewport.width !== compiled.viewport.width || authored.viewport.height !== compiled.viewport.height) {
+  if (authored.devicePixelRatio !== compiled.devicePixelRatio || authored.direction !== compiled.direction || authored.viewport.width !== compiled.viewport.width || authored.viewport.height !== compiled.viewport.height) {
     problems.push('authored and compiled renderings ran in different environments');
   }
   const ids = (c: WebCapture): string => c.nodes.map((n) => n.id).join(' ');

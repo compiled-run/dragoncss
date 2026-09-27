@@ -62,10 +62,10 @@
       { "instance": "doc/b", "state": "disabled", "value": false }
     ],
     "textTopology": [
-      { "address": "a/label:text0", "component": "Switch", "template": "on", "at": "\"On\"", "ownerInstance": "doc/a", "insertionParent": "a/label", "context": "text-in-flex-item", "when": [["doc/a", "checked", true]] },
-      { "address": "a/label:text0", "component": "Switch", "template": "off", "at": "\"Off\"", "ownerInstance": "doc/a", "insertionParent": "a/label", "context": "text-in-flex-item", "when": [["doc/a", "checked", false]] },
-      { "address": "b/label:text0", "component": "Switch", "template": "on", "at": "\"On\"", "ownerInstance": "doc/b", "insertionParent": "b/label", "context": "text-in-flex-item", "when": [["doc/b", "checked", true]] },
-      { "address": "b/label:text0", "component": "Switch", "template": "off", "at": "\"Off\"", "ownerInstance": "doc/b", "insertionParent": "b/label", "context": "text-in-flex-item", "when": [["doc/b", "checked", false]] }
+      { "address": "a/label:text0", "component": "Switch", "template": "on", "at": "\"On\"", "ownerInstance": "doc/a", "insertionParent": "a/label", "context": { "ltr": "text-in-flex-item/row/ltr", "rtl": "text-in-flex-item/row/rtl" }, "when": [["doc/a", "checked", true]] },
+      { "address": "a/label:text0", "component": "Switch", "template": "off", "at": "\"Off\"", "ownerInstance": "doc/a", "insertionParent": "a/label", "context": { "ltr": "text-in-flex-item/row/ltr", "rtl": "text-in-flex-item/row/rtl" }, "when": [["doc/a", "checked", false]] },
+      { "address": "b/label:text0", "component": "Switch", "template": "on", "at": "\"On\"", "ownerInstance": "doc/b", "insertionParent": "b/label", "context": { "ltr": "text-in-flex-item/row/ltr", "rtl": "text-in-flex-item/row/rtl" }, "when": [["doc/b", "checked", true]] },
+      { "address": "b/label:text0", "component": "Switch", "template": "off", "at": "\"Off\"", "ownerInstance": "doc/b", "insertionParent": "b/label", "context": { "ltr": "text-in-flex-item/row/ltr", "rtl": "text-in-flex-item/row/rtl" }, "when": [["doc/b", "checked", false]] }
     ]
   }
 }

@@ -1,16 +1,20 @@
-// Parity cases (docs/api.md §7): one per reachable assignment of every fixture, never deduplicated or factored.
-// HTML fixtures have one case, rendered from the file itself; tree fixtures are rendered by the parity-owned renderer.
-import type { Assignment, FrontEndResult } from 'dragon';
+// Parity cases (docs/api.md §7): one per reachable assignment of every fixture and environment, never deduplicated or factored.
+// HTML fixtures have one left-to-right case, rendered from the file itself; tree fixtures are rendered by the parity-owned renderer,
+// once per assignment in each environment direction.
+import type { Assignment, Environment, FrontEndResult } from 'dragon';
 import { compiledFixtureHtml, readHtmlFixture } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
+import { directionSuffix, environmentsOf } from './fixtures.ts';
 import { authoredModel } from './render.ts';
 import { readTreeFixture } from './tree-fixture.ts';
 
 export type ParityCase = {
-  /** The fixture id for HTML fixtures, "<fixture>#<k>" for tree fixtures. */
+  /** The fixture id for HTML fixtures, "<fixture>#<k>" for tree fixtures, with "-rtl" for the right-to-left environment. */
   readonly id: string;
   readonly fixture: string;
+  /** The assignment index in the renderer's enumeration. */
   readonly index: number;
+  readonly environment: Environment;
   readonly assignment: Assignment;
   readonly isInitial: boolean;
   readonly authoredHtml: string;
@@ -21,27 +25,28 @@ export function fixtureInput(spec: FixtureSpec): FrontEndResult {
   return spec.format === 'html' ? readHtmlFixture(spec.id).input : readTreeFixture(spec.id);
 }
 
-/** Every case of a layout fixture, from the source alone (not from Dragon's enumeration). */
+/** Every case of a layout fixture, from the source alone (not from Dragon's enumeration): environments outer, assignments inner. */
 export function casesOf(spec: FixtureSpec, input: FrontEndResult): ParityCase[] {
   if (spec.format === 'html') {
     const { html } = readHtmlFixture(spec.id);
-    return [{ id: spec.id, fixture: spec.id, index: 0, assignment: [], isInitial: true, authoredHtml: html, compiledHtml: (css, classOf) => compiledFixtureHtml(html, css, classOf) }];
+    const environment = environmentsOf(spec)[0] as Environment;
+    return [{ id: spec.id, fixture: spec.id, index: 0, environment, assignment: [], isInitial: true, authoredHtml: html, compiledHtml: (css, classOf) => compiledFixtureHtml(html, css, classOf) }];
   }
   const model = authoredModel(input);
-  return model.assignments.map((assignment, index) => ({
-    id: `${spec.id}#${index}`,
+  return environmentsOf(spec).flatMap((environment) => model.assignments.map((assignment, index) => ({
+    id: `${spec.id}#${index}${directionSuffix(environment.direction)}`,
     fixture: spec.id,
     index,
+    environment,
     assignment,
     isInitial: index === model.initialIndex,
     authoredHtml: model.render(assignment, { kind: 'authored' }),
-    compiledHtml: (css, classOf) => model.render(assignment, { kind: 'compiled', classOf, css }),
-  }));
+    compiledHtml: (css: string, classOf: ReadonlyMap<string, string>) => model.render(assignment, { kind: 'compiled', classOf, css }),
+  })));
 }
 
-/** The product of the free states' domain sizes, computed from the source tree. */
+/** The product of the free states' domain sizes, computed from the source tree: the case count of one environment. */
 export function expectedCaseCount(spec: FixtureSpec, input: FrontEndResult): number {
   if (spec.format === 'html') return 1;
   return authoredModel(input).free.reduce((n, f) => n * f.domain.length, 1);
 }
-

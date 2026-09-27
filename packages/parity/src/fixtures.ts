@@ -2,7 +2,18 @@
 import type { DiagnosticCode, Environment } from 'dragon';
 
 /** The reference environment of every case in this lane (docs/api.md §7): an input to the projection, the engine and Chrome. */
-export const ENVIRONMENT: Environment = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1 };
+export const ENVIRONMENT: Environment = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr' };
+
+/** The same environment right-to-left (docs/api.md §7): every tree fixture case also runs here, as its own case ("<case>-rtl"). */
+export const RTL_ENVIRONMENT: Environment = { ...ENVIRONMENT, direction: 'rtl' };
+
+/** The environments a fixture's cases run in: HTML fixtures run left-to-right, tree fixtures in both directions. */
+export function environmentsOf(spec: FixtureSpec): readonly Environment[] {
+  return spec.format === 'tree' ? [ENVIRONMENT, RTL_ENVIRONMENT] : [ENVIRONMENT];
+}
+
+/** The case id suffix of a direction: none for ltr, "-rtl" for rtl. */
+export const directionSuffix = (direction: Environment['direction']): string => (direction === 'rtl' ? '-rtl' : '');
 
 export type FixtureSpec =
   | { readonly id: string; readonly format: 'html' | 'tree'; readonly kind: 'layout'; readonly gate: 'default' }
@@ -65,6 +76,26 @@ export const FIXTURES: readonly FixtureSpec[] = [
   layout('flex-text-anonymous-item'),
   layout('flex-text-min-content-shrink'),
   layout('flex-column-text-wrap'),
+  layout('text-fractional-font-size'),
+  layout('rtl-block-auto-margins'),
+  layout('rtl-text-align-multi-line'),
+  layout('rtl-flex-row-justify'),
+  layout('rtl-flex-wrap'),
+  layout('rtl-text-anonymous'),
+  layout('rtl-flex-column-align'),
+  layout('direction-mixed-subtree'),
+  layout('flex-order'),
+  layout('flex-row-reverse'),
+  layout('flex-column-reverse'),
+  layout('flex-reverse-start-end'),
+  layout('flex-wrap-reverse'),
+  layout('flex-baseline-text'),
+  layout('flex-baseline-synthesized'),
+  layout('flex-baseline-nested'),
+  layout('flex-align-self-baseline-wrap'),
+  layout('flex-baseline-column-fallback'),
+  layout('overflow-hidden-bfc'),
+  layout('overflow-hidden-flex-min-size'),
   tree('tree-switch-two-instances'),
   tree('tree-correlated-state'),
   tree('tree-controlled-aliases'),
@@ -78,6 +109,7 @@ export const FIXTURES: readonly FixtureSpec[] = [
   tree('tree-nested-instances'),
   tree('tree-attribute-equality'),
   tree('tree-projected-text'),
+  tree('tree-whitespace-leaves'),
   reject('reject-display-grid', 'DRAGON_UNSUPPORTED_VALUE', 'grid'),
   reject('reject-color-lab', 'DRAGON_UNSUPPORTED_VALUE', 'lab(50% 40 59)'),
   reject('reject-shorthand-filled', 'DRAGON_UNSUPPORTED_VALUE', '3px'),
@@ -89,4 +121,11 @@ export const FIXTURES: readonly FixtureSpec[] = [
   rejectTree('reject-tree-producer-error', 'DRAGON_PRODUCER_ERROR', '<div broken class="'),
   rejectTree('reject-tree-raw-html', 'DRAGON_TREE_RAW_HTML', '{@html "<b>bold</b>"}'),
   reject('reject-white-space-pre', 'DRAGON_UNSUPPORTED_VALUE', 'pre'),
+  reject('reject-nesting-ampersand', 'DRAGON_UNSUPPORTED_NESTED_RULE', '& .b { width: 5px; }'),
+  reject('reject-nested-media', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (min-width: 1px) { width: 30px; }'),
+  reject('reject-overflow-single-axis', 'DRAGON_UNSUPPORTED_VALUE', 'hidden'),
+  reject('reject-overflow-body', 'DRAGON_UNSUPPORTED_VALUE', 'hidden'),
+  reject('reject-overflow-scroll', 'DRAGON_UNSUPPORTED_VALUE', 'scroll'),
+  reject('reject-last-baseline', 'DRAGON_UNSUPPORTED_VALUE', 'last baseline'),
+  reject('reject-bidi-neutral', 'DRAGON_UNSUPPORTED_BIDI', 'AB 12.'),
 ];

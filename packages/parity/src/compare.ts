@@ -61,6 +61,7 @@ export function compareLayout(capture: WebCapture, absolute: ReadonlyMap<string,
   const nodes: NodeComparison[] = [];
   const seen = new Set<string>();
   if (capture.devicePixelRatio !== env.devicePixelRatio) problems.push(`capture DPR ${capture.devicePixelRatio} is not the case DPR ${env.devicePixelRatio}`);
+  if (capture.direction !== env.direction) problems.push(`capture direction ${capture.direction} is not the case direction ${env.direction}`);
   for (const n of capture.nodes) {
     seen.add(n.id);
     const d = absolute.get(n.id);

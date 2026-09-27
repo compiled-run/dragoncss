@@ -5,7 +5,7 @@ import { createProject } from '../src/index.ts';
 import { compiledCases, createProjectWith, iosLayoutProjection, NO_FAULTS, webClassMap } from '../src/internal.ts';
 import { always, eq, expectCatalogued, not, Sources } from './helpers.ts';
 
-const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1 } as const;
+const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr' } as const;
 const web = () => createProject({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' } } });
 
 const sym = (owner: string, sheet: string, name: string) => ({ owner, sheet, name });
@@ -261,7 +261,7 @@ describe('finite states: instances, aliases and branches', () => {
   });
 
   it('stateCollapse keeps one element at its initial classes while the others follow the state', () => {
-    const faulty = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: { ...NO_FAULTS, stateCollapse: 'a/trigger' }, profiles: 'enforce' }).compile(input());
+    const faulty = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: { ...NO_FAULTS, stateCollapse: 'a/trigger' }, profiles: 'enforce', direction: 'ltr' }).compile(input());
     const checked: Assignment = [{ state: { instance: 'doc/a', state: 'checked' }, value: true }, { state: { instance: 'doc/b', state: 'checked' }, value: true }];
     expect(explainAll(faulty, 'web', 'trigger', 'doc/a', 'width', checked).map((x) => x.value)).toEqual(['10px', '10px', '10px', '10px']);
     expect(explainAll(faulty, 'web', 'trigger', 'doc/b', 'width', checked).map((x) => x.value)).toEqual(['30px', '30px', '30px', '30px']);

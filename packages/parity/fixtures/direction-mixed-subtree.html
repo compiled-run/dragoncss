@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.rtl { direction: rtl; }
+.ltr { direction: ltr; }
+.outer { width: 120px; border: 1px solid #000; padding: 2px 5px 2px 1px; margin-bottom: 3px; }
+.box { width: 50px; margin-left: 4px; margin-right: 9px; }
+.auto { width: 41.3px; margin: 0 auto 2px; height: 3px; background-color: #ccc; }
+.row { display: flex; width: 90px; column-gap: 2px; }
+.row > div { width: 20px; height: 8px; background-color: #888; }
+.center { text-align: center; }
+.inner { width: 70px; margin-left: auto; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="o1" class="outer rtl">
+<div data-dragon-id="o1a" class="box">XX XXX XX XX</div>
+<div data-dragon-id="o1b" class="auto"></div>
+<div data-dragon-id="o1c" class="box ltr">XX XXX XX XX</div>
+<div data-dragon-id="o1d" class="inner ltr"><div data-dragon-id="o1d1" class="box rtl">XXX XX X</div><div data-dragon-id="o1d2" class="auto"></div><div data-dragon-id="o1d3" class="row"><div data-dragon-id="o1d3a"></div><div data-dragon-id="o1d3b"></div></div></div>
+<div data-dragon-id="o1e" class="row"><div data-dragon-id="o1e1"></div><div data-dragon-id="o1e2" class="ltr center">XX XXX</div></div>
+</div>
+<div data-dragon-id="o2" class="outer">
+<div data-dragon-id="o2a" class="box rtl center">XX XXX XX</div>
+<div data-dragon-id="o2b" class="rtl"><div data-dragon-id="o2b1" class="auto"></div><div data-dragon-id="o2b2" class="box">XX XX XXXX</div><div data-dragon-id="o2b3" class="row ltr"><div data-dragon-id="o2b3a"></div><div data-dragon-id="o2b3b"></div></div></div>
+<div data-dragon-id="o2c" class="row rtl"><div data-dragon-id="o2c1"></div><div data-dragon-id="o2c2" class="ltr">XX XX</div></div>
+</div>
+</body>
+</html>

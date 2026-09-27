@@ -12,7 +12,11 @@ import { computed as capturedUa, userAgentLonghands } from '../ua/chrome-145.gen
 import type { Span } from '../types.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 
-export type Origin = 'author' | 'inherited' | 'user-agent' | 'initial';
+/** environment: the root's direction, seeded from the reference environment (docs/api.md §7), never from an author declaration. */
+export type Origin = 'author' | 'inherited' | 'user-agent' | 'initial' | 'environment';
+
+/** The environment facts resolution reads: the document's base direction, given to the root element. */
+export type ResolveEnvironment = { readonly direction: 'ltr' | 'rtl' };
 
 export type ResolvedValue = {
   readonly value: CssValue;
@@ -91,6 +95,7 @@ function userAgentValue(tag: CapturedTag, property: Longhand): CssValue | null {
 /** Origin of every longhand on an element with no author rules, as the resolver decides it; pinned by ua.test.ts. */
 export function defaultOrigin(tag: CapturedTag, property: Longhand, isRoot: boolean): Origin {
   if (userAgentValue(tag, property) !== null) return 'user-agent';
+  if (isRoot && property === 'direction') return 'environment';
   return INHERITED.has(property) && !isRoot ? 'inherited' : 'initial';
 }
 
@@ -175,6 +180,23 @@ const displayOf = (el: ResolvedElement): string => {
   return v.kind === 'keyword' ? v.value : '';
 };
 
+// css-overflow-3 §3.1: when one axis is neither visible nor clip, visible computes to auto and clip to hidden on the other axis.
+function computeOverflowPair(props: Map<Longhand, ResolvedValue>): void {
+  const x = props.get('overflow-x') as ResolvedValue;
+  const y = props.get('overflow-y') as ResolvedValue;
+  const kw = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
+  const plain = (k: string): boolean => k === 'visible' || k === 'clip';
+  if (plain(kw(x)) && plain(kw(y))) return;
+  const fix = (v: ResolvedValue): ResolvedValue => {
+    const k = kw(v);
+    if (k === 'visible') return { ...v, value: { kind: 'keyword', value: 'auto' } };
+    if (k === 'clip') return { ...v, value: { kind: 'keyword', value: 'hidden' } };
+    return v;
+  };
+  props.set('overflow-x', fix(x));
+  props.set('overflow-y', fix(y));
+}
+
 // css-display-3 §2.7: the root element's display is blockified (Chrome reports block for html even under display: initial).
 function blockifyRoot(v: ResolvedValue): ResolvedValue {
   return v.value.kind === 'keyword' && v.value.value === 'inline' ? { ...v, value: { kind: 'keyword', value: 'block' } } : v;
@@ -182,7 +204,7 @@ function blockifyRoot(v: ResolvedValue): ResolvedValue {
 
 // css-cascade-5 §4-§7: the winning declaration, inheritance, then user-agent or initial values, for every longhand.
 // Logical ancestry is the linked tree: projected children match under their insertion parent (docs/api.md §3.1).
-export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults): ResolvedElement {
+export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment): ResolvedElement {
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {
     const here = [...chain, el];
     const winners = new Map<Longhand, Candidate>();
@@ -227,6 +249,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         const useInherit = kw === 'inherit' || currentColorOnColor || (kw === 'unset' && inherited);
         const r = useInherit ? fromParent(p) : { value: initialValue(p), origin: 'initial' as const, span: null };
         props.set(p, { ...r, span: w.declaration.span, ...author });
+      } else if (inherited && parent === null && p === 'direction') {
+        // docs/api.md §7: the environment direction is the root's base direction; the harness gives both renderings the same one.
+        props.set(p, { value: { kind: 'keyword', value: environment.direction }, origin: 'environment', span: null, ...none });
       } else if (inherited) {
         props.set(p, parent === null ? (userAgentValue(tag, p) === null ? fromParent(p) : defaultFor(p)) : fromParent(p));
       } else {
@@ -238,6 +263,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       }
     }
     if (parent === null) props.set('display', blockifyRoot(props.get('display') as ResolvedValue));
+    computeOverflowPair(props);
     const self: { kind: 'element'; element: LinkedElement; props: Map<Longhand, ResolvedValue>; children: (ResolvedElement | ResolvedText)[] } = {
       kind: 'element',
       element: el,

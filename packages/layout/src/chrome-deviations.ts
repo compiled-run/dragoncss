@@ -46,4 +46,22 @@ export const chromeDeviations: readonly ChromeDeviation[] = [
       { branch: 'dropped', fixture: 'margin-collapse-min-height', node: 'p9' },
     ],
   },
+  {
+    id: 'auto-margin-overflow-cross-start',
+    specSection: 'css-flexbox-1 §9.6 step 13',
+    spec: 'When an item with auto cross-axis margins is larger than its flex line, the block-start or inline-start margin (whichever is in the cross axis) is set to zero, so the item is flush with the writing-mode start edge.',
+    blink: 'Chrome 145 (measured) zeroes the cross-start margin instead: in a wrap-reverse container the item is flush with the cross-start edge, the writing-mode end edge.',
+    branches: [
+      { id: 'row-wrap-reverse', description: 'a row container: a 30px item in a 20px line sits flush with the bottom (cross-start), 10px above the top, not flush with the top (block-start)' },
+      { id: 'column-wrap-reverse', description: 'an ltr column container: a 30px item in a 20px line sits flush with the right (cross-start), not the left (inline-start)' },
+    ],
+    nodes: [
+      { branch: 'row-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'am-a' },
+      { branch: 'row-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'am-b' },
+      { branch: 'row-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'am-c' },
+      { branch: 'column-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'amc-a' },
+      { branch: 'column-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'amc-b' },
+      { branch: 'column-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'amc-c' },
+    ],
+  },
 ];

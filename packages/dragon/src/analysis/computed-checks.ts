@@ -1,0 +1,77 @@
+// Refusals on computed values and laid-out text that no profile row can express: they depend on a value the author did not write
+// (the css-overflow-3 §3.1 pair rule), on where a declaration applies (html and body), or on the text and its direction (UAX #9).
+import { authored, diagnostic } from '../diagnostics/catalogue.ts';
+import type { Longhand } from '../css/properties.ts';
+import type { Diagnostic } from '../types.ts';
+import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
+
+const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
+
+/** UAX #9: in an rtl paragraph only these keep logical order (strong L letters, space, U+200B not at the end). */
+const RTL_SAFE = /^[A-Za-z \u200b]*$/u;
+
+// css-overflow-3 §3.1 and §3.3: only overflow hidden on both axes is supported. A computed auto, scroll or clip (including auto
+// computed from visible beside hidden) and any overflow on html or body (which propagates to the viewport) are refused.
+function checkOverflow(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const axes: Longhand[] = ['overflow-x', 'overflow-y'];
+  const values = axes.map((p) => el.props.get(p) as ResolvedValue);
+  const declared = values.find((v) => v.declaration !== null);
+  const tag = el.element.tag;
+  for (const [i, v] of values.entries()) {
+    const k = keywordOf(v);
+    const onRoot = (tag === 'html' || tag === 'body') && k !== 'visible';
+    const unsupportedValue = k === 'auto' || k === 'scroll' || k === 'clip';
+    if (!onRoot && !unsupportedValue) continue;
+    // A value the author wrote and no profile row supports is already DRAGON_UNSUPPORTED_VALUE from the profile check.
+    if (!onRoot && v.declared !== null && v.declared.kind === 'keyword' && v.declared.value === k) continue;
+    const source = v.declaration !== null ? v : declared;
+    if (source === undefined || source.declaration === null) continue;
+    const span = source.declaration.valueSpan;
+    const property = axes[i] as Longhand;
+    const message = onRoot
+      ? `${property}: ${k} on <${tag}> ${el.element.address} propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out`
+      : `${property} computes to ${k} on ${el.element.address} (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported`;
+    for (const t of targets) {
+      const id = `${t}|${span.source.uri}|${span.start}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), target: t, message, manual: 'Use overflow: hidden on both axes, on an element other than html and body.' }));
+    }
+  }
+}
+
+// UAX #9 and css-writing-modes-4 §2.4: the text of an rtl block container may hold only strong-L letters, spaces and U+200B, and
+// U+200B may not end its inline formatting context; anything else would be reordered, and it is refused for every target.
+function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (keywordOf(el.props.get('direction') as ResolvedValue) !== 'rtl') return;
+  const runs: ResolvedText[][] = [[]];
+  for (const c of el.children) {
+    if (c.kind === 'text') (runs[runs.length - 1] as ResolvedText[]).push(c);
+    else if (keywordOf(c.props.get('display') as ResolvedValue) !== 'none') runs.push([]);
+  }
+  const report = (t: ResolvedText, message: string): void => {
+    const origin = t.node.node.origin;
+    const id = `${t.node.address}|${JSON.stringify(origin)}`;
+    if (reported.has(id)) return;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_BIDI', { origin, message }));
+  };
+  for (const run of runs) {
+    for (const t of run) if (!RTL_SAFE.test(t.text)) report(t, `text ${JSON.stringify(t.text)} of ${t.node.address} holds a character other than A-Z, a-z, space and U+200B in the rtl block ${el.element.address}`);
+    const last = run[run.length - 1];
+    if (last !== undefined && last.text.endsWith('\u200b')) report(last, `U+200B ends the rtl inline content of ${el.element.address} (${last.node.address}) and would take the paragraph direction (UAX #9 L1)`);
+  }
+}
+
+/** Walks one resolved case and records the refusals above; reported deduplicates them across cases. Text in a display: none
+ * subtree is never laid out (CSS2 §9.2.4), so only the overflow check reaches it. */
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const walk = (el: ResolvedElement, hidden: boolean): void => {
+    const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
+    checkOverflow(el, targets, diagnostics, reported);
+    if (!here) checkBidi(el, diagnostics, reported);
+    for (const c of el.children) if (c.kind === 'element') walk(c, here);
+  };
+  walk(root, false);
+}
+

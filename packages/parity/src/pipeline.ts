@@ -1,10 +1,10 @@
-// One fixture end to end through the public compile entry, then both lanes for every case:
+// One fixture end to end through the public compile entry, then both lanes for every case in every environment:
 //   linux-dragon-layout: internal ios layout projection -> validator -> Dragon layout -> 1 device px against authored Chrome;
 //   chrome-dual: Dragon's web output rendered in Chrome against the authored rendering, boxes and computed values exactly.
 import type { Browser } from 'playwright';
 import type { EngineFaults, LayoutInput, LayoutRect, LayoutUnsupported } from '@dragon/layout';
 import { absoluteRects, ahemMeasurer, layoutWithFaults, validateLayoutInput } from '@dragon/layout';
-import type { Assignment, CompilerFaults, Compiled, Diagnostic, FrontEndResult, Origin, Scalar, TextTopologyEntry } from 'dragon';
+import type { Assignment, CompilerFaults, Compiled, Diagnostic, Environment, FrontEndResult, Origin, Scalar, TextTopologyEntry } from 'dragon';
 import { compiledCases, compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, textTopology, WEB_CSS_PATH, webClassMap } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { captureFixture } from './capture.ts';
@@ -16,7 +16,7 @@ import type { DualComparison } from './dual.ts';
 import { compareDual } from './dual.ts';
 import { PROJECT_ID } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
-import { ENVIRONMENT } from './fixtures.ts';
+import { ENVIRONMENT, environmentsOf } from './fixtures.ts';
 import { authoredModel } from './render.ts';
 import type { TreeExpectation } from './tree-fixture.ts';
 import { readTreeExpectation } from './tree-fixture.ts';
@@ -32,10 +32,13 @@ export type DiagnosticSummary = {
 
 export type LaneStatus = 'pass' | 'fail' | 'not-run';
 
+export type Direction = Environment['direction'];
+
 export type CaseOutcome = {
   readonly id: string;
   readonly fixture: string;
   readonly index: number;
+  readonly direction: Direction;
   readonly assignment: Assignment;
   readonly isInitial: boolean;
   readonly status: 'pass' | 'fail';
@@ -52,6 +55,9 @@ export type CaseOutcome = {
   readonly textLines: readonly { readonly address: string; readonly context: string; readonly lines: number }[];
 };
 
+/** MF1 per environment: cases declared by hand (tree fixtures; 1 for HTML), rendered by the parity renderer, enumerated by Dragon. */
+export type EnvironmentCount = { readonly direction: Direction; readonly expected: number; readonly renderer: number; readonly dragon: number };
+
 export type FixtureOutcome = {
   readonly id: string;
   readonly format: FixtureSpec['format'];
@@ -59,12 +65,14 @@ export type FixtureOutcome = {
   readonly status: 'pass' | 'fail';
   readonly reason: string | null;
   readonly diagnostics: readonly DiagnosticSummary[];
-  /** Cases declared by hand (tree fixtures, MF1; 1 for HTML), rendered by the parity renderer, and enumerated by Dragon. */
+  /** Totals over the fixture's environments of the per-environment counts below. */
   readonly expectedCases: number;
   readonly rendererCases: number;
   readonly dragonCases: number;
+  readonly environments: readonly EnvironmentCount[];
   readonly cases: readonly CaseOutcome[];
-  readonly webCss: string | null;
+  /** Dragon's web CSS per environment direction; rtl only for tree fixtures. */
+  readonly webCss: { readonly ltr: string | null; readonly rtl: string | null };
 };
 
 export function spanText(input: FrontEndResult, origin: Origin): string | null {
@@ -93,26 +101,33 @@ export type RunOptions = {
   readonly profiles: 'enforce' | 'derive';
 };
 
-export function compileFixture(spec: FixtureSpec, faults: CompilerFaults = NO_FAULTS, profiles: 'enforce' | 'derive' = 'enforce'): { input: FrontEndResult; compiled: Compiled<'ios' | 'web'> } {
+export function compileFixture(spec: FixtureSpec, faults: CompilerFaults = NO_FAULTS, profiles: 'enforce' | 'derive' = 'enforce', direction: Direction = 'ltr'): { input: FrontEndResult; compiled: Compiled<'ios' | 'web'> } {
   const input = fixtureInput(spec);
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} } }, { faults, profiles });
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} } }, { faults, profiles, direction });
   return { input, compiled: project.compile(input) };
 }
 
-export async function runFixture(spec: FixtureSpec, browser: Browser, opts: RunOptions): Promise<FixtureOutcome> {
-  const { input, compiled } = compileFixture(spec, opts.faults, opts.profiles);
-  const diagnostics = summarize(input, compiled.diagnostics);
+const webCssOf = (compiled: Compiled<'ios' | 'web'>): string | null => {
   const webOut = compiled.outputs.web;
-  const webCss = webOut.kind === 'ready' ? (webOut.files.find((f) => f.path === WEB_CSS_PATH)?.text ?? null) : null;
+  return webOut.kind === 'ready' ? (webOut.files.find((f) => f.path === WEB_CSS_PATH)?.text ?? null) : null;
+};
+
+export async function runFixture(spec: FixtureSpec, browser: Browser, opts: RunOptions): Promise<FixtureOutcome> {
+  const environments = environmentsOf(spec);
+  const compiledBy = new Map(environments.map((e) => [e.direction, compileFixture(spec, opts.faults, opts.profiles, e.direction)] as const));
+  const { input, compiled } = compiledBy.get('ltr') as { input: FrontEndResult; compiled: Compiled<'ios' | 'web'> };
+  const rtl = compiledBy.get('rtl');
+  const diagnostics = summarize(input, compiled.diagnostics);
+  const webCss = { ltr: webCssOf(compiled), rtl: rtl === undefined ? null : webCssOf(rtl.compiled) };
   const dragonCases = compiledCases(compiled).length;
 
   if (spec.kind === 'reject') {
     const hit = diagnostics.find((d) => d.code === spec.expect.code && d.spanText === spec.expect.spanText && (d.target === null || d.target === 'ios'));
-    const blocked = compiled.outputs.ios.kind === 'blocked' && compiled.targets.ios === 'blocked' && webOut.kind === 'blocked' && compiled.targets.web === 'blocked';
+    const blocked = compiled.outputs.ios.kind === 'blocked' && compiled.targets.ios === 'blocked' && compiled.outputs.web.kind === 'blocked' && compiled.targets.web === 'blocked';
     const noProjection = compiledCases(compiled).every((c) => iosLayoutProjection(compiled, ENVIRONMENT, c.assignment).kind === 'blocked') && iosLayoutProjection(compiled, ENVIRONMENT, []).kind === 'blocked';
-    const ok = hit !== undefined && blocked && noProjection && webCss === null && !compiled.ok;
+    const ok = hit !== undefined && blocked && noProjection && webCss.ltr === null && !compiled.ok;
     return {
-      id: spec.id, format: spec.format, kind: spec.kind, diagnostics, webCss, expectedCases: 0, rendererCases: 0, dragonCases, cases: [],
+      id: spec.id, format: spec.format, kind: spec.kind, diagnostics, webCss, expectedCases: 0, rendererCases: 0, dragonCases, environments: [], cases: [],
       status: ok ? 'pass' : 'fail',
       reason: ok ? null : `expected ${spec.expect.code} on ${JSON.stringify(spec.expect.spanText)} with blocked ios and web outputs, no layout projection and no web files; got ${diagnostics.map((d) => `${d.code} ${JSON.stringify(d.spanText)}`).join(', ')}`,
     };
@@ -120,20 +135,32 @@ export async function runFixture(spec: FixtureSpec, browser: Browser, opts: RunO
 
   const cases = casesOf(spec, input);
   const declared = spec.format === 'tree' ? readTreeExpectation(spec.id) : null;
-  const expectedCases = declared === null ? 1 : declared.cases;
+  const perEnvironment = declared === null ? 1 : declared.cases;
   const outcomes: CaseOutcome[] = [];
-  for (const c of cases) outcomes.push(await runCase(c, compiled, webCss, browser, opts));
-  const problems: string[] = [];
-  if (spec.format === 'tree') {
-    if (declared === null) problems.push('a layout tree fixture must declare expected free states, cases, initial assignment and text topology in fixture.json');
-    else problems.push(...caseCountProblems(declared, input, compiled), ...topologyProblems(declared, input, outcomes));
+  for (const c of cases) {
+    const own = compiledBy.get(c.environment.direction) as { compiled: Compiled<'ios' | 'web'> };
+    outcomes.push(await runCase(c, own.compiled, webCssOf(own.compiled), browser, opts));
   }
-  if (cases.length !== expectedCases) problems.push(`${cases.length} cases rendered, but ${expectedCases} are declared`);
-  if (expectedCaseCount(spec, input) !== expectedCases) problems.push(`the renderer's domains give ${expectedCaseCount(spec, input)} cases, but ${expectedCases} are declared`);
-  if (dragonCases !== expectedCases) problems.push(`Dragon enumerated ${dragonCases} cases, but ${expectedCases} are declared`);
+  const problems: string[] = [];
+  const counts: EnvironmentCount[] = [];
+  for (const e of environments) {
+    const own = (compiledBy.get(e.direction) as { compiled: Compiled<'ios' | 'web'> }).compiled;
+    const rendered = cases.filter((c) => c.environment.direction === e.direction).length;
+    const dragon = compiledCases(own).length;
+    counts.push({ direction: e.direction, expected: perEnvironment, renderer: rendered, dragon });
+    if (spec.format === 'tree') {
+      if (declared === null) problems.push('a layout tree fixture must declare expected free states, cases, initial assignment and text topology in fixture.json');
+      else problems.push(...caseCountProblems(declared, input, own).map((p) => `${e.direction}: ${p}`), ...topologyProblems(declared, input, outcomes.filter((o) => o.direction === e.direction)).map((p) => `${e.direction}: ${p}`));
+    }
+    if (rendered !== perEnvironment) problems.push(`${e.direction}: ${rendered} cases rendered, but ${perEnvironment} are declared`);
+    if (expectedCaseCount(spec, input) !== perEnvironment) problems.push(`${e.direction}: the renderer's domains give ${expectedCaseCount(spec, input)} cases, but ${perEnvironment} are declared`);
+    if (dragon !== perEnvironment) problems.push(`${e.direction}: Dragon enumerated ${dragon} cases, but ${perEnvironment} are declared`);
+  }
   for (const o of outcomes) if (o.status === 'fail') problems.push(`${o.id}: ${o.reason}`);
+  const total = (f: (c: EnvironmentCount) => number): number => counts.reduce((n, c) => n + f(c), 0);
   return {
-    id: spec.id, format: spec.format, kind: spec.kind, diagnostics, webCss, expectedCases, rendererCases: cases.length, dragonCases, cases: outcomes,
+    id: spec.id, format: spec.format, kind: spec.kind, diagnostics, webCss, environments: counts, cases: outcomes,
+    expectedCases: total((c) => c.expected), rendererCases: total((c) => c.renderer), dragonCases: total((c) => c.dragon),
     status: problems.length === 0 ? 'pass' : 'fail',
     reason: problems.length === 0 ? null : problems.join(' || '),
   };
@@ -166,13 +193,16 @@ export function caseCountProblems(declared: TreeExpectation, input: FrontEndResu
   return problems;
 }
 
-/** docs/api.md §10: every case's text topology equals the hand-declared mapping; inherited text styles name the insertion parent. */
+/**
+ * docs/api.md §10: every case's text topology equals the hand-declared mapping in its environment direction; inherited text
+ * styles name the insertion parent.
+ */
 export function topologyProblems(declared: TreeExpectation, input: FrontEndResult, cases: readonly CaseOutcome[]): string[] {
   const problems: string[] = [];
   for (const c of cases) {
     const holds = (t: readonly [string, string, Scalar]): boolean => c.assignment.some((e) => e.state.instance === t[0] && e.state.state === t[1] && e.value === t[2]);
     const expected = declared.textTopology.filter((e) => (e.when === undefined ? [] : e.when).every(holds)).map((e) => ({
-      address: e.address, component: e.component, template: e.template, at: e.at, ownerInstance: e.ownerInstance, insertionParent: e.insertionParent, context: e.context,
+      address: e.address, component: e.component, template: e.template, at: e.at, ownerInstance: e.ownerInstance, insertionParent: e.insertionParent, context: e.context[c.direction],
     }));
     if (c.topology === null) {
       problems.push(`${c.id}: no text topology`);
@@ -194,10 +224,10 @@ export function topologyProblems(declared: TreeExpectation, input: FrontEndResul
 async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss: string | null, browser: Browser, opts: RunOptions): Promise<CaseOutcome> {
   const features = { ios: compiledFeatures(compiled, 'ios', c.assignment), web: compiledFeatures(compiled, 'web', c.assignment) };
   const topology = textTopology(compiled, c.assignment);
-  const base = { id: c.id, fixture: c.fixture, index: c.index, assignment: c.assignment, isInitial: c.isInitial, features, unsupported: null, comparison: null, dual: null, vector: null, topology, textLines: [] };
+  const base = { id: c.id, fixture: c.fixture, index: c.index, direction: c.environment.direction, assignment: c.assignment, isInitial: c.isInitial, features, unsupported: null, comparison: null, dual: null, vector: null, topology, textLines: [] };
   const notRun = { 'linux-dragon-layout': 'not-run', 'chrome-dual': 'not-run' } as const;
   const fail = (reason: string): CaseOutcome => ({ ...base, lanes: notRun, status: 'fail', reason });
-  const projection = iosLayoutProjection(compiled, ENVIRONMENT, c.assignment);
+  const projection = iosLayoutProjection(compiled, c.environment, c.assignment);
   const errors = compiled.diagnostics.map((d) => `${d.code} ${d.message}`).join('; ');
   if (compiled.outputs.ios.kind === 'blocked' || projection.kind === 'blocked') return fail(`ios output blocked: ${projection.kind === 'blocked' ? projection.reason : ''} ${errors}`);
   if (webCss === null) return fail(`web output not ready: ${errors}`);
@@ -216,7 +246,7 @@ async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss:
     layoutStatus = 'fail';
     reasons.push(`linux-dragon-layout: LayoutUnsupported ${unsupported.code} at ${unsupported.nodeId} (${unsupported.specSection}): ${unsupported.detail}`);
   } else {
-    comparison = compareLayout(authored, absoluteRects(result.boxes), validated.input, ENVIRONMENT);
+    comparison = compareLayout(authored, absoluteRects(result.boxes), validated.input, c.environment);
     layoutStatus = comparison.pass ? 'pass' : 'fail';
     if (!comparison.pass) reasons.push(`linux-dragon-layout: ${comparison.problems.join('; ')}`);
   }
@@ -226,7 +256,7 @@ async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss:
   const colors = resolvedColors(compiled, c.assignment);
   const textColors = resolvedTextColors(compiled, c.assignment);
   if (classOf === null || colors === null || textColors === null) return fail('the compiled result has no web class map or resolved colours for this case');
-  const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(webCss, classOf), ENVIRONMENT);
+  const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(webCss, classOf), c.environment);
   const dual = compareDual(authored, compiledCapture, colors, textColors);
   if (!dual.pass) reasons.push(`chrome-dual: ${dual.problems.join('; ')}`);
 
@@ -250,5 +280,5 @@ async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss:
   };
 }
 
-/** Authored captures taken live in the pinned Chrome. */
-export const liveAuthored = (browser: Browser) => (c: ParityCase): Promise<WebCapture> => captureFixture(browser, c.id, c.authoredHtml, ENVIRONMENT);
+/** Authored captures taken live in the pinned Chrome, in the case's environment. */
+export const liveAuthored = (browser: Browser) => (c: ParityCase): Promise<WebCapture> => captureFixture(browser, c.id, c.authoredHtml, c.environment);

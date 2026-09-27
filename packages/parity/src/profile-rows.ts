@@ -4,7 +4,7 @@ import type { Longhand, ProfileRow, Proof } from 'dragon';
 import { PROPERTY_ASPECTS } from 'dragon';
 import type { CaseOutcome } from './pipeline.ts';
 
-export const PROFILE_REVISION = 'm1-s3b';
+export const PROFILE_REVISION = 'm1-s4a';
 
 type Lane = 'linux-dragon-layout' | 'chrome-dual';
 

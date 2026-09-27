@@ -58,7 +58,8 @@ export type TopologySpec = {
   readonly at: string;
   readonly ownerInstance: string;
   readonly insertionParent: string;
-  readonly context: string;
+  /** The text context, with its facets, in each environment direction (docs/api.md §7, §10.1). */
+  readonly context: { readonly ltr: string; readonly rtl: string };
   readonly when?: readonly (readonly [string, string, Scalar])[];
 };
 

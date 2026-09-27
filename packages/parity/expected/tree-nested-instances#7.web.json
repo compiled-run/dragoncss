@@ -6,6 +6,7 @@
     "height": 300
   },
   "devicePixelRatio": 1,
+  "direction": "ltr",
   "nodes": [
     {
       "id": "html",

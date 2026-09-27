@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.c { display: flex; flex-direction: column; width: 101.3px; margin-bottom: 3px; border-left: 3px solid #000; padding-right: 2px; }
+.rtl { direction: rtl; }
+.i { width: 10.5px; height: 4px; background-color: #999; }
+.ltr { direction: ltr; }
+.fs { align-self: flex-start; } .fe { align-self: flex-end; } .s { align-self: start; } .e { align-self: end; }
+.ss { align-self: self-start; } .se { align-self: self-end; } .ce { align-self: center; } .st { align-self: stretch; width: auto; }
+.ml { margin-left: auto; } .mr { margin-right: auto; } .mm { margin-left: auto; margin-right: auto; }
+.m { margin-left: 3px; margin-right: 6px; }
+.ai-end { align-items: end; }
+.ai-ss { align-items: self-start; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="c rtl">
+<div data-dragon-id="c1-fs" class="i fs"></div><div data-dragon-id="c1-fe" class="i fe"></div><div data-dragon-id="c1-s" class="i s"></div><div data-dragon-id="c1-e" class="i e"></div>
+<div data-dragon-id="c1-ss" class="i ss"></div><div data-dragon-id="c1-se" class="i se"></div><div data-dragon-id="c1-ssl" class="i ss ltr"></div><div data-dragon-id="c1-sel" class="i se ltr"></div>
+<div data-dragon-id="c1-ce" class="i ce"></div><div data-dragon-id="c1-cem" class="i ce m"></div><div data-dragon-id="c1-st" class="i st m"></div><div data-dragon-id="c1-sm" class="i s m"></div>
+<div data-dragon-id="c1-ml" class="i ml"></div><div data-dragon-id="c1-mr" class="i mr"></div><div data-dragon-id="c1-mm" class="i mm"></div>
+</div>
+<div data-dragon-id="c2" class="c">
+<div data-dragon-id="c2-ss" class="i ss"></div><div data-dragon-id="c2-se" class="i se"></div><div data-dragon-id="c2-ssr" class="i ss rtl"></div><div data-dragon-id="c2-ser" class="i se rtl"></div>
+<div data-dragon-id="c2-s" class="i s rtl"></div><div data-dragon-id="c2-e" class="i e rtl"></div><div data-dragon-id="c2-mm" class="i mm"></div>
+</div>
+<div data-dragon-id="c3" class="c rtl ai-end"><div data-dragon-id="c3-a" class="i"></div><div data-dragon-id="c3-b" class="i m"></div><div data-dragon-id="c3-t">XX XXX</div></div>
+<div data-dragon-id="c4" class="c rtl ai-ss"><div data-dragon-id="c4-a" class="i"></div><div data-dragon-id="c4-b" class="i ltr"></div><div data-dragon-id="c4-t" class="ltr">XX XX</div></div>
+</body>
+</html>

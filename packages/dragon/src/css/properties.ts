@@ -28,7 +28,7 @@ export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>(['direction', 
  * The inherited text properties every resolved text node carries itself (goal.md principle 3), each with an inherited Origin,
  * so the lowering reads only the text node.
  */
-export const TEXT_LONGHANDS = ['font-family', 'font-size', 'line-height', 'color', 'text-align', 'white-space-collapse', 'text-wrap-mode'] as const satisfies readonly Longhand[];
+export const TEXT_LONGHANDS = ['font-family', 'font-size', 'line-height', 'color', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'direction'] as const satisfies readonly Longhand[];
 
 export type TextLonghand = (typeof TEXT_LONGHANDS)[number];
 
@@ -55,8 +55,9 @@ export const SIDES = ['top', 'right', 'bottom', 'left'] as const;
 export const PROPERTY_ASPECTS: { readonly [P in Longhand]: { readonly layout: boolean; readonly paint: boolean } } = {
   display: { layout: true, paint: false },
   position: { layout: true, paint: false },
-  'overflow-x': { layout: true, paint: false },
-  'overflow-y': { layout: true, paint: false },
+  // overflow: hidden also clips painting, which no milestone-1 lane renders natively.
+  'overflow-x': { layout: true, paint: true },
+  'overflow-y': { layout: true, paint: true },
   direction: { layout: true, paint: false },
   'box-sizing': { layout: true, paint: false },
   width: { layout: true, paint: false },
@@ -110,12 +111,13 @@ export const PROPERTY_ASPECTS: { readonly [P in Longhand]: { readonly layout: bo
 /**
  * Which formatting context a longhand's row key names (M2): container properties name the element's own flex line mode, text
  * properties the context of each text node they reach (analysis/context.ts), and every other longhand the context the
- * element's box takes part in.
+ * element's box takes part in. direction is a container property: the element's own inline flow, text alignment and flex axes
+ * read it, while its own box is placed by its parent's direction.
  */
 export const PROPERTY_ROLE: { readonly [P in Longhand]: 'item' | 'container' | 'text' } = Object.fromEntries(
   LONGHANDS.map((p) => [
     p,
-    ['flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap'].includes(p)
+    ['flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap', 'direction'].includes(p)
       ? 'container'
       : ['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode'].includes(p)
         ? 'text'

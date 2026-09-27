@@ -1,0 +1,565 @@
+{
+ "sources": [
+  "leaves.dg",
+  "doc.css"
+ ],
+ "modules": [
+  {
+   "id": "leaves",
+   "source": "leaves.dg"
+  }
+ ],
+ "styles": [
+  {
+   "id": "doc",
+   "file": "doc.css",
+   "scope": "document"
+  }
+ ],
+ "document": {
+  "root": "App",
+  "documentElement": "html",
+  "styles": [
+   "doc"
+  ]
+ },
+ "components": [
+  {
+   "id": "App",
+   "module": "leaves",
+   "at": "component App",
+   "root": [
+    {
+     "el": "html",
+     "id": "html",
+     "at": "<html>",
+     "children": [
+      {
+       "el": "body",
+       "id": "body",
+       "at": "<body>",
+       "children": [
+        {
+         "el": "div",
+         "id": "a",
+         "at": "<div a ",
+         "class": [
+          "doc.a"
+         ],
+         "children": [
+          {
+           "text": "XX",
+           "id": "a1",
+           "at": [
+            "{\"XX\"}",
+            0
+           ]
+          },
+          {
+           "text": " ",
+           "id": "a2",
+           "at": [
+            "{\" \"}",
+            0
+           ]
+          },
+          {
+           "text": "YY",
+           "id": "a3",
+           "at": [
+            "{\"YY\"}",
+            0
+           ]
+          },
+          {
+           "text": "​",
+           "id": "a4",
+           "at": [
+            "{\"\\u200b\"}",
+            0
+           ]
+          },
+          {
+           "text": "ZZ WW",
+           "id": "a5",
+           "at": "{\"ZZ WW\"}"
+          }
+         ]
+        },
+        {
+         "el": "div",
+         "id": "b",
+         "at": "<div b ",
+         "class": [
+          "doc.b"
+         ],
+         "children": [
+          {
+           "text": "XXXX",
+           "id": "b1",
+           "at": [
+            "{\"XXXX\"}",
+            0
+           ]
+          },
+          {
+           "text": " ",
+           "id": "b2",
+           "at": [
+            "{\" \"}",
+            1
+           ]
+          },
+          {
+           "text": "YYYY",
+           "id": "b3",
+           "at": "{\"YYYY\"}"
+          },
+          {
+           "text": " ",
+           "id": "b4",
+           "at": [
+            "{\" \"}",
+            2
+           ]
+          },
+          {
+           "text": "ZZ",
+           "id": "b5",
+           "at": [
+            "{\"ZZ\"}",
+            0
+           ]
+          }
+         ]
+        },
+        {
+         "el": "div",
+         "id": "c",
+         "at": "<div c ",
+         "class": [
+          "doc.a"
+         ],
+         "children": [
+          {
+           "text": "XX",
+           "id": "c1",
+           "at": [
+            "{\"XX\"}",
+            1
+           ]
+          },
+          {
+           "text": "​",
+           "id": "c2",
+           "at": [
+            "{\"\\u200b\"}",
+            1
+           ]
+          },
+          {
+           "text": "YY ZZ",
+           "id": "c3",
+           "at": "{\"YY ZZ\"}"
+          }
+         ]
+        },
+        {
+         "el": "div",
+         "id": "d",
+         "at": "<div d ",
+         "class": [
+          "doc.d"
+         ],
+         "children": [
+          {
+           "text": "XX ",
+           "id": "d1",
+           "at": "{\"XX \"}"
+          },
+          {
+           "text": "YY",
+           "id": "d2",
+           "at": [
+            "{\"YY\"}",
+            1
+           ]
+          },
+          {
+           "text": "​",
+           "id": "d3",
+           "at": [
+            "{\"\\u200b\"}",
+            2
+           ]
+          },
+          {
+           "text": "ZZZ",
+           "id": "d4",
+           "at": "{\"ZZZ\"}"
+          }
+         ]
+        },
+        {
+         "el": "div",
+         "id": "e",
+         "at": "<div e ",
+         "class": [
+          "doc.e"
+         ],
+         "children": [
+          {
+           "text": "XX",
+           "id": "e1",
+           "at": [
+            "{\"XX\"}",
+            2
+           ]
+          },
+          {
+           "text": " ",
+           "id": "e2",
+           "at": [
+            "{\" \"}",
+            3
+           ]
+          },
+          {
+           "text": "Y",
+           "id": "e3",
+           "at": "{\"Y\"}"
+          },
+          {
+           "text": " ",
+           "id": "e4",
+           "at": [
+            "{\" \"}",
+            4
+           ]
+          },
+          {
+           "text": "XXXX",
+           "id": "e5",
+           "at": [
+            "{\"XXXX\"}",
+            1
+           ]
+          },
+          {
+           "text": "​",
+           "id": "e6",
+           "at": [
+            "{\"\\u200b\"}",
+            3
+           ]
+          },
+          {
+           "text": "W",
+           "id": "e7",
+           "at": "{\"W\"}"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "expected": {
+  "freeStates": [],
+  "cases": 1,
+  "initial": [],
+  "textTopology": [
+   {
+    "address": "a:text0",
+    "component": "App",
+    "template": "a1",
+    "at": "{\"XX\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "a",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "a:space0",
+    "component": "App",
+    "template": "a2",
+    "at": "{\" \"}",
+    "ownerInstance": "doc",
+    "insertionParent": "a",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "a:text1",
+    "component": "App",
+    "template": "a3",
+    "at": "{\"YY\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "a",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "a:text2",
+    "component": "App",
+    "template": "a4",
+    "at": "{\"\\u200b\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "a",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "a:text3",
+    "component": "App",
+    "template": "a5",
+    "at": "{\"ZZ WW\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "a",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "b:text0",
+    "component": "App",
+    "template": "b1",
+    "at": "{\"XXXX\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "b",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "b:space0",
+    "component": "App",
+    "template": "b2",
+    "at": "{\" \"}",
+    "ownerInstance": "doc",
+    "insertionParent": "b",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "b:text1",
+    "component": "App",
+    "template": "b3",
+    "at": "{\"YYYY\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "b",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "b:space1",
+    "component": "App",
+    "template": "b4",
+    "at": "{\" \"}",
+    "ownerInstance": "doc",
+    "insertionParent": "b",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "b:text2",
+    "component": "App",
+    "template": "b5",
+    "at": "{\"ZZ\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "b",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "c:text0",
+    "component": "App",
+    "template": "c1",
+    "at": "{\"XX\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "c",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "c:text1",
+    "component": "App",
+    "template": "c2",
+    "at": "{\"\\u200b\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "c",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "c:text2",
+    "component": "App",
+    "template": "c3",
+    "at": "{\"YY ZZ\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "c",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "d:text0",
+    "component": "App",
+    "template": "d1",
+    "at": "{\"XX \"}",
+    "ownerInstance": "doc",
+    "insertionParent": "d",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "d:text1",
+    "component": "App",
+    "template": "d2",
+    "at": "{\"YY\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "d",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "d:text2",
+    "component": "App",
+    "template": "d3",
+    "at": "{\"\\u200b\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "d",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "d:text3",
+    "component": "App",
+    "template": "d4",
+    "at": "{\"ZZZ\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "d",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "e:text0",
+    "component": "App",
+    "template": "e1",
+    "at": "{\"XX\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "e",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "e:space0",
+    "component": "App",
+    "template": "e2",
+    "at": "{\" \"}",
+    "ownerInstance": "doc",
+    "insertionParent": "e",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "e:text1",
+    "component": "App",
+    "template": "e3",
+    "at": "{\"Y\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "e",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "e:space1",
+    "component": "App",
+    "template": "e4",
+    "at": "{\" \"}",
+    "ownerInstance": "doc",
+    "insertionParent": "e",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "e:text2",
+    "component": "App",
+    "template": "e5",
+    "at": "{\"XXXX\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "e",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "e:text3",
+    "component": "App",
+    "template": "e6",
+    "at": "{\"\\u200b\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "e",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "e:text4",
+    "component": "App",
+    "template": "e7",
+    "at": "{\"W\"}",
+    "ownerInstance": "doc",
+    "insertionParent": "e",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   }
+  ]
+ }
+}

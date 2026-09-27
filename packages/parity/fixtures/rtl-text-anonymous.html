@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; direction: rtl; }
+.m1 { width: 50px; }
+.b1 { height: 10px; margin: 5px 0 7px; width: 20px; background-color: #ccc; }
+.m2 { width: 60px; padding: 4px; border: 1px solid #000; text-align: center; line-height: 12px; }
+.b2 { margin-top: 6px; width: 40px; }
+.f1 { display: flex; width: 71px; margin-top: 3px; }
+.f1 > div { width: 15px; height: 12px; background-color: #aaa; }
+.f2 { display: flex; flex-direction: column; width: 33px; margin-top: 3px; text-align: end; }
+.f2 > div { height: 5px; background-color: #aaa; }
+.f3 { display: flex; width: 65px; margin-top: 3px; }
+.f4 { display: flex; flex-direction: column; width: 41px; align-items: flex-start; margin-top: 3px; }
+.cell { width: 30px; }
+.none { display: none; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="m1" class="m1">XX XX<div data-dragon-id="b1" class="b1"></div>YY YY YY</div>
+<div data-dragon-id="m2" class="m2">
+  Lead text XX
+  <div data-dragon-id="b2" class="b2">XX XXX</div>
+  tail
+</div>
+<div data-dragon-id="f1" class="f1">XX XXX XX<div data-dragon-id="f1a"></div>YYY YY</div>
+<div data-dragon-id="f2" class="f2">XXX XX X<div data-dragon-id="f2a"></div>YY YYYY<div data-dragon-id="f2h" class="none"></div> Y</div>
+<div data-dragon-id="f3" class="f3"><div data-dragon-id="f3a" class="cell">XX XX XX</div><div data-dragon-id="f3b">XXX XXXX</div></div>
+<div data-dragon-id="f4" class="f4"><div data-dragon-id="f4a">XXXXX XXX XX XXXXXXX</div><div data-dragon-id="f4b" class="cell">X XX XXX</div></div>
+</body>
+</html>

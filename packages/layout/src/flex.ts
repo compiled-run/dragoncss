@@ -1,6 +1,9 @@
-// css-flexbox-1 §9: flex layout (row and column, nowrap and wrap, auto margins; no order, reverse or baselines until S4).
-import type { AlignItems, LayoutBox, LayoutStyle } from './input.ts';
-import type { FactorSum, LU } from './units.ts';
+// css-flexbox-1 §9: flex layout with order (§5.4), reverse directions (§5.1), wrap-reverse (§5.2), rtl, auto margins and baseline
+// alignment (§8.3, §9.4 step 8). Chrome 145 computes every offset in flow coordinates, from the writing-mode start edge of each
+// axis: a reverse direction reverses the items and swaps flex-start and flex-end, and wrap-reverse does the same for the lines and
+// the cross axis (measured, notes/T035-slice-4a.md). Flow offsets are then mapped to physical ones.
+import type { AlignItems, JustifyContent, LayoutBox, LayoutStyle } from './input.ts';
+import type { DistributedMode, FactorSum, LU } from './units.ts';
 import {
   add,
   clampNegativeToZero,
@@ -25,19 +28,19 @@ import {
   sum,
   ZERO,
 } from './units.ts';
-import type { Edges, HeightBasis, MinMax, Placed } from './box.ts';
+import type { Edges, Frag, HeightBasis, MinMax, Placed } from './box.ts';
 import {
   borderBoxFromSpecified,
   constrain,
   contentBox,
+  isScrollContainer,
   resolveBorder,
   resolveMargin,
   resolvePadding,
   sumEdges,
-  visibleChildren,
 } from './box.ts';
 import type { Ctx } from './block.ts';
-import { layoutContents } from './block.ts';
+import { directionOf, layoutContents } from './block.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { unsupported } from './unsupported.ts';
 
@@ -51,17 +54,29 @@ export type FlexArgs = {
   readonly sizeIsFlexDependent: boolean;
 };
 
-export type FlexResult = { readonly contentHeight: LU; readonly placed: readonly Placed[] };
+/** baseline: the container's first baseline (css-flexbox-1 §8.5) from its content-box top, or null with no items. */
+export type FlexResult = { readonly contentHeight: LU; readonly placed: readonly Placed[]; readonly baseline: LU | null };
 
-type AutoMargins = { readonly top: boolean; readonly right: boolean; readonly bottom: boolean; readonly left: boolean };
+/** A position along one axis in flow terms: from the writing-mode start edge of that axis. */
+type FlowPosition = 'start' | 'end' | 'center';
 
+/** Where the item goes in its line, in flow terms of the cross axis. */
+type ItemAlign = FlowPosition | 'stretch' | 'baseline';
+
+/** One flex item. Margins are named by flow side: main-start is the inline start (row) or top (column), cross-start the top (row)
+ * or inline start (column), whatever the reverse or wrap-reverse. */
 type Item = {
   readonly box: LayoutBox;
-  /** Margins with auto treated as zero (css-flexbox-1 §9.2); auto ones are resolved in §9.5 and §9.6. */
   readonly margin: Edges;
-  readonly auto: AutoMargins;
   readonly pad: Edges;
   readonly bor: Edges;
+  readonly mainStart: LU;
+  readonly mainEnd: LU;
+  readonly crossStart: LU;
+  readonly autoMainStart: boolean;
+  readonly autoMainEnd: boolean;
+  readonly autoCrossStart: boolean;
+  readonly autoCrossEnd: boolean;
   readonly mainBp: LU;
   readonly crossBp: LU;
   readonly mainMargins: LU;
@@ -71,27 +86,48 @@ type Item = {
   readonly base: LU;
   readonly hypothetical: LU;
   readonly mainMinMax: MinMax;
-  readonly align: 'stretch' | 'flex-start' | 'flex-end' | 'center';
+  readonly align: ItemAlign;
   /** Column only: the border-box width used to size the item's height. */
   readonly columnCross: LU;
   frozen: boolean;
   target: LU;
 };
 
-type Line = { readonly items: Item[]; cross: LU; offset: LU };
+type Line = { readonly items: Item[]; cross: LU; flowOffset: LU };
+
+/** The flex container's axes: which physical side each flow start is on, and how reverse and wrap-reverse remap alignment. */
+type Axes = {
+  readonly isRow: boolean;
+  readonly ltr: boolean;
+  readonly reverse: boolean;
+  readonly wrapReverse: boolean;
+  /** True when the main-axis flow start is the physical left (row) or top (column). */
+  readonly mainStartIsPhysical: boolean;
+  /** True when the cross-axis flow start is the physical top (row) or left (column). */
+  readonly crossStartIsPhysical: boolean;
+};
 
 // css-flexbox-1 §9: the flex layout algorithm for one container, positions relative to its border box.
 export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): FlexResult {
   const s = box.style;
-  checkContainer(box);
-  const isRow = s.flexDirection === 'row';
-  const kids = visibleChildren(box);
+  const isRow = s.flexDirection === 'row' || s.flexDirection === 'row-reverse';
+  const ltr = directionOf(ctx, box) === 'ltr';
+  const axes: Axes = {
+    isRow,
+    ltr,
+    reverse: s.flexDirection === 'row-reverse' || s.flexDirection === 'column-reverse',
+    wrapReverse: s.flexWrap === 'wrap-reverse',
+    mainStartIsPhysical: isRow ? ltr : true,
+    crossStartIsPhysical: isRow ? true : ltr,
+  };
   const boxes: LayoutBox[] = [];
-  for (const k of kids) {
+  for (const k of box.children) {
     // css-flexbox-1 §4: the compiler wraps text in anonymous flex items; validateLayoutInput rejects text in a flex container.
     if (k.kind === 'text') throw new Error(`${k.id} is text directly in flex container ${box.id}; validateLayoutInput rejects this input`);
     boxes.push(k);
   }
+  // css-flexbox-1 §5.4: order-modified document order, stable for equal values (planted fault ignoreOrder keeps document order).
+  const ordered = ctx.faults.ignoreOrder ? boxes : boxes.map((b, i) => ({ b, i })).sort((x, y) => x.b.style.order - y.b.style.order || x.i - y.i).map((x) => x.b);
   const mainGap = gapValue(box, isRow ? s.columnGap : s.rowGap);
   const crossGap = gapValue(box, isRow ? s.rowGap : s.columnGap);
   const crossInner: LU | null = isRow ? a.definiteInnerHeight : a.contentWidth;
@@ -102,7 +138,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
 
   // §9.2 and §9.3: flex base sizes, hypothetical main sizes and the main inner size.
   let mainInner: LU | null = isRow ? a.contentWidth : a.definiteInnerHeight;
-  const items = boxes.map((b) => buildItem(ctx, box, b, isRow, a, mainInner, crossInner, singleLine, itemHeightBasis));
+  const items = ordered.map((b) => buildItem(ctx, box, b, axes, a, mainInner, crossInner, singleLine, itemHeightBasis));
   if (mainInner === null) {
     if (!singleLine) unsupported('flex-wrap-indefinite-main', box.id, 'css-flexbox-1 §9.3', 'multi-line column flex container with an indefinite height (not yet supported)');
     const hypo = add(sum(items.map((i) => outerHypothetical(i))), gapsFor(items.length, mainGap));
@@ -113,7 +149,8 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
   // §9.7: resolve flexible lengths per line.
   for (const line of lines) resolveFlexibleLengths(line.items, mainInner, mainGap);
 
-  // §9.4: hypothetical cross sizes.
+  // §9.4: hypothetical cross sizes; row items are laid out at their main size, which also gives their baselines.
+  const hypoFrag = new Map<Item, Frag>();
   const hypoCross = new Map<Item, LU>();
   for (const item of items) {
     if (isRow) {
@@ -125,27 +162,42 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
         heightBasis: itemHeightBasis,
         formattingContextRoot: true,
       });
+      hypoFrag.set(item, r.frag);
       hypoCross.set(item, r.frag.height);
     } else {
       hypoCross.set(item, item.columnCross);
     }
   }
   const crossOf = (i: Item): LU => hypoCross.get(i) as LU;
+  const participates = (i: Item): boolean => i.align === 'baseline' && !i.autoCrossStart && !i.autoCrossEnd;
+  const baselineOf = (i: Item): { toStart: LU; toEnd: LU; offset: LU } => itemBaseline(ctx, i, axes, isRow ? (hypoFrag.get(i) as Frag) : null, crossOf(i));
 
-  // §9.4 steps 7-8: line cross sizes; a single-line container with a definite cross size uses it.
+  // §9.4 steps 7-8: line cross sizes; a single-line container with a definite cross size uses it. In a row container the
+  // baseline-sharing group needs its largest distances to the cross-start and cross-end margin edges.
   for (const line of lines) {
     if (singleLine && crossInner !== null) {
       line.cross = crossInner;
-    } else {
-      let tallest = ZERO;
-      for (const i of line.items) tallest = max(tallest, add(crossOf(i), i.crossMargins));
-      line.cross = singleLine && isRow ? constrain(tallest, a.innerHeightMinMax) : tallest;
+      continue;
     }
+    let tallest = ZERO;
+    let toStart = ZERO;
+    let toEnd = ZERO;
+    for (const i of line.items) {
+      if (isRow && participates(i)) {
+        const b = baselineOf(i);
+        toStart = max(toStart, b.toStart);
+        toEnd = max(toEnd, b.toEnd);
+      } else {
+        tallest = max(tallest, add(crossOf(i), i.crossMargins));
+      }
+    }
+    tallest = max(tallest, add(toStart, toEnd));
+    line.cross = singleLine && isRow ? constrain(tallest, a.innerHeightMinMax) : tallest;
   }
   const linesCross = add(sum(lines.map((l) => l.cross)), gapsFor(lines.length, crossGap));
   const containerCross = crossInner !== null ? crossInner : singleLine ? linesCross : constrain(linesCross, a.innerHeightMinMax);
-  if (!singleLine) alignContent(box, lines, sub(containerCross, linesCross), crossGap);
-  else if (lines[0] !== undefined) lines[0].offset = ZERO;
+  if (!singleLine) alignContent(box, axes, lines, sub(containerCross, linesCross), crossGap);
+  else if (lines[0] !== undefined) lines[0].flowOffset = ZERO;
   const containerMainDefinite = !isRow && a.definiteInnerHeight !== null && !a.sizeIsFlexDependent;
   const stretchDefinite = isRow && singleLine && a.definiteInnerHeight !== null && !a.sizeIsFlexDependent;
   const crossPercentBasis: HeightBasis = isRow ? itemHeightBasis : { kind: 'definite', value: a.contentWidth };
@@ -154,13 +206,15 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
   const placed: Placed[] = [];
   const contentLeft = add(a.bor.left, a.pad.left);
   const contentTop = add(a.bor.top, a.pad.top);
-  for (const line of lines) {
-    const n = line.items.length;
-    const used = add(sum(line.items.map((i) => add(add(i.target, i.mainBp), i.mainMargins))), gapsFor(n, mainGap));
-    const free = sub(mainInner, used);
+  let containerBaseline: LU | null = null;
+  lines.forEach((line, lineIndex) => {
+    const flowItems = axes.reverse ? [...line.items].reverse() : line.items;
+    const n = flowItems.length;
+    const used = add(sum(flowItems.map((i) => add(add(i.target, i.mainBp), i.mainMargins))), gapsFor(n, mainGap));
+    const free = sub(mainInner as LU, used);
     // §9.5 step 12: positive free space goes to main-axis auto margins, which leaves none for justify-content.
     let autoCount = 0;
-    for (const i of line.items) autoCount += Number(isRow ? i.auto.left : i.auto.top) + Number(isRow ? i.auto.right : i.auto.bottom);
+    for (const i of flowItems) autoCount += Number(i.autoMainStart) + Number(i.autoMainEnd);
     const autoFree = autoCount > 0 && free > 0;
     let autoSeen = 0;
     const autoShare = (): LU => {
@@ -168,15 +222,34 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
       autoSeen++;
       return sub(cumulativeShareRounded(free, autoSeen, autoCount), cumulativeShareRounded(free, autoSeen - 1, autoCount));
     };
+    const justify = justifyFlow(s.justifyContent, axes);
+    const linePhysical = axes.crossStartIsPhysical ? line.flowOffset : sub(sub(containerCross, line.flowOffset), line.cross);
+    // The baseline-sharing group of the line (css-align-3 §9.3): its shared baseline, from the line's physical start edge.
+    let groupToStart = ZERO;
+    let groupCount = 0;
+    for (const i of flowItems) {
+      if (!participates(i)) continue;
+      groupToStart = max(groupToStart, baselineOf(i).toStart);
+      groupCount++;
+    }
+    const crossStartAtPhysicalStart = isRow ? !axes.wrapReverse : axes.ltr !== axes.wrapReverse;
+    const groupBaseline = crossStartAtPhysicalStart ? groupToStart : sub(line.cross, groupToStart);
     let cursor = ZERO;
-    for (let k = 0; k < n; k++) {
-      const item = line.items[k] as Item;
-      if (isRow ? item.auto.left : item.auto.top) cursor = add(cursor, autoShare());
-      const mainOffset = add(cursor, autoFree ? ZERO : justifyOffset(box, s.justifyContent, free, n, k));
+    flowItems.forEach((item, k) => {
+      if (item.autoMainStart) cursor = add(cursor, autoShare());
+      const mainOffset = add(cursor, autoFree ? ZERO : justifyOffset(justify, free, n, k));
+      const mainBorderBox = add(item.target, item.mainBp);
+      const mainFlow = add(mainOffset, item.mainStart);
+      const mainPos = axes.mainStartIsPhysical ? mainFlow : sub(sub(mainInner as LU, mainFlow), mainBorderBox);
       const stretched = item.align === 'stretch' && stretchesCross(item, isRow);
       const crossSize = stretched ? stretchedCrossSize(item, line.cross, isRow, crossPercentBasis) : crossOf(item);
-      const crossOffset = crossAxisOffset(item, sub(line.cross, add(crossSize, item.crossMargins)), isRow);
-      const mainBorderBox = add(item.target, item.mainBp);
+      let crossInLine: LU;
+      if (participates(item)) {
+        crossInLine = sub(groupBaseline, baselineOf(item).offset);
+      } else {
+        const flow = add(crossAxisOffset(item, sub(line.cross, add(crossSize, item.crossMargins)), axes), item.crossStart);
+        crossInLine = axes.crossStartIsPhysical ? flow : sub(sub(line.cross, flow), crossSize);
+      }
       const r = layoutContents(ctx, item.box, {
         cbInline: a.contentWidth,
         borderBoxWidth: isRow ? mainBorderBox : crossSize,
@@ -185,32 +258,54 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
         heightBasis: itemHeightBasis,
         formattingContextRoot: true,
       });
-      const mainPos = add(mainOffset, isRow ? item.margin.left : item.margin.top);
-      const crossPos = add(add(line.offset, crossOffset), isRow ? item.margin.top : item.margin.left);
-      placed.push({
+      const crossPos = add(linePhysical, crossInLine);
+      const at: Placed = {
         frag: r.frag,
         x: add(contentLeft, isRow ? mainPos : crossPos),
         y: add(contentTop, isRow ? crossPos : mainPos),
-      });
+      };
+      placed.push(at);
+      // css-flexbox-1 §8.5: the first line's shared baseline, or else the baseline of its first item in flow order.
+      if (lineIndex === 0 && containerBaseline === null) {
+        if (isRow && groupCount > 0) containerBaseline = add(contentTop, add(linePhysical, groupBaseline));
+        else if (k === 0) containerBaseline = add(at.y, sub(ownBaseline(r.frag), baselineFault(ctx, item)));
+      }
       cursor = add(cursor, add(mainBorderBox, item.mainMargins));
-      if (isRow ? item.auto.right : item.auto.bottom) cursor = add(cursor, autoShare());
+      if (item.autoMainEnd) cursor = add(cursor, autoShare());
       cursor = add(cursor, mainGap);
-    }
-  }
-  return { contentHeight: isRow ? containerCross : mainInner, placed };
+    });
+  });
+  return { contentHeight: isRow ? containerCross : mainInner, placed, baseline: containerBaseline };
 }
 
-// css-flexbox-1 §4, §5 and §8: container features outside the supported subset are refused rather than approximated.
-function checkContainer(box: LayoutBox): void {
-  const s = box.style;
-  if (s.flexDirection === 'row-reverse' || s.flexDirection === 'column-reverse') {
-    unsupported('flex-reverse', box.id, 'css-flexbox-1 §5.1', `flex-direction: ${s.flexDirection} (S4)`);
+/** css-align-3 §9.3: a box with no baseline set synthesizes one from its border box: the line-under (bottom) edge. */
+function ownBaseline(frag: Frag): LU {
+  return frag.baseline === null ? frag.height : frag.baseline;
+}
+
+/** Planted fault baselineFromBorderTop: the item's baseline loses its top border and padding. */
+function baselineFault(ctx: Ctx, item: Item): LU {
+  return ctx.faults.baselineFromBorderTop ? add(item.bor.top, item.pad.top) : ZERO;
+}
+
+/**
+ * css-flexbox-1 §8.3 and §9.4 step 8: an item's baseline in the cross axis. offset: from the border-box start edge (top for a row
+ * container, left for a column one); toStart and toEnd: to the cross-start and cross-end margin edges. In a row container the
+ * first baseline comes from the item's content (bottom border edge when it has none); in a column container Chrome synthesizes
+ * it at the left border edge for every item (measured, notes/T035-slice-4a.md).
+ */
+function itemBaseline(ctx: Ctx, item: Item, axes: Axes, frag: Frag | null, crossSize: LU): { toStart: LU; toEnd: LU; offset: LU } {
+  const m = item.margin;
+  if (axes.isRow) {
+    const b = sub(ownBaseline(frag as Frag), baselineFault(ctx, item));
+    const fromTop = add(m.top, b);
+    const toBottom = sub(add(add(m.top, crossSize), m.bottom), fromTop);
+    return axes.wrapReverse ? { toStart: toBottom, toEnd: fromTop, offset: b } : { toStart: fromTop, toEnd: toBottom, offset: b };
   }
-  if (s.flexWrap === 'wrap-reverse') unsupported('flex-wrap-reverse', box.id, 'css-flexbox-1 §5.2', 'flex-wrap: wrap-reverse (S4)');
-  const justify = s.justifyContent;
-  if (justify === 'start' || justify === 'end' || justify === 'left' || justify === 'right') {
-    unsupported('flex-justify-value', box.id, 'css-align-3 §5.1', `justify-content: ${justify} (not yet supported)`);
-  }
+  const fromLeft = m.left;
+  const toRight = add(crossSize, m.right);
+  const crossStartIsLeft = axes.ltr !== axes.wrapReverse;
+  return crossStartIsLeft ? { toStart: fromLeft, toEnd: toRight, offset: ZERO } : { toStart: toRight, toEnd: fromLeft, offset: ZERO };
 }
 
 function gapValue(box: LayoutBox, v: LayoutStyle['rowGap']): LU {
@@ -222,20 +317,41 @@ function gapsFor(n: number, gap: LU): LU {
   return n > 1 ? mulInt(gap, n - 1) : ZERO;
 }
 
-// css-align-3 §6.1: align-self auto takes the container's align-items; normal behaves as stretch on flex items.
-function effectiveAlign(container: LayoutStyle, item: LayoutBox): Item['align'] {
-  const raw: AlignItems = item.style.alignSelf === 'auto' ? container.alignItems : item.style.alignSelf;
-  if (raw === 'normal' || raw === 'stretch') return 'stretch';
-  if (raw === 'flex-start' || raw === 'flex-end' || raw === 'center') return raw;
-  if (raw === 'baseline') return unsupported('flex-baseline', item.id, 'css-flexbox-1 §8.3', 'baseline alignment (S4)');
-  return unsupported('flex-align-value', item.id, 'css-align-3 §6.1', `align-self: ${raw} (not yet supported)`);
+// css-align-3 §6.1 with css-flexbox-1 §8.3: align-self auto takes the container's align-items; normal behaves as stretch; each
+// value maps to a flow position. flex-start and flex-end follow wrap-reverse; start and end follow the container's writing mode;
+// self-start and self-end the item's own (the inline axis in a column container).
+function effectiveAlign(ctx: Ctx, container: LayoutBox, item: LayoutBox, axes: Axes): ItemAlign {
+  const raw: AlignItems = item.style.alignSelf === 'auto' ? container.style.alignItems : item.style.alignSelf;
+  const flexStart: FlowPosition = axes.wrapReverse ? 'end' : 'start';
+  const flexEnd: FlowPosition = axes.wrapReverse ? 'start' : 'end';
+  const selfSame = axes.isRow || directionOf(ctx, item) === directionOf(ctx, container);
+  switch (raw) {
+    case 'normal':
+    case 'stretch':
+      return 'stretch';
+    case 'flex-start':
+      return flexStart;
+    case 'flex-end':
+      return flexEnd;
+    case 'start':
+      return 'start';
+    case 'end':
+      return 'end';
+    case 'self-start':
+      return selfSame ? 'start' : 'end';
+    case 'self-end':
+      return selfSame ? 'end' : 'start';
+    case 'center':
+      return 'center';
+    case 'baseline':
+      return 'baseline';
+  }
 }
 
 // css-flexbox-1 §9.4 step 11: stretch needs an auto cross size and no auto cross-axis margin.
 function stretchesCross(item: Item, isRow: boolean): boolean {
   const size = isRow ? item.box.style.height : item.box.style.width;
-  const autoMargin = isRow ? item.auto.top || item.auto.bottom : item.auto.left || item.auto.right;
-  return size.kind === 'auto' && !autoMargin;
+  return size.kind === 'auto' && !item.autoCrossStart && !item.autoCrossEnd;
 }
 
 // css-flexbox-1 §9.2 step 3 and §4.5: flex base size, automatic minimum size and hypothetical main size.
@@ -243,7 +359,7 @@ function buildItem(
   ctx: Ctx,
   container: LayoutBox,
   box: LayoutBox,
-  isRow: boolean,
+  axes: Axes,
   a: FlexArgs,
   mainInner: LU | null,
   crossInner: LU | null,
@@ -251,7 +367,7 @@ function buildItem(
   heightBasis: HeightBasis,
 ): Item {
   const s = box.style;
-  if (s.order !== 0) unsupported('flex-order', box.id, 'css-flexbox-1 §5.4', 'order other than 0 (S4)');
+  const isRow = axes.isRow;
   const cbInline = a.contentWidth;
   const pad = resolvePadding(s, cbInline);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
@@ -260,12 +376,18 @@ function buildItem(
   const mt = resolveMargin(s.marginTop, cbInline);
   const mb = resolveMargin(s.marginBottom, cbInline);
   const margin: Edges = { top: mt.value, right: mr.value, bottom: mb.value, left: ml.value };
-  const auto: AutoMargins = { top: mt.auto, right: mr.auto, bottom: mb.auto, left: ml.auto };
+  // Flow sides: the inline start is the left in ltr and the right in rtl; the block start is the top.
+  const inlineStart = axes.ltr ? ml : mr;
+  const inlineEnd = axes.ltr ? mr : ml;
+  const mainStart = isRow ? inlineStart : mt;
+  const mainEnd = isRow ? inlineEnd : mb;
+  const crossStart = isRow ? mt : inlineStart;
+  const crossEnd = isRow ? mb : inlineEnd;
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
   const vbp = sumEdges(bor.top, bor.bottom, pad.top, pad.bottom);
   const mainBp = isRow ? hbp : vbp;
   const crossBp = isRow ? vbp : hbp;
-  const align = effectiveAlign(container.style, box);
+  const align = effectiveAlign(ctx, container, box, axes);
 
   // Column items need their width before their height: definite stretch (§9.8 rule 1), a specified width, or fit-content.
   let columnCross = ZERO;
@@ -318,7 +440,8 @@ function buildItem(
     base = specifiedMain !== null ? specifiedMain : contentMain();
   }
 
-  // Main-axis min and max in content-box terms; min auto is the automatic minimum size (§4.5).
+  // Main-axis min and max in content-box terms; min auto is the automatic minimum size (§4.5), which is 0 for a scroll container
+  // (planted fault scrollMinAuto keeps the content-based minimum).
   const minProp = isRow ? s.minWidth : s.minHeight;
   const maxProp = isRow ? s.maxWidth : s.maxHeight;
   let maxMain: LU | null = null;
@@ -332,6 +455,8 @@ function buildItem(
   else if (minProp.kind === 'percent') {
     const basisLu = isRow ? cbInline : percentMainHeight(box, heightBasis, 'min-height');
     minMain = basisLu === null ? ZERO : contentBox(borderBoxFromSpecified(percentOf(basisLu, minProp.value), mainBp, s.boxSizing), mainBp);
+  } else if (isScrollContainer(s) && !ctx.faults.scrollMinAuto) {
+    minMain = ZERO;
   } else {
     const suggestionSource = isRow ? intrinsicContentInlineSize(ctx, box, 'min') : contentMain();
     const contentSuggestion = maxMain === null ? suggestionSource : min(suggestionSource, maxMain);
@@ -342,13 +467,19 @@ function buildItem(
   return {
     box,
     margin,
-    auto,
     pad,
     bor,
+    mainStart: mainStart.value,
+    mainEnd: mainEnd.value,
+    crossStart: crossStart.value,
+    autoMainStart: mainStart.auto,
+    autoMainEnd: mainEnd.auto,
+    autoCrossStart: crossStart.auto,
+    autoCrossEnd: crossEnd.auto,
     mainBp,
     crossBp,
-    mainMargins: isRow ? add(ml.value, mr.value) : add(mt.value, mb.value),
-    crossMargins: isRow ? add(mt.value, mb.value) : add(ml.value, mr.value),
+    mainMargins: add(mainStart.value, mainEnd.value),
+    crossMargins: add(crossStart.value, crossEnd.value),
     grow: s.flexGrow,
     shrink: s.flexShrink,
     base,
@@ -399,23 +530,23 @@ function outerBase(i: Item): LU {
   return add(add(i.base, i.mainBp), i.mainMargins);
 }
 
-// css-flexbox-1 §9.3 step 5: collect items into lines (Blink FlexLayoutAlgorithm ComputeNextFlexLine).
+// css-flexbox-1 §9.3 step 5: collect items into lines in order-modified document order (Blink FlexLayoutAlgorithm ComputeNextFlexLine).
 function collectLines(items: readonly Item[], mainInner: LU, gap: LU, singleLine: boolean): Line[] {
-  if (singleLine) return [{ items: [...items], cross: ZERO, offset: ZERO }];
+  if (singleLine) return [{ items: [...items], cross: ZERO, flowOffset: ZERO }];
   const lines: Line[] = [];
   let current: Item[] = [];
   let used = ZERO;
   for (const item of items) {
     const outer = outerHypothetical(item);
     if (current.length > 0 && add(used, outer) > mainInner) {
-      lines.push({ items: current, cross: ZERO, offset: ZERO });
+      lines.push({ items: current, cross: ZERO, flowOffset: ZERO });
       current = [];
       used = ZERO;
     }
     current.push(item);
     used = add(add(used, outer), gap);
   }
-  if (current.length > 0) lines.push({ items: current, cross: ZERO, offset: ZERO });
+  if (current.length > 0) lines.push({ items: current, cross: ZERO, flowOffset: ZERO });
   return lines;
 }
 
@@ -469,7 +600,6 @@ function resolveFlexibleLengths(items: readonly Item[], mainInner: LU, gap: LU):
     let shareLeft = remaining;
     let growLeft = totalGrow;
     let weightLeft = totalWeighted;
-    let usedFree = ZERO;
     let totalViolation = ZERO;
     const minViolations: Item[] = [];
     const maxViolations: Item[] = [];
@@ -487,7 +617,6 @@ function resolveFlexibleLengths(items: readonly Item[], mainInner: LU, gap: LU):
       const unclamped = add(i.base, extra);
       const clamped = clampNegativeToZero(constrain(unclamped, i.mainMinMax));
       i.target = clamped;
-      usedFree = add(usedFree, sub(clamped, i.base));
       const violation = sub(clamped, unclamped);
       if (violation > 0) minViolations.push(i);
       else if (violation < 0) maxViolations.push(i);
@@ -521,59 +650,90 @@ function stretchedCrossSize(item: Item, lineCross: LU, isRow: boolean, percentBa
   return max(constrain(sub(lineCross, item.crossMargins), mm), item.crossBp);
 }
 
-// css-flexbox-1 §8.1 and §9.6 step 13: auto cross margins take positive space (Blink LayoutUnit / 2 when both are auto) and
-// otherwise the item aligns by align-self (css-align-3 §6.1, unsafe; Blink LayoutUnit / 2 for center).
-function crossAxisOffset(item: Item, available: LU, isRow: boolean): LU {
-  const startAuto = isRow ? item.auto.top : item.auto.left;
-  const endAuto = isRow ? item.auto.bottom : item.auto.right;
-  if (startAuto || endAuto) {
-    if (available <= 0) return ZERO;
-    if (startAuto && endAuto) return divInt(available, 2);
-    return startAuto ? available : ZERO;
+// css-flexbox-1 §8.1 and §9.6 step 13, in flow terms: auto cross margins take positive space (Blink LayoutUnit / 2 when both are
+// auto) and otherwise the item aligns by align-self (css-align-3 §6.1, unsafe; Blink LayoutUnit / 2 for center). A stretch item
+// that cannot stretch sits at flex-start, which wrap-reverse puts at the flow end.
+function crossAxisOffset(item: Item, available: LU, axes: Axes): LU {
+  if (item.autoCrossStart || item.autoCrossEnd) {
+    // Chrome deviation auto-margin-overflow-cross-start: with no positive space the item sits at the cross-start edge.
+    if (available <= 0) return axes.wrapReverse ? available : ZERO;
+    if (item.autoCrossStart && item.autoCrossEnd) return divInt(available, 2);
+    return item.autoCrossStart ? available : ZERO;
   }
-  if (item.align === 'flex-end') return available;
+  if (item.align === 'end' || (item.align === 'stretch' && axes.wrapReverse)) return available;
   if (item.align === 'center') return divInt(available, 2);
   return ZERO;
 }
 
-// css-flexbox-1 §9.5 with css-align-3 §5.3: offset before item k; distributed values fall back to start when free space is negative.
-function justifyOffset(box: LayoutBox, justify: LayoutStyle['justifyContent'], free: LU, n: number, k: number): LU {
-  switch (justify) {
+type FlowJustify = FlowPosition | DistributedMode;
+
+// css-align-3 §5.1 for flex containers: justify-content in flow terms. flex-start and flex-end follow the flex direction (reverse
+// swaps them); start and end follow the writing mode; left and right are physical in a row container and act as start in a
+// column one; normal and stretch act as flex-start.
+function justifyFlow(value: JustifyContent, axes: Axes): FlowJustify {
+  const flexStart: FlowPosition = axes.reverse ? 'end' : 'start';
+  switch (value) {
+    case 'normal':
+    case 'stretch':
+    case 'flex-start':
+      return flexStart;
     case 'flex-end':
-      return free;
+      return axes.reverse ? 'start' : 'end';
+    case 'start':
+      return 'start';
+    case 'end':
+      return 'end';
+    case 'left':
+      return axes.isRow && !axes.ltr ? 'end' : 'start';
+    case 'right':
+      return axes.isRow && axes.ltr ? 'end' : 'start';
     case 'center':
-      return divInt(free, 2);
+      return 'center';
     case 'space-between':
     case 'space-around':
     case 'space-evenly':
-      return free > 0 ? distributedOffset(justify, free, n, k) : ZERO;
-    case 'normal':
-    case 'flex-start':
-    case 'stretch':
-      return ZERO;
-    default:
-      return unsupported('flex-justify-value', box.id, 'css-align-3 §5.1', `justify-content: ${justify} (not yet supported)`);
+      return value;
   }
 }
 
-// css-flexbox-1 §9.4 step 15 with css-align-3 §5.3: align-content for multi-line containers. Negative free space: stretch and
-// the distributed values fall back to start (space-around and space-evenly to safe center); center and end stay unsafe.
-function alignContent(box: LayoutBox, lines: Line[], free: LU, gap: LU): void {
+// css-flexbox-1 §9.5 with css-align-3 §5.3: offset before flow item k. With negative free space space-between falls back to
+// flex-start, and space-around and space-evenly to safe center, which is start.
+function justifyOffset(justify: FlowJustify, free: LU, n: number, k: number): LU {
+  if (justify === 'start') return ZERO;
+  if (justify === 'end') return free;
+  if (justify === 'center') return divInt(free, 2);
+  if (free > 0) return distributedOffset(justify, free, n, k);
+  return ZERO;
+}
+
+// css-flexbox-1 §9.4 step 15 with css-align-3 §5.3: align-content for multi-line containers, in flow terms: the lines stack from
+// the cross-axis flow start, reversed by wrap-reverse. Negative free space: stretch and space-between fall back to flex-start,
+// space-around and space-evenly to safe center (start); center and end stay unsafe.
+function alignContent(box: LayoutBox, axes: Axes, lines: Line[], free: LU, gap: LU): void {
   const v = box.style.alignContent;
-  const n = lines.length;
-  if (v === 'baseline') unsupported('flex-baseline', box.id, 'css-align-3 §9.3', 'align-content: baseline (S4)');
-  if ((v === 'normal' || v === 'stretch') && free > 0) {
+  if (v === 'baseline') unsupported('flex-baseline', box.id, 'css-align-3 §9.3', 'align-content: baseline (not yet supported)');
+  const flowLines = axes.wrapReverse ? [...lines].reverse() : lines;
+  const n = flowLines.length;
+  const flexStart: FlowPosition = axes.wrapReverse ? 'end' : 'start';
+  let position: FlowPosition | DistributedMode | 'stretch';
+  if (v === 'normal' || v === 'stretch') position = free > 0 ? 'stretch' : flexStart;
+  else if (v === 'flex-start') position = flexStart;
+  else if (v === 'flex-end') position = axes.wrapReverse ? 'start' : 'end';
+  else if (v === 'start' || v === 'end' || v === 'center') position = v;
+  else if (free > 0) position = v;
+  else position = v === 'space-between' ? flexStart : 'start';
+  if (position === 'stretch') {
     // Blink: each line grows by LayoutUnit / line count; the remainder is dropped.
     const extra = divInt(free, n);
-    for (const l of lines) l.cross = add(l.cross, extra);
+    for (const l of flowLines) l.cross = add(l.cross, extra);
   }
   let cursor = ZERO;
-  lines.forEach((l, k) => {
+  flowLines.forEach((l, k) => {
     let shift = ZERO;
-    if (v === 'center') shift = divInt(free, 2);
-    else if (v === 'flex-end' || v === 'end') shift = free;
-    else if ((v === 'space-between' || v === 'space-around' || v === 'space-evenly') && free > 0) shift = distributedOffset(v, free, n, k);
-    l.offset = add(cursor, shift);
+    if (position === 'center') shift = divInt(free, 2);
+    else if (position === 'end') shift = free;
+    else if (position === 'space-between' || position === 'space-around' || position === 'space-evenly') shift = distributedOffset(position, free, n, k);
+    l.flowOffset = add(cursor, shift);
     cursor = add(add(cursor, l.cross), gap);
   });
 }

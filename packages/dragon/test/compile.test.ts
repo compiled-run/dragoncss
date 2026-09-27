@@ -6,7 +6,7 @@ import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, re
 import { LONGHANDS } from '../src/css/properties.ts';
 import { div, expectCatalogued, explainOne, inputFor, text as textNode } from './helpers.ts';
 
-const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1 } as const;
+const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr' } as const;
 const ios = () => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' } } });
 
 describe('createProject().compile() and check()', () => {
@@ -19,11 +19,11 @@ describe('createProject().compile() and check()', () => {
     const p = iosLayoutProjection(c, ENV, []);
     expect(p.kind).toBe('ready');
     const width = explainOne(c, 'ios', 'a', 'width');
-    expect(width).toMatchObject({ value: '50px', cascade: 'author', support: { feature: 'width:<length-px>', context: 'block', status: 'exact' } });
+    expect(width).toMatchObject({ value: '50px', cascade: 'author', support: { feature: 'width:<length-px>', context: 'block/ltr', status: 'exact' } });
     expect(width.origin.kind === 'authored' && css.slice(width.origin.span.start, width.origin.span.end)).toBe('width: 50px');
     expect(explainOne(c, 'ios', 'body', 'margin-top')).toMatchObject({ value: '8px', cascade: 'user-agent', origin: { kind: 'builtin', entry: 'body margin-top' } });
     expect(explainOne(c, 'ios', 'a', 'min-width')).toMatchObject({ value: 'auto', cascade: 'initial', origin: { kind: 'builtin' } });
-    expect(compiledFeatures(c, 'ios', [])).toEqual(['height:<length-px>@block', 'width:<length-px>@block']);
+    expect(compiledFeatures(c, 'ios', [])).toEqual(['height:<length-px>@block/ltr', 'width:<length-px>@block/ltr']);
     expect(Object.isFrozen(c)).toBe(true);
   });
 
@@ -92,9 +92,9 @@ describe('createProject().compile() and check()', () => {
     // The profiles prove color:<hsl()> only on flex items, so the enforcing compile blocks body; resolution is tested unenforced.
     const unproven = ios().compile(input).diagnostics;
     expect(unproven.map((d) => d.code)).toEqual(['DRAGON_UNPROVEN_CONTEXT']);
-    expect(unproven[0]?.message).toMatch(/color:<hsl\(\)> on body is used in the block context, which ios has not proven \(proven: flex-row\)/);
+    expect(unproven[0]?.message).toMatch(/color:<hsl\(\)> on body is used in the block\/ltr context, which ios has not proven \(proven: flex-row\/ltr\)/);
     expectCatalogued(unproven);
-    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive' }).compile(input);
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
     expect(c.ok).toBe(true);
     const colors = resolvedColors(c, [])?.get('a');
     expect(colors?.color).toEqual({ r: 64, g: 191, b: 64, alpha: 255 });
@@ -120,7 +120,7 @@ describe('createProject().compile() and check()', () => {
   it('internal faults: variant collapse ignores the last class of a compound; colour-only moves red channels only', () => {
     const css = '.a { width: 10px; } .a.on { width: 20px; }';
     const input = inputFor(css, (r) => [div(r, 'a', ['a'])]);
-    const project = (faults: typeof NO_FAULTS) => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults, profiles: 'enforce' });
+    const project = (faults: typeof NO_FAULTS) => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults, profiles: 'enforce', direction: 'ltr' });
     expect(explainOne(project(NO_FAULTS).compile(input), 'ios', 'a', 'width')).toMatchObject({ value: '10px' });
     expect(explainOne(project({ ...NO_FAULTS, variantCollapse: true }).compile(input), 'ios', 'a', 'width')).toMatchObject({ value: '20px' });
     const faulty = resolvedColors(project({ ...NO_FAULTS, colourOnly: true }).compile(input), [])?.get('a');
@@ -185,8 +185,8 @@ describe('createProject().compile() and check()', () => {
   it('MF2: the compilation digest covers the profiles mode, so a derive-mode result never shares a digest with an enforced one', () => {
     const input = inputFor('.a { width: 1px; }', (r) => [div(r, 'a', ['a'])]);
     const config = { projectId: 'test', targets: { ios: { minimum: '15.0' } } } as const;
-    const enforced = createProjectWith(config, { faults: NO_FAULTS, profiles: 'enforce' }).compile(input);
-    const derived = createProjectWith(config, { faults: NO_FAULTS, profiles: 'derive' }).compile(input);
+    const enforced = createProjectWith(config, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' }).compile(input);
+    const derived = createProjectWith(config, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
     expect(enforced.digest).toBe(ios().compile(input).digest);
     expect(derived.digest).not.toBe(enforced.digest);
   });

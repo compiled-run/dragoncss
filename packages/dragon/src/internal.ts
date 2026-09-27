@@ -38,10 +38,14 @@ export type { FormattingContext, TextContext } from './analysis/context.ts';
 export { TEXT_LONGHANDS } from './css/properties.ts';
 export type { TextLonghand } from './css/properties.ts';
 
-/** The reference environment of one parity case (docs/api.md §7): viewport and device pixel ratio are inputs, not constants. */
+/**
+ * The reference environment of one parity case (docs/api.md §7): viewport, device pixel ratio and direction are inputs, not
+ * constants. direction is resolved into the compiled result (InternalOptions.direction); the projection must name the same one.
+ */
 export type Environment = {
   readonly viewport: { readonly width: number; readonly height: number };
   readonly devicePixelRatio: number;
+  readonly direction: 'ltr' | 'rtl';
 };
 
 export type LayoutProjection =
@@ -65,6 +69,8 @@ export function compiledCases(compiled: object): readonly { readonly assignment:
 export function iosLayoutProjection(compiled: object, environment: Environment, assignment: Assignment): LayoutProjection {
   const c = caseOf(compiled, assignment);
   if (typeof c === 'string') return { kind: 'blocked', reason: c };
+  const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
+  if (record.direction !== environment.direction) return { kind: 'blocked', reason: `the result was resolved for direction ${record.direction}, not ${environment.direction}` };
   if (c.iosLowered === null) return { kind: 'blocked', reason: 'the ios output is blocked or not configured' };
   return {
     kind: 'ready',

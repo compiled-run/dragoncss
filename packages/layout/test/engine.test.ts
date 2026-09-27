@@ -113,13 +113,9 @@ describe('engine refuses what milestone 1 does not support yet', () => {
     const r = run(box('root', {}, [box('h', { display: 'flex', alignItems: 'flex-start' }, [box('w', { display: 'flex', flexDirection: 'column', flexWrap: 'wrap', height: px(10) })])]));
     expect(r.kind === 'unsupported' && r.unsupported.code).toBe('flex-intrinsic-wrap-column');
   });
-  it('rtl returns direction-rtl', () => {
-    const r = run(box('root', { direction: 'rtl' }));
-    expect(r.kind === 'unsupported' && r.unsupported.specSection).toBe('css-writing-modes-4 §2.1');
-  });
-  it('order returns flex-order', () => {
-    const r = run(flexRow(100, [{ order: 1 }]));
-    expect(r.kind === 'unsupported' && r.unsupported.code).toBe('flex-order');
+  it('align-content: baseline returns flex-baseline', () => {
+    const r = run(box('root', {}, [box('w', { display: 'flex', flexWrap: 'wrap', alignContent: 'baseline', width: px(10) }, [box('a', { width: px(5) })])]));
+    expect(r.kind === 'unsupported' && r.unsupported.code).toBe('flex-baseline');
   });
 });
 

@@ -8,7 +8,7 @@ import { applyFix, CATALOGUE, compiledCases, DIAGNOSTIC_CODES, iosLayoutProjecti
 import { sha256Hex } from '../src/digest.ts';
 import { always, and, eq, expectCatalogued, not, Sources, spanTextOf } from './helpers.ts';
 
-const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1 } as const;
+const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr' } as const;
 const both = () => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } });
 
 // Codes shipped in S2 (cfcec43); a code may be added after them but never removed, renamed or reused (docs/api.md §9).

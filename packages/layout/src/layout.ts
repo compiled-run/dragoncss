@@ -4,7 +4,7 @@ import type { LU } from './units.ts';
 import { add, fromCssPx } from './units.ts';
 import type { Frag } from './box.ts';
 import type { EngineFaults } from './block.ts';
-import { blockLevelInlineSize, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
+import { blockLevelInlineSize, directionOf, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
 import type { TextMeasurer } from './text.ts';
 import type { LayoutUnsupported } from './unsupported.ts';
 import { UnsupportedSignal } from './unsupported.ts';
@@ -16,7 +16,8 @@ export type LayoutResult =
   | { readonly kind: 'ok'; readonly boxes: readonly LayoutRect[] }
   | { readonly kind: 'unsupported'; readonly unsupported: LayoutUnsupported };
 
-// CSS2 §10.1 and §10.3.3: the root box is block-level in the initial containing block (the viewport); root margins never collapse.
+// CSS2 §10.1 and §10.3.3: the root box is block-level in the initial containing block (the viewport), whose direction is the
+// root's own; root margins never collapse.
 export function layout(input: LayoutInput, measurer: TextMeasurer): LayoutResult {
   return layoutWithFaults(input, measurer, NO_ENGINE_FAULTS);
 }
@@ -24,12 +25,11 @@ export function layout(input: LayoutInput, measurer: TextMeasurer): LayoutResult
 /** layout with seeded engine errors; only the parity harness's planted tests pass anything but NO_ENGINE_FAULTS. */
 export function layoutWithFaults(input: LayoutInput, measurer: TextMeasurer, faults: EngineFaults): LayoutResult {
   const root = input.root;
-  if (root.style.display === 'none') return { kind: 'ok', boxes: [] };
   const icbWidth = fromCssPx(input.viewport.width);
   const icbHeight = fromCssPx(input.viewport.height);
   try {
     const ctx = { measurer, devicePixelRatio: input.devicePixelRatio, faults };
-    const inline = blockLevelInlineSize(ctx, root, icbWidth);
+    const inline = blockLevelInlineSize(ctx, root, icbWidth, directionOf(ctx, root));
     const r = layoutContents(ctx, root, {
       cbInline: icbWidth,
       borderBoxWidth: inline.borderBoxWidth,

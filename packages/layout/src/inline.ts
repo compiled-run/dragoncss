@@ -6,6 +6,7 @@ import type { LU } from './units.ts';
 import { add, divInt, floorToWholePx, fromCssPx, lineHeightFromNumber, max, min, mulInt, sub, ZERO } from './units.ts';
 import type { Frag, Placed } from './box.ts';
 import type { Ctx } from './block.ts';
+import { directionOf } from './block.ts';
 import { unsupported } from './unsupported.ts';
 
 const SPACE = 0x20;
@@ -29,9 +30,25 @@ type Run = {
 /** A line: chars [start, end), where end includes the spaces that end the line; [start, visibleEnd) is what the line shows. */
 type Line = { readonly start: number; readonly end: number; readonly visibleEnd: number };
 
+/** UAX #9: in an rtl paragraph these code points keep logical order without reordering (strong L letters, space, U+200B). */
+const RTL_SAFE = /^[A-Za-z \u200b]*$/u;
+
+// UAX #9 with css-writing-modes-4 §2.4: in an rtl paragraph, strong-L letters with the spaces and U+200B between them form one
+// left-to-right run, so every line keeps logical order. Digits, punctuation and other neutrals would be reordered (W and N rules),
+// and U+200B ending the paragraph takes the paragraph level (L1) and moves to the line-left end as its own fragment (measured,
+// notes/T035-slice-4a.md). Both are refused rather than laid out as ltr.
+function checkRtlText(box: LayoutBox, leaves: readonly TextLeaf[]): void {
+  for (const t of leaves) {
+    if (!RTL_SAFE.test(t.text)) unsupported('bidi-neutral', t.id, 'UAX #9 W1-W7, N1-N2', `text in the rtl paragraph of ${box.id} holds a character other than A-Z, a-z, space and U+200B`);
+  }
+  const last = leaves[leaves.length - 1] as TextLeaf;
+  if (last.text.endsWith('\u200b')) unsupported('bidi-neutral', last.id, 'UAX #9 L1', `U+200B ends the rtl paragraph of ${box.id} and would take the paragraph direction`);
+}
+
 // CSS2 §10.8: the leaves of one inline formatting context must share their font and line-height (no inline elements yet).
 function buildRun(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[]): Run {
   const first = leaves[0] as TextLeaf;
+  if (directionOf(ctx, box) === 'rtl') checkRtlText(box, leaves);
   for (const t of leaves) {
     const m = ctx.measurer.measure(t.text, t.font);
     if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
@@ -138,17 +155,22 @@ function breakLines(ctx: Ctx, run: Run, available: LU): Line[] {
   return lines;
 }
 
-// css-text-3 §7.1 (ltr): start and left keep the line at the start edge; end and right take the free space, center half of it
-// (Blink LayoutUnit / 2). A line wider than the box starts at the start edge (§7.1: overflowing lines are start-aligned).
-function alignOffset(box: LayoutBox, free: LU): LU {
+// css-text-3 §7.1 (Blink LineOffsetForTextAlign): the line-left offset of a line with free space free. start and end map through
+// the box's direction to left and right; center takes LayoutUnit / 2 from the left. A line wider than the box is start-aligned,
+// so it overflows to the right in ltr and to the left in rtl.
+function alignOffset(ctx: Ctx, box: LayoutBox, free: LU): LU {
   const align = box.style.textAlign;
   if (align === 'justify') unsupported('text-align', box.id, 'css-text-3 §7.3', 'text-align: justify is not yet proven against Chrome');
-  if (free <= 0 || align === 'start' || align === 'left') return ZERO;
-  if (align === 'center') return divInt(free, 2);
+  const rtl = directionOf(ctx, box) === 'rtl';
+  if (free <= 0) return rtl ? free : ZERO;
+  const physical = align === 'start' ? (rtl ? 'right' : 'left') : align === 'end' ? (rtl ? 'left' : 'right') : align;
+  if (physical === 'left') return ZERO;
+  if (physical === 'center') return divInt(free, 2);
   return free;
 }
 
-export type InlineResult = { readonly height: LU; readonly placed: readonly Placed[] };
+/** firstBaseline: the first line box's baseline from the content-box top (CSS2 §10.8.1), or null with no line boxes. */
+export type InlineResult = { readonly height: LU; readonly placed: readonly Placed[]; readonly firstBaseline: LU | null };
 
 type Piece = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
 
@@ -160,7 +182,7 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf
   const pieces: Piece[][] = leaves.map(() => []);
   const glyphHeight = add(run.ascent, run.descent);
   lines.forEach((line, k) => {
-    const offset = alignOffset(box, sub(available, width(ctx, run, line.start, line.visibleEnd)));
+    const offset = alignOffset(ctx, box, sub(available, width(ctx, run, line.start, line.visibleEnd)));
     const y = add(mulInt(run.lineHeight, k), run.halfLeading);
     let i = line.start;
     while (i < line.visibleEnd) {
@@ -186,11 +208,11 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf
       right = max(right, add(p.x, p.width));
       bottom = max(bottom, add(p.y, p.height));
     }
-    const children: Placed[] = own.map((p, j) => ({ frag: { id: `${t.id}:line${j}`, width: p.width, height: p.height, children: [] }, x: sub(p.x, left), y: sub(p.y, top) }));
-    const frag: Frag = { id: t.id, width: sub(right, left), height: sub(bottom, top), children };
+    const children: Placed[] = own.map((p, j) => ({ frag: { id: `${t.id}:line${j}`, width: p.width, height: p.height, baseline: null, children: [] }, x: sub(p.x, left), y: sub(p.y, top) }));
+    const frag: Frag = { id: t.id, width: sub(right, left), height: sub(bottom, top), baseline: null, children };
     placed.push({ frag, x: add(origin.x, left), y: add(origin.y, top) });
   });
-  return { height: mulInt(run.lineHeight, lines.length), placed };
+  return { height: mulInt(run.lineHeight, lines.length), placed, firstBaseline: lines.length === 0 ? null : add(run.halfLeading, run.ascent) };
 }
 
 // css-sizing-3 §5.1 with css-text-3 §5: max-content puts the whole context on one line; min-content takes every soft wrap

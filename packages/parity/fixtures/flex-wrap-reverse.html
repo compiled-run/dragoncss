@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w { display: flex; flex-wrap: wrap-reverse; width: 35px; height: 61.3px; margin-bottom: 3px; row-gap: 2px; border-top: 1px solid #000; padding-bottom: 2px; }
+.i { flex: none; width: 20px; height: 9px; background-color: #999; }
+.t { height: 13px; }
+.s { height: auto; }
+.row { display: flex; align-items: flex-start; }
+.row > .w { margin-right: 2px; }
+.ac-fs { align-content: flex-start; } .ac-fe { align-content: flex-end; } .ac-s { align-content: start; } .ac-e { align-content: end; }
+.ac-c { align-content: center; } .ac-sb { align-content: space-between; } .ac-sa { align-content: space-around; } .ac-se { align-content: space-evenly; }
+.ac-st { align-content: stretch; }
+.ai-fs { align-items: flex-start; } .ai-s { align-items: start; } .ai-e { align-items: end; } .ai-fe { align-items: flex-end; } .ai-c { align-items: center; }
+.short { height: 20px; }
+.one { width: 60px; height: 30px; }
+.one .i { width: 10px; }
+.col { display: flex; flex-direction: column; flex-wrap: wrap-reverse; height: 30px; width: 71.3px; column-gap: 2px; margin-bottom: 3px; }
+.col .i { width: 13px; height: 9px; }
+.col .t { width: 17px; }
+.rtl { direction: rtl; }
+.am { width: 80px; height: 20px; margin: 12px 0; }
+.am .i { width: 10px; height: 30px; }
+.am .p { height: 7px; }
+.mt { margin-top: auto; } .mb { margin-bottom: auto; } .my { margin-top: auto; margin-bottom: auto; }
+.amc { display: flex; flex-direction: column; flex-wrap: wrap-reverse; width: 20px; height: 60px; margin: 3px 0 3px 50px; }
+.amc .i { width: 30px; height: 10px; }
+.ml { margin-left: auto; } .mr { margin-right: auto; } .mx { margin-left: auto; margin-right: auto; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row1" class="row">
+<div data-dragon-id="fs" class="w ac-fs"><div data-dragon-id="fs-a" class="i"></div><div data-dragon-id="fs-b" class="i t"></div><div data-dragon-id="fs-c" class="i s"></div></div>
+<div data-dragon-id="fe" class="w ac-fe"><div data-dragon-id="fe-a" class="i"></div><div data-dragon-id="fe-b" class="i t"></div><div data-dragon-id="fe-c" class="i s"></div></div>
+<div data-dragon-id="s" class="w ac-s"><div data-dragon-id="s-a" class="i"></div><div data-dragon-id="s-b" class="i t"></div><div data-dragon-id="s-c" class="i s"></div></div>
+<div data-dragon-id="e" class="w ac-e"><div data-dragon-id="e-a" class="i"></div><div data-dragon-id="e-b" class="i t"></div><div data-dragon-id="e-c" class="i s"></div></div>
+<div data-dragon-id="c" class="w ac-c"><div data-dragon-id="c-a" class="i"></div><div data-dragon-id="c-b" class="i t"></div><div data-dragon-id="c-c" class="i s"></div></div>
+<div data-dragon-id="sb" class="w ac-sb"><div data-dragon-id="sb-a" class="i"></div><div data-dragon-id="sb-b" class="i t"></div><div data-dragon-id="sb-c" class="i s"></div></div>
+<div data-dragon-id="sa" class="w ac-sa"><div data-dragon-id="sa-a" class="i"></div><div data-dragon-id="sa-b" class="i t"></div><div data-dragon-id="sa-c" class="i s"></div></div>
+<div data-dragon-id="se" class="w ac-se"><div data-dragon-id="se-a" class="i"></div><div data-dragon-id="se-b" class="i t"></div><div data-dragon-id="se-c" class="i s"></div></div>
+<div data-dragon-id="st" class="w ac-st"><div data-dragon-id="st-a" class="i"></div><div data-dragon-id="st-b" class="i t"></div><div data-dragon-id="st-c" class="i s"></div></div>
+</div>
+<div data-dragon-id="row2" class="row">
+<div data-dragon-id="n-fs" class="w ac-fs short"><div data-dragon-id="n-fs-a" class="i"></div><div data-dragon-id="n-fs-b" class="i t"></div></div>
+<div data-dragon-id="n-s" class="w ac-s short"><div data-dragon-id="n-s-a" class="i"></div><div data-dragon-id="n-s-b" class="i t"></div></div>
+<div data-dragon-id="n-c" class="w ac-c short"><div data-dragon-id="n-c-a" class="i"></div><div data-dragon-id="n-c-b" class="i t"></div></div>
+<div data-dragon-id="n-sb" class="w ac-sb short"><div data-dragon-id="n-sb-a" class="i"></div><div data-dragon-id="n-sb-b" class="i t"></div></div>
+<div data-dragon-id="n-sa" class="w ac-sa short"><div data-dragon-id="n-sa-a" class="i"></div><div data-dragon-id="n-sa-b" class="i t"></div></div>
+<div data-dragon-id="n-st" class="w short"><div data-dragon-id="n-st-a" class="i"></div><div data-dragon-id="n-st-b" class="i t"></div></div>
+</div>
+<div data-dragon-id="row3" class="row">
+<div data-dragon-id="ai-fs" class="w one ai-fs"><div data-dragon-id="ai-fs-a" class="i"></div><div data-dragon-id="ai-fs-b" class="i t"></div><div data-dragon-id="ai-fs-c" class="i s"></div></div>
+<div data-dragon-id="ai-s" class="w one ai-s"><div data-dragon-id="ai-s-a" class="i"></div><div data-dragon-id="ai-s-b" class="i t"></div><div data-dragon-id="ai-s-c" class="i s"></div></div>
+<div data-dragon-id="ai-e" class="w one ai-e"><div data-dragon-id="ai-e-a" class="i"></div><div data-dragon-id="ai-e-b" class="i t"></div><div data-dragon-id="ai-e-c" class="i s"></div></div>
+<div data-dragon-id="ai-fe" class="w one ai-fe"><div data-dragon-id="ai-fe-a" class="i"></div><div data-dragon-id="ai-fe-b" class="i t"></div></div>
+<div data-dragon-id="ai-c" class="w one ai-c"><div data-dragon-id="ai-c-a" class="i"></div><div data-dragon-id="ai-c-b" class="i t"></div></div>
+</div>
+<div data-dragon-id="am" class="w am"><div data-dragon-id="am-a" class="i mt"></div><div data-dragon-id="am-b" class="i mb"></div><div data-dragon-id="am-c" class="i my"></div><div data-dragon-id="am-d" class="i p mt"></div><div data-dragon-id="am-e" class="i p mb"></div><div data-dragon-id="am-f" class="i p my"></div></div>
+<div data-dragon-id="amc" class="amc"><div data-dragon-id="amc-a" class="i ml"></div><div data-dragon-id="amc-b" class="i mr"></div><div data-dragon-id="amc-c" class="i mx"></div></div>
+<div data-dragon-id="col1" class="col ac-c"><div data-dragon-id="col1-a" class="i"></div><div data-dragon-id="col1-b" class="i t"></div><div data-dragon-id="col1-c" class="i"></div><div data-dragon-id="col1-d" class="i"></div><div data-dragon-id="col1-e" class="i"></div></div>
+<div data-dragon-id="col2" class="col rtl ac-sb ai-fs"><div data-dragon-id="col2-a" class="i"></div><div data-dragon-id="col2-b" class="i t"></div><div data-dragon-id="col2-c" class="i"></div><div data-dragon-id="col2-d" class="i"></div><div data-dragon-id="col2-e" class="i"></div></div>
+<div data-dragon-id="col3" class="col rtl ai-s"><div data-dragon-id="col3-a" class="i"></div><div data-dragon-id="col3-b" class="i t"></div><div data-dragon-id="col3-c" class="i"></div><div data-dragon-id="col3-d" class="i"></div></div>
+</body>
+</html>

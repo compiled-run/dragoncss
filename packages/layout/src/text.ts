@@ -1,7 +1,7 @@
 // Text measurement is injected. The Ahem measurer is pure: it models the WPT Ahem v1.50 metrics without reading the font.
 import type { TextFont } from './input.ts';
 import type { LU } from './units.ts';
-import { fontMetricPx, roundFontMetricToWholePx, textAdvance, ZERO } from './units.ts';
+import { fontMetricPx, platformFontSize, roundFontMetricToWholePx, textAdvance, ZERO } from './units.ts';
 
 export type FontMetrics = { readonly ascent: LU; readonly descent: LU; readonly lineGap: LU };
 
@@ -27,11 +27,11 @@ function ahemAdvances(cp: number): number {
 }
 
 export const ahemMeasurer: TextMeasurer = {
-  // Blink SimpleFontData rounds ascent and descent to whole px (SkScalarRoundToScalar); Ahem has no line gap.
+  // Blink SimpleFontData rounds ascent and descent of the platform-size font to whole px; Ahem has no line gap.
   metrics(font: TextFont): FontMetrics {
     return {
-      ascent: roundFontMetricToWholePx(fontMetricPx(font.size, AHEM_UNITS_PER_EM, AHEM_ASCENT)),
-      descent: roundFontMetricToWholePx(fontMetricPx(font.size, AHEM_UNITS_PER_EM, AHEM_DESCENT)),
+      ascent: roundFontMetricToWholePx(fontMetricPx(platformFontSize(font.size), AHEM_UNITS_PER_EM, AHEM_ASCENT)),
+      descent: roundFontMetricToWholePx(fontMetricPx(platformFontSize(font.size), AHEM_UNITS_PER_EM, AHEM_DESCENT)),
       lineGap: ZERO,
     };
   },

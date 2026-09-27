@@ -36,16 +36,28 @@ export async function launchChrome(): Promise<Browser> {
   return browser;
 }
 
-export type PageEnvironment = { readonly viewport: { readonly width: number; readonly height: number }; readonly devicePixelRatio: number };
+export type PageEnvironment = {
+  readonly viewport: { readonly width: number; readonly height: number };
+  readonly devicePixelRatio: number;
+  readonly direction: 'ltr' | 'rtl';
+};
 
-/** Opens a page in the case environment, loads the HTML with the Ahem face injected, and waits for fonts and two frames. */
+/**
+ * The environment direction as the document's base direction (docs/api.md §7), injected identically into the authored and the
+ * compiled rendering. A zero-specificity rule on the root sets only direction: a dir attribute would also set unicode-bidi.
+ */
+export function harnessStyle(env: PageEnvironment): string {
+  return `${ahemFontFace()}${env.direction === 'rtl' ? ':where(html){direction:rtl}' : ''}`;
+}
+
+/** Opens a page in the case environment, loads the HTML with the harness style injected, and waits for fonts and two frames. */
 export async function openPage(browser: Browser, html: string, env: PageEnvironment): Promise<Page> {
   const context = await browser.newContext({
     viewport: { width: env.viewport.width, height: env.viewport.height },
     deviceScaleFactor: env.devicePixelRatio,
   });
   const page = await context.newPage();
-  const injected = html.replace(/<head>/i, `<head><style data-dragon-harness>${ahemFontFace()}</style>`);
+  const injected = html.replace(/<head>/i, `<head><style data-dragon-harness>${harnessStyle(env)}</style>`);
   if (injected === html) throw new Error('fixture HTML has no <head>');
   await page.setContent(injected);
   await page.evaluate(async () => {

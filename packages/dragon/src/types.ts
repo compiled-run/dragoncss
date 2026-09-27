@@ -220,7 +220,7 @@ export type ExplainedCase = {
   readonly assignment: Assignment;
   readonly property: string;
   readonly value: string;
-  readonly cascade: 'author' | 'inherited' | 'user-agent' | 'initial';
+  readonly cascade: 'author' | 'inherited' | 'user-agent' | 'initial' | 'environment';
   readonly origin: Origin;
   readonly losing: readonly { readonly origin: Origin; readonly reason: string }[];
   readonly support: { readonly feature: string; readonly context: string; readonly status: SupportStatus } | null;

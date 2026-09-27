@@ -14,6 +14,7 @@ import type {
   LayoutStyle,
   LineHeightValue,
   MarginValue,
+  Overflow,
   MaxSizeValue,
   PaddingValue,
   SizeValue,
@@ -116,17 +117,32 @@ function gap(id: string, get: Get, p: Longhand): GapValue {
 const ALIGN_ITEMS: readonly AlignItems[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
 
 export function lowerStyle(el: ResolvedElement, faults: CompilerFaults): LayoutStyle {
-  return lowerStyleFrom(el.element.address, (p) => (el.props.get(p) as ResolvedValue).value, faults);
+  const id = el.element.address;
+  const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
+  // css-overflow-3 §3.3: overflow on html or body propagates to the viewport, which the engine does not model.
+  if ((el.element.tag === 'html' || el.element.tag === 'body') && (keywordOf(get('overflow-x')) !== 'visible' || keywordOf(get('overflow-y')) !== 'visible')) {
+    throw new LoweringError(id, 'overflow-x', `overflow on <${el.element.tag}> ${id} propagates to the viewport, which the layout engine does not model`);
+  }
+  return lowerStyleFrom(id, get, faults);
+}
+
+const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '');
+
+// css-align-3 §4.2: first baseline is baseline; last baseline has no layout mapping.
+function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allowed: readonly T[]): T {
+  const v = get(p);
+  if (v.kind === 'keyword' && v.value === 'first baseline') return 'baseline' as T;
+  return keyword(id, get, p, allowed);
 }
 
 function lowerStyleFrom(id: string, get: Get, faults: CompilerFaults): LayoutStyle {
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
-    display: keyword<Display>(id, get, 'display', ['block', 'flex', 'none']),
+    display: keyword<Display>(id, get, 'display', ['block', 'flex']),
     position: keyword(id, get, 'position', ['static']),
-    overflowX: keyword(id, get, 'overflow-x', ['visible']),
-    overflowY: keyword(id, get, 'overflow-y', ['visible']),
+    overflowX: keyword<Overflow>(id, get, 'overflow-x', ['visible', 'hidden']),
+    overflowY: keyword<Overflow>(id, get, 'overflow-y', ['visible', 'hidden']),
     direction: keyword(id, get, 'direction', ['ltr', 'rtl']),
     boxSizing,
     width: size(id, get, 'width'),
@@ -156,9 +172,9 @@ function lowerStyleFrom(id: string, get: Get, faults: CompilerFaults): LayoutSty
     justifyContent: keyword<JustifyContent>(id, get, 'justify-content', [
       'normal', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly', 'stretch', 'start', 'end', 'left', 'right',
     ]),
-    alignItems: keyword<AlignItems>(id, get, 'align-items', ALIGN_ITEMS),
-    alignSelf: keyword<AlignSelf>(id, get, 'align-self', ['auto', ...ALIGN_ITEMS]),
-    alignContent: keyword<AlignContent>(id, get, 'align-content', [
+    alignItems: alignKeyword<AlignItems>(id, get, 'align-items', ALIGN_ITEMS),
+    alignSelf: alignKeyword<AlignSelf>(id, get, 'align-self', ['auto', ...ALIGN_ITEMS]),
+    alignContent: alignKeyword<AlignContent>(id, get, 'align-content', [
       'normal', 'stretch', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly', 'baseline', 'start', 'end',
     ]),
     rowGap: gap(id, get, 'row-gap'),
@@ -193,25 +209,48 @@ const displayOf = (el: ResolvedElement): string => {
   return v.kind === 'keyword' ? v.value : '';
 };
 
+/**
+ * C5: a text leaf carries its inherited text-align and direction (goal.md principle 3), while the engine reads both from the block
+ * container that holds the text (css-text-3 §7.1, css-writing-modes-4 §2.1). Without inline elements they must be equal.
+ */
+export function assertTextCarriesContainer(container: LayoutStyle, containerId: string, t: ResolvedText): void {
+  const align = keywordOf((t.props.get('text-align') as ResolvedValue).value);
+  const direction = keywordOf((t.props.get('direction') as ResolvedValue).value);
+  if (align !== container.textAlign || direction !== container.direction) {
+    throw new Error(`${t.node.address} carries text-align ${align} and direction ${direction}, but its block container ${containerId} has ${container.textAlign} and ${container.direction}`);
+  }
+}
+
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box inherits the inherited properties of its enclosing box and takes the
 // initial value of every other property; it is block-level (a block container, blockified as a flex item).
 function anonymousBox(parent: ResolvedElement, id: string, texts: readonly ResolvedText[], faults: CompilerFaults): LayoutBox {
   const values = new Map<Longhand, CssValue>();
   for (const p of LONGHANDS) values.set(p, INHERITED.has(p) ? (parent.props.get(p) as ResolvedValue).value : initialValue(p));
   values.set('display', { kind: 'keyword', value: 'block' });
-  return { kind: 'box', id, boxType: 'anonymous', style: lowerStyleFrom(id, (p) => values.get(p) as CssValue, faults), children: texts.map(lowerText) };
+  const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, faults);
+  for (const t of texts) assertTextCarriesContainer(style, id, t);
+  return { kind: 'box', id, boxType: 'anonymous', style, children: texts.map(lowerText) };
 }
 
 /**
- * The layout tree of one resolved element. Text beside visible element boxes, or directly in a flex container, is wrapped in
- * anonymous boxes "<element>:anon<k>", one per maximal text sequence; display: none elements generate no box (CSS2 §9.2.4), so
- * beside text they are left out rather than splitting it. The engine never creates boxes.
+ * The layout tree of a document. display: none subtrees generate no boxes (CSS2 §9.2.4), so they are omitted wherever they occur
+ * (C4) and a display: none root has no layout tree.
  */
-export function lowerTree(el: ResolvedElement, faults: CompilerFaults): LayoutBox {
+export function lowerTree(root: ResolvedElement, faults: CompilerFaults): LayoutBox {
+  if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
+  return lowerBox(root, faults);
+}
+
+/**
+ * The layout tree of one resolved element that generates a box. Text beside element boxes, or directly in a flex container, is
+ * wrapped in anonymous boxes "<element>:anon<k>", one per maximal text sequence; display: none children are omitted, so they never
+ * split a text sequence. The engine never creates boxes.
+ */
+function lowerBox(el: ResolvedElement, faults: CompilerFaults): LayoutBox {
   const id = el.element.address;
-  const texts = el.children.filter((c): c is ResolvedText => c.kind === 'text');
-  const kids = texts.length === 0 ? el.children : el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
-  const wrap = texts.length > 0 && (displayOf(el) === 'flex' || kids.some((c) => c.kind === 'element'));
+  const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
+  const style = lowerStyle(el, faults);
+  const wrap = kids.some((c) => c.kind === 'text') && (displayOf(el) === 'flex' || kids.some((c) => c.kind === 'element'));
   const children: (LayoutBox | TextLeaf)[] = [];
   let run: ResolvedText[] = [];
   let anon = 0;
@@ -222,10 +261,13 @@ export function lowerTree(el: ResolvedElement, faults: CompilerFaults): LayoutBo
   for (const c of kids) {
     if (c.kind === 'element') {
       flush();
-      children.push(lowerTree(c, faults));
+      children.push(lowerBox(c, faults));
     } else if (wrap) run.push(c);
-    else children.push(lowerText(c));
+    else {
+      assertTextCarriesContainer(style, id, c);
+      children.push(lowerText(c));
+    }
   }
   flush();
-  return { kind: 'box', id, boxType: 'element', style: lowerStyle(el, faults), children };
+  return { kind: 'box', id, boxType: 'element', style, children };
 }

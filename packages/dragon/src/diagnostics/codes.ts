@@ -36,6 +36,9 @@ export const DIAGNOSTIC_CODES = [
   'DRAGON_STATE_SPACE_LIMIT',
   'DRAGON_CLASS_OWNER',
   'DRAGON_UNPROVEN_CONTEXT',
+  // S4a.
+  'DRAGON_UNSUPPORTED_NESTED_RULE',
+  'DRAGON_UNSUPPORTED_BIDI',
 ] as const;
 
 export type DiagnosticCode = (typeof DIAGNOSTIC_CODES)[number];

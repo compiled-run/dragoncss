@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.r { display: flex; flex-direction: row-reverse; width: 101.3px; height: 10px; margin-bottom: 2px; padding: 0 2px 0 5px; border-left: 1px solid #000; }
+.i { flex: none; width: 10px; height: 8px; background-color: #999; }
+.fs { justify-content: flex-start; } .fe { justify-content: flex-end; } .ce { justify-content: center; }
+.sb { justify-content: space-between; } .sa { justify-content: space-around; } .se { justify-content: space-evenly; }
+.gap { column-gap: 3.3px; }
+.ma { margin-left: auto; } .mr { margin-right: auto; } .mm { margin: 0 auto; }
+.m { margin-left: 2px; margin-right: 5px; }
+.grow { flex: 1 1 0px; }
+.grow2 { flex: 2 1 0px; }
+.rtl { direction: rtl; }
+.wrap { flex-wrap: wrap; height: auto; width: 45px; row-gap: 2px; }
+.neg .i { width: 40px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="fs" class="r fs"><div data-dragon-id="fs-a" class="i"></div><div data-dragon-id="fs-b" class="i m"></div><div data-dragon-id="fs-c" class="i"></div></div>
+<div data-dragon-id="fe" class="r fe"><div data-dragon-id="fe-a" class="i"></div><div data-dragon-id="fe-b" class="i m"></div><div data-dragon-id="fe-c" class="i"></div></div>
+<div data-dragon-id="ce" class="r ce"><div data-dragon-id="ce-a" class="i"></div><div data-dragon-id="ce-b" class="i"></div><div data-dragon-id="ce-c" class="i"></div></div>
+<div data-dragon-id="sb" class="r sb gap"><div data-dragon-id="sb-a" class="i"></div><div data-dragon-id="sb-b" class="i"></div><div data-dragon-id="sb-c" class="i"></div></div>
+<div data-dragon-id="sa" class="r sa"><div data-dragon-id="sa-a" class="i"></div><div data-dragon-id="sa-b" class="i"></div><div data-dragon-id="sa-c" class="i"></div></div>
+<div data-dragon-id="se" class="r se"><div data-dragon-id="se-a" class="i"></div><div data-dragon-id="se-b" class="i"></div><div data-dragon-id="se-c" class="i"></div></div>
+<div data-dragon-id="ma" class="r"><div data-dragon-id="ma-a" class="i"></div><div data-dragon-id="ma-b" class="i ma"></div><div data-dragon-id="ma-c" class="i"></div></div>
+<div data-dragon-id="mm" class="r"><div data-dragon-id="mm-a" class="i mm"></div><div data-dragon-id="mm-b" class="i mr"></div><div data-dragon-id="mm-c" class="i"></div></div>
+<div data-dragon-id="gr" class="r gap"><div data-dragon-id="gr-a" class="i grow"></div><div data-dragon-id="gr-b" class="i grow2 m"></div><div data-dragon-id="gr-c" class="i"></div></div>
+<div data-dragon-id="rtl-ce" class="r ce rtl"><div data-dragon-id="rtl-ce-a" class="i"></div><div data-dragon-id="rtl-ce-b" class="i"></div><div data-dragon-id="rtl-ce-c" class="i"></div></div>
+<div data-dragon-id="rtl-sb" class="r sb rtl gap"><div data-dragon-id="rtl-sb-a" class="i"></div><div data-dragon-id="rtl-sb-b" class="i m"></div><div data-dragon-id="rtl-sb-c" class="i"></div></div>
+<div data-dragon-id="rtl-ma" class="r rtl"><div data-dragon-id="rtl-ma-a" class="i"></div><div data-dragon-id="rtl-ma-b" class="i mr"></div><div data-dragon-id="rtl-ma-c" class="i mm"></div></div>
+<div data-dragon-id="neg" class="r ce neg"><div data-dragon-id="neg-a" class="i"></div><div data-dragon-id="neg-b" class="i"></div><div data-dragon-id="neg-c" class="i"></div></div>
+<div data-dragon-id="negsa" class="r sa neg"><div data-dragon-id="negsa-a" class="i"></div><div data-dragon-id="negsa-b" class="i"></div><div data-dragon-id="negsa-c" class="i"></div></div>
+<div data-dragon-id="wr" class="r wrap ce"><div data-dragon-id="wr-a" class="i"></div><div data-dragon-id="wr-b" class="i"></div><div data-dragon-id="wr-c" class="i"></div><div data-dragon-id="wr-d" class="i"></div><div data-dragon-id="wr-e" class="i"></div></div>
+</body>
+</html>

@@ -91,27 +91,51 @@ export function parseStylesheet(text: string, base: Span, use: SheetUse, orderSt
   const rules: Rule[] = [];
   let order = orderStart;
   for (const node of list(ast, 'children')) {
-    if (node.type === 'Atrule') {
-      const span = spanOf(node, base);
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
-        origin: authored(span),
-        message: `@${String(node['name'])} is not supported in milestone 1`,
-        edits: [{ span, replacement: '' }],
-      }));
+    if (node.type !== 'Rule') {
+      refuseNode(node, base, text, 'the stylesheet', diagnostics);
       continue;
     }
-    if (node.type !== 'Rule') continue;
     const prelude = node['prelude'] as CssNode;
     const selectors = parseSelectorList(prelude, base, use, diagnostics);
     const declarations: Declaration[] = [];
     for (const d of list(node['block'] as CssNode, 'children')) {
-      if (d.type !== 'Declaration') continue;
+      if (d.type !== 'Declaration') {
+        refuseNode(d, base, text, 'a rule block', diagnostics);
+        continue;
+      }
       const parsed = parseDeclaration(d, base, text, order++, diagnostics);
       if (parsed !== null) declarations.push(parsed);
     }
     if (selectors !== null) rules.push({ sheet: use.id, owner: use.owner, selectors, declarations });
   }
   return rules;
+}
+
+/** css-syntax-3 §5.4: an empty declaration (a lone ";") and the <!-- --> tokens produce no rule or declaration in the CSSOM. */
+const EMPTY_RAW = /^[\s;]*$/;
+
+// Every node that is not a style rule at the top level, or not a declaration in a rule block, is diagnosed: css-nesting-1 nested
+// rules, nested and top-level at-rules, and anything the parser kept as raw text. Nothing is dropped silently.
+function refuseNode(node: CssNode, base: Span, text: string, where: string, diagnostics: Diagnostic[]): void {
+  const span = spanOf(node, base);
+  if (where === 'the stylesheet' && (node.type === 'CDO' || node.type === 'CDC')) return;
+  if (node.type === 'Raw' && EMPTY_RAW.test(String(node['value']))) return;
+  if (node.type === 'Atrule') {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
+      origin: authored(span),
+      message: `@${String(node['name'])} in ${where} is not supported in milestone 1`,
+      edits: [{ span, replacement: '' }],
+    }));
+    return;
+  }
+  if (node.type === 'Rule') {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_NESTED_RULE', {
+      origin: authored(span),
+      message: `the nested rule "${text.slice(span.start - base.start, span.end - base.start).split('{')[0]?.trim()}" in ${where} is not supported (css-nesting-1)`,
+    }));
+    return;
+  }
+  diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(span), message: `CSS ${node.type} in ${where} is not a declaration or style rule` }));
 }
 
 const SELECTOR_FIX = 'Use class compounds, optionally with a tag and [ui-*] or [ui-*="value"], joined by descendant or child combinators.';
@@ -209,8 +233,10 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
       return null;
     }
   }
-  const values: CssValue[] = [];
-  for (const t of tokens) {
+  // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
+  const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
+  const values: CssValue[] = baseline === null ? [] : [baseline];
+  for (const t of baseline === null ? tokens : []) {
     const v = wide ? toValue(t, property) : tokenValue(t, property);
     if (typeof v === 'string') {
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${v}`, manual: COLOR_FIX }));
@@ -283,6 +309,14 @@ function toValue(node: CssNode, property: string): CssValue {
     default:
       return { kind: 'other', type: node.type, text: generate(node) };
   }
+}
+
+const BASELINE_PROPERTIES = new Set<string>(['align-items', 'align-self', 'align-content']);
+
+function baselinePosition(tokens: CssNode[]): CssValue | null {
+  const names = tokens.map((t) => (t.type === 'Identifier' ? String(t['name']).toLowerCase() : ''));
+  if (names.length === 2 && (names[0] === 'first' || names[0] === 'last') && names[1] === 'baseline') return { kind: 'keyword', value: `${names[0]} baseline` };
+  return null;
 }
 
 function familyValue(tokens: CssNode[]): CssValue {

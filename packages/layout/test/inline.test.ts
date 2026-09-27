@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { absoluteRects, ahemMeasurer, layout, layoutWithFaults, validateLayoutInput } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, layout, layoutWithFaults, NO_ENGINE_FAULTS, validateLayoutInput } from '../src/index.ts';
 import type { LayoutBox, LayoutRect, LayoutResult, TextLeaf } from '../src/index.ts';
 import { anon, box, px, text } from './helpers.ts';
 
@@ -119,7 +119,7 @@ describe('planted engine fault breakOffByOne', () => {
     const root = block(45, [text('t', 'XX XX')]);
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root };
     expect(lines(layout(input, ahemMeasurer), 't').length).toBe(2);
-    expect(lines(layoutWithFaults(input, ahemMeasurer, { breakOffByOne: true }), 't').length).toBe(1);
+    expect(lines(layoutWithFaults(input, ahemMeasurer, { ...NO_ENGINE_FAULTS, breakOffByOne: true }), 't').length).toBe(1);
   });
 });
 

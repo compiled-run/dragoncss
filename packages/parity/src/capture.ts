@@ -26,6 +26,8 @@ export type WebCapture = {
   readonly chrome: string;
   readonly viewport: { readonly width: number; readonly height: number };
   readonly devicePixelRatio: number;
+  /** The environment direction the harness gave the document (docs/api.md §7). */
+  readonly direction: 'ltr' | 'rtl';
   readonly nodes: readonly CapturedNode[];
 };
 
@@ -64,6 +66,7 @@ export async function captureFixture(browser: Browser, fixture: string, html: st
       chrome: CHROME_VERSION,
       viewport: { width: env.viewport.width, height: env.viewport.height },
       devicePixelRatio: env.devicePixelRatio,
+      direction: env.direction,
       nodes,
     };
   } finally {

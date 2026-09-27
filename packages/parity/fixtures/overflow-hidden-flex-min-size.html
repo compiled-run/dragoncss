@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.row { display: flex; width: 50px; margin-bottom: 3px; }
+.row > div { flex: 0 1 auto; }
+.h { overflow: hidden; }
+.pad { padding: 0 3px; border-left: 2px solid #000; }
+.minw { min-width: 12px; }
+.col { display: flex; flex-direction: column; width: 50px; height: 30px; margin-bottom: 3px; }
+.tall { height: 40px; background-color: #ccc; }
+.basis { flex-basis: 30px; }
+.grow { flex-grow: 1; }
+.row2 { display: flex; width: 90px; margin-bottom: 3px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="r1" class="row"><div data-dragon-id="r1a" class="h">XXXXXXXX</div><div data-dragon-id="r1b">XXXXXXXX</div></div>
+<div data-dragon-id="r2" class="row"><div data-dragon-id="r2a" class="h pad">XXXX XXXX</div><div data-dragon-id="r2b" class="h minw">XXXXX</div><div data-dragon-id="r2c">XXX</div></div>
+<div data-dragon-id="r3" class="row"><div data-dragon-id="r3a" class="h basis">XXXXXX</div><div data-dragon-id="r3b" class="h basis">XX XX XX</div></div>
+<div data-dragon-id="c1" class="col"><div data-dragon-id="c1a" class="h"><div data-dragon-id="c1a1" class="tall"></div></div><div data-dragon-id="c1b"><div data-dragon-id="c1b1" class="tall"></div></div></div>
+<div data-dragon-id="c2" class="col"><div data-dragon-id="c2a" class="h grow"><div data-dragon-id="c2a1" class="tall"></div></div><div data-dragon-id="c2b" class="h">XX XX</div></div>
+<div data-dragon-id="r4" class="row2"><div data-dragon-id="r4a" class="h grow">XXXXXXXXXXXX</div><div data-dragon-id="r4b" class="grow">XXX</div></div>
+</body>
+</html>

@@ -43,7 +43,7 @@ describe('UA versus initial origin, per tag and longhand', () => {
     kind: 'element', address: id, instance: 'doc', owner: 'App', tag, classes: [], attributes: new Map(), children,
     node: { kind: 'element', id, tag, classes: [], attributes: [], children: [], origin },
   });
-  const root = resolveTree(el('html', 'html', [el('body', 'body', [el('div', 'div')])]), [], NO_FAULTS);
+  const root = resolveTree(el('html', 'html', [el('body', 'body', [el('div', 'div')])]), [], NO_FAULTS, { direction: 'ltr' });
   const body = root.children[0];
   const div = body !== undefined && body.kind === 'element' ? body.children[0] : undefined;
   const byTag = { html: root, body, div } as const;
@@ -63,6 +63,13 @@ describe('UA versus initial origin, per tag and longhand', () => {
   }
   it('the root display is blockified (css-display-3 §2.7), with initial origin', () => {
     expect(root.props.get('display')).toMatchObject({ value: { kind: 'keyword', value: 'block' }, origin: 'initial' });
+  });
+  it('the root direction is the environment direction (docs/api.md §7), with origin environment, and it is inherited', () => {
+    const rtl = resolveTree(el('html', 'html', [el('body', 'body')]), [], NO_FAULTS, { direction: 'rtl' });
+    expect(rtl.props.get('direction')).toMatchObject({ value: { kind: 'keyword', value: 'rtl' }, origin: 'environment', declaration: null });
+    expect(root.props.get('direction')).toMatchObject({ value: { kind: 'keyword', value: 'ltr' }, origin: 'environment', declaration: null });
+    const b = rtl.children[0];
+    expect(b?.kind === 'element' && b.props.get('direction')).toMatchObject({ value: { kind: 'keyword', value: 'rtl' }, origin: 'inherited' });
   });
 });
 

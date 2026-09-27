@@ -9,12 +9,12 @@ import { linkDocument } from '../src/analysis/link.ts';
 import { collapseInlineRun } from '../src/analysis/resolve.ts';
 import { div, expectCatalogued, explainOne, inputFor, text } from './helpers.ts';
 
-const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1 } as const;
+const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr' } as const;
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
-const derive = () => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive' });
+const derive = () => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' });
 
 function lowered(input: FrontEndResult, faults = NO_FAULTS): LayoutBox {
-  const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults, profiles: 'derive' }).compile(input);
+  const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults, profiles: 'derive', direction: 'ltr' }).compile(input);
   const p = iosLayoutProjection(c, ENV, []);
   if (p.kind !== 'ready') throw new Error(`${p.reason} ${c.diagnostics.map((d) => d.message).join('; ')}`);
   return p.input.root;
@@ -85,15 +85,15 @@ describe('MF4: whitespace-only text never has an empty address', () => {
 
 describe('text nodes carry their inherited text styles (goal.md principle 3)', () => {
   const input = inputFor(`${FONT} .p { line-height: 1.5; text-align: center; color: #102030; white-space: nowrap; }`, (r) => [div(r, 'p', ['p'], [text(r, 't', 'XX XX')])]);
-  it('each of the seven text properties has an Origin of kind inherited naming the insertion parent', () => {
+  it('each of the eight text properties has an Origin of kind inherited naming the insertion parent', () => {
     const c = derive().compile(input);
     const topo = textTopology(c, []);
     expect(topo?.map((t) => t.address)).toEqual(['p:text0']);
     const t = (topo ?? [])[0];
-    expect(Object.keys(t?.inherited ?? {}).sort()).toEqual(['color', 'font-family', 'font-size', 'line-height', 'text-align', 'text-wrap-mode', 'white-space-collapse']);
+    expect(Object.keys(t?.inherited ?? {}).sort()).toEqual(['color', 'direction', 'font-family', 'font-size', 'line-height', 'text-align', 'text-wrap-mode', 'white-space-collapse']);
     for (const o of Object.values(t?.inherited ?? {})) expect(o).toMatchObject({ kind: 'inherited', element: 'p' });
     expect(t?.inherited['font-size']).toMatchObject({ kind: 'inherited', element: 'p', from: { kind: 'inherited', element: 'body', from: { kind: 'authored' } } });
-    expect(t?.context).toBe('text-in-block');
+    expect(t?.context).toBe('text-in-block/ltr');
   });
   it('the lowering reads the text node, never its parent: a text node with a dropped font-size lays out at its own 16px', () => {
     expect(find(lowered(input), 'p:text0')).toEqual({ kind: 'text', id: 'p:text0', text: 'XX XX', font: { family: 'Ahem', size: 10 }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'nowrap' });
@@ -128,12 +128,12 @@ describe('anonymous boxes are made by the compiler (CSS2 §9.2.1.1, css-flexbox-
     ]));
     const keys = compiledFeatures(c, 'ios', []).filter((k) => k.startsWith('font-size') || k.startsWith('line-height'));
     expect(keys).toEqual([
-      'font-size:<length-px>@text-as-anonymous-flex-item',
-      'font-size:<length-px>@text-in-anonymous-block',
-      'font-size:<length-px>@text-in-block',
-      'font-size:<length-px>@text-in-flex-item',
-      'line-height:<number>@text-as-anonymous-flex-item',
-      'line-height:<number>@text-in-flex-item',
+      'font-size:<length-px>@text-as-anonymous-flex-item/row/ltr',
+      'font-size:<length-px>@text-in-anonymous-block/ltr',
+      'font-size:<length-px>@text-in-block/ltr',
+      'font-size:<length-px>@text-in-flex-item/row/ltr',
+      'line-height:<number>@text-as-anonymous-flex-item/row/ltr',
+      'line-height:<number>@text-in-flex-item/row/ltr',
     ]);
   });
 });

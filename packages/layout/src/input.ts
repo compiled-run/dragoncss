@@ -20,9 +20,11 @@ export type FlexBasisValue = Px | Percent | Auto | ContentValue;
 export type GapValue = Px | Percent | NormalValue;
 export type LineHeightValue = NormalValue | NumberValue | Px;
 
-export type Display = 'block' | 'flex' | 'none';
+/** display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. */
+export type Display = 'block' | 'flex';
 export type Position = 'static';
-export type Overflow = 'visible';
+/** css-overflow-3 §3: hidden makes a scroll container; the validator requires both axes to be equal (the §3.1 computed pair). */
+export type Overflow = 'visible' | 'hidden';
 export type Direction = 'ltr' | 'rtl';
 export type BoxSizing = 'content-box' | 'border-box';
 export type FlexDirection = 'row' | 'row-reverse' | 'column' | 'column-reverse';

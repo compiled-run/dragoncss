@@ -6,15 +6,26 @@ import type { Declaration } from '../css/stylesheet.ts';
 import { featureOf } from '../css/stylesheet.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 
+/** The direction facet (docs/api.md §10.1): a left-to-right proof never covers right-to-left. */
+export type DirectionFacet = 'ltr' | 'rtl';
+
+/** The main-axis facet of the flex text contexts. */
+export type AxisFacet = 'row' | 'column';
+
 /**
  * The context a text node is laid out in, from tree facts alone: text-in-block (the only content of a block container),
  * text-in-flex-item (the only content of a flex item), text-in-anonymous-block (beside block boxes, so the compiler wraps it
  * in an anonymous block, CSS2 §9.2.1.1), text-as-anonymous-flex-item (directly in a flex container, css-flexbox-1 §4), or
- * text-in-display-none.
+ * text-in-display-none. The facets are the block container's direction and, for the flex contexts, the flex container's main axis.
  */
-export type TextContext = 'text-in-block' | 'text-in-flex-item' | 'text-in-anonymous-block' | 'text-as-anonymous-flex-item' | 'text-in-display-none';
+export type TextContext =
+  | `text-in-block/${DirectionFacet}`
+  | `text-in-anonymous-block/${DirectionFacet}`
+  | `text-in-display-none/${DirectionFacet}`
+  | `text-in-flex-item/${AxisFacet}/${DirectionFacet}`
+  | `text-as-anonymous-flex-item/${AxisFacet}/${DirectionFacet}`;
 
-export type FormattingContext =
+export type BoxContext =
   | 'root'
   | 'block'
   | 'flex-row'
@@ -24,43 +35,54 @@ export type FormattingContext =
   | 'flex-row-multi-line'
   | 'flex-column-single-line'
   | 'flex-column-multi-line'
-  | 'not-flex-container'
-  | TextContext;
+  | 'not-flex-container';
+
+export type FormattingContext = `${BoxContext}/${DirectionFacet}` | TextContext;
 
 const keyword = (el: ResolvedElement, p: Longhand): string => {
   const v = (el.props.get(p) as ResolvedValue).value;
   return v.kind === 'keyword' ? v.value : '';
 };
 
+/** The element's computed direction, the direction facet of the contexts its algorithms define. */
+export function directionFacet(el: ResolvedElement): DirectionFacet {
+  return keyword(el, 'direction') === 'rtl' ? 'rtl' : 'ltr';
+}
+
+const axisFacet = (flexContainer: ResolvedElement): AxisFacet => (keyword(flexContainer, 'flex-direction').startsWith('column') ? 'column' : 'row');
+
 /**
- * The formatting context of an element-level longhand. Item properties: the context the element's box takes part in (root,
- * block, flex-row, flex-column, or display-none under a hidden parent). Container properties: the element's own flex line mode.
+ * The formatting context of an element-level longhand, with the direction of the box whose algorithm consumes it. Item
+ * properties: the context the element's box takes part in (root, block, flex-row, flex-column, or display-none under a hidden
+ * parent) and the parent's direction (the root's own). Container properties: the element's own flex line mode and direction.
  * Text properties are keyed per text node instead (textContext).
  */
 export function formattingContext(property: Longhand, el: ResolvedElement, parent: ResolvedElement | null): FormattingContext {
   const role = PROPERTY_ROLE[property];
   if (role === 'text') throw new Error(`${property} is keyed per text node (textContext)`);
   if (role === 'container') {
-    if (keyword(el, 'display') !== 'flex') return 'not-flex-container';
-    const column = keyword(el, 'flex-direction').startsWith('column');
+    const own = directionFacet(el);
+    if (keyword(el, 'display') !== 'flex') return `not-flex-container/${own}`;
     const single = keyword(el, 'flex-wrap') === 'nowrap';
-    return `flex-${column ? 'column' : 'row'}-${single ? 'single' : 'multi'}-line`;
+    return `flex-${axisFacet(el)}-${single ? 'single' : 'multi'}-line/${own}`;
   }
-  if (parent === null) return 'root';
+  if (parent === null) return `root/${directionFacet(el)}`;
+  const dir = directionFacet(parent);
   const display = keyword(parent, 'display');
-  if (display === 'none') return 'display-none';
-  if (display === 'flex') return keyword(parent, 'flex-direction').startsWith('column') ? 'flex-column' : 'flex-row';
-  return 'block';
+  if (display === 'none') return `display-none/${dir}`;
+  if (display === 'flex') return `flex-${axisFacet(parent)}/${dir}`;
+  return `block/${dir}`;
 }
 
-/** The context of the text children of insertion parent el, whose own parent is parent. */
+/** The context of the text children of insertion parent el, whose own parent is parent; the facet is el's direction. */
 export function textContext(el: ResolvedElement, parent: ResolvedElement | null): TextContext {
+  const dir = directionFacet(el);
   const display = keyword(el, 'display');
-  if (display === 'none') return 'text-in-display-none';
-  if (display === 'flex') return 'text-as-anonymous-flex-item';
-  if (el.children.some((c) => c.kind === 'element' && keyword(c, 'display') !== 'none')) return 'text-in-anonymous-block';
-  if (parent !== null && keyword(parent, 'display') === 'flex') return 'text-in-flex-item';
-  return 'text-in-block';
+  if (display === 'none') return `text-in-display-none/${dir}`;
+  if (display === 'flex') return `text-as-anonymous-flex-item/${axisFacet(el)}/${dir}`;
+  if (el.children.some((c) => c.kind === 'element' && keyword(c, 'display') !== 'none')) return `text-in-anonymous-block/${dir}`;
+  if (parent !== null && keyword(parent, 'display') === 'flex') return `text-in-flex-item/${axisFacet(parent)}/${dir}`;
+  return `text-in-block/${dir}`;
 }
 
 export type UsedKey = {

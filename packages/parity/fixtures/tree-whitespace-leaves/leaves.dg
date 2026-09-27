@@ -1,0 +1,11 @@
+component App {
+  <html>
+    <body>
+      <div a class="a">{"XX"}{" "}{"YY"}{"\u200b"}{"ZZ WW"}</div>
+      <div b class="b">{"XXXX"}{" "}{"YYYY"}{" "}{"ZZ"}</div>
+      <div c class="a">{"XX"}{"\u200b"}{"YY ZZ"}</div>
+      <div d class="d">{"XX "}{"YY"}{"\u200b"}{"ZZZ"}</div>
+      <div e class="e">{"XX"}{" "}{"Y"}{" "}{"XXXX"}{"\u200b"}{"W"}</div>
+    </body>
+  </html>
+}

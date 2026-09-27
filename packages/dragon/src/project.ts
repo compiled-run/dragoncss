@@ -9,6 +9,7 @@ import type { Declaration, Rule } from './css/stylesheet.ts';
 import { featureOf, parseStylesheet } from './css/stylesheet.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { rowKey, usedKeys } from './analysis/context.ts';
+import { checkComputed } from './analysis/computed-checks.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
@@ -64,6 +65,8 @@ export type InternalCase = {
 /** Internal-only data kept beside a compiled result; never reachable from the public entry. */
 export type InternalRecord = {
   readonly documentId: string | null;
+  /** The environment direction every case was resolved for. */
+  readonly direction: 'ltr' | 'rtl';
   readonly cases: readonly InternalCase[];
 };
 
@@ -75,9 +78,10 @@ export function internalRecord(compiled: object): InternalRecord | undefined {
 
 /**
  * faults: seeded resolver and lowering errors. profiles 'derive' is used only by scripts/gen-profile-rows.ts: it records
- * row keys without enforcing the profiles, so the generator can find which cases pass before any row exists.
+ * row keys without enforcing the profiles, so the generator can find which cases pass before any row exists. direction: the
+ * reference environment's direction (docs/api.md §7), which resolution gives the root; the public entry compiles for ltr.
  */
-export type InternalOptions = { readonly faults: CompilerFaults; readonly profiles: 'enforce' | 'derive' };
+export type InternalOptions = { readonly faults: CompilerFaults; readonly profiles: 'enforce' | 'derive'; readonly direction: 'ltr' | 'rtl' };
 
 function deepFreeze<T>(v: T): T {
   if (v !== null && typeof v === 'object' && !Object.isFrozen(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) {
@@ -179,6 +183,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     profiles: targets.map((t) => PROFILES[t]),
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
+    direction: options.direction,
     config,
     input,
   }));
@@ -206,8 +211,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     linked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, diagnostics);
     if (linked !== null && !diagnostics.some((d) => d.severity === 'error' && d.target === null)) {
       const reported = new Set<string>();
+      const refused = new Set<string>();
       for (const c of linked.cases) {
-        const resolved = resolveTree(c.root, rules, options.faults);
+        const resolved = resolveTree(c.root, rules, options.faults, { direction: options.direction });
+        checkComputed(resolved, targets, diagnostics, refused);
         const used = usedKeys(resolved);
         cases.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used });
         if (options.profiles === 'derive') continue;
@@ -284,6 +291,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     linked,
     record: {
       documentId: linked === null ? null : linked.documentId,
+      direction: options.direction,
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,
@@ -330,6 +338,7 @@ function valueOrigin(root: ResolvedElement, address: string, p: Longhand): Origi
   if (v.declaration !== null) return authored(v.declaration.span);
   if (v.origin === 'inherited' && hit.parent !== null) return { kind: 'inherited', element: hit.parent.element.address, from: valueOrigin(root, hit.parent.element.address, p) };
   if (v.origin === 'user-agent') return { kind: 'builtin', dataset: `chrome-${chromeVersion} computed`, entry: `${hit.el.element.tag} ${p}` };
+  if (v.origin === 'environment') return { kind: 'builtin', dataset: 'reference environment', entry: `direction ${valueToString(v.value)}` };
   return { kind: 'builtin', dataset: `@webref/css ${webrefVersion} initial`, entry: p };
 }
 
@@ -402,7 +411,7 @@ export function createProjectWith<const T extends Targets>(config: { projectId: 
 }
 
 export function createProject<const T extends Targets>(config: { projectId: string; targets: T }): Project<Configured<T>> {
-  return createProjectWith(config, { faults: NO_FAULTS, profiles: 'enforce' });
+  return createProjectWith(config, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' });
 }
 
 export { valueOrigin };

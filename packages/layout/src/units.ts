@@ -130,15 +130,27 @@ export function percentOf(base: LU, percent: number): LU {
   return fromCssPx(quotient);
 }
 
-/** Skia SkScalarRoundToScalar(x) = floor(x + 0.5), used by Blink SimpleFontData for ascent and descent. */
+/**
+ * Blink SimpleFontData rounds ascent and descent to whole px. Measured on the Chrome 145 oracle (notes/T035-slice-4a.md): the
+ * nearest whole px, with an exact half rounded down (12.5px Ahem: ascent 10, descent 2.5 -> 2; 10.625px: ascent 8.5 -> 8).
+ */
 export function roundFontMetricToWholePx(px: number): LU {
-  return fromWholePx(Math.floor(Math.fround(px) + 0.5));
+  return fromWholePx(Math.ceil(Math.fround(px) - 0.5));
 }
 
-/** Ahem text advance: float sum of per-glyph advances, then LayoutUnit::FromFloatCeil (ShapeResult::SnappedWidth). */
+/**
+ * The size the font instance is created at: Blink keys and creates font platform data at the font size times 100, truncated
+ * (FontCacheKey precision multiplier), so 10.625px shapes and measures as 10.62px. Measured on the Chrome 145 oracle
+ * (notes/T035-slice-4a.md); line-height numbers still multiply the computed font size.
+ */
+export function platformFontSize(fontSizePx: number): number {
+  return Math.trunc(Math.fround(Math.fround(fontSizePx) * 100)) / 100;
+}
+
+/** Ahem text advance: float sum of per-glyph advances at the platform font size, then LayoutUnit::FromFloatCeil (ShapeResult::SnappedWidth). */
 export function textAdvance(glyphCount: number, fontSizePx: number): LU {
   let width = Math.fround(0);
-  const advance = Math.fround(fontSizePx);
+  const advance = Math.fround(platformFontSize(fontSizePx));
   for (let i = 0; i < glyphCount; i++) width = Math.fround(width + advance);
   return fromPxCeil(width);
 }
