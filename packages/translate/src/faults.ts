@@ -4,7 +4,7 @@ import type { Expr, FuncDecl, Program, Stmt } from './ir.ts';
 import { NUM } from './ir.ts';
 
 export type PreludeFault = 'platform-round' | 'unordered-map' | 'unstable-sort' | 'character-iteration' | 'canonical-equality';
-export type IrFault = 'missing-fround' | 'int32-cumulative';
+export type IrFault = 'missing-fround' | 'int32-cumulative' | 'snap-truncating-division';
 export type Fault = PreludeFault | IrFault;
 
 export type FaultSpec = { readonly id: Fault; readonly kind: 'prelude' | 'ir'; readonly swift: string; readonly kotlin: string };
@@ -21,6 +21,15 @@ export const FAULTS: readonly FaultSpec[] = [
   { id: 'int32-cumulative', kind: 'ir', swift: 'cumulativeShareRounded numerator narrowed to Int32', kotlin: 'cumulativeShareRounded numerator narrowed to Int' },
 ];
 
+/**
+ * The extended fault set (notes/T010-p2-triage.md ruling 4): FAULTS, which the P1 tests pin, plus snap-truncating-division, which
+ * the snap suite of the extended corpus must catch. Every fault is defined for both emitters.
+ */
+export const EXTENDED_FAULTS: readonly FaultSpec[] = [
+  ...FAULTS,
+  { id: 'snap-truncating-division', kind: 'ir', swift: 'snapEdge as truncating division: (lu + 32) / 64 rounded toward zero, not floored', kotlin: 'snapEdge as truncating division: (lu + 32) / 64 rounded toward zero, not floored' },
+];
+
 export function preludeFault(f: Fault | null): PreludeFault | null {
   return f !== null && FAULTS.some((x) => x.id === f && x.kind === 'prelude') ? (f as PreludeFault) : null;
 }
@@ -31,6 +40,7 @@ export function plantIr(p: Program, f: Fault | null): Program {
   if (f === 'int32-cumulative') {
     return mapFunc(p, 'units_cumulativeShareRounded', (e) => (e.e === 'bin' && e.op === '/' ? { ...e, l: { ty: NUM, e: 'builtin', op: 'plantInt32', args: [e.l] } } : null));
   }
+  if (f === 'snap-truncating-division') return mapFunc(p, 'units_snapEdge', (e) => (e.e === 'builtin' && e.op === 'floor' ? { ...e, op: 'trunc' } : null));
   return p;
 }
 

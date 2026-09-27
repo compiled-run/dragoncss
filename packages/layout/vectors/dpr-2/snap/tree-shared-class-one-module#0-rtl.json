@@ -1,0 +1,110 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 4864
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 4864
+  },
+  {
+   "id": "badge/badge",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 1792
+  },
+  {
+   "id": "badge/label",
+   "parent": "badge/badge",
+   "x": 45824,
+   "y": 256,
+   "width": 5120,
+   "height": 1280
+  },
+  {
+   "id": "chip/chip",
+   "parent": "body",
+   "x": 0,
+   "y": 1792,
+   "width": 51200,
+   "height": 3072
+  },
+  {
+   "id": "chip/label",
+   "parent": "chip/chip",
+   "x": 41728,
+   "y": 512,
+   "width": 8960,
+   "height": 2048
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 76,
+   "width": 800,
+   "height": 76
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 76,
+   "width": 800,
+   "height": 76
+  },
+  {
+   "id": "badge/badge",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 28,
+   "width": 800,
+   "height": 28
+  },
+  {
+   "id": "badge/label",
+   "left": 716,
+   "top": 4,
+   "right": 796,
+   "bottom": 24,
+   "width": 80,
+   "height": 20
+  },
+  {
+   "id": "chip/chip",
+   "left": 0,
+   "top": 28,
+   "right": 800,
+   "bottom": 76,
+   "width": 800,
+   "height": 48
+  },
+  {
+   "id": "chip/label",
+   "left": 652,
+   "top": 36,
+   "right": 792,
+   "bottom": 68,
+   "width": 140,
+   "height": 32
+  }
+ ]
+}

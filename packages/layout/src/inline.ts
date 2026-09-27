@@ -12,8 +12,8 @@ import { unsupported } from './unsupported.ts';
 const SPACE = 0x20;
 const ZWSP = 0x200b;
 
-/** One code point of the formatting context and the leaf it belongs to. */
-type Char = { readonly leaf: number; readonly ch: string; readonly cp: number };
+/** One code point of the formatting context, the leaf it belongs to and its code point index in that leaf. */
+type Char = { readonly leaf: number; readonly at: number; readonly ch: string; readonly cp: number };
 
 type Run = {
   readonly leaves: readonly TextLeaf[];
@@ -76,7 +76,8 @@ function buildRun(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[]): Run {
   }
   const chars: Char[] = [];
   leaves.forEach((t, leaf) => {
-    for (const ch of t.text) chars.push({ leaf, ch, cp: ch.codePointAt(0) as number });
+    let at = 0;
+    for (const ch of t.text) chars.push({ leaf, at: at++, ch, cp: ch.codePointAt(0) as number });
   });
   const metrics = ctx.measurer.metrics(first.font);
   const glyphHeight = add(add(metrics.ascent, metrics.descent), metrics.lineGap);
@@ -143,6 +144,26 @@ function width(ctx: Ctx, run: Run, start: number, end: number): LU {
     while (i < end && (run.chars[i] as Char).leaf === leaf) text += (run.chars[i++] as Char).ch;
     const m = ctx.measurer.measure(text, (run.leaves[leaf] as TextLeaf).font);
     if (!m.ok) unsupported('text-glyph', (run.leaves[leaf] as TextLeaf).id, 'css-fonts-4 §5', m.reason);
+    total = add(total, m.measure.width);
+  }
+  return total;
+}
+
+/**
+ * R4: the min-content advance of chars [start, end), as Blink's fast min-content path measures it (line_breaker.cc
+ * HandleTextForFastMinContent): each leaf is one text item, and each leaf's piece is ShapeResult::CachedWidth of its range in the
+ * leaf, the difference of the item's ceiled character positions. A piece that starts at its leaf's start equals width().
+ */
+function cachedWidth(ctx: Ctx, run: Run, start: number, end: number): LU {
+  let total = ZERO;
+  let i = start;
+  while (i < end) {
+    const first = run.chars[i] as Char;
+    let last = first;
+    while (i < end && (run.chars[i] as Char).leaf === first.leaf) last = run.chars[i++] as Char;
+    const t = run.leaves[first.leaf] as TextLeaf;
+    const m = ctx.measurer.measureRange(t.text, first.at, last.at + 1, t.font);
+    if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
     total = add(total, m.measure.width);
   }
   return total;
@@ -235,11 +256,11 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf
 }
 
 // css-sizing-3 §5.1 with css-text-3 §5: max-content puts the whole context on one line; min-content takes every soft wrap
-// opportunity, so it is the widest segment without its trailing spaces.
+// opportunity, so it is the widest segment without its trailing spaces, each measured by its cached positions (R4).
 export function inlineIntrinsicSize(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], kind: 'min' | 'max'): LU {
   const run = buildRun(ctx, box, leaves);
   if (kind === 'max') return width(ctx, run, 0, trimEnd(run, 0, run.chars.length));
   let widest = ZERO;
-  for (const seg of segments(run)) widest = max(widest, width(ctx, run, seg.start, trimEnd(run, seg.start, seg.end)));
+  for (const seg of segments(run)) widest = max(widest, cachedWidth(ctx, run, seg.start, trimEnd(run, seg.start, seg.end)));
   return widest;
 }

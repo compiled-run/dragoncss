@@ -3,6 +3,7 @@ import type {
   AlignContent,
   AlignItems,
   AlignSelf,
+  BorderWidthValue,
   BoxSizing,
   Display,
   FlexBasisValue,
@@ -28,7 +29,7 @@ import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
-import { initialValue, valueToString } from '../analysis/resolve.ts';
+import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 
@@ -43,6 +44,8 @@ export class LoweringError extends Error {
 }
 
 type Get = (p: Longhand) => CssValue;
+/** Whether a longhand holds its initial value by provenance (analysis/resolve.ts isInitialByProvenance). */
+type IsInitial = (p: Longhand) => boolean;
 
 function fail(id: string, p: string, v: CssValue, expected: string): never {
   throw new LoweringError(id, p, `${p}: ${valueToString(v)} on ${id} has no layout mapping (expected ${expected})`);
@@ -90,7 +93,10 @@ function inset(id: string, get: Get, p: Longhand): InsetValue {
 }
 
 // css-backgrounds-3 §3.3: none/hidden computes to 0. Device-pixel snapping depends on the environment, so the engine applies it.
-function borderWidth(id: string, get: Get, side: 'top' | 'right' | 'bottom' | 'left', ua: UaDataset): { readonly kind: 'px'; readonly value: number } {
+// R5 (DPR Chrome deviation initial-line-width-unzoomed, D1): Blink stores the initial width 3 in zoomed px, unzoomed, so a width
+// that is initial by provenance (no width declared, or a shorthand that omits it) lowers to device px, with its value from the UA
+// dataset's medium keyword. An authored thin, medium, thick or px width stays CSS px.
+function borderWidth(id: string, get: Get, isInitial: IsInitial, side: 'top' | 'right' | 'bottom' | 'left', ua: UaDataset): BorderWidthValue {
   const style = keyword(id, get, `border-${side}-style` as Longhand, ['none', 'hidden', 'solid', 'dotted', 'dashed', 'double', 'groove', 'ridge', 'inset', 'outset']);
   if (style === 'none' || style === 'hidden') return { kind: 'px', value: 0 };
   const p = `border-${side}-width` as Longhand;
@@ -99,6 +105,10 @@ function borderWidth(id: string, get: Get, side: 'top' | 'right' | 'bottom' | 'l
   if (v.kind === 'length' && v.unit === 'px') px = v.value;
   else if (v.kind === 'keyword' && ua.borderWidthKeywords[v.value] !== undefined) px = Number.parseFloat(ua.borderWidthKeywords[v.value] as string);
   else return fail(id, p, v, 'px | thin | medium | thick');
+  if (isInitial(p)) {
+    if (v.kind !== 'keyword' || v.value !== 'medium') return fail(id, p, v, 'the initial value medium');
+    return { kind: 'device-px', value: px };
+  }
   return { kind: 'px', value: px };
 }
 
@@ -130,7 +140,7 @@ export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDa
   if ((el.element.tag === 'html' || el.element.tag === 'body') && (keywordOf(get('overflow-x')) !== 'visible' || keywordOf(get('overflow-y')) !== 'visible')) {
     throw new LoweringError(id, 'overflow-x', `overflow on <${el.element.tag}> ${id} propagates to the viewport, which the layout engine does not model`);
   }
-  return lowerStyleFrom(id, get, faults, ua);
+  return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua);
 }
 
 const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '');
@@ -142,7 +152,7 @@ function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allow
   return keyword(id, get, p, allowed);
 }
 
-function lowerStyleFrom(id: string, get: Get, faults: CompilerFaults, ua: UaDataset): LayoutStyle {
+function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset): LayoutStyle {
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
@@ -170,10 +180,10 @@ function lowerStyleFrom(id: string, get: Get, faults: CompilerFaults, ua: UaData
     paddingRight: padding(id, get, 'padding-right'),
     paddingBottom: padding(id, get, 'padding-bottom'),
     paddingLeft: padding(id, get, 'padding-left'),
-    borderTopWidth: borderWidth(id, get, 'top', ua),
-    borderRightWidth: borderWidth(id, get, 'right', ua),
-    borderBottomWidth: borderWidth(id, get, 'bottom', ua),
-    borderLeftWidth: borderWidth(id, get, 'left', ua),
+    borderTopWidth: borderWidth(id, get, isInitial, 'top', ua),
+    borderRightWidth: borderWidth(id, get, isInitial, 'right', ua),
+    borderBottomWidth: borderWidth(id, get, isInitial, 'bottom', ua),
+    borderLeftWidth: borderWidth(id, get, isInitial, 'left', ua),
     flexDirection: keyword<FlexDirection>(id, get, 'flex-direction', ['row', 'row-reverse', 'column', 'column-reverse']),
     flexWrap: keyword<FlexWrap>(id, get, 'flex-wrap', ['nowrap', 'wrap', 'wrap-reverse']),
     flexGrow: number(id, get, 'flex-grow'),
@@ -247,7 +257,8 @@ function anonymousBox(parent: ResolvedElement, id: string, texts: readonly Resol
   const values = new Map<Longhand, CssValue>();
   for (const p of LONGHANDS) values.set(p, INHERITED.has(p) ? (parent.props.get(p) as ResolvedValue).value : initialValue(p, ua));
   values.set('display', { kind: 'keyword', value: 'block' });
-  const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, faults, ua);
+  // Every non-inherited property of an anonymous box is its initial value.
+  const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), faults, ua);
   for (const t of texts) assertTextCarriesContainer(style, id, t);
   return { kind: 'box', id, boxType: 'anonymous', style, children: texts.map(lowerText) };
 }

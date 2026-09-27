@@ -168,6 +168,10 @@ export const FIXTURES: readonly FixtureSpec[] = [
   tree('tree-projected-text'),
   tree('tree-whitespace-leaves'),
   tree('tree-position-toggle'),
+  // P2b (notes/T010-p2-triage.md): DPR-1 proving fixtures of engine rules R2 and R3, R4, and R5 (Chrome deviation initial-line-width-unzoomed).
+  layout('line-height-rounding'),
+  layout('text-min-content-word-positions'),
+  layout('border-initial-width'),
   reject('reject-display-grid', 'DRAGON_UNSUPPORTED_VALUE', 'grid'),
   reject('reject-color-lab', 'DRAGON_UNSUPPORTED_VALUE', 'lab(50% 40 59)'),
   // M4: the implicitly filled longhand is named at the start of the message.

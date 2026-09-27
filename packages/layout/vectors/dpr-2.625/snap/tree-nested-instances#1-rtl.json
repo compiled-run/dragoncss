@@ -1,0 +1,161 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 8400
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 8400
+  },
+  {
+   "id": "list/items",
+   "parent": "body",
+   "x": 40656,
+   "y": 0,
+   "width": 26544,
+   "height": 8400
+  },
+  {
+   "id": "list/r1/line",
+   "parent": "list/items",
+   "x": 672,
+   "y": 672,
+   "width": 25200,
+   "height": 1680
+  },
+  {
+   "id": "list/r1/dot/mark",
+   "parent": "list/r1/line",
+   "x": 24192,
+   "y": 0,
+   "width": 1008,
+   "height": 1680
+  },
+  {
+   "id": "list/r2/line",
+   "parent": "list/items",
+   "x": 672,
+   "y": 2688,
+   "width": 25200,
+   "height": 1680
+  },
+  {
+   "id": "list/r2/dot/mark",
+   "parent": "list/r2/line",
+   "x": 24192,
+   "y": 0,
+   "width": 1008,
+   "height": 1680
+  },
+  {
+   "id": "list/r3/line",
+   "parent": "list/items",
+   "x": 672,
+   "y": 4704,
+   "width": 25200,
+   "height": 2688
+  },
+  {
+   "id": "list/r3/dot/mark",
+   "parent": "list/r3/line",
+   "x": 24192,
+   "y": 0,
+   "width": 1008,
+   "height": 2688
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 131,
+   "width": 1050,
+   "height": 131
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 131,
+   "width": 1050,
+   "height": 131
+  },
+  {
+   "id": "list/items",
+   "left": 635,
+   "top": 0,
+   "right": 1050,
+   "bottom": 131,
+   "width": 415,
+   "height": 131
+  },
+  {
+   "id": "list/r1/line",
+   "left": 646,
+   "top": 11,
+   "right": 1040,
+   "bottom": 37,
+   "width": 394,
+   "height": 26
+  },
+  {
+   "id": "list/r1/dot/mark",
+   "left": 1024,
+   "top": 11,
+   "right": 1040,
+   "bottom": 37,
+   "width": 16,
+   "height": 26
+  },
+  {
+   "id": "list/r2/line",
+   "left": 646,
+   "top": 42,
+   "right": 1040,
+   "bottom": 68,
+   "width": 394,
+   "height": 26
+  },
+  {
+   "id": "list/r2/dot/mark",
+   "left": 1024,
+   "top": 42,
+   "right": 1040,
+   "bottom": 68,
+   "width": 16,
+   "height": 26
+  },
+  {
+   "id": "list/r3/line",
+   "left": 646,
+   "top": 74,
+   "right": 1040,
+   "bottom": 116,
+   "width": 394,
+   "height": 42
+  },
+  {
+   "id": "list/r3/dot/mark",
+   "left": 1024,
+   "top": 74,
+   "right": 1040,
+   "bottom": 116,
+   "width": 16,
+   "height": 42
+  }
+ ]
+}

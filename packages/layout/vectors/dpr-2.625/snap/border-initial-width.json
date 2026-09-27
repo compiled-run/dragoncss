@@ -1,0 +1,195 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 22256
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 504,
+   "width": 67200,
+   "height": 21752
+  },
+  {
+   "id": "a1",
+   "parent": "body",
+   "x": 504,
+   "y": 0,
+   "width": 9296,
+   "height": 2576
+  },
+  {
+   "id": "a2",
+   "parent": "body",
+   "x": 504,
+   "y": 3080,
+   "width": 8656,
+   "height": 1936
+  },
+  {
+   "id": "a3",
+   "parent": "body",
+   "x": 504,
+   "y": 5520,
+   "width": 9232,
+   "height": 1680
+  },
+  {
+   "id": "a4",
+   "parent": "body",
+   "x": 504,
+   "y": 7704,
+   "width": 9296,
+   "height": 2576
+  },
+  {
+   "id": "i1",
+   "parent": "body",
+   "x": 504,
+   "y": 10784,
+   "width": 8784,
+   "height": 2064
+  },
+  {
+   "id": "i2",
+   "parent": "body",
+   "x": 504,
+   "y": 13352,
+   "width": 8784,
+   "height": 2064
+  },
+  {
+   "id": "i3",
+   "parent": "body",
+   "x": 504,
+   "y": 15920,
+   "width": 8400,
+   "height": 1872
+  },
+  {
+   "id": "i4",
+   "parent": "body",
+   "x": 0,
+   "y": 18296,
+   "width": 67200,
+   "height": 3456
+  },
+  {
+   "id": "i4a",
+   "parent": "i4",
+   "x": 696,
+   "y": 696,
+   "width": 8784,
+   "height": 2064
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 348,
+   "width": 1050,
+   "height": 348
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 8,
+   "right": 1050,
+   "bottom": 348,
+   "width": 1050,
+   "height": 340
+  },
+  {
+   "id": "a1",
+   "left": 8,
+   "top": 8,
+   "right": 153,
+   "bottom": 48,
+   "width": 145,
+   "height": 40
+  },
+  {
+   "id": "a2",
+   "left": 8,
+   "top": 56,
+   "right": 143,
+   "bottom": 86,
+   "width": 135,
+   "height": 30
+  },
+  {
+   "id": "a3",
+   "left": 8,
+   "top": 94,
+   "right": 152,
+   "bottom": 120,
+   "width": 144,
+   "height": 26
+  },
+  {
+   "id": "a4",
+   "left": 8,
+   "top": 128,
+   "right": 153,
+   "bottom": 169,
+   "width": 145,
+   "height": 41
+  },
+  {
+   "id": "i1",
+   "left": 8,
+   "top": 176,
+   "right": 145,
+   "bottom": 209,
+   "width": 137,
+   "height": 33
+  },
+  {
+   "id": "i2",
+   "left": 8,
+   "top": 217,
+   "right": 145,
+   "bottom": 249,
+   "width": 137,
+   "height": 32
+  },
+  {
+   "id": "i3",
+   "left": 8,
+   "top": 257,
+   "right": 139,
+   "bottom": 286,
+   "width": 131,
+   "height": 29
+  },
+  {
+   "id": "i4",
+   "left": 0,
+   "top": 294,
+   "right": 1050,
+   "bottom": 348,
+   "width": 1050,
+   "height": 54
+  },
+  {
+   "id": "i4a",
+   "left": 11,
+   "top": 305,
+   "right": 148,
+   "bottom": 337,
+   "width": 137,
+   "height": 32
+  }
+ ]
+}

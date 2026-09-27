@@ -1,0 +1,161 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 9000
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 9000
+  },
+  {
+   "id": "panel",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 9000
+  },
+  {
+   "id": "first/box",
+   "parent": "panel",
+   "x": 840,
+   "y": 840,
+   "width": 25456,
+   "height": 1936
+  },
+  {
+   "id": "first/head",
+   "parent": "first/box",
+   "x": 128,
+   "y": 128,
+   "width": 25200,
+   "height": 1680
+  },
+  {
+   "id": "second/box",
+   "parent": "panel",
+   "x": 840,
+   "y": 3280,
+   "width": 25456,
+   "height": 1936
+  },
+  {
+   "id": "second/head",
+   "parent": "second/box",
+   "x": 128,
+   "y": 128,
+   "width": 25200,
+   "height": 1680
+  },
+  {
+   "id": "free/box",
+   "parent": "panel",
+   "x": 840,
+   "y": 5720,
+   "width": 25456,
+   "height": 1936
+  },
+  {
+   "id": "free/head",
+   "parent": "free/box",
+   "x": 128,
+   "y": 128,
+   "width": 25200,
+   "height": 1680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 141,
+   "width": 1050,
+   "height": 141
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 141,
+   "width": 1050,
+   "height": 141
+  },
+  {
+   "id": "panel",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 141,
+   "width": 1050,
+   "height": 141
+  },
+  {
+   "id": "first/box",
+   "left": 13,
+   "top": 13,
+   "right": 411,
+   "bottom": 43,
+   "width": 398,
+   "height": 30
+  },
+  {
+   "id": "first/head",
+   "left": 15,
+   "top": 15,
+   "right": 409,
+   "bottom": 41,
+   "width": 394,
+   "height": 26
+  },
+  {
+   "id": "second/box",
+   "left": 13,
+   "top": 51,
+   "right": 411,
+   "bottom": 82,
+   "width": 398,
+   "height": 31
+  },
+  {
+   "id": "second/head",
+   "left": 15,
+   "top": 53,
+   "right": 409,
+   "bottom": 80,
+   "width": 394,
+   "height": 27
+  },
+  {
+   "id": "free/box",
+   "left": 13,
+   "top": 89,
+   "right": 411,
+   "bottom": 120,
+   "width": 398,
+   "height": 31
+  },
+  {
+   "id": "free/head",
+   "left": 15,
+   "top": 91,
+   "right": 409,
+   "bottom": 118,
+   "width": 394,
+   "height": 27
+  }
+ ]
+}

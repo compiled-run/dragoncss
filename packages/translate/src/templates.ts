@@ -18,10 +18,10 @@ let package = Package(
 export function swiftMain(): string {
   return `import Foundation
 
-// usage: harness engine|units|library <cases.jsonl> <results.jsonl>
+// usage: harness engine|units|library|snap <cases.jsonl> <results.jsonl>
 let args = CommandLine.arguments
-guard args.count == 4, ["engine", "units", "library"].contains(args[1]) else {
-  FileHandle.standardError.write("usage: harness engine|units|library IN OUT\\n".data(using: .utf8)!)
+guard args.count == 4, ["engine", "units", "library", "snap"].contains(args[1]) else {
+  FileHandle.standardError.write("usage: harness engine|units|library|snap IN OUT\\n".data(using: .utf8)!)
   exit(2)
 }
 let data = FileManager.default.contents(atPath: args[2])!
@@ -35,6 +35,7 @@ for slice in data.split(separator: UInt8(ascii: "\\n"), omittingEmptySubsequence
     switch args[1] {
     case "units": result = try harness_runUnitsCase(line)
     case "library": result = try harness_runLibraryCase(line)
+    case "snap": result = try harness_runSnapCase(line)
     default: result = try harness_runEngineCase(line)
     }
   } catch {
@@ -54,10 +55,10 @@ export function kotlinMain(): string {
 
 import java.io.File
 
-// usage: harness engine|units|library <cases.jsonl> <results.jsonl>
+// usage: harness engine|units|library|snap <cases.jsonl> <results.jsonl>
 fun main(args: Array<String>) {
-  if (args.size != 3 || args[0] !in listOf("engine", "units", "library")) {
-    System.err.println("usage: harness engine|units|library IN OUT")
+  if (args.size != 3 || args[0] !in listOf("engine", "units", "library", "snap")) {
+    System.err.println("usage: harness engine|units|library|snap IN OUT")
     kotlin.system.exitProcess(2)
   }
   val lines = File(args[1]).readText(Charsets.UTF_8).split('\\n').filter { it.isNotEmpty() }
@@ -68,6 +69,7 @@ fun main(args: Array<String>) {
       when (args[0]) {
         "units" -> harness_runUnitsCase(line)
         "library" -> harness_runLibraryCase(line)
+        "snap" -> harness_runSnapCase(line)
         else -> harness_runEngineCase(line)
       }
     } catch (e: Throwable) {

@@ -1,6 +1,6 @@
 // Builds the generated Swift and Kotlin harnesses (cached on sources, flags and compiler version) and compares every result line
 // with the TypeScript reference, byte for byte (every double is its IEEE bit pattern).
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -15,7 +15,9 @@ export const SWIFT_FLAGS = ['-O', '-wmo', '-suppress-warnings', '-module-name', 
 export const KOTLIN_FLAGS = ['-nowarn', '-include-runtime'];
 
 export type Mismatch = { readonly index: number; readonly input: string; readonly expected: string; readonly got: string };
-export type SuiteResult = { readonly name: string; readonly total: number; readonly pass: number; readonly mismatches: readonly Mismatch[]; readonly split: Split };
+/** Why a suite's process ended early, or null when it exited 0: a timeout at SUITE_TIMEOUT_MS, a crash (signal) or a non-zero exit. */
+export type SuiteCause = string | null;
+export type SuiteResult = { readonly name: string; readonly total: number; readonly pass: number; readonly mismatches: readonly Mismatch[]; readonly split: Split; readonly cause: SuiteCause };
 export type Status = 'pass' | 'fail' | 'blocked (owner tooling)';
 export type RunResult = {
   readonly target: 'swift' | 'kotlin';
@@ -41,17 +43,29 @@ export function swiftTool(): SwiftTool | null {
   return { swiftc: 'swiftc', version: (v.out.split('\n').find((l) => l.includes('Swift version')) ?? v.out).trim() };
 }
 
+/** Where kotlinTool looks: JAVA_HOME, then java_home, then fixed JDK homes; kotlinc on PATH, then a fixed path. Tests replace it. */
+export type KotlinLookup = { readonly javaHomeEnv: string | null; readonly javaHomeCommand: string; readonly jdkHomes: readonly string[]; readonly kotlincs: readonly string[] };
+
+export function defaultKotlinLookup(): KotlinLookup {
+  return {
+    javaHomeEnv: process.env['JAVA_HOME'] ?? null,
+    javaHomeCommand: '/usr/libexec/java_home',
+    jdkHomes: ['/opt/homebrew/opt/openjdk@17', '/opt/homebrew/opt/openjdk', '/usr/lib/jvm/java-17-openjdk-amd64'],
+    kotlincs: ['kotlinc', '/opt/homebrew/bin/kotlinc'],
+  };
+}
+
 /** JDK 17+ and kotlinc; absent tools make the Kotlin run blocked (owner tooling), never passed. */
-export function kotlinTool(): KotlinTool | null {
+export function kotlinTool(lookup: KotlinLookup = defaultKotlinLookup()): KotlinTool | null {
   const homes: string[] = [];
-  if (process.env['JAVA_HOME'] !== undefined) homes.push(process.env['JAVA_HOME']);
-  const jh = run('/usr/libexec/java_home', ['-v', '17+']);
+  if (lookup.javaHomeEnv !== null) homes.push(lookup.javaHomeEnv);
+  const jh = run(lookup.javaHomeCommand, ['-v', '17+']);
   if (jh.ok) homes.push(jh.out.trim());
-  homes.push('/opt/homebrew/opt/openjdk@17', '/opt/homebrew/opt/openjdk', '/usr/lib/jvm/java-17-openjdk-amd64');
+  homes.push(...lookup.jdkHomes);
   const javaHome = homes.find((h) => h !== '' && run(join(h, 'bin/java'), ['-version']).ok);
   if (javaHome === undefined) return null;
   const env = { ...process.env, JAVA_HOME: javaHome, PATH: `${join(javaHome, 'bin')}:${process.env['PATH'] ?? ''}` };
-  const kotlinc = ['kotlinc', '/opt/homebrew/bin/kotlinc'].find((k) => run(k, ['-version'], env).ok);
+  const kotlinc = lookup.kotlincs.find((k) => run(k, ['-version'], env).ok);
   if (kotlinc === undefined) return null;
   const kv = run(kotlinc, ['-version'], env).out.split('\n').find((l) => l.includes('kotlinc')) ?? '';
   const jv = run(join(javaHome, 'bin/java'), ['-version']).out.split('\n')[0] ?? '';
@@ -136,14 +150,15 @@ export function corpusFiles(c: Corpus): Map<string, string> {
   return paths;
 }
 
-export type Exec = (mode: Suite['mode'], input: string, output: string) => void;
+/** Runs one suite's process; returns why it ended early, or null when it exited 0. */
+export type Exec = (mode: Suite['mode'], input: string, output: string) => SuiteCause;
 
 /** Runs every suite; with untilFailure, stops after the first suite with a failing case (the planted-fault test needs one). */
 export function runSuites(c: Corpus, exec: Exec, tag: string, untilFailure = false): SuiteResult[] {
   const inputs = corpusFiles(c);
   const dir = join(OUT, 'results', tag);
   mkdirSync(dir, { recursive: true });
-  const fastFirst = ['vectors', 'library', 'units', 'engine'];
+  const fastFirst = ['vectors', 'library', 'units', 'engine', 'vectors-m2', 'snap', 'units-m2', 'vectors-dpr', 'engine-dpr'];
   const order = untilFailure ? [...c.suites].sort((a, b) => fastFirst.indexOf(a.name) - fastFirst.indexOf(b.name)) : c.suites;
   const out: SuiteResult[] = [];
   for (const s of order) {
@@ -158,7 +173,7 @@ function runSuite(c: Corpus, s: Suite, exec: Exec, inputs: Map<string, string>, 
   {
     const outPath = join(dir, `${s.name}.jsonl`);
     rmSync(outPath, { force: true });
-    exec(s.mode, inputs.get(s.name) as string, outPath);
+    const cause = exec(s.mode, inputs.get(s.name) as string, outPath);
     const got = existsSync(outPath) ? readFileSync(outPath, 'utf8').split('\n') : [];
     if (got[got.length - 1] === '') got.pop();
     let pass = 0;
@@ -169,19 +184,27 @@ function runSuite(c: Corpus, s: Suite, exec: Exec, inputs: Map<string, string>, 
       else if (mismatches.length < 5) mismatches.push({ index: i, input: s.lines[i] as string, expected: s.expected[i] as string, got: g });
     }
     if (got.length !== s.expected.length && mismatches.length < 5) mismatches.push({ index: -1, input: '', expected: `${s.expected.length} lines`, got: `${got.length} lines` });
-    return { name: s.name, total: s.expected.length, pass: got.length === s.expected.length ? pass : Math.min(pass, got.length), mismatches, split: split(got) };
+    return { name: s.name, total: s.expected.length, pass: got.length === s.expected.length ? pass : Math.min(pass, got.length), mismatches, split: split(got), cause };
   }
 }
 
 /** A suite that crashes, traps or runs past the limit leaves its missing lines as failing cases (a planted map fault can loop). */
 export const SUITE_TIMEOUT_MS = 180_000;
 
-function execSuite(cmd: string, args: readonly string[]): void {
-  try {
-    execFileSync(cmd, [...args], { stdio: ['ignore', 'ignore', 'pipe'], timeout: SUITE_TIMEOUT_MS, killSignal: 'SIGKILL' });
-  } catch {
-    // The comparison reports every missing or wrong line.
-  }
+/** Runs a suite process under SUITE_TIMEOUT_MS; the comparison still reports every missing or wrong line, and the cause names why. */
+export function execSuite(cmd: string, args: readonly string[], timeoutMs: number = SUITE_TIMEOUT_MS): SuiteCause {
+  const r = spawnSync(cmd, [...args], { stdio: ['ignore', 'ignore', 'pipe'], timeout: timeoutMs, killSignal: 'SIGKILL', encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  return suiteCause(r, timeoutMs);
+}
+
+/** The cause of a suite process ending: timeout, crash (a signal), a non-zero exit, or a spawn error; null for exit 0. */
+export function suiteCause(r: { readonly status: number | null; readonly signal: NodeJS.Signals | null; readonly error?: Error | undefined }, timeoutMs: number): SuiteCause {
+  const code = r.error === undefined ? '' : (r.error as NodeJS.ErrnoException).code ?? '';
+  if (code === 'ETIMEDOUT') return `timeout: killed after ${timeoutMs / 1000} s`;
+  if (r.error !== undefined) return `could not run: ${r.error.message}`;
+  if (r.signal !== null) return `crash: signal ${r.signal}`;
+  if (r.status !== 0) return `crash: exit status ${r.status}`;
+  return null;
 }
 
 export function swiftExec(binary: string): Exec {
@@ -208,15 +231,18 @@ export function describe(r: RunResult, c: Corpus): string {
   }
   for (const s of r.suites) {
     const label = s.name === 'engine' ? 'engine corpus' : s.name === 'library' ? 'library corpus' : s.name;
-    const extra = s.name === 'engine' ? ` (ok ${c.engineSplit.ok}, unsupported ${c.engineSplit.unsupported}, refused ${c.engineSplit.refused}, threw ${c.engineSplit.threw}; ${c.suites[2]?.lines.length} = 258 mutated vectors + ${(c.suites[2]?.lines.length ?? 0) - 258} generated trees)` : '';
-    lines.push(`${label} ${s.pass}/${s.total}${extra}`);
+    const sp = c.engineSplit;
+    const splitText = `ok ${sp.ok}, unsupported ${sp.unsupported}, refused ${sp.refused}, threw ${sp.threw}`;
+    const extra = s.name === 'engine' ? ` (${splitText}; ${c.suites[2]?.lines.length} = 258 mutated vectors + ${(c.suites[2]?.lines.length ?? 0) - 258} generated trees)` : s.name === 'engine-dpr' ? ` (${splitText}; one seeded mutation per DPR vector)` : '';
+    lines.push(`${label} ${s.pass}/${s.total}${extra}${s.cause === null ? '' : ` (${s.cause})`}`);
     for (const m of s.mismatches) lines.push(`  MISMATCH #${m.index}\n    input    ${m.input.slice(0, 400)}\n    expected ${m.expected.slice(0, 400)}\n    got      ${m.got.slice(0, 400)}`);
   }
   lines.push(`corpus digest ${c.digest}`, `build ${r.buildSeconds.toFixed(1)} s, run ${r.runSeconds.toFixed(1)} s`, `status ${r.status}`);
   return lines.join('\n');
 }
 
-export function writeReport(r: RunResult, c: Corpus): void {
+export function writeReport(r: RunResult, c: Corpus, corpus: 'p1' | 'extended' = 'p1'): void {
   mkdirSync(OUT, { recursive: true });
-  writeFileSync(join(OUT, `report-${r.target}.json`), `${JSON.stringify({ ...r, corpusDigest: c.digest, engineSplit: c.engineSplit }, null, 2)}\n`);
+  const name = corpus === 'p1' ? `report-${r.target}.json` : `report-${r.target}-extended.json`;
+  writeFileSync(join(OUT, name), `${JSON.stringify({ ...r, corpusDigest: c.digest, engineSplit: c.engineSplit }, null, 2)}\n`);
 }

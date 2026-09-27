@@ -70,6 +70,7 @@ function syntactic(sf: ts.SourceFile, program: ts.Program): Violation[] {
       if (d !== undefined && program.isSourceFileDefaultLibrary(d.getSourceFile())) at(n, `${n.text} is outside the subset`);
     }
     if (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'Math' && n.name.text === 'random') at(n, 'Math.random is outside the subset');
+    if (ts.isArrowFunction(n) || ts.isFunctionExpression(n)) for (const name of capturedLoopBindings(n, checker)) at(n, `a closure capturing the for-loop binding ${name} is outside the subset (the translation shares one variable across iterations)`);
     ts.forEachChild(n, visit);
   };
   visit(sf);
@@ -81,6 +82,33 @@ function syntactic(sf: ts.SourceFile, program: ts.Program): Violation[] {
     const s = checker.getSymbolAtLocation(name);
     if (s !== undefined && (s.declarations?.length ?? 0) > 1) at(st, `declaration merging of ${name.text} is outside the subset`);
   }
+  return out;
+}
+
+/** A variable declared by a for or for...of header (for (let i = ...), for (const x of ...)), which JS binds per iteration. */
+function isLoopHeaderBinding(d: ts.Declaration): boolean {
+  if (!ts.isVariableDeclaration(d) && !ts.isBindingElement(d)) return false;
+  let list: ts.Node = d.parent;
+  while (ts.isObjectBindingPattern(list) || ts.isArrayBindingPattern(list) || ts.isBindingElement(list) || ts.isVariableDeclaration(list)) list = list.parent;
+  if (!ts.isVariableDeclarationList(list)) return false;
+  return (ts.isForStatement(list.parent) || ts.isForOfStatement(list.parent) || ts.isForInStatement(list.parent)) && list.parent.initializer === list;
+}
+
+/**
+ * The for-loop header bindings a closure reads or writes from outside it. JavaScript gives each iteration its own binding, but the
+ * Swift and Kotlin translations keep one loop variable, so a closure that outlives its iteration would see a later value.
+ */
+function capturedLoopBindings(fn: ts.ArrowFunction | ts.FunctionExpression, checker: ts.TypeChecker): string[] {
+  const out: string[] = [];
+  const visit = (n: ts.Node): void => {
+    if (ts.isIdentifier(n)) {
+      const sym = ts.isShorthandPropertyAssignment(n.parent) && n.parent.name === n ? checker.getShorthandAssignmentValueSymbol(n.parent) : checker.getSymbolAtLocation(n);
+      const d = sym?.valueDeclaration;
+      if (d !== undefined && isLoopHeaderBinding(d) && !(d.pos >= fn.pos && d.end <= fn.end) && !out.includes(n.text)) out.push(n.text);
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(fn.body);
   return out;
 }
 

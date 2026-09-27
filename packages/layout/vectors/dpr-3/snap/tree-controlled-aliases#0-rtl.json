@@ -1,0 +1,161 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 10560
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 10560
+  },
+  {
+   "id": "panel",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 10560
+  },
+  {
+   "id": "first/box",
+   "parent": "panel",
+   "x": 46656,
+   "y": 960,
+   "width": 29184,
+   "height": 2304
+  },
+  {
+   "id": "first/head",
+   "parent": "first/box",
+   "x": 192,
+   "y": 192,
+   "width": 28800,
+   "height": 1920
+  },
+  {
+   "id": "second/box",
+   "parent": "panel",
+   "x": 46656,
+   "y": 3840,
+   "width": 29184,
+   "height": 2304
+  },
+  {
+   "id": "second/head",
+   "parent": "second/box",
+   "x": 192,
+   "y": 192,
+   "width": 28800,
+   "height": 1920
+  },
+  {
+   "id": "free/box",
+   "parent": "panel",
+   "x": 46656,
+   "y": 6720,
+   "width": 29184,
+   "height": 2304
+  },
+  {
+   "id": "free/head",
+   "parent": "free/box",
+   "x": 192,
+   "y": 192,
+   "width": 28800,
+   "height": 1920
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 165,
+   "width": 1200,
+   "height": 165
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 165,
+   "width": 1200,
+   "height": 165
+  },
+  {
+   "id": "panel",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 165,
+   "width": 1200,
+   "height": 165
+  },
+  {
+   "id": "first/box",
+   "left": 729,
+   "top": 15,
+   "right": 1185,
+   "bottom": 51,
+   "width": 456,
+   "height": 36
+  },
+  {
+   "id": "first/head",
+   "left": 732,
+   "top": 18,
+   "right": 1182,
+   "bottom": 48,
+   "width": 450,
+   "height": 30
+  },
+  {
+   "id": "second/box",
+   "left": 729,
+   "top": 60,
+   "right": 1185,
+   "bottom": 96,
+   "width": 456,
+   "height": 36
+  },
+  {
+   "id": "second/head",
+   "left": 732,
+   "top": 63,
+   "right": 1182,
+   "bottom": 93,
+   "width": 450,
+   "height": 30
+  },
+  {
+   "id": "free/box",
+   "left": 729,
+   "top": 105,
+   "right": 1185,
+   "bottom": 141,
+   "width": 456,
+   "height": 36
+  },
+  {
+   "id": "free/head",
+   "left": 732,
+   "top": 108,
+   "right": 1182,
+   "bottom": 138,
+   "width": 450,
+   "height": 30
+  }
+ ]
+}

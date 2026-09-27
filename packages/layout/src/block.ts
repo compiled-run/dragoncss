@@ -53,6 +53,8 @@ export type EngineFaults = {
   readonly minMaxEndMarginSpec: boolean;
   /** Spec reading of Chrome deviation wrap-reverse-baseline-line: the container baseline comes from the cross-start line (css-flexbox-1 §8.5). */
   readonly wrapReverseBaselineSpec: boolean;
+  /** Spec reading of DPR Chrome deviation initial-line-width-unzoomed: an initial line width (device-px) is zoomed like CSS px (css-backgrounds-3 §3.3). */
+  readonly initialLineWidthZoomed: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -70,6 +72,7 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   halfLeadingSpec: false,
   minMaxEndMarginSpec: false,
   wrapReverseBaselineSpec: false,
+  initialLineWidthZoomed: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };

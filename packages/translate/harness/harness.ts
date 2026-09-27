@@ -31,16 +31,20 @@ import type {
   TextLeaf,
   TextWrapMode,
 } from '../../layout/src/input.ts';
+import type { LayoutRect } from '../../layout/src/layout.ts';
 import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
 import { measurerFor } from '../../layout/src/platform.ts';
+import { snapEdges } from '../../layout/src/snap.ts';
 import type { DistributedMode, FactorSum, LU } from '../../layout/src/units.ts';
 import {
+  cachedRangeWidth,
   cumulativeShareRounded,
   distributedOffset,
   divInt,
   fractionalFreeSpace,
   fromCssPx,
   fromDouble,
+  fromFloatRound,
   fromPxCeil,
   fromPxRound,
   growShare,
@@ -50,7 +54,11 @@ import {
   roundFontMetricToWholePx,
   shrinkShare,
   snapBorderWidth,
+  snapEdge,
   textAdvance,
+  zoomCssPx,
+  zoomFontSize,
+  zoomViewportPx,
 } from '../../layout/src/units.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 
@@ -342,6 +350,7 @@ function paddingValue(v: JsonValue, path: string): PaddingValue {
 function borderValue(v: JsonValue, path: string): BorderWidthValue {
   const k = kindOf(v, path);
   if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'device-px') return { kind: 'device-px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   return fail(`${path}: unknown kind ${k}`);
 }
 
@@ -495,7 +504,7 @@ function decodeInput(v: JsonValue): LayoutInput {
 const FAULT_KEYS: readonly string[] = [
   'breakOffByOne', 'rtlAsLtr', 'ignoreOrder', 'baselineFromBorderTop', 'scrollMinAuto', 'absposInFlow', 'cbIgnoresPadding',
   'staticPosLtr', 'relativeShiftsFlow', 'metricHalfUp', 'untruncatedFontSize', 'halfLeadingSpec', 'minMaxEndMarginSpec',
-  'wrapReverseBaselineSpec',
+  'wrapReverseBaselineSpec', 'initialLineWidthZoomed',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -516,6 +525,7 @@ function decodeFaults(v: JsonValue): EngineFaults {
     halfLeadingSpec: b('halfLeadingSpec'),
     minMaxEndMarginSpec: b('minMaxEndMarginSpec'),
     wrapReverseBaselineSpec: b('wrapReverseBaselineSpec'),
+    initialLineWidthZoomed: b('initialLineWidthZoomed'),
   };
 }
 
@@ -610,6 +620,19 @@ function unitsResult(name: string, a: readonly JsonValue[]): number {
       return divInt(arg(a, 1) as LU, arg(a, 2));
     case 'cumulativeShareRounded':
       return cumulativeShareRounded(arg(a, 1) as LU, arg(a, 2), arg(a, 3));
+    // Extended corpus (units-m2): the zoom model, R2, the snap rule and R4.
+    case 'fromFloatRound':
+      return fromFloatRound(arg(a, 1));
+    case 'zoomCssPx':
+      return zoomCssPx(arg(a, 1), arg(a, 2));
+    case 'zoomFontSize':
+      return zoomFontSize(arg(a, 1), arg(a, 2));
+    case 'zoomViewportPx':
+      return zoomViewportPx(arg(a, 1), arg(a, 2));
+    case 'snapEdge':
+      return snapEdge(arg(a, 1) as LU);
+    case 'cachedRangeWidth':
+      return cachedRangeWidth(arg(a, 1), arg(a, 2), arg(a, 3));
     case 'distributedOffset': {
       const v = a[1];
       if (v === undefined) return fail('missing mode');
@@ -630,6 +653,55 @@ export function runUnitsCase(line: string): string {
     const name = str(first, '$[0]');
     try {
       return `["ok",${h(unitsResult(name, a))}]`;
+    } catch (e) {
+      if (e instanceof HarnessError) throw e;
+      return '["threw"]';
+    }
+  } catch (e) {
+    if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
+    return '["threw"]';
+  }
+}
+
+// ---------------------------------------------------------------- snap suite
+
+function item(a: readonly JsonValue[], i: number, path: string): JsonValue {
+  const v = a[i];
+  if (v === undefined) return fail(`${path}: missing item ${i}`);
+  return v;
+}
+
+/** A layout rect [id, parent or null, x, y, width, height], the LU as bits. */
+function decodeRect(v: JsonValue, path: string): LayoutRect {
+  const a = arr(v, path);
+  if (a.length !== 6) return fail(`${path}: expected [id, parent, x, y, width, height]`);
+  const p = item(a, 1, path);
+  return {
+    id: str(item(a, 0, path), path),
+    parent: p.kind === 'null' ? null : str(p, path),
+    x: hexBits(str(item(a, 2, path), path)) as LU,
+    y: hexBits(str(item(a, 3, path), path)) as LU,
+    width: hexBits(str(item(a, 4, path), path)) as LU,
+    height: hexBits(str(item(a, 5, path), path)) as LU,
+  };
+}
+
+/**
+ * One snap case: {"dpr", "rects"} in, where rects is a layout result in zoomed LU at that DPR (the DPR only labels the case: LU are
+ * 1/64 device px at every DPR); snapEdges out, every edge and size as bits.
+ */
+export function runSnapCase(line: string): string {
+  try {
+    const o = obj(parseJson(line), ['dpr', 'rects'], '$');
+    hexBits(str(field(o, 'dpr', '$'), '$.dpr'));
+    const rects = arr(field(o, 'rects', '$'), '$.rects').map((r, i): LayoutRect => decodeRect(r, `$.rects[${i}]`));
+    try {
+      let out = '["ok",[';
+      snapEdges(rects).forEach((r, i) => {
+        if (i > 0) out += ',';
+        out += `[${q(r.id)},${h(r.left)},${h(r.top)},${h(r.right)},${h(r.bottom)},${h(r.width)},${h(r.height)}]`;
+      });
+      return `${out}]]`;
     } catch (e) {
       if (e instanceof HarnessError) throw e;
       return '["threw"]';

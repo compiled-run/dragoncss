@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 9072
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 9072
+  },
+  {
+   "id": "nav/bar",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 3360
+  },
+  {
+   "id": "nav/home",
+   "parent": "nav/bar",
+   "x": 61488,
+   "y": 0,
+   "width": 5040,
+   "height": 3360
+  },
+  {
+   "id": "nav/about",
+   "parent": "nav/bar",
+   "x": 55776,
+   "y": 0,
+   "width": 5040,
+   "height": 3360
+  },
+  {
+   "id": "list/items",
+   "parent": "body",
+   "x": 39312,
+   "y": 3360,
+   "width": 27888,
+   "height": 5712
+  },
+  {
+   "id": "list/one",
+   "parent": "list/items",
+   "x": 504,
+   "y": 504,
+   "width": 26880,
+   "height": 2016
+  },
+  {
+   "id": "list/two",
+   "parent": "list/items",
+   "x": 504,
+   "y": 2856,
+   "width": 26880,
+   "height": 2016
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 142,
+   "width": 1050,
+   "height": 142
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 142,
+   "width": 1050,
+   "height": 142
+  },
+  {
+   "id": "nav/bar",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 53,
+   "width": 1050,
+   "height": 53
+  },
+  {
+   "id": "nav/home",
+   "left": 961,
+   "top": 0,
+   "right": 1040,
+   "bottom": 53,
+   "width": 79,
+   "height": 53
+  },
+  {
+   "id": "nav/about",
+   "left": 872,
+   "top": 0,
+   "right": 950,
+   "bottom": 53,
+   "width": 78,
+   "height": 53
+  },
+  {
+   "id": "list/items",
+   "left": 614,
+   "top": 53,
+   "right": 1050,
+   "bottom": 142,
+   "width": 436,
+   "height": 89
+  },
+  {
+   "id": "list/one",
+   "left": 622,
+   "top": 60,
+   "right": 1042,
+   "bottom": 92,
+   "width": 420,
+   "height": 32
+  },
+  {
+   "id": "list/two",
+   "left": 622,
+   "top": 97,
+   "right": 1042,
+   "bottom": 129,
+   "width": 420,
+   "height": 32
+  }
+ ]
+}

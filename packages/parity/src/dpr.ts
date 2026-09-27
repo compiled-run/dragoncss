@@ -3,14 +3,15 @@
 // untouched; every DPR set holds the same case ids.
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
-import type { LayoutInput, LayoutRect } from '@dragon/layout';
-import { absoluteRects, layout, measurerFor, snapEdges, validateLayoutInput } from '@dragon/layout';
+import type { DprChromeDeviation, EngineFaults, LayoutInput, LayoutRect } from '@dragon/layout';
+import { absoluteRects, dprChromeDeviations, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, snapEdges, validateLayoutInput } from '@dragon/layout';
 import type { Compiled, Environment } from 'dragon';
 import { iosLayoutProjection, NO_FAULTS } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { casesOf } from './cases.ts';
 import { openPage } from './chrome.ts';
+import { expectedPath } from './committed.ts';
 import type { ZoomedComparison } from './compare.ts';
 import { compareZoomedLayout, GATE_DEVICE_PX } from './compare.ts';
 import type { FixtureSpec } from './fixtures.ts';
@@ -103,15 +104,18 @@ function referenceMeasurer() {
   return m;
 }
 
-/** The DPR lane of one case: projection at the DPR, validator, engine, then the 1 device px gate against the DPR capture. */
-export function runDprCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, dpr: number, capture: WebCapture): DprCaseOutcome {
+/**
+ * The DPR lane of one case: projection at the DPR, validator, engine, then the 1 device px gate against the DPR capture. faults are
+ * planted engine faults; only the DPR deviation registry check passes anything but NO_ENGINE_FAULTS.
+ */
+export function runDprCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, dpr: number, capture: WebCapture, faults: EngineFaults = NO_ENGINE_FAULTS): DprCaseOutcome {
   const env = atDpr(c.environment, dpr);
   const base = { id: c.id, dpr, comparison: null, exact: 0, nodes: 0, vector: null };
   const projection = iosLayoutProjection(compiled, env, c.assignment);
   if (projection.kind === 'blocked') return { ...base, status: 'fail', reason: `ios projection blocked: ${projection.reason}` };
   const validated = validateLayoutInput(JSON.parse(JSON.stringify(projection.input)));
   if (!validated.ok) return { ...base, status: 'fail', reason: `layout input rejected: ${validated.errors.map((e) => `${e.path} ${e.code}`).join('; ')}` };
-  const result = layout(validated.input, referenceMeasurer().measurer);
+  const result = layoutWithFaults(validated.input, referenceMeasurer().measurer, faults);
   if (result.kind === 'unsupported') return { ...base, status: 'fail', reason: `LayoutUnsupported ${result.unsupported.code} at ${result.unsupported.nodeId}` };
   const comparison = compareZoomedLayout(capture, absoluteRects(result.boxes), validated.input, env);
   const compared = comparison.nodes.filter((n) => n.dragon !== null);
@@ -140,9 +144,9 @@ export function snapVectorText(dpr: number, output: readonly LayoutRect[]): stri
   return `${JSON.stringify({ platform: REFERENCE_PLATFORM, devicePixelRatio: dpr, input: output, output: snapEdges(output) }, null, 1)}\n`;
 }
 
-/** A committed DPR capture. */
+/** A committed DPR capture; at DPR 1, the milestone-1 capture (expected/<platform>). */
 export function committedDprCapture(caseId: string, dpr: number): WebCapture {
-  return JSON.parse(readFileSync(expectedDprPath(caseId, dpr), 'utf8')) as WebCapture;
+  return JSON.parse(readFileSync(dpr === 1 ? expectedPath(caseId) : expectedDprPath(caseId, dpr), 'utf8')) as WebCapture;
 }
 
 export type DprLaneSummary = {
@@ -181,4 +185,81 @@ export function runDprLane(dprs: readonly number[] = DPRS): DprLaneSummary[] {
       outcomes,
     };
   });
+}
+
+// ---------------------------------------------------------------- DPR deviation registry (chrome-deviations-dpr.ts)
+
+/** One registered node or control, checked at its DPR with the fault off and with the deviation's spec-reading fault on. */
+export type DprRegistryRow = {
+  readonly deviation: string;
+  readonly kind: 'node' | 'control';
+  /** The branch of a node, or the frame of a control. */
+  readonly detail: string;
+  readonly fixture: string;
+  readonly node: string;
+  readonly dpr: number;
+  /** Exact in zoomed LU against Chrome with the fault off. */
+  readonly exact: boolean;
+  /** Exact in zoomed LU against Chrome with the spec-reading fault on (a node must not be). */
+  readonly exactUnderFault: boolean;
+  /** The largest edge gap under the fault, in device px. */
+  readonly gapUnderFault: number;
+  /** A control keeps its rect relative to its frame under the fault; null for a node. */
+  readonly held: boolean | null;
+};
+
+/** The single case of a registered ltr HTML fixture. */
+function registeredCase(fixture: string): { readonly spec: FixtureSpec; readonly c: ParityCase } {
+  const spec = FIXTURES.find((f) => f.id === fixture);
+  if (spec === undefined || spec.kind !== 'layout') throw new Error(`DPR registry names ${fixture}, which is not a layout fixture`);
+  const c = casesOf(spec, compileFixture(spec).input).find((x) => x.id === fixture);
+  if (c === undefined) throw new Error(`DPR registry fixture ${fixture} has no ltr case ${fixture}`);
+  return { spec, c };
+}
+
+/** Every node and control of the DPR registry, checked in the DPR lane. */
+export function dprRegistryRows(registry: readonly DprChromeDeviation[] = dprChromeDeviations): DprRegistryRow[] {
+  const rows: DprRegistryRow[] = [];
+  const runs = new Map<string, { readonly main: DprCaseOutcome; readonly faulty: DprCaseOutcome }>();
+  const run = (d: DprChromeDeviation, fixture: string, dpr: number): { readonly main: DprCaseOutcome; readonly faulty: DprCaseOutcome } => {
+    const key = `${d.fault} ${fixture} ${dpr}`;
+    const hit = runs.get(key);
+    if (hit !== undefined) return hit;
+    const { spec, c } = registeredCase(fixture);
+    const compiled = compileFixture(spec, NO_FAULTS, 'enforce', c.environment.direction).compiled;
+    const capture = committedDprCapture(c.id, dpr);
+    const out = { main: runDprCase(c, compiled, dpr, capture), faulty: runDprCase(c, compiled, dpr, capture, { ...NO_ENGINE_FAULTS, [d.fault]: true }) };
+    runs.set(key, out);
+    return out;
+  };
+  const nodeOf = (o: DprCaseOutcome, id: string) => {
+    const n = (o.comparison?.nodes ?? []).find((x) => x.id === id);
+    if (n === undefined || n.dragonLu === null) throw new Error(`${o.id} @${o.dpr}: registered node ${id} is not compared`);
+    return n;
+  };
+  const gap = (o: DprCaseOutcome, id: string): number => {
+    const n = nodeOf(o, id);
+    return n.delta === null ? Infinity : Math.max(Math.abs(n.delta.left), Math.abs(n.delta.top), Math.abs(n.delta.right), Math.abs(n.delta.bottom)) * o.dpr;
+  };
+  for (const d of registry) {
+    for (const n of d.nodes) {
+      const r = run(d, n.fixture, n.dpr);
+      rows.push({ deviation: d.id, kind: 'node', detail: n.branch, fixture: n.fixture, node: n.node, dpr: n.dpr, exact: nodeOf(r.main, n.node).exactLu, exactUnderFault: nodeOf(r.faulty, n.node).exactLu, gapUnderFault: gap(r.faulty, n.node), held: null });
+    }
+    for (const c of d.controls) {
+      const r = run(d, c.fixture, c.dpr);
+      const rel = (o: DprCaseOutcome): number[] => {
+        const a = nodeOf(o, c.node).dragonLu as { left: number; top: number; right: number; bottom: number };
+        const f = nodeOf(o, c.relativeTo).dragonLu as { left: number; top: number; right: number; bottom: number };
+        return [a.left - f.left, a.top - f.top, a.right - f.left, a.bottom - f.top];
+      };
+      rows.push({ deviation: d.id, kind: 'control', detail: c.relativeTo, fixture: c.fixture, node: c.node, dpr: c.dpr, exact: nodeOf(r.main, c.node).exactLu, exactUnderFault: nodeOf(r.faulty, c.node).exactLu, gapUnderFault: gap(r.faulty, c.node), held: JSON.stringify(rel(r.main)) === JSON.stringify(rel(r.faulty)) });
+    }
+  }
+  return rows;
+}
+
+/** A registry row passes when it is exact with the fault off, and a node is non-exact under the fault while a control holds. */
+export function registryRowPasses(r: DprRegistryRow): boolean {
+  return r.exact && (r.kind === 'node' ? !r.exactUnderFault : r.held === true);
 }

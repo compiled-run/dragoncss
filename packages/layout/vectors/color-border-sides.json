@@ -755,19 +755,19 @@
          "value": 0
         },
         "borderTopWidth": {
-         "kind": "px",
+         "kind": "device-px",
          "value": 3
         },
         "borderRightWidth": {
-         "kind": "px",
+         "kind": "device-px",
          "value": 3
         },
         "borderBottomWidth": {
-         "kind": "px",
+         "kind": "device-px",
          "value": 3
         },
         "borderLeftWidth": {
-         "kind": "px",
+         "kind": "device-px",
          "value": 3
         },
         "flexDirection": "row",

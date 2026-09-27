@@ -48,7 +48,8 @@ const maxSize = tagged({ ...px(0), ...percent(0), none: {} });
 const margin = tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...auto });
 const inset = tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...auto });
 const padding = tagged({ ...px(0), ...percent(0) });
-const border = tagged({ ...px(0) });
+// R5: an initial line width is typed in device px by the compiler (Chrome stores it unzoomed); only the four border widths take it.
+const border = tagged({ ...px(0), 'device-px': { value: num(0) } });
 const gap = tagged({ ...px(0), ...percent(0), normal: {} });
 
 const justify = lit(

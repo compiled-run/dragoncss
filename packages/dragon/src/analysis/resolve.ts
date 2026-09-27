@@ -89,6 +89,17 @@ export function initialValue(property: Longhand, ua: UaDataset): CssValue {
   return parseValueText(property, g.initial);
 }
 
+/**
+ * Whether a resolved longhand holds its initial value by provenance: no declaration set it (or initial / unset chose the initial
+ * value), or a shorthand filled it because the author omitted it (LonghandValue.explicit false). An authored keyword equal to the
+ * initial value is not initial by provenance. The layout lowering needs this for R5 (initial line widths, notes/T010-p2-triage.md).
+ */
+export function isInitialByProvenance(v: ResolvedValue, property: Longhand): boolean {
+  if (v.origin === 'initial') return true;
+  if (v.origin !== 'author' || v.declaration === null) return false;
+  return v.declaration.longhands.some((l) => l.property === property && !l.explicit);
+}
+
 // css-cascade-5 §6.3 (user-agent origin): the captured table pins, per tag, the longhands a Chrome UA rule sets.
 function userAgentValue(tag: CapturedTag, property: Longhand, ua: UaDataset): CssValue | null {
   if (!ua.userAgentLonghands[tag].includes(property)) return null;

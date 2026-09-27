@@ -47,6 +47,9 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     { file: at('layout.ts'), name: 'absoluteRects' },
     { file: at('platform.ts'), name: 'measurerFor' },
     { file: at('text.ts'), name: 'ahemMeasurer' },
+    // The one pixel-snap rule (native-strategy.md section 3.3): native lanes snap engine rects to device px with it.
+    { file: at('snap.ts'), name: 'snapEdges' },
+    { file: at('snap.ts'), name: 'snapRect' },
   ];
   const program = createProgram(files);
   const units = program.getSourceFile(at('units.ts')) as ts.SourceFile;
@@ -75,7 +78,7 @@ export function lowerAll(): Lowered {
   if (el.violations.length > 0) throw new TranslateError(el.violations);
   const hFiles = [...files, HARNESS_FILE];
   const hProgram = createProgram([...hFiles, HOST_FILE]);
-  const hl = new Lowerer(hProgram, { files: hFiles, hostFile: HOST_FILE, root: ROOT, collect: true, roots: [...roots, { file: HARNESS_FILE, name: 'runEngineCase' }, { file: HARNESS_FILE, name: 'runUnitsCase' }, { file: HARNESS_FILE, name: 'runLibraryCase' }] });
+  const hl = new Lowerer(hProgram, { files: hFiles, hostFile: HOST_FILE, root: ROOT, collect: true, roots: [...roots, { file: HARNESS_FILE, name: 'runEngineCase' }, { file: HARNESS_FILE, name: 'runUnitsCase' }, { file: HARNESS_FILE, name: 'runLibraryCase' }, { file: HARNESS_FILE, name: 'runSnapCase' }] });
   const harness = hl.lower();
   if (hl.violations.length > 0) throw new TranslateError(hl.violations);
   // The harness may use only the engine as translated for the roots: no extra engine declaration, no new union of engine classes.
@@ -217,14 +220,24 @@ export function writeTree(dir: string, files: Files): void {
   }
 }
 
-export function listTree(dir: string): string[] {
+/**
+ * The build output folders of a generated package root, which are not generated source: .build and .swiftpm of the SwiftPM package
+ * and build of the Kotlin tree. They are ignored only at that root; a dot-file or a build folder anywhere else is listed, so a
+ * hand-written file there fails the freshness comparison (T007 must-fix).
+ */
+export function rootBuildDirs(dir: string): readonly string[] {
+  if (dir === SWIFT_DIR) return ['.build', '.swiftpm'];
+  if (dir === KOTLIN_DIR) return ['build'];
+  return [];
+}
+
+export function listTree(dir: string, ignoredAtRoot: readonly string[] = rootBuildDirs(dir)): string[] {
   if (!existsSync(dir)) return [];
   const out: string[] = [];
   const walk = (d: string): void => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
-      // Build output (.build, .swiftpm, build) is not generated source.
-      if (e.name.startsWith('.') || e.name === 'build') continue;
       const p = join(d, e.name);
+      if (d === dir && e.isDirectory() && ignoredAtRoot.includes(e.name)) continue;
       if (e.isDirectory()) walk(p);
       else out.push(relative(dir, p));
     }

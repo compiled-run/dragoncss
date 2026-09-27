@@ -1,7 +1,7 @@
 // Text measurement is injected. The Ahem measurer is pure: it models the WPT Ahem v1.50 metrics without reading the font.
 import type { TextFont } from './input.ts';
 import type { LU } from './units.ts';
-import { fontMetricPx, platformFontSize, roundFontMetricHalfUpToWholePx, roundFontMetricToWholePx, textAdvanceAt, ZERO } from './units.ts';
+import { cachedRangeWidth, fontMetricPx, platformFontSize, roundFontMetricHalfUpToWholePx, roundFontMetricToWholePx, textAdvanceAt, ZERO } from './units.ts';
 
 export type FontMetrics = { readonly ascent: LU; readonly descent: LU; readonly lineGap: LU };
 
@@ -13,6 +13,11 @@ export type MeasureResult = { readonly ok: true; readonly measure: TextMeasure }
 export interface TextMeasurer {
   metrics(font: TextFont): FontMetrics;
   measure(text: string, font: TextFont): MeasureResult;
+  /**
+   * R4: the width of code points [start, end) of text shaped as one text item, as Blink's fast min-content path measures a word
+   * (ShapeResult::CachedWidth: the difference of the item's cached character positions).
+   */
+  measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult;
 }
 
 const ZWSP = 0x200b;
@@ -52,6 +57,21 @@ export function ahemMeasurerWith(faults: AhemRuleFaults): TextMeasurer {
         glyphs += advance;
       }
       return { ok: true, measure: { width: textAdvanceAt(glyphs, instanceSize(font.size)) } };
+    },
+    // Blink shapes the whole item; a character's cached position is the ceiled advance sum before it (units.ts cachedRangeWidth).
+    measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
+      let k = 0;
+      let before = 0;
+      let through = 0;
+      for (const ch of text) {
+        const cp = ch.codePointAt(0) as number;
+        const advance = ahemAdvances(cp);
+        if (advance < 0) return { ok: false, reason: `U+${cp.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
+        if (k < start) before += advance;
+        if (k < end) through += advance;
+        k++;
+      }
+      return { ok: true, measure: { width: cachedRangeWidth(before, through, instanceSize(font.size)) } };
     },
   };
 }

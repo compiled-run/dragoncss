@@ -19,6 +19,7 @@ Every field is required and there are no defaults: the compiler writes every val
 - `viewport` `{ width, height }` in CSS px, the initial containing block. `devicePixelRatio`: border widths snap to whole device px.
 - `root`: a `LayoutBox` `{ kind: "box", id, boxType: "element" | "anonymous", style: LayoutStyle, children }`. Children are all boxes or all text leaves. The compiler wraps mixed text in anonymous boxes `<element>:anon<k>`; the engine never creates boxes.
 - `style` has all 41 `LayoutStyle` fields. Lengths are tagged `{ kind: "px", value }` (CSS px), `{ kind: "percent", value }` (100 is the whole basis), or keywords such as `{ kind: "auto" }`, `{ kind: "none" }`, `{ kind: "normal" }` and `{ kind: "content" }`, as each field allows. Enumerations are strings; flexGrow, flexShrink and order are numbers.
+- The four border widths also take `{ kind: "device-px", value }`: an initial line width (no width declared, or a border shorthand that omits it), which Chrome keeps in device px at every pixel ratio (rule R5 below).
 - A text leaf is `{ kind: "text", id: "<element>:text<k>", text, font: { family: "Ahem", size }, lineHeight, whiteSpaceCollapse: "collapse", textWrapMode }`. The text is already collapsed, and the leaf carries every inherited text property itself.
 - Ids are unique. Parents come before children, and children are in document order. `order` and the reverse flex directions are applied by the engine, never by reordering the input.
 
@@ -329,3 +330,22 @@ Output with measurer `ahem/darwin-arm64`:
  }
 ]
 ```
+
+## Device pixel ratios
+
+Native lanes run at DPR 2 and 3 on both platforms, and at 2.625 on Android as a named extra (never a substitute). Chrome is captured at those ratios with `--force-device-scale-factor=N` and a context `deviceScaleFactor` of N (`pnpm run parity:dpr-capture`, into `packages/parity/expected-dpr/<platform>/dpr-<N>`), guarded by a zoom check: a 0.5px border must compute to 0.5px, 0.333333px and 0.380952px.
+
+**The zoom model** (`layout.ts` `zoomInput`). At DPR N the engine multiplies every CSS length by N on entry (`zoomCssPx`, in double), computes font sizes as `fround(fround(size) * N)` (`zoomFontSize`), applies the font rules to the zoomed size, and lays out in zoomed px with `devicePixelRatio` 1, so borders snap to whole zoomed px. A zoomed px is a device px: output LU are 1/64 device px, and CSS px = LU / (64 * N). At DPR 1 the input is used as given, so the model is the identity. A `device-px` border width is not multiplied.
+
+**The five engine rules** (Chrome 145.0.7632.6, notes/T010-p2-triage.md), applied at every DPR, DPR 1 included:
+
+- R1: the initial containing block is `ceil(viewport * N)` device px (`zoomViewportPx`; measured, 790.125 gives 791).
+- R2: a px line-height is `LayoutUnit::FromFloatRound(float(px))` (`fromFloatRound`).
+- R3: a number line-height is `MinimumValueForLength(percent, FromFloatRound(computed font size))` (`lineHeightFromNumber`).
+- R4: in min-content, each word of a text item is `ShapeResult::CachedWidth`: `ceil(advance sum to its end) - ceil(advance sum to its start)` in LU (`cachedRangeWidth`, through the measurer's `measureRange`). A word at the item start is the plain snapped width.
+- R5: an initial line width is `{ kind: "device-px", value: 3 }` (the UA dataset's medium), written by the compiler; the Chrome deviation `initial-line-width-unzoomed` is registered in `src/chrome-deviations-dpr.ts`.
+
+**Files.** `pnpm run layout:dpr-vectors` writes, from the committed DPR captures and only for cases whose every node matches Chrome exactly in zoomed LU:
+
+- `dpr-<N>/<case>.json`: the same four keys as a top-level vector; `input.devicePixelRatio` is N and `output` is in zoomed LU. Each DPR folder has the same case ids as the top level.
+- `dpr-<N>/snap/<case>.json`: `{ "platform", "devicePixelRatio", "input", "output" }`, where `input` is that vector's output and `output` is `snapEdges(input)`: per rect `{ id, left, top, right, bottom, width, height }` in whole device px. The snap rule is `floor((lu + 32) / 64)` on absolute edges (parent offsets summed in integers, right and bottom with the saturating add), and sizes are the distances between snapped edges. Values stay numbers.

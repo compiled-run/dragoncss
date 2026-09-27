@@ -65,7 +65,7 @@ export function zoomCssPx(px: number, zoom: number): number {
   return px * zoom;
 }
 
-/** A viewport length at zoom N: the window is a whole number of device px, rounded up (Chrome 145 measured at 2.625; T008 note). */
+/** R1: a viewport length at zoom N: the window is a whole number of device px, rounded up (Chrome 145 measured at 2.625; T008 note). */
 export function zoomViewportPx(px: number, zoom: number): number {
   return Math.ceil(px * zoom);
 }
@@ -75,7 +75,7 @@ export function zoomFontSize(sizePx: number, zoom: number): number {
   return Math.fround(Math.fround(sizePx) * zoom);
 }
 
-/** Blink LayoutUnit::FromFloatRound(float): round(float(v) * 64), halves away from zero. */
+/** Blink LayoutUnit::FromFloatRound(float): round(float(v) * 64), halves away from zero. R2: a px line-height (ComputedLineHeightAsFixed). */
 export function fromFloatRound(px: number): LU {
   return saturate(roundHalfAwayFromZero(Math.fround(px) * LU_PER_PX));
 }
@@ -196,9 +196,23 @@ export function textAdvanceAt(glyphCount: number, instanceSizePx: number): LU {
   return fromPxCeil(width);
 }
 
-/** A font-relative line-height number, stored by Blink as a percent Length and resolved with MinimumValueForLength. */
+/**
+ * R4, Blink ShapeResult::CachedWidth(start, end) of one text item, which the fast min-content path measures each word with
+ * (line_breaker.cc HandleTextForFastMinContent, FastMinTextContext::Add). ComputePositionData stores each character's position
+ * as ToCeil<LayoutUnit> of the advance sum before it, and CachedPositionForOffset(length) is FromFloatCeil(width); so a range of
+ * the item is ceil(advance sum to its end) - ceil(advance sum to its start), in glyph advances from the item start. A range that
+ * starts at the item start is SnappedWidth, as textAdvanceAt.
+ */
+export function cachedRangeWidth(startAdvances: number, endAdvances: number, instanceSizePx: number): LU {
+  return sub(textAdvanceAt(endAdvances, instanceSizePx), textAdvanceAt(startAdvances, instanceSizePx));
+}
+
+/**
+ * R3: a font-relative line-height number, stored by Blink as a percent Length and resolved with MinimumValueForLength against
+ * ComputedFontSizeAsFixed, which is LayoutUnit::FromFloatRound(ComputedSize()) (computed_style.cc 2568-2585, computed_style.h 893-895).
+ */
 export function lineHeightFromNumber(fontSizePx: number, factor: number): LU {
-  return percentOf(fromCssPx(fontSizePx), Math.fround(factor * 100));
+  return percentOf(fromFloatRound(fontSizePx), Math.fround(factor * 100));
 }
 
 /** Integer-px scalar helper for font metrics from units per em. */

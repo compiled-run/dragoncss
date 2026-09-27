@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 11680
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 11680
+  },
+  {
+   "id": "frame",
+   "parent": "body",
+   "x": 40400,
+   "y": 0,
+   "width": 26800,
+   "height": 11680
+  },
+  {
+   "id": "panel",
+   "parent": "frame",
+   "x": 17600,
+   "y": 800,
+   "width": 8400,
+   "height": 10080
+  },
+  {
+   "id": "panel:text0",
+   "parent": "panel",
+   "x": 0,
+   "y": 0,
+   "width": 8400,
+   "height": 3328
+  },
+  {
+   "id": "panel:text0:line0",
+   "parent": "panel:text0",
+   "x": 0,
+   "y": 0,
+   "width": 8400,
+   "height": 1664
+  },
+  {
+   "id": "panel:text0:line1",
+   "parent": "panel:text0",
+   "x": 3360,
+   "y": 1664,
+   "width": 5040,
+   "height": 1664
+  },
+  {
+   "id": "sib",
+   "parent": "frame",
+   "x": 11720,
+   "y": 800,
+   "width": 5040,
+   "height": 1680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 183,
+   "width": 1050,
+   "height": 183
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 183,
+   "width": 1050,
+   "height": 183
+  },
+  {
+   "id": "frame",
+   "left": 631,
+   "top": 0,
+   "right": 1050,
+   "bottom": 183,
+   "width": 419,
+   "height": 183
+  },
+  {
+   "id": "panel",
+   "left": 906,
+   "top": 13,
+   "right": 1038,
+   "bottom": 170,
+   "width": 132,
+   "height": 157
+  },
+  {
+   "id": "panel:text0",
+   "left": 906,
+   "top": 13,
+   "right": 1038,
+   "bottom": 65,
+   "width": 132,
+   "height": 52
+  },
+  {
+   "id": "panel:text0:line0",
+   "left": 906,
+   "top": 13,
+   "right": 1038,
+   "bottom": 39,
+   "width": 132,
+   "height": 26
+  },
+  {
+   "id": "panel:text0:line1",
+   "left": 959,
+   "top": 39,
+   "right": 1038,
+   "bottom": 65,
+   "width": 79,
+   "height": 26
+  },
+  {
+   "id": "sib",
+   "left": 814,
+   "top": 13,
+   "right": 893,
+   "bottom": 39,
+   "width": 79,
+   "height": 26
+  }
+ ]
+}

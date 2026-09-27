@@ -20,3 +20,5 @@ export type { MeasurerChoice } from './platform.ts';
 export { measurerFor, REFERENCE_PLATFORM } from './platform.ts';
 export type { SnappedRect } from './snap.ts';
 export { snapEdges, snapRect } from './snap.ts';
+export type { DprChromeDeviation, DprDeviationControl, DprDeviationFault, DprDeviationNode } from './chrome-deviations-dpr.ts';
+export { dprChromeDeviations } from './chrome-deviations-dpr.ts';

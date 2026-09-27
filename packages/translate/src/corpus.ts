@@ -7,7 +7,7 @@ import type { EngineFaults } from '../../layout/src/block.ts';
 import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
 import type { LayoutBox, LayoutInput, LayoutStyle, TextLeaf } from '../../layout/src/input.ts';
 import { validateLayoutInput } from '../../layout/src/validate.ts';
-import { runEngineCase, runLibraryCase, runUnitsCase } from '../harness/harness.ts';
+import { runEngineCase, runLibraryCase, runSnapCase, runUnitsCase } from '../harness/harness.ts';
 import { bitsHex } from '../harness/host.ts';
 import { ROOT } from './generate.ts';
 
@@ -49,9 +49,9 @@ export class Rng {
 
 // ---------------------------------------------------------------- units corpus
 
-const EDGE = [0, -0, 0.5, -0.5, 1.5, -1.5, 2.5, -2.5, 1 / 64, 0.5 / 64, -0.5 / 64, 33554431.5, 33554432, 33554433, 4e7, -4e7, 2147483647, -2147483648, 2147483648, 1e300, -1e300, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.MIN_VALUE, 0.1, 0.2, 0.3, 100, 1e-7];
+export const EDGE = [0, -0, 0.5, -0.5, 1.5, -1.5, 2.5, -2.5, 1 / 64, 0.5 / 64, -0.5 / 64, 33554431.5, 33554432, 33554433, 4e7, -4e7, 2147483647, -2147483648, 2147483648, 1e300, -1e300, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.MIN_VALUE, 0.1, 0.2, 0.3, 100, 1e-7];
 
-function px(r: Rng): number {
+export function px(r: Rng): number {
   const k = r.next();
   if (k < 0.08) return r.pick(EDGE);
   if (k < 0.3) return Math.round((r.next() * 2000 - 500) * 100) / 100;
@@ -62,7 +62,7 @@ function px(r: Rng): number {
   return r.next() * 1000 - 200;
 }
 
-function lu(r: Rng): number {
+export function lu(r: Rng): number {
   const k = r.next();
   if (k < 0.05) return r.pick([0, -0, 2147483647, -2147483648, 1, -1, 64, -64, 32, -32]);
   const v = Math.trunc(px(r) * 64);
@@ -123,15 +123,24 @@ export function unitsCases(): string[] {
 
 // ---------------------------------------------------------------- engine corpus
 
-const FAULT_NAMES = Object.keys(NO_ENGINE_FAULTS) as (keyof EngineFaults)[];
+/**
+ * The engine faults the P1 corpus draws from: the milestone-1 set, fixed so the P1 corpus inputs do not move when a fault is
+ * added (P2b adds initialLineWidthZoomed, which the extended corpus draws). The faults object of every line still names every
+ * EngineFaults key, as the exact-key decoder requires.
+ */
+const P1_FAULT_NAMES: readonly (keyof EngineFaults)[] = [
+  'breakOffByOne', 'rtlAsLtr', 'ignoreOrder', 'baselineFromBorderTop', 'scrollMinAuto', 'absposInFlow', 'cbIgnoresPadding',
+  'staticPosLtr', 'relativeShiftsFlow', 'metricHalfUp', 'untruncatedFontSize', 'halfLeadingSpec', 'minMaxEndMarginSpec',
+  'wrapReverseBaselineSpec',
+];
 const DPRS = [1, 2, 2.625, 3];
 
 type MutableStyle = { -readonly [K in keyof LayoutStyle]: LayoutStyle[K] };
-type Json = Record<string, unknown>;
+export type Json = Record<string, unknown>;
 
-function faultsFor(r: Rng): EngineFaults {
+export function faultsFor(r: Rng, names: readonly (keyof EngineFaults)[] = P1_FAULT_NAMES): EngineFaults {
   if (!r.chance(0.1)) return NO_ENGINE_FAULTS;
-  const f = r.pick(FAULT_NAMES);
+  const f = r.pick(names);
   return { ...NO_ENGINE_FAULTS, [f]: true };
 }
 
@@ -340,18 +349,33 @@ export function libraryCases(): string[] {
 
 export type VectorCase = { readonly file: string; readonly line: string; readonly output: unknown; readonly measurer: string };
 
+export const VECTORS_DIR = join(ROOT, 'packages/layout/vectors');
+/** The committed manifest of the 258 milestone-1 case ids: the P1 vectors suite reads exactly these (ruling 4). */
+export const M1_MANIFEST = join(ROOT, 'packages/translate/corpus-m1-cases.json');
+
+export function m1CaseIds(): string[] {
+  return (JSON.parse(readFileSync(M1_MANIFEST, 'utf8')) as { cases: string[] }).cases;
+}
+
+/** Every top-level vector file name, sorted. */
+export function topLevelVectorFiles(): string[] {
+  return readdirSync(VECTORS_DIR).filter((f) => f.endsWith('.json')).sort();
+}
+
+export function vectorCase(dir: string, file: string): VectorCase {
+  const v = JSON.parse(readFileSync(join(dir, file), 'utf8')) as { platform: string; measurer: string; input: unknown; output: unknown };
+  const valid = validateLayoutInput(v.input);
+  if (!valid.ok) throw new Error(`vector ${file} fails the validator`);
+  return { file, line: JSON.stringify({ platform: v.platform, faults: NO_ENGINE_FAULTS, input: v.input }), output: v.output, measurer: v.measurer };
+}
+
+/** The milestone-1 vectors, in manifest order (file-name order at 8228b4e). */
 export function vectorCases(): VectorCase[] {
-  const dir = join(ROOT, 'packages/layout/vectors');
-  return readdirSync(dir).filter((f) => f.endsWith('.json')).sort().map((file) => {
-    const v = JSON.parse(readFileSync(join(dir, file), 'utf8')) as { platform: string; measurer: string; input: unknown; output: unknown };
-    const valid = validateLayoutInput(v.input);
-    if (!valid.ok) throw new Error(`vector ${file} fails the validator`);
-    return { file, line: JSON.stringify({ platform: v.platform, faults: NO_ENGINE_FAULTS, input: v.input }), output: v.output, measurer: v.measurer };
-  });
+  return m1CaseIds().map((id) => vectorCase(VECTORS_DIR, `${id}.json`));
 }
 
 /** One seeded mutation of a vector input: a length, a percentage, a flex factor, a direction or the DPR. */
-function mutate(input: Json, r: Rng): Json {
+export function mutate(input: Json, r: Rng): Json {
   for (let attempt = 0; attempt < 20; attempt++) {
     const copy = JSON.parse(JSON.stringify(input)) as Json;
     const boxes: Json[] = [];
@@ -420,7 +444,7 @@ export function split(results: readonly string[]): Split {
   return s;
 }
 
-export type Suite = { readonly name: 'vectors' | 'units' | 'engine' | 'library'; readonly mode: 'engine' | 'units' | 'library'; readonly lines: readonly string[]; readonly expected: readonly string[] };
+export type Suite = { readonly name: string; readonly mode: 'engine' | 'units' | 'library' | 'snap'; readonly lines: readonly string[]; readonly expected: readonly string[] };
 
 export type Corpus = {
   readonly suites: readonly Suite[];
@@ -429,6 +453,19 @@ export type Corpus = {
   readonly digest: string;
   readonly digests: Readonly<Record<string, string>>;
 };
+
+/** Per-suite digests (inputs and TypeScript results) and the corpus digest over them. */
+export function digestsOf(suites: readonly Suite[]): { readonly digest: string; readonly digests: Record<string, string> } {
+  const digests: Record<string, string> = {};
+  const all = createHash('sha256');
+  for (const s of suites) {
+    const h = createHash('sha256');
+    for (let i = 0; i < s.lines.length; i++) h.update(s.lines[i] as string).update('\n').update(s.expected[i] as string).update('\n');
+    digests[s.name] = h.digest('hex');
+    all.update(`${s.name} ${digests[s.name]}\n`);
+  }
+  return { digest: all.digest('hex'), digests };
+}
 
 export function buildCorpus(): Corpus {
   const vectors = vectorCases();
@@ -442,13 +479,6 @@ export function buildCorpus(): Corpus {
     { name: 'engine', mode: 'engine', lines: engine.lines, expected: engine.lines.map(runEngineCase) },
     { name: 'library', mode: 'library', lines: library, expected: library.map(runLibraryCase) },
   ];
-  const digests: Record<string, string> = {};
-  const all = createHash('sha256');
-  for (const s of suites) {
-    const h = createHash('sha256');
-    for (let i = 0; i < s.lines.length; i++) h.update(s.lines[i] as string).update('\n').update(s.expected[i] as string).update('\n');
-    digests[s.name] = h.digest('hex');
-    all.update(`${s.name} ${digests[s.name]}\n`);
-  }
-  return { suites, vectors, engineSplit: split(suites[2]?.expected ?? []), digest: all.digest('hex'), digests };
+  const d = digestsOf(suites);
+  return { suites, vectors, engineSplit: split(suites[2]?.expected ?? []), digest: d.digest, digests: d.digests };
 }

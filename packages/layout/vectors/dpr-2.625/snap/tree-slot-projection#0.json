@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 16048
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 16048
+  },
+  {
+   "id": "card/frame",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 36544,
+   "height": 16048
+  },
+  {
+   "id": "card/head",
+   "parent": "card/frame",
+   "x": 1472,
+   "y": 1472,
+   "width": 33600,
+   "height": 9408
+  },
+  {
+   "id": "title",
+   "parent": "card/head",
+   "x": 504,
+   "y": 504,
+   "width": 32592,
+   "height": 2352
+  },
+  {
+   "id": "card/content",
+   "parent": "card/frame",
+   "x": 1472,
+   "y": 10880,
+   "width": 33600,
+   "height": 3696
+  },
+  {
+   "id": "first",
+   "parent": "card/content",
+   "x": 0,
+   "y": 0,
+   "width": 33600,
+   "height": 1680
+  },
+  {
+   "id": "second",
+   "parent": "card/content",
+   "x": 0,
+   "y": 1848,
+   "width": 20160,
+   "height": 1680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 251,
+   "width": 1050,
+   "height": 251
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 251,
+   "width": 1050,
+   "height": 251
+  },
+  {
+   "id": "card/frame",
+   "left": 0,
+   "top": 0,
+   "right": 571,
+   "bottom": 251,
+   "width": 571,
+   "height": 251
+  },
+  {
+   "id": "card/head",
+   "left": 23,
+   "top": 23,
+   "right": 548,
+   "bottom": 170,
+   "width": 525,
+   "height": 147
+  },
+  {
+   "id": "title",
+   "left": 31,
+   "top": 31,
+   "right": 540,
+   "bottom": 68,
+   "width": 509,
+   "height": 37
+  },
+  {
+   "id": "card/content",
+   "left": 23,
+   "top": 170,
+   "right": 548,
+   "bottom": 228,
+   "width": 525,
+   "height": 58
+  },
+  {
+   "id": "first",
+   "left": 23,
+   "top": 170,
+   "right": 548,
+   "bottom": 196,
+   "width": 525,
+   "height": 26
+  },
+  {
+   "id": "second",
+   "left": 23,
+   "top": 199,
+   "right": 338,
+   "bottom": 225,
+   "width": 315,
+   "height": 26
+  }
+ ]
+}

@@ -1,0 +1,93 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 1096
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 1096
+  },
+  {
+   "id": "menu",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 16048,
+   "height": 1096
+  },
+  {
+   "id": "i1",
+   "parent": "menu",
+   "x": 464,
+   "y": 464,
+   "width": 15120,
+   "height": 0
+  },
+  {
+   "id": "i2",
+   "parent": "menu",
+   "x": 464,
+   "y": 632,
+   "width": 15120,
+   "height": 0
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 17,
+   "width": 1050,
+   "height": 17
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 17,
+   "width": 1050,
+   "height": 17
+  },
+  {
+   "id": "menu",
+   "left": 0,
+   "top": 0,
+   "right": 251,
+   "bottom": 17,
+   "width": 251,
+   "height": 17
+  },
+  {
+   "id": "i1",
+   "left": 7,
+   "top": 7,
+   "right": 244,
+   "bottom": 7,
+   "width": 237,
+   "height": 0
+  },
+  {
+   "id": "i2",
+   "left": 7,
+   "top": 10,
+   "right": 244,
+   "bottom": 10,
+   "width": 237,
+   "height": 0
+  }
+ ]
+}

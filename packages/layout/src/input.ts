@@ -14,8 +14,14 @@ export type MinSizeValue = Px | Percent | Auto;
 export type MaxSizeValue = Px | Percent | NoneValue;
 export type MarginValue = Px | Percent | Auto;
 export type PaddingValue = Px | Percent;
-/** The computed border width in CSS px before device-pixel snapping, which the engine applies for the environment. */
-export type BorderWidthValue = Px;
+/**
+ * R5 (Chrome deviation initial-line-width-unzoomed, chrome-deviations-dpr.ts): an initial line width in device px. Blink stores
+ * the initial border width 3 in zoomed px without ZoomedComputedPixels, so it stays 3 device px at every pixel ratio. The compiler
+ * writes it only for a border width that is its initial value (no width declared, or a shorthand that omits it).
+ */
+export type DevicePx = { readonly kind: 'device-px'; readonly value: number };
+/** The computed border width before device-pixel snapping, which the engine applies for the environment: CSS px, or R5 device px. */
+export type BorderWidthValue = Px | DevicePx;
 export type FlexBasisValue = Px | Percent | Auto | ContentValue;
 export type GapValue = Px | Percent | NormalValue;
 /** CSS2 §9.3.2 box offsets (css-position-3 inset properties). */

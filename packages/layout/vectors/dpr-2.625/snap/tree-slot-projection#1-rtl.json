@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 14032
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 14032
+  },
+  {
+   "id": "card/frame",
+   "parent": "body",
+   "x": 32672,
+   "y": 0,
+   "width": 34528,
+   "height": 14032
+  },
+  {
+   "id": "card/head",
+   "parent": "card/frame",
+   "x": 464,
+   "y": 464,
+   "width": 33600,
+   "height": 9408
+  },
+  {
+   "id": "title",
+   "parent": "card/head",
+   "x": 504,
+   "y": 504,
+   "width": 32592,
+   "height": 2352
+  },
+  {
+   "id": "card/content",
+   "parent": "card/frame",
+   "x": 464,
+   "y": 9872,
+   "width": 33600,
+   "height": 3696
+  },
+  {
+   "id": "first",
+   "parent": "card/content",
+   "x": 0,
+   "y": 0,
+   "width": 33600,
+   "height": 1680
+  },
+  {
+   "id": "second",
+   "parent": "card/content",
+   "x": 13440,
+   "y": 1848,
+   "width": 20160,
+   "height": 1680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 219,
+   "width": 1050,
+   "height": 219
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 219,
+   "width": 1050,
+   "height": 219
+  },
+  {
+   "id": "card/frame",
+   "left": 511,
+   "top": 0,
+   "right": 1050,
+   "bottom": 219,
+   "width": 539,
+   "height": 219
+  },
+  {
+   "id": "card/head",
+   "left": 518,
+   "top": 7,
+   "right": 1043,
+   "bottom": 154,
+   "width": 525,
+   "height": 147
+  },
+  {
+   "id": "title",
+   "left": 526,
+   "top": 15,
+   "right": 1035,
+   "bottom": 52,
+   "width": 509,
+   "height": 37
+  },
+  {
+   "id": "card/content",
+   "left": 518,
+   "top": 154,
+   "right": 1043,
+   "bottom": 212,
+   "width": 525,
+   "height": 58
+  },
+  {
+   "id": "first",
+   "left": 518,
+   "top": 154,
+   "right": 1043,
+   "bottom": 181,
+   "width": 525,
+   "height": 27
+  },
+  {
+   "id": "second",
+   "left": 728,
+   "top": 183,
+   "right": 1043,
+   "bottom": 209,
+   "width": 315,
+   "height": 26
+  }
+ ]
+}
