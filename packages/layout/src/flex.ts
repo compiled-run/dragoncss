@@ -255,7 +255,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
       if (participates(item)) {
         crossInLine = sub(groupBaseline, baselineOf(item).offset);
       } else {
-        const flow = add(crossAxisOffset(ctx, item, sub(line.cross, add(crossSize, item.crossMargins)), axes), item.crossStart);
+        const flow = add(crossAxisOffset(item, sub(line.cross, add(crossSize, item.crossMargins)), axes), item.crossStart);
         crossInLine = axes.crossStartIsPhysical ? flow : sub(sub(line.cross, flow), crossSize);
       }
       const r = layoutContents(ctx, item.box, {
@@ -689,11 +689,12 @@ function stretchedCrossSize(item: Item, lineCross: LU, isRow: boolean, percentBa
 // css-flexbox-1 §8.1 and §9.6 step 13, in flow terms: auto cross margins take positive space (Blink LayoutUnit / 2 when both are
 // auto) and otherwise the item aligns by align-self (css-align-3 §6.1, unsafe; Blink LayoutUnit / 2 for center). A stretch item
 // that cannot stretch sits at flex-start, which wrap-reverse puts at the flow end.
-function crossAxisOffset(ctx: Ctx, item: Item, available: LU, axes: Axes): LU {
+function crossAxisOffset(item: Item, available: LU, axes: Axes): LU {
   if (item.autoCrossStart || item.autoCrossEnd) {
-    // Chrome deviation auto-margin-overflow-cross-start: with no positive space the item sits at the cross-start edge. The
-    // planted spec reading (css-flexbox-1 §9.6 step 13) keeps it at the writing-mode start edge.
-    if (available <= 0) return axes.wrapReverse && !ctx.faults.autoMarginOverflowSpec ? available : ZERO;
+    // §9.6 step 13: with no positive space the auto margins are zero and the item sits at the start edge. Negative space never
+    // reaches here under wrap-reverse: a multi-line container's line is as large as its largest item (§9.4 step 8), so the
+    // space is zero there and Chrome and the spec agree (T040 retired the deviation once registered here).
+    if (available <= 0) return ZERO;
     if (item.autoCrossStart && item.autoCrossEnd) return divInt(available, 2);
     return item.autoCrossStart ? available : ZERO;
   }

@@ -3,7 +3,7 @@
 // same run, and every declared branch needs at least one node. Each entry has a planted fault (EngineFaults) that applies the
 // spec reading instead; for a distinguished entry it makes every registered node non-exact. blink cites the source at 145.0.7632.6.
 
-export type DeviationFault = 'halfLeadingSpec' | 'minMaxEndMarginSpec' | 'autoMarginOverflowSpec' | 'wrapReverseBaselineSpec';
+export type DeviationFault = 'halfLeadingSpec' | 'minMaxEndMarginSpec' | 'wrapReverseBaselineSpec';
 
 export type ChromeDeviation = {
   readonly id: string;
@@ -15,8 +15,9 @@ export type ChromeDeviation = {
   readonly fault: DeviationFault;
   /**
    * distinguished: the spec fault makes every registered node non-exact. contradicted: S5 found the spec reading gives the same
-   * result on every registered node, so the nodes do not show a departure from the spec (notes/T038-slice-5.md); the entry is
-   * kept, with its nodes, for the final audit to rule on.
+   * result on every registered node, so the nodes do not show a departure from the spec (notes/T038-slice-5.md). No entry is
+   * contradicted: T040 retired the auto-margin overflow entry, the only one S5 found, and its nodes stay in their fixtures as
+   * ordinary compared nodes. The M2 test requires every entry to be distinguished.
    */
   readonly finding: { readonly kind: 'distinguished' } | { readonly kind: 'contradicted'; readonly detail: string };
   readonly branches: readonly { readonly id: string; readonly description: string }[];
@@ -71,34 +72,6 @@ export const chromeDeviations: readonly ChromeDeviation[] = [
       { fixture: 'margin-collapse-min-height', node: 'p6', relativeTo: 'f6', reason: 'max-height 8px sets the box height in both readings; only the next sibling x6 shows the dropped margin' },
       { fixture: 'margin-collapse-min-height', node: 'p7', relativeTo: 'f7', reason: 'max-height 100px with zero min-height: Chrome collapses through, which is also the spec reading' },
     ],
-  },
-  {
-    id: 'auto-margin-overflow-cross-start',
-    specSection: 'css-flexbox-1 §9.6 step 13',
-    spec: 'When an item with auto cross-axis margins is larger than its flex line, the block-start or inline-start margin (whichever is in the cross axis) is set to zero, so the item is flush with the writing-mode start edge.',
-    blink: 'third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc at 145.0.7632.6: lines 264-276 (ResolvedAlignSelf) make any item with an auto cross margin flex-start before the wrap-reverse swap, and lines 1868-1877 clamp the auto-margin space to zero, so the item sits at the cross-start edge of its line (line 1928).',
-    fault: 'autoMarginOverflowSpec',
-    finding: {
-      kind: 'contradicted',
-      detail: 'Every registered node fills its flex line exactly: a wrap-reverse container is multi-line, so each line is as tall (or wide) as its largest item (css-flexbox-1 §9.4 step 8) and the §9.6 step 13 overflow rule never applies. The nodes sit 10px past the container because the line is packed at the cross-start edge (align-content: normal with negative free space), which the spec also does. The planted spec fault leaves all 9 nodes exact.',
-    },
-    branches: [
-      { id: 'row-wrap-reverse', description: 'a row container: a 30px item in a 20px line sits flush with the bottom (cross-start), 10px above the top, not flush with the top (block-start)' },
-      { id: 'column-wrap-reverse', description: 'an ltr column container: a 30px item in a 20px line sits flush with the right (cross-start), not the left (inline-start)' },
-      { id: 'column-wrap-reverse-rtl', description: 'an rtl column container: a 30px item in a 20px line sits flush with the left (cross-start), not the right (inline-start)' },
-    ],
-    nodes: [
-      { branch: 'row-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'am-a' },
-      { branch: 'row-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'am-b' },
-      { branch: 'row-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'am-c' },
-      { branch: 'column-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'amc-a' },
-      { branch: 'column-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'amc-b' },
-      { branch: 'column-wrap-reverse', fixture: 'flex-wrap-reverse', node: 'amc-c' },
-      { branch: 'column-wrap-reverse-rtl', fixture: 'flex-auto-margins-reverse-overflow', node: 'amr-a' },
-      { branch: 'column-wrap-reverse-rtl', fixture: 'flex-auto-margins-reverse-overflow', node: 'amr-b' },
-      { branch: 'column-wrap-reverse-rtl', fixture: 'flex-auto-margins-reverse-overflow', node: 'amr-c' },
-    ],
-    controls: [],
   },
   {
     id: 'wrap-reverse-baseline-line',

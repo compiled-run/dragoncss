@@ -424,9 +424,18 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     expect(['p9', 'x6'].map((p) => branchOf('min-max-end-margin', p))).toEqual(['dropped', 'dropped']);
     expect(['p5', 'x5'].map((p) => branchOf('min-max-end-margin', p))).toEqual(['collapsed-through', 'collapsed-through']);
     expect(chromeDeviations.find((d) => d.id === 'min-max-end-margin')?.controls.map((c) => c.node)).toEqual(['p4', 'p6', 'p7']);
-    // T036: the rtl column branch of auto-margin-overflow-cross-start has its own nodes.
-    expect(chromeDeviations.find((d) => d.id === 'auto-margin-overflow-cross-start')?.branches.map((b) => b.id)).toContain('column-wrap-reverse-rtl');
-    expect(['amr-a', 'amr-b', 'amr-c'].map((n) => branchOf('auto-margin-overflow-cross-start', n))).toEqual(['column-wrap-reverse-rtl', 'column-wrap-reverse-rtl', 'column-wrap-reverse-rtl']);
+    // T040: auto-margin-overflow-cross-start is retired; its 9 former nodes are ordinary compared nodes, exact in every case.
+    expect(chromeDeviations.find((d) => d.id === 'auto-margin-overflow-cross-start')).toBeUndefined();
+    const formerAutoMargin: [string, string][] = [
+      ...['am-a', 'am-b', 'am-c', 'amc-a', 'amc-b', 'amc-c'].map((n): [string, string] => ['flex-wrap-reverse', n]),
+      ...['amr-a', 'amr-b', 'amr-c'].map((n): [string, string] => ['flex-auto-margins-reverse-overflow', n]),
+    ];
+    for (const [fixture, node] of formerAutoMargin) {
+      expect(outcomes.get(fixture)?.status, fixture).toBe('pass');
+      const exact = exactIn(fixture, node);
+      expect(exact.length, `${fixture} ${node} is compared`).toBeGreaterThan(0);
+      expect(exact.every((x) => x), `${fixture} ${node} matches Chrome at 1/64 px`).toBe(true);
+    }
     // T039 M1: wrap-reverse-baseline-line covers rows and both column directions.
     expect(chromeDeviations.find((d) => d.id === 'wrap-reverse-baseline-line')?.branches.map((b) => b.id)).toEqual(['shared-baseline', 'startmost-item', 'column-wrap-reverse', 'column-wrap-reverse-rtl']);
     // M1: the two macOS font rules are platform rules keyed to the capture platform, each with its planted fault.
@@ -437,10 +446,8 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   });
 
   for (const d of chromeDeviations) {
-    const claim = d.finding.kind === 'distinguished'
-      ? 'makes every registered node non-exact at 1/64 px in every case and fails the gate where the gap is over 1 px'
-      : 'leaves every registered node exact, as S5 recorded (the nodes do not distinguish Blink from the spec; flagged for T999)';
-    it(`Chrome deviation ${d.id} (M2): the spec-reading fault ${d.fault} ${claim}; controls keep their place in their frame; with the fault off every node is exact`, async () => {
+    it(`Chrome deviation ${d.id} (M2): distinguished; the spec-reading fault ${d.fault} makes every registered node non-exact at 1/64 px in every case and fails the gate where the gap is over 1 px; controls keep their place in their frame; with the fault off every node is exact`, async () => {
+      expect(d.finding.kind, `${d.id} is distinguished`).toBe('distinguished');
       let overGate = 0;
       for (const fixture of [...new Set([...d.nodes.map((n) => n.fixture), ...d.controls.map((c) => c.fixture)])]) {
         const faulty = await runFixture(specFor(fixture), browser, { authored: recorded, faults: NO_FAULTS, engineFaults: { ...NO_ENGINE_FAULTS, [d.fault]: true }, profiles: 'enforce' });
@@ -450,10 +457,6 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
           const hits = faulty.cases.flatMap((c) => c.comparison?.nodes ?? []).filter((x) => x.id === n.node);
           expect(hits.length, `${d.fault} -> ${n.node} is compared`).toBeGreaterThan(0);
           for (const h of hits) {
-            if (d.finding.kind === 'contradicted') {
-              expect(h.exactLu, `${d.fault} -> ${n.node} stays exact: the spec reading gives the same rect`).toBe(true);
-              continue;
-            }
             expect(h.exactLu, `${d.fault} -> ${n.node} is not exact`).toBe(false);
             const gap = h.delta === null ? Infinity : Math.max(Math.abs(h.delta.left), Math.abs(h.delta.top), Math.abs(h.delta.right), Math.abs(h.delta.bottom));
             if (gap > GATE_DEVICE_PX) {
@@ -477,13 +480,14 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
         }
       }
       // The half-leading spec reading is a half px, inside the gate; the other distinguished entries move nodes by whole px beyond it.
-      if (d.finding.kind === 'distinguished' && d.id !== 'half-leading-floor') expect(overGate, d.id).toBeGreaterThan(0);
+      if (d.id !== 'half-leading-floor') expect(overGate, d.id).toBeGreaterThan(0);
       if (d.id === 'half-leading-floor') expect(overGate).toBe(0);
     });
   }
-  it('S5 records exactly one contradicted deviation, auto-margin-overflow-cross-start, with its nodes kept for T999', () => {
-    expect(chromeDeviations.map((d) => [d.id, d.finding.kind])).toEqual([['half-leading-floor', 'distinguished'], ['min-max-end-margin', 'distinguished'], ['auto-margin-overflow-cross-start', 'contradicted'], ['wrap-reverse-baseline-line', 'distinguished']]);
-    expect(chromeDeviations.find((d) => d.id === 'auto-margin-overflow-cross-start')?.nodes.length).toBe(9);
+  it('T040 (M2): every registered Chrome deviation is distinguished; the contradicted auto-margin-overflow-cross-start is retired', () => {
+    expect(chromeDeviations.map((d) => [d.id, d.finding.kind])).toEqual([['half-leading-floor', 'distinguished'], ['min-max-end-margin', 'distinguished'], ['wrap-reverse-baseline-line', 'distinguished']]);
+    expect(chromeDeviations.map((d) => d.fault)).toEqual(['halfLeadingSpec', 'minMaxEndMarginSpec', 'wrapReverseBaselineSpec']);
+    expect(Object.keys(NO_ENGINE_FAULTS)).not.toContain('autoMarginOverflowSpec');
   });
 
   it('case counts (MF1, per environment): each tree fixture declares by hand its free states, case count and initial assignment; renderer and Dragon agree in both directions', () => {

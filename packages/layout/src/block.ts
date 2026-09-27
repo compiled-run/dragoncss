@@ -51,8 +51,6 @@ export type EngineFaults = {
   readonly halfLeadingSpec: boolean;
   /** Spec reading of Chrome deviation min-max-end-margin: CSS 2.1 §8.3.1, the last child bottom margin collapses with the parent only when its min-height is zero; otherwise it counts toward the content height. */
   readonly minMaxEndMarginSpec: boolean;
-  /** Spec reading of Chrome deviation auto-margin-overflow-cross-start: an overflowing item with auto cross margins is flush with the writing-mode start edge (css-flexbox-1 §9.6 step 13). */
-  readonly autoMarginOverflowSpec: boolean;
   /** Spec reading of Chrome deviation wrap-reverse-baseline-line: the container baseline comes from the cross-start line (css-flexbox-1 §8.5). */
   readonly wrapReverseBaselineSpec: boolean;
 };
@@ -71,7 +69,6 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   untruncatedFontSize: false,
   halfLeadingSpec: false,
   minMaxEndMarginSpec: false,
-  autoMarginOverflowSpec: false,
   wrapReverseBaselineSpec: false,
 };
 

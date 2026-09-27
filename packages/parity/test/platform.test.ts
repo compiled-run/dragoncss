@@ -169,8 +169,23 @@ describe('the Linux workflow (written, not pushed)', () => {
     expect(text).not.toMatch(/darwin-arm64/);
     expect(text).not.toMatch(/ua:capture|layout:vectors|profile:rows|git push|git commit/);
   });
-  it('is not pushed: the repository has no remote', () => {
-    const remotes = execFileSync('/opt/homebrew/bin/git', ['remote'], { cwd: repoPath('.'), encoding: 'utf8' });
-    expect(remotes.trim()).toBe('');
+  // T040: a check on the workflow file, not on the environment, so adding a git remote or running without a given git binary
+  // cannot turn this red. The workflow runs only when dispatched by hand and has no step that pushes, commits or publishes.
+  it('runs only on workflow_dispatch and has no push step', () => {
+    const on = /^on:\n((?: {2}.*\n)*)/m.exec(text);
+    expect(on, 'on: block').not.toBeNull();
+    expect([...(on?.[1] ?? '').matchAll(/^ {2}([A-Za-z_]+):/gm)].map((m) => m[1])).toEqual(['workflow_dispatch']);
+    expect(text).not.toMatch(/^on: *\S/m);
+    expect(text).toMatch(/^permissions:\n {2}contents: read\n(?! )/m);
+    const steps = text.split(/^ {6}- /m).slice(1);
+    expect(steps.map((s) => /^name: (.+)/.exec(s)?.[1])).toEqual([
+      'Check out', 'Set up pnpm 10.33.2', 'Set up Node 24', 'Install dependencies', 'Install Playwright 1.58.2 Chromium', 'Typecheck',
+      'Platform-free suites (packages/layout, packages/dragon)', 'Capture Chrome into the linux-x64 key', 'Platform check against the reference captures',
+      'Upload the captures and the report',
+    ]);
+    for (const step of steps) {
+      expect(step, step).not.toMatch(/\bgit\s+(push|commit|tag)\b|\b(npm|pnpm|yarn)\s+publish\b|docker\s+push|gh\s+(release|pr)\b/);
+      expect(step, step).not.toMatch(/uses: \S*(push|commit|deploy|publish|release)\S*/i);
+    }
   });
 });
