@@ -17,12 +17,13 @@ import { repoPath } from '../paths.ts';
 import type { NativeTarget } from '../targets.ts';
 import { deviceDprs } from '../targets.ts';
 
+const args = process.argv.slice(2);
 export const SMOKE_CASES = ['color-border-sides', 'text-wrap-spaces', 'overflow-hidden-bfc'] as const;
 const IOS_DEVICE = 'iPhone 17';
-const AVD = 'dragon-smoke';
+/** The AVD: dragon-smoke (API 36) by default; --avd names another AVD at or above the API 31 floor. */
+const AVD = args.includes('--avd') ? (args[args.indexOf('--avd') + 1] as string) : 'dragon-smoke';
 const RENDERER = 'swiftshader_indirect';
 
-const args = process.argv.slice(2);
 const target = args[args.indexOf('--target') + 1] as NativeTarget;
 if (target !== 'ios' && target !== 'android') {
   console.error('usage: native:smoke -- --target ios|android');
@@ -83,7 +84,13 @@ async function smokeAndroid(outDir: string): Promise<{ scale: number; files: str
   const adb = (a: readonly string[], timeoutMs = 120_000) => run(tools.adb, a, { timeoutMs });
   const booted = (): boolean => adb(['shell', 'getprop', 'sys.boot_completed'], 10_000).out.trim() === '1';
   let started = false;
-  const running = adb(['devices']).out.split('\n').some((l) => /^emulator-\d+\s+device/.test(l));
+  let running = adb(['devices']).out.split('\n').some((l) => /^emulator-\d+\s+device/.test(l));
+  if (running && !adb(['emu', 'avd', 'name']).out.split('\n').some((l) => l.trim() === AVD)) {
+    // Another AVD is running: stop it, so the run is on the named device.
+    adb(['emu', 'kill']);
+    await sleep(5000);
+    running = false;
+  }
   if (!running) {
     for (let attempt = 1; ; attempt++) {
       const p = spawn(tools.emulator, ['-avd', AVD, '-no-window', '-no-audio', '-no-snapshot', '-no-boot-anim', '-gpu', RENDERER], { detached: true, stdio: 'ignore' });
@@ -105,7 +112,8 @@ async function smokeAndroid(outDir: string): Promise<{ scale: number; files: str
     const scale = Number(density) / 160;
     lastScale = scale;
     const release = adb(['shell', 'getprop', 'ro.build.version.release']).out.trim();
-    log(`${AVD}, Android ${release}, density ${density}, scale ${scale}`);
+    const sdk = adb(['shell', 'getprop', 'ro.build.version.sdk']).out.trim();
+    log(`${AVD}, Android ${release} (API ${sdk}; text drawn with Canvas.drawGlyphs), density ${density}, scale ${scale}`);
     for (const k of ['window_animation_scale', 'transition_animation_scale', 'animator_duration_scale']) adb(['shell', 'settings', 'put', 'global', k, '0']);
     const build = buildAndroid();
     log(`built ${build.cases} cases, source sha256 ${build.sourceSha256}`);
@@ -139,7 +147,7 @@ async function smokeAndroid(outDir: string): Promise<{ scale: number; files: str
 type Bridge = { platform: string; fontSha256: string; selfCheck: string; mismatches: string[]; unitsPerEm: number; ascent: number; descent: number; lineGap: number };
 
 async function main(): Promise<number> {
-  const outDir = join(nativeOut(target), 'smoke');
+  const outDir = join(nativeOut(target), target === 'android' ? `smoke-${AVD}` : 'smoke');
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
   let hostError: string | null = null;

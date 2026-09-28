@@ -15,7 +15,7 @@ const VIEW = { width: 400, height: 300 };
 const engine: ExpectedEngine = { layout, measurer: m.measurer, snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround };
 
 function programs() {
-  const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 29 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+  const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
   const p = nativePrograms(c, []);
   if (p.kind !== 'ready') throw new Error(p.reason);
   return p.programs;

@@ -54,7 +54,7 @@ type KnownTarget = (typeof KNOWN_TARGETS)[number];
 const NATIVE_TARGETS = ['ios', 'android'] as const;
 
 /** The API level range of the android target (docs/api.md §2.1). */
-export const ANDROID_MIN_SDK = { min: 29, max: 36 } as const;
+export const ANDROID_MIN_SDK = { min: 31, max: 36 } as const;
 
 /** @internal Test-only replacement profiles may omit android, which then reads the committed android profile. */
 export type SupportProfiles = { readonly web: SupportProfile; readonly ios: SupportProfile; readonly android?: SupportProfile };

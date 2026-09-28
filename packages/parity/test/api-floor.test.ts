@@ -27,6 +27,15 @@ const API = `<?xml version="1.0" encoding="utf-8"?>
 		<method name="getBuffer()Ljava/nio/ByteBuffer;"/>
 	</class>
 	<class name="android/window/Brand" since="33"/>
+	<class name="android/graphics/Canvas" since="1">
+		<extends name="java/lang/Object"/>
+		<method name="drawGlyphs([II[FIILandroid/graphics/fonts/Font;Landroid/graphics/Paint;)V" since="31"/>
+		<method name="drawText(Ljava/lang/String;IIFFLandroid/graphics/Paint;)V"/>
+	</class>
+	<class name="android/os/Build$VERSION" since="1">
+		<extends name="java/lang/Object"/>
+		<field name="SDK_INT" since="4"/>
+	</class>
 </api>`;
 
 const DEX = `Class #0            -
@@ -88,5 +97,41 @@ describe('the Android API floor check', () => {
     expect(api.get('android/text/StaticLayout$Builder')?.since).toBe(23);
     expect(api.get('android/graphics/fonts/Font')?.since).toBe(29);
     expect(api.get('android/content/Context')?.methods.get('getDisplay()Landroid/view/Display;')).toBe(30);
+  });
+
+  const guarded = (body: string): string => `${DEX}Class #1            -
+  Class descriptor  : 'Ldev/dragon/views/DragonApi31;'
+  Superclass        : 'Ljava/lang/Object;'
+  Virtual methods   -
+    #0              : (in Ldev/dragon/views/DragonApi31;)
+      name          : 'drawGlyphs'
+      type          : '(Landroid/graphics/Canvas;)V'
+000300:                                        |[000300] dev.dragon.views.DragonApi31.drawGlyphs:(Landroid/graphics/Canvas;)V
+000304: 6e10 0000 0100                         |0000: invoke-virtual/range {v1 .. v8}, Landroid/graphics/Canvas;.drawGlyphs:([II[FIILandroid/graphics/fonts/Font;Landroid/graphics/Paint;)V // method@0010
+Class #2            -
+  Class descriptor  : 'Ldev/dragon/views/DragonTextView;'
+  Superclass        : 'Ljava/lang/Object;'
+  Virtual methods   -
+    #0              : (in Ldev/dragon/views/DragonTextView;)
+      name          : 'onDraw'
+      type          : '(Landroid/graphics/Canvas;)V'
+000400:                                        |[000400] dev.dragon.views.DragonTextView.onDraw:(Landroid/graphics/Canvas;)V
+${body}`;
+  it('an API 31 call inside an Api31 class, reached behind SDK_INT >= 31, passes at minSdk 29; the API 29 fallback passes too', () => {
+    const r = checkFloor(parseApiVersions(API), parseDexdump(guarded(`000404: 6200 1200                              |0000: sget v0, Landroid/os/Build$VERSION;.SDK_INT:I // field@0012
+000408: 1301 1f00                              |0002: const/16 v1, #int 31 // #1f
+00040c: 3410 0400                              |0004: if-lt v0, v1, 0008 // +0004
+000410: 6e10 1100 0100                         |0006: invoke-virtual {v2, v3}, Ldev/dragon/views/DragonApi31;.drawGlyphs:(Landroid/graphics/Canvas;)V // method@0011
+000414: 6e10 1200 0100                         |0008: invoke-virtual {v3}, Landroid/graphics/Canvas;.drawText:(Ljava/lang/String;IIFFLandroid/graphics/Paint;)V // method@0012
+`)), 29);
+    expect(r.violations).toEqual([]);
+    expect(r.guarded).toBe(1);
+  });
+  it('the same call without the SDK_INT check is named; an API 31 member outside the guarded class still fails', () => {
+    const r = checkFloor(parseApiVersions(API), parseDexdump(guarded(`000410: 6e10 1100 0100                         |0006: invoke-virtual {v2, v3}, Ldev/dragon/views/DragonApi31;.drawGlyphs:(Landroid/graphics/Canvas;)V // method@0011
+000418: 6e10 1300 0100                         |0008: invoke-virtual/range {v1 .. v8}, Landroid/graphics/Canvas;.drawGlyphs:([II[FIILandroid/graphics/fonts/Font;Landroid/graphics/Paint;)V // method@0013
+`)), 29);
+    expect(r.violations.map((v) => v.ref)).toEqual(['dev.dragon.views.DragonApi31#drawGlyphs(Landroid/graphics/Canvas;)V', 'android.graphics.Canvas#drawGlyphs([II[FIILandroid/graphics/fonts/Font;Landroid/graphics/Paint;)V']);
+    expect(r.violations[0]?.reason).toMatch(/without an explicit Build\.VERSION\.SDK_INT >= 31 guard/);
   });
 });

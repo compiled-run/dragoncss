@@ -40,15 +40,20 @@ const decode = (s: string): string => s.replace(/&lt;/g, '<').replace(/&gt;/g, '
 /** A class of the app's dex: its superclass, interfaces and the methods and fields it declares. */
 export type DexClass = { readonly superclass: string | null; readonly interfaces: readonly string[]; readonly methods: ReadonlySet<string>; readonly fields: ReadonlySet<string> };
 
-/** A referenced member or class, in api-versions naming (android/view/View, layout(IIII)V). */
-export type DexRef = { readonly owner: string; readonly kind: 'class' | 'method' | 'field'; readonly member: string | null };
+/** A referenced member or class, in api-versions naming (android/view/View, layout(IIII)V), and the app method it appears in. */
+export type DexRef = { readonly owner: string; readonly kind: 'class' | 'method' | 'field'; readonly member: string | null; readonly from: string | null };
+
+/** What a method's code shows about an SDK guard: whether it reads Build.VERSION.SDK_INT, and the int constants it loads. */
+export type MethodFacts = { readsSdkInt: boolean; readonly ints: Set<number> };
 
 const internal = (desc: string): string => desc.replace(/^L/, '').replace(/;$/, '');
 
 /** Parses `dexdump -d` output: the app's classes and every class, method and field reference in its code and declarations. */
-export function parseDexdump(text: string): { classes: Map<string, DexClass>; refs: DexRef[] } {
+export function parseDexdump(text: string): { classes: Map<string, DexClass>; refs: DexRef[]; methods: Map<string, MethodFacts> } {
   const classes = new Map<string, DexClass>();
   const refs: DexRef[] = [];
+  const methods = new Map<string, MethodFacts>();
+  let method: string | null = null;
   let current: { name: string; superclass: string | null; interfaces: string[]; methods: Set<string>; fields: Set<string> } | null = null;
   let section: 'none' | 'interfaces' | 'fields' | 'methods' = 'none';
   let pendingName: string | null = null;
@@ -67,7 +72,7 @@ export function parseDexdump(text: string): { classes: Map<string, DexClass>; re
     const sup = /^\s*Superclass\s*:\s*'([^']+)'/.exec(line);
     if (sup !== null) {
       current.superclass = internal(sup[1] as string);
-      refs.push({ owner: current.superclass, kind: 'class', member: null });
+      refs.push({ owner: current.superclass, kind: 'class', member: null, from: null });
       continue;
     }
     if (/^\s*Interfaces\s*-/.test(line)) section = 'interfaces';
@@ -76,7 +81,7 @@ export function parseDexdump(text: string): { classes: Map<string, DexClass>; re
     const iface = /^\s*#\d+\s*:\s*'(L[^']+;)'/.exec(line);
     if (section === 'interfaces' && iface !== null) {
       current.interfaces.push(internal(iface[1] as string));
-      refs.push({ owner: internal(iface[1] as string), kind: 'class', member: null });
+      refs.push({ owner: internal(iface[1] as string), kind: 'class', member: null, from: null });
     }
     const name = /^\s*name\s*:\s*'([^']+)'/.exec(line);
     if (name !== null) pendingName = name[1] as string;
@@ -86,18 +91,39 @@ export function parseDexdump(text: string): { classes: Map<string, DexClass>; re
       else if (section === 'fields') current.fields.add(pendingName);
       pendingName = null;
     }
+    // A code block header names the method its instructions belong to: |[0001f0] dev.dragon.host.DragonActivity.runCase:(I)V
+    const head = /\|\[[0-9a-f]+\] ([\w.$]+)\.([\w$<>-]+):(\S+)/.exec(line);
+    if (head !== null) {
+      method = `${(head[1] as string).replace(/\./g, '/')}.${head[2]}${head[3]}`;
+      if (!methods.has(method)) methods.set(method, { readsSdkInt: false, ints: new Set() });
+      continue;
+    }
+    const facts = method === null ? undefined : methods.get(method);
+    if (facts !== undefined) {
+      if (/Landroid\/os\/Build\$VERSION;\.SDK_INT:I/.test(line)) facts.readsSdkInt = true;
+      const k = /\bconst(?:\/\w+)?\s+v\d+,\s*#int (-?\d+)/.exec(line);
+      if (k !== null) facts.ints.add(Number(k[1]));
+    }
     // Code references: Lowner;.member:sig for methods and fields, and class operands.
     for (const x of line.matchAll(/(L[\w/$]+;)\.([\w$<>-]+):(\S+)/g)) {
       const owner = internal(x[1] as string);
       const sig = x[3] as string;
-      refs.push(sig.startsWith('(') ? { owner, kind: 'method', member: `${x[2]}${sig}` } : { owner, kind: 'field', member: x[2] as string });
+      refs.push(sig.startsWith('(') ? { owner, kind: 'method', member: `${x[2]}${sig}`, from: method } : { owner, kind: 'field', member: x[2] as string, from: method });
     }
     const op = /\b(?:new-instance|const-class|check-cast|instance-of|new-array|filled-new-array)\b[^,]*,\s*\[*(L[\w/$]+;)/.exec(line);
-    if (op !== null) refs.push({ owner: internal(op[1] as string), kind: 'class', member: null });
+    if (op !== null) refs.push({ owner: internal(op[1] as string), kind: 'class', member: null, from: method });
   }
   flush();
-  return { classes, refs };
+  return { classes, refs, methods };
 }
+
+/** The API level an app class is guarded for: a class whose simple name ends in Api<N> holds only code reached behind SDK_INT >= N. */
+export function guardLevel(cls: string): number | null {
+  const m = /Api(\d+)$/.exec(cls.slice(cls.lastIndexOf('/') + 1));
+  return m === null ? null : Number(m[1]);
+}
+
+const classOfMethod = (method: string): string => method.slice(0, method.lastIndexOf('.', method.indexOf('(')));
 
 export type FloorViolation = { readonly ref: string; readonly since: number | null; readonly reason: string };
 
@@ -122,7 +148,8 @@ function androidSince(api: ApiVersions, owner: string, kind: 'method' | 'field',
  * Every reference above minSdk. A member referenced on an app class that the app class does not declare resolves through its
  * superclasses and interfaces to the android class that declares it. java.*, javax.*, kotlin.* and dalvik.* are out of scope.
  */
-export function checkFloor(api: ApiVersions, dex: { classes: ReadonlyMap<string, DexClass>; refs: readonly DexRef[] }, minSdk: number): { violations: FloorViolation[]; checked: number } {
+export function checkFloor(api: ApiVersions, dex: { classes: ReadonlyMap<string, DexClass>; refs: readonly DexRef[]; methods?: ReadonlyMap<string, MethodFacts> }, minSdk: number): { violations: FloorViolation[]; checked: number; guarded: number } {
+  let guarded = 0;
   const violations: FloorViolation[] = [];
   const seen = new Set<string>();
   let checked = 0;
@@ -141,6 +168,19 @@ export function checkFloor(api: ApiVersions, dex: { classes: ReadonlyMap<string,
     return at !== null && isAndroid(at) ? at : null;
   };
   for (const r of dex.refs) {
+    // A call into a guarded class (…Api<N>) must come from a method that reads SDK_INT and loads the constant N.
+    const target = !isAndroid(r.owner) && r.kind === 'method' ? guardLevel(r.owner) : null;
+    const fromLevel = r.from === null ? null : guardLevel(classOfMethod(r.from));
+    if (target !== null && target > minSdk && fromLevel === null) {
+      const facts = r.from === null ? undefined : dex.methods?.get(r.from);
+      const key = `guard ${r.owner} ${r.member ?? ''} ${r.from ?? ''}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        if (facts !== undefined && facts.readsSdkInt && facts.ints.has(target)) guarded++;
+        else violations.push({ ref: `${r.owner.replace(/\//g, '.')}#${r.member ?? ''}`, since: target, reason: `called from ${r.from ?? 'unknown code'} without an explicit Build.VERSION.SDK_INT >= ${target} guard` });
+      }
+    }
+    const level = fromLevel !== null && fromLevel > minSdk ? fromLevel : minSdk;
     let owner = r.owner;
     if (!isAndroid(owner) && r.kind !== 'class' && r.member !== null) {
       const resolved = resolveApp(owner, r.kind, r.member);
@@ -148,7 +188,7 @@ export function checkFloor(api: ApiVersions, dex: { classes: ReadonlyMap<string,
       owner = resolved;
     }
     if (!isAndroid(owner)) continue;
-    const key = `${owner} ${r.kind} ${r.member ?? ''}`;
+    const key = `${owner} ${r.kind} ${r.member ?? ''} ${level}`;
     if (seen.has(key)) continue;
     seen.add(key);
     checked++;
@@ -159,12 +199,12 @@ export function checkFloor(api: ApiVersions, dex: { classes: ReadonlyMap<string,
       continue;
     }
     if (r.kind === 'class' || r.member === null) {
-      if (cls.since > minSdk) violations.push({ ref: label, since: cls.since, reason: `class since API ${cls.since}` });
+      if (cls.since > level) violations.push({ ref: label, since: cls.since, reason: `class since API ${cls.since}` });
       continue;
     }
     const hit = androidSince(api, owner, r.kind, r.member);
     if (hit === null) violations.push({ ref: label, since: null, reason: 'member not in api-versions.xml' });
-    else if (hit.since > minSdk) violations.push({ ref: label, since: hit.since, reason: `since API ${hit.since} (declared on ${hit.owner.replace(/\//g, '.')})` });
+    else if (hit.since > level) violations.push({ ref: label, since: hit.since, reason: `since API ${hit.since} (declared on ${hit.owner.replace(/\//g, '.')})${level > minSdk ? ` inside the API ${level} guarded class` : ''}` });
   }
-  return { violations, checked };
+  return { violations, checked, guarded };
 }

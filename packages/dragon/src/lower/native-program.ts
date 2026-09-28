@@ -87,7 +87,7 @@ export const VOCABULARY: { readonly [B in NativeBackend]: Vocabulary } = {
     'border-colors': { key: 'dragonBorder.colors', technique: 'dragon-owned-paint', detail: `DragonBoxView side colours (sRGB RGBA8). ${BORDER_PAINT}` },
     'padding-box-clip': { key: 'dragonClip.frame', technique: 'native-property', detail: 'a DragonClipView over the padding box with clipsToBounds = true hosts the children; frame in points relative to the node' },
     font: { key: 'font', technique: 'native-property', detail: 'the bundled Ahem registered with CTFontManagerRegisterFontsForURL(.process), UIFont point size = CSS px' },
-    'text-color': { key: 'foregroundColor', technique: 'native-property', detail: 'NSTextStorage foregroundColor (sRGB) of the TextKit 1 DragonTextView' },
+    'text-color': { key: 'foregroundColor', technique: 'native-property', detail: 'DragonTextView fill colour (sRGB) for CTFontDrawGlyphs; Dragon places every glyph at the engine advances' },
   },
   'android-views': {
     'background-color': { key: 'background.color', technique: 'native-property', detail: 'View.background = ColorDrawable(ARGB), filling the border box' },
@@ -96,7 +96,7 @@ export const VOCABULARY: { readonly [B in NativeBackend]: Vocabulary } = {
     'border-colors': { key: 'dragonBorder.colors', technique: 'dragon-owned-paint', detail: `DragonBoxView side colours (sRGB RGBA8). ${BORDER_PAINT}` },
     'padding-box-clip': { key: 'dragonClip.clipBounds', technique: 'native-property', detail: 'a DragonClipView over the padding box with View.clipBounds = its own bounds hosts the children; [left, top, right, bottom] in device px relative to the node' },
     font: { key: 'textPaint.typeface', technique: 'native-property', detail: 'the bundled Ahem built with Font.Builder and Typeface.CustomFallbackBuilder under the Dragon id dragon:Ahem; textSize = the engine zoomed font size in device px' },
-    'text-color': { key: 'textPaint.color', technique: 'native-property', detail: 'TextPaint.color (ARGB) of the StaticLayout DragonTextView' },
+    'text-color': { key: 'textPaint.color', technique: 'native-property', detail: 'TextPaint.color (ARGB) for Canvas.drawGlyphs; Dragon places every glyph at the engine advances' },
   },
 };
 

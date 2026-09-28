@@ -3,7 +3,7 @@ import { createProject } from '../src/index.ts';
 import type { FrontEndResult } from '../src/index.ts';
 
 declare const input: FrontEndResult;
-const withAndroid = createProject({ projectId: 'p', targets: { android: { minSdk: 29 } } }).compile(input);
+const withAndroid = createProject({ projectId: 'p', targets: { android: { minSdk: 31 } } }).compile(input);
 export const androidOutput = withAndroid.outputs.android;
 export const androidTarget = withAndroid.targets.android;
 export const androidExplain = withAndroid.explain({ target: 'android', at: { node: 'a', instance: 'doc' }, property: 'width' });
@@ -17,4 +17,4 @@ export const noAndroid = iosOnly.outputs.android;
 // @ts-expect-error android needs a minSdk
 export const emptyAndroid = createProject({ projectId: 'p', targets: { android: {} } });
 // @ts-expect-error minSdk is a number
-export const stringSdk = createProject({ projectId: 'p', targets: { android: { minSdk: '29' } } });
+export const stringSdk = createProject({ projectId: 'p', targets: { android: { minSdk: '31' } } });

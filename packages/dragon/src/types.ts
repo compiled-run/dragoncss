@@ -10,7 +10,7 @@ export type Target = 'web' | 'ios' | 'android' | 'email';
 export type Targets = {
   web?: {};
   ios?: { minimum: string };
-  /** Android Views; minSdk is the API level floor, an integer from 29 to 36. */
+  /** Android Views; minSdk is the API level floor, an integer from 31 to 36 (owner decision: Android 12 is the floor). */
   android?: { minSdk: number };
 };
 

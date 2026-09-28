@@ -26,7 +26,7 @@ import type { NativeTarget } from './targets.ts';
 import { deviceDprs } from './targets.ts';
 
 export const BACKEND_OF: { readonly [T in NativeTarget]: NativeBackend } = { ios: 'uikit', android: 'android-views' };
-export const NATIVE_CONFIG = { ios: { minimum: '15.0' }, android: { minSdk: 29 } } as const;
+export const NATIVE_CONFIG = { ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
 export const ANDROID_TARGET_SDK = 36;
 export const ANDROID_BUILD_TOOLS = '36.0.0';
 export const IOS_TARGET = 'arm64-apple-ios15.0-simulator';
@@ -181,7 +181,7 @@ func dragonRun(window: UIWindow, host: UIView) {
     host.addSubview(tree.root)
     let t0 = CACurrentMediaTime()
     do {
-      try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, fontFor: { bridge.font(pointSize: CGFloat($0)) })
+      try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
     } catch {
       fatalError("dragon host: \(id): \(error)")
     }
@@ -339,10 +339,10 @@ function androidManifest(): string {
 }
 
 /** Faults planted in a host build: an API above the floor on either platform. */
-export type BuildPlant = 'ios-16' | 'api-30';
+export type BuildPlant = 'ios-16' | 'api-34';
 const PLANTED: { readonly [P in BuildPlant]: GeneratedFile } = {
   'ios-16': { path: 'Host/DragonPlanted.swift', text: 'import UIKit\n\n/// Planted floor fault: UICalendarView is iOS 16 only.\nfunc dragonPlantedIos16() -> UIView { return UICalendarView() }\n' },
-  'api-30': { path: 'kotlin/dev/dragon/host/DragonPlanted.kt', text: 'package dev.dragon.host\n\n/** Planted floor fault: Context.getDisplay is API 30. */\nfun dragonPlantedApi30(c: android.content.Context): Any? = c.display\n' },
+  'api-34': { path: 'kotlin/dev/dragon/host/DragonPlanted.kt', text: 'package dev.dragon.host\n\n/** Planted floor fault: Context.createDeviceContext is API 34. */\nfun dragonPlantedApi34(c: android.content.Context): Any? = c.createDeviceContext(0)\n' },
 };
 
 /** Every source file of a target's host app, relative to its source root, in path order; the engine files are the committed ones. */
@@ -453,7 +453,7 @@ export function buildIos(opts: { plant?: BuildPlant | null } = {}): BuildResult 
   return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sourceTreeSha256(files), artifact: app, log };
 }
 
-/** The Android host APK from the SDK tools alone: aapt2 link, kotlinc against android.jar, d8 --min-api 29, zipalign, apksigner. */
+/** The Android host APK from the SDK tools alone: aapt2 link, kotlinc against android.jar, d8 --min-api 31, zipalign, apksigner. */
 export function buildAndroid(opts: { plant?: BuildPlant | null } = {}): BuildResult & { readonly dexes: readonly string[]; readonly tools: AndroidTools } {
   const tools = androidTools();
   const dir = nativeOut('android');

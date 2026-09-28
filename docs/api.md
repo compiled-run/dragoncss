@@ -31,7 +31,7 @@ This serves the owner's design tests directly: local ownership and predictable m
 type Targets = {
   web?: {};
   ios?: { minimum: string };
-  android?: { minSdk: number };   // an integer API level, 29 to 36
+  android?: { minSdk: number };   // an integer API level, 31 to 36 (Android 12 floor)
 };
 type Configured<T> = Extract<keyof T, keyof Targets>;
 
@@ -73,7 +73,7 @@ type Range = { start: number; end: number };
 type Span = Range & { source: SourceRef };
 ```
 
-`targets` must be nonempty; malformed or unknown target configuration is diagnosed before compilation. Minimum OS versions are already chosen in [owner decision 6](decisions.md#platforms-docsresearchplatform-playbookmd-72); this draft requires explicit values pending only the choice of whether configuration may default to those profile-owned versions. The facade normalizes each backend's configuration and passes only CSS environment facts to the core. Android configuration uses an SDK integer: `android: { minSdk }` must be exactly that key, holding an integer from 29 to 36. Anything else, for example 28, 37, 29.5 or the string "29", is `DRAGON_CONFIG_INVALID`, with a fix. Apple configuration uses parsed version tuples, and email uses named client sets; these are not interchangeable `minimum` strings.
+`targets` must be nonempty; malformed or unknown target configuration is diagnosed before compilation. Minimum OS versions are already chosen in [owner decision 6](decisions.md#platforms-docsresearchplatform-playbookmd-72); this draft requires explicit values pending only the choice of whether configuration may default to those profile-owned versions. The facade normalizes each backend's configuration and passes only CSS environment facts to the core. Android configuration uses an SDK integer: `android: { minSdk }` must be exactly that key, holding an integer from 31 to 36 (owner decision: Android 12 is the floor). Anything else, for example 30, 37, 31.5 or the string "31", is `DRAGON_CONFIG_INVALID`, with a fix. Apple configuration uses parsed version tuples, and email uses named client sets; these are not interchangeable `minimum` strings.
 
 A source URI is canonical within a named project or immutable package identity, for example `dragon-source://demo/src/app.tsx`. It is independent of the checkout's absolute path. Virtual CSS has its own URI, text and mapping to its containing source. Hashes are verified over UTF-8 encoding of the exact text, without newline normalization; asset hashes cover exact bytes. Offsets are half-open UTF-16 code units. Dragon derives 1-based lines and columns, checks bounds and verifies referenced revisions. Producers convert byte offsets once at their boundary.
 
@@ -521,7 +521,7 @@ type SupportAnswer =
   | { kind: 'invalid-query'; diagnostics: readonly Diagnostic[] };
 ```
 
-A declaration with any supported row answers `needs-context`, listing its contexts. A declaration with no row answers `unsupported`. An android possibilities query needs `{ kind: 'android', minSdk }` with an integer from 29 to 36. Today it answers `unsupported` for every declaration, because no android row is proven.
+A declaration with any supported row answers `needs-context`, listing its contexts. A declaration with no row answers `unsupported`. An android possibilities query needs `{ kind: 'android', minSdk }` with an integer from 31 to 36. Today it answers `unsupported` for every declaration, because no android row is proven.
 
 ```ts
 export function querySupport<K extends string>(query:
@@ -651,7 +651,7 @@ These record how the milestone 1 implementation reads this design. Reviews T027,
 - A stylesheet use or resolution that names an absent source or asset, or an asset whose bytes do not match its hash, is a typed diagnostic that blocks every output.
 - The fixture environment sets the root font-family to Ahem (cascade `'environment'`), the same way it sets direction. Chrome references, the UA dataset and the platform font rules are keyed by platform (reference: `darwin-arm64`). A platform with no dataset or rules is refused, never given another platform's values.
 - The Linux lane scope follows [decisions.md](decisions.md): the Chrome oracle is captured on macOS, and the layout engine is platform-free.
-- Milestone 2 (P4): `android` is a configured target, `{ minSdk }` with an integer from 29 to 36. Its output is analysis-only, and its profile holds the iOS row keys, all `unsupported`, until a native android case passes. The font check and the lowering diagnostics are reported for every configured native target. A config without android keeps its diagnostics, outputs and digest. The generated UIKit and Android Views sources are reachable only through the internal entry. There is still no public `swift()` or `kotlin()`.
+- Milestone 2 (P4): `android` is a configured target, `{ minSdk }` with an integer from 31 to 36 (Android 12 floor). Its output is analysis-only, and its profile holds the iOS row keys, all `unsupported`, until a native android case passes. The font check and the lowering diagnostics are reported for every configured native target. A config without android keeps its diagnostics, outputs and digest. The generated UIKit and Android Views sources are reachable only through the internal entry. There is still no public `swift()` or `kotlin()`.
 
 ## Owner decisions
 

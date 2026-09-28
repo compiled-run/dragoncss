@@ -16,7 +16,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const CSS = 'body { margin: 0; font-family: Ahem; font-size: 10px; color: navy; } .a { width: 50%; padding: 3px; border: 1px dashed red; background-color: #3366ff; } .b { display: flex; gap: 2px; overflow: hidden; border-style: dotted solid double none; } .c { border-top: 2px solid; }';
 const input = inputFor(CSS, (r) => [div(r, 'a', ['a'], [text(r, 't', 'AB CD')]), div(r, 'b', ['b'], [div(r, 'c', ['c']), text(r, 'u', 'X')])]);
 const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
-const both = () => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 29 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+const both = () => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
 
 function programs() {
   const p = nativePrograms(both(), []);

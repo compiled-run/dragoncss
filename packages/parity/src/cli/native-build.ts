@@ -1,7 +1,7 @@
-// pnpm run native:build -- --target ios|android [--plant ios-16|api-30]: builds the host app with every layout case from the
+// pnpm run native:build -- --target ios|android [--plant ios-16|api-34]: builds the host app with every layout case from the
 // generated sources (notes/T013-p3-review-p4-plan.md section 2 items 6 and 7), prints the case count and the sha256 of the source
 // tree, and proves the API floor: swiftc availability checking at the iOS 15 target; on Android, every android.* reference of
-// classes.dex at or below minSdk 29 (api-versions.xml). A planted fault must fail and name the API.
+// classes.dex at or below minSdk 31 (api-versions.xml). A planted fault must fail and name the API.
 import { readFileSync } from 'node:fs';
 import { checkFloor, parseApiVersions, parseDexdump } from '../api-floor.ts';
 import { layoutCases } from '../dpr.ts';
@@ -17,11 +17,11 @@ const arg = (name: string): string | null => {
 const target = arg('--target');
 const plant = arg('--plant') as BuildPlant | null;
 if (target !== 'ios' && target !== 'android') {
-  console.error('usage: native:build -- --target ios|android [--plant ios-16|api-30]');
+  console.error('usage: native:build -- --target ios|android [--plant ios-16|api-34]');
   process.exit(2);
 }
-if (plant !== null && plant !== (target === 'ios' ? 'ios-16' : 'api-30')) {
-  console.error(`the ${target} build plants ${target === 'ios' ? 'ios-16' : 'api-30'}`);
+if (plant !== null && !(target === 'ios' ? ['ios-16'] : ['api-34']).includes(plant)) {
+  console.error(`the ${target} build plants ${target === 'ios' ? 'ios-16' : 'api-34'}`);
   process.exit(2);
 }
 const declared = layoutCases().reduce((n, f) => n + f.cases.length, 0);
@@ -63,7 +63,7 @@ if (target === 'ios') {
   const verify = run(bt('apksigner'), ['verify', '--verbose', r.artifact], { env });
   console.log(`native:build android: apksigner verify: ${verify.status === 0 ? 'pass' : 'FAIL'} (${verify.out.split('\n').filter((l) => /Verified using v\d/.test(l) && /true/.test(l)).join('; ')})`);
   const badging = run(bt('aapt2'), ['dump', 'badging', r.artifact]);
-  // aapt2 36.0.0 prints the floor as minSdkVersion:'29' (older aapt printed sdkVersion:'29').
+  // aapt2 36.0.0 prints the floor as minSdkVersion:'31' (older aapt printed sdkVersion:'31').
   const sdk = /^(?:min)?[sS]dkVersion:'(\d+)'/m.exec(badging.out)?.[1];
   const targetSdk = /^targetSdkVersion:'(\d+)'/m.exec(badging.out)?.[1];
   const raw = badging.out.split('\n').filter((l) => /^(?:min|target)?[sS]dkVersion:/.test(l)).join(' ');
@@ -78,15 +78,15 @@ if (target === 'ios') {
   });
   const dex = parseDexdump(dumps.join('\n'));
   const floor = checkFloor(api, dex, NATIVE_CONFIG.android.minSdk);
-  console.log(`native:build android: API floor: ${floor.checked} android.* references checked in ${r.dexes.length} dex file(s); ${floor.violations.length} above API ${NATIVE_CONFIG.android.minSdk}`);
+  console.log(`native:build android: API floor: ${floor.checked} android.* references checked in ${r.dexes.length} dex file(s); ${floor.guarded} call(s) into guarded Api<N> classes behind an explicit SDK_INT check; ${floor.violations.length} above API ${NATIVE_CONFIG.android.minSdk}`);
   for (const v of floor.violations) console.error(`native:build android: above the floor: ${v.ref} (${v.reason})`);
   const ok = verify.status === 0 && sdk === String(NATIVE_CONFIG.android.minSdk) && targetSdk === '36' && r.cases === declared && floor.violations.length === 0;
   if (plant !== null) {
     if (floor.violations.length > 0) {
-      console.error(`native:build android: planted api-30 caught: ${floor.violations.map((v) => v.ref).join(', ')}`);
+      console.error(`native:build android: planted ${plant} caught: ${floor.violations.map((v) => v.ref).join(', ')}`);
       process.exit(1);
     }
-    console.error('native:build android: the planted API 30 reference passed the floor check');
+    console.error(`native:build android: the planted ${plant} reference passed the floor check`);
     process.exit(3);
   }
   console.log(`native:build android: status ${ok ? 'pass' : 'fail'}`);
