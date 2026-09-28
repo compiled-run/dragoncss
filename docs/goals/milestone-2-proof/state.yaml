@@ -75,13 +75,6 @@ active_task: T007
 dispatched:
   - T007
   - T009
-  - T015
-  - T016
-  - T017
-  - T021
-  - T011
-  - T028
-  - T035
 device_lease:
   ios: T007
   android: T007
@@ -485,13 +478,13 @@ tasks:
       result: done
       harness: claude-code
       changed_files:
-        - "Those branches' diffs plus regenerated outputs"
+        - Those branches' diffs plus regenerated outputs
       commands:
-        - cmd: "4 merges; ua:capture identical; typecheck; pnpm test 1500; gate 620; font, media and font-reference --check"
+        - cmd: 4 merges; ua:capture identical; typecheck; pnpm test 1500; gate 620; font, media and font-reference --check
           status: pass
-        - cmd: "ff master 5483c0b"
+        - cmd: ff master 5483c0b
           status: pass
-      summary: "Master is 5483c0b: mq-a-media 42d3c6d, txt1c-wiring A b2d3af2, vf-fence a7fcec7, a test union fix 18327f5 (wire.test covers variable-font-refused), elb2 5483c0b."
+      summary: 'Master is 5483c0b: mq-a-media 42d3c6d, txt1c-wiring A b2d3af2, vf-fence a7fcec7, a test union fix 18327f5 (wire.test covers variable-font-refused), elb2 5483c0b.'
   - id: T005
     type: worker
     assignee: Worker
@@ -642,6 +635,7 @@ tasks:
     receipt: null
     constraints:
       - It must call fenceVariableInstance (T028) wherever fonts are resolved in compile().
+      - 'From T036: map ''Lato'' to vendor/fonts/Lato (400, 700) in the north-star font config and pinned.json; retarget wire.test.ts''s unmapped-family example away from Lato; symbol fallback (♪ ▶ ❚) stays with TXT1d.'
   - id: T006
     type: judge
     assignee: Judge
@@ -905,16 +899,55 @@ tasks:
   - id: T015
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: north-star
     objective: 'TREE (notes/T025 T015, binding): attributes as element data for matching, a selector-validity table, void elements in the fixture reader, the north star as a tree fixture compiled for web, ios and android. Worktree /tmp/dragon-tree, branch ns-tree, from master after T020. Merges after P5 lands, plus a device step on the lease.'
     allowed_files:
-      - See notes/T025-tree-mq-elb2-spec.md worker_packages T015.allowed_files (binding)
+      - packages/dragon/src/**
+      - packages/dragon/test/**
+      - scripts/capture-selector-validity.ts
+      - packages/parity/src/**
+      - packages/parity/fixtures/**
+      - packages/parity/test/**
+      - packages/parity/expected/**
+      - packages/parity/expected-dpr/**
+      - packages/layout/vectors/**
+      - packages/parity/emitted/**
+      - packages/parity/out/lanes.json
+      - packages/translate/corpus-dpr.json
+      - examples/music-player/**
     verify:
       - See notes/T025-tree-mq-elb2-spec.md T015.verify (binding)
     stop_if:
       - See notes/T025-tree-mq-elb2-spec.md T015.stop_if (binding)
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T015-tree.md
+      changed_files:
+        - packages/dragon/src/**
+        - packages/dragon/test/**
+        - scripts/capture-selector-validity.ts
+        - packages/parity/src/**
+        - packages/parity/fixtures/**
+        - packages/parity/test/**
+        - packages/parity/expected/**
+        - packages/parity/expected-dpr/**
+        - packages/layout/vectors/**
+        - packages/parity/emitted/**
+        - packages/parity/out/lanes.json
+        - packages/translate/corpus-dpr.json
+        - examples/music-player/**
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1458
+          status: pass
+        - cmd: captures stable; parity:report 348/348; dpr-report 1044/1044
+          status: pass
+        - cmd: native:gen, swift, kotlin, build ios and android at 348; parity:lanes --run-host
+          status: pass
+        - cmd: planted faults; selector-validity --check; north-star:check x2
+          status: pass
+      summary: 'ns-tree 2d812f1: attributes as match data, #id, the Chrome selector-validity table, void elements, the north star as a tree fixture compiled for web, ios and android. Attribute errors 40 to 22, selector errors 14 to 9, element errors 29 to 21. The device step is pending P5 (T043). The determinism test is near its timeout (T042).'
     constraints:
       - 'PM: compile.test.ts line ~158 retargets ''#x'' to a still-refused selector; selectors.test.ts line 69 becomes an acceptance check; planted-fault tests go in the new packages/parity/test/tree-faults.test.ts; the void img reject uses the src attribute naming REPL.'
       - Notes are never committed on branches.
@@ -1059,7 +1092,7 @@ tasks:
   - id: T036
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: fonts
     objective: Vendor Lato 2.015 Regular and Bold (Google Fonts build, the sha256 values in notes/T035) into vendor/fonts/Lato with OFL and provenance. Add Lato 400 and 700 matching and metric cases to the font captures, and Lato Chrome paragraphs to the HarfBuzz gate corpus (620 plus the new ones, all exact). Map 'Lato' in the north-star font config when T011 Phase B lands. Runs after T028 (which shares packages/dragon/test/fonts).
     allowed_files:
@@ -1075,7 +1108,25 @@ tasks:
       - Lato disagrees with Chrome after checking the Blink source (report it; no tolerance)
       - Need files outside allowed_files
       - Verification fails twice
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T036-lato.md
+      changed_files:
+        - vendor/fonts/Lato/**
+        - vendor/fonts/README.md
+        - packages/dragon/test/fonts/**
+        - scripts/capture-font-data.ts
+        - packages/text-shaper/**
+        - docs/research/text-spike/**
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1508
+          status: pass
+        - cmd: capture-font-data --check
+          status: pass
+        - cmd: gate 620 + 640 Lato = 1260/1260 exact
+          status: pass
+      summary: 'lato-font 71dbdf4: Lato 2.015 from google/fonts 5d3b7612 (sha256 verified). 80 metric rows and 233 matching requests exact; 640 Chrome gate cases exact on the first run. Retargeted vendored.test size budget (the original eight stay under 4 MB; Lato pinned by byte count).'
     constraints:
       - Download from a pinned google/fonts commit, not main, and re-verify sha256 d636e468… (Regular) and 8a0aace7… (Bold); include OFL.txt; record LatoGFVersion 080cb69711ca050d91e9c866e58df7a73095c69a.
       - The north-star Chrome recapture (T034) follows T011 Phase B and T036.
@@ -1116,6 +1167,58 @@ tasks:
       - The device lease is not held
       - Verification fails twice
     receipt: null
+  - id: T042
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: integrator
+    objective: 'Keep the parity determinism test (parity.test.ts ''determinism (S5 (c))'', 101 s of its 120 s limit) scalable: either derive the timeout from the fixture count with a measured per-case budget, or parallelise or shard the determinism pass. It must still compile every fixture twice and compare byte-for-byte; no coverage loss. After T007.'
+    allowed_files:
+      - packages/parity/test/parity.test.ts
+      - packages/parity/src/pipeline.ts (only if needed for sharding)
+      - vitest.config.ts
+    verify:
+      - pnpm test green under load; determinism still covers every fixture
+    stop_if:
+      - Coverage would shrink
+      - Verification fails twice
+    receipt: null
+  - id: T043
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: integrator
+    objective: 'Integrator after P5: merge ns-tree (2d812f1, T015), then run TREE''s device step (verify 18) on both leases.'
+    allowed_files:
+      - The ns-tree diff plus regenerated outputs and device-step outputs
+    verify:
+      - As in the T025 note T015 verify, plus the device step
+    stop_if:
+      - As in T002
+    receipt: null
+  - id: T041
+    type: worker
+    assignee: Worker
+    status: done
+    lane: integrator
+    objective: 'Integrator: merge lato-font into master.'
+    allowed_files:
+      - The lato-font diff
+    verify:
+      - typecheck; test; capture-font-data --check; gate 1260/1260
+    stop_if:
+      - As in T002
+    receipt:
+      result: done
+      harness: claude-code
+      changed_files:
+        - "The lato-font diff"
+      commands:
+        - cmd: "pnpm typecheck; pnpm test 1508; capture-font-data --check; gate 1260/1260"
+          status: pass
+        - cmd: "ff master 71dbdf4"
+          status: pass
+      summary: "Master is 71dbdf4 with Lato; captures only gained Lato entries."
   - id: T999
     type: judge
     assignee: Judge
