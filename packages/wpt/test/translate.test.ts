@@ -81,9 +81,9 @@ describe('translator refusals and the compiler gate', () => {
     expect(missing(page('.t { width: 10px; }', '<div class="t" data-expected-width="10"></div>', ` onload="checkLayout('.t:nth-child(1)')"`))).toBe('translate:checklayout-selector');
   });
 
-  it('<span>, em lengths and non-Ahem text are gated by Dragon itself, not by a list', () => {
+  it('<span>, an unsupported unit (ex) and non-Ahem text are gated by Dragon itself, not by a list', () => {
     expect(missing(page('.t { width: 100px; }', '<div class="t" data-expected-width="100"><span></span></div>'))).toMatch(/^DRAGON_UNSUPPORTED_ELEMENT:<span /);
-    expect(missing(page('.t { width: 10em; height: 10px; }', '<div class="t" data-expected-width="160"></div>'))).toBe('DRAGON_UNSUPPORTED_VALUE:width:<length-em>');
+    expect(missing(page('.t { width: 10ex; height: 10px; }', '<div class="t" data-expected-width="80"></div>'))).toBe('DRAGON_UNSUPPORTED_VALUE:10ex');
     expect(missing(page('.t { width: 100px; }', '<div class="t" data-expected-height="18">hello</div>'))).toBe('layout-projection:DRAGON_UNSUPPORTED_FONT:hello');
   });
 

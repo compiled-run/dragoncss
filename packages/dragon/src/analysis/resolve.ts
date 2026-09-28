@@ -10,7 +10,7 @@ import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
 import type { Candidate } from './cascade.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeOverflowPair, declaredUserAgentValue, initialValue, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { blockifyRoot, computeLengths, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 
@@ -88,6 +88,7 @@ const displayOf = (el: ResolvedElement): string => {
 // css-cascade-5 §4-§7: the winning declaration, inheritance, then user-agent or initial values, for every longhand.
 // Logical ancestry is the linked tree: projected children match under their insertion parent (docs/api.md §3.1).
 export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment): ResolvedElement {
+  let resolvedRoot: ResolvedElement | null = null;
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {
     const here = [...chain, el];
     const { winners, matched } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment));
@@ -132,6 +133,12 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         defaulted.add(p);
       }
     }
+    const parentFontSize = parent === null ? pxOf(parseValueText('font-size', environment.ua.computed.html['font-size'] as string)) : pxOf((parent.props.get('font-size') as ResolvedValue).value);
+    const rootFontSize = resolvedRoot === null ? null : pxOf((resolvedRoot.props.get('font-size') as ResolvedValue).value);
+    // The UA em defaults below read the element's computed font-size, so an author em or rem font-size is made px first.
+    const fontSize = new Map<Longhand, ResolvedValue>([['font-size', props.get('font-size') as ResolvedValue]]);
+    computeLengths(fontSize, parentFontSize, rootFontSize);
+    props.set('font-size', fontSize.get('font-size') as ResolvedValue);
     applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
@@ -139,6 +146,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         props.set(p, { ...set, value: { ...set.value, value: perturbColor(set.value.value) } });
       }
     }
+    computeLengths(props, parentFontSize, rootFontSize);
     if (parent === null) props.set('display', blockifyRoot(props.get('display') as ResolvedValue));
     computeOverflowPair(props);
     const self: { kind: 'element'; element: LinkedElement; props: Map<Longhand, ResolvedValue>; children: (ResolvedElement | ResolvedText)[] } = {
@@ -147,6 +155,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       props,
       children: [],
     };
+    if (resolvedRoot === null) resolvedRoot = self;
     const kids: (ResolvedElement | LinkedText)[] = el.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
     // An inline formatting context is a maximal sequence of text; display: none elements generate no box (CSS2 §9.2.4), so
     // they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).

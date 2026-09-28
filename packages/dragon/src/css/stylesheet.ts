@@ -15,6 +15,7 @@ import { parseSelectorList } from './selectors.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
 import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, tokenValue, toValue } from './values.ts';
+import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 
 export type { CssValue } from './values.ts';
 export { featureOf } from './values.ts';
@@ -190,6 +191,11 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
   const values: CssValue[] = baseline === null ? [] : [baseline];
   for (const t of baseline === null ? tokens : []) {
+    const unitRefused = t.type === 'Dimension' ? unitRefusal(normalizeUnit(String(t['unit']))) : t.type === 'Function' ? mathFunctionRefusal(String(t['name'])) : null;
+    if (unitRefused !== null) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${unitRefused.reason}`, manual: unitRefused.fix }));
+      return null;
+    }
     const v = wide ? toValue(t, property) : tokenValue(t, property);
     if (typeof v === 'string') {
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${v}`, manual: COLOR_FIX }));

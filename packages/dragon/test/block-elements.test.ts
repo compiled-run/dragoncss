@@ -58,6 +58,13 @@ describe('declared UA values', () => {
     expect(explainOne(c, 'ios', 'h3', 'margin-top').value).toBe('12px');
     expect(explainOne(c, 'ios', 'ul', 'margin-top').value).toBe('12px');
   });
+  it('an author em or rem font-size is computed before the UA em margins read it, and author em margins read a UA font-size', () => {
+    const c = project().compile(inputFor(`${FONT} .s { font-size: 10px; } .e { font-size: 2em; } .r { font-size: 2rem; } .m { margin-top: 1em; }`, (r) => [el(r, 'd', 'div', ['s'], [el(r, 'h3', 'h3', ['e']), el(r, 'h4', 'h4', ['r']), el(r, 'h1', 'h1', ['m'])])]));
+    const v = (id: string, p: string): unknown => explainOne(c, 'ios', id, p).value;
+    expect([v('h3', 'font-size'), v('h3', 'margin-top')]).toEqual(['20px', '20px']);
+    expect([v('h4', 'font-size'), v('h4', 'margin-top')]).toEqual(['32px', '42.56px']);
+    expect([v('h1', 'font-size'), v('h1', 'margin-top'), v('h1', 'margin-bottom')]).toEqual(['20px', '20px', '13.4px']);
+  });
   it('a logical UA declaration maps to the physical side of the element direction', () => {
     const rtl = project('rtl').compile(inputFor(FONT, (r) => [el(r, 'ul', 'ul'), el(r, 'dd', 'dd')]));
     expect(explainOne(rtl, 'ios', 'ul', 'padding-right').value).toBe('40px');

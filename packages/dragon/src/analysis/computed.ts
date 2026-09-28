@@ -7,7 +7,7 @@ import { properties as grammar } from '../css/grammar.generated.ts';
 import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
 import type { CssValue, Declaration } from '../css/stylesheet.ts';
-import { CANONICAL_LENGTH_UNIT, normalizeUnit } from '../css/units.ts';
+import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
 import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
 import type { Span } from '../types.ts';
 import type { LinkedElement } from './link.ts';
@@ -136,6 +136,34 @@ export function computeOverflowPair(props: Map<Longhand, ResolvedValue>): void {
   };
   props.set('overflow-x', fix(x));
   props.set('overflow-y', fix(y));
+}
+
+/** The px value of a computed px length, or null for any other value. */
+export function pxOf(v: CssValue): number | null {
+  return v.kind === 'length' && v.unit === CANONICAL_LENGTH_UNIT ? v.value : null;
+}
+
+/**
+ * css-values-4 §6: every length an author declared in a registered unit other than px computes to px. font-size goes first: its
+ * em is the parent's computed font-size and its rem the root's, the initial font-size on the root itself (§6.1.1); Blink keeps
+ * the result as a float (FontDescription); the compiler keeps double, since rounding lives in the engine and css/color.ts
+ * only (ua.test.ts), and the engine stores font sizes as float32 on entry. Every other length then resolves em against the
+ * element's own computed font-size and rem against the root's (rootFontSize null: this element is the root). Inherited values
+ * are already px. rem uses text scale 1 (docs/decisions.md, Text scale).
+ */
+export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSize: number | null, rootFontSize: number | null): void {
+  const toPx = (p: Longhand, em: number | null, rem: number | null): void => {
+    const v = props.get(p) as ResolvedValue;
+    if (v.value.kind !== 'length' || v.value.unit === CANONICAL_LENGTH_UNIT) return;
+    const needs = v.value.unit === 'em' ? em : v.value.unit === 'rem' ? rem : 0;
+    if (needs === null) return;
+    const px = lengthToPx(v.value.value, v.value.unit, { em: em ?? 0, rem: rem ?? 0 });
+    if (px === null) return;
+    props.set(p, { ...v, value: { kind: 'length', value: px, unit: CANONICAL_LENGTH_UNIT } });
+  };
+  toPx('font-size', parentFontSize, rootFontSize ?? parentFontSize);
+  const own = pxOf((props.get('font-size') as ResolvedValue).value);
+  for (const p of props.keys()) if (p !== 'font-size') toPx(p, own, rootFontSize ?? own);
 }
 
 // css-display-3 §2.7: the root element's display is blockified (Chrome reports block for html even under display: initial).
