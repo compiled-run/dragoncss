@@ -423,11 +423,11 @@ function constructValue(lang: EncoderLanguage, t: FieldType, v: unknown, cls: st
       return constructObject(lang, t, v as Record<string, unknown>, cls);
     case 'array': {
       const items = (v as unknown[]).map((x) => constructValue(lang, t.items, x, cls));
-      return lang === 'swift' ? `[${items.join(', ')}]` : `listOf<${kotlinType(t.items, cls)}>(${items.join(', ')})`;
+      return lang === 'swift' ? `[${items.join(', ')}] as ${swiftType(t, cls)}` : `listOf<${kotlinType(t.items, cls)}>(${items.join(', ')})`;
     }
     case 'map': {
       const e = Object.entries(v as Record<string, unknown>).map(([k, x]) => (lang === 'swift' ? `(${str(k)}, ${jsonValue(lang, x)})` : `Pair(${str(k)}, ${jsonValue(lang, x)})`));
-      return lang === 'swift' ? `[${e.join(', ')}]` : `listOf<Pair<String, DumpJson>>(${e.join(', ')})`;
+      return lang === 'swift' ? `[${e.join(', ')}] as DumpJsonObject` : `listOf<Pair<String, DumpJson>>(${e.join(', ')})`;
     }
     case 'json':
       return jsonValue(lang, v);
@@ -436,13 +436,13 @@ function constructValue(lang: EncoderLanguage, t: FieldType, v: unknown, cls: st
 
 function jsonValue(lang: EncoderLanguage, v: unknown): string {
   const s = lang === 'swift';
-  if (v === null) return s ? '.null' : 'DumpJson.Null';
-  if (typeof v === 'boolean') return s ? `.bool(${v})` : `DumpJson.Bool(${v})`;
-  if (typeof v === 'number') return s ? `.number(${constructValue(lang, { kind: 'number' }, v, '')})` : `DumpJson.Num(${constructValue(lang, { kind: 'number' }, v, '')})`;
-  if (typeof v === 'string') return s ? `.string(${stringLiteral(lang, v)})` : `DumpJson.Str(${stringLiteral(lang, v)})`;
-  if (Array.isArray(v)) return s ? `.array([${v.map((x) => jsonValue(lang, x)).join(', ')}])` : `DumpJson.Arr(listOf<DumpJson>(${v.map((x) => jsonValue(lang, x)).join(', ')}))`;
+  if (v === null) return s ? 'DumpJson.null' : 'DumpJson.Null';
+  if (typeof v === 'boolean') return s ? `DumpJson.bool(${v})` : `DumpJson.Bool(${v})`;
+  if (typeof v === 'number') return s ? `DumpJson.number(${constructValue(lang, { kind: 'number' }, v, '')})` : `DumpJson.Num(${constructValue(lang, { kind: 'number' }, v, '')})`;
+  if (typeof v === 'string') return s ? `DumpJson.string(${stringLiteral(lang, v)})` : `DumpJson.Str(${stringLiteral(lang, v)})`;
+  if (Array.isArray(v)) return s ? `DumpJson.array([${v.map((x) => jsonValue(lang, x)).join(', ')}] as [DumpJson])` : `DumpJson.Arr(listOf<DumpJson>(${v.map((x) => jsonValue(lang, x)).join(', ')}))`;
   const e = Object.entries(v as Record<string, unknown>).map(([k, x]) => (s ? `(${stringLiteral(lang, k)}, ${jsonValue(lang, x)})` : `Pair(${stringLiteral(lang, k)}, ${jsonValue(lang, x)})`));
-  return s ? `.object([${e.join(', ')}])` : `DumpJson.Obj(listOf<Pair<String, DumpJson>>(${e.join(', ')}))`;
+  return s ? `DumpJson.object([${e.join(', ')}] as DumpJsonObject)` : `DumpJson.Obj(listOf<Pair<String, DumpJson>>(${e.join(', ')}))`;
 }
 
 function constructObject(lang: EncoderLanguage, t: ObjectType, v: Record<string, unknown>, cls: string): string {
@@ -455,9 +455,23 @@ function constructObject(lang: EncoderLanguage, t: ObjectType, v: Record<string,
   return `${cls}(${args.join(', ')})`;
 }
 
-/** Source that builds one dump with the typed constructors of the emitted encoder. */
-export function constructDump(lang: EncoderLanguage, dump: NativeDump, schema: ObjectType = NATIVE_DUMP_SCHEMA): string {
-  return constructObject(lang, schema, dump as unknown as Record<string, unknown>, 'Dump');
+/**
+ * Source that builds one dump with the typed constructors of the emitted encoder: one function per node (so no generated function
+ * grows large), then the dump. Returns the function declarations; the dump function is named name.
+ */
+export function constructDump(lang: EncoderLanguage, dump: NativeDump, name: string, schema: ObjectType = NATIVE_DUMP_SCHEMA): string[] {
+  const nodesField = schema.fields.find((f) => f.name === 'nodes');
+  if (nodesField === undefined || nodesField.type.kind !== 'array') throw new Error('the schema has no nodes array');
+  const nodeType = nodesField.type.items as ObjectType;
+  const decls = dump.nodes.map((n, j) => (lang === 'swift'
+    ? `func ${name}n${j}() -> DumpNodes {\n  return ${constructObject(lang, nodeType, n as unknown as Record<string, unknown>, 'DumpNodes')}\n}`
+    : `fun ${name}n${j}(): DumpNodes =\n  ${constructObject(lang, nodeType, n as unknown as Record<string, unknown>, 'DumpNodes')}`));
+  const top = constructObject(lang, schema, { ...(dump as unknown as Record<string, unknown>), nodes: [] }, 'Dump');
+  const nodes = dump.nodes.map((_, j) => `${name}n${j}()`).join(', ');
+  const withNodes = lang === 'swift' ? top.replace('nodes: [] as [DumpNodes]', `nodes: [${nodes}] as [DumpNodes]`) : top.replace('nodes = listOf<DumpNodes>()', `nodes = listOf<DumpNodes>(${nodes})`);
+  if (withNodes === top && dump.nodes.length > 0) throw new Error('constructDump: the nodes placeholder was not found');
+  decls.push(lang === 'swift' ? `func ${name}() -> Dump {\n  return ${withNodes}\n}` : `fun ${name}(): Dump =\n  ${withNodes}`);
+  return decls;
 }
 
 /** A string literal in the language, escaping everything outside printable ASCII. */

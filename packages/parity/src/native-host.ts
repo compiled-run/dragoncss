@@ -16,7 +16,10 @@ import { fixtureInput } from './cases.ts';
 import { layoutCases } from './dpr.ts';
 import { PROJECT_ID } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
-import { encoderSource } from './native-encoders.ts';
+import type { EncoderLanguage } from './native-encoders.ts';
+import { constructDump, encoderSource, KOTLIN_DUMP_PACKAGE } from './native-encoders.ts';
+import { referenceDump } from './native-compare.ts';
+import type { NativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { NativeTarget } from './targets.ts';
@@ -474,4 +477,78 @@ export function buildAndroid(opts: { plant?: BuildPlant | null } = {}): BuildRes
   must(run(bt('apksigner'), ['sign', '--ks', keystore, '--ks-pass', 'pass:android', '--key-pass', 'pass:android', '--ks-key-alias', 'dragondebug', '--out', apk, aligned], { env }), 'apksigner sign');
   log.push('zipalign -p 4; apksigner sign with a debug key generated under out/');
   return { target: 'android', cases: emitCases('android').length, sourceSha256: sourceTreeSha256(files), artifact: apk, log, dexes: dexes.map((d) => join(build, 'dex', d)), tools };
+}
+
+// ---------------------------------------------------------------- dump encoders on the host
+
+/**
+ * Every layout case's reference dump (TS engine plus snapRect) at a DPR, re-labelled to the target's device lane with deterministic
+ * non-null pixels, timing, line baseline, start and end, the expected digest and the expected applied values of the target's
+ * backend, so every field kind of the schema is encoded.
+ */
+export function relabelledReferenceDumps(target: NativeTarget, dpr: number): NativeDump[] {
+  const backend = BACKEND_OF[target];
+  const m = referenceMeasurer();
+  return nativeCases().map((n) => {
+    const program = n.programs[backend];
+    const viewport = n.case.environment.viewport;
+    const input = programInput(program, viewport, dpr);
+    const engine = engineBoxes(program, viewport, dpr);
+    const ref = referenceDump({ platform: target, caseId: n.case.id, fixture: n.spec.id, dpr, direction: n.case.environment.direction, compilerDigest: n.compiled.digest, input, engine });
+    const e = expectedDump(program, n.case.id, viewport, dpr, m);
+    const applied = new Map(e.nodes.map((x) => [x.id, x.applied]));
+    const sha = createHash('sha256').update(n.case.id).digest('hex');
+    return {
+      ...ref,
+      lane: target === 'ios' ? 'ios-sim' : 'android-emu',
+      case: { ...ref.case, expectedDigest: expectedDigest(e) },
+      device: { platform: target, os: 'host encoder test', model: 'none', abi: 'host', scale: dpr, toolchain: 'host', renderer: 'none' },
+      nodes: ref.nodes.map((x) => ({
+        ...x,
+        native: e.nodes.find((y) => y.id === x.id)?.native ?? x.native,
+        applied: applied.get(x.id) ?? {},
+        lines: x.lines.map((l, j) => ({ ...l, baseline: l.frame.height * 0.8, start: 3 * j, end: 3 * j + 2 })),
+      })),
+      pixels: { capture: target === 'ios' ? 'drawHierarchy' : 'PixelCopy', colorSpace: 'sRGB', width: Math.ceil(viewport.width * dpr), height: Math.ceil(viewport.height * dpr), sha256: sha, samples: [{ x: 1, y: 2, rgba: [255, 255, 255, 255], rule: `interior:${ref.nodes[0]?.id ?? 'root'}` }] },
+      timing: { settleMs: 1.25, dumpMs: 0.5 },
+    } as NativeDump;
+  });
+}
+
+/** Compiles the encoder with a program that builds the dumps by typed constructors and prints each as one JSON line; returns the lines. */
+export function runEncoder(lang: EncoderLanguage, encoder: string, dumps: readonly NativeDump[], dir: string): string[] {
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  if (lang === 'swift') {
+    writeFileSync(join(dir, 'DragonDump.swift'), encoder);
+    const perFile = 20;
+    const files: string[] = [join(dir, 'DragonDump.swift')];
+    for (let f = 0; f * perFile < dumps.length; f++) {
+      const part = dumps.slice(f * perFile, (f + 1) * perFile).flatMap((d, i) => constructDump(lang, d, `d${f * perFile + i}`));
+      const file = join(dir, `Dumps${f}.swift`);
+      writeFileSync(file, `import Foundation\n\n${part.join('\n\n')}\n`);
+      files.push(file);
+    }
+    writeFileSync(join(dir, 'main.swift'), `import Foundation\n\nlet all: [() -> Dump] = [${dumps.map((_, i) => `d${i}`).join(', ')}]\nfor f in all { print(dumpJson(f())) }\n`);
+    files.push(join(dir, 'main.swift'));
+    must(run('xcrun', ['swiftc', '-Onone', '-j', String(availableParallelism()), '-module-name', 'DragonEncoderTest', '-o', join(dir, 'encoder'), ...files], { timeoutMs: 1_800_000 }), 'swiftc (encoder test)');
+    return must(run(join(dir, 'encoder'), []), 'encoder test').split('\n').filter((l) => l.startsWith('{'));
+  }
+  const tools = androidTools();
+  const env = { ...process.env, JAVA_HOME: tools.javaHome };
+  const perFile = 20;
+  const files: string[] = [];
+  writeFileSync(join(dir, 'DragonDump.kt'), encoder);
+  files.push(join(dir, 'DragonDump.kt'));
+  for (let f = 0; f * perFile < dumps.length; f++) {
+    const part = dumps.slice(f * perFile, (f + 1) * perFile).flatMap((d, i) => constructDump(lang, d, `d${f * perFile + i}`));
+    const file = join(dir, `Dumps${f}.kt`);
+    writeFileSync(file, `package ${KOTLIN_DUMP_PACKAGE}\n\n${part.join('\n\n')}\n`);
+    files.push(file);
+  }
+  writeFileSync(join(dir, 'Main.kt'), `package ${KOTLIN_DUMP_PACKAGE}\n\nfun main() {\n  val all = listOf<() -> Dump>(${dumps.map((_, i) => `::d${i}`).join(', ')})\n  for (f in all) println(dumpJson(f()))\n}\n`);
+  files.push(join(dir, 'Main.kt'));
+  const jar = join(dir, 'encoder.jar');
+  must(run(tools.kotlinc, ['-J-Xmx8g', '-nowarn', '-include-runtime', '-d', jar, ...files], { env, timeoutMs: 1_800_000 }), 'kotlinc (encoder test)');
+  return must(run(join(tools.javaHome, 'bin', 'java'), ['-cp', jar, `${KOTLIN_DUMP_PACKAGE}.MainKt`], { env }), 'encoder test').split('\n').filter((l) => l.startsWith('{'));
 }

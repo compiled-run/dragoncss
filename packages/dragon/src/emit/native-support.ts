@@ -386,13 +386,15 @@ public final class DragonBridge {
   public let data: FontData
   public let selfCheck: [String]
   public let measurer: TextMeasurer
+  private let descriptor: CTFontDescriptor
   private init() {
     guard let url = Bundle.main.url(forResource: "Ahem", withExtension: "ttf") else { fatalError("dragon bridge: Ahem.ttf is not bundled") }
     guard let bytes = try? Data(contentsOf: url) else { fatalError("dragon bridge: Ahem.ttf cannot be read") }
     fontSha256 = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
     var error: Unmanaged<CFError>?
     if !CTFontManagerRegisterFontsForURL(url as CFURL, .process, &error) { fatalError("dragon bridge: CTFontManagerRegisterFontsForURL failed: \(String(describing: error?.takeRetainedValue()))") }
-    guard let descriptors = CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor], let descriptor = descriptors.first else { fatalError("dragon bridge: no font in Ahem.ttf") }
+    guard let descriptors = CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor], let first = descriptors.first else { fatalError("dragon bridge: no font in Ahem.ttf") }
+    descriptor = first
     let probe = CTFontCreateWithFontDescriptor(descriptor, 16, nil)
     guard let headData = CTFontCopyTable(probe, CTFontTableTag(kCTFontTableHead), []) as Data?, let hheaData = CTFontCopyTable(probe, CTFontTableTag(kCTFontTableHhea), []) as Data? else { fatalError("dragon bridge: head or hhea is missing") }
     let header = dragonFontHeader(head: [UInt8](headData), hhea: [UInt8](hheaData))
@@ -432,6 +434,16 @@ public final class DragonBridge {
     w.key("descent"); w.number(data.descent, path: "bridge.descent")
     w.key("lineGap"); w.number(data.lineGap, path: "bridge.lineGap")
     w.key("advances"); w.array(data.advances.items, length: nil, path: "bridge.advances") { x, w in w.number(x, path: "bridge.advances[]") }
+    w.key("probe"); w.array([10.0, 26.25, 100.0, 256.0, 257.0, 512.0, 1000.0, 2048.0], length: nil, path: "bridge.probe") { size, w in
+      // Evidence only, never an input: the typeset advance of U+0058 at other point sizes, in font units.
+      let f = CTFontCreateWithFontDescriptor(descriptor, CGFloat(size), nil)
+      let attributed = NSAttributedString(string: "X", attributes: [NSAttributedString.Key(kCTFontAttributeName as String): f])
+      let line = CTTypesetterCreateLine(CTTypesetterCreateWithAttributedString(attributed), CFRange(location: 0, length: 0))
+      w.beginObject()
+      w.key("textSize"); w.number(size, path: "bridge.probe.textSize")
+      w.key("advanceUnits"); w.number(Double(CTLineGetTypographicBounds(line, nil, nil, nil)) * data.unitsPerEm / size, path: "bridge.probe.advanceUnits")
+      w.endObject()
+    }
     w.key("selfCheck"); w.string(selfCheck.isEmpty ? "pass" : "fail", nonEmpty: true, path: "bridge.selfCheck")
     w.key("mismatches"); w.array(selfCheck, length: nil, path: "bridge.mismatches") { x, w in w.string(x, nonEmpty: true, path: "bridge.mismatches[]") }
     w.endObject()
@@ -494,7 +506,8 @@ public final class DragonTree {
   /// native parent as CGFloat(edge - parentEdge) / scale. No Auto Layout.
   public func apply(_ input: LayoutInput, measurer: TextMeasurer, scale: Double, fontFor: (Double) -> UIFont) throws {
     let result = try layout_layout(input, measurer)
-    guard let ok = result as? LayoutResult_ok else { fatalError("dragon: the engine refused the case") }
+    if let refused = result as? LayoutResult_unsupported { fatalError("dragon: the engine refused the case: \(refused.unsupported.code) at \(refused.unsupported.nodeId): \(refused.unsupported.detail)") }
+    guard let ok = result as? LayoutResult_ok else { fatalError("dragon: the engine gave no result") }
     let boxes = ok.boxes.items
     let snapped = try snap_snapEdges(ok.boxes).items
     let abs = try layout_absoluteRects(ok.boxes)
@@ -1093,12 +1106,24 @@ class DragonBridge private constructor(ctx: Context) {
     w.key("descent"); w.number(data.descent, "bridge.descent")
     w.key("lineGap"); w.number(data.lineGap, "bridge.lineGap")
     w.key("advances"); w.array(data.advances, null, "bridge.advances") { x -> w.number(x, "bridge.advances[]") }
+    w.key("probe"); w.array(PROBE_SIZES, null, "bridge.probe") { size ->
+      // Evidence only, never an input: the run advance of U+0058 at other text sizes, in font units.
+      val p = Paint(Paint.LINEAR_TEXT_FLAG or Paint.SUBPIXEL_TEXT_FLAG)
+      p.typeface = typeface
+      p.textSize = size.toFloat()
+      w.beginObject()
+      w.key("textSize"); w.number(size, "bridge.probe.textSize")
+      w.key("advanceUnits"); w.number(p.getRunAdvance("X", 0, 1, 0, 1, false, 1).toDouble() * data.unitsPerEm / size, "bridge.probe.advanceUnits")
+      w.endObject()
+    }
     w.key("selfCheck"); w.string(if (selfCheck.isEmpty()) "pass" else "fail", true, "bridge.selfCheck")
     w.key("mismatches"); w.array(selfCheck, null, "bridge.mismatches") { x -> w.string(x, true, "bridge.mismatches[]") }
     w.endObject()
     return w.text.toString()
   }
   companion object {
+    /** Text sizes of the evidence-only advance probe written beside the self-check. */
+    val PROBE_SIZES = listOf(10.0, 26.25, 100.0, 256.0, 257.0, 512.0, 1000.0, 2048.0)
     @Volatile private var instance: DragonBridge? = null
     fun shared(ctx: Context): DragonBridge = instance ?: synchronized(this) { instance ?: DragonBridge(ctx.applicationContext).also { instance = it } }
   }
@@ -1198,7 +1223,9 @@ class DragonTree(val context: Context) {
   /** Runs the translated engine at the device scale, snaps with the translated snapEdges and stores every frame in device px. */
   fun apply(input: LayoutInput, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) {
     val result = layout_layout(input, measurer)
-    val ok = result as? LayoutResult_ok ?: throw IllegalStateException("dragon: the engine refused the case")
+    val refused = result as? dev.dragon.layout.LayoutResult_unsupported
+    if (refused != null) throw IllegalStateException("dragon: the engine refused the case: " + refused.unsupported.code + " at " + refused.unsupported.nodeId + ": " + refused.unsupported.detail)
+    val ok = result as? LayoutResult_ok ?: throw IllegalStateException("dragon: the engine gave no result")
     val boxes = ok.boxes
     val snapped = snap_snapEdges(ok.boxes)
     val abs = layout_absoluteRects(ok.boxes)
