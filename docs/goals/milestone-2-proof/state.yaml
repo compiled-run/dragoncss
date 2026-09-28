@@ -75,7 +75,7 @@ visual_board:
     url: "http://goalbuddy.localhost:41737/milestone-2-proof/"
     command: "node /Users/jacksm5pro/.claude-swap-backup/sessions/2-jackshelton30_gmail.com/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-2-proof"
 
-active_task: T001
+active_task: T002
 dispatched: [T002, T003, T004, T006, T010] # tasks running concurrently in their own lanes (PM-maintained)
 device_lease: null # task id holding simulators and emulators
 
@@ -83,7 +83,7 @@ tasks:
   - id: T001
     type: pm
     assignee: PM
-    status: active
+    status: done
     lane: pm
     objective: "Land the uncommitted milestone-2 docs on master so P5's stop condition is cleared. Commit: docs/decisions.md with the T015 O2 fixes; a new owner ruling 'selection and editing of custom-drawn text: Dragon builds it, native feel' that annotates decision 7; docs/research/*; docs/goals/milestone-2 (T015 marked done with a receipt pointing at notes/T015); docs/goals/milestone-2-proof; scripts/update-wpt.sh. Also point T014 note section 2 at sections 1 and 5 (O1)."
     inputs:
@@ -94,11 +94,18 @@ tasks:
       - "Commit locally on master; no push."
     expected_output:
       - "Commit sha on master; list of files"
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "Committed bf9793b on master: decisions.md (owner edits plus O2 fixes: the Text strategy advances bullet marked superseded by font-unit and HarfBuzz advances, decision 7 annotated, new 'Text selection and editing' ruling: Dragon builds it with a native feel), docs/research plans and the text spike, the milestone-2 board (T015 done with its receipt; T999 active as a history audit) and this board. The API 29-30 drawText bullet was already gone. O1 skipped: the T014 note exists only on the P4 branch, so the integrator can fix it at merge. design/ left untouched."
+      evidence:
+        - bf9793b
+        - docs/decisions.md
+        - docs/goals/milestone-2/state.yaml
   - id: T002
     type: worker
     assignee: Worker
-    status: queued
+    status: active
     lane: integrator
     reasoning_hint: high
     objective: "Integrator, in /tmp/dragon-int on branch integration: finish the in-progress feat-block-elements merge (regenerate every generated file, never hand-merge), then merge serially feat-cascade-var, feat-units, wpt-breadth, engine-linebreak (unwired) and t014-p4-backends with T015 M1 (derived counts in native-host.test.ts) and M2 (union of package.json scripts). After each merge run typecheck and pnpm test. After P4 also run native:build for ios and android at derived counts and parity:lanes --run-host, then check that lanes.json is clean. Finally merge master (T001's docs) and fast-forward master to integration."
