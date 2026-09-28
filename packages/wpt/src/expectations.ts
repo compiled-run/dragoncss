@@ -1,6 +1,6 @@
 // The per-target expectations file: one entry per CSS WPT test file, pinned to the WPT commit, sorted, without timings.
 // wpt:check fails on any difference from a recomputed run; the update merge never rewrites an existing fail entry's reason.
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { chromeDeviations, dprChromeDeviations } from '@dragon/layout';
 import type { Target } from './dragon.ts';
 import { packagePath } from './paths.ts';
@@ -141,4 +141,26 @@ export function mergeExpectations(previous: Expectations | null, run: Expectatio
     tests[p] = a.status === 'fail' ? { status: 'fail', subtests: a.subtests, checks: a.checks, chrome: a.chrome, reason: TODO, ...interop } : a;
   }
   return { wpt: run.wpt, target: run.target, profileRevision: run.profileRevision, tests };
+}
+
+/** The part of a wpt:run output (out/<target>.json) the update merge reads. */
+export type RunOutput = { readonly wpt: string; readonly target: Target; readonly filter: string | null; readonly chrome: string; readonly expectations: Expectations };
+
+/** Reads a wpt:run output for the update merge, or says in one line why it can't be used (missing, unreadable, filtered, no Chrome, stale commit). */
+export function readRunForUpdate(runFile: string, target: Target, locked: string): { readonly run: RunOutput } | { readonly problem: string } {
+  if (!existsSync(runFile)) return { problem: `no ${runFile}: run pnpm wpt:run --target ${target} first` };
+  let run: RunOutput;
+  try {
+    run = JSON.parse(readFileSync(runFile, 'utf8')) as RunOutput;
+  } catch (e) {
+    return { problem: `${runFile} is not readable JSON (${(e as Error).message}): run pnpm wpt:run --target ${target} again` };
+  }
+  if (run === null || typeof run !== 'object' || run.expectations === undefined || typeof run.expectations.tests !== 'object') {
+    return { problem: `${runFile} has no expectations: run pnpm wpt:run --target ${target} again` };
+  }
+  if (run.expectations.target !== target) return { problem: `${runFile} is a ${run.expectations.target} run, not ${target}` };
+  if (run.filter !== null) return { problem: `${runFile} is a filtered run (${run.filter}); expectations are updated only from a full run` };
+  if (run.chrome === 'none') return { problem: `${runFile} was run with --no-chrome; failures need Chrome's result on the same checks` };
+  if (run.wpt !== locked) return { problem: `${runFile} is at WPT ${run.wpt}, packages/wpt/wpt.lock pins ${locked}` };
+  return { run };
 }

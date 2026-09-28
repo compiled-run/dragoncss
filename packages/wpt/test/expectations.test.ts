@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Entry, Expectations } from '../src/expectations.ts';
-import { compareExpectations, DEVIATION_IDS, expectationsPath, failEntryProblems, mergeExpectations, readExpectations, serializeExpectations, TODO } from '../src/expectations.ts';
+import { compareExpectations, DEVIATION_IDS, expectationsPath, failEntryProblems, mergeExpectations, readExpectations, readRunForUpdate, serializeExpectations, TODO } from '../src/expectations.ts';
 import { labelsByPath, loadInteropLabels } from '../src/interop.ts';
 import { buildManifest, countKinds, isTestFile, kindOf, testFilePaths } from '../src/manifest.ts';
 import { lockedCommit, pinnedWptDir, REPO_ROOT, vendoredCommit } from '../src/paths.ts';
@@ -117,6 +117,27 @@ describe('the check and the update merge', () => {
     expect(merged.tests['b.html']).toEqual(base.tests['b.html']);
     expect(compareExpectations(merged, run).some((p) => p.startsWith('a.html: fail entry needs a reason'))).toBe(true);
     expect(compareExpectations(merged, run).some((p) => p.startsWith('b.html: unexpected pass'))).toBe(true);
+  });
+  it('update reports a missing, unreadable, filtered, Chrome-less, other-target or stale run file as a problem instead of throwing', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'dragon-wpt-update-'));
+    const write = (name: string, body: unknown) => {
+      const file = join(dir, name);
+      writeFileSync(file, typeof body === 'string' ? body : JSON.stringify(body));
+      return file;
+    };
+    const good = { wpt: 'w', target: 'web', filter: null, chrome: 'runnable', expectations: base };
+    expect(readRunForUpdate(write('good.json', good), 'web', 'w')).toEqual({ run: good });
+    const problem = (file: string, locked = 'w') => {
+      const r = readRunForUpdate(file, 'web', locked);
+      return 'problem' in r ? r.problem : null;
+    };
+    expect(problem(join(dir, 'absent.json'))).toMatch(/^no .*absent\.json: run pnpm wpt:run --target web first$/);
+    expect(problem(write('truncated.json', '{"wpt": "w", "expec'))).toMatch(/is not readable JSON/);
+    expect(problem(write('empty.json', {}))).toMatch(/has no expectations/);
+    expect(problem(write('filtered.json', { ...good, filter: 'css/css-flexbox' }))).toMatch(/is a filtered run \(css\/css-flexbox\)/);
+    expect(problem(write('nochrome.json', { ...good, chrome: 'none' }))).toMatch(/was run with --no-chrome/);
+    expect(problem(write('stale.json', good), 'v')).toMatch(/is at WPT w, packages\/wpt\/wpt\.lock pins v/);
+    expect(problem(write('other.json', { ...good, expectations: { ...base, target: 'ios' } }))).toMatch(/is a ios run, not web/);
   });
 });
 

@@ -49,13 +49,13 @@ Top not-runnable reasons for numeric files (grouped by property; the exact reaso
 |---|---:|
 | `translate:script` (inline script logic besides `checkLayout`) | 161 |
 | `DRAGON_UNSUPPORTED_PROPERTY:grid-column` (mostly from the linked `/css/support/grid.css`) | 142 |
-| `DRAGON_UNSUPPORTED_PROPERTY:writing-mode` | 121 |
-| `DRAGON_UNSUPPORTED_PROPERTY:background` | 106 |
-| `DRAGON_UNSUPPORTED_PROPERTY:grid-template-columns` | 106 |
+| `DRAGON_UNSUPPORTED_PROPERTY:writing-mode` | 141 |
+| `DRAGON_UNSUPPORTED_PROPERTY:background` | 108 |
+| `DRAGON_UNSUPPORTED_PROPERTY:grid-template-columns` | 107 |
 | `translate:script-src` (helper scripts: `style-change.js` 44, `test-common.js` 44) | 88 |
-| `DRAGON_UNSUPPORTED_PROPERTY:font` | 47 |
-| `DRAGON_UNSUPPORTED_PROPERTY:inline-size` | 36 |
+| `DRAGON_UNSUPPORTED_PROPERTY:font` | 48 |
 | `DRAGON_UNSUPPORTED_PROPERTY:float` | 35 |
+| `DRAGON_UNSUPPORTED_PROPERTY:outline` | 28 |
 | `DRAGON_UNSUPPORTED_PROPERTY:grid-auto-flow` | 27 |
 
 ## Commands
@@ -136,7 +136,8 @@ pnpm wpt:interop-labels --metadata <dir>     # re-derives interop-labels.json fr
 - **`pass`:** records the subtest counts, and Chrome's result on the same page (`chrome`: harness status, subtests, checks).
 - **`fail`:** needs a `reason`, plus:
   - a `deviation`, an id from `packages/layout/src/chrome-deviations*.ts`, when Chrome also fails a check that Dragon fails;
-  - an `issue` (a Dragon bug) when Chrome passes a check that Dragon fails.
+  - an `issue` (a Dragon bug) when Chrome passes a check that Dragon fails. Issue ids have the form `dragon#<slug>`: a short, lowercase,
+    hyphenated name for the bug, for example `dragon#flex-min-height-012`. One id may cover several files that fail for the same reason.
 
   The entry also records Chrome's result on the same checks (`chrome.checks` and `chrome.alsoFails`), so the classification is checked mechanically.
 - **`not-runnable`:** needs `missing`, which is the kind, the translator refusal, the first compiler diagnostic, or an assertion or projection reason.
