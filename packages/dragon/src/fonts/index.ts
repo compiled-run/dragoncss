@@ -8,6 +8,7 @@ export * from './manifest.ts';
 export * from './font-map.ts';
 export * from './cssom.ts';
 export * from './faults.ts';
+export * from './variable-fence.ts';
 export { tokenize, TokenStream, asciiLower } from './css-tokens.ts';
 export type { Token } from './css-tokens.ts';
 export { rapidhash, capabilitiesHash, hashTableOrder } from './wtf-hash.ts';

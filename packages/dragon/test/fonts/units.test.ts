@@ -128,7 +128,9 @@ describe('manifest', () => {
   });
 
   it('records the typed metrics refusal of a variable face', () => {
-    const resolve: FontAssetResolver = (s) => (s === 'v.ttf' ? { id: 'v', bytes: renameTable(REGULAR, 'gasp', 'fvar') } : null);
+    // Inter VF: the one variable font the fence lets through (variable-fence.test.ts refuses the others).
+    const interVf = new Uint8Array(readFileSync(new URL('../../../../docs/research/text-spike/fonts/Inter-VF.ttf', import.meta.url)));
+    const resolve: FontAssetResolver = (s) => (s === 'v.ttf' ? { id: 'v', bytes: interVf } : null);
     const m = buildManifest(results('@font-face{font-family:V;src:url(v.ttf)}', resolve));
     expect(m.ok && m.manifest.faces[0]?.metricsRefusal).toEqual({ kind: 'variable-font' });
   });

@@ -1,6 +1,8 @@
 // Loads dragon_hb.wasm (build.zig, `zig build wasm`) and exposes the shim's integer-only API.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { VariableFontRefused, faceFacts, fenceFace, fenceInstance, loadValidatedVariableFonts } from './fence.ts';
+import type { FaceFacts, ValidatedVariableFonts, VariableFontRefusal } from './fence.ts';
 
 /** Integers per shaped glyph: glyph id, cluster, x advance, y advance, x offset, y offset, flags (16.16 for positions). */
 export const GLYPH_STRIDE = 7;
@@ -30,6 +32,11 @@ export interface FontOptions {
   readonly slope?: number;
   readonly opticalSizingAuto?: boolean;
   readonly variations?: readonly Variation[];
+}
+
+export interface LoadOptions {
+  /** Planted fault: the variable-font fence lets every face and instance through. */
+  readonly fenceDisabled?: boolean;
 }
 
 export interface ShapeOptions {
@@ -101,25 +108,30 @@ export class DragonHB {
   private textPtr = 0;
   private textCap = 0;
   private textKey: string | undefined;
+  private readonly faces = new Map<number, FaceFacts>();
+  private readonly validated: ValidatedVariableFonts;
+  private readonly fenceDisabled: boolean;
 
-  private constructor(x: Exports) {
+  private constructor(x: Exports, options: LoadOptions) {
     this.x = x;
+    this.validated = loadValidatedVariableFonts();
+    this.fenceDisabled = options.fenceDisabled === true;
     this.shaper = x.dhb_shaper_create();
     if (this.shaper === 0) throw new Error('dhb_shaper_create failed');
   }
 
-  static load(path: string = DEFAULT_WASM_PATH): DragonHB {
-    return DragonHB.fromBytes(readFileSync(path));
+  static load(path: string = DEFAULT_WASM_PATH, options: LoadOptions = {}): DragonHB {
+    return DragonHB.fromBytes(readFileSync(path), options);
   }
 
-  static fromBytes(bytes: Uint8Array): DragonHB {
+  static fromBytes(bytes: Uint8Array, options: LoadOptions = {}): DragonHB {
     const module = new WebAssembly.Module(bytes);
     const wasi = wasiImports();
     const instance = new WebAssembly.Instance(module, { wasi_snapshot_preview1: wasi });
     const x = instance.exports as unknown as Exports;
     (wasi as unknown as { __setMemory(m: WebAssembly.Memory): void }).__setMemory(x.memory);
     x._initialize();
-    return new DragonHB(x);
+    return new DragonHB(x, options);
   }
 
   private u8(): Uint8Array {
@@ -132,12 +144,17 @@ export class DragonHB {
     return p;
   }
 
+  /** Throws VariableFontRefused for a variable font without HVAR or outside validated-variable-fonts.json. */
   createFace(bytes: Uint8Array, index = 0): number {
+    const facts = faceFacts(bytes);
+    const refusal = this.fenceDisabled ? null : fenceFace(facts, this.validated);
+    if (refusal !== null) throw new VariableFontRefused(refusal);
     const p = this.alloc(bytes.length);
     this.u8().set(bytes, p);
     const face = this.x.dhb_face_create(p, bytes.length, index);
     this.x.dhb_free(p);
     if (face === 0) throw new Error('dhb_face_create failed');
+    this.faces.set(face, facts);
     return face;
   }
 
@@ -159,7 +176,17 @@ export class DragonHB {
     return out;
   }
 
+  /** The fence's typed refusal for a font of this face with these options, or null when it may be created. */
+  checkFont(face: number, o: FontOptions): VariableFontRefusal | null {
+    const facts = this.faces.get(face);
+    if (facts === undefined) throw new Error(`unknown face ${face}`);
+    return this.fenceDisabled ? null : fenceInstance(facts, o, this.validated);
+  }
+
+  /** Throws VariableFontRefused for a variable instance outside validated-variable-fonts.json. */
   createFont(face: number, o: FontOptions): number {
+    const refusal = this.checkFont(face, o);
+    if (refusal !== null) throw new VariableFontRefused(refusal);
     const vars = o.variations ?? [];
     const p = vars.length > 0 ? this.alloc(vars.length * 8) : 0;
     if (p !== 0) {
