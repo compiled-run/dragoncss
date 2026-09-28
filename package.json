@@ -25,7 +25,11 @@
     "native:kotlin": "node packages/translate/src/cli/native.ts kotlin",
     "native:planted": "node packages/translate/src/cli/planted.ts",
     "north-star:check": "node examples/music-player/tools/check.ts",
-    "north-star:capture": "node --conditions=dragon-internal examples/music-player/tools/capture-chrome.ts"
+    "north-star:capture": "node --conditions=dragon-internal examples/music-player/tools/capture-chrome.ts",
+    "wpt:run": "node --conditions=dragon-internal packages/wpt/src/cli/run.ts",
+    "wpt:check": "node --conditions=dragon-internal packages/wpt/src/cli/check.ts",
+    "wpt:update-expectations": "node --conditions=dragon-internal packages/wpt/src/cli/update.ts",
+    "wpt:interop-labels": "node packages/wpt/src/cli/interop-labels.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",

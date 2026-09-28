@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<title>Synthetic check-layout page: offsetParent, fractional positions and sizes (expected values measured in Chrome 145)</title>
+<style>
+.p { position: relative; margin-left: 10.5px; border-left: 3px solid black; padding-left: 5px; width: 100.25px; height: 20.5px; margin-top: 3.25px; border-top: 2px solid black; }
+.c { width: 40.5px; height: 10.75px; margin-left: 0.25px; margin-top: 1.5px; }
+.s { width: 7.5px; height: 7.5px; }
+.q { height: 30.5px; border-top: 1.5px solid black; }
+</style>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="/resources/check-layout-th.js"></script>
+<body onload="checkLayout('.p, .q')">
+<div class="p" data-offset-x="19" data-offset-y="8" data-expected-width="108" data-expected-height="23">
+  <div class="c" data-offset-x="5" data-offset-y="2" data-expected-width="41" data-expected-height="11" data-total-x="5" data-expected-client-width="41" data-expected-bounding-client-rect-width="40.5"></div>
+  <div class="s" data-offset-x="5" data-offset-y="12" data-expected-width="8" data-expected-height="8"></div>
+</div>
+<div class="q" data-offset-y="31" data-expected-height="32" data-total-y="32" data-expected-client-height="31"><div class="s" data-offset-x="8" data-offset-y="32" data-expected-height="8"></div></div>
+</body>

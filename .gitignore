@@ -9,3 +9,6 @@ packages/translate/out/
 packages/layout/generated/swift/.build/
 packages/layout/generated/swift/.swiftpm/
 packages/layout/generated/kotlin/build/
+vendor/wpt/
+packages/wpt/out/
+packages/wpt/generated/

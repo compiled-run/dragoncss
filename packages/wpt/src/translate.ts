@@ -1,0 +1,393 @@
+// Translates one check-layout WPT test into a Dragon HTML fixture (the strict subset packages/parity/src/fixture-reader.ts
+// reads) plus a sidecar of the checks. Harness nodes are removed, every <style> becomes the one sheet, inline style="" and #id
+// selectors are lifted into generated classes, and a cascade guard refuses the test when the lift could change a winner.
+// Anything else the fixture cannot express is a refusal; feature support is left to Dragon's compiler.
+import { parse } from 'parse5';
+import type { DefaultTreeAdapterTypes } from 'parse5';
+import type { ComplexSelector, Declaration, Match, MatchElement, Specificity } from './css-lite.ts';
+import { groupsOverlap, matches, parseSelectorList, readDeclarations, readSheet, rewriteIds, specificity, stripComments } from './css-lite.ts';
+
+type P5Node = DefaultTreeAdapterTypes.Node;
+type P5Element = DefaultTreeAdapterTypes.Element;
+
+/** WPT runs every test in an 800x600 viewport at device pixel ratio 1 (wptrunner's default window). */
+export const WPT_VIEWPORT = { width: 800, height: 600 } as const;
+
+/** check-layout-th.js checkExpectedValues order; data-key is its checkDataKeys typo guard. */
+export const CHECK_ATTRIBUTES = [
+  'width', 'height', 'offset-x', 'offset-y', 'client-width', 'client-height', 'scroll-width', 'scroll-height',
+  'bounding-client-rect-width', 'bounding-client-rect-height', 'total-x', 'total-y', 'display',
+  'padding-top', 'padding-bottom', 'padding-left', 'padding-right', 'margin-top', 'margin-bottom', 'margin-left', 'margin-right',
+] as const;
+export type CheckAttribute = (typeof CHECK_ATTRIBUTES)[number] | 'data-key';
+
+const dataName = (a: (typeof CHECK_ATTRIBUTES)[number]): string => (a === 'offset-x' || a === 'offset-y' ? `data-${a}` : a === 'total-x' || a === 'total-y' ? `data-${a}` : `data-expected-${a}`);
+const VALID_DATA = new Set(['data-anchor-polyfill', ...CHECK_ATTRIBUTES.map(dataName)]);
+
+export type Check = {
+  /** The data-dragon-id of the checked element in the fixture. */
+  readonly node: string;
+  /** The element's index in document order in the original page (document.getElementsByTagName('*')). */
+  readonly element: number;
+  readonly attribute: CheckAttribute;
+  /** The attribute text, as check-layout reads it. */
+  readonly expected: string;
+};
+
+export type Subtest = { readonly name: string; readonly target: string; readonly checks: readonly Check[] };
+
+export type Sidecar = {
+  readonly source: string;
+  readonly wpt: string;
+  readonly viewport: { readonly width: number; readonly height: number };
+  readonly subtests: readonly Subtest[];
+};
+
+export type Translation =
+  | { readonly kind: 'refused'; readonly missing: string }
+  | {
+      readonly kind: 'fixture';
+      readonly id: string;
+      readonly html: string;
+      readonly sidecar: Sidecar;
+      /** 'translate:specificity-rewrite' when lifting could change which declaration wins, else null. */
+      readonly guard: string | null;
+      /** Element data-dragon-id to tag, and parent id (null for html). */
+      readonly elements: ReadonlyMap<string, { readonly tag: string; readonly parent: string | null }>;
+    };
+
+const HARNESS_SCRIPT = /\/resources\/(testharness|testharnessreport|check-layout-th)\.js$/;
+const AHEM_SHEET = /\/fonts\/ahem\.css$/i;
+
+type El = {
+  readonly p5: P5Element;
+  readonly tag: string;
+  readonly attrs: Map<string, string>;
+  readonly parent: El | null;
+  previous: El | null;
+  readonly children: (El | { readonly text: string })[];
+  readonly index: number;
+  id: string;
+  removed: boolean;
+};
+
+const refuse = (missing: string): Translation => ({ kind: 'refused', missing });
+
+/** The checkLayout selector lists a harness script calls, or null when it holds any other logic. */
+export function harnessCalls(code: string): string[] | null {
+  let c = code.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  const calls: string[] = [];
+  c = c.replace(/checkLayout\s*\(\s*(['"`])((?:(?!\1)[^\\])*)\1\s*(?:,\s*(?:true|false)\s*)?\)/g, (_m, _q: string, sel: string) => {
+    calls.push(sel);
+    return ' ';
+  });
+  const rest = c.replace(/setup\s*\(\s*\{\s*explicit_done\s*:\s*true\s*\}\s*\)|window\.onload|document\.fonts\.ready\.then|document\.fonts\.ready|window\.addEventListener|document\.addEventListener|addEventListener|(['"])(load|DOMContentLoaded)\1|\bfunction\b|\basync\b|\bawait\b|=>|\bdone\b|\.then|[{}();,=\s]/g, '');
+  return rest === '' ? calls : null;
+}
+
+/** A fixture id for a WPT path: the path with characters outside [A-Za-z0-9/._-] replaced. */
+export const fixtureIdOf = (path: string): string => `wpt/${path.replace(/[^A-Za-z0-9/._-]/g, '_')}`;
+
+const escapeText = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const escapeAttr = (s: string): string => escapeText(s).replace(/"/g, '&quot;');
+
+type GuardRule = { readonly selectors: readonly ComplexSelector[] | null; readonly declarations: readonly Declaration[] };
+
+const cmpKey = (a: readonly number[], b: readonly number[]): number => {
+  for (let i = 0; i < a.length; i++) if ((a[i] as number) !== (b[i] as number)) return (a[i] as number) < (b[i] as number) ? -1 : 1;
+  return 0;
+};
+const maxSpec = (a: Specificity | null, b: Specificity): Specificity => (a === null || cmpKey(b, a) > 0 ? b : a);
+
+/**
+ * The cascade guard: for every element, every pair of interacting declarations must keep its order when #id selectors count as
+ * classes and each inline style becomes a class rule after every sheet rule. Unevaluable selectors are assumed to match.
+ */
+export function cascadeChanges(elements: readonly MatchElement[], rules: readonly GuardRule[], inline: ReadonlyMap<MatchElement, readonly Declaration[]>): boolean {
+  const INLINE: Specificity = [1e6, 0, 0];
+  const LIFTED: Specificity = [0, 1, 0];
+  for (const el of elements) {
+    const entries: { property: string; before: number[]; after: number[] }[] = [];
+    rules.forEach((r, order) => {
+      let before: Specificity | null = null;
+      let after: Specificity | null = null;
+      if (r.selectors === null) {
+        before = [0, 0, 0];
+        after = [0, 0, 0];
+      } else {
+        for (const s of r.selectors) {
+          const m: Match = matches(el, s);
+          if (m === false) continue;
+          before = maxSpec(before, specificity(s, false));
+          after = maxSpec(after, specificity(s, true));
+        }
+      }
+      if (before === null || after === null) return;
+      r.declarations.forEach((d, j) => {
+        const imp = d.important ? 1 : 0;
+        entries.push({ property: d.property, before: [imp, ...(before as Specificity), order, j], after: [imp, ...(after as Specificity), order, j] });
+      });
+    });
+    (inline.get(el) ?? []).forEach((d, j) => {
+      const imp = d.important ? 1 : 0;
+      entries.push({ property: d.property, before: [imp, ...INLINE, rules.length, j], after: [imp, ...LIFTED, rules.length, j] });
+    });
+    for (let i = 0; i < entries.length; i++) {
+      for (let k = i + 1; k < entries.length; k++) {
+        const a = entries[i] as (typeof entries)[number];
+        const b = entries[k] as (typeof entries)[number];
+        if (!groupsOverlap(a.property, b.property)) continue;
+        if (Math.sign(cmpKey(a.before, b.before)) !== Math.sign(cmpKey(a.after, b.after))) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Reads a WPT file by its path from the WPT root ("css/support/grid.css"); null when it does not exist. */
+export type ReadWpt = (path: string) => string | null;
+
+/** A stylesheet href resolved against the test's URL, as a path from the WPT root; null when it leaves the WPT root. */
+export function resolveHref(testPath: string, href: string): string | null {
+  const u = new URL(href, `http://wpt.invalid/${testPath}`);
+  if (u.host !== 'wpt.invalid' || u.search !== '' || u.hash !== '') return null;
+  return decodeURIComponent(u.pathname.slice(1));
+}
+
+export function translate(path: string, source: string, commit: string, readWpt: ReadWpt = () => null): Translation {
+  if (/\.(xht|xhtml|xml|svg)$/.test(path)) return refuse('translate:xml-document');
+  const doc = parse(source);
+  const all: El[] = [];
+  const build = (node: P5Element, parent: El | null): El => {
+    const attrs = new Map<string, string>();
+    for (const a of node.attrs) {
+      const name = a.prefix === undefined || a.prefix === '' ? a.name : `${a.prefix}:${a.name}`;
+      if (!attrs.has(name)) attrs.set(name, a.value);
+    }
+    const el: El = { p5: node, tag: node.tagName, attrs, parent, previous: null, children: [], index: all.length, id: '', removed: false };
+    all.push(el);
+    let prev: El | null = null;
+    for (const c of node.childNodes as P5Node[]) {
+      if ('tagName' in c) {
+        const child = build(c as P5Element, el);
+        child.previous = prev;
+        prev = child;
+        el.children.push(child);
+      } else if (c.nodeName === '#text') el.children.push({ text: (c as DefaultTreeAdapterTypes.TextNode).value });
+    }
+    return el;
+  };
+  const htmlNode = doc.childNodes.find((c) => 'tagName' in c && (c as P5Element).tagName === 'html') as P5Element | undefined;
+  if (htmlNode === undefined) return refuse('translate:no-html-element');
+  const root = build(htmlNode, null);
+  if (all.some((e) => e.p5.namespaceURI !== 'http://www.w3.org/1999/xhtml')) return refuse('translate:foreign-element');
+
+  // Harness nodes.
+  const selectorLists: string[] = [];
+  const styles: string[] = [];
+  for (const el of all) {
+    if (el.tag === 'script') {
+      el.removed = true;
+      const src = el.attrs.get('src');
+      if (src !== undefined) {
+        if (!HARNESS_SCRIPT.test(src)) return refuse(`translate:script-src:${src.slice(src.lastIndexOf('/') + 1)}`);
+        continue;
+      }
+      const code = el.children.map((c) => ('text' in c ? c.text : '')).join('');
+      const calls = harnessCalls(code);
+      if (calls === null) return refuse('translate:script');
+      selectorLists.push(...calls);
+    } else if (el.tag === 'link') {
+      el.removed = true;
+      const rel = (el.attrs.get('rel') ?? '').toLowerCase().split(/\s+/);
+      const href = el.attrs.get('href') ?? '';
+      if (!rel.includes('stylesheet') || AHEM_SHEET.test(href)) continue;
+      // A linked WPT stylesheet is inlined at its place in the style order; url() would resolve against another base.
+      const media = (el.attrs.get('media') ?? 'all').trim().toLowerCase();
+      if (media !== 'all' && media !== 'screen' && media !== '') return refuse('translate:style-media');
+      const target = rel.includes('alternate') ? null : resolveHref(path, href);
+      const text = target === null ? null : readWpt(target);
+      if (text === null) return refuse('translate:external-stylesheet');
+      if (/url\s*\(/i.test(text)) return refuse('translate:external-stylesheet-url');
+      styles.push(`/* <link rel=stylesheet> ${target as string} */\n${text}`);
+    } else if (el.tag === 'meta' || el.tag === 'title') {
+      el.removed = true;
+    } else if (el.tag === 'style') {
+      el.removed = true;
+      const media = (el.attrs.get('media') ?? 'all').trim().toLowerCase();
+      if (media !== 'all' && media !== 'screen' && media !== '') return refuse('translate:style-media');
+      styles.push(el.children.map((c) => ('text' in c ? c.text : '')).join(''));
+    } else if (el.parent !== null && el.parent.tag === 'head') {
+      return refuse(`translate:head-element:${el.tag}`);
+    }
+    for (const name of el.attrs.keys()) {
+      if (!name.startsWith('on')) continue;
+      if (name !== 'onload' || el.tag !== 'body') return refuse('translate:event-attribute');
+      const calls = harnessCalls(el.attrs.get(name) as string);
+      if (calls === null) return refuse('translate:event-attribute');
+      selectorLists.push(...calls);
+    }
+  }
+  if (selectorLists.length === 0) return refuse('translate:no-checklayout');
+  const removedAncestor = (el: El): boolean => el.removed || (el.parent !== null && removedAncestor(el.parent));
+  const kept = all.filter((e) => !removedAncestor(e));
+  const fixtureElements = kept.filter((e) => e.tag !== 'head');
+
+  // Fixture ids: the WPT id when it is a plain unique name, otherwise n<index>.
+  const idCount = new Map<string, number>();
+  for (const e of all) {
+    const id = e.attrs.get('id');
+    if (id !== undefined) idCount.set(id, (idCount.get(id) ?? 0) + 1);
+  }
+  const used = new Set<string>();
+  for (const e of kept) {
+    const id = e.attrs.get('id');
+    const base = e.tag === 'html' || e.tag === 'head' || e.tag === 'body' ? e.tag : id !== undefined && idCount.get(id) === 1 && /^[A-Za-z][A-Za-z0-9_-]*$/.test(id) ? id : `n${e.index}`;
+    e.id = used.has(base) ? `n${e.index}` : base;
+    if (used.has(e.id)) return refuse('translate:duplicate-node-id');
+    used.add(e.id);
+  }
+
+  // Checks (check-layout-th.js window.checkLayout): one subtest per matched node, over its parent's own values and its subtree.
+  const matchOf = new Map<El, MatchElement>();
+  const toMatch = (e: El): MatchElement => {
+    const hit = matchOf.get(e);
+    if (hit !== undefined) return hit;
+    const m: MatchElement = { tag: e.tag, attrs: e.attrs, parent: e.parent === null ? null : toMatch(e.parent), previous: e.previous === null ? null : toMatch(e.previous) };
+    matchOf.set(e, m);
+    return m;
+  };
+  const checksOf = (e: El): Check[] | string => {
+    const out: Check[] = [];
+    for (const name of e.attrs.keys()) {
+      if (name.startsWith('data-') && !name.startsWith('data-test') && !VALID_DATA.has(name)) out.push({ node: e.id, element: e.index, attribute: 'data-key', expected: name });
+    }
+    for (const a of CHECK_ATTRIBUTES) {
+      const v = e.attrs.get(dataName(a));
+      if (v !== undefined && v !== '') out.push({ node: e.id, element: e.index, attribute: a, expected: v });
+    }
+    return removedAncestor(e) && out.length > 0 ? 'translate:check-on-harness-node' : out;
+  };
+  const subtests: Subtest[] = [];
+  let testNumber = 0;
+  for (const list of selectorLists) {
+    const selectors = parseSelectorList(list);
+    if (selectors === null) return refuse('translate:checklayout-selector');
+    for (const e of all) {
+      let m: Match = false;
+      for (const s of selectors) {
+        const r = matches(toMatch(e), s);
+        if (r === true) m = true;
+        else if (r === 'unknown' && m === false) m = 'unknown';
+      }
+      if (m === 'unknown') return refuse('translate:checklayout-selector');
+      if (m === false) continue;
+      const checks: Check[] = [];
+      if (e.parent !== null) {
+        const own = checksOf(e.parent);
+        if (typeof own === 'string') return refuse(own);
+        checks.push(...own);
+      }
+      const walk = (x: El): string | null => {
+        const own = checksOf(x);
+        if (typeof own === 'string') return own;
+        checks.push(...own);
+        for (const c of x.children) {
+          if ('text' in c) continue;
+          const r = walk(c);
+          if (r !== null) return r;
+        }
+        return null;
+      };
+      const r = walk(e);
+      if (r !== null) return refuse(r);
+      const title = e.attrs.get('title');
+      subtests.push({ name: `${list} ${++testNumber}${title !== undefined && title !== '' ? `: ${title}` : ''}`, target: e.id, checks });
+    }
+  }
+
+  // The sheet: #id selectors become id classes, inline styles become class rules after every sheet rule.
+  const css = styles.join('\n');
+  const items = readSheet(css);
+  const referenced = new Set<string>();
+  const guardRules: GuardRule[] = [];
+  for (const it of items) {
+    if (it.kind !== 'rule') continue;
+    const selectors = parseSelectorList(stripComments(it.prelude).trim());
+    if (selectors !== null) for (const s of selectors) for (const k of s.compounds) for (const id of k.ids) referenced.add(id.value);
+    guardRules.push({ selectors, declarations: readDeclarations(it.block) ?? [] });
+  }
+  const classes = new Set(kept.flatMap((e) => (e.attrs.get('class') ?? '').split(/\s+/)));
+  if ([...classes].some((c) => c.startsWith('wpt-'))) return refuse('translate:generated-class-clash');
+  const idClass = new Map<string, string>();
+  for (const id of [...referenced].sort()) idClass.set(id, `wpt-id-${idClass.size}`);
+  let rewritten = '';
+  let at = 0;
+  for (const it of items) {
+    if (it.kind !== 'rule') continue;
+    const stripped = stripComments(it.prelude);
+    if (!stripped.includes('#')) continue;
+    rewritten += `${css.slice(at, it.preludeStart)}${rewriteIds(stripped, (id) => idClass.get(id) as string)}`;
+    at = it.preludeStart + it.prelude.length;
+  }
+  rewritten += css.slice(at);
+  const inline = new Map<MatchElement, readonly Declaration[]>();
+  const lifted: string[] = [];
+  const extraClass = new Map<El, string[]>();
+  for (const e of fixtureElements) {
+    const id = e.attrs.get('id');
+    const cls: string[] = [];
+    if (id !== undefined && idClass.has(id)) cls.push(idClass.get(id) as string);
+    const style = e.attrs.get('style');
+    if (style !== undefined && style.trim() !== '') {
+      if (/[{}]/.test(style) || style.includes('</')) return refuse('translate:inline-style');
+      const decls = readDeclarations(style);
+      if (decls === null) return refuse('translate:inline-style');
+      const name = `wpt-inline-${lifted.length}`;
+      lifted.push(`.${name} { ${style.trim()} }`);
+      inline.set(toMatch(e), decls);
+      cls.push(name);
+    }
+    extraClass.set(e, cls);
+  }
+  const guard = (referenced.size > 0 || inline.size > 0) && cascadeChanges(fixtureElements.map(toMatch), guardRules, inline) ? 'translate:specificity-rewrite' : null;
+  if (rewritten.includes('</style')) return refuse('translate:style-text');
+
+  // The fixture HTML.
+  const header = `/* Translated from web-platform-tests ${path} at commit ${commit}. WPT is 3-clause BSD: see vendor/wpt/LICENSE.md. */`;
+  const sheet = `\n${header}\n${rewritten}${lifted.length === 0 ? '' : `\n${lifted.join('\n')}`}\n`;
+  const elements = new Map<string, { tag: string; parent: string | null }>();
+  const write = (e: El, parent: string | null): string | null => {
+    elements.set(e.id, { tag: e.tag, parent });
+    const attrs: string[] = [`data-dragon-id="${escapeAttr(e.id)}"`];
+    const cls = [...(e.attrs.get('class') ?? '').split(/\s+/).filter((c) => c !== ''), ...(extraClass.get(e) ?? [])];
+    if (cls.length > 0) attrs.push(`class="${escapeAttr(cls.join(' '))}"`);
+    for (const [name, value] of e.attrs) {
+      if (name === 'id' || name === 'class' || name === 'style' || name === 'title' || name === 'xmlns' || name.startsWith('data-') || (name === 'onload' && e.tag === 'body')) continue;
+      if (!/^[a-z][a-z0-9-]*$/.test(name)) return null;
+      attrs.push(`${name}="${escapeAttr(value)}"`);
+    }
+    let body = '';
+    for (const c of e.children) {
+      if ('text' in c) body += escapeText(c.text);
+      else if (!removedAncestor(c)) {
+        if (c.tag === 'head') continue;
+        const s = write(c, e.id);
+        if (s === null) return null;
+        body += s;
+      }
+    }
+    if (e.tag === 'html') body = `<head data-dragon-id="head"><style>${sheet}</style></head>${body}`;
+    return `<${e.tag} ${attrs.join(' ')}>${body}</${e.tag}>`;
+  };
+  const html = write(root, null);
+  if (html === null) return refuse('translate:attribute-name');
+  return {
+    kind: 'fixture',
+    id: fixtureIdOf(path),
+    html: `<!DOCTYPE html>\n${html}\n`,
+    sidecar: { source: path, wpt: commit, viewport: { ...WPT_VIEWPORT }, subtests },
+    guard,
+    elements,
+  };
+}

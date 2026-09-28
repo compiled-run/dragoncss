@@ -1,0 +1,14 @@
+{
+  "name": "@dragon/wpt",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Imports web-platform-tests (vendor/wpt, pinned in wpt.lock) as Dragon's spec oracle: manifest, check-layout translator, runner and per-target expectations.",
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "@dragon/layout": "workspace:*",
+    "@dragon/parity": "workspace:*",
+    "dragon": "workspace:*",
+    "parse5": "8.0.1"
+  }
+}
