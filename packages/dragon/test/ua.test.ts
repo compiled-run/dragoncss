@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { defaultOrigin, parseValueText, resolveTree, valueToString } from '../src/analysis/resolve.ts';
@@ -126,6 +126,8 @@ describe('dependency boundaries', () => {
   it('colour conversion and rounding live only in css/color.ts', () => {
     for (const f of files(src)) {
       if (f.endsWith(join('css', 'color.ts'))) continue;
+      // The font metrics port Blink's float32 arithmetic (Math.fround, floorf), so src/fonts/** is exempt by path.
+      if (f.includes(`${join('src', 'fonts')}${sep}`)) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });
