@@ -1430,11 +1430,7 @@ export function stringLit(lang: Lang, s: string): string {
     else if (cp >= 0x20 && cp < 0x7f) out += ch;
     else if (lang === 'swift') out += `\\u{${cp.toString(16)}}`;
     else if (cp < 0x10000) out += `\\u${cp.toString(16).padStart(4, '0')}`;
-    else {
-      const hi = Math.floor((cp - 0x10000) / 0x400) + 0xd800;
-      const lo = ((cp - 0x10000) % 0x400) + 0xdc00;
-      out += `\\u${hi.toString(16)}\\u${lo.toString(16)}`;
-    }
+    else out += `\\u${ch.charCodeAt(0).toString(16)}\\u${ch.charCodeAt(1).toString(16)}`;
   }
   return `${out}"`;
 }

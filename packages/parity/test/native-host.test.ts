@@ -3,16 +3,26 @@
 // exist at ios 2 and 3 and android 2, 3 and 2.625 with identical CSS-longhand coverage per node; color-border-sides node long
 // expects its initial borders as 3 device px; the generated sources hold no stylesheet text, selector, class name or JSON decoding.
 import { describe, expect, it } from 'vitest';
-import type { NativeProgram } from 'dragon';
 import { cssCoverage, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDump, nativeLayoutProjection, NO_FAULTS, webClassMap } from 'dragon';
 import { atDpr, layoutCases } from '../src/dpr.ts';
 import { readHtmlFixture } from '../src/fixture-reader.ts';
-import { BACKEND_OF, emitCases, nativeCases, referenceMeasurer } from '../src/native-host.ts';
+import { BACKEND_OF, emitCases, expectedEngine, nativeCases } from '../src/native-host.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import { deviceDprs, layoutCaseIds } from '../src/targets.ts';
 
 const cases = nativeCases();
-const m = referenceMeasurer();
+const m = expectedEngine();
+const enforced = new Map<string, ReturnType<typeof compileFixture>['compiled']>();
+/** The enforced { ios, web } compile of a fixture and direction, shared by the tests below. */
+function enforcedCompile(spec: Parameters<typeof compileFixture>[0], direction: 'ltr' | 'rtl'): ReturnType<typeof compileFixture>['compiled'] {
+  const key = `${spec.id} ${direction}`;
+  let c = enforced.get(key);
+  if (c === undefined) {
+    c = compileFixture(spec, NO_FAULTS, 'enforce', direction).compiled;
+    enforced.set(key, c);
+  }
+  return c;
+}
 
 describe('the native generation compile (derive mode, ios and android)', () => {
   it('covers every layout case: 261 today, derived from layoutCases()', () => {
@@ -20,15 +30,9 @@ describe('the native generation compile (derive mode, ios and android)', () => {
     expect(cases.length).toBe(layoutCases().reduce((n, f) => n + f.cases.length, 0));
   });
   it('its layout input deep-equals nativeLayoutProjection of the enforced { ios, web } compile for every case', () => {
-    const enforced = new Map<string, ReturnType<typeof compileFixture>['compiled']>();
     let equal = 0;
     for (const n of cases) {
-      const key = `${n.spec.id} ${n.case.environment.direction}`;
-      let c = enforced.get(key);
-      if (c === undefined) {
-        c = compileFixture(n.spec, NO_FAULTS, 'enforce', n.case.environment.direction).compiled;
-        enforced.set(key, c);
-      }
+      const c = enforcedCompile(n.spec, n.case.environment.direction);
       for (const dpr of [1, 2, 3, 2.625]) {
         const env = atDpr(n.case.environment, dpr);
         const want = nativeLayoutProjection(c, env, n.case.assignment);
@@ -53,15 +57,13 @@ describe('the native generation compile (derive mode, ios and android)', () => {
 describe('expected dumps', () => {
   it('exist for every case at ios 2 and 3 and at android 2, 3 and 2.625, with identical CSS-longhand coverage per node', () => {
     let dumps = 0;
-    for (const n of cases) {
-      expect([...cssCoverage(n.programs.uikit)]).toEqual([...cssCoverage(n.programs['android-views'])]);
-      for (const target of ['ios', 'android'] as const) {
-        const p: NativeProgram = n.programs[BACKEND_OF[target]];
-        for (const dpr of deviceDprs(target)) {
-          const e = expectedDump(p, n.case.id, n.case.environment.viewport, dpr, m);
-          expect(e.nodes.length).toBeGreaterThan(0);
-          dumps++;
-        }
+    for (const n of cases) expect([...cssCoverage(n.programs.uikit)]).toEqual([...cssCoverage(n.programs['android-views'])]);
+    for (const target of ['ios', 'android'] as const) {
+      // emitCases projects every expected dump at the target's device DPRs (and throws on any case the engine refuses).
+      for (const e of emitCases(target)) {
+        expect(e.expectedDigests.map((d) => d.dpr)).toEqual([...deviceDprs(target)]);
+        for (const d of e.expectedDigests) expect(d.sha256).toMatch(/^[0-9a-f]{64}$/);
+        dumps += e.expectedDigests.length;
       }
     }
     expect(dumps).toBe(261 * 5);
@@ -100,7 +102,7 @@ describe('the generated sources', () => {
         }
       }
       for (const direction of new Set(f.cases.map((c) => c.environment.direction))) {
-        const web = compileFixture(f.spec, NO_FAULTS, 'enforce', direction).compiled;
+        const web = enforcedCompile(f.spec, direction);
         for (const c of f.cases.filter((x) => x.environment.direction === direction)) {
           for (const w of webClassMap(web, c.assignment)?.values() ?? []) {
             webClasses++;

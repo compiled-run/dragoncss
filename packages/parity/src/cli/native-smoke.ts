@@ -12,7 +12,7 @@ import type { ExpectedApplied } from '../native-compare.ts';
 import { checkAgainstEngine, checkApplied } from '../native-compare.ts';
 import type { NativeDump } from '../native-dump.ts';
 import { validateNativeDump } from '../native-dump.ts';
-import { androidTools, BACKEND_OF, buildAndroid, buildIos, engineBoxes, HOST_BUNDLE, nativeCases, nativeOut, referenceMeasurer, run } from '../native-host.ts';
+import { androidTools, BACKEND_OF, buildAndroid, buildIos, engineBoxes, expectedEngine, HOST_BUNDLE, nativeCases, nativeOut, run } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
 import type { NativeTarget } from '../targets.ts';
 import { deviceDprs } from '../targets.ts';
@@ -170,7 +170,7 @@ async function main(): Promise<number> {
     if (!ok) fail(`bridge self-check: ${b.mismatches.slice(0, 6).join('; ') || 'font sha256 differs'}${b.mismatches.length > 6 ? ` (and ${b.mismatches.length - 6} more)` : ''}`);
   }
   const backend = BACKEND_OF[target];
-  const m = referenceMeasurer();
+  const m = expectedEngine();
   for (const id of SMOKE_CASES) {
     const n = nativeCases().find((c) => c.case.id === id);
     if (n === undefined) throw new Error(`no layout case ${id}`);

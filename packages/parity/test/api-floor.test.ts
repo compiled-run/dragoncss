@@ -68,8 +68,8 @@ describe('the Android API floor check', () => {
 000220: 5410 0500                              |0012: iget-object v0, v1, Landroid/view/View;.clipBounds:Landroid/graphics/Rect; // field@0005
 `;
     const r = checkFloor(api, parseDexdump(planted), 29);
-    expect(r.violations.map((v) => v.ref)).toEqual(['android.content.Context#getDisplay()Landroid/view/Display;', 'android.window.Brand', 'android.view.View#clipBounds']);
-    expect(r.violations[0]?.since).toBe(30);
+    expect(r.violations.map((v) => v.ref)).toEqual(['android.app.Activity#getDisplay()Landroid/view/Display;', 'android.window.Brand', 'android.view.View#clipBounds']);
+    expect(r.violations[0]).toMatchObject({ since: 30, reason: 'since API 30 (declared on android.content.Context)' });
     expect(checkFloor(api, parseDexdump(planted), 33).violations.map((v) => v.ref)).toEqual([]);
   });
   it('a member the SDK does not describe is a violation, never a pass', () => {

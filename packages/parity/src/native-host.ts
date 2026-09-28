@@ -8,8 +8,8 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpat
 import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
 import type { LayoutInput, LayoutRect } from '@dragon/layout';
-import { layout, measurerFor } from '@dragon/layout';
-import type { Compiled, EmitCase, Environment, GeneratedFile, NativeBackend, NativeProgram } from 'dragon';
+import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, resolveBorder, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram } from 'dragon';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput } from 'dragon';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
@@ -80,10 +80,25 @@ export function referenceMeasurer() {
   return m.measurer;
 }
 
-/** The emitter view of every case for a target, with the expected-dump digests at the target's device DPRs. */
+/** The TS engine the expected dumps are projected with: the helpers the device runs translated, and the float a platform stores. */
+export function expectedEngine(): ExpectedEngine {
+  return { layout, measurer: referenceMeasurer(), snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround };
+}
+
+const emitted = new Map<NativeTarget, EmitCase[]>();
+
+/** The emitter view of every case for a target, with the expected-dump digests at the target's device DPRs (computed once). */
 export function emitCases(target: NativeTarget): EmitCase[] {
+  const cached = emitted.get(target);
+  if (cached !== undefined) return cached;
+  const out = computeEmitCases(target);
+  emitted.set(target, out);
+  return out;
+}
+
+function computeEmitCases(target: NativeTarget): EmitCase[] {
   const backend = BACKEND_OF[target];
-  const m = referenceMeasurer();
+  const m = expectedEngine();
   return nativeCases().map((n) => {
     const program = n.programs[backend];
     const viewport = n.case.environment.viewport;
@@ -488,7 +503,7 @@ export function buildAndroid(opts: { plant?: BuildPlant | null } = {}): BuildRes
  */
 export function relabelledReferenceDumps(target: NativeTarget, dpr: number): NativeDump[] {
   const backend = BACKEND_OF[target];
-  const m = referenceMeasurer();
+  const m = expectedEngine();
   return nativeCases().map((n) => {
     const program = n.programs[backend];
     const viewport = n.case.environment.viewport;
