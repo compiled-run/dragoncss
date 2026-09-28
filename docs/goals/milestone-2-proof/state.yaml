@@ -75,6 +75,12 @@ active_task: T007
 dispatched:
   - T007
   - T009
+  - T046
+  - T048
+  - T049
+  - T054
+  - T056
+  - T061
 device_lease:
   ios: T007
   android: T007
@@ -1212,13 +1218,392 @@ tasks:
       result: done
       harness: claude-code
       changed_files:
-        - "The lato-font diff"
+        - The lato-font diff
       commands:
-        - cmd: "pnpm typecheck; pnpm test 1508; capture-font-data --check; gate 1260/1260"
+        - cmd: pnpm typecheck; pnpm test 1508; capture-font-data --check; gate 1260/1260
           status: pass
-        - cmd: "ff master 71dbdf4"
+        - cmd: ff master 71dbdf4
           status: pass
-      summary: "Master is 71dbdf4 with Lato; captures only gained Lato entries."
+      summary: Master is 71dbdf4 with Lato; captures only gained Lato entries.
+  - id: T044
+    type: judge
+    assignee: Judge
+    status: done
+    lane: north-star
+    reasoning_hint: high
+    objective: Spec INL1 and INL2 (inline formatting and atomic inlines).
+    constraints:
+      - Read-only.
+      - Decide by research; never escalate to the owner.
+    expected_output:
+      - Worker packages
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T044-inl-spec.md
+      rationale: 'INL1 is split into INL-P, INL-U, INL-BF, INL1a and INL1b; INL2 stays whole. INL1a wires UAX #14 and replaces P5''s single-font line export. Master''s breaker misses -, ? and | break opportunities. The north star needs INL-BF, INL1a, INL2 and TDEC (a[href] underline). Checkpoint 3 path: P5, V1B, V2a, INL1a, TXT1a, INL2, REPL, FORM-a, plus TDEC.'
+      spawned_tasks:
+        - T054
+        - T055
+        - T057
+        - T058
+        - T059
+        - T060
+  - id: T045
+    type: judge
+    assignee: Judge
+    status: done
+    lane: north-star
+    reasoning_hint: high
+    objective: Spec REPL (replaced elements, the iframe web-view slot) and FORM-a (Dragon-drawn button and range).
+    constraints:
+      - Read-only.
+      - Decide by research; never escalate to the owner.
+    expected_output:
+      - Worker packages
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T045-repl-form-spec.md
+      rationale: Demo images and buttons are block-level or flex items, so REPL and FORM leave the inline chain; RF-INL joins after INL2. Rulings R1-R16 (PNG only under the strict gate, JPEG transcoded at build time, natural size from headers, the web-view slot tested on frames, controls expanded to Chrome's UA shadow structure).
+      spawned_tasks:
+        - T048
+        - T049
+        - T050
+        - T051
+        - T052
+        - T053
+  - id: T046
+    type: judge
+    assignee: Judge
+    status: queued
+    lane: north-star
+    reasoning_hint: high
+    objective: 'Spec paint: PNT1, PNT2, BG2, OVFL, POSX-f and P6 fix-and-promote, including the emitter split.'
+    constraints:
+      - Read-only.
+      - Decide by research; never escalate to the owner.
+    expected_output:
+      - Worker packages
+    receipt: null
+  - id: T047
+    type: judge
+    assignee: Judge
+    status: done
+    lane: north-star
+    reasoning_hint: high
+    objective: 'Spec runtime: SELD-R, ANIM, MQ-R and SOV typed overrides.'
+    constraints:
+      - Read-only.
+      - Decide by research; never escalate to the owner.
+    expected_output:
+      - Worker packages
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T047-runtime-spec.md
+      rationale: "Seven runtime packages. RT-1: states compile to delta tables over a base program. RT-2: Dragon drives frames (PathInterpolator error up to 2.47 device px fails the gate). RT-3: a bit-exact gfx::CubicBezier port. RT-9: Dragon hit testing. RT-11: SOV typed slots. RT-13: additive registry hunks. A DTXT gap was added."
+      spawned_tasks:
+        - T061
+        - T062
+        - T063
+        - T064
+        - T065
+        - T066
+        - T067
+        - T068
+  - id: T048
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: REPL-0 image core and Chrome image data (new files), branch repl0-image-data.
+    allowed_files:
+      - packages/dragon/src/images/**
+      - packages/dragon/test/images/**
+      - scripts/capture-image-data.ts
+      - scripts/capture-ua-defaults.ts
+      - packages/dragon/src/ua/**
+      - packages/dragon/test/ua-elb2.test.ts
+    verify:
+      - See notes/T045-repl-form-spec.md §3 P1 verify (binding)
+    stop_if:
+      - See notes/T045-repl-form-spec.md §3 P1 stop_if (binding)
+    receipt: null
+  - id: T049
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: FORM-0 control data from Chrome via CDP pierce, plus TS reference functions (new files), branch form0-control-data.
+    allowed_files:
+      - scripts/capture-form-data.ts
+      - packages/dragon/src/forms/**
+      - packages/dragon/test/forms/**
+    verify:
+      - See notes/T045-repl-form-spec.md §3 P2 verify (binding)
+    stop_if:
+      - See notes/T045-repl-form-spec.md §3 P2 stop_if (binding)
+    receipt: null
+  - id: T050
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: SIZE-ar aspect-ratio, after T007 and T009 Phase B; it merges before INL1 branches.
+    allowed_files:
+      - See notes/T045-repl-form-spec.md §3 P3 (binding)
+    verify:
+      - See notes/T045-repl-form-spec.md §3 P3 verify (binding)
+    stop_if:
+      - See notes/T045-repl-form-spec.md §3 P3 stop_if (binding)
+    receipt: null
+  - id: T051
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: 'REPL-a: img and iframe (web-view slot) at block level and as flex items, plus object-fit. Phase A after T050, T048, T043 and T038; Phase B after the T046 emitter split and T034, on both leases.'
+    allowed_files:
+      - See notes/T045-repl-form-spec.md §3 P4 (binding)
+    verify:
+      - See notes/T045-repl-form-spec.md §3 P4 verify (binding)
+    stop_if:
+      - See notes/T045-repl-form-spec.md §3 P4 stop_if (binding)
+    receipt: null
+  - id: T052
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: 'FORM-a: CSS-painted button and range, Dragon-drawn with a native feel. Phase A after T051 A and T049; Phase B after T051 B.'
+    allowed_files:
+      - See notes/T045-repl-form-spec.md §3 P5 (binding)
+    verify:
+      - See notes/T045-repl-form-spec.md §3 P5 verify (binding)
+    stop_if:
+      - See notes/T045-repl-form-spec.md §3 P5 stop_if (binding)
+    receipt: null
+  - id: T053
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: 'RF-INL: replaced elements and controls as atomic inlines, after INL2, T051 and T052.'
+    allowed_files:
+      - See notes/T045-repl-form-spec.md §3 P6 (binding)
+    verify:
+      - See notes/T045-repl-form-spec.md §3 P6 verify (binding)
+    stop_if:
+      - See notes/T045-repl-form-spec.md §3 P6 stop_if (binding)
+    receipt: null
+  - id: T054
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL-P: Chrome and Blink inline measurement corpus (new files), branch inl-probe.'
+    allowed_files:
+      - docs/research/inline-spike/**
+      - scripts/capture-inline-probe.ts
+    verify:
+      - See notes/T044-inl-spec.md §3 INL-P verify (binding)
+    stop_if:
+      - See notes/T044-inl-spec.md §3 INL-P stop_if (binding)
+    receipt: null
+  - id: T055
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL-U: UA data for phrasing tags; after T048 (it shares the UA files); merges after P5.'
+    allowed_files:
+      - See notes/T044-inl-spec.md §3 INL-U (binding)
+    verify:
+      - See notes/T044-inl-spec.md §3 INL-U verify (binding)
+    stop_if:
+      - See notes/T044-inl-spec.md §3 INL-U stop_if (binding)
+    receipt: null
+  - id: T057
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL-BF: blockified span, a and label; after T022 and T055.'
+    allowed_files:
+      - See notes/T044-inl-spec.md §3 INL-BF (binding)
+    verify:
+      - See notes/T044-inl-spec.md §3 INL-BF verify (binding)
+    stop_if:
+      - See notes/T044-inl-spec.md §3 INL-BF stop_if (binding)
+    receipt: null
+  - id: T058
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL1a: inline formatting core; wires UAX #14; replaces P5''s buildRun/breakLines export; after T007, T009 B, T026, T057 and T055.'
+    allowed_files:
+      - See notes/T044-inl-spec.md §3 INL1a (binding)
+    verify:
+      - See notes/T044-inl-spec.md §3 INL1a verify (binding)
+    stop_if:
+      - See notes/T044-inl-spec.md §3 INL1a stop_if (binding)
+    receipt: null
+  - id: T059
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL2: atomic inlines, inline-block, inline-flex, vertical-align; after T058 and TXT1a (or before TXT1a if TXT1a is not ready).'
+    allowed_files:
+      - See notes/T044-inl-spec.md §3 INL2 (binding)
+    verify:
+      - See notes/T044-inl-spec.md §3 INL2 verify (binding)
+    stop_if:
+      - See notes/T044-inl-spec.md §3 INL2 stop_if (binding)
+    receipt: null
+  - id: T060
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL1b: inline box decorations; after T058 and the R8 order; off the checkpoint 3 path.'
+    allowed_files:
+      - See notes/T044-inl-spec.md §3 INL1b (binding)
+    verify:
+      - See notes/T044-inl-spec.md §3 INL1b verify (binding)
+    stop_if:
+      - See notes/T044-inl-spec.md §3 INL1b stop_if (binding)
+    receipt: null
+  - id: T056
+    type: judge
+    assignee: Judge
+    status: queued
+    lane: text
+    reasoning_hint: high
+    objective: 'Spec TXT1a: real-font Latin text in the engine and on device through the HarfBuzz shim.'
+    constraints:
+      - Read-only.
+      - Decide by research.
+    expected_output:
+      - Worker packages
+    receipt: null
+  - id: T061
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'ANIM-a: timing and interpolation TS reference plus a bit-exact Chrome oracle (new files).'
+    allowed_files:
+      - packages/layout/src/rt-*.ts
+      - packages/layout/test/rt-*.test.ts
+      - packages/layout/rt-oracle/**
+      - packages/layout/rt-vectors/**
+      - scripts/capture-rt-oracle.ts
+      - package.json
+      - packages/layout/generated/**
+    verify:
+      - See notes/T047-runtime-spec.md §3.1 verify (binding)
+    stop_if:
+      - See notes/T047-runtime-spec.md §3.1 stop_if (binding)
+    receipt: null
+  - id: T062
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'ANIM-a2: rt-* translated to Swift and Kotlin; after T061 and T009 B.'
+    allowed_files:
+      - See notes/T047-runtime-spec.md §3.2 (binding)
+    verify:
+      - See notes/T047-runtime-spec.md §3.2 verify (binding)
+    stop_if:
+      - See notes/T047-runtime-spec.md §3.2 stop_if (binding)
+    receipt: null
+  - id: T063
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'SELD-R1: on-device state runtime, Dragon hit testing, pointer-events; after T007, T043 and T062.'
+    allowed_files:
+      - See notes/T047-runtime-spec.md §3.3 (binding)
+    verify:
+      - See notes/T047-runtime-spec.md §3.3 verify (binding)
+    stop_if:
+      - See notes/T047-runtime-spec.md §3.3 stop_if (binding)
+    receipt: null
+  - id: T064
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'SELD-R2: :hover, :focus, cursor; after T063, T030, PNT1 and PNT2.'
+    allowed_files:
+      - See notes/T047-runtime-spec.md §3.4 (binding)
+    verify:
+      - See notes/T047-runtime-spec.md §3.4 verify (binding)
+    stop_if:
+      - See notes/T047-runtime-spec.md §3.4 stop_if (binding)
+    receipt: null
+  - id: T065
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'ANIM-b: transitions, @keyframes, play-state; after T064 and T062.'
+    allowed_files:
+      - See notes/T047-runtime-spec.md §3.5 (binding)
+    verify:
+      - See notes/T047-runtime-spec.md §3.5 verify (binding)
+    stop_if:
+      - See notes/T047-runtime-spec.md §3.5 stop_if (binding)
+    receipt: null
+  - id: T066
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'SOV: typed override slots (progress translateX(p%), track gradient); after T063, BG2 and PNT2.'
+    allowed_files:
+      - See notes/T047-runtime-spec.md §3.6 (binding)
+    verify:
+      - See notes/T047-runtime-spec.md §3.6 verify (binding)
+    stop_if:
+      - See notes/T047-runtime-spec.md §3.6 stop_if (binding)
+    receipt: null
+  - id: T067
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'MQ-R: runtime band switching on resize and rotation; after T065, T030 and T027.'
+    allowed_files:
+      - See notes/T047-runtime-spec.md §3.7 (binding)
+    verify:
+      - See notes/T047-runtime-spec.md §3.7 verify (binding)
+    stop_if:
+      - See notes/T047-runtime-spec.md §3.7 stop_if (binding)
+    receipt: null
+  - id: T068
+    type: judge
+    assignee: Judge
+    status: queued
+    lane: runtime
+    objective: 'Spec DTXT: typed dynamic-text slots for script-set text (the north star''s .time-* labels), after TXT1a.'
+    constraints:
+      - Read-only.
+      - Decide by research.
+    expected_output:
+      - Worker package
+    receipt: null
   - id: T999
     type: judge
     assignee: Judge

@@ -12,3 +12,4 @@ packages/layout/generated/kotlin/build/
 vendor/wpt/
 packages/wpt/out/
 packages/wpt/generated/
+.vercel/
