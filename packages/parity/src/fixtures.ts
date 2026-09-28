@@ -1,5 +1,6 @@
 // The parity corpus. Every fixture is attempted in every run; none carries its own tolerance.
 import type { BackgroundResetLonghand, DiagnosticCode, Environment } from 'dragon';
+import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
@@ -66,6 +67,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'block-elements', fixtures: BLOCK_ELEMENTS },
   { id: 'units', fixtures: UNITS },
   { id: 'contexts', fixtures: CONTEXTS },
+  { id: 'attributes', fixtures: ATTRIBUTES },
 ];
 
 export const FIXTURES: readonly FixtureSpec[] = FIXTURE_GROUPS.flatMap((g) => g.fixtures);

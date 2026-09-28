@@ -41,6 +41,8 @@ export const DIAGNOSTIC_CODES = [
   'DRAGON_UNSUPPORTED_BIDI',
   // S5.
   'DRAGON_MISSING_ASSET',
+  // TREE.
+  'DRAGON_SELECTOR_DROPPED',
 ] as const;
 
 export type DiagnosticCode = (typeof DIAGNOSTIC_CODES)[number];

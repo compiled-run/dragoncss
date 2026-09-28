@@ -1,6 +1,7 @@
 // createProject: one configuration, complete snapshots, no publishable partial output (docs/api.md §2.1-2.2).
 // Every reachable assignment is resolved, checked and lowered as its own case; nothing is deduplicated (docs/api.md §7).
 import type { LayoutBox } from '@dragon/layout';
+import { attributeRefusal } from './attributes.ts';
 import { canonicalJson, sha256Hex } from './digest.ts';
 import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
@@ -175,8 +176,6 @@ function blocksTarget(d: Diagnostic, t: Target): boolean {
   return d.severity === 'error' && (d.target === null || d.target === t);
 }
 
-const UI_ATTRIBUTE = /^ui-[a-z0-9-]+$/;
-
 /** Tags and attributes are checked on every template node, including both arms of every branch. */
 function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): void {
   for (const n of nodes) {
@@ -185,8 +184,9 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} is not supported (supported: ${[...SUPPORTED_TAGS].join(', ')})` }));
       }
       for (const a of n.attributes) {
-        if (!UI_ATTRIBUTE.test(a.name)) {
-          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported; only ui-* attributes take part in matching` }));
+        const refusal = attributeRefusal(n.tag, a.name);
+        if (refusal !== null) {
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${refusal}`, manual: 'Remove the attribute, or keep only rendering-neutral attributes (id, data-*, aria-*, role, title, ui-*); select state with a class or an attribute.' }));
         }
       }
       checkTemplates(n.children, diagnostics);
