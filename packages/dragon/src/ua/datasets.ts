@@ -1,5 +1,6 @@
 // Chrome UA and root defaults keyed by capture platform (docs/api.md §10.1). A reference environment on a platform with no
 // captured dataset is refused; it never borrows another platform's values.
+import * as darwinArm64Dark from './chrome-145.darwin-arm64.dark.generated.ts';
 import * as darwinArm64 from './chrome-145.darwin-arm64.generated.ts';
 import type { CapturedTag } from './chrome-145.darwin-arm64.generated.ts';
 
@@ -26,6 +27,9 @@ export const REFERENCE_PLATFORM = 'darwin-arm64';
 
 const DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64.platform, darwinArm64]]);
 
+/** The same capture under html{color-scheme:dark}, keyed by the same platforms. */
+const DARK_DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64Dark.platform, darwinArm64Dark]]);
+
 export type UaDatasetChoice =
   | { readonly kind: 'ok'; readonly dataset: UaDataset }
   | { readonly kind: 'refused'; readonly code: 'no-ua-dataset'; readonly platform: string; readonly reason: string };
@@ -33,6 +37,13 @@ export type UaDatasetChoice =
 export function uaDatasetFor(platform: string): UaDatasetChoice {
   const dataset = DATASETS.get(platform);
   if (dataset === undefined) return { kind: 'refused', code: 'no-ua-dataset', platform, reason: `no Chrome UA dataset was captured on ${platform}; run pnpm run ua:capture there` };
+  return { kind: 'ok', dataset };
+}
+
+/** The dark dataset (html{color-scheme:dark}) for a platform; refused like uaDatasetFor where none was captured. */
+export function darkDatasetFor(platform: string): UaDatasetChoice {
+  const dataset = DARK_DATASETS.get(platform);
+  if (dataset === undefined) return { kind: 'refused', code: 'no-ua-dataset', platform, reason: `no dark Chrome UA dataset was captured on ${platform}; run pnpm run ua:capture there` };
   return { kind: 'ok', dataset };
 }
 
