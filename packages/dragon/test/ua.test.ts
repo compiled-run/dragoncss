@@ -8,6 +8,7 @@ import { properties, webrefVersion } from '../src/css/grammar.generated.ts';
 import { NO_FAULTS } from '../src/faults.ts';
 import { borderWidthKeywords, chromeVersion, computed, platform, userAgentLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
+import { elementKeyComputed, elementKeyLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import type { LinkedElement } from '../src/analysis/link.ts';
 
 describe('captured Chrome defaults and the webref grammar', () => {
@@ -134,6 +135,24 @@ describe('dependency boundaries', () => {
       const text = readFileSync(f, 'utf8');
       expect(text, f).not.toMatch(/^import (?!type )[^;]*from '@dragon\/layout'/m);
       expect(text, f).not.toMatch(/from '(node:[^']*|fs|path|child_process|url|module|playwright)'/);
+    }
+  });
+});
+
+// ELB-2: the element keys are captured into tables of their own; the pins above cover only the element-table tags.
+describe('UA longhands of the element keys (ELB-2)', () => {
+  it('pins the longhands a Chrome UA rule sets per element key', () => {
+    expect(elementKeyLonghands).toEqual({
+      button: ['background-color', 'border-bottom-style', 'border-bottom-width', 'border-left-style', 'border-left-width', 'border-right-style', 'border-right-width', 'border-top-style', 'border-top-width', 'box-sizing', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top', 'text-align'],
+      input: ['background-color', 'border-bottom-color', 'border-bottom-style', 'border-bottom-width', 'border-left-color', 'border-left-style', 'border-left-width', 'border-right-color', 'border-right-style', 'border-right-width', 'border-top-color', 'border-top-style', 'border-top-width', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top'],
+      'input[type=range]': ['background-color', 'color', 'font-family', 'font-size', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],
+      a: [],
+      'a[href]': ['color'],
+      img: ['overflow-x', 'overflow-y'],
+      span: [],
+    });
+    for (const key of Object.keys(elementKeyComputed) as (keyof typeof elementKeyComputed)[]) {
+      for (const p of LONGHANDS) expect(elementKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');
     }
   });
 });
