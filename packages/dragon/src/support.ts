@@ -38,6 +38,8 @@ function possibilities(target: unknown, css: unknown): SupportAnswer {
   if (rules.length !== 1 || declarations.length !== 1) return invalid('css must hold exactly one declaration, for example "gap: 7px"');
   const d = declarations[0] as (typeof declarations)[number];
   const declaration = `${d.property}: ${d.text}`;
+  // css-variables-1: what a custom property or a var() declaration sets depends on the element it applies to.
+  if (d.custom !== undefined || d.pending !== undefined) return invalid(`${declaration} depends on the custom properties of the element it applies to; ask a resolved query of a compiled result`);
   const features = d.longhands.map((lh) => featureOf(lh.property, lh.value));
   const candidates = profile.rows.filter((r) => features.includes(r.feature)).flatMap((r) => {
     const c = candidate(r);

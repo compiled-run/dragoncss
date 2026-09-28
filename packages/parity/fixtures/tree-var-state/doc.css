@@ -1,0 +1,2 @@
+html { --fg: #222222; --bg: #f0f0f0; --gap: 6px; --w: 140px; }
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 12px; color: var(--fg); }
