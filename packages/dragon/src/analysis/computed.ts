@@ -89,6 +89,22 @@ export function userAgentValue(tag: CapturedTag, property: Longhand, ua: UaDatas
   return parseValueText(property, own);
 }
 
+/**
+ * css-cascade-5 §6.3: the declared UA value of a longhand for the element's computed direction (a logical UA declaration maps to a
+ * physical side, css-logical-1 §4), with "<n>em" resolved against the parent font size for font-size and the element's own
+ * computed font size otherwise (css-values-4 §6.1.1). A font size that is not a length (a value the profiles refuse) leaves the
+ * value in em. Null when no UA rule sets it.
+ */
+export function declaredUserAgentValue(tag: CapturedTag, property: Longhand, ua: UaDataset, direction: 'ltr' | 'rtl', ownFontSize: CssValue, parentFontSize: CssValue): CssValue | null {
+  const text = ua.userAgentDeclared[tag][direction][property];
+  if (text === undefined) return null;
+  const em = /^(-?[0-9.]+)em$/.exec(text);
+  if (em === null) return parseValueText(property, text);
+  const factor = Number(em[1]);
+  const base = property === 'font-size' ? parentFontSize : ownFontSize;
+  return base.kind === 'length' ? { kind: 'length', value: factor * base.value, unit: base.unit } : { kind: 'length', value: factor, unit: 'em' };
+}
+
 /** Origin of every longhand on an element with no author rules, as the resolver decides it; pinned by ua.test.ts. */
 export function defaultOrigin(tag: CapturedTag, property: Longhand, isRoot: boolean, ua: UaDataset, rootFont: RootFont): Origin {
   if (userAgentValue(tag, property, ua) !== null) return 'user-agent';

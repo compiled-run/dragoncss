@@ -162,7 +162,7 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
   for (const n of nodes) {
     if (n.kind === 'element') {
       if (!SUPPORTED_TAGS.has(n.tag)) {
-        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} is not supported in milestone 1 (html, body, div)` }));
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} is not supported (supported: ${[...SUPPORTED_TAGS].join(', ')})` }));
       }
       for (const a of n.attributes) {
         if (!UI_ATTRIBUTE.test(a.name)) {
