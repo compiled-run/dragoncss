@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox, LayoutStyle } from '@dragon/layout';
@@ -65,6 +65,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   it('(iii) colour conversion stays in css/color.ts', () => {
     for (const f of files(src)) {
       if (f.endsWith(join('css', 'color.ts'))) continue;
+      // The font metrics port Blink's float32 arithmetic (Math.fround, floorf), so src/fonts/** is exempt by path.
+      if (f.includes(`${join('src', 'fonts')}${sep}`)) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });

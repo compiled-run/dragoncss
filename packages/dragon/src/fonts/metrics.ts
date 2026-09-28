@@ -34,10 +34,23 @@ export type FaceMetrics = {
   readonly ex: number;
   readonly ch: number;
   readonly cap: number;
+  /** Whether ch is proven exact, or a caveat with its typed reason (the italic-trait face case below). */
+  readonly chSupport: ChSupport;
   /** A one-line block with line-height: normal: its height and the baseline offset from its top, in LayoutUnits (1/64 device px). */
   readonly lineBoxHeightLayoutUnits: number;
   readonly baselineLayoutUnits: number;
 };
+
+/**
+ * ch of a face with the italic trait is a caveat: Chrome's ch for those faces follows a Core Text italic-trait dependence that the
+ * Blink 145.0.7632.6 and Skia sources do not show (packages/dragon/test/fonts/captures/metrics.json; notes/T005-txt1c-fonts.md B1).
+ */
+export type ChSupport = { readonly status: 'exact' } | { readonly status: 'caveat'; readonly reason: 'core-text-italic-trait-advance'; readonly evidence: string };
+
+/** The italic trait: OS/2 fsSelection bit 0, or a nonzero post.italicAngle. */
+export function hasItalicTrait(font: SfntFont): boolean {
+  return ((font.os2?.fsSelection ?? 0) & 1) !== 0 || (font.post !== null && font.post.italicAngle !== 0);
+}
 
 export type MetricsResult = { readonly ok: true; readonly metrics: FaceMetrics } | { readonly ok: false; readonly refusal: SfntRefusal };
 
@@ -138,6 +151,9 @@ export function faceMetrics(font: SfntFont, fontSize: number, dpr: number, d: Me
       ex: css(xHeight),
       ch: css(zeroWidth),
       cap: css(capHeight),
+      chSupport: hasItalicTrait(font)
+        ? { status: 'caveat', reason: 'core-text-italic-trait-advance', evidence: 'packages/dragon/test/fonts/captures/metrics.json; docs/goals/milestone-2-proof/notes/T005-txt1c-fonts.md' }
+        : { status: 'exact' },
       lineBoxHeightLayoutUnits: box,
       baselineLayoutUnits: lu(lroundf(ascent)) + halfLeading,
     },

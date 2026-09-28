@@ -105,7 +105,7 @@ export function metricComparisons(faults: FontFaults): Comparison[] {
     const x = m.metrics;
     return [
       { group: 'metrics.ex', id, dragon: x.ex, chrome: r.ex },
-      { group: 'metrics.ch', id, dragon: x.ch, chrome: r.ch },
+      { group: x.chSupport.status === 'exact' ? 'metrics.ch' : 'metrics.ch.caveat', id, dragon: x.ch, chrome: r.ch },
       { group: 'metrics.cap', id, dragon: x.cap, chrome: r.cap },
       { group: 'metrics.line-height-normal', id, dragon: cssPx(x.lineBoxHeightLayoutUnits, r.dpr), chrome: r.height },
       { group: 'metrics.baseline', id, dragon: cssPx(x.baselineLayoutUnits, r.dpr), chrome: r.baseline },
