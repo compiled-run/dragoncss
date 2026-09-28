@@ -31,7 +31,10 @@
     "wpt:run": "node --conditions=dragon-internal packages/wpt/src/cli/run.ts",
     "wpt:check": "node --conditions=dragon-internal packages/wpt/src/cli/check.ts",
     "wpt:update-expectations": "node --conditions=dragon-internal packages/wpt/src/cli/update.ts",
-    "wpt:interop-labels": "node packages/wpt/src/cli/interop-labels.ts"
+    "wpt:interop-labels": "node packages/wpt/src/cli/interop-labels.ts",
+    "native:build": "node --conditions=dragon-internal packages/parity/src/cli/native-build.ts",
+    "native:smoke": "node --conditions=dragon-internal packages/parity/src/cli/native-smoke.ts",
+    "native:encoders": "node --conditions=dragon-internal packages/parity/src/cli/native-encoders.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",

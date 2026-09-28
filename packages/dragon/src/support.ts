@@ -9,7 +9,7 @@ import { inDomain } from './analysis/input.ts';
 import { isLonghand, PROPERTY_ROLE } from './css/properties.ts';
 import { featureOf, parseStylesheet } from './css/stylesheet.ts';
 import type { ProfileRow, SupportProfile } from './profiles/types.ts';
-import { COMMITTED_PROFILES, findResolved, internalRecord } from './project.ts';
+import { ANDROID_MIN_SDK, COMMITTED_PROFILES, findResolved, internalRecord, profileFor, validAndroid } from './project.ts';
 import type { Diagnostic, SupportAnswer, SupportCandidate, SupportQuery } from './types.ts';
 
 const TOLERANCE = { 'linux-dragon-layout': 'gate-1-device-px', 'chrome-dual': 'dual-exact' } as const;
@@ -23,10 +23,12 @@ const invalid = (message: string, code: 'DRAGON_CONFIG_INVALID' | 'DRAGON_INPUT_
   ({ kind: 'invalid-query', diagnostics: [diagnostic(code, { origin: unlocated('support query'), message, manual: 'Correct the support query.' })] });
 
 function possibilities(target: unknown, css: unknown): SupportAnswer {
-  const t = target as { kind?: unknown; minimum?: unknown } | null;
-  if (typeof t !== 'object' || t === null || (t.kind !== 'web' && t.kind !== 'ios')) return invalid('target must be { kind: "web" } or { kind: "ios", minimum }');
+  const t = target as { kind?: unknown; minimum?: unknown; minSdk?: unknown } | null;
+  if (typeof t !== 'object' || t === null || (t.kind !== 'web' && t.kind !== 'ios' && t.kind !== 'android')) return invalid('target must be { kind: "web" }, { kind: "ios", minimum } or { kind: "android", minSdk }');
   if (t.kind === 'web' && Object.keys(t).length !== 1) return invalid('a web target takes no options');
   if (t.kind === 'ios' && (typeof t.minimum !== 'string' || t.minimum.length === 0 || Object.keys(t).length !== 2)) return invalid('an ios target needs exactly { kind: "ios", minimum: string }');
+  if (t.kind === 'android' && !validAndroid({ minSdk: t.minSdk }) ) return invalid(`an android target needs exactly { kind: "android", minSdk: <integer from ${ANDROID_MIN_SDK.min} to ${ANDROID_MIN_SDK.max}> }`);
+  if (t.kind === 'android' && Object.keys(t).length !== 2) return invalid(`an android target needs exactly { kind: "android", minSdk: <integer from ${ANDROID_MIN_SDK.min} to ${ANDROID_MIN_SDK.max}> }`);
   if (typeof css !== 'string') return invalid('css must be a string holding one declaration');
   const profile: SupportProfile = COMMITTED_PROFILES[t.kind];
   const text = `.q{${css}}`;
@@ -51,7 +53,7 @@ function resolved(q: Extract<SupportQuery<string>, { kind: 'resolved' }>): Suppo
   const record = typeof q.result === 'object' && q.result !== null ? internalRecord(q.result) : undefined;
   if (record === undefined) return invalid('result is not a compiled result from this package', 'DRAGON_INPUT_INVALID');
   const target = q.target as string;
-  if (!(target in q.result.targets) || (target !== 'web' && target !== 'ios')) return invalid(`target ${target} is not configured`);
+  if (!(target in q.result.targets) || (target !== 'web' && target !== 'ios' && target !== 'android')) return invalid(`target ${target} is not configured`);
   if ((q.result.targets as Record<string, string>)[target] === 'blocked') {
     const out = (q.result.outputs as Record<string, { kind: string; diagnostics?: readonly Diagnostic[] }>)[target];
     return { kind: 'blocked', diagnostics: out !== undefined && out.kind === 'blocked' && out.diagnostics !== undefined ? out.diagnostics : q.result.diagnostics };
@@ -71,7 +73,7 @@ function resolved(q: Extract<SupportQuery<string>, { kind: 'resolved' }>): Suppo
   const rel = q.instance === docId ? '' : q.instance.startsWith(`${docId}/`) ? q.instance.slice(docId.length + 1) : null;
   if (rel === null) return invalid(`no instance ${q.instance} in document ${docId}`, 'DRAGON_TREE_REFERENCE');
   const address = rel === '' ? q.node : `${rel}/${q.node}`;
-  const profile = record.profiles[target];
+  const profile = profileFor(record.profiles, target);
   const out: { assignment: (typeof q.assignment); decision: SupportCandidate | null }[] = [];
   for (const c of record.cases) {
     if (!q.assignment.every((e) => c.assignment.some((x) => x.state.instance === e.state.instance && x.state.state === e.state.state && x.value === e.value))) continue;

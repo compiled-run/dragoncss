@@ -19,7 +19,7 @@ The public surface should stay small. Nothing is stable during `1.0.0-alpha.x`. 
 | Internal, deferred | Watch patches, language service, overlay, parity helper, agent-guidance generator, source front ends | No exported subpaths in milestone 1 |
 | Internal | CSS analyzer tables, backend interface, lowered operations, layout adapter, profile storage, fixture renderer | Excluded from the package export map |
 
-Milestone 1 targets are web and the iOS layout preparation used by the Linux lane. It does not ship Swift or certify UIKit rendering. Android, macOS, email and other targets remain backend designs. No public `swift()`, `kotlin()`, `email()`, `watch()` or `parityCases()` is promised now. Backend names belong to the package facade; the semantic core knows CSS, element relationships and conditions only.
+Milestone 1 targets are web and the iOS layout preparation used by the Linux lane. It does not ship Swift or certify UIKit rendering. Milestone 2 (P4) adds android as a configured target with an SDK-integer floor (`android: { minSdk }`). Its output is analysis-only, like iOS. Generated UIKit Swift and Android Views Kotlin exist only inside the internal native lanes. No android support row is anything but `unsupported` until a native android case passes. macOS, email and other targets remain backend designs. No public `swift()`, `kotlin()`, `email()`, `watch()` or `parityCases()` is promised now. Backend names belong to the package facade; the semantic core knows CSS, element relationships and conditions only.
 
 This serves the owner's design tests directly: local ownership and predictable merging help people and agents; one check catches other-target errors; adapters make input framework-neutral; backends own platform engineering; one result supplies all outputs. Support facts, fixes, floors and proof requirements are imported from profiles, never copied into this document as a support table.
 
@@ -31,6 +31,7 @@ This serves the owner's design tests directly: local ownership and predictable m
 type Targets = {
   web?: {};
   ios?: { minimum: string };
+  android?: { minSdk: number };   // an integer API level, 31 to 36 (Android 12 floor)
 };
 type Configured<T> = Extract<keyof T, keyof Targets>;
 
@@ -72,7 +73,7 @@ type Range = { start: number; end: number };
 type Span = Range & { source: SourceRef };
 ```
 
-`targets` must be nonempty; malformed or unknown target configuration is diagnosed before compilation. Minimum OS versions are already chosen in [owner decision 6](decisions.md#platforms-docsresearchplatform-playbookmd-72); this draft requires explicit values pending only the choice of whether configuration may default to those profile-owned versions. The facade normalizes each backend's configuration and passes only CSS environment facts to the core. Future Android configuration uses SDK integers, Apple configuration uses parsed version tuples, and email uses named client sets; these are not interchangeable `minimum` strings.
+`targets` must be nonempty; malformed or unknown target configuration is diagnosed before compilation. Minimum OS versions are already chosen in [owner decision 6](decisions.md#platforms-docsresearchplatform-playbookmd-72); this draft requires explicit values pending only the choice of whether configuration may default to those profile-owned versions. The facade normalizes each backend's configuration and passes only CSS environment facts to the core. Android configuration uses an SDK integer: `android: { minSdk }` must be exactly that key, holding an integer from 31 to 36 (owner decision: Android 12 is the floor). Anything else, for example 30, 37, 31.5 or the string "31", is `DRAGON_CONFIG_INVALID`, with a fix. Apple configuration uses parsed version tuples, and email uses named client sets; these are not interchangeable `minimum` strings.
 
 A source URI is canonical within a named project or immutable package identity, for example `dragon-source://demo/src/app.tsx`. It is independent of the checkout's absolute path. Virtual CSS has its own URI, text and mapping to its containing source. Hashes are verified over UTF-8 encoding of the exact text, without newline normalization; asset hashes cover exact bytes. Offsets are half-open UTF-16 code units. Dragon derives 1-based lines and columns, checks bounds and verifies referenced revisions. Producers convert byte offsets once at their boundary.
 
@@ -111,11 +112,11 @@ type ArtifactState =
   | { kind: 'blocked'; diagnostics: readonly Diagnostic[] };
 ```
 
-`ready` means production artifacts passed compilation checks, not that this app has run every parity lane. `ok` means no compile errors across configured targets; it does not turn `analysis-only` into a shipping artifact. Milestone 1's iOS result is analysis-only even when Linux layout tests pass. Its lowered data is available to the internal harness, not through a public `properties()` reader. Failed lowering exposes no test-ready property list. Partial analyzer information may still support diagnostics and `explain`.
+`ready` means production artifacts passed compilation checks, not that this app has run every parity lane. `ok` means no compile errors across configured targets; it does not turn `analysis-only` into a shipping artifact. Milestone 1's iOS result is analysis-only even when Linux layout tests pass. The android result is analysis-only too. Its profile is all `unsupported` until a native android case passes, so a compile that declares any feature blocks android with `DRAGON_UNSUPPORTED_VALUE`: that is the fail-closed state. An android compile that declares nothing is `analysis-only`. Neither native output becomes `ready` before that target's native cases pass. Its lowered data is available to the internal harness, not through a public `properties()` reader. Failed lowering exposes no test-ready property list. Partial analyzer information may still support diagnostics and `explain`.
 
 Front-end or shared semantic errors block all dependent outputs. A target-only error blocks that target and its previews; the overall check still fails. Integrations must gate an application build on `ok` and require `ready` for its shipping outputs. A blocked variant has no files or fallback CSS. No output reader bypasses validation.
 
-The mapped output object replaces the ineffective `this` restrictions. For a literal web/iOS config, `outputs.android`, `outputs.macos` and `outputs.email` must be TypeScript errors. There is no unrestricted index signature. A configuration annotated as the wide `Targets` type loses the exact keys that are present and relies on runtime validation for target access and queries; preserve literal keys for static checks. Consumer tests include a negative case for each absent key and each removed reader; JavaScript callers receive a located configuration error for an unconfigured target request at the adapter boundary. Dynamically loaded configs are validated before creating the project.
+The mapped output object replaces the ineffective `this` restrictions. For a literal web/iOS config, `outputs.android`, `outputs.macos` and `outputs.email` must be TypeScript errors; `outputs.android` exists only when `android` is configured, and `android: {}` is a type error. There is no unrestricted index signature. A configuration annotated as the wide `Targets` type loses the exact keys that are present and relies on runtime validation for target access and queries; preserve literal keys for static checks. Consumer tests include a negative case for each absent key and each removed reader; JavaScript callers receive a located configuration error for an unconfigured target request at the adapter boundary. Dynamically loaded configs are validated before creating the project.
 
 A future development preview is a separate experimental value with `validity: 'current' | 'last-successful' | 'unavailable'`, current revision/digest and, if rendered, rendered digest. After milestone 1, when a native target is configured, the development preview defaults to that target's projection. Invalid edits never relabel old output as current. A preview is not an `ArtifactState` and cannot be supplied to the production artifact writer.
 
@@ -506,7 +507,7 @@ Each explained case names its element, instance, target and symbolic condition, 
 Milestone 1 shape (exported from the default entry):
 
 ```ts
-type NormalizedTarget = { kind: 'web' } | { kind: 'ios'; minimum: string };
+type NormalizedTarget = { kind: 'web' } | { kind: 'ios'; minimum: string } | { kind: 'android'; minSdk: number };
 type SupportQuery<K extends string> =
   | { kind: 'possibilities'; target: NormalizedTarget; css: string }
   | { kind: 'resolved'; result: Compiled<K>; target: NoInfer<K>; node: string; instance: string; assignment: Assignment; property: string };
@@ -520,7 +521,7 @@ type SupportAnswer =
   | { kind: 'invalid-query'; diagnostics: readonly Diagnostic[] };
 ```
 
-A declaration with any supported row answers `needs-context`, listing its contexts. A declaration with no row answers `unsupported`.
+A declaration with any supported row answers `needs-context`, listing its contexts. A declaration with no row answers `unsupported`. An android possibilities query needs `{ kind: 'android', minSdk }` with an integer from 31 to 36. Today it answers `unsupported` for every declaration, because no android row is proven.
 
 ```ts
 export function querySupport<K extends string>(query:
@@ -650,6 +651,7 @@ These record how the milestone 1 implementation reads this design. Reviews T027,
 - A stylesheet use or resolution that names an absent source or asset, or an asset whose bytes do not match its hash, is a typed diagnostic that blocks every output.
 - The fixture environment sets the root font-family to Ahem (cascade `'environment'`), the same way it sets direction. Chrome references, the UA dataset and the platform font rules are keyed by platform (reference: `darwin-arm64`). A platform with no dataset or rules is refused, never given another platform's values.
 - The Linux lane scope follows [decisions.md](decisions.md): the Chrome oracle is captured on macOS, and the layout engine is platform-free.
+- Milestone 2 (P4): `android` is a configured target, `{ minSdk }` with an integer from 31 to 36 (Android 12 floor). Its output is analysis-only, and its profile holds the iOS row keys, all `unsupported`, until a native android case passes. The font check and the lowering diagnostics are reported for every configured native target. A config without android keeps its diagnostics, outputs and digest. The generated UIKit and Android Views sources are reachable only through the internal entry. There is still no public `swift()` or `kotlin()`.
 
 ## Owner decisions
 

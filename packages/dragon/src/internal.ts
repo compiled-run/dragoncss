@@ -5,10 +5,10 @@ import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
 import type { Rgba8 } from './css/color.ts';
-import type { CssValue } from './css/stylesheet.ts';
-import { TRANSPARENT } from './css/color.ts';
-import type { ColorLonghand, TextLonghand } from './css/properties.ts';
-import { COLOR_LONGHANDS, TEXT_LONGHANDS } from './css/properties.ts';
+import type { TextLonghand } from './css/properties.ts';
+import { TEXT_LONGHANDS } from './css/properties.ts';
+import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
+import { colorChannels, lowerNativePrograms, ProgramError, usedColors } from './lower/native-program.ts';
 import type { InternalCase } from './project.ts';
 import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
@@ -47,6 +47,15 @@ export { MAX_STATE_ASSIGNMENTS, assignmentKey } from './analysis/link.ts';
 export type { FormattingContext, TextContext } from './analysis/context.ts';
 export { TEXT_LONGHANDS } from './css/properties.ts';
 export type { TextLonghand } from './css/properties.ts';
+export type { BorderStyleName, NativeBackend, NativeProgram, ProgramNode, ProgramWrite, Technique, WriteKind } from './lower/native-program.ts';
+export { BACKEND_TARGET, NATIVE_BACKENDS, NATIVE_CLASSES, PROGRAM_VERSIONS, VOCABULARY, WRITE_CSS } from './lower/native-program.ts';
+export type { ExpectedDump, ExpectedEngine, ExpectedNode, NodeGeometry } from './emit/expected-dump.ts';
+export { appliedKeyMap, appliedValue, borderDevicePx, cssCoverage, EXPECTED_SCHEMA, expectedDigest, expectedDump, programInput, textInstanceSize } from './emit/expected-dump.ts';
+export type { EmitCase } from './emit/native-support.ts';
+export { emitNativeSupport, NATIVE_SUPPORT_VERSION, SUPPORT_FILES } from './emit/native-support.ts';
+export { emitUikitCases, UIKIT_EMITTER_VERSION } from './emit/uikit.ts';
+export { emitAndroidViewsCases, ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
+export { ANDROID_MIN_SDK } from './project.ts';
 
 /**
  * The reference environment of one parity case (docs/api.md §7): viewport, device pixel ratio and direction are inputs, not
@@ -117,30 +126,7 @@ export function webClassMap(compiled: object, assignment: Assignment): ReadonlyM
   return typeof c === 'string' ? null : c.webClassOf;
 }
 
-export type ElementColors = { readonly [P in ColorLonghand]: Rgba8 };
-
-// css-color-4 §4.4 and §6.3: used colours per element; transparent is rgba(0, 0, 0, 0) and currentcolor is the element's color.
-function usedColors(el: ResolvedElement): ElementColors {
-  const color = el.props.get('color');
-  if (color === undefined) throw new Error(`${el.element.address}: color did not resolve`);
-  const own = colorChannels(color.value, el.element.address);
-  const out = {} as { [P in ColorLonghand]: Rgba8 };
-  for (const p of COLOR_LONGHANDS) {
-    const v = (el.props.get(p) as NonNullable<typeof color>).value;
-    if (v.kind === 'color') out[p] = v.value;
-    else if (v.kind === 'keyword' && v.value === 'transparent') out[p] = TRANSPARENT;
-    else if (v.kind === 'keyword' && v.value === 'currentcolor') out[p] = own;
-    else throw new Error(`${el.element.address}: ${p} did not resolve to a colour`);
-  }
-  return out;
-}
-
-/** The channels of a resolved color value: a colour, or transparent (rgba(0, 0, 0, 0)); currentcolor on color resolves as inherit. */
-function colorChannels(v: CssValue, address: string): Rgba8 {
-  if (v.kind === 'color') return v.value;
-  if (v.kind === 'keyword' && v.value === 'transparent') return TRANSPARENT;
-  throw new Error(`${address}: color did not resolve to channels`);
-}
+export type { ElementColors } from './lower/native-program.ts';
 
 /** Dragon's resolved colour channels per element address in one case; null when the case did not resolve. */
 export function resolvedColors(compiled: object, assignment: Assignment): ReadonlyMap<string, ElementColors> | null {
@@ -223,4 +209,26 @@ export function resolvedTextColors(compiled: object, assignment: Assignment): Re
   };
   walk(c.resolved);
   return out;
+}
+
+export type NativePrograms =
+  | { readonly kind: 'ready'; readonly programs: { readonly [B in NativeBackend]: NativeProgram } }
+  | { readonly kind: 'blocked'; readonly reason: string };
+
+/**
+ * Both native backends' lowered programs of one case (docs/research/native-strategy.md 1.1): from the one nativeLowered tree and
+ * the case's resolved paint values. Ready only when the result configures and checks both ios and android.
+ */
+export function nativePrograms(compiled: object, assignment: Assignment): NativePrograms {
+  const c = caseOf(compiled, assignment);
+  if (typeof c === 'string') return { kind: 'blocked', reason: c };
+  const targets = (compiled as { targets?: Record<string, string> }).targets ?? {};
+  for (const t of ['ios', 'android']) if (targets[t] !== 'checked') return { kind: 'blocked', reason: `the ${t} target is ${targets[t] === undefined ? 'not configured' : targets[t]}` };
+  if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: 'the case has no native lowering' };
+  try {
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved) };
+  } catch (e) {
+    if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
+    throw e;
+  }
 }

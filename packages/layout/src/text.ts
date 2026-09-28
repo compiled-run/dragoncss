@@ -25,34 +25,73 @@ const AHEM_UNITS_PER_EM = 1000;
 const AHEM_ASCENT = 800;
 const AHEM_DESCENT = 200;
 
-function ahemAdvances(cp: number): number {
-  if (cp === ZWSP) return 0;
-  if (cp >= 0x20 && cp <= 0x7e && cp !== 0x27) return 1;
+/**
+ * R4 bridge input: the raw data of one font in font units, as a device reads it from the bundled font file (head unitsPerEm,
+ * hhea ascender, descender and lineGap) and one advance per covered code point, in coveredCodePoints() order.
+ */
+export type FontData = {
+  readonly unitsPerEm: number;
+  readonly ascent: number;
+  readonly descent: number;
+  readonly lineGap: number;
+  readonly advances: readonly number[];
+};
+
+/** The Dragon covered-glyph predicate: the index of a code point in coveredCodePoints(), or -1 when Dragon does not cover it. */
+export function coveredIndex(cp: number): number {
+  if (cp === ZWSP) return 0x7e - 0x20;
+  if (cp >= 0x20 && cp <= 0x7e && cp !== 0x27) return cp < 0x27 ? cp - 0x20 : cp - 0x21;
   return -1;
+}
+
+/** The code points a font-data measurer covers: printable ASCII except the apostrophe, then U+200B. */
+export function coveredCodePoints(): number[] {
+  const out: number[] = [];
+  for (let cp = 0x20; cp <= 0x7e; cp++) if (cp !== 0x27) out.push(cp);
+  out.push(ZWSP);
+  return out;
+}
+
+/** The WPT Ahem v1.50 font data: every covered glyph advances 1em and U+200B advances 0 (css-fonts-4 §5). */
+export function ahemFontData(): FontData {
+  const advances = coveredCodePoints().map((cp) => (cp === ZWSP ? 0 : AHEM_UNITS_PER_EM));
+  return { unitsPerEm: AHEM_UNITS_PER_EM, ascent: AHEM_ASCENT, descent: AHEM_DESCENT, lineGap: 0, advances };
+}
+
+export const AHEM_FONT_DATA: FontData = ahemFontData();
+
+/** A covered code point's advance in whole em, or -1 when it is not covered or its advance is not a whole number of em. */
+function emAdvance(data: FontData, cp: number): number {
+  const k = coveredIndex(cp);
+  if (k < 0) return -1;
+  const units = data.advances[k];
+  if (units === undefined) return -1;
+  const em = units / data.unitsPerEm;
+  return Number.isInteger(em) && em >= 0 ? em : -1;
 }
 
 /** The two macOS font rules the Ahem measurer applies (platform-rules.ts); each can be switched off by a planted fault. */
 export type AhemRuleFaults = { readonly metricHalfUp: boolean; readonly untruncatedFontSize: boolean };
 
-/** The Ahem measurer, optionally with a platform rule planted wrong. */
-export function ahemMeasurerWith(faults: AhemRuleFaults): TextMeasurer {
+/** The measurer over raw font data with the translated Blink rules (R4), optionally with a platform rule planted wrong. */
+export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMeasurer {
   const instanceSize = (px: number): number => (faults.untruncatedFontSize ? px : platformFontSize(px));
   const round = faults.metricHalfUp ? roundFontMetricHalfUpToWholePx : roundFontMetricToWholePx;
   return {
-    // Blink SimpleFontData rounds ascent and descent of the platform-size font to whole px; Ahem has no line gap.
+    // Blink SimpleFontData rounds ascent and descent of the platform-size font to whole px; a zero line gap stays ZERO.
     metrics(font: TextFont): FontMetrics {
       return {
-        ascent: round(fontMetricPx(instanceSize(font.size), AHEM_UNITS_PER_EM, AHEM_ASCENT)),
-        descent: round(fontMetricPx(instanceSize(font.size), AHEM_UNITS_PER_EM, AHEM_DESCENT)),
-        lineGap: ZERO,
+        ascent: round(fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.ascent)),
+        descent: round(fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.descent)),
+        lineGap: data.lineGap === 0 ? ZERO : round(fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.lineGap)),
       };
     },
-    // css-fonts-4 §5: every covered Ahem glyph advances 1em and U+200B advances 0; anything else is not an Ahem glyph.
+    // css-fonts-4 §5: every covered glyph advances its whole-em advance; anything else is not an Ahem glyph.
     measure(text: string, font: TextFont): MeasureResult {
       let glyphs = 0;
       for (const ch of text) {
         const cp = ch.codePointAt(0) as number;
-        const advance = ahemAdvances(cp);
+        const advance = emAdvance(data, cp);
         if (advance < 0) return { ok: false, reason: `U+${cp.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
         glyphs += advance;
       }
@@ -65,7 +104,7 @@ export function ahemMeasurerWith(faults: AhemRuleFaults): TextMeasurer {
       let through = 0;
       for (const ch of text) {
         const cp = ch.codePointAt(0) as number;
-        const advance = ahemAdvances(cp);
+        const advance = emAdvance(data, cp);
         if (advance < 0) return { ok: false, reason: `U+${cp.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
         if (k < start) before += advance;
         if (k < end) through += advance;
@@ -74,6 +113,11 @@ export function ahemMeasurerWith(faults: AhemRuleFaults): TextMeasurer {
       return { ok: true, measure: { width: cachedRangeWidth(before, through, instanceSize(font.size)) } };
     },
   };
+}
+
+/** The Ahem measurer: the font-data measurer over the Ahem constants, optionally with a platform rule planted wrong. */
+export function ahemMeasurerWith(faults: AhemRuleFaults): TextMeasurer {
+  return fontDataMeasurer(AHEM_FONT_DATA, faults);
 }
 
 export const ahemMeasurer: TextMeasurer = ahemMeasurerWith({ metricHalfUp: false, untruncatedFontSize: false });
