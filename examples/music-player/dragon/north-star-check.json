@@ -58,20 +58,20 @@
   }
  },
  "summary": {
-  "diagnostics": 646,
-  "errors": 646,
+  "diagnostics": 681,
+  "errors": 681,
   "byCode": {
    "DRAGON_CSS_INVALID_VALUE": 21,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 38,
    "DRAGON_UNPROVEN_CONTEXT [web]": 38,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 40,
    "DRAGON_UNSUPPORTED_AT_RULE": 3,
-   "DRAGON_UNSUPPORTED_ELEMENT": 44,
-   "DRAGON_UNSUPPORTED_FONT [ios]": 21,
+   "DRAGON_UNSUPPORTED_ELEMENT": 29,
+   "DRAGON_UNSUPPORTED_FONT [ios]": 33,
    "DRAGON_UNSUPPORTED_PROPERTY": 103,
    "DRAGON_UNSUPPORTED_SELECTOR": 20,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 159,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 159
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 178,
+   "DRAGON_UNSUPPORTED_VALUE [web]": 178
   },
   "declarations": 291,
   "supportedBothTargets": 60,
@@ -79,7 +79,7 @@
   "supportedIos": 60,
   "supportPercent": 20.6,
   "elements": 62,
-  "supportedElements": 18,
+  "supportedElements": 33,
   "tags": {
    "html": {
     "count": 1,
@@ -95,11 +95,11 @@
    },
    "nav": {
     "count": 1,
-    "supported": false
+    "supported": true
    },
    "h1": {
     "count": 1,
-    "supported": false
+    "supported": true
    },
    "button": {
     "count": 10,
@@ -115,15 +115,15 @@
    },
    "h2": {
     "count": 2,
-    "supported": false
+    "supported": true
    },
    "h3": {
     "count": 5,
-    "supported": false
+    "supported": true
    },
    "p": {
     "count": 2,
-    "supported": false
+    "supported": true
    },
    "input": {
     "count": 1,
@@ -131,7 +131,7 @@
    },
    "h4": {
     "count": 4,
-    "supported": false
+    "supported": true
    },
    "a": {
     "count": 2,
@@ -177,15 +177,15 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored/main": 390,
-   "B-unwrapped/main": 424,
-   "C-context/main": 299,
-   "A-authored/library-open": 390,
-   "B-unwrapped/library-open": 424,
-   "C-context/library-open": 299,
-   "A-authored/playing": 390,
-   "B-unwrapped/playing": 424,
-   "C-context/playing": 299
+   "A-authored/main": 375,
+   "B-unwrapped/main": 409,
+   "C-context/main": 311,
+   "A-authored/library-open": 375,
+   "B-unwrapped/library-open": 409,
+   "C-context/library-open": 311,
+   "A-authored/playing": 375,
+   "B-unwrapped/playing": 409,
+   "C-context/playing": 311
   }
  },
  "features": {
@@ -4998,8 +4998,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -5024,8 +5023,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -5050,8 +5048,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -5076,8 +5073,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -7312,8 +7308,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -7338,8 +7333,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -7364,8 +7358,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -7390,8 +7383,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -7416,8 +7408,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -7442,8 +7433,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -7468,8 +7458,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -7494,8 +7483,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -7572,8 +7560,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -7598,8 +7585,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -8003,8 +7989,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -8029,8 +8014,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -8055,8 +8039,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -8081,8 +8064,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -9998,8 +9980,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -10024,8 +10005,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -10050,8 +10030,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -10076,8 +10055,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -10102,8 +10080,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -10128,8 +10105,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -10154,8 +10130,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -10180,8 +10155,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -10808,8 +10782,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -10834,8 +10807,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -10860,8 +10832,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -10886,8 +10857,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -12623,7 +12593,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@disclosure-text|<span> disclosure-text is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@disclosure-text|<span> disclosure-text is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12632,7 +12602,7 @@
     "id": "disclosure-text",
     "tag": "span"
    },
-   "message": "<span> disclosure-text is not supported in milestone 1 (html, body, div)",
+   "message": "<span> disclosure-text is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12645,95 +12615,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-artist-1|<h4> library-artist-1 is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "library-artist-1",
-    "tag": "h4"
-   },
-   "message": "<h4> library-artist-1 is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-artist-2|<h4> library-artist-2 is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "library-artist-2",
-    "tag": "h4"
-   },
-   "message": "<h4> library-artist-2 is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-artist-3|<h4> library-artist-3 is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "library-artist-3",
-    "tag": "h4"
-   },
-   "message": "<h4> library-artist-3 is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-artist-4|<h4> library-artist-4 is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "library-artist-4",
-    "tag": "h4"
-   },
-   "message": "<h4> library-artist-4 is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-button|<button> library-button is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-button|<button> library-button is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12742,7 +12624,7 @@
     "id": "library-button",
     "tag": "button"
    },
-   "message": "<button> library-button is not supported in milestone 1 (html, body, div)",
+   "message": "<button> library-button is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12755,7 +12637,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-cover-1|<img> library-cover-1 is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-cover-1|<img> library-cover-1 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12764,7 +12646,7 @@
     "id": "library-cover-1",
     "tag": "img"
    },
-   "message": "<img> library-cover-1 is not supported in milestone 1 (html, body, div)",
+   "message": "<img> library-cover-1 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12777,7 +12659,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-cover-2|<img> library-cover-2 is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-cover-2|<img> library-cover-2 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12786,7 +12668,7 @@
     "id": "library-cover-2",
     "tag": "img"
    },
-   "message": "<img> library-cover-2 is not supported in milestone 1 (html, body, div)",
+   "message": "<img> library-cover-2 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12799,7 +12681,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-cover-3|<img> library-cover-3 is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-cover-3|<img> library-cover-3 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12808,7 +12690,7 @@
     "id": "library-cover-3",
     "tag": "img"
    },
-   "message": "<img> library-cover-3 is not supported in milestone 1 (html, body, div)",
+   "message": "<img> library-cover-3 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12821,7 +12703,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-cover-4|<img> library-cover-4 is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-cover-4|<img> library-cover-4 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12830,7 +12712,7 @@
     "id": "library-cover-4",
     "tag": "img"
    },
-   "message": "<img> library-cover-4 is not supported in milestone 1 (html, body, div)",
+   "message": "<img> library-cover-4 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12843,95 +12725,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-name-1|<h3> library-name-1 is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "library-name-1",
-    "tag": "h3"
-   },
-   "message": "<h3> library-name-1 is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-name-2|<h3> library-name-2 is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "library-name-2",
-    "tag": "h3"
-   },
-   "message": "<h3> library-name-2 is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-name-3|<h3> library-name-3 is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "library-name-3",
-    "tag": "h3"
-   },
-   "message": "<h3> library-name-3 is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-name-4|<h3> library-name-4 is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "library-name-4",
-    "tag": "h3"
-   },
-   "message": "<h3> library-name-4 is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-song-1|<button> library-song-1 is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-song-1|<button> library-song-1 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12940,7 +12734,7 @@
     "id": "library-song-1",
     "tag": "button"
    },
-   "message": "<button> library-song-1 is not supported in milestone 1 (html, body, div)",
+   "message": "<button> library-song-1 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12953,7 +12747,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-song-2|<button> library-song-2 is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-song-2|<button> library-song-2 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12962,7 +12756,7 @@
     "id": "library-song-2",
     "tag": "button"
    },
-   "message": "<button> library-song-2 is not supported in milestone 1 (html, body, div)",
+   "message": "<button> library-song-2 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12975,7 +12769,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-song-3|<button> library-song-3 is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-song-3|<button> library-song-3 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12984,7 +12778,7 @@
     "id": "library-song-3",
     "tag": "button"
    },
-   "message": "<button> library-song-3 is not supported in milestone 1 (html, body, div)",
+   "message": "<button> library-song-3 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12997,7 +12791,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-song-4|<button> library-song-4 is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-song-4|<button> library-song-4 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13006,7 +12800,7 @@
     "id": "library-song-4",
     "tag": "button"
    },
-   "message": "<button> library-song-4 is not supported in milestone 1 (html, body, div)",
+   "message": "<button> library-song-4 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13019,73 +12813,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@library-title|<h2> library-title is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "library-title",
-    "tag": "h2"
-   },
-   "message": "<h2> library-title is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@nav-title|<h1> nav-title is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "nav-title",
-    "tag": "h1"
-   },
-   "message": "<h1> nav-title is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@nav|<nav> nav is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "nav",
-    "tag": "nav"
-   },
-   "message": "<nav> nav is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@play-icon|<span> play-icon is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@play-icon|<span> play-icon is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13094,7 +12822,7 @@
     "id": "play-icon",
     "tag": "span"
    },
-   "message": "<span> play-icon is not supported in milestone 1 (html, body, div)",
+   "message": "<span> play-icon is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13107,7 +12835,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@play|<button> play is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@play|<button> play is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13116,7 +12844,7 @@
     "id": "play",
     "tag": "button"
    },
-   "message": "<button> play is not supported in milestone 1 (html, body, div)",
+   "message": "<button> play is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13129,7 +12857,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@privacy-link|<a> privacy-link is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@privacy-link|<a> privacy-link is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13138,7 +12866,7 @@
     "id": "privacy-link",
     "tag": "a"
    },
-   "message": "<a> privacy-link is not supported in milestone 1 (html, body, div)",
+   "message": "<a> privacy-link is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13151,7 +12879,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@progress-input|<input> progress-input is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@progress-input|<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13160,7 +12888,7 @@
     "id": "progress-input",
     "tag": "input"
    },
-   "message": "<input> progress-input is not supported in milestone 1 (html, body, div)",
+   "message": "<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13173,7 +12901,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@record-center|<span> record-center is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@record-center|<span> record-center is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13182,7 +12910,7 @@
     "id": "record-center",
     "tag": "span"
    },
-   "message": "<span> record-center is not supported in milestone 1 (html, body, div)",
+   "message": "<span> record-center is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13195,7 +12923,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@record-cover|<img> record-cover is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@record-cover|<img> record-cover is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13204,7 +12932,7 @@
     "id": "record-cover",
     "tag": "img"
    },
-   "message": "<img> record-cover is not supported in milestone 1 (html, body, div)",
+   "message": "<img> record-cover is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13217,7 +12945,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@record-label|<span> record-label is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@record-label|<span> record-label is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13226,7 +12954,7 @@
     "id": "record-label",
     "tag": "span"
    },
-   "message": "<span> record-label is not supported in milestone 1 (html, body, div)",
+   "message": "<span> record-label is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13239,7 +12967,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@record-marker-one|<span> record-marker-one is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@record-marker-one|<span> record-marker-one is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13248,7 +12976,7 @@
     "id": "record-marker-one",
     "tag": "span"
    },
-   "message": "<span> record-marker-one is not supported in milestone 1 (html, body, div)",
+   "message": "<span> record-marker-one is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13261,7 +12989,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@record-marker-two|<span> record-marker-two is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@record-marker-two|<span> record-marker-two is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13270,7 +12998,7 @@
     "id": "record-marker-two",
     "tag": "span"
    },
-   "message": "<span> record-marker-two is not supported in milestone 1 (html, body, div)",
+   "message": "<span> record-marker-two is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13283,7 +13011,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@record-shine|<span> record-shine is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@record-shine|<span> record-shine is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13292,7 +13020,7 @@
     "id": "record-shine",
     "tag": "span"
    },
-   "message": "<span> record-shine is not supported in milestone 1 (html, body, div)",
+   "message": "<span> record-shine is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13305,7 +13033,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@skip-back|<button> skip-back is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@skip-back|<button> skip-back is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13314,7 +13042,7 @@
     "id": "skip-back",
     "tag": "button"
    },
-   "message": "<button> skip-back is not supported in milestone 1 (html, body, div)",
+   "message": "<button> skip-back is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13327,7 +13055,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@skip-forward|<button> skip-forward is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@skip-forward|<button> skip-forward is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13336,7 +13064,7 @@
     "id": "skip-forward",
     "tag": "button"
    },
-   "message": "<button> skip-forward is not supported in milestone 1 (html, body, div)",
+   "message": "<button> skip-forward is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13349,29 +13077,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@song-artist|<h3> song-artist is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "song-artist",
-    "tag": "h3"
-   },
-   "message": "<h3> song-artist is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@song-description-1|<span> song-description-1 is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@song-description-1|<span> song-description-1 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13380,7 +13086,7 @@
     "id": "song-description-1",
     "tag": "span"
    },
-   "message": "<span> song-description-1 is not supported in milestone 1 (html, body, div)",
+   "message": "<span> song-description-1 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13393,7 +13099,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@song-description-2|<span> song-description-2 is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@song-description-2|<span> song-description-2 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13402,7 +13108,7 @@
     "id": "song-description-2",
     "tag": "span"
    },
-   "message": "<span> song-description-2 is not supported in milestone 1 (html, body, div)",
+   "message": "<span> song-description-2 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13415,7 +13121,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@song-description-3|<span> song-description-3 is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@song-description-3|<span> song-description-3 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13424,7 +13130,7 @@
     "id": "song-description-3",
     "tag": "span"
    },
-   "message": "<span> song-description-3 is not supported in milestone 1 (html, body, div)",
+   "message": "<span> song-description-3 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13437,7 +13143,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@song-description-4|<span> song-description-4 is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@song-description-4|<span> song-description-4 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13446,7 +13152,7 @@
     "id": "song-description-4",
     "tag": "span"
    },
-   "message": "<span> song-description-4 is not supported in milestone 1 (html, body, div)",
+   "message": "<span> song-description-4 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13459,29 +13165,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@song-title|<h2> song-title is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "song-title",
-    "tag": "h2"
-   },
-   "message": "<h2> song-title is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@terms-link|<a> terms-link is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@terms-link|<a> terms-link is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13490,7 +13174,7 @@
     "id": "terms-link",
     "tag": "a"
    },
-   "message": "<a> terms-link is not supported in milestone 1 (html, body, div)",
+   "message": "<a> terms-link is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13503,51 +13187,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@time-current|<p> time-current is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "time-current",
-    "tag": "p"
-   },
-   "message": "<p> time-current is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@time-duration|<p> time-duration is not supported in milestone 1 (html, body, div)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "time-duration",
-    "tag": "p"
-   },
-   "message": "<p> time-duration is not supported in milestone 1 (html, body, div)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@youtube-sync-paused|<button> youtube-sync-paused is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@youtube-sync-paused|<button> youtube-sync-paused is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13556,7 +13196,7 @@
     "id": "youtube-sync-paused",
     "tag": "button"
    },
-   "message": "<button> youtube-sync-paused is not supported in milestone 1 (html, body, div)",
+   "message": "<button> youtube-sync-paused is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13569,7 +13209,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@youtube-sync-playing|<button> youtube-sync-playing is not supported in milestone 1 (html, body, div)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@youtube-sync-playing|<button> youtube-sync-playing is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -13578,7 +13218,7 @@
     "id": "youtube-sync-playing",
     "tag": "button"
    },
-   "message": "<button> youtube-sync-playing is not supported in milestone 1 (html, body, div)",
+   "message": "<button> youtube-sync-playing is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13894,8 +13534,7 @@
    "message": "font-size: 1.35rem is unsupported (support profile m1-s5); supported font-size values: <length-px>",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -13919,8 +13558,7 @@
    "message": "font-size: 1.35rem is unsupported (support profile m1-s5); supported font-size values: <length-px>",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -13944,8 +13582,7 @@
    "message": "max-width: 20rem is unsupported (support profile m1-s5); supported max-width values: <length-px>, <percentage> or none",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -13969,8 +13606,7 @@
    "message": "max-width: 20rem is unsupported (support profile m1-s5); supported max-width values: <length-px>, <percentage> or none",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -14018,8 +13654,7 @@
    "message": "width: 20rem is unsupported (support profile m1-s5); supported width values: <length-px>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -14043,8 +13678,7 @@
    "message": "width: 20rem is unsupported (support profile m1-s5); supported width values: <length-px>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -14164,8 +13798,7 @@
    "message": "min-width: 2.5rem is unsupported (support profile m1-s5); supported min-width values: <length-px>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -14189,8 +13822,7 @@
    "message": "min-width: 2.5rem is unsupported (support profile m1-s5); supported min-width values: <length-px>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -14927,7 +14559,103 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1370-1376|min-height: 2.5rem is unsupported (support profile m1-s5); no min-height value is proven in relative-in-block/ltr",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <length-px>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 1195,
+    "end": 1199,
+    "line": 80,
+    "column": 14,
+    "text": "10vh"
+   },
+   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <length-px>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <length-px>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 1195,
+    "end": 1199,
+    "line": 80,
+    "column": 14,
+    "text": "10vh"
+   },
+   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <length-px>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1239-1245|font-size: 1.5rem is unsupported (support profile m1-s5); in text-in-flex-item/row/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 1239,
+    "end": 1245,
+    "line": 85,
+    "column": 13,
+    "text": "1.5rem"
+   },
+   "message": "font-size: 1.5rem is unsupported (support profile m1-s5); in text-in-flex-item/row/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1239-1245|font-size: 1.5rem is unsupported (support profile m1-s5); in text-in-flex-item/row/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 1239,
+    "end": 1245,
+    "line": 85,
+    "column": 13,
+    "text": "1.5rem"
+   },
+   "message": "font-size: 1.5rem is unsupported (support profile m1-s5); in text-in-flex-item/row/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1370-1376|min-height: 2.5rem is unsupported (support profile m1-s5); no min-height value is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -14939,7 +14667,7 @@
     "column": 14,
     "text": "2.5rem"
    },
-   "message": "min-height: 2.5rem is unsupported (support profile m1-s5); no min-height value is proven in relative-in-block/ltr",
+   "message": "min-height: 2.5rem is unsupported (support profile m1-s5); no min-height value is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -14951,7 +14679,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1370-1376|min-height: 2.5rem is unsupported (support profile m1-s5); no min-height value is proven in relative-in-block/ltr",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1370-1376|min-height: 2.5rem is unsupported (support profile m1-s5); no min-height value is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -14963,7 +14691,7 @@
     "column": 14,
     "text": "2.5rem"
    },
-   "message": "min-height: 2.5rem is unsupported (support profile m1-s5); no min-height value is proven in relative-in-block/ltr",
+   "message": "min-height: 2.5rem is unsupported (support profile m1-s5); no min-height value is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -14975,7 +14703,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1388-1394|padding-bottom: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1388-1394|padding-bottom: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-bottom value is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -14987,7 +14715,7 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-bottom: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "message": "padding-bottom: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-bottom value is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -14999,7 +14727,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1388-1394|padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1388-1394|padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-left value is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -15011,7 +14739,7 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "message": "padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-left value is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -15023,7 +14751,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1388-1394|padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1388-1394|padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-right value is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -15035,7 +14763,7 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "message": "padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-right value is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -15047,7 +14775,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1388-1394|padding-top: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1388-1394|padding-top: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-top value is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -15059,7 +14787,7 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-top: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "message": "padding-top: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-top value is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -15071,7 +14799,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1388-1394|padding-bottom: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1388-1394|padding-bottom: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-bottom value is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -15083,7 +14811,7 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-bottom: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "message": "padding-bottom: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-bottom value is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -15095,7 +14823,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1388-1394|padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1388-1394|padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-left value is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -15107,7 +14835,7 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "message": "padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-left value is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -15119,7 +14847,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1388-1394|padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1388-1394|padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-right value is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -15131,7 +14859,7 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "message": "padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-right value is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -15143,7 +14871,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1388-1394|padding-top: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1388-1394|padding-top: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-top value is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -15155,7 +14883,7 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-top: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); in relative-in-block/ltr use <length-px>",
+   "message": "padding-top: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); no padding-top value is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -16847,6 +16575,246 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4446-4460|padding-bottom: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4446,
+    "end": 4460,
+    "line": 245,
+    "column": 11,
+    "text": "3rem 1rem 1rem"
+   },
+   "message": "padding-bottom: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4446-4460|padding-left: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4446,
+    "end": 4460,
+    "line": 245,
+    "column": 11,
+    "text": "3rem 1rem 1rem"
+   },
+   "message": "padding-left: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4446-4460|padding-right: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4446,
+    "end": 4460,
+    "line": 245,
+    "column": 11,
+    "text": "3rem 1rem 1rem"
+   },
+   "message": "padding-right: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4446-4460|padding-top: 3rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4446,
+    "end": 4460,
+    "line": 245,
+    "column": 11,
+    "text": "3rem 1rem 1rem"
+   },
+   "message": "padding-top: 3rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4446-4460|padding-bottom: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4446,
+    "end": 4460,
+    "line": 245,
+    "column": 11,
+    "text": "3rem 1rem 1rem"
+   },
+   "message": "padding-bottom: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4446-4460|padding-left: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4446,
+    "end": 4460,
+    "line": 245,
+    "column": 11,
+    "text": "3rem 1rem 1rem"
+   },
+   "message": "padding-left: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4446-4460|padding-right: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4446,
+    "end": 4460,
+    "line": 245,
+    "column": 11,
+    "text": "3rem 1rem 1rem"
+   },
+   "message": "padding-right: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4446-4460|padding-top: 3rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4446,
+    "end": 4460,
+    "line": 245,
+    "column": 11,
+    "text": "3rem 1rem 1rem"
+   },
+   "message": "padding-top: 3rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4524-4528|font-size: 1rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4524,
+    "end": 4528,
+    "line": 250,
+    "column": 13,
+    "text": "1rem"
+   },
+   "message": "font-size: 1rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4524-4528|font-size: 1rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4524,
+    "end": 4528,
+    "line": 250,
+    "column": 13,
+    "text": "1rem"
+   },
+   "message": "font-size: 1rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <length-px>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -16980,6 +16948,102 @@
     "text": "1rem"
    },
    "message": "row-gap: 1rem (set by gap: 1rem) is unsupported (support profile m1-s5); in flex-row-single-line/ltr use <length-px> or normal",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4984-4990|padding-bottom: 1rem (set by padding: 1rem 0) is unsupported (support profile m1-s5); in flex-row/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4984,
+    "end": 4990,
+    "line": 279,
+    "column": 11,
+    "text": "1rem 0"
+   },
+   "message": "padding-bottom: 1rem (set by padding: 1rem 0) is unsupported (support profile m1-s5); in flex-row/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4984-4990|padding-top: 1rem (set by padding: 1rem 0) is unsupported (support profile m1-s5); in flex-row/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4984,
+    "end": 4990,
+    "line": 279,
+    "column": 11,
+    "text": "1rem 0"
+   },
+   "message": "padding-top: 1rem (set by padding: 1rem 0) is unsupported (support profile m1-s5); in flex-row/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4984-4990|padding-bottom: 1rem (set by padding: 1rem 0) is unsupported (support profile m1-s5); in flex-row/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4984,
+    "end": 4990,
+    "line": 279,
+    "column": 11,
+    "text": "1rem 0"
+   },
+   "message": "padding-bottom: 1rem (set by padding: 1rem 0) is unsupported (support profile m1-s5); in flex-row/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4984-4990|padding-top: 1rem (set by padding: 1rem 0) is unsupported (support profile m1-s5); in flex-row/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4984,
+    "end": 4990,
+    "line": 279,
+    "column": 11,
+    "text": "1rem 0"
+   },
+   "message": "padding-top: 1rem (set by padding: 1rem 0) is unsupported (support profile m1-s5); in flex-row/ltr use <length-px>",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -18047,6 +18111,198 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6658-6662|padding-bottom: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 6658,
+    "end": 6662,
+    "line": 381,
+    "column": 11,
+    "text": "2rem"
+   },
+   "message": "padding-bottom: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6658-6662|padding-left: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 6658,
+    "end": 6662,
+    "line": 381,
+    "column": 11,
+    "text": "2rem"
+   },
+   "message": "padding-left: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6658-6662|padding-right: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 6658,
+    "end": 6662,
+    "line": 381,
+    "column": 11,
+    "text": "2rem"
+   },
+   "message": "padding-right: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6658-6662|padding-top: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 6658,
+    "end": 6662,
+    "line": 381,
+    "column": 11,
+    "text": "2rem"
+   },
+   "message": "padding-top: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6658-6662|padding-bottom: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 6658,
+    "end": 6662,
+    "line": 381,
+    "column": 11,
+    "text": "2rem"
+   },
+   "message": "padding-bottom: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6658-6662|padding-left: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 6658,
+    "end": 6662,
+    "line": 381,
+    "column": 11,
+    "text": "2rem"
+   },
+   "message": "padding-left: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6658-6662|padding-right: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 6658,
+    "end": 6662,
+    "line": 381,
+    "column": 11,
+    "text": "2rem"
+   },
+   "message": "padding-right: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6658-6662|padding-top: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 6658,
+    "end": 6662,
+    "line": 381,
+    "column": 11,
+    "text": "2rem"
+   },
+   "message": "padding-top: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6856-6865|padding-bottom: 1rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -18468,6 +18724,102 @@
     "text": "1rem"
    },
    "message": "padding-left: 1rem is unsupported (support profile m1-s5); in flex-row/ltr use <length-px> or <percentage>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@7306-7310|font-size: 1rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 7306,
+    "end": 7310,
+    "line": 426,
+    "column": 13,
+    "text": "1rem"
+   },
+   "message": "font-size: 1rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@7306-7310|font-size: 1rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 7306,
+    "end": 7310,
+    "line": 426,
+    "column": 13,
+    "text": "1rem"
+   },
+   "message": "font-size: 1rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@7350-7356|font-size: 0.7rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 7350,
+    "end": 7356,
+    "line": 430,
+    "column": 13,
+    "text": "0.7rem"
+   },
+   "message": "font-size: 0.7rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@7350-7356|font-size: 0.7rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 7350,
+    "end": 7356,
+    "line": 430,
+    "column": 13,
+    "text": "0.7rem"
+   },
+   "message": "font-size: 0.7rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -19103,6 +19455,150 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@8822-8829|font-size: 1.35rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8822,
+    "end": 8829,
+    "line": 524,
+    "column": 14,
+    "text": "1.35rem"
+   },
+   "message": "font-size: 1.35rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@8822-8829|font-size: 1.35rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 8822,
+    "end": 8829,
+    "line": 524,
+    "column": 14,
+    "text": "1.35rem"
+   },
+   "message": "font-size: 1.35rem is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use <length-px>",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@8865-8870|max-width: 20rem is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>, <percentage> or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8865,
+    "end": 8870,
+    "line": 526,
+    "column": 14,
+    "text": "20rem"
+   },
+   "message": "max-width: 20rem is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>, <percentage> or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@8865-8870|max-width: 20rem is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>, <percentage> or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 8865,
+    "end": 8870,
+    "line": 526,
+    "column": 14,
+    "text": "20rem"
+   },
+   "message": "max-width: 20rem is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>, <percentage> or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@8931-8936|width: 20rem is unsupported (support profile m1-s5); in flex-column/ltr use <length-px> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8931,
+    "end": 8936,
+    "line": 529,
+    "column": 10,
+    "text": "20rem"
+   },
+   "message": "width: 20rem is unsupported (support profile m1-s5); in flex-column/ltr use <length-px> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@8931-8936|width: 20rem is unsupported (support profile m1-s5); in flex-column/ltr use <length-px> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 8931,
+    "end": 8936,
+    "line": 529,
+    "column": 10,
+    "text": "20rem"
+   },
+   "message": "width: 20rem is unsupported (support profile m1-s5); in flex-column/ltr use <length-px> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@8972-8977|max-width: 18rem is unsupported (support profile m1-s5); in flex-column/ltr use <length-px>, <percentage> or none",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -19188,6 +19684,54 @@
     "text": "18rem"
    },
    "message": "width: 18rem is unsupported (support profile m1-s5); in flex-column/ltr use <length-px> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@9031-9037|min-width: 2.5rem is unsupported (support profile m1-s5); in flex-row/ltr use <length-px> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 9031,
+    "end": 9037,
+    "line": 538,
+    "column": 14,
+    "text": "2.5rem"
+   },
+   "message": "min-width: 2.5rem is unsupported (support profile m1-s5); in flex-row/ltr use <length-px> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@9031-9037|min-width: 2.5rem is unsupported (support profile m1-s5); in flex-row/ltr use <length-px> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 9031,
+    "end": 9037,
+    "line": 538,
+    "column": 14,
+    "text": "2.5rem"
+   },
+   "message": "min-width: 2.5rem is unsupported (support profile m1-s5); in flex-row/ltr use <length-px> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -19289,6 +19833,27 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@library-artist-1 (text)|text library-artist-1:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> library-artist-1; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "library-artist-1 (text)",
+    "tag": "h4"
+   },
+   "message": "text library-artist-1:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> library-artist-1; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_FONT|ios|el@library-artist-2 (text)|font-family: \"Lato\" , sans-serif on library-artist-2:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -19299,6 +19864,27 @@
     "tag": "h4"
    },
    "message": "font-family: \"Lato\" , sans-serif on library-artist-2:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@library-artist-2 (text)|text library-artist-2:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> library-artist-2; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "library-artist-2 (text)",
+    "tag": "h4"
+   },
+   "message": "text library-artist-2:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> library-artist-2; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -19331,6 +19917,27 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@library-artist-3 (text)|text library-artist-3:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> library-artist-3; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "library-artist-3 (text)",
+    "tag": "h4"
+   },
+   "message": "text library-artist-3:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> library-artist-3; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_FONT|ios|el@library-artist-4 (text)|font-family: \"Lato\" , sans-serif on library-artist-4:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -19341,6 +19948,27 @@
     "tag": "h4"
    },
    "message": "font-family: \"Lato\" , sans-serif on library-artist-4:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@library-artist-4 (text)|text library-artist-4:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> library-artist-4; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "library-artist-4 (text)",
+    "tag": "h4"
+   },
+   "message": "text library-artist-4:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> library-artist-4; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -19394,6 +20022,27 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@library-name-1 (text)|text library-name-1:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> library-name-1; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "library-name-1 (text)",
+    "tag": "h3"
+   },
+   "message": "text library-name-1:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> library-name-1; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_FONT|ios|el@library-name-2 (text)|font-family: \"Lato\" , sans-serif on library-name-2:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -19404,6 +20053,27 @@
     "tag": "h3"
    },
    "message": "font-family: \"Lato\" , sans-serif on library-name-2:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@library-name-2 (text)|text library-name-2:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> library-name-2; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "library-name-2 (text)",
+    "tag": "h3"
+   },
+   "message": "text library-name-2:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> library-name-2; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -19436,6 +20106,27 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@library-name-3 (text)|text library-name-3:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> library-name-3; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "library-name-3 (text)",
+    "tag": "h3"
+   },
+   "message": "text library-name-3:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> library-name-3; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_FONT|ios|el@library-name-4 (text)|font-family: \"Lato\" , sans-serif on library-name-4:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -19446,6 +20137,27 @@
     "tag": "h3"
    },
    "message": "font-family: \"Lato\" , sans-serif on library-name-4:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@library-name-4 (text)|text library-name-4:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> library-name-4; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "library-name-4 (text)",
+    "tag": "h3"
+   },
+   "message": "text library-name-4:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> library-name-4; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -19478,6 +20190,27 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@library-title (text)|text library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> library-title; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "library-title (text)",
+    "tag": "h2"
+   },
+   "message": "text library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> library-title; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_FONT|ios|el@nav-title (text)|font-family: \"Lato\" , sans-serif on nav-title:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -19488,6 +20221,27 @@
     "tag": "h1"
    },
    "message": "font-family: \"Lato\" , sans-serif on nav-title:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@nav-title (text)|text nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> nav-title; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "nav-title (text)",
+    "tag": "h1"
+   },
+   "message": "text nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> nav-title; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -19604,6 +20358,27 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@song-artist (text)|text song-artist:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> song-artist; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "song-artist (text)",
+    "tag": "h3"
+   },
+   "message": "text song-artist:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> song-artist; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_FONT|ios|el@song-title (text)|font-family: \"Lato\" , sans-serif on song-title:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -19614,6 +20389,27 @@
     "tag": "h2"
    },
    "message": "font-family: \"Lato\" , sans-serif on song-title:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@song-title (text)|text song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> song-title; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "song-title (text)",
+    "tag": "h2"
+   },
+   "message": "text song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> song-title; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"

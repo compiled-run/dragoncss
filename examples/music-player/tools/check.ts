@@ -13,14 +13,15 @@
 //                  is the cascade those devices see); @keyframes blanked and from/to renamed to unmatched classes, so every
 //                  declaration inside an at-rule gets the context-free value check.
 //   C context:     B, with every rule and declaration a target-less error names blanked out (repeated to a fixed point), and
-//                  the tree projected to supported tags (html, body, div) with non-ui attributes dropped. This is the only way
+//                  the tree projected to supported tags (the compiler's element table) with non-ui attributes dropped. This is the only way
 //                  Dragon reaches its per-case checks (computed values, fonts, contextual proof) on this screen. It is a probe:
-//                  rules keyed on the projected tags (nav, h1..h4, button, p, a, img, input, span) no longer match.
+//                  rules keyed on the projected tags (button, a, img, input, span) no longer match.
 // Output (deterministic, no timestamps): examples/music-player/dragon/north-star-check.json. Prints the diagnostic count and
 // the support percentage.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import type { Diagnostic, FrontEndResult, Origin } from '../../../packages/dragon/src/index.ts';
 import { createProject } from '../../../packages/dragon/src/index.ts';
+import { SUPPORTED_TAGS } from '../../../packages/dragon/src/analysis/elements.ts';
 import { fixtureToInput } from '../../../packages/parity/src/fixture-reader.ts';
 import type { CssDeclaration, Span } from './css-inventory.ts';
 import { inventory } from './css-inventory.ts';
@@ -29,7 +30,6 @@ import { examplePath, readSnapshot, STATES, stateHtml, toFixtureHtml } from './s
 
 export const OUTPUT = 'dragon/north-star-check.json';
 const PROJECT_ID = 'dragon-parity';
-const SUPPORTED_TAGS = new Set(['html', 'body', 'div']);
 
 type Pass = 'A-authored' | 'B-unwrapped' | 'C-context';
 

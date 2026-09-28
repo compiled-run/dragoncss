@@ -16,8 +16,8 @@ describe('captured Chrome defaults and the webref grammar', () => {
     expect(platform).toBe('darwin-arm64');
     expect(webrefVersion).toBe('8.7.5');
   });
-  it('cover every longhand for html, body, div and an element with no UA rules', () => {
-    for (const tag of ['html', 'body', 'div', 'dragon-unstyled'] as const) {
+  it('cover every longhand for every supported tag and an element with no UA rules', () => {
+    for (const tag of Object.keys(computed) as (keyof typeof computed)[]) {
       for (const p of LONGHANDS) expect(computed[tag][p], `${tag} ${p}`).toBeTypeOf('string');
       for (const p of LONGHANDS) expect(properties[p], p).toBeDefined();
     }
@@ -36,6 +36,31 @@ describe('UA versus initial origin, per tag and longhand', () => {
       html: [],
       body: ['display', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],
       div: ['display'],
+      p: ['display', 'margin-bottom', 'margin-top'],
+      h1: ['display', 'font-size', 'margin-bottom', 'margin-top'],
+      h2: ['display', 'font-size', 'margin-bottom', 'margin-top'],
+      h3: ['display', 'font-size', 'margin-bottom', 'margin-top'],
+      h4: ['display', 'margin-bottom', 'margin-top'],
+      h5: ['display', 'font-size', 'margin-bottom', 'margin-top'],
+      h6: ['display', 'font-size', 'margin-bottom', 'margin-top'],
+      section: ['display'],
+      article: ['display'],
+      header: ['display'],
+      footer: ['display'],
+      nav: ['display'],
+      main: ['display'],
+      aside: ['display'],
+      ul: ['display', 'margin-bottom', 'margin-top', 'padding-left'],
+      ol: ['display', 'margin-bottom', 'margin-top', 'padding-left'],
+      li: ['display'],
+      blockquote: ['display', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],
+      figure: ['display', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],
+      figcaption: ['display'],
+      address: ['display'],
+      hr: ['border-bottom-style', 'border-bottom-width', 'border-left-style', 'border-left-width', 'border-right-style', 'border-right-width', 'border-top-style', 'border-top-width', 'color', 'display', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top', 'overflow-x', 'overflow-y'],
+      dl: ['display', 'margin-bottom', 'margin-top'],
+      dt: ['display'],
+      dd: ['display', 'margin-left'],
       'dragon-unstyled': [],
     });
   });

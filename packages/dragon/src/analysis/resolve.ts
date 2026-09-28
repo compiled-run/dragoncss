@@ -10,7 +10,7 @@ import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
 import type { Candidate } from './cascade.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeOverflowPair, initialValue, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { blockifyRoot, computeOverflowPair, declaredUserAgentValue, initialValue, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
@@ -18,7 +18,7 @@ export { selectorMatches } from './match.ts';
 export type { CascadeGroupHook, CascadeResult, Candidate } from './cascade.ts';
 export { beats, cascadeElement, cascadeGroups } from './cascade.ts';
 export type { Origin, ResolveEnvironment, ResolvedValue, RootFont, SubstitutionHook } from './computed.ts';
-export { defaultOrigin, initialValue, isInitialByProvenance, parseValueText, substituteVariables, userAgentValue, valueToString } from './computed.ts';
+export { declaredUserAgentValue, defaultOrigin, initialValue, isInitialByProvenance, parseValueText, substituteVariables, userAgentValue, valueToString } from './computed.ts';
 
 export type ResolvedElement = {
   readonly kind: 'element';
@@ -102,6 +102,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       const ua = userAgentValue(tag, p, environment.ua);
       return ua === null ? { value: initialValue(p, environment.ua), origin: 'initial', span: null, ...none } : { value: ua, origin: 'user-agent', span: null, ...none };
     };
+    // Longhands no author declaration set: their UA value depends on the element's final direction and font size (below).
+    const defaulted = new Set<Longhand>();
     for (const p of LONGHANDS) {
       const w = substituted(winners.get(p), p, el);
       const inherited = INHERITED.has(p);
@@ -123,9 +125,14 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         props.set(p, { value: { kind: 'family', value: 'Ahem' }, origin: 'environment', span: null, ...none });
       } else if (inherited) {
         props.set(p, parent === null ? (userAgentValue(tag, p, environment.ua) === null ? fromParent(p) : defaultFor(p)) : fromParent(p));
+        defaulted.add(p);
       } else {
         props.set(p, defaultFor(p));
+        defaulted.add(p);
       }
+    }
+    applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent);
+    for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {
         props.set(p, { ...set, value: { ...set.value, value: perturbColor(set.value.value) } });
@@ -164,7 +171,36 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     }
     return self;
   };
-  return visit(root, [], null);
+  const resolved = visit(root, [], null);
+  resolvedEnvironments.set(resolved, environment);
+  return resolved;
+}
+
+const resolvedEnvironments = new WeakMap<ResolvedElement, ResolveEnvironment>();
+
+/** The environment a root returned by resolveTree was resolved in; the computed-value checks read its UA dataset. */
+export function environmentOf(root: ResolvedElement): ResolveEnvironment {
+  const e = resolvedEnvironments.get(root);
+  if (e === undefined) throw new Error(`${root.element.address} is not a root returned by resolveTree`);
+  return e;
+}
+
+/**
+ * css-cascade-5 §6.3: a longhand no author declaration set takes the tag's declared UA value for the element's computed direction
+ * and font size (font-size first, since the others are relative to it), or else its inherited or initial value.
+ */
+function applyDeclaredUserAgent(tag: CapturedTag, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, parent: ResolvedElement | null, ua: UaDataset, fromParent: (p: Longhand) => ResolvedValue): void {
+  const none = { span: null, declaration: null, declared: null, losing: [] } as const;
+  const dirValue = (props.get('direction') as ResolvedValue).value;
+  const direction = dirValue.kind === 'keyword' && dirValue.value === 'rtl' ? 'rtl' : 'ltr';
+  const parentFontSize = (parent === null ? fromParent('font-size') : (parent.props.get('font-size') as ResolvedValue)).value;
+  const order = [...defaulted].sort((a, b) => Number(b === 'font-size') - Number(a === 'font-size'));
+  for (const p of order) {
+    const ownFontSize = (props.get('font-size') as ResolvedValue).value;
+    const value = declaredUserAgentValue(tag, p, ua, direction, ownFontSize, parentFontSize);
+    if (value !== null) props.set(p, { value, origin: 'user-agent', ...none });
+    else if ((props.get(p) as ResolvedValue).origin === 'user-agent') props.set(p, INHERITED.has(p) && parent !== null ? fromParent(p) : { value: initialValue(p, ua), origin: 'initial', ...none });
+  }
 }
 
 /** The winner with the var() substitution hook applied to its value; the same candidate when the hook changes nothing. */

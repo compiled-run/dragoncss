@@ -68,7 +68,7 @@ describe('DPR Chrome deviation registry', () => {
   it('initialLineWidthZoomed is inert at DPR 1: every top-level vector lays out the same with it, so the DPR-1 registry could not hold this deviation', () => {
     expect(readFileSync(join(dir, 'color-border-sides.json'), 'utf8')).toContain('device-px');
     const all = readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => f.replace(/\.json$/, ''));
-    expect(all.length).toBe(261);
+    expect(all.length).toBe(268);
     for (const f of all) {
       const a = rects(f, 1, NO_ENGINE_FAULTS);
       const b = rects(f, 1, { ...NO_ENGINE_FAULTS, initialLineWidthZoomed: true });

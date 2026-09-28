@@ -11,6 +11,14 @@ export type UaDataset = {
   readonly computed: { readonly [T in CapturedTag]: { readonly [property: string]: string } };
   readonly userAgentLonghands: { readonly [T in CapturedTag]: readonly string[] };
   readonly borderWidthKeywords: { readonly [keyword: string]: string };
+  /** Declared UA values per tag and element direction: a captured value, or "<n>em" of the font size it is relative to. */
+  readonly userAgentDeclared: { readonly [T in CapturedTag]: { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } } };
+  /** Ancestor tags under which a Chrome UA rule gives the tag values userAgentDeclared does not model. */
+  readonly userAgentContexts: { readonly [T in CapturedTag]: readonly string[] };
+  /** Inherited font properties a UA rule sets per tag that no longhand models (font-weight, font-style). */
+  readonly userAgentTextFonts: { readonly [T in CapturedTag]: { readonly [property: string]: string } };
+  /** Chrome's minimum logical font size in px, which clamps an em font size under the keyword-sized root. */
+  readonly minimumLogicalFontSize: number;
 };
 
 /** The platform the committed Chrome references and the UA dataset were captured on. */
