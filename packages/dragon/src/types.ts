@@ -10,6 +10,8 @@ export type Target = 'web' | 'ios' | 'android' | 'email';
 export type Targets = {
   web?: {};
   ios?: { minimum: string };
+  /** Android Views; minSdk is the API level floor, an integer from 29 to 36. */
+  android?: { minSdk: number };
 };
 
 export type Configured<T> = Extract<keyof T, keyof Targets>;
@@ -242,7 +244,7 @@ export interface Project<K extends string> {
 }
 
 /** A normalized target for possibilities queries (docs/api.md §6.3). */
-export type NormalizedTarget = { readonly kind: 'web' } | { readonly kind: 'ios'; readonly minimum: string };
+export type NormalizedTarget = { readonly kind: 'web' } | { readonly kind: 'ios'; readonly minimum: string } | { readonly kind: 'android'; readonly minSdk: number };
 
 /** docs/api.md §6.3: a possibilities query needs no compiled result; a resolved query reads one checked element in its cases. */
 export type SupportQuery<K extends string> =

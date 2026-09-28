@@ -20,6 +20,7 @@ import { emitWebCss } from './emit/web-css.ts';
 import type { CompilerFaults } from './faults.ts';
 import { NO_FAULTS } from './faults.ts';
 import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
+import { androidProfile } from './profiles/android.ts';
 import { iosProfile } from './profiles/ios.ts';
 import type { SupportProfile } from './profiles/types.ts';
 import { provenContexts, statusOf, supportedValuesFor, supportedValuesIn } from './profiles/types.ts';
@@ -47,14 +48,24 @@ import type {
 
 /** @internal */
 export const COMPILER_VERSION = '1.0.0-alpha.0';
-const KNOWN_TARGETS = ['web', 'ios'] as const;
+const KNOWN_TARGETS = ['web', 'ios', 'android'] as const;
 type KnownTarget = (typeof KNOWN_TARGETS)[number];
+/** The native targets, in the order their diagnostics are reported. */
+const NATIVE_TARGETS = ['ios', 'android'] as const;
 
-/** @internal */
-export type SupportProfiles = { readonly [T in KnownTarget]: SupportProfile };
+/** The API level range of the android target (docs/api.md §2.1). */
+export const ANDROID_MIN_SDK = { min: 29, max: 36 } as const;
+
+/** @internal Test-only replacement profiles may omit android, which then reads the committed android profile. */
+export type SupportProfiles = { readonly web: SupportProfile; readonly ios: SupportProfile; readonly android?: SupportProfile };
 
 /** @internal The committed support profiles. */
-export const COMMITTED_PROFILES: SupportProfiles = { web: webProfile, ios: iosProfile };
+export const COMMITTED_PROFILES: Required<SupportProfiles> = { web: webProfile, ios: iosProfile, android: androidProfile };
+
+/** @internal The profile of one target. */
+export function profileFor(profiles: SupportProfiles, t: KnownTarget): SupportProfile {
+  return t === 'android' ? (profiles.android === undefined ? androidProfile : profiles.android) : profiles[t];
+}
 
 /**
  * @internal
@@ -83,7 +94,7 @@ export type InternalRecord = {
   /** The reference platform whose UA dataset the result was resolved with, and the root font of its environment. */
   readonly platform: string;
   readonly rootFont: RootFont;
-  readonly profiles: SupportProfiles;
+  readonly profiles: Required<SupportProfiles>;
   readonly cases: readonly InternalCase[];
   readonly linked: Linked | null;
 };
@@ -143,12 +154,21 @@ function validateConfig(config: { projectId: unknown; targets: unknown }): Diagn
     return out;
   }
   for (const [k, v] of Object.entries(t)) {
-    if (!(KNOWN_TARGETS as readonly string[]).includes(k)) bad(`unknown target "${k}" (milestone 1 knows web and ios)`, 'Remove the target.');
-    else if (k === 'ios' && (typeof v !== 'object' || v === null || typeof (v as { minimum?: unknown }).minimum !== 'string' || Object.keys(v).length !== 1)) {
+    if (!(KNOWN_TARGETS as readonly string[]).includes(k)) bad(`unknown target "${k}" (Dragon knows web, ios and android)`, 'Remove the target.');
+    else if (k === 'android' && !validAndroid(v)) {
+      bad(`android needs exactly { minSdk: <integer from ${ANDROID_MIN_SDK.min} to ${ANDROID_MIN_SDK.max}> }`, `Set android.minSdk to an integer API level from ${ANDROID_MIN_SDK.min} to ${ANDROID_MIN_SDK.max}, for example { android: { minSdk: ${ANDROID_MIN_SDK.min} } }.`);
+    } else if (k === 'ios' && (typeof v !== 'object' || v === null || typeof (v as { minimum?: unknown }).minimum !== 'string' || Object.keys(v).length !== 1)) {
       bad('ios needs exactly { minimum: string }', 'Set ios.minimum, for example "15.0" (decision 6).');
     } else if (k === 'web' && (typeof v !== 'object' || v === null || Object.keys(v).length !== 0)) bad('web takes no options in milestone 1', 'Use web: {}.');
   }
   return out;
+}
+
+/** android is exactly { minSdk } with an integer API level in ANDROID_MIN_SDK. */
+export function validAndroid(v: unknown): boolean {
+  if (typeof v !== 'object' || v === null || Object.keys(v).length !== 1) return false;
+  const m = (v as { minSdk?: unknown }).minSdk;
+  return typeof m === 'number' && Number.isInteger(m) && m >= ANDROID_MIN_SDK.min && m <= ANDROID_MIN_SDK.max;
 }
 
 function blocksTarget(d: Diagnostic, t: Target): boolean {
@@ -198,7 +218,7 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
       for (const lh of d.longhands) {
         const feature = featureOf(lh.property, lh.value);
         for (const t of targets) {
-          const profile = profiles[t];
+          const profile = profileFor(profiles, t);
           if (provenContexts(profile, feature).length > 0) continue;
           const values = supportedValuesFor(profile, lh.property);
           const contexts = [...new Set(used.filter((u) => u.declaration === d && u.property === lh.property).map((u) => u.context))].sort();
@@ -222,7 +242,7 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
 }
 
 /** The lowering's font refusal, reported for every laid-out text node of every case, whether or not another error blocks ios. */
-function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>, target: 'ios' | 'android'): void {
   const walk = (el: ResolvedElement): void => {
     const display = (el.props.get('display') as ResolvedValue).value;
     if (display.kind === 'keyword' && display.value === 'none') return;
@@ -233,10 +253,10 @@ function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: 
       }
       const message = textFontProblem(c);
       if (message === null) continue;
-      const id = `${c.node.address}|font-family|${message}`;
+      const id = `${target}|${c.node.address}|font-family|${message}`;
       if (reported.has(id)) continue;
       reported.add(id);
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', { origin: c.node.node.origin, message, target: 'ios' }));
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', { origin: c.node.node.origin, message, target }));
     }
   };
   walk(root);
@@ -257,13 +277,13 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   for (const c of linked.cases) {
     const resolved = resolveTree(c.root, rules, options.faults, { direction: options.direction, rootFont: options.rootFont, ua: options.ua });
     checkComputed(resolved, targets, diagnostics, refused);
-    if (targets.includes('ios')) checkFonts(resolved, diagnostics, fonts);
+    for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t);
     const used = usedKeys(resolved);
     out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used });
     if (options.profiles === 'derive') continue;
     for (const u of used) {
       for (const t of targets) {
-        const profile = options.supportProfiles[t];
+        const profile = profileFor(options.supportProfiles, t);
         if (statusOf(profile, u.feature, u.context) !== 'unsupported') continue;
         const proven = provenContexts(profile, u.feature);
         if (proven.length === 0) continue;
@@ -329,7 +349,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     // The reference platform of the UA dataset and the environment's root font are compilation inputs (docs/api.md §10.1).
     platform: options.ua.platform,
     rootFont: options.rootFont,
-    profiles: targets.map((t) => profiles[t]),
+    profiles: targets.map((t) => profileFor(profiles, t)),
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
     direction: options.direction,
@@ -396,8 +416,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
       diagnostics.splice(valuesAt, 0, ...values);
     }
   }
+  // One native lowering shared by every configured native target that is not already blocked; its refusals block each of them.
   const lowered = new Map<string, LayoutBox>();
-  if (targets.includes('ios') && cases.length > 0 && !diagnostics.some((d) => blocksTarget(d, 'ios'))) {
+  const lowerFor = NATIVE_TARGETS.filter((t) => targets.includes(t) && !diagnostics.some((d) => blocksTarget(d, t)));
+  if (lowerFor.length > 0 && cases.length > 0) {
     const reported = new Set<string>();
     for (const c of cases) {
       if (c.resolved === null) continue;
@@ -409,7 +431,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
         if (reported.has(id)) continue;
         reported.add(id);
         const origin = originOfAddress(c.resolved, e.nodeId);
-        diagnostics.push(diagnostic(e.property === 'font-family' ? 'DRAGON_UNSUPPORTED_FONT' : 'DRAGON_LOWERING_FAILED', { origin, message: e.message, target: 'ios' }));
+        for (const t of lowerFor) diagnostics.push(diagnostic(e.property === 'font-family' ? 'DRAGON_UNSUPPORTED_FONT' : 'DRAGON_LOWERING_FAILED', { origin, message: e.message, target: t }));
       }
     }
   }
@@ -421,7 +443,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     const key = t as unknown as K;
     status[key] = blocking.length > 0 || cases.length === 0 ? 'blocked' : 'checked';
     if (status[key] === 'blocked') outputs[key] = { kind: 'blocked', diagnostics: blocking };
-    else if (t === 'ios') outputs[key] = { kind: 'analysis-only', digest, reason: 'Milestone 1 iOS output is analysis-only: its layout projection feeds the internal Linux lane; no Swift is emitted.' };
+    else if (t === 'ios') outputs[key] = { kind: 'analysis-only', digest, reason: 'The iOS output is analysis-only: its layout projection feeds the internal lanes, and the generated UIKit Swift is internal to the native lanes until an iOS native case passes.' };
+    else if (t === 'android') outputs[key] = { kind: 'analysis-only', digest, reason: 'The Android output is analysis-only: its layout projection feeds the internal lanes, and the generated Android Views Kotlin is internal to the native lanes until an Android native case passes.' };
     else {
       web = emitWebCss(cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement })), digest);
       outputs[key] = { kind: 'ready', digest, files: web.files };
@@ -437,7 +460,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     diagnostics,
     targets: status,
   };
-  const iosChecked = status['ios' as K] === 'checked';
+  const nativeChecked = NATIVE_TARGETS.some((t) => status[t as unknown as K] === 'checked');
   const webClasses = web === null ? null : web.classOf;
   return {
     report,
@@ -448,14 +471,14 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
       direction: options.direction,
       platform: options.ua.platform,
       rootFont: options.rootFont,
-      profiles,
+      profiles: { web: profiles.web, ios: profiles.ios, android: profileFor(profiles, 'android') },
       linked,
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,
         isInitial: c.isInitial,
         resolved: c.resolved,
-        nativeLowered: iosChecked ? (lowered.get(c.key) ?? null) : null,
+        nativeLowered: nativeChecked ? (lowered.get(c.key) ?? null) : null,
         webClassOf: webClasses === null ? null : (webClasses.get(c.key) ?? null),
         features: new Map(targets.map((t) => [t, [...new Set(c.used.map((u) => u.key))].sort()])),
       })),
@@ -530,7 +553,7 @@ function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>, chromeV
     const v = hit === null ? undefined : hit.el.props.get(p);
     if (hit === null || v === undefined) continue;
     const used = v.declaration === null || v.declared === null ? null : usedKeys(c.resolved).find((u) => u.address === address && u.property === p);
-    const profile = a.record.profiles[target as KnownTarget];
+    const profile = profileFor(a.record.profiles, target as KnownTarget);
     out.push({
       node: q.at.node,
       instance: q.at.instance,
