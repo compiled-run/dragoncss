@@ -69,7 +69,8 @@ What was stripped or changed:
 - **Screenshots:** for each device and state, `<state>.png` is the viewport at scroll 0 and `<state>-bottom.png` is the viewport
   scrolled to the end. There is no full-page capture, because full-page screenshots resize the viewport, which changes every
   `vh` value.
-- **Animations:** disabled in screenshots, so the spinning record is at its start frame.
+- **Animations:** every CSS animation is paused at time 0 before the dump and the screenshots, so the spinning record is at its
+  start frame. Two consecutive captures are byte-identical, PNGs included.
 - **Box dumps:** `<state>.boxes.json` holds, for every `data-dragon-id` element, its `getBoundingClientRect`, the client rects
   of its text lines, and the computed value of every property the stylesheet uses plus core layout longhands. The `:root` custom
   properties are dumped as well.

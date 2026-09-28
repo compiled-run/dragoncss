@@ -44,6 +44,11 @@ async function openState(browser: Browser, device: (typeof DEVICES)[number], htm
   await page.evaluate(async () => {
     await document.fonts.ready;
     await Promise.all([...document.images].map((img) => (img.complete ? Promise.resolve() : img.decode())));
+    // Deterministic dumps: every CSS animation (the playing state's spinning record) is frozen at its start frame.
+    for (const a of document.getAnimations()) {
+      a.pause();
+      a.currentTime = 0;
+    }
     await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
   });
   const dpr = await page.evaluate(() => window.devicePixelRatio);
