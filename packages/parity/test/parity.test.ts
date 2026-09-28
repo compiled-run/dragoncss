@@ -17,6 +17,7 @@ import type { CaseOutcome, FixtureOutcome } from '../src/pipeline.ts';
 import { caseCountProblems, runFixture, topologyProblems } from '../src/pipeline.ts';
 import { fixtureInput } from '../src/cases.ts';
 import { compileFixture } from '../src/pipeline.ts';
+import { compilerChromeDeviations } from '../src/compiler-deviations.ts';
 import { readTreeExpectation } from '../src/tree-fixture.ts';
 import { deriveRows } from '../src/profile-rows.ts';
 import { buildReport, renderSummary, writeReport } from '../src/report.ts';
@@ -162,6 +163,27 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     expect((c.dual?.valuesEqual ?? 0) < (c.dual?.valuesCompared ?? 0)).toBe(true);
     expect(c.reason).toMatch(/chrome-dual: /);
   });
+
+  it('planted fault: :is() with its first argument\'s specificity instead of its most specific one fails selectors-specificity', async () => {
+    const faulty = await runFixture(specFor('selectors-specificity'), browser, { authored: recorded, faults: { ...NO_FAULTS, isSpecificityFirstArgument: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
+    const c = faulty.cases[0] as CaseOutcome;
+    expect(faulty.status).toBe('fail');
+    expect(c.lanes['chrome-dual']).toBe('fail');
+    expect(c.lanes['linux-dragon-layout']).toBe('fail');
+    expect(c.comparison?.nodes.filter((n) => !n.pass).map((n) => n.id).sort()).toEqual(['a', 'i']);
+  });
+
+  for (const d of compilerChromeDeviations) {
+    it(`compiler Chrome deviation ${d.id}: the spec reading (${d.fault}) fails ${d.fixture} on ${d.nodes.join(', ')} in every case`, async () => {
+      const faulty = await runFixture(specFor(d.fixture), browser, { authored: recorded, faults: { ...NO_FAULTS, [d.fault]: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
+      expect(faulty.cases.length).toBeGreaterThan(0);
+      for (const c of faulty.cases) {
+        expect(c.status, c.id).toBe('fail');
+        expect(c.lanes['chrome-dual'], c.id).toBe('fail');
+        expect(c.comparison?.nodes.filter((n) => !n.pass).map((n) => n.id).sort(), c.id).toEqual([...d.nodes].sort());
+      }
+    });
+  }
 
   it('planted fault: a colour-only resolver error fails the dual check on channels while the layout lane passes', async () => {
     const faulty = await runFixture(specFor('color-syntax'), browser, { authored: recorded, faults: { ...NO_FAULTS, colourOnly: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });

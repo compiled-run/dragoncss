@@ -1,0 +1,3 @@
+body { margin: 0; }
+.blank { width: 10px; height: 5px; background-color: #00f; }
+.blank:empty { width: 20px; }

@@ -3,6 +3,7 @@ import type { BackgroundResetLonghand, DiagnosticCode, Environment } from 'drago
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
+import { SELECTORS } from './fixture-groups/selectors.ts';
 
 /**
  * The reference environment of every case in this lane (docs/api.md §7, §10.1): an input to the projection, the engine and Chrome.
@@ -58,6 +59,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'milestone-1', fixtures: MILESTONE_1 },
   { id: 'logical-props', fixtures: LOGICAL_PROPS },
   { id: 'background', fixtures: BACKGROUND },
+  { id: 'selectors', fixtures: SELECTORS },
 ];
 
 export const FIXTURES: readonly FixtureSpec[] = FIXTURE_GROUPS.flatMap((g) => g.fixtures);

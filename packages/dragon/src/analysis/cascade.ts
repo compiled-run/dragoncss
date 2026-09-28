@@ -6,7 +6,7 @@ import type { CompilerFaults } from '../faults.ts';
 import type { LinkedElement } from './link.ts';
 import type { DirectionContext } from './logical.ts';
 import { elementDirection, hasDirectionalValues, inDirection } from './logical.ts';
-import { selectorMatches } from './match.ts';
+import { selectorMatches, specificityFor } from './match.ts';
 
 /** One declared longhand value competing in the cascade, with the specificity of the selector that matched it. */
 export type Candidate = { readonly declaration: Declaration; readonly value: CssValue; readonly specificity: readonly [number, number, number] };
@@ -47,7 +47,7 @@ export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedEle
       for (const declared of rule.declarations) {
         const d = own === null ? declared : inDirection(declared, own);
         for (const lh of d.longhands) {
-          const cand: Candidate = { declaration: d, value: lh.value, specificity: sel.specificity };
+          const cand: Candidate = { declaration: d, value: lh.value, specificity: specificityFor(sel, faults) };
           candidates.push([lh.property, cand]);
           const prev = winners.get(lh.property);
           if (prev === undefined || beats(cand, prev)) winners.set(lh.property, cand);

@@ -7,7 +7,7 @@ and ids, and the at-rule refusals as they were before it.
 | module | owns |
 |---|---|
 | `stylesheet.ts` | The parse driver: rules, declarations, `!important`, grammar validation, and refusal of every node that is not a style rule or declaration (`refuseNode`, pinned by `s4a.test.ts`). It re-exports `CssValue`, `featureOf` and the selector types. |
-| `selectors.ts` | Selector parsing into right-to-left compounds with specificity. Matching lives in `analysis/match.ts`. |
+| `selectors.ts` | Selector parsing into right-to-left compounds with Selectors-4 specificity: type, universal, class, `[ui-*]` attribute, sibling combinators and the structural pseudo-classes (`:nth-*`, `:is()`, `:where()`, `:not()`, `:has()`, `:root`, `:empty`). Matching on each case's fixed tree lives in `analysis/match.ts`. |
 | `at-rules.ts` | The at-rule handler registry. Every at-rule is refused today. |
 | `shorthands/index.ts` | The shorthand registry: one handler per shorthand, gathered from `box.ts`, `border.ts`, `flex.ts`, `overflow.ts`, `text.ts` and `logical.ts`. `shared.ts` holds the handler type and helpers. |
 | `values.ts` | The `CssValue` model, token-to-value conversion, and support-profile feature keys. |

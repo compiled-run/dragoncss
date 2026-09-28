@@ -108,7 +108,19 @@ describe('E2 seams: every at-rule is still refused', () => {
       const { diagnostics, enclosed } = run(text);
       return { text, diagnostics, enclosed };
     }));
-    expect(sha(runs)).toBe('4cfb6ef08f1acac7d6a9a22586a28031d40a74e0a60059bb7612cc16726f68e8');
+    // The selectors package added Compound.pseudos and Selector.anchor: every selector here must carry the defaults ([] and
+    // null), and without them the runs are byte-identical to the 4c1331c pin.
+    const added: unknown[] = [];
+    const strip = (v: unknown): unknown => JSON.parse(JSON.stringify(v, (k, x: unknown) => {
+      if (k === 'pseudos' || k === 'anchor') {
+        added.push(x);
+        return undefined;
+      }
+      return x;
+    }));
+    expect(sha(strip(runs))).toBe('4cfb6ef08f1acac7d6a9a22586a28031d40a74e0a60059bb7612cc16726f68e8');
+    expect(added.length).toBeGreaterThan(0);
+    for (const x of added) expect([[], null]).toContainEqual(x);
   });
 });
 

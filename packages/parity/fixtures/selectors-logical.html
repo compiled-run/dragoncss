@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.x { width: 10px; height: 4px; margin-bottom: 1px; background-color: #ddd; }
+.x:not(.a) { width: 20px; }
+.x:not(.a, .b) { height: 6px; }
+.x:not(.p > .x) { background-color: #f00; }
+.x:is(.a, .b) { margin-left: 3px; }
+:is(.p, .q) > :is(.a.b, .c) { width: 50px; }
+:is(.p .a, .q .c) { height: 9px; }
+.x:where(.c, .d) { margin-left: 7px; }
+:where(.p) :where(.x) { padding-left: 1px; }
+.x:not(:is(.a, .b)):not(:where(.c)) { background-color: #0f0; }
+.x:is(:not(.a), .a:not(.b)) { padding-top: 2px; }
+.x:is() { width: 99px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="p" class="p"><div data-dragon-id="p1" class="x a"></div><div data-dragon-id="p2" class="x b"></div><div data-dragon-id="p3" class="x a b"></div><div data-dragon-id="p4" class="x c"></div><div data-dragon-id="p5" class="x d"></div></div>
+<div data-dragon-id="q" class="q"><div data-dragon-id="q1" class="x a"></div><div data-dragon-id="q2" class="x c"></div><div data-dragon-id="q3" class="x"></div></div>
+</body>
+</html>

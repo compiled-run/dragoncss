@@ -13,6 +13,10 @@ export type CompilerFaults = {
   readonly dropInheritedText: boolean;
   /** The resolver gives the root direction ltr whatever the environment direction (M4). */
   readonly ignoreEnvironmentDirection: boolean;
+  /** The cascade gives :is() the specificity of its first argument instead of its most specific one (Selectors-4 §17). */
+  readonly isSpecificityFirstArgument: boolean;
+  /** Spec-reading fault of the Chrome deviation empty-counts-whitespace: :empty ignores whitespace-only text (Selectors-4 §14.2). */
+  readonly emptyIgnoresWhitespace: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false };

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.s { width: 10px; height: 4px; margin-bottom: 1px; background-color: #ddd; }
+.a:is(div, .p .a) { width: 30px; }
+.p div.a { width: 20px; }
+.p > div.b { width: 25px; }
+.p .b:where(.b.b.b.b) { width: 40px; }
+.c:not(.zz .c, .yy) { width: 50px; }
+.p div.c { width: 15px; }
+.d:has(> .z, .q .r .z) { width: 60px; }
+.p > div.d.d { width: 35px; }
+.e:nth-child(odd of .p > .e) { width: 70px; }
+.p .e.e { width: 45px; }
+div:where(.f):is(.f, div.f.f) { width: 80px; }
+.p .f.f { width: 55px; }
+:is(.p, div.p) > :is(.g) { height: 9px; }
+.p .g.g { height: 3px; }
+.h:is(.h) { width: 90px; }
+.h.h { width: 65px; }
+.i:is(.i, .p > div.i) { width: 75px; }
+.p .i.i { width: 5px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="p" class="p"><div data-dragon-id="a" class="s a"></div><div data-dragon-id="b" class="s b"></div><div data-dragon-id="c" class="s c"></div><div data-dragon-id="d" class="s d"><div data-dragon-id="dz" class="z"></div></div><div data-dragon-id="e" class="s e"></div><div data-dragon-id="f" class="s f"></div><div data-dragon-id="g" class="s g"></div><div data-dragon-id="h" class="s h"></div><div data-dragon-id="i" class="s i"></div></div>
+</body>
+</html>
