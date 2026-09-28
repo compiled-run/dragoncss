@@ -23,7 +23,10 @@
     "native:gen": "node packages/translate/src/cli/gen.ts",
     "native:swift": "node packages/translate/src/cli/native.ts swift",
     "native:kotlin": "node packages/translate/src/cli/native.ts kotlin",
-    "native:planted": "node packages/translate/src/cli/planted.ts"
+    "native:planted": "node packages/translate/src/cli/planted.ts",
+    "native:build": "node --conditions=dragon-internal packages/parity/src/cli/native-build.ts",
+    "native:smoke": "node --conditions=dragon-internal packages/parity/src/cli/native-smoke.ts",
+    "native:encoders": "node --conditions=dragon-internal packages/parity/src/cli/native-encoders.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",
