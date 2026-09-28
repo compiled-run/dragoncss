@@ -9,6 +9,18 @@ import { DragonHB } from './wasm.ts';
 
 export const SPIKE_DIR = fileURLToPath(new URL('../../../docs/research/text-spike/', import.meta.url));
 export const FONT_DIR = `${SPIKE_DIR}fonts`;
+const VENDOR_FONT_DIR = fileURLToPath(new URL('../../../vendor/fonts/', import.meta.url));
+/**
+ * Spike fonts kept once, under vendor/fonts, because the vendored file has the same SHA-256
+ * (docs/research/text-spike/fonts/README.md). Every other spike font is read from FONT_DIR.
+ */
+const VENDORED_FONTS: Readonly<Record<string, string>> = { 'Inter-Regular.ttf': 'Inter/Inter-Regular.ttf' };
+
+/** The repo path of a spike font file named in the reference. */
+export function fontPath(file: string): string {
+  const vendored = VENDORED_FONTS[file];
+  return vendored !== undefined ? `${VENDOR_FONT_DIR}${vendored}` : `${FONT_DIR}/${file}`;
+}
 export const REFERENCE_PATH = `${SPIKE_DIR}gate/chrome-145.json`;
 /** SHA-256 of the font files Chrome loaded during the spike's capture (not of the repo copies). */
 export const LOADED_FONTS_PATH = `${SPIKE_DIR}chrome/loaded-fonts.sha256`;
@@ -73,7 +85,7 @@ export function runGate(ref: Reference = loadReference(), hb: DragonHB = DragonH
     if (f === undefined) {
       const meta = ref.fonts[name];
       if (meta === undefined) throw new Error(`no font ${name}`);
-      f = hb.createFace(readFileSync(`${FONT_DIR}/${meta.file}`));
+      f = hb.createFace(readFileSync(fontPath(meta.file)));
       faces.set(name, f);
     }
     return f;

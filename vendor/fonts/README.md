@@ -53,3 +53,9 @@ Licence notice, quoted from the font's own name table (record 0; licence URL rec
 | NotoSansMono/NotoSansMono-Regular.ttf | `87f8ce0522a6c99b743ee5fc75b4073cfdd575639119672828b7b9944b65b4f4` | 388,660 |
 
 The OFL fonts total 3,304,372 bytes.
+
+## Shared with the text spike
+
+`Inter/Inter-Regular.ttf` is also the Inter file of the TXT1-0 gate (docs/research/text-spike, same SHA-256), which reads
+it from here. The spike's Roboto and Noto Sans are different files (Roboto 2.138; a different build of Noto Sans 2.015)
+and stay under docs/research/text-spike/fonts: see its README.

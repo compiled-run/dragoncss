@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { DragonHB, FONT_DIR, LOADED_FONTS_PATH, loadReference, runGate } from '../src/index.ts';
+import { DragonHB, LOADED_FONTS_PATH, fontPath, loadReference, runGate } from '../src/index.ts';
 import type { CaseResult, GateOptions } from '../src/index.ts';
 
 const ref = loadReference();
@@ -13,11 +13,11 @@ const mismatches = (results: readonly CaseResult[]): number => results.filter((r
 
 describe('TXT1-0 HarfBuzz gate', () => {
   it('uses the fonts Chrome measured', () => {
-    // The reference's hashes are those of the files Chrome loaded (chrome/loaded-fonts.sha256), not of FONT_DIR.
+    // The reference's hashes are those of the files Chrome loaded (chrome/loaded-fonts.sha256), not of the repo copies.
     const loaded = readFileSync(LOADED_FONTS_PATH, 'utf8');
     for (const [name, meta] of Object.entries(ref.fonts)) {
       expect(loaded, name).toContain(`${meta.sha256}  ${meta.file}\n`);
-      expect(createHash('sha256').update(readFileSync(`${FONT_DIR}/${meta.file}`)).digest('hex'), name).toBe(meta.sha256);
+      expect(createHash('sha256').update(readFileSync(fontPath(meta.file))).digest('hex'), name).toBe(meta.sha256);
     }
   });
 
