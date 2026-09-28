@@ -23,7 +23,9 @@
     "native:gen": "node packages/translate/src/cli/gen.ts",
     "native:swift": "node packages/translate/src/cli/native.ts swift",
     "native:kotlin": "node packages/translate/src/cli/native.ts kotlin",
-    "native:planted": "node packages/translate/src/cli/planted.ts"
+    "native:planted": "node packages/translate/src/cli/planted.ts",
+    "north-star:check": "node examples/music-player/tools/check.ts",
+    "north-star:capture": "node --conditions=dragon-internal examples/music-player/tools/capture-chrome.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",
