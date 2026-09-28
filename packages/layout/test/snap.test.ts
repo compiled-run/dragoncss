@@ -9,6 +9,9 @@ import { snapEdges, snapRect } from '../src/index.ts';
 import { snapEdge } from '../src/units.ts';
 
 const vectors = join(dirname(fileURLToPath(import.meta.url)), '..', 'vectors');
+// The corpus size the parity FIXTURES registry declares; a computed specifier, as the parity package is outside this project's rootDir.
+const { declaredLayoutCaseCount } = (await import(new URL('../../parity/src/case-count.ts', import.meta.url).href)) as { declaredLayoutCaseCount: () => number };
+const CASES = declaredLayoutCaseCount();
 const r = (id: string, parent: string | null, x: number, y: number, width: number, height: number): LayoutRect => ({ id, parent, x: x as LU, y: y as LU, width: width as LU, height: height as LU });
 
 describe('snapEdge', () => {
@@ -51,10 +54,10 @@ describe('snapRect and snapEdges', () => {
 
 describe('snap vectors (vectors/dpr-<N>/snap, written by pnpm run layout:dpr-vectors)', () => {
   for (const dpr of [2, 3, 2.625]) {
-    it(`DPR ${dpr}: every snap vector is the DPR vector output and its snapEdges, 261 cases`, () => {
+    it(`DPR ${dpr}: every snap vector is the DPR vector output and its snapEdges, ${CASES} cases`, () => {
       const dir = join(vectors, `dpr-${dpr}`, 'snap');
       const files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
-      expect(files.length).toBe(261);
+      expect(files.length).toBe(CASES);
       for (const f of files) {
         const v = JSON.parse(readFileSync(join(dir, f), 'utf8')) as { platform: string; devicePixelRatio: number; input: LayoutRect[]; output: SnappedRect[] };
         expect([Object.keys(v), v.platform, v.devicePixelRatio], f).toEqual([['platform', 'devicePixelRatio', 'input', 'output'], 'darwin-arm64', dpr]);

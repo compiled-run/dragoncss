@@ -1,0 +1,161 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 13824
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 13440
+  },
+  {
+   "id": "p",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 13440
+  },
+  {
+   "id": "a",
+   "parent": "p",
+   "x": 0,
+   "y": 0,
+   "width": 5760,
+   "height": 1920
+  },
+  {
+   "id": "b",
+   "parent": "p",
+   "x": 0,
+   "y": 2304,
+   "width": 7680,
+   "height": 1920
+  },
+  {
+   "id": "c",
+   "parent": "p",
+   "x": 0,
+   "y": 4608,
+   "width": 1920,
+   "height": 1920
+  },
+  {
+   "id": "d",
+   "parent": "p",
+   "x": 384,
+   "y": 6912,
+   "width": 9600,
+   "height": 1920
+  },
+  {
+   "id": "e",
+   "parent": "p",
+   "x": 0,
+   "y": 9216,
+   "width": 3840,
+   "height": 1920
+  },
+  {
+   "id": "f",
+   "parent": "p",
+   "x": 0,
+   "y": 11520,
+   "width": 2880,
+   "height": 1920
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 216,
+   "width": 1200,
+   "height": 216
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 210,
+   "width": 1200,
+   "height": 210
+  },
+  {
+   "id": "p",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 210,
+   "width": 1200,
+   "height": 210
+  },
+  {
+   "id": "a",
+   "left": 0,
+   "top": 0,
+   "right": 90,
+   "bottom": 30,
+   "width": 90,
+   "height": 30
+  },
+  {
+   "id": "b",
+   "left": 0,
+   "top": 36,
+   "right": 120,
+   "bottom": 66,
+   "width": 120,
+   "height": 30
+  },
+  {
+   "id": "c",
+   "left": 0,
+   "top": 72,
+   "right": 30,
+   "bottom": 102,
+   "width": 30,
+   "height": 30
+  },
+  {
+   "id": "d",
+   "left": 6,
+   "top": 108,
+   "right": 156,
+   "bottom": 138,
+   "width": 150,
+   "height": 30
+  },
+  {
+   "id": "e",
+   "left": 0,
+   "top": 144,
+   "right": 60,
+   "bottom": 174,
+   "width": 60,
+   "height": 30
+  },
+  {
+   "id": "f",
+   "left": 0,
+   "top": 180,
+   "right": 45,
+   "bottom": 210,
+   "width": 45,
+   "height": 30
+  }
+ ]
+}

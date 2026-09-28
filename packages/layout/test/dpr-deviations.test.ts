@@ -9,6 +9,9 @@ import { absoluteRects, chromeDeviations, dprChromeDeviations, layoutWithFaults,
 import type { EngineFaults, LayoutRect } from '../src/index.ts';
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'vectors');
+// The corpus size the parity FIXTURES registry declares; a computed specifier, as the parity package is outside this project's rootDir.
+const { declaredLayoutCaseCount } = (await import(new URL('../../parity/src/case-count.ts', import.meta.url).href)) as { declaredLayoutCaseCount: () => number };
+const CASES = declaredLayoutCaseCount();
 const vectorPath = (fixture: string, dpr: number): string => (dpr === 1 ? join(dir, `${fixture}.json`) : join(dir, `dpr-${dpr}`, `${fixture}.json`));
 
 function rects(fixture: string, dpr: number, faults: EngineFaults): { readonly engine: Map<string, LayoutRect>; readonly chrome: Map<string, LayoutRect> } {
@@ -68,7 +71,7 @@ describe('DPR Chrome deviation registry', () => {
   it('initialLineWidthZoomed is inert at DPR 1: every top-level vector lays out the same with it, so the DPR-1 registry could not hold this deviation', () => {
     expect(readFileSync(join(dir, 'color-border-sides.json'), 'utf8')).toContain('device-px');
     const all = readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => f.replace(/\.json$/, ''));
-    expect(all.length).toBe(261);
+    expect(all.length).toBe(CASES);
     for (const f of all) {
       const a = rects(f, 1, NO_ENGINE_FAULTS);
       const b = rects(f, 1, { ...NO_ENGINE_FAULTS, initialLineWidthZoomed: true });

@@ -40,7 +40,8 @@ describe('the diagnostic catalogue (docs/api.md §6.1)', () => {
   });
 });
 
-const CSS_FIX = '.a { width: 10px; height: 1px !important; }\n.b { float: left; }\n';
+// !important is supported (css-cascade-5 §6.4), so the second edit fix is another unsupported property.
+const CSS_FIX = '.a { width: 10px; clear: left; }\n.b { float: left; }\n';
 
 describe('guarded fixes', () => {
   const src = new Sources({ 'app.dg': 'component App { <html><body><div a /><div b /></body></html> }', 'app.css': CSS_FIX });
@@ -62,25 +63,25 @@ describe('guarded fixes', () => {
   it('edit fixes carry revision and hash, apply atomically, and are refused when stale', () => {
     const c = both().compile(input(src));
     expectCatalogued(c.diagnostics);
-    const important = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_IMPORTANT');
-    const property = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY');
-    if (important === undefined || property === undefined || important.fix === null || property.fix === null) throw new Error('missing fixes');
-    if ('manual' in important.fix || 'manual' in property.fix) throw new Error('expected edit fixes');
-    expect(important.fix.edits[0]?.span.source).toEqual(src.ref('app.css'));
-    const applied = applyFix({ title: 'both', edits: [...important.fix.edits, ...property.fix.edits] }, c.sources);
+    const clear = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY' && d.message.startsWith('clear'));
+    const property = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY' && d.message.startsWith('float'));
+    if (clear === undefined || property === undefined || clear.fix === null || property.fix === null) throw new Error('missing fixes');
+    if ('manual' in clear.fix || 'manual' in property.fix) throw new Error('expected edit fixes');
+    expect(clear.fix.edits[0]?.span.source).toEqual(src.ref('app.css'));
+    const applied = applyFix({ title: 'both', edits: [...clear.fix.edits, ...property.fix.edits] }, c.sources);
     if (applied.kind !== 'applied') throw new Error(applied.kind);
-    expect(applied.texts.get(src.ref('app.css').uri)).toBe('.a { width: 10px; height: 1px; }\n.b { ; }\n');
+    expect(applied.texts.get(src.ref('app.css').uri)).toBe('.a { width: 10px; ; }\n.b { ; }\n');
 
     const edited = new Sources({ 'app.dg': 'component App { <html><body><div a /><div b /></body></html> }', 'app.css': `${CSS_FIX}/* edited */\n` }, 'r2');
-    const staleRevision = applyFix(important.fix, [...edited.files.values()]);
+    const staleRevision = applyFix(clear.fix, [...edited.files.values()]);
     expect(staleRevision).toMatchObject({ kind: 'stale' });
     expect(staleRevision.kind === 'stale' && staleRevision.reason).toMatch(/revision r2/);
     const sameRevision = [...edited.files.values()].map((f): SourceFile => ({ ...f, ref: { ...f.ref, revision: 'r1' } }));
-    const staleHash = applyFix(important.fix, sameRevision);
+    const staleHash = applyFix(clear.fix, sameRevision);
     expect(staleHash).toMatchObject({ kind: 'stale' });
     expect(staleHash.kind === 'stale' && staleHash.reason).toMatch(/hash/);
     const lying = [...edited.files.values()].map((f): SourceFile => ({ ...f, ref: src.ref(f.displayPath) }));
-    expect(applyFix(important.fix, lying)).toMatchObject({ kind: 'stale' });
+    expect(applyFix(clear.fix, lying)).toMatchObject({ kind: 'stale' });
     expect(applyFix({ title: 't', manual: 'do it' }, c.sources)).toEqual({ kind: 'manual', instruction: 'do it' });
   });
 
@@ -102,13 +103,13 @@ describe('guarded fixes', () => {
     // An insertion where another edit ends, or two edits at different offsets, has one result whatever the order.
     for (const edits of [[at(1, 3, 'Q'), at(3, 3, 'X')], [at(3, 3, 'X'), at(1, 3, 'Q')]]) {
       const r = applyFix({ title: 'adjacent', edits }, files);
-      expect(r.kind === 'applied' && r.texts.get(css.uri)).toBe(`.QX{ width: 10px; height: 1px !important; }\n.b { float: left; }\n`);
+      expect(r.kind === 'applied' && r.texts.get(css.uri)).toBe(`.QX{ width: 10px; clear: left; }\n.b { float: left; }\n`);
     }
   });
 
   it('formatDiagnostic locates origins through the source registry, lines and columns 1-based', () => {
     const c = both().compile(input(src));
-    const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_PROPERTY') as Diagnostic;
+    const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_PROPERTY' && x.message.startsWith('float')) as Diagnostic;
     const text = formatDiagnostic(d, c.sources);
     expect(text.split('\n')[0]).toBe('app.css:2:6: error DRAGON_UNSUPPORTED_PROPERTY: float is not supported in milestone 1');
     expect(text).toContain(`  why: ${CATALOGUE.DRAGON_UNSUPPORTED_PROPERTY.why}`);

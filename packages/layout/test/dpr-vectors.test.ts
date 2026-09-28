@@ -10,6 +10,9 @@ import { layout, measurerFor, validateLayoutInput } from '../src/index.ts';
 const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'vectors');
 const topLevel = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
 const DPRS = [2, 3, 2.625];
+// The corpus size the parity FIXTURES registry declares; a computed specifier, as the parity package is outside this project's rootDir.
+const { declaredLayoutCaseCount } = (await import(new URL('../../parity/src/case-count.ts', import.meta.url).href)) as { declaredLayoutCaseCount: () => number };
+const CASES = declaredLayoutCaseCount();
 
 type VectorFile = { platform: string; measurer: string; input: { devicePixelRatio: number; root: unknown }; output: unknown };
 
@@ -24,7 +27,7 @@ describe('DPR vectors', () => {
     const files = readdirSync(sub).filter((f) => f.endsWith('.json')).sort();
     it(`DPR ${dpr}: the same ${topLevel.length} case ids as the DPR-1 vectors, and the same ids in its snap folder`, () => {
       expect(files).toEqual(topLevel);
-      expect(files.length).toBe(261);
+      expect(files.length).toBe(CASES);
       expect(readdirSync(join(sub, 'snap')).filter((f) => f.endsWith('.json')).sort()).toEqual(topLevel);
     });
     it(`DPR ${dpr}: every vector names darwin-arm64 and ahem/darwin-arm64, passes the validator at devicePixelRatio ${dpr}, and the engine reproduces it exactly`, () => {

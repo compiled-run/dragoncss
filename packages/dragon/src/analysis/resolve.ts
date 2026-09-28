@@ -7,17 +7,19 @@ import { INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
 import type { Declaration, Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
-import type { Candidate } from './cascade.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { blockifyRoot, computeOverflowPair, initialValue, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
+import type { CustomProperties, SubstitutedDeclaration } from './variables.ts';
+import { computeCustoms } from './variables.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
 export { selectorMatches } from './match.ts';
 export type { CascadeGroupHook, CascadeResult, Candidate } from './cascade.ts';
 export { beats, cascadeElement, cascadeGroups } from './cascade.ts';
 export type { Origin, ResolveEnvironment, ResolvedValue, RootFont, SubstitutionHook } from './computed.ts';
+export type { CustomProperties, Substitution, VarScope } from './variables.ts';
 export { defaultOrigin, initialValue, isInitialByProvenance, parseValueText, substituteVariables, userAgentValue, valueToString } from './computed.ts';
 
 export type ResolvedElement = {
@@ -87,9 +89,13 @@ const displayOf = (el: ResolvedElement): string => {
 // css-cascade-5 §4-§7: the winning declaration, inheritance, then user-agent or initial values, for every longhand.
 // Logical ancestry is the linked tree: projected children match under their insertion parent (docs/api.md §3.1).
 export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment): ResolvedElement {
+  // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
+  const customsOf = new WeakMap<ResolvedElement, CustomProperties>();
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {
     const here = [...chain, el];
-    const { winners, matched } = cascadeElement(rules, here, faults);
+    const { winners, matched, customs: customWinners } = cascadeElement(rules, here, faults);
+    const customs = computeCustoms(customWinners, parent === null ? new Map() : (customsOf.get(parent) as CustomProperties));
+    const scope = { customs, memo: new Map<Declaration, SubstitutedDeclaration>() };
     const props = new Map<Longhand, ResolvedValue>();
     const tag = el.tag as CapturedTag;
     const none = { declaration: null, declared: null, losing: [] } as const;
@@ -103,9 +109,17 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       return ua === null ? { value: initialValue(p, environment.ua), origin: 'initial', span: null, ...none } : { value: ua, origin: 'user-agent', span: null, ...none };
     };
     for (const p of LONGHANDS) {
-      const w = substituted(winners.get(p), p, el);
+      const raw = winners.get(p);
+      const w = raw === undefined ? undefined : substituteVariables(raw, p, el, scope);
       const inherited = INHERITED.has(p);
-      const author = w === undefined ? none : { declaration: w.declaration, declared: w.value, losing: (matched.get(p) as readonly Declaration[]).filter((d) => d !== w.declaration) };
+      // A refused substitution already blocks every target (computed-checks.ts); it keys no profile row.
+      const declared = w === undefined || (w.substitution !== undefined && w.substitution.refusal !== null) ? null : w.value;
+      const author = w === undefined || raw === undefined ? none : {
+        declaration: w.declaration,
+        declared,
+        losing: (matched.get(p) as readonly Declaration[]).filter((d) => d !== raw.declaration),
+        ...(w.substitution === undefined ? {} : { substitution: w.substitution }),
+      };
       // css-color-4 §4.4: currentcolor as the value of color behaves as inherit.
       const currentColorOnColor = p === 'color' && w !== undefined && w.value.kind === 'keyword' && w.value.value === 'currentcolor';
       if (w !== undefined && !currentColorOnColor && !(w.value.kind === 'keyword' && ['inherit', 'initial', 'unset'].includes(w.value.value))) {
@@ -139,6 +153,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       props,
       children: [],
     };
+    customsOf.set(self, customs);
     const kids: (ResolvedElement | LinkedText)[] = el.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
     // An inline formatting context is a maximal sequence of text; display: none elements generate no box (CSS2 §9.2.4), so
     // they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
@@ -165,13 +180,6 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     return self;
   };
   return visit(root, [], null);
-}
-
-/** The winner with the var() substitution hook applied to its value; the same candidate when the hook changes nothing. */
-function substituted(w: Candidate | undefined, p: Longhand, el: LinkedElement): Candidate | undefined {
-  if (w === undefined) return undefined;
-  const value = substituteVariables(w.value, p, el);
-  return value === w.value ? w : { ...w, value };
 }
 
 // goal.md principle 3: a text node carries each inherited text property itself, inherited from its insertion parent.

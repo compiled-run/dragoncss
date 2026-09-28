@@ -12,6 +12,7 @@ import type { ExpectedApplied, ReferenceFaults, RgbaImage } from '../src/native-
 import { checkAgainstChrome, checkAgainstEngine, checkApplied, checkPixels, DUMP_FAULTS, NO_REFERENCE_FAULTS, readSamples, referenceDump } from '../src/native-compare.ts';
 import type { DumpNode, NativeDump } from '../src/native-dump.ts';
 import { frameOf, validateNativeDump } from '../src/native-dump.ts';
+import { declaredLayoutCaseCount } from '../src/case-count.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import type { SampleBox } from '../src/samples.ts';
@@ -64,7 +65,7 @@ describe('reference proof: TS engine plus snapRect dumps pass (a) and (d)', () =
         expect(r.chromeCompared).toBeGreaterThan(0);
       }
     }
-    expect(cases).toBe(261);
+    expect(cases).toBe(declaredLayoutCaseCount());
   });
 });
 

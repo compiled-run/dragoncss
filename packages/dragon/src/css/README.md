@@ -6,7 +6,8 @@ and ids, and the at-rule refusals as they were before it.
 
 | module | owns |
 |---|---|
-| `stylesheet.ts` | The parse driver: rules, declarations, `!important`, grammar validation, and refusal of every node that is not a style rule or declaration (`refuseNode`, pinned by `s4a.test.ts`). It re-exports `CssValue`, `featureOf` and the selector types. |
+| `stylesheet.ts` | The parse driver: rules, declarations, `!important`, custom property declarations, declarations holding `var()` (kept pending until substitution), grammar validation (`parseValue`, shared with `parseSubstitutedValue`), and refusal of every node that is not a style rule or declaration (`refuseNode`, pinned by `s4a.test.ts`). It re-exports `CssValue`, `featureOf` and the selector types. |
+| `variables.ts` | Token-aware splitting of a value into text and `var()` parts, with parse-time validation of `var()`. |
 | `selectors.ts` | Selector parsing into right-to-left compounds with specificity. Matching lives in `analysis/match.ts`. |
 | `at-rules.ts` | The at-rule handler registry. Every at-rule is refused today. |
 | `shorthands/index.ts` | The shorthand registry: one handler per shorthand, gathered from `box.ts`, `border.ts`, `flex.ts`, `overflow.ts` and `text.ts`. `shared.ts` holds the handler type and helpers. |
@@ -32,7 +33,10 @@ and ids, and the at-rule refusals as they were before it.
   the handler's outcome. An outcome other than `refuse` is a new `AtRuleOutcome` kind, which the driver handles.
 - **A selector.** Parse the new part in `selectors.ts` and extend `Compound`, then match it in `analysis/match.ts`.
   Specificity is computed in `selectors.ts`.
-- **Cascade or `var()`.** Logical-property cascade groups go in the `cascadeGroups` hook in `analysis/cascade.ts`. `var()`
-  substitution goes in the `substituteVariables` hook in `analysis/computed.ts`. Both do nothing today.
+- **Cascade or `var()`.** Logical-property cascade groups go in the `cascadeGroups` hook in `analysis/cascade.ts`, which does
+  nothing today. The cascade orders by importance, specificity and order, and also picks each element's custom property winners.
+  `var()` substitution runs through the `substituteVariables` hook in `analysis/computed.ts`; the work is in
+  `analysis/variables.ts` (custom property computation with cycle detection, substitution, invalid at computed-value time).
+  `@property` and `@layer` are still refused (`at-rules.ts`).
 - **A parity fixture.** Add a new `packages/parity/src/fixture-groups/<group>.ts` and append one entry to `FIXTURE_GROUPS` in
   `packages/parity/src/fixtures.ts`. Never edit `milestone-1.ts`.

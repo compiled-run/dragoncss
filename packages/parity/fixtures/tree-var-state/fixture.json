@@ -1,0 +1,48 @@
+{
+  "sources": ["app.dg", "doc.css", "app.css"],
+  "modules": [{ "id": "app", "source": "app.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "app", "file": "app.css", "scope": "App" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "app"] },
+  "components": [
+    {
+      "id": "App", "module": "app", "at": "component App",
+      "states": [
+        { "id": "theme", "domain": ["light", "dark"], "initial": "light", "at": "theme: \"light\" | \"dark\" = \"light\"" },
+        { "id": "dense", "domain": [false, true], "initial": false, "at": "dense: boolean = false" }
+      ],
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "el": "div", "id": "app", "at": "<div app", "class": ["app.app"], "attr": [
+              { "name": "ui-theme", "choice": [
+                { "when": ["theme", "light"], "value": "light" },
+                { "when": ["theme", "dark"], "value": "dark" }
+              ], "at": "ui-theme={theme}" },
+              { "name": "ui-dense", "when": ["dense", true], "value": "", "at": "ui-dense={dense}" }
+            ], "children": [
+              { "el": "div", "id": "row", "at": "<div row", "class": ["app.row"], "children": [
+                { "el": "div", "id": "chip1", "at": "<div chip1", "class": ["app.chip"] },
+                { "el": "div", "id": "chip2", "at": "<div chip2", "class": ["app.chip"] }
+              ] },
+              { "el": "div", "id": "label", "at": "<div label", "class": ["app.label"], "children": [{ "text": "AB CD", "id": "label-text", "at": "AB CD" }] }
+            ] }
+          ] }
+        ] }
+      ]
+    }
+  ],
+  "expected": {
+    "freeStates": [
+      { "instance": "doc", "state": "theme", "domain": ["light", "dark"] },
+      { "instance": "doc", "state": "dense", "domain": [false, true] }
+    ],
+    "cases": 4,
+    "initial": [{ "instance": "doc", "state": "theme", "value": "light" }, { "instance": "doc", "state": "dense", "value": false }],
+    "textTopology": [
+      { "address": "label:text0", "component": "App", "template": "label-text", "at": "AB CD", "ownerInstance": "doc", "insertionParent": "label", "context": { "ltr": "text-in-flex-item/column/ltr", "rtl": "text-in-flex-item/column/rtl" } }
+    ]
+  }
+}

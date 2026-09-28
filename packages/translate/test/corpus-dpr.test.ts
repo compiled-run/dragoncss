@@ -9,6 +9,11 @@ import { buildExtendedCorpus, DPR_SETS, extendedLockedDigest, SNAP_DPRS, UNITS_M
 import { EXTENDED_FAULTS, FAULTS } from '../src/faults.ts';
 
 type Row = [string, string | null, string, string, string, string];
+// The corpus size the parity FIXTURES registry declares; a computed specifier, as the parity package is outside this project's rootDir.
+const { declaredLayoutCaseCount } = (await import(new URL('../../parity/src/case-count.ts', import.meta.url).href)) as { declaredLayoutCaseCount: () => number };
+const CASES = declaredLayoutCaseCount();
+const { FIXTURE_GROUPS } = (await import(new URL('../../parity/src/fixtures.ts', import.meta.url).href)) as { FIXTURE_GROUPS: readonly { id: string; fixtures: readonly { id: string }[] }[] };
+
 const decode = (rows: Row[]) => rows.map(([id, parent, x, y, w, h]) => ({ id, parent, x: hexBits(x), y: hexBits(y), width: hexBits(w), height: hexBits(h) }));
 
 describe('the milestone-1 manifest', () => {
@@ -28,7 +33,12 @@ describe('the milestone-1 manifest', () => {
     for (const f of topLevelVectorFiles()) expect([m1.has(f), m2.has(f)], f).toContainEqual(true);
     for (const f of topLevelVectorFiles()) expect(m1.has(f) && m2.has(f), f).toBe(false);
     expect(m1.size + m2.size).toBe(topLevelVectorFiles().length);
-    expect([...m2].sort()).toEqual(['border-initial-width.json', 'line-height-rounding.json', 'text-min-content-word-positions.json']);
+    // The three P2b DPR-1 proving fixtures of milestone-1, then every case of the fixture groups after milestone-1.
+    const p2b = ['border-initial-width.json', 'line-height-rounding.json', 'text-min-content-word-positions.json'];
+    const later = new Set(FIXTURE_GROUPS.filter((g) => g.id !== 'milestone-1').flatMap((g) => g.fixtures.map((f) => f.id)));
+    for (const f of p2b) expect(m2.has(f), f).toBe(true);
+    for (const f of [...m2].filter((g) => !p2b.includes(g))) expect(later.has(f.replace(/\.json$/, '').replace(/-rtl$/, '').replace(/#\d+$/, '')), f).toBe(true);
+    expect(m2.size).toBe(CASES - 258);
   });
 
   it('the P1 vectors suite reads exactly the manifest cases', () => {
@@ -44,11 +54,11 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
     expect(x.digest).toBe(extendedLockedDigest());
     expect(buildExtendedCorpus().digest).toBe(x.digest);
     expect(x.suites.map((s) => s.name)).toEqual(['vectors-m2', 'vectors-dpr', 'engine-dpr', 'units-m2', 'snap']);
-    expect(n['vectors-m2']).toBe(3);
-    expect(n['vectors-dpr']).toBe(783);
-    expect(n['engine-dpr']).toBeGreaterThanOrEqual(783);
+    expect(n['vectors-m2']).toBe(CASES - 258);
+    expect(n['vectors-dpr']).toBe(3 * CASES);
+    expect(n['engine-dpr']).toBeGreaterThanOrEqual(3 * CASES);
     expect(n['units-m2']).toBeGreaterThanOrEqual(120000);
-    expect(n['snap']).toBeGreaterThanOrEqual(20783);
+    expect(n['snap']).toBeGreaterThanOrEqual(20000 + 3 * CASES);
     expect(x.engineSplit.threw + x.engineSplit.harnessError).toBe(0);
   });
 
@@ -105,6 +115,6 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
   });
 
   it('the DPR vector folders hold what the suites read', () => {
-    for (const dpr of DPR_SETS) expect(readdirSync(join(VECTORS_DIR, `dpr-${dpr}`)).filter((f) => f.endsWith('.json')).length).toBe(261);
+    for (const dpr of DPR_SETS) expect(readdirSync(join(VECTORS_DIR, `dpr-${dpr}`)).filter((f) => f.endsWith('.json')).length).toBe(CASES);
   });
 });
