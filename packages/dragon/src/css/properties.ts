@@ -1,28 +1,51 @@
-// The longhands the milestone-1 compiler resolves per element, and the shorthands it expands into them.
+// The longhands the milestone-1 compiler resolves per element, and the shorthands it expands into them. This file is the
+// aggregate: each family's lists and tables live in properties/<family>.ts, concatenated here in a fixed family order (the
+// order of LONGHANDS and SHORTHANDS is pinned by test/seams.test.ts). Tables that cut across families (TEXT_LONGHANDS,
+// COLOR_LONGHANDS) stay here.
+import { BACKGROUND_ASPECTS, BACKGROUND_CONTAINER, BACKGROUND_INHERITED, BACKGROUND_LONGHANDS, BACKGROUND_SHORTHANDS, BACKGROUND_TEXT_ROLE } from './properties/background.ts';
+import { BORDER_ASPECTS, BORDER_CONTAINER, BORDER_INHERITED, BORDER_LONGHANDS, BORDER_SHORTHANDS, BORDER_TEXT_ROLE } from './properties/border.ts';
+import { BOX_ASPECTS, BOX_CONTAINER, BOX_INHERITED, BOX_LONGHANDS, BOX_SHORTHANDS, BOX_TEXT_ROLE } from './properties/box.ts';
+import { FLEX_ASPECTS, FLEX_CONTAINER, FLEX_INHERITED, FLEX_LONGHANDS, FLEX_SHORTHANDS, FLEX_TEXT_ROLE } from './properties/flex.ts';
+import { OVERFLOW_ASPECTS, OVERFLOW_CONTAINER, OVERFLOW_INHERITED, OVERFLOW_LONGHANDS, OVERFLOW_SHORTHANDS, OVERFLOW_TEXT_ROLE } from './properties/overflow.ts';
+import { POSITION_ASPECTS, POSITION_CONTAINER, POSITION_INHERITED, POSITION_LONGHANDS, POSITION_SHORTHANDS, POSITION_TEXT_ROLE } from './properties/position.ts';
+import { TEXT_FAMILY_ASPECTS, TEXT_FAMILY_CONTAINER, TEXT_FAMILY_INHERITED, TEXT_FAMILY_LONGHANDS, TEXT_FAMILY_SHORTHANDS, TEXT_FAMILY_TEXT_ROLE } from './properties/text.ts';
+
+/** What a longhand affects: layout (box geometry) and paint (pixels). */
+export type PropertyAspect = { readonly layout: boolean; readonly paint: boolean };
 
 export const LONGHANDS = [
-  'display', 'position', 'top', 'right', 'bottom', 'left', 'overflow-x', 'overflow-y', 'direction', 'box-sizing',
-  'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height',
-  'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
-  'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
-  'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
-  'border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style',
-  'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
-  'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
-  'justify-content', 'align-items', 'align-self', 'align-content', 'row-gap', 'column-gap',
-  'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'background-color',
+  ...POSITION_LONGHANDS,
+  ...OVERFLOW_LONGHANDS,
+  ...BOX_LONGHANDS,
+  ...BORDER_LONGHANDS,
+  ...FLEX_LONGHANDS,
+  ...TEXT_FAMILY_LONGHANDS,
+  ...BACKGROUND_LONGHANDS,
 ] as const;
 
 export type Longhand = (typeof LONGHANDS)[number];
 
 export const SHORTHANDS = [
-  'margin', 'padding', 'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
-  'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow', 'white-space',
+  ...POSITION_SHORTHANDS,
+  ...BOX_SHORTHANDS,
+  ...BORDER_SHORTHANDS,
+  ...FLEX_SHORTHANDS,
+  ...OVERFLOW_SHORTHANDS,
+  ...TEXT_FAMILY_SHORTHANDS,
+  ...BACKGROUND_SHORTHANDS,
 ] as const;
 
 export type Shorthand = (typeof SHORTHANDS)[number];
 
-export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>(['direction', 'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color']);
+export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([
+  ...POSITION_INHERITED,
+  ...OVERFLOW_INHERITED,
+  ...BOX_INHERITED,
+  ...BORDER_INHERITED,
+  ...FLEX_INHERITED,
+  ...TEXT_FAMILY_INHERITED,
+  ...BACKGROUND_INHERITED,
+]);
 
 /**
  * The inherited text properties every resolved text node carries itself (goal.md principle 3), each with an inherited Origin,
@@ -52,71 +75,37 @@ export const SIDES = ['top', 'right', 'bottom', 'left'] as const;
  * lanes. paint: pixels no milestone-1 lane renders natively, so iOS rows for it are capped at caveat. border-*-style is both:
  * none/hidden zero the border width, and every other style paints.
  */
-export const PROPERTY_ASPECTS: { readonly [P in Longhand]: { readonly layout: boolean; readonly paint: boolean } } = {
-  display: { layout: true, paint: false },
-  position: { layout: true, paint: false },
-  top: { layout: true, paint: false },
-  right: { layout: true, paint: false },
-  bottom: { layout: true, paint: false },
-  left: { layout: true, paint: false },
-  // overflow: hidden also clips painting, which no milestone-1 lane renders natively.
-  'overflow-x': { layout: true, paint: true },
-  'overflow-y': { layout: true, paint: true },
-  direction: { layout: true, paint: false },
-  'box-sizing': { layout: true, paint: false },
-  width: { layout: true, paint: false },
-  height: { layout: true, paint: false },
-  'min-width': { layout: true, paint: false },
-  'min-height': { layout: true, paint: false },
-  'max-width': { layout: true, paint: false },
-  'max-height': { layout: true, paint: false },
-  'margin-top': { layout: true, paint: false },
-  'margin-right': { layout: true, paint: false },
-  'margin-bottom': { layout: true, paint: false },
-  'margin-left': { layout: true, paint: false },
-  'padding-top': { layout: true, paint: false },
-  'padding-right': { layout: true, paint: false },
-  'padding-bottom': { layout: true, paint: false },
-  'padding-left': { layout: true, paint: false },
-  'border-top-width': { layout: true, paint: false },
-  'border-right-width': { layout: true, paint: false },
-  'border-bottom-width': { layout: true, paint: false },
-  'border-left-width': { layout: true, paint: false },
-  'border-top-style': { layout: true, paint: true },
-  'border-right-style': { layout: true, paint: true },
-  'border-bottom-style': { layout: true, paint: true },
-  'border-left-style': { layout: true, paint: true },
-  'border-top-color': { layout: false, paint: true },
-  'border-right-color': { layout: false, paint: true },
-  'border-bottom-color': { layout: false, paint: true },
-  'border-left-color': { layout: false, paint: true },
-  'flex-direction': { layout: true, paint: false },
-  'flex-wrap': { layout: true, paint: false },
-  'flex-grow': { layout: true, paint: false },
-  'flex-shrink': { layout: true, paint: false },
-  'flex-basis': { layout: true, paint: false },
-  order: { layout: true, paint: false },
-  'justify-content': { layout: true, paint: false },
-  'align-items': { layout: true, paint: false },
-  'align-self': { layout: true, paint: false },
-  'align-content': { layout: true, paint: false },
-  'row-gap': { layout: true, paint: false },
-  'column-gap': { layout: true, paint: false },
-  'font-size': { layout: true, paint: false },
-  'font-family': { layout: true, paint: false },
-  'line-height': { layout: true, paint: false },
-  'text-align': { layout: true, paint: false },
-  'white-space-collapse': { layout: true, paint: false },
-  'text-wrap-mode': { layout: true, paint: false },
-  color: { layout: false, paint: true },
-  'background-color': { layout: false, paint: true },
+export const PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {
+  ...POSITION_ASPECTS,
+  ...OVERFLOW_ASPECTS,
+  ...BOX_ASPECTS,
+  ...BORDER_ASPECTS,
+  ...FLEX_ASPECTS,
+  ...TEXT_FAMILY_ASPECTS,
+  ...BACKGROUND_ASPECTS,
 };
 
 /** The role of a longhand in its row key (M2): which formatting context, if any, the row names. */
 export type PropertyRole = 'item' | 'container' | 'text' | 'paint';
 
-const CONTAINER_LONGHANDS: readonly Longhand[] = ['flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap', 'direction'];
-const TEXT_ROLE_LONGHANDS: readonly Longhand[] = ['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode'];
+const CONTAINER_LONGHANDS: readonly Longhand[] = [
+  ...POSITION_CONTAINER,
+  ...OVERFLOW_CONTAINER,
+  ...BOX_CONTAINER,
+  ...BORDER_CONTAINER,
+  ...FLEX_CONTAINER,
+  ...TEXT_FAMILY_CONTAINER,
+  ...BACKGROUND_CONTAINER,
+];
+const TEXT_ROLE_LONGHANDS: readonly Longhand[] = [
+  ...POSITION_TEXT_ROLE,
+  ...OVERFLOW_TEXT_ROLE,
+  ...BOX_TEXT_ROLE,
+  ...BORDER_TEXT_ROLE,
+  ...FLEX_TEXT_ROLE,
+  ...TEXT_FAMILY_TEXT_ROLE,
+  ...BACKGROUND_TEXT_ROLE,
+];
 
 /**
  * Which formatting context a longhand's row key names (M2): container properties name the element's own flex line mode, text

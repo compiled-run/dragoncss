@@ -1,0 +1,146 @@
+// Value computation: parsing captured and initial values, initial and user-agent values, the computed-value fixups, the var()
+// substitution hook, and value serialization.
+import { parse } from 'css-tree';
+import type { CssNode } from 'css-tree';
+import { parseColorNode, serializeColor } from '../css/color.ts';
+import { properties as grammar } from '../css/grammar.generated.ts';
+import type { Longhand } from '../css/properties.ts';
+import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
+import type { CssValue, Declaration } from '../css/stylesheet.ts';
+import { CANONICAL_LENGTH_UNIT, normalizeUnit } from '../css/units.ts';
+import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
+import type { Span } from '../types.ts';
+import type { LinkedElement } from './link.ts';
+
+/** environment: the root's direction and font, seeded from the reference environment (docs/api.md §7), never from an author declaration. */
+export type Origin = 'author' | 'inherited' | 'user-agent' | 'initial' | 'environment';
+
+/**
+ * The environment facts resolution reads: the document's base direction and root font, given to the root element, and the Chrome
+ * UA dataset of the reference platform. rootFont 'ahem' is the parity fixture environment (docs/api.md §10.1); 'ua-default'
+ * leaves the root font-family at the dataset's value.
+ */
+export type ResolveEnvironment = { readonly direction: 'ltr' | 'rtl'; readonly rootFont: RootFont; readonly ua: UaDataset };
+
+export type RootFont = 'ahem' | 'ua-default';
+
+export type ResolvedValue = {
+  readonly value: CssValue;
+  readonly origin: Origin;
+  readonly span: Span | null;
+  /** The winning declaration and the value it declared (possibly a CSS-wide keyword); null when no author rule matched. */
+  readonly declaration: Declaration | null;
+  readonly declared: CssValue | null;
+  /** Author declarations that matched this element for this longhand and lost the cascade. */
+  readonly losing: readonly Declaration[];
+};
+
+const valueCache = new Map<string, CssValue>();
+
+/** Parses a single captured or initial value string ("8px", "auto", "0") into a CssValue. */
+export function parseValueText(property: Longhand, text: string): CssValue {
+  const key = `${property}\u0000${text}`;
+  const hit = valueCache.get(key);
+  if (hit !== undefined) return hit;
+  const node = parse(text, { context: 'value' });
+  const children = (node['children'] as { toArray(): CssNode[] }).toArray().filter((n) => n.type !== 'WhiteSpace');
+  let v: CssValue;
+  const only = children[0];
+  const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property);
+  const color = isColor && only !== undefined && children.length === 1 ? parseColorNode(only) : null;
+  if (color !== null && color.ok) v = color.kind === 'keyword' ? { kind: 'keyword', value: color.keyword } : { kind: 'color', value: color.value, syntax: color.syntax };
+  else if (children.length !== 1 || only === undefined) v = { kind: 'other', type: 'list', text };
+  else if (only.type === 'Identifier') v = property === 'font-family' ? { kind: 'family', value: String(only['name']) } : { kind: 'keyword', value: String(only['name']).toLowerCase() };
+  else if (only.type === 'Dimension') v = { kind: 'length', value: Number(only['value']), unit: normalizeUnit(String(only['unit'])) };
+  else if (only.type === 'Percentage') v = { kind: 'percentage', value: Number(only['value']) };
+  else if (only.type === 'Number') {
+    const n = Number(only['value']);
+    v = n === 0 && !['flex-grow', 'flex-shrink', 'order', 'line-height'].includes(property) ? { kind: 'length', value: 0, unit: CANONICAL_LENGTH_UNIT } : { kind: 'number', value: n };
+  } else v = { kind: 'other', type: only.type, text };
+  valueCache.set(key, v);
+  return v;
+}
+
+// css-cascade-5 §7.1: initial values come from the pinned @webref/css grammar. color (CanvasText, css-color-4 §6.2) and
+// font-family (UA-dependent, css-fonts-4 §2.1) have environment-dependent initial values, taken from Chrome's captured root.
+export function initialValue(property: Longhand, ua: UaDataset): CssValue {
+  if (property === 'color' || property === 'font-family') return parseValueText(property, ua.computed.html[property] as string);
+  const g = grammar[property];
+  if (g === undefined) throw new Error(`no webref entry for ${property}`);
+  return parseValueText(property, g.initial);
+}
+
+/**
+ * Whether a resolved longhand holds its initial value by provenance: no declaration set it (or initial / unset chose the initial
+ * value), or a shorthand filled it because the author omitted it (LonghandValue.explicit false). An authored keyword equal to the
+ * initial value is not initial by provenance. The layout lowering needs this for R5 (initial line widths, notes/T010-p2-triage.md).
+ */
+export function isInitialByProvenance(v: ResolvedValue, property: Longhand): boolean {
+  if (v.origin === 'initial') return true;
+  if (v.origin !== 'author' || v.declaration === null) return false;
+  return v.declaration.longhands.some((l) => l.property === property && !l.explicit);
+}
+
+// css-cascade-5 §6.3 (user-agent origin): the captured table pins, per tag, the longhands a Chrome UA rule sets.
+export function userAgentValue(tag: CapturedTag, property: Longhand, ua: UaDataset): CssValue | null {
+  if (!ua.userAgentLonghands[tag].includes(property)) return null;
+  const own = ua.computed[tag][property];
+  if (own === undefined) throw new Error(`no captured value for ${tag} ${property}`);
+  return parseValueText(property, own);
+}
+
+/** Origin of every longhand on an element with no author rules, as the resolver decides it; pinned by ua.test.ts. */
+export function defaultOrigin(tag: CapturedTag, property: Longhand, isRoot: boolean, ua: UaDataset, rootFont: RootFont): Origin {
+  if (userAgentValue(tag, property, ua) !== null) return 'user-agent';
+  if (isRoot && (property === 'direction' || (property === 'font-family' && rootFont === 'ahem'))) return 'environment';
+  return INHERITED.has(property) && !isRoot ? 'inherited' : 'initial';
+}
+
+/**
+ * The var() substitution hook (css-variables-2 §3): the value a winning declared value computes from once var() references are
+ * substituted with the element's custom properties. It runs on each author winner before CSS-wide keywords are applied.
+ * Empty today: there are no custom properties, so it returns the declared value itself.
+ */
+export type SubstitutionHook = (declared: CssValue, property: Longhand, el: LinkedElement) => CssValue;
+
+export const substituteVariables: SubstitutionHook = (declared) => declared;
+
+// css-overflow-3 §3.1: when one axis is neither visible nor clip, visible computes to auto and clip to hidden on the other axis.
+export function computeOverflowPair(props: Map<Longhand, ResolvedValue>): void {
+  const x = props.get('overflow-x') as ResolvedValue;
+  const y = props.get('overflow-y') as ResolvedValue;
+  const kw = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
+  const plain = (k: string): boolean => k === 'visible' || k === 'clip';
+  if (plain(kw(x)) && plain(kw(y))) return;
+  const fix = (v: ResolvedValue): ResolvedValue => {
+    const k = kw(v);
+    if (k === 'visible') return { ...v, value: { kind: 'keyword', value: 'auto' } };
+    if (k === 'clip') return { ...v, value: { kind: 'keyword', value: 'hidden' } };
+    return v;
+  };
+  props.set('overflow-x', fix(x));
+  props.set('overflow-y', fix(y));
+}
+
+// css-display-3 §2.7: the root element's display is blockified (Chrome reports block for html even under display: initial).
+export function blockifyRoot(v: ResolvedValue): ResolvedValue {
+  return v.value.kind === 'keyword' && v.value.value === 'inline' ? { ...v, value: { kind: 'keyword', value: 'block' } } : v;
+}
+
+export function valueToString(v: CssValue): string {
+  switch (v.kind) {
+    case 'keyword':
+    case 'family':
+      return v.value;
+    case 'length':
+      return `${v.value}${v.unit}`;
+    case 'percentage':
+      return `${v.value}%`;
+    case 'number':
+      return String(v.value);
+    case 'color':
+      return serializeColor(v.value);
+    case 'other':
+      return v.text;
+  }
+}
