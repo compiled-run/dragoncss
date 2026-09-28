@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.33.2",
   "engines": { "node": ">=24" },
   "scripts": {
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -b && tsc -b packages/text-shaper/test",
     "test": "vitest run",
     "grammar:gen": "node scripts/gen-css-grammar.ts",
     "ua:capture": "node --conditions=dragon-internal scripts/capture-ua-defaults.ts",
@@ -34,7 +34,10 @@
     "wpt:interop-labels": "node packages/wpt/src/cli/interop-labels.ts",
     "native:build": "node --conditions=dragon-internal packages/parity/src/cli/native-build.ts",
     "native:smoke": "node --conditions=dragon-internal packages/parity/src/cli/native-smoke.ts",
-    "native:encoders": "node --conditions=dragon-internal packages/parity/src/cli/native-encoders.ts"
+    "native:encoders": "node --conditions=dragon-internal packages/parity/src/cli/native-encoders.ts",
+    "text:build": "pnpm --dir packages/text-shaper run build",
+    "text:gate": "node packages/text-shaper/scripts/gate.ts",
+    "text:report": "node packages/text-shaper/scripts/report.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",
