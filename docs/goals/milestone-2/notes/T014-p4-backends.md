@@ -1,8 +1,13 @@
-# T014 P4 native backends: BLOCKED on one smoke item (the Android bridge self-check); everything else done
+# T014 P4 native backends: BLOCKED on Android smoke check (d) for text line right edges; everything else done
 
 Worker, 2026-09-28, claude-code. Board: `docs/goals/milestone-2/state.yaml`, task T014. Branch `t014-p4-backends` from 4c1331c, worktree `/tmp/dragon-p4`. Local commits only; `git remote -v` is empty; nothing pushed.
 
-**Result: blocked.** A stop_if was hit in item 10: "the bridge self-check fails on either platform: report". The Android bridge reads Ahem's advances through `Paint.getRunAdvance`, which returns 999.99609375 font units, not 1000. The iOS bridge passes. Every other T014 item is built and verified on both platforms, and the Android smoke run passes (d) and (b) for the case without text (`color-border-sides`). I did not change the measuring method, the check, the gate or a case to make it pass. The PM rules; the options are in section 3.
+**Result: blocked.**
+- **The ruling was applied.** After PM ruling (a), both bridges read glyph advances from the font's own `cmap` and `hmtx` tables, so the method is the same on both platforms. Core Text and `getRunAdvance` stay only as evidence probes.
+- **The self-check now passes on both platforms**, and the Android engine lays out all three smoke cases.
+- **iOS smoke:** 3/3 pass.
+- **Android smoke:** `color-border-sides` passes. `text-wrap-spaces` and `overflow-hidden-bfc` fail check (d) on text line right edges by exactly 1 device px (section 3b), which is the stop condition "a smoke case fails (d): report". I did not change the snap rule, the gate, the case or the readback rounding.
+- **Everything else** in T014 is built and verified on both platforms.
 
 ## 1. History
 
@@ -15,7 +20,12 @@ Worker, 2026-09-28, claude-code. Board: `docs/goals/milestone-2/state.yaml`, tas
    - neither TextKit nor StaticLayout may choose a break.
 
    P4 follows this. It is recorded as deviation 1.
-5. **Build, verify, smoke.** iOS passes everything. Android passes everything except the self-check, which blocks its two text cases (section 3).
+5. **Build, verify, smoke.** iOS passes everything. With `getRunAdvance` at textSize = unitsPerEm, the Android self-check failed at 999.99609375 (section 3a), which was reported as blocked.
+6. **PM ruling on the advance source: option (a).** The Android bridge reads advances from `hmtx`, with the glyph found through `cmap`, in the same buffer as `head` and `hhea`. For parity of method, iOS now reads `cmap` and `hmtx` through `CTFontCopyTable` too.
+   - Core Text (`CTTypesetterCreateLine`) and `getRunAdvance` stay only as evidence probes in `bridge-<platform>.json`.
+   - iOS already matched exactly before the change: its Core Text probe gives 1000 at every size, and its self-check passed both before and after.
+   - Real-font text (TXT1) will need shaped advances (kerning, GPOS). Those will also be computed in font units, and the TXT1 package designs them. `getRunAdvance` stays an evidence probe.
+7. **Re-run.** Both self-checks pass. iOS smoke passes 3/3. Android passes (b) on all three cases and (d) on `color-border-sides`, and fails (d) on the text line right edges (section 3b).
 
 ## 2. What was built (T013 section 2, items 1 to 10)
 
@@ -72,26 +82,43 @@ Worker, 2026-09-28, claude-code. Board: `docs/goals/milestone-2/state.yaml`, tas
 9. **Native compile.** `nativeCompile` is one compile per fixture and direction, `{ ios: { minimum: '15.0' }, android: { minSdk: 29 } }` in derive mode for both targets. Its digest is the dump's `compilerDigest`.
 10. **Smoke run** (`cli/native-smoke.ts`). It covers the three cases on the iPhone 17 simulator and the `dragon-smoke` AVD. It is not a lane, and lanes.json is unchanged.
 
-## 3. The blocker: the Android bridge self-check
+## 3. The Android smoke
+
+### 3a. Resolved: advance source (PM ruling a)
 
 | | iOS (iPhone 17, iOS 26.5 23F77, scale 3) | Android (dragon-smoke, Android 16 API 36 BE2A.250530.026.D1, density 420, scale 2.625) |
 |---|---|---|
 | Font sha256 | b719ecb3...b94b8448 = repo Ahem | b719ecb3...b94b8448 = repo Ahem |
 | head / hhea | 1000 / 800 / 200 / 0 | 1000 / 800 / 200 / 0 |
-| Advance of every covered glyph at size = unitsPerEm | 1000 (U+200B 0); **self-check pass** | 999.99609375 (U+200B 0); **self-check fail**, 94 mismatches |
-| Probe (evidence only), U+0058 in font units at text size 10 / 26.25 / 100 / 256 / 257 / 512 / 1000 / 2048 | 1000 at every size | 999.609375 / 999.8512 / 999.9609375 / **1000** / 999.9848 / 999.9924 / 999.99609375 / 999.9981 |
-| color-border-sides | valid; (d) pass 11; (b) pass 44; digest equal | valid; (d) pass 11; (b) pass 44; digest equal |
-| text-wrap-spaces | valid; 25 lines; (d) pass 43; (b) pass 56 | no dump: the engine refuses `w1:text0` (text-glyph: "U+58 is not an Ahem full-advance glyph"), because 999.99609375 / 1000 is not a whole em |
-| overflow-hidden-bfc | valid; 4 lines; (d) pass 26; (b) pass 93 | not reached (the host stopped at the previous case) |
+| Advances from `cmap` + `hmtx` | 1000 per covered glyph, 0 for U+200B: **self-check pass** | 1000 per covered glyph, 0 for U+200B: **self-check pass** |
+| Evidence probe, U+0058 in font units at text size 10 / 26.25 / 100 / 256 / 257 / 512 / 1000 / 2048 | Core Text: 1000 at every size | `getRunAdvance` (linear): 999.609375 / 999.8512 / 999.9609375 / 1000 / 999.9848 / 999.9924 / 999.99609375 / 999.9981 |
 
-**Reading.** `getRunAdvance` with `LINEAR_TEXT_FLAG` returns each Ahem advance exactly 1/256 px short at every text size except 256. So the platform quantises advances to 1/256 px with a small downward bias. The data are what the spec's method (advances at textSize = unitsPerEm) and the PM's API (`getRunAdvance`, linear) produce.
+Before the ruling, the Android bridge used `getRunAdvance`, got 999.99609375 and failed the self-check. The engine then refused `text-wrap-spaces` at `w1:text0` (text-glyph).
+
+### 3b. Open: check (d) on text line right edges on Android
+
+| Case @ scale | iOS @3 | Android @2.625 |
+|---|---|---|
+| color-border-sides | valid; (d) 11/11; (b) 44; digest equal | valid; (d) 11/11; (b) 44; digest equal |
+| text-wrap-spaces | valid; 25 lines; (d) 43 pass; (b) 56 pass | valid; 25 lines; (b) 56 pass; **(d) fail on 11 lines** |
+| overflow-hidden-bfc | valid; 4 lines; (d) 26 pass; (b) 93 pass | valid; 4 lines; (b) 93 pass; **(d) fail on 4 lines** |
+
+Every failure is a text line's right edge, 1 device px left of the engine's. Every other edge (lefts, tops, bottoms, every box) matches exactly. Examples:
+- `w1:text0:line0` "XX": dump right 52, engine snapRect 53;
+- `w6:text0:line2`: 151 against 152;
+- `txt:text0:line0..3`: 52 against 53.
+
+**Why.**
+- Ahem 10px at 2.625 is 26.25 device px per glyph. The engine measures "XX" as 52.5 px (3360 LU), which `snapEdge` rounds half-up to 53.
+- The device draws the run with Android's own advances, 1/256 px short per glyph (the probe above). So the live right edge is 52.4922 px, and the readback (`left + getRunAdvance`, half-up) gives 52.
+- On iOS the same line reads 60 = 60, because Core Text's advances are exact.
+
+**The discrepancy is real:** Android draws the glyph run 1/128 px short. It only becomes a whole device px because 52.5 sits on a rounding boundary.
 
 **Options** (the PM or owner rules; I changed nothing):
-- **(a)** Read the advances from the `hmtx` and `cmap` tables in the `Font` buffer, the same raw-data path as `head` and `hhea`. They are exact integers.
-- **(b)** Keep `getRunAdvance`, then round the font-unit advance to an integer. TrueType `hmtx` advances are integers by format, but this is a rounding step that needs a ruling.
-- **(c)** Measure at a text size where the probe is exact (256). That would be tuning to the sample, which I do not recommend.
-
-The engine's line data never use FontMetrics, so the text-hook stop condition is not hit.
+- **(i)** Read a live text extent the way Blink converts a text width to a LayoutUnit, `LayoutUnit::FromFloatCeil` (the engine's `units_fromPxCeil`, translated), and then snap with `snapEdge`, on both platforms. 52.4922 becomes 3360 LU, then 53. This changes the readback convention, not the snap rule or the gate, but it was chosen after seeing the failure, so it needs a ruling.
+- **(ii)** Dragon positions each glyph at the engine's advances instead of letting the native run advance them (for example, per-glyph draws on Android, or `CTFontDrawGlyphs` with positions on iOS for symmetry). The live extent would then be the engine's, and the platform only rasterises. `Canvas.drawGlyphs` is API 31, so it is above the floor; API 29 needs another path.
+- **(iii)** Treat the Android advance quantisation (1/256 px per glyph) as an owner-approved deviation for (d) on text line extents. This loosens a check, and I do not recommend it.
 
 ## 4. Verification (JAVA_HOME and ANDROID_HOME exported before each command)
 
@@ -118,14 +145,19 @@ The engine's line data never use FontMetrics, so the text-hook stop condition is
 | 19 | Tests in pnpm test | shared projection 261/261 at DPR 1, 2, 3 and 2.625; expected dumps 1305 = 261 x 5 with identical coverage; `long` expects [1,1,1,1] pt at 3 on iOS and [3,3,3,3] px on Android; the 56 generated source files hold none of 1551 stylesheet rules, 1427 selector class names or 6096 web class bindings, and no JSON decoding; checked int traps on 1.5, 2^31 and -2^31-1 in Swift and Kotlin; the font-data measurer equals the 4c1331c Ahem measurer on every vector and corpus text input, with and without the planted rules |
 | 20 | Public android tests | minSdk 28, 37, 29.5, "29", NaN and null are each DRAGON_CONFIG_INVALID; 29 to 36 compile; empty-CSS android is analysis-only; `.a { width: 50px }` is blocked with DRAGON_UNSUPPORTED_VALUE; type tests pass |
 | 21 | `native:smoke --target ios` | **pass**: 3/3 cases; bridge self-check pass |
-| 21 | `native:smoke --target android` | **fail** (section 3): bridge self-check fail; color-border-sides pass; the two text cases are not produced |
+| 21 | `native:smoke --target android` (after ruling a) | **fail** (section 3b): bridge self-check pass; all 3 dumps valid with device.scale 2.625 and equal expected digests; (b) passes 3/3; (d) passes color-border-sides and fails text-wrap-spaces (11 line right edges) and overflow-hidden-bfc (4 line right edges), each 1 device px |
+| 21 | `native:smoke --target ios` (after ruling a) | **pass**: 3/3; self-check pass with hmtx advances |
+| 3 | `pnpm test` (after ruling a) | 990/990, 95.4 s wall |
 | 22 | Protected paths | `git diff --exit-code 4c1331c` over the full list: exit 0 |
 | 23 | T038 item-21 greps | 0 / 0 / 0, plus 0 node or fs imports and 0 non-type `@dragon/layout` imports in dragon/src |
 | 24 | Scope | every changed file is in allowed_files (the three header-only files by the PM ruling); no remote |
 
 ## 5. Deviations
 
-1. **Text strategy (PM update).** The engine owns the breaks: `inline_breakLines` runs on the device and each engine line is its own run. The advances come from `CTTypesetterCreateLine` (iOS) and `getRunAdvance` with `LINEAR_TEXT_FLAG` (Android), not the spec's `CTFontGetAdvancesForGlyphs`. `inline.ts` is unchanged, because the translated `buildRun` and `breakLines` already expose the exact values.
+1. **Text strategy (PM update) and advance source (PM ruling a).**
+   - The engine owns the breaks: `inline_breakLines` runs on the device, and each engine line is its own run. `inline.ts` is unchanged, because the translated `buildRun` and `breakLines` already expose the exact values.
+   - The bridge advances come from the font's `cmap` and `hmtx` tables on both platforms, not the spec's `CTFontGetAdvancesForGlyphs` or "advances at textSize = unitsPerEm".
+   - `CTTypesetterCreateLine` and `getRunAdvance` (linear) are evidence probes only.
 2. **aapt2 36.0.0 badging.** It prints `minSdkVersion:'29'`; older aapt printed `sdkVersion:'29'`. The CLI accepts either spelling and prints the raw lines.
 3. **The P3 pin was renamed** to "is a configured target with androidProfile: ...", because its old name claimed the opposite. So the 4c1331c test-name list is a subset of HEAD minus this one renamed test.
 4. **The unknown-target message** now reads "(Dragon knows web, ios and android)". It appears only for invalid configs.
@@ -143,6 +175,7 @@ The engine's line data never use FontMetrics, so the text-hook stop condition is
 
 ## 6. For the board
 
-- **PM ruling needed:** how the Android bridge reads advances (section 3 options a, b or c). Then re-run `native:smoke --target android`.
+- **PM ruling needed:** check (d) on Android text line extents (section 3b, options i, ii or iii). Then re-run `native:smoke --target android` and `--target ios`.
+- **TXT1:** real-font shaped advances (kerning, GPOS) in font units; `getRunAdvance` and Core Text stay evidence probes.
 - **P5:** the break reference, which is now the engine's own breaks (text strategy); DUMP_FAULTS on real dumps; AVDs at 320 and 480; the iPad scale; the lanes.json flips.
 - **P6:** the sample points (the host protocol exists, with an empty list), the PixelCopy and screencap probe, and pixel proof of the Dragon-owned border and clip paint.

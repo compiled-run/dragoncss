@@ -60,6 +60,55 @@ public func dragonFontHeader(head: [UInt8], hhea: [UInt8]) -> (unitsPerEm: Doubl
   return (dragonU16(head, 18), dragonI16(hhea, 4), -dragonI16(hhea, 6), dragonI16(hhea, 8))
 }
 
+public func dragonU32(_ b: [UInt8], _ o: Int) -> Int {
+  return Int(dragonU16(b, o)) << 16 | Int(dragonU16(b, o + 2))
+}
+
+/// The glyph id of a code point from the cmap table (format 12, else format 4); 0 when it is not mapped.
+public func dragonGlyph(cmap: [UInt8], _ cp: Int) -> Int {
+  let n = Int(dragonU16(cmap, 2))
+  var f4 = -1
+  var f12 = -1
+  for i in 0..<n {
+    let platform = Int(dragonU16(cmap, 4 + 8 * i))
+    let encoding = Int(dragonU16(cmap, 6 + 8 * i))
+    let off = dragonU32(cmap, 8 + 8 * i)
+    let format = Int(dragonU16(cmap, off))
+    if format == 12 && (platform == 0 || (platform == 3 && encoding == 10)) { f12 = off }
+    if format == 4 && (platform == 0 || (platform == 3 && encoding == 1)) && f4 < 0 { f4 = off }
+  }
+  if f12 >= 0 {
+    let groups = dragonU32(cmap, f12 + 12)
+    for g in 0..<groups {
+      let at = f12 + 16 + 12 * g
+      let start = dragonU32(cmap, at)
+      let end = dragonU32(cmap, at + 4)
+      if cp >= start && cp <= end { return dragonU32(cmap, at + 8) + cp - start }
+    }
+    return 0
+  }
+  if f4 < 0 || cp > 0xffff { return 0 }
+  let segX2 = Int(dragonU16(cmap, f4 + 6))
+  for k in 0..<(segX2 / 2) {
+    let end = Int(dragonU16(cmap, f4 + 14 + 2 * k))
+    let start = Int(dragonU16(cmap, f4 + 16 + segX2 + 2 * k))
+    if cp < start || cp > end { continue }
+    let delta = Int(dragonU16(cmap, f4 + 16 + 2 * segX2 + 2 * k))
+    let rangeAt = f4 + 16 + 3 * segX2 + 2 * k
+    let range = Int(dragonU16(cmap, rangeAt))
+    if range == 0 { return (cp + delta) & 0xffff }
+    let g = Int(dragonU16(cmap, rangeAt + range + 2 * (cp - start)))
+    return g == 0 ? 0 : (g + delta) & 0xffff
+  }
+  return 0
+}
+
+/// A glyph's advance in font units from hmtx (numberOfHMetrics is hhea 34; later glyphs repeat the last advance).
+public func dragonAdvance(hhea: [UInt8], hmtx: [UInt8], _ gid: Int) -> Double {
+  let n = Int(dragonU16(hhea, 34))
+  return dragonU16(hmtx, 4 * min(gid, n - 1))
+}
+
 /// The raw data as the translated measurer's FontData.
 public func dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: [Double]) -> FontData {
   return FontData(unitsPerEm, ascent, descent, lineGap, JsArray(advances))
@@ -377,7 +426,7 @@ const SWIFT_BRIDGE = String.raw`import UIKit
 import CoreText
 import CryptoKit
 
-/// The measurer bridge (R4): raw data read from the bundled Ahem through Core Text, fed to the translated font-data measurer with
+/// The measurer bridge (R4): raw data read from the bundled Ahem's tables through Core Text (head, hhea, cmap, hmtx), fed to the translated font-data measurer with
 /// the darwin-arm64 platform rules. It never uses the platform's rounded line metrics.
 public final class DragonBridge {
   public static let shared = DragonBridge()
@@ -401,16 +450,16 @@ public final class DragonBridge {
     // Advances in font units: the font at size = unitsPerEm advances each glyph by its units.
     let font = CTFontCreateWithFontDescriptor(descriptor, CGFloat(header.unitsPerEm), nil)
     postScriptName = CTFontCopyPostScriptName(font) as String
+    // Advances in integer font units from the font's own cmap and hmtx (PM ruling, option a): the units Chrome's HarfBuzz scales
+    // by size / unitsPerEm. Core Text typesetting is only an evidence probe (record()).
+    guard let cmapData = CTFontCopyTable(probe, CTFontTableTag(kCTFontTableCmap), []) as Data?, let hmtxData = CTFontCopyTable(probe, CTFontTableTag(kCTFontTableHmtx), []) as Data? else { fatalError("dragon bridge: cmap or hmtx is missing") }
+    let cmap = [UInt8](cmapData)
+    let hmtx = [UInt8](hmtxData)
+    let hhea = [UInt8](hheaData)
     var advances: [Double] = []
     for cp in try! text_coveredCodePoints().items {
-      let text = String(UnicodeScalar(UInt32(cp))!)
-      var units = Array(text.utf16)
-      var glyphs = [CGGlyph](repeating: 0, count: units.count)
-      if units.count != 1 || !CTFontGetGlyphsForCharacters(font, &units, &glyphs, units.count) { advances.append(-1); continue }
-      // Advances from Core Text shaping (decisions.md, Text strategy): a typeset line of the one code point.
-      let attributed = NSAttributedString(string: text, attributes: [NSAttributedString.Key(kCTFontAttributeName as String): font])
-      let line = CTTypesetterCreateLine(CTTypesetterCreateWithAttributedString(attributed), CFRange(location: 0, length: 0))
-      advances.append(Double(CTLineGetTypographicBounds(line, nil, nil, nil)))
+      let gid = dragonGlyph(cmap: cmap, Int(cp))
+      advances.append(gid == 0 ? -1 : dragonAdvance(hhea: hhea, hmtx: hmtx, gid))
     }
     data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: advances)
     selfCheck = dragonSelfCheck(data)
@@ -712,6 +761,51 @@ fun dragonSfntTable(font: ByteArray, tag: String): ByteArray {
 
 /** unitsPerEm (head 18), ascender (hhea 4), descender (hhea 6, as a positive descent) and lineGap (hhea 8), in font units. */
 fun dragonFontHeader(head: ByteArray, hhea: ByteArray): DoubleArray = doubleArrayOf(dragonU16(head, 18), dragonI16(hhea, 4), -dragonI16(hhea, 6), dragonI16(hhea, 8))
+
+private fun u16(b: ByteArray, o: Int): Int = dragonU16(b, o).toInt()
+private fun u32(b: ByteArray, o: Int): Int = (u16(b, o) shl 16) or u16(b, o + 2)
+
+/** The glyph id of a code point from the cmap table (format 12, else format 4); 0 when it is not mapped. */
+fun dragonGlyph(cmap: ByteArray, cp: Int): Int {
+  val n = u16(cmap, 2)
+  var f4 = -1
+  var f12 = -1
+  for (i in 0 until n) {
+    val platform = u16(cmap, 4 + 8 * i)
+    val encoding = u16(cmap, 6 + 8 * i)
+    val off = u32(cmap, 8 + 8 * i)
+    val format = u16(cmap, off)
+    if (format == 12 && (platform == 0 || (platform == 3 && encoding == 10))) f12 = off
+    if (format == 4 && (platform == 0 || (platform == 3 && encoding == 1)) && f4 < 0) f4 = off
+  }
+  if (f12 >= 0) {
+    val groups = u32(cmap, f12 + 12)
+    for (g in 0 until groups) {
+      val at = f12 + 16 + 12 * g
+      val start = u32(cmap, at)
+      val end = u32(cmap, at + 4)
+      if (cp in start..end) return u32(cmap, at + 8) + cp - start
+    }
+    return 0
+  }
+  if (f4 < 0 || cp > 0xffff) return 0
+  val segX2 = u16(cmap, f4 + 6)
+  for (k in 0 until segX2 / 2) {
+    val end = u16(cmap, f4 + 14 + 2 * k)
+    val start = u16(cmap, f4 + 16 + segX2 + 2 * k)
+    if (cp < start || cp > end) continue
+    val delta = u16(cmap, f4 + 16 + 2 * segX2 + 2 * k)
+    val rangeAt = f4 + 16 + 3 * segX2 + 2 * k
+    val range = u16(cmap, rangeAt)
+    if (range == 0) return (cp + delta) and 0xffff
+    val g = u16(cmap, rangeAt + range + 2 * (cp - start))
+    return if (g == 0) 0 else (g + delta) and 0xffff
+  }
+  return 0
+}
+
+/** A glyph's advance in font units from hmtx (numberOfHMetrics is hhea 34; later glyphs repeat the last advance). */
+fun dragonAdvance(hhea: ByteArray, hmtx: ByteArray, gid: Int): Double = dragonU16(hmtx, 4 * minOf(gid, u16(hhea, 34) - 1))
 
 /** The raw data as the translated measurer's FontData. */
 fun dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: List<Double>): FontData = FontData(unitsPerEm, ascent, descent, lineGap, ArrayList(advances))
@@ -1060,7 +1154,7 @@ import dev.dragon.layout.text_fontDataMeasurer
 import java.security.MessageDigest
 
 /**
- * The measurer bridge (R4): raw data read from the bundled Ahem through android.graphics.fonts.Font (API 29), fed to the
+ * The measurer bridge (R4): raw data read from the bundled Ahem's tables in the android.graphics.fonts.Font (API 29) buffer (head, hhea, cmap, hmtx), fed to the
  * translated font-data measurer with the darwin-arm64 platform rules. It never uses the platform's rounded line metrics.
  */
 class DragonBridge private constructor(ctx: Context) {
@@ -1080,14 +1174,15 @@ class DragonBridge private constructor(ctx: Context) {
     val header = dragonFontHeader(dragonSfntTable(raw, "head"), dragonSfntTable(raw, "hhea"))
     typeface = Typeface.CustomFallbackBuilder(FontFamily.Builder(font).build()).build()
     // Advances in font units: the font at textSize = unitsPerEm advances each glyph by its units.
-    // Advances from a linear (unhinted) run advance (decisions.md, Text strategy), never measureText.
-    val p = Paint(Paint.LINEAR_TEXT_FLAG or Paint.SUBPIXEL_TEXT_FLAG)
-    p.typeface = typeface
-    p.textSize = header[0].toFloat()
+    // Advances in integer font units from the font's own cmap and hmtx (PM ruling, option a): the units Chrome's HarfBuzz scales
+    // by size / unitsPerEm. Paint.getRunAdvance is only an evidence probe (record()).
+    val cmap = dragonSfntTable(raw, "cmap")
+    val hmtx = dragonSfntTable(raw, "hmtx")
+    val hhea = dragonSfntTable(raw, "hhea")
     val advances = ArrayList<Double>()
     for (cp in text_coveredCodePoints()) {
-      val s = String(Character.toChars(cp.toInt()))
-      advances.add(if (s.length == 1) p.getRunAdvance(s, 0, 1, 0, 1, false, 1).toDouble() else -1.0)
+      val gid = dragonGlyph(cmap, cp.toInt())
+      advances.add(if (gid == 0) -1.0 else dragonAdvance(hhea, hmtx, gid))
     }
     data = dragonFontData(header[0], header[1], header[2], header[3], advances)
     selfCheck = dragonSelfCheck(data)
