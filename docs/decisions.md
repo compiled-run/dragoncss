@@ -155,6 +155,15 @@ This decision uses the spike's measurements in docs/research/text-spike/: 620 ca
 - **Proof:** Chrome is captured with the scaled root size injected (`:root { font-size: <scaled>px !important }`) from a pinned table of iOS content-size categories and Android font scales. The native hosts report their root size in the device dump. See docs/research/engine-value-model-plan.md §3.
 - **Until the engine value model (V2) lands:** native support rows for sizes that depend on `rem` are `caveat` at any text scale other than 1.
 
+## Native viewports, text scale and device sizes (owner, 2026-09-28)
+
+- **Viewport units and safe areas:** on iOS and Android, the small, large and dynamic viewports (`sv*`, `lv*`, `dv*`) all equal the Dragon root view's bounds. The on-screen keyboard does not resize them. `env(safe-area-inset-*)` is the root view's own insets, in CSS px.
+- **The root font always scales with the device text size,** even when it is set in px. The root size at scale 1 is scaled by the platform API (UIFontMetrics on iOS, the font scale on Android). This matches the Chrome reference, which injects the scaled root size with `!important`. Descendants set in px do not scale.
+- **Oversize test cases get bigger devices.** When a fixture's viewport does not fit the default simulator or emulator, Dragon provisions a larger one and never crops a case. A size no device can hold goes back to the owner.
+- **The engine value model is approved (V2a).** The compiler still folds everything it can at build time. Values that depend on the device (the text size, the viewport, the safe area) are resolved by the shared engine on device. Every vector input is migrated by its generator only, every existing output stays byte-identical, and no field gets a default. If an existing output changes, the Worker stops and asks the owner.
+- **Italic `ch` is caveat (PM, T005).** Chrome's `ch` for italic-trait faces differs from the Blink port by 1 float ulp in 4 of 1,040 captured rows. It is a Core Text italic-trait dependence that the source does not explain. The label stays caveat until TXT1a proves it on the HarfBuzz advance path.
+- **Variable fonts are fenced (PM, T024).** Until more Chrome cases validate them, Dragon refuses variable-font instances outside the tested set (Inter VF at its default instance) and variable fonts without HVAR.
+
 ## Native glyph advances (PM, 2026-09-28)
 
 - **Glyph advances come from the font's integer units:** the `hmtx` table, scaled by size / unitsPerEm, as HarfBuzz does in Chrome. They do not come from platform float measurement. On Android, `Paint.getRunAdvance` returned 999.99609375 units for Ahem's 1000-unit glyphs, which could flip a 1/64 px truncation. Platform measurement stays only as an evidence probe.

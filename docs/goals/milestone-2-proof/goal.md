@@ -53,6 +53,8 @@ Work runs in parallel lanes. Each writing lane has its own git worktree and a di
 
 A lane blocked on owner tooling is reported as not met, never counted as passing.
 
+**Checkpoint 3 scope (owner, 2026-09-28):** the YouTube iframe becomes the platform's own web view, WKWebView on iOS and android.webkit.WebView on Android. It sits in a slot Dragon sizes and places, and the slot's frame is compared with Chrome's. Script-driven inline styles are in scope as typed style overrides (PM default; the owner did not object).
+
 ## Goal Kind
 
 `recovery`
