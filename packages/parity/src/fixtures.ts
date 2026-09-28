@@ -1,5 +1,6 @@
 // The parity corpus. Every fixture is attempted in every run; none carries its own tolerance.
-import type { DiagnosticCode, Environment } from 'dragon';
+import type { BackgroundResetLonghand, DiagnosticCode, Environment } from 'dragon';
+import { BACKGROUND_RESET_LONGHANDS } from 'dragon';
 
 /**
  * The reference environment of every case in this lane (docs/api.md §7, §10.1): an input to the projection, the engine and Chrome.
@@ -33,6 +34,11 @@ export type FixtureSpec =
       readonly source: 'hand-written' | 'generated';
       /** The environment root font: 'ahem', or 'ua-default' for a fixture that compares Chrome's UA font with the keyed dataset. */
       readonly rootFont: Environment['rootFont'];
+      /**
+       * Background longhands Dragon does not model, captured and compared besides LONGHANDS: in both renderings Chrome must compute
+       * each to the initial value Dragon holds it at (BACKGROUND_RESET_LONGHANDS). Empty for every fixture before the background shorthand.
+       */
+      readonly computedExtra: readonly BackgroundResetLonghand[];
     }
   | {
       readonly id: string;
@@ -42,11 +48,13 @@ export type FixtureSpec =
       readonly expect: { readonly code: DiagnosticCode; readonly spanText: string | null; readonly messagePrefix: string | null };
     };
 
-const layout = (id: string, environments: readonly Environment['direction'][] = ['ltr'], rootFont: Environment['rootFont'] = 'ahem'): FixtureSpec => ({ id, format: 'html', kind: 'layout', gate: 'default', environments, source: 'hand-written', rootFont });
+const layout = (id: string, environments: readonly Environment['direction'][] = ['ltr'], rootFont: Environment['rootFont'] = 'ahem'): FixtureSpec => ({ id, format: 'html', kind: 'layout', gate: 'default', environments, source: 'hand-written', rootFont, computedExtra: [] });
 /** An HTML fixture that runs in both environment directions (every position-* and flex-abspos-* fixture). */
 const both = (id: string): FixtureSpec => layout(id, ['ltr', 'rtl']);
-const generated = (id: string): FixtureSpec => ({ id, format: 'html', kind: 'layout', gate: 'default', environments: ['ltr', 'rtl'], source: 'generated', rootFont: 'ahem' });
-const tree = (id: string): FixtureSpec => ({ id, format: 'tree', kind: 'layout', gate: 'default', environments: ['ltr', 'rtl'], source: 'hand-written', rootFont: 'ahem' });
+const generated = (id: string): FixtureSpec => ({ id, format: 'html', kind: 'layout', gate: 'default', environments: ['ltr', 'rtl'], source: 'generated', rootFont: 'ahem', computedExtra: [] });
+const tree = (id: string): FixtureSpec => ({ id, format: 'tree', kind: 'layout', gate: 'default', environments: ['ltr', 'rtl'], source: 'hand-written', rootFont: 'ahem', computedExtra: [] });
+/** A background shorthand fixture: every background longhand is captured and compared (css-backgrounds-3 §3.10). */
+const background = (id: string): FixtureSpec => ({ id, format: 'html', kind: 'layout', gate: 'default', environments: ['ltr'], source: 'hand-written', rootFont: 'ahem', computedExtra: Object.keys(BACKGROUND_RESET_LONGHANDS) as BackgroundResetLonghand[] });
 const reject = (id: string, code: DiagnosticCode, spanText: string | null, messagePrefix: string | null = null): FixtureSpec => ({ id, format: 'html', kind: 'reject', expect: { code, spanText, messagePrefix } });
 const rejectTree = (id: string, code: DiagnosticCode, spanText: string | null): FixtureSpec => ({ id, format: 'tree', kind: 'reject', expect: { code, spanText, messagePrefix: null } });
 

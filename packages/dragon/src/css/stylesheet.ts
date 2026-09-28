@@ -4,6 +4,7 @@ import { generate, parse } from 'css-tree';
 import type { CssNode, List } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
+import { BACKGROUND_RESET_LONGHANDS, backgroundLayer } from './background.ts';
 import type { ColorSyntax, Rgba8 } from './color.ts';
 import { parseColorNode } from './color.ts';
 import { webrefLexer } from './lexer.ts';
@@ -276,6 +277,10 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
       return null;
     }
   }
+  if (property === 'background' && !wide) {
+    const longhands = backgroundLonghands(tokens, base, sheetText, diagnostics);
+    return longhands === null ? null : { property, text, span, valueSpan, longhands, order };
+  }
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
   const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
   const values: CssValue[] = baseline === null ? [] : [baseline];
@@ -308,6 +313,37 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     return null;
   }
   return { property, text, span, valueSpan, longhands, order };
+}
+
+const BACKGROUND_FIX = 'Set the colour with background-color, or write background with only a colour, keeping every other component at its initial value (none, 0% 0% / auto, repeat, scroll, padding-box border-box).';
+
+// css-backgrounds-3 §3.10: the shorthand resets every background longhand. Dragon models background-color only, so the value
+// compiles when all the others stay initial; the colour, if omitted, is filled with its initial transparent.
+function backgroundLonghands(tokens: CssNode[], base: Span, sheetText: string, diagnostics: Diagnostic[]): LonghandValue[] | null {
+  const layer = backgroundLayer(tokens);
+  if (!layer.ok) {
+    const first = layer.nodes[0] as CssNode;
+    const last = layer.nodes[layer.nodes.length - 1] as CssNode;
+    const at = { source: base.source, start: spanOf(first, base).start, end: spanOf(last, base).end };
+    const written = sheetText.slice(at.start - base.start, at.end - base.start);
+    const names = layer.longhands.map((l) => `${l} (initial ${BACKGROUND_RESET_LONGHANDS[l]})`).join(', ');
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+      origin: authored(at),
+      message: layer.layers > 1
+        ? `background: "${written}" has ${layer.layers} layers, which set ${names} to ${layer.layers}-item lists. Dragon supports one layer, where every longhand except background-color keeps its initial value`
+        : `background: "${written}" sets ${names} to a non-initial value. Dragon supports background only when every longhand except background-color keeps its initial value`,
+      manual: BACKGROUND_FIX,
+    }));
+    return null;
+  }
+  if (layer.color === null) return [{ property: 'background-color', value: kw('transparent'), explicit: false }];
+  const v = tokenValue(layer.color, 'background-color');
+  if (typeof v === 'string') {
+    const at = spanOf(layer.color, base);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(at), message: `background: ${sheetText.slice(at.start - base.start, at.end - base.start)} is unsupported: ${v}`, manual: COLOR_FIX }));
+    return null;
+  }
+  return [{ property: 'background-color', value: v, explicit: true }];
 }
 
 const COLOR_FIX = 'Use a named colour, a 3, 4, 6 or 8 digit hex colour, rgb(), rgba(), hsl(), hsla(), transparent or currentcolor.';
@@ -372,6 +408,7 @@ function familyValue(tokens: CssNode[]): CssValue {
 }
 
 const SHORTHAND_LONGHANDS: { readonly [s: string]: readonly Longhand[] } = {
+  background: ['background-color'],
   margin: ['margin-top', 'margin-right', 'margin-bottom', 'margin-left'],
   padding: ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'],
   'border-width': ['border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width'],

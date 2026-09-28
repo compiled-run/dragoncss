@@ -16,7 +16,7 @@ export const LONGHANDS = [
 export type Longhand = (typeof LONGHANDS)[number];
 
 export const SHORTHANDS = [
-  'margin', 'padding', 'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
+  'background', 'margin', 'padding', 'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
   'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow', 'white-space',
 ] as const;
 

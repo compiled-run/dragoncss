@@ -33,6 +33,8 @@ export { COMMITTED_PROFILES } from './project.ts';
 export type { SupportProfiles } from './project.ts';
 export type { ColorLonghand, Longhand } from './css/properties.ts';
 export { COLOR_LONGHANDS, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE } from './css/properties.ts';
+export { BACKGROUND_RESET_LONGHANDS } from './css/background.ts';
+export type { BackgroundResetLonghand } from './css/background.ts';
 export type { Rgba8 } from './css/color.ts';
 export { parseComputedColor, serializeColor } from './css/color.ts';
 export { WEB_CSS_PATH } from './emit/web-css.ts';

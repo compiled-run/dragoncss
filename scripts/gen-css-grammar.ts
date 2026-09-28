@@ -32,13 +32,15 @@ const SUBSET = [
   'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
   'flex', 'flex-flow', 'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
   'justify-content', 'align-items', 'align-self', 'align-content', 'gap', 'row-gap', 'column-gap',
-  'font-size', 'font-family', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background-color',
+  'font-size', 'font-family', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
 ] as const;
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));
 const typesByName = new Map(css.types.map((t) => [t.name, t]));
 // Functional notations such as <rgb()> are listed under webref's functions, keyed with their parentheses.
 const functionsByName = new Map(css.functions.map((f) => [f.name, f]));
+// css-tree matches url tokens with its own <url> generic; webref's token-level definition cannot match css-tree's Url node.
+const CSS_TREE_GENERICS = new Set(['url']);
 const refPattern = /<'([^']+)'>|<([a-zA-Z0-9-]+(?:\(\))?)(?:\s*\[[^\]]*\])?>/g;
 
 const properties = new Map<string, WebrefEntry>();
@@ -54,7 +56,7 @@ while (queue.length > 0) {
     properties.set(next.name, p);
     syntax = p.syntax;
   } else {
-    if (types.has(next.name)) continue;
+    if (types.has(next.name) || CSS_TREE_GENERICS.has(next.name)) continue;
     const t = next.name.endsWith('()') ? functionsByName.get(next.name) : typesByName.get(next.name);
     if (t === undefined || t.syntax === undefined) continue; // css-tree generic (length, percentage, number, ...)
     types.set(next.name, t.syntax);

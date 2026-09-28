@@ -2,9 +2,10 @@
 // on the same markup with the same Ahem face. Boxes must be equal (Chrome reports them in 1/64 px steps; compared exactly),
 // every milestone longhand's getComputedStyle string must be equal, and Dragon's resolved colour channels must equal
 // Chrome's authored channels exactly. A text node has no computed style of its own, so Dragon's resolved text colour is compared
-// with its parent element's computed color in both renderings. There is no tolerance anywhere in this lane.
+// with its parent element's computed color in both renderings. A fixture's computedExtra background longhands must equal, in both
+// renderings, the initial value Dragon holds them at. There is no tolerance anywhere in this lane.
 import type { ElementColors, Rgba8 } from 'dragon';
-import { COLOR_LONGHANDS, LONGHANDS, parseComputedColor, serializeColor } from 'dragon';
+import { BACKGROUND_RESET_LONGHANDS, COLOR_LONGHANDS, LONGHANDS, parseComputedColor, serializeColor } from 'dragon';
 import type { WebCapture } from './capture.ts';
 
 export type DualNode = {
@@ -38,7 +39,7 @@ export function textParent(id: string): string {
   return m[1] as string;
 }
 
-export function compareDual(authored: WebCapture, compiled: WebCapture, colors: ReadonlyMap<string, ElementColors>, textColors: ReadonlyMap<string, Rgba8>): DualComparison {
+export function compareDual(authored: WebCapture, compiled: WebCapture, colors: ReadonlyMap<string, ElementColors>, textColors: ReadonlyMap<string, Rgba8>, extra: readonly string[] = []): DualComparison {
   const problems: string[] = [];
   const nodes: DualNode[] = [];
   if (authored.devicePixelRatio !== compiled.devicePixelRatio || authored.direction !== compiled.direction || authored.viewport.width !== compiled.viewport.width || authored.viewport.height !== compiled.viewport.height) {
@@ -68,6 +69,14 @@ export function compareDual(authored: WebCapture, compiled: WebCapture, colors: 
           if (ac[p] === cc[p]) valuesEqual++;
           else problems.push(`${a.id}: ${p} authored "${String(ac[p])}" compiled "${String(cc[p])}"`);
         }
+        for (const p of extra) {
+          valuesCompared++;
+          const mine = (BACKGROUND_RESET_LONGHANDS as { readonly [k: string]: string | undefined })[p];
+          if (mine !== undefined && ac[p] === mine && cc[p] === mine) valuesEqual++;
+          else problems.push(`${a.id}: ${p} authored "${String(ac[p])}" compiled "${String(cc[p])}" Dragon "${mine === undefined ? 'none' : mine}"`);
+        }
+        const captured = Object.keys(ac).length;
+        if (captured !== LONGHANDS.length + extra.length || Object.keys(cc).length !== captured) problems.push(`${a.id}: captured ${captured} authored and ${Object.keys(cc).length} compiled computed values, expected ${LONGHANDS.length + extra.length}`);
         const dragon = colors.get(a.id);
         if (dragon === undefined) problems.push(`${a.id}: Dragon resolved no colours`);
         for (const p of COLOR_LONGHANDS) {
