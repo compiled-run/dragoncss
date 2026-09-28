@@ -1,0 +1,31 @@
+{
+ "schema": "dragon-north-star-lane/1",
+ "platforms": [
+  {"id":"ios","viewport":{"width":390,"height":844},"dprs":[2,3],"dir":"ios-390x844"},
+  {"id":"android","viewport":{"width":412,"height":915},"dprs":[2,2.625,3],"dir":"android-412x915"}
+ ],
+ "cases": [
+  {"id":"main-top","kind":"state","start":"main","scroll":"top","forced":null,"steps":[],"tMs":0},
+  {"id":"main-end","kind":"state","start":"main","scroll":"end","forced":null,"steps":[],"tMs":0},
+  {"id":"library-open-top","kind":"state","start":"library-open","scroll":"top","forced":null,"steps":[],"tMs":0},
+  {"id":"library-open-end","kind":"state","start":"library-open","scroll":"end","forced":null,"steps":[],"tMs":0},
+  {"id":"playing-top","kind":"state","start":"playing","scroll":"top","forced":null,"steps":[],"tMs":0},
+  {"id":"playing-end","kind":"state","start":"playing","scroll":"end","forced":null,"steps":[],"tMs":0},
+  {"id":"library-open-playing-top","kind":"state","start":"library-open-playing","scroll":"top","forced":null,"steps":[],"tMs":0},
+  {"id":"library-open-playing-end","kind":"state","start":"library-open-playing","scroll":"end","forced":null,"steps":[],"tMs":0},
+  {"id":"hover-library-button","kind":"forced","start":"main","scroll":"top","forced":{"pseudo":"hover","selector":".library-button:hover","subject":".library-button"},"steps":[],"tMs":0},
+  {"id":"focus-input-type-range","kind":"forced","start":"main","scroll":"top","forced":{"pseudo":"focus","selector":"input[type='range']:focus","subject":"input[type='range']"},"steps":[],"tMs":0},
+  {"id":"hover-play-control-button","kind":"forced","start":"main","scroll":"top","forced":{"pseudo":"hover","selector":".play-control button:hover","subject":".play-control button"},"steps":[],"tMs":0},
+  {"id":"hover-library-song","kind":"forced","start":"library-open","scroll":"top","forced":{"pseudo":"hover","selector":".library-song:hover","subject":".library-song"},"steps":[],"tMs":0},
+  {"id":"hover-youtube-disclosure-a","kind":"forced","start":"main","scroll":"top","forced":{"pseudo":"hover","selector":".youtube-disclosure a:hover","subject":".youtube-disclosure a"},"steps":[],"tMs":0},
+  {"id":"spin-paused-0ms","start":"main","steps":[],"tMs":0,"kind":"frame","scroll":"top","forced":null},
+  {"id":"spin-paused-5000ms","start":"main","steps":[],"tMs":5000,"kind":"frame","scroll":"top","forced":null},
+  {"id":"spin-playing-0ms","start":"playing","steps":[],"tMs":0,"kind":"frame","scroll":"top","forced":null},
+  {"id":"spin-playing-5000ms","start":"playing","steps":[],"tMs":5000,"kind":"frame","scroll":"top","forced":null},
+  {"id":"library-opening-250ms","start":"main","steps":[{"atMs":0,"to":"library-open"}],"tMs":250,"kind":"frame","scroll":"top","forced":null},
+  {"id":"library-closing-250ms","start":"library-open","steps":[{"atMs":0,"to":"main"}],"tMs":250,"kind":"frame","scroll":"top","forced":null},
+  {"id":"paused-at-5000ms-6000ms","start":"playing","steps":[{"atMs":5000,"to":"main"}],"tMs":6000,"kind":"frame","scroll":"top","forced":null}
+ ],
+ "counts": {"ios":{"2":20,"3":20},"android":{"2":20,"3":20,"2.625":20}},
+ "total": 100
+}
