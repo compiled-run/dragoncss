@@ -23,7 +23,11 @@
     "native:gen": "node packages/translate/src/cli/gen.ts",
     "native:swift": "node packages/translate/src/cli/native.ts swift",
     "native:kotlin": "node packages/translate/src/cli/native.ts kotlin",
-    "native:planted": "node packages/translate/src/cli/planted.ts"
+    "native:planted": "node packages/translate/src/cli/planted.ts",
+    "wpt:run": "node --conditions=dragon-internal packages/wpt/src/cli/run.ts",
+    "wpt:check": "node --conditions=dragon-internal packages/wpt/src/cli/check.ts",
+    "wpt:update-expectations": "node --conditions=dragon-internal packages/wpt/src/cli/update.ts",
+    "wpt:interop-labels": "node packages/wpt/src/cli/interop-labels.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",
