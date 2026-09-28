@@ -51,10 +51,11 @@ describe('snapRect and snapEdges', () => {
 
 describe('snap vectors (vectors/dpr-<N>/snap, written by pnpm run layout:dpr-vectors)', () => {
   for (const dpr of [2, 3, 2.625]) {
-    it(`DPR ${dpr}: every snap vector is the DPR vector output and its snapEdges, 261 cases`, () => {
+    it(`DPR ${dpr}: every snap vector is the DPR vector output and its snapEdges, one per top-level vector`, () => {
       const dir = join(vectors, `dpr-${dpr}`, 'snap');
       const files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
-      expect(files.length).toBe(261);
+      expect(files).toEqual(readdirSync(vectors).filter((f) => f.endsWith('.json')).sort());
+      expect(files.length).toBeGreaterThanOrEqual(261);
       for (const f of files) {
         const v = JSON.parse(readFileSync(join(dir, f), 'utf8')) as { platform: string; devicePixelRatio: number; input: LayoutRect[]; output: SnappedRect[] };
         expect([Object.keys(v), v.platform, v.devicePixelRatio], f).toEqual([['platform', 'devicePixelRatio', 'input', 'output'], 'darwin-arm64', dpr]);

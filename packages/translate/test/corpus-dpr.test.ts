@@ -28,7 +28,8 @@ describe('the milestone-1 manifest', () => {
     for (const f of topLevelVectorFiles()) expect([m1.has(f), m2.has(f)], f).toContainEqual(true);
     for (const f of topLevelVectorFiles()) expect(m1.has(f) && m2.has(f), f).toBe(false);
     expect(m1.size + m2.size).toBe(topLevelVectorFiles().length);
-    expect([...m2].sort()).toEqual(['border-initial-width.json', 'line-height-rounding.json', 'text-min-content-word-positions.json']);
+    // The P2b fixtures are always here; later fixture groups add their own top-level vectors (packages/parity/src/fixture-groups).
+    expect([...m2].sort()).toEqual(expect.arrayContaining(['border-initial-width.json', 'line-height-rounding.json', 'text-min-content-word-positions.json']));
   });
 
   it('the P1 vectors suite reads exactly the manifest cases', () => {
@@ -44,11 +45,13 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
     expect(x.digest).toBe(extendedLockedDigest());
     expect(buildExtendedCorpus().digest).toBe(x.digest);
     expect(x.suites.map((s) => s.name)).toEqual(['vectors-m2', 'vectors-dpr', 'engine-dpr', 'units-m2', 'snap']);
-    expect(n['vectors-m2']).toBe(3);
-    expect(n['vectors-dpr']).toBe(783);
-    expect(n['engine-dpr']).toBeGreaterThanOrEqual(783);
+    const top = topLevelVectorFiles().length;
+    expect(top).toBeGreaterThanOrEqual(261);
+    expect(n['vectors-m2']).toBe(top - m1CaseIds().length);
+    expect(n['vectors-dpr']).toBe(DPR_SETS.length * top);
+    expect(n['engine-dpr']).toBeGreaterThanOrEqual(DPR_SETS.length * top);
     expect(n['units-m2']).toBeGreaterThanOrEqual(120000);
-    expect(n['snap']).toBeGreaterThanOrEqual(20783);
+    expect(n['snap']).toBeGreaterThanOrEqual(20000 + DPR_SETS.length * top);
     expect(x.engineSplit.threw + x.engineSplit.harnessError).toBe(0);
   });
 
@@ -105,6 +108,6 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
   });
 
   it('the DPR vector folders hold what the suites read', () => {
-    for (const dpr of DPR_SETS) expect(readdirSync(join(VECTORS_DIR, `dpr-${dpr}`)).filter((f) => f.endsWith('.json')).length).toBe(261);
+    for (const dpr of DPR_SETS) expect(readdirSync(join(VECTORS_DIR, `dpr-${dpr}`)).filter((f) => f.endsWith('.json')).sort()).toEqual([...topLevelVectorFiles()].sort());
   });
 });

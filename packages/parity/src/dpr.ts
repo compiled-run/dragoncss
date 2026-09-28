@@ -9,13 +9,13 @@ import type { Compiled, Environment } from 'dragon';
 import { iosLayoutProjection, NO_FAULTS } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import type { ParityCase } from './cases.ts';
-import { casesOf } from './cases.ts';
+import { casesOf, expectedCaseCount, fixtureInput } from './cases.ts';
 import { openPage } from './chrome.ts';
 import { expectedPath } from './committed.ts';
 import type { ZoomedComparison } from './compare.ts';
 import { compareZoomedLayout, GATE_DEVICE_PX } from './compare.ts';
 import type { FixtureSpec } from './fixtures.ts';
-import { FIXTURES } from './fixtures.ts';
+import { environmentsOf, FIXTURE_GROUPS, FIXTURES } from './fixtures.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import { compileFixture } from './pipeline.ts';
@@ -54,6 +54,18 @@ export const dprSnapPath = (caseId: string, dpr: number): string => `${dprSnapDi
 /** The case environment at a device pixel ratio: the milestone-1 environment with only devicePixelRatio changed. */
 export function atDpr(env: Environment, dpr: number): Environment {
   return { ...env, devicePixelRatio: dpr };
+}
+
+/** The layout cases of the milestone-1 fixture group, which never changes (seams.test.ts pins its specs). */
+export const MILESTONE_1_LAYOUT_CASES = 261;
+
+/**
+ * The layout case count the fixture groups declare: the frozen milestone-1 count, plus every later group's cases counted from
+ * its specs (directions times the renderer's assignments), independently of Dragon's enumeration.
+ */
+export function declaredLayoutCaseCount(): number {
+  const later = FIXTURE_GROUPS.slice(1).flatMap((g) => g.fixtures).filter((s) => s.kind === 'layout');
+  return MILESTONE_1_LAYOUT_CASES + later.reduce((n, s) => n + environmentsOf(s).length * expectedCaseCount(s, fixtureInput(s)), 0);
 }
 
 /** Every layout case of the corpus, in fixture order: the same ids at every DPR (the DPR-1 ids). */

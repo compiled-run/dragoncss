@@ -6,7 +6,7 @@ import { layout, measurerFor } from '@dragon/layout';
 import { NO_FAULTS } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from '../src/compare.ts';
-import { atDpr, committedDprCapture, layoutCases } from '../src/dpr.ts';
+import { atDpr, committedDprCapture, declaredLayoutCaseCount, layoutCases } from '../src/dpr.ts';
 import { referenceProof } from '../src/lanes.ts';
 import type { ExpectedApplied, ReferenceFaults, RgbaImage } from '../src/native-compare.ts';
 import { checkAgainstChrome, checkAgainstEngine, checkApplied, checkPixels, DUMP_FAULTS, NO_REFERENCE_FAULTS, readSamples, referenceDump } from '../src/native-compare.ts';
@@ -64,7 +64,7 @@ describe('reference proof: TS engine plus snapRect dumps pass (a) and (d)', () =
         expect(r.chromeCompared).toBeGreaterThan(0);
       }
     }
-    expect(cases).toBe(261);
+    expect(cases).toBe(declaredLayoutCaseCount());
   });
 });
 
