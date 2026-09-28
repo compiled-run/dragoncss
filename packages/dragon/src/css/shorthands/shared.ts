@@ -15,6 +15,8 @@ export type ShorthandHandler = {
   readonly longhands: readonly Longhand[];
   readonly expand: (values: readonly CssValue[]) => LonghandValue[];
   readonly refuse?: (tokens: readonly CssNode[], base: Span) => Diagnostic | null;
+  /** The longhand values a CSS-wide keyword sets, when they are not each of longhands (flow-relative properties). */
+  readonly expandWide?: (value: CssValue) => LonghandValue[];
 };
 
 /** A longhand the author's value set. */

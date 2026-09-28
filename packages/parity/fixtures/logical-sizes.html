@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.rtl { direction: rtl; }
+.c { width: 200px; border: 1px solid #000; margin-bottom: 2px; }
+.b { background-color: #888; }
+.is { inline-size: 50px; width: 20px; block-size: 8px; }
+.wi { width: 20px; inline-size: 50px; height: 3px; block-size: 8px; }
+.bs { block-size: 12px; height: 4px; inline-size: 30%; }
+.minmax { inline-size: 10px; min-inline-size: 40px; max-inline-size: 30px; block-size: 50px; max-block-size: 9px; min-block-size: 11px; }
+.phys { min-width: 40px; min-inline-size: 5px; max-width: 70px; max-inline-size: none; height: 5px; }
+.auto { inline-size: auto; block-size: auto; }
+.row { display: flex; width: 150px; column-gap: 3px; }
+.item { flex-grow: 1; min-inline-size: 0; max-inline-size: 60px; block-size: 7px; }
+.bb { box-sizing: border-box; inline-size: 40px; block-size: 10px; padding-inline: 4px 6px; padding-block: 1px; }
+.txt { inline-size: 60px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="c"><div data-dragon-id="a1" class="b is"></div><div data-dragon-id="a2" class="b wi"></div><div data-dragon-id="a3" class="b bs"></div><div data-dragon-id="a4" class="b minmax"></div><div data-dragon-id="a5" class="b phys"></div><div data-dragon-id="a6" class="b auto">XX</div><div data-dragon-id="a7" class="b bb"></div></div>
+<div data-dragon-id="c2" class="c rtl"><div data-dragon-id="b1" class="b is"></div><div data-dragon-id="b2" class="b minmax"></div><div data-dragon-id="b3" class="b bb"></div><div data-dragon-id="b4" class="b txt">XX XXX XX XXXX</div></div>
+<div data-dragon-id="c3" class="row"><div data-dragon-id="f1" class="b item"></div><div data-dragon-id="f2" class="b item"></div><div data-dragon-id="f3" class="b item is"></div></div>
+<div data-dragon-id="c4" class="row rtl"><div data-dragon-id="g1" class="b item"></div><div data-dragon-id="g2" class="b item wi"></div></div>
+</body>
+</html>

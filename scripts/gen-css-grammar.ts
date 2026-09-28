@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
 
 type WebrefEntry = {
   name: string;
@@ -33,6 +34,7 @@ const SUBSET = [
   'flex', 'flex-flow', 'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
   'justify-content', 'align-items', 'align-self', 'align-content', 'gap', 'row-gap', 'column-gap',
   'font-size', 'font-family', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background-color',
+  ...LOGICAL_SHORTHANDS,
 ] as const;
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));

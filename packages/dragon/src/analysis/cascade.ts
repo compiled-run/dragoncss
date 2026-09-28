@@ -4,6 +4,8 @@ import type { Longhand } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { LinkedElement } from './link.ts';
+import type { DirectionContext } from './logical.ts';
+import { elementDirection, hasDirectionalValues, inDirection } from './logical.ts';
 import { selectorMatches } from './match.ts';
 
 /** One declared longhand value competing in the cascade, with the specificity of the selector that matched it. */
@@ -22,8 +24,8 @@ export function beats(a: Candidate, b: Candidate): boolean {
 /**
  * The cascade-group hook (css-logical-1 §4): longhands in one group (a logical property and the physical property it maps to)
  * share one cascade, so the winner of the group decides each member. It runs after the per-longhand winners of an element are
- * chosen, with every candidate that matched it, and returns the winners to use. Empty today: there are no groups, so it returns
- * the winners it is given.
+ * chosen, with every candidate that matched it, and returns the winners to use. Empty: the horizontal-tb groups are applied before
+ * the per-longhand cascade (logical.ts), so it returns the winners it is given.
  */
 export type CascadeGroupHook = (winners: ReadonlyMap<Longhand, Candidate>, candidates: readonly (readonly [Longhand, Candidate])[], el: LinkedElement) => ReadonlyMap<Longhand, Candidate>;
 
@@ -33,14 +35,17 @@ export const cascadeGroups: CascadeGroupHook = (winners) => winners;
 export type CascadeResult = { readonly winners: ReadonlyMap<Longhand, Candidate>; readonly matched: ReadonlyMap<Longhand, readonly Declaration[]> };
 
 /** Runs the cascade for chain's last element over every rule, in rule, selector, declaration and longhand order. */
-export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults): CascadeResult {
+export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext): CascadeResult {
+  // css-logical-1 §4: flow-relative declarations take part as the physical longhands of the element's direction (logical.ts).
+  const own = hasDirectionalValues(rules) ? elementDirection(rules, chain, faults, direction) : null;
   const winners = new Map<Longhand, Candidate>();
   const matched = new Map<Longhand, Declaration[]>();
   const candidates: (readonly [Longhand, Candidate])[] = [];
   for (const rule of rules) {
     for (const sel of rule.selectors) {
       if (!selectorMatches(rule, sel, chain, chain.length - 1, 0, faults)) continue;
-      for (const d of rule.declarations) {
+      for (const declared of rule.declarations) {
+        const d = own === null ? declared : inDirection(declared, own);
         for (const lh of d.longhands) {
           const cand: Candidate = { declaration: d, value: lh.value, specificity: sel.specificity };
           candidates.push([lh.property, cand]);

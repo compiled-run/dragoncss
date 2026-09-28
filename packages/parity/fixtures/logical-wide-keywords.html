@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.rtl { direction: rtl; }
+.ltr { direction: ltr; }
+.c { width: 200px; border: 1px solid #000; margin-left: 4px; margin-right: 9px; padding-left: 3px; padding-right: 6px; margin-bottom: 2px; }
+.b { height: 6px; background-color: #888; margin-left: 2px; margin-right: 5px; }
+.inh { margin-inline-start: inherit; }
+.inh2 { margin-inline: inherit; padding-inline-end: inherit; }
+.ini { margin-left: 8px; margin-inline-start: initial; }
+.uns { margin-inline-end: 7px; margin-inline-end: unset; }
+.lin { margin-inline-start: 11px; margin-left: inherit; }
+.dinh { direction: inherit; margin-inline-start: 14px; }
+.dini { direction: initial; margin-inline-start: 14px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="c"><div data-dragon-id="a1" class="b inh"></div><div data-dragon-id="a2" class="b inh2"></div><div data-dragon-id="a3" class="b ini"></div><div data-dragon-id="a4" class="b uns"></div><div data-dragon-id="a5" class="b lin"></div></div>
+<div data-dragon-id="c2" class="c rtl"><div data-dragon-id="b1" class="b inh"></div><div data-dragon-id="b2" class="b inh2"></div><div data-dragon-id="b3" class="b ini"></div><div data-dragon-id="b4" class="b uns"></div><div data-dragon-id="b5" class="b lin"></div><div data-dragon-id="b6" class="b dinh"></div><div data-dragon-id="b7" class="b dini"></div><div data-dragon-id="b8" class="b inh ltr"></div></div>
+</body>
+</html>

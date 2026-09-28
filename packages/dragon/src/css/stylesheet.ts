@@ -25,6 +25,8 @@ export type LonghandValue = {
   readonly value: CssValue;
   /** False when a shorthand filled this longhand with its initial value. */
   readonly explicit: boolean;
+  /** Set when a flow-relative property maps to this longhand only on elements of this direction (analysis/logical.ts). */
+  readonly direction?: 'ltr' | 'rtl';
 };
 
 export type Declaration = {
@@ -215,6 +217,8 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
 
 /** A CSS-wide keyword sets the longhand itself, or every longhand of the shorthand. */
 function expandWide(property: string, value: CssValue): LonghandValue[] {
+  const wide = isShorthand(property) ? shorthandHandler(property).expandWide : undefined;
+  if (wide !== undefined) return wide(value);
   const targets: readonly Longhand[] = isLonghand(property) ? [property] : shorthandHandler(property as Shorthand).longhands;
   return targets.map((p) => ({ property: p, value, explicit: true }));
 }
