@@ -52,8 +52,10 @@ rules:
   parallel_lanes:
     - active_task is the PM's focus; tasks listed under dispatched run concurrently in their own worktrees.
     - Only the integrator (T002 and successors) merges into master; lanes commit on their own branches.
-    - Only one task at a time may boot simulators or emulators; the PM grants a device lease.
+    - 'Device leases are per platform (ios: simulators, android: emulators); the PM grants each.'
     - 'inline.ts and text.ts are serial: P4, engine-linebreak, P5, V, INL1, TXT1.'
+    - Decisions come from research plus a recorded PM ruling; the owner is never asked, except for actions outside the repo or that cost money.
+    - Workers may retarget existing tests that pin the behaviour their package changes, keeping each test's intent and listing it in the receipt; loosening a check is still a stop.
   slice_policy:
     max_consecutive_tiny_tasks: 2
     prefer_vertical_slices: true
@@ -77,9 +79,12 @@ dispatched:
   - T016
   - T017
   - T021
-  - T032
-  - T033
-device_lease: T007
+  - T011
+  - T028
+  - T035
+device_lease:
+  ios: T007
+  android: T007
 tasks:
   - id: T001
     type: pm
@@ -177,7 +182,7 @@ tasks:
   - id: T021
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: cascade
     reasoning_hint: high
     objective: 'Fix the feat-cascade-var x logical-properties interaction the Chrome way: resolve custom properties first, substitute var() into direction, compute direction, then map var()-holding flow-relative declarations to the physical side for the element''s direction. Chrome fixtures in both directions and planted faults. Branch casc-logical in /tmp/dragon-casc-logical from 184d6ff, merging feat-cascade-var with the saved partial resolution.'
@@ -209,7 +214,39 @@ tasks:
       - typecheck; pnpm test; captures run twice with no diff; reports failed 0; native:gen with no engine diff; parity:lanes --run-host; north-star:check (refusals only shrink)
     stop_if:
       - Chrome's behaviour cannot be captured exactly; engine changes are needed; a strict-tier output changes without a fixture explaining it; verification fails twice
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T021-casc-logical.md
+      changed_files:
+        - Every file touched by feat-cascade-var (git diff --name-only master...feat-cascade-var) and in /tmp/t002-cascade-var-partial-resolution.patch
+        - packages/dragon/src/analysis/**
+        - packages/dragon/src/css/**
+        - packages/dragon/src/faults.ts
+        - packages/dragon/test/**
+        - packages/parity/fixtures/**
+        - packages/parity/src/fixtures.ts
+        - packages/parity/src/fixture-groups/**
+        - packages/parity/test/**
+        - packages/parity/expected/**
+        - packages/parity/expected-dpr/**
+        - packages/parity/emitted/**
+        - packages/layout/vectors/**
+        - packages/dragon/src/profiles/**
+        - packages/parity/out/lanes.json
+        - packages/translate/corpus*.json
+        - packages/wpt/expectations/**
+        - examples/music-player/dragon/north-star-check.json
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1258
+          status: pass
+        - cmd: captures twice no diff; parity:report 317/317; dpr-report 951/951
+          status: pass
+        - cmd: native:gen no diff; parity:lanes --run-host
+          status: pass
+        - cmd: planted faults caught; isSpecificityFirstArgument still caught
+          status: pass
+      summary: 'casc-logical 2e3d86e: custom properties, then direction (var substituted; IACVT means the parent''s direction), then flow-relative mapping. Faults directionBeforeVar and varLogicalBothSides are caught. New fixtures: var-direction, var-logical, css-wide-keywords-sides, background-important. PM confirmed the reject-background-important retarget is not a loosening (a positive Chrome fixture replaces a refusal of a now-supported feature). North star errors 746 to 708. The engine is unchanged. It merges after P5 (T022). Note: support.ts was also touched.'
     constraints:
       - 'Excludes (T025): css/selectors.ts, analysis/match.ts, css/selector-validity.generated.ts, src/media/**, test/media/**, test/attributes.test.ts, attr-* and tree-attr-* fixtures'
       - Must keep specificityFor(sel, faults); the isSpecificityFirstArgument plant must still fail selectors-specificity
@@ -218,7 +255,7 @@ tasks:
     assignee: Worker
     status: queued
     lane: integrator
-    objective: 'Integrator: merge casc-logical (T021) into master once T020 and T021 are done. Regenerate at merge, then verify as in T002.'
+    objective: 'Integrator: merge casc-logical (2e3d86e, T021) into master AFTER T007 (P5) lands, because it adds fixtures and must not stale P5''s per-fixture device data. Regenerate at merge (the profile:rows fixed point needs two runs). Then run the new fixtures'' device step on both leases (break vectors, Chrome breaks and pixels for new cases, parity:lanes --run-host --run-device).'
     allowed_files:
       - As in T002
     verify:
@@ -226,6 +263,8 @@ tasks:
     stop_if:
       - As in T002
     receipt: null
+    constraints:
+      - 'Gate: T007 merged to master.'
   - id: T003
     type: worker
     assignee: Worker
@@ -303,7 +342,7 @@ tasks:
   - id: T023
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: integrator
     objective: 'Integrator: merge txt1-harfbuzz-gate (b00f626) after T020. Condition 1 from T024 comes first: commit the text-spike capture provenance (chrome/measure.mjs, opps.mjs, page.html and the raw case JSON or its sha256, from /tmp/text-spike) under docs/research/text-spike, and take the reference font sha256 from the fonts Chrome loaded. Also deduplicate the spike fonts with T005''s vendor/fonts, and reconcile the text-spike README. Minor T024 fixes: declare dhb_font_var_coords in dragon_hb.h, restore the upstream HarfBuzz README next to the vendoring note, and justify or remove the >=0 part clamp.'
     allowed_files:
@@ -315,7 +354,21 @@ tasks:
     stop_if:
       - Need files outside allowed_files.
       - Verification fails twice.
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      changed_files:
+        - The txt1-harfbuzz-gate diff
+        - docs/research/text-spike/**
+        - vendor/fonts/**
+      commands:
+        - cmd: merges plus pnpm typecheck; pnpm test 1431/1431
+          status: pass
+        - cmd: gate 620/620; capture-font-data --check; zig build wasm reproducible
+          status: pass
+        - cmd: ff master to 2347a15
+          status: pass
+      summary: Done by T032 (harfbuzz gate merged as 99ac231, with the T024 condition 1 follow-ups).
   - id: T024
     type: judge
     assignee: Judge
@@ -340,18 +393,32 @@ tasks:
   - id: T028
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: text
     objective: 'Variable-font fence (T024 condition 2, PM ruling: refuse until proven): the shim and the compiler refuse variable-font instances outside the Chrome-validated set (Inter VF at its default instance) and any variable font without HVAR, with typed refusals and tests. Widening later needs Chrome cases for more weights and widths and a second variable font with avar. Branch from master after T023.'
     allowed_files:
       - packages/text-shaper/**
-      - packages/dragon/src/fonts/** (after T005 merges)
+      - packages/dragon/src/fonts/**
+      - packages/dragon/test/fonts/**
     verify:
       - pnpm typecheck; pnpm test; gate 620/620
     stop_if:
       - Need files outside allowed_files.
       - Verification fails twice.
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T028-vf-fence.md
+      changed_files:
+        - packages/text-shaper/**
+        - packages/dragon/src/fonts/**
+        - packages/dragon/test/fonts/**
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1449
+          status: pass
+        - cmd: gate 620/620; capture-font-data --check; zig build wasm unchanged
+          status: pass
+      summary: 'vf-fence 6618040: shim and compiler refuse no-HVAR variable fonts and instances outside validated-variable-fonts.json (Inter VF, wght 400, opsz 14-24, derived from the Chrome data by a test). fenceDisabled is caught on both layers. PM accepted: the opsz range reading; load-only timeouts that pass on rerun are not verify failures.'
   - id: T029
     type: worker
     assignee: Worker
@@ -371,7 +438,7 @@ tasks:
   - id: T032
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: integrator
     objective: 'Integrator: T031 then T023. Merge txt1c-fonts (a343dd0) and txt1-harfbuzz-gate (b00f626, with the T024 condition 1 provenance commit and minor fixes) into master; deduplicate fonts; fast-forward master.'
     allowed_files:
@@ -385,7 +452,46 @@ tasks:
     stop_if:
       - Need files outside allowed_files.
       - Verification fails twice.
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      changed_files:
+        - The txt1c-fonts and txt1-harfbuzz-gate diffs
+        - docs/research/text-spike/**
+        - vendor/fonts/**
+        - packages/text-shaper/include/dragon_hb.h
+        - vendor/harfbuzz/README*
+      commands:
+        - cmd: merges plus pnpm typecheck; pnpm test 1431/1431
+          status: pass
+        - cmd: gate 620/620; capture-font-data --check; zig build wasm reproducible
+          status: pass
+        - cmd: ff master to 2347a15
+          status: pass
+      summary: 'Master is 2347a15: txt1c-fonts a9cd47c, harfbuzz gate 99ac231 with the T024 follow-ups (e72c6fc: provenance committed, loaded-font hashes, header, upstream README, part clamp removed). Inter deduplicated. Checkpoint 1 is on master.'
+  - id: T039
+    type: worker
+    assignee: Worker
+    status: done
+    lane: integrator
+    objective: 'Integrator batch (no fixtures, so it can merge while P5 runs): mq-a-media 2b69f77 (T016), txt1c-wiring Phase A 3a733a2 (T011), then vf-fence (T028) and elb2-ua-defaults (T017) once they are done; rerun ua:capture after ELB-2. Fast-forward master. Dispatch when T028 and T017 finish, or earlier with the ready subset.'
+    allowed_files:
+      - Those branches' diffs plus regenerated outputs
+    verify:
+      - pnpm typecheck; pnpm test; gate 620/620; capture-font-data --check; capture-media-data --check
+    stop_if:
+      - A strict-tier output changes; verification fails twice
+    receipt:
+      result: done
+      harness: claude-code
+      changed_files:
+        - "Those branches' diffs plus regenerated outputs"
+      commands:
+        - cmd: "4 merges; ua:capture identical; typecheck; pnpm test 1500; gate 620; font, media and font-reference --check"
+          status: pass
+        - cmd: "ff master 5483c0b"
+          status: pass
+      summary: "Master is 5483c0b: mq-a-media 42d3c6d, txt1c-wiring A b2d3af2, vf-fence a7fcec7, a test union fix 18327f5 (wire.test covers variable-font-refused), elb2 5483c0b."
   - id: T005
     type: worker
     assignee: Worker
@@ -444,7 +550,7 @@ tasks:
   - id: T031
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: integrator
     objective: 'Integrator: merge txt1c-fonts (a343dd0) into master after T020 (new files only, plus the two test path exemptions). Verify: typecheck, pnpm test.'
     allowed_files:
@@ -454,11 +560,23 @@ tasks:
     stop_if:
       - Need files outside allowed_files.
       - Verification fails twice.
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      changed_files:
+        - The txt1c-fonts diff
+      commands:
+        - cmd: merges plus pnpm typecheck; pnpm test 1431/1431
+          status: pass
+        - cmd: gate 620/620; capture-font-data --check; zig build wasm reproducible
+          status: pass
+        - cmd: ff master to 2347a15
+          status: pass
+      summary: Done by T032 (txt1c-fonts merged as a9cd47c).
   - id: T033
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     lane: fonts
     reasoning_hint: high
     objective: Spec T011, the TXT1-C wiring, per notes/T004-txt1c-spec.md (T005b list) and notes/T025 sequencing (after TREE on project.ts; not concurrent with MQ-a B; after or before P5, never during).
@@ -466,19 +584,64 @@ tasks:
       - Read-only.
     expected_output:
       - T011 worker package
-    receipt: null
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T033-txt1c-wiring-spec.md
+      rationale: T011 is split into Phase A (new files, after T032) and Phase B (after T032, P5, T022 and TREE; never concurrent with MQ-a B or V2a). sans-serif is pinned to 'Dragon Sans' (Inter 4.1 static); the stated reference rewrites Chrome's own CSSOM. Lato in the north star needs an owner ruling.
+      spawned_tasks:
+        - T034
   - id: T011
+    type: worker
+    assignee: Worker
+    status: done
+    lane: fonts
+    objective: 'TXT1-C wiring per notes/T033-txt1c-wiring-spec.md (binding), on branch txt1c-wiring in /tmp/dragon-fonts-wire. Phase A (after T032): new files only (fonts/wire.ts, tests, the capture-font-reference Chrome CSSOM stated reference). Phase B: after T032, T007, T022 and T015 land, never concurrent with T030 or T026. Pinned sans-serif is ''Dragon Sans'' (static Inter 4.1); monospace is ''Dragon Mono'' (Noto Sans Mono).'
+    allowed_files:
+      - packages/dragon/src/fonts/wire.ts
+      - packages/dragon/test/fonts/**
+      - scripts/capture-font-reference.ts
+      - docs/goals/milestone-2-proof/notes/T011-txt1c-wiring.md
+    verify:
+      - See notes/T033-txt1c-wiring-spec.md verify (binding)
+    stop_if:
+      - See notes/T033-txt1c-wiring-spec.md stop_if (binding)
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T011-txt1c-wiring.md
+      changed_files:
+        - packages/dragon/src/fonts/wire.ts
+        - packages/dragon/test/fonts/**
+        - scripts/capture-font-reference.ts
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1457
+          status: pass
+        - cmd: capture-font-reference --check and plants
+          status: pass
+        - cmd: capture-font-data --check
+          status: pass
+      summary: 'Phase A at txt1c-wiring 3a733a2. P1: Page.setFontFamilies does not reach web fonts. P2: 22/22 pinned faces via the CSSOM rewrite. P3: control identical. Phase B (T038) carries the font-map quoted-generic fix. Load note: 3 parity tests timed out at 120 s under load average about 50 (the rerun passed).'
+      spawned_tasks:
+        - T038
+  - id: T038
     type: worker
     assignee: Worker
     status: queued
     lane: fonts
-    objective: 'TXT1-C wiring (needs a Judge spec after T020): connect the fonts module to compile(). Serial after TREE (T015) on project.ts, and not concurrent with MQ-a B (T030). No claim on media/** or the UA sources. Merges before P5 starts or after it lands.'
-    allowed_files: []
-    verify: []
+    objective: 'TXT1-C wiring Phase B (notes/T033 Phase B, binding) on branch txt1c-wiring (Phase A at 3a733a2). First fix font-map.ts rewriteFamilyList so quoted generics are not rewritten, as Chrome''s stated reference P2 shows; the fix is in notes/T011. Gates: T007, T022 and T015 on master; never concurrent with T030 or T026.'
+    allowed_files:
+      - notes/T033 Phase B list (binding)
+      - packages/dragon/src/fonts/font-map.ts (quoted-generic fix only)
+    verify:
+      - notes/T033 Phase B verify (binding)
     stop_if:
-      - Need files outside allowed_files.
-      - Verification fails twice.
+      - notes/T033 stop_if (binding)
     receipt: null
+    constraints:
+      - It must call fenceVariableInstance (T028) wherever fonts are resolved in compile().
   - id: T006
     type: judge
     assignee: Judge
@@ -552,6 +715,10 @@ tasks:
       - Verification fails twice
       - 'Phase B: P5 not merged or the device lease not held'
     receipt: null
+    constraints:
+      - 'PM: packages/parity/src/fixture-groups/units.ts and reject-unit-{vw,calc}.html are allowed; the rejects are retargeted to still-refused values, and positive fixtures are added.'
+      - 'PM: verify 5 restated: same line counts and results, inputs differ only by appended false fault keys, corpus/lanes digests may change for that reason only.'
+      - Notes are never committed on branches (the main checkout holds them untracked).
   - id: T012
     type: judge
     assignee: Judge
@@ -586,6 +753,8 @@ tasks:
     stop_if:
       - See notes/T012-v2-spec.md §4 stop_if (binding)
     receipt: null
+    constraints:
+      - Never concurrent with T011 Phase B; runs before it by default.
   - id: T027
     type: worker
     assignee: Worker
@@ -746,19 +915,40 @@ tasks:
     stop_if:
       - See notes/T025-tree-mq-elb2-spec.md T015.stop_if (binding)
     receipt: null
+    constraints:
+      - 'PM: compile.test.ts line ~158 retargets ''#x'' to a still-refused selector; selectors.test.ts line 69 becomes an acceptance check; planted-fault tests go in the new packages/parity/test/tree-faults.test.ts; the void img reject uses the src attribute naming REPL.'
+      - Notes are never committed on branches.
   - id: T016
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: north-star
     objective: 'MQ-a Phase A (notes/T025 T016A, binding): the media-query parser and evaluator plus a Chrome matchMedia corpus, in packages/dragon/src/media, new files only. Worktree /tmp/dragon-mq, branch mq-a-media, from master after T020.'
     allowed_files:
-      - See notes/T025-tree-mq-elb2-spec.md worker_packages T016A.allowed_files (binding)
+      - packages/dragon/src/media/**
+      - packages/dragon/test/media/**
+      - scripts/capture-media-data.ts
+      - docs/goals/milestone-2-proof/notes/T016-mq-a.md
     verify:
       - See notes/T025-tree-mq-elb2-spec.md T016A.verify (binding)
     stop_if:
       - See notes/T025-tree-mq-elb2-spec.md T016A.stop_if (binding)
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T016-mq-a.md
+      changed_files:
+        - packages/dragon/src/media/**
+        - packages/dragon/test/media/**
+        - scripts/capture-media-data.ts
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1387
+          status: pass
+        - cmd: vitest media; capture-media-data --check; 5 faults caught
+          status: pass
+      summary: 'MQ-a A at mq-a-media 2b69f77: 42,639/42,639 equal to Chrome. Rulings: (orientation > portrait) is refused (Chrome ignores the operator); serialisers are exact by default; environment features are refused more widely than T025 listed.'
+      spawned_tasks:
+        - T039
   - id: T030
     type: worker
     assignee: Worker
@@ -772,19 +962,45 @@ tasks:
       - See notes/T025-tree-mq-elb2-spec.md T016B.verify (binding)
     stop_if:
       - See notes/T025-tree-mq-elb2-spec.md T016B.stop_if (binding)
+    constraints:
+      - Never concurrent with T011 Phase B.
   - id: T017
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: north-star
     objective: 'ELB-2 (notes/T025 T017, binding): UA data only, adding button, input, range, a, img and span in both directions, a dark dataset and system colours. Worktree /tmp/dragon-elb2, branch elb2-ua-defaults, from master after T020. Can merge any time; the integrator reruns ua:capture after T017 and T021.'
     allowed_files:
-      - See notes/T025-tree-mq-elb2-spec.md worker_packages T017.allowed_files (binding)
+      - scripts/capture-ua-defaults.ts
+      - packages/dragon/src/ua/**
+      - packages/dragon/test/ua.test.ts
+      - packages/dragon/test/ua-elb2.test.ts
+      - packages/parity/test/platform.test.ts
     verify:
       - See notes/T025-tree-mq-elb2-spec.md T017.verify (binding)
     stop_if:
       - See notes/T025-tree-mq-elb2-spec.md T017.stop_if (binding)
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T017-elb2.md
+      changed_files:
+        - scripts/capture-ua-defaults.ts
+        - packages/dragon/src/ua/**
+        - packages/dragon/test/ua.test.ts
+        - packages/dragon/test/ua-elb2.test.ts
+        - packages/parity/test/platform.test.ts
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1376
+          status: pass
+        - cmd: ua:capture x2 identical; --check; --compare 0 differ; 3 plants caught
+          status: pass
+        - cmd: no compiled output moved (captures, profiles, lanes, north-star unchanged)
+          status: pass
+      summary: 'elb2-ua-defaults 6ddd9e0: UA data for button, input, range, a, a[href], img and span in separate tables; userAgentUnmodelled, userAgentForced, systemColors, and a dark dataset. Existing tables byte-identical. Found unmodelled: unicode-bidi isolate and ol decimal.'
+    constraints:
+      - 'PM ruling 1: packages/parity/test/platform.test.ts may change one line to expect both UA generated files.'
+      - 'PM ruling 2: the new keys go in separate tables; the ua.test.ts:35 assertion stays unchanged.'
   - id: T018
     type: worker
     assignee: Worker
@@ -802,7 +1018,103 @@ tasks:
     assignee: PM
     status: queued
     lane: north-star
-    objective: 'Keep the rest of the T010 package_order on the board (wave 2: POSX-f, SIZE-ar, OVFL; wave 3: INL1, the TXT chain, TDEC; wave 4: INL2, REPL, FORM-a; paint: PNT1, PNT2, BG2, OVFL-s; runtime: SELD-R, ANIM, MQ-R; then NS-E2E), plus FV: the YouTube iframe maps to the platform web view (WKWebView on iOS, android.webkit.WebView on Android) in a Dragon-sized slot, and SOV: script-driven inline styles as typed style overrides. Add each as a Judge-spec plus Worker pair when its dependencies land.'
+    objective: 'Keep the rest of the T010 package_order on the board (wave 2: POSX-f, SIZE-ar, OVFL; wave 3: INL1, the TXT chain, TDEC; wave 4: INL2, REPL, FORM-a; paint: PNT1, PNT2, BG2, OVFL-s; runtime: SELD-R, ANIM, MQ-R; then NS-E2E), plus FV: the YouTube iframe maps to the platform web view (WKWebView on iOS, android.webkit.WebView on Android) in a Dragon-sized slot, and SOV: script-driven inline styles as typed style overrides. Add each as a Judge-spec plus Worker pair when its dependencies land. Also from ELB-2: model unicode-bidi: isolate on element-table tags (all except body) and ol list-style-type: decimal (GEN/lists).'
+    receipt: null
+  - id: T034
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: 'NS-REF recapture: re-capture the north-star Chrome reference and refresh the font key after T011 Phase B and the Lato ruling.'
+    allowed_files:
+      - examples/music-player/chrome/**
+      - examples/music-player/lane/**
+    verify:
+      - north-star:capture twice, byte-identical; north-star-reference test
+    stop_if:
+      - Need files outside allowed_files.
+      - Verification fails twice.
+    receipt: null
+  - id: T035
+    type: scout
+    assignee: Scout
+    status: done
+    lane: north-star
+    objective: 'Research Lato for the north star (the owner asked for research, then a PM decision): original intent, weights used, licence and versions, proof cost, visual difference.'
+    constraints:
+      - Read-only.
+    expected_output:
+      - Recommendation with evidence
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T035-lato-research.md
+      summary: 'PM ruling from the research: bundle Lato 2.015 Regular and Bold (Google Fonts build 080cb697) and map ''Lato'' to it; sans-serif stays Dragon Sans. The original demo never loaded Lato. Symbol ❚ needs a fallback font (TXT1d).'
+      evidence:
+        - notes/T035-lato-research.md
+        - markless demos/music-player-ssr styles.css:32
+        - github.com/google/fonts ofl/lato
+      spawned_tasks:
+        - T036
+  - id: T036
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: fonts
+    objective: Vendor Lato 2.015 Regular and Bold (Google Fonts build, the sha256 values in notes/T035) into vendor/fonts/Lato with OFL and provenance. Add Lato 400 and 700 matching and metric cases to the font captures, and Lato Chrome paragraphs to the HarfBuzz gate corpus (620 plus the new ones, all exact). Map 'Lato' in the north-star font config when T011 Phase B lands. Runs after T028 (which shares packages/dragon/test/fonts).
+    allowed_files:
+      - vendor/fonts/Lato/**
+      - vendor/fonts/README.md
+      - packages/dragon/test/fonts/**
+      - scripts/capture-font-data.ts
+      - packages/text-shaper/**
+      - docs/research/text-spike/**
+    verify:
+      - pnpm typecheck; pnpm test; capture-font-data --check; gate all exact including Lato
+    stop_if:
+      - Lato disagrees with Chrome after checking the Blink source (report it; no tolerance)
+      - Need files outside allowed_files
+      - Verification fails twice
+    receipt: null
+    constraints:
+      - Download from a pinned google/fonts commit, not main, and re-verify sha256 d636e468… (Regular) and 8a0aace7… (Bold); include OFL.txt; record LatoGFVersion 080cb69711ca050d91e9c866e58df7a73095c69a.
+      - The north-star Chrome recapture (T034) follows T011 Phase B and T036.
+      - 'Base: master after T039 merges vf-fence and txt1c-wiring Phase A.'
+  - id: T037
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: device
+    objective: 'Visual gallery (owner visibility): a generated static HTML page, pnpm run native:gallery, showing each fixture side by side as Chrome, the iOS simulator and the Android emulator at the same DPR. It uses P5''s committed or run-output device captures and Chrome pixel references, with each case''s lane verdicts (frames, applied, lines, pixels) and a diff overlay, and filters for failing cases and for feature groups. Evidence only (numbers still decide); read-only over lane outputs. After T007 lands.'
+    allowed_files:
+      - packages/parity/src/gallery.ts (new)
+      - packages/parity/src/cli/native-gallery.ts (new)
+      - packages/parity/test/gallery.test.ts (new)
+      - package.json (one script)
+    verify:
+      - pnpm typecheck; pnpm test; pnpm run native:gallery writes out/gallery/index.html covering every device-lane case
+    stop_if:
+      - Need files outside allowed_files.
+      - Verification fails twice.
+    receipt: null
+  - id: T040
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: device
+    objective: 'Viewer mode for owner visibility (skip if P5 already delivered it): DragonHost on iOS and the Android host take --dragon-view <case ids> to render cases persistently, swiping between them, with an overlay label (case id, DPR), no dumps and no exit. Plus a pnpm run native:view -- --target ios|android [--cases ...|--group ...] command that builds, installs and launches on the leased device. Lanes, dumps and digests are unchanged when the flag is absent (test). After T007.'
+    allowed_files:
+      - packages/parity/src/native-host.ts
+      - packages/parity/src/cli/native-view.ts (new)
+      - packages/dragon/src/emit/native-support.ts (viewer hooks only)
+      - packages/parity/test/native-view.test.ts (new)
+      - package.json (one script)
+    verify:
+      - pnpm typecheck; pnpm test; parity:lanes --run-host unchanged; native:view launches on the iOS simulator and Android emulator and a screenshot shows a fixture
+    stop_if:
+      - Any lane output changes
+      - The device lease is not held
+      - Verification fails twice
     receipt: null
   - id: T999
     type: judge
