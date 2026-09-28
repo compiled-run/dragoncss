@@ -22,27 +22,27 @@
     "cachedRangeWidth"
   ],
   "snapGenerated": 20000,
-  "snapVectors": 861,
+  "snapVectors": 927,
   "cases": {
-    "vectors-m2": 29,
-    "vectors-dpr": 861,
-    "engine-dpr": 861,
+    "vectors-m2": 51,
+    "vectors-dpr": 927,
+    "engine-dpr": 927,
     "units-m2": 120000,
-    "snap": 20861
+    "snap": 20927
   },
   "engineSplit": {
-    "ok": 861,
-    "unsupported": 0,
+    "ok": 924,
+    "unsupported": 3,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "7d7a6b8d1b7b289b972d452c5ab42985af7d2371d001ed73911a184a061cc8ee",
-    "vectors-dpr": "3262c1655d878be3efde01f0a204b50b30d7e465ddc2a5a18a685863f6903ebc",
-    "engine-dpr": "e50ed979f0d6ec83bddd65031a0cf26487058467f0376826089d93f2bb47a744",
+    "vectors-m2": "3a9ce57b706070c4b89882f97cba45ee766f210a5960ecf2f923497720ea0279",
+    "vectors-dpr": "bc663099ea270a04df69098f14b201735aa93fe03adec40a7665ce09f35ecfec",
+    "engine-dpr": "e44d32953ba4fdb80826db1319e845addcb56c712925bcb65682aaf8e5bb65d4",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "7a7612faf131e4d0d13e5a24c2d8761d5b5f11bb80645fb24471e2afd78c3954"
+    "snap": "b41de42a34cefea99f6d844a6ce3a5641daad341754318b450d3dc950a38f2bf"
   },
-  "digest": "d4787116616219df30e42d3675c607a162cccbb82ed49f3b31e77f432896ef9f"
+  "digest": "93b6f5918a8b927e7f94761bb7625b3356cc6b4192f748c40ff871f65fb08fcd"
 }
