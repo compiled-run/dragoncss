@@ -8,7 +8,8 @@ import type { LinkedElement } from './link.ts';
 import type { DirectionContext } from './logical.ts';
 import { elementDirection, hasDirectionalValues, inDirection } from './logical.ts';
 import { selectorMatches, specificityFor } from './match.ts';
-import type { Substitution } from './variables.ts';
+import type { CustomProperties, SubstitutedDeclaration, Substitution, VarScope } from './variables.ts';
+import { computeCustoms } from './variables.ts';
 
 /**
  * One declared longhand value competing in the cascade, with the specificity of the selector that matched it. substitution: set by
@@ -46,36 +47,48 @@ export const cascadeGroups: CascadeGroupHook = (winners) => winners;
 
 /**
  * The cascade result of one element: each longhand's winner, every declaration that matched it, in order of appearance, and the
- * winning declaration of each custom property.
+ * var() scope its winners substitute with (its computed custom properties).
  */
 export type CascadeResult = {
   readonly winners: ReadonlyMap<Longhand, Candidate>;
   readonly matched: ReadonlyMap<Longhand, readonly Declaration[]>;
-  readonly customs: ReadonlyMap<string, Declaration>;
+  readonly scope: VarScope;
 };
 
 /** css-variables-1 §3.1: a longhand of a declaration holding var() competes with this value until substitution. */
 const pendingValue = (d: Declaration): CssValue => ({ kind: 'other', type: 'var()', text: d.text });
 
-/** Runs the cascade for chain's last element over every rule, in rule, selector, declaration and longhand order. */
-export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext): CascadeResult {
-  // css-logical-1 §4: flow-relative declarations take part as the physical longhands of the element's direction (logical.ts).
-  const own = hasDirectionalValues(rules) ? elementDirection(rules, chain, faults, direction) : null;
-  const winners = new Map<Longhand, Candidate>();
-  const matched = new Map<Longhand, Declaration[]>();
-  const candidates: (readonly [Longhand, Candidate])[] = [];
+/**
+ * Runs the cascade for chain's last element over every rule, in rule, selector, declaration and longhand order, in Chrome's
+ * order: custom properties first (over the parent's, inherited), then direction with var() substituted, then every other
+ * longhand with each flow-relative declaration mapped to the physical side of that direction.
+ */
+export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties): CascadeResult {
   const customs = new Map<string, { declaration: Declaration; specificity: readonly [number, number, number] }>();
   for (const rule of rules) {
     for (const sel of rule.selectors) {
       if (!selectorMatches(rule, sel, chain, chain.length - 1, 0, faults)) continue;
       const specificity = specificityFor(sel, faults);
+      for (const d of rule.declarations) {
+        if (d.custom === undefined) continue;
+        const cand = { declaration: d, specificity };
+        const prev = customs.get(d.custom.name);
+        if (prev === undefined || beats(cand, prev)) customs.set(d.custom.name, cand);
+      }
+    }
+  }
+  const scope: VarScope = { customs: computeCustoms(new Map([...customs].map(([name, c]) => [name, c.declaration])), inheritedCustoms), memo: new Map<Declaration, SubstitutedDeclaration>() };
+  // css-logical-1 §4: flow-relative declarations take part as the physical longhands of the element's direction (logical.ts).
+  const own = hasDirectionalValues(rules) ? elementDirection(rules, chain, faults, direction, scope) : null;
+  const winners = new Map<Longhand, Candidate>();
+  const matched = new Map<Longhand, Declaration[]>();
+  const candidates: (readonly [Longhand, Candidate])[] = [];
+  for (const rule of rules) {
+    for (const sel of rule.selectors) {
+      if (!selectorMatches(rule, sel, chain, chain.length - 1, 0, faults)) continue;
+      const specificity = specificityFor(sel, faults);
       for (const declared of rule.declarations) {
-        const d = own === null ? declared : inDirection(declared, own);
-        if (d.custom !== undefined) {
-          const cand = { declaration: d, specificity };
-          const prev = customs.get(d.custom.name);
-          if (prev === undefined || beats(cand, prev)) customs.set(d.custom.name, cand);
-        }
+        const d = own === null ? declared : inDirection(declared, own, faults);
         const pending = (d.pending?.longhands ?? []).map((property) => ({ property, value: pendingValue(d) }));
         for (const lh of [...d.longhands, ...pending]) {
           const cand: Candidate = { declaration: d, value: lh.value, specificity };
@@ -92,6 +105,6 @@ export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedEle
   return {
     winners: cascadeGroups(winners, candidates, chain[chain.length - 1] as LinkedElement),
     matched,
-    customs: new Map([...customs].map(([name, c]) => [name, c.declaration])),
+    scope,
   };
 }

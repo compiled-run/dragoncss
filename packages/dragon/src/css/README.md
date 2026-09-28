@@ -42,6 +42,9 @@ and ids, and the at-rule refusals as they were before it.
   horizontal-tb it expands to the physical longhands it maps to, an inline mapping once per direction with that direction on
   the `LonghandValue`. `analysis/logical.ts` computes each element's own direction and narrows every declaration to it
   before the cascade, so a flow-relative declaration and a physical one of the same group compete by specificity and order,
-  as in Chrome. `writing-mode` is refused, so nothing maps by writing mode.
+  as in Chrome. The order per element is Chrome's: custom properties, then `direction` (with `var()` substituted), then the
+  mappings. A declaration holding `var()` records its physical longhands per direction (`PendingSubstitution.sides`), is
+  narrowed to one side like any other, and is substituted as that direction's mapping. `writing-mode` is refused, so nothing
+  maps by writing mode.
 - **A parity fixture.** Add a new `packages/parity/src/fixture-groups/<group>.ts` and append one entry to `FIXTURE_GROUPS` in
   `packages/parity/src/fixtures.ts`. Never edit `milestone-1.ts`.
