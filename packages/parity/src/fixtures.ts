@@ -180,6 +180,9 @@ export const FIXTURES: readonly FixtureSpec[] = [
   layout('line-height-rounding'),
   layout('text-min-content-word-positions'),
   layout('border-initial-width'),
+  // css-backgrounds-3 §3.10: the background shorthand; every background longhand is compared, not only background-color.
+  background('background-shorthand-colors'),
+  background('background-shorthand-cascade'),
   reject('reject-display-grid', 'DRAGON_UNSUPPORTED_VALUE', 'grid'),
   reject('reject-color-lab', 'DRAGON_UNSUPPORTED_VALUE', 'lab(50% 40 59)'),
   // M4: the implicitly filled longhand is named at the start of the message.
@@ -202,4 +205,7 @@ export const FIXTURES: readonly FixtureSpec[] = [
   reject('reject-position-fixed', 'DRAGON_UNSUPPORTED_VALUE', 'fixed'),
   reject('reject-position-sticky', 'DRAGON_UNSUPPORTED_VALUE', 'sticky'),
   reject('reject-abspos-in-inline', 'DRAGON_UNSUPPORTED_VALUE', 'absolute'),
+  reject('reject-background-important', 'DRAGON_UNSUPPORTED_IMPORTANT', 'background: red !important'),
+  reject('reject-background-image', 'DRAGON_UNSUPPORTED_VALUE', 'linear-gradient(red, blue)', 'background: "linear-gradient(red, blue)" sets background-image'),
+  reject('reject-background-layers', 'DRAGON_UNSUPPORTED_VALUE', 'none, red', 'background: "none, red" has 2 layers'),
 ];
