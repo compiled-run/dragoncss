@@ -24,7 +24,7 @@ describe('DPR vectors', () => {
     const files = readdirSync(sub).filter((f) => f.endsWith('.json')).sort();
     it(`DPR ${dpr}: the same ${topLevel.length} case ids as the DPR-1 vectors, and the same ids in its snap folder`, () => {
       expect(files).toEqual(topLevel);
-      expect(files.length).toBe(261);
+      expect(files.length).toBe(275);
       expect(readdirSync(join(sub, 'snap')).filter((f) => f.endsWith('.json')).sort()).toEqual(topLevel);
     });
     it(`DPR ${dpr}: every vector names darwin-arm64 and ahem/darwin-arm64, passes the validator at devicePixelRatio ${dpr}, and the engine reproduces it exactly`, () => {

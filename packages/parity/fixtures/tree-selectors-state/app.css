@@ -1,0 +1,4 @@
+.row { height: 6px; background-color: #0a0; }
+.row + .row { margin-left: 5px; }
+.row:nth-last-child(2) { width: 20px; }
+.row:only-of-type { width: 99px; }

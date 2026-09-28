@@ -1,0 +1,23 @@
+component App(count: "one" | "two" | "three" = "two") {
+  <html>
+    <body>
+      <List list>
+        <slot items>
+          <div a class="row" />
+          {count !== "one" ? <div b class="row" /> : null}
+          {count === "three" ? <div c class="row" /> : null}
+        </slot>
+      </List>
+      <div blank class="blank">{" "}</div>
+      <div void class="blank" />
+    </body>
+  </html>
+}
+
+component List slots(items) {
+  <div frame class="frame">
+    <div head class="head" />
+    {items}
+    <div foot class="foot" />
+  </div>
+}

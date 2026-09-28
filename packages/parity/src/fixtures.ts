@@ -1,6 +1,7 @@
 // The parity corpus. Every fixture is attempted in every run; none carries its own tolerance.
 import type { DiagnosticCode, Environment } from 'dragon';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
+import { SELECTORS } from './fixture-groups/selectors.ts';
 
 /**
  * The reference environment of every case in this lane (docs/api.md §7, §10.1): an input to the projection, the engine and Chrome.
@@ -49,6 +50,7 @@ export type FixtureSpec =
  */
 export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: readonly FixtureSpec[] }[] = [
   { id: 'milestone-1', fixtures: MILESTONE_1 },
+  { id: 'selectors', fixtures: SELECTORS },
 ];
 
 export const FIXTURES: readonly FixtureSpec[] = FIXTURE_GROUPS.flatMap((g) => g.fixtures);

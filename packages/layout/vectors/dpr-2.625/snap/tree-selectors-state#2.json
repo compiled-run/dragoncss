@@ -1,0 +1,178 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 8736
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 8736
+  },
+  {
+   "id": "list/frame",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 18816,
+   "height": 7056
+  },
+  {
+   "id": "list/head",
+   "parent": "list/frame",
+   "x": 1008,
+   "y": 1008,
+   "width": 16800,
+   "height": 672
+  },
+  {
+   "id": "a",
+   "parent": "list/frame",
+   "x": 1008,
+   "y": 1680,
+   "width": 16800,
+   "height": 1008
+  },
+  {
+   "id": "b",
+   "parent": "list/frame",
+   "x": 1848,
+   "y": 2688,
+   "width": 15960,
+   "height": 1008
+  },
+  {
+   "id": "c",
+   "parent": "list/frame",
+   "x": 1848,
+   "y": 3696,
+   "width": 3360,
+   "height": 1008
+  },
+  {
+   "id": "list/foot",
+   "parent": "list/frame",
+   "x": 1008,
+   "y": 4704,
+   "width": 8400,
+   "height": 1344
+  },
+  {
+   "id": "blank",
+   "parent": "body",
+   "x": 0,
+   "y": 7056,
+   "width": 1680,
+   "height": 840
+  },
+  {
+   "id": "void",
+   "parent": "body",
+   "x": 0,
+   "y": 7896,
+   "width": 3360,
+   "height": 840
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 137,
+   "width": 1050,
+   "height": 137
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 137,
+   "width": 1050,
+   "height": 137
+  },
+  {
+   "id": "list/frame",
+   "left": 0,
+   "top": 0,
+   "right": 294,
+   "bottom": 110,
+   "width": 294,
+   "height": 110
+  },
+  {
+   "id": "list/head",
+   "left": 16,
+   "top": 16,
+   "right": 278,
+   "bottom": 26,
+   "width": 262,
+   "height": 10
+  },
+  {
+   "id": "a",
+   "left": 16,
+   "top": 26,
+   "right": 278,
+   "bottom": 42,
+   "width": 262,
+   "height": 16
+  },
+  {
+   "id": "b",
+   "left": 29,
+   "top": 42,
+   "right": 278,
+   "bottom": 58,
+   "width": 249,
+   "height": 16
+  },
+  {
+   "id": "c",
+   "left": 29,
+   "top": 58,
+   "right": 81,
+   "bottom": 74,
+   "width": 52,
+   "height": 16
+  },
+  {
+   "id": "list/foot",
+   "left": 16,
+   "top": 74,
+   "right": 147,
+   "bottom": 95,
+   "width": 131,
+   "height": 21
+  },
+  {
+   "id": "blank",
+   "left": 0,
+   "top": 110,
+   "right": 26,
+   "bottom": 123,
+   "width": 26,
+   "height": 13
+  },
+  {
+   "id": "void",
+   "left": 0,
+   "top": 123,
+   "right": 53,
+   "bottom": 137,
+   "width": 53,
+   "height": 14
+  }
+ ]
+}

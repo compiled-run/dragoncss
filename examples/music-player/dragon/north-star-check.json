@@ -39,37 +39,37 @@
   "contextProbe": {
    "main": {
     "rounds": 1,
-    "blankedRules": 14,
+    "blankedRules": 11,
     "blankedDeclarations": 124,
     "residualTargetless": 0
    },
    "library-open": {
     "rounds": 1,
-    "blankedRules": 14,
+    "blankedRules": 11,
     "blankedDeclarations": 124,
     "residualTargetless": 0
    },
    "playing": {
     "rounds": 1,
-    "blankedRules": 14,
+    "blankedRules": 11,
     "blankedDeclarations": 124,
     "residualTargetless": 0
    }
   }
  },
  "summary": {
-  "diagnostics": 646,
-  "errors": 646,
+  "diagnostics": 722,
+  "errors": 722,
   "byCode": {
    "DRAGON_CSS_INVALID_VALUE": 21,
-   "DRAGON_UNPROVEN_CONTEXT [ios]": 38,
-   "DRAGON_UNPROVEN_CONTEXT [web]": 38,
+   "DRAGON_UNPROVEN_CONTEXT [ios]": 79,
+   "DRAGON_UNPROVEN_CONTEXT [web]": 79,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 40,
    "DRAGON_UNSUPPORTED_AT_RULE": 3,
    "DRAGON_UNSUPPORTED_ELEMENT": 44,
    "DRAGON_UNSUPPORTED_FONT [ios]": 21,
    "DRAGON_UNSUPPORTED_PROPERTY": 103,
-   "DRAGON_UNSUPPORTED_SELECTOR": 20,
+   "DRAGON_UNSUPPORTED_SELECTOR": 14,
    "DRAGON_UNSUPPORTED_VALUE [ios]": 159,
    "DRAGON_UNSUPPORTED_VALUE [web]": 159
   },
@@ -177,15 +177,15 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored/main": 390,
-   "B-unwrapped/main": 424,
-   "C-context/main": 299,
-   "A-authored/library-open": 390,
-   "B-unwrapped/library-open": 424,
-   "C-context/library-open": 299,
-   "A-authored/playing": 390,
-   "B-unwrapped/playing": 424,
-   "C-context/playing": 299
+   "A-authored/main": 384,
+   "B-unwrapped/main": 418,
+   "C-context/main": 381,
+   "A-authored/library-open": 384,
+   "B-unwrapped/library-open": 418,
+   "C-context/library-open": 381,
+   "A-authored/playing": 384,
+   "B-unwrapped/playing": 418,
+   "C-context/playing": 381
   }
  },
  "features": {
@@ -326,8 +326,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -340,8 +339,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -354,8 +352,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -368,8 +365,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -382,8 +378,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -396,8 +391,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -410,8 +404,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -424,8 +417,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -438,8 +430,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -452,8 +443,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -466,8 +456,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -480,8 +469,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -494,8 +482,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -508,7 +495,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNPROVEN_CONTEXT"
    ]
   },
   {
@@ -521,7 +508,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNPROVEN_CONTEXT"
    ]
   },
   {
@@ -534,7 +521,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNPROVEN_CONTEXT"
    ]
   },
   {
@@ -3587,8 +3574,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -3601,8 +3587,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
   {
@@ -4032,31 +4017,6 @@
  ],
  "diagnostics": [
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@0-5|selector part \":root\" is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_SELECTOR",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 0,
-    "end": 5,
-    "line": 1,
-    "column": 1,
-    "text": ":root"
-   },
-   "message": "selector part \":root\" is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@9-51|--library-width is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -4382,31 +4342,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@401-402|selector part \"*\" is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_SELECTOR",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 401,
-    "end": 402,
-    "line": 17,
-    "column": 1,
-    "text": "*"
-   },
-   "message": "selector part \"*\" is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@503-528|background is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -4632,7 +4567,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@710-715|selector part \"#root\" is not supported in milestone 1",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@710-715|selector part \"#root\" is not supported",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
    "target": null,
@@ -4644,7 +4579,7 @@
     "column": 1,
     "text": "#root"
    },
-   "message": "selector part \"#root\" is not supported in milestone 1",
+   "message": "selector part \"#root\" is not supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5461,7 +5396,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@1636-1642|selector part \":hover\" is not supported in milestone 1",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@1636-1642|:hover depends on user interaction or document state, which a later package models as runtime state",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
    "target": null,
@@ -5473,7 +5408,7 @@
     "column": 16,
     "text": ":hover"
    },
-   "message": "selector part \":hover\" is not supported in milestone 1",
+   "message": ":hover depends on user interaction or document state, which a later package models as runtime state",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8491,7 +8426,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@5392-5406|attribute selector \"[type=\"range\"]\" is not supported: only [ui-*] and [ui-*=\"value\"]",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@5392-5406|attribute selector \"[type=\"range\"]\" is not supported: only ui-* attributes take part in matching",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
    "target": null,
@@ -8503,7 +8438,7 @@
     "column": 6,
     "text": "[type='range']"
    },
-   "message": "attribute selector \"[type=\"range\"]\" is not supported: only [ui-*] and [ui-*=\"value\"]",
+   "message": "attribute selector \"[type=\"range\"]\" is not supported: only ui-* attributes take part in matching",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8516,7 +8451,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@5406-5412|selector part \":focus\" is not supported in milestone 1",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@5406-5412|:focus depends on user interaction or document state, which a later package models as runtime state",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
    "target": null,
@@ -8528,7 +8463,7 @@
     "column": 20,
     "text": ":focus"
    },
-   "message": "selector part \":focus\" is not supported in milestone 1",
+   "message": ":focus depends on user interaction or document state, which a later package models as runtime state",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8566,7 +8501,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@5439-5453|attribute selector \"[type=\"range\"]\" is not supported: only [ui-*] and [ui-*=\"value\"]",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@5439-5453|attribute selector \"[type=\"range\"]\" is not supported: only ui-* attributes take part in matching",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
    "target": null,
@@ -8578,7 +8513,7 @@
     "column": 6,
     "text": "[type='range']"
    },
-   "message": "attribute selector \"[type=\"range\"]\" is not supported: only [ui-*] and [ui-*=\"value\"]",
+   "message": "attribute selector \"[type=\"range\"]\" is not supported: only ui-* attributes take part in matching",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8591,7 +8526,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@5453-5475|selector part \"::-webkit-slider-thumb\" is not supported in milestone 1",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@5453-5475|pseudo-element ::-webkit-slider-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (a later package)",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
    "target": null,
@@ -8603,7 +8538,7 @@
     "column": 20,
     "text": "::-webkit-slider-thumb"
    },
-   "message": "selector part \"::-webkit-slider-thumb\" is not supported in milestone 1",
+   "message": "pseudo-element ::-webkit-slider-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (a later package)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8641,7 +8576,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@5542-5556|attribute selector \"[type=\"range\"]\" is not supported: only [ui-*] and [ui-*=\"value\"]",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@5542-5556|attribute selector \"[type=\"range\"]\" is not supported: only ui-* attributes take part in matching",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
    "target": null,
@@ -8653,7 +8588,7 @@
     "column": 6,
     "text": "[type='range']"
    },
-   "message": "attribute selector \"[type=\"range\"]\" is not supported: only [ui-*] and [ui-*=\"value\"]",
+   "message": "attribute selector \"[type=\"range\"]\" is not supported: only ui-* attributes take part in matching",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8666,7 +8601,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@5556-5574|selector part \"::-moz-range-thumb\" is not supported in milestone 1",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@5556-5574|pseudo-element ::-moz-range-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (a later package)",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
    "target": null,
@@ -8678,7 +8613,7 @@
     "column": 20,
     "text": "::-moz-range-thumb"
    },
-   "message": "selector part \"::-moz-range-thumb\" is not supported in milestone 1",
+   "message": "pseudo-element ::-moz-range-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (a later package)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -9432,7 +9367,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@6039-6045|selector part \":hover\" is not supported in milestone 1",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@6039-6045|:hover depends on user interaction or document state, which a later package models as runtime state",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
    "target": null,
@@ -9444,7 +9379,7 @@
     "column": 21,
     "text": ":hover"
    },
-   "message": "selector part \":hover\" is not supported in milestone 1",
+   "message": ":hover depends on user interaction or document state, which a later package models as runtime state",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -10567,7 +10502,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@7047-7053|selector part \":hover\" is not supported in milestone 1",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@7047-7053|:hover depends on user interaction or document state, which a later package models as runtime state",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
    "target": null,
@@ -10579,7 +10514,7 @@
     "column": 14,
     "text": ":hover"
    },
-   "message": "selector part \":hover\" is not supported in milestone 1",
+   "message": ":hover depends on user interaction or document state, which a later package models as runtime state",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -11346,7 +11281,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@7988-7994|selector part \":hover\" is not supported in milestone 1",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@7988-7994|:hover depends on user interaction or document state, which a later package models as runtime state",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
    "target": null,
@@ -11358,7 +11293,7 @@
     "column": 22,
     "text": ":hover"
    },
-   "message": "selector part \":hover\" is not supported in milestone 1",
+   "message": ":hover depends on user interaction or document state, which a later package models as runtime state",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -11384,31 +11319,6 @@
     "text": "var(--text-primary)"
    },
    "message": "\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@8029-8030|selector part \"*\" is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_SELECTOR",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 8029,
-    "end": 8030,
-    "line": 469,
-    "column": 1,
-    "text": "*"
-   },
-   "message": "selector part \"*\" is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -11471,32 +11381,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@8116-8117|selector part \"*\" is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_SELECTOR",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 8116,
-    "end": 8117,
-    "line": 474,
-    "column": 1,
-    "text": "*"
-   },
-   "message": "selector part \"*\" is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@8117-8136|selector part \"::-webkit-scrollbar\" is not supported in milestone 1",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@8117-8136|pseudo-element ::-webkit-scrollbar is not supported: pseudo-elements generate boxes Dragon does not build yet (a later package)",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
    "target": null,
@@ -11508,7 +11393,7 @@
     "column": 2,
     "text": "::-webkit-scrollbar"
    },
-   "message": "selector part \"::-webkit-scrollbar\" is not supported in milestone 1",
+   "message": "pseudo-element ::-webkit-scrollbar is not supported: pseudo-elements generate boxes Dragon does not build yet (a later package)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -11521,32 +11406,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@8155-8156|selector part \"*\" is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_SELECTOR",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 8155,
-    "end": 8156,
-    "line": 478,
-    "column": 1,
-    "text": "*"
-   },
-   "message": "selector part \"*\" is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@8156-8181|selector part \"::-webkit-scrollbar-track\" is not supported in milestone 1",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@8156-8181|pseudo-element ::-webkit-scrollbar-track is not supported: pseudo-elements generate boxes Dragon does not build yet (a later package)",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
    "target": null,
@@ -11558,7 +11418,7 @@
     "column": 2,
     "text": "::-webkit-scrollbar-track"
    },
-   "message": "selector part \"::-webkit-scrollbar-track\" is not supported in milestone 1",
+   "message": "pseudo-element ::-webkit-scrollbar-track is not supported: pseudo-elements generate boxes Dragon does not build yet (a later package)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -11596,32 +11456,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@8213-8214|selector part \"*\" is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_SELECTOR",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 8213,
-    "end": 8214,
-    "line": 482,
-    "column": 1,
-    "text": "*"
-   },
-   "message": "selector part \"*\" is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@8214-8239|selector part \"::-webkit-scrollbar-thumb\" is not supported in milestone 1",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@8214-8239|pseudo-element ::-webkit-scrollbar-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (a later package)",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
    "target": null,
@@ -11633,7 +11468,7 @@
     "column": 2,
     "text": "::-webkit-scrollbar-thumb"
    },
-   "message": "selector part \"::-webkit-scrollbar-thumb\" is not supported in milestone 1",
+   "message": "pseudo-element ::-webkit-scrollbar-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (a later package)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -14486,6 +14321,1974 @@
    "viaRelated": false,
    "passes": [
     "B-unwrapped",
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@418-428|box-sizing:border-box on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 418,
+    "end": 428,
+    "line": 18,
+    "column": 14,
+    "text": "border-box"
+   },
+   "message": "box-sizing:border-box on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@418-428|box-sizing:border-box on library-button is used in the relative-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in relative-in-block/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 418,
+    "end": 428,
+    "line": 18,
+    "column": 14,
+    "text": "border-box"
+   },
+   "message": "box-sizing:border-box on library-button is used in the relative-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in relative-in-block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@418-428|box-sizing:border-box on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 418,
+    "end": 428,
+    "line": 18,
+    "column": 14,
+    "text": "border-box"
+   },
+   "message": "box-sizing:border-box on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@418-428|box-sizing:border-box on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 418,
+    "end": 428,
+    "line": 18,
+    "column": 14,
+    "text": "border-box"
+   },
+   "message": "box-sizing:border-box on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@418-428|box-sizing:border-box on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in relative-in-flex-row/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 418,
+    "end": 428,
+    "line": 18,
+    "column": 14,
+    "text": "border-box"
+   },
+   "message": "box-sizing:border-box on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in relative-in-flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@418-428|box-sizing:border-box on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 418,
+    "end": 428,
+    "line": 18,
+    "column": 14,
+    "text": "border-box"
+   },
+   "message": "box-sizing:border-box on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@418-428|box-sizing:border-box on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 418,
+    "end": 428,
+    "line": 18,
+    "column": 14,
+    "text": "border-box"
+   },
+   "message": "box-sizing:border-box on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@418-428|box-sizing:border-box on library-button is used in the relative-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in relative-in-block/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 418,
+    "end": 428,
+    "line": 18,
+    "column": 14,
+    "text": "border-box"
+   },
+   "message": "box-sizing:border-box on library-button is used in the relative-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in relative-in-block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@418-428|box-sizing:border-box on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 418,
+    "end": 428,
+    "line": 18,
+    "column": 14,
+    "text": "border-box"
+   },
+   "message": "box-sizing:border-box on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@418-428|box-sizing:border-box on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 418,
+    "end": 428,
+    "line": 18,
+    "column": 14,
+    "text": "border-box"
+   },
+   "message": "box-sizing:border-box on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@418-428|box-sizing:border-box on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in relative-in-flex-row/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 418,
+    "end": 428,
+    "line": 18,
+    "column": 14,
+    "text": "border-box"
+   },
+   "message": "box-sizing:border-box on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in relative-in-flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@418-428|box-sizing:border-box on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 418,
+    "end": 428,
+    "line": 18,
+    "column": 14,
+    "text": "border-box"
+   },
+   "message": "box-sizing:border-box on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/rtl); no box-sizing value is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-bottom:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no margin-bottom value is proven in root/ltr; margin sets margin-bottom, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-bottom:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no margin-bottom value is proven in root/ltr; margin sets margin-bottom, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-bottom:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no margin-bottom value is proven in relative-in-flex-column/ltr; margin sets margin-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-bottom:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no margin-bottom value is proven in relative-in-flex-column/ltr; margin sets margin-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-bottom:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no margin-bottom value is proven in display-none/ltr; margin sets margin-bottom, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-bottom:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no margin-bottom value is proven in display-none/ltr; margin sets margin-bottom, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-left:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in root/ltr; margin sets margin-left, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-left:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in root/ltr; margin sets margin-left, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-left:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in relative-in-flex-column/ltr; margin sets margin-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-left:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in relative-in-flex-column/ltr; margin sets margin-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-left:<length-px> (set by margin: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in relative-in-flex-row/ltr; margin sets margin-left, which is unproven here, so write margin-bottom: 0px instead of margin",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-left:<length-px> (set by margin: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in relative-in-flex-row/ltr; margin sets margin-left, which is unproven here, so write margin-bottom: 0px instead of margin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-left:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in display-none/ltr; margin sets margin-left, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-left:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in display-none/ltr; margin sets margin-left, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-right:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in root/ltr; margin sets margin-right, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-right:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in root/ltr; margin sets margin-right, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-right:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in relative-in-flex-column/ltr; margin sets margin-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-right:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in relative-in-flex-column/ltr; margin sets margin-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-right:<length-px> (set by margin: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in relative-in-flex-row/ltr; margin sets margin-right, which is unproven here, so write margin-bottom: 0px instead of margin",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-right:<length-px> (set by margin: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in relative-in-flex-row/ltr; margin sets margin-right, which is unproven here, so write margin-bottom: 0px instead of margin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-right:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in display-none/ltr; margin sets margin-right, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-right:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in display-none/ltr; margin sets margin-right, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-top:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in root/ltr; margin sets margin-top, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-top:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in root/ltr; margin sets margin-top, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-top:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in relative-in-flex-column/ltr; margin sets margin-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-top:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in relative-in-flex-column/ltr; margin sets margin-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-top:<length-px> (set by margin: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in relative-in-flex-row/ltr; margin sets margin-top, which is unproven here, so write margin-bottom: 0px instead of margin",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-top:<length-px> (set by margin: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in relative-in-flex-row/ltr; margin sets margin-top, which is unproven here, so write margin-bottom: 0px instead of margin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@439-440|margin-top:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in display-none/ltr; margin sets margin-top, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-top:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in display-none/ltr; margin sets margin-top, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-bottom:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no margin-bottom value is proven in root/ltr; margin sets margin-bottom, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-bottom:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no margin-bottom value is proven in root/ltr; margin sets margin-bottom, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-bottom:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no margin-bottom value is proven in relative-in-flex-column/ltr; margin sets margin-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-bottom:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no margin-bottom value is proven in relative-in-flex-column/ltr; margin sets margin-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-bottom:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no margin-bottom value is proven in display-none/ltr; margin sets margin-bottom, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-bottom:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no margin-bottom value is proven in display-none/ltr; margin sets margin-bottom, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-left:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in root/ltr; margin sets margin-left, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-left:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in root/ltr; margin sets margin-left, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-left:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in relative-in-flex-column/ltr; margin sets margin-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-left:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in relative-in-flex-column/ltr; margin sets margin-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-left:<length-px> (set by margin: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in relative-in-flex-row/ltr; margin sets margin-left, which is unproven here, so write margin-bottom: 0px instead of margin",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-left:<length-px> (set by margin: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in relative-in-flex-row/ltr; margin sets margin-left, which is unproven here, so write margin-bottom: 0px instead of margin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-left:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in display-none/ltr; margin sets margin-left, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-left:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-left value is proven in display-none/ltr; margin sets margin-left, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-right:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in root/ltr; margin sets margin-right, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-right:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in root/ltr; margin sets margin-right, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-right:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in relative-in-flex-column/ltr; margin sets margin-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-right:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in relative-in-flex-column/ltr; margin sets margin-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-right:<length-px> (set by margin: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in relative-in-flex-row/ltr; margin sets margin-right, which is unproven here, so write margin-bottom: 0px instead of margin",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-right:<length-px> (set by margin: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in relative-in-flex-row/ltr; margin sets margin-right, which is unproven here, so write margin-bottom: 0px instead of margin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-right:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in display-none/ltr; margin sets margin-right, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-right:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-right value is proven in display-none/ltr; margin sets margin-right, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-top:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in root/ltr; margin sets margin-top, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-top:<length-px> (set by margin: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in root/ltr; margin sets margin-top, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-top:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in relative-in-flex-column/ltr; margin sets margin-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-top:<length-px> (set by margin: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in relative-in-flex-column/ltr; margin sets margin-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-top:<length-px> (set by margin: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in relative-in-flex-row/ltr; margin sets margin-top, which is unproven here, so write margin-bottom: 0px instead of margin",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-top:<length-px> (set by margin: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in relative-in-flex-row/ltr; margin sets margin-top, which is unproven here, so write margin-bottom: 0px instead of margin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@439-440|margin-top:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in display-none/ltr; margin sets margin-top, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 439,
+    "end": 440,
+    "line": 19,
+    "column": 10,
+    "text": "0"
+   },
+   "message": "margin-top:<length-px> (set by margin: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no margin-top value is proven in display-none/ltr; margin sets margin-top, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-bottom:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in root/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-bottom:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in root/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-bottom:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in relative-in-flex-column/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-bottom:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in relative-in-flex-column/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-bottom:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-bottom:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-bottom:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in relative-in-flex-row/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-bottom:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in relative-in-flex-row/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-bottom:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in display-none/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-bottom:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in display-none/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-left:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in root/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-left:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in root/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-left:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in relative-in-flex-column/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-left:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in relative-in-flex-column/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-left:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-left:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-left:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in relative-in-flex-row/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-left:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in relative-in-flex-row/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-left:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in display-none/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-left:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in display-none/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-right:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in root/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-right:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in root/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-right:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in relative-in-flex-column/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-right:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in relative-in-flex-column/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-right:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-right:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-right:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in relative-in-flex-row/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-right:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in relative-in-flex-row/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-right:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in display-none/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-right:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in display-none/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-top:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in root/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-top:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in root/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-top:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in relative-in-flex-column/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-top:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in relative-in-flex-column/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-top:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-top:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-top:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in relative-in-flex-row/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-top:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in relative-in-flex-row/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@452-453|padding-top:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in display-none/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-top:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in display-none/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-bottom:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in root/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-bottom:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in root/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-bottom:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in relative-in-flex-column/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-bottom:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in relative-in-flex-column/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-bottom:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-bottom:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-bottom:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in relative-in-flex-row/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-bottom:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in relative-in-flex-row/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-bottom:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in display-none/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-bottom:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-bottom value is proven in display-none/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-left:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in root/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-left:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in root/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-left:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in relative-in-flex-column/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-left:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in relative-in-flex-column/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-left:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-left:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-left:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in relative-in-flex-row/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-left:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in relative-in-flex-row/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-left:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in display-none/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-left:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-left value is proven in display-none/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-right:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in root/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-right:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in root/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-right:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in relative-in-flex-column/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-right:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in relative-in-flex-column/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-right:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-right:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-right:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in relative-in-flex-row/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-right:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in relative-in-flex-row/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-right:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in display-none/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-right:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-right value is proven in display-none/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-top:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in root/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-top:<length-px> (set by padding: 0) on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in root/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in root/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-top:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in relative-in-flex-column/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-top:<length-px> (set by padding: 0) on record is used in the relative-in-flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in relative-in-flex-column/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-top:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-top:<length-px> (set by padding: 0) on record-shine is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in absolute-in-flex-row/ltr/cb-ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-top:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in relative-in-flex-row/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-top:<length-px> (set by padding: 0) on track is used in the relative-in-flex-row/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in relative-in-flex-row/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@452-453|padding-top:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in display-none/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 452,
+    "end": 453,
+    "line": 20,
+    "column": 11,
+    "text": "0"
+   },
+   "message": "padding-top:<length-px> (set by padding: 0) on youtube-sync-playing is used in the display-none/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in display-none/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in display-none/ltr",
+   "viaRelated": false,
+   "passes": [
     "C-context"
    ],
    "states": [

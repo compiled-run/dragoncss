@@ -12,6 +12,7 @@ import type { DprCaseOutcome } from '../src/dpr.ts';
 import { DPR_GATE_DEVICE_PX, DPRS, dprRegistryRows, EXTRA_DPRS, expectedDprDir, layoutCases, registryRowPasses, runDprCase, runDprLane, SHARED_DPRS, ZOOM_GUARD } from '../src/dpr.ts';
 import { repoPath } from '../src/paths.ts';
 import { compileFixture } from '../src/pipeline.ts';
+import { declaredLayoutCases } from './declared-cases.ts';
 
 const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
 
@@ -45,7 +46,7 @@ describe('DPR lane constants', () => {
 
 describe('DPR captures (packages/parity/expected-dpr/darwin-arm64/dpr-<N>)', () => {
   it(`every DPR set holds the same ${ids.length} case ids as DPR 1, outside expected/darwin-arm64`, () => {
-    expect(ids.length).toBe(261);
+    expect(ids.length).toBe(declaredLayoutCases());
     for (const dpr of DPRS) {
       const dir = expectedDprDir(dpr);
       expect(dir.startsWith(expectedDir())).toBe(false);
@@ -65,14 +66,15 @@ describe('DPR captures (packages/parity/expected-dpr/darwin-arm64/dpr-<N>)', () 
   });
 });
 
-describe('DPR lane: 783 cases against the committed captures', () => {
+describe('DPR lane: the declared cases at every DPR against the committed captures', () => {
+  const declared = declaredLayoutCases();
   const lane = runDprLane();
 
   for (const s of lane) {
-    it(`DPR ${s.dpr} (${s.role}): 261/261 cases pass the ${DPR_GATE_DEVICE_PX} device px gate and every compared node is exact in zoomed LU`, () => {
+    it(`DPR ${s.dpr} (${s.role}): ${declared}/${declared} cases pass the ${DPR_GATE_DEVICE_PX} device px gate and every compared node is exact in zoomed LU`, () => {
       const failing = s.outcomes.filter((o) => o.status !== 'pass').map((o) => `${o.id}: ${o.reason ?? ''}`.slice(0, 300));
       expect(failing).toEqual([]);
-      expect([s.cases, s.pass]).toEqual([261, 261]);
+      expect([s.cases, s.pass]).toEqual([declared, declared]);
       expect(s.exact).toBe(s.nodes);
       expect(s.nodes).toBeGreaterThan(8000);
       expect(s.role).toBe(SHARED_DPRS.includes(s.dpr) ? 'shared' : 'extra');

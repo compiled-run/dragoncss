@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.c { width: 80px; padding: 1px; margin-bottom: 2px; background-color: #eee; }
+.k { width: 10px; height: 3px; background-color: #999; }
+.c:has(.hot) { background-color: #fcc; }
+.c:has(> .hot) { width: 90px; }
+.c:has(.w .hot) { padding-left: 5px; }
+.c:has(> .k + .hot) { padding-top: 4px; }
+.c:has(.hot ~ .k) { margin-left: 3px; }
+.c:has(+ .c .hot) { border-left: 2px solid #000; }
+.c:has(~ .c > .w) { border-right: 3px solid #00f; }
+.k:has(+ .hot) { width: 20px; }
+.k:has(~ .hot) { height: 5px; }
+.c:not(:has(.hot)) { width: 60px; }
+.c:has(.nope, > .w > .k) { padding-bottom: 6px; }
+:is(.c:has(> .w)) > .w { margin-left: 2px; }
+.k:nth-child(1 of :has(+ .hot)) { background-color: #0f0; }
+body:has(> .c .w) { padding-top: 1px; }
+.c:has(:empty) .w { height: 7px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="c"><div data-dragon-id="c1a" class="k"></div><div data-dragon-id="c1b" class="k hot"></div><div data-dragon-id="c1c" class="k"></div></div>
+<div data-dragon-id="c2" class="c"><div data-dragon-id="c2w" class="w"><div data-dragon-id="c2a" class="k hot"></div></div></div>
+<div data-dragon-id="c3" class="c"><div data-dragon-id="c3a" class="k"></div><div data-dragon-id="c3b" class="k"></div></div>
+<div data-dragon-id="c4" class="c"><div data-dragon-id="c4w" class="w"><div data-dragon-id="c4a" class="k">X</div></div></div>
+</body>
+</html>

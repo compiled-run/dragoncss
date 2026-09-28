@@ -4,7 +4,7 @@ import type { Longhand } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { LinkedElement } from './link.ts';
-import { selectorMatches } from './match.ts';
+import { selectorMatches, specificityFor } from './match.ts';
 
 /** One declared longhand value competing in the cascade, with the specificity of the selector that matched it. */
 export type Candidate = { readonly declaration: Declaration; readonly value: CssValue; readonly specificity: readonly [number, number, number] };
@@ -42,7 +42,7 @@ export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedEle
       if (!selectorMatches(rule, sel, chain, chain.length - 1, 0, faults)) continue;
       for (const d of rule.declarations) {
         for (const lh of d.longhands) {
-          const cand: Candidate = { declaration: d, value: lh.value, specificity: sel.specificity };
+          const cand: Candidate = { declaration: d, value: lh.value, specificity: specificityFor(sel, faults) };
           candidates.push([lh.property, cand]);
           const prev = winners.get(lh.property);
           if (prev === undefined || beats(cand, prev)) winners.set(lh.property, cand);

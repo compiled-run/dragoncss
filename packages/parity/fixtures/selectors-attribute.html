@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.t { width: 10px; height: 4px; margin-bottom: 1px; background-color: #eee; }
+.t[ui-kind] { width: 12px; }
+.t[ui-kind="Primary"] { width: 20px; }
+.t[ui-kind="primary" i] { height: 6px; }
+.t[ui-tags~="wide"] { width: 60px; }
+.t[ui-tags~="TALL" i] { height: 12px; }
+.t[ui-lang|="en"] { margin-left: 4px; }
+.t[ui-lang|="EN" i] { background-color: #f00; }
+.t[ui-name^="card-"] { width: 35px; }
+.t[ui-name$="-end"] { width: 45px; }
+.t[ui-name*="mid"] { margin-left: 8px; }
+.t[ui-name^="CARD" i][ui-name$="END" i] { background-color: #0f0; }
+.t[ui-name*=""] { width: 99px; }
+.t[ui-name^=""] { width: 98px; }
+.t[ui-tags~=""] { width: 97px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="k1" class="t" ui-kind="Primary"></div>
+<div data-dragon-id="k2" class="t" ui-kind="PRIMARY"></div>
+<div data-dragon-id="k3" class="t" ui-kind=""></div>
+<div data-dragon-id="g1" class="t" ui-tags="narrow wide"></div>
+<div data-dragon-id="g2" class="t" ui-tags="wider tall"></div>
+<div data-dragon-id="g3" class="t" ui-tags="Tall wide"></div>
+<div data-dragon-id="l1" class="t" ui-lang="en"></div>
+<div data-dragon-id="l2" class="t" ui-lang="en-GB"></div>
+<div data-dragon-id="l3" class="t" ui-lang="english"></div>
+<div data-dragon-id="l4" class="t" ui-lang="En-us"></div>
+<div data-dragon-id="n1" class="t" ui-name="card-mid"></div>
+<div data-dragon-id="n2" class="t" ui-name="mid-end"></div>
+<div data-dragon-id="n3" class="t" ui-name="card-mid-end"></div>
+<div data-dragon-id="n4" class="t" ui-name="Card-x-End"></div>
+</body>
+</html>

@@ -18,6 +18,7 @@ import type { SampleBox } from '../src/samples.ts';
 import { generateSamples } from '../src/samples.ts';
 import type { NativeTarget } from '../src/targets.ts';
 import { layoutCaseIds, nativeTargets } from '../src/targets.ts';
+import { declaredLayoutCases } from './declared-cases.ts';
 
 const all = layoutCases();
 const measurer = (() => {
@@ -64,7 +65,7 @@ describe('reference proof: TS engine plus snapRect dumps pass (a) and (d)', () =
         expect(r.chromeCompared).toBeGreaterThan(0);
       }
     }
-    expect(cases).toBe(261);
+    expect(cases).toBe(declaredLayoutCases());
   });
 });
 

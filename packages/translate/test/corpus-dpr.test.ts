@@ -28,7 +28,8 @@ describe('the milestone-1 manifest', () => {
     for (const f of topLevelVectorFiles()) expect([m1.has(f), m2.has(f)], f).toContainEqual(true);
     for (const f of topLevelVectorFiles()) expect(m1.has(f) && m2.has(f), f).toBe(false);
     expect(m1.size + m2.size).toBe(topLevelVectorFiles().length);
-    expect([...m2].sort()).toEqual(['border-initial-width.json', 'line-height-rounding.json', 'text-min-content-word-positions.json']);
+    const selectors = ['selectors-attribute', 'selectors-has', 'selectors-logical', 'selectors-nth-child', 'selectors-nth-of-type', 'selectors-sibling', 'selectors-specificity', 'selectors-universal-root', 'tree-selectors-state#0', 'tree-selectors-state#0-rtl', 'tree-selectors-state#1', 'tree-selectors-state#1-rtl', 'tree-selectors-state#2', 'tree-selectors-state#2-rtl'];
+    expect([...m2].sort()).toEqual(['border-initial-width.json', 'line-height-rounding.json', 'text-min-content-word-positions.json', ...selectors.map((id) => `${id}.json`)].sort());
   });
 
   it('the P1 vectors suite reads exactly the manifest cases', () => {
@@ -44,11 +45,11 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
     expect(x.digest).toBe(extendedLockedDigest());
     expect(buildExtendedCorpus().digest).toBe(x.digest);
     expect(x.suites.map((s) => s.name)).toEqual(['vectors-m2', 'vectors-dpr', 'engine-dpr', 'units-m2', 'snap']);
-    expect(n['vectors-m2']).toBe(3);
-    expect(n['vectors-dpr']).toBe(783);
-    expect(n['engine-dpr']).toBeGreaterThanOrEqual(783);
+    expect(n['vectors-m2']).toBe(17);
+    expect(n['vectors-dpr']).toBe(825);
+    expect(n['engine-dpr']).toBeGreaterThanOrEqual(825);
     expect(n['units-m2']).toBeGreaterThanOrEqual(120000);
-    expect(n['snap']).toBeGreaterThanOrEqual(20783);
+    expect(n['snap']).toBeGreaterThanOrEqual(20825);
     expect(x.engineSplit.threw + x.engineSplit.harnessError).toBe(0);
   });
 
@@ -105,6 +106,6 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
   });
 
   it('the DPR vector folders hold what the suites read', () => {
-    for (const dpr of DPR_SETS) expect(readdirSync(join(VECTORS_DIR, `dpr-${dpr}`)).filter((f) => f.endsWith('.json')).length).toBe(261);
+    for (const dpr of DPR_SETS) expect(readdirSync(join(VECTORS_DIR, `dpr-${dpr}`)).filter((f) => f.endsWith('.json')).length).toBe(275);
   });
 });

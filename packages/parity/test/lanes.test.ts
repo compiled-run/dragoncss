@@ -12,6 +12,7 @@ import { DUMP_FAULTS } from '../src/native-compare.ts';
 import { repoPath } from '../src/paths.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import { SAMPLE_RULES } from '../src/samples.ts';
+import { declaredLayoutCases, MILESTONE_1_CASES, milestone1Fixtures } from './declared-cases.ts';
 import type { NativeTarget, TargetConfig } from '../src/targets.ts';
 import { corpusSuites, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest } from '../src/targets.ts';
 
@@ -28,17 +29,19 @@ describe('native targets', () => {
     expect(LANES).toEqual(['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels']);
     for (const t of targets) expect(t.lanes.map((l) => l.lane)).toEqual([...LANES]);
   });
-  it('case lists come from the constants: 261 top-level plus 783 DPR vectors = 1044 on both vectors lanes of both targets', () => {
+  it('case lists come from the constants: the declared top-level cases plus one DPR vector set per DPR, on both vectors lanes of both targets', () => {
+    const declared = declaredLayoutCases();
     expect(ids).toEqual(layoutCases().flatMap((f) => f.cases.map((c) => c.id)));
     for (const t of targets) {
       for (const l of ['layout-vectors-host', 'layout-vectors-device']) {
         const v = lane(t, l);
         expect(v?.sets.map((s) => [s.dpr, s.role, s.extra, s.ids.length])).toEqual([[1, 'top-level', null, ids.length], ...DPRS.map((d) => [d, SHARED_DPRS.includes(d) ? 'shared' : 'extra', EXTRA_DPRS.find((e) => e.dpr === d)?.name ?? null, ids.length])]);
-        expect(v?.sets.reduce((n, s) => n + s.ids.length, 0)).toBe(1044);
+        expect(v?.sets.reduce((n, s) => n + s.ids.length, 0)).toBe(declared * (1 + DPRS.length));
         expect(v?.corpora).toEqual(corpusSuites());
       }
     }
-    expect(ids.length).toBe(261);
+    expect(ids.length).toBe(declared);
+    expect(declaredLayoutCases(milestone1Fixtures())).toBe(MILESTONE_1_CASES);
     expect(lane(ios, 'layout-vectors-host')).toEqual(lane(android, 'layout-vectors-host'));
   });
   it('the corpus counts are derived from the manifests and agree with their declared case counts', () => {

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.r { width: 20px; height: 5px; margin-bottom: 1px; background-color: #ddd; }
+.r + .r { width: 30px; }
+.m + .r { background-color: #f80; }
+.m ~ .r { height: 8px; }
+.m ~ .m { width: 70px; }
+.r + .m + .r + .r { margin-left: 10px; }
+.g > .r:first-child ~ .r ~ .m { margin-left: 3px; }
+.g + .g .r { width: 15px; }
+.g ~ * > .m { background-color: #08f; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="g1" class="g"><div data-dragon-id="a1" class="r"></div><div data-dragon-id="a2" class="r m"></div><div data-dragon-id="a3" class="r"></div><div data-dragon-id="a4" class="r"></div><div data-dragon-id="a5" class="r m"></div><div data-dragon-id="a6" class="r"></div></div>
+<div data-dragon-id="g2" class="g"><div data-dragon-id="b1" class="r m"></div><div data-dragon-id="b2" class="r"></div></div>
+</body>
+</html>

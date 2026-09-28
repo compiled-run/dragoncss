@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+* { color: #333; }
+body { margin: 0; }
+:root > body { padding: 3px; }
+:root:first-child:only-child > * > .wrap { width: 200px; }
+* > .box { width: 40px; height: 10px; margin-bottom: 2px; background-color: #ccc; }
+.box:empty { height: 6px; background-color: #0a0; }
+.wrap > * { margin-left: 5px; }
+.wrap :empty { width: 20px; }
+*.tag { width: 30px; height: 4px; background-color: #00f; }
+.box :not(:empty) { height: 9px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="wrap" class="wrap"><div data-dragon-id="a" class="box"></div><div data-dragon-id="b" class="box">X</div><div data-dragon-id="c" class="box"><div data-dragon-id="c1" class="tag"></div><div data-dragon-id="c2" class="tag">X</div></div></div>
+</body>
+</html>
