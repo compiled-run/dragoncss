@@ -58,6 +58,24 @@ export function stateHtml(html: string, state: StateId): string {
   return out;
 }
 
+/** A free state of the demo: libraryStatus x isPlaying. */
+export type FreeStateId = 'main' | 'library-open' | 'playing' | 'library-open-playing';
+
+/** The four free states, each the composition of the STATES whose edits it applies (library first, then playing). */
+export const FREE_STATES: readonly { readonly id: FreeStateId; readonly libraryStatus: boolean; readonly isPlaying: boolean; readonly parts: readonly StateId[] }[] = [
+  { id: 'main', libraryStatus: false, isPlaying: false, parts: [] },
+  { id: 'library-open', libraryStatus: true, isPlaying: false, parts: ['library-open'] },
+  { id: 'playing', libraryStatus: false, isPlaying: true, parts: ['playing'] },
+  { id: 'library-open-playing', libraryStatus: true, isPlaying: true, parts: ['library-open', 'playing'] },
+];
+
+/** The snapshot HTML of a free state: the edits of each part applied in order, each hitting exactly once. */
+export function freeStateHtml(html: string, state: FreeStateId): string {
+  const spec = FREE_STATES.find((s) => s.id === state);
+  if (spec === undefined) throw new Error(`unknown free state ${state}`);
+  return spec.parts.reduce((out, part) => stateHtml(out, part), html);
+}
+
 /** HTML void elements the snapshot uses (and the head-only ones the conversion drops with the head). */
 export const VOID_ELEMENTS = ['img', 'input'] as const;
 
