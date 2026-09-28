@@ -95,7 +95,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   for (const spec of FIXTURES) {
     it(`${spec.id} (${spec.format} ${spec.kind})`, async () => {
       const live = async (c: ParityCase): Promise<WebCapture> => {
-        const capture = await captureFixture(browser, c.id, c.authoredHtml, c.environment);
+        const capture = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra);
         captures.set(c.id, capture);
         expect(captureJson(capture), `${c.id}: the live capture must equal the committed expected file`).toBe(readFileSync(expectedPath(c.id), 'utf8'));
         return capture;
@@ -759,7 +759,7 @@ describe('renderer isolation', () => {
     const src = readdirSync(repoPath('packages/parity/src')).filter((f) => f.endsWith('.ts')).map((f) => [f, readFileSync(repoPath(`packages/parity/src/${f}`), 'utf8')] as const);
     expect(src.filter(([, t]) => t.includes('data-dragon-harness')).map(([f]) => f)).toEqual(['chrome.ts']);
     const pipeline = readFileSync(repoPath('packages/parity/src/pipeline.ts'), 'utf8');
-    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.compiledHtml\(webCss, classOf\), c\.environment\)/);
-    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.authoredHtml, c\.environment\)/);
+    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.compiledHtml\(webCss, classOf\), c\.environment, c\.computedExtra\)/);
+    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.authoredHtml, c\.environment, c\.computedExtra\)/);
   });
 });

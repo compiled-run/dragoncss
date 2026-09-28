@@ -1,5 +1,5 @@
 // The parity corpus. Every fixture is attempted in every run; none carries its own tolerance.
-import type { DiagnosticCode, Environment } from 'dragon';
+import type { BackgroundResetLonghand, DiagnosticCode, Environment } from 'dragon';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 
 /**
@@ -34,6 +34,11 @@ export type FixtureSpec =
       readonly source: 'hand-written' | 'generated';
       /** The environment root font: 'ahem', or 'ua-default' for a fixture that compares Chrome's UA font with the keyed dataset. */
       readonly rootFont: Environment['rootFont'];
+      /**
+       * Background longhands Dragon does not model, captured and compared besides LONGHANDS: in both renderings Chrome must compute
+       * each to the initial value Dragon holds it at (BACKGROUND_RESET_LONGHANDS). Absent means none.
+       */
+      readonly computedExtra?: readonly BackgroundResetLonghand[];
     }
   | {
       readonly id: string;
