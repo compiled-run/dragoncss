@@ -29,6 +29,16 @@ const ASSETS: SnapshotAsset[] = FILES.map((f) => {
   return { id: `fonts/${f}`, hash: `sha256:${hex(bytes)}`, bytes };
 });
 const dataUrl = (f: string): string => `data:font/ttf;base64,${Buffer.from(vendorBytes(f)).toString('base64')}`;
+/** Inter VF with its HVAR table tag renamed: a variable font the fence refuses (as in variable-fence.test.ts). */
+const NO_HVAR_VF_URL = ((): string => {
+  const out = new Uint8Array(readFileSync(new URL('../../../../docs/research/text-spike/fonts/Inter-VF.ttf', import.meta.url)));
+  const d = new DataView(out.buffer);
+  for (let i = 0; i < d.getUint16(4); i++) {
+    const r = 12 + i * 16;
+    if (String.fromCharCode(...out.subarray(r, r + 4)) === 'HVAR') out.set([0x58, 0x56, 0x41, 0x52], r);
+  }
+  return `data:font/ttf;base64,${Buffer.from(out).toString('base64')}`;
+})();
 
 const PINNED_MAP = capture<{ map: FontMap }>('pinned.json').map;
 const REFERENCE = capture<unknown>('../reference/p2-cssom-rewrite.json') as { map: FontMap };
@@ -57,11 +67,12 @@ describe('collectFontFaces', () => {
       '@font-face{font-family:A;src:url(missing.ttf)}',
       '@font-face{font-family:A;src:local(Inter)}',
       '@font-face{font-family:A;src:url(data:font/ttf;base64,AAAAAAAA)}',
+      `@font-face{font-family:A;src:url(${NO_HVAR_VF_URL})}`,
     ].join('\n');
     const all: { readonly [K in FontFaceIssue['kind']]: boolean } = {
       'invalid-descriptor': false, 'unknown-descriptor': false, 'unsupported-descriptor': true, 'unexpected-content': false,
       'descriptor-not-applied': false, 'no-effect': false, 'rule-dropped': false, 'remote-url': true, 'unresolved-asset': true,
-      'local-font': true, 'unreadable-font': true,
+      'local-font': true, 'unreadable-font': true, 'variable-font-refused': true,
     };
     const got = collect(css);
     const seen = new Map<string, boolean>();
