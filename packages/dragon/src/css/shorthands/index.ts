@@ -1,6 +1,7 @@
 // The shorthand registry: one handler per shorthand in properties.ts SHORTHANDS, gathered from one file per family. The mapped
 // type makes a shorthand without a handler (or a handler without a shorthand) a type error.
 import type { Shorthand } from '../properties.ts';
+import { BACKGROUND_SHORTHANDS } from './background.ts';
 import { BORDER_SHORTHANDS } from './border.ts';
 import { BOX_SHORTHANDS } from './box.ts';
 import { FLEX_SHORTHANDS } from './flex.ts';
@@ -16,6 +17,7 @@ export const SHORTHAND_HANDLERS: { readonly [S in Shorthand]: ShorthandHandler }
   ...FLEX_SHORTHANDS,
   ...OVERFLOW_SHORTHANDS,
   ...TEXT_SHORTHANDS,
+  ...BACKGROUND_SHORTHANDS,
 };
 
 export function shorthandHandler(property: Shorthand): ShorthandHandler {

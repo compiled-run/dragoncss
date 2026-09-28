@@ -7,14 +7,14 @@ import type { CssValue } from '../values.ts';
 
 /**
  * How one shorthand expands. longhands: every longhand it sets, in order; a CSS-wide keyword sets each of them. expand: the
- * longhand values of a grammar-valid, non-CSS-wide value (values are its tokens, in order). refuse: an optional check run on a
- * grammar-valid, non-CSS-wide value before expansion, for values the grammar accepts but Dragon does not; it returns the
- * diagnostic, or null to accept.
+ * longhand values of a grammar-valid, non-CSS-wide value (values are its tokens, in order; tokens the css-tree nodes themselves).
+ * refuse: an optional check run on a grammar-valid, non-CSS-wide value before expansion, for values the grammar accepts but
+ * Dragon does not; it returns the diagnostic, or null to accept. sheetText is the stylesheet text base spans.
  */
 export type ShorthandHandler = {
   readonly longhands: readonly Longhand[];
-  readonly expand: (values: readonly CssValue[]) => LonghandValue[];
-  readonly refuse?: (tokens: readonly CssNode[], base: Span) => Diagnostic | null;
+  readonly expand: (values: readonly CssValue[], tokens: readonly CssNode[]) => LonghandValue[];
+  readonly refuse?: (tokens: readonly CssNode[], base: Span, sheetText: string) => Diagnostic | null;
 };
 
 /** A longhand the author's value set. */

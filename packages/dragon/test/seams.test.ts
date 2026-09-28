@@ -35,6 +35,7 @@ describe('E2 seams: the property registry', () => {
     expect([...SHORTHANDS]).toEqual([
       'margin', 'padding', 'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
       'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow', 'white-space',
+      'background',
     ]);
   });
   it('PROPERTY_ASPECTS keys follow LONGHANDS, and INHERITED and PROPERTY_ROLE are unchanged', () => {
