@@ -1,0 +1,584 @@
+{
+ "chrome": "145.0.7632.6",
+ "playwright": "1.58.2",
+ "platform": "darwin-arm64",
+ "launches": [
+  {
+   "dpr": 1,
+   "flags": [
+    "--force-device-scale-factor=1",
+    "--force-color-profile=srgb",
+    "--font-render-hinting=none",
+    "--disable-lcd-text",
+    "--hide-scrollbars"
+   ]
+  }
+ ],
+ "fonts": {
+  "Inter/Inter-Light.ttf": "164414f0aacbe98a7e64addc43f7b3bfd2e32f7b90e101feeab227f14c371bda",
+  "Inter/Inter-Regular.ttf": "40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+  "Inter/Inter-Italic.ttf": "bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+  "Inter/Inter-Bold.ttf": "288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f",
+  "Inter/Inter-BoldItalic.ttf": "948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d",
+  "NotoSansMono/NotoSansMono-Regular.ttf": "87f8ce0522a6c99b743ee5fc75b4073cfdd575639119672828b7b9944b65b4f4"
+ },
+ "probe": "P2",
+ "map": {
+  "generics": {
+   "sans-serif": {
+    "mode": "pinned",
+    "family": "Dragon Sans",
+    "faces": [
+     {
+      "src": "fonts/Inter/Inter-Light.ttf",
+      "weight": "300"
+     },
+     {
+      "src": "fonts/Inter/Inter-Regular.ttf",
+      "weight": "400"
+     },
+     {
+      "src": "fonts/Inter/Inter-Italic.ttf",
+      "weight": "400",
+      "style": "italic"
+     },
+     {
+      "src": "fonts/Inter/Inter-Bold.ttf",
+      "weight": "700"
+     },
+     {
+      "src": "fonts/Inter/Inter-BoldItalic.ttf",
+      "weight": "700",
+      "style": "italic"
+     }
+    ]
+   },
+   "monospace": {
+    "mode": "pinned",
+    "family": "Dragon Mono",
+    "faces": [
+     {
+      "src": "fonts/NotoSansMono/NotoSansMono-Regular.ttf"
+     }
+    ]
+   },
+   "system-ui": {
+    "mode": "platform"
+   }
+  }
+ },
+ "fontFaceRules": "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Light.ttf\") format(\"truetype\");font-weight:300}\n@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Regular.ttf\") format(\"truetype\");font-weight:400}\n@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Italic.ttf\") format(\"truetype\");font-weight:400;font-style:italic}\n@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Bold.ttf\") format(\"truetype\");font-weight:700}\n@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-BoldItalic.ttf\") format(\"truetype\");font-weight:700;font-style:italic}\n@font-face{font-family:\"Dragon Mono\";src:url(\"fonts/NotoSansMono/NotoSansMono-Regular.ttf\") format(\"truetype\")}",
+ "cases": [
+  {
+   "id": "unquoted",
+   "css": ".c{font-family:sans-serif}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "sans-serif",
+     "after": "\"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Regular",
+   "ok": true
+  },
+  {
+   "id": "unquoted-300",
+   "css": ".c{font-family:sans-serif;font-weight:300}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "sans-serif",
+     "after": "\"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter Light",
+     "postScriptName": "Inter-Light",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Light",
+   "ok": true
+  },
+  {
+   "id": "unquoted-700",
+   "css": ".c{font-family:sans-serif;font-weight:700}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "sans-serif",
+     "after": "\"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Bold",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Bold",
+   "ok": true
+  },
+  {
+   "id": "unquoted-italic",
+   "css": ".c{font-family:sans-serif;font-style:italic}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "sans-serif",
+     "after": "\"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Italic",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Italic",
+   "ok": true
+  },
+  {
+   "id": "unquoted-700-italic",
+   "css": ".c{font-family:sans-serif;font-weight:700;font-style:italic}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "sans-serif",
+     "after": "\"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-BoldItalic",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-BoldItalic",
+   "ok": true
+  },
+  {
+   "id": "ua-bold-h1",
+   "css": "h1{font-family:sans-serif}",
+   "body": "<h1 class=\"c\">AaBb</h1>",
+   "visits": [
+    {
+     "where": "h1",
+     "before": "sans-serif",
+     "after": "\"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Bold",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Bold",
+   "ok": true
+  },
+  {
+   "id": "quoted",
+   "css": ".c{font-family:\"sans-serif\"}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "\"sans-serif\"",
+     "after": "\"sans-serif\""
+    }
+   ],
+   "computed": "\"sans-serif\"",
+   "chrome": [
+    {
+     "familyName": "Times",
+     "postScriptName": "Times-Roman",
+     "isCustomFont": false,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "platform",
+   "ok": true
+  },
+  {
+   "id": "lato-then-generic",
+   "css": ".c{font-family:'Lato', sans-serif}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "Lato, sans-serif",
+     "after": "Lato, \"Dragon Sans\""
+    }
+   ],
+   "computed": "Lato, \"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Regular",
+   "ok": true
+  },
+  {
+   "id": "unknown-then-generic",
+   "css": ".c{font-family:Unknown Family, sans-serif}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "\"Unknown Family\", sans-serif",
+     "after": "\"Unknown Family\", \"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Unknown Family\", \"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Regular",
+   "ok": true
+  },
+  {
+   "id": "monospace",
+   "css": ".c{font-family:monospace}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "monospace",
+     "after": "\"Dragon Mono\""
+    }
+   ],
+   "computed": "\"Dragon Mono\"",
+   "chrome": [
+    {
+     "familyName": "Noto Sans Mono",
+     "postScriptName": "NotoSansMono-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "NotoSansMono-Regular",
+   "ok": true
+  },
+  {
+   "id": "monospace-then-sans",
+   "css": ".c{font-family:monospace, sans-serif;font-weight:700}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "monospace, sans-serif",
+     "after": "\"Dragon Mono\", \"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Dragon Mono\", \"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Noto Sans Mono",
+     "postScriptName": "NotoSansMono-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "NotoSansMono-Regular",
+   "ok": true
+  },
+  {
+   "id": "system-ui",
+   "css": ".c{font-family:system-ui}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "system-ui",
+     "after": "system-ui"
+    }
+   ],
+   "computed": "system-ui",
+   "chrome": [
+    {
+     "familyName": ".SF NS",
+     "postScriptName": ".SFNS-Regular",
+     "isCustomFont": false,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "platform",
+   "ok": true
+  },
+  {
+   "id": "system-ui-then-sans",
+   "css": ".c{font-family:system-ui, sans-serif}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "system-ui, sans-serif",
+     "after": "system-ui, \"Dragon Sans\""
+    }
+   ],
+   "computed": "system-ui, \"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": ".SF NS",
+     "postScriptName": ".SFNS-Regular",
+     "isCustomFont": false,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "platform",
+   "ok": true
+  },
+  {
+   "id": "case-folded",
+   "css": ".c{font-family:SANS-SERIF}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "sans-serif",
+     "after": "\"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Regular",
+   "ok": true
+  },
+  {
+   "id": "shorthand-700",
+   "css": ".c{font:700 16px sans-serif}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "sans-serif",
+     "after": "\"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Bold",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Bold",
+   "ok": true
+  },
+  {
+   "id": "shorthand-italic",
+   "css": ".c{font:italic 16px/1.25 sans-serif}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "sans-serif",
+     "after": "\"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Italic",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Italic",
+   "ok": true
+  },
+  {
+   "id": "shorthand-quoted",
+   "css": ".c{font:16px \"sans-serif\"}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "\"sans-serif\"",
+     "after": "\"sans-serif\""
+    }
+   ],
+   "computed": "\"sans-serif\"",
+   "chrome": [
+    {
+     "familyName": "Times",
+     "postScriptName": "Times-Roman",
+     "isCustomFont": false,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "platform",
+   "ok": true
+  },
+  {
+   "id": "shorthand-monospace",
+   "css": ".c{font:300 13px monospace}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "monospace",
+     "after": "\"Dragon Mono\""
+    }
+   ],
+   "computed": "\"Dragon Mono\"",
+   "chrome": [
+    {
+     "familyName": "Noto Sans Mono",
+     "postScriptName": "NotoSansMono-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "NotoSansMono-Regular",
+   "ok": true
+  },
+  {
+   "id": "style-attribute",
+   "css": "",
+   "body": "<div class=\"c\" style=\"font-family:sans-serif;font-weight:700\">AaBb</div>",
+   "visits": [
+    {
+     "where": "#[style]",
+     "before": "sans-serif",
+     "after": "\"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Bold",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Bold",
+   "ok": true
+  },
+  {
+   "id": "inside-media",
+   "css": "@media (min-width:1px){.c{font-family:sans-serif;font-style:italic}}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "sans-serif",
+     "after": "\"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Italic",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Italic",
+   "ok": true
+  },
+  {
+   "id": "important-beats-attribute",
+   "css": ".c{font-family:sans-serif !important}",
+   "body": "<div class=\"c\" style=\"font-family:serif\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "sans-serif",
+     "after": "\"Dragon Sans\""
+    },
+    {
+     "where": "#[style]",
+     "before": "serif",
+     "after": "serif"
+    }
+   ],
+   "computed": "\"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Regular",
+   "ok": true
+  },
+  {
+   "id": "inherited",
+   "css": ".p{font-family:sans-serif}",
+   "body": "<div class=\"p\"><span class=\"c\">AaBb</span></div>",
+   "visits": [
+    {
+     "where": ".p",
+     "before": "sans-serif",
+     "after": "\"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Regular",
+   "ok": true
+  }
+ ]
+}
