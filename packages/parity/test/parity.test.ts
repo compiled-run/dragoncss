@@ -173,6 +173,24 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     expect(c.comparison?.nodes.filter((n) => !n.pass).map((n) => n.id).sort()).toEqual(['a', 'i']);
   });
 
+  // Resolving direction before var() substitution, or letting a var() flow-relative declaration win both physical sides, fails
+  // every case of its fixture in both environments on exactly these nodes.
+  const varDirectionFaults = [
+    { fault: 'directionBeforeVar', fixture: 'var-direction', nodes: { 'var-direction': ['a2', 'a3a', 'a5', 'b1', 'b2b', 'b3', 'b4', 'd3', 'd5', 'e2'], 'var-direction-rtl': ['a4', 'b2b', 'd3', 'd5', 'e2'] } },
+    { fault: 'varLogicalBothSides', fixture: 'var-logical', nodes: { 'var-logical': ['a1', 'a10', 'a2', 'a3', 'a5', 'b1', 'b10', 'b2', 'b3', 'd5', 'd6', 'd8', 'd9', 'e5', 'e6', 'e8', 'e9'], 'var-logical-rtl': ['a1', 'a10', 'a2', 'a3', 'b1', 'b10', 'b2', 'b3', 'd5', 'd6', 'd8', 'd9', 'e5', 'e6', 'e8', 'e9'] } },
+  ] as const;
+  for (const f of varDirectionFaults) {
+    it(`planted fault: ${f.fault} fails ${f.fixture} in both directions`, async () => {
+      const faulty = await runFixture(specFor(f.fixture), browser, { authored: recorded, faults: { ...NO_FAULTS, [f.fault]: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
+      expect(faulty.cases.map((c) => c.id).sort()).toEqual(Object.keys(f.nodes).sort());
+      for (const c of faulty.cases) {
+        expect(c.status, c.id).toBe('fail');
+        expect(c.lanes['chrome-dual'], c.id).toBe('fail');
+        expect(c.comparison?.nodes.filter((n) => !n.pass).map((n) => n.id).sort(), c.id).toEqual([...f.nodes[c.id as keyof typeof f.nodes]].sort());
+      }
+    });
+  }
+
   for (const d of compilerChromeDeviations) {
     it(`compiler Chrome deviation ${d.id}: the spec reading (${d.fault}) fails ${d.fixture} on ${d.nodes.join(', ')} in every case`, async () => {
       const faulty = await runFixture(specFor(d.fixture), browser, { authored: recorded, faults: { ...NO_FAULTS, [d.fault]: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
