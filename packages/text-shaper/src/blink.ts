@@ -92,8 +92,11 @@ export function makeContext(hb: DragonHB, font: number, text: string, language: 
   };
 }
 
-/** A run or part width from its glyph advances. */
-function sumAdvances(advances: readonly number[], faults: GateFaults | undefined): number {
+/**
+ * A run or part width from its glyph advances. Only a run's width clamps a negative sum to zero
+ * (shape_result.cc ClampNegativeToZero); a view part's width is a plain sum (shape_result_view.cc std::accumulate).
+ */
+function sumAdvances(advances: readonly number[], faults: GateFaults | undefined, clampNegative: boolean): number {
   if (faults?.floatAccumulation === true) {
     let w = 0;
     for (const a of advances) w = f32(w + f32(a / 65536));
@@ -101,7 +104,7 @@ function sumAdvances(advances: readonly number[], faults: GateFaults | undefined
   }
   let sum = 0;
   for (const a of advances) sum += a;
-  return inlineToFloat(Math.max(0, sum));
+  return inlineToFloat(clampNegative ? Math.max(0, sum) : sum);
 }
 
 /** HarfBuzzShaper::Shape over [start, end) with the paragraph as context. */
@@ -137,7 +140,7 @@ export function shape(ctx: ShapeContext, start: number, end: number, options: Sh
       const advance = ctx.faults?.wholePixelPositions === true && (raw & 0xffff) !== 0 ? Math.round(f32(raw) / 65536) * 65536 : raw;
       glyphs.push({ glyph: gid, ci: cluster - s, advance, safe });
     }
-    const run: Run = { start: s, numChars: e - s, glyphs, width: sumAdvances(glyphs.map((x) => x.advance), ctx.faults) };
+    const run: Run = { start: s, numChars: e - s, glyphs, width: sumAdvances(glyphs.map((x) => x.advance), ctx.faults, true) };
     runs.push(run);
     width = f32(width + run.width);
   }
@@ -224,7 +227,7 @@ export function viewWidth(segments: readonly Segment[], faults?: GateFaults): nu
           const c = run.start + g.ci;
           if (c >= s && c < e) advances.push(g.advance);
         }
-        part = sumAdvances(advances, faults);
+        part = sumAdvances(advances, faults, false);
       }
       width = f32(width + part);
     }

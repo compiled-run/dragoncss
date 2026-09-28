@@ -10,6 +10,8 @@ import { DragonHB } from './wasm.ts';
 export const SPIKE_DIR = fileURLToPath(new URL('../../../docs/research/text-spike/', import.meta.url));
 export const FONT_DIR = `${SPIKE_DIR}fonts`;
 export const REFERENCE_PATH = `${SPIKE_DIR}gate/chrome-145.json`;
+/** SHA-256 of the font files Chrome loaded during the spike's capture (not of the repo copies). */
+export const LOADED_FONTS_PATH = `${SPIKE_DIR}chrome/loaded-fonts.sha256`;
 
 /** [start, end, width in LayoutUnits, rect count]. */
 export type ReferenceLine = readonly [number, number, number, number];

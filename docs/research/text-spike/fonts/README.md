@@ -1,7 +1,9 @@
 # Spike fonts
 
 The exact font files Chrome measured in the text spike (docs/research/text-spike, 2026-09-28). The TXT1-0 gate
-(packages/text-shaper) shapes with these files and checks their SHA-256 against `gate/chrome-145.json`.
+(packages/text-shaper) shapes with these files and checks their SHA-256 against `gate/chrome-145.json`, whose hashes
+come from `../chrome/loaded-fonts.sha256`: `shasum -a 256` of the files Chrome loaded (`/tmp/text-spike/fonts`, which
+`chrome/page.html` references as `../fonts/`), taken on 2026-09-28. Every file there predates the 11:42–11:45 capture.
 
 | File | Family, version (name table) | SHA-256 | Licence |
 |---|---|---|---|

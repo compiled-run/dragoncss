@@ -32,6 +32,8 @@ int32_t dhb_font_glyph_advance(dhb_font *font, uint32_t glyph);
 int32_t dhb_font_glyph_units(dhb_font *font, uint32_t glyph);
 uint32_t dhb_font_glyph_extents(dhb_font *font, uint32_t glyph, int32_t out[4]);
 uint32_t dhb_font_nominal_glyph(dhb_font *font, uint32_t codepoint);
+// The normalized variation coordinates HarfBuzz uses (F2DOT14 after avar): writes up to capacity, returns the axis count.
+uint32_t dhb_font_var_coords(dhb_font *font, int32_t *out, uint32_t capacity);
 
 dhb_shaper *dhb_shaper_create(void);
 void dhb_shaper_destroy(dhb_shaper *shaper);

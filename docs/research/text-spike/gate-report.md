@@ -20,7 +20,9 @@ Chrome's, in LayoutUnits (1/64 px). No tolerance is applied.
 ## What is compared
 
 The reference is the text spike's Chrome 145.0.7632.6 run (macOS, DPR 1), imported into
-`gate/chrome-145.json` by `packages/text-shaper/scripts/import-spike.ts`:
+`gate/chrome-145.json` by `packages/text-shaper/scripts/import-spike.ts docs/research/text-spike/out`. The capture scripts are in `chrome/`
+(`measure.mjs`, `opps.mjs`, `page.html`), their raw output in `out/`, and the SHA-256 of the fonts Chrome loaded in
+`chrome/loaded-fonts.sha256`:
 
 - **Per line:** the width of the Range client rect over [line start, line end without trailing spaces), in the
   paragraph at `white-space: normal`, `text-align: start`. Line breaks are taken from Chrome: the gate tests
@@ -46,9 +48,10 @@ The reference is the text spike's Chrome 145.0.7632.6 run (macOS, DPR 1), import
    whole paragraph as context, the style's features (`chws` for `text-spacing-trim: normal`) plus HanKerning's
    `halt` ranges.
 5. **Blink arithmetic (TypeScript, `src/blink.ts`):** a run's width is the InlineLayoutUnit (int64 16.16) sum of its
-   advances converted to float; a line is a ShapeResultView of the paragraph with the start of a wrapped line
+   advances, a negative sum clamped to zero, converted to float; a line is a ShapeResultView of the paragraph with the start of a wrapped line
    reshaped when it is not safe to break, and the end reshaped only when the break is not at a space
-   (`text-align: start` sets DontReshapeEndIfAtSpace); part widths are summed in float; the line width is
+   (`text-align: start` sets DontReshapeEndIfAtSpace); a part's width is the unclamped InlineLayoutUnit sum of its
+   advances; part widths are summed in float; the line width is
    `LayoutUnit::FromFloatCeil`.
 
 Only integers cross the shim boundary: glyph id, cluster, x/y advance, x/y offset and the glyph flags.
