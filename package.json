@@ -20,6 +20,8 @@
     "parity:lanes": "node --conditions=dragon-internal packages/parity/src/cli/lanes.ts",
     "build": "node scripts/build-dist.ts",
     "layout:subset": "node packages/translate/src/cli/subset.ts",
+    "linebreak:gen": "node scripts/gen-linebreak-data.ts",
+    "linebreak:conformance": "node scripts/gen-linebreak-data.ts --conformance",
     "native:gen": "node packages/translate/src/cli/gen.ts",
     "native:swift": "node packages/translate/src/cli/native.ts swift",
     "native:kotlin": "node packages/translate/src/cli/native.ts kotlin",
