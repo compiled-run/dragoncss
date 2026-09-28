@@ -10,8 +10,17 @@ export type VarPart =
 /** A custom property declaration's specified value (css-variables-1 §2): a CSS-wide keyword, or its parts. */
 export type CustomValue = { readonly name: string; readonly wide: string | null; readonly parts: readonly VarPart[] };
 
-/** A declaration of a longhand or shorthand whose value holds var(): every longhand it sets waits for substitution (§3.1). */
-export type PendingSubstitution = { readonly parts: readonly VarPart[]; readonly longhands: readonly Longhand[] };
+/**
+ * A declaration of a longhand or shorthand whose value holds var(): every longhand it sets waits for substitution (§3.1).
+ * sides: set on a flow-relative property, the physical longhands it maps to in each direction (css-logical-1 §3); the cascade
+ * narrows longhands to one side (analysis/logical.ts), and direction names the side a narrowed declaration keeps.
+ */
+export type PendingSubstitution = {
+  readonly parts: readonly VarPart[];
+  readonly longhands: readonly Longhand[];
+  readonly sides?: { readonly ltr: readonly Longhand[]; readonly rtl: readonly Longhand[] };
+  readonly direction?: 'ltr' | 'rtl';
+};
 
 const WS = /[ \t\n\r\f]/;
 const isNameChar = (c: string): boolean => /[A-Za-z0-9_-]/.test(c) || c.charCodeAt(0) >= 0x80;

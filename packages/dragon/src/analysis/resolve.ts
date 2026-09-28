@@ -12,8 +12,7 @@ import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { blockifyRoot, computeLengths, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 import type { Direction, DirectionContext } from './logical.ts';
-import type { CustomProperties, SubstitutedDeclaration } from './variables.ts';
-import { computeCustoms } from './variables.ts';
+import type { CustomProperties } from './variables.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
 export { selectorMatches } from './match.ts';
@@ -95,9 +94,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   const customsOf = new WeakMap<ResolvedElement, CustomProperties>();
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {
     const here = [...chain, el];
-    const { winners, matched, customs: customWinners } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment));
-    const customs = computeCustoms(customWinners, parent === null ? new Map() : (customsOf.get(parent) as CustomProperties));
-    const scope = { customs, memo: new Map<Declaration, SubstitutedDeclaration>() };
+    const { winners, matched, scope } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties));
     const props = new Map<Longhand, ResolvedValue>();
     const tag = el.tag as CapturedTag;
     const none = { declaration: null, declared: null, losing: [] } as const;
@@ -170,7 +167,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       children: [],
     };
     if (resolvedRoot === null) resolvedRoot = self;
-    customsOf.set(self, customs);
+    customsOf.set(self, scope.customs);
     const kids: (ResolvedElement | LinkedText)[] = el.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
     // An inline formatting context is a maximal sequence of text; display: none elements generate no box (CSS2 §9.2.4), so
     // they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).

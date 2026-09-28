@@ -194,8 +194,9 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   }
   if (parts !== null && hasVar(parts)) {
     const longhands: readonly Longhand[] = isLonghand(property) ? [property] : shorthandHandler(property).longhands;
+    const sides = directionSides(property);
     // The source text, since serializing the parsed value would add white space between adjacent var() references.
-    return { property, text: source.trim(), span, valueSpan, longhands: [], order, ...important, pending: { parts, longhands } };
+    return { property, text: source.trim(), span, valueSpan, longhands: [], order, ...important, pending: { parts, longhands, ...(sides === null ? {} : { sides }) } };
   }
   const tokens = list(valueNode, 'children').filter((n) => n.type !== 'WhiteSpace');
   const parsed = parseValue(property, valueNode, tokens, base, sheetText);
@@ -219,6 +220,14 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     case 'ok':
       return { property, text, span, valueSpan, longhands: parsed.longhands, order, ...important };
   }
+}
+
+/** css-logical-1 §3: the physical longhands a flow-relative property sets in each direction, or null when it maps the same in both. */
+function directionSides(property: string): { ltr: Longhand[]; rtl: Longhand[] } | null {
+  const mapped = expandWide(property, { kind: 'keyword', value: 'unset' });
+  if (!mapped.some((lh) => lh.direction !== undefined)) return null;
+  const side = (dir: 'ltr' | 'rtl'): Longhand[] => [...new Set(mapped.filter((lh) => lh.direction === undefined || lh.direction === dir).map((lh) => lh.property))];
+  return { ltr: side('ltr'), rtl: side('rtl') };
 }
 
 /** A malformed var(), or one naming a custom property with an escape, which Dragon does not unescape. */
