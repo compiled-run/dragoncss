@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<!-- Synthetic page written for packages/wpt (not a WPT file): a script the snapshot path must refuse. -->
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="/resources/check-layout-th.js"></script>
+<style>.box { width: 10px; height: 10px; }</style>
+<body>
+<div class="c"><div class="box" data-expected-width="10"></div></div>
+<script>
+requestAnimationFrame(function () { checkLayout('.c'); });
+</script>
+</body>

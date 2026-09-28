@@ -1,0 +1,12 @@
+{
+  "source": "css/css-anchor-position/anchor-name-multicol-002.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "45850f984ea2c56b26fb0cb0aad7bc25c60f57ea06fe99436cf13ecbaa150fd3",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".target 1","pass":true}]},
+    "states": [
+      {"call":".target","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"title","a":[],"c":["Anchors in OOF in multicol"]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-1/#propdef-anchor-name"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-1/#anchor-pos"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-1/#anchor-size"]],"c":[]},"\n",{"t":"link","a":[["rel","author"],["href","mailto:kojii@chromium.org"]],"c":[]},"\n","\n","\n","\n","\n",{"t":"style","a":[],"c":["\n.relpos {\n  position: relative;\n}\n.abspos {\n  position: absolute;\n}\n.columns {\n  column-count: 2;\n  column-fill: auto;\n  column-gap: 10px;\n  column-width: 100px;\n  width: 210px;\n  height: 100px;\n}\n.spacer {\n  height: 10px;\n  background: pink;\n}\n.anchor {\n  anchor-name: --a1;\n  margin-left: 10px;\n  width: 40px;\n  height: 60px;\n  background: orange;\n}\n.target {\n  position: absolute;\n  background: lime;\n  opacity: .5;\n  position-anchor: --a1;\n  left: anchor(left);\n  top: anchor(top);\n  width: anchor-size(width);\n  height: anchor-size(height);\n}\n"]},"\n"]},{"t":"body","a":[["onload","checkLayoutForAnchorPos('.target')"]],"c":["\n  ",{"t":"div","a":[["class","spacer"]],"c":[]},"\n  ",{"t":"div","a":[["class","columns"]],"c":["\n    ",{"t":"div","a":[["class","relpos"]],"c":["\n      ",{"t":"div","a":[["class","relpos"]],"c":["\n        ",{"t":"div","a":[["class","abspos"]],"c":["\n          ",{"t":"div","a":[["class","spacer"]],"c":[]},"\n          ",{"t":"div","a":[["class","anchor"]],"c":[]},"\n        "]},"\n      "]},"\n      ",{"t":"div","a":[["class","target"],["data-offset-x","10"],["data-offset-y","10"],["data-expected-width","40"],["data-expected-height","60"]],"c":[],"v":{"width":40,"height":60,"offset-x":10,"offset-y":10}},"\n    "]},"\n  "]},"\n\n"]}]}}
+    ]
+  }
+}

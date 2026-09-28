@@ -1,0 +1,12 @@
+{
+  "source": "css/css-flexbox/overflow-auto-003.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "1002b8c888af8298ab666ebc17f28f2a2c3c12579624c7669ff0ee9762d98272",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".flexbox 1","pass":true}]},
+    "states": [
+      {"call":".flexbox","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"title","a":[],"c":["CSS Flexbox: margin: auto and overflow: auto with nested flexboxes."]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-flexbox/#auto-margins"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-overflow-3/#overflow-properties"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-box-3/#margins"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://crbug.com/605682"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","This test checks that 'margin: auto' set on the outer box gets properly handled when the inner box uses 'overflow: auto', in a layout with two nested flexboxes."]],"c":[]},"\n\n",{"t":"style","a":[],"c":["\nhtml, body {\n  margin: 0;\n  padding: 0;\n}\n\n.flexbox {\n  display: flex;\n  background: papayawhip;\n  width: 800px;\n}\n\n.flexbox > div {\n  width: 300px;\n  height: 300px;\n  margin: 0 auto;\n  background: olive;\n}\n\n.flexbox > div > div {\n  overflow-y: auto;\n  height: 50px;\n  visibility: hidden;\n}\n\n.elm {\n  height: 10px;\n}\n"]},"\n\n","\n","\n","\n\n"]},{"t":"body","a":[],"c":["\n\n",{"t":"div","a":[["id","log"]],"c":[]},"\n",{"t":"p","a":[],"c":["Below there should be a olive square ",{"t":"em","a":[],"c":["centered"]}," inside a papayawhip box."]},"\n",{"t":"div","a":[["class","flexbox"]],"c":["\n    ",{"t":"div","a":[["data-offset-x","250"]],"c":["\n        ",{"t":"div","a":[],"c":["\n            ",{"t":"div","a":[["id","elm"],["style","height: 800px;"]],"c":[]},"\n        "]},"\n    "],"v":{"offset-x":250}},"\n"]},"\n\n"]}]}}
+    ]
+  }
+}

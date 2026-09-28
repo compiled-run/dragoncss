@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<!-- Synthetic page written for packages/wpt (not a WPT file): a helper script computes the expectations. -->
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="/resources/check-layout-th.js"></script>
+<script src="support/expect-helper.js"></script>
+<style>.box { height: 10px; } .w3 { width: 30px; }</style>
+<body onload="expectWidths(); checkLayout('.c')">
+<div class="c"><div class="box w3" data-test-units="3"></div></div>
+</body>

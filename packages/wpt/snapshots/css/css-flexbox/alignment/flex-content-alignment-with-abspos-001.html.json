@@ -1,0 +1,12 @@
+{
+  "source": "css/css-flexbox/alignment/flex-content-alignment-with-abspos-001.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "192f6a39d893962ec021da0af6ce27d6c67417c4a7d166a883f3642885195f0f",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".flex 1","pass":true}]},
+    "states": [
+      {"call":".flex","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":["\n",{"t":"title","a":[],"c":["CSS Flex Layout Test: dynamic content alignment with abspos elements."]},"\n",{"t":"link","a":[["rel","author"],["title","Alison Maher"],["href","mailto:almaher@microsoft.com"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-grid/#alignment"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-align-3/#content-distribution"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-align-3/#propdef-align-content"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-align-3/#propdef-justify-content"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","Test that dynamically changing alignment for abspos flex items works as expected."]],"c":[]},"\n\n",{"t":"style","a":[],"c":["\nbody {\n  margin: 0px;\n  width: 800px;\n}\n\n.flex {\n  display: flex;\n  width: 100%;\n  height: 600px;\n  background: gray;\n  position: relative;\n}\n\n#item {\n  width: 140px;\n  height: 60px;\n  border: 1px solid purple;\n  position: absolute;\n}\n"]},"\n\n","\n","\n","\n","\n"]},"\n\n",{"t":"body","a":[["onload","updateAlignmentAndCheckLayout()"]],"c":["\n\n  ",{"t":"div","a":[["class","flex"],["id","container"],["data-expected-width","800"],["data-expected-height","600"],["style","justify-content: center;"]],"c":["\n    ",{"t":"div","a":[["id","item"],["data-offset-x","329"],["data-offset-y","269"],["data-expected-width","142"],["data-expected-height","62"],["style","align-self: center;"]],"c":[],"v":{"width":142,"height":62,"offset-x":329,"offset-y":269}},"\n  "],"v":{"width":800,"height":600}},"\n\n\n\n"]}]}}
+    ]
+  }
+}

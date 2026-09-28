@@ -1,0 +1,12 @@
+{
+  "source": "css/css-box/margin-trim/computed-margin-values/flexbox-column-style-change-triggers-layout-block-start.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "b4761883445a56418eaa5da45a08d2940470e4e76dc63bc665288e90e8764d4c",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":"flexbox > item 1","pass":true},{"name":"flexbox > item 2","pass":true}]},
+    "states": [
+      {"call":"flexbox > item","matched":2,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":["\n",{"t":"link","a":[["rel","author"],["href","mailto:sammy.gill@apple.com"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-box-4/#margin-trim-flex"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","Make sure margins are no longer trimmed when margin-trim is changed to none on the flexbox"]],"c":[]},"\n",{"t":"style","a":[],"c":["\nflexbox {\n    display: flex;\n    flex-direction: column;\n    width: min-content;\n    margin-trim: block-start;\n}\nitem {\n    display: block;\n    background-color: green;\n    width: 50px;\n    height: 50px;\n    margin-block-start: 10px;\n}\n"]},"\n","\n","\n","\n"]},"\n",{"t":"body","a":[],"c":["\n",{"t":"div","a":[["id","target"]],"c":["\n",{"t":"flexbox","a":[],"c":["\n    ",{"t":"item","a":[["data-expected-margin-top","10"],["data-offset-y","18"]],"c":[],"v":{"offset-y":18,"margin-top":"10"}},"\n    ",{"t":"item","a":[["data-expected-margin-top","10"],["data-offset-y","78"]],"c":[],"v":{"offset-y":78,"margin-top":"10"}},"\n"]},"\n"]},"\n"]}]}}
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "source": "css/css-grid/alignment/grid-block-axis-alignment-auto-margins-003.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "d0e20bed2cf31e3b10ecd5b3d773b5e108f4515d52acc3fdcd62c22140cc17af",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":"#grid 1","pass":true},{"name":"#grid 2","pass":true}]},
+    "states": [
+      {"call":"#grid","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"meta","a":[["charset","utf-8"]],"c":[]},"\n",{"t":"title","a":[],"c":["CSS Grid Layout Test: Aligning grid items using 'auto' margins and relative sized columns"]},"\n",{"t":"link","a":[["rel","author"],["title","Javier Fernandez Garcia-Boente"],["href","mailto:jfernandez@igalia.com"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["title","10.2 Aligning with auto margins"],["href","https://drafts.csswg.org/css-grid/#auto-margins"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","The 'top' and 'bottom' margins must be recomputed whenever the grid items's height changes."]],"c":[]},"\n",{"t":"style","a":[],"c":["\n  #grid {\n      display: grid;\n      position: relative;\n      background: grey;\n      grid-template-columns: 300px;\n      grid-template-rows: 40% 60%;\n      height: 500px;\n      width: 300px;\n  }\n  #grid div {\n    margin: auto 0px auto 0px;\n  }\n  #item1 {\n      background: green;\n      width: 25px;\n      height: 50px;\n  }\n  #item2 {\n      background: blue;\n      width: 25px;\n      height: 100px;\n  }\n"]},"\n","\n","\n","\n"]},{"t":"body","a":[],"c":[{"t":"div","a":[["id","grid"]],"c":["\n    ",{"t":"div","a":[["id","item1"],["data-offset-y","75"]],"c":[],"v":{"offset-y":75}},"\n    ",{"t":"div","a":[["id","item2"],["data-offset-y","300"]],"c":[],"v":{"offset-y":300}},"\n"]},"\n","\n"]}]}},
+      {"call":"#grid","matched":1,"patch":{"10":{"a":[["id","item1"],["data-offset-y","50"],["style","height: 100px;"]],"v":{"offset-y":50}}}}
+    ]
+  }
+}

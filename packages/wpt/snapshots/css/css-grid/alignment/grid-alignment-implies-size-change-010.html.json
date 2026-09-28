@@ -1,0 +1,13 @@
+{
+  "source": "css/css-grid/alignment/grid-alignment-implies-size-change-010.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "4ce88bd01166a5c06a2a5526128ffc028d3480300acaa703e7d4bf93ad73a4c3",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".before 1","pass":true},{"name":".after 2","pass":true}]},
+    "states": [
+      {"call":".before","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"meta","a":[["charset","utf-8"]],"c":[]},"\n",{"t":"title","a":[],"c":["CSS Grid Layout Test: Changes on Default-Alignment may affect grid item's height"]},"\n",{"t":"link","a":[["rel","author"],["title","Javier Fernandez Garcia-Boente"],["href","mailto:jfernandez@igalia.com"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-grid-1/#column-align"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-grid-1/#grid-item-sizing"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-align-3/#propdef-align-items"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-align/#valdef-align-self-normal"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-align/#valdef-align-self-start"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","Changing the grid item's align-items value from 'normal' to 'start' causes non-replaced items to grow."]],"c":[]},"\n",{"t":"link","a":[["rel","stylesheet"],["type","text/css"],["href","/fonts/ahem.css"]],"c":[]},"\n",{"t":"style","a":[],"c":["\n.grid {\n  position: relative;\n  display: inline-grid;\n  grid-template-columns: 100px;\n  grid-template-rows: 80px;\n  font: 20px/1 Ahem;\n  background: grey;\n  align-items: normal;\n}\n#item {\n  background: blue;\n  align-self: auto;\n}\n"]},"\n","\n","\n","\n","\n","\n"]},{"t":"body","a":[["onload","document.fonts.ready.then(() => { runTest(); })"]],"c":["\n",{"t":"div","a":[["class","grid"],["id","grid"]],"c":["\n  ",{"t":"div","a":[["data-expected-width","100"],["id","item"],["class"," before"],["data-expected-height","80"]],"c":["XX X",{"t":"br","a":[],"c":[]},"X XXX",{"t":"br","a":[],"c":[]},"X",{"t":"br","a":[],"c":[]},"XX XXX"],"v":{"width":100,"height":80}},"\n"]},"\n\n"]}]}},
+      {"call":".after","matched":1,"patch":{"14":{"a":[["class","grid"],["id","grid"],["style","align-items: start;"]]},"15":{"a":[["data-expected-width","100"],["id","item"],["class"," before after"],["data-expected-height","100"]],"v":{"width":100,"height":100}}}}
+    ]
+  }
+}

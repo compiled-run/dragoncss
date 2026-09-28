@@ -1,0 +1,12 @@
+{
+  "source": "css/css-anchor-position/position-try-custom-property.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "6500fccf62a453cb6a38da8e4111a0153d4502541549f05ae795a18946918f8c",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".target 1","pass":true},{"name":".target 2","pass":true}]},
+    "states": [
+      {"call":".target","matched":2,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"title","a":[],"c":["Variable substitution in @position-try rules"]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-1/#fallback"]],"c":[]},"\n","\n","\n","\n","\n",{"t":"style","a":[],"c":["\n.cb {\n  position: relative;\n  width: 195px;\n  height: 70px;\n  background: yellow;\n  border-bottom: 1px solid black;\n}\n.spacer {\n  width: 1px;\n  height: 20px;\n}\n.anchor1 {\n  anchor-name: --a1;\n  margin-left: 45px;\n  width: 100px;\n  height: 30px;\n  background: blue;\n}\n.target {\n  position: absolute;\n  position-try-fallbacks: --fallback1;\n  width: 40px;\n  height: 15px;\n  margin: 5px;\n  background: orange;\n  --left: anchor(--a1 right);\n  --top: anchor(--a1 top);\n}\n.fallback1 {\n  position-try-fallbacks: --fallback1;\n}\n.fallback2 {\n  position-try-fallbacks: --fallback2;\n}\n@position-try --fallback1 {\n  /* Position to the right of the anchor. */\n  left: var(--left);\n  top: var(--top);\n}\n/* Same as above, but using a shorthand. */\n@position-try --fallback2 {\n  inset: var(--top) 0px 0px var(--left);\n}\n"]},"\n"]},{"t":"body","a":[["onload","checkLayoutForAnchorPos('.target')"]],"c":["\n  ",{"t":"div","a":[["class","cb"]],"c":["\n    ",{"t":"div","a":[["class","spacer"]],"c":[]},"\n    ",{"t":"div","a":[["class","anchor1"]],"c":[]},"\n    ",{"t":"div","a":[["class","target fallback1"],["data-offset-x","150"],["data-offset-y","25"]],"c":[],"v":{"offset-x":150,"offset-y":25}},"\n  "]},"\n  ",{"t":"div","a":[["class","cb"]],"c":["\n    ",{"t":"div","a":[["class","spacer"]],"c":[]},"\n    ",{"t":"div","a":[["class","anchor1"]],"c":[]},"\n    ",{"t":"div","a":[["class","target fallback2"],["data-offset-x","150"],["data-offset-y","25"]],"c":[],"v":{"offset-x":150,"offset-y":25}},"\n  "]},"\n\n"]}]}}
+    ]
+  }
+}

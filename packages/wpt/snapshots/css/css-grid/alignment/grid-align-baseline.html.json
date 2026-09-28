@@ -1,0 +1,7 @@
+{
+  "source": "css/css-grid/alignment/grid-align-baseline.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "e94fb19e89166627e6db266eb61d888544955d1676376e5f5f0d894f2d8d7c5d",
+  "result": {"refused":"snapshot:other-subtests"}
+}

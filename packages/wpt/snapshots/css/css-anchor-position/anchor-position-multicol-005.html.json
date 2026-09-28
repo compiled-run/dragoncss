@@ -1,0 +1,12 @@
+{
+  "source": "css/css-anchor-position/anchor-position-multicol-005.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "1490fdcdf2a6b94ce75863dfa19d964fd51f24e84954c623aa34b711333298a3",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".target 1","pass":true}]},
+    "states": [
+      {"call":".target","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"title","a":[],"c":["Overflow pushing anchors to later fragmentainers than querying element in multicol"]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-1/#propdef-anchor-name"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-1/#anchor-pos"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-1/#anchor-size"]],"c":[]},"\n",{"t":"link","a":[["rel","author"],["href","mailto:kojii@chromium.org"]],"c":[]},"\n","\n","\n","\n","\n",{"t":"style","a":[],"c":["\n.relpos {\n  position: relative;\n}\n.abspos {\n  position: absolute;\n}\n.columns {\n  column-count: 2;\n  column-fill: auto;\n  column-gap: 10px;\n  column-width: 100px;\n  width: 210px;\n  height: 100px;\n}\n.spacer {\n  height: 10px;\n  background: pink;\n}\n.anchor1 {\n  anchor-name: --a1;\n  margin-left: 10px;\n  width: 40px;\n  height: 80px;\n  background: orange;\n}\n.target {\n  position: absolute;\n  background: lime;\n  opacity: 1;\n}\n.target1 {\n  left: anchor(--a1 left);\n  top: anchor(--a1 top);\n  width: anchor-size(--a1 width);\n  height: anchor-size(--a1 height);\n}\n"]},"\n"]},{"t":"body","a":[["onload","checkLayoutForAnchorPos('.target')"]],"c":["\n  ",{"t":"div","a":[["class","spacer"],["style","height: 10px"]],"c":[]},"\n  ",{"t":"div","a":[["class","columns"]],"c":["\n    ",{"t":"div","a":[["class","relpos"]],"c":["\n      ",{"t":"div","a":[["style","height: 50px"]],"c":["\n        ",{"t":"div","a":[["class","spacer"],["style","height: 110px"]],"c":[]},"\n        ",{"t":"div","a":[["class","relpos"],["style","height: 50px"]],"c":["\n          ",{"t":"div","a":[["class","anchor1 abspos"]],"c":[]},"\n        "]},"\n      "]},"\n      ",{"t":"div","a":[["style","height: 50px"]],"c":["\n        ",{"t":"div","a":[["class","target target1"],["data-expected-width","40"],["data-expected-height","80"]],"c":[],"v":{"width":40,"height":80}},"\n      "]},"\n    "]},"\n  "]},"\n\n"]}]}}
+    ]
+  }
+}

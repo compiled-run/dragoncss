@@ -1,0 +1,7 @@
+{
+  "source": "css/css-grid/alignment/grid-align-baseline-vertical.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "6b75e2f5bc6f491531b8a709479799f0de4cca8f3c47ea6435a673bb5767ffed",
+  "result": {"refused":"snapshot:other-subtests"}
+}

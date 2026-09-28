@@ -1,0 +1,12 @@
+{
+  "source": "css/css-anchor-position/anchor-position-002.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "576a8fdf33ddbeeb897e5c6ed20749bfca4c2c4fbf901713fe2f74a9e07e9b4e",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".target 1","pass":true},{"name":".target 2","pass":true},{"name":".target 3","pass":true}]},
+    "states": [
+      {"call":".target","matched":3,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-1/#propdef-anchor-name"]],"c":[]},"\n",{"t":"link","a":[["rel","author"],["href","mailto:kojii@chromium.org"]],"c":[]},"\n","\n","\n","\n","\n",{"t":"style","a":[],"c":["\n#container {\n  position: relative;\n  transform: translate(0, 0);  /* Make it a containing block. */\n}\n#anchor1 {\n  anchor-name: --a1;\n  width: 5px;\n  height: 7px;\n  background: orange;\n}\n#anchor2 {\n  anchor-name: --a2;\n  width: 9px;\n  height: 11px;\n  background: blue;\n}\n#anchor3 {\n  anchor-name: --a3;\n  width: 13px;\n  height: 15px;\n  background: purple;\n}\n.target {\n  position: absolute;\n}\n"]},"\n","\n"]},{"t":"body","a":[["onload","checkLayoutForAnchorPos('.target')"]],"c":["\n  ",{"t":"div","a":[["id","container"]],"c":["\n    ",{"t":"div","a":[],"c":["\n      ",{"t":"div","a":[["id","anchor1"]],"c":[]},"\n    "]},"\n    ",{"t":"div","a":[["class","target"],["style","left: anchor(--a1 right)"],["data-offset-x","5"]],"c":[],"v":{"offset-x":5}},"\n\n    ",{"t":"div","a":[],"c":["\n      ",{"t":"div","a":[["style","transform: translate(0, 0)"]],"c":["\n        ",{"t":"div","a":[["style","position: absolute; left: 10px;"]],"c":["\n          ",{"t":"div","a":[["id","anchor2"]],"c":[]},"\n        "]},"\n      "]},"\n    "]},"\n    ",{"t":"div","a":[["class","target"],["style","left: anchor(--a2 right)"],["data-offset-x","19"]],"c":[],"v":{"offset-x":19}},"\n\n    ",{"t":"div","a":[],"c":["\n      ",{"t":"div","a":[["style","transform: translate(0, 0)"]],"c":["\n        ",{"t":"div","a":[["style","position: fixed; left: 20px"]],"c":["\n          ",{"t":"div","a":[["id","anchor3"]],"c":[]},"\n        "]},"\n      "]},"\n    "]},"\n    ",{"t":"div","a":[["class","target"],["style","left: anchor(--a3 right)"],["data-offset-x","33"]],"c":[],"v":{"offset-x":33}},"\n  "]},"\n\n"]}]}}
+    ]
+  }
+}

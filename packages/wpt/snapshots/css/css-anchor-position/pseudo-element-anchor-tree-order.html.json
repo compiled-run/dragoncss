@@ -1,0 +1,7 @@
+{
+  "source": "css/css-anchor-position/pseudo-element-anchor-tree-order.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "fa0d576eda28392d9ed301ebbd28b8c059228fef04d9a16526cad4e288e53578",
+  "result": {"refused":"snapshot:no-checklayout"}
+}

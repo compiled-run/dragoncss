@@ -1,0 +1,7 @@
+{
+  "source": "css/css-writing-modes/bidi-line-break-001.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "d291f248c36d7124671655c6120715161fd46cb5913f09ea0e464c9712a1ba19",
+  "result": {"refused":"snapshot:no-checklayout"}
+}

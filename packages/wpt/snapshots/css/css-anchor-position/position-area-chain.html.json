@@ -1,0 +1,12 @@
+{
+  "source": "css/css-anchor-position/position-area-chain.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "62d85f20790fbb6b7ea2c5035728ed6dfaff9ee0c40a9c4d0a000ff919b09bf1",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".target 1","pass":true},{"name":".target 2","pass":true},{"name":".target 3","pass":true},{"name":".target 4","pass":true},{"name":".target 5","pass":true}]},
+    "states": [
+      {"call":".target","matched":5,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"title","a":[],"c":["Tests that chain of elements that anchor to each other using position-area works."]},"\n\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-position-1/#position-area"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-position-1/#determining"]],"c":[]},"\n",{"t":"link","a":[["rel","author"],["title","Kiet Ho"],["href","mailto:kiet.ho@apple.com"]],"c":[]},"\n\n","\n","\n","\n","\n\n",{"t":"style","a":[],"c":["\n  .containing-block {\n    border: 1px solid black;\n\n    position: relative;\n    width: 500px;\n    height: 200px;\n  }\n\n  .box {\n    position: absolute;\n    anchor-name: --box;\n    position-area: center right;\n    position-anchor: --box;\n\n    width: 50px;\n    height: 50px;\n    border-right: 10px white solid;\n    background-color: green;\n\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    color: white;\n  }\n"]},"\n\n"]},{"t":"body","a":[["onload","checkLayoutForAnchorPos('.target')"]],"c":["\n  ",{"t":"p","a":[],"c":["You should see a row of five boxes in order."]},"\n\n  ",{"t":"div","a":[["class","containing-block"]],"c":["\n    ",{"t":"div","a":[["class","box target"],["data-offset-x","0"],["data-offset-y","0"]],"c":["1"],"v":{"offset-x":0,"offset-y":0}},"\n    ",{"t":"div","a":[["class","box target"],["data-offset-x","60"],["data-offset-y","0"]],"c":["2"],"v":{"offset-x":60,"offset-y":0}},"\n    ",{"t":"div","a":[["class","box target"],["data-offset-x","120"],["data-offset-y","0"]],"c":["3"],"v":{"offset-x":120,"offset-y":0}},"\n    ",{"t":"div","a":[["class","box target"],["data-offset-x","180"],["data-offset-y","0"]],"c":["4"],"v":{"offset-x":180,"offset-y":0}},"\n    ",{"t":"div","a":[["class","box target"],["data-offset-x","240"],["data-offset-y","0"]],"c":["5"],"v":{"offset-x":240,"offset-y":0}},"\n  "]},"\n\n"]}]}}
+    ]
+  }
+}

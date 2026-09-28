@@ -2,13 +2,13 @@
 // reads) plus a sidecar of the checks. Harness nodes are removed, every <style> becomes the one sheet, inline style="" and #id
 // selectors are lifted into generated classes, and a cascade guard refuses the test when the lift could change a winner.
 // Anything else the fixture cannot express is a refusal; feature support is left to Dragon's compiler.
-import { parse } from 'parse5';
-import type { DefaultTreeAdapterTypes } from 'parse5';
+// The input is a document tree (src/dom.ts): an HTML page, an XHTML or XML page (src/xml.ts), or Chrome's DOM snapshot of the
+// page after its scripts ran (src/snapshot.ts), in which case the checkLayout calls come from the snapshot, not from the scripts.
 import type { ComplexSelector, Declaration, Match, MatchElement, Specificity } from './css-lite.ts';
 import { groupsOverlap, matches, parseSelectorList, readDeclarations, readSheet, rewriteIds, specificity, stripComments } from './css-lite.ts';
-
-type P5Node = DefaultTreeAdapterTypes.Node;
-type P5Element = DefaultTreeAdapterTypes.Element;
+import type { DomDocument, DomElement } from './dom.ts';
+import { isElement, parseHtmlDocument, XHTML_NS } from './dom.ts';
+import { parseXmlDocument, XmlError } from './xml.ts';
 
 /** WPT runs every test in an 800x600 viewport at device pixel ratio 1 (wptrunner's default window). */
 export const WPT_VIEWPORT = { width: 800, height: 600 } as const;
@@ -52,15 +52,15 @@ export type Translation =
       readonly sidecar: Sidecar;
       /** 'translate:specificity-rewrite' when lifting could change which declaration wins, else null. */
       readonly guard: string | null;
-      /** Element data-dragon-id to tag, and parent id (null for html). */
-      readonly elements: ReadonlyMap<string, { readonly tag: string; readonly parent: string | null }>;
+      /** Element data-dragon-id to tag, parent id (null for html) and index in document order of the source tree. */
+      readonly elements: ReadonlyMap<string, { readonly tag: string; readonly parent: string | null; readonly index: number }>;
     };
 
 const HARNESS_SCRIPT = /\/resources\/(testharness|testharnessreport|check-layout-th)\.js$/;
 const AHEM_SHEET = /\/fonts\/ahem\.css$/i;
 
 type El = {
-  readonly p5: P5Element;
+  readonly ns: string;
   readonly tag: string;
   readonly attrs: Map<string, string>;
   readonly parent: El | null;
@@ -154,40 +154,85 @@ export function resolveHref(testPath: string, href: string): string | null {
   return decodeURIComponent(u.pathname.slice(1));
 }
 
-export function translate(path: string, source: string, commit: string, readWpt: ReadWpt = () => null): Translation {
-  if (/\.(xht|xhtml|xml|svg)$/.test(path)) return refuse('translate:xml-document');
-  const doc = parse(source);
-  const all: El[] = [];
-  const build = (node: P5Element, parent: El | null): El => {
-    const attrs = new Map<string, string>();
-    for (const a of node.attrs) {
-      const name = a.prefix === undefined || a.prefix === '' ? a.name : `${a.prefix}:${a.name}`;
-      if (!attrs.has(name)) attrs.set(name, a.value);
+export type TranslateOptions = {
+  /**
+   * 'check-layout' (default): the test's checkLayout calls become subtests. 'reftest': no checks; the fixture alone is wanted
+   * (src/reftest.ts), and any script is refused.
+   */
+  readonly mode?: 'check-layout' | 'reftest';
+  /**
+   * Snapshot mode: the checkLayout selector lists Chrome saw called at this DOM state. Scripts and event handler attributes are
+   * then dropped unread, because the snapshot already holds what they did.
+   */
+  readonly calls?: readonly string[];
+  /** check-layout's running test number before this state's calls (it counts across calls). */
+  readonly firstTestNumber?: number;
+  /** Appended to the fixture id, for one case per snapshot state. */
+  readonly idSuffix?: string;
+};
+
+/** The document tree of a WPT file by its extension, or the refusal when it cannot be read. */
+export function parseWptDocument(path: string, source: string): DomDocument | { readonly missing: string } {
+  if (/\.svg$/.test(path)) return { missing: 'translate:svg-document' };
+  if (/\.(xht|xhtml|xml)$/.test(path)) {
+    try {
+      return parseXmlDocument(source);
+    } catch (e) {
+      if (e instanceof XmlError) return { missing: 'translate:xml-parse' };
+      throw e;
     }
-    const el: El = { p5: node, tag: node.tagName, attrs, parent, previous: null, children: [], index: all.length, id: '', removed: false };
+  }
+  return parseHtmlDocument(source) ?? { missing: 'translate:no-html-element' };
+}
+
+export function translate(path: string, source: string, commit: string, readWpt: ReadWpt = () => null, options: TranslateOptions = {}): Translation {
+  const doc = parseWptDocument(path, source);
+  if ('missing' in doc) return refuse(doc.missing);
+  return translateDocument(path, doc, commit, readWpt, options);
+}
+
+export function translateDocument(path: string, doc: DomDocument, commit: string, readWpt: ReadWpt = () => null, options: TranslateOptions = {}): Translation {
+  const snapshot = options.calls !== undefined;
+  const reftest = options.mode === 'reftest';
+  const all: El[] = [];
+  const build = (node: DomElement, parent: El | null): El => {
+    const attrs = new Map<string, string>(node.attrs);
+    const el: El = { ns: node.ns, tag: node.tag, attrs, parent, previous: null, children: [], index: all.length, id: '', removed: false };
     all.push(el);
     let prev: El | null = null;
-    for (const c of node.childNodes as P5Node[]) {
-      if ('tagName' in c) {
-        const child = build(c as P5Element, el);
+    for (const c of node.children) {
+      if (isElement(c)) {
+        const child = build(c, el);
         child.previous = prev;
         prev = child;
         el.children.push(child);
-      } else if (c.nodeName === '#text') el.children.push({ text: (c as DefaultTreeAdapterTypes.TextNode).value });
+      } else el.children.push({ text: c.text });
     }
     return el;
   };
-  const htmlNode = doc.childNodes.find((c) => 'tagName' in c && (c as P5Element).tagName === 'html') as P5Element | undefined;
-  if (htmlNode === undefined) return refuse('translate:no-html-element');
-  const root = build(htmlNode, null);
-  if (all.some((e) => e.p5.namespaceURI !== 'http://www.w3.org/1999/xhtml')) return refuse('translate:foreign-element');
+  if (doc.root.tag !== 'html') return refuse(doc.root.ns === XHTML_NS ? 'translate:no-html-element' : 'translate:foreign-element');
+  const root = build(doc.root, null);
+  if (all.some((e) => e.ns !== XHTML_NS)) return refuse('translate:foreign-element');
 
   // Harness nodes.
-  const selectorLists: string[] = [];
+  const selectorLists: string[] = [...(options.calls ?? [])];
   const styles: string[] = [];
+  // <?xml-stylesheet?> sheets come first in the style order, as they precede the root element.
+  for (const pi of doc.stylesheetPIs) {
+    if (pi.alternate) continue;
+    const media = pi.media.trim().toLowerCase();
+    if (media !== 'all' && media !== 'screen' && media !== '') return refuse('translate:style-media');
+    const target = resolveHref(path, pi.href);
+    const text = target === null ? null : readWpt(target);
+    if (text === null) return refuse('translate:external-stylesheet');
+    if (/url\s*\(/i.test(text)) return refuse('translate:external-stylesheet-url');
+    styles.push(`/* <?xml-stylesheet?> ${target as string} */\n${text}`);
+  }
   for (const el of all) {
     if (el.tag === 'script') {
       el.removed = true;
+      if (snapshot) continue;
+      if (reftest) return refuse('translate:script');
       const src = el.attrs.get('src');
       if (src !== undefined) {
         if (!HARNESS_SCRIPT.test(src)) return refuse(`translate:script-src:${src.slice(src.lastIndexOf('/') + 1)}`);
@@ -221,14 +266,14 @@ export function translate(path: string, source: string, commit: string, readWpt:
       return refuse(`translate:head-element:${el.tag}`);
     }
     for (const name of el.attrs.keys()) {
-      if (!name.startsWith('on')) continue;
-      if (name !== 'onload' || el.tag !== 'body') return refuse('translate:event-attribute');
+      if (!name.startsWith('on') || snapshot) continue;
+      if (reftest || name !== 'onload' || el.tag !== 'body') return refuse('translate:event-attribute');
       const calls = harnessCalls(el.attrs.get(name) as string);
       if (calls === null) return refuse('translate:event-attribute');
       selectorLists.push(...calls);
     }
   }
-  if (selectorLists.length === 0) return refuse('translate:no-checklayout');
+  if (selectorLists.length === 0 && !reftest) return refuse('translate:no-checklayout');
   const removedAncestor = (el: El): boolean => el.removed || (el.parent !== null && removedAncestor(el.parent));
   const kept = all.filter((e) => !removedAncestor(e));
   const fixtureElements = kept.filter((e) => e.tag !== 'head');
@@ -269,7 +314,7 @@ export function translate(path: string, source: string, commit: string, readWpt:
     return removedAncestor(e) && out.length > 0 ? 'translate:check-on-harness-node' : out;
   };
   const subtests: Subtest[] = [];
-  let testNumber = 0;
+  let testNumber = options.firstTestNumber ?? 0;
   for (const list of selectorLists) {
     const selectors = parseSelectorList(list);
     if (selectors === null) return refuse('translate:checklayout-selector');
@@ -356,16 +401,20 @@ export function translate(path: string, source: string, commit: string, readWpt:
   // The fixture HTML.
   const header = `/* Translated from web-platform-tests ${path} at commit ${commit}. WPT is 3-clause BSD: see vendor/wpt/LICENSE.md. */`;
   const sheet = `\n${header}\n${rewritten}${lifted.length === 0 ? '' : `\n${lifted.join('\n')}`}\n`;
-  const elements = new Map<string, { tag: string; parent: string | null }>();
+  const elements = new Map<string, { tag: string; parent: string | null; index: number }>();
   const write = (e: El, parent: string | null): string | null => {
-    elements.set(e.id, { tag: e.tag, parent });
+    elements.set(e.id, { tag: e.tag, parent, index: e.index });
     const attrs: string[] = [`data-dragon-id="${escapeAttr(e.id)}"`];
     const cls = [...(e.attrs.get('class') ?? '').split(/\s+/).filter((c) => c !== ''), ...(extraClass.get(e) ?? [])];
     if (cls.length > 0) attrs.push(`class="${escapeAttr(cls.join(' '))}"`);
     for (const [name, value] of e.attrs) {
-      if (name === 'id' || name === 'class' || name === 'style' || name === 'title' || name === 'xmlns' || name.startsWith('data-') || (name === 'onload' && e.tag === 'body')) continue;
-      if (!/^[a-z][a-z0-9-]*$/.test(name)) return null;
-      attrs.push(`${name}="${escapeAttr(value)}"`);
+      if (name === 'id' || name === 'class' || name === 'style' || name === 'title' || name === 'xmlns' || name.startsWith('xmlns:') || name.startsWith('data-') || (name === 'onload' && e.tag === 'body')) continue;
+      if (snapshot && name.startsWith('on')) continue;
+      // XHTML: xml:lang is the language attribute; lang wins when both are present, as in HTML.
+      const out = name === 'xml:lang' ? 'lang' : name;
+      if (name === 'xml:lang' && e.attrs.has('lang')) continue;
+      if (!/^[a-z][a-z0-9-]*$/.test(out)) return null;
+      attrs.push(`${out}="${escapeAttr(value)}"`);
     }
     let body = '';
     for (const c of e.children) {
@@ -384,7 +433,7 @@ export function translate(path: string, source: string, commit: string, readWpt:
   if (html === null) return refuse('translate:attribute-name');
   return {
     kind: 'fixture',
-    id: fixtureIdOf(path),
+    id: `${fixtureIdOf(path)}${options.idSuffix ?? ''}`,
     html: `<!DOCTYPE html>\n${html}\n`,
     sidecar: { source: path, wpt: commit, viewport: { ...WPT_VIEWPORT }, subtests },
     guard,

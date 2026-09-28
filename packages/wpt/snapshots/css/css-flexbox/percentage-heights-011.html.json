@@ -1,0 +1,12 @@
+{
+  "source": "css/css-flexbox/percentage-heights-011.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "dbf9b0a70f0a7fcc8e45512beeacc9790169b9afbdc01aa1c5d02ba5ee93ca87",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":"#outer 1","pass":true}]},
+    "states": [
+      {"call":"#outer","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":["\n",{"t":"title","a":[],"c":["CSS Flexbox: percentage height of flex item"]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-flexbox/#flex-property"]],"c":[]},"\n",{"t":"link","a":[["href","support/flexbox.css"],["rel","stylesheet"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","This test checks that the height of flexitems work properly\nwith percentage value and 'overflow-y' auto."]],"c":[]},"\n","\n","\n","\n","\n"]},"\n",{"t":"body","a":[],"c":["\n",{"t":"div","a":[["id","log"]],"c":[]},"\n",{"t":"div","a":[["id","outer"],["data-expected-height","100"],["style","height: 100px;"]],"c":["\n  ",{"t":"div","a":[["class","flexbox"],["data-expected-height","100"],["style","height: 100%"]],"c":["\n    ",{"t":"div","a":[["class","flex-one"],["data-expected-height","100"],["style","overflow-y: auto; height: 100%"]],"c":["\n        ",{"t":"div","a":[["data-expected-height","100"],["style","height: 100%"]],"c":["\n          ",{"t":"div","a":[["data-expected-height","100"],["style","width: 100px; height: 100px; background-color: green"]],"c":[],"v":{"height":100}},"\n        "],"v":{"height":100}},"\n    "],"v":{"height":100}},"\n  "],"v":{"height":100}},"\n"],"v":{"height":100}},"\n\n\n"]}]}}
+    ]
+  }
+}

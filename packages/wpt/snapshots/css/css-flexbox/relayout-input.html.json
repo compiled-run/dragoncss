@@ -1,0 +1,7 @@
+{
+  "source": "css/css-flexbox/relayout-input.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "48c0b9f8ddc6696be57797dee2ad86bfd1eaea76198111c2cb752641dcfcfb96",
+  "result": {"refused":"snapshot:other-subtests"}
+}

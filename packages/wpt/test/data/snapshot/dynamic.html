@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<!-- Synthetic page written for packages/wpt (not a WPT file): two checkLayout calls at two DOM states. -->
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="/resources/check-layout-th.js"></script>
+<style>.box { width: 10px; height: 10px; } .wide { width: 40px; }</style>
+<body>
+<div class="s1"><div id="a" class="box" data-expected-width="10"></div></div>
+<div class="s2"><div id="b" class="box" data-expected-width="40"></div></div>
+<script>
+checkLayout('.s1', false);
+document.getElementById('b').classList.add('wide');
+checkLayout('.s2');
+</script>
+</body>

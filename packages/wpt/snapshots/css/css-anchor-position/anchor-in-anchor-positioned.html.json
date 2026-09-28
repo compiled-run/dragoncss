@@ -1,0 +1,12 @@
+{
+  "source": "css/css-anchor-position/anchor-in-anchor-positioned.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "615bbfbd84a452a97aaa04bcd88695631c10fe10e5a0ea870ca568b4bb267366",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".target 1","pass":true},{"name":".target 2","pass":true}]},
+    "states": [
+      {"call":".target","matched":2,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"title","a":[],"c":["Tests that anchors in anchor-positioned elements are discoverable"]},"\n\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-position-1/#determining"]],"c":[]},"\n",{"t":"link","a":[["rel","author"],["title","Kiet Ho"],["href","mailto:kiet.ho@apple.com"]],"c":[]},"\n\n","\n","\n","\n","\n\n",{"t":"style","a":[],"c":["\n  .containing-block {\n    border: 1px solid black;\n\n    position: relative;\n    width: 200px;\n    height: 150px;\n  }\n\n  .box {\n    width: 50px;\n    height: 50px;\n  }\n\n  #anchor-1 {\n    position: absolute;\n    top: 50px;\n    left: 50px;\n\n    anchor-name: --anchor-1;\n\n    background: green;\n  }\n\n  #anchor-positioned-1 {\n    position: absolute;\n    position-anchor: --anchor-1;\n    position-area: top right;\n  }\n\n  #anchor-2 {\n    anchor-name: --anchor-2;\n    background: blue;\n  }\n\n  #anchor-positioned-2 {\n    position: absolute;\n    position-anchor: --anchor-2;\n    position-area: bottom right;\n\n    background: cyan;\n  }\n"]},"\n\n"]},{"t":"body","a":[["onload","checkLayoutForAnchorPos('.target')"]],"c":["\n  ",{"t":"div","a":[["class","containing-block"]],"c":["\n    ",{"t":"div","a":[["class","box"],["id","anchor-1"]],"c":[]},"\n\n    ",{"t":"div","a":[["class","box target"],["id","anchor-positioned-1"],["data-offset-x","100"],["data-offset-y","0"]],"c":["\n      ",{"t":"div","a":[["class","box"],["id","anchor-2"]],"c":[]},"\n    "],"v":{"offset-x":100,"offset-y":0}},"\n\n    ",{"t":"div","a":[["class","box target"],["id","anchor-positioned-2"],["data-offset-x","150"],["data-offset-y","50"]],"c":[],"v":{"offset-x":150,"offset-y":50}},"\n  "]},"\n"]}]}}
+    ]
+  }
+}

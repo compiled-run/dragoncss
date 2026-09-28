@@ -1,0 +1,12 @@
+{
+  "source": "css/css-grid/alignment/grid-content-alignment-with-abspos-001.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "77ba800d4ac21a17d7a85f3598602c57cd4fa5e9ca815fdea8282618ceac77ad",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".grid 1","pass":true}]},
+    "states": [
+      {"call":".grid","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":["\n",{"t":"title","a":[],"c":["CSS Grid Layout Test: dynamic content alignment with abspos elements."]},"\n",{"t":"link","a":[["rel","author"],["title","Kurt Catti-Schmidt"],["href","mailto:kschmi@microsoft.com"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-grid/#alignment"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-align-3/#content-distribution"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-align-3/#propdef-align-content"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-align-3/#propdef-justify-content"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://bugs.chromium.org/p/chromium/issues/detail?id=1248940"]],"c":[]},"\n",{"t":"link","a":[["rel","stylesheet"],["href","/css/support/grid.css"]],"c":[]},"\n",{"t":"link","a":[["rel","stylesheet"],["href","/css/support/alignment.css"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","Test that dynamically changing alignment for abspos grid items works as expected."]],"c":[]},"\n\n",{"t":"style","a":[],"c":["\nbody {\n  margin: 0px;\n  width: 800px;\n}\n\n.grid {\n  width: 100%;\n  height: 600px;\n}\n\n.a {\n    width: 140px;\n    height: 60px;\n    border: 1px solid purple;\n    position: absolute;\n}\n"]},"\n\n","\n","\n","\n","\n"]},"\n\n",{"t":"body","a":[["onload","updateAlignmentAndCheckLayout()"]],"c":["\n\n  ",{"t":"div","a":[["class","grid"],["data-expected-width","800"],["data-expected-height","600"]],"c":["\n    ",{"t":"div","a":[["class","a"],["id","item"],["data-offset-x","329"],["data-offset-y","269"],["data-expected-width","142"],["data-expected-height","62"],["style","place-self: center;"]],"c":[],"v":{"width":142,"height":62,"offset-x":329,"offset-y":269}},"\n  "],"v":{"width":800,"height":600}},"\n\n\n\n"]}]}}
+    ]
+  }
+}

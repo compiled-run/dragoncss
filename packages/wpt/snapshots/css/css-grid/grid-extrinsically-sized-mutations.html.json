@@ -1,0 +1,7 @@
+{
+  "source": "css/css-grid/grid-extrinsically-sized-mutations.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "23d313bb16a4c6ef36021002e01547e6fc3d3e656dbd3d8b7ee685c3db338e2f",
+  "result": {"refused":"snapshot:no-checklayout"}
+}

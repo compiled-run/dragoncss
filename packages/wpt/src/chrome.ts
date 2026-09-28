@@ -27,15 +27,21 @@ const TYPES: Readonly<Record<string, string>> = {
 
 export type WptServer = { readonly origin: string; close(): Promise<void> };
 
-export async function serveWpt(root: string): Promise<WptServer> {
+/**
+ * Serves the WPT copy read-only. overlays maps a URL path prefix ("/css/dragon-test/") to another directory, for the package's
+ * own synthetic test pages, which then load WPT's /resources/ like any test.
+ */
+export async function serveWpt(root: string, overlays: Readonly<Record<string, string>> = {}): Promise<WptServer> {
   const server = createServer((req, res) => {
     const path = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
     if (path === '/resources/testharnessreport.js') {
       res.writeHead(200, { 'content-type': 'text/javascript' }).end(REPORTER_JS);
       return;
     }
-    const file = normalize(join(root, path));
-    if (!file.startsWith(root + sep)) {
+    const overlay = Object.keys(overlays).find((p) => path.startsWith(p));
+    const base = overlay === undefined ? root : (overlays[overlay] as string);
+    const file = normalize(join(base, overlay === undefined ? path : path.slice(overlay.length)));
+    if (!file.startsWith(base + sep)) {
       res.writeHead(403).end();
       return;
     }

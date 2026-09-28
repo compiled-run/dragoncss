@@ -1,0 +1,7 @@
+{
+  "source": "css/css-flexbox/abspos/position-absolute-002.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "1972269d945cb1536edc566595d9bf6a86ec84c95dadb942941f8647863fa867",
+  "result": {"refused":"snapshot:other-subtests"}
+}

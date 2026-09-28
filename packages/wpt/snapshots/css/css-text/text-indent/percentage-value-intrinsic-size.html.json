@@ -1,0 +1,12 @@
+{
+  "source": "css/css-text/text-indent/percentage-value-intrinsic-size.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "df0fde3682b1d6046302f53e66088d799c887e7cbac71269b52d0e093a99c842",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":"#container 1","pass":true}]},
+    "states": [
+      {"call":"#container","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"link","a":[["rel","author"],["title","Morten Stenshorne"],["href","mstensho@chromium.org"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://www.w3.org/TR/css-text-3/#text-indent-property"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","Percentages should be ignored when calculating min/max intrinsic sizes."]],"c":[]},"\n"]},{"t":"body","a":[],"c":[{"t":"p","a":[],"c":["Test passes if there is a filled green square."]},"\n",{"t":"div","a":[["id","container"],["data-expected-width","50"],["style","position:relative; float:left; height:100px; background:green;"]],"c":["\n  ",{"t":"div","a":[["id","foo"],["style","text-indent: 100%;"]],"c":["\n    ",{"t":"div","a":[["data-offset-x","50"],["data-expected-width","50"],["style","display:inline-block; width:50px; height:100px; background:green;"]],"c":[],"v":{"width":50,"offset-x":50}},"\n    ",{"t":"div","a":[["style","width:50px;"]],"c":[]},"\n  "]},"\n"],"v":{"width":50}},"\n","\n","\n","\n"]}]}}
+    ]
+  }
+}

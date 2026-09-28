@@ -1,0 +1,7 @@
+{
+  "source": "css/css-align/blocks/align-content-block-009.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "ae16ba2355f14fd710bfbce3d0446abacafe3ec0a6f62109a1ef6abbb2711255",
+  "result": {"refused":"script:event:click","flags":["script:event:click","script:timing:requestAnimationFrame"]}
+}

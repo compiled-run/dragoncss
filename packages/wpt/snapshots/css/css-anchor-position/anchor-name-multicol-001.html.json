@@ -1,0 +1,12 @@
+{
+  "source": "css/css-anchor-position/anchor-name-multicol-001.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "7eeedb1feec46b2a046c324a72c53ddad99369bdf816a1f5082e5eb7f8d0c2ad",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".target 1","pass":true}]},
+    "states": [
+      {"call":".target","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"title","a":[],"c":["Anchors in a different containing block in multicol"]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-1/#propdef-anchor-name"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-1/#anchor-size"]],"c":[]},"\n",{"t":"link","a":[["rel","author"],["href","mailto:kojii@chromium.org"]],"c":[]},"\n","\n","\n","\n","\n",{"t":"style","a":[],"c":["\n.relpos {\n  position: relative;\n}\n.columns {\n  column-count: 2;\n  column-fill: auto;\n  column-gap: 10px;\n  column-width: 100px;\n  width: 210px;\n  height: 100px;\n}\n.spacer {\n  height: 10px;\n  background: pink;\n}\n.anchor1 {\n  anchor-name: --a1;\n  margin-left: 10px;\n  width: 40px;\n  height: 20px;\n  background: orange;\n}\n.target {\n  position: absolute;\n  left: anchor(--a1 left);\n  top: anchor(--a1 top);\n  width: anchor-size(--a1 width);\n  height: anchor-size(--a1 height);\n  background: lime;\n  opacity: .3;\n}\n"]},"\n"]},{"t":"body","a":[["onload","checkLayoutForAnchorPos('.target')"]],"c":["\n  ",{"t":"div","a":[["class","columns"]],"c":["\n    ",{"t":"div","a":[["class","relpos"]],"c":["\n      ",{"t":"div","a":[["class","spacer"]],"c":[]},"\n      ",{"t":"div","a":[["class","anchor1"]],"c":[]},"\n    "]},"\n    ",{"t":"div","a":[["class","relpos"]],"c":["\n      ",{"t":"div","a":[["class","target"],["data-offset-x","0"],["data-offset-y","0"],["data-expected-width","0"],["data-expected-height","0"]],"c":[],"v":{"width":0,"height":0,"offset-x":0,"offset-y":0}},"\n    "]},"\n  "]},"\n\n"]}]}}
+    ]
+  }
+}

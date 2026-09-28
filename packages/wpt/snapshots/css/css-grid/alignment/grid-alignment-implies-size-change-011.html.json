@@ -1,0 +1,13 @@
+{
+  "source": "css/css-grid/alignment/grid-alignment-implies-size-change-011.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "d683a204b2081af39a81d95bcaa8f22a8fd374b89535cdc44ecc2f89cfa29acc",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".before 1","pass":true},{"name":".after 2","pass":true}]},
+    "states": [
+      {"call":".before","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"meta","a":[["charset","utf-8"]],"c":[]},"\n",{"t":"title","a":[],"c":["CSS Grid Layout Test: Changes on Default-Alignment may affect grid item's height"]},"\n",{"t":"link","a":[["rel","author"],["title","Javier Fernandez Garcia-Boente"],["href","mailto:jfernandez@igalia.com"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-grid-1/#column-align"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-grid-1/#grid-item-sizing"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-align-3/#propdef-align-items"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-align/#valdef-align-self-stretch"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-align/#valdef-align-self-start"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","Changing the grid's align-items value from 'stretch' to 'start' causes replaced items to shrink."]],"c":[]},"\n",{"t":"link","a":[["rel","stylesheet"],["type","text/css"],["href","/fonts/ahem.css"]],"c":[]},"\n",{"t":"style","a":[],"c":["\n.grid {\n  position: relative;\n  display: inline-grid;\n  grid-template-columns: 100px;\n  grid-template-rows: 200px;\n  font: 20px/1 Ahem;\n  background: grey;\n  align-items: stretch;\n}\n#item {\n  background: blue;\n  align-self: auto;\n}\n"]},"\n","\n","\n","\n","\n","\n"]},{"t":"body","a":[["onload","document.fonts.ready.then(() => { runTest(); })"]],"c":["\n",{"t":"div","a":[["class","grid"],["id","grid"]],"c":["\n  ",{"t":"img","a":[["id","item"],["src","support/100x100-green.png"],["class"," before"],["data-expected-width","200"],["data-expected-height","200"]],"c":[],"v":{"width":200,"height":200}},"\n"]},"\n\n"]}]}},
+      {"call":".after","matched":1,"patch":{"14":{"a":[["class","grid"],["id","grid"],["style","align-items: start;"]]},"15":{"a":[["id","item"],["src","support/100x100-green.png"],["class"," before after"],["data-expected-width","100"],["data-expected-height","100"]],"v":{"width":100,"height":100}}}}
+    ]
+  }
+}
