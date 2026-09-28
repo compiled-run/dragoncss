@@ -1,0 +1,276 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Milestone 2 proof: HarfBuzz gate, wave-1 integration, P5 device lanes, north star on device"
+  slug: "milestone-2-proof"
+  kind: recovery # specific | open_ended | existing_plan | recovery | audit
+  tranche: "Continuous: run parallel lanes (PM docs, integrator, TXT1-0, TXT1-C, value model, P5, north star) in disjoint worktrees, merging serially through the integrator, until all three checkpoints pass on iOS and Android."
+  status: active # active | blocked | done
+  oracle:
+    signal: "pnpm test green on master, plus (1) the TXT1-0 gate: WASM HarfBuzz plus the Zig shim equals Chrome LU widths on 620/620 spike paragraphs, and the iOS xcframework and Android .so build; (2) P5: all five device lanes (iOS 2 and 3; Android 2, 2.625 and 3) pass layout-vectors-device, device-frames, device-applied, device-lines and device-pixels over every master fixture, with derived counts and the raster plant caught; (3) the music-player north star runs end to end on the iPhone simulator and the Android emulator, and matches Chrome frames, applied values and pixels under the P5 lane rules."
+    cadence: "after each Worker package merges, and at final audit"
+    final_proof: "T999 maps each checkpoint to test output and lane reports per platform; a lane blocked on owner tooling is not met."
+  intake:
+    original_request: "setup a new /goal and continue this work. Also maximum parallelization please."
+    interpreted_outcome: "Resume the rate-limited milestone-2 work (integrator merges, TXT1-0 HarfBuzz gate, P5 device lanes with the pixel check) and drive it through the three owner checkpoints, running every lane that is disjoint in parallel."
+    input_shape: recovery # vague | specific | existing_plan | recovery | audit
+    audience: "owner; then framework authors (Markless first)"
+    authority: requested # requested | approved | inferred | needs_approval | blocked
+    proof_type: test # test | demo | artifact | metric | review | source_backed_answer | decision
+    completion_proof: "Checkpoints 1-3 met on iOS and Android and audited by T999."
+    likely_misfire: "Parallel lanes collide on shared files or hand-merge generated files; one platform lags and becomes later; a HarfBuzz mismatch is tolerated; the north star is 'verified' by screenshot judgement instead of numeric lanes."
+    blind_spots_considered:
+      - "The /tmp/dragon-int integration worktree is mid-merge of feat-block-elements (conflicts resolved, regeneration half done; the previous Worker was running regen.sh with UA capture)."
+      - "The /tmp/dragon-hb worktree has vendor/harfbuzz staged but no shim, build or gate yet."
+      - "The P5 stop needs the owner's decisions.md edits on master (T015 §3.3 and §5)."
+      - "The simulators and emulators are one shared machine resource; device-lane runs must not overlap."
+      - "The north star depends on many roadmap packages; FORM-a is pulled forward per coverage-roadmap.md."
+    existing_plan_facts:
+      - "T015 (milestone-2 notes/T015-p4-review-p5-plan.md) approved P4 and specified P5 (§4) with merge must-fixes M1 and M2 (§2), board changes (§5) and a revised P6 and P7."
+      - "Merge order: feat-block-elements (in progress), feat-cascade-var, feat-units, wpt-breadth, engine-linebreak, then t014-p4-backends with M1 and M2. Generated files are regenerated at merge."
+      - "Text plan (docs/research/text-plan-summary.md): serial on inline.ts and text.ts: P4, engine-linebreak, P5, V1/V2, INL1, TXT1a-d, TXT2. TXT1-0 and TXT1-C are parallel-safe because they write new files only."
+      - "HarfBuzz pinned at fa2908bf16d2ccd6623f4d575455fea72a1a722b; the shim is dragon_hb.zig built by zig build (Zig 0.16 installed) to WASM, an iOS xcframework and the Android .so; Chrome's advance function is trunc(float(float(units*size/upem))*65536)."
+      - "Owner 2026-09-28: selection and editing of custom-drawn text: Dragon builds it, with native feel (answer shown in the screenshot; not yet recorded in decisions.md)."
+      - "Env: JAVA_HOME=/opt/homebrew/opt/openjdk@17 ANDROID_HOME=/opt/homebrew/share/android-commandlinetools DRAGON_WPT_DIR=/Users/jacksm5pro/dev/open-source/dragon/vendor/wpt."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 4 # owner asked for maximum parallelization; each writer has its own worktree and disjoint scope (see lanes)
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  exact_human_approval_can_terminal_wait: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  parallel_lanes:
+    - "active_task is the PM's focus; tasks listed under dispatched run concurrently in their own worktrees."
+    - "Only the integrator (T002 and successors) merges into master; lanes commit on their own branches."
+    - "Only one task at a time may boot simulators or emulators; the PM grants a device lease."
+    - "inline.ts and text.ts are serial: P4, engine-linebreak, P5, V, INL1, TXT1."
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  # installed | bundled_not_installed | missing | unknown
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/milestone-2-proof/"
+    command: "node /Users/jacksm5pro/.claude-swap-backup/sessions/2-jackshelton30_gmail.com/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-2-proof"
+
+active_task: T002
+dispatched: [T002, T003, T004, T006, T010] # tasks running concurrently in their own lanes (PM-maintained)
+device_lease: null # task id holding simulators and emulators
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    lane: pm
+    objective: "Land the uncommitted milestone-2 docs on master so P5's stop condition is cleared. Commit: docs/decisions.md with the T015 O2 fixes; a new owner ruling 'selection and editing of custom-drawn text: Dragon builds it, native feel' that annotates decision 7; docs/research/*; docs/goals/milestone-2 (T015 marked done with a receipt pointing at notes/T015); docs/goals/milestone-2-proof; scripts/update-wpt.sh. Also point T014 note section 2 at sections 1 and 5 (O1)."
+    inputs:
+      - "docs/goals/milestone-2/notes/T015-p4-review-p5-plan.md §2 O1 and O2, §5"
+      - "git status on master"
+    constraints:
+      - "Docs and goal files only. Do not touch design/ (the owner's homepage work)."
+      - "Commit locally on master; no push."
+    expected_output:
+      - "Commit sha on master; list of files"
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "Committed bf9793b on master: decisions.md (owner edits plus O2 fixes: the Text strategy advances bullet marked superseded by font-unit and HarfBuzz advances, decision 7 annotated, new 'Text selection and editing' ruling: Dragon builds it with a native feel), docs/research plans and the text spike, the milestone-2 board (T015 done with its receipt; T999 active as a history audit) and this board. The API 29-30 drawText bullet was already gone. O1 skipped: the T014 note exists only on the P4 branch, so the integrator can fix it at merge. design/ left untouched."
+      evidence:
+        - bf9793b
+        - docs/decisions.md
+        - docs/goals/milestone-2/state.yaml
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: active
+    lane: integrator
+    reasoning_hint: high
+    objective: "Integrator, in /tmp/dragon-int on branch integration: finish the in-progress feat-block-elements merge (regenerate every generated file, never hand-merge), then merge serially feat-cascade-var, feat-units, wpt-breadth, engine-linebreak (unwired) and t014-p4-backends with T015 M1 (derived counts in native-host.test.ts) and M2 (union of package.json scripts). After each merge run typecheck and pnpm test. After P4 also run native:build for ios and android at derived counts and parity:lanes --run-host, then check that lanes.json is clean. Finally merge master (T001's docs) and fast-forward master to integration."
+    inputs:
+      - "docs/goals/milestone-2/notes/T015-p4-review-p5-plan.md §2"
+      - "docs/research/coverage-roadmap.md (merge rules)"
+      - "/tmp/dragon-int current merge state (MERGE_HEAD b4164dc)"
+    allowed_files:
+      - "Any file touched by the branches being merged, plus files their generators write (packages/*/emitted, vectors, generated.ts, lanes.json, corpus-*.json, wpt expectations, profiles)"
+      - "packages/parity/test/native-host.test.ts (M1)"
+      - "package.json (M2)"
+    verify:
+      - "export JAVA_HOME=/opt/homebrew/opt/openjdk@17 ANDROID_HOME=/opt/homebrew/share/android-commandlinetools DRAGON_WPT_DIR=/Users/jacksm5pro/dev/open-source/dragon/vendor/wpt"
+      - "pnpm typecheck"
+      - "pnpm test (all green after every merge)"
+      - "pnpm run native:build -- --target ios; pnpm run native:build -- --target android (derived case counts)"
+      - "pnpm run parity:lanes -- --run-host; git diff --exit-code packages/parity/out/lanes.json"
+    stop_if:
+      - "A merge needs a behavioural code decision beyond conflict resolution, regeneration, M1 and M2."
+      - "A strict-tier output (engine output, vectors, captures, tolerances, support labels, emitted CSS bodies, checks) changes without its branch's proof."
+      - "Verification fails twice on the same merge."
+    receipt: null
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: text
+    reasoning_hint: high
+    objective: "TXT1-0, in /tmp/dragon-hb on branch txt1-harfbuzz-gate: with vendored HarfBuzz at fa2908bf16d2ccd6623f4d575455fea72a1a722b (already staged, unmodified), write the Zig shim dragon_hb.zig and build.zig. zig build must produce WASM, an iOS xcframework (device and simulator) and the Android .so for arm64-v8a and x86_64. The shim installs Chrome's 16.16 advance function (trunc(float(float(units*size/upem))*65536), no FP contraction) and returns integer glyph id, cluster, advance, offsets and unsafe-to-break flags. Then build a Node gate that shapes all 620 docs/research/text-spike paragraphs through WASM, applies Blink's float accumulation and FromFloatCeil, and compares them with Chrome's LU widths. Measure the binary size per ABI."
+    inputs:
+      - "docs/research/text-plan-summary.md"
+      - "docs/decisions.md 'Text shaping: bundled HarfBuzz'"
+      - "docs/research/text-spike/ (corpus, Chrome widths, fonts)"
+    allowed_files:
+      - "vendor/harfbuzz/** (vendored, unmodified)"
+      - "packages/text-shaper/** (new package: build.zig, dragon_hb.zig, the TS WASM loader, the gate script and its test)"
+      - "pnpm-workspace.yaml, package.json (scripts only), pnpm-lock.yaml (if the new package needs it)"
+      - "docs/research/text-spike/gate-*.md (gate report)"
+    verify:
+      - "zig build (all three targets) exits 0"
+      - "the gate reports 620/620 exact"
+      - "pnpm typecheck; pnpm test"
+    stop_if:
+      - "Any gate paragraph mismatches after the arithmetic is checked against Blink's source: stop and report to the owner with the diffs (owner rule)."
+      - "HarfBuzz source would need modification."
+      - "Need files outside allowed_files (in particular packages/layout)."
+    receipt: null
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: queued
+    lane: fonts
+    reasoning_hint: high
+    objective: "Specify TXT1-C, the largest safe package that writes new files only: @font-face parsing in the compiler, the bundled-font SHA-256 manifest entering the compilation digest (a remote URL is a build error), the project font map for generic families (pinned or platform), and a port of Blink's font_selection_algorithm. Give allowed_files that are disjoint from T002, T003 and P5, plus verify and stop_if."
+    inputs:
+      - "docs/research/text-plan-summary.md 'Fonts, matching and fallback'"
+      - "packages/dragon/src (compiler layout), vendor/fonts"
+    constraints:
+      - "Read-only."
+    expected_output:
+      - "T005 worker package: objective, allowed_files, verify, stop_if; any file that must wait for the integrator"
+    receipt: null
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: fonts
+    objective: "Execute TXT1-C as specified by T004, in /tmp/dragon-fonts on branch txt1c-fonts, branched from master."
+    allowed_files: []
+    verify: []
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Verification fails twice."
+    receipt: null
+  - id: T006
+    type: judge
+    assignee: Judge
+    status: queued
+    lane: engine
+    reasoning_hint: high
+    objective: "Specify the engine value model package (V1, and V2 if it fits in one safe slice) from docs/research/engine-value-model-plan.md, to branch from master after P4 merges. Rule whether it can run in parallel with P5 on disjoint files (P5 owns inline.ts and text.ts first), and give allowed_files, verify and stop_if."
+    inputs:
+      - "docs/research/engine-value-model-plan.md"
+      - "docs/research/coverage-roadmap.md §merge rules"
+      - "docs/goals/milestone-2/notes/T015-p4-review-p5-plan.md §4 (P5 file list)"
+    constraints:
+      - "Read-only."
+    expected_output:
+      - "T009 worker package, or a ruling that V must follow P5"
+    receipt: null
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: device
+    reasoning_hint: high
+    objective: "P5, device lanes on iOS and Android (milestone-2 notes/T015-p4-review-p5-plan.md §4, binding): branch t016-p5-device-lanes from master after T002 lands P4, in worktree /tmp/dragon-p5. Covers the device runner and matrix, layout-vectors-device, device-frames, device-applied, device-lines with the break reference, device-pixels with the Chrome pixel reference at DPR 2, 3 and 2.625, the points protocol, the glyph rule, the capture-trust probe and the raster plant, and DUMP_FAULTS on real dumps. Every master fixture is included, with derived counts."
+    inputs:
+      - "docs/goals/milestone-2/notes/T015-p4-review-p5-plan.md §3-§4"
+    allowed_files:
+      - "As listed in T015 §4 (binding)"
+    verify:
+      - "As listed in T015 §4 Verify (binding), with the env exports"
+    stop_if:
+      - "As listed in T015 §4; the fallback split P5a/P5b applies only after verification fails twice"
+      - "Device lease not held when booting simulators or emulators"
+    receipt: null
+  - id: T008
+    type: judge
+    assignee: Judge
+    status: queued
+    lane: device
+    reasoning_hint: high
+    objective: "Review P5 (T007) against T015 §4 and checkpoint 2, then specify P6 (fix and promote, including accessibility parity and the owner's selection and editing ruling: Dragon builds it with native feel)."
+    constraints:
+      - "Read-only."
+    expected_output:
+      - "P5 verdict; P6 worker package"
+    receipt: null
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: "Execute the value-model package as specified by T006."
+    allowed_files: []
+    verify: []
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Verification fails twice."
+    receipt: null
+  - id: T010
+    type: judge
+    assignee: Judge
+    status: queued
+    lane: north-star
+    reasoning_hint: high
+    objective: "Plan checkpoint 3: map every CSS feature and element examples/music-player uses to roadmap packages and their current state on master (merged, in flight, missing), including FORM-a pulled forward. Order the remaining packages for maximum parallelism on disjoint write scopes, define the north-star device lane (the P5 lane rules applied to the demo on both platforms), and give the first two Worker packages that can start now."
+    inputs:
+      - "docs/research/coverage-roadmap.md (north-star paragraph and merge rules)"
+      - "examples/music-player"
+      - "docs/decisions.md course correction 4"
+    constraints:
+      - "Read-only."
+    expected_output:
+      - "Feature-to-package map; ordered package list with lanes; first Worker packages"
+    receipt: null
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit checkpoints 1-3 per platform against the oracle."
+    inputs:
+      - "All receipts, test output, lane reports, gate report"
+    constraints:
+      - "Reject if any checkpoint is unmet on either platform, any device lane is not run, stale or failing, tolerances were loosened, or a gate mismatch was tolerated."
+      - "A lane blocked on owner tooling is not met."
+    expected_output:
+      - "complete or not_complete; full_outcome_complete true or false"
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []

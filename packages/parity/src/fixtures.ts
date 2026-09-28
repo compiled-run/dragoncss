@@ -2,6 +2,7 @@
 import type { BackgroundResetLonghand, DiagnosticCode, Environment } from 'dragon';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
+import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
@@ -64,6 +65,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'selectors', fixtures: SELECTORS },
   { id: 'block-elements', fixtures: BLOCK_ELEMENTS },
   { id: 'units', fixtures: UNITS },
+  { id: 'contexts', fixtures: CONTEXTS },
 ];
 
 export const FIXTURES: readonly FixtureSpec[] = FIXTURE_GROUPS.flatMap((g) => g.fixtures);

@@ -40,8 +40,8 @@ web-platform-tests". It never edits the WPT copy.
   - Chrome passes 14,956 of 15,481 subtests and 74,150 of 75,120 checks on them. 989 files pass every subtest.
 - **reftest-layout** (experimental, report-only, **not** in the headline number or in `wpt:check`'s gate; `--reftest-layout`):
   - Of 25,145 reftests, 23,079 are excluded by the static filter: `reftest-layout:text` 15,356, `replaced` 3,012, `script` 1,518, `reftest-wait` 1,438, `fuzzy` 1,004, `mismatch` 436, `ref-chain` 140, `multiple-refs` 83, `special-element` 80, `ref-missing` 11 and `ref-parse` 1.
-  - 2,066 candidates remain. Dragon's compiler gates 2,035 of them (`DRAGON_UNSUPPORTED_PROPERTY` 1,678 is the largest group). The translator refuses 5, and 7 are refused against Chrome's page: `reftest-layout:page-overflow` 3, `reftest-layout:paint:border-style` 2, `reftest-layout:paint:alpha` 1 and `reftest-layout:model-mismatch` 1.
-  - 19 reach a verdict, and all 19 pass: Dragon's raster of the test equals Chrome's raster of the reference with 0 pixels different, and every box sits where Chrome puts it on the test page. The list is in `expectations/web.reftest-layout.json`.
+  - 2,066 candidates remain. Dragon's compiler gates 2,033 of them (`DRAGON_UNSUPPORTED_PROPERTY` 1,678 is the largest group). The translator refuses 5, and 8 are refused against Chrome's page: `reftest-layout:page-overflow` 4, `reftest-layout:paint:border-style` 2, `reftest-layout:paint:alpha` 1 and `reftest-layout:model-mismatch` 1.
+  - 20 reach a verdict, and all 20 pass: Dragon's raster of the test equals Chrome's raster of the reference with 0 pixels different, and every box sits where Chrome puts it on the test page. The list is in `expectations/web.reftest-layout.json`.
 
 ### Interop focus areas (wpt-metadata `e6b32d81746942e340e8df5011a9e930f189ebb1`, all years 2021-2026)
 
