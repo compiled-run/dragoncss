@@ -13,3 +13,4 @@ vendor/wpt/
 packages/wpt/out/
 packages/wpt/generated/
 .vercel/
+packages/dragon/README.md
