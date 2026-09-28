@@ -1,0 +1,324 @@
+{
+ "about": "Media query corpus for scripts/capture-media-data.ts. queries are evaluated; refusedQueries parse and serialise but Dragon refuses them until MQ-R (environment features, other units, non-finite calc, and a discrete feature in a range context, which Blink 145 accepts and evaluates ignoring the operator). A bandSheet with refused must be refused by band() and is not captured.",
+ "roots": [
+  16,
+  20
+ ],
+ "defaultViewport": {
+  "width": 400,
+  "height": 300
+ },
+ "limits": {
+  "minWidth": 50,
+  "maxWidth": 2000,
+  "minHeight": 50,
+  "maxHeight": 1200
+ },
+ "queries": [
+  "all",
+  "screen",
+  "print",
+  "only screen",
+  "not print",
+  "not screen",
+  "tv",
+  "not tv",
+  "SCREEN",
+  "NOT SCREEN",
+  "only all",
+  "not all",
+  "all and (min-width: 300px)",
+  "only screen and (max-width: 768px)",
+  "not screen and (max-width: 768px)",
+  "not print and (max-width: 768px)",
+  "not all and (width)",
+  "only all and (width)",
+  "ONLY SCREEN AND (WIDTH)",
+  "screen AND (max-width: 500px)",
+  "screen, print",
+  "print, (max-width: 500px)",
+  "",
+  " ",
+  "(width) , ,(height)",
+  "(max-width: 500px),",
+  "only (width)",
+  "layer",
+  "not layer",
+  "only",
+  "not",
+  "and",
+  "or",
+  "not and",
+  "screen and",
+  "screen (width)",
+  "(width) (height)",
+  "(width) and",
+  "screen or (width)",
+  "screen and(width)",
+  "(width) and(height)",
+  "[width]",
+  "{x}",
+  "1px",
+  "(width) ;",
+  "(width)!important",
+  "\"x\"",
+  "not (width) and (height)",
+  "(width) and not (height)",
+  "(width) or (height) and (width)",
+  "not (width) or (height)",
+  "screen and (width) or (height)",
+  "not (max-width: 600px) and (min-width: 300px)",
+  "not (min-width: 500px) or (max-width: 300px)",
+  "(max-width: 768px)",
+  "(min-width: 768px)",
+  "(width: 400px)",
+  "(max-width: 400.5px)",
+  "(min-width: 400.5px)",
+  "(max-width: 25em)",
+  "(min-width: 25em)",
+  "(max-width: 25rem)",
+  "(min-width: 25rem)",
+  "(max-width: 32.5em)",
+  "(width > 500px)",
+  "(width >= 500px)",
+  "(width < 500px)",
+  "(width <= 500px)",
+  "(width = 500px)",
+  "(500px < width)",
+  "(500px >= width)",
+  "(300px <= width < 700px)",
+  "(300px < width <= 700px)",
+  "(700px > width > 300px)",
+  "(700px >= width >= 300px)",
+  "(width>=600px)",
+  "(width > calc(10em + 1px))",
+  "(width > calc(1px + 10em))",
+  "(max-width: calc(20em + 100px))",
+  "(min-width: calc(2 * 300px))",
+  "(max-width: calc((100px + 200px) * 2))",
+  "(max-width: calc(50em / 2))",
+  "(min-width: calc(1em + 2rem + 100px))",
+  "(max-width: calc(40em - 1px))",
+  "(max-width: calc(-1px + 40em))",
+  "(width > calc(10em * 0))",
+  "(width)",
+  "(width: 0)",
+  "(max-width: 0)",
+  "(min-width: -1px)",
+  "(max-width: -1px)",
+  "(width > -1px)",
+  "(max-width: 1e3px)",
+  "(MAX-WIDTH: 768.50PX)",
+  "(Width)",
+  "(  width  :  600px  )",
+  "( width )",
+  "(width/**/: 600px)",
+  "/* c */ (width)",
+  "(width:600PX)",
+  "(max-width: +600px)",
+  "(max-width: .5px)",
+  "(max-width: 1234.5678px)",
+  "(max-width: 123456789px)",
+  "(max-width: 0.1234567px)",
+  "(max-width: 1e-7px)",
+  "(width: -0px)",
+  "(max-width: 1234567.5px)",
+  "(max-width: 999999.5px)",
+  "(max-width: 0.0001234px)",
+  "(max-height: 300px)",
+  "(min-height: 250px)",
+  "(height > 200px)",
+  "(height: 300px)",
+  "(1px < height)",
+  "(200px <= height <= 400px)",
+  "(max-height: 20em)",
+  "(height)",
+  "(min-height: calc(10em + 90px))",
+  "(aspect-ratio: 4/3)",
+  "(aspect-ratio: 16/9)",
+  "(min-aspect-ratio: 4/3)",
+  "(max-aspect-ratio: 2)",
+  "(aspect-ratio > 1)",
+  "(aspect-ratio >= 0.5)",
+  "(0.5 < aspect-ratio < 2)",
+  "(aspect-ratio: 1.5)",
+  "(aspect-ratio: 16 / 9.5)",
+  "(aspect-ratio: 0/1)",
+  "(aspect-ratio: 16/0)",
+  "(min-aspect-ratio: 1.5/1)",
+  "(aspect-ratio)",
+  "(orientation: portrait)",
+  "(orientation: landscape)",
+  "(orientation: PORTRAIT)",
+  "(orientation)",
+  "(max-width: 768px) and (min-width: 400px)",
+  "(max-width: 400px) or (min-width: 768px)",
+  "not (max-width: 600px)",
+  "not ((max-width: 600px))",
+  "not (not (max-width: 600px))",
+  "((max-width: 600px))",
+  "(max-width: 700px) and ((min-width: 500px) or (max-height: 200px))",
+  "(width < 500px) or (width > 700px) or (height > 400px)",
+  "screen and not (max-width: 600px)",
+  "(max-width: 768px) and (not (max-width: 640px))",
+  "(width) and (height) and (max-width: 600px)",
+  "(max-width: 600px), print, (min-width: 900px)",
+  "(width)and (max-width: 600px)",
+  "(foo: bar)",
+  "(FOO:   BAR)",
+  "not (foo: bar)",
+  "(foo: bar) or (max-width: 600px)",
+  "(foo: bar) and (max-width: 600px)",
+  "(max-width: 600px) or (foo: bar)",
+  "not screen and (foo: bar)",
+  "not all and (foo: bar)",
+  "not ((foo: bar) or (max-width: 600px))",
+  "not ((foo: bar) and (max-width: 600px))",
+  "garbage(",
+  "not(width)",
+  "foo(bar)",
+  "(min-width: 10%)",
+  "(min-width:10%)",
+  "(min-width: 10)",
+  "(width = 10)",
+  "(width > 5)",
+  "(orientation: foo)",
+  "(min-width)",
+  "(min-width < 600px)",
+  "(orientation > foo)",
+  "(width: 600px 700px)",
+  "(10px<width>20px)",
+  "(10px < width > 700px)",
+  "(width < 600px < 700px)",
+  "(width>calc(50%))",
+  "(max-width: calc(1px + 1))",
+  "(max-width: calc(0))",
+  "(max-width: calc(1px * 1px))",
+  "(aspect-ratio: 1 / 2 / 3)",
+  "(aspect-ratio: -1/2)",
+  "(max-width: 10s)",
+  "()",
+  "(max-height: 5deg)"
+ ],
+ "refusedQueries": [
+  "(orientation > portrait)",
+  "(orientation <= landscape)",
+  "(prefers-color-scheme: dark)",
+  "(prefers-reduced-motion)",
+  "(hover)",
+  "(hover: hover)",
+  "(any-hover: hover)",
+  "(pointer: fine)",
+  "(resolution: 1dppx)",
+  "(min-resolution: 2dppx)",
+  "(-webkit-device-pixel-ratio: 1)",
+  "(-webkit-min-device-pixel-ratio: 2)",
+  "(color)",
+  "(display-mode: browser)",
+  "screen and (max-width: 600px) and (prefers-color-scheme: dark)",
+  "(min-width: 10cm)",
+  "(min-width: 10vw)",
+  "(max-width: 30ex)",
+  "(max-width: calc(infinity * 1px))",
+  "(device-width: 400px)"
+ ],
+ "bandSheets": [
+  {
+   "name": "no-media",
+   "queries": []
+  },
+  {
+   "name": "north-star",
+   "queries": [
+    "screen and (max-width: 768px)",
+    "screen and (max-width: 640px)"
+   ]
+  },
+  {
+   "name": "min-max",
+   "queries": [
+    "(min-width: 400px)",
+    "(max-width: 600px)"
+   ]
+  },
+  {
+   "name": "range",
+   "queries": [
+    "(300px <= width < 700px)",
+    "(width >= 500px)"
+   ]
+  },
+  {
+   "name": "em",
+   "queries": [
+    "(max-width: 25em)",
+    "(min-width: 40rem)"
+   ]
+  },
+  {
+   "name": "fractional",
+   "queries": [
+    "(max-width: 400.5px)",
+    "(min-width: 600.25px)"
+   ]
+  },
+  {
+   "name": "equality",
+   "queries": [
+    "(width: 400px)",
+    "(max-width: 600px)"
+   ]
+  },
+  {
+   "name": "width-and-height",
+   "queries": [
+    "(max-width: 600px)",
+    "(min-height: 250px)",
+    "(height < 400px)"
+   ]
+  },
+  {
+   "name": "logic",
+   "queries": [
+    "(max-width: 700px) and ((min-width: 500px) or (max-height: 200px))",
+    "not (max-width: 300px)",
+    "(foo: bar) or (max-width: 900px)",
+    "(prefers-color-scheme: dark) and (min-width: 1000px)"
+   ]
+  },
+  {
+   "name": "calc",
+   "queries": [
+    "(width > calc(10em + 1px))",
+    "(max-width: calc(40em - 1px))"
+   ]
+  },
+  {
+   "name": "too-many",
+   "queries": [
+    "(min-width: 100px)",
+    "(min-width: 200px)",
+    "(min-width: 300px)",
+    "(min-width: 400px)",
+    "(min-height: 100px)",
+    "(min-height: 200px)",
+    "(min-height: 300px)"
+   ],
+   "refused": "too-many-bands"
+  },
+  {
+   "name": "orientation",
+   "queries": [
+    "(orientation: portrait)"
+   ],
+   "refused": "non-axis-feature"
+  },
+  {
+   "name": "other-unit",
+   "queries": [
+    "(max-width: 10cm)"
+   ],
+   "refused": "refused-value"
+  }
+ ]
+}
