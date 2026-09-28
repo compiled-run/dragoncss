@@ -10,7 +10,7 @@ import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
 import type { Candidate } from './cascade.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeOverflowPair, initialValue, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { blockifyRoot, computeLengths, computeOverflowPair, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
@@ -87,6 +87,7 @@ const displayOf = (el: ResolvedElement): string => {
 // css-cascade-5 §4-§7: the winning declaration, inheritance, then user-agent or initial values, for every longhand.
 // Logical ancestry is the linked tree: projected children match under their insertion parent (docs/api.md §3.1).
 export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment): ResolvedElement {
+  let resolvedRoot: ResolvedElement | null = null;
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {
     const here = [...chain, el];
     const { winners, matched } = cascadeElement(rules, here, faults);
@@ -131,6 +132,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         props.set(p, { ...set, value: { ...set.value, value: perturbColor(set.value.value) } });
       }
     }
+    const parentFontSize = parent === null ? pxOf(parseValueText('font-size', environment.ua.computed.html['font-size'] as string)) : pxOf((parent.props.get('font-size') as ResolvedValue).value);
+    computeLengths(props, parentFontSize, resolvedRoot === null ? null : pxOf((resolvedRoot.props.get('font-size') as ResolvedValue).value));
     if (parent === null) props.set('display', blockifyRoot(props.get('display') as ResolvedValue));
     computeOverflowPair(props);
     const self: { kind: 'element'; element: LinkedElement; props: Map<Longhand, ResolvedValue>; children: (ResolvedElement | ResolvedText)[] } = {
@@ -139,6 +142,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       props,
       children: [],
     };
+    if (resolvedRoot === null) resolvedRoot = self;
     const kids: (ResolvedElement | LinkedText)[] = el.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
     // An inline formatting context is a maximal sequence of text; display: none elements generate no box (CSS2 §9.2.4), so
     // they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).

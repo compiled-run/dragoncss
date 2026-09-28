@@ -15,7 +15,7 @@ describe('Swift host run on the extended corpus (native:swift)', () => {
       return;
     }
     const n = Object.fromEntries(x.suites.map((s) => [s.name, s.lines.length]));
-    expect(r.suites.map((s) => `${s.name} ${s.pass}/${s.total}`)).toEqual(['vectors-m2 3/3', 'vectors-dpr 783/783', `engine-dpr ${n['engine-dpr']}/${n['engine-dpr']}`, `units-m2 ${n['units-m2']}/${n['units-m2']}`, `snap ${n['snap']}/${n['snap']}`]);
+    expect(r.suites.map((s) => `${s.name} ${s.pass}/${s.total}`)).toEqual(['vectors-m2 9/9', 'vectors-dpr 801/801', `engine-dpr ${n['engine-dpr']}/${n['engine-dpr']}`, `units-m2 ${n['units-m2']}/${n['units-m2']}`, `snap ${n['snap']}/${n['snap']}`]);
     expect(r.suites.every((s) => s.cause === null)).toBe(true);
     expect(r.status).toBe('pass');
   }, 600_000);

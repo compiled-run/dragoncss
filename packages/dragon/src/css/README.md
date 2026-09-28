@@ -11,7 +11,7 @@ and ids, and the at-rule refusals as they were before it.
 | `at-rules.ts` | The at-rule handler registry. Every at-rule is refused today. |
 | `shorthands/index.ts` | The shorthand registry: one handler per shorthand, gathered from `box.ts`, `border.ts`, `flex.ts`, `overflow.ts` and `text.ts`. `shared.ts` holds the handler type and helpers. |
 | `values.ts` | The `CssValue` model, token-to-value conversion, and support-profile feature keys. |
-| `units.ts` | The unit registry. |
+| `units.ts` | The unit registry: px, the absolute units, em and rem convert to px; viewport, font-metric, line-height and container units and math functions are refused with their reason. |
 | `properties.ts` | The aggregate of `properties/<family>.ts`: `LONGHANDS`, `SHORTHANDS`, `INHERITED`, `PROPERTY_ASPECTS`, `PROPERTY_ROLE`. |
 | `properties/<family>.ts` | Each family's longhands, shorthands, aspects, inherited set and role memberships. |
 | `color.ts`, `lexer.ts`, `grammar.generated.ts` | Colour parsing and serialization, the webref lexer, and the generated grammar (`pnpm run grammar:gen`). |
@@ -26,8 +26,10 @@ and ids, and the at-rule refusals as they were before it.
   file is also one spread in `shorthands/index.ts`). A handler gives the longhands a CSS-wide keyword sets, the expansion, and
   optionally `refuse` for grammar-valid values Dragon cannot express. For example, a `background` shorthand would be
   `properties/background.ts` plus a new `shorthands/background.ts`.
-- **A unit.** Register it in `units.ts`. An unregistered unit already parses and keeps a `<length-<unit>>` feature key, and the
-  profiles refuse it. Converting it to px is value computation, in `analysis/computed.ts`.
+- **A unit.** Register it in `units.ts` with its conversion (`lengthToPx`), or as `refused` with a reason and a fix, which the
+  parse driver reports at the token. An unregistered unit already parses and keeps a `<length-<unit>>` feature key, and the
+  profiles refuse it. `computeLengths` in `analysis/computed.ts` converts every declared length to px (font-size first); the
+  declared value keeps its unit, so its feature key stays `<length-<unit>>`.
 - **An at-rule.** Replace its entry in `AT_RULE_HANDLERS` in `at-rules.ts`, one line per at-rule. The driver still reports
   the handler's outcome. An outcome other than `refuse` is a new `AtRuleOutcome` kind, which the driver handles.
 - **A selector.** Parse the new part in `selectors.ts` and extend `Compound`, then match it in `analysis/match.ts`.
