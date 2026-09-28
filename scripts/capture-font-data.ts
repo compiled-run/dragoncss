@@ -23,6 +23,7 @@ type Page = Awaited<ReturnType<Browser['newPage']>>;
 export const FONT_FILES = [
   'Inter/Inter-Light.ttf', 'Inter/Inter-Regular.ttf', 'Inter/Inter-Italic.ttf', 'Inter/Inter-Bold.ttf', 'Inter/Inter-BoldItalic.ttf',
   'Roboto/Roboto-Regular.ttf', 'NotoSans/NotoSans-Regular.ttf', 'NotoSansMono/NotoSansMono-Regular.ttf',
+  'Lato/Lato-Regular.ttf', 'Lato/Lato-Bold.ttf',
 ] as const;
 const SIZES = [1, 7, 10, 13, 16, 17.5, 23.3, 37, 64, 100];
 const DPRS = [1, 2, 2.625, 3];
@@ -48,7 +49,7 @@ type Face = { readonly file: string; readonly descriptors?: string };
 type Request = { readonly family: string; readonly weight: number; readonly stretch: number; readonly style: string; readonly text: string };
 type MatchCase = { readonly id: string; readonly family: string; readonly faces: readonly Face[]; readonly requests: readonly Request[] };
 
-const [LIGHT, REGULAR, ITALIC, BOLD, BOLDITALIC, ROBOTO, NOTO, MONO] = FONT_FILES;
+const [LIGHT, REGULAR, ITALIC, BOLD, BOLDITALIC, ROBOTO, NOTO, MONO, LATO, LATO_BOLD] = FONT_FILES;
 const T = 'AaBb';
 const req = (family: string, weight: number, stretch = 100, style = 'normal', text = T): Request => ({ family, weight, stretch, style, text });
 const grid = (family: string, weights: readonly number[], stretches: readonly number[] = [100], styles: readonly string[] = ['normal']): Request[] =>
@@ -83,6 +84,13 @@ const MATCH_CASES: MatchCase[] = [
   { id: 'unicode-range-with-weight', family: 'U3', faces: [{ file: REGULAR, descriptors: 'font-weight:400;unicode-range:U+0-7F' }, { file: BOLD, descriptors: 'font-weight:700' }, { file: MONO, descriptors: 'font-weight:700;unicode-range:U+30-39' }], requests: [req('U3', 400, 100, 'normal', 'Ab12'), req('U3', 700, 100, 'normal', 'Ab12'), req('U3', 600, 100, 'normal', 'Ab12')] },
   { id: 'family-lists', family: 'L1', faces: [{ file: REGULAR, descriptors: 'unicode-range:U+41-5A' }, { file: ROBOTO, descriptors: 'font-family:"L2"' }, { file: NOTO, descriptors: 'font-family:"serif"' }, { file: MONO, descriptors: 'font-family:"Mixed Case"' }], requests: [
     req('L1, L2', 400, 100, 'normal', 'ABab'), req('L2, L1', 400, 100, 'normal', 'ABab'), req('"serif"', 400), req('serif, L2', 400), req('"Mixed Case"', 400), req('"mixed case", L2', 400), req('Mixed   Case', 400), req('Nope, L2', 400),
+  ] },
+  // Lato 2.015 (T036): the north star's 'Lato' as its font map will declare it (400 and 700), then undeclared and mixed with Inter.
+  { id: 'lato-regular-bold', family: 'Lato', faces: [{ file: LATO, descriptors: 'font-weight:400' }, { file: LATO_BOLD, descriptors: 'font-weight:700' }], requests: grid('Lato', ALL_WEIGHTS, [75, 100, 125], ['normal', 'italic', 'oblique 10deg']) },
+  { id: 'lato-no-descriptors', family: 'Lato', faces: [{ file: LATO }, { file: LATO_BOLD }], requests: grid('Lato', [100, 400, 700, 900], [100], ['normal', 'italic']) },
+  { id: 'lato-with-inter', family: 'LI', faces: [{ file: LATO, descriptors: 'font-weight:400' }, { file: LATO_BOLD, descriptors: 'font-weight:700' }, { file: LIGHT, descriptors: 'font-weight:300' }, { file: BOLDITALIC, descriptors: 'font-weight:700;font-style:italic' }], requests: grid('LI', ALL_WEIGHTS, [100], ['normal', 'italic']) },
+  { id: 'lato-family-list', family: 'Lato', faces: [{ file: LATO, descriptors: 'font-weight:400' }, { file: LATO_BOLD, descriptors: 'font-weight:700' }, { file: REGULAR, descriptors: 'font-family:"Dragon Sans";font-weight:400' }, { file: BOLD, descriptors: 'font-family:"Dragon Sans";font-weight:700' }], requests: [
+    req('"Lato", "Dragon Sans"', 400, 100, 'normal', 'Waves ‹ ›'), req('Lato, "Dragon Sans"', 700, 100, 'normal', 'Waves ‹ ›'), req('"Dragon Sans", Lato', 700), req('Nope, Lato', 400), req('Nope, Lato', 700),
   ] },
 ];
 

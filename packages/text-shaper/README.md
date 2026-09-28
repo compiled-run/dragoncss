@@ -20,5 +20,6 @@ zig build -Dandroid-ndk=<ndk>           # all three
 
 `src/gate.ts` shapes the 620 text-spike cases through the WASM build, applies Blink's arithmetic (`src/blink.ts`,
 `src/script.ts`, `src/han-kerning.ts`) and compares every line width and nowrap width with Chrome 145
-(`docs/research/text-spike/gate/chrome-145.json`). `pnpm test` runs it; `pnpm text:gate` prints it;
+(`docs/research/text-spike/gate/chrome-145.json`), and the 640 Lato 400/700 cases of T036 the same way
+(`gate/chrome-145-lato.json`, measured by `docs/research/text-spike/lato`). `pnpm test` runs it; `pnpm text:gate` prints it;
 `pnpm text:report` rewrites `docs/research/text-spike/gate-report.md` (needs a full `zig build`).

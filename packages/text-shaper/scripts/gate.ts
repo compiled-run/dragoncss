@@ -1,8 +1,16 @@
-// Runs the TXT1-0 gate and prints the result. Exit code 1 on any mismatch.
+// Runs the TXT1-0 gate over every reference (the 620 spike cases and the Lato cases) and prints the result.
+// Exit code 1 on any mismatch.
 // Usage: node packages/text-shaper/scripts/gate.ts
-import { runGate } from '../src/gate.ts';
+import { basename } from 'node:path';
+import { GATE_REFERENCES, loadReference, runGate } from '../src/gate.ts';
+import { DragonHB } from '../src/wasm.ts';
 
-const results = runGate();
+const hb = DragonHB.load();
+const results = GATE_REFERENCES.flatMap(({ reference }) => {
+  const rs = runGate(loadReference(reference), hb);
+  console.log(`${basename(reference)}: ${rs.filter((r) => r.exact).length}/${rs.length} cases exact`);
+  return rs;
+});
 const exact = results.filter((r) => r.exact).length;
 const groups = new Map<string, [number, number]>();
 for (const r of results) {

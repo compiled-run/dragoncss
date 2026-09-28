@@ -59,3 +59,29 @@ The OFL fonts total 3,304,372 bytes.
 `Inter/Inter-Regular.ttf` is also the Inter file of the TXT1-0 gate (docs/research/text-spike, same SHA-256), which reads
 it from here. The spike's Roboto and Noto Sans are different files (Roboto 2.138; a different build of Noto Sans 2.015)
 and stay under docs/research/text-spike/fonts: see its README.
+
+## Lato (Lato/)
+
+- The north star's `'Lato'` (docs/decisions.md, "The north star bundles Lato"): Lato 2.015 Regular and Bold, the Google Fonts
+  build. Name table "Version 2.015; 2015-08-06; http://www.latofonts.com/".
+- Source: google/fonts at commit `5d3b76120a319730fda218cc7410174a462b32cb` (pinned, not `main`), files
+  `ofl/lato/Lato-Regular.ttf`, `ofl/lato/Lato-Bold.ttf` and `ofl/lato/OFL.txt`, e.g.
+  https://raw.githubusercontent.com/google/fonts/5d3b76120a319730fda218cc7410174a462b32cb/ofl/lato/Lato-Regular.ttf.
+  That commit's `ofl/lato/METADATA.pb` names the upstream: LatoGFVersion 080cb69711ca050d91e9c866e58df7a73095c69a
+  (https://github.com/googlefonts/LatoGFVersion). The TTF bytes are unchanged since google/fonts
+  `f3b885d5590e307e02542f1a724cec55d567fdaa` ("lato: v2.015 added").
+- Licence: SIL Open Font License 1.1, `Lato/OFL.txt` (google/fonts `ofl/lato/OFL.txt` at the same commit, unmodified;
+  SHA-256 `74ba064d03f1f1c4a952da936c3eb71866c34404916734de3cae73b34357e59e`, 4,407 bytes).
+- Static TrueType, upem 2000, no `fvar`; hhea = OS/2 typo 1974/-426/0 with USE_TYPO_METRICS set. The latofonts.com build of
+  2.015 has the same glyphs, hmtx and hhea and differs only in OS/2 typo and win metrics (notes/T035).
+- Used by the fonts module's Chrome captures (packages/dragon/test/fonts) and the text-shaper gate
+  (docs/research/text-spike/lato, gate/chrome-145-lato.json), which read it from here.
+
+| File | SHA-256 | Bytes |
+|---|---|---|
+| Lato/Lato-Regular.ttf | `d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251` | 656,568 |
+| Lato/Lato-Bold.ttf | `8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1` | 656,544 |
+
+Lato totals 1,313,112 bytes, which brings the vendored OFL fonts to 4,617,484 bytes. The fonts module's spec budget of about
+4 MB (notes/T004 §3) covers its eight capture faces, which stay at 3,304,372 bytes. Lato is the north star's own bundle,
+sized by the T035 ruling.

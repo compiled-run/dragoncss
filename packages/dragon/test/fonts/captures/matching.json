@@ -22,7 +22,9 @@
   "Inter/Inter-BoldItalic.ttf": "948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d",
   "Roboto/Roboto-Regular.ttf": "39548fd9d6250717a5fcfe00b1b0ade234c1f5be8a40818c37e995c13c844df1",
   "NotoSans/NotoSans-Regular.ttf": "f3961a9cde016d41a4879aecda1474d3a36d6bf54fa0e4643de029cc2248b0e8",
-  "NotoSansMono/NotoSansMono-Regular.ttf": "87f8ce0522a6c99b743ee5fc75b4073cfdd575639119672828b7b9944b65b4f4"
+  "NotoSansMono/NotoSansMono-Regular.ttf": "87f8ce0522a6c99b743ee5fc75b4073cfdd575639119672828b7b9944b65b4f4",
+  "Lato/Lato-Regular.ttf": "d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+  "Lato/Lato-Bold.ttf": "8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1"
  },
  "cases": [
   {
@@ -6474,6 +6476,3525 @@
       {
        "familyName": "Roboto",
        "postScriptName": "Roboto-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "lato-regular-bold",
+   "css": "@font-face{font-family:\"Lato\";src:url(\"fonts/Lato/Lato-Regular.ttf\") format(\"truetype\");font-weight:400}\n@font-face{font-family:\"Lato\";src:url(\"fonts/Lato/Lato-Bold.ttf\") format(\"truetype\");font-weight:700}",
+   "requests": [
+    {
+     "family": "Lato",
+     "weight": 1,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 100,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 100,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 100,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 100,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 100,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 100,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 100,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 100,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 100,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 200,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 200,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 200,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 200,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 200,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 200,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 200,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 200,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 200,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 300,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 300,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 300,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 300,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 300,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 300,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 300,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 300,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 300,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 350,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 350,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 350,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 350,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 350,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 350,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 350,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 350,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 350,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 399,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 399,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 399,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 399,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 399,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 399,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 399,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 399,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 399,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 400,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 400,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 400,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 400,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 400,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 400,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 400,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 400,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 400,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 420,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 420,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 420,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 420,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 420,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 420,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 420,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 420,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 420,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 450,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 450,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 450,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 450,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 450,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 450,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 450,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 450,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 450,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 480,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 480,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 480,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 480,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 480,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 480,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 480,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 480,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 480,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 500,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 500,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 500,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 500,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 500,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 500,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 500,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 500,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 500,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 501,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 501,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 501,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 501,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 501,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 501,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 501,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 501,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 501,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 550,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 550,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 550,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 550,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 550,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 550,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 550,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 550,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 550,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 600,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 600,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 600,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 600,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 600,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 600,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 600,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 600,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 600,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 650,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 650,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 650,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 650,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 650,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 650,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 650,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 650,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 650,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 700,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 700,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 700,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 700,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 700,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 700,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 700,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 700,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 700,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 750,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 750,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 750,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 750,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 750,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 750,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 750,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 750,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 750,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 800,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 800,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 800,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 800,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 800,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 800,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 800,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 800,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 800,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 900,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 900,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 900,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 900,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 900,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 900,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 900,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 900,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 900,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1000,
+     "stretch": 75,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1000,
+     "stretch": 75,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1000,
+     "stretch": 75,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1000,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1000,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1000,
+     "stretch": 100,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1000,
+     "stretch": 125,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1000,
+     "stretch": 125,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 1000,
+     "stretch": 125,
+     "style": "oblique 10deg",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "lato-no-descriptors",
+   "css": "@font-face{font-family:\"Lato\";src:url(\"fonts/Lato/Lato-Regular.ttf\") format(\"truetype\");}\n@font-face{font-family:\"Lato\";src:url(\"fonts/Lato/Lato-Bold.ttf\") format(\"truetype\");}",
+   "requests": [
+    {
+     "family": "Lato",
+     "weight": 100,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 100,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 400,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 400,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 700,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 700,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 900,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Lato",
+     "weight": 900,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "lato-with-inter",
+   "css": "@font-face{font-family:\"LI\";src:url(\"fonts/Lato/Lato-Regular.ttf\") format(\"truetype\");font-weight:400}\n@font-face{font-family:\"LI\";src:url(\"fonts/Lato/Lato-Bold.ttf\") format(\"truetype\");font-weight:700}\n@font-face{font-family:\"LI\";src:url(\"fonts/Inter/Inter-Light.ttf\") format(\"truetype\");font-weight:300}\n@font-face{font-family:\"LI\";src:url(\"fonts/Inter/Inter-BoldItalic.ttf\") format(\"truetype\");font-weight:700;font-style:italic}",
+   "requests": [
+    {
+     "family": "LI",
+     "weight": 1,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter Light",
+       "postScriptName": "Inter-Light",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 1,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 100,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter Light",
+       "postScriptName": "Inter-Light",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 100,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 200,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter Light",
+       "postScriptName": "Inter-Light",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 200,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 300,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter Light",
+       "postScriptName": "Inter-Light",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 300,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 350,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter Light",
+       "postScriptName": "Inter-Light",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 350,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 399,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter Light",
+       "postScriptName": "Inter-Light",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 399,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 400,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 400,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 420,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 420,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 450,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 450,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 480,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 480,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 500,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 500,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 501,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 501,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 550,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 550,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 600,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 600,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 650,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 650,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 700,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 700,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 750,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 750,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 800,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 800,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 900,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 900,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 1000,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "LI",
+     "weight": 1000,
+     "stretch": 100,
+     "style": "italic",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-BoldItalic",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "lato-family-list",
+   "css": "@font-face{font-family:\"Lato\";src:url(\"fonts/Lato/Lato-Regular.ttf\") format(\"truetype\");font-weight:400}\n@font-face{font-family:\"Lato\";src:url(\"fonts/Lato/Lato-Bold.ttf\") format(\"truetype\");font-weight:700}\n@font-face{font-family:\"Lato\";src:url(\"fonts/Inter/Inter-Regular.ttf\") format(\"truetype\");font-family:\"Dragon Sans\";font-weight:400}\n@font-face{font-family:\"Lato\";src:url(\"fonts/Inter/Inter-Bold.ttf\") format(\"truetype\");font-family:\"Dragon Sans\";font-weight:700}",
+   "requests": [
+    {
+     "family": "\"Lato\", \"Dragon Sans\"",
+     "weight": 400,
+     "stretch": 100,
+     "style": "normal",
+     "text": "Waves ‹ ›",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 9
+      }
+     ]
+    },
+    {
+     "family": "Lato, \"Dragon Sans\"",
+     "weight": 700,
+     "stretch": 100,
+     "style": "normal",
+     "text": "Waves ‹ ›",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
+       "isCustomFont": true,
+       "glyphCount": 9
+      }
+     ]
+    },
+    {
+     "family": "\"Dragon Sans\", Lato",
+     "weight": 700,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Inter",
+       "postScriptName": "Inter-Bold",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Nope, Lato",
+     "weight": 400,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Regular",
+       "isCustomFont": true,
+       "glyphCount": 4
+      }
+     ]
+    },
+    {
+     "family": "Nope, Lato",
+     "weight": 700,
+     "stretch": 100,
+     "style": "normal",
+     "text": "AaBb",
+     "chrome": [
+      {
+       "familyName": "Lato",
+       "postScriptName": "Lato-Bold",
        "isCustomFont": true,
        "glyphCount": 4
       }

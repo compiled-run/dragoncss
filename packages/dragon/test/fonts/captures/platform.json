@@ -22,7 +22,9 @@
   "Inter/Inter-BoldItalic.ttf": "948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d",
   "Roboto/Roboto-Regular.ttf": "39548fd9d6250717a5fcfe00b1b0ade234c1f5be8a40818c37e995c13c844df1",
   "NotoSans/NotoSans-Regular.ttf": "f3961a9cde016d41a4879aecda1474d3a36d6bf54fa0e4643de029cc2248b0e8",
-  "NotoSansMono/NotoSansMono-Regular.ttf": "87f8ce0522a6c99b743ee5fc75b4073cfdd575639119672828b7b9944b65b4f4"
+  "NotoSansMono/NotoSansMono-Regular.ttf": "87f8ce0522a6c99b743ee5fc75b4073cfdd575639119672828b7b9944b65b4f4",
+  "Lato/Lato-Regular.ttf": "d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+  "Lato/Lato-Bold.ttf": "8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1"
  },
  "note": "data for the caveat label only; no pass claim",
  "generics": [

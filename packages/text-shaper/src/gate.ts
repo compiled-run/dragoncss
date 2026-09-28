@@ -14,7 +14,11 @@ const VENDOR_FONT_DIR = fileURLToPath(new URL('../../../vendor/fonts/', import.m
  * Spike fonts kept once, under vendor/fonts, because the vendored file has the same SHA-256
  * (docs/research/text-spike/fonts/README.md). Every other spike font is read from FONT_DIR.
  */
-const VENDORED_FONTS: Readonly<Record<string, string>> = { 'Inter-Regular.ttf': 'Inter/Inter-Regular.ttf' };
+const VENDORED_FONTS: Readonly<Record<string, string>> = {
+  'Inter-Regular.ttf': 'Inter/Inter-Regular.ttf',
+  'Lato-Regular.ttf': 'Lato/Lato-Regular.ttf',
+  'Lato-Bold.ttf': 'Lato/Lato-Bold.ttf',
+};
 
 /** The repo path of a spike font file named in the reference. */
 export function fontPath(file: string): string {
@@ -24,6 +28,14 @@ export function fontPath(file: string): string {
 export const REFERENCE_PATH = `${SPIKE_DIR}gate/chrome-145.json`;
 /** SHA-256 of the font files Chrome loaded during the spike's capture (not of the repo copies). */
 export const LOADED_FONTS_PATH = `${SPIKE_DIR}chrome/loaded-fonts.sha256`;
+/** The Lato 400 and 700 cases (T036), measured by docs/research/text-spike/lato with the spike's method. */
+export const LATO_REFERENCE_PATH = `${SPIKE_DIR}gate/chrome-145-lato.json`;
+export const LATO_LOADED_FONTS_PATH = `${SPIKE_DIR}lato/loaded-fonts.sha256`;
+/** Every gate reference with the loaded-fonts file its hashes come from. */
+export const GATE_REFERENCES: ReadonlyArray<{ readonly reference: string; readonly loadedFonts: string }> = [
+  { reference: REFERENCE_PATH, loadedFonts: LOADED_FONTS_PATH },
+  { reference: LATO_REFERENCE_PATH, loadedFonts: LATO_LOADED_FONTS_PATH },
+];
 
 /** [start, end, width in LayoutUnits, rect count]. */
 export type ReferenceLine = readonly [number, number, number, number];
