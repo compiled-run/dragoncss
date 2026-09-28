@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon CSS - Styles for all devices</title>
+<link rel="stylesheet" href="assets/parchment.css">
+<link rel="stylesheet" href="assets/ink.css">
+<link rel="stylesheet" href="assets/royal-hero.css">
+<link rel="stylesheet" href="assets/integration.css">
+<script src="assets/royal-hero.js" defer></script>
+<script src="assets/realm-sound.js"></script>
+<script src="assets/parchment.js"></script>
+<style>
+  body { min-height: 100vh; overflow-x: clip; }
+  a { color: inherit; }
+
+  /* ---------- The map ---------- */
+  .map-wrap { max-width: none; margin: 0 auto; padding: 20px 16px; }
+  /* The map is drawn straight onto the page parchment: no torn sheet, just the inked double border and the faint grid. */
+  .map { position: relative; isolation: isolate; aspect-ratio: 1000 / 640; padding: 0; }
+  .map::after { content: ""; position: absolute; inset: 26px; z-index: -1; pointer-events: none;
+    background: var(--grid); background-size: 230px 225px; opacity: .9; }
+  .map > svg.terrain { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .map .pin { position: absolute; left: calc(var(--x) * .1%); top: calc(var(--y) * .15625%);
+    width: calc(var(--w) * .1%); translate: -50% -50%; }
+  .map img.pin { height: auto; pointer-events: none; opacity: .92; filter: sepia(.15) contrast(.98); }
+  .map img.pin.faint { opacity: .55; }
+  .map img.pin.flip { scale: -1 1; }
+  .map img.pin.marker, .map img.pin.status { opacity: 1; filter: drop-shadow(0 2px 2px rgba(80,55,25,.3)); }
+
+  .hint { position: absolute; font: italic 14.5px var(--text); color: var(--ink-soft); translate: -50% -50%; white-space: nowrap;
+    left: calc(var(--x) * .1%); top: calc(var(--y) * .15625%); white-space: nowrap; pointer-events: none; letter-spacing: .04em; }
+  .hint.sea { color: var(--slate); font-size: 12px; letter-spacing: .3em;  opacity: .7; }
+
+  /* Castles are the buttons. */
+  button.castle { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; align-items: center;
+    text-align: center; -webkit-tap-highlight-color: transparent; }
+  button.castle img.place { width: 100%; height: auto; display: block; transition: transform .25s ease, filter .25s ease;
+    filter: drop-shadow(0 3px 2px rgba(80,55,25,.35)); }
+  button.castle:hover img.place, button.castle:focus-visible img.place { transform: translateY(-4px) scale(1.06);
+    filter: drop-shadow(0 8px 6px rgba(80,55,25,.35)); }
+  /* Status is the drawn kit3 ribbon under each place (the place's own name ribbon is part of its picture).
+     Its width is 96 map units, whatever the place's width. */
+  button.castle .label { margin-top: 1px; position: relative; display: flex; flex-direction: column; align-items: center;
+    width: calc(100% * 96 / var(--w)); }
+  button.castle .label img.status { width: 100%; height: auto; display: block; filter: drop-shadow(0 2px 2px rgba(80,55,25,.3)); }
+  button.castle .label small { display: block; margin-top: 1px; white-space: nowrap; font: 600 14px/1.2 var(--mono); letter-spacing: .04em;
+    color: var(--ink-soft); text-shadow: 0 0 3px rgba(222,206,176,.95); }
+  button.castle.future img.place { filter: grayscale(.35) sepia(.2) drop-shadow(0 3px 2px rgba(80,55,25,.25)); opacity: .9; }
+  button.castle:focus-visible .label::after { content: ""; position: absolute; inset: -3px -2px; pointer-events: none; background-color: var(--ink-line-strong);
+    -webkit-mask: var(--ink-frame-bold) 0 0 / 100% 100% no-repeat; mask: var(--ink-frame-bold) 0 0 / 100% 100% no-repeat; }
+
+  /* Quest path. */
+  .path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  /* Round dots sampled from the kit3 sheet: 9px dots every 18px there (1 : 2), red #9c4134, grey #7a7975. */
+  .path.won, .path.march { stroke: #9c4134; stroke-width: 6; stroke-dasharray: 0 12; }
+  .path.march { animation: march 1.1s linear infinite; }
+  .path.future { stroke: #7a7975; stroke-width: 6; stroke-dasharray: 0 12; opacity: .85; }
+  @keyframes march { to { stroke-dashoffset: -12; } }
+
+  /* The letter, written on the page in its own section. */
+  #letter-sec .letter { max-width: 720px; margin: 0 auto; padding-top: 30px; position: relative;
+    background: var(--ink-rule-gold) left top / 46% 10px no-repeat, var(--ink-rule-gold-b) right top / 46% 10px no-repeat; }
+  #letter-sec .letter::before { content: "\2766"; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); font-size: 18px; line-height: 26px; color: var(--brick); }
+  .letter { font: 25px/1.45 var(--text); color: var(--ink-body); text-wrap: pretty; }
+  .letter p { margin: 0 0 .7em; }
+  .letter .salute { font: italic 600 34px var(--display); color: var(--brick); margin-bottom: .45em; }
+  .letter .sign { display: flex; align-items: center; gap: 14px; margin-top: 1em; font-style: italic; font-size: 22px; line-height: 1.35; color: var(--ink-soft); }
+  .seal { flex: none; width: 96px; height: 96px; object-fit: contain; margin: -8px -4px -8px -10px; filter: drop-shadow(0 2px 3px rgba(60,20,10,.4)); }
+
+  .map-scroll { position: relative; }
+  .map-tip { text-align: center; margin: 12px 0 0; font: italic 20px var(--text); color: var(--ink-soft); }
+  .map .pin.ford { opacity: 1; filter: grayscale(.35) sepia(.2) drop-shadow(0 3px 3px rgba(80,55,25,.25)); }
+  .hint.goal { font-size: 13.5px; }
+  .hint.won-hint { color: #9c4134; font-weight: 600; }
+
+  /* ---------- Scroll card (dialog) ---------- */
+  /* No tinted veil: when a scroll opens, the rest of the page fades back so the scroll sits on bare parchment. */
+  body > :not(.veil):not(svg) { transition: opacity .25s; }
+  body:has(.veil.open) > :not(.veil):not(svg) { opacity: .035; }
+  .veil { position: fixed; inset: 0; z-index: 40;
+    display: grid; place-items: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .veil.open { opacity: 1; pointer-events: auto; }
+  /* Status card: a small scroll hung from the drawn rollers (joins measured from the art; see 11). */
+  .card { width: min(640px, 100%); position: relative; }
+  .card .roller { display: block; width: 100%; height: auto; position: relative; z-index: 2; pointer-events: none; user-select: none; filter: drop-shadow(0 6px 8px rgba(60,35,15,.3)); }
+  .card .roller.top { margin-top: -10.08%; }
+  .card .roller.bottom { margin-top: -10.95%; margin-bottom: -10.08%; }
+  .card .cbody { position: relative; z-index: 1; margin: -11.3% 12.35% 0; padding: 0; max-height: calc(100vh - 260px); overflow: auto;
+    /* A real sheet toned to match the paper drawn on the rollers. No outline: its sides just darken softly, like paper curling away. */
+    background:
+      linear-gradient(90deg, rgba(110,75,35,.28), rgba(110,75,35,.08) 4%, rgba(110,75,35,0) 12%, rgba(110,75,35,0) 88%, rgba(110,75,35,.08) 96%, rgba(110,75,35,.28)),
+      linear-gradient(rgba(208,184,145,.55), rgba(208,184,145,.55)),
+      url(assets/parchment-tile.png) 0 0 / 512px 512px repeat;
+    background-attachment: local, local, local; }
+  .card { transform-origin: 50% 0; }
+  /* The top roller stays put while the sheet drops, so the card hangs from a fixed point, not centred. */
+  .veil { align-items: start; }
+  .card .cin { position: relative; padding: 30px 26px 34px; }
+  .card .cbottom { margin-top: -10.95%; margin-bottom: -10.08%; }
+  /* Roller spin: ink bands that travel while the bottom roller falls (from scroll-physics.html). */
+  .bottom-wrap { position: relative; z-index: 2; }
+  .bottom-wrap .roller { margin: 0 !important; }
+  .spin { position: absolute; left: 14%; right: 14%; top: 41%; bottom: 35%; overflow: hidden; border-radius: 40px; opacity: .55; mix-blend-mode: multiply; pointer-events: none; }
+  .spin::before { content: ""; position: absolute; left: 0; right: 0; top: -100%; height: 300%;
+    background: repeating-linear-gradient(180deg, rgba(90,60,25,0) 0 10px, rgba(90,60,25,.35) 11px 12px, rgba(90,60,25,0) 13px 26px);
+    transform: translateY(var(--spin, 0px)); }
+  .card .head { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; padding-right: 34px; }
+  .card .head img { width: 84px; height: 84px; object-fit: contain; }
+  .card h2 { margin: 0; font: 600 32px/1.1 var(--display); }
+  .card .ms { font: 16px var(--mono); letter-spacing: .08em;  color: var(--ink-soft); margin-top: 5px; }
+  .card p { font: 21px/1.42 var(--text); margin: .6em 0; }
+  .card ul.nums { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 8px; }
+  .card ul.nums li { display: flex; gap: 12px; align-items: baseline; padding-bottom: 8px; font-size: 18px; background: var(--ink-rule-faint) left bottom / 100% 10px no-repeat; }
+  .card ul.nums li:nth-child(even) { background-image: var(--ink-rule-faint-b); }
+  .card ul.nums b { font: 600 16px var(--mono); color: var(--brick); min-width: 8.6em; }
+  .card .close { position: absolute; top: 12px; right: 12px; z-index: 3; width: 32px; height: 32px; font: 23.5px/1 var(--text); color: var(--ink-body); --ink-frame-mask: var(--ink-frame-round); --ink-out: -1px; }
+  .card .close:hover::before, .card .close:focus-visible::before { --ink-frame-mask: var(--ink-frame-round); }
+  .card .close:hover { color: var(--brick); }
+  .card code { font: 14px var(--mono); color: var(--brick); }
+  .card .mark { margin: .2em 0; font-size: 22px; }
+  .card .seal-badge { font-size: 16px; }
+  .lbl { font-family: var(--mono); }
+  .lbl.exact { color: var(--sage); } .lbl.caveat { color: #8a6516; } .lbl.unsupported { color: var(--brick); }
+  .card .proof { display: flex; align-items: center; gap: 18px; }
+  .card .proof .ri-proven { width: 104px; margin: 0; flex: none; }
+  .card .proof ul.nums { flex: 1; }
+  .card .foot { font: italic 17px var(--text); color: var(--ink-soft); margin-top: 12px; }
+  @media (max-width: 760px) {
+    .card .cbody { max-height: calc(100vh - 200px); }
+    .card .cin { padding: 22px 14px 26px; }
+    .card .head img { width: 56px; height: 56px; }
+    .card .proof { flex-direction: column; align-items: stretch; }
+    .card .proof .ri-proven { width: 84px; margin: 0 auto; }
+    .card h2 { font-size: 20px; }
+    .card ul.nums li { flex-direction: column; gap: 0; }
+  }
+
+  /* ---------- Plain summary ---------- */
+  .summary { max-width: 720px; margin: 0 auto; padding: 30px 24px 0; color: var(--ink); background: var(--ink-rule-faint) left top / 100% 10px no-repeat; }
+  .summary h2 { font: 600 32px var(--display); margin: 0 0 12px; color: var(--brick); }
+  .summary h3 { font: 600 23.5px var(--display); margin: 22px 0 6px; color: var(--ink); }
+  .summary p, .summary li { font: 22px/1.6 var(--text); }
+  .summary ul { padding-left: 20px; }
+  .summary .ri-flag { float: left; clear: left; width: 80px; height: auto; margin: 16px 20px 6px 0; filter: drop-shadow(0 3px 3px rgba(90,60,25,.2)); }
+  .summary .ri-flag ~ ul, .summary .ri-flag ~ p { display: flow-root; margin-top: 0; }
+  .summary .ri-flag + h3 { padding-top: 4px; }
+  .summary h3:not(.ri-flag + h3) { clear: left; }
+  @media (min-width: 1000px) { .summary { max-width: 1080px; columns: 2; column-gap: 56px; } .summary > .ri-h { column-span: all; margin-bottom: 14px; } .summary > p:first-of-type { break-after: avoid; } .summary h3 { break-after: avoid; } .summary ul, .summary .ri-flag { break-inside: avoid; } }
+  .summary code { font: 14.5px var(--mono); color: var(--brick); }
+
+  .pan-hint { display: none; }
+  .pan-hint { text-align: center; font: italic 18.5px var(--text); color: var(--ink-soft); margin: 0 0 4px; }
+
+  /* ---------- Mobile: the map becomes a pannable chart; letter sits below ---------- */
+  @media (max-width: 759px) {
+    .map-wrap { max-width: none; padding: 40px 0; }
+    .map-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 10px 16px 14px; scroll-snap-type: x proximity; }
+    .map { width: 760px; }
+    .hint.host { white-space: normal; width: 7em; font-size: 12.5px; line-height: 1.15; --x: 442 !important; }
+    .letter { font-size: 19px; }
+    .letter .salute { font-size: 25px; }
+    .letter .sign { font-size: 16px; }
+    .pan-hint { display: block !important; }
+    .summary { padding: 26px 8px 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .path.march { animation: none; }
+    button.castle img.place { transition: none; }
+  }
+  /* Drawn glyphs set inline in the letter's sentences. */
+  .letter img.g { height: 1.45em; width: auto; vertical-align: -.38em; margin: 0 .18em 0 .05em; }
+  .letter img.g-css { height: 2.1em; vertical-align: -.72em; margin: 0 .05em; }
+  .letter img.g-post { float: right; width: 128px; height: auto; margin: -.2em 0 .4em 1.2em; }
+  /* How it works: three steps, each with its drawing, code in ink. */
+  #how .how { max-width: 1180px; margin: 0 auto; }
+  #how h2 { font: 600 clamp(34px, 3.6vw, 52px)/1.1 var(--display); text-align: center; margin: 0 0 .2em; }
+  #how .lede { text-align: center; color: var(--ink-soft); font-size: clamp(19px, 1.5vw, 23px); margin: 0 0 clamp(20px, 4svh, 40px); }
+  #how ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: auto auto auto 1fr; column-gap: clamp(20px, 3vw, 44px); row-gap: 0; }
+  #how li { display: grid; grid-row: span 4; grid-template-rows: subgrid; justify-items: center; text-align: center; }
+  #how .art { height: 104px; display: flex; align-items: flex-end; justify-content: center; gap: 8px; margin-bottom: 10px; }
+  #how .art img { height: 100%; width: auto; }
+  #how .art img.pair { height: 92%; }
+  #how h3 { font: 600 26px/1.15 var(--display); margin: 0 0 .3em; }
+  #how h3 .n { color: var(--brick); margin-right: .25em; }
+  #how li p { margin: 0 0 14px; font-size: 19px; line-height: 1.4; max-width: 24em; }
+  #how pre { justify-self: stretch; align-self: stretch; text-align: left; margin: 0; padding: 16px 18px 16px 8px; font-size: 15px; line-height: 1.5; white-space: pre; overflow-x: auto; }
+  #how .note { text-align: center; color: var(--ink-soft); font-size: 17px; margin: clamp(16px, 3svh, 30px) 0 0; }
+  @media (max-width: 900px) { #how ol { grid-template-columns: 1fr; grid-template-rows: none; row-gap: 36px; } #how li { grid-row: auto; grid-template-rows: none; } }
+  /* The API: what the dragon package gives you. Code on the left, each export explained on the right. */
+  #api .api { max-width: 1180px; margin: 0 auto; }
+  #api h2 { font: 600 clamp(34px, 3.6vw, 52px)/1.1 var(--display); text-align: center; margin: 0 0 .15em; }
+  #api .lede { text-align: center; color: var(--ink-soft); font-size: clamp(19px, 1.5vw, 23px); margin: 0 0 clamp(18px, 3.5svh, 36px); }
+  #api .lede code { color: var(--ink); }
+  #api h2 code { font-size: .74em; font-weight: 700; letter-spacing: -.01em; }
+  #api pre.code .l { min-height: 1.38em; }
+  #api.ri-sec { padding-block: clamp(20px, 4svh, 48px); }
+  #api .cols { display: grid; grid-template-columns: 1.15fr 1fr; gap: clamp(24px, 3.5vw, 56px); align-items: start; }
+  #api pre { margin: 0; padding: 14px 20px 14px 10px; font-size: 14px; line-height: 1.38; color: var(--ink); white-space: pre; overflow-x: auto; }
+  #api pre .k { color: var(--brick); }
+  #api pre .c { color: var(--ink-soft); }
+  #api dl { margin: 0; display: grid; gap: 16px; }
+  #api dl > div { display: grid; grid-template-columns: 64px 1fr; gap: 4px 16px; align-items: center; }
+  #api dl img { grid-row: span 2; width: 64px; height: 64px; object-fit: contain; }
+  #api dt { font: 700 19px var(--code); color: var(--slate); }
+  #api dd { margin: 0; font-size: 18px; line-height: 1.38; }
+  #api .note { text-align: center; color: var(--ink-soft); font-size: 17px; margin: clamp(14px, 2.6svh, 26px) 0 0; }
+  @media (max-width: 900px) { #api .cols { grid-template-columns: 1fr; } }
+</style>
+<style>
+</style>
+<link rel="stylesheet" href="assets/realm-bar.css">
+<style>
+  /* Candlelight: a warm vignette that flickers (steady with reduced motion). */
+  .candle { position: fixed; inset: 0; z-index: 45; pointer-events: none; opacity: 0; transition: opacity .6s; mix-blend-mode: multiply;
+    background: radial-gradient(ellipse 75% 70% at 50% 58%, rgba(255,236,196,0) 0%, rgba(255,214,150,.18) 45%, rgba(170,96,34,.42) 80%, rgba(96,52,18,.62) 100%); }
+  .candle.lit { opacity: var(--flick, 1); transition: none; }
+  /* The fortune: a small scroll-like note above the bar, framed in ink, with a drawn die. */
+  .fortune { position: fixed; left: 50%; bottom: 76px; z-index: 51; translate: -50% 0; box-sizing: border-box; width: min(430px, calc(100vw - 24px));
+    display: flex; gap: 16px; align-items: center; padding: 16px 44px 16px 18px; font: 19px/1.4 var(--text); color: var(--ink-body);
+    background: url(assets/parchment-tile.png) 0 0 / 512px 512px repeat; border-radius: 18px; --ink-frame-mask: var(--ink-frame-soft); --ink-out: -3px; }
+  .fortune[hidden] { display: none; }
+  .fortune .die { flex: none; width: 64px; height: 64px; }
+  .fortune .die svg { width: 100%; height: 100%; overflow: visible; }
+  .fortune p { margin: 0; }
+  .fortune .head { display: block; font: 13px var(--mono); color: var(--ink-soft); margin-bottom: 3px; }
+  .fortune img.g { height: 1.45em; width: auto; vertical-align: -.4em; margin: 0 .12em 0 .04em; }
+  .fortune img.g-css { height: 2em; vertical-align: -.7em; }
+  .fortune .x { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; padding: 0; font: 19px/1 var(--text); color: var(--ink-body); --ink-frame-mask: var(--ink-frame-round); --ink-out: -1px; }
+  .fortune .x:hover::before, .fortune .x:focus-visible::before { --ink-frame-mask: var(--ink-frame-round); }
+  /* Roll out the map: the chart unrolls from the left edge. */
+  @media (max-width: 760px) { .fortune { bottom: 64px; font-size: 17px; } .fortune .die { width: 50px; height: 50px; } }
+</style>
+</head>
+<body>
+<div class="realm-bar ink-frame" id="bar" data-rh-keep role="group" aria-label="Sound and play">
+  <label><input type="checkbox" class="ink-check" id="snd"> sound</label>
+  <label class="extra">volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.35"></label>
+  <span class="sep extra" aria-hidden="true"></span>
+  <label class="extra"><input type="checkbox" class="ink-check" id="drum"> drum</label>
+  <label class="extra">tempo <input type="range" id="tempo" min="60" max="150" step="1" value="96" aria-valuetext="96 beats a minute"></label>
+  <span class="sep extra" aria-hidden="true"></span>
+  <label class="extra"><input type="checkbox" class="ink-check" id="candle"> candlelight</label>
+  <button id="roll" type="button" class="ink-btn ink-frame extra">roll the dice</button>
+  <button id="unroll" type="button" class="ink-btn ink-frame extra">roll out the map</button>
+  <button class="more ink-btn ink-frame" id="more" type="button" aria-expanded="false">more</button>
+</div>
+
+<header class="royal-hero"
+  data-headline="CSS for the <em>whole</em> Realm"
+  data-sub="Take the CSS you already know where it could never go before."
+  data-cue-href="#letter-sec"
+  data-cue-label="Read the letter"></header>
+
+<div class="candle" id="candle-light" aria-hidden="true"></div>
+<main>
+<section class="ri-sec" id="letter-sec" aria-label="A letter">
+  <article class="letter" id="letter">
+    <img class="ri-sealed" src="assets/kit/letter.png" alt=""><p class="salute">To all who write CSS,</p>
+    <p>We are bringing your <img class="g g-css" src="assets/kit2/css-banner.png" alt="CSS"> to <img class="g" src="assets/kit2/device-ios.png" alt="">iOS and <img class="g" src="assets/kit2/device-android.png" alt="">Android too.</p>
+    <p>Dragon turns your CSS into real native apps. No web view.</p>
+    <p><img class="g-post" src="assets/kit2/signpost.png" alt="">Every rule is checked against <img class="g" src="assets/kit2/chrome.png" alt="">Chrome and clearly marked: <b>exact</b>, <b>caveat</b> or <b>unsupported</b>. Nothing is hidden.</p>
+    <p><img class="g" src="assets/kit2/device-web.png" alt="">The web is done. The phones are next. Tap any place on the map to see how far we have come.</p>
+    <div class="sign"><img class="seal" src="assets/gen/wax-seal-dragon.png" alt=""><div>Signed and sealed,<br>Dragon CSS</div></div>
+  </article>
+</section>
+
+<section class="ri-sec ri-map-sec map-wrap" id="quest" aria-label="The quest map">
+  <p class="pan-hint">Drag the map sideways to explore. Tap a place.</p>
+  <div class="map-scroll">
+  <div class="map" id="map">
+    <svg class="terrain" viewBox="0 0 1000 640" aria-hidden="true">
+      <defs>
+        <!-- The kit3 sea texture, tiled -->
+        <pattern id="waves" width="101" height="67" patternUnits="userSpaceOnUse">
+          <image href="assets/kit3/sea-tile.png" width="101" height="67" preserveAspectRatio="none"/>
+        </pattern>
+        <filter id="rough"><feTurbulence baseFrequency=".04" numOctaves="3" seed="5"/><feDisplacementMap in="SourceGraphic" scale="6"/></filter>
+        <!-- A soft clearing around the dragon flag, so the roads fade in toward it instead of sprouting from its pole. -->
+        <radialGradient id="host-clear-g"><stop offset="0" stop-color="#000"/><stop offset=".62" stop-color="#000"/><stop offset="1" stop-color="#fff"/></radialGradient>
+        <mask id="host-clear" maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="640">
+          <rect width="1000" height="640" fill="#fff"/><circle cx="342" cy="482" r="46" fill="url(#host-clear-g)"/>
+        </mask>
+      </defs>
+      <!-- The Sea of Devices, around the Isle of iOS -->
+      <g filter="url(#rough)">
+        <path d="M372 34 C430 26 560 20 660 36 C700 60 690 120 668 170 C650 230 690 262 640 300 C590 330 470 320 420 300 C380 270 396 220 380 170 C366 110 350 60 372 34Z" fill="url(#waves)" fill-opacity=".9"/>
+        <path d="M372 34 C430 26 560 20 660 36 C700 60 690 120 668 170 C650 230 690 262 640 300 C590 330 470 320 420 300 C380 270 396 220 380 170 C366 110 350 60 372 34Z"
+              fill="none" stroke="#3f5673" stroke-opacity=".45" stroke-width="1.6"/>
+        <!-- A river from the mountains down to the marches -->
+        <path d="M720 150 C700 210 740 250 700 300 C660 350 610 380 600 440 C594 470 606 500 602 530" fill="none" stroke="#4f6f94" stroke-opacity=".5" stroke-width="3"/>
+        <!-- Marsh tufts of the Android Marches -->
+        <g stroke="#5e7a52" stroke-opacity=".7" stroke-width="1.5" stroke-linecap="round" fill="none">
+          <path d="M478 575 l-3 -10 M482 575 l0 -12 M486 575 l3 -9"/><path d="M520 600 l-3 -10 M524 600 l0 -12 M528 600 l3 -9"/>
+          <path d="M630 575 l-3 -10 M634 575 l0 -12 M638 575 l3 -9"/><path d="M455 605 l-3 -10 M459 605 l0 -12 M463 605 l3 -9"/>
+        </g>
+        <!-- Map border -->
+        <rect x="14" y="14" width="972" height="612" fill="none" stroke="#4a3d2e" stroke-opacity=".5" stroke-width="1.5"/>
+        <rect x="20" y="20" width="960" height="600" fill="none" stroke="#4a3d2e" stroke-opacity=".3" stroke-width="1"/>
+      </g>
+
+      <!-- Quest path, dotted as on the kit3 sheet. Won: Camelot to the fork. Marching: the fork to both isles.
+           Future (grey): on to Parity Ford, the Tailwind Wilds and the Keep. -->
+      <g mask="url(#host-clear)">
+      <path class="path won" d="M240 505 C270 520 300 515 330 500"/>
+      <path class="path march" d="M330 500 C360 440 400 390 420 330 C440 280 460 250 475 235"/>
+      <path class="path march" d="M330 500 C380 560 440 565 500 540"/>
+      </g>
+      <path class="path future" d="M580 205 C640 240 660 290 690 330"/>
+      <path class="path future" d="M628 505 C660 480 680 460 692 440"/>
+      <path class="path future" d="M750 420 C775 440 780 450 790 460"/>
+      <path class="path future" d="M866 402 C892 360 894 305 880 266"/>
+    </svg>
+
+    <!-- Scenery, all from the kit3 sheet -->
+    <img class="pin" src="assets/icons/mountains.png" style="--x:735;--y:92;--w:160" srcset="assets/kit3/mountains.png 1x" alt="">
+    <img class="pin" src="assets/kit3/cloud.png" style="--x:612;--y:50;--w:84" alt="">
+    <img class="pin faint" src="assets/kit3/cloud.png" style="--x:795;--y:258;--w:62" alt="">
+    <img class="pin" src="assets/kit3/compass.png" style="--x:95;--y:92;--w:84" alt="">
+    <img class="pin" src="assets/kit3/pines.png" style="--x:462;--y:520;--w:46" alt="">
+    <img class="pin" src="assets/kit3/pines.png" style="--x:678;--y:585;--w:42" alt="">
+    <img class="pin" src="assets/kit3/pines.png" style="--x:952;--y:462;--w:40" alt="">
+    <img class="pin faint" src="assets/kit3/pines.png" style="--x:752;--y:555;--w:36" alt="">
+    <img class="pin" src="assets/kit3/laurel.png" style="--x:58;--y:584;--w:60" alt="">
+    <img class="pin flip" src="assets/kit3/laurel.png" style="--x:942;--y:584;--w:60" alt="">
+    <img class="pin place-deco" src="assets/kit3/village.png" style="--x:82;--y:300;--w:108" alt="A frontier village: where your styles are written today">
+    <span class="hint" style="--x:210;--y:318">&larr; your CSS sets out here</span>
+    <span class="hint sea" style="--x:520;--y:292">Sea of Devices</span>
+
+    <!-- Parity Ford: the goal of milestone 2, not reached yet. Not a card, so a plain picture with its ribbon. -->
+    <img class="pin ford" src="assets/kit3/parity-ford.png" style="--x:720;--y:378;--w:100" alt="Parity Ford, the goal of milestone 2, where iOS and Android meet at parity: not reached yet">
+    <img class="pin status" src="assets/kit3/status-notyet.png" style="--x:720;--y:450;--w:96" alt="">
+    <span class="hint goal" style="--x:720;--y:476">the M2 goal</span>
+
+    <!-- Markers: the red pennant claims Camelot as won; the dragon flag stands at the fork where the host now marches. -->
+    <img class="pin marker" src="assets/kit3/flag.png" style="--x:246;--y:396;--w:28" alt="">
+    <span class="hint won-hint" style="--x:272;--y:388">won</span>
+    <img class="pin marker" src="assets/kit3/host.png" style="--x:350;--y:470;--w:50" alt="">
+    <span class="hint host" style="--x:434;--y:458">&larr; the host marches here</span>
+
+    <!-- Milestone places: the kit3 vignettes carry their own names on ribbons; the drawn status ribbon sits beneath. -->
+    <button class="castle pin won" style="--x:165;--y:446;--w:150" data-m="web" aria-haspopup="dialog" aria-label="Camelot of the Web: conquered, milestone 1">
+      <img class="place" src="assets/kit3/camelot.png" alt="">
+      <span class="label" aria-hidden="true"><img class="status" src="assets/kit3/status-conquered.png" alt=""></span>
+    </button>
+    <button class="castle pin march" style="--x:522;--y:168;--w:118" data-m="ios" aria-haspopup="dialog" aria-label="The Isle of iOS: marching, milestone 2, in progress">
+      <img class="place" src="assets/kit3/isle-ios.png" alt="">
+      <span class="label" aria-hidden="true"><img class="status" src="assets/kit3/status-marching.png" alt=""></span>
+    </button>
+    <button class="castle pin march" style="--x:565;--y:500;--w:124" data-m="android" aria-haspopup="dialog" aria-label="The Android Marches: marching, milestone 2, in progress">
+      <img class="place" src="assets/kit3/android-marches.png" alt="">
+      <span class="label" aria-hidden="true"><img class="status" src="assets/kit3/status-marching.png" alt=""></span>
+    </button>
+    <button class="castle pin future" style="--x:840;--y:478;--w:122" data-m="tailwind" aria-haspopup="dialog" aria-label="The Tailwind Wilds: not yet ridden">
+      <img class="place" src="assets/kit3/tailwind-wilds.png" alt="">
+      <span class="label" aria-hidden="true"><img class="status" src="assets/kit3/status-notyet.png" alt=""></span>
+    </button>
+    <button class="castle pin future" style="--x:880;--y:178;--w:112" data-m="keep" aria-haspopup="dialog" aria-label="The Dragon's Keep: version 1.0, the end of the road, not yet ridden">
+      <img class="place" src="assets/kit3/dragons-keep.png" alt="">
+      <span class="label" aria-hidden="true"><img class="status" src="assets/kit3/status-notyet.png" alt=""><small>1.0</small></span>
+    </button>
+  </div>
+  </div>
+  <p class="map-tip">Touch a place to unroll its account.</p>
+</section>
+</main>
+
+<div class="fortune ink-frame" id="fortune" role="status" aria-live="polite" data-rh-keep hidden>
+  <div class="die" id="die" aria-hidden="true"></div>
+  <p><span class="head" id="fortune-head">the die says</span><span id="fortune-text"></span></p>
+  <button class="x ink-btn ink-frame" id="fortune-x" type="button" aria-label="Close">&times;</button>
+</div>
+
+<!-- Scroll card -->
+<div class="veil" id="veil" role="dialog" aria-modal="true" aria-labelledby="card-title">
+  <div class="card" id="card">
+    <img class="roller top" src="assets/gen/scroll-roller-top.png" alt="">
+    <div class="cbody" id="cclip"><div class="cin"><button class="close ink-btn ink-frame" id="close" aria-label="Close">&times;</button><div id="card-body"></div></div></div>
+    <div class="bottom-wrap cbottom"><img class="roller bottom" src="assets/gen/scroll-roller-bottom.png" alt=""><div class="spin" id="cspin"></div></div>
+  </div>
+</div>
+
+<template id="t-web">
+  <div class="head"><img src="assets/kit3/camelot.png" alt=""><div><h2 id="card-title">Camelot of the Web</h2><div class="ms">Milestone 1 &middot; conquered</div></div></div>
+  <p class="mark"><img class="seal-mark" src="assets/kit/seal-exact.png" alt=""><span class="lbl exact">exact</span></p>
+  <p>Done. Dragon's own layout engine puts every element exactly where Chrome does, down to a fraction of a pixel.</p>
+  <div class="proof"><img class="ri-proven" src="assets/kit/proven.png" alt="Proven">
+  <ul class="nums">
+    <li><b>258 of 258</b> test cases pass</li>
+    <li><b>Every</b> element lands where Chrome puts it</li>
+    <li><b>No</b> style is lost between your CSS and Dragon's output</li>
+  </ul></div>
+  <p class="foot">Nothing is marked supported without a passing test.</p>
+</template>
+<template id="t-ios">
+  <div class="head"><img src="assets/kit3/isle-ios.png" alt=""><div><h2 id="card-title">The Isle of iOS</h2><div class="ms">Milestone 2 &middot; under march</div></div></div>
+  <p><span class="seal-badge caveat">in progress</span></p>
+  <p>The native engine for iOS is generated from the one TypeScript engine, not written again by hand. Its device lane is checked against Chrome, as the web was.</p>
+  <p>No numbers are posted yet. They will be, when the lane passes.</p>
+  <p class="foot">This isle and the Android Marches are reached together, at parity, or not at all.</p>
+</template>
+<template id="t-android">
+  <div class="head"><img src="assets/kit3/android-marches.png" alt=""><div><h2 id="card-title">The Android Marches</h2><div class="ms">Milestone 2 &middot; under march</div></div></div>
+  <p><span class="seal-badge caveat">in progress</span></p>
+  <p>Android's native engine is generated from the same TypeScript engine as iOS's. Its device lane is checked against Chrome, number by number.</p>
+  <p>No numbers are posted yet. They will be, when the lane passes.</p>
+  <p class="foot">Neither phone is claimed alone: both meet at the Parity Ford.</p>
+</template>
+<template id="t-tailwind">
+  <div class="head"><img src="assets/kit3/tailwind-wilds.png" alt=""><div><h2 id="card-title">The Tailwind Wilds</h2><div class="ms">Later &middot; not yet ridden</div></div></div>
+  <p class="mark"><img class="seal-mark" src="assets/kit/seal-unsupported.png" alt=""><span class="lbl unsupported">unsupported</span></p>
+  <p>Custom properties (CSS variables), the road that utility styles such as Tailwind travel by. It lies beyond milestone 2.</p>
+  <p>Until a test passes here, it stays marked <em>unsupported</em>.</p>
+</template>
+<template id="t-keep">
+  <div class="head"><img src="assets/kit3/dragons-keep.png" alt=""><div><h2 id="card-title">The Dragon's Keep</h2><div class="ms">1.0 &middot; the end of the road</div></div></div>
+  <p><span class="seal-badge unsupported">not yet</span></p>
+  <p>Version 1.0: when every place on this map is proven against Chrome.</p>
+  <p>Install: <code>npm install dragon</code> <em>(coming soon; not yet published)</em></p>
+</template>
+
+<section class="ri-sec" id="how" aria-label="How it works">
+<div class="how">
+  <h2>How it works</h2>
+  <p class="lede">Three steps. Your tools do most of it for you.</p>
+  <ol>
+    <li>
+      <div class="art"><img src="assets/kit2/css-banner.png" alt=""></div>
+      <h3><span class="n">1</span>Write CSS</h3>
+      <p>Plain CSS, the kind you already write. Nothing new to learn.</p>
+      <pre class="ink-frame code"><span class="l"><span class="sel">.card</span> <span class="pun">{</span></span><span class="l">  <span class="prop">padding</span><span class="pun">:</span> <span class="num">16px</span><span class="pun">;</span></span><span class="l">  <span class="prop">border-radius</span><span class="pun">:</span> <span class="num">12px</span><span class="pun">;</span></span><span class="l"><span class="pun">}</span></span></pre>
+    </li>
+    <li>
+      <div class="art"><img src="assets/kit2/signpost.png" alt=""></div>
+      <h3><span class="n">2</span>Check every platform</h3>
+      <p>One check covers all of them. Old or unsupported CSS gives you the file, the line and a fix.</p>
+      <pre class="ink-frame code"><span class="l"><span class="fn">app.css:4:3</span><span class="pun">:</span> <span class="kw">error</span></span><span class="l">  <span class="prop">clip</span><span class="pun">:</span> <span class="num">rect(0 0 0 0)</span></span><span class="l">  deprecated, not supported</span><span class="l">  <span class="str">fix: Remove the declaration</span></span></pre>
+    </li>
+    <li>
+      <div class="art"><img class="pair" src="assets/kit2/device-ios.png" alt=""><img class="pair" src="assets/kit2/device-android.png" alt=""></div>
+      <h3><span class="n">3</span>Get native code</h3>
+      <p>Real native views. No web view, and no CSS read on the phone.</p>
+      <pre class="ink-frame code"><span class="l"><span class="com">// iOS, from .card</span></span><span class="l">layer<span class="pun">.</span>cornerRadius <span class="pun">=</span> <span class="num">12</span></span><span class="l"><span class="com">// padding: placed by</span></span><span class="l"><span class="com">// Dragon's layout engine</span></span></pre>
+    </li>
+  </ol>
+  <p class="note">The package and its API are below.</p>
+</div>
+</section>
+
+<section class="ri-sec" id="api" aria-label="The API">
+<div class="api">
+  <h2>What you get from <code>npm install dragon</code></h2>
+  <p class="lede">A small API. Most people never call it: your framework or build tool does.</p>
+  <div class="cols">
+<pre class="ink-frame code"><span class="l"><span class="kw">import</span> <span class="pun">{</span></span><span class="l">  createProject<span class="pun">,</span> formatDiagnostics<span class="pun">,</span> querySupport<span class="pun">,</span></span><span class="l"><span class="pun">}</span> <span class="kw">from</span> <span class="str">&#x27;dragon&#x27;</span></span><span class="l"></span><span class="l"><span class="com">// One project for every platform you ship to</span></span><span class="l"><span class="kw">const</span> project <span class="pun">=</span> <span class="fn">createProject</span><span class="pun">(</span><span class="pun">{</span></span><span class="l">  projectId<span class="pun">:</span> <span class="str">&#x27;my-app&#x27;</span><span class="pun">,</span></span><span class="l">  targets<span class="pun">:</span> <span class="pun">{</span> web<span class="pun">:</span> <span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> ios<span class="pun">:</span> <span class="pun">{</span> minimum<span class="pun">:</span> <span class="str">&#x27;15.0&#x27;</span> <span class="pun">}</span> <span class="pun">}</span><span class="pun">,</span></span><span class="l"><span class="pun">}</span><span class="pun">)</span></span><span class="l"></span><span class="l"><span class="com">// Check: errors name the file, the line and a fix</span></span><span class="l"><span class="kw">const</span> report <span class="pun">=</span> project.<span class="fn">check</span><span class="pun">(</span>input<span class="pun">)</span></span><span class="l"><span class="kw">if</span> <span class="pun">(</span><span class="pun">!</span>report.ok<span class="pun">)</span> <span class="pun">{</span></span><span class="l">  <span class="kw">const</span> <span class="pun">{</span> diagnostics<span class="pun">,</span> sources <span class="pun">}</span> <span class="pun">=</span> report</span><span class="l">  console.<span class="fn">log</span><span class="pun">(</span><span class="fn">formatDiagnostics</span><span class="pun">(</span>diagnostics<span class="pun">,</span> sources<span class="pun">)</span><span class="pun">)</span></span><span class="l"><span class="pun">}</span></span><span class="l"></span><span class="l"><span class="com">// Compile: native output for each platform</span></span><span class="l"><span class="kw">const</span> result <span class="pun">=</span> project.<span class="fn">compile</span><span class="pun">(</span>input<span class="pun">)</span></span><span class="l">result.outputs.ios</span><span class="l"></span><span class="l"><span class="com">// Ask before you write</span></span><span class="l"><span class="fn">querySupport</span><span class="pun">(</span><span class="pun">{</span></span><span class="l">  kind<span class="pun">:</span> <span class="str">&#x27;possibilities&#x27;</span><span class="pun">,</span></span><span class="l">  target<span class="pun">:</span> <span class="pun">{</span> kind<span class="pun">:</span> <span class="str">&#x27;ios&#x27;</span><span class="pun">,</span> minimum<span class="pun">:</span> <span class="str">&#x27;15.0&#x27;</span> <span class="pun">}</span><span class="pun">,</span></span><span class="l">  css<span class="pun">:</span> <span class="str">&#x27;gap: 7px&#x27;</span><span class="pun">,</span></span><span class="l"><span class="pun">}</span><span class="pun">)</span></span></pre>
+    <dl>
+      <div><img src="assets/kit2/crest.png" alt=""><dt>createProject()</dt><dd>Say which platforms you ship to, once.</dd></div>
+      <div><img src="assets/kit2/signpost.png" alt=""><dt>check()</dt><dd>Checks your CSS for every platform at once. No output, just answers.</dd></div>
+      <div><span style="grid-row: span 2; display:flex; gap:4px"><img src="assets/kit2/device-ios.png" alt="" style="width:30px;height:64px"><img src="assets/kit2/device-android.png" alt="" style="width:30px;height:64px"></span><dt>compile()</dt><dd>Turns your CSS into native code for each platform.</dd></div>
+      <div><img src="assets/kit2/scroll-seal.png" alt=""><dt>formatDiagnostics()</dt><dd>Prints errors people can read: file, line, why, and the fix.</dd></div>
+      <div><img src="assets/kit2/book.png" alt=""><dt>querySupport()</dt><dd>Asks if a CSS rule works on a platform: exact, caveat or unsupported.</dd></div>
+    </dl>
+  </div>
+  <p class="note">Targets today: web and iOS. Android is being added now. Early design; the package is not published yet.</p>
+</div>
+</section>
+
+<section class="ri-sec" id="summary">
+<div class="summary">
+  <div class="ri-h"><img src="assets/icons/crown.png" alt=""><h2>Dragon CSS, plainly</h2></div>
+  <p>Write regular CSS once. Dragon compiles it at build time into native view properties, and proves the result against Chrome, number by number, never by screenshots.</p>
+  <img class="ri-flag" src="assets/kit/banner-conquered.png" alt="Conquered"><h3>Done: milestone 1 (web)</h3>
+  <ul>
+    <li>Dragon's own TypeScript layout engine: block, flex, text, positioning, right-to-left.</li>
+    <li>137 test fixtures and 258 cases pass.</li>
+    <li>8,671 of 8,671 boxes match Chrome exactly, to 1/64 px.</li>
+    <li>339,080 computed values are identical between the author's CSS and Dragon's output.</li>
+  </ul>
+  <img class="ri-flag" src="assets/kit/banner-marching.png" alt="Marching now"><h3>Now: milestone 2 (iOS and Android, at parity)</h3>
+  <p>Native engines are generated from the one TypeScript engine, and each device lane is checked against Chrome.</p>
+  <img class="ri-flag" src="assets/kit/banner-notyet.png" alt="Not yet ridden"><h3>Later</h3>
+  <p>Custom properties (for utility CSS such as Tailwind), then 1.0.</p>
+  <h3>Support labels</h3>
+  <p><img class="seal-mark" src="assets/kit/seal-exact.png" alt=""><code>exact</code>, <img class="seal-mark" src="assets/kit/seal-caveat.png" alt=""><code>caveat</code>, <img class="seal-mark" src="assets/kit/seal-unsupported.png" alt=""><code>unsupported</code>. Nothing is marked supported without a passing test.</p>
+  <p>Install: <code>npm install dragon</code> (coming soon; not yet published).</p>
+</div>
+</section>
+
+<script>/* Fit the whole quest map in the viewport: scale = min(1, (innerHeight - 80) / mapH, (innerWidth - 32) / mapW), via CSS zoom. Narrow screens keep the pannable map. */
+(() => { const m = document.getElementById('map');
+  const fit = () => { m.style.zoom = ''; if (innerWidth <= 760) return;
+    m.style.zoom = Math.min(1, (innerHeight - 80) / m.offsetHeight, (innerWidth - 32) / m.offsetWidth); };
+  fit(); addEventListener('resize', fit); })();</script>
+<script>
+
+  // Scroll physics (after scroll-physics.html): the bottom roller falls under gravity (len = a*t*t/2) until the
+  // sheet runs out, stops hard with no overshoot, rebounds upward on a stiff damped spring, spins while falling,
+  // and the whole scroll sways from the top roller. One-time per opening; never scroll-linked.
+  // Unroll: the sheet lengthens smoothly under the fixed top roller, the bottom roller turning as it goes.
+  // Straight down, no tilt or bounce. Never scroll-linked.
+  function dropScroll(hang, clip, spin, onDone) {
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    cancelAnimationFrame(hang._raf); hang.style.transform = '';
+    clip.style.height = ''; const cs = getComputedStyle(clip);
+    const max = parseFloat(cs.maxHeight); const L = Math.min(clip.scrollHeight, isNaN(max) ? Infinity : max);
+    if (reduce || !L) { onDone && onDone(); return; }
+    const D = 700 + L * .45;                                   // ms: longer sheets take a little longer
+    const ease = u => 1 - Math.pow(1 - u, 4);                  // quick start, long soft settle
+    clip.style.overflow = 'hidden'; clip.style.height = '0px';
+    const t0 = performance.now();
+    const frame = now => {
+      const u = Math.min(1, (now - t0) / D), len = L * ease(u);
+      clip.style.height = len + 'px';
+      if (spin) spin.style.setProperty('--spin', ((len * 1.2) % 26) + 'px');
+      if (u < 1) hang._raf = requestAnimationFrame(frame);
+      else { clip.style.height = ''; clip.style.overflow = ''; onDone && onDone(); }
+    };
+    hang._raf = requestAnimationFrame(frame);
+  }
+
+(() => {
+  const root = document.documentElement; root.classList.add('js');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const mq = matchMedia('(max-width: 759px)');
+  if (mq.matches) document.querySelector('.map-scroll').scrollLeft = 70;
+
+  // Castle scroll cards.
+  const veil = document.getElementById('veil'), body = document.getElementById('card-body'), closeBtn = document.getElementById('close');
+  let opener = null;
+  const open = (key, btn) => {
+    body.replaceChildren(document.getElementById('t-' + key).content.cloneNode(true));
+    opener = btn; veil.classList.add('open'); closeBtn.focus();
+    const cardEl = document.getElementById('card'); veil.style.paddingTop = Math.max(16, (innerHeight - cardEl.offsetHeight) / 2) + 'px';
+    dropScroll(cardEl, document.getElementById('cclip'), document.getElementById('cspin'));
+  };
+  const close = () => { veil.classList.remove('open'); if (opener) opener.focus(); };
+  document.querySelectorAll('button.castle').forEach(b => b.addEventListener('click', () => open(b.dataset.m, b)));
+  closeBtn.addEventListener('click', close);
+  veil.addEventListener('click', e => { if (e.target === veil) close(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && veil.classList.contains('open')) close(); });
+  if (location.hash.startsWith('#open-')) open(location.hash.slice(6), null);
+
+  // While a scroll card is open, keys and wheel belong to it, not to section stepping. Space on a button stays a click.
+  addEventListener('keydown', e => {
+    if (veil.classList.contains('open') && e.key !== 'Escape') {
+      e.stopPropagation();
+      const step = { ArrowDown: 60, ArrowUp: -60, PageDown: 300, PageUp: -300 }[e.key];
+      if (step) { e.preventDefault(); document.getElementById('cclip').scrollBy({ top: step }); }
+    }
+    else if (e.key === ' ' && e.target.closest && e.target.closest('button, a')) e.stopPropagation();
+  }, true);
+  addEventListener('wheel', e => { if (veil.classList.contains('open')) e.stopPropagation(); }, { capture: true, passive: true });
+})();
+addEventListener('DOMContentLoaded', () => { window.realmSnap = RoyalHero.enableSnapAndFocus('.royal-hero, #letter-sec, #quest, #how, #api, #summary'); });
+</script>
+<script>
+/* Shared bar wiring (07a-07d): the sound check (on by default, remembered in localStorage 'dragon-sound'; the engine
+   itself waits for the first gesture before any audio exists), volume, the mobile "more" fold, and the default
+   feedback sounds shared by every variant: a soft chime on a castle, a paper rustle as its scroll card unrolls and a
+   softer one as it rolls up. */
+const $ = id => document.getElementById(id);
+const S = window.RealmSound;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const bar = $('bar');
+const heroApi = () => document.querySelector('.royal-hero')._royalHero;
+const soundOn = () => $('snd').checked;
+const onSound = [];
+$('snd').addEventListener('change', e => {
+  S.setEnabled(e.target.checked);
+  $('vol').classList.toggle('quiet', !e.target.checked);
+  onSound.forEach(f => f(e.target.checked));
+});
+$('snd').checked = S.enabled;
+$('vol').classList.toggle('quiet', !S.enabled);
+S.setVolume($('vol').value);
+$('vol').addEventListener('input', e => S.setVolume(e.target.value));
+$('more').addEventListener('click', () => {
+  const open = bar.classList.toggle('open');
+  $('more').setAttribute('aria-expanded', open); $('more').textContent = open ? 'less' : 'more';
+});
+document.querySelectorAll('button.castle').forEach(b => b.addEventListener('click', () => S.chime(b.dataset.m)));
+// The scroll card: a paper rustle as it unrolls, a softer, shorter one as it closes.
+const veil = $('veil');
+if (veil) {
+  let wasOpen = veil.classList.contains('open');
+  new MutationObserver(() => {
+    const isOpen = veil.classList.contains('open');
+    if (isOpen !== wasOpen) S.rustle(isOpen ? 0.6 : 0.32, isOpen ? 0.55 : 0.3);
+    wasOpen = isOpen;
+  }).observe(veil, { attributes: true, attributeFilter: ['class'] });
+}
+// The section in focus, and a way to step to one (by id; 'hero' for the opening) before doing something there.
+const current = () => (window.realmSnap ? window.realmSnap.sections : []).find(s => !s.hasAttribute('data-rh-dim'));
+function goTo(id, fn) {
+  const snap = window.realmSnap; if (!snap) { fn && fn(); return; }
+  const i = snap.sections.findIndex(s => id === 'hero' ? s.classList.contains('royal-hero') : s.id === id);
+  const cur = current();
+  if (cur === snap.sections[i]) { fn && fn(); return; }
+  snap.go(i);
+  if (fn) setTimeout(fn, reduce ? 80 : 850);
+}
+
+/* 07d Tavern: a frame drum (opt-in) keeps time at the tempo you set; candlelight warms the page with a flickering
+   vignette (and a faint, sparse hearth crackle when sound is on); a die tells a true fortune from Dragon's real numbers
+   with a clatter on the table; and the map rolls out again with a parchment rustle and one chime at the far end. */
+const tempo = () => +$('tempo').value;
+$('drum').addEventListener('change', e => S.setDrum(e.target.checked && soundOn(), tempo()));
+$('tempo').addEventListener('input', e => { S.setDrum(undefined, tempo()); e.target.setAttribute('aria-valuetext', tempo() + ' beats a minute'); });
+function hearth() { S.setAmbience(soundOn() && $('candle').checked ? 'hearth' : 'silence'); }
+onSound.push(on => { if (on) { S.setDrum($('drum').checked, tempo()); hearth(); } });
+
+// Candlelight: opacity follows a slow, uneven flicker (two sines and a little noise); never the mouse.
+const light = $('candle-light'); let flickRaf = 0;
+function flicker(now) {
+  const t = now / 1000;
+  const f = .86 + .07 * Math.sin(t * 7.3) + .05 * Math.sin(t * 13.1 + 1.7) + .03 * (Math.random() - .5);
+  light.style.setProperty('--flick', f.toFixed(3));
+  flickRaf = requestAnimationFrame(flicker);
+}
+$('candle').addEventListener('change', e => {
+  cancelAnimationFrame(flickRaf);
+  light.classList.toggle('lit', e.target.checked);
+  light.style.setProperty('--flick', 1);
+  if (e.target.checked && !reduce) flickRaf = requestAnimationFrame(flicker);
+  hearth();
+});
+
+// Fortunes: only true things, each read from the real numbers. Drawn marks sit beside CSS, iOS, Android, Chrome and the Web.
+const G = (f, cls = '', alt = '') => `<img class="g ${cls}" src="assets/kit2/${f}.png" alt="${alt}">`;
+const SEAL = f => `<img class="seal-mark" src="assets/kit/seal-${f}.png" alt="">`;
+const FORTUNES = [
+  `8,671 of 8,671 layout boxes match ${G('chrome')}Chrome, to 1/64 of a pixel.`,
+  `137 test fixtures and 258 test cases. All of them pass.`,
+  `339,080 values are the same in your ${G('css-banner', 'g-css', 'CSS')} and in Dragon's output.`,
+  `Every feature has a label: ${SEAL('exact')}exact, ${SEAL('caveat')}caveat or ${SEAL('unsupported')}unsupported.`,
+  `${G('device-ios')}iOS and ${G('device-android')}Android are on the way (milestone 2). No numbers until the tests pass.`,
+  `The npm package is not out yet. It is coming soon.`,
+];
+const PIPS = { 1: [[50, 50]], 2: [[30, 30], [70, 70]], 3: [[28, 28], [50, 50], [72, 72]], 4: [[30, 30], [70, 30], [30, 70], [70, 70]],
+  5: [[28, 28], [72, 28], [50, 50], [28, 72], [72, 72]], 6: [[30, 26], [70, 26], [30, 50], [70, 50], [30, 74], [70, 74]] };
+const dieSvg = n => `<svg viewBox="0 0 100 100"><filter id="dr"><feTurbulence type="fractalNoise" baseFrequency=".03" numOctaves="2" seed="${n}"/><feDisplacementMap in="SourceGraphic" scale="3"/></filter>
+  <g filter="url(#dr)" fill="none" stroke="rgba(60,40,22,.85)" stroke-width="3.2" stroke-linecap="round"><path d="M18 9 C40 7 62 8 84 10 C91 11 92 17 91 24 C90 46 91 66 90 84 C89 90 84 92 78 91 C56 90 38 91 17 90 C11 89 9 85 9 78 C10 58 9 38 10 18 C10 12 13 9 19 9"/></g>
+  <g fill="rgba(163,52,43,.9)">${PIPS[n].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="7.2"/>`).join('')}</g></svg>`;
+const box = $('fortune'); let rollTimer = 0, last = 0;
+$('roll').addEventListener('click', () => {
+  let n; do { n = 1 + Math.floor(Math.random() * 6); } while (n === last); last = n;
+  box.hidden = false; clearTimeout(rollTimer);
+  box.style.bottom = (innerHeight - bar.getBoundingClientRect().top + 12) + 'px';   // always just above the bar, open or folded
+  const settle = soundOn() ? S.dice() : 0.7;
+  $('fortune-head').textContent = 'rolling…'; $('fortune-text').innerHTML = '&nbsp;';
+  let spins = 0;
+  const tumble = () => {
+    $('die').innerHTML = dieSvg(1 + Math.floor(Math.random() * 6));
+    if (!reduce) $('die').animate([{ transform: `rotate(${Math.random() * 60 - 30}deg)` }, { transform: 'rotate(0)' }], { duration: 110 });
+    if (++spins < (reduce ? 1 : 7)) rollTimer = setTimeout(tumble, 60 + spins * 22); else rollTimer = setTimeout(done, 120);
+  };
+  const done = () => {
+    $('die').innerHTML = dieSvg(n);
+    $('fortune-head').textContent = 'the die shows ' + n;
+    $('fortune-text').innerHTML = FORTUNES[n - 1];
+    if (soundOn()) S.clink(0.6);                                   // the die comes to rest
+  };
+  tumble();
+});
+const closeFortune = () => { box.hidden = true; clearTimeout(rollTimer); };
+$('fortune-x').addEventListener('click', closeFortune);
+addEventListener('keydown', e => { if (e.key === 'Escape' && !box.hidden) closeFortune(); });
+
+// Roll out the map again: the chart unrolls from the left, then each place pops up with its chime, along the road.
+const map = $('map'), ORDER = ['web', 'android', 'ios', 'tailwind', 'keep'];
+$('unroll').addEventListener('click', () => goTo('quest', () => {
+  S.rustle(1.1, 0.7);
+  const dur = reduce ? 1 : 1300;
+  map.animate(reduce ? [{ opacity: .2 }, { opacity: 1 }] : [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0 0 0)' }],
+    { duration: reduce ? 400 : dur, easing: 'cubic-bezier(.3,.1,.3,1)' });
+  ORDER.forEach((m, i) => {
+    const b = map.querySelector(`button.castle[data-m="${m}"]`);
+    setTimeout(() => {
+      if (i === ORDER.length - 1) S.chime(m);
+      if (!reduce) b.animate([{ transform: 'translateY(10px) scale(.7)', opacity: 0 }, { transform: 'translateY(-4px) scale(1.06)', opacity: 1, offset: .7 }, { transform: 'none', opacity: 1 }],
+        { duration: 480, easing: 'ease-out' });
+    }, (reduce ? 300 : dur) + i * 280);
+  });
+}));
+</script>
+</body>
+</html>

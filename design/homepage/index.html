@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<title>Dragon CSS homepage drafts</title>
+<link rel="stylesheet" href="assets/parchment.css"><script src="assets/parchment.js"></script>
+<style>
+body{padding:40px 20px}.sheet{max-width:980px;margin:0 auto;padding:48px 56px}
+h1{font:600 34px var(--display);margin:0 0 6px}p{margin:0 0 26px;color:var(--ink-soft)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px}
+a.v{display:flex;gap:14px;align-items:center;padding:14px 16px;border:1px solid rgba(120,90,50,.3);border-radius:8px;color:var(--ink);text-decoration:none;background:rgba(255,250,235,.25)}
+a.v:hover{background:rgba(255,250,235,.55)}a.v img{width:52px;height:52px;object-fit:contain}
+a.v b{display:block;font:600 18px var(--display)}a.v span{font:12px var(--mono);color:var(--ink-soft)}
+a.v.pending{opacity:.45;pointer-events:none}
+</style></head><body>
+<div class="sheet gridded"><h1><span class="rubric">D</span>ragon CSS: homepage drafts</h1><p>Nine takes on "a letter on a scroll". Some are still being built; a missing page just means it is not done yet.</p><div class="grid" id="g"></div></div>
+<script>
+const v=[['01-royal-letter','The Royal Letter','scroll','ink letter, wax seal to break'],['02-herald-proclamation','The Herald\'s Proclamation','banner','decrees unroll per platform'],['03-illuminated-manuscript','The Illuminated Manuscript','spellbook','marginalia notes on hover'],['04-scriptorium','The Scriptorium','letter','Try thy CSS desk'],['05-trial-by-fire','Trial by Fire','dragon','the dragon judges your CSS'],['06-royal-ledger','The Royal Ledger','scales','support table as wax seals'],['07-quest-map','The Quest Map','map','milestones as castles'],['07a-quest-map-lute','Quest Map: the Lute','spellbook','lute phrases as you step, tunes, drone'],['07b-quest-map-herald','Quest Map: the Herald','banner','fanfare, proclaim the letter, wax seal'],['07c-quest-map-merlin','Quest Map: Merlin','moon','time of day, cast a spell, ambience'],['07d-quest-map-tavern','Quest Map: the Tavern','chest','drum, candlelight, dice of true fortunes'],['08-round-table','The Round Table','shield','one knight per platform'],['09-unrolling-scroll','The Unrolling Scroll','scroll','unrolls as you scroll'],['10-letter-roadmap','The Letter with the Road Ahead','map','letter + quest-map roadmap'],['11-herald-scroll','The Herald and the Scroll','banner','banner hero + real scroll + quest map'],['scroll-physics','Scroll physics','scroll','realistic drop, rebound and sway vs ease-out'],['dragon-font','Dragon Blackletter','spellbook','our own font from the hero lettering'],['hero-depth','Hero with depth','crown','six parallax layers + exploded view']];
+const g=document.getElementById('g');
+for(const [f,t,i,d] of v){const a=document.createElement('a');a.className='v';a.href=f+'.html';a.innerHTML=`<img src="assets/icons/${i}.png" alt=""><div><b>${t}</b><span>${d}</span></div>`;g.appendChild(a);}
+</script></body></html>
