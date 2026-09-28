@@ -29,7 +29,7 @@ try {
   for (const spec of FIXTURES) {
     if (spec.kind !== 'layout') continue;
     const cases = casesOf(spec, fixtureInput(spec));
-    for (const c of cases) writeFileSync(expectedPath(c.id, platform), captureJson(await captureFixture(browser, c.id, c.authoredHtml, c.environment)));
+    for (const c of cases) writeFileSync(expectedPath(c.id, platform), captureJson(await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra)));
     const notes: string[] = [];
     if (reference) {
       for (const env of environmentsOf(spec)) {

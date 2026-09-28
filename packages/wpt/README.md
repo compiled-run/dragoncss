@@ -6,7 +6,7 @@ web-platform-tests". It never edits the WPT copy.
 
 ## Numbers (web, WPT `375cf2548a7c0952c54e141d1eb4e6fc4fe59e41`, web profile m1-s5)
 
-**web: 2 pass of 38054 CSS WPT files (numeric runnable 2)**
+**web: 3 pass of 38054 CSS WPT files (numeric runnable 4)**
 
 | kind | files |
 |---|---:|
@@ -19,14 +19,16 @@ web-platform-tests". It never edits the WPT copy.
 | **total** | **38,054** |
 
 - **Numeric files:** 1,138.
-  - Runnable for web: 2. Dragon passes 2 and fails 0.
-  - On those 2 files, Dragon passes 2 of 2 subtests and 3 of 3 checks.
-  - The 2 files are `css/css-flexbox/flexbox-lines-must-be-stretched-by-default.html` and `css/CSS2/normal-flow/unresolvable-max-height.html`.
-- **Chrome 145 on the same checks,** running the original WPT pages: 2 of 2 subtests and 3 of 3 checks pass.
-- **Not runnable:** 1,136 numeric files.
-  - 850 are gated by Dragon's compiler (its first diagnostic is the reason).
+  - Runnable for web: 4. Dragon passes 3 and fails 1.
+  - On those 4 files, Dragon passes 4 of 5 subtests and 6 of 7 checks.
+  - The passing files: `css/CSS2/normal-flow/unresolvable-max-height.html`, `css/css-flexbox/flexbox-lines-must-be-stretched-by-default.html`, `css/css-flexbox/total-min-max-violation-zero.html`.
+  - The failing files, each with its reason and issue or deviation in `expectations/web.json`: `css/css-flexbox/flex-minimum-height-flex-items-012.html` (dragon#flex-min-height-012).
+- **Chrome 145 on the same checks,** running the original WPT pages: 5 of 5 subtests and 7 of 7 checks pass.
+- **Not runnable:** 1,134 numeric files.
+  - 847 are gated by Dragon's compiler (its first diagnostic is the reason).
   - 285 are refused by the translator.
   - 1 is blocked at the layout projection.
+  - 1 is waiting on an assertion Dragon cannot make yet (`assert:*`).
 - **Translator cross-check** (`--chrome-all`):
   - 853 numeric files translate into a fixture and a checks sidecar.
   - For all 853, the WPT harness's own subtest results in Chrome equal the translated checks read in the same page.
@@ -34,7 +36,7 @@ web-platform-tests". It never edits the WPT copy.
 
 ### Interop focus areas (wpt-metadata `e6b32d81746942e340e8df5011a9e930f189ebb1`, all years 2021-2026)
 
-**Interop CSS (58 areas, 2021-2026): Dragon web 1/6482; Chrome 145 1/1 on the files this lane ran in Chrome. Mean area score for Dragon web: 0.0%.**
+**Interop CSS (58 areas, 2021-2026): Dragon web 1/6482; Chrome 145 2/2 on the files this lane ran in Chrome. Mean area score for Dragon web: 0.0%.**
 
 - **The one passing file:** Dragon's pass is `flexbox-lines-must-be-stretched-by-default.html` in interop-2021-flexbox (1/1033). Every other area is at 0.
 - **Where the scores come from:** they are derived from `expectations/web.json` alone. Each entry carries its `interop` labels, so `wpt:check` fails when an area's score changes unexpectedly.
@@ -48,14 +50,14 @@ Top not-runnable reasons for numeric files (grouped by property; the exact reaso
 | reason | files |
 |---|---:|
 | `translate:script` (inline script logic besides `checkLayout`) | 161 |
+| `DRAGON_UNSUPPORTED_PROPERTY:writing-mode` | 148 |
 | `DRAGON_UNSUPPORTED_PROPERTY:grid-column` (mostly from the linked `/css/support/grid.css`) | 142 |
-| `DRAGON_UNSUPPORTED_PROPERTY:writing-mode` | 141 |
-| `DRAGON_UNSUPPORTED_PROPERTY:background` | 108 |
 | `DRAGON_UNSUPPORTED_PROPERTY:grid-template-columns` | 107 |
 | `translate:script-src` (helper scripts: `style-change.js` 44, `test-common.js` 44) | 88 |
-| `DRAGON_UNSUPPORTED_PROPERTY:font` | 48 |
-| `DRAGON_UNSUPPORTED_PROPERTY:float` | 35 |
-| `DRAGON_UNSUPPORTED_PROPERTY:outline` | 28 |
+| `DRAGON_UNSUPPORTED_PROPERTY:float` | 63 |
+| `DRAGON_UNSUPPORTED_PROPERTY:font` | 49 |
+| `DRAGON_UNSUPPORTED_ELEMENT` | 43 |
+| `DRAGON_UNSUPPORTED_PROPERTY:outline` | 31 |
 | `DRAGON_UNSUPPORTED_PROPERTY:grid-auto-flow` | 27 |
 
 ## Commands

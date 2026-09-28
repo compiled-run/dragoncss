@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.sw { width: 30px; height: 10px; }
+.later-longhand { background: red; background-color: blue; }
+.earlier-longhand { background-color: blue; background: red; }
+.reset-by-none { background-color: blue; background: none; }
+.base { background-color: green; }
+.base.over { background: yellow; }
+.spec { background: yellow; }
+.spec.win { background-color: green; }
+.order-a { background-color: aqua; }
+.order-b { background: none; }
+.initial { background: red; }
+.initial.reset { background: initial; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="later-longhand" class="sw later-longhand"></div>
+<div data-dragon-id="earlier-longhand" class="sw earlier-longhand"></div>
+<div data-dragon-id="reset-by-none" class="sw reset-by-none"></div>
+<div data-dragon-id="over" class="sw base over"></div>
+<div data-dragon-id="win" class="sw spec win"></div>
+<div data-dragon-id="order" class="sw order-a order-b"></div>
+<div data-dragon-id="reset" class="sw initial reset"></div>
+</body>
+</html>

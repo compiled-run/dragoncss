@@ -59,9 +59,9 @@ else {
           problems.push(`${c.id}: the reference compile gives no web output`);
           continue;
         }
-        const authored = await captureFixture(browser, c.id, c.authoredHtml, c.environment);
-        const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(css.text, classOf), c.environment);
-        const d = compareDual(authored, compiledCapture, colors, textColors);
+        const authored = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra);
+        const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(css.text, classOf), c.environment, c.computedExtra);
+        const d = compareDual(authored, compiledCapture, colors, textColors, c.computedExtra);
         dual.push({ case: c.id, pass: d.pass, problems: d.problems });
         if (!d.pass) problems.push(`${c.id}: chrome-dual: ${d.problems.join('; ')}`);
         // Information only: Dragon under the reference platform's rules against this platform's capture.

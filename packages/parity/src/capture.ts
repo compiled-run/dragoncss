@@ -18,7 +18,7 @@ export type CapturedNode = {
   readonly y: number;
   readonly width: number;
   readonly height: number;
-  /** getComputedStyle values for every longhand in LONGHANDS order; null for text nodes. */
+  /** getComputedStyle values for every longhand in LONGHANDS order, then the case's extra properties; null for text nodes. */
   readonly computed: { readonly [property: string]: string } | null;
 };
 
@@ -35,7 +35,8 @@ export type WebCapture = {
   readonly nodes: readonly CapturedNode[];
 };
 
-export async function captureFixture(browser: Browser, fixture: string, html: string, env: Environment): Promise<WebCapture> {
+/** extra: properties captured after LONGHANDS (a fixture's computedExtra); none for every fixture that predates them. */
+export async function captureFixture(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = []): Promise<WebCapture> {
   const page = await openPage(browser, html, env);
   try {
     const nodes = await page.evaluate((props) => {
@@ -64,7 +65,7 @@ export async function captureFixture(browser: Browser, fixture: string, html: st
         }
       }
       return out;
-    }, [...LONGHANDS]);
+    }, [...LONGHANDS, ...extra]);
     return {
       fixture,
       chrome: CHROME_VERSION,

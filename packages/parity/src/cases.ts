@@ -15,6 +15,8 @@ export type ParityCase = {
   /** The assignment index in the renderer's enumeration. */
   readonly index: number;
   readonly environment: Environment;
+  /** The fixture's computedExtra: background longhands captured besides LONGHANDS in both renderings. */
+  readonly computedExtra: readonly string[];
   readonly assignment: Assignment;
   readonly isInitial: boolean;
   readonly authoredHtml: string;
@@ -34,6 +36,7 @@ export function casesOf(spec: FixtureSpec, input: FrontEndResult): ParityCase[] 
       fixture: spec.id,
       index: 0,
       environment,
+      computedExtra: spec.kind === 'layout' ? (spec.computedExtra ?? []) : [],
       assignment: [],
       isInitial: true,
       authoredHtml: html,
@@ -46,6 +49,7 @@ export function casesOf(spec: FixtureSpec, input: FrontEndResult): ParityCase[] 
     fixture: spec.id,
     index,
     environment,
+    computedExtra: spec.kind === 'layout' ? (spec.computedExtra ?? []) : [],
     assignment,
     isInitial: index === model.initialIndex,
     authoredHtml: model.render(assignment, { kind: 'authored' }),

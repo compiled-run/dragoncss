@@ -198,7 +198,7 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     values.push(v);
   }
   // A shorthand may refuse a grammar-valid value it cannot express (white-space-trim, shorthands/text.ts).
-  const refusal = isShorthand(property) && !wide ? (shorthandHandler(property).refuse?.(tokens, base) ?? null) : null;
+  const refusal = isShorthand(property) && !wide ? (shorthandHandler(property).refuse?.(tokens, base, sheetText) ?? null) : null;
   if (refusal !== null) {
     diagnostics.push(refusal);
     return null;
@@ -207,7 +207,7 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     ? expandWide(property, values[0] as CssValue)
     : isLonghand(property)
       ? [{ property, value: property === 'font-family' ? familyValue(tokens) : (values[0] as CssValue), explicit: true }]
-      : shorthandHandler(property).expand(values);
+      : shorthandHandler(property).expand(values, tokens);
   if (isLonghand(property) && !wide && values.length !== 1 && property !== 'font-family') {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(valueSpan), message: `multi-token value "${text}" for ${property} is not supported in milestone 1`, manual: 'Use a single value.' }));
     return null;

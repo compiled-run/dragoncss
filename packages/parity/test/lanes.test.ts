@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { iosLayoutProjection, nativeLayoutProjection, NO_FAULTS } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from '../src/compare.ts';
 import { atDpr, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from '../src/dpr.ts';
+import { declaredLayoutCaseCount, groupFixtures, MILESTONE_1_LAYOUT_CASES } from '../src/case-count.ts';
 import type { HostRun, KotlinLookup, LaneFault } from '../src/lanes.ts';
 import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, lanesFile, lanesJsonText, laneSources, notPassed, parseNativeOutput, plantLaneFault, readLanesFile, runHostLane, staleLanes, toleranceLiterals } from '../src/lanes.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
@@ -28,17 +29,19 @@ describe('native targets', () => {
     expect(LANES).toEqual(['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels']);
     for (const t of targets) expect(t.lanes.map((l) => l.lane)).toEqual([...LANES]);
   });
-  it('case lists come from the constants: 271 top-level plus 813 DPR vectors = 1084 on both vectors lanes of both targets', () => {
+  it('case lists come from the constants: the declared top-level cases plus one set per DPR on both vectors lanes of both targets', () => {
     expect(ids).toEqual(layoutCases().flatMap((f) => f.cases.map((c) => c.id)));
     for (const t of targets) {
       for (const l of ['layout-vectors-host', 'layout-vectors-device']) {
         const v = lane(t, l);
         expect(v?.sets.map((s) => [s.dpr, s.role, s.extra, s.ids.length])).toEqual([[1, 'top-level', null, ids.length], ...DPRS.map((d) => [d, SHARED_DPRS.includes(d) ? 'shared' : 'extra', EXTRA_DPRS.find((e) => e.dpr === d)?.name ?? null, ids.length])]);
-        expect(v?.sets.reduce((n, s) => n + s.ids.length, 0)).toBe(1084);
+        expect(v?.sets.reduce((n, s) => n + s.ids.length, 0)).toBe(declaredLayoutCaseCount() * (1 + DPRS.length));
         expect(v?.corpora).toEqual(corpusSuites());
       }
     }
-    expect(ids.length).toBe(271);
+    expect(ids.length).toBe(declaredLayoutCaseCount());
+    expect(declaredLayoutCaseCount(groupFixtures('milestone-1'))).toBe(MILESTONE_1_LAYOUT_CASES);
+    expect(ids.length).toBeGreaterThanOrEqual(MILESTONE_1_LAYOUT_CASES);
     expect(lane(ios, 'layout-vectors-host')).toEqual(lane(android, 'layout-vectors-host'));
   });
   it('the corpus counts are derived from the manifests and agree with their declared case counts', () => {

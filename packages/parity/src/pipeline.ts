@@ -268,8 +268,8 @@ async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss:
   const colors = resolvedColors(compiled, c.assignment);
   const textColors = resolvedTextColors(compiled, c.assignment);
   if (classOf === null || colors === null || textColors === null) return fail('the compiled result has no web class map or resolved colours for this case');
-  const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(webCss, classOf), c.environment);
-  const dual = compareDual(authored, compiledCapture, colors, textColors);
+  const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(webCss, classOf), c.environment, c.computedExtra);
+  const dual = compareDual(authored, compiledCapture, colors, textColors, c.computedExtra);
   if (!dual.pass) reasons.push(`chrome-dual: ${dual.problems.join('; ')}`);
 
   const pass = layoutStatus === 'pass' && dual.pass;
@@ -293,4 +293,4 @@ async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss:
 }
 
 /** Authored captures taken live in the pinned Chrome, in the case's environment. */
-export const liveAuthored = (browser: Browser) => (c: ParityCase): Promise<WebCapture> => captureFixture(browser, c.id, c.authoredHtml, c.environment);
+export const liveAuthored = (browser: Browser) => (c: ParityCase): Promise<WebCapture> => captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra);

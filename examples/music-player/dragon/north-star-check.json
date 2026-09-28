@@ -40,44 +40,45 @@
    "main": {
     "rounds": 1,
     "blankedRules": 14,
-    "blankedDeclarations": 122,
+    "blankedDeclarations": 111,
     "residualTargetless": 0
    },
    "library-open": {
     "rounds": 1,
     "blankedRules": 14,
-    "blankedDeclarations": 122,
+    "blankedDeclarations": 111,
     "residualTargetless": 0
    },
    "playing": {
     "rounds": 1,
     "blankedRules": 14,
-    "blankedDeclarations": 122,
+    "blankedDeclarations": 111,
     "residualTargetless": 0
    }
   }
  },
  "summary": {
-  "diagnostics": 648,
-  "errors": 648,
+  "diagnostics": 637,
+  "errors": 637,
   "byCode": {
-   "DRAGON_CSS_INVALID_VALUE": 21,
+   "DRAGON_CSS_INVALID_VALUE": 27,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 38,
    "DRAGON_UNPROVEN_CONTEXT [web]": 38,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 40,
    "DRAGON_UNSUPPORTED_AT_RULE": 3,
    "DRAGON_UNSUPPORTED_ELEMENT": 44,
    "DRAGON_UNSUPPORTED_FONT [ios]": 21,
-   "DRAGON_UNSUPPORTED_PROPERTY": 101,
+   "DRAGON_UNSUPPORTED_PROPERTY": 81,
    "DRAGON_UNSUPPORTED_SELECTOR": 20,
+   "DRAGON_UNSUPPORTED_VALUE": 3,
    "DRAGON_UNSUPPORTED_VALUE [ios]": 161,
    "DRAGON_UNSUPPORTED_VALUE [web]": 161
   },
   "declarations": 291,
-  "supportedBothTargets": 61,
-  "supportedWeb": 61,
-  "supportedIos": 61,
-  "supportPercent": 21,
+  "supportedBothTargets": 70,
+  "supportedWeb": 70,
+  "supportedIos": 70,
+  "supportPercent": 24.1,
   "elements": 62,
   "supportedElements": 18,
   "tags": {
@@ -177,14 +178,14 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored/main": 389,
-   "B-unwrapped/main": 430,
+   "A-authored/main": 378,
+   "B-unwrapped/main": 419,
    "C-context/main": 307,
-   "A-authored/library-open": 389,
-   "B-unwrapped/library-open": 430,
+   "A-authored/library-open": 378,
+   "B-unwrapped/library-open": 419,
    "C-context/library-open": 307,
-   "A-authored/playing": 389,
-   "B-unwrapped/playing": 430,
+   "A-authored/playing": 378,
+   "B-unwrapped/playing": 419,
    "C-context/playing": 307
   }
  },
@@ -561,7 +562,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_CSS_INVALID_VALUE"
    ]
   },
   {
@@ -873,11 +874,9 @@
    "atRule": null,
    "property": "background",
    "value": "transparent",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 43,
@@ -978,7 +977,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
+    "DRAGON_CSS_INVALID_VALUE",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -1100,11 +1099,9 @@
    "atRule": null,
    "property": "background",
    "value": "#050608",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 61,
@@ -1325,7 +1322,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1448,11 +1445,9 @@
    "atRule": null,
    "property": "background",
    "value": "#050608",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 89,
@@ -1639,7 +1634,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1697,11 +1692,9 @@
    "atRule": null,
    "property": "background",
    "value": "rgba(255, 255, 255, 0.2)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 109,
@@ -1877,11 +1870,9 @@
    "atRule": null,
    "property": "background",
    "value": "#0b0d12",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 123,
@@ -2202,11 +2193,9 @@
    "atRule": null,
    "property": "background",
    "value": "transparent",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 149,
@@ -2268,7 +2257,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -2357,7 +2346,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_CSS_INVALID_VALUE"
    ]
   },
   {
@@ -2545,7 +2534,6 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -2628,11 +2616,9 @@
    "atRule": null,
    "property": "background",
    "value": "transparent",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 183,
@@ -2835,7 +2821,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_CSS_INVALID_VALUE"
    ]
   },
   {
@@ -3045,11 +3031,9 @@
    "atRule": null,
    "property": "background",
    "value": "transparent",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 216,
@@ -3154,11 +3138,9 @@
    "atRule": null,
    "property": "background",
    "value": "#050608",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 225,
@@ -3209,7 +3191,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
+    "DRAGON_CSS_INVALID_VALUE",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -3223,7 +3205,7 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_CSS_INVALID_VALUE"
    ]
   },
   {
@@ -3626,7 +3608,6 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -4405,19 +4386,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@503-528|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_CSS_INVALID_VALUE|*|css@515-528|\"var(--app-bg)\" is not a valid value for background (@webref/css grammar)",
+   "code": "DRAGON_CSS_INVALID_VALUE",
    "severity": "error",
    "target": null,
    "location": {
     "kind": "css",
-    "start": 503,
+    "start": 515,
     "end": 528,
     "line": 29,
-    "column": 2,
-    "text": "background: var(--app-bg)"
+    "column": 14,
+    "text": "var(--app-bg)"
    },
-   "message": "background is not supported in milestone 1",
+   "message": "\"var(--app-bg)\" is not a valid value for background (@webref/css grammar)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5084,31 +5065,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@1269-1292|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 1269,
-    "end": 1292,
-    "line": 89,
-    "column": 2,
-    "text": "background: transparent"
-   },
-   "message": "background is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_CSS_INVALID_VALUE|*|css@1303-1326|\"2px solid var(--border)\" is not a valid value for border (@webref/css grammar)",
    "code": "DRAGON_CSS_INVALID_VALUE",
    "severity": "error",
@@ -5484,19 +5440,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@1646-1677|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_CSS_INVALID_VALUE|*|css@1658-1677|\"var(--text-primary)\" is not a valid value for background (@webref/css grammar)",
+   "code": "DRAGON_CSS_INVALID_VALUE",
    "severity": "error",
    "target": null,
    "location": {
     "kind": "css",
-    "start": 1646,
+    "start": 1658,
     "end": 1677,
     "line": 102,
-    "column": 2,
-    "text": "background: var(--text-primary)"
+    "column": 14,
+    "text": "var(--text-primary)"
    },
-   "message": "background is not supported in milestone 1",
+   "message": "\"var(--text-primary)\" is not a valid value for background (@webref/css grammar)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5622,31 +5578,6 @@
     "text": "aspect-ratio: 16 / 9"
    },
    "message": "aspect-ratio is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@1956-1975|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 1956,
-    "end": 1975,
-    "line": 118,
-    "column": 2,
-    "text": "background: #050608"
-   },
-   "message": "background is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6040,19 +5971,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2500-2678|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@2514-2678|background: \"radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)\" has 2 layers, which set background-image (initial none), background-position-x (initial 0%), background-position-y (initial 0%), background-size (initial auto), background-repeat (initial repeat), background-attachment (initial scroll), background-origin (initial padding-box), background-clip (initial border-box) to 2-item lists. Dragon supports one layer, where every longhand except background-color keeps its initial value",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": null,
    "location": {
     "kind": "css",
-    "start": 2500,
+    "start": 2514,
     "end": 2678,
-    "line": 148,
-    "column": 2,
-    "text": "background:\n\t\tradial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
    },
-   "message": "background is not supported in milestone 1",
+   "message": "background: \"radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)\" has 2 layers, which set background-image (initial none), background-position-x (initial 0%), background-position-y (initial 0%), background-size (initial auto), background-repeat (initial repeat), background-attachment (initial scroll), background-origin (initial padding-box), background-clip (initial border-box) to 2-item lists. Dragon supports one layer, where every longhand except background-color keeps its initial value",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6205,31 +6136,6 @@
     "text": "aspect-ratio: 1"
    },
    "message": "aspect-ratio is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3053-3072|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 3053,
-    "end": 3072,
-    "line": 169,
-    "column": 2,
-    "text": "background: #050608"
-   },
-   "message": "background is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6567,19 +6473,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3458-3603|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@3470-3603|background: \"linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)\" sets background-image (initial none) to a non-initial value. Dragon supports background only when every longhand except background-color keeps its initial value",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": null,
    "location": {
     "kind": "css",
-    "start": 3458,
+    "start": 3470,
     "end": 3603,
     "line": 192,
-    "column": 2,
-    "text": "background: linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
+    "column": 14,
+    "text": "linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
    },
-   "message": "background is not supported in milestone 1",
+   "message": "background: \"linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)\" sets background-image (initial none) to a non-initial value. Dragon supports background only when every longhand except background-color keeps its initial value",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6630,31 +6536,6 @@
     "text": "transform: translateX(-18%) rotate(8deg)"
    },
    "message": "transform is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3717-3753|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 3717,
-    "end": 3753,
-    "line": 206,
-    "column": 2,
-    "text": "background: rgba(255, 255, 255, 0.2)"
-   },
-   "message": "background is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6880,31 +6761,6 @@
     "text": "aspect-ratio: 1"
    },
    "message": "aspect-ratio is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4097-4116|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 4097,
-    "end": 4116,
-    "line": 229,
-    "column": 2,
-    "text": "background: #0b0d12"
-   },
-   "message": "background is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -7885,31 +7741,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4867-4890|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 4867,
-    "end": 4890,
-    "line": 272,
-    "column": 2,
-    "text": "background: transparent"
-   },
-   "message": "background is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4893-4908|cursor is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -8064,19 +7895,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5005-5060|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@5017-5060|background: \"linear-gradient(to right, #2f4f66, #a57c5b)\" sets background-image (initial none) to a non-initial value. Dragon supports background only when every longhand except background-color keeps its initial value",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": null,
    "location": {
     "kind": "css",
-    "start": 5005,
+    "start": 5017,
     "end": 5060,
     "line": 283,
-    "column": 2,
-    "text": "background: linear-gradient(to right, #2f4f66, #a57c5b)"
+    "column": 14,
+    "text": "linear-gradient(to right, #2f4f66, #a57c5b)"
    },
-   "message": "background is not supported in milestone 1",
+   "message": "background: \"linear-gradient(to right, #2f4f66, #a57c5b)\" sets background-image (initial none) to a non-initial value. Dragon supports background only when every longhand except background-color keeps its initial value",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8164,19 +7995,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5192-5221|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_CSS_INVALID_VALUE|*|css@5204-5221|\"var(--track-mask)\" is not a valid value for background (@webref/css grammar)",
+   "code": "DRAGON_CSS_INVALID_VALUE",
    "severity": "error",
    "target": null,
    "location": {
     "kind": "css",
-    "start": 5192,
+    "start": 5204,
     "end": 5221,
     "line": 293,
-    "column": 2,
-    "text": "background: var(--track-mask)"
+    "column": 14,
+    "text": "var(--track-mask)"
    },
-   "message": "background is not supported in milestone 1",
+   "message": "\"var(--track-mask)\" is not a valid value for background (@webref/css grammar)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8689,31 +8520,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5605-5628|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 5605,
-    "end": 5628,
-    "line": 317,
-    "column": 2,
-    "text": "background: transparent"
-   },
-   "message": "background is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5745-5749|padding-bottom: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-bottom values: <length-px> or <percentage>",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -8958,31 +8764,6 @@
     "A-authored",
     "B-unwrapped",
     "C-context"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5804-5827|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 5804,
-    "end": 5827,
-    "line": 330,
-    "column": 2,
-    "text": "background: transparent"
-   },
-   "message": "background is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
    ],
    "states": [
     "main",
@@ -9605,19 +9386,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6301-6328|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_CSS_INVALID_VALUE|*|css@6313-6328|\"var(--panel-bg)\" is not a valid value for background (@webref/css grammar)",
+   "code": "DRAGON_CSS_INVALID_VALUE",
    "severity": "error",
    "target": null,
    "location": {
     "kind": "css",
-    "start": 6301,
+    "start": 6313,
     "end": 6328,
     "line": 363,
-    "column": 2,
-    "text": "background: var(--panel-bg)"
+    "column": 14,
+    "text": "var(--panel-bg)"
    },
-   "message": "background is not supported in milestone 1",
+   "message": "\"var(--panel-bg)\" is not a valid value for background (@webref/css grammar)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -10163,31 +9944,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6767-6790|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 6767,
-    "end": 6790,
-    "line": 391,
-    "column": 2,
-    "text": "background: transparent"
-   },
-   "message": "background is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6856-6865|padding-bottom: 1rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-bottom values: <length-px> or <percentage>",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -10413,31 +10169,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6947-6966|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 6947,
-    "end": 6966,
-    "line": 403,
-    "column": 2,
-    "text": "background: #050608"
-   },
-   "message": "background is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6969-6991|border-radius is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -10565,19 +10296,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@7057-7090|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_CSS_INVALID_VALUE|*|css@7069-7090|\"var(--selected-hover)\" is not a valid value for background (@webref/css grammar)",
+   "code": "DRAGON_CSS_INVALID_VALUE",
    "severity": "error",
    "target": null,
    "location": {
     "kind": "css",
-    "start": 7057,
+    "start": 7069,
     "end": 7090,
     "line": 410,
-    "column": 2,
-    "text": "background: var(--selected-hover)"
+    "column": 14,
+    "text": "var(--selected-hover)"
    },
-   "message": "background is not supported in milestone 1",
+   "message": "\"var(--selected-hover)\" is not a valid value for background (@webref/css grammar)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -10590,19 +10321,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@7121-7151|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_CSS_INVALID_VALUE|*|css@7133-7151|\"var(--selected-bg)\" is not a valid value for background (@webref/css grammar)",
+   "code": "DRAGON_CSS_INVALID_VALUE",
    "severity": "error",
    "target": null,
    "location": {
     "kind": "css",
-    "start": 7121,
+    "start": 7133,
     "end": 7151,
     "line": 414,
-    "column": 2,
-    "text": "background: var(--selected-bg)"
+    "column": 14,
+    "text": "var(--selected-bg)"
    },
-   "message": "background is not supported in milestone 1",
+   "message": "\"var(--selected-bg)\" is not a valid value for background (@webref/css grammar)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -11532,31 +11263,6 @@
     "text": "::-webkit-scrollbar-track"
    },
    "message": "selector part \"::-webkit-scrollbar-track\" is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@8185-8208|background is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 8185,
-    "end": 8208,
-    "line": 479,
-    "column": 2,
-    "text": "background: transparent"
-   },
-   "message": "background is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
