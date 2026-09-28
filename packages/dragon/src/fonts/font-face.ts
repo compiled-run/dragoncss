@@ -11,6 +11,8 @@ import { capabilitiesOf } from './selection.ts';
 import type { FontSelectionCapabilities, UnicodeRange } from './selection.ts';
 import { readSfnt } from './sfnt.ts';
 import type { SfntFont, SfntRefusal } from './sfnt.ts';
+import { fenceVariableFace } from './variable-fence.ts';
+import type { VariableFontRefusal } from './variable-fence.ts';
 
 export type Angle = { readonly value: number; readonly unit: 'deg' | 'rad' | 'grad' | 'turn' };
 export type WeightDescriptor = { readonly kind: 'normal' | 'bold' | 'auto' } | { readonly kind: 'numbers'; readonly values: readonly number[] };
@@ -64,10 +66,11 @@ export type FontFaceIssue =
   | { readonly kind: 'remote-url'; readonly url: string }
   | { readonly kind: 'unresolved-asset'; readonly url: string }
   | { readonly kind: 'local-font'; readonly name: string }
-  | { readonly kind: 'unreadable-font'; readonly url: string; readonly refusal: SfntRefusal };
+  | { readonly kind: 'unreadable-font'; readonly url: string; readonly refusal: SfntRefusal }
+  | { readonly kind: 'variable-font-refused'; readonly url: string; readonly refusal: VariableFontRefusal };
 
 /** Issues that stop a build (the others are reported as warnings). */
-export const FONT_FACE_ERRORS: ReadonlySet<FontFaceIssue['kind']> = new Set(['unsupported-descriptor', 'remote-url', 'unresolved-asset', 'local-font', 'unreadable-font']);
+export const FONT_FACE_ERRORS: ReadonlySet<FontFaceIssue['kind']> = new Set(['unsupported-descriptor', 'remote-url', 'unresolved-asset', 'local-font', 'unreadable-font', 'variable-font-refused']);
 
 /** A relative src URL resolved through the snapshot: its asset id and bytes, or null when the snapshot has no asset for it. */
 export type FontAssetResolver = (specifier: string) => { readonly id: string; readonly bytes: Uint8Array } | null;
@@ -461,6 +464,8 @@ function sourceOf(entry: SrcEntry, resolve: FontAssetResolver, faults: FontFault
   }
   const read = readSfnt(bytes);
   if (!read.ok) return { refused: { kind: 'unreadable-font', url, refusal: read.refusal } };
+  const fenced = fenceVariableFace(bytes, read.font, faults);
+  if (fenced !== null) return { refused: { kind: 'variable-font-refused', url, refusal: fenced } };
   return { source: base.kind === 'asset' ? { kind: 'asset', assetId: base.assetId, url, bytes, font: read.font } : { kind: 'data', url, bytes, font: read.font } };
 }
 

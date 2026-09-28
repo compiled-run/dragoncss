@@ -28,6 +28,8 @@ export type FontFaults = {
   readonly manifestOrderSensitive: boolean;
   /** (unit) An unreadable first src is skipped and a later one used. */
   readonly skipUnreadableSrc: boolean;
+  /** (unit) The variable-font fence lets every variable face and instance through. */
+  readonly fenceDisabled: boolean;
 };
 
 export const NO_FONT_FAULTS: FontFaults = {
@@ -44,6 +46,7 @@ export const NO_FONT_FAULTS: FontFaults = {
   remoteUrlAccepted: false,
   manifestOrderSensitive: false,
   skipUnreadableSrc: false,
+  fenceDisabled: false,
 };
 
 export type FontFaultName = keyof FontFaults;
@@ -53,7 +56,7 @@ export const CAPTURE_FAULTS: readonly FontFaultName[] = [
   'weightBandUpwardFirst', 'obliqueAsItalic', 'weightBeforeStretch', 'firstDeclaredWins', 'unicodeRangeIgnored',
   'metricsRoundHalfDown', 'xHeightFromOs2', 'chWith16_16', 'capHeightFromBounds', 'overridesIgnored',
 ];
-export const UNIT_FAULTS: readonly FontFaultName[] = ['remoteUrlAccepted', 'manifestOrderSensitive', 'skipUnreadableSrc'];
+export const UNIT_FAULTS: readonly FontFaultName[] = ['remoteUrlAccepted', 'manifestOrderSensitive', 'skipUnreadableSrc', 'fenceDisabled'];
 
 export function withFault(name: FontFaultName): FontFaults {
   return { ...NO_FONT_FAULTS, [name]: true };
