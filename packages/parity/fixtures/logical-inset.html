@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.rtl { direction: rtl; }
+.ltr { direction: ltr; }
+.c { position: relative; width: 200px; height: 60px; border: 1px solid #000; margin-bottom: 2px; }
+.r { position: relative; height: 6px; width: 40px; background-color: #ccc; }
+.a { position: absolute; height: 6px; width: 30px; background-color: #999; }
+.iis { inset-inline-start: 10px; left: 3px; }
+.lis { left: 3px; inset-inline-start: 10px; }
+.iie { inset-inline-end: 12px; right: 4px; }
+.rie { right: 4px; inset-inline-end: 12px; }
+.ii { inset-inline: 5px 20px; }
+.ib { inset-block: 7px 9px; }
+.ibs { inset-block-start: 2px; top: 8px; }
+.tibs { top: 8px; inset-block-start: 2px; inset-block-end: 3px; }
+.all { inset: 3px 6px 9px 12px; }
+.all1 { inset: 4px; width: auto; height: auto; }
+.allv { inset: 2px auto auto 5px; }
+.over { inset: 1px; inset-inline-end: auto; inset-block-end: auto; }
+.pct { inset-inline-start: 10%; inset-block-start: 20%; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="c"><div data-dragon-id="a1" class="r iis"></div><div data-dragon-id="a2" class="r lis"></div><div data-dragon-id="a3" class="r iie"></div><div data-dragon-id="a4" class="r rie ibs"></div><div data-dragon-id="a5" class="r ii tibs"></div><div data-dragon-id="a6" class="r ii rtl"></div></div>
+<div data-dragon-id="c2" class="c rtl"><div data-dragon-id="b1" class="r iis"></div><div data-dragon-id="b2" class="r lis"></div><div data-dragon-id="b3" class="r iie"></div><div data-dragon-id="b4" class="r rie ibs"></div><div data-dragon-id="b5" class="r ii"></div><div data-dragon-id="b6" class="r ii ltr"></div></div>
+<div data-dragon-id="c3" class="c"><div data-dragon-id="f1" class="a iis ib"></div><div data-dragon-id="f2" class="a all"></div><div data-dragon-id="f3" class="a rie tibs rtl"></div></div>
+<div data-dragon-id="c4" class="c rtl"><div data-dragon-id="g1" class="a iis ib"></div><div data-dragon-id="g2" class="a lis"></div><div data-dragon-id="g3" class="a allv"></div><div data-dragon-id="g4" class="a over"></div><div data-dragon-id="g5" class="a pct"></div></div>
+<div data-dragon-id="c5" class="c"><div data-dragon-id="h1" class="a all1"></div></div>
+</body>
+</html>

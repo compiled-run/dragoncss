@@ -4,7 +4,7 @@
 import { perturbColor } from '../css/color.ts';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
-import type { Declaration, Rule } from '../css/stylesheet.ts';
+import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
 import type { Candidate } from './cascade.ts';
@@ -12,6 +12,7 @@ import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { blockifyRoot, computeOverflowPair, initialValue, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
+import type { Direction, DirectionContext } from './logical.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
 export { selectorMatches } from './match.ts';
@@ -89,7 +90,7 @@ const displayOf = (el: ResolvedElement): string => {
 export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment): ResolvedElement {
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {
     const here = [...chain, el];
-    const { winners, matched } = cascadeElement(rules, here, faults);
+    const { winners, matched } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment));
     const props = new Map<Longhand, ResolvedValue>();
     const tag = el.tag as CapturedTag;
     const none = { declaration: null, declared: null, losing: [] } as const;
@@ -165,6 +166,16 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     return self;
   };
   return visit(root, [], null);
+}
+
+/** The direction context of an element (logical.ts), from its parent's computed direction or, at the root, the environment. */
+function directionContext(parent: ResolvedElement | null, faults: CompilerFaults, environment: ResolveEnvironment): DirectionContext {
+  const keyword = (v: CssValue): Direction => (v.kind === 'keyword' && v.value === 'rtl' ? 'rtl' : 'ltr');
+  if (parent !== null) {
+    const d = keyword((parent.props.get('direction') as ResolvedValue).value);
+    return { undeclared: d, inherited: d };
+  }
+  return { undeclared: faults.ignoreEnvironmentDirection ? 'ltr' : environment.direction, inherited: keyword(parseValueText('direction', environment.ua.computed.html['direction'] as string)) };
 }
 
 /** The winner with the var() substitution hook applied to its value; the same candidate when the hook changes nothing. */

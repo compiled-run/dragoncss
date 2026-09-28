@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: navy; }
+.rtl { direction: rtl; }
+.ltr { direction: ltr; }
+.c { width: 200px; padding: 2px; }
+.b { height: 6px; margin-bottom: 2px; }
+.bis { border-inline-start: 4px solid red; border-left: 1px solid green; }
+.lbis { border-left: 1px solid green; border-inline-start: 4px solid red; }
+.bie { border-inline-end: 3px dashed; border-right-width: 7px; }
+.bi { border-inline: 2px solid #123456; border-block: 5px double olive; }
+.bis-only { border-inline-start: solid; }
+.bbe { border-block-end: thin solid; border-bottom-color: teal; }
+.biw { border-style: solid; border-inline-width: 1px 6px; border-inline-color: red blue; border-inline-style: solid dotted; }
+.bbw { border-style: solid; border-block-width: 3px; border-block-color: #0f0 #00f; border-block-style: dashed; }
+.lh { border-style: solid; border-width: 1px; border-inline-start-width: 5px; border-inline-end-color: purple; border-inline-start-style: double; border-inline-end-width: 3px; border-inline-start-color: rgb(10 20 30); border-inline-end-style: dashed; }
+.bl { border-style: solid; border-width: 1px; border-block-start-width: 4px; border-block-end-width: 2px; border-block-start-color: orange; border-block-end-color: gray; border-block-start-style: dotted; border-block-end-style: double; }
+.mix { border: 2px solid; border-inline-start-width: 6px; border-right-width: 8px; border-left-color: red; border-inline-end-color: blue; }
+.inh { border-inline-start: 3px solid; }
+.inh > .k { border-inline-start: inherit; border-inline-end-style: solid; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="c"><div data-dragon-id="a1" class="b bis"></div><div data-dragon-id="a2" class="b lbis"></div><div data-dragon-id="a3" class="b bie"></div><div data-dragon-id="a4" class="b bi"></div><div data-dragon-id="a5" class="b bis-only"></div><div data-dragon-id="a6" class="b bbe"></div><div data-dragon-id="a7" class="b biw"></div><div data-dragon-id="a8" class="b bbw"></div><div data-dragon-id="a9" class="b lh"></div><div data-dragon-id="a10" class="b bl"></div><div data-dragon-id="a11" class="b mix"></div></div>
+<div data-dragon-id="c2" class="c rtl"><div data-dragon-id="b1" class="b bis"></div><div data-dragon-id="b2" class="b lbis"></div><div data-dragon-id="b3" class="b bie"></div><div data-dragon-id="b4" class="b bi"></div><div data-dragon-id="b5" class="b bis-only"></div><div data-dragon-id="b6" class="b biw"></div><div data-dragon-id="b7" class="b lh"></div><div data-dragon-id="b8" class="b mix"></div><div data-dragon-id="b9" class="b lh ltr"></div></div>
+<div data-dragon-id="c3" class="c inh rtl"><div data-dragon-id="d1" class="b k"></div><div data-dragon-id="d2" class="b k ltr"></div></div>
+<div data-dragon-id="c4" class="c inh ltr"><div data-dragon-id="e1" class="b k rtl"></div><div data-dragon-id="e2" class="b k"></div></div>
+</body>
+</html>

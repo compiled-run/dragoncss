@@ -9,7 +9,7 @@ and ids, and the at-rule refusals as they were before it.
 | `stylesheet.ts` | The parse driver: rules, declarations, `!important`, grammar validation, and refusal of every node that is not a style rule or declaration (`refuseNode`, pinned by `s4a.test.ts`). It re-exports `CssValue`, `featureOf` and the selector types. |
 | `selectors.ts` | Selector parsing into right-to-left compounds with specificity. Matching lives in `analysis/match.ts`. |
 | `at-rules.ts` | The at-rule handler registry. Every at-rule is refused today. |
-| `shorthands/index.ts` | The shorthand registry: one handler per shorthand, gathered from `box.ts`, `border.ts`, `flex.ts`, `overflow.ts` and `text.ts`. `shared.ts` holds the handler type and helpers. |
+| `shorthands/index.ts` | The shorthand registry: one handler per shorthand, gathered from `box.ts`, `border.ts`, `flex.ts`, `overflow.ts`, `text.ts` and `logical.ts`. `shared.ts` holds the handler type and helpers. |
 | `values.ts` | The `CssValue` model, token-to-value conversion, and support-profile feature keys. |
 | `units.ts` | The unit registry. |
 | `properties.ts` | The aggregate of `properties/<family>.ts`: `LONGHANDS`, `SHORTHANDS`, `INHERITED`, `PROPERTY_ASPECTS`, `PROPERTY_ROLE`. |
@@ -32,7 +32,13 @@ and ids, and the at-rule refusals as they were before it.
   the handler's outcome. An outcome other than `refuse` is a new `AtRuleOutcome` kind, which the driver handles.
 - **A selector.** Parse the new part in `selectors.ts` and extend `Compound`, then match it in `analysis/match.ts`.
   Specificity is computed in `selectors.ts`.
-- **Cascade or `var()`.** Logical-property cascade groups go in the `cascadeGroups` hook in `analysis/cascade.ts`. `var()`
-  substitution goes in the `substituteVariables` hook in `analysis/computed.ts`. Both do nothing today.
+- **Cascade or `var()`.** `var()` substitution goes in the `substituteVariables` hook in `analysis/computed.ts`, which does
+  nothing today. The `cascadeGroups` hook in `analysis/cascade.ts` also does nothing: logical property groups are applied
+  before the per-longhand cascade (below).
+- **A flow-relative property.** It is a shorthand of `properties/logical.ts` with a handler in `shorthands/logical.ts`: in
+  horizontal-tb it expands to the physical longhands it maps to, an inline mapping once per direction with that direction on
+  the `LonghandValue`. `analysis/logical.ts` computes each element's own direction and narrows every declaration to it
+  before the cascade, so a flow-relative declaration and a physical one of the same group compete by specificity and order,
+  as in Chrome. `writing-mode` is refused, so nothing maps by writing mode.
 - **A parity fixture.** Add a new `packages/parity/src/fixture-groups/<group>.ts` and append one entry to `FIXTURE_GROUPS` in
   `packages/parity/src/fixtures.ts`. Never edit `milestone-1.ts`.

@@ -6,6 +6,7 @@ import { beats, cascadeGroups, substituteVariables } from '../src/analysis/resol
 import type { Candidate } from '../src/analysis/resolve.ts';
 import { AT_RULE_HANDLERS, atRuleHandler, refuseAtRule } from '../src/css/at-rules.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
+import { LOGICAL_SHORTHANDS } from '../src/css/properties/logical.ts';
 import { SHORTHAND_HANDLERS } from '../src/css/shorthands/index.ts';
 import type { Declaration, EnclosedRules } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -35,6 +36,7 @@ describe('E2 seams: the property registry', () => {
     expect([...SHORTHANDS]).toEqual([
       'margin', 'padding', 'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
       'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow', 'white-space',
+      ...LOGICAL_SHORTHANDS,
     ]);
   });
   it('PROPERTY_ASPECTS keys follow LONGHANDS, and INHERITED and PROPERTY_ROLE are unchanged', () => {

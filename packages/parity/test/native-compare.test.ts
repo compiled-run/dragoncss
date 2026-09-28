@@ -64,7 +64,7 @@ describe('reference proof: TS engine plus snapRect dumps pass (a) and (d)', () =
         expect(r.chromeCompared).toBeGreaterThan(0);
       }
     }
-    expect(cases).toBe(261);
+    expect(cases).toBe(271);
   });
 });
 

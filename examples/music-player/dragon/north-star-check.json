@@ -40,26 +40,26 @@
    "main": {
     "rounds": 1,
     "blankedRules": 14,
-    "blankedDeclarations": 124,
+    "blankedDeclarations": 122,
     "residualTargetless": 0
    },
    "library-open": {
     "rounds": 1,
     "blankedRules": 14,
-    "blankedDeclarations": 124,
+    "blankedDeclarations": 122,
     "residualTargetless": 0
    },
    "playing": {
     "rounds": 1,
     "blankedRules": 14,
-    "blankedDeclarations": 124,
+    "blankedDeclarations": 122,
     "residualTargetless": 0
    }
   }
  },
  "summary": {
-  "diagnostics": 646,
-  "errors": 646,
+  "diagnostics": 648,
+  "errors": 648,
   "byCode": {
    "DRAGON_CSS_INVALID_VALUE": 21,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 38,
@@ -68,16 +68,16 @@
    "DRAGON_UNSUPPORTED_AT_RULE": 3,
    "DRAGON_UNSUPPORTED_ELEMENT": 44,
    "DRAGON_UNSUPPORTED_FONT [ios]": 21,
-   "DRAGON_UNSUPPORTED_PROPERTY": 103,
+   "DRAGON_UNSUPPORTED_PROPERTY": 101,
    "DRAGON_UNSUPPORTED_SELECTOR": 20,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 159,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 159
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 161,
+   "DRAGON_UNSUPPORTED_VALUE [web]": 161
   },
   "declarations": 291,
-  "supportedBothTargets": 60,
-  "supportedWeb": 60,
-  "supportedIos": 60,
-  "supportPercent": 20.6,
+  "supportedBothTargets": 61,
+  "supportedWeb": 61,
+  "supportedIos": 61,
+  "supportPercent": 21,
   "elements": 62,
   "supportedElements": 18,
   "tags": {
@@ -177,15 +177,15 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored/main": 390,
-   "B-unwrapped/main": 424,
-   "C-context/main": 299,
-   "A-authored/library-open": 390,
-   "B-unwrapped/library-open": 424,
-   "C-context/library-open": 299,
-   "A-authored/playing": 390,
-   "B-unwrapped/playing": 424,
-   "C-context/playing": 299
+   "A-authored/main": 389,
+   "B-unwrapped/main": 430,
+   "C-context/main": 307,
+   "A-authored/library-open": 389,
+   "B-unwrapped/library-open": 430,
+   "C-context/library-open": 307,
+   "A-authored/playing": 389,
+   "B-unwrapped/playing": 430,
+   "C-context/playing": 307
   }
  },
  "features": {
@@ -1649,11 +1649,9 @@
    "atRule": null,
    "property": "inset",
    "value": "0",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 105,
@@ -3971,7 +3969,7 @@
    "ios": "blocked",
    "codes": [
     "DRAGON_UNSUPPORTED_AT_RULE",
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -4807,7 +4805,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -4819,7 +4817,7 @@
     "column": 11,
     "text": "0 clamp(1rem, 3vw, 3rem)"
    },
-   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4832,7 +4830,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -4844,7 +4842,7 @@
     "column": 11,
     "text": "0 clamp(1rem, 3vw, 3rem)"
    },
-   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4857,7 +4855,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -4869,7 +4867,7 @@
     "column": 11,
     "text": "0 clamp(1rem, 3vw, 3rem)"
    },
-   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4882,7 +4880,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -4894,7 +4892,7 @@
     "column": 11,
     "text": "0 clamp(1rem, 3vw, 3rem)"
    },
-   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5236,7 +5234,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1388-1394|padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1388-1394|padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -5248,7 +5246,7 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5261,7 +5259,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1388-1394|padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1388-1394|padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -5273,7 +5271,7 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5336,7 +5334,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1388-1394|padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1388-1394|padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -5348,7 +5346,7 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5361,7 +5359,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1388-1394|padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1388-1394|padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -5373,7 +5371,7 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: 0.5rem (set by padding: 0.5rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6269,7 +6267,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3083-3103|border-left-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, medium, thick or thin",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3083-3103|border-left-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, inherit, medium, thick or thin",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -6281,7 +6279,7 @@
     "column": 10,
     "text": "0.4rem solid #0b0d12"
    },
-   "message": "border-left-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, medium, thick or thin",
+   "message": "border-left-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, inherit, medium, thick or thin",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6294,7 +6292,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3083-3103|border-right-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, medium or thin",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3083-3103|border-right-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, inherit, medium or thin",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -6306,7 +6304,7 @@
     "column": 10,
     "text": "0.4rem solid #0b0d12"
    },
-   "message": "border-right-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, medium or thin",
+   "message": "border-right-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, inherit, medium or thin",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6369,7 +6367,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@3083-3103|border-left-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, medium, thick or thin",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@3083-3103|border-left-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, inherit, medium, thick or thin",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -6381,7 +6379,7 @@
     "column": 10,
     "text": "0.4rem solid #0b0d12"
    },
-   "message": "border-left-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, medium, thick or thin",
+   "message": "border-left-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, inherit, medium, thick or thin",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6394,7 +6392,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@3083-3103|border-right-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, medium or thin",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@3083-3103|border-right-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, inherit, medium or thin",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -6406,7 +6404,7 @@
     "column": 10,
     "text": "0.4rem solid #0b0d12"
    },
-   "message": "border-right-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, medium or thin",
+   "message": "border-right-width: 0.4rem (set by border: 0.4rem solid #0b0d12) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, inherit, medium or thin",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6582,31 +6580,6 @@
     "text": "background: linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
    },
    "message": "background is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3606-3614|inset is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 3606,
-    "end": 3614,
-    "line": 199,
-    "column": 2,
-    "text": "inset: 0"
-   },
-   "message": "inset is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6969,7 +6942,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4127-4148|border-left-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, medium, thick or thin",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4127-4148|border-left-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, inherit, medium, thick or thin",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -6981,7 +6954,7 @@
     "column": 10,
     "text": "0.35rem solid #0a0c10"
    },
-   "message": "border-left-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, medium, thick or thin",
+   "message": "border-left-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, inherit, medium, thick or thin",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6994,7 +6967,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4127-4148|border-right-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, medium or thin",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4127-4148|border-right-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, inherit, medium or thin",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -7006,7 +6979,7 @@
     "column": 10,
     "text": "0.35rem solid #0a0c10"
    },
-   "message": "border-right-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, medium or thin",
+   "message": "border-right-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, inherit, medium or thin",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -7069,7 +7042,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4127-4148|border-left-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, medium, thick or thin",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4127-4148|border-left-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, inherit, medium, thick or thin",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -7081,7 +7054,7 @@
     "column": 10,
     "text": "0.35rem solid #0a0c10"
    },
-   "message": "border-left-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, medium, thick or thin",
+   "message": "border-left-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-left-width values: <length-px>, inherit, medium, thick or thin",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -7094,7 +7067,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4127-4148|border-right-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, medium or thin",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4127-4148|border-right-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, inherit, medium or thin",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -7106,7 +7079,7 @@
     "column": 10,
     "text": "0.35rem solid #0a0c10"
    },
-   "message": "border-right-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, medium or thin",
+   "message": "border-right-width: 0.35rem (set by border: 0.35rem solid #0a0c10) is unsupported (support profile m1-s5); supported border-right-width values: <length-px>, inherit, medium or thin",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -7322,7 +7295,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4446-4460|padding-left: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4446-4460|padding-left: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -7334,7 +7307,7 @@
     "column": 11,
     "text": "3rem 1rem 1rem"
    },
-   "message": "padding-left: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -7348,7 +7321,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4446-4460|padding-right: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4446-4460|padding-right: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -7360,7 +7333,7 @@
     "column": 11,
     "text": "3rem 1rem 1rem"
    },
-   "message": "padding-right: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -7426,7 +7399,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4446-4460|padding-left: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4446-4460|padding-left: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -7438,7 +7411,7 @@
     "column": 11,
     "text": "3rem 1rem 1rem"
    },
-   "message": "padding-left: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -7452,7 +7425,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4446-4460|padding-right: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4446-4460|padding-right: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -7464,7 +7437,7 @@
     "column": 11,
     "text": "3rem 1rem 1rem"
    },
-   "message": "padding-right: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: 1rem (set by padding: 3rem 1rem 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8241,7 +8214,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5258-5262|padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5258-5262|padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -8253,7 +8226,7 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8266,7 +8239,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5258-5262|padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5258-5262|padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -8278,7 +8251,7 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8341,7 +8314,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5258-5262|padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5258-5262|padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -8353,7 +8326,7 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8366,7 +8339,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5258-5262|padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5258-5262|padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -8378,7 +8351,7 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8766,7 +8739,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5745-5749|padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5745-5749|padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -8778,7 +8751,7 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8791,7 +8764,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5745-5749|padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5745-5749|padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -8803,7 +8776,7 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8866,7 +8839,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5745-5749|padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5745-5749|padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -8878,7 +8851,7 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8891,7 +8864,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5745-5749|padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5745-5749|padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -8903,7 +8876,7 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: 1rem (set by padding: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -9225,7 +9198,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5952-5959|padding-left: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5952-5959|padding-left: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -9237,7 +9210,7 @@
     "column": 11,
     "text": "0.25rem"
    },
-   "message": "padding-left: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -9251,7 +9224,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5952-5959|padding-right: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5952-5959|padding-right: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -9263,7 +9236,7 @@
     "column": 11,
     "text": "0.25rem"
    },
-   "message": "padding-right: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -9329,7 +9302,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5952-5959|padding-left: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5952-5959|padding-left: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -9341,7 +9314,7 @@
     "column": 11,
     "text": "0.25rem"
    },
-   "message": "padding-left: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -9355,7 +9328,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5952-5959|padding-right: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5952-5959|padding-right: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -9367,7 +9340,7 @@
     "column": 11,
     "text": "0.25rem"
    },
-   "message": "padding-right: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: 0.25rem (set by padding: 0.25rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -10008,7 +9981,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6658-6662|padding-left: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6658-6662|padding-left: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -10020,7 +9993,7 @@
     "column": 11,
     "text": "2rem"
    },
-   "message": "padding-left: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -10034,7 +10007,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6658-6662|padding-right: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6658-6662|padding-right: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -10046,7 +10019,7 @@
     "column": 11,
     "text": "2rem"
    },
-   "message": "padding-right: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -10112,7 +10085,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6658-6662|padding-left: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6658-6662|padding-left: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -10124,7 +10097,7 @@
     "column": 11,
     "text": "2rem"
    },
-   "message": "padding-left: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -10138,7 +10111,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6658-6662|padding-right: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6658-6662|padding-right: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -10150,7 +10123,7 @@
     "column": 11,
     "text": "2rem"
    },
-   "message": "padding-right: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: 2rem (set by padding: 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -10240,7 +10213,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6856-6865|padding-left: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6856-6865|padding-left: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -10252,7 +10225,7 @@
     "column": 11,
     "text": "1rem 2rem"
    },
-   "message": "padding-left: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -10265,7 +10238,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6856-6865|padding-right: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6856-6865|padding-right: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -10277,7 +10250,7 @@
     "column": 11,
     "text": "1rem 2rem"
    },
-   "message": "padding-right: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -10340,7 +10313,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6856-6865|padding-left: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6856-6865|padding-left: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -10352,7 +10325,7 @@
     "column": 11,
     "text": "1rem 2rem"
    },
-   "message": "padding-left: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -10365,7 +10338,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6856-6865|padding-right: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6856-6865|padding-right: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -10377,7 +10350,7 @@
     "column": 11,
     "text": "1rem 2rem"
    },
-   "message": "padding-right: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px> or <percentage>",
+   "message": "padding-right: 2rem (set by padding: 1rem 2rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -10742,7 +10715,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@7262-7266|padding-left: 1rem is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@7262-7266|padding-left: 1rem is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -10754,7 +10727,7 @@
     "column": 16,
     "text": "1rem"
    },
-   "message": "padding-left: 1rem is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 1rem is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -10767,7 +10740,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@7262-7266|padding-left: 1rem is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@7262-7266|padding-left: 1rem is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -10779,7 +10752,7 @@
     "column": 16,
     "text": "1rem"
    },
-   "message": "padding-left: 1rem is unsupported (support profile m1-s5); supported padding-left values: <length-px> or <percentage>",
+   "message": "padding-left: 1rem is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -14247,22 +14220,98 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@9128-9148|padding-inline is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@9144-9148|padding-left: 1rem (set by padding-inline: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "ios",
    "location": {
     "kind": "css",
-    "start": 9128,
+    "start": 9144,
     "end": 9148,
     "line": 545,
-    "column": 3,
-    "text": "padding-inline: 1rem"
+    "column": 19,
+    "text": "1rem"
    },
-   "message": "padding-inline is not supported in milestone 1",
+   "message": "padding-left: 1rem (set by padding-inline: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@9144-9148|padding-right: 1rem (set by padding-inline: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 9144,
+    "end": 9148,
+    "line": 545,
+    "column": 19,
+    "text": "1rem"
+   },
+   "message": "padding-right: 1rem (set by padding-inline: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
+   "viaRelated": false,
+   "passes": [
+    "B-unwrapped",
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@9144-9148|padding-left: 1rem (set by padding-inline: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 9144,
+    "end": 9148,
+    "line": 545,
+    "column": 19,
+    "text": "1rem"
+   },
+   "message": "padding-left: 1rem (set by padding-inline: 1rem) is unsupported (support profile m1-s5); supported padding-left values: <length-px>, <percentage> or inherit",
+   "viaRelated": false,
+   "passes": [
+    "B-unwrapped",
+    "C-context"
+   ],
+   "states": [
+    "main",
+    "library-open",
+    "playing"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@9144-9148|padding-right: 1rem (set by padding-inline: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 9144,
+    "end": 9148,
+    "line": 545,
+    "column": 19,
+    "text": "1rem"
+   },
+   "message": "padding-right: 1rem (set by padding-inline: 1rem) is unsupported (support profile m1-s5); supported padding-right values: <length-px>, <percentage> or inherit",
+   "viaRelated": false,
+   "passes": [
+    "B-unwrapped",
+    "C-context"
    ],
    "states": [
     "main",
@@ -14345,7 +14394,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@9291-9308|margin-left: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-left values: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@9291-9308|margin-left: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-left values: <length-px>, <percentage>, auto, inherit, initial or unset",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -14357,7 +14406,7 @@
     "column": 11,
     "text": "0.55rem 0.35rem 0"
    },
-   "message": "margin-left: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-left values: <length-px>, <percentage> or auto",
+   "message": "margin-left: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-left values: <length-px>, <percentage>, auto, inherit, initial or unset",
    "viaRelated": false,
    "passes": [
     "B-unwrapped",
@@ -14370,7 +14419,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@9291-9308|margin-right: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-right values: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@9291-9308|margin-right: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-right values: <length-px>, <percentage>, auto, inherit, initial or unset",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -14382,7 +14431,7 @@
     "column": 11,
     "text": "0.55rem 0.35rem 0"
    },
-   "message": "margin-right: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-right values: <length-px>, <percentage> or auto",
+   "message": "margin-right: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-right values: <length-px>, <percentage>, auto, inherit, initial or unset",
    "viaRelated": false,
    "passes": [
     "B-unwrapped",
@@ -14420,7 +14469,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@9291-9308|margin-left: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-left values: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@9291-9308|margin-left: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-left values: <length-px>, <percentage>, auto, inherit, initial or unset",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -14432,7 +14481,7 @@
     "column": 11,
     "text": "0.55rem 0.35rem 0"
    },
-   "message": "margin-left: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-left values: <length-px>, <percentage> or auto",
+   "message": "margin-left: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-left values: <length-px>, <percentage>, auto, inherit, initial or unset",
    "viaRelated": false,
    "passes": [
     "B-unwrapped",
@@ -14445,7 +14494,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@9291-9308|margin-right: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-right values: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@9291-9308|margin-right: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-right values: <length-px>, <percentage>, auto, inherit, initial or unset",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -14457,7 +14506,7 @@
     "column": 11,
     "text": "0.55rem 0.35rem 0"
    },
-   "message": "margin-right: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-right values: <length-px>, <percentage> or auto",
+   "message": "margin-right: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); supported margin-right values: <length-px>, <percentage>, auto, inherit, initial or unset",
    "viaRelated": false,
    "passes": [
     "B-unwrapped",
@@ -14855,7 +14904,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -14867,7 +14916,7 @@
     "column": 11,
     "text": "0 clamp(1rem, 3vw, 3rem)"
    },
-   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -14903,7 +14952,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <length-px>, <percentage> or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -14915,7 +14964,7 @@
     "column": 11,
     "text": "0 clamp(1rem, 3vw, 3rem)"
    },
-   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <length-px> or <percentage>",
+   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <length-px>, <percentage> or inherit",
    "viaRelated": false,
    "passes": [
     "C-context"
