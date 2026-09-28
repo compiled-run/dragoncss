@@ -1,38 +1,24 @@
-// Stage 1 of docs/api.md §4.1: cascade, inheritance and browser defaults per element. No native properties here.
-import { parse } from 'css-tree';
-import type { CssNode } from 'css-tree';
-import { parseColorNode, perturbColor, serializeColor } from '../css/color.ts';
-import { properties as grammar } from '../css/grammar.generated.ts';
+// Stage 1 of docs/api.md §4.1: cascade, inheritance and browser defaults per element. No native properties here. This file walks
+// the tree; the tag table is elements.ts, selector matching match.ts, the cascade cascade.ts and value computation computed.ts,
+// all re-exported here so existing imports keep working.
+import { perturbColor } from '../css/color.ts';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
-import { COLOR_LONGHANDS, INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
-import type { CssValue, Declaration, Rule, Selector } from '../css/stylesheet.ts';
+import { INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
+import type { Declaration, Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
-import type { Span } from '../types.ts';
+import type { Candidate } from './cascade.ts';
+import { cascadeElement } from './cascade.ts';
+import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
+import { blockifyRoot, computeOverflowPair, initialValue, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 
-/** environment: the root's direction and font, seeded from the reference environment (docs/api.md §7), never from an author declaration. */
-export type Origin = 'author' | 'inherited' | 'user-agent' | 'initial' | 'environment';
-
-/**
- * The environment facts resolution reads: the document's base direction and root font, given to the root element, and the Chrome
- * UA dataset of the reference platform. rootFont 'ahem' is the parity fixture environment (docs/api.md §10.1); 'ua-default'
- * leaves the root font-family at the dataset's value.
- */
-export type ResolveEnvironment = { readonly direction: 'ltr' | 'rtl'; readonly rootFont: RootFont; readonly ua: UaDataset };
-
-export type RootFont = 'ahem' | 'ua-default';
-
-export type ResolvedValue = {
-  readonly value: CssValue;
-  readonly origin: Origin;
-  readonly span: Span | null;
-  /** The winning declaration and the value it declared (possibly a CSS-wide keyword); null when no author rule matched. */
-  readonly declaration: Declaration | null;
-  readonly declared: CssValue | null;
-  /** Author declarations that matched this element for this longhand and lost the cascade. */
-  readonly losing: readonly Declaration[];
-};
+export { SUPPORTED_TAGS } from './elements.ts';
+export { selectorMatches } from './match.ts';
+export type { CascadeGroupHook, CascadeResult, Candidate } from './cascade.ts';
+export { beats, cascadeElement, cascadeGroups } from './cascade.ts';
+export type { Origin, ResolveEnvironment, ResolvedValue, RootFont, SubstitutionHook } from './computed.ts';
+export { defaultOrigin, initialValue, isInitialByProvenance, parseValueText, substituteVariables, userAgentValue, valueToString } from './computed.ts';
 
 export type ResolvedElement = {
   readonly kind: 'element';
@@ -51,104 +37,6 @@ export type ResolvedText = {
   readonly text: string;
   readonly props: ReadonlyMap<TextLonghand, ResolvedValue>;
 };
-
-export const SUPPORTED_TAGS: ReadonlySet<string> = new Set(['html', 'body', 'div']);
-
-const valueCache = new Map<string, CssValue>();
-
-/** Parses a single captured or initial value string ("8px", "auto", "0") into a CssValue. */
-export function parseValueText(property: Longhand, text: string): CssValue {
-  const key = `${property}\u0000${text}`;
-  const hit = valueCache.get(key);
-  if (hit !== undefined) return hit;
-  const node = parse(text, { context: 'value' });
-  const children = (node['children'] as { toArray(): CssNode[] }).toArray().filter((n) => n.type !== 'WhiteSpace');
-  let v: CssValue;
-  const only = children[0];
-  const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property);
-  const color = isColor && only !== undefined && children.length === 1 ? parseColorNode(only) : null;
-  if (color !== null && color.ok) v = color.kind === 'keyword' ? { kind: 'keyword', value: color.keyword } : { kind: 'color', value: color.value, syntax: color.syntax };
-  else if (children.length !== 1 || only === undefined) v = { kind: 'other', type: 'list', text };
-  else if (only.type === 'Identifier') v = property === 'font-family' ? { kind: 'family', value: String(only['name']) } : { kind: 'keyword', value: String(only['name']).toLowerCase() };
-  else if (only.type === 'Dimension') v = { kind: 'length', value: Number(only['value']), unit: String(only['unit']).toLowerCase() };
-  else if (only.type === 'Percentage') v = { kind: 'percentage', value: Number(only['value']) };
-  else if (only.type === 'Number') {
-    const n = Number(only['value']);
-    v = n === 0 && !['flex-grow', 'flex-shrink', 'order', 'line-height'].includes(property) ? { kind: 'length', value: 0, unit: 'px' } : { kind: 'number', value: n };
-  } else v = { kind: 'other', type: only.type, text };
-  valueCache.set(key, v);
-  return v;
-}
-
-// css-cascade-5 §7.1: initial values come from the pinned @webref/css grammar. color (CanvasText, css-color-4 §6.2) and
-// font-family (UA-dependent, css-fonts-4 §2.1) have environment-dependent initial values, taken from Chrome's captured root.
-export function initialValue(property: Longhand, ua: UaDataset): CssValue {
-  if (property === 'color' || property === 'font-family') return parseValueText(property, ua.computed.html[property] as string);
-  const g = grammar[property];
-  if (g === undefined) throw new Error(`no webref entry for ${property}`);
-  return parseValueText(property, g.initial);
-}
-
-/**
- * Whether a resolved longhand holds its initial value by provenance: no declaration set it (or initial / unset chose the initial
- * value), or a shorthand filled it because the author omitted it (LonghandValue.explicit false). An authored keyword equal to the
- * initial value is not initial by provenance. The layout lowering needs this for R5 (initial line widths, notes/T010-p2-triage.md).
- */
-export function isInitialByProvenance(v: ResolvedValue, property: Longhand): boolean {
-  if (v.origin === 'initial') return true;
-  if (v.origin !== 'author' || v.declaration === null) return false;
-  return v.declaration.longhands.some((l) => l.property === property && !l.explicit);
-}
-
-// css-cascade-5 §6.3 (user-agent origin): the captured table pins, per tag, the longhands a Chrome UA rule sets.
-function userAgentValue(tag: CapturedTag, property: Longhand, ua: UaDataset): CssValue | null {
-  if (!ua.userAgentLonghands[tag].includes(property)) return null;
-  const own = ua.computed[tag][property];
-  if (own === undefined) throw new Error(`no captured value for ${tag} ${property}`);
-  return parseValueText(property, own);
-}
-
-/** Origin of every longhand on an element with no author rules, as the resolver decides it; pinned by ua.test.ts. */
-export function defaultOrigin(tag: CapturedTag, property: Longhand, isRoot: boolean, ua: UaDataset, rootFont: RootFont): Origin {
-  if (userAgentValue(tag, property, ua) !== null) return 'user-agent';
-  if (isRoot && (property === 'direction' || (property === 'font-family' && rootFont === 'ahem'))) return 'environment';
-  return INHERITED.has(property) && !isRoot ? 'inherited' : 'initial';
-}
-
-// A class selector matches only class symbols of the rule's own owner and sheet (docs/api.md §3.1); [ui-*] tests the attribute.
-function compoundMatches(el: LinkedElement, rule: Rule, c: Selector['parts'][number]['compound'], faults: CompilerFaults): boolean {
-  if (c.tag !== null && c.tag !== el.tag) return false;
-  const classes = faults.variantCollapse && c.classes.length >= 2 ? c.classes.slice(0, -1) : c.classes;
-  if (!classes.every((k) => el.classes.some((s) => s.owner === rule.owner && s.sheet === rule.sheet && s.name === k))) return false;
-  return c.attributes.every((a) => {
-    const v = el.attributes.get(a.name);
-    return v !== undefined && (a.value === null || a.value === v);
-  });
-}
-
-// Selectors-4 §3.3: right-to-left matching over the logical ancestor chain, with backtracking for descendant combinators.
-function selectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], index: number, part: number, faults: CompilerFaults): boolean {
-  const p = sel.parts[part];
-  const el = chain[index];
-  if (p === undefined || el === undefined) return false;
-  if (!compoundMatches(el, rule, p.compound, faults)) return false;
-  const next = sel.parts[part + 1];
-  if (next === undefined) return true;
-  if (next.combinator === '>') return selectorMatches(rule, sel, chain, index - 1, part + 1, faults);
-  for (let i = index - 1; i >= 0; i--) if (selectorMatches(rule, sel, chain, i, part + 1, faults)) return true;
-  return false;
-}
-
-type Candidate = { readonly declaration: Declaration; readonly value: CssValue; readonly specificity: readonly [number, number, number] };
-
-function beats(a: Candidate, b: Candidate): boolean {
-  for (let i = 0; i < 3; i++) {
-    const x = a.specificity[i] as number;
-    const y = b.specificity[i] as number;
-    if (x !== y) return x > y;
-  }
-  return a.declaration.order > b.declaration.order;
-}
 
 const WHITE_SPACE = /[ \t\n\r\f]/;
 const ZWSP = '\u200b';
@@ -196,50 +84,12 @@ const displayOf = (el: ResolvedElement): string => {
   return v.kind === 'keyword' ? v.value : '';
 };
 
-// css-overflow-3 §3.1: when one axis is neither visible nor clip, visible computes to auto and clip to hidden on the other axis.
-function computeOverflowPair(props: Map<Longhand, ResolvedValue>): void {
-  const x = props.get('overflow-x') as ResolvedValue;
-  const y = props.get('overflow-y') as ResolvedValue;
-  const kw = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
-  const plain = (k: string): boolean => k === 'visible' || k === 'clip';
-  if (plain(kw(x)) && plain(kw(y))) return;
-  const fix = (v: ResolvedValue): ResolvedValue => {
-    const k = kw(v);
-    if (k === 'visible') return { ...v, value: { kind: 'keyword', value: 'auto' } };
-    if (k === 'clip') return { ...v, value: { kind: 'keyword', value: 'hidden' } };
-    return v;
-  };
-  props.set('overflow-x', fix(x));
-  props.set('overflow-y', fix(y));
-}
-
-// css-display-3 §2.7: the root element's display is blockified (Chrome reports block for html even under display: initial).
-function blockifyRoot(v: ResolvedValue): ResolvedValue {
-  return v.value.kind === 'keyword' && v.value.value === 'inline' ? { ...v, value: { kind: 'keyword', value: 'block' } } : v;
-}
-
 // css-cascade-5 §4-§7: the winning declaration, inheritance, then user-agent or initial values, for every longhand.
 // Logical ancestry is the linked tree: projected children match under their insertion parent (docs/api.md §3.1).
 export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment): ResolvedElement {
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {
     const here = [...chain, el];
-    const winners = new Map<Longhand, Candidate>();
-    const matched = new Map<Longhand, Declaration[]>();
-    for (const rule of rules) {
-      for (const sel of rule.selectors) {
-        if (!selectorMatches(rule, sel, here, here.length - 1, 0, faults)) continue;
-        for (const d of rule.declarations) {
-          for (const lh of d.longhands) {
-            const cand: Candidate = { declaration: d, value: lh.value, specificity: sel.specificity };
-            const prev = winners.get(lh.property);
-            if (prev === undefined || beats(cand, prev)) winners.set(lh.property, cand);
-            const all = matched.get(lh.property) ?? [];
-            if (!all.includes(d)) all.push(d);
-            matched.set(lh.property, all);
-          }
-        }
-      }
-    }
+    const { winners, matched } = cascadeElement(rules, here, faults);
     const props = new Map<Longhand, ResolvedValue>();
     const tag = el.tag as CapturedTag;
     const none = { declaration: null, declared: null, losing: [] } as const;
@@ -253,9 +103,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       return ua === null ? { value: initialValue(p, environment.ua), origin: 'initial', span: null, ...none } : { value: ua, origin: 'user-agent', span: null, ...none };
     };
     for (const p of LONGHANDS) {
-      const w = winners.get(p);
+      const w = substituted(winners.get(p), p, el);
       const inherited = INHERITED.has(p);
-      const author = w === undefined ? none : { declaration: w.declaration, declared: w.value, losing: (matched.get(p) as Declaration[]).filter((d) => d !== w.declaration) };
+      const author = w === undefined ? none : { declaration: w.declaration, declared: w.value, losing: (matched.get(p) as readonly Declaration[]).filter((d) => d !== w.declaration) };
       // css-color-4 §4.4: currentcolor as the value of color behaves as inherit.
       const currentColorOnColor = p === 'color' && w !== undefined && w.value.kind === 'keyword' && w.value.value === 'currentcolor';
       if (w !== undefined && !currentColorOnColor && !(w.value.kind === 'keyword' && ['inherit', 'initial', 'unset'].includes(w.value.value))) {
@@ -317,6 +167,13 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   return visit(root, [], null);
 }
 
+/** The winner with the var() substitution hook applied to its value; the same candidate when the hook changes nothing. */
+function substituted(w: Candidate | undefined, p: Longhand, el: LinkedElement): Candidate | undefined {
+  if (w === undefined) return undefined;
+  const value = substituteVariables(w.value, p, el);
+  return value === w.value ? w : { ...w, value };
+}
+
 // goal.md principle 3: a text node carries each inherited text property itself, inherited from its insertion parent.
 function textProps(parent: ReadonlyMap<Longhand, ResolvedValue>, faults: CompilerFaults, ua: UaDataset): Map<TextLonghand, ResolvedValue> {
   const out = new Map<TextLonghand, ResolvedValue>();
@@ -327,22 +184,4 @@ function textProps(parent: ReadonlyMap<Longhand, ResolvedValue>, faults: Compile
   // Planted fault dropInheritedText: the text node's font-size is its initial value (medium, 16px computed in Chrome's root).
   if (faults.dropInheritedText) out.set('font-size', { value: parseValueText('font-size', ua.computed.html['font-size'] as string), origin: 'initial', span: null, declaration: null, declared: null, losing: [] });
   return out;
-}
-
-export function valueToString(v: CssValue): string {
-  switch (v.kind) {
-    case 'keyword':
-    case 'family':
-      return v.value;
-    case 'length':
-      return `${v.value}${v.unit}`;
-    case 'percentage':
-      return `${v.value}%`;
-    case 'number':
-      return String(v.value);
-    case 'color':
-      return serializeColor(v.value);
-    case 'other':
-      return v.text;
-  }
 }
