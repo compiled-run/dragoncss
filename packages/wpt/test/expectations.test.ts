@@ -148,7 +148,7 @@ describe('planted faults', () => {
     expect(planted).not.toBe(source);
     const clean = runDragonTest(wpt, CANDIDATE, lockedCommit(), 'web', source);
     const faulty = runDragonTest(wpt, CANDIDATE, lockedCommit(), 'web', planted);
-    const record = (dragon: typeof clean) => ({ path: CANDIDATE, kind: 'numeric' as const, dragon: dragon.outcome, fixture: dragon.fixture, chrome: null });
+    const record = (dragon: typeof clean) => ({ path: CANDIDATE, kind: 'numeric' as const, dragon: dragon.outcome, fixtures: dragon.fixtures, chrome: null, origin: 'static' as const });
     const labels = labelsByPath(loadInteropLabels()).get(CANDIDATE);
     const actual = (e: Entry): Expectations => ({ ...committed, tests: { [CANDIDATE]: labels === undefined ? e : { ...e, interop: labels } } });
     expect(compareExpectations(committed, actual(entryOf(record(clean))), CANDIDATE)).toEqual([]);

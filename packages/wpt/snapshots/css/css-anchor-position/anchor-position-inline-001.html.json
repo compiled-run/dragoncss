@@ -1,0 +1,12 @@
+{
+  "source": "css/css-anchor-position/anchor-position-inline-001.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "b9396248ba537182010572afeeb2bc91e8eb4cc8e6d34325e510bcc678308837",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".target 1","pass":true},{"name":".target 2","pass":true},{"name":".target 3","pass":true},{"name":".target 4","pass":true}]},
+    "states": [
+      {"call":".target","matched":4,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-1/#propdef-anchor-name"]],"c":[]},"\n",{"t":"link","a":[["rel","author"],["href","mailto:kojii@chromium.org"]],"c":[]},"\n","\n","\n","\n","\n",{"t":"link","a":[["rel","stylesheet"],["type","text/css"],["href","/fonts/ahem.css"]],"c":[]},"\n",{"t":"style","a":[],"c":["\n#container {\n  position: relative;\n  font-family: Ahem;\n  font-size: 10px;\n  line-height: 1;\n  width: 10em;\n}\n#anchor1 {\n  anchor-name: --a1;\n}\n.target {\n  position: absolute;\n}\n"]},"\n","\n"]},{"t":"body","a":[["onload","onload()"]],"c":["\n  ",{"t":"div","a":[["id","container"]],"c":["\n    ",{"t":"div","a":[],"c":["spacer"]},"\n    ",{"t":"div","a":[],"c":["\n      ",{"t":"br","a":[],"c":[]},"\n      0123",{"t":"span","a":[["id","anchor1"]],"c":["456"]},"78\n    "]},"\n\n    ",{"t":"div","a":[["class","target"],["style","left: anchor(--a1 left)"],["data-offset-x","40"]],"c":[],"v":{"offset-x":40}},"\n    ",{"t":"div","a":[["class","target"],["style","right: anchor(--a1 right)"],["data-offset-x","70"]],"c":[],"v":{"offset-x":70}},"\n    ",{"t":"div","a":[["class","target"],["style","top: anchor(--a1 top)"],["data-offset-y","20"]],"c":[],"v":{"offset-y":20}},"\n    ",{"t":"div","a":[["class","target"],["style","bottom: anchor(--a1 bottom)"],["data-offset-y","30"]],"c":[],"v":{"offset-y":30}},"\n  "]},"\n\n"]}]}}
+    ]
+  }
+}

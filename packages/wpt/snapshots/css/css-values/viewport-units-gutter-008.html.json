@@ -1,0 +1,12 @@
+{
+  "source": "css/css-values/viewport-units-gutter-008.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "0967f575a6883a1c52779c34bf0ad0cd0b35682db20f022107d90115dad0be76",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":"#test-div 1","pass":true}]},
+    "states": [
+      {"call":"#test-div","matched":1,"tree":{"t":"html","a":[["style","overflow: auto; scrollbar-gutter: stable both-edges; writing-mode: vertical-rl;"]],"c":[{"t":"head","a":[],"c":[{"t":"link","a":[["rel","help"],["href","http://www.w3.org/TR/css3-values/#viewport-relative-lengths"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","There is no vertical overflow when 100vh is reduced by gutter height even when the scrollbars themselves are conditional."]],"c":[]},"\n\n","\n","\n","\n","\n\n"]},{"t":"body","a":[["style","margin: 0; padding: 0;"]],"c":["\n  ",{"t":"div","a":[["style","height: 100vh; width: 100px; background: orange; box-sizing: border-box; border-top: 3px solid blue; border-bottom: 3px solid blue;"],["id","test-div"],["data-expected-height","600"]],"c":[],"v":{"height":600}},"\n\n  ","\n  ",{"t":"div","a":[["id","measure"],["style","overflow: scroll;"]],"c":["\n     ",{"t":"div","a":[["style","min-height: 300px;"]],"c":[]},"\n  "]},"\n\n"]}]}}
+    ]
+  }
+}

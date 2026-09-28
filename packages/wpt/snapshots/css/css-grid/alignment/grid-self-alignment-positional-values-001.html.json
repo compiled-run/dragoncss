@@ -1,0 +1,7 @@
+{
+  "source": "css/css-grid/alignment/grid-self-alignment-positional-values-001.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "b43d1cc8cdfb0f6f50e4403ee7adb8aed8a3311b80b7ce15dfb735197af0557a",
+  "result": {"refused":"snapshot:no-checklayout"}
+}

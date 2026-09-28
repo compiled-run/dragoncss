@@ -1,0 +1,12 @@
+{
+  "source": "css/css-grid/subgrid/placement-invalidation-001.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "0aabfea456be59427e763de9c10789b120871cb682e792c97145b8efca27805f",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":"#item 1","pass":true}]},
+    "states": [
+      {"call":"#item","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"meta","a":[["charset","utf-8"]],"c":[]},"\n",{"t":"title","a":[],"c":["CSS Grid Test: Subgridded item placement invalidation"]},"\n",{"t":"link","a":[["rel","author"],["title","Ethan Jimenez"],["href","mailto:ethavar@microsoft.com"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-grid-2/#track-sizing"]],"c":[]},"\n",{"t":"style","a":[],"c":["\nhtml, body {\n  margin: 0;\n  padding: 0;\n}\n#grid {\n  width: 200px;\n  display: grid;\n  background: lightgray;\n  grid-template-columns: [start] auto [end] 1fr;\n  grid-template-rows: 100px;\n}\n#subgrid {\n  display: grid;\n  grid-column: 1 / -1;\n  grid-template-columns: subgrid;\n}\n#item {\n  width: 50px;\n  background: lightblue;\n  border: 5px solid gray;\n  grid-column: start / end;\n}\n"]},"\n","\n","\n","\n"]},{"t":"body","a":[],"c":[{"t":"div","a":[["id","grid"],["style","grid-template-columns: 1fr [start] auto [end];"]],"c":["\n  ",{"t":"div","a":[["id","subgrid"]],"c":["\n    ",{"t":"div","a":[["id","item"],["data-offset-x","140"]],"c":[],"v":{"offset-x":140}},"\n  "]},"\n"]},"\n"]}]}}
+    ]
+  }
+}

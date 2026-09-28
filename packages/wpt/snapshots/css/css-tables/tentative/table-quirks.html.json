@@ -1,0 +1,7 @@
+{
+  "source": "css/css-tables/tentative/table-quirks.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "5836251b4a73bc0b1f24eea12d2b26aae8e254502f3204ec168b36e9c1d0570e",
+  "result": {"refused":"snapshot:other-subtests"}
+}

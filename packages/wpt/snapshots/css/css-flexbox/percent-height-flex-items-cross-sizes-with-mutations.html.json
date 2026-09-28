@@ -1,0 +1,7 @@
+{
+  "source": "css/css-flexbox/percent-height-flex-items-cross-sizes-with-mutations.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "5da8f21ff050011b0077e1ef93b7be362393a67f41b535b04bd358982d93cf1e",
+  "result": {"refused":"snapshot:no-checklayout"}
+}

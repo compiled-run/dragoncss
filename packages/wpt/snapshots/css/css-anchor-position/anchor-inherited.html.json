@@ -1,0 +1,12 @@
+{
+  "source": "css/css-anchor-position/anchor-inherited.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "c2423a020c8d34a6e2857db121186329c4206357616abe5cf9b743f66078ec75",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".child 1","pass":true}]},
+    "states": [
+      {"call":".child","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"title","a":[],"c":["Tests that anchor functions inherit as pixels"]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-position-1/"]],"c":[]},"\n","\n","\n","\n","\n\n",{"t":"style","a":[],"c":["\n.cb {\n  width: 400px;\n  height: 400px;\n  position: relative;\n  border: 1px solid black;\n}\n\n.anchor {\n  width: 100px;\n  height: 100px;\n  top: 10px;\n  left: 20px;\n  position: absolute;\n  background: red;\n  anchor-name: --a;\n}\n\n.anchored {\n  position-anchor: --a;\n  position: absolute;\n  /* Anchored directly on top */\n  top: anchor(top);\n  left: anchor(left);\n  width: anchor-size(width);\n  height: anchor-size(height);\n  background: coral;\n}\n\n/* The child should have the same size as the anchored element,\n   and inset by top:10px,left:20px vs. that element. */\n.child {\n  position-anchor: --unknown; /* Should have no effect. */\n  position: relative;\n  background: skyblue;\n  top: inherit;\n  left: inherit;\n  width: inherit;\n  height: inherit;\n}\n\n"]},"\n\n"]},{"t":"body","a":[["onload","checkLayoutForAnchorPos('.child')"]],"c":["\n\n",{"t":"div","a":[["class","cb"]],"c":["\n  ",{"t":"div","a":[["class","anchor"]],"c":[]},"\n  ",{"t":"div","a":[["class","anchored"]],"c":["\n    ",{"t":"div","a":[["class","child"],["data-offset-x","20"],["data-offset-y","10"],["data-expected-width","100"],["data-expected-height","100"]],"c":[],"v":{"width":100,"height":100,"offset-x":20,"offset-y":10}},"\n  "]},"\n"]},"\n\n\n"]}]}}
+    ]
+  }
+}

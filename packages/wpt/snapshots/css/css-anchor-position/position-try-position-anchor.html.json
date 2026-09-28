@@ -1,0 +1,12 @@
+{
+  "source": "css/css-anchor-position/position-try-position-anchor.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "00345cae0d77b8b9fc77b59cad7502584b87f1e7a686cb98b968117a0b446b31",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":"#anchored 1","pass":true}]},
+    "states": [
+      {"call":"#anchored","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"title","a":[],"c":["CSS Anchor Positioning Test: @position-try can set position-anchor"]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-1/#fallback"]],"c":[]},"\n","\n","\n","\n","\n",{"t":"style","a":[],"c":["\n  #cb {\n    position: relative;\n    width: 400px;\n    height: 400px;\n  }\n  .anchor {\n    width: 100px;\n    height: 100px;\n  }\n  #anchor-a {\n    anchor-name: --a;\n    /* Makes #anchored overflow when aligned with right edge */\n    margin-left: 100px;\n  }\n  #anchor-b {\n    anchor-name: --b;\n  }\n  #anchored {\n    position: absolute;\n    left: anchor(right);\n    width: 300px;\n    height: 100px;\n    position-anchor: --a;\n    position-try-fallbacks: --pf;\n  }\n  @position-try --pf {\n    position-anchor: --b;\n  }\n"]},"\n"]},{"t":"body","a":[["onload","checkLayoutForAnchorPos('#anchored')"]],"c":["\n",{"t":"div","a":[["id","cb"]],"c":["\n  ",{"t":"div","a":[["id","anchor-a"],["class","anchor"]],"c":[]},"\n  ",{"t":"div","a":[["id","anchor-b"],["class","anchor"]],"c":[]},"\n  ",{"t":"div","a":[["id","anchored"],["data-offset-x","100"]],"c":[],"v":{"offset-x":100}},"\n"]},"\n"]}]}}
+    ]
+  }
+}

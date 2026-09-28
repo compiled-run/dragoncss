@@ -1,0 +1,12 @@
+{
+  "source": "css/css-flexbox/flexbox_width-wrapping-column.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "a518440bae06a667e6b769a76d6ba2f9c5f0a3ad89958f547903480554d10421",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".flexbox 1","pass":true}]},
+    "states": [
+      {"call":".flexbox","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"title","a":[],"c":["CSS Flexbox: the width calculation of flexbox with flex-direction: column and flex-wrap: wrap"]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-flexbox/#flex-containers"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-flexbox/#flex-direction-property"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-flexbox/#flex-wrap-property"]],"c":[]},"\n",{"t":"link","a":[["rel","bookmark"],["href","https://crbug.com/607262"]],"c":[]},"\n",{"t":"link","a":[["rel","bookmark"],["href","https://crbug.com/607856"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","This test ensures that the width of a flexbox with 'flex-direction: column' and 'flex-wrap: wrap' is updated when the wrapping column dynamically changes."]],"c":[]},"\n",{"t":"link","a":[["href","support/flexbox.css"],["rel","stylesheet"]],"c":[]},"\n",{"t":"style","a":[],"c":["\n.flexbox {\n  width: 600px;\n  height: 160px;\n  outline: 2px solid black;\n}\n.item {\n  height: 20px;\n  background-color: green;\n  margin: 5px;\n}\n"]},"\n","\n","\n","\n","\n"]},{"t":"body","a":[["onload","change()"]],"c":["\n",{"t":"div","a":[["id","log"]],"c":[]},"\n\n",{"t":"p","a":[],"c":["The green boxes should all be within the black box"]},"\n\n",{"t":"div","a":[["class","flexbox column wrap"],["id","test"],["style","height: 60px;"]],"c":["\n  ",{"t":"div","a":[["class","item"],["data-expected-width","290"]],"c":[],"v":{"width":290}},"\n  ",{"t":"div","a":[["class","item"],["data-expected-width","290"]],"c":[],"v":{"width":290}},"\n  ",{"t":"div","a":[["class","item"],["data-expected-width","290"]],"c":[],"v":{"width":290}},"\n  ",{"t":"div","a":[["class","item"],["data-expected-width","290"]],"c":[],"v":{"width":290}},"\n"]},"\n"]}]}}
+    ]
+  }
+}

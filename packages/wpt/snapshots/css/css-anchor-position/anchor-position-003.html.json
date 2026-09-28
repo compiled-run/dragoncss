@@ -1,0 +1,12 @@
+{
+  "source": "css/css-anchor-position/anchor-position-003.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "13db76e6486e7c2aa1ae6d6f2caccd3c8bcb09fca4f9d9d706f777dabfad94db",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".target 1","pass":true},{"name":".target 2","pass":true},{"name":".target 3","pass":true},{"name":".target 4","pass":true},{"name":".target 5","pass":true}]},
+    "states": [
+      {"call":".target","matched":5,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-anchor-1/#determining"]],"c":[]},"\n",{"t":"link","a":[["rel","author"],["href","mailto:kojii@chromium.org"]],"c":[]},"\n","\n","\n","\n","\n",{"t":"style","a":[],"c":["\n.cb {\n  position: relative;\n}\n.not-positioned-cb {\n  transform: translate(0, 0);  /* Make it a containing block. */\n}\n.anchor1 {\n  anchor-name: --a1;\n}\n.size5x7 {\n  width: 5px;\n  height: 7px;\n  background: orange;\n}\n.size9x11 {\n  width: 9px;\n  height: 11px;\n  background: blue;\n}\n.target {\n  position: absolute;\n}\n"]},"\n","\n"]},{"t":"body","a":[["onload","checkLayoutForAnchorPos('.target')"]],"c":["\n  ",{"t":"div","a":[["class","cb"]],"c":["\n    ",{"t":"div","a":[["class","anchor1 size5x7"]],"c":[]},"\n    ",{"t":"div","a":[["class","anchor1 size9x11"]],"c":[]},"\n    ",{"t":"div","a":[["class","target"],["style","left: anchor(--a1 right)"],["data-offset-x","9"]],"c":[],"v":{"offset-x":9}},"\n  "]},"\n\n  ",{"t":"div","a":[["class","cb"]],"c":["\n    ",{"t":"div","a":[["class","anchor1 size5x7"]],"c":["\n      ",{"t":"div","a":[["class","anchor1 size9x11"]],"c":[]},"\n      ",{"t":"div","a":[["class","target"],["style","left: anchor(--a1 right)"],["data-offset-x","9"]],"c":[],"v":{"offset-x":9}},"\n    "]},"\n    ",{"t":"div","a":[["class","target"],["style","left: anchor(--a1 right)"],["data-offset-x","9"]],"c":[],"v":{"offset-x":9}},"\n  "]},"\n\n  ",{"t":"div","a":[["class","cb"]],"c":["\n    ",{"t":"div","a":[["class","anchor1 size5x7 not-positioned-cb"]],"c":["\n      ",{"t":"div","a":[["class","anchor1 size9x11"]],"c":[]},"\n      ",{"t":"div","a":[["class","target"],["style","left: anchor(--a1 right)"],["data-offset-x","9"]],"c":[],"v":{"offset-x":9}},"\n    "]},"\n    ",{"t":"div","a":[["class","target"],["style","left: anchor(--a1 right)"],["data-offset-x","9"]],"c":[],"v":{"offset-x":9}},"\n  "]},"\n\n"]}]}}
+    ]
+  }
+}

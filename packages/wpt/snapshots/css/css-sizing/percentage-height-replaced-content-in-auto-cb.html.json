@@ -1,0 +1,7 @@
+{
+  "source": "css/css-sizing/percentage-height-replaced-content-in-auto-cb.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "2f6d64a1bd50f632996fc51830f1ac8db75c4550104b8e6f92c566bb27a69541",
+  "result": {"refused":"script:nondeterministic:Math.random","flags":["script:nondeterministic:Math.random"]}
+}

@@ -144,7 +144,7 @@ export function mergeExpectations(previous: Expectations | null, run: Expectatio
 }
 
 /** The part of a wpt:run output (out/<target>.json) the update merge reads. */
-export type RunOutput = { readonly wpt: string; readonly target: Target; readonly filter: string | null; readonly chrome: string; readonly expectations: Expectations };
+export type RunOutput = { readonly wpt: string; readonly target: Target; readonly filter: string | null; readonly chrome: string; readonly snapshots?: string; readonly reftestLayout?: boolean; readonly expectations: Expectations };
 
 /** Reads a wpt:run output for the update merge, or says in one line why it can't be used (missing, unreadable, filtered, no Chrome, stale commit). */
 export function readRunForUpdate(runFile: string, target: Target, locked: string): { readonly run: RunOutput } | { readonly problem: string } {

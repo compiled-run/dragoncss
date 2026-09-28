@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<!-- Synthetic page written for packages/wpt (not a WPT file): a script sets an inline style the check depends on. -->
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="/resources/check-layout-th.js"></script>
+<style>.box { width: 10px; height: 10px; }</style>
+<body>
+<div class="c"><div id="t" class="box" data-expected-width="50" data-expected-height="10"></div></div>
+<script>
+document.getElementById('t').style.width = '50px';
+checkLayout('.c');
+</script>
+</body>

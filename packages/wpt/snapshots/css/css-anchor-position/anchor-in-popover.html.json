@@ -1,0 +1,7 @@
+{
+  "source": "css/css-anchor-position/anchor-in-popover.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "805cfd149f8208a1114e04c1746d144043a2113ed56312e3db140335c78c79fb",
+  "result": {"refused":"script:top-layer:popover","flags":["script:top-layer:popover"]}
+}

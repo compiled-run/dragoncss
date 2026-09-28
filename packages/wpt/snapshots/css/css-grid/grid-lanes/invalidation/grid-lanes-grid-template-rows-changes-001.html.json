@@ -1,0 +1,23 @@
+{
+  "source": "css/css-grid/grid-lanes/invalidation/grid-lanes-grid-template-rows-changes-001.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "6b159011a986197befe87b2440cc27311ff325d60c55286cbabc21332c18d2a0",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":"#gridLanes1 1","pass":false},{"name":"#gridLanes1 2","pass":false},{"name":"#gridLanes1 3","pass":false},{"name":"#gridLanes1 4","pass":false},{"name":"#gridLanes1 5","pass":false},{"name":"#gridLanes2 6","pass":false},{"name":"#gridLanes2 7","pass":false},{"name":"#gridLanes2 8","pass":false},{"name":"#gridLanesSized 9","pass":true},{"name":"#gridLanesSized 10","pass":false},{"name":"#gridLanesSized 11","pass":false},{"name":"#gridLanesSized 12","pass":false}]},
+    "states": [
+      {"call":"#gridLanes1","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":["\n  ",{"t":"meta","a":[["charset","utf-8"]],"c":[]},"\n  ",{"t":"title","a":[],"c":["CSS Grid Lanes Test: grid-template-rows dynamic changes"]},"\n  ",{"t":"link","a":[["rel","author"],["title","Yanling Wang"],["href","mailto:yanlingwang@microsoft.com"]],"c":[]},"\n  ",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-grid-3"]],"c":[]},"\n  ",{"t":"meta","a":[["name","assert"],["content","This test checks that items with percentage heights resolve against the updated track size when grid-template-rows changes dynamically in a grid-lanes container."]],"c":[]},"\n  ","\n  ","\n  ","\n  ",{"t":"style","a":[],"c":["\n    .grid-lanes {\n      display: grid-lanes;\n      grid-lanes-direction: row;\n      background-color: grey;\n    }\n    .item {\n      width: 30px;\n      height: 100%;\n      background: blue;\n    }\n  "]},"\n"]},"\n",{"t":"body","a":[],"c":["\n","\n",{"t":"div","a":[["class","grid-lanes"],["id","gridLanes1"],["style","grid-template-rows: 50px;"]],"c":["\n  ",{"t":"div","a":[["class","item"],["data-expected-height","50"]],"c":[],"v":{"height":0}},"\n"]},"\n\n","\n",{"t":"div","a":[["class","grid-lanes"],["id","gridLanes2"]],"c":["\n  ",{"t":"div","a":[["class","item"],["data-expected-height","60"]],"c":[],"v":{"height":0}},"\n  ",{"t":"div","a":[["class","item"]],"c":[]},"\n"]},"\n\n","\n",{"t":"div","a":[["class","grid-lanes"],["id","gridLanesSized"],["style","height: 300px"]],"c":["\n  ",{"t":"div","a":[["class","item"],["data-expected-height","300"]],"c":[],"v":{"height":300}},"\n"]},"\n\n"]}]}},
+      {"call":"#gridLanes1","matched":1,"patch":{"9":{"a":[["class","grid-lanes"],["id","gridLanes1"],["style","grid-template-rows: 100px;"]]},"10":{"a":[["class","item"],["data-expected-height","100"]]}}},
+      {"call":"#gridLanes1","matched":1,"patch":{"9":{"a":[["class","grid-lanes"],["id","gridLanes1"],["style","grid-template-rows: 200px;"]]},"10":{"a":[["class","item"],["data-expected-height","200"]]}}},
+      {"call":"#gridLanes1","matched":1,"patch":{"9":{"a":[["class","grid-lanes"],["id","gridLanes1"],["style","grid-template-rows: minmax(30px, 80px);"]]},"10":{"a":[["class","item"],["data-expected-height","80"]]}}},
+      {"call":"#gridLanes1","matched":1,"patch":{"9":{"a":[["class","grid-lanes"],["id","gridLanes1"],["style","grid-template-rows: minmax(50px, 120px);"]]},"10":{"a":[["class","item"],["data-expected-height","120"]]}}},
+      {"call":"#gridLanes2","matched":1,"patch":{"11":{"a":[["class","grid-lanes"],["id","gridLanes2"],["style","grid-template-rows: 60px 80px;"]]}}},
+      {"call":"#gridLanes2","matched":1,"patch":{"11":{"a":[["class","grid-lanes"],["id","gridLanes2"],["style","grid-template-rows: 100px 50px;"]]},"12":{"a":[["class","item"],["data-expected-height","100"]]}}},
+      {"call":"#gridLanes2","matched":1,"patch":{"11":{"a":[["class","grid-lanes"],["id","gridLanes2"],["style","grid-template-rows: 40px 40px;"]]},"12":{"a":[["class","item"],["data-expected-height","40"]]}}},
+      {"call":"#gridLanesSized","matched":1,"patch":{"14":{"a":[["class","grid-lanes"],["id","gridLanesSized"],["style","height: 300px; grid-template-rows: 1fr;"]]}}},
+      {"call":"#gridLanesSized","matched":1,"patch":{"14":{"a":[["class","grid-lanes"],["id","gridLanesSized"],["style","height: 300px; grid-template-rows: 1fr 1fr;"]]},"15":{"a":[["class","item"],["data-expected-height","150"]]}}},
+      {"call":"#gridLanesSized","matched":1,"patch":{"14":{"a":[["class","grid-lanes"],["id","gridLanesSized"],["style","height: 300px; grid-template-rows: 1fr 2fr;"]]},"15":{"a":[["class","item"],["data-expected-height","100"]]}}},
+      {"call":"#gridLanesSized","matched":1,"patch":{"14":{"a":[["class","grid-lanes"],["id","gridLanesSized"],["style","height: 300px; grid-template-rows: 100px 1fr;"]]}}}
+    ]
+  }
+}

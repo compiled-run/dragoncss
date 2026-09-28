@@ -1,0 +1,12 @@
+{
+  "source": "css/css-values/viewport-units-gutter-005.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "130b5d32e90fb687503c7e2f8fb4a4009e7bdbaa1c8b6f8bfc855d5f83ea4e7f",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":"#test-div 1","pass":true}]},
+    "states": [
+      {"call":"#test-div","matched":1,"tree":{"t":"html","a":[["style","overflow-y: auto; scrollbar-gutter: stable; scrollbar-width: thin"]],"c":[{"t":"head","a":[],"c":[{"t":"link","a":[["rel","help"],["href","http://www.w3.org/TR/css3-values/#viewport-relative-lengths"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","There is no horizontal overflow when 100vw is reduced by thin gutter width."]],"c":[]},"\n\n","\n","\n","\n","\n\n"]},{"t":"body","a":[["style","margin: 0; padding: 0;"]],"c":["\n  ",{"t":"div","a":[["style","width: 100vw; height: 100px; background: orange; box-sizing: border-box; border-left: 3px solid blue; border-right: 3px solid blue;"],["id","test-div"],["data-expected-width","800"]],"c":[],"v":{"width":800}},"\n\n  ","\n  ",{"t":"div","a":[["id","measure"],["style","overflow: scroll; width: 200px; scrollbar-width: thin;"]],"c":["\n     ",{"t":"div","a":[["style","min-height: 100px;"]],"c":["measure"]},"\n  "]},"\n\n"]}]}}
+    ]
+  }
+}

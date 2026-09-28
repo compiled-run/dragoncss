@@ -1,0 +1,12 @@
+{
+  "source": "css/css-flexbox/flex-column-relayout-assert.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "f012999f7f38323b785ca398f30dc725af14f2f3d24f6d48805fd072ef711164",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":".flexbox 1","pass":true}]},
+    "states": [
+      {"call":".flexbox","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"title","a":[],"c":["CSS Flexbox: Column height with padding"]},"\n",{"t":"link","a":[["href","support/flexbox.css"],["rel","stylesheet"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://www.w3.org/TR/css-flexbox-1/#valdef-flex-direction-column"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://www.w3.org/TR/css-flexbox-1/#item-margins"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","This test checks that height of flex container works with padding"]],"c":[]},"\n",{"t":"style","a":[],"c":["\n.flexbox {\n    background-color: green;\n}\n"]},"\n","\n","\n","\n"]},{"t":"body","a":[["onload","checkLayout('.flexbox')"]],"c":["\n",{"t":"div","a":[["id","log"]],"c":[]},"\n\n",{"t":"p","a":[],"c":["You should see a green rectangle, 40px high."]},"\n\n",{"t":"div","a":[["class","flexbox column"],["data-expected-height","40"]],"c":["\n  ",{"t":"div","a":[["id","child"],["data-expected-height","40"],["style","padding: 20px;"]],"c":[],"v":{"height":40}},"\n"],"v":{"height":40}},"\n\n","\n"]}]}}
+    ]
+  }
+}

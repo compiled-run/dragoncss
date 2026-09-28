@@ -1,0 +1,12 @@
+{
+  "source": "css/css-tables/dynamic-rowspan-change.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "3cdc233507682b8361ab8e9925815be9defc969e97685f0ff6f901026c96d3eb",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":"main table 1","pass":true},{"name":"main table 2","pass":true}]},
+    "states": [
+      {"call":"main table","matched":2,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":["\n","\n","\n",{"t":"link","a":[["rel","author"],["href","mailto:atotic@chromium.org"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://html.spec.whatwg.org/multipage/tables.html#the-td-element"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","Dynamic changes to rowspan/colspan relayout the table"]],"c":[]},"\n",{"t":"style","a":[],"c":["\n  main table {\n    border-spacing:0;\n  }\n  main td {\n    background: green;\n    width:50px;\n    height:50px;\n    padding: 0;\n  }\n"]},"\n\n"]},{"t":"body","a":[],"c":[{"t":"main","a":[],"c":["\n  ",{"t":"table","a":[["data-expected-width","100"]],"c":["\n    ",{"t":"tbody","a":[],"c":[{"t":"tr","a":[],"c":["\n      ",{"t":"td","a":[["id","rowspan_target"],["rowspan","2"]],"c":[]},"\n    "]},"\n    ",{"t":"tr","a":[],"c":["\n      ",{"t":"td","a":[],"c":[]},"\n    "]},"\n  "]}],"v":{"width":100}},"\n",{"t":"br","a":[],"c":[]},"\n  ",{"t":"table","a":[["data-expected-width","150"]],"c":["\n    ",{"t":"colgroup","a":[],"c":[{"t":"col","a":[["style","width:50px"]],"c":[]},"\n    ",{"t":"col","a":[["style","width:50px"]],"c":[]},"\n    "]},{"t":"tbody","a":[],"c":[{"t":"tr","a":[],"c":["\n      ",{"t":"td","a":[["id","colspan_target"],["colspan","2"]],"c":[]},"\n      ",{"t":"td","a":[],"c":[]},"\n    "]},"\n  "]}],"v":{"width":150}},"\n"]},"\n\n"]}]}}
+    ]
+  }
+}

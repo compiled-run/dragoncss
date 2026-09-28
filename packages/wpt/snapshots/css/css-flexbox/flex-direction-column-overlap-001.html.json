@@ -1,0 +1,12 @@
+{
+  "source": "css/css-flexbox/flex-direction-column-overlap-001.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "6c3d77ee37e60af12d497d5083f41e1a2b4ca69ce09a9e7df657bfb8ce77e2ac",
+  "result": {
+    "harness": {"status":0,"tests":[{"name":"#container 1","pass":true}]},
+    "states": [
+      {"call":"#container","matched":1,"tree":{"t":"html","a":[],"c":[{"t":"head","a":[],"c":[{"t":"title","a":[],"c":["CSS Flexbox: vertical overlap with flex-direction: column."]},"\n",{"t":"link","a":[["rel","help"],["href","https://drafts.csswg.org/css-flexbox/#flex-direction-property"]],"c":[]},"\n",{"t":"link","a":[["rel","help"],["href","https://crbug.com/669714"]],"c":[]},"\n",{"t":"meta","a":[["name","assert"],["content","This test ensures that no unnecessary vertical overlap happens between an inline flex item and a block element inside a nested flexbox with 'flex-direction: column'."]],"c":[]},"\n\n",{"t":"style","a":[],"c":["\nhtml {\n  line-height: 1;\n  font-size: 18px;\n}\n\n.flex {\n  flex: 1;\n  min-height: 0;\n}\n\n.layout-column, .layout-row {\n  display: flex;\n}\n\n.layout-column {\n  flex-direction: column;\n}\n\n#relpos {\n  position: relative;\n  top: 1px;\n}\n"]},"\n\n","\n","\n","\n\n"]},{"t":"body","a":[],"c":["\n\n",{"t":"p","a":[],"c":["XXX and YYY should be on separate lines and not overlap, i.e. the height of .flex should not be 0."]},"\n\n",{"t":"div","a":[["class","layout-column"],["id","container"]],"c":["\n    ",{"t":"div","a":[["class","layout-row"]],"c":["\n      ",{"t":"div","a":[["class","layout-column"]],"c":["\n        ",{"t":"div","a":[["class","flex"],["data-expected-height","18"]],"c":["XXX",{"t":"span","a":[["id","relpos"]],"c":[" "]}],"v":{"height":18}},"\n        ",{"t":"div","a":[],"c":["YYY"]},"\n      "]},"\n    "]},"\n"]},"\n\n"]}]}}
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "source": "css/css-cascade/presentational-hints-rollback.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "78bf1b11cab119663e8c4778bf7c876b59183e1c4c97cfa544191498bc7d48a3",
+  "result": {"refused":"snapshot:animation-running"}
+}

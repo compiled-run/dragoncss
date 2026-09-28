@@ -1,0 +1,7 @@
+{
+  "source": "css/css-anchor-position/anchor-position-top-layer-007.html",
+  "wpt": "375cf2548a7c0952c54e141d1eb4e6fc4fe59e41",
+  "chrome": "145.0.7632.6",
+  "sha256": "cb6935dff44d6342fb6b2ebea99fa10867d35276e7c6621c6c34aab49751724a",
+  "result": {"refused":"script:top-layer:showModal","flags":["script:top-layer:showModal"]}
+}
