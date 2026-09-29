@@ -7,6 +7,7 @@ import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
 import { PSEUDO_CLASS_VALID, PSEUDO_ELEMENT_VALID } from './selector-validity.generated.ts';
 import type { SheetUse } from './stylesheet.ts';
+import { unescapeName } from './variables.ts';
 
 /** Selectors-4 §6 attribute operators; null tests presence only. */
 export type AttributeMatcher = '=' | '~=' | '|=' | '^=' | '$=' | '*=';
@@ -253,7 +254,8 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
         refuse(part, `namespaced selector "${name}" is not supported`);
       } else if (name !== '*') current.tag = asciiLower(name);
     } else if (part.type === 'ClassSelector') {
-      current.classes.push(String(part['name']));
+      // css-syntax-3 §4.3.7: css-tree keeps the name as written, so .w-1\/2 names the class w-1/2.
+      current.classes.push(unescapeName(String(part['name'])));
     } else if (part.type === 'IdSelector') {
       const id = String(part['name']);
       if (id.includes('\\')) {
