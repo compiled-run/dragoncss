@@ -1,0 +1,10 @@
+{
+  "case": "values-calc-intrinsic-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"k:text0","lines":[[0,4]]},
+    {"id":"w:text0","lines":[[0,2]]},
+    {"id":"i:text0","lines":[[0,3]]},
+    {"id":"j:text0","lines":[[0,1]]}
+  ]
+}

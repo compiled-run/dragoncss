@@ -9297,6 +9297,38 @@
  },
  {
   "lane": "device-pixels",
+  "case": "values-calc-intrinsic",
+  "dpr": 2.625,
+  "node": "interior:s",
+  "kind": "pixel",
+  "detail": "interior:s at 71,26: native [216,216,216,255], Chrome [199,199,199,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "values-calc-intrinsic",
+  "dpr": 2.625,
+  "node": "edge:w:top",
+  "kind": "pixel",
+  "detail": "edge:w:top at 48,26: native [68,68,68,255], Chrome [0,0,0,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "values-calc-intrinsic-rtl",
+  "dpr": 2.625,
+  "node": "interior:s",
+  "kind": "pixel",
+  "detail": "interior:s at 333,26: native [216,216,216,255], Chrome [199,199,199,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "values-calc-intrinsic-rtl",
+  "dpr": 2.625,
+  "node": "edge:w:top",
+  "kind": "pixel",
+  "detail": "edge:w:top at 355,26: native [68,68,68,255], Chrome [0,0,0,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
   "case": "color-border-sides",
   "dpr": 3,
   "node": "border:one:top",
