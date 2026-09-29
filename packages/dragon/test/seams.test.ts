@@ -21,7 +21,7 @@ describe('E2 seams: the property registry', () => {
   it('LONGHANDS keeps its order across the properties/<family>.ts aggregate', () => {
     expect([...LONGHANDS]).toEqual([
       'display', 'position', 'top', 'right', 'bottom', 'left', 'overflow-x', 'overflow-y', 'direction', 'box-sizing',
-      'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height',
+      'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'aspect-ratio',
       'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
       'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
       'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',

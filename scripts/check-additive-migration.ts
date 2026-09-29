@@ -1,36 +1,49 @@
 // Proves a migration of committed outputs is additive only (docs/decisions.md, "Adding engine fields and CSS longhands"): every
-// file that existed at the base commit either is unchanged or differs only by the new keys, each at its neutral value.
+// file that existed at the base commit either is unchanged or differs only by the new keys, each at its neutral value, and every
+// file added since the base belongs to a fixture added since the base.
 // - Layout vectors (packages/layout/vectors/**, break-vectors/**): each LayoutStyle object gains aspectRatio { kind: "auto" };
 //   with those keys removed the file is byte-identical to the base, so inputs, outputs and formatting are unchanged.
+// - Chrome captures (packages/parity/expected/**, expected-dpr/**): the computed values of every element node gain
+//   "aspect-ratio": "auto"; with that key removed the file is byte-identical to the base, so boxes and other values are unchanged.
+// - Emitted CSS (packages/parity/emitted/**): every rule gains the one declaration "aspect-ratio: auto;"; with it removed the file
+//   is byte-identical to the base, except the header's compilation digest, which changes with every compiler change.
 // - The calc goldens (packages/layout/vectors/calc) have no generator (T009 kept them by hand), so `--migrate-calc-goldens`
 //   inserts the neutral key after textAlign in each of their LayoutStyle objects; the check then proves the result additive.
-// Run with: node scripts/check-additive-migration.ts <base-commit> [--migrate-calc-goldens]
+// `--plant <name>` alters one file in memory before the check, which must then fail (PLANTS below).
+// Run with: node scripts/check-additive-migration.ts <base-commit> [--migrate-calc-goldens] [--plant <name>]
 import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { basename, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const base = process.argv[2];
-if (base === undefined) {
-  console.error('usage: node scripts/check-additive-migration.ts <base-commit>');
+if (base === undefined || base.startsWith('--')) {
+  console.error('usage: node scripts/check-additive-migration.ts <base-commit> [--migrate-calc-goldens] [--plant <name>]');
   process.exit(2);
 }
 
-/** A migration: which committed files it covers, and how to remove its additions from one parsed file. */
+/** A migration: which committed files it covers, and how to take its additions out of one file's text. */
 type Migration = {
   readonly name: string;
   readonly roots: readonly string[];
-  /** Removes the added keys in place and returns how many it removed; throws on an added key that is not neutral. */
-  readonly strip: (json: unknown, path: string) => number;
+  readonly extension: string;
+  /** The file text with the additions removed, formatted as the base file, and how many it removed; throws on a non-neutral addition. */
+  readonly strip: (after: string, before: string, path: string) => { readonly text: string; readonly removed: number };
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-/** Every LayoutStyle object (it holds textAlign) must carry aspectRatio { kind: "auto" }; removes it and counts. */
-function stripAspectRatio(json: unknown, path: string): number {
+/** The indent of a JSON file written by JSON.stringify(v, null, indent), from its second line. */
+function indentOf(text: string): number {
+  const second = text.split('\n')[1] ?? '';
+  return second.length - second.trimStart().length;
+}
+
+/** Removes the key from every object the predicate selects, after checking it; returns how many it removed. */
+function stripKey(json: unknown, path: string, selects: (v: Record<string, unknown>) => boolean, key: string, neutral: (x: unknown) => boolean): number {
   let n = 0;
   const walk = (v: unknown, at: string): void => {
     if (Array.isArray(v)) {
@@ -38,10 +51,9 @@ function stripAspectRatio(json: unknown, path: string): number {
       return;
     }
     if (!isRecord(v)) return;
-    if ('textAlign' in v && 'boxSizing' in v) {
-      const ar = v['aspectRatio'];
-      if (!isRecord(ar) || ar['kind'] !== 'auto' || Object.keys(ar).length !== 1) throw new Error(`${path} ${at}: aspectRatio is ${JSON.stringify(ar)}, not { kind: "auto" }`);
-      delete v['aspectRatio'];
+    if (selects(v)) {
+      if (!neutral(v[key])) throw new Error(`${path} ${at}: ${key} is ${JSON.stringify(v[key])}, not its neutral value`);
+      delete v[key];
       n++;
     }
     for (const [k, x] of Object.entries(v)) walk(x, `${at}.${k}`);
@@ -50,18 +62,75 @@ function stripAspectRatio(json: unknown, path: string): number {
   return n;
 }
 
+function jsonStrip(selects: (v: Record<string, unknown>) => boolean, key: string, neutral: (x: unknown) => boolean): Migration['strip'] {
+  return (after, before, path) => {
+    const json = JSON.parse(after) as unknown;
+    const removed = stripKey(json, path, selects, key, neutral);
+    return { text: `${JSON.stringify(json, null, indentOf(before))}\n`, removed };
+  };
+}
+
+/** A LayoutStyle object: it holds textAlign and boxSizing. */
+const isLayoutStyle = (v: Record<string, unknown>): boolean => 'textAlign' in v && 'boxSizing' in v;
+const autoRatio = (x: unknown): boolean => isRecord(x) && x['kind'] === 'auto' && Object.keys(x).length === 1;
+/** The computed values of a captured element node: every longhand, so max-height among them. */
+const isComputed = (v: Record<string, unknown>): boolean => 'max-height' in v && 'box-sizing' in v && typeof v['max-height'] === 'string';
+
+const HEADER = /^\/\* Generated by Dragon from compilation [0-9a-f]{64}\. Do not edit\. \*\/$/;
+const RULE = /^\.dg\d+ \{$/;
+const DECLARATION = '  aspect-ratio: auto;';
+
+/** Emitted CSS: exactly one "aspect-ratio: auto;" per rule, after max-height; the header keeps its form with any digest. */
+function stripEmitted(after: string, before: string, path: string): { text: string; removed: number } {
+  const lines = after.split('\n');
+  const was = before.split('\n');
+  if (!HEADER.test(lines[0] ?? '') || !HEADER.test(was[0] ?? '')) throw new Error(`${path}: the header is not the generated-file header`);
+  const rules = lines.filter((l) => RULE.test(l)).length;
+  const kept: string[] = [was[0] as string];
+  let removed = 0;
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i] as string;
+    if (line.includes('aspect-ratio')) {
+      if (line !== DECLARATION) throw new Error(`${path}:${i + 1}: "${line.trim()}" is not the neutral declaration`);
+      if (lines[i - 1]?.startsWith('  max-height: ') !== true) throw new Error(`${path}:${i + 1}: aspect-ratio does not follow max-height`);
+      removed++;
+      continue;
+    }
+    kept.push(line);
+  }
+  if (removed !== rules) throw new Error(`${path}: ${removed} aspect-ratio declarations in ${rules} rules`);
+  return { text: kept.join('\n'), removed };
+}
+
 const MIGRATIONS: readonly Migration[] = [
-  { name: 'aspectRatio engine field (T050)', roots: ['packages/layout/vectors', 'packages/layout/break-vectors'], strip: stripAspectRatio },
+  { name: 'aspectRatio engine field (T050)', roots: ['packages/layout/vectors', 'packages/layout/break-vectors'], extension: '.json', strip: jsonStrip(isLayoutStyle, 'aspectRatio', autoRatio) },
+  { name: 'aspect-ratio computed value (T050)', roots: ['packages/parity/expected', 'packages/parity/expected-dpr'], extension: '.json', strip: jsonStrip(isComputed, 'aspect-ratio', (x) => x === 'auto') },
+  { name: 'aspect-ratio emitted declaration (T050)', roots: ['packages/parity/emitted'], extension: '.css', strip: stripEmitted },
 ];
+
+/** Planted faults, each of which the check must catch: [migration index, file suffix, how the text changes]. */
+const PLANTS: { readonly [name: string]: readonly [number, string, (t: string) => string] } = {
+  'vector-output': [0, 'layout/vectors/dpr-2/margin-collapse-body.json', (t) => t.replace(/"height": (\d+)/, (_m, n: string) => `"height": ${Number(n) + 1}`)],
+  'capture-box': [1, 'darwin-arm64/margin-collapse-body.web.json', (t) => t.replace(/"height": (\d+)/, (_m, n: string) => `"height": ${Number(n) + 1}`)],
+  'capture-ratio': [1, 'dpr-3/margin-collapse-body.web.json', (t) => t.replace('"aspect-ratio": "auto"', '"aspect-ratio": "1 / 1"')],
+  'capture-missing-key': [1, 'darwin-arm64/margin-collapse-body.web.json', (t) => t.replace('        "aspect-ratio": "auto",\n', '')],
+  'emitted-value': [2, 'emitted/margin-collapse-body.css', (t) => t.replace('  width: auto;', '  width: 10px;')],
+  'emitted-ratio': [2, 'emitted/margin-collapse-body.css', (t) => t.replace(DECLARATION, '  aspect-ratio: 1 / 1;')],
+  'emitted-extra': [2, 'emitted/margin-collapse-body.css', (t) => t.replace(DECLARATION, `${DECLARATION}\n${DECLARATION}`)],
+  'stray-file': [1, '', (t) => t],
+};
+
+const plantAt = process.argv.indexOf('--plant');
+const plantName = plantAt < 0 ? null : process.argv[plantAt + 1];
+if (plantName !== null && (plantName === undefined || PLANTS[plantName] === undefined)) {
+  console.error(`--plant takes one of: ${Object.keys(PLANTS).join(', ')}`);
+  process.exit(2);
+}
+const plant = plantName === null ? null : (PLANTS[plantName] as (typeof PLANTS)[string]);
+let planted = false;
 
 function git(args: readonly string[]): string {
   return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 30 });
-}
-
-/** The indent of a JSON file written by JSON.stringify(v, null, indent), from its second line. */
-function indentOf(text: string): number {
-  const second = text.split('\n')[1] ?? '';
-  return second.length - second.trimStart().length;
 }
 
 /** Inserts aspectRatio { kind: "auto" } after textAlign in every LayoutStyle object that lacks it, keeping key order. */
@@ -85,12 +154,44 @@ if (process.argv.includes('--migrate-calc-goldens')) {
   }
 }
 
+/** Every file under a root in the working tree, repository-relative. */
+function filesNow(root: string, extension: string): string[] {
+  const out: string[] = [];
+  const walk = (dir: string): void => {
+    for (const name of readdirSync(dir)) {
+      const path = join(dir, name);
+      if (statSync(path).isDirectory()) walk(path);
+      else if (name.endsWith(extension)) out.push(relative(ROOT, path));
+    }
+  };
+  if (existsSync(join(ROOT, root))) walk(join(ROOT, root));
+  return out;
+}
+
+// Fixtures added since the base: only their outputs may be new files.
+const fixtureIds = (names: readonly string[]): Set<string> => new Set(names.filter((n) => n.endsWith('.html')).map((n) => basename(n, '.html')));
+const fixturesAtBase = fixtureIds(git(['ls-tree', '--name-only', `${base}:packages/parity/fixtures`]).split('\n'));
+const newFixtures = [...fixtureIds(readdirSync(join(ROOT, 'packages/parity/fixtures')))].filter((id) => !fixturesAtBase.has(id));
+const ofNewFixture = (path: string): boolean => {
+  const name = basename(path);
+  return newFixtures.some((id) => name.startsWith(`${id}.`) || name.startsWith(`${id}-rtl.`));
+};
+
 let failures = 0;
-for (const m of MIGRATIONS) {
-  const files = git(['ls-tree', '-r', '--name-only', base, '--', ...m.roots]).split('\n').filter((f) => f.endsWith('.json'));
+for (const [index, m] of MIGRATIONS.entries()) {
+  const atBase = git(['ls-tree', '-r', '--name-only', base, '--', ...m.roots]).split('\n').filter((f) => f.endsWith(m.extension));
+  const known = new Set(atBase);
+  const added = m.roots.flatMap((r) => filesNow(r, m.extension)).filter((f) => !known.has(f));
+  if (plant !== null && plant[0] === index && plant[1] === '') {
+    added.push(`${m.roots[0] as string}/darwin-arm64/not-a-new-fixture.web.json`);
+    planted = true;
+  }
+  const stray = added.filter((f) => !ofNewFixture(f));
+  for (const f of stray) console.error(`${f}: added since ${base}, but no fixture added since then owns it`);
+  failures += stray.length;
   let changed = 0;
   let removed = 0;
-  for (const f of files) {
+  for (const f of atBase) {
     const before = git(['show', `${base}:${f}`]);
     let after: string;
     try {
@@ -100,14 +201,19 @@ for (const m of MIGRATIONS) {
       failures++;
       continue;
     }
+    if (plant !== null && plant[0] === index && plant[1] !== '' && f.endsWith(plant[1]) && !planted) {
+      const altered = plant[2](after);
+      if (altered === after) throw new Error(`plant ${plantName as string} did not change ${f}`);
+      after = altered;
+      planted = true;
+    }
     if (after === before) continue;
     changed++;
     try {
-      const json = JSON.parse(after) as unknown;
-      removed += m.strip(json, f);
-      const back = `${JSON.stringify(json, null, indentOf(before))}\n`;
-      if (back !== before) {
-        console.error(`${f}: differs from ${base} beyond the ${m.name} keys`);
+      const stripped = m.strip(after, before, f);
+      removed += stripped.removed;
+      if (stripped.text !== before) {
+        console.error(`${f}: differs from ${base} beyond the ${m.name} additions`);
         failures++;
       }
     } catch (e) {
@@ -115,8 +221,9 @@ for (const m of MIGRATIONS) {
       failures++;
     }
   }
-  console.log(`${m.name}: ${files.length} files at ${base}, ${changed} changed, ${removed} neutral keys added, every other byte identical`);
+  console.log(`${m.name}: ${atBase.length} files at ${base}, ${changed} changed, ${removed} neutral additions, every other byte identical; ${added.length} files added, all from the ${newFixtures.length} new fixtures`);
 }
+if (plant !== null && !planted) throw new Error(`plant ${plantName as string} found no file to alter`);
 if (failures > 0) {
   console.error(`check-additive-migration: ${failures} failures`);
   process.exit(1);

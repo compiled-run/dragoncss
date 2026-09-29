@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { absoluteRects, ahemMeasurer, layout, validateLayoutInput } from '../src/index.ts';
+import { fromCssPx, fromRaw, layoutRatio, mulDiv } from '../src/units.ts';
 import type { AspectRatioValue, LayoutBox, LayoutRect, LayoutStyle, TextLeaf } from '../src/index.ts';
 import { box, pct, px, text } from './helpers.ts';
 
@@ -173,5 +174,45 @@ describe('the validator', () => {
     }
     expect(validateLayoutInput(input({ aspectRatio: { kind: 'ratio', width: 0, height: 64 } })).ok).toBe(false);
     expect(validateLayoutInput(input({ aspectRatio: { kind: 'ratio', width: 1.5, height: 64 } })).ok).toBe(false);
+    expect(validateLayoutInput(input({ aspectRatio: { kind: 'ratio', width: 2147483648, height: 64 } })).ok).toBe(false);
+    expect(validateLayoutInput(input({ aspectRatio: { kind: 'auto-ratio', width: 64, height: 2147483647 } })).ok).toBe(true);
+  });
+});
+
+describe('units.ts layoutRatio and mulDiv (Blink LayoutRatioFromSizeF and LayoutUnit::MulDiv)', () => {
+  // Chrome 145 heights of a box with the given width and aspect-ratio, absolutely positioned at 0,0 so no float offset rounds them.
+  const probed: readonly [number, number, number, number][] = [
+    [0.7, 1, 100, 142.84375], [0.001, 1.2345, 100, 123400], [0.1, 1.2345, 333, 4110.890625], [3.14159265, 1, 333, 105.984375],
+    [1.618034, 1, 999.5, 617.71875], [16, 9, 333, 187.3125], [0.3, 0.7, 100, 233.328125], [2.5, 1.3, 999.5, 519.734375],
+    [1234.567, 1, 999.5, 0.796875], [7, 0.9, 333, 42.8125], [0.333, 1, 999.5, 3001.5], [100, 0.07, 999.5, 0.6875],
+  ];
+  it('gives the heights the pinned Chrome lays out', () => {
+    for (const [w, h, width, height] of probed) {
+      const lr = layoutRatio(w, h);
+      if (lr === null) throw new Error(`${w} / ${h} is degenerate`);
+      expect(mulDiv(fromCssPx(width), lr.height, lr.width) / 64, `${w} / ${h} at ${width}px`).toBe(height);
+    }
+  });
+  it('keeps exact parts, gives equal parts 1 / 1, and returns null for a degenerate ratio', () => {
+    expect(layoutRatio(16, 9)).toEqual({ width: 1024, height: 576 });
+    expect(layoutRatio(0.7, 1)).toEqual({ width: 7, height: 10 });
+    expect(layoutRatio(0.001, 1.2345)).toEqual({ width: 1, height: 1234 });
+    expect(layoutRatio(0.1, 1.2345)).toEqual({ width: 171, height: 2111 });
+    expect(layoutRatio(0.7, 0.7)).toEqual({ width: 64, height: 64 });
+    for (const [w, h] of [[0, 1], [1, 0], [0, 0], [1e-7, 1]] as const) expect(layoutRatio(w, h), `${w} / ${h}`).toBeNull();
+    // Chrome clamps a part to the float range: 1e40 is FLT_MAX, which saturates the LayoutUnit.
+    expect(layoutRatio(1e40, 1)).toEqual({ width: 2147483647, height: 64 });
+  });
+  it('mulDiv is exact in 64-bit integers, truncates toward zero and clamps to int', () => {
+    const cases: readonly [number, number, number][] = [
+      [2147483647, 2147483647, 1], [2147483647, 2147483646, 2147483647], [123456789, 987654321, 1000003], [-6400, 7, 3],
+      [-2147483648, 1, 2], [6400, 0, 5], [1, 1, 3], [-1, 1, 3], [2147483647, 65537, 65536], [99999999, 16777217, 16777215],
+    ];
+    for (const [v, m, d] of cases) {
+      const q = (BigInt(v) * BigInt(m)) / BigInt(d);
+      const clamped = q > 2147483647n ? 2147483647 : q < -2147483648n ? -2147483648 : Number(q);
+      expect(mulDiv(fromRaw(v), m, d), `${v} * ${m} / ${d}`).toBe(clamped);
+    }
+    expect(() => mulDiv(fromRaw(1), 1, 0)).toThrow();
   });
 });

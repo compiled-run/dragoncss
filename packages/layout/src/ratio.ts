@@ -3,7 +3,7 @@
 // max sizes transfer through it. Sizes here are border-box LU; the layout ratio is two raw LayoutUnit values (input.ts).
 import type { LayoutBox, LayoutStyle } from './input.ts';
 import type { LU } from './units.ts';
-import { add, cumulativeShareTruncated, fromCssPx, max, min, neg, sub, ZERO } from './units.ts';
+import { add, fromCssPx, max, min, mulDiv, sub, ZERO } from './units.ts';
 import type { HeightBasis, MinMax } from './box.ts';
 import {
   blockMinMaxWith,
@@ -40,12 +40,6 @@ function ratioBlock(s: LayoutStyle): number {
   const r = s.aspectRatio;
   if (r.kind === 'auto') throw new Error('the box has no aspect ratio');
   return r.height;
-}
-
-/** Blink LayoutUnit::MulDiv: raw * m / d in 64-bit integers, truncating toward zero. */
-function mulDiv(v: LU, m: number, d: number): LU {
-  if (v < 0) return neg(cumulativeShareTruncated(neg(v), m, d));
-  return cumulativeShareTruncated(v, m, d);
 }
 
 /** Blink BlockSizeFromAspectRatio: the border-box block size for a border-box inline size. */

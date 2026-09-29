@@ -4,7 +4,7 @@
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS } from '../css/properties.ts';
-import { featureOf } from '../css/values.ts';
+import { exactLayoutRatio, featureOf } from '../css/values.ts';
 import { iosProfile } from '../profiles/ios.ts';
 import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
@@ -97,6 +97,38 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
     refuse(c, keywordOf(el.props.get('display') as ResolvedValue) === 'flex'
       ? `position: absolute on ${c.element.address} beside text in the flex container ${el.element.address}: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination`
       : `position: absolute on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out`);
+  }
+}
+
+const RATIO_BLOCK_SIZES: readonly Longhand[] = ['height', 'min-height', 'max-height'];
+
+// css-sizing-4 §5.1: the engine takes aspect-ratio as Blink's raw layout ratio. A ratio whose parts are not whole 64ths needs
+// Blink's float continued fraction, which the compiler does not run, and a percentage block size beside a ratio has no
+// percentage basis in the engine (packages/layout/src/validate.ts); both are refused on every target at the declaration.
+function checkAspectRatio(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const ratio = el.props.get('aspect-ratio') as ResolvedValue;
+  if (ratio.value.kind !== 'ratio') return;
+  const refuse = (source: ResolvedValue, what: string, message: string, manual: string): void => {
+    const origin = source.declaration === null ? el.element.node.origin : authored(source.declaration.valueSpan);
+    for (const t of targets) {
+      const id = `${t}|aspect-ratio-${what}|${JSON.stringify(origin)}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  const shown = valueToString(ratio.value);
+  const raw = exactLayoutRatio(ratio.value.width, ratio.value.height);
+  if (raw === null) {
+    refuse(ratio, 'inexact', `aspect-ratio: ${shown} on ${el.element.address} is unsupported: Chrome converts a ratio whose parts are not whole multiples of 1/64 with a float continued fraction that Dragon does not compute at build time`, 'Write the ratio with whole numbers, for example 16 / 9, or parts that are multiples of 1/64.');
+    return;
+  }
+  if (raw === 'degenerate') return;
+  for (const p of RATIO_BLOCK_SIZES) {
+    const v = el.props.get(p) as ResolvedValue;
+    const percent = v.value.kind === 'percentage' || (v.value.kind === 'other' && v.value.text.includes('%'));
+    if (!percent) continue;
+    refuse(v, p, `${p}: ${valueToString(v.value)} beside aspect-ratio: ${shown} on ${el.element.address} is unsupported: the layout engine has no percentage basis for a block size it transfers through a ratio`, `Use a px ${p} beside aspect-ratio, or remove ${p}.`);
   }
 }
 
@@ -212,6 +244,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkSubstitution(el, targets, diagnostics, reported);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
+    if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     for (const c of el.children) if (c.kind === 'element') walk(c, here);
   };
   walk(root, false);

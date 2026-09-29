@@ -14,7 +14,7 @@ import type { Selector } from './selectors.ts';
 import { parseSelectorList } from './selectors.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
-import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, tokenValue, toValue } from './values.ts';
+import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, ratioValue, tokenValue, toValue } from './values.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 import type { CustomValue, PendingSubstitution, VarPart } from './variables.ts';
 import { hasEscape, hasVar, parseVarParts, referencedNames } from './variables.ts';
@@ -276,6 +276,15 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   if (!wide) {
     const match = webrefLexer().matchProperty(property, valueNode);
     if (match.error !== null) return { kind: 'invalid' };
+  }
+  // css-sizing-4 §5.1: aspect-ratio is one value of up to four tokens (values.ts ratioValue).
+  if (!wide && property === 'aspect-ratio') {
+    const ratio = ratioValue(tokens);
+    if (ratio === 'invalid') return { kind: 'invalid' };
+    if ('token' in ratio) {
+      return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(ratio.token, base)), message: `${property}: ${generate(ratio.token)} is unsupported: ${ratio.reason}`, manual: 'Write the ratio as two numbers, for example 16 / 9.' }) };
+    }
+    return { kind: 'ok', longhands: [{ property, value: ratio, explicit: true }] };
   }
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
   const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;

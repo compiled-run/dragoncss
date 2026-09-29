@@ -328,6 +328,11 @@ function holdsPercent(v: unknown): boolean {
 function checkRatioBlockLengths(style: Record<string, unknown>, path: string, errors: ValidationError[]): void {
   const ratio = style['aspectRatio'];
   if (!isRecord(ratio) || ratio['kind'] === 'auto') return;
+  // The parts are raw LayoutUnits (int), which keeps units.ts mulDiv exact.
+  for (const part of ['width', 'height']) {
+    const v = ratio[part];
+    if (typeof v === 'number' && v > 2147483647) errors.push({ path: `${path}.style.aspectRatio.${part}`, code: 'bad-value', message: 'a layout ratio part is a raw LayoutUnit, at most 2147483647' });
+  }
   for (const key of ['height', 'minHeight', 'maxHeight']) {
     if (holdsPercent(style[key])) errors.push({ path: `${path}.style.${key}`, code: 'bad-value', message: `a percentage ${key} beside an aspect-ratio is not supported` });
   }
