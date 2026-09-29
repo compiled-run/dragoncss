@@ -6,6 +6,7 @@ import type { ResolvedElement, ResolvedValue } from '../src/analysis/resolve.ts'
 import { resolveTree, valueToString } from '../src/analysis/resolve.ts';
 import type { Longhand } from '../src/css/properties.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
+import { MAX_SUBSTITUTED_LENGTH } from '../src/analysis/variables.ts';
 import { MAX_NESTING, parseVarParts } from '../src/css/variables.ts';
 import { NO_FAULTS } from '../src/faults.ts';
 import type { Diagnostic } from '../src/types.ts';
@@ -177,6 +178,12 @@ describe('parse-time validity', () => {
     const chain = Array.from({ length: 40 }, (_, i) => `--p${i + 1}: var(--p${i})var(--p${i});`).join(' ');
     expect(one(`.a { --p0: x; ${chain} width: var(--p40, 11px); }`, 'a', 'width')).toBe('11px');
     expect(one(`.a { --p0: 1px; ${chain.replace(/var\(--p0\)var\(--p0\)/, 'var(--p0)')} width: var(--p1, 11px); }`, 'a', 'width')).toBe('1px');
+  });
+  it('the substitution length limit counts the authored text, not the separators substitution adds', () => {
+    // A valid --d makes width invalid at computed-value time (auto); a --d over the limit is guaranteed-invalid, so the fallback wins.
+    const chain = (text: string) => `.a { --a: ${text}; --b: var(--a); --c: var(--b); --d: var(--c); width: var(--d, 11px); }`;
+    expect(one(chain('x'.repeat(MAX_SUBSTITUTED_LENGTH - 2)), 'a', 'width')).toBe('auto');
+    expect(one(chain('x'.repeat(MAX_SUBSTITUTED_LENGTH + 1)), 'a', 'width')).toBe('11px');
   });
   it('var( right after "#" or "@" is part of a hash or at-keyword token, not a var() reference', () => {
     expect(parseVarParts('#var(--a) @var(--b)')?.some((p) => p.kind === 'var')).toBe(false);

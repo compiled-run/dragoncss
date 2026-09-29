@@ -39,17 +39,25 @@ export const MAX_SUBSTITUTED_LENGTH = 2 * 1024 * 1024;
  */
 function* substituteSteps(parts: readonly VarPart[], lookup: (name: string) => Generator<string, string | null, void>): Generator<string, string | null, void> {
   let out = '';
+  // The limit counts the authored text only, never the separators this substitution adds.
+  let length = 0;
   let ok = true;
   for (const p of parts) {
     if (p.kind === 'text') {
-      if (ok) out += p.text;
+      if (ok) {
+        out += p.text;
+        length += p.text.length;
+      }
     } else {
       const value = yield* lookup(p.name);
       const used = value !== null ? value : p.fallback === null ? null : yield* substituteSteps(p.fallback, lookup);
       if (used === null) ok = false;
-      else if (ok) out += `${SEPARATOR}${used}${SEPARATOR}`;
+      else if (ok) {
+        out += `${SEPARATOR}${used}${SEPARATOR}`;
+        length += used.split(SEPARATOR).join('').length;
+      }
     }
-    if (out.length > MAX_SUBSTITUTED_LENGTH) {
+    if (length > MAX_SUBSTITUTED_LENGTH) {
       ok = false;
       out = '';
     }
