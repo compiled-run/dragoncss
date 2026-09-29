@@ -1673,6 +1673,531 @@
    "file": "border-small-mask-dpr2.png"
   },
   {
+   "id": "uniform-circular",
+   "family": "border",
+   "dpr": 2,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 64,
+    "height": 48,
+    "radii": [
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ]
+    ],
+    "border": [
+     2,
+     2,
+     2,
+     2
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 34,
+     "top": 34,
+     "right": 162,
+     "bottom": 130
+    },
+    "radii": {
+     "topLeft": {
+      "x": 24,
+      "y": 24
+     },
+     "topRight": {
+      "x": 24,
+      "y": 24
+     },
+     "bottomRight": {
+      "x": 24,
+      "y": 24
+     },
+     "bottomLeft": {
+      "x": 24,
+      "y": 24
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 4,
+    "right": 4,
+    "bottom": 4,
+    "left": 4
+   },
+   "crop": {
+    "left": 32,
+    "top": 32,
+    "right": 164,
+    "bottom": 132
+   },
+   "file": "border-uniform-circular-dpr2.png"
+  },
+  {
+   "id": "uniform-thick",
+   "family": "border",
+   "dpr": 2,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 80,
+    "height": 60,
+    "radii": [
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ]
+    ],
+    "border": [
+     6,
+     6,
+     6,
+     6
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 34,
+     "top": 34,
+     "right": 194,
+     "bottom": 154
+    },
+    "radii": {
+     "topLeft": {
+      "x": 40,
+      "y": 40
+     },
+     "topRight": {
+      "x": 40,
+      "y": 40
+     },
+     "bottomRight": {
+      "x": 40,
+      "y": 40
+     },
+     "bottomLeft": {
+      "x": 40,
+      "y": 40
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 12,
+    "right": 12,
+    "bottom": 12,
+    "left": 12
+   },
+   "crop": {
+    "left": 32,
+    "top": 32,
+    "right": 196,
+    "bottom": 156
+   },
+   "file": "border-uniform-thick-dpr2.png"
+  },
+  {
+   "id": "uniform-square-corners",
+   "family": "border",
+   "dpr": 2,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 72,
+    "height": 50,
+    "radii": [
+     [
+      12,
+      12
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      0,
+      0
+     ]
+    ],
+    "border": [
+     3,
+     3,
+     3,
+     3
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 34,
+     "top": 34,
+     "right": 178,
+     "bottom": 134
+    },
+    "radii": {
+     "topLeft": {
+      "x": 24,
+      "y": 24
+     },
+     "topRight": {
+      "x": 0,
+      "y": 0
+     },
+     "bottomRight": {
+      "x": 40,
+      "y": 40
+     },
+     "bottomLeft": {
+      "x": 0,
+      "y": 0
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 6,
+    "right": 6,
+    "bottom": 6,
+    "left": 6
+   },
+   "crop": {
+    "left": 32,
+    "top": 32,
+    "right": 180,
+    "bottom": 136
+   },
+   "file": "border-uniform-square-corners-dpr2.png"
+  },
+  {
+   "id": "circle-ring",
+   "family": "border",
+   "dpr": 2,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 40,
+    "height": 40,
+    "radii": [
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ]
+    ],
+    "border": [
+     4,
+     4,
+     4,
+     4
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 34,
+     "top": 34,
+     "right": 114,
+     "bottom": 114
+    },
+    "radii": {
+     "topLeft": {
+      "x": 40,
+      "y": 40
+     },
+     "topRight": {
+      "x": 40,
+      "y": 40
+     },
+     "bottomRight": {
+      "x": 40,
+      "y": 40
+     },
+     "bottomLeft": {
+      "x": 40,
+      "y": 40
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 8,
+    "right": 8,
+    "bottom": 8,
+    "left": 8
+   },
+   "crop": {
+    "left": 32,
+    "top": 32,
+    "right": 116,
+    "bottom": 116
+   },
+   "file": "border-circle-ring-dpr2.png"
+  },
+  {
+   "id": "pill-ring",
+   "family": "border",
+   "dpr": 2,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 80,
+    "height": 24,
+    "radii": [
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ]
+    ],
+    "border": [
+     2,
+     2,
+     2,
+     2
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 34,
+     "top": 34,
+     "right": 194,
+     "bottom": 82
+    },
+    "radii": {
+     "topLeft": {
+      "x": 24,
+      "y": 24
+     },
+     "topRight": {
+      "x": 24,
+      "y": 24
+     },
+     "bottomRight": {
+      "x": 24,
+      "y": 24
+     },
+     "bottomLeft": {
+      "x": 24,
+      "y": 24
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 4,
+    "right": 4,
+    "bottom": 4,
+    "left": 4
+   },
+   "crop": {
+    "left": 32,
+    "top": 32,
+    "right": 196,
+    "bottom": 84
+   },
+   "file": "border-pill-ring-dpr2.png"
+  },
+  {
+   "id": "uniform-frac-pos",
+   "family": "border",
+   "dpr": 2,
+   "css": {
+    "left": 12.375,
+    "top": 9.625,
+    "width": 50.25,
+    "height": 41.5,
+    "radii": [
+     [
+      9.5,
+      9.5
+     ],
+     [
+      9.5,
+      9.5
+     ],
+     [
+      9.5,
+      9.5
+     ],
+     [
+      9.5,
+      9.5
+     ]
+    ],
+    "border": [
+     1,
+     1,
+     1,
+     1
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 25,
+     "top": 19,
+     "right": 125,
+     "bottom": 102
+    },
+    "radii": {
+     "topLeft": {
+      "x": 19,
+      "y": 19
+     },
+     "topRight": {
+      "x": 19,
+      "y": 19
+     },
+     "bottomRight": {
+      "x": 19,
+      "y": 19
+     },
+     "bottomLeft": {
+      "x": 19,
+      "y": 19
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 2,
+    "right": 2,
+    "bottom": 2,
+    "left": 2
+   },
+   "crop": {
+    "left": 23,
+    "top": 17,
+    "right": 127,
+    "bottom": 104
+   },
+   "file": "border-uniform-frac-pos-dpr2.png"
+  },
+  {
+   "id": "uniform-small-mask",
+   "family": "border",
+   "dpr": 2,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 12,
+    "height": 12,
+    "radii": [
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      5
+     ]
+    ],
+    "border": [
+     1,
+     1,
+     1,
+     1
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 34,
+     "top": 34,
+     "right": 58,
+     "bottom": 58
+    },
+    "radii": {
+     "topLeft": {
+      "x": 10,
+      "y": 10
+     },
+     "topRight": {
+      "x": 10,
+      "y": 10
+     },
+     "bottomRight": {
+      "x": 10,
+      "y": 10
+     },
+     "bottomLeft": {
+      "x": 10,
+      "y": 10
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 2,
+    "right": 2,
+    "bottom": 2,
+    "left": 2
+   },
+   "crop": {
+    "left": 32,
+    "top": 32,
+    "right": 60,
+    "bottom": 60
+   },
+   "file": "border-uniform-small-mask-dpr2.png"
+  },
+  {
    "id": "uniform-8",
    "family": "fill",
    "dpr": 3,
@@ -3303,6 +3828,531 @@
    "file": "border-small-mask-dpr3.png"
   },
   {
+   "id": "uniform-circular",
+   "family": "border",
+   "dpr": 3,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 64,
+    "height": 48,
+    "radii": [
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ]
+    ],
+    "border": [
+     2,
+     2,
+     2,
+     2
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 51,
+     "top": 51,
+     "right": 243,
+     "bottom": 195
+    },
+    "radii": {
+     "topLeft": {
+      "x": 36,
+      "y": 36
+     },
+     "topRight": {
+      "x": 36,
+      "y": 36
+     },
+     "bottomRight": {
+      "x": 36,
+      "y": 36
+     },
+     "bottomLeft": {
+      "x": 36,
+      "y": 36
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 6,
+    "right": 6,
+    "bottom": 6,
+    "left": 6
+   },
+   "crop": {
+    "left": 49,
+    "top": 49,
+    "right": 245,
+    "bottom": 197
+   },
+   "file": "border-uniform-circular-dpr3.png"
+  },
+  {
+   "id": "uniform-thick",
+   "family": "border",
+   "dpr": 3,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 80,
+    "height": 60,
+    "radii": [
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ]
+    ],
+    "border": [
+     6,
+     6,
+     6,
+     6
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 51,
+     "top": 51,
+     "right": 291,
+     "bottom": 231
+    },
+    "radii": {
+     "topLeft": {
+      "x": 60,
+      "y": 60
+     },
+     "topRight": {
+      "x": 60,
+      "y": 60
+     },
+     "bottomRight": {
+      "x": 60,
+      "y": 60
+     },
+     "bottomLeft": {
+      "x": 60,
+      "y": 60
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "crop": {
+    "left": 49,
+    "top": 49,
+    "right": 293,
+    "bottom": 233
+   },
+   "file": "border-uniform-thick-dpr3.png"
+  },
+  {
+   "id": "uniform-square-corners",
+   "family": "border",
+   "dpr": 3,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 72,
+    "height": 50,
+    "radii": [
+     [
+      12,
+      12
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      0,
+      0
+     ]
+    ],
+    "border": [
+     3,
+     3,
+     3,
+     3
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 51,
+     "top": 51,
+     "right": 267,
+     "bottom": 201
+    },
+    "radii": {
+     "topLeft": {
+      "x": 36,
+      "y": 36
+     },
+     "topRight": {
+      "x": 0,
+      "y": 0
+     },
+     "bottomRight": {
+      "x": 60,
+      "y": 60
+     },
+     "bottomLeft": {
+      "x": 0,
+      "y": 0
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 9,
+    "right": 9,
+    "bottom": 9,
+    "left": 9
+   },
+   "crop": {
+    "left": 49,
+    "top": 49,
+    "right": 269,
+    "bottom": 203
+   },
+   "file": "border-uniform-square-corners-dpr3.png"
+  },
+  {
+   "id": "circle-ring",
+   "family": "border",
+   "dpr": 3,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 40,
+    "height": 40,
+    "radii": [
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ]
+    ],
+    "border": [
+     4,
+     4,
+     4,
+     4
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 51,
+     "top": 51,
+     "right": 171,
+     "bottom": 171
+    },
+    "radii": {
+     "topLeft": {
+      "x": 60,
+      "y": 60
+     },
+     "topRight": {
+      "x": 60,
+      "y": 60
+     },
+     "bottomRight": {
+      "x": 60,
+      "y": 60
+     },
+     "bottomLeft": {
+      "x": 60,
+      "y": 60
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 12,
+    "right": 12,
+    "bottom": 12,
+    "left": 12
+   },
+   "crop": {
+    "left": 49,
+    "top": 49,
+    "right": 173,
+    "bottom": 173
+   },
+   "file": "border-circle-ring-dpr3.png"
+  },
+  {
+   "id": "pill-ring",
+   "family": "border",
+   "dpr": 3,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 80,
+    "height": 24,
+    "radii": [
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ]
+    ],
+    "border": [
+     2,
+     2,
+     2,
+     2
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 51,
+     "top": 51,
+     "right": 291,
+     "bottom": 123
+    },
+    "radii": {
+     "topLeft": {
+      "x": 36,
+      "y": 36
+     },
+     "topRight": {
+      "x": 36,
+      "y": 36
+     },
+     "bottomRight": {
+      "x": 36,
+      "y": 36
+     },
+     "bottomLeft": {
+      "x": 36,
+      "y": 36
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 6,
+    "right": 6,
+    "bottom": 6,
+    "left": 6
+   },
+   "crop": {
+    "left": 49,
+    "top": 49,
+    "right": 293,
+    "bottom": 125
+   },
+   "file": "border-pill-ring-dpr3.png"
+  },
+  {
+   "id": "uniform-frac-pos",
+   "family": "border",
+   "dpr": 3,
+   "css": {
+    "left": 12.375,
+    "top": 9.625,
+    "width": 50.25,
+    "height": 41.5,
+    "radii": [
+     [
+      9.5,
+      9.5
+     ],
+     [
+      9.5,
+      9.5
+     ],
+     [
+      9.5,
+      9.5
+     ],
+     [
+      9.5,
+      9.5
+     ]
+    ],
+    "border": [
+     1,
+     1,
+     1,
+     1
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 37,
+     "top": 29,
+     "right": 188,
+     "bottom": 153
+    },
+    "radii": {
+     "topLeft": {
+      "x": 28.5,
+      "y": 28.5
+     },
+     "topRight": {
+      "x": 28.5,
+      "y": 28.5
+     },
+     "bottomRight": {
+      "x": 28.5,
+      "y": 28.5
+     },
+     "bottomLeft": {
+      "x": 28.5,
+      "y": 28.5
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 3,
+    "right": 3,
+    "bottom": 3,
+    "left": 3
+   },
+   "crop": {
+    "left": 35,
+    "top": 27,
+    "right": 190,
+    "bottom": 155
+   },
+   "file": "border-uniform-frac-pos-dpr3.png"
+  },
+  {
+   "id": "uniform-small-mask",
+   "family": "border",
+   "dpr": 3,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 12,
+    "height": 12,
+    "radii": [
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      5
+     ]
+    ],
+    "border": [
+     1,
+     1,
+     1,
+     1
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 51,
+     "top": 51,
+     "right": 87,
+     "bottom": 87
+    },
+    "radii": {
+     "topLeft": {
+      "x": 15,
+      "y": 15
+     },
+     "topRight": {
+      "x": 15,
+      "y": 15
+     },
+     "bottomRight": {
+      "x": 15,
+      "y": 15
+     },
+     "bottomLeft": {
+      "x": 15,
+      "y": 15
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 3,
+    "right": 3,
+    "bottom": 3,
+    "left": 3
+   },
+   "crop": {
+    "left": 49,
+    "top": 49,
+    "right": 89,
+    "bottom": 89
+   },
+   "file": "border-uniform-small-mask-dpr3.png"
+  },
+  {
    "id": "uniform-8",
    "family": "fill",
    "dpr": 2.625,
@@ -4931,6 +5981,531 @@
     "bottom": 78
    },
    "file": "border-small-mask-dpr2.625.png"
+  },
+  {
+   "id": "uniform-circular",
+   "family": "border",
+   "dpr": 2.625,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 64,
+    "height": 48,
+    "radii": [
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ]
+    ],
+    "border": [
+     2,
+     2,
+     2,
+     2
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 45,
+     "top": 45,
+     "right": 213,
+     "bottom": 171
+    },
+    "radii": {
+     "topLeft": {
+      "x": 31.5,
+      "y": 31.5
+     },
+     "topRight": {
+      "x": 31.5,
+      "y": 31.5
+     },
+     "bottomRight": {
+      "x": 31.5,
+      "y": 31.5
+     },
+     "bottomLeft": {
+      "x": 31.5,
+      "y": 31.5
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 5,
+    "right": 5,
+    "bottom": 5,
+    "left": 5
+   },
+   "crop": {
+    "left": 43,
+    "top": 43,
+    "right": 215,
+    "bottom": 173
+   },
+   "file": "border-uniform-circular-dpr2.625.png"
+  },
+  {
+   "id": "uniform-thick",
+   "family": "border",
+   "dpr": 2.625,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 80,
+    "height": 60,
+    "radii": [
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ]
+    ],
+    "border": [
+     6,
+     6,
+     6,
+     6
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 45,
+     "top": 45,
+     "right": 255,
+     "bottom": 202
+    },
+    "radii": {
+     "topLeft": {
+      "x": 52.5,
+      "y": 52.5
+     },
+     "topRight": {
+      "x": 52.5,
+      "y": 52.5
+     },
+     "bottomRight": {
+      "x": 52.5,
+      "y": 52.5
+     },
+     "bottomLeft": {
+      "x": 52.5,
+      "y": 52.5
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 15,
+    "right": 15,
+    "bottom": 15,
+    "left": 15
+   },
+   "crop": {
+    "left": 43,
+    "top": 43,
+    "right": 257,
+    "bottom": 204
+   },
+   "file": "border-uniform-thick-dpr2.625.png"
+  },
+  {
+   "id": "uniform-square-corners",
+   "family": "border",
+   "dpr": 2.625,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 72,
+    "height": 50,
+    "radii": [
+     [
+      12,
+      12
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      0,
+      0
+     ]
+    ],
+    "border": [
+     3,
+     3,
+     3,
+     3
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 45,
+     "top": 45,
+     "right": 234,
+     "bottom": 176
+    },
+    "radii": {
+     "topLeft": {
+      "x": 31.5,
+      "y": 31.5
+     },
+     "topRight": {
+      "x": 0,
+      "y": 0
+     },
+     "bottomRight": {
+      "x": 52.5,
+      "y": 52.5
+     },
+     "bottomLeft": {
+      "x": 0,
+      "y": 0
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 7,
+    "right": 7,
+    "bottom": 7,
+    "left": 7
+   },
+   "crop": {
+    "left": 43,
+    "top": 43,
+    "right": 236,
+    "bottom": 178
+   },
+   "file": "border-uniform-square-corners-dpr2.625.png"
+  },
+  {
+   "id": "circle-ring",
+   "family": "border",
+   "dpr": 2.625,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 40,
+    "height": 40,
+    "radii": [
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ],
+     [
+      20,
+      20
+     ]
+    ],
+    "border": [
+     4,
+     4,
+     4,
+     4
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 45,
+     "top": 45,
+     "right": 150,
+     "bottom": 150
+    },
+    "radii": {
+     "topLeft": {
+      "x": 52.5,
+      "y": 52.5
+     },
+     "topRight": {
+      "x": 52.5,
+      "y": 52.5
+     },
+     "bottomRight": {
+      "x": 52.5,
+      "y": 52.5
+     },
+     "bottomLeft": {
+      "x": 52.5,
+      "y": 52.5
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 10,
+    "right": 10,
+    "bottom": 10,
+    "left": 10
+   },
+   "crop": {
+    "left": 43,
+    "top": 43,
+    "right": 152,
+    "bottom": 152
+   },
+   "file": "border-circle-ring-dpr2.625.png"
+  },
+  {
+   "id": "pill-ring",
+   "family": "border",
+   "dpr": 2.625,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 80,
+    "height": 24,
+    "radii": [
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ],
+     [
+      12,
+      12
+     ]
+    ],
+    "border": [
+     2,
+     2,
+     2,
+     2
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 45,
+     "top": 45,
+     "right": 255,
+     "bottom": 108
+    },
+    "radii": {
+     "topLeft": {
+      "x": 31.5,
+      "y": 31.5
+     },
+     "topRight": {
+      "x": 31.5,
+      "y": 31.5
+     },
+     "bottomRight": {
+      "x": 31.5,
+      "y": 31.5
+     },
+     "bottomLeft": {
+      "x": 31.5,
+      "y": 31.5
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 5,
+    "right": 5,
+    "bottom": 5,
+    "left": 5
+   },
+   "crop": {
+    "left": 43,
+    "top": 43,
+    "right": 257,
+    "bottom": 110
+   },
+   "file": "border-pill-ring-dpr2.625.png"
+  },
+  {
+   "id": "uniform-frac-pos",
+   "family": "border",
+   "dpr": 2.625,
+   "css": {
+    "left": 12.375,
+    "top": 9.625,
+    "width": 50.25,
+    "height": 41.5,
+    "radii": [
+     [
+      9.5,
+      9.5
+     ],
+     [
+      9.5,
+      9.5
+     ],
+     [
+      9.5,
+      9.5
+     ],
+     [
+      9.5,
+      9.5
+     ]
+    ],
+    "border": [
+     1,
+     1,
+     1,
+     1
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 32,
+     "top": 25,
+     "right": 164,
+     "bottom": 134
+    },
+    "radii": {
+     "topLeft": {
+      "x": 24.9375,
+      "y": 24.9375
+     },
+     "topRight": {
+      "x": 24.9375,
+      "y": 24.9375
+     },
+     "bottomRight": {
+      "x": 24.9375,
+      "y": 24.9375
+     },
+     "bottomLeft": {
+      "x": 24.9375,
+      "y": 24.9375
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 2,
+    "right": 2,
+    "bottom": 2,
+    "left": 2
+   },
+   "crop": {
+    "left": 30,
+    "top": 23,
+    "right": 166,
+    "bottom": 136
+   },
+   "file": "border-uniform-frac-pos-dpr2.625.png"
+  },
+  {
+   "id": "uniform-small-mask",
+   "family": "border",
+   "dpr": 2.625,
+   "css": {
+    "left": 17,
+    "top": 17,
+    "width": 12,
+    "height": 12,
+    "radii": [
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      5
+     ]
+    ],
+    "border": [
+     1,
+     1,
+     1,
+     1
+    ]
+   },
+   "device": {
+    "box": {
+     "left": 45,
+     "top": 45,
+     "right": 76,
+     "bottom": 76
+    },
+    "radii": {
+     "topLeft": {
+      "x": 13.125,
+      "y": 13.125
+     },
+     "topRight": {
+      "x": 13.125,
+      "y": 13.125
+     },
+     "bottomRight": {
+      "x": 13.125,
+      "y": 13.125
+     },
+     "bottomLeft": {
+      "x": 13.125,
+      "y": 13.125
+     }
+    },
+    "tileSize": 512
+   },
+   "widths": {
+    "top": 2,
+    "right": 2,
+    "bottom": 2,
+    "left": 2
+   },
+   "crop": {
+    "left": 43,
+    "top": 43,
+    "right": 78,
+    "bottom": 78
+   },
+   "file": "border-uniform-small-mask-dpr2.625.png"
   }
  ]
 }
