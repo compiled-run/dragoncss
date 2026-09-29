@@ -195,8 +195,11 @@ export function recordTranscript(hb: DragonHB, source: string, wasmSha256: strin
     return glyph;
   };
 
+  let finished: Transcript | undefined;
   return {
     finish(): Transcript {
+      // A second finish returns the same transcript: appending the advances again would change the first result.
+      if (finished !== undefined) return finished;
       // The recording methods are own properties shadowing the prototype's; dropping them restores hb.
       for (const k of Object.keys(orig)) delete (hb as unknown as Record<string, unknown>)[k];
       const reverse = new Map([...fontIds].map(([handle, id]) => [id, handle]));
@@ -204,7 +207,8 @@ export function recordTranscript(hb: DragonHB, source: string, wasmSha256: strin
         const handle = reverse.get(id) as number;
         for (const glyph of [...set].sort((a, b) => a - b)) calls.push({ op: 'advance', font: id, glyph, advance: hb.glyphAdvance(handle, glyph) });
       }
-      return { format: TRANSCRIPT_FORMAT, source, wasmSha256, faces, fonts, texts, calls };
+      finished = { format: TRANSCRIPT_FORMAT, source, wasmSha256, faces, fonts, texts, calls };
+      return finished;
     },
   };
 }
@@ -231,6 +235,18 @@ export interface ReplayReport {
   readonly mismatches: readonly ReplayMismatch[];
 }
 
+/** A transcript index into items; out of range (negative or fractional included) is a bad transcript. */
+function indexed<T>(items: readonly T[], i: number, what: string): T {
+  if (!Number.isInteger(i) || i < 0 || i >= items.length) throw new Error(`bad transcript: ${what} ${i} of ${items.length}`);
+  return items[i] as T;
+}
+
+/** A value the shim takes as uint32 (codepoint, glyph id); outside 0..2^32-1 is a bad transcript. */
+function u32(v: number, what: string): number {
+  if (!Number.isInteger(v) || v < 0 || v > 0xffffffff) throw new Error(`bad transcript: ${what} ${v}`);
+  return v;
+}
+
 /** Replays every call and compares each integer. readFace returns a face's bytes; their sha256 must match. */
 export function replayTranscript(t: Transcript, backend: ReplayBackend, readFace: (face: TranscriptFace) => Uint8Array): ReplayReport {
   const faces = t.faces.map((f) => {
@@ -239,23 +255,27 @@ export function replayTranscript(t: Transcript, backend: ReplayBackend, readFace
     if (sha !== f.sha256) throw new Error(`face ${f.id} (${f.file}): sha256 ${sha}, transcript ${f.sha256}`);
     return backend.createFace(bytes);
   });
-  const fonts = t.fonts.map((f) => backend.createFont(faces[f.face] as number, f));
+  const fonts = t.fonts.map((f) => backend.createFont(indexed(faces, f.face, 'font.face'), f));
   const mismatches: ReplayMismatch[] = [];
   let shapeCalls = 0;
   let glyphs = 0;
   t.calls.forEach((c, i) => {
-    const font = fonts[c.font] as number;
+    const font = indexed(fonts, c.font, 'call.font');
     if (c.op === 'shape') {
       shapeCalls++;
-      const got = Array.from(backend.shape(font, t.texts[c.text] as string, c));
+      const text = indexed(t.texts, c.text, 'call.text');
+      if (!Number.isInteger(c.start) || !Number.isInteger(c.end) || c.start < 0 || c.start > c.end || c.end > text.length) {
+        throw new Error(`bad transcript: call.start ${c.start}, call.end ${c.end} of text length ${text.length}`);
+      }
+      const got = Array.from(backend.shape(font, text, c));
       glyphs += got.length / GLYPH_STRIDE;
       const at = got.length !== c.glyphs.length ? -1 : got.findIndex((v, j) => v !== c.glyphs[j]);
       if (got.length !== c.glyphs.length || at >= 0) mismatches.push({ call: i, op: c.op, detail: at < 0 ? `length ${got.length}, expected ${c.glyphs.length}` : `int ${at}: ${got[at]}, expected ${c.glyphs[at]}` });
     } else if (c.op === 'nominal') {
-      const got = backend.nominalGlyph(font, c.codepoint);
+      const got = backend.nominalGlyph(font, u32(c.codepoint, 'codepoint'));
       if (got !== c.glyph) mismatches.push({ call: i, op: c.op, detail: `U+${c.codepoint.toString(16)}: ${got}, expected ${c.glyph}` });
     } else {
-      const got = backend.glyphAdvance(font, c.glyph);
+      const got = backend.glyphAdvance(font, u32(c.glyph, 'glyph'));
       if (got !== c.advance) mismatches.push({ call: i, op: c.op, detail: `glyph ${c.glyph}: ${got}, expected ${c.advance}` });
     }
   });
@@ -283,10 +303,18 @@ export function withoutFeatures(backend: ReplayBackend): ReplayBackend {
   return { ...backend, shape: (font, text, c) => backend.shape(font, text, { ...c, features: [] }) };
 }
 
-export type TranscriptPlant = 'off-by-one';
+export type TranscriptPlant = 'off-by-one' | 'bad-index' | 'fractional-index';
+export const TRANSCRIPT_PLANTS: readonly TranscriptPlant[] = ['off-by-one', 'bad-index', 'fractional-index'];
 
-/** Planted fault: one expected integer (the first shape call's first x advance) is off by one. */
+/**
+ * Planted faults. off-by-one: one expected integer (the first shape call's first x advance) is off by one; the replay
+ * must report that mismatch. bad-index: the first call names a font one past the last; the replay must refuse the
+ * transcript as bad (an error, not a crash or a silent shape through a wrong handle). fractional-index: the first
+ * call names font 0.5; the replay must refuse it rather than truncate it to font 0 and replay cleanly.
+ */
 export function plantTranscript(t: Transcript, plant: TranscriptPlant): Transcript {
+  if (plant === 'bad-index') return { ...t, calls: t.calls.map((x, j) => (j === 0 ? { ...x, font: t.fonts.length } : x)) };
+  if (plant === 'fractional-index') return { ...t, calls: t.calls.map((x, j) => (j === 0 ? { ...x, font: x.font + 0.5 } : x)) };
   if (plant !== 'off-by-one') throw new Error(`unknown plant ${String(plant)}`);
   const i = t.calls.findIndex((c) => c.op === 'shape' && c.glyphs.length >= GLYPH_STRIDE);
   if (i < 0) throw new Error('plant off-by-one: no shape call with a glyph');
