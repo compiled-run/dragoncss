@@ -114,7 +114,9 @@
     "columnGap": {
      "kind": "normal"
     },
-    "textAlign": "start"
+    "textAlign": "start",
+    "grid": null,
+    "gridItem": null
    },
    "children": [
     {
@@ -224,7 +226,9 @@
       "columnGap": {
        "kind": "normal"
       },
-      "textAlign": "start"
+      "textAlign": "start",
+      "grid": null,
+      "gridItem": null
      },
      "children": [
       {
@@ -337,7 +341,9 @@
          "kind": "px",
          "value": 5
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "grid": null,
+        "gridItem": null
        },
        "children": [
         {
@@ -449,7 +455,9 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "grid": null,
+          "gridItem": null
          },
          "children": [
           {
@@ -577,7 +585,9 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "grid": null,
+          "gridItem": null
          },
          "children": []
         }

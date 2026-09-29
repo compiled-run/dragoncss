@@ -78,7 +78,7 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
   let isRow: Bool = ((s.flexDirection == S.s_row) || (s.flexDirection == S.s_row_reverse))
   // ts: packages/layout/src/intrinsic.ts:52
   if ((!isRow) && (s.flexWrap != S.s_nowrap)) {
-    try unsupported_unsupported(S.s_flex_intrinsic_wrap_column, box.id, S.s52, S.s80)
+    try unsupported_unsupported(S.s_flex_intrinsic_wrap_column, box.id, S.s53, S.s86)
   }
   // ts: packages/layout/src/intrinsic.ts:53
   if ((!isRow) || ((kind == S.s_min) && (s.flexWrap != S.s_nowrap))) {
@@ -98,7 +98,7 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
   let gap: any U_NormalValue_Percent_Px = s.columnGap
   // ts: packages/layout/src/intrinsic.ts:59
   if (gap.kind == S.s_percent) {
-    try unsupported_unsupported(S.s_percent_gap, box.id, S.s47, S.s107)
+    try unsupported_unsupported(S.s_percent_gap, box.id, S.s48, S.s114)
   }
   let gapLu: Double = try (((gap as! any U_NormalValue_Px).kind == S.s_px) ? units_fromCssPx((gap as! Px).value) : units_ZERO)
   let gaps: Double = try ((jsLength(items) > 1.0) ? units_mulInt(gapLu, (jsLength(items) - 1.0)) : units_ZERO)
