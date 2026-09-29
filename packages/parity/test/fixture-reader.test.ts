@@ -216,6 +216,13 @@ const REMOVED_AFTER_BASE: Readonly<Record<string, string>> = {
   'reject-background-important': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.swatch { width: 20px; height: 20px; background: red !important; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="swatch" class="swatch"></div>\n</body>\n</html>\n',
 };
 
+// BASE fixtures a later package retargeted on purpose (V1 of the value model supports vw and calc(), so its rejects moved to
+// svw and round()), with their BASE text: the reader is still checked on that text, and each file must now differ from it.
+const RETARGETED_AFTER_BASE: Readonly<Record<string, string>> = {
+  'reject-unit-calc': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.a { width: calc(10px + 2em); height: 10px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',
+  'reject-unit-vw': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.a { width: 50vw; height: 10px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',
+};
+
 describe('fixture reader identity', () => {
   it('every fixture present at BASE reads to the byte-identical FrontEndResult', () => {
     expect(Object.keys(BASE_DIGESTS)).toHaveLength(195);
@@ -229,6 +236,12 @@ describe('fixture reader identity', () => {
         continue;
       }
       if (spec === undefined) throw new Error(`BASE fixture ${id} is no longer registered`);
+      const retargeted = RETARGETED_AFTER_BASE[id];
+      if (retargeted !== undefined) {
+        expect(readHtmlFixture(id).html, `${id} is listed as retargeted`).not.toBe(retargeted);
+        expect(digest(fixtureToInput(id, retargeted)), id).toBe(expected);
+        continue;
+      }
       const input = spec.format === 'html' ? readHtmlFixture(id).input : readTreeFixture(id);
       expect(digest(input), id).toBe(expected);
     }

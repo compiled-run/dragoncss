@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { hexBits } from '../harness/host.ts';
 import { buildCorpus, m1CaseIds, M1_MANIFEST, topLevelVectorFiles, VECTORS_DIR } from '../src/corpus.ts';
-import { buildExtendedCorpus, DPR_SETS, extendedLockedDigest, SNAP_DPRS, UNITS_M2_FUNCTIONS } from '../src/corpus-dpr.ts';
+import { buildExtendedCorpus, DPR_SETS, extendedLockedDigest, SNAP_DPRS, UNITS_M2_FUNCTIONS, VALUES_PREFIX } from '../src/corpus-dpr.ts';
 import { EXTENDED_FAULTS, FAULTS } from '../src/faults.ts';
 
 type Row = [string, string | null, string, string, string, string];
@@ -44,14 +44,21 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
   it('matches the committed digest, is deterministic, and has the suites and sizes of ruling 4', () => {
     expect(x.digest).toBe(extendedLockedDigest());
     expect(buildExtendedCorpus().digest).toBe(x.digest);
-    expect(x.suites.map((s) => s.name)).toEqual(['vectors-m2', 'vectors-dpr', 'engine-dpr', 'units-m2', 'snap']);
+    // V1 appends its own suites; the values group's vectors are appended to the P2b suites after every earlier line.
+    expect(x.suites.map((s) => s.name)).toEqual(['vectors-m2', 'vectors-dpr', 'engine-dpr', 'units-m2', 'snap', 'snap-values', 'calc-goldens', 'engine-calc', 'units-calc']);
     const top = topLevelVectorFiles().length;
     expect(top).toBeGreaterThanOrEqual(261);
+    const firstValues = x.m2Vectors.findIndex((v) => v.file.startsWith(VALUES_PREFIX));
+    expect(firstValues).toBeGreaterThan(0);
+    expect(x.m2Vectors.slice(firstValues).every((v) => v.file.startsWith(VALUES_PREFIX))).toBe(true);
     expect(n['vectors-m2']).toBe(top - m1CaseIds().length);
     expect(n['vectors-dpr']).toBe(DPR_SETS.length * top);
     expect(n['engine-dpr']).toBeGreaterThanOrEqual(DPR_SETS.length * top);
     expect(n['units-m2']).toBeGreaterThanOrEqual(120000);
-    expect(n['snap']).toBeGreaterThanOrEqual(20000 + DPR_SETS.length * top);
+    // snap reads the earlier snap vectors only (its generated lines follow them); snap-values reads the values group's.
+    const values = topLevelVectorFiles().filter((f) => f.startsWith(VALUES_PREFIX)).length;
+    expect(n['snap']).toBeGreaterThanOrEqual(20000 + DPR_SETS.length * (top - values));
+    expect(n['snap-values']).toBe(DPR_SETS.length * values);
     expect(x.engineSplit.threw + x.engineSplit.harnessError).toBe(0);
   });
 

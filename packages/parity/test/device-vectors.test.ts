@@ -34,4 +34,11 @@ describe.each(['ios', 'android'] as const)('the %s device vectors verdict', (nam
     expect(judgeDeviceVectors(t, whole, digests, null).reason).toMatch(/no layout-vectors-host run/);
     expect(judgeDeviceVectors(t, whole, digests, { ...host, state: 'fail' }).state).toBe('fail');
   });
+  it('declares the V1 value-model suites, and a suite the device reports that is not declared fails the lane', () => {
+    for (const v1 of ['snap-values', 'calc-goldens', 'engine-calc', 'units-calc']) {
+      expect(declared.find((d) => d.corpus === 'extended' && d.suite === v1)?.cases, v1).toBeGreaterThan(0);
+    }
+    const extra: DeviceSuiteResult = { corpus: 'extended', name: 'undeclared-suite', total: 5, pass: 5, cause: null, mismatches: [] };
+    expect(judgeDeviceVectors(t, [...whole, extra], digests, host)).toMatchObject({ state: 'fail', reason: expect.stringContaining('extended/undeclared-suite is not a declared suite') });
+  });
 });

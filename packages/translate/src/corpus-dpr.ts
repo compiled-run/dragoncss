@@ -40,25 +40,44 @@ const ALL_FAULT_NAMES: readonly (keyof EngineFaults)[] = [
   'wrapReverseBaselineSpec', 'initialLineWidthZoomed',
 ];
 
+/** The value-model (V1) faults: engine-calc draws from these and every fault above. */
+const CALC_FAULT_NAMES: readonly (keyof EngineFaults)[] = [
+  'calcPercentPlainOrder', 'calcDoubleEval', 'calcNoNonNegClamp', 'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect',
+  'calcLeafUnzoomed', 'viewportUnitsUnceiled',
+];
+
+/**
+ * Vectors of the V1 values fixture group (packages/parity/src/fixture-groups/values.ts). The P2b suites read every layout case
+ * (parity targets.ts derives their sizes), so they read these too, but after every earlier vector: each earlier line keeps its
+ * place, its seeded mutation and its result, and the values lines are appended.
+ */
+export const VALUES_PREFIX = 'values-';
+const isValuesVector = (f: string): boolean => f.startsWith(VALUES_PREFIX);
+
 // ---------------------------------------------------------------- vectors
 
 /** Top-level vectors that are not milestone-1 cases (the P2b fixtures), sorted by file name. */
 export function m2VectorCases(): VectorCase[] {
   const m1 = new Set(m1CaseIds().map((id) => `${id}.json`));
-  return topLevelVectorFiles().filter((f) => !m1.has(f)).map((f) => vectorCase(VECTORS_DIR, f));
+  const files = topLevelVectorFiles().filter((f) => !m1.has(f));
+  return [...files.filter((f) => !isValuesVector(f)), ...files.filter(isValuesVector)].map((f) => vectorCase(VECTORS_DIR, f));
 }
 
 export type DprVectorCase = VectorCase & { readonly dpr: number };
 
 const dprDir = (dpr: number): string => join(VECTORS_DIR, `dpr-${dpr}`);
 
-/** Every DPR vector, per DPR set in DPR_SETS order and by file name. */
+/** Every DPR vector, per DPR set in DPR_SETS order and by file name: the earlier vectors, then the values group's. */
 export function dprVectorCases(): DprVectorCase[] {
+  return [...dprVectorsOf(false), ...dprVectorsOf(true)];
+}
+
+function dprVectorsOf(values: boolean): DprVectorCase[] {
   const out: DprVectorCase[] = [];
   for (const dpr of DPR_SETS) {
     const dir = dprDir(dpr);
     if (!existsSync(dir)) continue;
-    for (const f of readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) out.push({ ...vectorCase(dir, f), dpr });
+    for (const f of readdirSync(dir).filter((x) => x.endsWith('.json') && isValuesVector(x) === values).sort()) out.push({ ...vectorCase(dir, f), dpr });
   }
   return out;
 }
@@ -71,13 +90,20 @@ function snapLine(dpr: number, rects: readonly Rect[]): string {
   return JSON.stringify({ dpr: bitsHex(dpr), rects: rects.map((b) => [b.id, b.parent, bitsHex(b.x), bitsHex(b.y), bitsHex(b.width), bitsHex(b.height)]) });
 }
 
-/** Every snap vector (dpr-<N>/snap/<case>.json): the engine rects of a DPR vector and their snapped device-px edges. */
-export function snapVectorCases(): SnapVectorCase[] {
+/**
+ * Every snap vector (dpr-<N>/snap/<case>.json): the engine rects of a DPR vector and their snapped device-px edges. values selects
+ * the values group's (suite snap-values): the snap suite's generated lines follow its vectors, so it keeps the earlier ones only.
+ */
+export function snapVectorCases(values = false): SnapVectorCase[] {
+  return snapVectorsOf(values);
+}
+
+function snapVectorsOf(values: boolean): SnapVectorCase[] {
   const out: SnapVectorCase[] = [];
   for (const dpr of DPR_SETS) {
     const dir = join(dprDir(dpr), 'snap');
     if (!existsSync(dir)) continue;
-    for (const f of readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) {
+    for (const f of readdirSync(dir).filter((x) => x.endsWith('.json') && isValuesVector(x) === values).sort()) {
       const v = JSON.parse(readFileSync(join(dir, f), 'utf8')) as { platform: string; devicePixelRatio: number; input: Rect[]; output: unknown };
       if (v.devicePixelRatio !== dpr) throw new Error(`snap vector ${f} in dpr-${dpr} says DPR ${v.devicePixelRatio}`);
       out.push({ file: `dpr-${dpr}/snap/${f}`, dpr, line: snapLine(dpr, v.input), output: v.output });
@@ -197,6 +223,139 @@ export function snapGeneratedCases(): string[] {
   return out;
 }
 
+// ---------------------------------------------------------------- V1 value model (notes/T006-value-model-spec.md)
+
+/** Sizes of the V1 calc suites. */
+export const CALC_SPEC = { engineCalc: 4000, unitsPerFunction: 5000 } as const;
+
+/** units-calc: R6, the calculation leaves, float PixelsAndPercent, the two stores, the float inverse, the double min and max steps, and the LU conversion. */
+export const UNITS_CALC_FUNCTIONS = [
+  'viewportUnitBase', 'viewportLeafPx', 'emLeafPx', 'pixelsAndPercentAt', 'cssLengthFixed', 'clampLengthFloat', 'floatInvert', 'doubleMinStep',
+  'doubleMaxStep', 'calcToLu',
+] as const;
+
+export const CALC_DIR = join(VECTORS_DIR, 'calc');
+
+/** The calc goldens (vectors/calc/<name>.json): an engine vector for each (verify) point of the value model, by file name. */
+export function calcGoldenCases(): VectorCase[] {
+  if (!existsSync(CALC_DIR)) return [];
+  return readdirSync(CALC_DIR).filter((f) => f.endsWith('.json')).sort().map((f) => vectorCase(CALC_DIR, f));
+}
+
+const CALC_LENGTHS = [0, 1, 10, 0.1, 7.5, 33.333, 100, 12.5, 0.015625, 250];
+const CALC_PERCENTS = [0, 5, 10, 25, 33.333333, 50, 66.666667, 100, 12.5];
+
+function calcLeaf(r: Rng, percent: boolean): Json {
+  const k = r.next();
+  if (percent && k < 0.3) return { kind: 'percent', value: r.pick(CALC_PERCENTS) };
+  if (k < 0.55) return { kind: 'px', value: r.chance(0.8) ? r.pick(CALC_LENGTHS) : Math.round(r.next() * 4000) / 64 };
+  if (k < 0.8) return { kind: 'viewport', value: r.pick([1, 5, 10, 33.333, 50, 100, 2.5]), axis: r.pick(['width', 'height', 'min', 'max']) };
+  return { kind: 'em', value: r.pick([0.2, 1, 1.5, 2, 0.333]), fontSize: { kind: 'px', value: r.pick([10, 16, 10.625, 12.5, 13.33]) } };
+}
+
+/** A CSS-level calculation as the compiler writes it: sums of signed terms, products by a number or its inverse, min, max and clamp. */
+function calcNode(r: Rng, depth: number, percent: boolean): Json {
+  if (depth <= 0 || r.chance(0.3)) return calcLeaf(r, percent);
+  const k = r.next();
+  if (k < 0.35) {
+    const terms: Json[] = [];
+    const n = 2 + r.int(2);
+    for (let i = 0; i < n; i++) {
+      const t = calcNode(r, depth - 1, percent);
+      terms.push(i > 0 && r.chance(0.3) ? { kind: 'product', terms: [t, { kind: 'number', value: -1 }] } : t);
+    }
+    return { kind: 'sum', terms };
+  }
+  if (k < 0.55) {
+    const n = r.pick([0.5, 2, 3, 1.5, 0.1]);
+    const inner = calcNode(r, depth - 1, percent);
+    if (r.chance(0.4)) return { kind: 'product', terms: [inner, { kind: 'invert', term: { kind: 'number', value: r.pick([3, 7, 2, 1.5]) } }] };
+    return r.chance(0.5) ? { kind: 'product', terms: [{ kind: 'number', value: n }, inner] } : { kind: 'product', terms: [inner, { kind: 'number', value: n }] };
+  }
+  if (k < 0.85) {
+    const terms: Json[] = [];
+    const n = 1 + r.int(4);
+    for (let i = 0; i < n; i++) terms.push(calcNode(r, depth - 1, percent));
+    return { kind: r.chance(0.5) ? 'min' : 'max', terms };
+  }
+  return { kind: 'clamp', min: calcNode(r, depth - 1, percent), value: calcNode(r, depth - 1, percent), max: calcNode(r, depth - 1, percent) };
+}
+
+/** A length field, its calculation range, and whether it takes a percentage. */
+const CALC_FIELDS: readonly (readonly [string, 'all' | 'non-negative', boolean])[] = [
+  ['width', 'non-negative', true], ['height', 'non-negative', true], ['minWidth', 'non-negative', true], ['minHeight', 'non-negative', true],
+  ['maxWidth', 'non-negative', true], ['maxHeight', 'non-negative', true], ['marginTop', 'all', true], ['marginRight', 'all', true],
+  ['marginBottom', 'all', true], ['marginLeft', 'all', true], ['paddingTop', 'non-negative', true], ['paddingLeft', 'non-negative', true],
+  ['top', 'all', true], ['left', 'all', true], ['right', 'all', true], ['bottom', 'all', true], ['flexBasis', 'non-negative', true],
+  ['rowGap', 'non-negative', false], ['columnGap', 'non-negative', false], ['borderTopWidth', 'non-negative', false], ['borderLeftWidth', 'non-negative', false],
+];
+
+/** Every top-level vector with one to three of its lengths replaced by generated calculations, at every DPR, some with a planted fault. */
+export function engineCalcCases(): string[] {
+  const r = new Rng(EXTENDED_SPEC.seed * 59);
+  const bases = topLevelVectorFiles().map((f) => JSON.parse(readFileSync(join(VECTORS_DIR, f), 'utf8')) as { platform: string; input: Json });
+  const faultNames = [...ALL_FAULT_NAMES, ...CALC_FAULT_NAMES];
+  const out: string[] = [];
+  let k = 0;
+  while (out.length < CALC_SPEC.engineCalc) {
+    const base = bases[k % bases.length] as { platform: string; input: Json };
+    k++;
+    const input = JSON.parse(JSON.stringify(base.input)) as Json;
+    const boxes: Json[] = [];
+    const walk = (b: Json): void => {
+      if (b['kind'] !== 'box') return;
+      if (b['boxType'] === 'element') boxes.push(b);
+      for (const c of b['children'] as Json[]) walk(c);
+    };
+    walk(input['root'] as Json);
+    const n = 1 + r.int(3);
+    for (let i = 0; i < n && boxes.length > 0; i++) {
+      const [field, range, percent] = r.pick(CALC_FIELDS);
+      const withPercent = percent || r.chance(0.05);
+      (r.pick(boxes)['style'] as Json)[field] = { kind: 'calc', expr: calcNode(r, 1 + r.int(3), withPercent), range };
+    }
+    input['devicePixelRatio'] = r.pick([1, 2, 3, 2.625]);
+    if (!validateLayoutInput(input).ok) continue;
+    const faults = r.chance(0.2) ? { ...NO_ENGINE_FAULTS, [r.pick(faultNames)]: true } : NO_ENGINE_FAULTS;
+    out.push(JSON.stringify({ platform: base.platform, faults, input }));
+  }
+  return out;
+}
+
+function calcUnitsArgs(name: (typeof UNITS_CALC_FUNCTIONS)[number], r: Rng): number[] {
+  const f = (x: number): number => Math.fround(x);
+  const zeros = [0, -0, Number.NaN, 1, -1, 0.5, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
+  switch (name) {
+    case 'viewportUnitBase':
+      return [r.chance(0.6) ? r.pick([300, 400, 851, 393, 320, 568, 844, 390, 915, 412]) : r.chance(0.5) ? r.int(2000) : px(r), zoom(r)];
+    case 'viewportLeafPx':
+      return [r.pick([1, 5, 10, 33.333, 50, 100, 2.5, -10, 0.1]), r.chance(0.7) ? f(r.int(2000) / r.pick([1, 2, 3, 2.625])) : px(r), zoom(r)];
+    case 'emLeafPx':
+      return [r.chance(0.5) ? r.pick([0.2, 1, 1.5, 2, 0.333, -1]) : px(r) / 16, fontSize(r), zoom(r)];
+    case 'pixelsAndPercentAt':
+      return [f(r.chance(0.5) ? r.pick([0, 10, 0.1, -5, 26.25]) : px(r)), f(r.chance(0.6) ? r.pick([0, 5, 33.333333, 50, 100, -10]) : r.next() * 200), f(r.chance(0.5) ? r.int(1600) : Math.abs(px(r)))];
+    case 'cssLengthFixed':
+    case 'clampLengthFloat':
+      return [r.chance(0.1) ? r.pick([33554429, 33554430, -33554430, -33554431, 3.4028234663852886e38, 1e39, -1e39, Number.NaN]) : px(r)];
+    case 'floatInvert':
+      return [r.chance(0.3) ? r.pick([3, 7, 1.5, 0, -0, 0.1]) : f(px(r))];
+    case 'doubleMinStep':
+    case 'doubleMaxStep':
+      return [r.chance(0.4) ? r.pick(zeros) : px(r), r.chance(0.4) ? r.pick(zeros) : px(r)];
+    case 'calcToLu':
+      return [r.chance(0.2) ? r.pick([Number.NaN, -0.5, 1e40, -1e40, 0.015625, -0]) : f(px(r)), r.int(2)];
+  }
+}
+
+export function unitsCalcCases(): string[] {
+  const out: string[] = [];
+  UNITS_CALC_FUNCTIONS.forEach((name, i) => {
+    const r = new Rng(EXTENDED_SPEC.seed * 61 + i);
+    for (let k = 0; k < CALC_SPEC.unitsPerFunction; k++) out.push(JSON.stringify([name, ...calcUnitsArgs(name, r).map(bitsHex)]));
+  });
+  return out;
+}
+
 // ---------------------------------------------------------------- the extended corpus
 
 export type ExtendedCorpus = Corpus & {
@@ -214,12 +373,21 @@ export function buildExtendedCorpus(): ExtendedCorpus {
   const engine = engineDprCases(dpr);
   const units = unitsM2Cases();
   const snap = [...snapVectors.map((v) => v.line), ...snapGeneratedCases()];
+  const snapValues = snapVectorCases(true).map((v) => v.line);
+  const goldenLines = calcGoldenCases().map((v) => v.line);
+  const engineCalc = engineCalcCases();
+  const unitsCalc = unitsCalcCases();
   const suites: Suite[] = [
     { name: 'vectors-m2', mode: 'engine', lines: m2Lines, expected: m2Lines.map(runEngineCase) },
     { name: 'vectors-dpr', mode: 'engine', lines: dprLines, expected: dprLines.map(runEngineCase) },
     { name: 'engine-dpr', mode: 'engine', lines: engine, expected: engine.map(runEngineCase) },
     { name: 'units-m2', mode: 'units', lines: units, expected: units.map(runUnitsCase) },
     { name: 'snap', mode: 'snap', lines: snap, expected: snap.map(runSnapCase) },
+    // V1 value model: new suites only, after the P2b ones.
+    { name: 'snap-values', mode: 'snap', lines: snapValues, expected: snapValues.map(runSnapCase) },
+    { name: 'calc-goldens', mode: 'engine', lines: goldenLines, expected: goldenLines.map(runEngineCase) },
+    { name: 'engine-calc', mode: 'engine', lines: engineCalc, expected: engineCalc.map(runEngineCase) },
+    { name: 'units-calc', mode: 'units', lines: unitsCalc, expected: unitsCalc.map(runUnitsCase) },
   ];
   const d = digestsOf(suites);
   const engineSplit: Split = split(suites[2]?.expected ?? []);
@@ -234,6 +402,9 @@ export function extendedLockText(c: ExtendedCorpus): string {
     snapDprs: SNAP_DPRS,
     unitsPerFunction: EXTENDED_SPEC.unitsPerFunction,
     unitsFunctions: UNITS_M2_FUNCTIONS,
+    calcUnitsPerFunction: CALC_SPEC.unitsPerFunction,
+    calcUnitsFunctions: UNITS_CALC_FUNCTIONS,
+    engineCalc: CALC_SPEC.engineCalc,
     snapGenerated: EXTENDED_SPEC.snapGenerated,
     snapVectors: c.snapVectors.length,
     cases: Object.fromEntries(c.suites.map((s) => [s.name, s.lines.length])),
