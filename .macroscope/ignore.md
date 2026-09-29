@@ -54,6 +54,26 @@ packages/parity/emitted/**
 packages/wpt/snapshots/**
 packages/wpt/expectations/**
 examples/*/chrome/**
+**/*.generated.ts
+packages/layout/src/script-data.ts
+packages/layout/rt-oracle/**
+packages/layout/rt-vectors/**
+packages/layout/break-vectors/**
+packages/parity/expected-breaks/**
+packages/parity/expected-pixels/**
+packages/dragon/test/fonts/captures/**
+packages/dragon/test/fonts/reference/**
+packages/dragon/test/forms/chrome-145/**
+packages/dragon/test/images/chrome-145/**
+packages/dragon/test/images/corpus/**
+packages/dragon/test/media/captures/**
+packages/dragon/test/media/corpus.json
+packages/text-shaper/transcripts/**
+docs/research/text-spike/gate/**
+docs/research/text-spike/out/**
+docs/research/text-spike/lato/out/**
+docs/research/text-spike/metric-rounding/captures/**
+docs/research/inline-spike/probe/**
 
 # === Dragon: not code ===
 design/**
