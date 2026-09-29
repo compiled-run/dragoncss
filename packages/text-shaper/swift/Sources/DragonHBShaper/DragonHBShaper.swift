@@ -108,4 +108,13 @@ public final class DragonHBShaper {
         guard count > 0, let g = dhb_shaper_glyphs(handle) else { return [] }
         return (0..<count).map { Double(g[$0]) }
     }
+
+    /// The engine's GlyphShaper form: features as flat integer records {tag as int32, value, start, end} (T082 ruling).
+    public func shape(font: DragonHBFont, text: [UInt16], start: Int, end: Int, script: String, rtl: Bool, language: String, featureRecords: [Double]) throws -> [Double] {
+        let u = { (d: Double) in UInt32(truncatingIfNeeded: Int64(d)) }
+        let features = stride(from: 0, to: featureRecords.count - featureRecords.count % 4, by: 4).map {
+            DragonHBFeature(tag: u(featureRecords[$0]), value: u(featureRecords[$0 + 1]), start: u(featureRecords[$0 + 2]), end: u(featureRecords[$0 + 3]))
+        }
+        return try shape(font: font, text: text, start: start, end: end, script: script, rtl: rtl, language: language, features: features)
+    }
 }

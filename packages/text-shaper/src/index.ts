@@ -10,6 +10,7 @@ export {
 export type { FaceFacts, FvarAxis, ValidatedVariableFont, ValidatedVariableFonts, VariableFontRefusal } from './fence.ts';
 export {
   TRANSCRIPT_FORMAT, parseTranscript, plantTranscript, recordTranscript, replayTranscript, serializeTranscript, sha256Hex, wasmBackend,
+  withoutFeatures,
 } from './transcript.ts';
 export type {
   AdvanceCall, NominalCall, Recorder, ReplayBackend, ReplayMismatch, ReplayReport, ShapeCall, Transcript, TranscriptCall, TranscriptFace,

@@ -97,14 +97,11 @@ public func replayTranscript(json: Data, root: URL) throws -> ReplayReport {
         switch try str(call["op"], "call.op") {
         case "shape":
             report.shapeCalls += 1
-            let features = try arr(call["features"], "features").map { f -> DragonHBFeature in
-                let a = try arr(f, "feature")
-                return DragonHBFeature(tag: try DragonHBShaper.tag(try str(a[0], "feature tag")), value: UInt32(try int(a[1], "feature value")),
-                                       start: UInt32(try int(a[2], "feature start")), end: UInt32(try int(a[3], "feature end")))
-            }
+            // Through the GlyphShaper form: flat integer records {tag as int32, value, start, end}.
+            let records = try arr(call["features"], "features").flatMap { f in try arr(f, "feature").map { Double(try int($0, "feature int")) } }
             let got = try shaper.shape(font: font, text: texts[Int(try int(call["text"], "call.text"))], start: Int(try int(call["start"], "start")),
                                        end: Int(try int(call["end"], "end")), script: try str(call["script"], "script"), rtl: (call["rtl"] as? Bool) ?? false,
-                                       language: try str(call["language"], "language"), features: features)
+                                       language: try str(call["language"], "language"), featureRecords: records)
             let expected = try arr(call["glyphs"], "glyphs").map { try int($0, "glyph int") }
             report.glyphs += got.count / DragonHBShaper.glyphStride
             if got.count != expected.count {

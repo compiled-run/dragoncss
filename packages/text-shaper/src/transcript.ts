@@ -1,7 +1,7 @@
 // Shape transcripts (T056 R3): the faces (by sha256), fonts and every shim call a run made, with the integers it
 // returned. A transcript recorded through the WASM is the reference the Swift, Kotlin and device replays must equal.
 import { createHash } from 'node:crypto';
-import { GLYPH_STRIDE } from './wasm.ts';
+import { GLYPH_STRIDE, tagFromString, tagToString } from './wasm.ts';
 import type { DragonHB, FontOptions, ShapeOptions } from './wasm.ts';
 
 export const TRANSCRIPT_FORMAT = 'dragon-shape-transcript/1';
@@ -25,8 +25,11 @@ export interface TranscriptFont {
   readonly opticalSizingAuto: boolean;
 }
 
-/** [tag, value, start, end], defaults resolved (start 0, end 0xffffffff). */
-export type TranscriptFeature = readonly [string, number, number, number];
+/**
+ * An integer feature record as GlyphShaper passes it (PM ruling, T082): [OpenType tag as int32, value, start, end],
+ * defaults resolved (start 0, end 0xffffffff). The C ABI's dhb_feature takes the same four integers.
+ */
+export type TranscriptFeature = readonly [number, number, number, number];
 
 export interface ShapeCall {
   readonly op: 'shape';
@@ -176,7 +179,7 @@ export function recordTranscript(hb: DragonHB, source: string, wasmSha256: strin
       script: o.script,
       rtl: o.direction === 'rtl',
       language: o.language,
-      features: (o.features ?? []).map((f) => [f.tag, f.value >>> 0, (f.start ?? 0) >>> 0, (f.end ?? 0xffffffff) >>> 0] as const),
+      features: (o.features ?? []).map((f) => [tagFromString(f.tag) | 0, f.value >>> 0, (f.start ?? 0) >>> 0, (f.end ?? 0xffffffff) >>> 0] as const),
       glyphs: Array.from(g),
     };
     const { glyphs: _, ...inputs } = call;
@@ -268,11 +271,16 @@ export function wasmBackend(hb: DragonHB): ReplayBackend {
       script: c.script,
       direction: c.rtl ? 'rtl' : 'ltr',
       language: c.language,
-      features: c.features.map(([tag, value, start, end]) => ({ tag, value, start, end })),
+      features: c.features.map(([tag, value, start, end]) => ({ tag: tagToString(tag >>> 0), value, start, end })),
     }),
     nominalGlyph: (font, codepoint) => hb.nominalGlyph(font, codepoint),
     glyphAdvance: (font, glyph) => hb.glyphAdvance(font, glyph),
   };
+}
+
+/** A backend that drops every feature: replaying the gate through it must mismatch, so the calls depend on features. */
+export function withoutFeatures(backend: ReplayBackend): ReplayBackend {
+  return { ...backend, shape: (font, text, c) => backend.shape(font, text, { ...c, features: [] }) };
 }
 
 export type TranscriptPlant = 'off-by-one';

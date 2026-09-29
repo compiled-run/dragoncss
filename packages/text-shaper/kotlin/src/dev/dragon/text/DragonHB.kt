@@ -38,7 +38,7 @@ object DragonHB {
 
     /**
      * Shapes text[offset, offset + length) with the whole text as context. script is an ISO 15924 tag (see tag());
-     * features holds 4 ints per feature {tag, value, start, end} or is null. Null on allocation failure.
+     * features holds 4 ints per feature {tag as int32, value, start, end} (the GlyphShaper record, T082) or is null. Null on allocation failure.
      */
     @JvmStatic external fun shape(
         shaper: Long, font: Long, text: String, offset: Int, length: Int, script: Int, rtl: Boolean,

@@ -5,7 +5,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { GATE_TRANSCRIPT_PATH, REPO_ROOT, recordGate } from '../scripts/replay.ts';
 import {
-  DEFAULT_WASM_PATH, DragonHB, GLYPH_STRIDE, parseTranscript, plantTranscript, replayTranscript, serializeTranscript, sha256Hex, wasmBackend,
+  DEFAULT_WASM_PATH, DragonHB, GLYPH_STRIDE, parseTranscript, plantTranscript, replayTranscript, serializeTranscript, sha256Hex, tagFromString, wasmBackend,
+  withoutFeatures,
 } from '../src/index.ts';
 
 const committed = readFileSync(GATE_TRANSCRIPT_PATH, 'utf8');
@@ -32,6 +33,25 @@ describe('shape transcript of the TXT1-0 gate', () => {
     expect(ops.get('nominal')).toBeGreaterThan(0);
     expect(ops.get('advance')).toBeGreaterThan(0);
     for (const c of transcript.calls) if (c.op === 'shape') expect(c.glyphs.length % GLYPH_STRIDE).toBe(0);
+  });
+
+  it('captures features as integer records, including HanKerning ranges, and the recorded calls depend on them', () => {
+    const tags = new Set<number>();
+    let ranged = 0;
+    for (const c of transcript.calls) {
+      if (c.op !== 'shape') continue;
+      for (const f of c.features) {
+        expect(f.every((v) => Number.isInteger(v))).toBe(true);
+        tags.add(f[0]);
+        if (f[2] !== 0 || f[3] !== 0xffffffff) ranged++;
+      }
+    }
+    expect(tags.has(tagFromString('chws') | 0)).toBe(true);
+    expect(tags.has(tagFromString('halt') | 0)).toBe(true);
+    expect(ranged).toBeGreaterThan(0);
+    // A bridge that dropped the features would not reproduce the transcript.
+    const r = replayTranscript(transcript, withoutFeatures(wasmBackend(DragonHB.load())), readFace);
+    expect(r.mismatches.length).toBeGreaterThan(0);
   });
 
   it('replays through a fresh WASM instance with 0 mismatches', () => {

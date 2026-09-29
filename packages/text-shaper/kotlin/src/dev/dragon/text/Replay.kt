@@ -23,7 +23,7 @@ private fun obj(v: Any?): Map<String, Any?> = v as Map<String, Any?>
 private fun arr(v: Any?): List<Any?> = v as List<Any?>
 private fun long(v: Any?): Long = (v as JsonNumber).toLong()
 private fun int(v: Any?): Int = long(v).toInt()
-/** Unsigned 32-bit JSON values (feature value, start, end) as the Int the JNI passes through. */
+/** Unsigned or signed 32-bit JSON values (feature tag, value, start, end) as the Int the JNI passes through. */
 private fun u32(v: Any?): Int = long(v).toInt()
 private fun f32(v: Any?): Float = (v as JsonNumber).toF32()
 
@@ -63,7 +63,7 @@ fun replayTranscript(json: String, root: File): ReplayReport {
                 val features = if (feats.isEmpty()) null else IntArray(feats.size * 4).also { out ->
                     feats.forEachIndexed { j, f ->
                         val a = arr(f)
-                        out[j * 4] = DragonHB.tag(a[0] as String)
+                        out[j * 4] = u32(a[0])
                         out[j * 4 + 1] = u32(a[1])
                         out[j * 4 + 2] = u32(a[2])
                         out[j * 4 + 3] = u32(a[3])
