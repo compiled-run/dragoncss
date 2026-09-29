@@ -183,6 +183,16 @@ function adb(h: { serial: string; tools: AndroidTools }, args: readonly string[]
 export async function bootIos(spec: IosDeviceSpec): Promise<DeviceHandle> {
   const { udid } = provisionIos(spec.name);
   const was = simState(udid);
+  try {
+    return await bootIosFrom(spec, udid, was);
+  } catch (e) {
+    // A simulator this runner booted is shut down again; one that was already booted is left alone.
+    if (was !== 'Booted') run('xcrun', ['simctl', 'shutdown', udid]);
+    throw e;
+  }
+}
+
+async function bootIosFrom(spec: IosDeviceSpec, udid: string, was: string): Promise<DeviceHandle> {
   for (let attempt = 1; ; attempt++) {
     if (simState(udid) !== 'Booted') run('xcrun', ['simctl', 'boot', udid]);
     const b = run('xcrun', ['simctl', 'bootstatus', udid, '-b'], { timeoutMs: 300_000 });

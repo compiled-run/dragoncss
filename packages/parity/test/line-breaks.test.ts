@@ -76,6 +76,17 @@ describe('Chrome breaks', () => {
     const zwsp: ChromeBreakText = { id: 'a:text2', data: '\u200b', lines: 1, units: [0], blank: [0] };
     expect(chromeLines(zwsp, '\u200b')).toEqual([[0, 1]]);
   });
+  it('Chrome text the vector lacks is a break-mismatch when Chrome shows it; text that only collapses away is not', () => {
+    const n = cases.find((c) => c.case.id === 'text-wrap-spaces');
+    const v = readBreakVector('text-wrap-spaces', 3);
+    const c = readChromeBreaks('text-wrap-spaces', 3);
+    if (n === undefined || v === null || c === null) throw new Error('no text-wrap-spaces data');
+    const shown = { ...c, texts: [...c.texts, { id: 'w9:text0', data: 'XX', lines: 1, units: [0, 0], blank: [] }] };
+    const r = compareVectorWithChrome(v, shown, leafTexts(n.programs.uikit.root));
+    expect(r.problems.map((p) => p.detail)).toEqual(['w9:text0: Chrome shows text "XX" that the break vector does not have']);
+    const collapsed = { ...c, texts: [...c.texts, { id: 'w9:space0', data: ' ', lines: 1, units: [0], blank: [0] }] };
+    expect(compareVectorWithChrome(v, collapsed, leafTexts(n.programs.uikit.root)).problems).toEqual([]);
+  });
   it('a vector that disagrees with Chrome is a break-mismatch naming the node and both line lists', () => {
     const n = cases.find((c) => c.case.id === 'text-wrap-spaces');
     const v = readBreakVector('text-wrap-spaces', 3);

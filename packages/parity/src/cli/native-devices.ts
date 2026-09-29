@@ -16,7 +16,13 @@ import { casePoints, rasterSize, runFileText } from '../pixel-reference.ts';
 import type { NativeTarget } from '../targets.ts';
 
 const args = process.argv.slice(2);
-const only = args.includes('--target') ? (args[args.indexOf('--target') + 1] as NativeTarget) : null;
+const targetAt = args.indexOf('--target');
+const onlyArg = targetAt < 0 ? null : (args[targetAt + 1] ?? '');
+if (onlyArg !== null && onlyArg !== 'ios' && onlyArg !== 'android') {
+  console.error(`native:devices: --target takes ios or android, not ${JSON.stringify(onlyArg)}`);
+  process.exit(2);
+}
+const only: NativeTarget | null = onlyArg;
 const plant = args.includes('--plant') ? (args[args.indexOf('--plant') + 1] as SupportPlant) : null;
 if (plant !== null && !SUPPORT_PLANTS.includes(plant)) throw new Error(`--plant takes one of ${SUPPORT_PLANTS.join(', ')}`);
 const targets: NativeTarget[] = (['ios', 'android'] as const).filter((t) => only === null || t === only);

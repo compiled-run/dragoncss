@@ -1,7 +1,9 @@
 // The device runner and matrix (notes/T015-p4-review-p5-plan.md sections 3.4 and 4 item 1), without booting anything: the matrix
 // covers every device DPR of each target with exactly one device, AVD display keys are pinned, and a device record fails on a scale
 // disagreement, a root that does not fit (never cropped) and a text scale other than the pinned one.
+import { spawnSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
+import { repoPath } from '../src/paths.ts';
 import type { DeviceRecord, DeviceSpec } from '../src/device-run.ts';
 import { avdKeys, avdScale, DEVICE_MATRIX, matrixProblems, PLANT_DEVICES, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
 import { layoutCaseIds } from '../src/targets.ts';
@@ -55,5 +57,13 @@ describe('device records', () => {
     expect(recordProblems({ ...good, appScale: 2.5 }, root)).toEqual(['dragon-smoke: the device profile scale 2.625 differs from the app\'s 2.5']);
     expect(recordProblems({ ...good, stagePx: [1000, 2138] }, root)[0]).toMatch(/cannot hold the 1050x788 root \(device fit, tooling fault; never cropped\)$/);
     expect(recordProblems({ ...good, textScale: '1.3' }, root)).toEqual(['dragon-smoke: text scale 1.3, pinned 1.0']);
+  });
+});
+
+describe('the device CLIs refuse an unknown --target', () => {
+  it.each([['native-devices.ts', 'foo'], ['native-devices.ts', null], ['lanes.ts', 'web']] as const)('%s --target %s exits 2 before running anything', (cli, value) => {
+    const r = spawnSync(process.execPath, ['--conditions=dragon-internal', repoPath(`packages/parity/src/cli/${cli}`), '--target', ...(value === null ? [] : [value])], { encoding: 'utf8' });
+    expect(r.status).toBe(2);
+    expect(r.stderr).toMatch(/--target takes ios or android/);
   });
 });

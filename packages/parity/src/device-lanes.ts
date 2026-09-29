@@ -109,9 +109,11 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
   if (dump.case.compilerDigest !== n.compiled.digest) everyLane('compiler-digest', `compilerDigest ${dump.case.compilerDigest}, the compile under test ${n.compiled.digest}`);
 
   // (a) and (d), split into nodes (device-frames) and lines (device-lines).
-  const chromeLines = ref.chrome.nodes.filter((c) => c.kind === 'line').length;
+  // The line boxes each check actually compared: those present in both the reference and the dump.
+  const dumpLines = new Set(dump.nodes.flatMap((x) => x.lines.map((_, j) => `${x.id}:line${j}`)));
+  const chromeLines = ref.chrome.nodes.filter((c) => c.kind === 'line' && dumpLines.has(c.id)).length;
   const a = splitByLines(checkAgainstChrome(dump, ref.chrome), chromeLines);
-  const engineLines = ref.engine.filter((r) => r.parent !== null && r.id.startsWith(`${r.parent}:line`)).length;
+  const engineLines = ref.engine.filter((r) => r.parent !== null && r.id.startsWith(`${r.parent}:line`) && dumpLines.has(r.id)).length;
   const d = splitByLines(checkAgainstEngine(dump, ref.engine), engineLines);
   compared.a += a.nodes.compared + a.lines.compared;
   compared.d += d.nodes.compared + d.lines.compared;
@@ -270,7 +272,9 @@ export function captureTrust(dir: string, caseIds: readonly string[], dpr: numbe
     if (!existsSync(dumpPath) || !existsSync(shot)) return { case: id, points: 0, mismatches: [`${existsSync(dumpPath) ? 'no OS screenshot' : 'no dump'}`] };
     const read = readDump(dumpPath);
     if (read.kind !== 'ok') return { case: id, points: 0, mismatches: [read.kind === 'unparseable' ? read.detail : 'no dump'] };
-    const dump = read.raw as NativeDump;
+    const valid = validateNativeDump(read.raw);
+    if (!valid.ok) return { case: id, points: 0, mismatches: [`the dump does not validate: ${valid.errors.slice(0, 5).map((e) => `${e.path} ${e.code}`).join('; ')}`] };
+    const dump = valid.dump;
     let img: RgbaImage;
     try {
       img = decodePng(readFileSync(shot));
@@ -294,9 +298,11 @@ export function captureTrust(dir: string, caseIds: readonly string[], dpr: numbe
   });
 }
 
-/** The capture-trust mismatches of a device as device-pixels failures of kind capture-trust. */
-export function trustFailuresOf(rows: readonly TrustRow[], dpr: number, device: string): LaneFailure[] {
-  return rows.flatMap((r) => r.mismatches.map((m): LaneFailure => ({ lane: 'device-pixels', case: r.case, dpr, node: null, kind: 'capture-trust', detail: `${device}: ${m}` })));
+/** The capture-trust mismatches of a device, and a trust run that did not finish, as device-pixels failures of kind capture-trust. */
+export function trustFailuresOf(rows: readonly TrustRow[], dpr: number, device: string, runError: string | null = null): LaneFailure[] {
+  const out = rows.flatMap((r) => r.mismatches.map((m): LaneFailure => ({ lane: 'device-pixels', case: r.case, dpr, node: null, kind: 'capture-trust', detail: `${device}: ${m}` })));
+  if (runError !== null) out.push({ lane: 'device-pixels', case: '-', dpr, node: null, kind: 'capture-trust', detail: `${device}: the capture-trust run did not finish: ${runError}` });
+  return out;
 }
 
 /** The ids of the pulled dumps of a run directory at a DPR. */
@@ -372,7 +378,7 @@ export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, 
       const rows = captureTrust(trustDir, TRUST_CASES, dpr, tr.record.rootOriginPx);
       trust.push({ device: spec.name, dpr, rows });
       // Trust mismatches are device-pixels failures of the set, so the failure lists and counts hold them.
-      const trustFailures = trustFailuresOf(rows, dpr, spec.name);
+      const trustFailures = trustFailuresOf(rows, dpr, spec.name, tr.error);
       if (trustFailures.length > 0) sets[sets.length - 1] = { ...set, failures: [...set.failures, ...trustFailures] };
       log(`${spec.name}: capture trust ${rows.map((x) => `${x.case} ${x.points - x.mismatches.length}/${x.points}`).join(', ')}`);
       if (opts.vectors !== false && spec.name === VECTOR_DEVICES[t.target]) {

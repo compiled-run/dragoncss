@@ -99,6 +99,26 @@ describe('dump provenance and unreadable files', () => {
     expect(captureTrust(dir, [n.case.id], 3, [0, 0])[0]?.mismatches[0]).toMatch(/^the dump is not JSON/);
     rmSync(dir, { recursive: true, force: true });
   });
+  it('a trust dump that is JSON but not a dump (null) is a capture-trust mismatch, not a crash', () => {
+    const dir = join(nativeOut('ios'), 'test-trust-null');
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(dumpFile(dir, n.case.id, 3), 'null');
+    copyFileSync(expectedPixelsPath(n.case.id, 3), join(dir, `screen-${n.case.id}.png`));
+    expect(captureTrust(dir, [n.case.id], 3, [0, 0])[0]?.mismatches[0]).toMatch(/^the dump does not validate: /);
+    rmSync(dir, { recursive: true, force: true });
+  });
+  it('a trust run that did not finish is a capture-trust failure even with no sample mismatch', () => {
+    expect(trustFailuresOf([{ case: 'a', points: 3, mismatches: [] }], 3, 'iPhone 17', 'timed out')).toEqual([{ lane: 'device-pixels', case: '-', dpr: 3, node: null, kind: 'capture-trust', detail: 'iPhone 17: the capture-trust run did not finish: timed out' }]);
+  });
+  it('a dump that omits a line box counts only the lines the checks compared, never a negative node count', () => {
+    const full = evaluateCase('ios', n, 3, d, ref).compared;
+    const dropped = { ...d, nodes: d.nodes.map((x) => (x.id === 'w1:text0' ? { ...x, lines: x.lines.slice(0, 1) } : x)) };
+    const o = evaluateCase('ios', n, 3, dropped, ref);
+    expect(o.compared.a).toBe(full.a - 2);
+    expect(o.compared.d).toBe(full.d - 2);
+    expect(o.failures.some((f) => f.lane === 'device-lines')).toBe(true);
+  });
   it('capture-trust mismatches become device-pixels failures of kind capture-trust', () => {
     expect(trustFailuresOf([{ case: 'a', points: 3, mismatches: ['m1', 'm2'] }, { case: 'b', points: 3, mismatches: [] }], 2, 'iPad (A16)')).toEqual([
       { lane: 'device-pixels', case: 'a', dpr: 2, node: null, kind: 'capture-trust', detail: 'iPad (A16): m1' },
