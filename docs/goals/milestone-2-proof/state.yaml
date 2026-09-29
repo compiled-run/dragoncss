@@ -75,12 +75,13 @@ active_task: T007
 dispatched:
   - T007
   - T009
-  - T046
   - T048
   - T049
   - T054
   - T056
   - T061
+  - T069
+  - T070
 device_lease:
   ios: T007
   android: T007
@@ -1280,7 +1281,7 @@ tasks:
   - id: T046
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     lane: north-star
     reasoning_hint: high
     objective: 'Spec paint: PNT1, PNT2, BG2, OVFL, POSX-f and P6 fix-and-promote, including the emitter split.'
@@ -1289,7 +1290,26 @@ tasks:
       - Decide by research; never escalate to the owner.
     expected_output:
       - Worker packages
-    receipt: null
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T046-paint-spec.md
+      rationale: "Dragon draws radius, shadow, outline and gradients; opacity and the transform display stay native; z-index is compile-time paint order; the emitter split (EMS) lands after P5 and V1B and before V2a. Allowances only for shadow and gradient: measured, at most 2 levels, caveat. P5 device-pixels shows dashed/dotted failures for P6a."
+      spawned_tasks:
+        - T069
+        - T070
+        - T071
+        - T072
+        - T073
+        - T074
+        - T075
+        - T076
+        - T077
+        - T078
+        - T079
+        - T080
   - id: T047
     type: judge
     assignee: Judge
@@ -1308,7 +1328,7 @@ tasks:
       full_outcome_complete: false
       harness: claude-code
       note: notes/T047-runtime-spec.md
-      rationale: "Seven runtime packages. RT-1: states compile to delta tables over a base program. RT-2: Dragon drives frames (PathInterpolator error up to 2.47 device px fails the gate). RT-3: a bit-exact gfx::CubicBezier port. RT-9: Dragon hit testing. RT-11: SOV typed slots. RT-13: additive registry hunks. A DTXT gap was added."
+      rationale: 'Seven runtime packages. RT-1: states compile to delta tables over a base program. RT-2: Dragon drives frames (PathInterpolator error up to 2.47 device px fails the gate). RT-3: a bit-exact gfx::CubicBezier port. RT-9: Dragon hit testing. RT-11: SOV typed slots. RT-13: additive registry hunks. A DTXT gap was added.'
       spawned_tasks:
         - T061
         - T062
@@ -1603,6 +1623,158 @@ tasks:
       - Decide by research.
     expected_output:
       - Worker package
+    receipt: null
+  - id: T069
+    type: scout
+    assignee: Scout
+    status: queued
+    lane: paint
+    objective: 'SC-RASTER: Chrome raster rules for shadow sigma, dashes and dots, gradient dither, focus ring and radius antialiasing.'
+    constraints:
+      - Read-only; scratch in /tmp.
+    expected_output:
+      - Formulas with file:line and measurements
+    receipt: null
+  - id: T070
+    type: scout
+    assignee: Scout
+    status: queued
+    lane: paint
+    objective: 'SC-SCROLL: overlay scrollbars, ::-webkit-scrollbar honouring, scroll metrics.'
+    constraints:
+      - Read-only; scratch in /tmp.
+    expected_output:
+      - Formulas with file:line and measurements
+    receipt: null
+  - id: T071
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'EMS: behaviour-preserving emitter split and paint seams; after T007 and T009 B; before T026; not concurrent with T026, T058, T063 or T040.'
+    allowed_files:
+      - See notes/T046-paint-spec.md §3 and §5.1 (binding)
+    verify:
+      - See notes/T046-paint-spec.md §3 and §5.1 verify (binding)
+    stop_if:
+      - See notes/T046-paint-spec.md §3 and §5.1 stop_if (binding)
+    receipt: null
+  - id: T072
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'PNT1: radius, box-shadow, opacity, z-index, outline, color-scheme; after T071 and T069.'
+    allowed_files:
+      - See notes/T046-paint-spec.md §5.2 (binding)
+    verify:
+      - See notes/T046-paint-spec.md §5.2 verify (binding)
+    stop_if:
+      - See notes/T046-paint-spec.md §5.2 stop_if (binding)
+    receipt: null
+  - id: T073
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'PNT2: transforms; after T071.'
+    allowed_files:
+      - See notes/T046-paint-spec.md §5.3 (binding)
+    verify:
+      - See notes/T046-paint-spec.md §5.3 verify (binding)
+    stop_if:
+      - See notes/T046-paint-spec.md §5.3 stop_if (binding)
+    receipt: null
+  - id: T074
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'BG2: gradients and multiple backgrounds; after T071 and T069.'
+    allowed_files:
+      - See notes/T046-paint-spec.md §5.4 (binding)
+    verify:
+      - See notes/T046-paint-spec.md §5.4 verify (binding)
+    stop_if:
+      - See notes/T046-paint-spec.md §5.4 stop_if (binding)
+    receipt: null
+  - id: T075
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'P6a: fix and promote (device-pixels failures such as dashed/dotted, native row promotion, outputs ready); after T071 and P5''s final lanes.'
+    allowed_files:
+      - See notes/T046-paint-spec.md §5.5 (binding)
+    verify:
+      - See notes/T046-paint-spec.md §5.5 verify (binding)
+    stop_if:
+      - See notes/T046-paint-spec.md §5.5 stop_if (binding)
+    receipt: null
+  - id: T076
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'P6b: accessibility parity for custom-drawn text; after T058.'
+    allowed_files:
+      - See notes/T046-paint-spec.md §5.6 (binding)
+    verify:
+      - See notes/T046-paint-spec.md §5.6 verify (binding)
+    stop_if:
+      - See notes/T046-paint-spec.md §5.6 stop_if (binding)
+    receipt: null
+  - id: T077
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'P6c: selection built by Dragon with native feel; after T076.'
+    allowed_files:
+      - See notes/T046-paint-spec.md §5.7 (binding)
+    verify:
+      - See notes/T046-paint-spec.md §5.7 verify (binding)
+    stop_if:
+      - See notes/T046-paint-spec.md §5.7 stop_if (binding)
+    receipt: null
+  - id: T078
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'OVFL: scroll containers; Phase A after T058; Phase B after T071, T072 and T063.'
+    allowed_files:
+      - See notes/T046-paint-spec.md §5.8 (binding)
+    verify:
+      - See notes/T046-paint-spec.md §5.8 verify (binding)
+    stop_if:
+      - See notes/T046-paint-spec.md §5.8 stop_if (binding)
+    receipt: null
+  - id: T079
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'POSX-f: position fixed; after T078 and T072.'
+    allowed_files:
+      - See notes/T046-paint-spec.md §5.9 (binding)
+    verify:
+      - See notes/T046-paint-spec.md §5.9 verify (binding)
+    stop_if:
+      - See notes/T046-paint-spec.md §5.9 stop_if (binding)
+    receipt: null
+  - id: T080
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'OVFL-S: scrollbar styling Dragon-drawn where Chrome honours it; after T078, T043 and T070.'
+    allowed_files:
+      - See notes/T046-paint-spec.md §5.10 (binding)
+    verify:
+      - See notes/T046-paint-spec.md §5.10 verify (binding)
+    stop_if:
+      - See notes/T046-paint-spec.md §5.10 stop_if (binding)
     receipt: null
   - id: T999
     type: judge

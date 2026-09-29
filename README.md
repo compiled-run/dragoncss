@@ -51,7 +51,7 @@ No test, no seal. Missing data means unsupported.
 
 Dragon CSS is supported by:
 
-- **[Anthropic](https://www.anthropic.com)**, through the Claude Open Source program. [Claude Code](https://claude.com/claude-code) writes much of the code.
 - **[Macroscope](https://macroscope.com)**, through the Macroscope Open Source program. It reviews every pull request.
+- **[Anthropic](https://www.anthropic.com)**, through the Claude Open Source program. [Claude Code](https://claude.com/claude-code) writes much of the code.
 
 MIT licensed.
