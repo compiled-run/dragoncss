@@ -7,6 +7,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import type { SupportPlant } from 'dragon';
 import type { AndroidTools } from './native-host.ts';
 import { androidTools, HOST_BUNDLE, run } from './native-host.ts';
 import type { NativeTarget } from './targets.ts';
@@ -39,6 +40,18 @@ export const VECTOR_DEVICES: { readonly [T in NativeTarget]: string } = { ios: '
 export const TRUST_CASES: readonly string[] = ['color-border-sides', 'text-wrap-spaces', 'overflow-hidden-bfc'];
 /** The glyph-offset-1 plant case (section 4 item 5). */
 export const PLANT_CASE = 'text-wrap-spaces';
+/** The cases each raster plant runs on: the dash plants (P6a) run on the border-paint fixtures. */
+export const PLANT_CASES: { readonly [P in SupportPlant]: readonly string[] } = {
+  'glyph-offset-1': [PLANT_CASE],
+  'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
+  'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
+};
+/** The sample rules a plant's device-pixels failures must name: glyph ink for the glyph plant, border bands and edges for the dash plants. */
+export const PLANT_RULES: { readonly [P in SupportPlant]: RegExp } = {
+  'glyph-offset-1': /^(glyph:|edge:\S*:glyph-)/,
+  'dash-phase-1': /^(border:|edge:)/,
+  'dash-gap-unfitted': /^(border:|edge:)/,
+};
 /** The devices of the glyph-offset-1 raster plant run (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
 

@@ -3,6 +3,7 @@ import type { BackgroundResetLonghand, DiagnosticCode, Environment } from 'drago
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
+import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
@@ -72,6 +73,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'cascade-var', fixtures: CASCADE_VAR },
   { id: 'attributes', fixtures: ATTRIBUTES },
   { id: 'values', fixtures: VALUES },
+  { id: 'border-paint', fixtures: BORDER_PAINT },
 ];
 
 export const FIXTURES: readonly FixtureSpec[] = FIXTURE_GROUPS.flatMap((g) => g.fixtures);
