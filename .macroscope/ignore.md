@@ -79,9 +79,6 @@ docs/research/text-spike/out/**
 docs/research/text-spike/lato/out/**
 docs/research/text-spike/metric-rounding/captures/**
 docs/research/inline-spike/probe/**
-docs/research/grid-spike/probe/**
-docs/research/float-spike/probe/**
-docs/research/writing-mode-spike/probe/**
 docs/research/skia-aa-oracle/**
 docs/research/skia-oracle/**
 docs/research/dtxt/widths.json
