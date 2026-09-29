@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.rtl { direction: rtl; }
+.ltr { direction: ltr; }
+.c { position: relative; width: 200px; border: 1px solid #000; margin-bottom: 2px; --m: 11px; --p: 8px; --w: 4px; --col: #aa0000; --s: 60px; --i: 7px; }
+.b { height: 6px; background-color: #888; }
+.mis { margin-right: 5px; margin-inline-start: var(--m); }
+.mie { margin-left: 3px; margin-inline-end: var(--m); }
+.mi { margin-inline: var(--m) var(--p); }
+.mi1 { margin-inline: var(--p); }
+.misp { margin-inline-start: var(--m); margin-left: 2px; }
+.mb { margin-block: var(--p) var(--w); margin-block-start: var(--m); }
+.pis { padding-right: 2px; padding-inline-start: var(--p); }
+.pie { padding-inline-end: var(--p); padding-inline-start: 1px; }
+.pi { padding-inline: var(--w) var(--m); padding-block: var(--w); }
+.iis { position: relative; width: 40px; left: 2px; right: 3px; inset-inline-start: var(--i); }
+.iie { position: relative; width: 40px; inset-inline-end: var(--i); }
+.ii { position: relative; width: 40px; inset-inline: var(--i) var(--w); inset-block-start: var(--w); }
+.bis { border-right: 1px solid #00aa00; border-inline-start: var(--w) solid var(--col); }
+.bie { border-style: solid; border-width: 1px; border-inline-end-width: var(--w); border-inline-end-color: var(--col); }
+.biw { border-style: solid; border-inline-width: var(--w) 2px; border-inline-style: var(--sty, dashed) solid; }
+.sz { inline-size: var(--s); block-size: var(--w); min-inline-size: var(--m); max-inline-size: var(--s); }
+.fb { margin-inline-start: var(--missing, 9px); padding-inline-end: var(--missing, var(--p)); }
+.miss { margin-right: 6px; margin-left: 5px; margin-inline-start: var(--missing); }
+.bad { --bad: #00aa00; padding-left: 3px; padding-right: 4px; padding-inline-end: var(--bad); }
+.imp { margin-inline-start: var(--m) !important; margin-left: 1px; margin-right: 2px; }
+.dv { --d: rtl; direction: var(--d); margin-inline-start: var(--m); padding-inline-end: var(--p); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="c"><div data-dragon-id="a1" class="b mis"></div><div data-dragon-id="a2" class="b mie"></div><div data-dragon-id="a3" class="b mi"></div><div data-dragon-id="a4" class="b mi1 mb"></div><div data-dragon-id="a5" class="b misp"></div><div data-dragon-id="a6" class="b pis"></div><div data-dragon-id="a7" class="b pie"></div><div data-dragon-id="a8" class="b pi"></div><div data-dragon-id="a9" class="b iis"></div><div data-dragon-id="a10" class="b iie"></div><div data-dragon-id="a11" class="b ii"></div></div>
+<div data-dragon-id="c2" class="c rtl"><div data-dragon-id="b1" class="b mis"></div><div data-dragon-id="b2" class="b mie"></div><div data-dragon-id="b3" class="b mi"></div><div data-dragon-id="b4" class="b mi1 mb"></div><div data-dragon-id="b5" class="b misp"></div><div data-dragon-id="b6" class="b pis"></div><div data-dragon-id="b7" class="b pie"></div><div data-dragon-id="b8" class="b pi"></div><div data-dragon-id="b9" class="b iis"></div><div data-dragon-id="b10" class="b iie"></div><div data-dragon-id="b11" class="b ii"></div></div>
+<div data-dragon-id="c3" class="c ltr"><div data-dragon-id="d1" class="b bis"></div><div data-dragon-id="d2" class="b bie"></div><div data-dragon-id="d3" class="b biw"></div><div data-dragon-id="d4" class="b sz"></div><div data-dragon-id="d5" class="b fb"></div><div data-dragon-id="d6" class="b miss"></div><div data-dragon-id="d7" class="b bad"></div><div data-dragon-id="d8" class="b imp"></div><div data-dragon-id="d9" class="b dv"></div></div>
+<div data-dragon-id="c4" class="c rtl"><div data-dragon-id="e1" class="b bis"></div><div data-dragon-id="e2" class="b bie"></div><div data-dragon-id="e3" class="b biw"></div><div data-dragon-id="e4" class="b sz"></div><div data-dragon-id="e5" class="b fb"></div><div data-dragon-id="e6" class="b miss"></div><div data-dragon-id="e7" class="b bad"></div><div data-dragon-id="e8" class="b imp"></div><div data-dragon-id="e9" class="b dv ltr"></div></div>
+</body>
+</html>

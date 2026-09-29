@@ -17,6 +17,10 @@ export type CompilerFaults = {
   readonly isSpecificityFirstArgument: boolean;
   /** Spec-reading fault of the Chrome deviation empty-counts-whitespace: :empty ignores whitespace-only text (Selectors-4 §14.2). */
   readonly emptyIgnoresWhitespace: boolean;
+  /** The cascade resolves direction before var() substitution: a direction declaration holding var() is skipped. */
+  readonly directionBeforeVar: boolean;
+  /** A flow-relative declaration holding var() is not narrowed to the element's direction: it competes on both physical sides. */
+  readonly varLogicalBothSides: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false };

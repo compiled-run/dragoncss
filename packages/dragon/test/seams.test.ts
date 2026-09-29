@@ -134,9 +134,9 @@ describe('E2 seams: the empty extension hooks', () => {
     const winners = new Map([['width', b]] as const);
     expect(cascadeGroups(winners, [['width', a], ['width', b]], {} as never)).toBe(winners);
   });
-  it('the var() substitution hook returns the declared value itself', () => {
-    const v = { kind: 'length', value: 3, unit: 'px' } as const;
-    expect(substituteVariables(v, 'width', {} as never)).toBe(v);
+  it('the var() substitution hook returns a winner whose declaration holds no var() itself', () => {
+    const w: Candidate = { declaration: decl(1), value: { kind: 'length', value: 3, unit: 'px' }, specificity: [0, 1, 0] };
+    expect(substituteVariables(w, 'width', {} as never, { customs: new Map(), memo: new Map() })).toBe(w);
   });
 });
 

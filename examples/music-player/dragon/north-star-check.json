@@ -40,45 +40,44 @@
    "main": {
     "rounds": 1,
     "blankedRules": 11,
-    "blankedDeclarations": 128,
+    "blankedDeclarations": 88,
     "residualTargetless": 0
    },
    "library-open": {
     "rounds": 1,
     "blankedRules": 11,
-    "blankedDeclarations": 128,
+    "blankedDeclarations": 88,
     "residualTargetless": 0
    },
    "playing": {
     "rounds": 1,
     "blankedRules": 11,
-    "blankedDeclarations": 128,
+    "blankedDeclarations": 88,
     "residualTargetless": 0
    }
   }
  },
  "summary": {
-  "diagnostics": 333,
-  "errors": 333,
+  "diagnostics": 293,
+  "errors": 293,
   "byCode": {
-   "DRAGON_CSS_INVALID_VALUE": 27,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 27,
    "DRAGON_UNPROVEN_CONTEXT [web]": 27,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 40,
    "DRAGON_UNSUPPORTED_AT_RULE": 3,
    "DRAGON_UNSUPPORTED_ELEMENT": 29,
    "DRAGON_UNSUPPORTED_FONT [ios]": 33,
-   "DRAGON_UNSUPPORTED_PROPERTY": 81,
+   "DRAGON_UNSUPPORTED_PROPERTY": 68,
    "DRAGON_UNSUPPORTED_SELECTOR": 14,
    "DRAGON_UNSUPPORTED_VALUE": 20,
    "DRAGON_UNSUPPORTED_VALUE [ios]": 16,
    "DRAGON_UNSUPPORTED_VALUE [web]": 16
   },
   "declarations": 291,
-  "supportedBothTargets": 123,
-  "supportedWeb": 123,
-  "supportedIos": 123,
-  "supportPercent": 42.3,
+  "supportedBothTargets": 157,
+  "supportedWeb": 157,
+  "supportedIos": 157,
+  "supportPercent": 54,
   "elements": 62,
   "supportedElements": 33,
   "tags": {
@@ -178,14 +177,14 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored/main": 219,
-   "B-unwrapped/main": 225,
+   "A-authored/main": 179,
+   "B-unwrapped/main": 185,
    "C-context/main": 107,
-   "A-authored/library-open": 219,
-   "B-unwrapped/library-open": 225,
+   "A-authored/library-open": 179,
+   "B-unwrapped/library-open": 185,
    "C-context/library-open": 107,
-   "A-authored/playing": 219,
-   "B-unwrapped/playing": 225,
+   "A-authored/playing": 179,
+   "B-unwrapped/playing": 185,
    "C-context/playing": 107
   }
  },
@@ -324,11 +323,9 @@
    "atRule": null,
    "property": "--library-width",
    "value": "clamp(20rem, 22vw, 26rem)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 1,
@@ -337,11 +334,9 @@
    "atRule": null,
    "property": "--content-max-width",
    "value": "58rem",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 2,
@@ -350,11 +345,9 @@
    "atRule": null,
    "property": "--app-bg",
    "value": "#101216",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 3,
@@ -363,11 +356,9 @@
    "atRule": null,
    "property": "--panel-bg",
    "value": "#181b21",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 4,
@@ -376,11 +367,9 @@
    "atRule": null,
    "property": "--panel-bg-strong",
    "value": "#20242c",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 5,
@@ -389,11 +378,9 @@
    "atRule": null,
    "property": "--text-primary",
    "value": "#edf0f5",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 6,
@@ -402,11 +389,9 @@
    "atRule": null,
    "property": "--text-muted",
    "value": "#a7afbd",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 7,
@@ -415,11 +400,9 @@
    "atRule": null,
    "property": "--text-soft",
    "value": "#747d8c",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 8,
@@ -428,11 +411,9 @@
    "atRule": null,
    "property": "--border",
    "value": "#3a414f",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 9,
@@ -441,11 +422,9 @@
    "atRule": null,
    "property": "--shadow-strong",
    "value": "rgba(0, 0, 0, 0.48)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 10,
@@ -454,11 +433,9 @@
    "atRule": null,
    "property": "--track-mask",
    "value": "#2a3039",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 11,
@@ -467,11 +444,9 @@
    "atRule": null,
    "property": "--selected-bg",
    "value": "rgba(101, 168, 177, 0.22)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 12,
@@ -480,11 +455,9 @@
    "atRule": null,
    "property": "--selected-hover",
    "value": "rgba(101, 168, 177, 0.16)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 13,
@@ -540,11 +513,9 @@
    "atRule": null,
    "property": "background",
    "value": "var(--app-bg)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 18,
@@ -553,11 +524,9 @@
    "atRule": null,
    "property": "color",
    "value": "var(--text-primary)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 19,
@@ -645,11 +614,9 @@
    "atRule": null,
    "property": "color",
    "value": "var(--text-primary)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 26,
@@ -671,11 +638,9 @@
    "atRule": null,
    "property": "color",
    "value": "var(--text-muted)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 28,
@@ -749,11 +714,9 @@
    "atRule": null,
    "property": "margin-right",
    "value": "var(--library-width)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 34,
@@ -806,11 +769,9 @@
    "atRule": null,
    "property": "max-width",
    "value": "var(--content-max-width)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 39,
@@ -865,11 +826,9 @@
    "atRule": null,
    "property": "border",
    "value": "2px solid var(--border)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 44,
@@ -878,11 +837,9 @@
    "atRule": null,
    "property": "color",
    "value": "var(--text-primary)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 45,
@@ -957,7 +914,6 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_CSS_INVALID_VALUE",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -971,7 +927,6 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_CSS_INVALID_VALUE",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -985,7 +940,6 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_CSS_INVALID_VALUE",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -1088,11 +1042,9 @@
    "atRule": null,
    "property": "border",
    "value": "1px solid var(--border)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 62,
@@ -2068,11 +2020,9 @@
    "atRule": null,
    "property": "color",
    "value": "var(--text-primary)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 144,
@@ -2166,11 +2116,9 @@
    "atRule": null,
    "property": "color",
    "value": "var(--text-primary)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 152,
@@ -2271,11 +2219,9 @@
    "atRule": null,
    "property": "background",
    "value": "var(--track-mask)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 161,
@@ -2564,11 +2510,9 @@
    "atRule": null,
    "property": "color",
    "value": "var(--text-primary)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 185,
@@ -2648,7 +2592,6 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_CSS_INVALID_VALUE",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -2673,11 +2616,9 @@
    "atRule": null,
    "property": "color",
    "value": "var(--text-muted)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 194,
@@ -2732,11 +2673,9 @@
    "atRule": null,
    "property": "background",
    "value": "var(--panel-bg)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 199,
@@ -2745,11 +2684,9 @@
    "atRule": null,
    "property": "border-left",
    "value": "1px solid var(--border)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 200,
@@ -2869,11 +2806,9 @@
    "atRule": null,
    "property": "width",
    "value": "var(--library-width)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 210,
@@ -3091,7 +3026,6 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_CSS_INVALID_VALUE",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -3102,11 +3036,9 @@
    "atRule": null,
    "property": "background",
    "value": "var(--selected-bg)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 230,
@@ -3229,11 +3161,9 @@
    "atRule": null,
    "property": "color",
    "value": "var(--text-soft)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 241,
@@ -3321,11 +3251,9 @@
    "atRule": null,
    "property": "max-width",
    "value": "min(var(--content-max-width), calc(100vw - 2rem))",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 249,
@@ -3391,11 +3319,9 @@
    "atRule": null,
    "property": "color",
    "value": "var(--text-muted)",
-   "web": "blocked",
-   "ios": "blocked",
-   "codes": [
-    "DRAGON_CSS_INVALID_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "codes": []
   },
   {
    "index": 255,
@@ -3433,7 +3359,6 @@
    "web": "blocked",
    "ios": "blocked",
    "codes": [
-    "DRAGON_CSS_INVALID_VALUE",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -3885,381 +3810,6 @@
  ],
  "diagnostics": [
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@9-51|--library-width is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 9,
-    "end": 51,
-    "line": 2,
-    "column": 2,
-    "text": "--library-width: clamp(20rem, 22vw, 26rem)"
-   },
-   "message": "--library-width is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@54-80|--content-max-width is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 54,
-    "end": 80,
-    "line": 3,
-    "column": 2,
-    "text": "--content-max-width: 58rem"
-   },
-   "message": "--content-max-width is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@83-100|--app-bg is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 83,
-    "end": 100,
-    "line": 4,
-    "column": 2,
-    "text": "--app-bg: #101216"
-   },
-   "message": "--app-bg is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@103-122|--panel-bg is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 103,
-    "end": 122,
-    "line": 5,
-    "column": 2,
-    "text": "--panel-bg: #181b21"
-   },
-   "message": "--panel-bg is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@125-151|--panel-bg-strong is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 125,
-    "end": 151,
-    "line": 6,
-    "column": 2,
-    "text": "--panel-bg-strong: #20242c"
-   },
-   "message": "--panel-bg-strong is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@154-177|--text-primary is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 154,
-    "end": 177,
-    "line": 7,
-    "column": 2,
-    "text": "--text-primary: #edf0f5"
-   },
-   "message": "--text-primary is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@180-201|--text-muted is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 180,
-    "end": 201,
-    "line": 8,
-    "column": 2,
-    "text": "--text-muted: #a7afbd"
-   },
-   "message": "--text-muted is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@204-224|--text-soft is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 204,
-    "end": 224,
-    "line": 9,
-    "column": 2,
-    "text": "--text-soft: #747d8c"
-   },
-   "message": "--text-soft is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@227-244|--border is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 227,
-    "end": 244,
-    "line": 10,
-    "column": 2,
-    "text": "--border: #3a414f"
-   },
-   "message": "--border is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@247-283|--shadow-strong is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 247,
-    "end": 283,
-    "line": 11,
-    "column": 2,
-    "text": "--shadow-strong: rgba(0, 0, 0, 0.48)"
-   },
-   "message": "--shadow-strong is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@286-307|--track-mask is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 286,
-    "end": 307,
-    "line": 12,
-    "column": 2,
-    "text": "--track-mask: #2a3039"
-   },
-   "message": "--track-mask is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@310-350|--selected-bg is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 310,
-    "end": 350,
-    "line": 13,
-    "column": 2,
-    "text": "--selected-bg: rgba(101, 168, 177, 0.22)"
-   },
-   "message": "--selected-bg is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@353-396|--selected-hover is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 353,
-    "end": 396,
-    "line": 14,
-    "column": 2,
-    "text": "--selected-hover: rgba(101, 168, 177, 0.16)"
-   },
-   "message": "--selected-hover is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@515-528|\"var(--app-bg)\" is not a valid value for background (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 515,
-    "end": 528,
-    "line": 29,
-    "column": 14,
-    "text": "var(--app-bg)"
-   },
-   "message": "\"var(--app-bg)\" is not a valid value for background (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@538-557|\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 538,
-    "end": 557,
-    "line": 30,
-    "column": 9,
-    "text": "var(--text-primary)"
-   },
-   "message": "\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@560-578|color-scheme is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -4460,31 +4010,6 @@
    ]
   },
   {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@762-781|\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 762,
-    "end": 781,
-    "line": 53,
-    "column": 9,
-    "text": "var(--text-primary)"
-   },
-   "message": "\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@784-801|letter-spacing is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -4498,31 +4023,6 @@
     "text": "letter-spacing: 0"
    },
    "message": "letter-spacing is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@823-840|\"var(--text-muted)\" is not a valid value for color (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 823,
-    "end": 840,
-    "line": 59,
-    "column": 9,
-    "text": "var(--text-muted)"
-   },
-   "message": "\"var(--text-muted)\" is not a valid value for color (@webref/css grammar)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4635,56 +4135,6 @@
    ]
   },
   {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@1025-1045|\"var(--library-width)\" is not a valid value for margin-right (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 1025,
-    "end": 1045,
-    "line": 71,
-    "column": 16,
-    "text": "var(--library-width)"
-   },
-   "message": "\"var(--library-width)\" is not a valid value for margin-right (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@1156-1180|\"var(--content-max-width)\" is not a valid value for max-width (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 1156,
-    "end": 1180,
-    "line": 79,
-    "column": 13,
-    "text": "var(--content-max-width)"
-   },
-   "message": "\"var(--content-max-width)\" is not a valid value for max-width (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|*|css@1195-1199|min-height: 10vh is unsupported: viewport units resolve against the device viewport at run time, so they need the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -4698,56 +4148,6 @@
     "text": "10vh"
    },
    "message": "min-height: 10vh is unsupported: viewport units resolve against the device viewport at run time, so they need the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@1303-1326|\"2px solid var(--border)\" is not a valid value for border (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 1303,
-    "end": 1326,
-    "line": 90,
-    "column": 10,
-    "text": "2px solid var(--border)"
-   },
-   "message": "\"2px solid var(--border)\" is not a valid value for border (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@1336-1355|\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 1336,
-    "end": 1355,
-    "line": 91,
-    "column": 9,
-    "text": "var(--text-primary)"
-   },
-   "message": "\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4835,81 +4235,6 @@
    ]
   },
   {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@1658-1677|\"var(--text-primary)\" is not a valid value for background (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 1658,
-    "end": 1677,
-    "line": 102,
-    "column": 14,
-    "text": "var(--text-primary)"
-   },
-   "message": "\"var(--text-primary)\" is not a valid value for background (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@1694-1713|\"var(--text-primary)\" is not a valid value for border-color (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 1694,
-    "end": 1713,
-    "line": 103,
-    "column": 16,
-    "text": "var(--text-primary)"
-   },
-   "message": "\"var(--text-primary)\" is not a valid value for border-color (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@1723-1736|\"var(--app-bg)\" is not a valid value for color (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 1723,
-    "end": 1736,
-    "line": 104,
-    "column": 9,
-    "text": "var(--app-bg)"
-   },
-   "message": "\"var(--app-bg)\" is not a valid value for color (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|*|css@1861-1886|min-height: clamp(24rem,56vh,36rem) is unsupported: clamp() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -4948,31 +4273,6 @@
     "text": "aspect-ratio: 16 / 9"
    },
    "message": "aspect-ratio is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@1986-2009|\"1px solid var(--border)\" is not a valid value for border (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 1986,
-    "end": 2009,
-    "line": 119,
-    "column": 10,
-    "text": "1px solid var(--border)"
-   },
-   "message": "\"1px solid var(--border)\" is not a valid value for border (@webref/css grammar)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5910,31 +5210,6 @@
    ]
   },
   {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@4723-4742|\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 4723,
-    "end": 4742,
-    "line": 264,
-    "column": 9,
-    "text": "var(--text-primary)"
-   },
-   "message": "\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|*|css@4768-4786|max-width: calc(100vw - 2rem) is unsupported: calc() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -6035,31 +5310,6 @@
    ]
   },
   {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@4953-4972|\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 4953,
-    "end": 4972,
-    "line": 278,
-    "column": 9,
-    "text": "var(--text-primary)"
-   },
-   "message": "\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|*|css@5017-5060|background: \"linear-gradient(to right, #2f4f66, #a57c5b)\" sets background-image (initial none) to a non-initial value. Dragon supports background only when every longhand except background-color keeps its initial value",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -6098,31 +5348,6 @@
     "text": "border-radius: 1rem"
    },
    "message": "border-radius is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@5204-5221|\"var(--track-mask)\" is not a valid value for background (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 5204,
-    "end": 5221,
-    "line": 293,
-    "column": 14,
-    "text": "var(--track-mask)"
-   },
-   "message": "\"var(--track-mask)\" is not a valid value for background (@webref/css grammar)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6460,31 +5685,6 @@
    ]
   },
   {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@5849-5868|\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 5849,
-    "end": 5868,
-    "line": 332,
-    "column": 9,
-    "text": "var(--text-primary)"
-   },
-   "message": "\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5962-6014|transition is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -6535,31 +5735,6 @@
    ]
   },
   {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@6056-6073|\"var(--text-muted)\" is not a valid value for color (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 6056,
-    "end": 6073,
-    "line": 344,
-    "column": 9,
-    "text": "var(--text-muted)"
-   },
-   "message": "\"var(--text-muted)\" is not a valid value for color (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6076-6098|transform is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -6573,31 +5748,6 @@
     "text": "transform: scale(1.08)"
    },
    "message": "transform is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@6140-6157|\"var(--text-muted)\" is not a valid value for color (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 6140,
-    "end": 6157,
-    "line": 349,
-    "column": 9,
-    "text": "var(--text-muted)"
-   },
-   "message": "\"var(--text-muted)\" is not a valid value for color (@webref/css grammar)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6648,56 +5798,6 @@
     "text": "inline-flex"
    },
    "message": "display: inline-flex is unsupported (support profile m1-s5); supported display values: block, flex or none",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@6313-6328|\"var(--panel-bg)\" is not a valid value for background (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 6313,
-    "end": 6328,
-    "line": 363,
-    "column": 14,
-    "text": "var(--panel-bg)"
-   },
-   "message": "\"var(--panel-bg)\" is not a valid value for background (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@6344-6367|\"1px solid var(--border)\" is not a valid value for border-left (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 6344,
-    "end": 6367,
-    "line": 364,
-    "column": 15,
-    "text": "1px solid var(--border)"
-   },
-   "message": "\"1px solid var(--border)\" is not a valid value for border-left (@webref/css grammar)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6960,31 +6060,6 @@
    ]
   },
   {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@6595-6615|\"var(--library-width)\" is not a valid value for width (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 6595,
-    "end": 6615,
-    "line": 376,
-    "column": 9,
-    "text": "var(--library-width)"
-   },
-   "message": "\"var(--library-width)\" is not a valid value for width (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6618-6629|z-index is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -7110,56 +6185,6 @@
    ]
   },
   {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@7069-7090|\"var(--selected-hover)\" is not a valid value for background (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 7069,
-    "end": 7090,
-    "line": 410,
-    "column": 14,
-    "text": "var(--selected-hover)"
-   },
-   "message": "\"var(--selected-hover)\" is not a valid value for background (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@7133-7151|\"var(--selected-bg)\" is not a valid value for background (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 7133,
-    "end": 7151,
-    "line": 414,
-    "column": 14,
-    "text": "var(--selected-bg)"
-   },
-   "message": "\"var(--selected-bg)\" is not a valid value for background (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@7380-7390|opacity is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -7210,56 +6235,6 @@
    ]
   },
   {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@7475-7491|\"var(--text-soft)\" is not a valid value for color (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 7475,
-    "end": 7491,
-    "line": 440,
-    "column": 9,
-    "text": "var(--text-soft)"
-   },
-   "message": "\"var(--text-soft)\" is not a valid value for color (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@7642-7691|\"min(var(--content-max-width),calc(100vw - 2rem))\" is not a valid value for max-width (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 7642,
-    "end": 7691,
-    "line": 448,
-    "column": 13,
-    "text": "min(var(--content-max-width), calc(100vw - 2rem))"
-   },
-   "message": "\"min(var(--content-max-width),calc(100vw - 2rem))\" is not a valid value for max-width (@webref/css grammar)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@7800-7825|overflow-wrap is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -7273,31 +6248,6 @@
     "text": "overflow-wrap: break-word"
    },
    "message": "overflow-wrap is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@7862-7879|\"var(--text-muted)\" is not a valid value for color (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 7862,
-    "end": 7879,
-    "line": 460,
-    "column": 9,
-    "text": "var(--text-muted)"
-   },
-   "message": "\"var(--text-muted)\" is not a valid value for color (@webref/css grammar)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -7373,31 +6323,6 @@
     "text": ":hover"
    },
    "message": ":hover depends on user interaction or document state, which a later package models as runtime state",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ],
-   "states": [
-    "main",
-    "library-open",
-    "playing"
-   ]
-  },
-  {
-   "key": "DRAGON_CSS_INVALID_VALUE|*|css@8005-8024|\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
-   "code": "DRAGON_CSS_INVALID_VALUE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 8005,
-    "end": 8024,
-    "line": 466,
-    "column": 9,
-    "text": "var(--text-primary)"
-   },
-   "message": "\"var(--text-primary)\" is not a valid value for color (@webref/css grammar)",
    "viaRelated": false,
    "passes": [
     "A-authored",
