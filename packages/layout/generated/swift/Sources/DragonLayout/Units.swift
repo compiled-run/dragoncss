@@ -100,7 +100,7 @@ public func units_fromFloatRound(_ px: Double) throws -> Double {
 public func units_fromWholePx(_ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:85
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s151, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s158, jsNumberToString(n)))
   }
   return try units_saturate((n * units_LU_PER_PX))
 }
@@ -135,11 +135,11 @@ public func units_sum(_ values: JsArray<Double>) throws -> Double {
   var total: Double = units_ZERO
   // ts: packages/layout/src/units.ts:117
   do {
-    let _a40 = values
-    var _i40 = 0
-    while _i40 < _a40.items.count {
-      let v: Double = _a40.items[_i40]
-      _i40 += 1
+    let _a41 = values
+    var _i41 = 0
+    while _i41 < _a41.items.count {
+      let v: Double = _a41.items[_i41]
+      _i41 += 1
       try total = units_add(total, v)
     }
   }

@@ -128,7 +128,7 @@ public func inline_checkRtlText(_ box: LayoutBox, _ leaves: JsArray<TextLeaf>) t
       _i25 += 1
       // ts: packages/layout/src/inline.ts:55
       if try (!inline_isRtlSafe(t.text)) {
-        try unsupported_unsupported(S.s_bidi_neutral, t.id, S.s28, jsConcat(S.s140, box.id, S.s5))
+        try unsupported_unsupported(S.s_bidi_neutral, t.id, S.s28, jsConcat(S.s144, box.id, S.s5))
       }
     }
   }
@@ -139,11 +139,11 @@ public func inline_checkRtlText(_ box: LayoutBox, _ leaves: JsArray<TextLeaf>) t
 })
   var k: Double = jsLength(chars)
   // ts: packages/layout/src/inline.ts:61
-  while try ((k > 0.0) && ((jsUnwrap(jsAt(chars, (k - 1.0))).ch == S.s1) || (jsUnwrap(jsAt(chars, (k - 1.0))).ch == S.s155))) {
+  while try ((k > 0.0) && ((jsUnwrap(jsAt(chars, (k - 1.0))).ch == S.s1) || (jsUnwrap(jsAt(chars, (k - 1.0))).ch == S.s162))) {
     k -= 1.0
   }
   let zwsp: LeafChar? = try jsFind(jsSlice(chars, k), { (c: LeafChar) throws -> Bool in
-    return (c.ch == S.s155)
+    return (c.ch == S.s162)
 })
   // ts: packages/layout/src/inline.ts:63
   if (zwsp != nil) {
@@ -172,7 +172,7 @@ public func inline_buildRun(_ ctx: Ctx, _ box: LayoutBox, _ leaves: JsArray<Text
       }
       // ts: packages/layout/src/inline.ts:73
       if try ((((t.font.family != first.font.family) || (t.font.size != first.font.size)) || (!inline_sameLineHeight(t, first))) || (t.textWrapMode != first.textWrapMode)) {
-        try unsupported_unsupported(S.s_mixed_inline_font, t.id, S.s21, jsConcat(S.s141, box.id))
+        try unsupported_unsupported(S.s_mixed_inline_font, t.id, S.s21, jsConcat(S.s145, box.id))
       }
     }
   }
@@ -357,7 +357,7 @@ public func inline_alignOffset(_ ctx: Ctx, _ box: LayoutBox, _ free: Double) thr
   let align: JsString = box.style.textAlign
   // ts: packages/layout/src/inline.ts:203
   if (align == S.s_justify) {
-    try unsupported_unsupported(S.s_text_align, box.id, S.s59, S.s143)
+    try unsupported_unsupported(S.s_text_align, box.id, S.s59, S.s147)
   }
   let rtl: Bool = try (block_directionOf(ctx, box) == S.s_rtl)
   // ts: packages/layout/src/inline.ts:205
