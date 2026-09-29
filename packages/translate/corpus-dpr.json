@@ -21,28 +21,50 @@
     "snapEdge",
     "cachedRangeWidth"
   ],
+  "calcUnitsPerFunction": 5000,
+  "calcUnitsFunctions": [
+    "viewportUnitBase",
+    "viewportLeafPx",
+    "emLeafPx",
+    "pixelsAndPercentAt",
+    "cssLengthFixed",
+    "clampLengthFloat",
+    "floatInvert",
+    "doubleMinStep",
+    "doubleMaxStep",
+    "calcToLu"
+  ],
+  "engineCalc": 4000,
   "snapGenerated": 20000,
   "snapVectors": 1125,
   "cases": {
-    "vectors-m2": 117,
-    "vectors-dpr": 1125,
-    "engine-dpr": 1125,
+    "vectors-m2": 167,
+    "vectors-dpr": 1275,
+    "engine-dpr": 1275,
     "units-m2": 120000,
-    "snap": 21125
+    "snap": 21125,
+    "snap-values": 150,
+    "calc-goldens": 17,
+    "engine-calc": 4000,
+    "units-calc": 50000
   },
   "engineSplit": {
-    "ok": 1123,
+    "ok": 1273,
     "unsupported": 2,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "634cfea89e56c579bf8ccdc7c837ab88515f1d3713174d93744f4dcb13c455fb",
-    "vectors-dpr": "d21c8879cdb71191b5267e688a06e3b7866102a34bc9c967b8f3163d81557506",
-    "engine-dpr": "923c932cb800326fe0f6f3f401872b19f22dd1632c69a9b96c5f8dcdf1d5b3c6",
+    "vectors-m2": "f77cd059d81c2691ff0c734abf3990cf27cb229411e35cace8c47fe2c1568de4",
+    "vectors-dpr": "8c35976283cd0324626399484d4c8477086008869e20ef355c732be79b32e491",
+    "engine-dpr": "31214db99997e099cb15576d33ebef9d2bed9d711225a39ba2c9f50df7069870",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "ad08b0cb249f46b82a4a86777ced927a3071b75419723c5abb30a9fae5496116"
+    "snap": "ad08b0cb249f46b82a4a86777ced927a3071b75419723c5abb30a9fae5496116",
+    "snap-values": "fdeb2cecd1521fdd06c93f68e8a53f0efd51bd155422bff8533ba0224e08b739",
+    "calc-goldens": "7baa7493a35bde492ef150e5118941d10d45ad11d1b852b88e841cd73f777283",
+    "engine-calc": "1ae8dc8138ffedad4046f67ad29c0843c13cba93326feca04ee3a150821f28f5",
+    "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50"
   },
-  "digest": "22fcaaa0a2bc0cab2e2a22e38096765170fd0345d5e9c01ba0680bfde86f7515"
+  "digest": "ef9d51076bddf4b7050d9e2429e4ebf1344802fadcbd941fd01c027bc97d7aa3"
 }
