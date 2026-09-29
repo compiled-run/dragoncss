@@ -76,7 +76,7 @@ public final class Point {
 }
 
 // ts: packages/layout/src/box.ts:37
-public final class HeightBasis_indefinite: U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, U_HeightBasis_flexDependent_HeightBasis_indefinite {
+public final class HeightBasis_indefinite: U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, U_HeightBasis_definite_HeightBasis_indefinite, U_HeightBasis_flexDependent_HeightBasis_indefinite {
   public let kind: JsString
   public init(_ kind: JsString) {
     self.kind = kind
@@ -84,7 +84,7 @@ public final class HeightBasis_indefinite: U_HeightBasis_definite_HeightBasis_fl
 }
 
 // ts: packages/layout/src/box.ts:38
-public final class HeightBasis_definite: U_HeightBasis_definite_HeightBasis_flexDependent, U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite {
+public final class HeightBasis_definite: U_HeightBasis_definite_HeightBasis_flexDependent, U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, U_HeightBasis_definite_HeightBasis_indefinite {
   public let kind: JsString
   public let value: Double
   public init(_ kind: JsString, _ value: Double) {
@@ -212,7 +212,7 @@ public func box_percentBlockBasis(_ box: LayoutBox, _ basis: any U_HeightBasis_d
   }
   // ts: packages/layout/src/box.ts:120
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s51, jsConcat(prop, S.s11))
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s63, jsConcat(prop, S.s16))
   }
   return nil
 }

@@ -114,7 +114,9 @@
     "columnGap": {
      "kind": "normal"
     },
-    "textAlign": "start"
+    "textAlign": "start",
+    "grid": null,
+    "gridItem": null
    },
    "children": [
     {
@@ -224,7 +226,9 @@
       "columnGap": {
        "kind": "normal"
       },
-      "textAlign": "start"
+      "textAlign": "start",
+      "grid": null,
+      "gridItem": null
      },
      "children": [
       {
@@ -336,7 +340,9 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "grid": null,
+        "gridItem": null
        },
        "children": []
       },
@@ -448,7 +454,9 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "grid": null,
+        "gridItem": null
        },
        "children": [
         {
@@ -579,7 +587,9 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "center"
+        "textAlign": "center",
+        "grid": null,
+        "gridItem": null
        },
        "children": [
         {
@@ -707,7 +717,9 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "grid": null,
+        "gridItem": null
        },
        "children": [
         {
@@ -836,7 +848,9 @@
          "kind": "px",
          "value": 16
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "grid": null,
+        "gridItem": null
        },
        "children": [
         {
@@ -948,7 +962,9 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "grid": null,
+          "gridItem": null
          },
          "children": [
           {
@@ -1076,7 +1092,9 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "grid": null,
+          "gridItem": null
          },
          "children": []
         }
@@ -1192,7 +1210,9 @@
          "kind": "px",
          "value": 4
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "grid": null,
+        "gridItem": null
        },
        "children": [
         {
@@ -1303,7 +1323,9 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "grid": null,
+          "gridItem": null
          },
          "children": []
         },
@@ -1415,7 +1437,9 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "grid": null,
+          "gridItem": null
          },
          "children": [
           {
