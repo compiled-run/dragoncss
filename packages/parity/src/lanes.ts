@@ -23,6 +23,7 @@ import { SAMPLE_RULES } from './samples.ts';
 import type { Compared, DeviceSet, FaultRow, LaneFailure, TrustRow } from './device-lanes.ts';
 import { DEVICE_CHECK_LANES, failuresByKind, laneFailures } from './device-lanes.ts';
 import type { DeviceRecord } from './device-run.ts';
+import { TRUST_CASES } from './device-run.ts';
 import type { CaseSet, LaneConfig, LaneId, NativeTarget, TargetConfig } from './targets.ts';
 import { declaredLane, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, NATIVE_TARGETS, p1Manifest } from './targets.ts';
 
@@ -446,6 +447,17 @@ function laneRecord(l: LaneConfig, state: LaneState, reason: string | null, run:
 }
 
 /** A device check lane's record from the run: pass only with a dump for every case at every declared DPR and no failure. */
+/** Every declared DPR's device must have run the capture-trust probe, over every trust case in order. */
+export function trustCoverageProblems(dprs: readonly number[], trust: DeviceRun['trust']): string[] {
+  const out: string[] = [];
+  for (const dpr of dprs) {
+    const t = trust.find((x) => x.dpr === dpr);
+    if (t === undefined) out.push(`capture trust did not run at DPR ${dpr}`);
+    else if (JSON.stringify(t.rows.map((x) => x.case)) !== JSON.stringify(TRUST_CASES)) out.push(`capture trust at DPR ${dpr} covered ${t.rows.map((x) => x.case).join(', ') || 'no case'}, not ${TRUST_CASES.join(', ')}`);
+  }
+  return out;
+}
+
 function deviceLaneRecord(l: LaneConfig, r: DeviceRun): LaneRecord {
   const lane = l.lane as (typeof DEVICE_CHECK_LANES)[number];
   const failures = laneFailures(r.sets, lane);
@@ -456,7 +468,10 @@ function deviceLaneRecord(l: LaneConfig, r: DeviceRun): LaneRecord {
     else if (got.dumps !== s.ids.length) problems.push(`DPR ${s.dpr}: ${got.dumps}/${s.ids.length} dumps`);
   }
   const trust = lane === 'device-pixels' ? r.trust.map((t) => ({ device: t.device, dpr: t.dpr, cases: t.rows.length, points: t.rows.reduce((n, x) => n + x.points, 0), mismatches: t.rows.reduce((n, x) => n + x.mismatches.length, 0) })) : null;
-  if (trust !== null) for (const t of trust) if (t.mismatches > 0 || t.points === 0) problems.push(`capture trust on ${t.device}: ${t.mismatches} mismatches in ${t.points} points`);
+  if (trust !== null) {
+    for (const t of trust) if (t.mismatches > 0 || t.points === 0) problems.push(`capture trust on ${t.device}: ${t.mismatches} mismatches in ${t.points} points`);
+    problems.push(...trustCoverageProblems(l.sets.map((s) => s.dpr), r.trust));
+  }
   if (failures.length > 0) problems.push(`${failures.length} failures (${Object.entries(failuresByKind(failures)).map(([k, n]) => `${k} ${n}`).join(', ')})`);
   if (r.blocked !== null) problems.unshift(r.blocked);
   const state: LaneState = r.blocked !== null && r.sets.length === 0 ? 'blocked (owner tooling)' : problems.length === 0 ? 'pass' : 'fail';

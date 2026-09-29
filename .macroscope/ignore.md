@@ -1,6 +1,5 @@
 ---
 ignoreTests: false
----
 # Tests are reviewed on purpose: a loosened tolerance or a deleted check is the bug we care most about.
 # Creating this file replaces Macroscope's defaults, so the text-file defaults are copied first
 # (docs.macroscope.com/bug-detection-and-fixes, 2026-09-28). Binary files are always skipped anyway.
@@ -75,6 +74,7 @@ docs/research/text-spike/out/**
 docs/research/text-spike/lato/out/**
 docs/research/text-spike/metric-rounding/captures/**
 docs/research/inline-spike/probe/**
+docs/research/skia-oracle/**
 docs/research/dtxt/widths.json
 
 # === Dragon: not code ===

@@ -230,6 +230,36 @@ export function spawnDetached(cmd: string, args: readonly string[]): { readonly 
   };
 }
 
+/** The API level of ANDROID_IMAGE (system-images;android-<N>;...). */
+export const ANDROID_IMAGE_API = Number(/;android-(\d+);/.exec(ANDROID_IMAGE)?.[1]);
+
+/** What a running emulator reports about itself: its AVD name, physical display size and density, and API level. */
+export type LiveAvd = { readonly name: string; readonly size: string; readonly density: string; readonly sdk: string };
+
+function readLive(h: { readonly serial: string; readonly tools: AndroidTools }): LiveAvd {
+  return {
+    name: adb(h, ['emu', 'avd', 'name']).out.split('\n')[0]?.trim() ?? '',
+    size: /Physical size:\s*(\d+x\d+)/.exec(adb(h, ['shell', 'wm', 'size']).out)?.[1] ?? '',
+    density: /Physical density:\s*(\d+)/.exec(adb(h, ['shell', 'wm', 'density']).out)?.[1] ?? '',
+    sdk: adb(h, ['shell', 'getprop', 'ro.build.version.sdk']).out.trim(),
+  };
+}
+
+/**
+ * A running emulator is the matrix device only if its live AVD name, display size, density and API level are the spec's (config.ini
+ * changes take effect only at boot, so an emulator started before provisioning may still run the old ones). The floor probe AVD,
+ * outside the matrix, checks the name only (expectSdk null, no geometry).
+ */
+export function liveProblems(spec: AvdDeviceSpec, live: LiveAvd, expectSdk: number | null): string[] {
+  const out: string[] = [];
+  if (live.name !== spec.name) out.push(`it runs the AVD ${JSON.stringify(live.name)}, not ${spec.name}`);
+  if (expectSdk === null) return out;
+  if (live.size !== `${spec.width}x${spec.height}`) out.push(`display ${live.size || 'unknown'}, the matrix ${spec.width}x${spec.height}`);
+  if (live.density !== String(spec.density)) out.push(`density ${live.density || 'unknown'}, the matrix ${spec.density}`);
+  if (live.sdk !== String(expectSdk)) out.push(`API ${live.sdk || 'unknown'}, the image ${expectSdk}`);
+  return out;
+}
+
 /** Boots an AVD headless on its own console port; provision pins the matrix keys first (the floor probe AVD is not in the matrix). */
 export async function bootAvd(spec: AvdDeviceSpec, provision = true): Promise<DeviceHandle> {
   const tools = androidTools();
@@ -237,9 +267,10 @@ export async function bootAvd(spec: AvdDeviceSpec, provision = true): Promise<De
   else if (!existsSync(join(avdDir(spec.name), 'config.ini'))) throw new Error(`no AVD ${spec.name} (tooling fault)`);
   const serial = `emulator-${spec.port}`;
   const h = { spec, serial, tools };
+  const expectSdk = provision ? ANDROID_IMAGE_API : null;
   if (serialsRunning(tools).includes(serial)) {
-    const name = adb(h, ['emu', 'avd', 'name']).out.split('\n')[0]?.trim();
-    if (name !== spec.name) throw new Error(`${serial} runs the AVD ${name}, not ${spec.name}; it is not this runner's, so it is left running (tooling fault)`);
+    const live = liveProblems(spec, readLive(h), expectSdk);
+    if (live.length > 0) throw new Error(`${serial} is running but is not the matrix device: ${live.join('; ')}; it was not started by this runner, so it is left running (tooling fault)`);
     await prepareAvd(h);
     return { ...h, startedHere: false };
   }
@@ -259,6 +290,8 @@ export async function bootAvd(spec: AvdDeviceSpec, provision = true): Promise<De
     }
   }
   try {
+    const live = liveProblems(spec, readLive(h), expectSdk);
+    if (live.length > 0) throw new Error(`${serial} booted but is not the matrix device: ${live.join('; ')} (tooling fault)`);
     await prepareAvd(h);
   } catch (e) {
     // This runner started it, so it stops it rather than leave the port taken.
@@ -418,8 +451,9 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
     const inst = installApk(h, artifact);
     if (inst.status !== 0 || !/Success/.test(inst.out)) throw new Error(`adb install failed: ${inst.out}`);
     adb(h, ['shell', 'am', 'force-stop', HOST_BUNDLE]);
-    adb(h, ['shell', 'rm', '-rf', remote]);
-    adb(h, ['shell', 'mkdir', '-p', remote]);
+    // A dump left from an earlier run must never be pulled as this run's: the files dir starts empty, or the run stops.
+    const cleared = adb(h, ['shell', `rm -rf ${remote} && mkdir -p ${remote} && ls -A ${remote} | wc -l`]);
+    if (cleared.status !== 0 || cleared.out.trim() !== '0') throw new Error(`${h.spec.name}: could not empty ${remote} (tooling fault): ${cleared.out.slice(-300)}`);
     const local = join(opts.outDir, 'dragon-run.tsv');
     writeFileSync(local, opts.runFile);
     const push = adb(h, ['push', local, `${remote}/dragon-run.tsv`]);
@@ -455,7 +489,35 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
   }
   const recFile = join(opts.outDir, `device-${h.spec.target}.json`);
   if (!existsSync(recFile)) throw new Error(`${h.spec.name}: the app wrote no device record${error === null ? '' : ` (${error})`}`);
-  return { outDir: opts.outDir, record: JSON.parse(readFileSync(recFile, 'utf8')) as AppRecord, error };
+  return { outDir: opts.outDir, record: parseAppRecord(readFileSync(recFile, 'utf8'), h.spec.target), error };
+}
+
+/**
+ * The app's device record, checked field by field: JSON with the platform of the target, non-empty strings, a positive finite
+ * scale, pairs of whole non-negative device px, and nothing else. A record that fails is a tooling fault, never a silent pass.
+ */
+export function parseAppRecord(text: string, target: NativeTarget): AppRecord {
+  let v: unknown;
+  try {
+    v = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`the device record is not JSON: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  const problems: string[] = [];
+  const o = (typeof v === 'object' && v !== null && !Array.isArray(v) ? v : {}) as Record<string, unknown>;
+  if (o !== v) problems.push('not an object');
+  const keys = ['platform', 'model', 'os', 'build', 'scale', 'windowPx', 'stagePx', 'rootOriginPx', 'textScale'];
+  for (const k of Object.keys(o)) if (!keys.includes(k) && k !== 'densityDpi') problems.push(`unknown key ${k}`);
+  if (o['platform'] !== target) problems.push(`platform ${JSON.stringify(o['platform'])}, the target ${target}`);
+  for (const k of ['model', 'os', 'textScale']) if (typeof o[k] !== 'string' || o[k] === '') problems.push(`${k} is not a non-empty string`);
+  if (typeof o['build'] !== 'string') problems.push('build is not a string');
+  if (typeof o['scale'] !== 'number' || !Number.isFinite(o['scale']) || o['scale'] <= 0) problems.push('scale is not a positive number');
+  for (const k of ['windowPx', 'stagePx', 'rootOriginPx']) {
+    const p = o[k];
+    if (!Array.isArray(p) || p.length !== 2 || !p.every((x) => Number.isInteger(x) && (x as number) >= 0)) problems.push(`${k} is not two whole non-negative device px`);
+  }
+  if (problems.length > 0) throw new Error(`the ${target} device record is malformed (tooling fault): ${problems.join('; ')}`);
+  return o as unknown as AppRecord;
 }
 
 function pendingHolds(dir: string, held: ReadonlySet<string>): string[] {
