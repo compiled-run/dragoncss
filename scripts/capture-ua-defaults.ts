@@ -2,14 +2,15 @@
 // and which longhands a UA rule sets per tag: those whose value differs from the same element with "<longhand>: initial".
 // It also derives each tag's UA declared values per direction (a length that scales with the font size is written in em), the
 // ancestor tags under which Chrome's UA sheet gives a tag other values, and the UA font-weight and font-style no longhand models.
-// The element keys (button, input, a, img, span, ...) and the replaced keys (iframe, img with a data: src) are captured the same
-// way into tables of their own; every element gets
+// The element keys (button, input, a, img, span, ...), the replaced keys (iframe, img with a data: src) and the phrasing keys
+// (br, strong, b, em, i, code, small, sub, sup, label; INL-U) are captured the same way into tables of their own, and the phrasing
+// keys' computed font-size under Ahem and monospace parents goes into elementKeyFontSizes; every element gets
 // its UA-set properties no longhand models (userAgentUnmodelled) and the system colors, and all of it is captured again under
 // html{color-scheme:dark} into the dark dataset. Each key must be reproduced by an unstyled element given its captured values.
 // Blink's html.css is LGPL, so Dragon stores these captured values as data instead of copying the sheet.
 // The dataset is keyed by the capture platform (process.platform-process.arch): it writes only this platform's files,
 // packages/dragon/src/ua/chrome-145.<platform>[.dark].generated.ts, and refuses a platform argument other than this one.
-// Run with: pnpm run ua:capture [platform] [--check [--plant drop-declared|drop-unmodelled|dark-as-light]] [--compare <file>]
+// Run with: pnpm run ua:capture [platform] [--check [--plant drop-declared|drop-unmodelled|dark-as-light|drop-font-size-small]] [--compare <file>]
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -48,12 +49,31 @@ const REPLACED_KEY_SPECS = {
 } as const satisfies Record<string, { tag: string; attrs: Record<string, string> }>;
 type ReplacedKey = keyof typeof REPLACED_KEY_SPECS;
 const REPLACED_KEYS = Object.keys(REPLACED_KEY_SPECS) as ReplacedKey[];
+/** Phrasing-element keys (INL-U), captured like the element keys into tables of their own so the existing tables stay byte-identical. */
+const PHRASING_KEY_SPECS = {
+  br: { tag: 'br', attrs: {} },
+  strong: { tag: 'strong', attrs: {} },
+  b: { tag: 'b', attrs: {} },
+  em: { tag: 'em', attrs: {} },
+  i: { tag: 'i', attrs: {} },
+  code: { tag: 'code', attrs: {} },
+  small: { tag: 'small', attrs: {} },
+  sub: { tag: 'sub', attrs: {} },
+  sup: { tag: 'sup', attrs: {} },
+  label: { tag: 'label', attrs: {} },
+} as const satisfies Record<string, { tag: string; attrs: Record<string, string> }>;
+type PhrasingKey = keyof typeof PHRASING_KEY_SPECS;
+const PHRASING_KEYS = Object.keys(PHRASING_KEY_SPECS) as PhrasingKey[];
+/** Parents of elementKeyFontSizes: each family at each size; "medium" is the keyword, under which code's monospace size differs. */
+const FONT_SIZE_FAMILIES = ['Ahem', 'monospace'] as const;
+// 2em and larger are relative to the medium root, so Chrome keeps them keyword-relative (code under them scales with the monospace medium size).
+const FONT_SIZE_PARENTS = ['10px', '16px', '17.5px', '23.3px', 'medium', '2em', 'larger'] as const;
 /** Every key captured outside the element table; replaced elements are never an ancestor context. */
-const ALL_KEYS: readonly string[] = [...ELEMENT_KEYS, ...REPLACED_KEYS];
+const ALL_KEYS: readonly string[] = [...ELEMENT_KEYS, ...REPLACED_KEYS, ...PHRASING_KEYS];
 /** Void elements have no children, so they are never an ancestor context. */
-const ANCESTOR_KEYS = ELEMENT_KEYS.filter((k) => !['input', 'img'].includes(KEY_SPECS[k].tag));
+const ANCESTOR_KEYS = [...ELEMENT_KEYS.filter((k) => !['input', 'img'].includes(KEY_SPECS[k].tag)), ...PHRASING_KEYS.filter((k) => k !== 'br')];
 type Spec = { readonly tag: string; readonly attrs: Readonly<Record<string, string>> };
-const SPECS: Record<string, Spec> = { ...Object.fromEntries(TAGS.map((t) => [t, { tag: t, attrs: {} }])), ...KEY_SPECS, ...REPLACED_KEY_SPECS };
+const SPECS: Record<string, Spec> = { ...Object.fromEntries(TAGS.map((t) => [t, { tag: t, attrs: {} }])), ...KEY_SPECS, ...REPLACED_KEY_SPECS, ...PHRASING_KEY_SPECS };
 /** Inherited font properties no milestone longhand models; a UA value for them changes how text is drawn. */
 const TEXT_FONT_PROPERTIES = ['font-weight', 'font-style'] as const;
 const BORDER_KEYWORDS = ['thin', 'medium', 'thick'] as const;
@@ -62,7 +82,7 @@ const SYSTEM_COLORS = [
   'Highlight', 'HighlightText', 'SelectedItem', 'SelectedItemText', 'Mark', 'MarkText', 'GrayText', 'AccentColor', 'AccentColorText',
 ] as const;
 type Browser = Awaited<ReturnType<typeof launchChrome>>;
-const PLANTS = ['drop-declared', 'drop-unmodelled', 'dark-as-light'] as const;
+const PLANTS = ['drop-declared', 'drop-unmodelled', 'dark-as-light', 'drop-font-size-small'] as const;
 type Plant = (typeof PLANTS)[number];
 type Scheme = 'light' | 'dark';
 type Dirs = Record<string, Record<string, string>>;
@@ -119,6 +139,8 @@ type Capture = {
   unmodelled: Record<string, Dirs>;
   forced: Record<string, Dirs>;
   systemColors: Record<string, string | null>;
+  /** Phrasing key -> family -> parent font-size -> the key's computed font-size. */
+  fontSizes: Record<string, Record<string, Record<string, string>>>;
 };
 
 async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
@@ -201,6 +223,17 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
             }));
             return { el, values, initial };
           };
+          // The font-size an unstyled element computes to under the same parent with an authored font-size value.
+          const sized = (size: number, value: string): string => {
+            hostEl.replaceChildren();
+            const parent = document.createElement('div');
+            parent.setAttribute('style', `font-size:${size}px;direction:${dir}`);
+            const probe = document.createElement('dragon-unstyled');
+            probe.style.setProperty('font-size', value);
+            parent.appendChild(probe);
+            hostEl.appendChild(parent);
+            return getComputedStyle(probe).fontSize;
+          };
           const a = read(100);
           const b = read(200);
           const row: Record<string, string> = {};
@@ -215,8 +248,14 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
               const base = p === 'font-size' ? 100 : (px(a.values['font-size'] as string) as number);
               const baseB = p === 'font-size' ? 200 : (px(b.values['font-size'] as string) as number);
               const factor = Number((na / base).toPrecision(10));
-              if (Math.abs(nb / baseB - factor) > 1e-9) throw new Error(`${tag} ${p}: ${va} and ${vb} do not scale with the font size`);
-              row[p] = `${factor}em`;
+              if (Math.abs(nb / baseB - factor) <= 1e-9) row[p] = `${factor}em`;
+              else {
+                // A relative font-size keyword (smaller, larger: INL-U's small, sub and sup) is not an exact em factor once
+                // serialized; it is recorded as the keyword when the keyword alone gives Chrome's value at both parent sizes.
+                const keyword = p === 'font-size' ? ['smaller', 'larger'].find((kw) => sized(100, kw) === va && sized(200, kw) === vb) : undefined;
+                if (keyword === undefined) throw new Error(`${tag} ${p}: ${va} and ${vb} do not scale with the font size`);
+                row[p] = keyword;
+              }
             } else throw new Error(`${tag} ${p}: ${va} at 100px and ${vb} at 200px is neither absolute nor em-relative`);
           }
           (out[tag] as Record<string, Record<string, string>>)[dir] = row;
@@ -242,7 +281,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
   // Contexts: a tag inside ancestor tags (one and two levels) versus inside a div carrying the parent's computed style. Any
   // milestone longhand that differs comes from a UA rule keyed on an ancestor, which the declared values above do not model.
   const contexts = await host.evaluate(
-    ({ tags, ancestors, specs, props, minimum }) => {
+    ({ tags, ancestors, specs, props, minimum, declared }) => {
       const hostEl = document.getElementById('host') as HTMLElement;
       const make = (key: string): HTMLElement => {
         const s = specs[key] as { tag: string; attrs: Record<string, string> };
@@ -284,7 +323,24 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
         // Dragon refuses a clamped UA size (minimumLogicalFontSize), so a clamp is not a context.
         const px = (v: string): number => Number.parseFloat(v);
         if (inContext['font-size'] === `${minimum}px` && px(outside['font-size'] as string) < minimum) return false;
-        return props.some((p) => !same(inContext[p] as string, outside[p] as string));
+        const differing = props.filter((p) => !same(inContext[p] as string, outside[p] as string));
+        if (differing.length === 0) return false;
+        if (differing.some((p) => p !== 'font-size')) return true;
+        // Only font-size differs: the stand-in's px size is not keyword-relative, while Chrome keeps a size relative to the medium
+        // keyword (em, %, smaller, larger) keyword-relative, so a generic family change (code's monospace) rescales it. A chain
+        // of unstyled elements given each ancestor's declared values keeps that; if it reproduces the value, no UA rule keys on
+        // the ancestor and it is not a context (elementKeyFontSizes records the keyword-relative sizes).
+        hostEl.replaceChildren();
+        let replicaParent: HTMLElement = hostEl;
+        for (const a of chain) {
+          const next = document.createElement('dragon-unstyled');
+          for (const [p, v] of Object.entries(((declared[a] as Record<string, Record<string, string>>)['ltr']) as Record<string, string>)) next.style.setProperty(p, v);
+          replicaParent.appendChild(next);
+          replicaParent = next;
+        }
+        const replicated = make(tag);
+        replicaParent.appendChild(replicated);
+        return getComputedStyle(replicated).fontSize !== inContext['font-size'];
       };
       for (const tag of tags) {
         const found = new Set<string>();
@@ -301,7 +357,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       }
       return out;
     },
-    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], ancestors: [...ELEMENT_TAGS, ...ANCESTOR_KEYS], specs: SPECS, props: [...LONGHANDS], minimum: minimumLogicalFontSize },
+    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], ancestors: [...ELEMENT_TAGS, ...ANCESTOR_KEYS], specs: SPECS, props: [...LONGHANDS], minimum: minimumLogicalFontSize, declared },
   );
   const textFonts = await host.evaluate(
     ({ tags, specs, props }) => {
@@ -383,6 +439,27 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       return [n, getComputedStyle(el).color];
     }));
   }, [...SYSTEM_COLORS]);
+  // Font sizes (INL-U): each phrasing key's computed font-size under a parent of each family and size; smaller, larger and
+  // code's monospace size depend on the parent's family and on whether its size is the medium keyword.
+  const fontSizes = await host.evaluate(
+    ({ keys, specs, families, sizes }) => {
+      const hostEl = document.getElementById('host') as HTMLElement;
+      return Object.fromEntries(keys.map((key) => {
+        const s = specs[key] as { tag: string; attrs: Record<string, string> };
+        return [key, Object.fromEntries(families.map((family) => [family, Object.fromEntries(sizes.map((size) => {
+          hostEl.replaceChildren();
+          const parent = document.createElement('div');
+          parent.setAttribute('style', `font-family:${family};font-size:${size}`);
+          const el = document.createElement(s.tag);
+          for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
+          parent.appendChild(el);
+          hostEl.appendChild(parent);
+          return [size, getComputedStyle(el).fontSize];
+        }))]))];
+      }));
+    },
+    { keys: [...PHRASING_KEYS], specs: SPECS, families: [...FONT_SIZE_FAMILIES], sizes: [...FONT_SIZE_PARENTS] },
+  );
   // The declared ltr values at the 16px root must reproduce the captured table exactly.
   for (const tag of [...ELEMENT_TAGS, ...ALL_KEYS]) {
     const ltr = (declared[tag] as Dirs)['ltr'] as Record<string, string>;
@@ -394,7 +471,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
   await hidden.context().close();
   await rendered.context().close();
   await host.context().close();
-  return { values, initial, borderKeywords, declared, minimumLogicalFontSize, contexts, textFonts, unmodelled, forced, systemColors };
+  return { values, initial, borderKeywords, declared, minimumLogicalFontSize, contexts, textFonts, unmodelled, forced, systemColors, fontSizes };
 }
 
 /** Each key, in each direction, reproduced by dragon-unstyled given its declared, text-font, unmodelled and forced values; returns the faults. */
@@ -434,14 +511,39 @@ async function selfConsistency(browser: Browser, scheme: Scheme, c: Capture): Pr
     },
     { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, declared: c.declared, textFonts: c.textFonts, unmodelled: c.unmodelled, forced: c.forced, scheme },
   );
+  // Each phrasing key's font size under every elementKeyFontSizes parent, reproduced by dragon-unstyled given its declared and text-font values.
+  const sizeFaults = await page.evaluate(
+    ({ keys, declared, textFonts, fontSizes, scheme }) => {
+      const hostEl = document.getElementById('host') as HTMLElement;
+      const out: string[] = [];
+      for (const key of keys) {
+        for (const [family, bySize] of Object.entries(fontSizes[key] as Record<string, Record<string, string>>)) {
+          for (const [size, want] of Object.entries(bySize)) {
+            hostEl.replaceChildren();
+            const parent = document.createElement('div');
+            parent.setAttribute('style', `font-family:${family};font-size:${size}`);
+            const replica = document.createElement('dragon-unstyled');
+            const given = { ...(declared[key] as Record<string, Record<string, string>>)['ltr'], ...textFonts[key] };
+            for (const [p, v] of Object.entries(given)) replica.style.setProperty(p, v as string);
+            parent.appendChild(replica);
+            hostEl.appendChild(parent);
+            const got = getComputedStyle(replica).fontSize;
+            if (got !== want) out.push(`${scheme} ${key} under ${family} ${size}: font-size is ${JSON.stringify(want)} in Chrome but ${JSON.stringify(got)} on dragon-unstyled given the captured values`);
+          }
+        }
+      }
+      return out;
+    },
+    { keys: [...PHRASING_KEYS], declared: c.declared, textFonts: c.textFonts, fontSizes: c.fontSizes, scheme },
+  );
   await page.context().close();
-  return faults;
+  return [...faults, ...sizeFaults];
 }
 
 const field = (row: Record<string, string>): string => `{ ${Object.keys(row).sort().map((p) => `${JSON.stringify(p)}: ${JSON.stringify(row[p])}`).join(', ')} }`;
 
 function render(c: Capture, scheme: Scheme): string {
-  const { values, initial, declared, contexts, textFonts, unmodelled, forced, borderKeywords, minimumLogicalFontSize, systemColors } = c;
+  const { values, initial, declared, contexts, textFonts, unmodelled, forced, borderKeywords, minimumLogicalFontSize, systemColors, fontSizes } = c;
   const lines: string[] = [];
   lines.push(`// Generated by scripts/capture-ua-defaults.ts from Chrome ${CHROME_VERSION} computed values${scheme === 'dark' ? ' under html{color-scheme:dark}' : ''}. Do not edit; run pnpm run ua:capture.`);
   lines.push('');
@@ -613,6 +715,63 @@ function render(c: Capture, scheme: Scheme): string {
   for (const k of REPLACED_KEYS) lines.push(`  ${JSON.stringify(k)}: ${dirsOf(forced, k)},`);
   lines.push('};');
   lines.push('');
+  lines.push('/** Phrasing-element keys (INL-U): br, strong, b, em, i, code, small, sub, sup and label. Their tables follow the replaced-key tables. */');
+  lines.push('export type PhrasingKey = ' + PHRASING_KEYS.map((t) => JSON.stringify(t)).join(' | ') + ';');
+  lines.push('');
+  lines.push('/** The element and attributes each phrasing key was captured on. */');
+  lines.push('export const phrasingKeySpecs: { readonly [K in PhrasingKey]: { readonly tag: string; readonly attributes: { readonly [name: string]: string } } } = {');
+  for (const k of PHRASING_KEYS) lines.push(`  ${JSON.stringify(k)}: { tag: ${JSON.stringify(PHRASING_KEY_SPECS[k].tag)}, attributes: ${field(PHRASING_KEY_SPECS[k].attrs)} },`);
+  lines.push('};');
+  lines.push('');
+  lines.push('/** computed, for the phrasing keys. */');
+  lines.push('export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [property: string]: string } } = {');
+  for (const k of PHRASING_KEYS) {
+    lines.push(`  ${JSON.stringify(k)}: {`);
+    const row = values[k] as Record<string, string>;
+    for (const p of [...LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
+    lines.push('  },');
+  }
+  lines.push('};');
+  lines.push('');
+  lines.push('/** userAgentLonghands, for the phrasing keys. */');
+  lines.push('export const phrasingKeyLonghands: { readonly [K in PhrasingKey]: readonly string[] } = {');
+  for (const k of PHRASING_KEYS) lines.push(`  ${JSON.stringify(k)}: ${JSON.stringify(longhandsOf(k))},`);
+  lines.push('};');
+  lines.push('');
+  lines.push('/** userAgentDeclared, for the phrasing keys. A relative font-size keyword (smaller, larger) is kept as the keyword; elementKeyFontSizes has its computed values. */');
+  lines.push('export const phrasingKeyDeclared: { readonly [K in PhrasingKey]: { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } } } = {');
+  for (const k of PHRASING_KEYS) lines.push(`  ${JSON.stringify(k)}: ${declaredOf(k)},`);
+  lines.push('};');
+  lines.push('');
+  lines.push('/** userAgentContexts, for the phrasing keys. */');
+  lines.push('export const phrasingKeyContexts: { readonly [K in PhrasingKey]: readonly string[] } = {');
+  for (const k of PHRASING_KEYS) lines.push(`  ${JSON.stringify(k)}: ${JSON.stringify(contexts[k] ?? [])},`);
+  lines.push('};');
+  lines.push('');
+  lines.push('/** userAgentTextFonts, for the phrasing keys. */');
+  lines.push('export const phrasingKeyTextFonts: { readonly [K in PhrasingKey]: { readonly [property: string]: string } } = {');
+  for (const k of PHRASING_KEYS) lines.push(`  ${JSON.stringify(k)}: ${field((textFonts[k] ?? {}) as Record<string, string>)},`);
+  lines.push('};');
+  lines.push('');
+  lines.push('/** userAgentUnmodelled, for the phrasing keys. */');
+  lines.push('export const phrasingKeyUnmodelled: { readonly [K in PhrasingKey]: { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } } } = {');
+  for (const k of PHRASING_KEYS) lines.push(`  ${JSON.stringify(k)}: ${dirsOf(unmodelled, k)},`);
+  lines.push('};');
+  lines.push('');
+  lines.push('/** userAgentForced, for the phrasing keys. */');
+  lines.push('export const phrasingKeyForced: { readonly [K in PhrasingKey]: { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } } } = {');
+  for (const k of PHRASING_KEYS) lines.push(`  ${JSON.stringify(k)}: ${dirsOf(forced, k)},`);
+  lines.push('};');
+  lines.push('');
+  lines.push(`/** Computed font-size of each phrasing key under a parent of each family (${FONT_SIZE_FAMILIES.join(', ')}) and font-size (${FONT_SIZE_PARENTS.join(', ')}; medium is the keyword). */`);
+  lines.push('export const elementKeyFontSizes: { readonly [K in PhrasingKey]: { readonly [family: string]: { readonly [parentFontSize: string]: string } } } = {');
+  for (const k of PHRASING_KEYS) {
+    const byFamily = fontSizes[k] as Record<string, Record<string, string>>;
+    const fam = FONT_SIZE_FAMILIES.map((f) => `${JSON.stringify(f)}: { ${FONT_SIZE_PARENTS.map((s) => `${JSON.stringify(s)}: ${JSON.stringify((byFamily[f] as Record<string, string>)[s])}`).join(', ')} }`);
+    lines.push(`  ${JSON.stringify(k)}: { ${fam.join(', ')} },`);
+  }
+  lines.push('};');
+  lines.push('');
   return lines.join('\n');
 }
 
@@ -621,6 +780,8 @@ function applyPlant(p: Plant, light: Capture): void {
     for (const dir of ['ltr', 'rtl']) delete ((light.declared['button'] as Dirs)[dir] as Record<string, string>)['padding-left'];
   } else if (p === 'drop-unmodelled') {
     for (const dir of ['ltr', 'rtl']) delete ((light.unmodelled['button'] as Dirs)[dir] as Record<string, string>)['appearance'];
+  } else if (p === 'drop-font-size-small') {
+    for (const dir of ['ltr', 'rtl']) delete ((light.declared['small'] as Dirs)[dir] as Record<string, string>)['font-size'];
   }
 }
 
