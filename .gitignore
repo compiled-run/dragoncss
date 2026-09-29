@@ -3,7 +3,9 @@ dist/
 dist-test/
 *.tsbuildinfo
 .DS_Store
-packages/parity/out/
+packages/parity/out/*
+!packages/parity/out/device-failures-ios.json
+!packages/parity/out/device-failures-android.json
 build/
 packages/translate/out/
 packages/layout/generated/swift/.build/
