@@ -4,7 +4,7 @@
 // Anything else the fixture cannot express is a refusal; feature support is left to Dragon's compiler.
 // The input is a document tree (src/dom.ts): an HTML page, an XHTML or XML page (src/xml.ts), or Chrome's DOM snapshot of the
 // page after its scripts ran (src/snapshot.ts), in which case the checkLayout calls come from the snapshot, not from the scripts.
-import type { ComplexSelector, Declaration, Match, MatchElement, Specificity } from './css-lite.ts';
+import type { ComplexSelector, Declaration, Match, MatchElement, SheetItem, Specificity } from './css-lite.ts';
 import { groupsOverlap, matches, parseSelectorList, readDeclarations, readSheet, rewriteIds, specificity, stripComments } from './css-lite.ts';
 import type { DomDocument, DomElement } from './dom.ts';
 import { isElement, parseHtmlDocument, XHTML_NS } from './dom.ts';
@@ -41,6 +41,11 @@ export type Sidecar = {
   readonly wpt: string;
   readonly viewport: { readonly width: number; readonly height: number };
   readonly subtests: readonly Subtest[];
+  /**
+   * The selector lists of the style rules the translator dropped as dead (no selector can match any element of this document
+   * state), in sheet order; absent when none was dropped. wpt:run with Chrome confirms each one matches nothing in the original page.
+   */
+  readonly deadRules?: readonly string[];
 };
 
 export type Translation =
@@ -169,7 +174,82 @@ export type TranslateOptions = {
   readonly firstTestNumber?: number;
   /** Appended to the fixture id, for one case per snapshot state. */
   readonly idSuffix?: string;
+  /** Planted dead-rule faults, for the tests (default: none). */
+  readonly deadRuleFaults?: DeadRuleFaults;
+  /** The document the dead-rule judgement reads instead of this one: only the dropFirstStateOnly plant sets it. */
+  readonly deadRuleDocument?: DomDocument;
 };
+
+/** Planted dead-rule faults: each must be caught by Chrome's querySelectorAll confirmation (translate:dead-rule-live). */
+export type DeadRuleFaults = {
+  /** Also drops rules a selector of which definitely matches an element. */
+  readonly dropLiveRule: boolean;
+  /** Also drops rules with an unknown selector (outside the subset, or with a pseudo-class or pseudo-element) that nothing definitely matches. */
+  readonly dropUnknownSelector: boolean;
+  /** Snapshot tests: judges every state's rules on the first state's document (src/snapshot.ts translateSnapshot). */
+  readonly dropFirstStateOnly: boolean;
+};
+export const NO_DEAD_RULE_FAULTS: DeadRuleFaults = { dropLiveRule: false, dropUnknownSelector: false, dropFirstStateOnly: false };
+
+const foldCase = (s: string): string => s.toLowerCase();
+
+/** An element with its tag and attribute values case-folded (and so are its ancestors and previous siblings). */
+function foldElement(el: MatchElement, memo: Map<MatchElement, MatchElement>): MatchElement {
+  const hit = memo.get(el);
+  if (hit !== undefined) return hit;
+  const attrs = new Map<string, string>();
+  for (const [k, v] of el.attrs) attrs.set(foldCase(k), foldCase(v));
+  const out: MatchElement = { tag: foldCase(el.tag), attrs, parent: el.parent === null ? null : foldElement(el.parent, memo), previous: el.previous === null ? null : foldElement(el.previous, memo) };
+  memo.set(el, out);
+  return out;
+}
+
+const foldSelector = (s: ComplexSelector): ComplexSelector => ({
+  combinators: s.combinators,
+  compounds: s.compounds.map((k) => ({
+    ...k,
+    tag: k.tag === null ? null : foldCase(k.tag),
+    ids: k.ids.map((id) => ({ ...id, value: foldCase(id.value) })),
+    classes: k.classes.map(foldCase),
+    attributes: k.attributes.map((t) => ({ ...t, name: foldCase(t.name), value: foldCase(t.value) })),
+  })),
+});
+
+/** Every element of a document tree in document order, as css-lite match elements. */
+export function matchElementsOf(doc: DomDocument): MatchElement[] {
+  const out: MatchElement[] = [];
+  const walk = (node: DomElement, parent: MatchElement | null, previous: MatchElement | null): MatchElement => {
+    const el: MatchElement = { tag: node.tag, attrs: new Map(node.attrs), parent, previous };
+    out.push(el);
+    let prev: MatchElement | null = null;
+    for (const c of node.children) if (isElement(c)) prev = walk(c, el, prev);
+    return el;
+  };
+  walk(doc.root, null, null);
+  return out;
+}
+
+/**
+ * Whether a style rule is provably dead: its selector list parsed, no selector has a pseudo-class or pseudo-element, and css-lite
+ * returns a definite false for every selector on every element. Matching is case-folded (tags, ids, classes, attribute names and
+ * values), so quirks-mode and HTML's case-insensitive attribute values can only keep a rule, never drop a live one.
+ */
+export function deadRule(selectors: readonly ComplexSelector[] | null, elements: readonly MatchElement[], faults: DeadRuleFaults = NO_DEAD_RULE_FAULTS): boolean {
+  // The dropUnknownSelector plant also drops rules outside the parsed subset.
+  if (selectors === null || selectors.length === 0) return selectors === null && faults.dropUnknownSelector;
+  const memo = new Map<MatchElement, MatchElement>();
+  const folded = elements.map((e) => foldElement(e, memo));
+  for (const s of selectors) {
+    if (s.compounds.some((k) => k.pseudos.length > 0 || k.pseudoElements > 0) && !faults.dropUnknownSelector) return false;
+    const f = foldSelector(s);
+    for (const el of folded) {
+      const m = matches(el, f);
+      if (m === true && !faults.dropLiveRule) return false;
+      if (m === 'unknown' && !faults.dropUnknownSelector) return false;
+    }
+  }
+  return true;
+}
 
 /** The document tree of a WPT file by its extension, or the refusal when it cannot be read. */
 export function parseWptDocument(path: string, source: string): DomDocument | { readonly missing: string } {
@@ -351,13 +431,29 @@ export function translateDocument(path: string, doc: DomDocument, commit: string
     }
   }
 
-  // The sheet: #id selectors become id classes, inline styles become class rules after every sheet rule.
+  // The sheet: provably dead style rules are dropped (check-layout mode only: Chrome confirms them there), #id selectors become
+  // id classes, inline styles become class rules after every sheet rule.
   const css = styles.join('\n');
   const items = readSheet(css);
+  const faults = options.deadRuleFaults ?? NO_DEAD_RULE_FAULTS;
+  let judged: readonly MatchElement[] = all.map(toMatch);
+  if (options.deadRuleDocument !== undefined) {
+    judged = matchElementsOf(options.deadRuleDocument);
+  }
+  const dead = new Set<SheetItem>();
+  const deadRules: string[] = [];
+  for (const it of items) {
+    if (it.kind !== 'rule' || reftest) continue;
+    const text = stripComments(it.prelude).trim();
+    if (deadRule(parseSelectorList(text), judged, faults)) {
+      dead.add(it);
+      deadRules.push(text);
+    }
+  }
   const referenced = new Set<string>();
   const guardRules: GuardRule[] = [];
   for (const it of items) {
-    if (it.kind !== 'rule') continue;
+    if (it.kind !== 'rule' || dead.has(it)) continue;
     const selectors = parseSelectorList(stripComments(it.prelude).trim());
     if (selectors !== null) for (const s of selectors) for (const k of s.compounds) for (const id of k.ids) referenced.add(id.value);
     guardRules.push({ selectors, declarations: readDeclarations(it.block) ?? [] });
@@ -370,6 +466,12 @@ export function translateDocument(path: string, doc: DomDocument, commit: string
   let at = 0;
   for (const it of items) {
     if (it.kind !== 'rule') continue;
+    if (dead.has(it)) {
+      // The whole rule goes: its prelude (with any comment before it) through its closing brace.
+      rewritten += css.slice(at, it.preludeStart);
+      at = Math.min(css.length, it.preludeStart + it.prelude.length + it.block.length + 2);
+      continue;
+    }
     const stripped = stripComments(it.prelude);
     if (!stripped.includes('#')) continue;
     rewritten += `${css.slice(at, it.preludeStart)}${rewriteIds(stripped, (id) => idClass.get(id) as string)}`;
@@ -435,7 +537,7 @@ export function translateDocument(path: string, doc: DomDocument, commit: string
     kind: 'fixture',
     id: `${fixtureIdOf(path)}${options.idSuffix ?? ''}`,
     html: `<!DOCTYPE html>\n${html}\n`,
-    sidecar: { source: path, wpt: commit, viewport: { ...WPT_VIEWPORT }, subtests },
+    sidecar: { source: path, wpt: commit, viewport: { ...WPT_VIEWPORT }, subtests, ...(deadRules.length === 0 ? {} : { deadRules }) },
     guard,
     elements,
   };
