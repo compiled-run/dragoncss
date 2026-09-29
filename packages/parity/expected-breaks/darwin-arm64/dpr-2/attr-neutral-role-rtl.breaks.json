@@ -1,0 +1,9 @@
+{
+  "case": "attr-neutral-role-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"div:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"p:text0","data":"XX XXX XX","lines":2,"units":[0,0,0,0,0,0,0,1,1],"blank":[6]}
+  ]
+}
