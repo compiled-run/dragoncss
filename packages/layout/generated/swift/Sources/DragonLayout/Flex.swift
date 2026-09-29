@@ -196,7 +196,7 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
   if (mainInner == nil) {
     // ts: packages/layout/src/flex.ts:156
     if (!singleLine) {
-      try unsupported_unsupported(S.s_flex_wrap_indefinite_main, box.id, S.s58, S.s102)
+      try unsupported_unsupported(S.s_flex_wrap_indefinite_main, box.id, S.s58, S.s103)
     }
     let hypo: Double = try units_add(units_sum(jsMap(items, { (i: Item) throws -> Double in
     return try flex_outerHypothetical(i)
@@ -454,7 +454,7 @@ public func flex_gapValue(_ box: LayoutBox, _ v: any U_LengthCalc_NormalValue_Pe
   }
   // ts: packages/layout/src/flex.ts:359
   if try box_hasPercent((v as! any U_LengthCalc_Percent_Px)) {
-    try unsupported_unsupported(S.s_percent_gap, box.id, S.s55, S.s118)
+    try unsupported_unsupported(S.s_percent_gap, box.id, S.s55, S.s119)
   }
   return try box_resolveLength((v as! any U_LengthCalc_Percent_Px), units_ZERO, faults)
 }
@@ -577,7 +577,7 @@ public func flex_buildItem(_ ctx: Ctx, _ container: LayoutBox, _ box: LayoutBox,
     let resolved: Double? = try box_resolveLengthOrNull((basis as! any U_LengthCalc_Percent_Px), mainInner, ctx.faults)
     // ts: packages/layout/src/flex.ts:490
     if (resolved == nil) {
-      try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s57, S.s117)
+      try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s57, S.s118)
     }
     try base = box_contentBox(box_borderBoxFromSpecified(jsUnwrap(resolved), mainBp, s.boxSizing), mainBp)
   } else {

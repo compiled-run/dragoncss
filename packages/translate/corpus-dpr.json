@@ -36,35 +36,35 @@
   ],
   "engineCalc": 4000,
   "snapGenerated": 20000,
-  "snapVectors": 1113,
+  "snapVectors": 1143,
   "cases": {
-    "vectors-m2": 163,
-    "vectors-dpr": 1263,
-    "engine-dpr": 1263,
+    "vectors-m2": 173,
+    "vectors-dpr": 1293,
+    "engine-dpr": 1293,
     "units-m2": 120000,
-    "snap": 21113,
+    "snap": 21143,
     "snap-values": 150,
     "calc-goldens": 17,
     "engine-calc": 4000,
     "units-calc": 50000
   },
   "engineSplit": {
-    "ok": 1263,
+    "ok": 1293,
     "unsupported": 0,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "3285d33639eeaab640db21ef0c1f7eca779d652e9587e0d287008ddd5da73969",
-    "vectors-dpr": "86491244e575616436820ded5a36f04b824fca73bdc1745d099df38cbcc2a94d",
-    "engine-dpr": "82533601761389a08cb000ae0b9e7f359c68250d6f2d787b0a47a888131b91d2",
+    "vectors-m2": "306e5ec11b679ebbbd6315270b55d30e6beb07b1ecba8a0449f08a01831af699",
+    "vectors-dpr": "62c0ece690ca4cf4394a68908f9889024c32cc8e04527190f5340ced9eaaa35c",
+    "engine-dpr": "ec1f23d29892ed8004783eac3f0f733829432528dab0c8fb68f017ec9a612cf6",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "e852169f02e801db82e04a4e7adf95618083adafa9d929cd2f5413dabcd67d49",
+    "snap": "d2ace2aa1977c19397e3210c6d4ee5b1f462a34a91ed14383d2893ea814f801e",
     "snap-values": "fdeb2cecd1521fdd06c93f68e8a53f0efd51bd155422bff8533ba0224e08b739",
     "calc-goldens": "65a7877bd7c618c060f7e3e550b5727b4ae35bbb6c487fc0ea51198cd16ba2e1",
-    "engine-calc": "d77608c30adfb782b5075a12cb79d371ac8cc701ab1fa3702a600d74fbf48607",
+    "engine-calc": "daa46f204cb72c77455c61ce4d540f22a2b402cb245b531f4f9d318e99d71712",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50"
   },
-  "digest": "9d708c07146295536c987dfe6846bd51ad61baa037abc2002b31b33a77d8d805"
+  "digest": "3d47d41345de9b5aa5c74bf3bc0462739ac96845c45c37d3c6a6769cb877d336"
 }

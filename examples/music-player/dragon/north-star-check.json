@@ -27,37 +27,37 @@
   "contextProbe": {
    "rounds": 1,
    "blankedRules": 9,
-   "blankedDeclarations": 71,
+   "blankedDeclarations": 66,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 838,
-  "errors": 837,
+  "diagnostics": 826,
+  "errors": 825,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
-   "DRAGON_UNPROVEN_CONTEXT [ios]": 30,
-   "DRAGON_UNPROVEN_CONTEXT [web]": 30,
+   "DRAGON_UNPROVEN_CONTEXT [ios]": 22,
+   "DRAGON_UNPROVEN_CONTEXT [web]": 22,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
    "DRAGON_UNSUPPORTED_AT_RULE": 3,
    "DRAGON_UNSUPPORTED_ELEMENT": 21,
    "DRAGON_UNSUPPORTED_FONT [android]": 22,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 68,
+   "DRAGON_UNSUPPORTED_PROPERTY": 63,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 531,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 540,
    "DRAGON_UNSUPPORTED_VALUE [ios]": 32,
    "DRAGON_UNSUPPORTED_VALUE [web]": 32
   },
   "perTarget": {
    "web": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 30,
+     "DRAGON_UNPROVEN_CONTEXT": 22,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 21,
-     "DRAGON_UNSUPPORTED_PROPERTY": 68,
+     "DRAGON_UNSUPPORTED_PROPERTY": 63,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 35
     },
@@ -67,12 +67,12 @@
    },
    "ios": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 30,
+     "DRAGON_UNPROVEN_CONTEXT": 22,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 21,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 68,
+     "DRAGON_UNSUPPORTED_PROPERTY": 63,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 35
     },
@@ -86,9 +86,9 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 21,
      "DRAGON_UNSUPPORTED_FONT": 22,
-     "DRAGON_UNSUPPORTED_PROPERTY": 68,
+     "DRAGON_UNSUPPORTED_PROPERTY": 63,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 534
+     "DRAGON_UNSUPPORTED_VALUE": 543
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -96,11 +96,11 @@
    }
   },
   "declarations": 291,
-  "supportedBothTargets": 165,
-  "supportedWeb": 165,
-  "supportedIos": 165,
+  "supportedBothTargets": 172,
+  "supportedWeb": 172,
+  "supportedIos": 172,
   "supportedAndroid": 34,
-  "supportPercent": 56.7,
+  "supportPercent": 59.1,
   "elements": 62,
   "supportedElements": 33,
   "tags": {
@@ -181,7 +181,7 @@
   "rawDiagnosticsPerPass": {
    "A-authored": 429,
    "B-unwrapped": 461,
-   "C-context": 463
+   "C-context": 452
   }
  },
  "features": {
@@ -1106,11 +1106,11 @@
    "atRule": null,
    "property": "aspect-ratio",
    "value": "16 / 9",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1356,11 +1356,11 @@
    "atRule": null,
    "property": "aspect-ratio",
    "value": "1",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1496,11 +1496,11 @@
    "atRule": null,
    "property": "aspect-ratio",
    "value": "1",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1524,11 +1524,10 @@
    "atRule": null,
    "property": "border",
    "value": "0.4rem solid #0b0d12",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
@@ -1973,11 +1972,11 @@
    "atRule": null,
    "property": "aspect-ratio",
    "value": "1",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -2001,11 +2000,10 @@
    "atRule": null,
    "property": "border",
    "value": "0.35rem solid #0a0c10",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
@@ -3390,11 +3388,11 @@
    "atRule": null,
    "property": "aspect-ratio",
    "value": "16 / 9",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -5711,19 +5709,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@1933-1953|aspect-ratio is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1947-1953|aspect-ratio: 16 / 9 is unsupported (support profile m1-s5); no aspect-ratio value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 1933,
+    "start": 1947,
     "end": 1953,
     "line": 117,
-    "column": 2,
-    "text": "aspect-ratio: 16 / 9"
+    "column": 16,
+    "text": "16 / 9"
    },
-   "message": "aspect-ratio is not supported in milestone 1",
+   "message": "aspect-ratio: 16 / 9 is unsupported (support profile m1-s5); no aspect-ratio value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6346,19 +6344,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2482-2497|aspect-ratio is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2496-2497|aspect-ratio: 1 / 1 is unsupported (support profile m1-s5); no aspect-ratio value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 2482,
+    "start": 2496,
     "end": 2497,
     "line": 147,
-    "column": 2,
-    "text": "aspect-ratio: 1"
+    "column": 16,
+    "text": "1"
    },
-   "message": "aspect-ratio is not supported in milestone 1",
+   "message": "aspect-ratio: 1 / 1 is unsupported (support profile m1-s5); no aspect-ratio value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6567,19 +6565,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3035-3050|aspect-ratio is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3049-3050|aspect-ratio: 1 / 1 is unsupported (support profile m1-s5); no aspect-ratio value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 3035,
+    "start": 3049,
     "end": 3050,
     "line": 168,
-    "column": 2,
-    "text": "aspect-ratio: 1"
+    "column": 16,
+    "text": "1"
    },
-   "message": "aspect-ratio is not supported in milestone 1",
+   "message": "aspect-ratio: 1 / 1 is unsupported (support profile m1-s5); no aspect-ratio value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -7550,19 +7548,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4079-4094|aspect-ratio is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4093-4094|aspect-ratio: 1 / 1 is unsupported (support profile m1-s5); no aspect-ratio value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 4079,
+    "start": 4093,
     "end": 4094,
     "line": 228,
-    "column": 2,
-    "text": "aspect-ratio: 1"
+    "column": 16,
+    "text": "1"
    },
-   "message": "aspect-ratio is not supported in milestone 1",
+   "message": "aspect-ratio: 1 / 1 is unsupported (support profile m1-s5); no aspect-ratio value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -11154,23 +11152,24 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6924-6944|aspect-ratio is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6938-6944|aspect-ratio: 16 / 9 is unsupported (support profile m1-s5); no aspect-ratio value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 6924,
+    "start": 6938,
     "end": 6944,
     "line": 402,
-    "column": 2,
-    "text": "aspect-ratio: 16 / 9"
+    "column": 16,
+    "text": "16 / 9"
    },
-   "message": "aspect-ratio is not supported in milestone 1",
+   "message": "aspect-ratio: 16 / 9 is unsupported (support profile m1-s5); no aspect-ratio value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -13699,7 +13698,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@484-490|overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@484-490|overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -13711,14 +13710,14 @@
     "column": 14,
     "text": "hidden"
    },
-   "message": "overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
+   "message": "overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@484-490|overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@484-490|overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -13730,7 +13729,7 @@
     "column": 14,
     "text": "hidden"
    },
-   "message": "overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
+   "message": "overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -14972,6 +14971,25 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1947-1953|aspect-ratio: 16 / 9 is unsupported (support profile m1-s5); no aspect-ratio value is proven in flex-column/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1947,
+    "end": 1953,
+    "line": 117,
+    "column": 16,
+    "text": "16 / 9"
+   },
+   "message": "aspect-ratio: 16 / 9 is unsupported (support profile m1-s5); no aspect-ratio value is proven in flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1968-1975|background-color: rgb(5, 6, 8) (set by background: #050608) is unsupported (support profile m1-s5); no background-color value is proven in paint/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -15162,6 +15180,25 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2496-2497|aspect-ratio: 1 / 1 is unsupported (support profile m1-s5); no aspect-ratio value is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2496,
+    "end": 2497,
+    "line": 147,
+    "column": 16,
+    "text": "1"
+   },
+   "message": "aspect-ratio: 1 / 1 is unsupported (support profile m1-s5); no aspect-ratio value is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2854-2858|display: flex is unsupported (support profile m1-s5); no display value is proven in relative-in-flex-column/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -15257,6 +15294,25 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3049-3050|aspect-ratio: 1 / 1 is unsupported (support profile m1-s5); no aspect-ratio value is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3049,
+    "end": 3050,
+    "line": 168,
+    "column": 16,
+    "text": "1"
+   },
+   "message": "aspect-ratio: 1 / 1 is unsupported (support profile m1-s5); no aspect-ratio value is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3065-3072|background-color: rgb(5, 6, 8) (set by background: #050608) is unsupported (support profile m1-s5); no background-color value is proven in paint/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -15270,158 +15326,6 @@
     "text": "#050608"
    },
    "message": "background-color: rgb(5, 6, 8) (set by background: #050608) is unsupported (support profile m1-s5); no background-color value is proven in paint/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@3083-3103|border-bottom-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-bottom-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-bottom-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 3083,
-    "end": 3103,
-    "line": 170,
-    "column": 10,
-    "text": "0.4rem solid #0b0d12"
-   },
-   "message": "border-bottom-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-bottom-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-bottom-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@3083-3103|border-left-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-left-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-left-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 3083,
-    "end": 3103,
-    "line": 170,
-    "column": 10,
-    "text": "0.4rem solid #0b0d12"
-   },
-   "message": "border-left-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-left-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-left-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@3083-3103|border-right-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-right-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-right-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 3083,
-    "end": 3103,
-    "line": 170,
-    "column": 10,
-    "text": "0.4rem solid #0b0d12"
-   },
-   "message": "border-right-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-right-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-right-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@3083-3103|border-top-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); border-top-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-top-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 3083,
-    "end": 3103,
-    "line": 170,
-    "column": 10,
-    "text": "0.4rem solid #0b0d12"
-   },
-   "message": "border-top-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); border-top-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-top-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@3083-3103|border-bottom-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-bottom-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-bottom-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 3083,
-    "end": 3103,
-    "line": 170,
-    "column": 10,
-    "text": "0.4rem solid #0b0d12"
-   },
-   "message": "border-bottom-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-bottom-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-bottom-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@3083-3103|border-left-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-left-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-left-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 3083,
-    "end": 3103,
-    "line": 170,
-    "column": 10,
-    "text": "0.4rem solid #0b0d12"
-   },
-   "message": "border-left-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-left-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-left-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@3083-3103|border-right-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-right-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-right-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 3083,
-    "end": 3103,
-    "line": 170,
-    "column": 10,
-    "text": "0.4rem solid #0b0d12"
-   },
-   "message": "border-right-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-right-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-right-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@3083-3103|border-top-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); border-top-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-top-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 3083,
-    "end": 3103,
-    "line": 170,
-    "column": 10,
-    "text": "0.4rem solid #0b0d12"
-   },
-   "message": "border-top-width:<length-rem> (set by border: 0.4rem solid #0b0d12) on page/song-call/record-label is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); border-top-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-top-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -15998,6 +15902,25 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4093-4094|aspect-ratio: 1 / 1 is unsupported (support profile m1-s5); no aspect-ratio value is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4093,
+    "end": 4094,
+    "line": 228,
+    "column": 16,
+    "text": "1"
+   },
+   "message": "aspect-ratio: 1 / 1 is unsupported (support profile m1-s5); no aspect-ratio value is proven in absolute-in-flex-row/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4109-4116|background-color: rgb(11, 13, 18) (set by background: #0b0d12) is unsupported (support profile m1-s5); no background-color value is proven in paint/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -16011,158 +15934,6 @@
     "text": "#0b0d12"
    },
    "message": "background-color: rgb(11, 13, 18) (set by background: #0b0d12) is unsupported (support profile m1-s5); no background-color value is proven in paint/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@4127-4148|border-bottom-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-bottom-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-bottom-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 4127,
-    "end": 4148,
-    "line": 230,
-    "column": 10,
-    "text": "0.35rem solid #0a0c10"
-   },
-   "message": "border-bottom-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-bottom-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-bottom-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@4127-4148|border-left-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-left-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-left-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 4127,
-    "end": 4148,
-    "line": 230,
-    "column": 10,
-    "text": "0.35rem solid #0a0c10"
-   },
-   "message": "border-left-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-left-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-left-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@4127-4148|border-right-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-right-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-right-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 4127,
-    "end": 4148,
-    "line": 230,
-    "column": 10,
-    "text": "0.35rem solid #0a0c10"
-   },
-   "message": "border-right-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-right-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-right-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@4127-4148|border-top-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); border-top-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-top-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 4127,
-    "end": 4148,
-    "line": 230,
-    "column": 10,
-    "text": "0.35rem solid #0a0c10"
-   },
-   "message": "border-top-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); border-top-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-top-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@4127-4148|border-bottom-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-bottom-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-bottom-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 4127,
-    "end": 4148,
-    "line": 230,
-    "column": 10,
-    "text": "0.35rem solid #0a0c10"
-   },
-   "message": "border-bottom-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-bottom-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-bottom-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@4127-4148|border-left-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-left-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-left-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 4127,
-    "end": 4148,
-    "line": 230,
-    "column": 10,
-    "text": "0.35rem solid #0a0c10"
-   },
-   "message": "border-left-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-left-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-left-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@4127-4148|border-right-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-right-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-right-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 4127,
-    "end": 4148,
-    "line": 230,
-    "column": 10,
-    "text": "0.35rem solid #0a0c10"
-   },
-   "message": "border-right-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl); border-right-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-right-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@4127-4148|border-top-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); border-top-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-top-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 4127,
-    "end": 4148,
-    "line": 230,
-    "column": 10,
-    "text": "0.35rem solid #0a0c10"
-   },
-   "message": "border-top-width:<length-rem> (set by border: 0.35rem solid #0a0c10) on page/song-call/record-center is used in the absolute-in-flex-row/ltr/cb-ltr context, which is not proven (proven: block/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); border-top-width values proven in absolute-in-flex-row/ltr/cb-ltr: <length-px>; border sets border-top-width, which is unproven here, so write border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid instead of border",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -19057,7 +18828,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8646-8662|width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <length-px> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8646-8662|width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <clamp()>, <length-px> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -19069,14 +18840,14 @@
     "column": 10,
     "text": "min(72vw, 18rem)"
    },
-   "message": "width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <length-px> or auto",
+   "message": "width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <clamp()>, <length-px> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8646-8662|width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <length-px> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8646-8662|width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <clamp()>, <length-px> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -19088,7 +18859,7 @@
     "column": 10,
     "text": "min(72vw, 18rem)"
    },
-   "message": "width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <length-px> or auto",
+   "message": "width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <clamp()>, <length-px> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"

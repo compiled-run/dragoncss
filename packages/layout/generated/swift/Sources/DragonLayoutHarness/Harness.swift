@@ -288,13 +288,14 @@ enum HS {
   static let s281 = JsString("missing strings")
   static let s282 = JsString("missing text")
   static let s_mixed_inline_font = JsString("mixed-inline-font")
-  static let s284 = JsString("multi-line column flex container with an indefinite height (not yet supported)")
+  static let s284 = JsString("mulDiv needs a non-negative integer multiplier and a positive integer divisor")
+  static let s285 = JsString("multi-line column flex container with an indefinite height (not yet supported)")
   static let s_near = JsString("near")
-  static let s286 = JsString("no absolute rect for ")
-  static let s287 = JsString("no platform rules are registered for ")
+  static let s287 = JsString("no absolute rect for ")
+  static let s288 = JsString("no platform rules are registered for ")
   static let s_no_platform_rules = JsString("no-platform-rules")
   static let s_non_negative = JsString("non-negative")
-  static let s290 = JsString("non-zero integer divisor expected, got ")
+  static let s291 = JsString("non-zero integer divisor expected, got ")
   static let s_none = JsString("none")
   static let s_normal = JsString("normal")
   static let s_nowrap = JsString("nowrap")
@@ -314,9 +315,9 @@ enum HS {
   static let s_percent_gap = JsString("percent-gap")
   static let s_percent_height_flex = JsString("percent-height-flex")
   static let s_percentOf = JsString("percentOf")
-  static let s310 = JsString("percentage flex-basis against an indefinite main size is treated as content (not yet supported)")
-  static let s311 = JsString("percentage gap (not yet supported)")
-  static let s312 = JsString("percentage top or bottom against a flexed or stretched size that is not definite")
+  static let s311 = JsString("percentage flex-basis against an indefinite main size is treated as content (not yet supported)")
+  static let s312 = JsString("percentage gap (not yet supported)")
+  static let s313 = JsString("percentage top or bottom against a flexed or stretched size that is not definite")
   static let s_pixels = JsString("pixels")
   static let s_pixels_and_percent = JsString("pixels-and-percent")
   static let s_pixelsAndPercentAt = JsString("pixelsAndPercentAt")
@@ -325,8 +326,8 @@ enum HS {
   static let s_position = JsString("position")
   static let s_product = JsString("product")
   static let s_px = JsString("px")
-  static let s321 = JsString("q2:text0:line0")
-  static let s322 = JsString("q:text0:line1")
+  static let s322 = JsString("q2:text0:line0")
+  static let s323 = JsString("q:text0:line1")
   static let s_range = JsString("range")
   static let s_ratio = JsString("ratio")
   static let s_rects = JsString("rects")
@@ -342,7 +343,7 @@ enum HS {
   static let s_rowGap = JsString("rowGap")
   static let s_rtl = JsString("rtl")
   static let s_rtlAsLtr = JsString("rtlAsLtr")
-  static let s338 = JsString("s1:text0:line1")
+  static let s339 = JsString("s1:text0:line1")
   static let s_scrollMinAuto = JsString("scrollMinAuto")
   static let s_self_end = JsString("self-end")
   static let s_self_start = JsString("self-start")
@@ -365,26 +366,26 @@ enum HS {
   static let s_term = JsString("term")
   static let s_terms = JsString("terms")
   static let s_text = JsString("text")
-  static let s361 = JsString("text in the rtl paragraph of ")
-  static let s362 = JsString("text runs with different fonts, line-heights or text-wrap-mode in one formatting context of ")
+  static let s362 = JsString("text in the rtl paragraph of ")
+  static let s363 = JsString("text runs with different fonts, line-heights or text-wrap-mode in one formatting context of ")
   static let s_text_align = JsString("text-align")
-  static let s364 = JsString("text-align: justify is not yet proven against Chrome")
+  static let s365 = JsString("text-align: justify is not yet proven against Chrome")
   static let s_text_fractional_font_size = JsString("text-fractional-font-size")
   static let s_text_glyph = JsString("text-glyph")
   static let s_textAdvance = JsString("textAdvance")
   static let s_textAlign = JsString("textAlign")
   static let s_textWrapMode = JsString("textWrapMode")
-  static let s370 = JsString("the box has no aspect ratio")
-  static let s371 = JsString("third_party/blink/renderer/platform/fonts/font_description.cc lines 268-279 at 145.0.7632.6 (EffectiveFontSize: floorf(size * PrecisionMultiplier()) / PrecisionMultiplier()) with font_cache_key.h line 53 (kFontSizePrecisionMultiplier = 100). The code is not platform-specific, but the rule is measured only on darwin-arm64 (notes/T035-slice-4a.md), so it is keyed there.")
-  static let s372 = JsString("third_party/blink/renderer/platform/fonts/font_metrics.cc at 145.0.7632.6 rounds with SkScalarRoundToScalar (halves up, lines 111-112), so the half-down result on macOS is taken to come from the CoreText metric values; inferred, not traced. Lines 114-126 move 1 px from ascent to descent on Linux, ChromeOS, Android and Fuchsia, which this rule does not claim.")
+  static let s371 = JsString("the box has no aspect ratio")
+  static let s372 = JsString("third_party/blink/renderer/platform/fonts/font_description.cc lines 268-279 at 145.0.7632.6 (EffectiveFontSize: floorf(size * PrecisionMultiplier()) / PrecisionMultiplier()) with font_cache_key.h line 53 (kFontSizePrecisionMultiplier = 100). The code is not platform-specific, but the rule is measured only on darwin-arm64 (notes/T035-slice-4a.md), so it is keyed there.")
+  static let s373 = JsString("third_party/blink/renderer/platform/fonts/font_metrics.cc at 145.0.7632.6 rounds with SkScalarRoundToScalar (halves up, lines 111-112), so the half-down result on macOS is taken to come from the CoreText metric values; inferred, not traced. Lines 114-126 move 1 px from ascent to descent on Linux, ChromeOS, Android and Fuchsia, which this rule does not claim.")
   static let s_top = JsString("top")
-  static let s374 = JsString("trailing characters")
+  static let s375 = JsString("trailing characters")
   static let s_true = JsString("true")
   static let s_trunc = JsString("trunc")
-  static let s377 = JsString("unknown function ")
-  static let s378 = JsString("unknown operation ")
+  static let s378 = JsString("unknown function ")
+  static let s379 = JsString("unknown operation ")
   static let s_unsupported = JsString("unsupported")
-  static let s380 = JsString("unterminated string")
+  static let s381 = JsString("unterminated string")
   static let s_untruncatedFontSize = JsString("untruncatedFontSize")
   static let s_value = JsString("value")
   static let s_viewport = JsString("viewport")
@@ -393,7 +394,7 @@ enum HS {
   static let s_viewportUnitsUnceiled = JsString("viewportUnitsUnceiled")
   static let s_visible = JsString("visible")
   static let s_whiteSpaceCollapse = JsString("whiteSpaceCollapse")
-  static let s389 = JsString("whole px expected, got ")
+  static let s390 = JsString("whole px expected, got ")
   static let s_width = JsString("width")
   static let s_wrap = JsString("wrap")
   static let s_wrap_reverse = JsString("wrap-reverse")
@@ -401,7 +402,7 @@ enum HS {
   static let s_zoomCssPx = JsString("zoomCssPx")
   static let s_zoomFontSize = JsString("zoomFontSize")
   static let s_zoomViewportPx = JsString("zoomViewportPx")
-  static let s397 = JsString("\u{200b}")
+  static let s398 = JsString("\u{200b}")
 }
 
 /// One of: JsonArr, JsonBool, JsonNull, JsonNum, JsonObj, JsonStr.
@@ -607,7 +608,7 @@ func harness_parseString(_ c: Cursor) throws -> JsString {
         let ch: Double = try harness_peek(c)
         // ts: packages/translate/harness/harness.ts:150
         if (ch == -1.0) {
-          try harness_fail(HS.s380)
+          try harness_fail(HS.s381)
         }
         c.pos += 1.0
         // ts: packages/translate/harness/harness.ts:152
@@ -828,7 +829,7 @@ func harness_parseJson(_ text: JsString) throws -> any U_JsonArr_JsonBool_JsonNu
   try harness_skipWs(c)
   // ts: packages/translate/harness/harness.ts:280
   if (c.pos != jsLength(cps)) {
-    try harness_fail(HS.s374)
+    try harness_fail(HS.s375)
   }
   return v
 }
@@ -1434,7 +1435,7 @@ func harness_unitsResult(_ name: JsString, _ a: JsArray<any U_JsonArr_JsonBool_J
     let mode: JsString = try harness_lit(jsUnwrap(v), JsArray<JsString>([HS.s_space_between, HS.s_space_around, HS.s_space_evenly]), HS.s29)
     return try units_distributedOffset(mode, harness_arg(a, 2.0), harness_arg(a, 3.0), harness_arg(a, 4.0))
   default:
-    try harness_fail(jsConcat(HS.s377, name))
+    try harness_fail(jsConcat(HS.s378, name))
   }
 }
 
@@ -1621,7 +1622,7 @@ func harness_libraryResult(_ op: JsString, _ a: JsArray<any U_JsonArr_JsonBool_J
     }
     return try ((harness_str(jsUnwrap(x), HS.s29) == harness_str(jsUnwrap(y), HS.s30)) ? HS.s_true : HS.s_false)
   default:
-    try harness_fail(jsConcat(HS.s378, op))
+    try harness_fail(jsConcat(HS.s379, op))
   }
 }
 
