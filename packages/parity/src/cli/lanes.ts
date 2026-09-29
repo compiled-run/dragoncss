@@ -17,7 +17,13 @@ import type { HostRun } from '../lanes.ts';
 const args = process.argv.slice(2);
 const runHost = args.includes('--run-host');
 const runDevice = args.includes('--run-device');
-const only = args.includes('--target') ? (args[args.indexOf('--target') + 1] as NativeTarget) : null;
+const targetAt = args.indexOf('--target');
+const onlyArg = targetAt < 0 ? null : (args[targetAt + 1] ?? '');
+if (onlyArg !== null && onlyArg !== 'ios' && onlyArg !== 'android') {
+  console.error(`parity:lanes: --target takes ios or android, not ${JSON.stringify(onlyArg)}`);
+  process.exit(2);
+}
+const only: NativeTarget | null = onlyArg;
 const requireAll = args.includes('--require-all');
 const plantAt = args.indexOf('--plant');
 

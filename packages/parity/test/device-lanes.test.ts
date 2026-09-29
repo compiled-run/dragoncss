@@ -6,15 +6,15 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { CaseReference, DeviceCheckLane, FailureKind } from '../src/device-lanes.ts';
-import { captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, readDump, splitByLines, trustFailuresOf } from '../src/device-lanes.ts';
+import type { CaseReference, DeviceCheckLane, FailureKind, TrustCase } from '../src/device-lanes.ts';
+import { captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, plantVerdict, readDump, splitByLines, trustFailuresOf } from '../src/device-lanes.ts';
 import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
 import { checkAgainstChrome, DUMP_FAULTS, FAULT_CHECK, plantDumpFault, readSamples } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
 import type { NativeCase } from '../src/native-host.ts';
 import { nativeCases, nativeOut, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
-import { expectedPixelsPath, rasterSize } from '../src/pixel-reference.ts';
+import { casePoints, expectedPixelsPath, rasterSize } from '../src/pixel-reference.ts';
 import type { NativeTarget } from '../src/targets.ts';
 
 const cases = nativeCases();
@@ -96,14 +96,50 @@ describe('dump provenance and unreadable files', () => {
     expect(set.failures.filter((f) => f.case === n.case.id).map((f) => f.kind)).toEqual(['dump-invalid', 'dump-invalid', 'dump-invalid', 'dump-invalid']);
     expect(set.failures.filter((f) => f.case === other.case.id)).toEqual([]);
     copyFileSync(expectedPixelsPath(n.case.id, 3), join(dir, `screen-${n.case.id}.png`));
-    expect(captureTrust(dir, [n.case.id], 3, [0, 0])[0]?.mismatches[0]).toMatch(/^the dump is not JSON/);
+    expect(captureTrust(dir, [trustCase(n, 3)], 3, [0, 0])[0]?.mismatches[0]).toMatch(/^the dump is not JSON/);
     rmSync(dir, { recursive: true, force: true });
+  });
+  it('a trust dump that is JSON but not a dump (null) is a capture-trust mismatch, not a crash', () => {
+    const dir = join(nativeOut('ios'), 'test-trust-null');
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(dumpFile(dir, n.case.id, 3), 'null');
+    copyFileSync(expectedPixelsPath(n.case.id, 3), join(dir, `screen-${n.case.id}.png`));
+    expect(captureTrust(dir, [trustCase(n, 3)], 3, [0, 0])[0]?.mismatches[0]).toMatch(/^the dump does not validate: /);
+    rmSync(dir, { recursive: true, force: true });
+  });
+  it('a trust run that did not finish is a capture-trust failure even with no sample mismatch', () => {
+    expect(trustFailuresOf([{ case: 'a', points: 3, mismatches: [] }], 3, 'iPhone 17', 'timed out')).toEqual([{ lane: 'device-pixels', case: '-', dpr: 3, node: null, kind: 'capture-trust', detail: 'iPhone 17: the capture-trust run did not finish: timed out' }]);
+  });
+  it('a dump that omits a line box counts only the lines the checks compared, never a negative node count', () => {
+    const full = evaluateCase('ios', n, 3, d, ref).compared;
+    const dropped = { ...d, nodes: d.nodes.map((x) => (x.id === 'w1:text0' ? { ...x, lines: x.lines.slice(0, 1) } : x)) };
+    const o = evaluateCase('ios', n, 3, dropped, ref);
+    expect(o.compared.a).toBe(full.a - 2);
+    expect(o.compared.d).toBe(full.d - 2);
+    expect(o.failures.some((f) => f.lane === 'device-lines')).toBe(true);
   });
   it('capture-trust mismatches become device-pixels failures of kind capture-trust', () => {
     expect(trustFailuresOf([{ case: 'a', points: 3, mismatches: ['m1', 'm2'] }, { case: 'b', points: 3, mismatches: [] }], 2, 'iPad (A16)')).toEqual([
       { lane: 'device-pixels', case: 'a', dpr: 2, node: null, kind: 'capture-trust', detail: 'iPad (A16): m1' },
       { lane: 'device-pixels', case: 'a', dpr: 2, node: null, kind: 'capture-trust', detail: 'iPad (A16): m2' },
     ]);
+  });
+});
+
+describe('the glyph-offset-1 plant verdict', () => {
+  const f = (lane: DeviceCheckLane, kind: FailureKind, node: string | null) => ({ lane, case: 'text-wrap-spaces', dpr: 3, node, kind, detail: 'x' });
+  const glyph = f('device-pixels', 'pixel', 'edge:w6:text0:line0:glyph-left');
+  it('caught: a glyph-edge pixel failure with frames and lines clean and the host finished', () => {
+    expect(plantVerdict([glyph], null).caught).toBe(true);
+    expect(plantVerdict([f('device-pixels', 'pixel', 'glyph:w1:text0:line0:0')], null).caught).toBe(true);
+  });
+  it('not caught: the host did not finish, only box rules failed, or frames or lines failed too', () => {
+    expect(plantVerdict([glyph], 'timed out').caught).toBe(false);
+    expect(plantVerdict([f('device-pixels', 'pixel', 'edge:w1:bottom')], null).caught).toBe(false);
+    expect(plantVerdict([glyph, f('device-frames', 'frame-engine', 'w1')], null).caught).toBe(false);
+    expect(plantVerdict([glyph, f('device-lines', 'break-mismatch', 'w1:text0')], null).caught).toBe(false);
+    expect(plantVerdict([], null).caught).toBe(false);
   });
 });
 
@@ -133,6 +169,8 @@ describe('the node and line split of (a) and (d)', () => {
   });
 });
 
+const trustCase = (n: NativeCase, dpr: number): TrustCase => ({ id: n.case.id, points: casePoints(n.programs.uikit, n.case.environment.viewport, dpr), size: rasterSize(n.case.environment.viewport, dpr) });
+
 describe('capture trust', () => {
   it('in-app samples equal the OS screenshot at the root offset; a one-row offset error is caught', () => {
     const dir = join(nativeOut('ios'), 'test-trust');
@@ -143,11 +181,34 @@ describe('capture trust', () => {
     const d = perfectDump('ios', 3, n, ref, relabelledReferenceDumps('ios', 3));
     writeFileSync(dumpFile(dir, n.case.id, 3), JSON.stringify(d));
     copyFileSync(expectedPixelsPath(n.case.id, 3), join(dir, `screen-${n.case.id}.png`));
-    const ok = captureTrust(dir, [n.case.id], 3, [0, 0]);
+    const tc = trustCase(n, 3);
+    const ok = captureTrust(dir, [tc], 3, [0, 0]);
     expect(ok[0]?.points).toBe(ref.points.length);
     expect(ok[0]?.mismatches).toEqual([]);
-    expect(captureTrust(dir, [n.case.id], 3, [0, 1])[0]?.mismatches.length).toBeGreaterThan(0);
-    expect(captureTrust(dir, ['text-wrap-spaces'], 3, [0, 0])[0]?.mismatches).toEqual(['no dump']);
+    expect(captureTrust(dir, [tc], 3, [0, 1])[0]?.mismatches.length).toBeGreaterThan(0);
+    expect(captureTrust(dir, [trustCase(cases.find((c) => c.case.id === 'text-wrap-spaces') as NativeCase, 3)], 3, [0, 0])[0]?.mismatches).toEqual(['no dump']);
+    rmSync(dir, { recursive: true, force: true });
+  });
+  it('the held dump must carry exactly the generated points, the raster size and the case: a host that drops, moves or swaps points fails', () => {
+    const dir = join(nativeOut('ios'), 'test-trust-points');
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
+    const n = cases.find((c) => c.case.id === 'color-border-sides') as NativeCase;
+    const ref = caseReference('ios', n, 3);
+    const d = perfectDump('ios', 3, n, ref, relabelledReferenceDumps('ios', 3));
+    const tc = trustCase(n, 3);
+    copyFileSync(expectedPixelsPath(n.case.id, 3), join(dir, `screen-${n.case.id}.png`));
+    const withSamples = (samples: typeof d.pixels extends null ? never : NonNullable<typeof d.pixels>['samples'], extra: Partial<NativeDump> = {}): readonly string[] => {
+      writeFileSync(dumpFile(dir, n.case.id, 3), JSON.stringify({ ...d, ...extra, pixels: { ...(d.pixels as NonNullable<typeof d.pixels>), samples } }));
+      return captureTrust(dir, [tc], 3, [0, 0])[0]?.mismatches ?? [];
+    };
+    const samples = (d.pixels as NonNullable<typeof d.pixels>).samples;
+    expect(withSamples(samples)).toEqual([]);
+    expect(withSamples(samples.slice(0, 1))[0]).toMatch(/^the dump has 1 samples, the generator \d+$/);
+    expect(withSamples(samples.map((s, i) => (i === 3 ? { ...s, x: s.x + 1 } : s)))[0]).toMatch(/^sample 3 is .* the generator's is /);
+    expect(withSamples(samples, { case: { ...d.case, id: 'text-wrap-spaces' } })[0]).toMatch(/^the dump is case text-wrap-spaces at DPR 3, not color-border-sides at 3$/);
+    writeFileSync(dumpFile(dir, n.case.id, 3), JSON.stringify({ ...d, pixels: { ...(d.pixels as NonNullable<typeof d.pixels>), width: 1199 } }));
+    expect(captureTrust(dir, [tc], 3, [0, 0])[0]?.mismatches).toEqual(['the in-app capture is 1199x900, the raster rule 1200x900']);
     rmSync(dir, { recursive: true, force: true });
   });
 });

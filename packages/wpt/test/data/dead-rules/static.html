@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<!-- Synthetic page written for packages/wpt (not a WPT file): dead rules with a property Dragon refuses, a live rule, and a
+     live rule with a pseudo-class css-lite cannot evaluate. -->
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="/resources/check-layout-th.js"></script>
+<style>
+.box { width: 10px; height: 10px; }
+.never { float: left; }
+section > .box, .box + .missing { float: right; }
+.c > .box:first-child { height: 20px; }
+</style>
+<body onload="checkLayout('.c')">
+<div class="c"><div class="box" data-expected-width="10" data-expected-height="20"></div></div>
+</body>
