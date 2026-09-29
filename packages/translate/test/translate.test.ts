@@ -90,7 +90,8 @@ describe('translator subset (docs/research/native-strategy.md 1.2)', () => {
       const text = readFileSync(join(LAYOUT_SRC, f), 'utf8');
       expect(/\?\?|\?\.|\?:/.test(text), `${f}: ??, ?. or ?:`).toBe(false);
       expect(/\bDate\b|Math\.random|performance\.|process\.|globalThis/.test(text), `${f}: nondeterminism`).toBe(false);
-      if (f !== 'units.ts') expect(/Math\.(round|floor|ceil|trunc|fround)/.test(text), `${f}: Math rounding outside units.ts`).toBe(false);
+      // The audited numerics modules: units.ts (layout) and rt-easing.ts (the rt reference's rounding wrappers, T047 RT-3).
+      if (f !== 'units.ts' && f !== 'rt-easing.ts') expect(/Math\.(round|floor|ceil|trunc|fround)/.test(text), `${f}: Math rounding outside units.ts and rt-easing.ts`).toBe(false);
     }
   });
 });
