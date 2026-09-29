@@ -27,6 +27,10 @@ export type CompilerFaults = {
   readonly attributeCaseAlwaysSensitive: boolean;
   /** A rule whose selector list Chrome drops (one selector it does not parse) keeps its other selectors. */
   readonly invalidSelectorListKept: boolean;
+  /** Flex and grid items and absolutely positioned boxes keep their inline-level display (css-display-3 §2.7). */
+  readonly blockifySkipped: boolean;
+  /** Blockification turns inline-flex into block instead of flex. */
+  readonly inlineFlexToBlock: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, blockifySkipped: false, inlineFlexToBlock: false };
