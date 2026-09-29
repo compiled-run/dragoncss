@@ -108,10 +108,30 @@
               "corpus": "extended",
               "suite": "snap",
               "cases": 21113
+            },
+            {
+              "corpus": "extended",
+              "suite": "snap-values",
+              "cases": 150
+            },
+            {
+              "corpus": "extended",
+              "suite": "calc-goldens",
+              "cases": 17
+            },
+            {
+              "corpus": "extended",
+              "suite": "engine-calc",
+              "cases": 4000
+            },
+            {
+              "corpus": "extended",
+              "suite": "units-calc",
+              "cases": 50000
             }
           ],
-          "caseListSha256": "b053f0e73f2bdf3bd1bebb3ea41c8344093f12b2da0bd7e261f8fa6cec74a551",
-          "totalCases": 506318,
+          "caseListSha256": "4bda2106795cbd5f5ba25bb2b40d7d3a1870f5824aa24d6877d029f32c4b6db3",
+          "totalCases": 560485,
           "run": {
             "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
             "suites": [
@@ -177,6 +197,34 @@
                 "declared": 21113,
                 "total": 21113,
                 "pass": 21113
+              },
+              {
+                "corpus": "extended",
+                "suite": "snap-values",
+                "declared": 150,
+                "total": 150,
+                "pass": 150
+              },
+              {
+                "corpus": "extended",
+                "suite": "calc-goldens",
+                "declared": 17,
+                "total": 17,
+                "pass": 17
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-calc",
+                "declared": 4000,
+                "total": 4000,
+                "pass": 4000
+              },
+              {
+                "corpus": "extended",
+                "suite": "units-calc",
+                "declared": 50000,
+                "total": 50000,
+                "pass": 50000
               }
             ],
             "digests": {
@@ -189,8 +237,8 @@
         {
           "lane": "layout-vectors-device",
           "where": "device",
-          "state": "fail",
-          "reason": "extended/snap-values is not a declared suite; extended/calc-goldens is not a declared suite; extended/engine-calc is not a declared suite; extended/units-calc is not a declared suite",
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
           "sets": [
             {
               "dpr": 1,
@@ -247,82 +295,31 @@
               "corpus": "extended",
               "suite": "snap",
               "cases": 21113
+            },
+            {
+              "corpus": "extended",
+              "suite": "snap-values",
+              "cases": 150
+            },
+            {
+              "corpus": "extended",
+              "suite": "calc-goldens",
+              "cases": 17
+            },
+            {
+              "corpus": "extended",
+              "suite": "engine-calc",
+              "cases": 4000
+            },
+            {
+              "corpus": "extended",
+              "suite": "units-calc",
+              "cases": 50000
             }
           ],
-          "caseListSha256": "b053f0e73f2bdf3bd1bebb3ea41c8344093f12b2da0bd7e261f8fa6cec74a551",
-          "totalCases": 506318,
-          "run": {
-            "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1); arm64-apple-ios15.0-simulator; simctl spawn on iPhone 17",
-            "suites": [
-              {
-                "corpus": "p1",
-                "suite": "vectors",
-                "declared": 258,
-                "total": 258,
-                "pass": 258
-              },
-              {
-                "corpus": "p1",
-                "suite": "units",
-                "declared": 320000,
-                "total": 320000,
-                "pass": 320000
-              },
-              {
-                "corpus": "p1",
-                "suite": "engine",
-                "declared": 20258,
-                "total": 20258,
-                "pass": 20258
-              },
-              {
-                "corpus": "p1",
-                "suite": "library",
-                "declared": 22000,
-                "total": 22000,
-                "pass": 22000
-              },
-              {
-                "corpus": "extended",
-                "suite": "vectors-m2",
-                "declared": 163,
-                "total": 163,
-                "pass": 163
-              },
-              {
-                "corpus": "extended",
-                "suite": "vectors-dpr",
-                "declared": 1263,
-                "total": 1263,
-                "pass": 1263
-              },
-              {
-                "corpus": "extended",
-                "suite": "engine-dpr",
-                "declared": 1263,
-                "total": 1263,
-                "pass": 1263
-              },
-              {
-                "corpus": "extended",
-                "suite": "units-m2",
-                "declared": 120000,
-                "total": 120000,
-                "pass": 120000
-              },
-              {
-                "corpus": "extended",
-                "suite": "snap",
-                "declared": 21113,
-                "total": 21113,
-                "pass": 21113
-              }
-            ],
-            "digests": {
-              "p1": "08f13b752a691c14a0ba3e37b0e2448d7d30ddc192f3b1c85796fb8e4745291f",
-              "extended": "c7f2f5a468ccaf6b3d28662f4e19d58b0f0908dc8e5886d24272d55dd5f0bff6"
-            }
-          },
+          "caseListSha256": "4bda2106795cbd5f5ba25bb2b40d7d3a1870f5824aa24d6877d029f32c4b6db3",
+          "totalCases": 560485,
+          "run": null,
           "device": null
         },
         {
@@ -1145,10 +1142,30 @@
               "corpus": "extended",
               "suite": "snap",
               "cases": 21113
+            },
+            {
+              "corpus": "extended",
+              "suite": "snap-values",
+              "cases": 150
+            },
+            {
+              "corpus": "extended",
+              "suite": "calc-goldens",
+              "cases": 17
+            },
+            {
+              "corpus": "extended",
+              "suite": "engine-calc",
+              "cases": 4000
+            },
+            {
+              "corpus": "extended",
+              "suite": "units-calc",
+              "cases": 50000
             }
           ],
-          "caseListSha256": "b053f0e73f2bdf3bd1bebb3ea41c8344093f12b2da0bd7e261f8fa6cec74a551",
-          "totalCases": 506318,
+          "caseListSha256": "4bda2106795cbd5f5ba25bb2b40d7d3a1870f5824aa24d6877d029f32c4b6db3",
+          "totalCases": 560485,
           "run": {
             "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18",
             "suites": [
@@ -1214,6 +1231,34 @@
                 "declared": 21113,
                 "total": 21113,
                 "pass": 21113
+              },
+              {
+                "corpus": "extended",
+                "suite": "snap-values",
+                "declared": 150,
+                "total": 150,
+                "pass": 150
+              },
+              {
+                "corpus": "extended",
+                "suite": "calc-goldens",
+                "declared": 17,
+                "total": 17,
+                "pass": 17
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-calc",
+                "declared": 4000,
+                "total": 4000,
+                "pass": 4000
+              },
+              {
+                "corpus": "extended",
+                "suite": "units-calc",
+                "declared": 50000,
+                "total": 50000,
+                "pass": 50000
               }
             ],
             "digests": {
@@ -1226,8 +1271,8 @@
         {
           "lane": "layout-vectors-device",
           "where": "device",
-          "state": "fail",
-          "reason": "extended/snap-values is not a declared suite; extended/calc-goldens is not a declared suite; extended/engine-calc is not a declared suite; extended/units-calc is not a declared suite",
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
           "sets": [
             {
               "dpr": 1,
@@ -1284,82 +1329,31 @@
               "corpus": "extended",
               "suite": "snap",
               "cases": 21113
+            },
+            {
+              "corpus": "extended",
+              "suite": "snap-values",
+              "cases": 150
+            },
+            {
+              "corpus": "extended",
+              "suite": "calc-goldens",
+              "cases": 17
+            },
+            {
+              "corpus": "extended",
+              "suite": "engine-calc",
+              "cases": 4000
+            },
+            {
+              "corpus": "extended",
+              "suite": "units-calc",
+              "cases": 50000
             }
           ],
-          "caseListSha256": "b053f0e73f2bdf3bd1bebb3ea41c8344093f12b2da0bd7e261f8fa6cec74a551",
-          "totalCases": 506318,
-          "run": {
-            "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18; d8 --min-api 31; ART app_process on dragon-smoke (Android 16)",
-            "suites": [
-              {
-                "corpus": "p1",
-                "suite": "vectors",
-                "declared": 258,
-                "total": 258,
-                "pass": 258
-              },
-              {
-                "corpus": "p1",
-                "suite": "units",
-                "declared": 320000,
-                "total": 320000,
-                "pass": 320000
-              },
-              {
-                "corpus": "p1",
-                "suite": "engine",
-                "declared": 20258,
-                "total": 20258,
-                "pass": 20258
-              },
-              {
-                "corpus": "p1",
-                "suite": "library",
-                "declared": 22000,
-                "total": 22000,
-                "pass": 22000
-              },
-              {
-                "corpus": "extended",
-                "suite": "vectors-m2",
-                "declared": 163,
-                "total": 163,
-                "pass": 163
-              },
-              {
-                "corpus": "extended",
-                "suite": "vectors-dpr",
-                "declared": 1263,
-                "total": 1263,
-                "pass": 1263
-              },
-              {
-                "corpus": "extended",
-                "suite": "engine-dpr",
-                "declared": 1263,
-                "total": 1263,
-                "pass": 1263
-              },
-              {
-                "corpus": "extended",
-                "suite": "units-m2",
-                "declared": 120000,
-                "total": 120000,
-                "pass": 120000
-              },
-              {
-                "corpus": "extended",
-                "suite": "snap",
-                "declared": 21113,
-                "total": 21113,
-                "pass": 21113
-              }
-            ],
-            "digests": {
-              "p1": "08f13b752a691c14a0ba3e37b0e2448d7d30ddc192f3b1c85796fb8e4745291f",
-              "extended": "c7f2f5a468ccaf6b3d28662f4e19d58b0f0908dc8e5886d24272d55dd5f0bff6"
-            }
-          },
+          "caseListSha256": "4bda2106795cbd5f5ba25bb2b40d7d3a1870f5824aa24d6877d029f32c4b6db3",
+          "totalCases": 560485,
+          "run": null,
           "device": null
         },
         {
