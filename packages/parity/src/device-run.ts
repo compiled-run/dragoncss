@@ -59,9 +59,9 @@ export function matrixProblems(scaleOf: (d: DeviceSpec) => number, matrix: reado
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
-async function poll(what: string, timeoutMs: number, done: () => boolean): Promise<void> {
+async function poll(what: string, timeoutMs: number, done: () => boolean | Promise<boolean>): Promise<void> {
   const t0 = Date.now();
-  while (!done()) {
+  while (!(await done())) {
     if (Date.now() - t0 > timeoutMs) throw new Error(`timed out after ${timeoutMs / 1000} s waiting for ${what}`);
     await sleep(500);
   }
@@ -286,10 +286,25 @@ export type RunOptions = {
   readonly caseCount: number;
   readonly outDir: string;
   /** With the hold flag: called with each case id while the case is on screen; returns when the OS screenshot is taken. */
-  readonly onHold?: (id: string, screenshot: () => Buffer) => void;
+  readonly onHold?: (id: string, screenshot: () => Promise<Buffer>) => Promise<void> | void;
 };
 
 export type AppRun = { readonly outDir: string; readonly record: AppRecord; readonly error: string | null };
+
+/**
+ * The OS screenshot of a held case, once the screen is still: screenshots are taken until two consecutive ones are byte-equal (a
+ * screenshot during the app's launch transition differs from the next).
+ */
+export async function stableScreenshot(h: DeviceHandle, file: string): Promise<Buffer> {
+  let last = osScreenshot(h, file);
+  for (let i = 0; i < 40; i++) {
+    await sleep(300);
+    const next = osScreenshot(h, file);
+    if (Buffer.compare(next, last) === 0) return next;
+    last = next;
+  }
+  throw new Error(`${h.spec.name}: the screen did not settle for the OS screenshot ${file}`);
+}
 
 /** The OS screenshot of the whole screen: simctl io screenshot, or adb exec-out screencap -p. */
 export function osScreenshot(h: DeviceHandle, file: string): Buffer {
@@ -331,13 +346,13 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
     const env = { ...process.env, SIMCTL_CHILD_DRAGON_OUT: opts.outDir };
     const launch = run('xcrun', ['simctl', 'launch', '--terminate-running-process', h.udid, HOST_BUNDLE], { env });
     if (launch.status !== 0) throw new Error(`simctl launch failed: ${launch.out}`);
-    const shot = (id: string) => (): Buffer => osScreenshot(h, join(opts.outDir, `screen-${id}.png`));
+    const shot = (id: string) => (): Promise<Buffer> => stableScreenshot(h, join(opts.outDir, `screen-${id}.png`));
     const held = new Set<string>();
     try {
-      await poll('the iOS host to finish', timeout, () => {
+      await poll('the iOS host to finish', timeout, async () => {
         if (opts.onHold !== undefined) {
           for (const id of pendingHolds(opts.outDir, held)) {
-            opts.onHold(id, shot(id));
+            await opts.onHold(id, shot(id));
             held.add(id);
             writeFileSync(join(opts.outDir, `release-${id}`), 'ok');
           }
@@ -365,7 +380,7 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
     if (start.status !== 0 || /Error/.test(start.out)) throw new Error(`am start failed: ${start.out}`);
     const held = new Set<string>();
     try {
-      await poll('the Android host to finish', timeout, () => {
+      await poll('the Android host to finish', timeout, async () => {
         if (adb(h, ['logcat', '-d', '-b', 'crash'], 20_000).out.includes(HOST_BUNDLE)) {
           const focus = adb(h, ['shell', 'dumpsys', 'window', '|', 'grep', '-E', "'mCurrentFocus|mFocusedApp'"], 20_000).out.trim();
           const power = adb(h, ['shell', 'dumpsys', 'power', '|', 'grep', '-E', "'mWakefulness=|mHoldingDisplaySuspendBlocker'"], 20_000).out.trim();
@@ -375,7 +390,7 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
           const listed = adb(h, ['shell', 'ls', remote], 20_000).out.split(/\s+/).filter((f) => f.startsWith('hold-')).map((f) => f.slice('hold-'.length));
           for (const id of listed) {
             if (held.has(id)) continue;
-            opts.onHold(id, () => osScreenshot(h, join(opts.outDir, `screen-${id}.png`)));
+            await opts.onHold(id, () => stableScreenshot(h, join(opts.outDir, `screen-${id}.png`)));
             held.add(id);
             adb(h, ['shell', 'touch', `${remote}/release-${id}`]);
           }

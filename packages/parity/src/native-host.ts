@@ -361,11 +361,13 @@ class DragonActivity : Activity() {
     val t0 = SystemClock.elapsedRealtimeNanos()
     tree.apply(c.input(scale), bridge.measurer, scale, bridge)
     frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
-    // Settle on explicit signals: at least two frame callbacks after the tree is attached and until the root is laid out, then a
-    // compositor copy of the window.
+    // Settle on explicit signals: the root laid out and drawn, two more frame callbacks, then compositor copies of the window until
+    // two consecutive copies are equal (a copy of a frame before the tree was presented differs from the next one).
+    var drawnAt = -1
     fun settle(frames: Int) {
       Choreographer.getInstance().postFrameCallback {
-        if (frames < 2 || !tree.root.isLaidOut || tree.root.width == 0) {
+        if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty) drawnAt = frames
+        if (drawnAt < 0 || frames < drawnAt + 2) {
           if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")
           settle(frames + 1)
           return@postFrameCallback
@@ -377,6 +379,7 @@ class DragonActivity : Activity() {
         val w = tree.root.width
         val h = tree.root.height
         val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        var previous: String? = null
         // A window that has not yet produced a frame, or has no surface yet, has nothing to copy: copy again on the next frame.
         fun copy(attempt: Int) {
           if (!window.decorView.isAttachedToWindow) throw IllegalStateException("dragon host: the window is detached")
@@ -391,6 +394,12 @@ class DragonActivity : Activity() {
             bitmap.copyPixelsToBuffer(buf)
             val bytes = buf.array()
             val sha = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { String.format("%02x", it.toInt() and 0xff) }
+            if (sha != previous) {
+              if (attempt >= 6000) throw IllegalStateException("dragon host: " + id + ": no two consecutive copies were equal after " + attempt + " copies")
+              previous = sha
+              Choreographer.getInstance().postFrameCallback { copy(attempt + 1) }
+              return@OnPixelCopyFinishedListener
+            }
             val pixels = DumpPixels("PixelCopy", w.toDouble(), h.toDouble(), sha, dragonSamples(bytes, w, h, run.points[id] ?: emptyList()))
             val dump = tree.dump(c, scale, device, pixels, DumpTiming((t1 - t0) / 1e6, (SystemClock.elapsedRealtimeNanos() - t2) / 1e6))
             File(out, id + "@" + DumpJsonWriter.format(scale) + ".json").writeText(dumpJson(dump))

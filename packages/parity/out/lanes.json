@@ -644,7 +644,7 @@
           "lane": "device-pixels",
           "where": "device",
           "state": "fail",
-          "reason": "515 failures (pixel 515)",
+          "reason": "capture trust on iPad (A16): 64 mismatches in 1005 points; 515 failures (pixel 515)",
           "sets": [
             {
               "dpr": 2,
@@ -922,7 +922,7 @@
                 "dpr": 2,
                 "cases": 3,
                 "points": 1005,
-                "mismatches": 0
+                "mismatches": 64
               }
             ]
           }
@@ -1500,7 +1500,7 @@
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "c124dc037aacf6d9af29cd01f8d91323dfc36eb9473b92ee4dc10941992055f4",
+                "dumpsSha256": "9d3972159f119da46c29188173ce4e868f54ba2cb20425caee9544b19450fded",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -1648,7 +1648,7 @@
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "c124dc037aacf6d9af29cd01f8d91323dfc36eb9473b92ee4dc10941992055f4",
+                "dumpsSha256": "9d3972159f119da46c29188173ce4e868f54ba2cb20425caee9544b19450fded",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -1796,7 +1796,7 @@
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "c124dc037aacf6d9af29cd01f8d91323dfc36eb9473b92ee4dc10941992055f4",
+                "dumpsSha256": "9d3972159f119da46c29188173ce4e868f54ba2cb20425caee9544b19450fded",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -1810,7 +1810,7 @@
           "lane": "device-pixels",
           "where": "device",
           "state": "fail",
-          "reason": "1455 failures (pixel 1455)",
+          "reason": "1341 failures (pixel 1341)",
           "sets": [
             {
               "dpr": 2,
@@ -1948,15 +1948,15 @@
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "c124dc037aacf6d9af29cd01f8d91323dfc36eb9473b92ee4dc10941992055f4",
-                "failures": 337,
+                "dumpsSha256": "9d3972159f119da46c29188173ce4e868f54ba2cb20425caee9544b19450fded",
+                "failures": 223,
                 "failuresByKind": {
-                  "pixel": 337
+                  "pixel": 223
                 }
               }
             ],
             "failuresByKind": {
-              "pixel": 1455
+              "pixel": 1341
             },
             "firstFailures": [
               {
