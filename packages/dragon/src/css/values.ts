@@ -90,16 +90,19 @@ export const REFUSED_MATH_PREFIX = 'refused ';
 function mathValue(node: CssNode, name: string, property: string): CssValue {
   const text = generate(node);
   const refused = (reason: string): CssValue => ({ kind: 'other', type: `${REFUSED_MATH_PREFIX}${name}()`, text: `${text} /* ${reason} */` });
+  // css-values-4 §10.10: a top-level result is clamped to the property's range; flex-grow and flex-shrink take [0,∞].
+  const nonNegative = (v: number): number => (v < 0 ? 0 : v);
   if (property === 'flex') {
     const n = parseMath(text, { type: 'number' });
-    if (n.ok) return { kind: 'number', value: foldNumber(n.node) };
+    if (n.ok) return { kind: 'number', value: nonNegative(foldNumber(n.node)) };
   }
   const context = mathContextFor(property);
   if ('refused' in context) return refused(context.refused);
   const parsed = parseMath(text, context);
   if (!parsed.ok) return refused(parsed.reason);
   if (context.type === 'number') {
-    const value = foldNumber(parsed.node);
+    const folded = foldNumber(parsed.node);
+    const value = property === 'flex-grow' || property === 'flex-shrink' ? nonNegative(folded) : folded;
     if (property === 'order' && !Number.isInteger(value)) return refused('order takes an integer, and this calculation is not a whole number');
     return { kind: 'number', value };
   }
