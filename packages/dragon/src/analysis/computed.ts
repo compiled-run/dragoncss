@@ -3,6 +3,7 @@
 import { parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { parseColorNode, serializeColor } from '../css/color.ts';
+import { absolutizeGridText, GRID_TRACK_LONGHANDS } from '../css/grid-values.ts';
 import { properties as grammar } from '../css/grammar.generated.ts';
 import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
@@ -169,6 +170,28 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
   toPx('font-size', parentFontSize, rootFontSize ?? parentFontSize);
   const own = pxOf((props.get('font-size') as ResolvedValue).value);
   for (const p of props.keys()) if (p !== 'font-size') toPx(p, own, rootFontSize ?? own);
+}
+
+/** css-values-4 §6: the lengths inside track-list values compute to px, as computeLengths does for single lengths. */
+export function computeGridLengths(props: Map<Longhand, ResolvedValue>, em: number | null, rem: number | null): void {
+  if (em === null || rem === null) return;
+  for (const p of GRID_TRACK_LONGHANDS) {
+    const v = props.get(p) as ResolvedValue;
+    if (v.value.kind !== 'other') continue;
+    props.set(p, { ...v, value: { ...v.value, text: absolutizeGridText(v.value.text, { em, rem }) } });
+  }
+}
+
+/**
+ * css-align-3 §6.2: justify-items legacy (alone) computes to the parent's value when that is legacy with a position, and to
+ * normal otherwise.
+ */
+export function computeJustifyItems(props: Map<Longhand, ResolvedValue>, parent: ReadonlyMap<Longhand, ResolvedValue> | null): void {
+  const v = props.get('justify-items') as ResolvedValue;
+  if (v.value.kind !== 'keyword' || v.value.value !== 'legacy') return;
+  const inherited = parent === null ? null : (parent.get('justify-items') as ResolvedValue).value;
+  const legacy = inherited !== null && inherited.kind === 'keyword' && inherited.value.startsWith('legacy ');
+  props.set('justify-items', { ...v, value: legacy ? inherited : { kind: 'keyword', value: 'normal' } });
 }
 
 // css-display-3 §2.7: the root element's display is blockified (Chrome reports block for html even under display: initial).

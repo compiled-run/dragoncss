@@ -5,6 +5,7 @@ import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
+import { GRID } from './fixture-groups/grid.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
@@ -70,6 +71,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'contexts', fixtures: CONTEXTS },
   { id: 'cascade-var', fixtures: CASCADE_VAR },
   { id: 'attributes', fixtures: ATTRIBUTES },
+  { id: 'grid', fixtures: GRID },
 ];
 
 export const FIXTURES: readonly FixtureSpec[] = FIXTURE_GROUPS.flatMap((g) => g.fixtures);

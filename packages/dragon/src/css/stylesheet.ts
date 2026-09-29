@@ -7,6 +7,7 @@ import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
 import { handleAtRule } from './at-rules.ts';
+import { GRID_VALUE_PROPERTIES, parseGridValue } from './grid-values.ts';
 import { webrefLexer } from './lexer.ts';
 import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand } from './properties.ts';
@@ -213,7 +214,7 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     case 'invalid':
       diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', {
         origin: authored(valueSpan),
-        message: `"${text}" is not a valid value for ${property} (@webref/css grammar)`,
+        message: parsed.reason === undefined ? `"${text}" is not a valid value for ${property} (@webref/css grammar)` : `"${text}" is not a valid value for ${property}: ${parsed.reason}`,
         manual: `Use a value that matches the ${property} grammar.`,
       }));
       return null;
@@ -291,7 +292,8 @@ function parseCustomDeclaration(name: string, valueNode: CssNode, span: Span, va
 /** How a value parses for a longhand or shorthand; the parse driver and var() substitution report the failures differently. */
 export type ParsedValue =
   | { readonly kind: 'ok'; readonly longhands: readonly LonghandValue[] }
-  | { readonly kind: 'invalid' }
+  /** reason: why a grammar-valid value is invalid (a rule Chrome's parser applies beyond the grammar); absent for a grammar mismatch. */
+  | { readonly kind: 'invalid'; readonly reason?: string }
   | { readonly kind: 'token'; readonly token: CssNode; readonly reason: string }
   | { readonly kind: 'refused'; readonly diagnostic: Diagnostic }
   | { readonly kind: 'multi' };
@@ -303,6 +305,8 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
     const match = webrefLexer().matchProperty(property, valueNode);
     if (match.error !== null) return { kind: 'invalid' };
   }
+  // css-grid-2 and justify-*: multi-token values, with the checks Chrome makes beyond the grammar (grid-values.ts).
+  if (!wide && GRID_VALUE_PROPERTIES.has(property)) return parseGridValue(property, tokens, base);
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
   const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
   const values: CssValue[] = baseline === null ? [] : [baseline];
