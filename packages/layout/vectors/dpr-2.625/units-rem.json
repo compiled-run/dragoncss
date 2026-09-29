@@ -114,7 +114,10 @@
     "columnGap": {
      "kind": "normal"
     },
-    "textAlign": "start"
+    "textAlign": "start",
+    "aspectRatio": {
+     "kind": "auto"
+    }
    },
    "children": [
     {
@@ -224,7 +227,10 @@
       "columnGap": {
        "kind": "normal"
       },
-      "textAlign": "start"
+      "textAlign": "start",
+      "aspectRatio": {
+       "kind": "auto"
+      }
      },
      "children": [
       {
@@ -336,7 +342,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": []
       },
@@ -448,7 +457,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -579,7 +591,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "center"
+        "textAlign": "center",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -707,7 +722,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -836,7 +854,10 @@
          "kind": "px",
          "value": 16
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -948,7 +969,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": [
           {
@@ -1076,7 +1100,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         }
@@ -1192,7 +1219,10 @@
          "kind": "px",
          "value": 4
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -1303,7 +1333,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         },
@@ -1415,7 +1448,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": [
           {
