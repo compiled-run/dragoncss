@@ -52,7 +52,15 @@ private func str(_ v: Any?, _ what: String) throws -> String {
     return s
 }
 
-private func int(_ v: Any?, _ what: String) throws -> Int64 { try num(v, what).int64Value }
+/// A JSON integer. A fractional number (65.5), a boolean or a value outside Int64 is a bad transcript: int64Value
+/// would truncate it to a different valid integer.
+private func int(_ v: Any?, _ what: String) throws -> Int64 {
+    let n = try num(v, what)
+    if CFGetTypeID(n) == CFBooleanGetTypeID() { throw ReplayError.badTranscript("\(what) \(n)") }
+    if !CFNumberIsFloatType(n) { return n.int64Value }
+    guard let i = Int64(exactly: n.doubleValue) else { throw ReplayError.badTranscript("\(what) \(n)") }
+    return i
+}
 
 /// A transcript index into `items`: out of range (negative included) is a bad transcript, not a trap.
 private func at<T>(_ items: [T], _ v: Any?, _ what: String) throws -> T {

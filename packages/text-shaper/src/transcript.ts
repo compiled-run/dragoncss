@@ -303,16 +303,18 @@ export function withoutFeatures(backend: ReplayBackend): ReplayBackend {
   return { ...backend, shape: (font, text, c) => backend.shape(font, text, { ...c, features: [] }) };
 }
 
-export type TranscriptPlant = 'off-by-one' | 'bad-index';
-export const TRANSCRIPT_PLANTS: readonly TranscriptPlant[] = ['off-by-one', 'bad-index'];
+export type TranscriptPlant = 'off-by-one' | 'bad-index' | 'fractional-index';
+export const TRANSCRIPT_PLANTS: readonly TranscriptPlant[] = ['off-by-one', 'bad-index', 'fractional-index'];
 
 /**
  * Planted faults. off-by-one: one expected integer (the first shape call's first x advance) is off by one; the replay
  * must report that mismatch. bad-index: the first call names a font one past the last; the replay must refuse the
- * transcript as bad (an error, not a crash or a silent shape through a wrong handle).
+ * transcript as bad (an error, not a crash or a silent shape through a wrong handle). fractional-index: the first
+ * call names font 0.5; the replay must refuse it rather than truncate it to font 0 and replay cleanly.
  */
 export function plantTranscript(t: Transcript, plant: TranscriptPlant): Transcript {
   if (plant === 'bad-index') return { ...t, calls: t.calls.map((x, j) => (j === 0 ? { ...x, font: t.fonts.length } : x)) };
+  if (plant === 'fractional-index') return { ...t, calls: t.calls.map((x, j) => (j === 0 ? { ...x, font: x.font + 0.5 } : x)) };
   if (plant !== 'off-by-one') throw new Error(`unknown plant ${String(plant)}`);
   const i = t.calls.findIndex((c) => c.op === 'shape' && c.glyphs.length >= GLYPH_STRIDE);
   if (i < 0) throw new Error('plant off-by-one: no shape call with a glyph');

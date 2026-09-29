@@ -6,7 +6,8 @@
 //   --kotlin   replays it through the JNI dylib (zig build host-jni) from Kotlin on the JVM.
 //   --plant off-by-one   (with --swift, --kotlin or --check) changes one expected integer; the replay must exit 1.
 //   --plant bad-index    points the first call at a font past the last; the replay must exit 1 with a bad-transcript error.
-// Usage: node packages/text-shaper/scripts/replay.ts --record | --check | --swift | --kotlin [--plant off-by-one | bad-index]
+//   --plant fractional-index   gives the first call a fractional font index; the replay must refuse it, not truncate it.
+// Usage: node packages/text-shaper/scripts/replay.ts --record | --check | --swift | --kotlin [--plant off-by-one | bad-index | fractional-index]
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
@@ -160,7 +161,7 @@ function main(argv: readonly string[]): number {
     process.stdout.write(r.out);
     return r.status;
   }
-  console.error('usage: replay.ts --record | --check | --swift | --kotlin [--plant off-by-one | bad-index]');
+  console.error('usage: replay.ts --record | --check | --swift | --kotlin [--plant off-by-one | bad-index | fractional-index]');
   return 2;
 }
 

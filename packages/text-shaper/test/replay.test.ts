@@ -70,6 +70,13 @@ describe('shape transcript of the TXT1-0 gate', () => {
     );
   });
 
+  it('planted fractional index: the replay refuses it instead of truncating to a valid font', () => {
+    const font = (transcript.calls[0] as (typeof transcript.calls)[number]).font;
+    expect(() => replayTranscript(plantTranscript(transcript, 'fractional-index'), wasmBackend(DragonHB.load()), readFace)).toThrow(
+      `bad transcript: call.font ${font + 0.5} of ${transcript.fonts.length}`,
+    );
+  });
+
   it('refuses out-of-range face, text, range, codepoint and glyph values', () => {
     const replay = (t: typeof transcript) => () => replayTranscript(t, wasmBackend(DragonHB.load()), readFace);
     const si = transcript.calls.findIndex((c) => c.op === 'shape');
@@ -82,6 +89,7 @@ describe('shape transcript of the TXT1-0 gate', () => {
     expect(replay(withCall(si, { start: -1 }))).toThrow('bad transcript: call.start -1');
     expect(replay(withCall(si, { end: 1e6 }))).toThrow('bad transcript: call.start');
     expect(replay(withCall(ni, { codepoint: -1 }))).toThrow('bad transcript: codepoint -1');
+    expect(replay(withCall(ni, { codepoint: 65.5 }))).toThrow('bad transcript: codepoint 65.5');
     expect(replay(withCall(ai, { glyph: 2 ** 32 }))).toThrow(`bad transcript: glyph ${2 ** 32}`);
   });
 
