@@ -1,7 +1,7 @@
 // The native targets and their lanes (docs/research/native-strategy.md 3.6). Every case list is derived from the constants: the
 // layout cases, SHARED_DPRS and EXTRA_DPRS, and the committed corpus manifests. Tolerances, sample rules, dump faults and the
 // layout projection are imported, so no target can hold a weaker copy.
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { nativeLayoutProjection } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
 import { DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
@@ -44,7 +44,7 @@ export type TargetConfig = {
 };
 
 type P1Manifest = { readonly unitsPerFunction: number; readonly unitsFunctions: readonly string[]; readonly mutatedVectors: number; readonly generatedTrees: number; readonly cases: Readonly<Record<string, number>>; readonly digest: string };
-type ExtendedManifest = { readonly dprSets: readonly number[]; readonly unitsPerFunction: number; readonly unitsFunctions: readonly string[]; readonly snapGenerated: number; readonly snapVectors: number; readonly cases: Readonly<Record<string, number>>; readonly digest: string };
+type ExtendedManifest = { readonly dprSets: readonly number[]; readonly unitsPerFunction: number; readonly unitsFunctions: readonly string[]; readonly calcUnitsPerFunction: number; readonly calcUnitsFunctions: readonly string[]; readonly engineCalc: number; readonly snapGenerated: number; readonly snapVectors: number; readonly cases: Readonly<Record<string, number>>; readonly digest: string };
 
 const readJson = <T>(path: string): T => JSON.parse(readFileSync(repoPath(path), 'utf8')) as T;
 export const p1Manifest = (): P1Manifest => readJson<P1Manifest>('packages/translate/corpus.json');
@@ -82,6 +82,11 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'extended', suite: 'engine-dpr', cases: layoutCaseIds().length * x.dprSets.length },
     { corpus: 'extended', suite: 'units-m2', cases: x.unitsPerFunction * x.unitsFunctions.length },
     { corpus: 'extended', suite: 'snap', cases: x.snapVectors + x.snapGenerated },
+    // V1 value model (notes/T006): the values cases' snap vectors, the calc engine goldens, generated calc trees and calc units.
+    { corpus: 'extended', suite: 'snap-values', cases: layoutCaseIds().filter((id) => id.startsWith('values-')).length * x.dprSets.length },
+    { corpus: 'extended', suite: 'calc-goldens', cases: readdirSync(repoPath('packages/layout/vectors/calc')).filter((f) => f.endsWith('.json')).length },
+    { corpus: 'extended', suite: 'engine-calc', cases: x.engineCalc },
+    { corpus: 'extended', suite: 'units-calc', cases: x.calcUnitsPerFunction * x.calcUnitsFunctions.length },
   ];
 }
 

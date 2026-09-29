@@ -49,10 +49,8 @@ describe('native targets', () => {
     const p1 = p1Manifest();
     const x = extendedManifest();
     expect(Object.fromEntries(suites.filter((s) => s.corpus === 'p1').map((s) => [s.suite, s.cases]))).toEqual(p1.cases);
-    // Every declared extended suite agrees with the lock; the lock's other suites are exactly the V1 value-model suites (notes/T006).
-    const declared = Object.fromEntries(suites.filter((s) => s.corpus === 'extended').map((s) => [s.suite, s.cases]));
-    expect(declared).toEqual(Object.fromEntries(Object.entries(x.cases).filter(([k]) => k in declared)));
-    expect(Object.keys(x.cases).filter((k) => !(k in declared))).toEqual(['snap-values', 'calc-goldens', 'engine-calc', 'units-calc']);
+    // Every suite in the lock is declared with the lock's count, including the V1 value-model suites (notes/T006).
+    expect(Object.fromEntries(suites.filter((s) => s.corpus === 'extended').map((s) => [s.suite, s.cases]))).toEqual(x.cases);
     expect(suites.find((s) => s.suite === 'vectors')?.cases).toBe(m1CaseIds().length);
   });
   it('device lanes: the shared DPRs on both, 2.625 only on android and only through EXTRA_DPRS', () => {
@@ -163,6 +161,10 @@ describe('lane states', () => {
     ].join('\n');
     expect(judgeHost(ios, parseNativeOutput(text(null, p1)))).toMatchObject({ state: 'pass', reason: null, toolchain: 'Swift version 6.4' });
     expect(judgeHost(ios, parseNativeOutput(text('snap', p1)))).toMatchObject({ state: 'fail', reason: expect.stringContaining('extended/snap -/-, declared') });
+    // The V1 suites are parsed and judged too: a dropped V1 suite line fails the host lane.
+    for (const v1 of ['snap-values', 'calc-goldens', 'engine-calc', 'units-calc']) {
+      expect(judgeHost(ios, parseNativeOutput(text(v1, p1))), v1).toMatchObject({ state: 'fail', reason: expect.stringContaining(`extended/${v1} -/-, declared`) });
+    }
     expect(judgeHost(ios, parseNativeOutput(text(null, '0'.repeat(64))))).toMatchObject({ state: 'fail', reason: expect.stringContaining('P1 corpus digest') });
     expect(judgeHost(ios, parseNativeOutput('native:swift: generated files are stale'))).toMatchObject({ state: 'fail' });
   });
