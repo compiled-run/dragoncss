@@ -155,6 +155,18 @@ This decision uses the spike's measurements in docs/research/text-spike/: 620 ca
 - **Proof:** Chrome is captured with the scaled root size injected (`:root { font-size: <scaled>px !important }`) from a pinned table of iOS content-size categories and Android font scales. The native hosts report their root size in the device dump. See docs/research/engine-value-model-plan.md §3.
 - **Until the engine value model (V2) lands:** native support rows for sizes that depend on `rem` are `caveat` at any text scale other than 1.
 
+## Vertical font metrics rounding (T082 research)
+
+- **One traced rule replaces both earlier rules** (half-up from T005, half-down in the engine). Core Text quantises each ascent, descent and line gap to a 16.16 fraction of the em: `(round(u*65536/upem)*upem/65536)*(size/upem)`. Skia keeps that value as a float, and Blink rounds it with `floorf(x+0.5f)`. This predicts all 129 Chrome rows at DPR 1, 2, 2.625 and 3, and every Core Text value across 8 faces. Half-up missed 79 rows and half-down missed 56. For Ahem the rule equals today's engine up to 662.5 px, so no existing output changes. TXT1a-1 adopts it.
+
+## Real-font text in the engine (PM, T056 research)
+
+- **Shaping interface.** The engine uses the bundled HarfBuzz shim through an integers-only `GlyphShaper` interface: WASM for the TypeScript engine, the C ABI for Swift, JNI for Kotlin. All float and layout-unit arithmetic stays in the translated engine.
+- **Shared vectors.** Real-font vectors carry shape transcripts that the Swift and Kotlin harnesses replay. Shim equality is proven separately on the host and on device.
+- **Scope.** Latin only, using a pinned Unicode 16.0.0 script table. Italic advances need Chrome cases. Synthetic bold and oblique are refused. Native refuses variable faces until TXT1b.
+- **Text pixels.** Ink bounds must match within 1 device px. A coverage threshold is measured on a separate calibration set and written into the test; widening it later counts as loosening.
+- **Order.** P5, V1 Phase B, V2a, INL1a, TXT1a-1, INL2, TXT1a-2, INL1b.
+
 ## Paint (PM, T046 research)
 
 - **Dragon draws:** border-radius, box-shadow, outline and gradients. The native APIs cannot match Chrome: they allow only one radius and clip at the outer edge, CALayer shadows have no spread or inset, and native gradients interpolate unpremultiplied.
@@ -162,6 +174,9 @@ This decision uses the spike's measurements in docs/research/text-spike/: 620 ca
 - **Scrolling:** native scroll views sized by the engine. `position: fixed` is counter-offset in the same frame.
 - **The emitter split (EMS) comes first.** It lands after P5 and V1 Phase B and changes no output, so the paint packages can run in parallel in separate files.
 - **Allowances:** only the shadow-blur and gradient pixel checks may carry a measured allowance. It must be at most 2 channel levels, kept in its own file and recorded here, and any row that depends on it is caveat.
+- **Chrome rasterises in software with Skia (T085).** Skia is pinned at 2ab8add5. The lanes check this through CDP SystemInfo as a precondition.
+  - Dragon ports Skia's blur (the analytic BlurRect and the triple-box SkMaskBlurFilter) and the 8x8 gradient dither exactly, instead of using allowances.
+  - Rounded-corner antialiasing becomes an exact port of Skia's analytic AA (SKIA-AA). Until then, arc pixels fall under the existing 1-device-px edge rule, radius rows stay caveat, and no allowance is added.
 - **P6 is split:** P6a fix and promote, P6b accessibility, P6c selection, P6d editing, P6e keyboard focus.
 
 ## Runtime styles and animation (PM, T047 research)
@@ -231,7 +246,7 @@ This decision uses the spike's measurements in docs/research/text-spike/: 620 ca
 ## Selectors and scrollbars (owner, 2026-09-28)
 
 - **Provable selectors are allowed.** Any selector, including siblings, `:nth-*`, `:not`, `:is`, `:has` and attribute selectors, compiles when the compiler can prove its match on the fixed element tree at build time. Selectors that depend on state follow the existing finite-state rules. This extends the authoring rule in "Direction".
-- **Overlay scrollbars.** Chrome is captured with overlay scrollbars, which take no layout space, so layout matches iOS and Android. Custom `::-webkit-scrollbar` styling that Chrome honours is drawn by Dragon on native. Styling that Chrome ignores is ignored too.
+- **Scrollbars (corrected by T070 research, 2026-09-28).** Chrome is captured with `--hide-scrollbars`, which creates no scrollbars at all: no gutter and no thumb (Blink paint_layer_scrollable_area.cc:1773-1781). Layout therefore matches iOS and Android. Device lanes compare frames at rest, where no scrollbar is shown. While scrolling, the platform's own scroll indicators appear as native feel. `::-webkit-scrollbar` is ignored wherever Chrome ignores it, including whenever scrollbar-width or scrollbar-color is set (computed_style.cc:2508-2511); the music player's rules are all ignored for that reason. Dragon-drawn honoured scrollbar styling (OVFL-S) is off the checkpoint 3 path.
 
 ## Pitfalls handled by design (docs/research/pitfalls.md §6)
 

@@ -88,6 +88,7 @@ Some things still need the owner, because they leave the repo or cost money: pus
 
 - **Device leases are per platform.** The `ios` lease covers simulators and the `android` lease covers emulators. One task may hold both.
 - **Pinned tests.** A Worker may retarget an existing test that pins the behaviour its package is meant to change, with no stop. The test must keep its intent, for example a reject fixture moved to a value that is still refused. The Worker lists every retarget in its receipt. Loosening a check is still a stop.
+- **Remotes.** The owner added an `origin` remote (compiled-run/dragoncss). Verify steps that require `git remote -v` to be empty now mean: never push, fetch or pull. The remote may exist.
 - **Test timeouts under load are not verify failures.** A test that times out while the machine is saturated, then passes on rerun, does not count toward "verification fails twice". The receipt records the timeouts.
 - **Notes are never committed on branches.** They are written only in the main checkout.
 
