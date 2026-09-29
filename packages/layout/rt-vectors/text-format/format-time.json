@@ -4,6 +4,7 @@
   "repo": "markless",
   "file": "demos/music-player-ssr/src/youtube-controller.ts",
   "sha256": "8fd07911a5d78c0caab2ce2c8ca3155815034b79fb15f2056381aff6e3247e6f",
+  "functionSha256": "6fc2c8b4592c4c9947d83019ae35b31f704390ce70df8581b5578d8c47f3efb8",
   "function": "function formatTime(time: number): string {\n\tconst minutes = Math.floor(time / 60);\n\tconst seconds = String(Math.floor(time % 60)).padStart(2, '0');\n\treturn `${minutes}:${seconds}`;\n}"
  },
  "template": "{m}:{s:02}",
