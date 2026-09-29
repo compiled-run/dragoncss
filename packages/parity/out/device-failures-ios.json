@@ -1961,6 +1961,70 @@
  },
  {
   "lane": "device-pixels",
+  "case": "css-wide-keywords",
+  "dpr": 3,
+  "node": "border:p:right",
+  "kind": "pixel",
+  "detail": "border:p:right at 624,120: native [0,170,0,255], Chrome [254,220,186,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "css-wide-keywords",
+  "dpr": 3,
+  "node": "border:p:left",
+  "kind": "pixel",
+  "detail": "border:p:left at 17,120: native [0,170,0,255], Chrome [254,220,186,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#1",
+  "dpr": 3,
+  "node": "interior:label",
+  "kind": "pixel",
+  "detail": "interior:label at 156,57: native [240,240,240,255], Chrome [208,208,208,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#1",
+  "dpr": 3,
+  "node": "edge:label:top",
+  "kind": "pixel",
+  "detail": "edge:label:top: Chrome shows an edge 5.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#3",
+  "dpr": 3,
+  "node": "interior:label",
+  "kind": "pixel",
+  "detail": "interior:label at 156,57: native [17,17,17,255], Chrome [78,78,78,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#3",
+  "dpr": 3,
+  "node": "edge:label:top",
+  "kind": "pixel",
+  "detail": "edge:label:top: Chrome shows an edge 5.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#1-rtl",
+  "dpr": 3,
+  "node": "edge:label:top",
+  "kind": "pixel",
+  "detail": "edge:label:top: Chrome shows an edge 5.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#3-rtl",
+  "dpr": 3,
+  "node": "edge:label:top",
+  "kind": "pixel",
+  "detail": "edge:label:top: Chrome shows an edge 5.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
   "case": "text-ahem-single-line",
   "dpr": 2,
   "node": "edge:t4:bottom",
@@ -4118,5 +4182,117 @@
   "node": "edge:c2:bottom",
   "kind": "pixel",
   "detail": "edge:c2:bottom: Chrome shows an edge 3.038 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "css-wide-keywords",
+  "dpr": 2,
+  "node": "border:p:right",
+  "kind": "pixel",
+  "detail": "border:p:right at 416,81: native [0,170,0,255], Chrome [254,220,186,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "css-wide-keywords",
+  "dpr": 2,
+  "node": "border:p:left",
+  "kind": "pixel",
+  "detail": "border:p:left at 11,81: native [0,170,0,255], Chrome [254,220,186,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "css-wide-keywords",
+  "dpr": 2,
+  "node": "edge:a:right",
+  "kind": "pixel",
+  "detail": "edge:a:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "css-wide-keywords",
+  "dpr": 2,
+  "node": "edge:a:left",
+  "kind": "pixel",
+  "detail": "edge:a:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#1",
+  "dpr": 2,
+  "node": "interior:app",
+  "kind": "pixel",
+  "detail": "interior:app at 104,27: native [240,240,240,255], Chrome [236,236,236,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#1",
+  "dpr": 2,
+  "node": "interior:label",
+  "kind": "pixel",
+  "detail": "interior:label at 104,38: native [240,240,240,255], Chrome [218,218,218,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#1",
+  "dpr": 2,
+  "node": "edge:label:top",
+  "kind": "pixel",
+  "detail": "edge:label:top: Chrome shows an edge 4.818 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#1",
+  "dpr": 2,
+  "node": "edge:label:bottom",
+  "kind": "pixel",
+  "detail": "edge:label:bottom: Chrome shows an edge 5.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#3",
+  "dpr": 2,
+  "node": "interior:app",
+  "kind": "pixel",
+  "detail": "interior:app at 104,27: native [17,17,17,255], Chrome [24,24,24,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#3",
+  "dpr": 2,
+  "node": "interior:label",
+  "kind": "pixel",
+  "detail": "interior:label at 104,38: native [17,17,17,255], Chrome [58,58,58,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#3",
+  "dpr": 2,
+  "node": "edge:label:top",
+  "kind": "pixel",
+  "detail": "edge:label:top: Chrome shows an edge 4.829 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#3",
+  "dpr": 2,
+  "node": "edge:label:bottom",
+  "kind": "pixel",
+  "detail": "edge:label:bottom: Chrome shows an edge 5.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#1-rtl",
+  "dpr": 2,
+  "node": "interior:app",
+  "kind": "pixel",
+  "detail": "interior:app at 696,27: native [240,240,240,255], Chrome [197,197,197,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "tree-var-state#3-rtl",
+  "dpr": 2,
+  "node": "interior:app",
+  "kind": "pixel",
+  "detail": "interior:app at 696,27: native [17,17,17,255], Chrome [97,97,97,255] (channel delta limit 0)"
  }
 ]
