@@ -6,6 +6,8 @@
 //     traced, half-up and half-down rules disagree, two observables: the Range rect of the text against a 0x0 inline-block baseline
 //     marker, and T005's line box (block height and marker offset, line-height: normal).
 // (3) The outcome (a) to (d) of R5, from which rule predicts every row of both observables.
+// (4) R2's Ahem premise: nowrap widths of 'X' x n (n = 1 to 120) in Ahem at whole and fractional sizes, DPR 1, which the engine's
+//     HarfBuzz path (packages/layout/test/shaping-gate.test.ts) and the Ahem measurer are compared against.
 // Run with: node --conditions=dragon-internal scripts/capture-metric-rounding.ts [--check]
 // --check captures again into a temporary directory and requires the committed files to be byte-identical.
 import { execFileSync } from 'node:child_process';
@@ -176,6 +178,41 @@ async function captureChrome(faces: readonly Face[], rows: readonly Row[]): Prom
   return out;
 }
 
+// ------------------------------------------------------------------------------------------------------------ (4) Ahem advances
+const AHEM_SIZES = [7.77, 9.99, 10.62, 10.625, 10.629, 11.1111, 12.5, 13.37, 16, 17.3, 17.5, 23.3, 33.33, 37];
+const AHEM_MAX_GLYPHS = 120;
+
+async function captureAhemAdvances(): Promise<number[][]> {
+  const browser = await launchChrome(1);
+  try {
+    const context = await browser.newContext({ viewport: { width: 800, height: 600 }, deviceScaleFactor: 1 });
+    const page = await context.newPage();
+    const uri = `data:font/ttf;base64,${readFileSync(repoPath('vendor/fonts/Ahem.ttf')).toString('base64')}`;
+    await page.setContent(`<!DOCTYPE html><html><head><style>@font-face{font-family:A;src:url("${uri}") format("truetype")}body{margin:0;font-family:A}span{white-space:nowrap}</style></head><body></body></html>`);
+    const rows = await page.evaluate(async ([sizes, max]) => {
+      await document.fonts.load('16px A');
+      const out: number[][] = [];
+      for (const size of sizes as number[]) {
+        const row: number[] = [];
+        for (let n = 1; n <= (max as number); n++) {
+          const span = document.createElement('span');
+          span.style.fontSize = `${size}px`;
+          span.textContent = 'X'.repeat(n);
+          document.body.appendChild(span);
+          row.push(span.getBoundingClientRect().width);
+          span.remove();
+        }
+        out.push(row);
+      }
+      return out;
+    }, [AHEM_SIZES, AHEM_MAX_GLYPHS] as const);
+    await context.close();
+    return rows.map((row) => row.map((w) => Math.round(w * 64)));
+  } finally {
+    await browser.close();
+  }
+}
+
 // ------------------------------------------------------------------------------------------------------------ (3) outcome
 async function captureAll(dir: string): Promise<string> {
   const faces = FACE_FILES.map(loadFace);
@@ -251,6 +288,14 @@ async function captureAll(dir: string): Promise<string> {
     observablesDisagree,
     exactHalvesByFace: Object.fromEntries([...perFace].map(([f, t]) => [f, t])),
     halfDirectionByFace: halves,
+  });
+  const ahem = await captureAhemAdvances();
+  write('ahem-advances.json', {
+    chrome: CHROME_VERSION, playwright: PLAYWRIGHT_VERSION, platform: hostPlatform(), launches: [{ dpr: 1, flags: chromeArgsAt(1) }],
+    font: { file: 'Ahem.ttf', sha256: fonts['Ahem.ttf'] },
+    text: "'X' repeated n times, n = 1 to 120, in a white-space: nowrap span",
+    sizes: AHEM_SIZES,
+    widthsLayoutUnits: Object.fromEntries(AHEM_SIZES.map((size, i) => [String(size), ahem[i]])),
   });
   return outcome;
 }
