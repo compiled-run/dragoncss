@@ -64,6 +64,9 @@ describe('Chrome breaks', () => {
   it('the DOM text aligns with the collapsed engine text: a white-space run maps to its first unit, collapsed units to nothing', () => {
     expect(alignUnits('\n   XX   XX\n XX  ', 'XX XX XX')).toEqual([-1, -1, -1, -1, 0, 1, 2, -1, -1, 3, 4, 5, -1, 6, 7, -1, -1]);
     expect(alignUnits('XX YY', 'XX ZZ')).toBeNull();
+    // Every DOM unit must be consumed: a truncated engine text is not an alignment; collapsed trailing white space is.
+    expect(alignUnits('aX', 'a')).toBeNull();
+    expect(alignUnits('XX \n ', 'XX')).toEqual([0, 1, -1, -1, -1]);
   });
   it("a hanging space ends its line but never starts the next; U+200B is shown, so it starts a line", () => {
     const t: ChromeBreakText = { id: 'a:text0', data: 'XX XX XX', lines: 3, units: [0, 0, 0, 1, 1, 1, 2, 2], blank: [2, 5] };

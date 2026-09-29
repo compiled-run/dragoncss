@@ -2,16 +2,18 @@
 // exactly the references passes every device check; each DUMP_FAULTS entry planted into it is caught by the check it names, with
 // its failure kind and lane; (a) and (d) split into node and line parts without losing a problem; and the capture-trust probe
 // compares in-app samples with an OS screenshot at the root's offset.
-import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CaseReference, DeviceCheckLane, FailureKind } from '../src/device-lanes.ts';
-import { captureTrust, caseReference, dumpFile, evaluateCase, splitByLines } from '../src/device-lanes.ts';
+import { captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, readDump, splitByLines, trustFailuresOf } from '../src/device-lanes.ts';
 import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
 import { checkAgainstChrome, DUMP_FAULTS, FAULT_CHECK, plantDumpFault, readSamples } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
 import type { NativeCase } from '../src/native-host.ts';
-import { nativeCases, nativeOut, relabelledReferenceDumps } from '../src/native-host.ts';
+import { nativeCases, nativeOut, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
+import { repoPath } from '../src/paths.ts';
 import { expectedPixelsPath, rasterSize } from '../src/pixel-reference.ts';
 import type { NativeTarget } from '../src/targets.ts';
 
@@ -66,6 +68,49 @@ describe.each([['ios', 3], ['android', 2.625], ['android', 2]] as const)('device
       expect(got.some((f) => f.lane === lane && f.kind === kind), `${fault} on ${n.case.id}: ${JSON.stringify(got.slice(0, 3))}`).toBe(true);
     }
     expect(applicable).toBeGreaterThan(0);
+  });
+});
+
+describe('dump provenance and unreadable files', () => {
+  const n = cases.find((c) => c.case.id === 'text-wrap-spaces') as NativeCase;
+  const ref = caseReference('ios', n, 3);
+  const d = perfectDump('ios', 3, n, ref, relabelledReferenceDumps('ios', 3));
+  it('a dump from another compile (a stale app) fails every lane as compiler-digest', () => {
+    expect(evaluateCase('ios', n, 3, d, ref).failures).toEqual([]);
+    const stale = { ...d, case: { ...d.case, compilerDigest: `${d.case.compilerDigest}0` } };
+    expect(evaluateCase('ios', n, 3, stale, ref).failures.filter((f) => f.kind === 'compiler-digest').map((f) => f.lane)).toEqual(['device-frames', 'device-applied', 'device-lines', 'device-pixels']);
+  });
+  it('a truncated dump is dump-invalid for its case and the set goes on; capture trust names it', () => {
+    const dir = join(nativeOut('ios'), 'test-unreadable');
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
+    const text = JSON.stringify(d);
+    writeFileSync(dumpFile(dir, n.case.id, 3), text.slice(0, text.length / 2));
+    const other = cases.find((c) => c.case.id === 'color-border-sides') as NativeCase;
+    const otherRef = caseReference('ios', other, 3);
+    writeFileSync(dumpFile(dir, other.case.id, 3), JSON.stringify(perfectDump('ios', 3, other, otherRef, relabelledReferenceDumps('ios', 3))));
+    expect(readDump(dumpFile(dir, n.case.id, 3)).kind).toBe('unparseable');
+    const record = { name: 'iPhone 17', target: 'ios' as const, model: 'x', os: 'x', build: 'x', profileScale: 3, appScale: 3, windowPx: [1206, 2622] as const, stagePx: [1206, 2334] as const, rootOriginPx: [0, 186] as const, textScale: 'UICTContentSizeCategoryL' };
+    const set = evaluateSet('ios', 3, dir, record, [n, other]);
+    expect(set.dumps).toBe(1);
+    expect(set.failures.filter((f) => f.case === n.case.id).map((f) => f.kind)).toEqual(['dump-invalid', 'dump-invalid', 'dump-invalid', 'dump-invalid']);
+    expect(set.failures.filter((f) => f.case === other.case.id)).toEqual([]);
+    copyFileSync(expectedPixelsPath(n.case.id, 3), join(dir, `screen-${n.case.id}.png`));
+    expect(captureTrust(dir, [n.case.id], 3, [0, 0])[0]?.mismatches[0]).toMatch(/^the dump is not JSON/);
+    rmSync(dir, { recursive: true, force: true });
+  });
+  it('capture-trust mismatches become device-pixels failures of kind capture-trust', () => {
+    expect(trustFailuresOf([{ case: 'a', points: 3, mismatches: ['m1', 'm2'] }, { case: 'b', points: 3, mismatches: [] }], 2, 'iPad (A16)')).toEqual([
+      { lane: 'device-pixels', case: 'a', dpr: 2, node: null, kind: 'capture-trust', detail: 'iPad (A16): m1' },
+      { lane: 'device-pixels', case: 'a', dpr: 2, node: null, kind: 'capture-trust', detail: 'iPad (A16): m2' },
+    ]);
+  });
+});
+
+describe('build reuse', () => {
+  it('the reuse stamp covers the bundled Ahem.ttf besides the source tree', () => {
+    const ahem = createHash('sha256').update(readFileSync(repoPath('vendor/fonts/Ahem.ttf'))).digest('hex');
+    expect(reuseStamp('abc')).toBe(`abc ahem ${ahem}`);
   });
 });
 

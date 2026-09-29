@@ -225,7 +225,13 @@ export async function bootAvd(spec: AvdDeviceSpec, provision = true): Promise<De
       if (attempt === 2) throw new Error(`the ${spec.name} emulator failed to boot twice (tooling fault): ${e instanceof Error ? e.message : String(e)}`);
     }
   }
-  await prepareAvd(h);
+  try {
+    await prepareAvd(h);
+  } catch (e) {
+    // This runner started it, so it stops it rather than leave the port taken.
+    await release({ ...h, startedHere: true });
+    throw e;
+  }
   return { ...h, startedHere: true };
 }
 

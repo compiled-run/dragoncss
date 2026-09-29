@@ -204,14 +204,19 @@ describe('committed out/lanes.json', () => {
       expect(vectors?.run?.digests).toEqual(host?.run?.digests);
       expect(vectors?.run?.suites).toEqual(host?.run?.suites);
       for (const l of t.lanes.filter((x) => x.where === 'device' && x.lane !== 'layout-vectors-device')) {
-        expect(['pass', 'fail'], `${t.target} ${l.lane}`).toContain(l.state);
+        // Only device-pixels may be committed failing (P6 fixes paint); frames, applied and lines must pass.
+        if (l.lane === 'device-pixels') expect(['pass', 'fail'], `${t.target} ${l.lane}`).toContain(l.state);
+        else expect(l.state, `${t.target} ${l.lane}`).toBe('pass');
         expect([...(l.device?.sets.map((s) => s.dpr) ?? [])].sort(), `${t.target} ${l.lane}`).toEqual(l.sets.map((s) => s.dpr).sort());
         for (const s of l.device?.sets ?? []) {
           expect([s.device.profileScale, s.device.appScale, s.dumps], `${t.target} ${l.lane} ${s.dpr}`).toEqual([s.dpr, s.dpr, s.cases]);
           expect(s.cases).toBe(ids.length);
           expect(s.compared.a > 0 && s.compared.b > 0 && s.compared.c > 0 && s.compared.d > 0 && s.compared.breaks > 0).toBe(true);
         }
-        if (l.lane === 'device-pixels') expect(l.device?.trust?.map((x) => [x.dpr, x.mismatches])).toEqual(l.device?.sets.map((s) => [s.dpr, 0]));
+        if (l.lane === 'device-pixels') {
+          expect(l.device?.trust?.map((x) => [x.dpr, x.mismatches])).toEqual(l.device?.sets.map((s) => [s.dpr, 0]));
+          for (const x of l.device?.trust ?? []) expect(x.points > 0 && x.cases > 0, `${t.target} capture trust on ${x.device} compared no points`).toBe(true);
+        }
       }
       expect(t.dumpFaults?.map((r) => r.dpr).sort()).toEqual([...t.dprs].sort());
       for (const r of t.dumpFaults ?? []) {

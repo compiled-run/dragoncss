@@ -219,7 +219,9 @@ export function alignUnits(dom: string, engine: string): number[] | null {
     if (d >= dom.length || dom[d] !== ch) return null;
     map[d++] = e;
   }
-  return map;
+  // Only white space the collapse removed may follow the last engine character.
+  while (d < dom.length && WHITE.test(dom[d] as string)) d++;
+  return d === dom.length ? map : null;
 }
 
 /**

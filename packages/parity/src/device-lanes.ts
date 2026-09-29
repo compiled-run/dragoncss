@@ -36,7 +36,7 @@ export type DeviceCheckLane = (typeof DEVICE_CHECK_LANES)[number];
 
 export type FailureKind =
   | 'dump-missing' | 'dump-invalid' | 'device-scale' | 'frame-chrome' | 'frame-engine' | 'applied' | 'native-class' | 'expected-digest'
-  | 'line-chrome' | 'line-engine' | typeof BREAK_MISMATCH | 'pixel' | 'raster-size' | 'capture-trust' | 'device-record';
+  | 'line-chrome' | 'line-engine' | typeof BREAK_MISMATCH | 'pixel' | 'raster-size' | 'capture-trust' | 'device-record' | 'compiler-digest';
 
 /** One failure, named: lane, case, DPR, node (or sample rule), kind and the values. */
 export type LaneFailure = { readonly lane: DeviceCheckLane; readonly case: string; readonly dpr: number; readonly node: string | null; readonly kind: FailureKind; readonly detail: string };
@@ -105,6 +105,8 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
   const dump = v.dump;
   const lane = target === 'ios' ? 'ios-sim' : 'android-emu';
   if (dump.lane !== lane || dump.device.scale !== dpr || dump.case.id !== id) everyLane('device-scale', `lane ${dump.lane}, case ${dump.case.id}, device.scale ${dump.device.scale}; expected ${lane}, ${id}, ${dpr}`);
+  // The dump must come from the compile under test, not a stale app.
+  if (dump.case.compilerDigest !== n.compiled.digest) everyLane('compiler-digest', `compilerDigest ${dump.case.compilerDigest}, the compile under test ${n.compiled.digest}`);
 
   // (a) and (d), split into nodes (device-frames) and lines (device-lines).
   const chromeLines = ref.chrome.nodes.filter((c) => c.kind === 'line').length;
@@ -177,6 +179,16 @@ export type FaultRow = { readonly fault: DumpFault; readonly check: NamedCheck; 
 
 export const dumpFile = (dir: string, caseId: string, dpr: number): string => join(dir, `${caseId}@${dpr}.json`);
 
+/** A pulled dump file: absent, not JSON (a truncated or malformed write), or its parsed value for the validator. */
+export function readDump(file: string): { readonly kind: 'missing' } | { readonly kind: 'unparseable'; readonly detail: string } | { readonly kind: 'ok'; readonly raw: unknown } {
+  if (!existsSync(file)) return { kind: 'missing' };
+  try {
+    return { kind: 'ok', raw: JSON.parse(readFileSync(file, 'utf8')) as unknown };
+  } catch (e) {
+    return { kind: 'unparseable', detail: `the dump is not JSON: ${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
 function namedCheck(check: NamedCheck, dump: NativeDump, target: NativeTarget, n: NativeCase, dpr: number, ref: CaseReference): readonly string[] {
   switch (check) {
     case 'a':
@@ -201,7 +213,12 @@ export function evaluateSet(target: NativeTarget, dpr: number, dir: string, devi
   const faults = new Map<DumpFault, { applicable: number; caught: number; uncaught: string[] }>(DUMP_FAULTS.map((f) => [f, { applicable: 0, caught: 0, uncaught: [] }]));
   for (const n of cases) {
     const file = dumpFile(dir, n.case.id, dpr);
-    const raw = existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as unknown) : null;
+    const read = readDump(file);
+    if (read.kind === 'unparseable') {
+      for (const lane of DEVICE_CHECK_LANES) failures.push({ lane, case: n.case.id, dpr, node: null, kind: 'dump-invalid', detail: read.detail });
+      continue;
+    }
+    const raw = read.kind === 'ok' ? read.raw : null;
     const ref = caseReference(target, n, dpr);
     const o = evaluateCase(target, n, dpr, raw, ref);
     failures.push(...o.failures);
@@ -251,8 +268,15 @@ export function captureTrust(dir: string, caseIds: readonly string[], dpr: numbe
     const dumpPath = dumpFile(dir, id, dpr);
     const shot = join(dir, `screen-${id}.png`);
     if (!existsSync(dumpPath) || !existsSync(shot)) return { case: id, points: 0, mismatches: [`${existsSync(dumpPath) ? 'no OS screenshot' : 'no dump'}`] };
-    const dump = JSON.parse(readFileSync(dumpPath, 'utf8')) as NativeDump;
-    const img = decodePng(readFileSync(shot));
+    const read = readDump(dumpPath);
+    if (read.kind !== 'ok') return { case: id, points: 0, mismatches: [read.kind === 'unparseable' ? read.detail : 'no dump'] };
+    const dump = read.raw as NativeDump;
+    let img: RgbaImage;
+    try {
+      img = decodePng(readFileSync(shot));
+    } catch (e) {
+      return { case: id, points: 0, mismatches: [`the OS screenshot is not a readable PNG: ${e instanceof Error ? e.message : String(e)}`] };
+    }
     const mismatches: string[] = [];
     const samples = dump.pixels?.samples ?? [];
     for (const s of samples) {
@@ -268,6 +292,11 @@ export function captureTrust(dir: string, caseIds: readonly string[], dpr: numbe
     if (samples.length === 0) mismatches.push('the dump has no samples');
     return { case: id, points: samples.length, mismatches };
   });
+}
+
+/** The capture-trust mismatches of a device as device-pixels failures of kind capture-trust. */
+export function trustFailuresOf(rows: readonly TrustRow[], dpr: number, device: string): LaneFailure[] {
+  return rows.flatMap((r) => r.mismatches.map((m): LaneFailure => ({ lane: 'device-pixels', case: r.case, dpr, node: null, kind: 'capture-trust', detail: `${device}: ${m}` })));
 }
 
 /** The ids of the pulled dumps of a run directory at a DPR. */
@@ -342,6 +371,9 @@ export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, 
       const tr = await runApp(h, build.artifact, { runFile: runFileText(trustCases.map((n) => ({ id: n.case.id, points: casePoints(n.programs[backend], n.case.environment.viewport, dpr) })), true), caseCount: trustCases.length, outDir: trustDir, onHold: async (_id, shot) => void (await shot()) });
       const rows = captureTrust(trustDir, TRUST_CASES, dpr, tr.record.rootOriginPx);
       trust.push({ device: spec.name, dpr, rows });
+      // Trust mismatches are device-pixels failures of the set, so the failure lists and counts hold them.
+      const trustFailures = trustFailuresOf(rows, dpr, spec.name);
+      if (trustFailures.length > 0) sets[sets.length - 1] = { ...set, failures: [...set.failures, ...trustFailures] };
       log(`${spec.name}: capture trust ${rows.map((x) => `${x.case} ${x.points - x.mismatches.length}/${x.points}`).join(', ')}`);
       if (opts.vectors !== false && spec.name === VECTOR_DEVICES[t.target]) {
         const v0 = Date.now();

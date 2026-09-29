@@ -6,7 +6,7 @@
 // plant case on each target's plant device; device-pixels must fail on glyph or edge rules while device-frames and device-lines pass.
 import { SUPPORT_PLANTS } from 'dragon';
 import type { SupportPlant } from 'dragon';
-import { caseReference, dumpFile, evaluateCase } from '../device-lanes.ts';
+import { caseReference, dumpFile, evaluateCase, readDump } from '../device-lanes.ts';
 import type { DeviceSpec } from '../device-run.ts';
 import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, matrixProblems, PLANT_CASE, PLANT_DEVICES, recordProblems, release, runApp } from '../device-run.ts';
 import { existsSync, readFileSync } from 'node:fs';
@@ -40,6 +40,10 @@ if (plant === null) {
         const rec = deviceRecord(prof, r.record);
         const root = rasterSize(probe[0]?.case.environment.viewport ?? { width: 0, height: 0 }, prof.profileScale);
         log(`${target} ${spec.name}: ${rec.model}; ${rec.os}; build ${rec.build}; scale ${rec.profileScale} (device profile: ${target === 'ios' ? 'capabilities.plist' : 'wm density'}) / ${rec.appScale} (app: ${target === 'ios' ? 'UIScreen.scale' : 'displayMetrics.density'}); window ${rec.windowPx.join('x')} px; stage ${rec.stagePx.join('x')} px at ${rec.rootOriginPx.join(',')}; root ${root.width}x${root.height} px; text scale ${rec.textScale}${r.error === null ? '' : `; host error ${r.error}`}`);
+        if (r.error !== null) {
+          failures++;
+          log(`FAIL ${spec.name}: the host did not finish: ${r.error}`);
+        }
         for (const p of recordProblems(rec, root)) {
           failures++;
           log(`FAIL ${p}`);
@@ -66,7 +70,8 @@ for (const target of targets) {
     const dir = join(nativeOut(target), 'devices', `${spec.name}-${plant}`);
     await runApp(h, build.artifact, { runFile: runFileText([{ id: n.case.id, points: casePoints(n.programs[BACKEND_OF[target]], n.case.environment.viewport, dpr) }], false), caseCount: 1, outDir: dir });
     const file = dumpFile(dir, n.case.id, dpr);
-    const raw = existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as unknown) : null;
+    const read = readDump(file);
+    const raw = read.kind === 'ok' ? read.raw : read.kind === 'unparseable' ? { unparseable: read.detail } : null;
     const o = evaluateCase(target, n, dpr, raw, caseReference(target, n, dpr));
     const of = (lane: string) => o.failures.filter((f) => f.lane === lane);
     const pixels = of('device-pixels');

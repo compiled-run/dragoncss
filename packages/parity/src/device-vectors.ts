@@ -55,7 +55,8 @@ function must(r: { status: number; out: string }, what: string): string {
 export async function buildIosHarness(): Promise<string> {
   const t = await translate();
   const files = t.committedFiles('swift');
-  const dir = join(nativeOut('ios'), 'vectors', key(files, [...t.SWIFT_FLAGS, IOS_TARGET]));
+  const swiftVersion = must(run('xcrun', ['-sdk', 'iphonesimulator', 'swiftc', '--version']), 'swiftc --version');
+  const dir = join(nativeOut('ios'), 'vectors', key(files, [...t.SWIFT_FLAGS, IOS_TARGET, swiftVersion]));
   const binary = join(dir, 'harness');
   if (existsSync(binary)) return binary;
   rmSync(dir, { recursive: true, force: true });

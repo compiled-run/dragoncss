@@ -164,8 +164,9 @@ func dragonRun(window: UIWindow, host: UIView) {
   UIView.setAnimationsEnabled(false)
   let env = ProcessInfo.processInfo.environment
   guard let out = env["DRAGON_OUT"] else { fatalError("dragon host: DRAGON_OUT is not set") }
-  var run = dragonReadRun(NSHomeDirectory() + "/Documents/dragon-run.tsv") ?? DragonRun()
-  if run.ids.isEmpty { run.ids = (dragonArgument("--dragon-cases") ?? "").split(separator: ",").map(String.init) }
+  // --dragon-cases wins over a run file left in the container by an earlier run.
+  var run = DragonRun()
+  if let listed = dragonArgument("--dragon-cases") { run.ids = listed.split(separator: ",").map(String.init) } else { run = dragonReadRun(NSHomeDirectory() + "/Documents/dragon-run.tsv") ?? DragonRun() }
   let bridge = DragonBridge.shared
   dragonWrite(out + "/bridge-ios.json", bridge.record(platform: "ios"))
   let scale = Double(window.screen.scale)
@@ -318,8 +319,9 @@ class DragonActivity : Activity() {
     setContentView(frame)
     out = getExternalFilesDir(null) ?: throw IllegalStateException("dragon host: no external files dir")
     File(out, "done-android").delete()
-    val listed = (intent.getStringExtra("dragon.cases") ?: "").split(",").filter { it.isNotEmpty() }
-    run = dragonReadRun(File(out, "dragon-run.tsv")) ?: DragonRun(listed, emptyMap(), false)
+    // The dragon.cases extra wins over a run file left in the files dir by an earlier run.
+    val listed = intent.getStringExtra("dragon.cases")
+    run = if (listed != null) DragonRun(listed.split(",").filter { it.isNotEmpty() }, emptyMap(), false) else dragonReadRun(File(out, "dragon-run.tsv")) ?: DragonRun(emptyList(), emptyMap(), false)
     bridge = DragonBridge.shared(this)
     File(out, "bridge-android.json").writeText(bridge.record("android"))
     scale = resources.displayMetrics.density.toDouble()
@@ -555,8 +557,12 @@ export type BuildOptions = { readonly plant?: BuildPlant | null; readonly reuse?
 export const buildDir = (target: NativeTarget, plant: BuildPlant | null = null): string => (plant === null ? nativeOut(target) : join(nativeOut(target), `plant-${plant}`));
 
 const stampOf = (artifact: string): string => `${artifact}.sha256`;
+/** The reuse stamp: the source tree and the bundled Ahem.ttf the build copies beside it, so a font change forces a rebuild. */
+export function reuseStamp(sourceSha256: string): string {
+  return `${sourceSha256} ahem ${createHash('sha256').update(readFileSync(repoPath('vendor/fonts/Ahem.ttf'))).digest('hex')}`;
+}
 function reused(artifact: string, sha: string): boolean {
-  return existsSync(artifact) && existsSync(stampOf(artifact)) && readFileSync(stampOf(artifact), 'utf8') === sha;
+  return existsSync(artifact) && existsSync(stampOf(artifact)) && readFileSync(stampOf(artifact), 'utf8') === reuseStamp(sha);
 }
 
 /** The iOS host app: swiftc for the iOS 15 simulator target with -O, Info.plist and Ahem, ad-hoc signed. */
@@ -580,7 +586,7 @@ export function buildIos(opts: BuildOptions = {}): BuildResult {
   copyFileSync(repoPath('vendor/fonts/Ahem.ttf'), join(app, 'Ahem.ttf'));
   must(run('codesign', ['--force', '--sign', '-', '--timestamp=none', app]), 'codesign -s -');
   log.push('codesign --sign - (ad hoc)');
-  writeFileSync(stampOf(app), sha);
+  writeFileSync(stampOf(app), reuseStamp(sha));
   return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: app, log };
 }
 
@@ -625,7 +631,7 @@ export function buildAndroid(opts: BuildOptions = {}): BuildResult & { readonly 
   }
   must(run(bt('apksigner'), ['sign', '--ks', keystore, '--ks-pass', 'pass:android', '--key-pass', 'pass:android', '--ks-key-alias', 'dragondebug', '--out', apk, aligned], { env }), 'apksigner sign');
   log.push('zipalign -p 4; apksigner sign with a debug key generated under out/');
-  writeFileSync(stampOf(apk), sha);
+  writeFileSync(stampOf(apk), reuseStamp(sha));
   return { target: 'android', cases: emitCases('android').length, sourceSha256: sha, artifact: apk, log, dexes: dexes.map((d) => join(build, 'dex', d)), tools };
 }
 
