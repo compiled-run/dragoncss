@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon CSS: The Letter with the Road Ahead</title>
+<link rel="stylesheet" href="assets/parchment.css">
+<link rel="stylesheet" href="assets/ink.css">
+<link rel="stylesheet" href="assets/royal-hero.css">
+<link rel="stylesheet" href="assets/integration.css">
+<script src="assets/royal-hero.js" defer></script>
+<script>/* Space on a button or link activates it; keep the section stepper from taking it. Registered before the stepper. */
+addEventListener('keydown', e => { if (e.key === ' ' && e.target.closest && e.target.closest('button, a, [role="button"], summary')) e.stopImmediatePropagation(); });</script>
+<script src="assets/parchment.js"></script>
+<style>
+  body { overflow-x: clip; min-height: 100vh; color: var(--ink-body); }
+
+  /* ---------- The letter, written straight onto the page parchment: no sheet, no rollers ---------- */
+  .letter { position: relative; max-width: 800px; margin: 0 auto; padding: 40px 24px 20px; box-sizing: border-box;
+    background: var(--ink-rule-gold) left top / 46% 10px no-repeat, var(--ink-rule-gold-b) right top / 46% 10px no-repeat; }
+  .letter::before { content: "\2766"; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); padding: 0 14px;
+    font-size: 18px; line-height: 26px; color: var(--brick); }
+
+  /* ---------- Letter type ---------- */
+  .salute { font: italic 36px/1.3 var(--display); margin: 0 0 18px; }
+  .body p { font: 25.5px/1.45 var(--text); margin: 0 0 16px; text-wrap: pretty; }
+  .drop { float: left; font: 400 132px/.8 var(--display); color: var(--brick); margin: 8px 12px 0 -4px; padding: 0 4px 0 0; }
+  .num { font-family: var(--mono); font-size: 1em; color: var(--brick); white-space: nowrap; }
+  .lbl { font-family: var(--mono); font-size: 1em; padding: 0 1px 2px; background: var(--ink-swash) left bottom / 100% 6px no-repeat; }
+  .lbl.exact { color: var(--sage); }
+  .lbl.caveat { color: #7c5a12; }
+  .lbl.unsupported { color: var(--brick); }
+
+
+  /* ---------- The Road Ahead ---------- */
+  .road { margin: 46px 0 10px; }
+  .road-head { display: flex; align-items: center; gap: 18px; margin: 0 0 14px; }
+  .road-head .rule { flex: 1; height: 10px; background: var(--ink-rule-gold) 0 0 / 100% 10px no-repeat; }
+  .road-head .rule + h2 + .rule { background-image: var(--ink-rule-gold-b); }
+  .road-head h2 { margin: 0; font: italic 600 37px/1.1 var(--display); color: var(--brick); white-space: nowrap; }
+  .plate { margin: 26px -64px 8px; position: relative; }
+  .plate-cap { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline;
+    margin: 8px 14px 0; font: italic 19.5px/1.4 var(--text); color: var(--ink-soft); }
+  .plate-cap .mono { font-style: normal; font-size: 12px; letter-spacing: .06em; }
+  .pan-hint { display: none; text-align: center; font: italic 18.5px var(--text); color: var(--ink-soft); margin: 0 0 6px; }
+  .map { position: relative; aspect-ratio: 1000 / 640; }
+  .map > svg.terrain { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .map .pin { position: absolute; left: calc(var(--x) * .1%); top: calc(var(--y) * .15625%); width: calc(var(--w) * .1%); translate: -50% -50%; z-index: 1; }
+  .map img.pin { height: auto; pointer-events: none; opacity: .92; filter: sepia(.15) contrast(.98); }
+  .map img.pin.faint { opacity: .55; }
+  .hint { position: absolute; z-index: 1; font: italic 17px var(--text); color: var(--ink-soft); translate: -50% -50%; white-space: nowrap;
+    left: calc(var(--x) * .1%); top: calc(var(--y) * .15625%); white-space: nowrap; pointer-events: none; letter-spacing: .04em; }
+  .hint.sea { color: var(--slate); font-size: 12px; letter-spacing: .3em;  opacity: .7; }
+
+  button.castle { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; align-items: center;
+    text-align: center; -webkit-tap-highlight-color: transparent; z-index: 2; }
+  button.castle img { width: 100%; height: auto; display: block; transition: transform .25s ease, filter .25s ease; filter: drop-shadow(0 3px 2px rgba(80,55,25,.35)); }
+  button.castle:hover img, button.castle:focus-visible img { transform: translateY(-4px) scale(1.06); filter: drop-shadow(0 8px 6px rgba(80,55,25,.35)); }
+  /* Castle names are lettered straight onto the map in ink; a soft parchment halo keeps the trail from crossing the letters. */
+  button.castle .label { margin-top: 2px; white-space: nowrap; padding: 3px 10px 4px; position: relative;
+    font: 600 17.5px/1.15 var(--display); color: var(--ink); text-shadow: 0 0 3px rgba(222,206,176,.95), 0 0 7px rgba(222,206,176,.9); }
+  button.castle .label small { display: block; font: 15px/1.3 var(--mono); letter-spacing: .04em;  }
+  .map img.place-deco { pointer-events: none; filter: drop-shadow(0 3px 3px rgba(90,60,25,.18)); }
+  button.castle.won .label small { color: var(--sage); }
+  button.castle.march .label small { color: #8a6516; }
+  button.castle.future .label small { color: var(--brick); opacity: .8; }
+  button.castle.future img { filter: grayscale(.45) sepia(.3) drop-shadow(0 3px 2px rgba(80,55,25,.25)); opacity: .82; }
+  button.castle:hover .label small { text-decoration: underline; text-underline-offset: 3px; }
+  button.castle:focus-visible .label::after { content: ""; position: absolute; inset: -3px -2px; pointer-events: none; background-color: var(--ink-line-strong);
+    -webkit-mask: var(--ink-frame-bold) 0 0 / 100% 100% no-repeat; mask: var(--ink-frame-bold) 0 0 / 100% 100% no-repeat; }
+
+  .path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .path.won { stroke: var(--brick); stroke-width: 4.5; stroke-dasharray: .1 11; }
+  .path.march { stroke: var(--brick); stroke-width: 4; stroke-dasharray: .1 11; opacity: .85; animation: march 1.1s linear infinite; }
+  .path.future { stroke: var(--ink); stroke-width: 3; stroke-dasharray: .1 10; opacity: .38; }
+  @keyframes march { to { stroke-dashoffset: -11.1; } }
+
+  /* Title cartouche and legend, top left of the plate */
+  .map-title { position: absolute; z-index: 1; left: 4%; top: 6.5%; width: 25%; padding: 14px 16px 12px; text-align: center;
+    /* Two quill outlines drawn on the map, no panel behind. */
+    background: var(--ink-frame-brown) 0 0 / 100% 100% no-repeat; }
+  .map-title::before { content: ""; position: absolute; inset: -7px; pointer-events: none; background: var(--ink-frame-brown-b) 0 0 / 100% 100% no-repeat; opacity: .55; }
+  .map-title b { display: block; white-space: nowrap; font: 600 21px/1.15 var(--display); color: var(--ink); }
+  .map-title em { display: block; font: italic 16.5px var(--text); color: var(--ink-soft); margin: 2px 0 8px; }
+  .map-title .ri-legend { margin-top: 4px; gap: 10px; }
+  .map-title .ri-legend img { width: clamp(44px, 4.4vw, 60px); }
+
+  /* ---------- Closing, signature and the drawn wax seal ---------- */
+  #part-close { margin-top: 30px; }
+  .sign { margin-top: 26px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 20px; }
+  .sign .by { display: block; font: italic 23.5px/1.5 var(--text); color: var(--ink-soft); }
+  .sign .name { display: block; font: italic 45px/1.1 var(--display); color: var(--ink); margin-top: 4px; }
+  .flourish { display: block; width: 240px; height: 26px; margin-top: 2px; }
+  .flourish path { stroke: var(--ink); stroke-width: 1.6; fill: none; stroke-linecap: round; }
+
+  .seal-wrap { position: relative; width: 170px; height: 170px; justify-self: end; margin-right: -10px; }
+  .seal { all: unset; cursor: pointer; position: absolute; inset: 0; display: block; }
+  .seal:focus-visible { outline: none; }
+  .seal:focus-visible::after { content: ""; position: absolute; inset: 6px; pointer-events: none; background-color: var(--ink-line-strong);
+    -webkit-mask: var(--ink-ring) 0 0 / 100% 100% no-repeat; mask: var(--ink-ring) 0 0 / 100% 100% no-repeat; }
+  .seal .half { position: absolute; inset: 0; transition: transform .9s cubic-bezier(.5,0,.7,.4), opacity .9s ease-in; }
+  .seal .half img { width: 100%; height: 100%; display: block; filter: drop-shadow(0 4px 5px rgba(60,20,10,.45)); }
+  .half.l { clip-path: polygon(0 0, 50% 0, 45% 20%, 55% 34%, 44% 50%, 54% 64%, 47% 80%, 50% 100%, 0 100%); }
+  .half.r { clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%, 47% 80%, 54% 64%, 44% 50%, 55% 34%, 45% 20%); }
+  .seal:hover .half { transform: rotate(-3deg) scale(1.03); }
+  .cracked .seal { pointer-events: none; }
+  .cracked .half.l { transform: translate(-50px, 80px) rotate(-36deg); opacity: 0; }
+  .cracked .half.r { transform: translate(48px, 74px) rotate(32deg); opacity: 0; }
+  .seal-hint { position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%); white-space: nowrap; font: 17px var(--mono); color: var(--brick); letter-spacing: .06em; }
+  .js .seal-hint { animation: pulse 2.4s ease-in-out infinite; }
+  .cracked .seal-hint { opacity: 0; animation: none; }
+  @keyframes pulse { 50% { opacity: .45; } }
+
+  .reveal { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .9s cubic-bezier(.3,.1,.2,1) .35s; }
+  .reveal > div { overflow: hidden; }
+  .reveal.open { grid-template-rows: 1fr; }
+  .inside { margin-top: 30px; padding-top: 26px; background: var(--ink-rule-faint) left top / 100% 10px no-repeat; text-align: center; }
+  .inside h2 { font: italic 32px/1.2 var(--display); margin: 0 0 16px; }
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; text-align: left; }
+  .steps li { font: 20.5px/1.5 var(--text); color: var(--ink-soft); padding-top: 14px; background: var(--ink-rule-gold) left top / 100% 10px no-repeat; }
+  .steps li:nth-child(2) { background-image: var(--ink-rule-gold-b); }
+  .steps b { display: block; font: 600 22.5px var(--display); color: var(--ink); margin-bottom: 4px; }
+  .steps b span { color: var(--brick); margin-right: 4px; }
+
+  /* ---------- Status card: a small scroll from the same rollers ---------- */
+  /* No tinted veil: when a scroll opens, the rest of the page fades back so the scroll sits on bare parchment. */
+  body > :not(.veil):not(svg) { transition: opacity .25s; }
+  body:has(.veil.open) > :not(.veil):not(svg) { opacity: .035; }
+  .veil { position: fixed; inset: 0; z-index: 60;
+    display: grid; place-items: center; padding: 16px; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .veil.open { opacity: 1; pointer-events: auto; }
+  .card { width: min(640px, 100%); position: relative; }
+  /* The drawn rollers now live only on this small card scroll. Measured from scroll-roller-top.png (2172x724):
+     the flap ends at y 505 and spans x 12.3%..87.7%; percent margins resolve against the card's width. */
+  .card .roller { display: block; width: 100%; height: auto; position: relative; z-index: 2; pointer-events: none; user-select: none; filter: drop-shadow(0 6px 8px rgba(60,35,15,.3)); }
+  .card .roller.top { margin-top: -10.08%; }
+  .card .cbody { position: relative; z-index: 1; margin: -11.3% 12.35% 0; padding: 0; max-height: calc(100vh - 260px); overflow: auto;
+    /* No sheet of its own: the parchment shows through, and the scroll's edges are quill lines. */
+    background: var(--ink-vrule-dark) left -4px top 0 / 10px 100% no-repeat, var(--ink-vrule-dark-b) right -4px top 0 / 10px 100% no-repeat; background-attachment: local; }
+  .card { transform-origin: 50% 0; }
+  /* The top roller stays put while the sheet drops, so the card hangs from a fixed point, not centred. */
+  .veil { align-items: start; }
+  .card .cin { position: relative; padding: 30px 26px 34px; }
+  .card .cbottom { margin-top: -10.95%; margin-bottom: -10.08%; }
+  /* Roller spin: ink bands that travel while the bottom roller falls (from scroll-physics.html). */
+  .bottom-wrap { position: relative; z-index: 2; }
+  .bottom-wrap .roller { margin: 0 !important; }
+  .spin { position: absolute; left: 14%; right: 14%; top: 41%; bottom: 35%; overflow: hidden; border-radius: 40px; opacity: .55; mix-blend-mode: multiply; pointer-events: none; }
+  .spin::before { content: ""; position: absolute; left: 0; right: 0; top: -100%; height: 300%;
+    background: repeating-linear-gradient(180deg, rgba(90,60,25,0) 0 10px, rgba(90,60,25,.35) 11px 12px, rgba(90,60,25,0) 13px 26px);
+    transform: translateY(var(--spin, 0px)); }
+  .card .head { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; padding-right: 34px; }
+  .card .head img { width: 84px; height: 84px; object-fit: contain; }
+  .card .proof-row { display: flex; gap: 18px; align-items: center; }
+  .card .proof-row .ri-proven { width: 110px; margin: 0; flex: none; }
+  .card .proof-row ul.nums { flex: 1; }
+  .card .proof-row ul.nums b { min-width: 6.4em; }
+  .card-mark .lbl { font-size: 1em; }
+  .card h2 { margin: 0; font: 600 32px/1.1 var(--display); }
+  .card .ms { font: 12px var(--mono); letter-spacing: .08em;  color: var(--ink-soft); margin-top: 5px; }
+  .card p { font: 21px/1.42 var(--text); margin: .6em 0; }
+  .card ul.nums { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 8px; }
+  .card ul.nums li { display: flex; gap: 12px; align-items: baseline; padding-bottom: 8px; font-size: 15px; background: var(--ink-rule-faint) left bottom / 100% 10px no-repeat; }
+  .card ul.nums li:nth-child(even) { background-image: var(--ink-rule-faint-b); }
+  .card ul.nums b { font: 600 16px var(--mono); color: var(--brick); min-width: 8.6em; }
+  .card .close { position: absolute; top: 12px; right: 12px; z-index: 3; width: 32px; height: 32px; font: 23.5px/1 var(--text); color: var(--ink-body); --ink-frame-mask: var(--ink-frame-round); --ink-out: -1px; }
+  .card .close:hover::before, .card .close:focus-visible::before { --ink-frame-mask: var(--ink-frame-round); }
+  .card .close:hover { color: var(--brick); }
+  .card code { font: 14px var(--mono); color: var(--brick); }
+  .card .foot { font: italic 17px var(--text); color: var(--ink-soft); margin-top: 12px; }
+
+  /* ---------- Plain summary, on the page ---------- */
+  .summary { max-width: 752px; margin: 50px auto 0; padding: 30px 0 90px; color: var(--ink-body); font: 22.5px/1.6 var(--text);
+    background: var(--ink-rule-faint) left top / 100% 10px no-repeat, var(--ink-rule-faint-b) left 0 top 5px / 100% 10px no-repeat; }
+  .summary h2 { font: 600 32px var(--display); margin: 0 0 12px; color: var(--brick); }
+  .summary ul { padding-left: 20px; margin: 0; } .summary li { margin-bottom: 6px; }
+  .summary code { font: 15px var(--mono); color: var(--brick); }
+
+  @media (max-width: 760px) {
+    .letter { margin-top: 40px; padding: 34px 20px 10px; }
+    .summary { margin-inline: 20px; }
+    .salute { font-size: 23px; }
+    .body p { font-size: 17px; line-height: 1.64; }
+    .drop { font-size: 76px; padding: 4px 8px 2px; margin-right: 10px; }
+    .road-head h2 { font-size: 24px; }
+    .plate { margin-inline: -12px; }
+    .map-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 4px 6px 10px; }
+    .map { width: 760px; }
+    .pan-hint { display: block; }
+    .sign { grid-template-columns: 1fr; }
+    .sign .name { font-size: 28px; }
+    .flourish { width: 200px; }
+    .seal-wrap { justify-self: center; width: 150px; height: 150px; margin: 6px 0 20px; }
+    .steps { grid-template-columns: 1fr; }
+    .card { width: 100%; }
+    .card .cbody { max-height: calc(100vh - 200px); }
+    .card .cin { padding: 22px 14px 26px; }
+    .card .head img { width: 48px; height: 48px; }
+    .card h2 { font-size: 20px; }
+    .card ul.nums li { flex-direction: column; gap: 0; }
+    .card .proof-row { flex-direction: column; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  a.skip { color: var(--ink); text-decoration: none; opacity: 1; } /* ink text with an ink swash (ink.css), no box */
+  a.skip:hover, a.skip:focus-visible { color: var(--brick); }
+  .nb { white-space: nowrap; }
+  .road-letter, .seal-sec .letter { background: none; padding-top: 0; }
+  .road-letter::before, .seal-sec .letter::before { content: none; }
+  .road-sec .road { margin: 0; }
+  #summary { padding-block: 40px; }
+  #summary .summary { padding-bottom: 20px; }
+  .seal-sec #part-close { margin-top: 0; }
+  @media (min-width: 761px) {
+    .road-sec .plate { margin-top: 14px; }
+    .ri-map-sec .plate { margin: 0 auto; width: fit-content; }
+  }
+</style>
+</head>
+<body>
+<a class="skip ink-under" href="#summary">skip the ceremony &rarr;</a>
+
+<header class="royal-hero"
+  data-headline="Regular CSS, <em>proven</em> in every realm"
+  data-sub="A letter for the Lord Developer, with the road ahead."
+  data-cue-href="#letter"
+  data-cue-label="Read the letter"></header>
+
+<main>
+  <section class="ri-sec" id="letter">
+    <article class="letter" aria-label="A letter from the Dragon">
+
+      <div class="part go" id="part-open">
+        <img class="ri-sealed" src="assets/kit/letter.png" alt=""><p class="salute ink-line">Dear Lord Developer,</p>
+        <div class="body">
+          <p class="first ink-line"><span class="drop">W</span>ord has reached the Round Table that you still write your styles twice: once for the web, and once more for every device in the realm.</p>
+          <p class="ink-line">Lay down that burden. Dragon takes regular CSS and, at build time, compiles it into native view properties.</p>
+          <p class="ink-line">We ask no faith of you. Dragon keeps its own layout engine, and it is proven against Chrome number by number, never by screenshots: <span class="num">8,671</span> of <span class="num">8,671</span> boxes match to <span class="num">1/64</span> of a pixel.</p>
+          <p class="ink-line">Every property bears an honest mark, <span class="nb"><img class="seal-mark" src="assets/kit/seal-exact.png" alt=""><span class="lbl exact">exact</span>,</span> <span class="nb"><img class="seal-mark" src="assets/kit/seal-caveat.png" alt=""><span class="lbl caveat">caveat</span></span> or <span class="nb"><img class="seal-mark" src="assets/kit/seal-unsupported.png" alt=""><span class="lbl unsupported">unsupported</span>,</span> and none is called supported without a passing test.</p>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section class="ri-sec road-sec" id="road" aria-labelledby="road-title">
+    <div class="letter road-letter">
+      <div class="road part">
+        <div class="road-head"><span class="rule"></span><h2 id="road-title">The Road Ahead</h2><span class="rule"></span></div>
+        <div class="body ri-beside"><img src="assets/kit/map.png" alt="">
+          <p class="ink-line">Behold the road we ride. Camelot of the Web is won, and its numbers are sworn. Our host now marches to the Isle of iOS and the Android Marches together; they meet at the Parity Ford, or not at all. Beyond lie the Tailwind Wilds and, at last, the Dragon&rsquo;s Keep.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ri-sec ri-map-sec" id="road-map" aria-label="The quest map">
+        <figure class="plate" aria-label="Quest map of Dragon CSS milestones">
+          <p class="pan-hint">Drag the map sideways to explore. Tap a place.</p>
+          <div class="map-scroll">
+          <div class="map" id="map">
+    <svg class="terrain" viewBox="0 0 1000 640" aria-hidden="true">
+      <defs>
+        <pattern id="waves" width="34" height="14" patternUnits="userSpaceOnUse">
+          <path d="M2 9 q6 -6 12 0 t12 0" fill="none" stroke="#3f5673" stroke-opacity=".38" stroke-width="1.2" stroke-linecap="round"/>
+        </pattern>
+        <filter id="rough"><feTurbulence baseFrequency=".04" numOctaves="3" seed="5"/><feDisplacementMap in="SourceGraphic" scale="6"/></filter>
+      </defs>
+      <!-- The Sea of Devices, around the Isle of iOS -->
+      <g filter="url(#rough)">
+        <path d="M372 34 C430 26 560 20 660 36 C700 60 690 120 668 170 C650 230 690 262 640 300 C590 330 470 320 420 300 C380 270 396 220 380 170 C366 110 350 60 372 34Z"
+              fill="#3f5673" fill-opacity=".09" stroke="#3f5673" stroke-opacity=".45" stroke-width="1.6"/>
+        <path d="M372 34 C430 26 560 20 660 36 C700 60 690 120 668 170 C650 230 690 262 640 300 C590 330 470 320 420 300 C380 270 396 220 380 170 C366 110 350 60 372 34Z" fill="url(#waves)"/>
+        <!-- The isle -->
+        <!-- A river from the mountains down to the marches -->
+        <path d="M720 150 C700 210 740 250 700 300 C660 350 610 380 600 440 C592 480 620 520 600 580" fill="none" stroke="#3f5673" stroke-opacity=".4" stroke-width="3"/>
+        <!-- Marsh tufts of the Android Marches -->
+        <g stroke="#5e7a52" stroke-opacity=".7" stroke-width="1.5" stroke-linecap="round" fill="none">
+          <path d="M478 560 l-3 -10 M482 560 l0 -12 M486 560 l3 -9"/><path d="M520 590 l-3 -10 M524 590 l0 -12 M528 590 l3 -9"/>
+          <path d="M630 560 l-3 -10 M634 560 l0 -12 M638 560 l3 -9"/><path d="M660 600 l-3 -10 M664 600 l0 -12 M668 600 l3 -9"/>
+          <path d="M455 600 l-3 -10 M459 600 l0 -12 M463 600 l3 -9"/><path d="M610 610 l-3 -10 M614 610 l0 -12 M618 610 l3 -9"/>
+        </g>
+        <!-- Map border -->
+        <rect x="14" y="14" width="972" height="612" fill="none" stroke="#4a3d2e" stroke-opacity=".5" stroke-width="1.5"/>
+        <rect x="20" y="20" width="960" height="600" fill="none" stroke="#4a3d2e" stroke-opacity=".3" stroke-width="1"/>
+      </g>
+
+      <!-- Quest path. Won: Camelot to the fork. Marching: the fork to both isles, then to the Ford. Future: onward. -->
+      <path class="path won" d="M170 505 C220 560 280 540 330 505"/>
+      <path class="path march" d="M330 505 C360 450 400 400 420 330 C440 280 470 250 500 225"/>
+      <path class="path march" d="M330 505 C380 560 450 560 520 525"/>
+      <path class="path future" d="M560 205 C620 240 640 300 680 350"/>
+      <path class="path future" d="M600 510 C640 480 660 430 680 395"/>
+      <path class="path future" d="M720 385 C760 420 780 440 800 455"/>
+      <path class="path future" d="M860 445 C920 400 930 320 905 250"/>
+      <!-- Crossed swords where the host now marches -->
+      <g transform="translate(330 505)" stroke="#a3342b" stroke-width="3" stroke-linecap="round">
+        <path d="M-9 -9 L9 9 M9 -9 L-9 9"/>
+      </g>
+    </svg>
+
+            <img class="pin place-deco" src="assets/kit/village.png" style="--x:88;--y:318;--w:110" alt="A frontier village: where your styles are written today">
+            <span class="hint" style="--x:92;--y:392">your CSS sets out here</span>
+            <img class="pin faint" src="assets/icons/mountains.png" style="--x:735;--y:95;--w:130" alt="">
+            <img class="pin faint" src="assets/icons/cloud.png" style="--x:640;--y:60;--w:80" alt="">
+            <img class="pin faint" src="assets/icons/branch.png" style="--x:420;--y:600;--w:45" alt="">
+            <img class="pin faint" src="assets/icons/branch.png" style="--x:960;--y:560;--w:45" alt="">
+            <span class="hint sea" style="--x:410;--y:60">Sea of Devices</span>
+            <img class="pin place-deco" src="assets/kit/parity-ford.png" style="--x:700;--y:372;--w:100" alt="Parity Ford, where iOS and Android meet">
+
+            <!-- Milestone places: the name is on each vignette's ribbon; the status is lettered below. -->
+            <button class="castle pin won" style="--x:175;--y:470;--w:150" data-m="web" aria-haspopup="dialog" aria-label="Camelot of the Web: conquered, milestone 1">
+              <img class="ri-place" src="assets/kit/camelot.png" alt="">
+              <span class="label"><small>conquered &middot; M1</small></span>
+            </button>
+            <button class="castle pin march" style="--x:520;--y:165;--w:122" data-m="ios" aria-haspopup="dialog" aria-label="The Isle of iOS: marching now, milestone 2, in progress">
+              <img class="ri-place" src="assets/kit/isle-ios.png" alt="">
+              <span class="label"><small>marching &middot; M2</small></span>
+            </button>
+            <button class="castle pin march" style="--x:545;--y:500;--w:122" data-m="android" aria-haspopup="dialog" aria-label="The Android Marches: marching now, milestone 2, in progress">
+              <img class="ri-place" src="assets/kit/android-marches.png" alt="">
+              <span class="label"><small>marching &middot; M2</small></span>
+            </button>
+            <button class="castle pin future" style="--x:845;--y:470;--w:115" data-m="tailwind" aria-haspopup="dialog" aria-label="The Tailwind Wilds: not yet ridden">
+              <img class="ri-place" src="assets/kit/tailwind-wilds.png" alt="">
+              <span class="label"><small>not yet ridden</small></span>
+            </button>
+            <button class="castle pin future" style="--x:880;--y:190;--w:112" data-m="keep" aria-haspopup="dialog" aria-label="The Dragon's Keep: version 1.0, not yet ridden">
+              <img class="ri-place" src="assets/kit/dragons-keep.png" alt="">
+              <span class="label"><small>1.0 &middot; the end</small></span>
+            </button>
+
+            <div class="map-title">
+              <b>The Quest of Dragon CSS</b><em>as it truly stands</em>
+              <ul class="ri-legend" aria-label="Legend">
+                <li><img src="assets/kit/banner-conquered.png" alt="Conquered"></li>
+                <li><img src="assets/kit/banner-marching.png" alt="Marching now"></li>
+                <li><img src="assets/kit/banner-notyet.png" alt="Not yet ridden"></li>
+              </ul>
+            </div>
+          </div>
+          </div>
+          <figcaption class="plate-cap"><span>Touch any place to read its true account. Where there are no numbers yet, the card says so.</span><span class="mono">the road ahead</span></figcaption>
+        </figure>
+  </section>
+
+  <section class="ri-sec seal-sec" id="seal-sec" aria-label="The seal">
+    <div class="letter">
+      <div class="part" id="part-close">
+        <div class="body"><p class="ink-line">Break the seal below, and begin.</p></div>
+        <div class="sign">
+          <div class="ink-line sig">
+            <span class="by">By the hand of the Dragon,</span>
+            <span class="name">Keeper of the Styles</span>
+            <svg class="flourish" viewBox="0 0 240 26" aria-hidden="true"><path d="M4 16 C 40 2, 70 26, 110 12 S 180 4, 236 14 M150 20 C 170 24, 200 22, 220 18"/></svg>
+          </div>
+          <div class="seal-wrap" id="sealWrap">
+            <button class="seal" id="seal" aria-expanded="false" aria-controls="reveal" aria-label="Break the wax seal to reveal the install command">
+              <span class="half l"><img src="assets/kit/seal-break.png" alt=""></span>
+              <span class="half r"><img src="assets/kit/seal-break.png" alt=""></span>
+            </button>
+            <span class="seal-hint" aria-hidden="true">break the seal</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal" id="reveal">
+        <div>
+          <section class="inside" aria-label="How to begin">
+            <h2>Thus you begin</h2>
+            <div class="ri-npm"><img src="assets/kit/npm-scroll.png" alt=""><code>npm install dragon</code><small>coming soon: not yet published</small></div>
+            <ol class="steps">
+              <li><b><span>1.</span>Write CSS</b>Regular CSS, as you have always written it.</li>
+              <li><b><span>2.</span>Build</b>At build time Dragon compiles it into native view properties.</li>
+              <li><b><span>3.</span>Read the marks</b>Each property says <img class="seal-mark" src="assets/kit/seal-exact.png" alt=""><span class="lbl exact">exact</span>, <img class="seal-mark" src="assets/kit/seal-caveat.png" alt=""><span class="lbl caveat">caveat</span> or <img class="seal-mark" src="assets/kit/seal-unsupported.png" alt=""><span class="lbl unsupported">unsupported</span>. Trust only what is tested.</li>
+            </ol>
+          </section>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="veil" id="veil" role="dialog" aria-modal="true" aria-labelledby="card-title">
+  <div class="card" id="card">
+    <img class="roller top" src="assets/gen/scroll-roller-top.png" alt="">
+    <div class="cbody" id="cclip"><div class="cin"><button class="close ink-btn ink-frame" id="close" aria-label="Close">&times;</button><div id="card-body"></div></div></div>
+    <div class="bottom-wrap cbottom"><img class="roller bottom" src="assets/gen/scroll-roller-bottom.png" alt=""><div class="spin" id="cspin"></div></div>
+  </div>
+</div>
+
+<template id="t-web">
+  <div class="head"><img src="assets/kit/camelot.png" alt=""><div><h2 id="card-title">Camelot of the Web</h2><div class="ms">Milestone 1 &middot; conquered</div></div></div>
+  <p class="card-mark"><img class="seal-mark" src="assets/kit/seal-exact.png" alt=""><span class="lbl exact">exact</span></p>
+  <p>Regular CSS, compiled at build time, laid out by Dragon's own TypeScript engine (block, flex, text, positioning, right-to-left) and checked against Chrome, box by box.</p>
+  <div class="proof-row"><img class="ri-proven" src="assets/kit/proven.png" alt="Proven: 8,671 of 8,671 boxes, to 1/64 px">
+  <ul class="nums">
+    <li><b>137 / 258</b> test fixtures and cases, all passing</li>
+    <li><b>8,671 / 8,671</b> boxes match Chrome exactly, to 1/64 px</li>
+    <li><b>339,080</b> computed values identical between your CSS and Dragon's output</li>
+  </ul></div>
+  <p class="foot">Nothing is marked supported without a passing test.</p>
+</template>
+<template id="t-ios">
+  <div class="head"><img src="assets/kit/isle-ios.png" alt=""><div><h2 id="card-title">The Isle of iOS</h2><div class="ms">Milestone 2 &middot; under march</div></div></div>
+  <p><span class="seal-badge caveat">in progress</span></p>
+  <p>The native engine for iOS is generated from the one TypeScript engine, not written again by hand. Its device lane is checked against Chrome, as the web was.</p>
+  <p>No numbers are posted yet. They will be, when the lane passes.</p>
+  <p class="foot">This isle and the Android Marches are reached together, at parity, or not at all.</p>
+</template>
+<template id="t-android">
+  <div class="head"><img src="assets/kit/android-marches.png" alt=""><div><h2 id="card-title">The Android Marches</h2><div class="ms">Milestone 2 &middot; under march</div></div></div>
+  <p><span class="seal-badge caveat">in progress</span></p>
+  <p>Android's native engine is generated from the same TypeScript engine as iOS's. Its device lane is checked against Chrome, number by number.</p>
+  <p>No numbers are posted yet. They will be, when the lane passes.</p>
+  <p class="foot">Neither realm is claimed alone: both meet at the Parity Ford.</p>
+</template>
+<template id="t-tailwind">
+  <div class="head"><img src="assets/kit/tailwind-wilds.png" alt=""><div><h2 id="card-title">The Tailwind Wilds</h2><div class="ms">Later &middot; not yet ridden</div></div></div>
+  <p class="card-mark"><img class="seal-mark" src="assets/kit/seal-unsupported.png" alt=""><span class="lbl unsupported">unsupported</span></p>
+  <p>Custom properties (CSS variables), the road that utility styles such as Tailwind travel by. It lies beyond milestone 2.</p>
+  <p>Until a test passes here, it stays marked <em>unsupported</em>.</p>
+</template>
+<template id="t-keep">
+  <div class="head"><img src="assets/kit/dragons-keep.png" alt=""><div><h2 id="card-title">The Dragon's Keep</h2><div class="ms">1.0 &middot; the end of the road</div></div></div>
+  <p><span class="seal-badge unsupported">not yet</span></p>
+  <p>Version 1.0: when the realms on this map are proven, each by its own numbers against Chrome.</p>
+  <p>Install: <code>npm install dragon</code> <em>(coming soon; not yet published)</em></p>
+</template>
+
+<section class="ri-sec" id="summary">
+<div class="summary">
+  <div class="ri-h"><img src="assets/icons/crown.png" alt=""><h2>Dragon CSS, plainly</h2></div>
+  <ul>
+    <li>Regular CSS, compiled at build time into native view properties.</li>
+    <li>Its own TypeScript layout engine: block, flex, text, positioning, right-to-left.</li>
+    <li>Proven against Chrome by numbers, not screenshots: 137 fixtures, 258 cases, 8,671 of 8,671 boxes exact to 1/64 px, 339,080 computed values identical.</li>
+    <li>Support labels: exact, caveat, unsupported. Nothing is marked supported without a passing test.</li>
+    <li>Road ahead: web proven (milestone 1). iOS and Android at parity, in progress (milestone 2). Custom properties (for utility CSS such as Tailwind) later, then 1.0.</li>
+    <li>Install: <code>npm install dragon</code> (coming soon; not yet published).</li>
+  </ul>
+  <ul class="ri-banners" aria-label="Where each realm stands">
+    <li><img src="assets/kit/banner-conquered.png" alt=""><b>Web</b>proven, milestone 1</li>
+    <li><img src="assets/kit/banner-marching.png" alt=""><b>iOS and Android</b>in progress, milestone 2</li>
+    <li><img src="assets/kit/banner-notyet.png" alt=""><b>Custom properties, 1.0</b>not yet ridden</li>
+  </ul>
+</div>
+</section>
+
+<script>/* Fit the whole quest map in the viewport: scale = min(1, (innerHeight - 80) / mapH, (innerWidth - 32) / mapW), via CSS zoom. Narrow screens keep the pannable map. */
+(() => { const m = document.getElementById('map');
+  const fit = () => { m.style.zoom = ''; if (innerWidth <= 760) return;
+    m.style.zoom = Math.min(1, (innerHeight - 80) / m.offsetHeight, (innerWidth - 32) / m.offsetWidth); };
+  fit(); addEventListener('resize', fit); })();</script>
+<script>
+
+  // Scroll physics (after scroll-physics.html): the bottom roller falls under gravity (len = a*t*t/2) until the
+  // sheet runs out, stops hard with no overshoot, rebounds upward on a stiff damped spring, spins while falling,
+  // and the whole scroll sways from the top roller. One-time per opening; never scroll-linked.
+  function dropScroll(hang, clip, spin, onDone) {
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    cancelAnimationFrame(hang._raf);
+    clip.style.height = ''; const cs = getComputedStyle(clip);
+    const max = parseFloat(cs.maxHeight); const L = Math.min(clip.scrollHeight, isNaN(max) ? Infinity : max);
+    if (reduce || !L) { clip.style.height = ''; hang.style.transform = ''; onDone && onDone(); return; }
+    const T = Math.min(.95, .45 + L / 1400), fric = .25, k = 520, zeta = .38, swayAmp = .7, tau = .9, period = 1.4;
+    const a = 2 * L / (T * T), vImpact = a * T, omega = Math.sqrt(k), wd = omega * Math.sqrt(1 - zeta * zeta);
+    clip.style.overflow = 'hidden'; clip.style.height = '0px';
+    const t0 = performance.now();
+    const frame = now => {
+      const t = (now - t0) / 1000; let len, spinPx, rot = 0, done = false;
+      if (t < T) { len = .5 * a * t * t; spinPx = len * 1.2; }
+      else {
+        const s = t - T;
+        const x = (vImpact * (1 - fric) / wd) * Math.exp(-zeta * omega * s) * Math.sin(wd * s);
+        len = L - Math.abs(x) * .06; spinPx = L * 1.2;
+        rot = swayAmp * Math.exp(-s / tau) * Math.sin(2 * Math.PI * s / period);
+        done = s > 2.4;
+      }
+      clip.style.height = Math.max(0, Math.min(L, len)) + 'px';
+      if (spin) spin.style.setProperty('--spin', (spinPx % 26) + 'px');
+      hang.style.transform = rot ? `rotate(${rot}deg)` : '';
+      if (!done) hang._raf = requestAnimationFrame(frame);
+      else { clip.style.height = ''; clip.style.overflow = ''; hang.style.transform = ''; onDone && onDone(); }
+    };
+    hang._raf = requestAnimationFrame(frame);
+  }
+
+(function () {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduce) {
+    document.documentElement.classList.add('js');
+  }
+
+  // Break the seal.
+  const wrap = document.getElementById('sealWrap'), seal = document.getElementById('seal'), reveal = document.getElementById('reveal');
+  seal.addEventListener('click', () => {
+    wrap.classList.add('cracked'); reveal.classList.add('open'); seal.setAttribute('aria-expanded', 'true');
+    seal.setAttribute('aria-label', 'The seal is broken');
+  });
+
+  // Castle status cards.
+  const veil = document.getElementById('veil'), cbody = document.getElementById('card-body'), closeBtn = document.getElementById('close');
+  let opener = null;
+  const openCard = (key, btn) => {
+    cbody.replaceChildren(document.getElementById('t-' + key).content.cloneNode(true));
+    opener = btn; veil.classList.add('open'); closeBtn.focus();
+    const cardEl = document.getElementById('card'); veil.style.paddingTop = Math.max(16, (innerHeight - cardEl.offsetHeight) / 2) + 'px';
+    dropScroll(cardEl, document.getElementById('cclip'), document.getElementById('cspin'));
+  };
+  const closeCard = () => { veil.classList.remove('open'); if (opener) opener.focus(); };
+  document.querySelectorAll('button.castle').forEach(b => b.addEventListener('click', () => openCard(b.dataset.m, b)));
+  closeBtn.addEventListener('click', closeCard);
+  veil.addEventListener('click', e => { if (e.target === veil) closeCard(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && veil.classList.contains('open')) closeCard(); });
+  if (matchMedia('(max-width: 760px)').matches) document.querySelector('.map-scroll').scrollLeft = 40;
+  // While a card is open, wheel, touch and keys belong to the card, not the section stepper.
+  ['wheel', 'touchend'].forEach(ev => veil.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+  veil.addEventListener('keydown', e => { if (e.key !== 'Escape') e.stopPropagation(); });
+})();
+addEventListener('DOMContentLoaded', () => RoyalHero.enableSnapAndFocus('.royal-hero, #letter, #road, #road-map, #seal-sec, #summary'));
+</script>
+</body>
+</html>

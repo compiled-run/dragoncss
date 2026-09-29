@@ -1,0 +1,12 @@
+{
+  "ruling": "docs/decisions.md, Variable fonts are fenced (PM, T024): refuse variable-font instances outside the Chrome-validated set and every variable font without HVAR.",
+  "evidence": "docs/research/text-spike/gate/chrome-145.json: font InterVF, 60 cases at sizes 12, 16, 17 and 24 with weight 400 and font-optical-sizing auto, all exact in the TXT1-0 gate.",
+  "fonts": [
+    {
+      "name": "InterVF",
+      "file": "docs/research/text-spike/fonts/Inter-VF.ttf",
+      "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031",
+      "axes": { "opsz": [14, 24], "wght": [400, 400] }
+    }
+  ]
+}

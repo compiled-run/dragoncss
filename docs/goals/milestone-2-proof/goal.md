@@ -53,6 +53,8 @@ Work runs in parallel lanes. Each writing lane has its own git worktree and a di
 
 A lane blocked on owner tooling is reported as not met, never counted as passing.
 
+**Checkpoint 3 scope (owner, 2026-09-28):** the YouTube iframe becomes the platform's own web view, WKWebView on iOS and android.webkit.WebView on Android. It sits in a slot Dragon sizes and places, and the slot's frame is compared with Chrome's. Script-driven inline styles are in scope as typed style overrides (PM default; the owner did not object).
+
 ## Goal Kind
 
 `recovery`
@@ -70,6 +72,24 @@ A lane blocked on owner tooling is reported as not met, never counted as passing
 | North star | T010 (Judge gap plan), then Worker packages | per package | per package |
 
 Only one lane at a time may boot simulators or emulators. The PM serialises device use.
+
+## Decision Rule (owner, 2026-09-28)
+
+Every open decision is settled by researching the space and recorded as a PM ruling in docs/decisions.md and on the board. The owner is never asked:
+- A Scout gathers the evidence: sources, Chrome measurements, precedent in decisions.md.
+- A Judge recommends.
+- The PM rules.
+
+Any spec line that says "goes to the owner" or "needs an owner ruling" means a research-backed Judge ruling instead. That includes a HarfBuzz gate mismatch, which gets investigated and ruled on and never tolerated.
+
+Some things still need the owner, because they leave the repo or cost money: pushes, remotes, publishing, installs outside /tmp, and spending.
+
+## Throughput Rules (PM, 2026-09-28)
+
+- **Device leases are per platform.** The `ios` lease covers simulators and the `android` lease covers emulators. One task may hold both.
+- **Pinned tests.** A Worker may retarget an existing test that pins the behaviour its package is meant to change, with no stop. The test must keep its intent, for example a reject fixture moved to a value that is still refused. The Worker lists every retarget in its receipt. Loosening a check is still a stop.
+- **Test timeouts under load are not verify failures.** A test that times out while the machine is saturated, then passes on rerun, does not count toward "verification fails twice". The receipt records the timeouts.
+- **Notes are never committed on branches.** They are written only in the main checkout.
 
 ## Non-Negotiable Constraints
 

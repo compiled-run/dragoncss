@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon CSS: The Unrolling Scroll</title>
+<link rel="stylesheet" href="assets/parchment.css">
+<link rel="stylesheet" href="assets/ink.css">
+<link rel="stylesheet" href="assets/royal-hero.css">
+<link rel="stylesheet" href="assets/integration.css">
+<script src="assets/royal-hero.js" defer></script>
+<script>/* Space on a button or link activates it; keep the section stepper from taking it. Registered before the stepper. */
+addEventListener('keydown', e => { if (e.key === ' ' && e.target.closest && e.target.closest('button, a, [role="button"], summary')) e.stopImmediatePropagation(); });</script>
+<script src="assets/parchment.js"></script>
+<style>
+  body { overflow-x: clip; min-height: 100vh; }
+
+  /* ---------- The letter ----------
+     Written straight onto the page parchment: no sheet, no rollers. Structure comes from rules, the rubricated
+     initial and the ink colours. Each word still inks in as its line rises into view. */
+  .letter { color: var(--ink); }
+  .letter > .ri-sec > .col { width: min(700px, 100%); margin: 0 auto; }
+  .paper { container-type: inline-size; position: relative; padding-top: 40px;
+    background: var(--ink-rule-gold) left top / 46% 10px no-repeat, var(--ink-rule-gold-b) right top / 46% 10px no-repeat; }
+  .paper::before { content: "\2766"; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); padding: 0 14px;
+    font-size: 18px; line-height: 26px; color: var(--brick); }
+  /* Rubricated initial */
+  .paper .drop { float: left; font: 700 3.4em/.8 var(--display); color: var(--brick); margin: .1em .1em 0 0; }
+  .letter p { font: 24px/1.45 var(--text); margin: 0 0 .85em; }
+  .salute { font: italic 600 32px var(--display) !important; color: var(--brick); margin-bottom: .6em !important; }
+  .rule { display: flex; align-items: center; gap: 14px; margin: 0 0 24px; color: var(--gold); font-size: 13px; letter-spacing: .5em; }
+  .rule::before, .rule::after { content: ""; flex: 1; height: 10px; background: var(--ink-rule-gold) 0 0 / 100% 10px no-repeat; opacity: .8; }
+  .rule::after { background-image: var(--ink-rule-gold-b); }
+  h2.sec { text-align: center; font: 600 18px var(--mono); letter-spacing: .24em;  color: var(--ink-soft); margin: 0 0 26px; }
+
+  .oaths { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .oath { text-align: center; }
+  .oath .num { font: 700 55.5px/1 var(--display); color: var(--brick); }
+  .oath h3 { font: 600 26.5px/1.2 var(--display); margin: 8px 0 8px; }
+  .oath p { font-size: 22px !important; line-height: 1.45 !important; }
+
+  .proof { text-align: center; container-type: inline-size; }
+  .proof .ri-proven { margin-bottom: 18px; }
+  .proof .n { font: 700 clamp(40px, 8cqw, 64px)/1 var(--mono); color: var(--brick); letter-spacing: -.02em; }
+  .proof .n small { font-size: .42em; color: var(--ink-soft); font-weight: 500; }
+  .proof .cap { font: italic 26.5px var(--display) !important; margin: 12px 0 6px !important; }
+  .proof .sub { font: 19px/1.6 var(--mono) !important; color: var(--ink-soft); }
+
+  .sealed { text-align: center; }
+  #summary { padding-block: 48px; }
+  .plain .ri-flag { float: left; clear: left; width: 76px; height: auto; margin: 14px 20px 6px 0; filter: drop-shadow(0 3px 3px rgba(90,60,25,.2)); }
+  .plain .ri-flag ~ ul, .plain .ri-flag ~ p { display: flow-root; margin-top: 0; }
+  .plain p:has(img.seal-mark) { clear: left; }
+  .sealed .pair { display: flex; align-items: center; justify-content: center; gap: clamp(20px, 4vw, 56px); }
+  .wax { display: block; width: 150px; height: 150px; object-fit: contain; filter: drop-shadow(0 4px 5px rgba(60,20,10,.45)); }
+  .sealed .ri-npm { margin: 0; }
+  .sign { font: italic 24px/1.45 var(--text) !important; margin-top: 26px !important; }
+
+  /* ---------- Summary ---------- */
+  #summary .plain { max-width: 720px; margin: 0 auto; padding: 30px 4px 0; color: var(--ink); background: var(--ink-rule-faint) left top / 100% 10px no-repeat; }
+  #summary h2 { font: 600 32px var(--display); margin: 0 0 12px; color: var(--brick); }
+  #summary h3 { font: 600 23.5px var(--display); margin: 22px 0 6px; color: var(--slate); }
+  #summary p, #summary li { font: 22px/1.6 var(--text); }
+  #summary ul { padding-left: 20px; }
+  #summary code { font: 1em var(--mono); color: var(--brick); }
+
+  @media (max-width: 759px) {
+    .paper { padding-top: 32px; }
+    .letter p { font-size: 18px; }
+    .oath p { font-size: 18px !important; }
+    .oaths { grid-template-columns: 1fr; gap: 26px; }
+    .wax { width: 110px; height: 110px; }
+    .sealed .pair { flex-direction: column; gap: 12px; }
+    .proof .sub { font-size: 16px !important; }
+  }
+</style>
+<style>
+  a.skip { color: var(--ink); text-decoration: none; opacity: 1; } /* ink text with an ink swash (ink.css), no box */
+  a.skip:hover, a.skip:focus-visible { color: var(--brick); }
+</style>
+</head>
+<body>
+<a class="skip ink-under" href="#summary">skip the ceremony &rarr;</a>
+
+<header class="royal-hero"
+  data-headline="Regular CSS, <em>proven</em> in every realm"
+  data-sub="A letter, sealed for thee. Read on."
+  data-cue-href="#letter"
+  data-cue-label="Read the letter"></header>
+
+<main class="letter">
+  <section class="ri-sec" id="letter">
+    <div class="col">
+    <article class="paper" id="paper" aria-label="A letter from the Dragon">
+      <img class="ri-sealed" src="assets/kit/letter.png" alt="">
+      <p class="salute ink">Dear Lord Developer,</p>
+      <p class="lead ink"><span class="drop">L</span>ong hast thou written thy styles once for the web, and then again, in other tongues, for every other realm.</p>
+      <p class="ink">Hear now a better way. Write regular CSS, once. At build time Dragon turneth it into native view properties, laid out by its own engine.</p>
+      <p class="ink">And lest thou take this for a tale, every claim is proven against Chrome, number by number, never by a painting. Read on, and judge for thyself.</p>
+    </article>
+    </div>
+  </section>
+
+  <section class="ri-sec" id="oaths" aria-labelledby="oaths-h">
+    <div class="col">
+    <div class="rule" aria-hidden="true">&#10022;</div>
+    <h2 class="sec" id="oaths-h">The three oaths</h2>
+    <div class="oaths">
+      <div class="oath">
+        <img class="ri-icon" src="assets/kit2/css-banner.png" alt="">
+        <div class="num">1</div>
+        <h3 class="ink">Write CSS once</h3>
+        <p class="ink">Regular CSS, compiled at build time into native view properties.</p>
+      </div>
+      <div class="oath">
+        <img class="ri-icon" src="assets/kit2/chrome.png" alt="">
+        <div class="num">2</div>
+        <h3 class="ink">Proven by numbers</h3>
+        <p class="ink">Checked against Chrome, value by value. Nothing is marked supported without a passing test.</p>
+      </div>
+      <div class="oath">
+        <img class="ri-icon" src="assets/icons/scales.png" alt="">
+        <div class="num">3</div>
+        <h3 class="ink">Every platform equal</h3>
+        <p class="ink">One TypeScript engine; native engines generated from it. iOS and Android ride together, now: milestone 2, in progress.</p>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <section class="ri-sec" id="proof" aria-labelledby="proof-h">
+    <div class="col">
+    <div class="rule" aria-hidden="true">&#10022;</div>
+    <h2 class="sec" id="proof-h">One proof, of many</h2>
+    <div class="proof">
+      <img class="ri-proven ri-proven--big" src="assets/kit/proven.png" alt="">
+      <div class="n">8,671<small> / 8,671</small></div>
+      <p class="cap ink">boxes match <span class="nb"><img class="ri-plat" src="assets/kit2/chrome.png" alt="">Chrome</span> exactly, to 1/64 of a pixel.</p>
+      <p class="sub ink">137 fixtures &middot; 258 cases &middot; 339,080 identical computed values &middot; web, milestone 1</p>
+    </div>
+    </div>
+  </section>
+
+  <section class="ri-sec" id="sealed" aria-label="Sealed">
+    <div class="col">
+    <div class="rule" aria-hidden="true">&#10022;</div>
+    <div class="sealed">
+      <div class="pair">
+        <img class="wax" src="assets/gen/wax-seal-dragon.png" alt="The Dragon's wax seal">
+        <div class="ri-npm"><img src="assets/kit/npm-scroll.png" alt=""><code>npm install dragon</code><small>coming soon: not yet published</small></div>
+      </div>
+      <p class="sign ink">Sealed by the hand of the Dragon,<br>Keeper of the Styles</p>
+    </div>
+    </div>
+  </section>
+</main>
+
+<section class="ri-sec" id="summary">
+<div class="plain">
+  <div class="ri-h"><img src="assets/icons/crown.png" alt=""><h2>Dragon CSS, plainly</h2></div>
+  <p>Write regular CSS once. Dragon compiles it at build time into native view properties, and proves the result against Chrome, number by number, never by screenshots.</p>
+  <img class="ri-flag" src="assets/kit/banner-conquered.png" alt="Conquered"><h3>Done: milestone 1 (web)</h3>
+  <ul>
+    <li>Dragon's own TypeScript layout engine: block, flex, text, positioning, right-to-left.</li>
+    <li>137 test fixtures and 258 cases pass.</li>
+    <li>8,671 of 8,671 boxes match Chrome exactly, to 1/64 px.</li>
+    <li>339,080 computed values are identical between the author's CSS and Dragon's output.</li>
+  </ul>
+  <img class="ri-flag" src="assets/kit/banner-marching.png" alt="Marching now"><h3>Now: milestone 2 (iOS and Android, at parity)</h3>
+  <p>Native engines are generated from the one TypeScript engine, and each device lane is checked against Chrome.</p>
+  <p>Support labels: <img class="seal-mark" src="assets/kit/seal-exact.png" alt=""><code>exact</code>, <img class="seal-mark" src="assets/kit/seal-caveat.png" alt=""><code>caveat</code>, <img class="seal-mark" src="assets/kit/seal-unsupported.png" alt=""><code>unsupported</code>. Nothing is marked supported without a passing test.</p>
+  <p>Install: <code>npm install dragon</code> (coming soon; not yet published).</p>
+</div>
+</section>
+
+<script>
+addEventListener('DOMContentLoaded', () => RoyalHero.enableSnapAndFocus('.royal-hero, #letter, #oaths, #proof, #sealed, #summary'));
+</script>
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon CSS: The Royal Letter</title>
+<link rel="stylesheet" href="assets/parchment.css">
+<link rel="stylesheet" href="assets/ink.css">
+<link rel="stylesheet" href="assets/royal-hero.css">
+<link rel="stylesheet" href="assets/integration.css">
+<script src="assets/royal-hero.js" defer></script>
+<script>/* Space on a button or link activates it; keep the section stepper from taking it. Registered before the stepper. */
+addEventListener('keydown', e => { if (e.key === ' ' && e.target.closest && e.target.closest('button, a, [role="button"], summary')) e.stopImmediatePropagation(); });</script>
+<script src="assets/parchment.js"></script>
+<style>
+  body { min-height: 100vh; overflow-x: hidden; }
+
+  /* The letter is written straight onto the page parchment: no sheet, no rollers. Structure comes from rules
+     and the rubricated initial. */
+  .stage { padding: 0; }
+  .letter { max-width: 700px; margin: 0 auto; padding: 34px 0 10px; position: relative;
+    background: var(--ink-rule-gold) left top / 46% 10px no-repeat, var(--ink-rule-gold-b) right top / 46% 10px no-repeat; }
+  .letter::before { content: "\2766"; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); padding: 0 14px;
+    font-size: 18px; line-height: 26px; color: var(--brick); }
+
+  .salute { font: italic 34px/1.3 var(--display); margin: 0 0 18px; color: var(--ink); }
+  .body p { font: 25.5px/1.45 var(--text); margin: 0 0 16px; color: var(--ink-body); text-wrap: pretty; }
+  .drop { float: left; font: 400 137.5px/.8 var(--display); color: var(--brick); margin: 8px 12px 0 -4px; padding: 6px 12px 4px; position: relative;
+    text-shadow: 1px 1px 0 rgba(90,20,15,.25); }
+  .drop::after { content: "✦"; position: absolute; right: -9px; top: -9px; font-size: 14px; color: var(--gold); }
+  .num { font-family: var(--mono); font-size: 1em; color: var(--brick); white-space: nowrap; }
+  .lbl { font-family: var(--mono); font-size: 1em; padding: 0 1px 2px; background: var(--ink-swash) left bottom / 100% 6px no-repeat; }
+  .lbl.exact { color: var(--sage); }
+  .lbl.caveat { color: #8a6516; }
+  .lbl.unsupported { color: var(--brick); }
+
+  /* Signature */
+  .sign { margin-top: 30px; padding-bottom: 10px; display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 20px; }
+  .sign .by { font: italic 23.5px/1.5 var(--text); color: var(--ink-soft); }
+  .sign .name { display: block; font: italic 45px/1.1 var(--display); color: var(--ink); margin-top: 4px; }
+  .sign svg.flourish { display: block; width: 240px; height: 26px; margin-top: 2px; }
+  .flourish path { stroke: var(--ink); stroke-width: 1.6; fill: none; stroke-linecap: round; }
+
+  /* Wax seal: the drawn seal, split along a jagged crack into two clip-path halves */
+  .seal-wrap { position: relative; width: 180px; height: 180px; justify-self: end; margin: -20px -30px -10px 0; }
+  .seal { all: unset; cursor: pointer; position: absolute; inset: 0; display: block; }
+  .seal:focus-visible { outline: 2px dashed var(--brick); outline-offset: -14px; border-radius: 50%; }
+  .half { position: absolute; inset: 0; z-index: 1; transition: transform .95s cubic-bezier(.5,0,.7,.4), opacity .95s ease-in; }
+  .half img { width: 100%; height: 100%; display: block; filter: drop-shadow(0 4px 5px rgba(50,15,5,.35)); }
+  .half.l { clip-path: polygon(0 0, 51% 0, 51% 9%, 46% 19%, 54% 30%, 46.5% 41%, 53% 51%, 49% 60%, 50% 100%, 0 100%); }
+  .half.r { clip-path: polygon(51% 0, 100% 0, 100% 100%, 50% 100%, 49% 60%, 53% 51%, 46.5% 41%, 54% 30%, 46% 19%, 51% 9%); }
+  .seal-wrap:not(.cracked) .seal:hover .half.l { transform: translateX(-2px) rotate(-1.5deg); }
+  .seal-wrap:not(.cracked) .seal:hover .half.r { transform: translateX(2px) rotate(1.5deg); }
+  .seal-hint { position: absolute; left: 50%; bottom: -18px; transform: translateX(-50%); white-space: nowrap; font: 17px var(--mono); color: var(--brick); letter-spacing: .06em; }
+  .js .seal-hint { animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .45; } }
+  .seal-wrap { transition: height .6s ease .75s, margin .6s ease .75s; }
+  .seal-wrap.cracked { height: 0; margin-top: 0; margin-bottom: 0; }
+  .cracked .half { pointer-events: none; }
+  .cracked .seal { outline: none; }
+  .cracked .half.l { transform: translate(-46px, 70px) rotate(-38deg); opacity: 0; }
+  .cracked .half.r { transform: translate(44px, 64px) rotate(34deg); opacity: 0; }
+  .cracked .seal-hint { opacity: 0; animation: none; }
+  .crumbs { position: absolute; inset: 0; pointer-events: none; }
+  .crumbs b { position: absolute; left: 50%; top: 35%; width: 8px; height: 6px; background: #8b2820; border-radius: 40%; opacity: 0; }
+  .cracked .crumbs b { animation: crumb .8s ease-out both; }
+  @keyframes crumb { 0% { opacity: 1; transform: translate(0,0) rotate(0); } 100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(200deg); } }
+  .crack-flash { position: absolute; inset: 22% 22% 40%; border-radius: 50%; pointer-events: none; opacity: 0; }
+  .cracked .crack-flash { animation: flash .5s ease-out; }
+  @keyframes flash { 0% { opacity: .9; box-shadow: 0 0 0 0 rgba(184,137,43,.7); } 100% { opacity: 0; box-shadow: 0 0 0 40px rgba(184,137,43,0); } }
+
+  /* Reveal */
+  .reveal { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .9s cubic-bezier(.3,.1,.2,1) .35s; }
+  .reveal > div { overflow: hidden; }
+  .reveal.open { grid-template-rows: 1fr; }
+  .inside { margin-top: 44px; padding-top: 26px; position: relative; background: var(--ink-rule-faint) left top / 42% 10px no-repeat, var(--ink-rule-faint-b) right top / 42% 10px no-repeat; }
+  .inside::before { content: "✦ ✦ ✦"; position: absolute; top: -5px; left: 50%; transform: translateX(-50%); padding: 0 12px; color: var(--gold); font-size: 12px; letter-spacing: .4em; }
+  .inside h2 { font: italic 32px/1.2 var(--display); margin: 0 0 16px; text-align: center; }
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .steps li { text-align: center; font: 20.5px/1.5 var(--text); color: var(--ink-soft); }
+  .steps img { width: 92px; height: 92px; object-fit: contain; display: block; margin: 0 auto 6px; }
+  .steps b { display: block; font: 600 22.5px var(--display); color: var(--ink); margin-bottom: 4px; }
+  .steps b span { color: var(--brick); font-family: var(--display); margin-right: 4px; }
+  .open .steps li { animation: rise .6s both; }
+  .open .steps li:nth-child(1) { animation-delay: .8s; } .open .steps li:nth-child(2) { animation-delay: 1s; } .open .steps li:nth-child(3) { animation-delay: 1.2s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+  /* Margin icons */
+
+  /* Plain summary */
+  .summary { max-width: 700px; margin: 0 auto 60px; padding: 26px 0 0; font: 22.5px/1.6 var(--text); color: var(--ink-body);
+    background: var(--ink-rule-faint) left top / 100% 10px no-repeat, var(--ink-rule-faint-b) left 0 top 5px / 100% 10px no-repeat; }
+  .summary code { color: var(--brick); font-family: var(--mono); }
+  .summary h2 { font: 600 29px var(--display); margin: 0 0 10px; color: var(--brick); }
+  .summary ul { padding-left: 20px; margin: 0; }
+  .summary li { margin-bottom: 6px; }
+  .small { font: 12px var(--mono); color: var(--ink-soft); }
+
+  @media (max-width: 760px) {
+    .salute { font-size: 22px; }
+    .body p { font-size: 17px; line-height: 1.45; }
+    .drop { font-size: 80px; padding: 4px 8px 2px; margin-right: 10px; }
+    .sign { grid-template-columns: 1fr; }
+    .sign svg.flourish { width: 200px; }
+    .seal-wrap { justify-self: center; margin: 0 0 10px; }
+    .steps { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .flourish path { stroke-dashoffset: 0; }
+  }
+</style>
+<style>
+  a.skip { color: var(--ink); text-decoration: none; opacity: 1; } /* ink text with an ink swash (ink.css), no box */
+  a.skip:hover, a.skip:focus-visible { color: var(--brick); }
+  .letter-sec { padding-top: clamp(40px, 7svh, 90px); }
+  .seal-sec .letter { background: none; padding-top: 0; }
+  .seal-sec .letter::before { content: none; }
+</style>
+</head>
+<body>
+<a class="skip ink-under" href="#summary">skip the ceremony</a>
+
+<header class="royal-hero"
+  data-headline="Regular CSS, <em>proven</em> in every realm"
+  data-sub="Write it once for the web; at build time it becomes native views."
+  data-cue-href="#letter"
+  data-cue-label="Read the letter"></header>
+
+
+
+<main class="stage">
+  <section class="ri-sec letter-sec" id="letter">
+    <article class="letter" aria-label="A letter from the Dragon">
+      <img class="ri-sealed" src="assets/kit/letter.png" alt=""><p class="salute ink-line">Dear Lord Developer,</p>
+      <div class="body">
+        <p class="first ink-line"><span class="drop">W</span>ord has reached the Round Table that you still write your styles twice: once for the web, and once more for every device in the realm.</p>
+        <p class="ink-line">Lay down that burden. Dragon takes regular CSS and, at build time, compiles it into native view properties.</p>
+        <p class="ink-line">We ask no faith of you. Dragon keeps its own layout engine, and it is proven against Chrome number by number, never by screenshots: <span class="num">8,671</span> of <span class="num">8,671</span> boxes match to <span class="num">1/64</span> of a pixel.</p>
+        <p class="ink-line"><img class="ri-signpost" src="assets/kit2/signpost.png" alt="">Every property bears an honest mark, <span class="nb"><img class="seal-mark" src="assets/kit/seal-exact.png" alt=""><span class="lbl exact">exact</span>,</span> <span class="nb"><img class="seal-mark" src="assets/kit/seal-caveat.png" alt=""><span class="lbl caveat">caveat</span></span> or <span class="nb"><img class="seal-mark" src="assets/kit/seal-unsupported.png" alt=""><span class="lbl unsupported">unsupported</span>,</span> and none is called supported without a passing test.</p>
+        <p class="ink-line">The web is proven today. iPhone and Android ride out now, on the second campaign.</p>
+        <p class="ink-line">Break the seal below, and begin.</p>
+      </div>
+    </article>
+  </section>
+
+  <section class="ri-sec seal-sec" id="seal-sec" aria-label="The seal">
+    <div class="letter">
+      <div class="sign">
+        <div class="ink-line sig">
+          <span class="by">By the hand of the Dragon,</span>
+          <span class="name">Keeper of the Styles</span>
+          <svg class="flourish" viewBox="0 0 240 26" aria-hidden="true"><path d="M4 16 C 40 2, 70 26, 110 12 S 180 4, 236 14 M150 20 C 170 24, 200 22, 220 18"/></svg>
+        </div>
+        <div class="seal-wrap" id="sealWrap">
+          <button class="seal" id="seal" aria-expanded="false" aria-controls="reveal" aria-label="Break the wax seal to reveal the install command">
+            <span class="half l"><img src="assets/kit/seal-break.png" alt=""></span>
+            <span class="half r"><img src="assets/kit/seal-break.png" alt=""></span>
+            <span class="crack-flash"></span>
+            <span class="crumbs" aria-hidden="true">
+              <b style="--x:-50px;--y:40px"></b><b style="--x:46px;--y:52px"></b><b style="--x:-20px;--y:70px"></b>
+              <b style="--x:30px;--y:-30px"></b><b style="--x:-40px;--y:-20px"></b><b style="--x:10px;--y:80px"></b>
+            </span>
+          </button>
+          <span class="seal-hint" aria-hidden="true">break the seal</span>
+        </div>
+      </div>
+
+      <div class="reveal" id="reveal">
+        <div>
+          <section class="inside" aria-label="How to begin">
+            <h2>Thus you begin</h2>
+            <div class="ri-npm"><img src="assets/kit/npm-scroll.png" alt=""><code>npm install dragon</code><small>coming soon: not yet published</small></div>
+            <ol class="steps">
+              <li><img src="assets/kit2/css-banner.png" alt=""><b><span>1.</span>Write CSS</b>Regular CSS, as you have always written it. No new dialect to learn.</li>
+              <li><img src="assets/icons/castle.png" alt=""><b><span>2.</span>Build</b>At build time Dragon compiles it into native view properties.</li>
+              <li><img src="assets/icons/scales.png" alt=""><b><span>3.</span>Read the marks</b>Each property says <img class="seal-mark" src="assets/kit/seal-exact.png" alt=""><span class="lbl exact">exact</span>, <img class="seal-mark" src="assets/kit/seal-caveat.png" alt=""><span class="lbl caveat">caveat</span> or <img class="seal-mark" src="assets/kit/seal-unsupported.png" alt=""><span class="lbl unsupported">unsupported</span>. Trust only what is tested.</li>
+            </ol>
+          </section>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<section class="ri-sec" id="summary">
+<div class="summary">
+  <div class="ri-h"><img src="assets/icons/crown.png" alt=""><h2>Dragon CSS, plainly</h2></div>
+  <ul>
+    <li>Regular CSS, compiled at build time into native view properties.</li>
+    <li>Its own TypeScript layout engine: block, flex, text, positioning, right-to-left.</li>
+    <li>Proven against Chrome by numbers, not screenshots: 137 fixtures, 258 cases, 8,671 of 8,671 boxes exact to 1/64 px, 339,080 computed values identical.</li>
+    <li>Support labels: exact, caveat, unsupported. Nothing is marked supported without a passing test.</li>
+    <li>Web is proven today. iOS and Android parity is in progress (milestone 2).</li>
+    <li>Install: <code class="mono">npm install dragon</code> (coming soon; not yet published).</li>
+  </ul>
+  <ul class="ri-banners" aria-label="Where each realm stands">
+    <li><img src="assets/kit/banner-conquered.png" alt=""><b>Web</b>proven, milestone 1</li>
+    <li><img src="assets/kit/banner-marching.png" alt=""><b>iOS and Android</b>in progress, milestone 2</li>
+    <li><img src="assets/kit/banner-notyet.png" alt=""><b>Custom properties, 1.0</b>not yet ridden</li>
+  </ul>
+</div>
+</section>
+
+<script>
+(function () {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduce) {
+    document.documentElement.classList.add('js');
+  }
+
+  const wrap = document.getElementById('sealWrap'), seal = document.getElementById('seal'), reveal = document.getElementById('reveal');
+  seal.addEventListener('click', () => {
+    if (wrap.classList.contains('cracked')) return;
+    wrap.classList.add('cracked'); reveal.classList.add('open'); seal.setAttribute('aria-expanded', 'true');
+    seal.setAttribute('aria-label', 'The seal is broken');
+  });
+})();
+addEventListener('DOMContentLoaded', () => RoyalHero.enableSnapAndFocus('.royal-hero, #letter, #seal-sec, #summary'));
+</script>
+</body>
+</html>

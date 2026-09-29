@@ -1,0 +1,75 @@
+{
+ "chrome": "145.0.7632.6",
+ "playwright": "1.58.2",
+ "platform": "darwin-arm64",
+ "launches": [
+  {
+   "dpr": 1,
+   "flags": [
+    "--force-device-scale-factor=1",
+    "--force-color-profile=srgb",
+    "--font-render-hinting=none",
+    "--disable-lcd-text",
+    "--hide-scrollbars"
+   ]
+  }
+ ],
+ "fonts": {
+  "Inter/Inter-Light.ttf": "164414f0aacbe98a7e64addc43f7b3bfd2e32f7b90e101feeab227f14c371bda",
+  "Inter/Inter-Regular.ttf": "40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+  "Inter/Inter-Italic.ttf": "bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+  "Inter/Inter-Bold.ttf": "288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f",
+  "Inter/Inter-BoldItalic.ttf": "948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d",
+  "NotoSansMono/NotoSansMono-Regular.ttf": "87f8ce0522a6c99b743ee5fc75b4073cfdd575639119672828b7b9944b65b4f4"
+ },
+ "probe": "P3",
+ "css": "body{margin:8px}\n.a{font-family:Ahem;font-size:20px;line-height:1.5}\n.b{font-family:\"sans-serif\";font-weight:700}\n.c{font:italic 13px/1.4 serif}\n.d{font-family:system-ui;display:flex;gap:4px}\n.d>span{flex:1;font-family:Times, \"monospace\"}\n.e{font-family:Unknown Family, fantasy;width:120px;padding:3px}\n@media (min-width:1px){.f{font-family:cursive;font-size:17.5px}}",
+ "body": "<div class=\"a\" id=\"a\">Ahem text</div><div class=\"b\" id=\"b\">Quoted generic</div><p class=\"c\" id=\"c\">Serif italic <b>bold</b></p><div class=\"d\" id=\"d\"><span>one</span><span>two words</span></div><div class=\"e\" id=\"e\">wrap wrap wrap wrap wrap wrap</div><div class=\"f\" id=\"f\" style=\"font-family:system-ui, serif\">attr</div><h1 id=\"h\">Heading</h1>",
+ "visits": [
+  {
+   "where": ".a",
+   "before": "Ahem",
+   "after": "Ahem"
+  },
+  {
+   "where": ".b",
+   "before": "\"sans-serif\"",
+   "after": "\"sans-serif\""
+  },
+  {
+   "where": ".c",
+   "before": "serif",
+   "after": "serif"
+  },
+  {
+   "where": ".d",
+   "before": "system-ui",
+   "after": "system-ui"
+  },
+  {
+   "where": ".d > span",
+   "before": "Times, \"monospace\"",
+   "after": "Times, \"monospace\""
+  },
+  {
+   "where": ".e",
+   "before": "\"Unknown Family\", fantasy",
+   "after": "\"Unknown Family\", fantasy"
+  },
+  {
+   "where": ".f",
+   "before": "cursive",
+   "after": "cursive"
+  },
+  {
+   "where": "#f[style]",
+   "before": "system-ui, serif",
+   "after": "system-ui, serif"
+  }
+ ],
+ "elements": 11,
+ "computedValues": 4543,
+ "before": "a87b8b9f26f4ebecdbf1d5786cc64b4610d55adcad92b7c8457510d9fbea74e7",
+ "after": "a87b8b9f26f4ebecdbf1d5786cc64b4610d55adcad92b7c8457510d9fbea74e7",
+ "identical": true
+}

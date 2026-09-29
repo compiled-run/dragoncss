@@ -34,7 +34,7 @@ describe('platform keys', () => {
 
   it('the UA dataset and the platform rules are keyed darwin-arm64; there is no Linux dataset, rule or capture file', () => {
     const ua = readdirSync(repoPath('packages/dragon/src/ua')).filter((f) => f.endsWith('.generated.ts'));
-    expect(ua).toEqual(['chrome-145.darwin-arm64.generated.ts']);
+    expect(ua).toEqual(['chrome-145.darwin-arm64.dark.generated.ts', 'chrome-145.darwin-arm64.generated.ts']);
     expect(referenceDataset().platform).toBe('darwin-arm64');
     expect([...PLATFORM_RULES.keys()]).toEqual(['darwin-arm64']);
     for (const r of platformRules) expect(r.platform).toBe('darwin-arm64');

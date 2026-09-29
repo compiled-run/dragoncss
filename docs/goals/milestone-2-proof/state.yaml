@@ -2,44 +2,42 @@
 # Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
 
 version: 2
-
 goal:
-  title: "Milestone 2 proof: HarfBuzz gate, wave-1 integration, P5 device lanes, north star on device"
-  slug: "milestone-2-proof"
-  kind: recovery # specific | open_ended | existing_plan | recovery | audit
-  tranche: "Continuous: run parallel lanes (PM docs, integrator, TXT1-0, TXT1-C, value model, P5, north star) in disjoint worktrees, merging serially through the integrator, until all three checkpoints pass on iOS and Android."
-  status: active # active | blocked | done
+  title: 'Milestone 2 proof: HarfBuzz gate, wave-1 integration, P5 device lanes, north star on device'
+  slug: milestone-2-proof
+  kind: recovery
+  tranche: 'Continuous: run parallel lanes (PM docs, integrator, TXT1-0, TXT1-C, value model, P5, north star) in disjoint worktrees, merging serially through the integrator, until all three checkpoints pass on iOS and Android.'
+  status: active
   oracle:
-    signal: "pnpm test green on master, plus (1) the TXT1-0 gate: WASM HarfBuzz plus the Zig shim equals Chrome LU widths on 620/620 spike paragraphs, and the iOS xcframework and Android .so build; (2) P5: all five device lanes (iOS 2 and 3; Android 2, 2.625 and 3) pass layout-vectors-device, device-frames, device-applied, device-lines and device-pixels over every master fixture, with derived counts and the raster plant caught; (3) the music-player north star runs end to end on the iPhone simulator and the Android emulator, and matches Chrome frames, applied values and pixels under the P5 lane rules."
-    cadence: "after each Worker package merges, and at final audit"
-    final_proof: "T999 maps each checkpoint to test output and lane reports per platform; a lane blocked on owner tooling is not met."
+    signal: 'pnpm test green on master, plus (1) the TXT1-0 gate: WASM HarfBuzz plus the Zig shim equals Chrome LU widths on 620/620 spike paragraphs, and the iOS xcframework and Android .so build; (2) P5: all five device lanes (iOS 2 and 3; Android 2, 2.625 and 3) pass layout-vectors-device, device-frames, device-applied, device-lines and device-pixels over every master fixture, with derived counts and the raster plant caught; (3) the music-player north star runs end to end on the iPhone simulator and the Android emulator, and matches Chrome frames, applied values and pixels under the P5 lane rules.'
+    cadence: after each Worker package merges, and at final audit
+    final_proof: T999 maps each checkpoint to test output and lane reports per platform; a lane blocked on owner tooling is not met.
   intake:
-    original_request: "setup a new /goal and continue this work. Also maximum parallelization please."
-    interpreted_outcome: "Resume the rate-limited milestone-2 work (integrator merges, TXT1-0 HarfBuzz gate, P5 device lanes with the pixel check) and drive it through the three owner checkpoints, running every lane that is disjoint in parallel."
-    input_shape: recovery # vague | specific | existing_plan | recovery | audit
-    audience: "owner; then framework authors (Markless first)"
-    authority: requested # requested | approved | inferred | needs_approval | blocked
-    proof_type: test # test | demo | artifact | metric | review | source_backed_answer | decision
-    completion_proof: "Checkpoints 1-3 met on iOS and Android and audited by T999."
-    likely_misfire: "Parallel lanes collide on shared files or hand-merge generated files; one platform lags and becomes later; a HarfBuzz mismatch is tolerated; the north star is 'verified' by screenshot judgement instead of numeric lanes."
+    original_request: setup a new /goal and continue this work. Also maximum parallelization please.
+    interpreted_outcome: Resume the rate-limited milestone-2 work (integrator merges, TXT1-0 HarfBuzz gate, P5 device lanes with the pixel check) and drive it through the three owner checkpoints, running every lane that is disjoint in parallel.
+    input_shape: recovery
+    audience: owner; then framework authors (Markless first)
+    authority: requested
+    proof_type: test
+    completion_proof: Checkpoints 1-3 met on iOS and Android and audited by T999.
+    likely_misfire: Parallel lanes collide on shared files or hand-merge generated files; one platform lags and becomes later; a HarfBuzz mismatch is tolerated; the north star is 'verified' by screenshot judgement instead of numeric lanes.
     blind_spots_considered:
-      - "The /tmp/dragon-int integration worktree is mid-merge of feat-block-elements (conflicts resolved, regeneration half done; the previous Worker was running regen.sh with UA capture)."
-      - "The /tmp/dragon-hb worktree has vendor/harfbuzz staged but no shim, build or gate yet."
-      - "The P5 stop needs the owner's decisions.md edits on master (T015 §3.3 and §5)."
-      - "The simulators and emulators are one shared machine resource; device-lane runs must not overlap."
-      - "The north star depends on many roadmap packages; FORM-a is pulled forward per coverage-roadmap.md."
+      - The /tmp/dragon-int integration worktree is mid-merge of feat-block-elements (conflicts resolved, regeneration half done; the previous Worker was running regen.sh with UA capture).
+      - The /tmp/dragon-hb worktree has vendor/harfbuzz staged but no shim, build or gate yet.
+      - The P5 stop needs the owner's decisions.md edits on master (T015 §3.3 and §5).
+      - The simulators and emulators are one shared machine resource; device-lane runs must not overlap.
+      - The north star depends on many roadmap packages; FORM-a is pulled forward per coverage-roadmap.md.
     existing_plan_facts:
-      - "T015 (milestone-2 notes/T015-p4-review-p5-plan.md) approved P4 and specified P5 (§4) with merge must-fixes M1 and M2 (§2), board changes (§5) and a revised P6 and P7."
-      - "Merge order: feat-block-elements (in progress), feat-cascade-var, feat-units, wpt-breadth, engine-linebreak, then t014-p4-backends with M1 and M2. Generated files are regenerated at merge."
-      - "Text plan (docs/research/text-plan-summary.md): serial on inline.ts and text.ts: P4, engine-linebreak, P5, V1/V2, INL1, TXT1a-d, TXT2. TXT1-0 and TXT1-C are parallel-safe because they write new files only."
-      - "HarfBuzz pinned at fa2908bf16d2ccd6623f4d575455fea72a1a722b; the shim is dragon_hb.zig built by zig build (Zig 0.16 installed) to WASM, an iOS xcframework and the Android .so; Chrome's advance function is trunc(float(float(units*size/upem))*65536)."
-      - "Owner 2026-09-28: selection and editing of custom-drawn text: Dragon builds it, with native feel (answer shown in the screenshot; not yet recorded in decisions.md)."
-      - "Env: JAVA_HOME=/opt/homebrew/opt/openjdk@17 ANDROID_HOME=/opt/homebrew/share/android-commandlinetools DRAGON_WPT_DIR=/Users/jacksm5pro/dev/open-source/dragon/vendor/wpt."
-
+      - T015 (milestone-2 notes/T015-p4-review-p5-plan.md) approved P4 and specified P5 (§4) with merge must-fixes M1 and M2 (§2), board changes (§5) and a revised P6 and P7.
+      - 'Merge order: feat-block-elements (in progress), feat-cascade-var, feat-units, wpt-breadth, engine-linebreak, then t014-p4-backends with M1 and M2. Generated files are regenerated at merge.'
+      - 'Text plan (docs/research/text-plan-summary.md): serial on inline.ts and text.ts: P4, engine-linebreak, P5, V1/V2, INL1, TXT1a-d, TXT2. TXT1-0 and TXT1-C are parallel-safe because they write new files only.'
+      - HarfBuzz pinned at fa2908bf16d2ccd6623f4d575455fea72a1a722b; the shim is dragon_hb.zig built by zig build (Zig 0.16 installed) to WASM, an iOS xcframework and the Android .so; Chrome's advance function is trunc(float(float(units*size/upem))*65536).
+      - 'Owner 2026-09-28: selection and editing of custom-drawn text: Dragon builds it, with native feel (answer shown in the screenshot; not yet recorded in decisions.md).'
+      - 'Env: JAVA_HOME=/opt/homebrew/opt/openjdk@17 ANDROID_HOME=/opt/homebrew/share/android-commandlinetools DRAGON_WPT_DIR=/Users/jacksm5pro/dev/open-source/dragon/vendor/wpt.'
 rules:
   pm_owns_state: true
   one_active_task: true
-  max_write_workers: 4 # owner asked for maximum parallelization; each writer has its own worktree and disjoint scope (see lanes)
+  max_write_workers: 8
   no_implementation_without_worker_or_pm_task: true
   no_completion_without_judge_or_pm_audit: true
   planning_is_not_completion: true
@@ -52,52 +50,59 @@ rules:
   goal_pressure_requires_oracle: true
   no_completion_on_weak_proof: true
   parallel_lanes:
-    - "active_task is the PM's focus; tasks listed under dispatched run concurrently in their own worktrees."
-    - "Only the integrator (T002 and successors) merges into master; lanes commit on their own branches."
-    - "Only one task at a time may boot simulators or emulators; the PM grants a device lease."
-    - "inline.ts and text.ts are serial: P4, engine-linebreak, P5, V, INL1, TXT1."
+    - active_task is the PM's focus; tasks listed under dispatched run concurrently in their own worktrees.
+    - Only the integrator (T002 and successors) merges into master; lanes commit on their own branches.
+    - 'Device leases are per platform (ios: simulators, android: emulators); the PM grants each.'
+    - 'inline.ts and text.ts are serial: P4, engine-linebreak, P5, V, INL1, TXT1.'
+    - Decisions come from research plus a recorded PM ruling; the owner is never asked, except for actions outside the repo or that cost money.
+    - Workers may retarget existing tests that pin the behaviour their package changes, keeping each test's intent and listing it in the receipt; loosening a check is still a stop.
   slice_policy:
     max_consecutive_tiny_tasks: 2
     prefer_vertical_slices: true
     judge_picks_largest_safe_slice: true
     worker_completes_whole_slice: true
-
 agents:
-  # installed | bundled_not_installed | missing | unknown
   scout: installed
   worker: installed
   judge: installed
-
 visual_board:
   selected: local
   local:
     status: live
-    url: "http://goalbuddy.localhost:41737/milestone-2-proof/"
-    command: "node /Users/jacksm5pro/.claude-swap-backup/sessions/2-jackshelton30_gmail.com/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-2-proof"
-
-active_task: T002
-dispatched: [T002, T003, T004, T006, T010] # tasks running concurrently in their own lanes (PM-maintained)
-device_lease: null # task id holding simulators and emulators
-
+    url: http://goalbuddy.localhost:41737/milestone-2-proof/
+    command: node /Users/jacksm5pro/.claude-swap-backup/sessions/2-jackshelton30_gmail.com/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-2-proof
+active_task: T007
+dispatched:
+  - T007
+  - T009
+  - T046
+  - T048
+  - T049
+  - T054
+  - T056
+  - T061
+device_lease:
+  ios: T007
+  android: T007
 tasks:
   - id: T001
     type: pm
     assignee: PM
     status: done
     lane: pm
-    objective: "Land the uncommitted milestone-2 docs on master so P5's stop condition is cleared. Commit: docs/decisions.md with the T015 O2 fixes; a new owner ruling 'selection and editing of custom-drawn text: Dragon builds it, native feel' that annotates decision 7; docs/research/*; docs/goals/milestone-2 (T015 marked done with a receipt pointing at notes/T015); docs/goals/milestone-2-proof; scripts/update-wpt.sh. Also point T014 note section 2 at sections 1 and 5 (O1)."
+    objective: 'Land the uncommitted milestone-2 docs on master so P5''s stop condition is cleared. Commit: docs/decisions.md with the T015 O2 fixes; a new owner ruling ''selection and editing of custom-drawn text: Dragon builds it, native feel'' that annotates decision 7; docs/research/*; docs/goals/milestone-2 (T015 marked done with a receipt pointing at notes/T015); docs/goals/milestone-2-proof; scripts/update-wpt.sh. Also point T014 note section 2 at sections 1 and 5 (O1).'
     inputs:
-      - "docs/goals/milestone-2/notes/T015-p4-review-p5-plan.md §2 O1 and O2, §5"
-      - "git status on master"
+      - docs/goals/milestone-2/notes/T015-p4-review-p5-plan.md §2 O1 and O2, §5
+      - git status on master
     constraints:
-      - "Docs and goal files only. Do not touch design/ (the owner's homepage work)."
-      - "Commit locally on master; no push."
+      - Docs and goal files only. Do not touch design/ (the owner's homepage work).
+      - Commit locally on master; no push.
     expected_output:
-      - "Commit sha on master; list of files"
+      - Commit sha on master; list of files
     receipt:
       result: done
       harness: claude-code
-      summary: "Committed bf9793b on master: decisions.md (owner edits plus O2 fixes: the Text strategy advances bullet marked superseded by font-unit and HarfBuzz advances, decision 7 annotated, new 'Text selection and editing' ruling: Dragon builds it with a native feel), docs/research plans and the text spike, the milestone-2 board (T015 done with its receipt; T999 active as a history audit) and this board. The API 29-30 drawText bullet was already gone. O1 skipped: the T014 note exists only on the P4 branch, so the integrator can fix it at merge. design/ left untouched."
+      summary: 'Committed bf9793b on master: decisions.md (owner edits plus O2 fixes: the Text strategy advances bullet marked superseded by font-unit and HarfBuzz advances, decision 7 annotated, new ''Text selection and editing'' ruling: Dragon builds it with a native feel), docs/research plans and the text spike, the milestone-2 board (T015 done with its receipt; T999 active as a history audit) and this board. The API 29-30 drawText bullet was already gone. O1 skipped: the T014 note exists only on the P4 branch, so the integrator can fix it at merge. design/ left untouched.'
       evidence:
         - bf9793b
         - docs/decisions.md
@@ -105,113 +110,579 @@ tasks:
   - id: T002
     type: worker
     assignee: Worker
-    status: active
+    status: blocked
     lane: integrator
     reasoning_hint: high
-    objective: "Integrator, in /tmp/dragon-int on branch integration: finish the in-progress feat-block-elements merge (regenerate every generated file, never hand-merge), then merge serially feat-cascade-var, feat-units, wpt-breadth, engine-linebreak (unwired) and t014-p4-backends with T015 M1 (derived counts in native-host.test.ts) and M2 (union of package.json scripts). After each merge run typecheck and pnpm test. After P4 also run native:build for ios and android at derived counts and parity:lanes --run-host, then check that lanes.json is clean. Finally merge master (T001's docs) and fast-forward master to integration."
+    objective: 'Integrator, in /tmp/dragon-int on branch integration: finish the in-progress feat-block-elements merge (regenerate every generated file, never hand-merge), then merge serially feat-cascade-var, feat-units, wpt-breadth, engine-linebreak (unwired) and t014-p4-backends with T015 M1 (derived counts in native-host.test.ts) and M2 (union of package.json scripts). After each merge run typecheck and pnpm test. After P4 also run native:build for ios and android at derived counts and parity:lanes --run-host, then check that lanes.json is clean. Finally merge master (T001''s docs) and fast-forward master to integration.'
     inputs:
-      - "docs/goals/milestone-2/notes/T015-p4-review-p5-plan.md §2"
-      - "docs/research/coverage-roadmap.md (merge rules)"
-      - "/tmp/dragon-int current merge state (MERGE_HEAD b4164dc)"
+      - docs/goals/milestone-2/notes/T015-p4-review-p5-plan.md §2
+      - docs/research/coverage-roadmap.md (merge rules)
+      - /tmp/dragon-int current merge state (MERGE_HEAD b4164dc)
     allowed_files:
-      - "Any file touched by the branches being merged, plus files their generators write (packages/*/emitted, vectors, generated.ts, lanes.json, corpus-*.json, wpt expectations, profiles)"
-      - "packages/parity/test/native-host.test.ts (M1)"
-      - "package.json (M2)"
+      - Any file touched by the branches being merged, plus files their generators write (packages/*/emitted, vectors, generated.ts, lanes.json, corpus-*.json, wpt expectations, profiles)
+      - packages/parity/test/native-host.test.ts (M1)
+      - package.json (M2)
     verify:
-      - "export JAVA_HOME=/opt/homebrew/opt/openjdk@17 ANDROID_HOME=/opt/homebrew/share/android-commandlinetools DRAGON_WPT_DIR=/Users/jacksm5pro/dev/open-source/dragon/vendor/wpt"
-      - "pnpm typecheck"
-      - "pnpm test (all green after every merge)"
-      - "pnpm run native:build -- --target ios; pnpm run native:build -- --target android (derived case counts)"
-      - "pnpm run parity:lanes -- --run-host; git diff --exit-code packages/parity/out/lanes.json"
+      - export JAVA_HOME=/opt/homebrew/opt/openjdk@17 ANDROID_HOME=/opt/homebrew/share/android-commandlinetools DRAGON_WPT_DIR=/Users/jacksm5pro/dev/open-source/dragon/vendor/wpt
+      - pnpm typecheck
+      - pnpm test (all green after every merge)
+      - pnpm run native:build -- --target ios; pnpm run native:build -- --target android (derived case counts)
+      - pnpm run parity:lanes -- --run-host; git diff --exit-code packages/parity/out/lanes.json
     stop_if:
-      - "A merge needs a behavioural code decision beyond conflict resolution, regeneration, M1 and M2."
-      - "A strict-tier output (engine output, vectors, captures, tolerances, support labels, emitted CSS bodies, checks) changes without its branch's proof."
-      - "Verification fails twice on the same merge."
+      - A merge needs a behavioural code decision beyond conflict resolution, regeneration, M1 and M2.
+      - A strict-tier output (engine output, vectors, captures, tolerances, support labels, emitted CSS bodies, checks) changes without its branch's proof.
+      - Verification fails twice on the same merge.
+    receipt:
+      result: blocked
+      harness: claude-code
+      blocked_reason: 'feat-cascade-var cannot combine with master''s logical properties without new semantics: typecheck fails at analysis/logical.ts:55 (direction: var() is not resolved; var() in flow-relative properties competes on both sides).'
+      changed_files:
+        - integration merge 184d6ff (feat-block-elements, regenerated from inputs)
+      commands:
+        - cmd: regen.sh --ua; gen-compare; profile check
+          status: pass
+        - cmd: pnpm typecheck; pnpm test (1204) after feat-block-elements
+          status: pass
+        - cmd: merge feat-cascade-var then pnpm typecheck
+          status: fail
+      summary: 'feat-block-elements merged and green at 184d6ff. Stopped at feat-cascade-var. PM ruling: reorder the merges (T020) and fix cascade-var x logical the Chrome way (T021), then merge it (T022).'
+      spawned_tasks:
+        - T020
+        - T021
+        - T022
+  - id: T020
+    type: worker
+    assignee: Worker
+    status: done
+    lane: integrator
+    reasoning_hint: high
+    objective: 'Integrator, reordered (PM ruling after T002 blocked): from 184d6ff in /tmp/dragon-int, merge feat-units, wpt-breadth, engine-linebreak (unwired), t014-p4-backends with M1 and M2 and the full post-P4 verify, ns-contexts (T013), ns-lane-ref (T014) and master, then fast-forward master. feat-cascade-var is deferred to T022, after T021.'
+    allowed_files:
+      - As in T002, plus the outputs regenerated for ns-contexts and ns-lane-ref
+    verify:
+      - 'As in T002 (env exports, typecheck, pnpm test after each merge; after P4: native:build for ios and android at derived counts, parity:lanes --run-host, lanes.json clean)'
+    stop_if:
+      - As in T002
+    receipt:
+      result: done
+      harness: claude-code
+      changed_files:
+        - As in T002, plus the outputs regenerated for ns-contexts and ns-lane-ref
+      commands:
+        - cmd: typecheck and pnpm test after each of 6 merges (final 1369)
+          status: pass
+        - cmd: native:build ios and android at 300 cases
+          status: pass
+        - cmd: parity:lanes --run-host; lanes.json clean
+          status: pass
+        - cmd: ff master to 12af7cb
+          status: pass
+      summary: 'Master is 12af7cb: feat-units 30130a0, wpt-breadth 104dd7f, engine-linebreak 7c74ed8 (unwired), P4 08a4a6c with M1 and M2, ns-contexts 5d04815, ns-lane-ref 12af7cb. Merge fix: resolve.ts computes the author em/rem font-size before the UA em defaults (pinned by a test). WPT web 5 pass; reftest-layout 20/0; north star 123/291 declarations.'
+  - id: T021
+    type: worker
+    assignee: Worker
+    status: done
+    lane: cascade
+    reasoning_hint: high
+    objective: 'Fix the feat-cascade-var x logical-properties interaction the Chrome way: resolve custom properties first, substitute var() into direction, compute direction, then map var()-holding flow-relative declarations to the physical side for the element''s direction. Chrome fixtures in both directions and planted faults. Branch casc-logical in /tmp/dragon-casc-logical from 184d6ff, merging feat-cascade-var with the saved partial resolution.'
+    allowed_files:
+      - Every file touched by feat-cascade-var (git diff --name-only master...feat-cascade-var) and in /tmp/t002-cascade-var-partial-resolution.patch
+      - packages/dragon/src/analysis/**
+      - packages/dragon/src/css/**
+      - packages/dragon/src/faults.ts
+      - packages/dragon/src/diagnostics/**
+      - packages/dragon/test/**
+      - packages/parity/fixtures/**
+      - packages/parity/src/fixtures.ts
+      - packages/parity/src/fixture-groups/**
+      - packages/parity/test/**
+      - packages/parity/expected/**
+      - packages/parity/expected-dpr/**
+      - packages/parity/emitted/**
+      - packages/layout/vectors/**
+      - packages/dragon/src/profiles/**
+      - packages/dragon/src/ua/*.generated.ts
+      - packages/parity/out/lanes.json
+      - packages/translate/corpus*.json
+      - packages/wpt/expectations/**
+      - examples/music-player/dragon/north-star-check.json
+      - docs/goals/milestone-2-proof/notes/T021-casc-logical.md
+      - NOT packages/layout/src/** or packages/layout/generated/** (an engine change is a stop condition)
+      - NOT GoalBuddy control files
+    verify:
+      - typecheck; pnpm test; captures run twice with no diff; reports failed 0; native:gen with no engine diff; parity:lanes --run-host; north-star:check (refusals only shrink)
+    stop_if:
+      - Chrome's behaviour cannot be captured exactly; engine changes are needed; a strict-tier output changes without a fixture explaining it; verification fails twice
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T021-casc-logical.md
+      changed_files:
+        - Every file touched by feat-cascade-var (git diff --name-only master...feat-cascade-var) and in /tmp/t002-cascade-var-partial-resolution.patch
+        - packages/dragon/src/analysis/**
+        - packages/dragon/src/css/**
+        - packages/dragon/src/faults.ts
+        - packages/dragon/test/**
+        - packages/parity/fixtures/**
+        - packages/parity/src/fixtures.ts
+        - packages/parity/src/fixture-groups/**
+        - packages/parity/test/**
+        - packages/parity/expected/**
+        - packages/parity/expected-dpr/**
+        - packages/parity/emitted/**
+        - packages/layout/vectors/**
+        - packages/dragon/src/profiles/**
+        - packages/parity/out/lanes.json
+        - packages/translate/corpus*.json
+        - packages/wpt/expectations/**
+        - examples/music-player/dragon/north-star-check.json
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1258
+          status: pass
+        - cmd: captures twice no diff; parity:report 317/317; dpr-report 951/951
+          status: pass
+        - cmd: native:gen no diff; parity:lanes --run-host
+          status: pass
+        - cmd: planted faults caught; isSpecificityFirstArgument still caught
+          status: pass
+      summary: 'casc-logical 2e3d86e: custom properties, then direction (var substituted; IACVT means the parent''s direction), then flow-relative mapping. Faults directionBeforeVar and varLogicalBothSides are caught. New fixtures: var-direction, var-logical, css-wide-keywords-sides, background-important. PM confirmed the reject-background-important retarget is not a loosening (a positive Chrome fixture replaces a refusal of a now-supported feature). North star errors 746 to 708. The engine is unchanged. It merges after P5 (T022). Note: support.ts was also touched.'
+    constraints:
+      - 'Excludes (T025): css/selectors.ts, analysis/match.ts, css/selector-validity.generated.ts, src/media/**, test/media/**, test/attributes.test.ts, attr-* and tree-attr-* fixtures'
+      - Must keep specificityFor(sel, faults); the isSpecificityFirstArgument plant must still fail selectors-specificity
+  - id: T022
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: integrator
+    objective: 'Integrator: merge casc-logical (2e3d86e, T021) into master AFTER T007 (P5) lands, because it adds fixtures and must not stale P5''s per-fixture device data. Regenerate at merge (the profile:rows fixed point needs two runs). Then run the new fixtures'' device step on both leases (break vectors, Chrome breaks and pixels for new cases, parity:lanes --run-host --run-device).'
+    allowed_files:
+      - As in T002
+    verify:
+      - As in T002
+    stop_if:
+      - As in T002
     receipt: null
+    constraints:
+      - 'Gate: T007 merged to master.'
   - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    lane: text
+    reasoning_hint: high
+    objective: 'TXT1-0, in /tmp/dragon-hb on branch txt1-harfbuzz-gate: with vendored HarfBuzz at fa2908bf16d2ccd6623f4d575455fea72a1a722b (already staged, unmodified), write the Zig shim dragon_hb.zig and build.zig. zig build must produce WASM, an iOS xcframework (device and simulator) and the Android .so for arm64-v8a and x86_64. The shim installs Chrome''s 16.16 advance function (trunc(float(float(units*size/upem))*65536), no FP contraction) and returns integer glyph id, cluster, advance, offsets and unsafe-to-break flags. Then build a Node gate that shapes all 620 docs/research/text-spike paragraphs through WASM, applies Blink''s float accumulation and FromFloatCeil, and compares them with Chrome''s LU widths. Measure the binary size per ABI.'
+    inputs:
+      - docs/research/text-plan-summary.md
+      - 'docs/decisions.md ''Text shaping: bundled HarfBuzz'''
+      - docs/research/text-spike/ (corpus, Chrome widths, fonts)
+    allowed_files:
+      - vendor/harfbuzz/**
+      - packages/text-shaper/**
+      - pnpm-workspace.yaml
+      - package.json
+      - pnpm-lock.yaml
+      - docs/research/text-spike/**
+    verify:
+      - zig build (all three targets) exits 0
+      - the gate reports 620/620 exact
+      - pnpm typecheck; pnpm test
+    stop_if:
+      - 'Any gate paragraph mismatches after the arithmetic is checked against Blink''s source: stop and report to the owner with the diffs (owner rule).'
+      - HarfBuzz source would need modification.
+      - Need files outside allowed_files (in particular packages/layout).
+    receipt:
+      result: done
+      harness: claude-code
+      changed_files:
+        - vendor/harfbuzz/**
+        - packages/text-shaper/**
+        - pnpm-workspace.yaml
+        - package.json
+        - pnpm-lock.yaml
+        - docs/research/text-spike/**
+      commands:
+        - cmd: HarfBuzz pin verified against Chromium DEPS 145.0.7632.6; source identical to the upstream tarball
+          status: pass
+        - cmd: zig build (wasm, ios xcframework, android arm64-v8a and x86_64)
+          status: pass
+        - cmd: zig build wasm reproducible
+          status: pass
+        - cmd: gate 620/620 exact (5000 lines plus 620 nowrap)
+          status: pass
+        - cmd: pnpm typecheck; pnpm test (1183)
+          status: pass
+      summary: 'Checkpoint 1 met on branch txt1-harfbuzz-gate b00f626: 620/620 exact with zero tolerance; 5 planted faults caught. Sizes: WASM 608 KiB, iOS dylib 645/634 KiB, Android 822/796 KiB. Deviations: Blink sums in 16.16 per run and then in float per part; the shim adds the unrounded HVAR delta (HarfBuzz unmodified); an NDK was installed in /tmp/dragon-ndk (owner install needed for repeatability); 6.8 MB of spike fonts committed under docs/research/text-spike (PM accepted the allowed_files widening after the fact); the root typecheck script was extended.'
+      spawned_tasks:
+        - T023
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    lane: fonts
+    reasoning_hint: high
+    objective: 'Specify TXT1-C, the largest safe package that writes new files only: @font-face parsing in the compiler, the bundled-font SHA-256 manifest entering the compilation digest (a remote URL is a build error), the project font map for generic families (pinned or platform), and a port of Blink''s font_selection_algorithm. Give allowed_files that are disjoint from T002, T003 and P5, plus verify and stop_if.'
+    inputs:
+      - docs/research/text-plan-summary.md 'Fonts, matching and fallback'
+      - packages/dragon/src (compiler layout), vendor/fonts
+    constraints:
+      - Read-only.
+    expected_output:
+      - 'T005 worker package: objective, allowed_files, verify, stop_if; any file that must wait for the integrator'
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T004-txt1c-spec.md
+      rationale: TXT1-C core writes new files only (packages/dragon/src/fonts/**, packages/dragon/test/fonts/**, scripts/capture-font-data.ts, vendor/fonts/<Family>/**, and an append to vendor/fonts/README.md), disjoint from T002's six branches, T003 and P5. It can branch from master 8df7574 now. Wiring into compile() touches files T002 is merging, so it is split out as T005b after T002.
+      spawned_tasks:
+        - T005
+        - T011
+  - id: T023
+    type: worker
+    assignee: Worker
+    status: done
+    lane: integrator
+    objective: 'Integrator: merge txt1-harfbuzz-gate (b00f626) after T020. Condition 1 from T024 comes first: commit the text-spike capture provenance (chrome/measure.mjs, opps.mjs, page.html and the raw case JSON or its sha256, from /tmp/text-spike) under docs/research/text-spike, and take the reference font sha256 from the fonts Chrome loaded. Also deduplicate the spike fonts with T005''s vendor/fonts, and reconcile the text-spike README. Minor T024 fixes: declare dhb_font_var_coords in dragon_hb.h, restore the upstream HarfBuzz README next to the vendoring note, and justify or remove the >=0 part clamp.'
+    allowed_files:
+      - The txt1-harfbuzz-gate diff
+      - docs/research/text-spike/**
+      - vendor/fonts/**
+    verify:
+      - pnpm typecheck; pnpm test; node packages/text-shaper/scripts/gate.ts reports 620/620
+    stop_if:
+      - Need files outside allowed_files.
+      - Verification fails twice.
+    receipt:
+      result: done
+      harness: claude-code
+      changed_files:
+        - The txt1-harfbuzz-gate diff
+        - docs/research/text-spike/**
+        - vendor/fonts/**
+      commands:
+        - cmd: merges plus pnpm typecheck; pnpm test 1431/1431
+          status: pass
+        - cmd: gate 620/620; capture-font-data --check; zig build wasm reproducible
+          status: pass
+        - cmd: ff master to 2347a15
+          status: pass
+      summary: Done by T032 (harfbuzz gate merged as 99ac231, with the T024 condition 1 follow-ups).
+  - id: T024
+    type: judge
+    assignee: Judge
+    status: done
+    lane: text
+    reasoning_hint: high
+    objective: 'Independently verify checkpoint 1 (T003 b00f626): re-run the build and the gate, confirm the HarfBuzz pin, check the reference is not self-referential, check the deviations against Blink 145 source, check native portability and the planted faults.'
+    constraints:
+      - Read-only.
+    expected_output:
+      - met, not met, or met with conditions; required follow-ups
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T024-gate-review.md
+      rationale: 'Checkpoint 1 met with conditions. An independent clean re-run confirms: all zig targets build, the WASM is reproducible, the gate is 620/620 with zero tolerance, the pin matches Chromium 145 DEPS with byte-identical source, the reference is Chrome-measured and not circular, the Blink arithmetic is confirmed in source, there is no FMA in any binary, and native arm64/x86_64 replay equals WASM. Conditions: capture provenance committed before the merge (T023); a variable-font fence (T028); on-device equality (T029). The owner NDK install and a pinned Unicode data version for TXT1a remain.'
+      spawned_tasks:
+        - T028
+        - T029
+  - id: T028
+    type: worker
+    assignee: Worker
+    status: done
+    lane: text
+    objective: 'Variable-font fence (T024 condition 2, PM ruling: refuse until proven): the shim and the compiler refuse variable-font instances outside the Chrome-validated set (Inter VF at its default instance) and any variable font without HVAR, with typed refusals and tests. Widening later needs Chrome cases for more weights and widths and a second variable font with avar. Branch from master after T023.'
+    allowed_files:
+      - packages/text-shaper/**
+      - packages/dragon/src/fonts/**
+      - packages/dragon/test/fonts/**
+    verify:
+      - pnpm typecheck; pnpm test; gate 620/620
+    stop_if:
+      - Need files outside allowed_files.
+      - Verification fails twice.
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T028-vf-fence.md
+      changed_files:
+        - packages/text-shaper/**
+        - packages/dragon/src/fonts/**
+        - packages/dragon/test/fonts/**
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1449
+          status: pass
+        - cmd: gate 620/620; capture-font-data --check; zig build wasm unchanged
+          status: pass
+      summary: 'vf-fence 6618040: shim and compiler refuse no-HVAR variable fonts and instances outside validated-variable-fonts.json (Inter VF, wght 400, opsz 14-24, derived from the Chrome data by a test). fenceDisabled is caught on both layers. PM accepted: the opsz range reading; load-only timeouts that pass on rerun are not verify failures.'
+  - id: T029
     type: worker
     assignee: Worker
     status: queued
     lane: text
-    reasoning_hint: high
-    objective: "TXT1-0, in /tmp/dragon-hb on branch txt1-harfbuzz-gate: with vendored HarfBuzz at fa2908bf16d2ccd6623f4d575455fea72a1a722b (already staged, unmodified), write the Zig shim dragon_hb.zig and build.zig. zig build must produce WASM, an iOS xcframework (device and simulator) and the Android .so for arm64-v8a and x86_64. The shim installs Chrome's 16.16 advance function (trunc(float(float(units*size/upem))*65536), no FP contraction) and returns integer glyph id, cluster, advance, offsets and unsafe-to-break flags. Then build a Node gate that shapes all 620 docs/research/text-spike paragraphs through WASM, applies Blink's float accumulation and FromFloatCeil, and compares them with Chrome's LU widths. Measure the binary size per ABI."
-    inputs:
-      - "docs/research/text-plan-summary.md"
-      - "docs/decisions.md 'Text shaping: bundled HarfBuzz'"
-      - "docs/research/text-spike/ (corpus, Chrome widths, fonts)"
+    objective: 'On-device native equality for the shim (T024 condition 3): a committed replay test runs the recorded dhb_shape calls (/tmp/t024-native) through the iOS simulator and Android emulator builds and requires equality with WASM. Needs the device lease, after P5.'
     allowed_files:
-      - "vendor/harfbuzz/** (vendored, unmodified)"
-      - "packages/text-shaper/** (new package: build.zig, dragon_hb.zig, the TS WASM loader, the gate script and its test)"
-      - "pnpm-workspace.yaml, package.json (scripts only), pnpm-lock.yaml (if the new package needs it)"
-      - "docs/research/text-spike/gate-*.md (gate report)"
+      - packages/text-shaper/**
+      - packages/parity/src/cli/** (one new command, if needed)
     verify:
-      - "zig build (all three targets) exits 0"
-      - "the gate reports 620/620 exact"
-      - "pnpm typecheck; pnpm test"
+      - Replay equal on the iOS simulator and the Android emulator; a planted 1-unit change is caught
     stop_if:
-      - "Any gate paragraph mismatches after the arithmetic is checked against Blink's source: stop and report to the owner with the diffs (owner rule)."
-      - "HarfBuzz source would need modification."
-      - "Need files outside allowed_files (in particular packages/layout)."
+      - Need files outside allowed_files.
+      - The device lease is not held.
+      - Verification fails twice.
     receipt: null
-  - id: T004
-    type: judge
-    assignee: Judge
-    status: queued
-    lane: fonts
-    reasoning_hint: high
-    objective: "Specify TXT1-C, the largest safe package that writes new files only: @font-face parsing in the compiler, the bundled-font SHA-256 manifest entering the compilation digest (a remote URL is a build error), the project font map for generic families (pinned or platform), and a port of Blink's font_selection_algorithm. Give allowed_files that are disjoint from T002, T003 and P5, plus verify and stop_if."
-    inputs:
-      - "docs/research/text-plan-summary.md 'Fonts, matching and fallback'"
-      - "packages/dragon/src (compiler layout), vendor/fonts"
-    constraints:
-      - "Read-only."
-    expected_output:
-      - "T005 worker package: objective, allowed_files, verify, stop_if; any file that must wait for the integrator"
-    receipt: null
+  - id: T032
+    type: worker
+    assignee: Worker
+    status: done
+    lane: integrator
+    objective: 'Integrator: T031 then T023. Merge txt1c-fonts (a343dd0) and txt1-harfbuzz-gate (b00f626, with the T024 condition 1 provenance commit and minor fixes) into master; deduplicate fonts; fast-forward master.'
+    allowed_files:
+      - The txt1c-fonts and txt1-harfbuzz-gate diffs
+      - docs/research/text-spike/**
+      - vendor/fonts/**
+      - packages/text-shaper/include/dragon_hb.h
+      - vendor/harfbuzz/README*
+    verify:
+      - pnpm typecheck; pnpm test; gate 620/620; capture-font-data --check
+    stop_if:
+      - Need files outside allowed_files.
+      - Verification fails twice.
+    receipt:
+      result: done
+      harness: claude-code
+      changed_files:
+        - The txt1c-fonts and txt1-harfbuzz-gate diffs
+        - docs/research/text-spike/**
+        - vendor/fonts/**
+        - packages/text-shaper/include/dragon_hb.h
+        - vendor/harfbuzz/README*
+      commands:
+        - cmd: merges plus pnpm typecheck; pnpm test 1431/1431
+          status: pass
+        - cmd: gate 620/620; capture-font-data --check; zig build wasm reproducible
+          status: pass
+        - cmd: ff master to 2347a15
+          status: pass
+      summary: 'Master is 2347a15: txt1c-fonts a9cd47c, harfbuzz gate 99ac231 with the T024 follow-ups (e72c6fc: provenance committed, loaded-font hashes, header, upstream README, part clamp removed). Inter deduplicated. Checkpoint 1 is on master.'
+  - id: T039
+    type: worker
+    assignee: Worker
+    status: done
+    lane: integrator
+    objective: 'Integrator batch (no fixtures, so it can merge while P5 runs): mq-a-media 2b69f77 (T016), txt1c-wiring Phase A 3a733a2 (T011), then vf-fence (T028) and elb2-ua-defaults (T017) once they are done; rerun ua:capture after ELB-2. Fast-forward master. Dispatch when T028 and T017 finish, or earlier with the ready subset.'
+    allowed_files:
+      - Those branches' diffs plus regenerated outputs
+    verify:
+      - pnpm typecheck; pnpm test; gate 620/620; capture-font-data --check; capture-media-data --check
+    stop_if:
+      - A strict-tier output changes; verification fails twice
+    receipt:
+      result: done
+      harness: claude-code
+      changed_files:
+        - Those branches' diffs plus regenerated outputs
+      commands:
+        - cmd: 4 merges; ua:capture identical; typecheck; pnpm test 1500; gate 620; font, media and font-reference --check
+          status: pass
+        - cmd: ff master 5483c0b
+          status: pass
+      summary: 'Master is 5483c0b: mq-a-media 42d3c6d, txt1c-wiring A b2d3af2, vf-fence a7fcec7, a test union fix 18327f5 (wire.test covers variable-font-refused), elb2 5483c0b.'
   - id: T005
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: fonts
-    objective: "Execute TXT1-C as specified by T004, in /tmp/dragon-fonts on branch txt1c-fonts, branched from master."
-    allowed_files: []
-    verify: []
+    objective: 'TXT1-C core per notes/T004-txt1c-spec.md sections 2 and 3 (binding): pure-TS packages/dragon/src/fonts (sfnt, font-face, manifest, font-map, family-list, selection as a Blink port, metrics, faults, index), vendored OFL fonts, scripts/capture-font-data.ts with Chrome 145 captures and --check, exact tests plus planted faults. Worktree /tmp/dragon-fonts, branch txt1c-fonts from master 8df7574.'
+    allowed_files:
+      - packages/dragon/src/fonts/**
+      - packages/dragon/test/fonts/**
+      - scripts/capture-font-data.ts
+      - vendor/fonts/**
+      - 'packages/dragon/test/ua.test.ts (PM B2: path exemption only)'
+      - 'packages/dragon/test/s4b.test.ts (PM B2: path exemption only)'
+      - docs/goals/milestone-2-proof/notes/T005-txt1c-fonts.md
+    verify:
+      - export JAVA_HOME=/opt/homebrew/opt/openjdk@17 ANDROID_HOME=/opt/homebrew/share/android-commandlinetools DRAGON_WPT_DIR=/Users/jacksm5pro/dev/open-source/dragon/vendor/wpt
+      - pnpm typecheck
+      - pnpm test
+      - pnpm exec vitest run packages/dragon/test/fonts
+      - node --conditions=dragon-internal scripts/capture-font-data.ts --check
+      - sha256 of vendored fonts match README
+      - 'no node: imports in packages/dragon/src/fonts'
+      - diff 8df7574..HEAD inside allowed_files; protected paths unchanged (see note)
     stop_if:
-      - "Need files outside allowed_files."
-      - "Verification fails twice."
-    receipt: null
-  - id: T006
+      - Need a file outside allowed_files (any T011 hook file, package.json, lockfile, packages/parity/src).
+      - Chrome's face choice or metrics disagree with the port after re-reading Blink 145.0.7632.6.
+      - A quantity cannot be observed exactly in Chrome.
+      - A font's licence or source cannot be stated, or the vendored fonts exceed about 4 MB.
+      - A new dependency is needed.
+      - Verification fails twice.
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T005-txt1c-fonts.md
+      changed_files:
+        - packages/dragon/src/fonts/**
+        - packages/dragon/test/fonts/**
+        - scripts/capture-font-data.ts
+        - vendor/fonts/**
+        - 'packages/dragon/test/ua.test.ts (PM B2: path exemption only)'
+        - 'packages/dragon/test/s4b.test.ts (PM B2: path exemption only)'
+      commands:
+        - cmd: pnpm typecheck
+          status: pass
+        - cmd: pnpm test (1229/1229)
+          status: pass
+        - cmd: vitest fonts 54/54
+          status: pass
+        - cmd: capture-font-data --check
+          status: pass
+        - cmd: diff scope
+          status: pass
+      summary: 'txt1c-fonts a343dd0: the TXT1-C core equals Chrome on matching, parsing, pinned, ex, cap, line-height and baseline; upright ch is exact and italic ch is caveat (4 rows, enforced both ways). Chrome rounds metrics half-up; family names are case-folded. Merge by the integrator after T020 (new files only).'
+      spawned_tasks:
+        - T031
+  - id: T031
+    type: worker
+    assignee: Worker
+    status: done
+    lane: integrator
+    objective: 'Integrator: merge txt1c-fonts (a343dd0) into master after T020 (new files only, plus the two test path exemptions). Verify: typecheck, pnpm test.'
+    allowed_files:
+      - The txt1c-fonts diff
+    verify:
+      - pnpm typecheck; pnpm test
+    stop_if:
+      - Need files outside allowed_files.
+      - Verification fails twice.
+    receipt:
+      result: done
+      harness: claude-code
+      changed_files:
+        - The txt1c-fonts diff
+      commands:
+        - cmd: merges plus pnpm typecheck; pnpm test 1431/1431
+          status: pass
+        - cmd: gate 620/620; capture-font-data --check; zig build wasm reproducible
+          status: pass
+        - cmd: ff master to 2347a15
+          status: pass
+      summary: Done by T032 (txt1c-fonts merged as a9cd47c).
+  - id: T033
     type: judge
     assignee: Judge
-    status: queued
-    lane: engine
+    status: done
+    lane: fonts
     reasoning_hint: high
-    objective: "Specify the engine value model package (V1, and V2 if it fits in one safe slice) from docs/research/engine-value-model-plan.md, to branch from master after P4 merges. Rule whether it can run in parallel with P5 on disjoint files (P5 owns inline.ts and text.ts first), and give allowed_files, verify and stop_if."
-    inputs:
-      - "docs/research/engine-value-model-plan.md"
-      - "docs/research/coverage-roadmap.md §merge rules"
-      - "docs/goals/milestone-2/notes/T015-p4-review-p5-plan.md §4 (P5 file list)"
+    objective: Spec T011, the TXT1-C wiring, per notes/T004-txt1c-spec.md (T005b list) and notes/T025 sequencing (after TREE on project.ts; not concurrent with MQ-a B; after or before P5, never during).
     constraints:
-      - "Read-only."
+      - Read-only.
     expected_output:
-      - "T009 worker package, or a ruling that V must follow P5"
-    receipt: null
-  - id: T007
+      - T011 worker package
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T033-txt1c-wiring-spec.md
+      rationale: T011 is split into Phase A (new files, after T032) and Phase B (after T032, P5, T022 and TREE; never concurrent with MQ-a B or V2a). sans-serif is pinned to 'Dragon Sans' (Inter 4.1 static); the stated reference rewrites Chrome's own CSSOM. Lato in the north star needs an owner ruling.
+      spawned_tasks:
+        - T034
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: done
+    lane: fonts
+    objective: 'TXT1-C wiring per notes/T033-txt1c-wiring-spec.md (binding), on branch txt1c-wiring in /tmp/dragon-fonts-wire. Phase A (after T032): new files only (fonts/wire.ts, tests, the capture-font-reference Chrome CSSOM stated reference). Phase B: after T032, T007, T022 and T015 land, never concurrent with T030 or T026. Pinned sans-serif is ''Dragon Sans'' (static Inter 4.1); monospace is ''Dragon Mono'' (Noto Sans Mono).'
+    allowed_files:
+      - packages/dragon/src/fonts/wire.ts
+      - packages/dragon/test/fonts/**
+      - scripts/capture-font-reference.ts
+      - docs/goals/milestone-2-proof/notes/T011-txt1c-wiring.md
+    verify:
+      - See notes/T033-txt1c-wiring-spec.md verify (binding)
+    stop_if:
+      - See notes/T033-txt1c-wiring-spec.md stop_if (binding)
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T011-txt1c-wiring.md
+      changed_files:
+        - packages/dragon/src/fonts/wire.ts
+        - packages/dragon/test/fonts/**
+        - scripts/capture-font-reference.ts
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1457
+          status: pass
+        - cmd: capture-font-reference --check and plants
+          status: pass
+        - cmd: capture-font-data --check
+          status: pass
+      summary: 'Phase A at txt1c-wiring 3a733a2. P1: Page.setFontFamilies does not reach web fonts. P2: 22/22 pinned faces via the CSSOM rewrite. P3: control identical. Phase B (T038) carries the font-map quoted-generic fix. Load note: 3 parity tests timed out at 120 s under load average about 50 (the rerun passed).'
+      spawned_tasks:
+        - T038
+  - id: T038
     type: worker
     assignee: Worker
     status: queued
+    lane: fonts
+    objective: 'TXT1-C wiring Phase B (notes/T033 Phase B, binding) on branch txt1c-wiring (Phase A at 3a733a2). First fix font-map.ts rewriteFamilyList so quoted generics are not rewritten, as Chrome''s stated reference P2 shows; the fix is in notes/T011. Gates: T007, T022 and T015 on master; never concurrent with T030 or T026.'
+    allowed_files:
+      - notes/T033 Phase B list (binding)
+      - packages/dragon/src/fonts/font-map.ts (quoted-generic fix only)
+    verify:
+      - notes/T033 Phase B verify (binding)
+    stop_if:
+      - notes/T033 stop_if (binding)
+    receipt: null
+    constraints:
+      - It must call fenceVariableInstance (T028) wherever fonts are resolved in compile().
+      - 'From T036: map ''Lato'' to vendor/fonts/Lato (400, 700) in the north-star font config and pinned.json; retarget wire.test.ts''s unmapped-family example away from Lato; symbol fallback (♪ ▶ ❚) stays with TXT1d.'
+  - id: T006
+    type: judge
+    assignee: Judge
+    status: done
+    lane: engine
+    reasoning_hint: high
+    objective: Specify the engine value model package (V1, and V2 if it fits in one safe slice) from docs/research/engine-value-model-plan.md, to branch from master after P4 merges. Rule whether it can run in parallel with P5 on disjoint files (P5 owns inline.ts and text.ts first), and give allowed_files, verify and stop_if.
+    inputs:
+      - docs/research/engine-value-model-plan.md
+      - docs/research/coverage-roadmap.md §merge rules
+      - docs/goals/milestone-2/notes/T015-p4-review-p5-plan.md §4 (P5 file list)
+    constraints:
+      - Read-only.
+    expected_output:
+      - T009 worker package, or a ruling that V must follow P5
+    receipt:
+      result: done
+      decision: parallel_with_P5
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T006-value-model-spec.md
+      rationale: 'V1, with the cut in note §3 (no new LayoutInput field, no inline.ts or text.ts; env(), sv/lv/dv, plain em/rem leaves, calc in font-size and line-height, ex/ch/cap/lh and fixture viewports move to V2), writes none of P5''s source files. Phase A runs alongside P5 from master after T002. Phase B merges after P5 and holds the device lease. V2 follows P5 and V1. Merge order: T002, then P5, then V1 Phase B, then V2, then INL1, then TXT1.'
+      spawned_tasks:
+        - T009
+        - T012
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: active
     lane: device
     reasoning_hint: high
-    objective: "P5, device lanes on iOS and Android (milestone-2 notes/T015-p4-review-p5-plan.md §4, binding): branch t016-p5-device-lanes from master after T002 lands P4, in worktree /tmp/dragon-p5. Covers the device runner and matrix, layout-vectors-device, device-frames, device-applied, device-lines with the break reference, device-pixels with the Chrome pixel reference at DPR 2, 3 and 2.625, the points protocol, the glyph rule, the capture-trust probe and the raster plant, and DUMP_FAULTS on real dumps. Every master fixture is included, with derived counts."
+    objective: 'P5, device lanes on iOS and Android (milestone-2 notes/T015-p4-review-p5-plan.md §4, binding): branch t016-p5-device-lanes from master after T002 lands P4, in worktree /tmp/dragon-p5. Covers the device runner and matrix, layout-vectors-device, device-frames, device-applied, device-lines with the break reference, device-pixels with the Chrome pixel reference at DPR 2, 3 and 2.625, the points protocol, the glyph rule, the capture-trust probe and the raster plant, and DUMP_FAULTS on real dumps. Every master fixture is included, with derived counts.'
     inputs:
-      - "docs/goals/milestone-2/notes/T015-p4-review-p5-plan.md §3-§4"
+      - docs/goals/milestone-2/notes/T015-p4-review-p5-plan.md §3-§4
     allowed_files:
-      - "As listed in T015 §4 (binding)"
+      - As listed in T015 §4 (binding)
     verify:
-      - "As listed in T015 §4 Verify (binding), with the env exports"
+      - As listed in T015 §4 Verify (binding), with the env exports
     stop_if:
-      - "As listed in T015 §4; the fallback split P5a/P5b applies only after verification fails twice"
-      - "Device lease not held when booting simulators or emulators"
+      - As listed in T015 §4; the fallback split P5a/P5b applies only after verification fails twice
+      - Device lease not held when booting simulators or emulators
     receipt: null
   - id: T008
     type: judge
@@ -219,55 +690,935 @@ tasks:
     status: queued
     lane: device
     reasoning_hint: high
-    objective: "Review P5 (T007) against T015 §4 and checkpoint 2, then specify P6 (fix and promote, including accessibility parity and the owner's selection and editing ruling: Dragon builds it with native feel)."
+    objective: 'Review P5 (T007) against T015 §4 and checkpoint 2, then specify P6 (fix and promote, including accessibility parity and the owner''s selection and editing ruling: Dragon builds it with native feel).'
     constraints:
-      - "Read-only."
+      - Read-only.
     expected_output:
-      - "P5 verdict; P6 worker package"
+      - P5 verdict; P6 worker package
     receipt: null
   - id: T009
     type: worker
     assignee: Worker
     status: queued
     lane: engine
-    objective: "Execute the value-model package as specified by T006."
+    objective: 'V1 engine value model per notes/T006-value-model-spec.md (binding). Worktree /tmp/dragon-v, branch v1-value-model, from master after T002 fast-forwards it. Phase A runs now alongside P5. Phase B runs after P5 is on master, with the device lease: merge master, regenerate, add break, pixel and Chrome data for V1 cases only, and run parity:lanes --run-host --run-device.'
+    allowed_files:
+      - 'See the note''s worker_package.allowed_files (binding): packages/layout/src {input,units,validate,box,flex,position,intrinsic,calc(new),environment(new),layout(zoomInput body only),block(fault appends and call sites),platform-rules,index(append)}, generated outputs, new vectors, translator corpus suites, css/math.ts and values/units, computed.ts, ios-layout.ts, faults, catalogue, emit/native-support.ts (additive encoder), profile rows output, the values fixture group, new expected files, test pins, lanes.json, north-star-check.json, wpt expectations output, notes/T009-value-model-v1.md; Phase B: new break, pixel and Chrome case files'
+    verify:
+      - 'See the note''s worker_package.verify (binding), including native:gen/swift/kotlin/planted, vectors, captures, reports, profile:rows, native:build for both targets, native:encoders, parity:lanes --run-host, north-star:check, wpt:update-expectations, and the protected-path diff; Phase B: break and pixel capture for new cases plus parity:lanes --run-host --run-device'
+    stop_if:
+      - BASE lacks the P4 merge with M1 and M2
+      - A file outside allowed_files is needed (inline.ts, text.ts, a LayoutInput field, the zoomInput signature, P5-owned files, package.json)
+      - Any existing vector, capture, emitted body, profile row, native case source, WPT pass or lanes check changes
+      - A tolerance, gate, case, DPR or direction would be loosened
+      - A planted fault is not caught
+      - Verification fails twice
+      - 'Phase B: P5 not merged or the device lease not held'
+    receipt: null
+    constraints:
+      - 'PM: packages/parity/src/fixture-groups/units.ts and reject-unit-{vw,calc}.html are allowed; the rejects are retargeted to still-refused values, and positive fixtures are added.'
+      - 'PM: verify 5 restated: same line counts and results, inputs differ only by appended false fault keys, corpus/lanes digests may change for that reason only.'
+      - Notes are never committed on branches (the main checkout holds them untracked).
+  - id: T012
+    type: judge
+    assignee: Judge
+    status: done
+    lane: engine
+    reasoning_hint: high
+    objective: 'Specify V2 (after P5 and V1): env(), sv/lv/dv units, plain em/rem as engine values, calc in font-size and line-height, ex/ch/cap/lh, and the fixture viewports list, carrying rulings 1, 3 and 6 from notes/T006-value-model-spec.md. P7''s largest-text-size run depends on V2.'
+    constraints:
+      - Read-only.
+    expected_output:
+      - V2 worker package
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T012-v2-spec.md
+      rationale: V2 split in two. V2a covers the engine, compiler and per-case environment literals; INL1 depends only on V2a. V2b covers fixture viewports, scaled-root captures and native environment reads. ex/ch/cap proceed on Ahem metrics now. Checkpoint 3 does not need V2's features. Owner rulings 1, 2, 3, 4 and 6 are pending; PM rulings 5, 7 and 8 were taken as recommended.
+      spawned_tasks:
+        - T026
+        - T027
+  - id: T026
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'V2a engine value model (notes/T012-v2-spec.md §4, binding; APPROVED by the owner 2026-09-28): env(), sv/lv/dv, em and rem as engine values, rootFontSize, calc in font-size and line-height, ex/ch/cap/lh/rlh with Ahem metrics. Worktree /tmp/dragon-v2, branch v2a-value-model, from master after P5 (T007) and V1 Phase B (T009). PM rulings 5, 7 and 8 taken as recommended.'
+    allowed_files:
+      - See notes/T012-v2-spec.md §4 allowed_files (binding)
+    verify:
+      - See notes/T012-v2-spec.md §4 verify (binding)
+    stop_if:
+      - See notes/T012-v2-spec.md §4 stop_if (binding)
+    receipt: null
+    constraints:
+      - Never concurrent with T011 Phase B; runs before it by default.
+  - id: T027
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'V2b environment runs (notes/T012-v2-spec.md §5, binding): fixture viewports, pinned text-scale tables, scaled-root Chrome captures, native environment reads, the dump environment record. After V2a and INL1. Needs owner rulings 4 and 6.'
+    allowed_files:
+      - See notes/T012-v2-spec.md §5 (binding)
+    verify:
+      - See notes/T012-v2-spec.md §5 (binding)
+    stop_if:
+      - See notes/T012-v2-spec.md §5 (binding)
+    receipt: null
+  - id: T010
+    type: judge
+    assignee: Judge
+    status: done
+    lane: north-star
+    reasoning_hint: high
+    objective: 'Plan checkpoint 3: map every CSS feature and element examples/music-player uses to roadmap packages and their current state on master (merged, in flight, missing), including FORM-a pulled forward. Order the remaining packages for maximum parallelism on disjoint write scopes, define the north-star device lane (the P5 lane rules applied to the demo on both platforms), and give the first two Worker packages that can start now.'
+    inputs:
+      - docs/research/coverage-roadmap.md (north-star paragraph and merge rules)
+      - examples/music-player
+      - docs/decisions.md course correction 4
+    constraints:
+      - Read-only.
+    expected_output:
+      - Feature-to-package map; ordered package list with lanes; first Worker packages
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T010-north-star-plan.md
+      rationale: 'Master north-star check: 70/291 declarations and 18/62 elements supported, 713 errors, nothing on device. Every demo feature is mapped to a package. NS-CTX (T013) and NS-REF (T014) start now on disjoint scopes. The longest pole is P4, P5, V2, INL1, INL2, REPL, FORM-a, then the NS lane. Open scope questions for the owner: the YouTube iframe (FV) and script-driven inline styles (SOV).'
+      spawned_tasks:
+        - T013
+        - T014
+        - T015
+        - T016
+        - T017
+        - T018
+        - T019
+  - id: T013
+    type: worker
+    assignee: Worker
+    status: done
+    lane: north-star
+    objective: 'NS-CTX (notes/T010-north-star-plan.md WP1, binding; base 8df7574, branch ns-contexts, worktree /tmp/dragon-ns-ctx): prove the 79-per-target DRAGON_UNPROVEN_CONTEXT contexts the demo triggers, with a new contexts fixture group and px, % and keyword values only.'
+    allowed_files:
+      - packages/parity/fixtures/**
+      - packages/parity/src/fixture-groups/contexts.ts
+      - packages/parity/src/fixtures.ts
+      - packages/parity/expected/**
+      - packages/parity/expected-dpr/**
+      - packages/layout/vectors/**
+      - packages/parity/emitted/**
+      - packages/dragon/src/profiles/**
+      - packages/parity/out/lanes.json
+      - packages/translate/corpus-dpr.json
+      - examples/music-player/dragon/north-star-check.json
+      - docs/goals/milestone-2-proof/notes/T013-ns-contexts.md
+    verify:
+      - The T010 note WP1 verify list, with the env exports
+    stop_if:
+      - Chrome and the engine disagree on a case; a compiler change is needed; an existing capture, vector, row or emitted body changes; need files outside allowed_files; verification fails twice
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T013-ns-contexts.md
+      changed_files:
+        - packages/parity/fixtures/**
+        - packages/parity/src/fixture-groups/contexts.ts
+        - packages/parity/src/fixtures.ts
+        - packages/parity/expected/**
+        - packages/parity/expected-dpr/**
+        - packages/layout/vectors/**
+        - packages/parity/emitted/**
+        - packages/dragon/src/profiles/**
+        - packages/parity/out/lanes.json
+        - packages/translate/corpus-dpr.json
+        - examples/music-player/dragon/north-star-check.json
+        - docs/goals/milestone-2-proof/notes/T013-ns-contexts.md
+      commands:
+        - cmd: pnpm typecheck; pnpm test (1209)
+          status: pass
+        - cmd: parity:capture and dpr-capture twice, no diff
+          status: pass
+        - cmd: parity:report 177/177 and 309/309; dpr-report 927/927
+          status: pass
+        - cmd: layout:subset; native:gen no diff; native:swift; native:kotlin; parity:lanes --run-host
+          status: pass
+        - cmd: north-star:check UNPROVEN_CONTEXT 79 to 1
+          status: pass
+      summary: UNPROVEN_CONTEXT went from 79 to 1 per target; supported declarations from 70 to 98 of 291; errors from 713 to 557. The one remaining context, overflow on html, needs OVFL. No engine or compiler change. 140 existing rows gained proof ids.
+  - id: T014
+    type: worker
+    assignee: Worker
+    status: done
+    lane: north-star
+    objective: 'NS-REF (notes/T010-north-star-plan.md WP2, binding; base 8df7574, branch ns-lane-ref, worktree /tmp/dragon-ns-ref): the north-star device-lane Chrome oracle and case manifest inside examples/music-player, plus packages/parity/test/north-star-reference.test.ts.'
+    allowed_files:
+      - examples/music-player/**
+      - packages/parity/test/north-star-reference.test.ts
+      - docs/goals/milestone-2-proof/notes/T014-ns-lane-ref.md
+    verify:
+      - The T010 note WP2 verify list, with the env exports
+    stop_if:
+      - Any packages/** source must change; a re-capture is not byte-identical; the reference exceeds 50 MB; need files outside allowed_files; verification fails twice
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T014-ns-lane-ref.md
+      changed_files:
+        - examples/music-player/**
+        - packages/parity/test/north-star-reference.test.ts
+        - docs/goals/milestone-2-proof/notes/T014-ns-lane-ref.md
+      commands:
+        - cmd: pnpm typecheck; pnpm test
+          status: pass
+        - cmd: north-star:capture x2 byte-identical
+          status: pass
+        - cmd: north-star-check.json unchanged
+          status: pass
+        - cmd: size 27.7 MB (limit 50 MB)
+          status: pass
+      summary: The north-star Chrome oracle has 20 cases per platform and DPR, 100 captures across iOS at DPR 2 and 3 and Android at DPR 2, 2.625 and 3. The document timeline is frozen via CDP for determinism.
+  - id: T025
+    type: judge
+    assignee: Judge
+    status: done
+    lane: north-star
+    reasoning_hint: high
+    objective: Specify TREE (T015), MQ-a (T016) and ELB-2 (T017) as Worker packages based on master after T020, with parallelism and sequencing against P5, V1, TXT1-C wiring and T021.
+    constraints:
+      - Read-only.
+    expected_output:
+      - Three worker packages
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T025-tree-mq-elb2-spec.md
+      rationale: TREE (T015), MQ-a A (T016), MQ-a B (T030) and ELB-2 (T017) are specified. T015, T016 and T017 dispatch after T020. T030 waits for T016, T022 and T015. T021 is updated with exclusions and the specificityFor must-fix.
+      spawned_tasks:
+        - T030
+  - id: T015
+    type: worker
+    assignee: Worker
+    status: done
+    lane: north-star
+    objective: 'TREE (notes/T025 T015, binding): attributes as element data for matching, a selector-validity table, void elements in the fixture reader, the north star as a tree fixture compiled for web, ios and android. Worktree /tmp/dragon-tree, branch ns-tree, from master after T020. Merges after P5 lands, plus a device step on the lease.'
+    allowed_files:
+      - packages/dragon/src/**
+      - packages/dragon/test/**
+      - scripts/capture-selector-validity.ts
+      - packages/parity/src/**
+      - packages/parity/fixtures/**
+      - packages/parity/test/**
+      - packages/parity/expected/**
+      - packages/parity/expected-dpr/**
+      - packages/layout/vectors/**
+      - packages/parity/emitted/**
+      - packages/parity/out/lanes.json
+      - packages/translate/corpus-dpr.json
+      - examples/music-player/**
+    verify:
+      - See notes/T025-tree-mq-elb2-spec.md T015.verify (binding)
+    stop_if:
+      - See notes/T025-tree-mq-elb2-spec.md T015.stop_if (binding)
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T015-tree.md
+      changed_files:
+        - packages/dragon/src/**
+        - packages/dragon/test/**
+        - scripts/capture-selector-validity.ts
+        - packages/parity/src/**
+        - packages/parity/fixtures/**
+        - packages/parity/test/**
+        - packages/parity/expected/**
+        - packages/parity/expected-dpr/**
+        - packages/layout/vectors/**
+        - packages/parity/emitted/**
+        - packages/parity/out/lanes.json
+        - packages/translate/corpus-dpr.json
+        - examples/music-player/**
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1458
+          status: pass
+        - cmd: captures stable; parity:report 348/348; dpr-report 1044/1044
+          status: pass
+        - cmd: native:gen, swift, kotlin, build ios and android at 348; parity:lanes --run-host
+          status: pass
+        - cmd: planted faults; selector-validity --check; north-star:check x2
+          status: pass
+      summary: 'ns-tree 2d812f1: attributes as match data, #id, the Chrome selector-validity table, void elements, the north star as a tree fixture compiled for web, ios and android. Attribute errors 40 to 22, selector errors 14 to 9, element errors 29 to 21. The device step is pending P5 (T043). The determinism test is near its timeout (T042).'
+    constraints:
+      - 'PM: compile.test.ts line ~158 retargets ''#x'' to a still-refused selector; selectors.test.ts line 69 becomes an acceptance check; planted-fault tests go in the new packages/parity/test/tree-faults.test.ts; the void img reject uses the src attribute naming REPL.'
+      - Notes are never committed on branches.
+  - id: T016
+    type: worker
+    assignee: Worker
+    status: done
+    lane: north-star
+    objective: 'MQ-a Phase A (notes/T025 T016A, binding): the media-query parser and evaluator plus a Chrome matchMedia corpus, in packages/dragon/src/media, new files only. Worktree /tmp/dragon-mq, branch mq-a-media, from master after T020.'
+    allowed_files:
+      - packages/dragon/src/media/**
+      - packages/dragon/test/media/**
+      - scripts/capture-media-data.ts
+      - docs/goals/milestone-2-proof/notes/T016-mq-a.md
+    verify:
+      - See notes/T025-tree-mq-elb2-spec.md T016A.verify (binding)
+    stop_if:
+      - See notes/T025-tree-mq-elb2-spec.md T016A.stop_if (binding)
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T016-mq-a.md
+      changed_files:
+        - packages/dragon/src/media/**
+        - packages/dragon/test/media/**
+        - scripts/capture-media-data.ts
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1387
+          status: pass
+        - cmd: vitest media; capture-media-data --check; 5 faults caught
+          status: pass
+      summary: 'MQ-a A at mq-a-media 2b69f77: 42,639/42,639 equal to Chrome. Rulings: (orientation > portrait) is refused (Chrome ignores the operator); serialisers are exact by default; environment features are refused more widely than T025 listed.'
+      spawned_tasks:
+        - T039
+  - id: T030
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: 'MQ-a Phase B wiring (notes/T025 T016B, binding): @media accepted through at-rules and stylesheet, a per-band project loop, band blocks in web CSS, native refused until MQ-R. After T016, T022 and T015 are on master. Not concurrent with T011. Device step after P5.'
+    receipt: null
+    allowed_files:
+      - See notes/T025-tree-mq-elb2-spec.md worker_packages T016B.allowed_files (binding)
+    verify:
+      - See notes/T025-tree-mq-elb2-spec.md T016B.verify (binding)
+    stop_if:
+      - See notes/T025-tree-mq-elb2-spec.md T016B.stop_if (binding)
+    constraints:
+      - Never concurrent with T011 Phase B.
+  - id: T017
+    type: worker
+    assignee: Worker
+    status: done
+    lane: north-star
+    objective: 'ELB-2 (notes/T025 T017, binding): UA data only, adding button, input, range, a, img and span in both directions, a dark dataset and system colours. Worktree /tmp/dragon-elb2, branch elb2-ua-defaults, from master after T020. Can merge any time; the integrator reruns ua:capture after T017 and T021.'
+    allowed_files:
+      - scripts/capture-ua-defaults.ts
+      - packages/dragon/src/ua/**
+      - packages/dragon/test/ua.test.ts
+      - packages/dragon/test/ua-elb2.test.ts
+      - packages/parity/test/platform.test.ts
+    verify:
+      - See notes/T025-tree-mq-elb2-spec.md T017.verify (binding)
+    stop_if:
+      - See notes/T025-tree-mq-elb2-spec.md T017.stop_if (binding)
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T017-elb2.md
+      changed_files:
+        - scripts/capture-ua-defaults.ts
+        - packages/dragon/src/ua/**
+        - packages/dragon/test/ua.test.ts
+        - packages/dragon/test/ua-elb2.test.ts
+        - packages/parity/test/platform.test.ts
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1376
+          status: pass
+        - cmd: ua:capture x2 identical; --check; --compare 0 differ; 3 plants caught
+          status: pass
+        - cmd: no compiled output moved (captures, profiles, lanes, north-star unchanged)
+          status: pass
+      summary: 'elb2-ua-defaults 6ddd9e0: UA data for button, input, range, a, a[href], img and span in separate tables; userAgentUnmodelled, userAgentForced, systemColors, and a dark dataset. Existing tables byte-identical. Found unmodelled: unicode-bidi isolate and ol decimal.'
+    constraints:
+      - 'PM ruling 1: packages/parity/test/platform.test.ts may change one line to expect both UA generated files.'
+      - 'PM ruling 2: the new keys go in separate tables; the ua.test.ts:35 assertion stays unchanged.'
+  - id: T018
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: 'NS-LANE (T010 note): the north-star device lane (report-only) on iOS and Android using the T014 reference, after P5 (T007), with the device lease. Needs a Judge spec.'
     allowed_files: []
     verify: []
     stop_if:
-      - "Need files outside allowed_files."
-      - "Verification fails twice."
+      - Need files outside allowed_files.
+      - Verification fails twice.
     receipt: null
-  - id: T010
+  - id: T019
+    type: pm
+    assignee: PM
+    status: queued
+    lane: north-star
+    objective: 'Keep the rest of the T010 package_order on the board (wave 2: POSX-f, SIZE-ar, OVFL; wave 3: INL1, the TXT chain, TDEC; wave 4: INL2, REPL, FORM-a; paint: PNT1, PNT2, BG2, OVFL-s; runtime: SELD-R, ANIM, MQ-R; then NS-E2E), plus FV: the YouTube iframe maps to the platform web view (WKWebView on iOS, android.webkit.WebView on Android) in a Dragon-sized slot, and SOV: script-driven inline styles as typed style overrides. Add each as a Judge-spec plus Worker pair when its dependencies land. Also from ELB-2: model unicode-bidi: isolate on element-table tags (all except body) and ol list-style-type: decimal (GEN/lists).'
+    receipt: null
+  - id: T034
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: 'NS-REF recapture: re-capture the north-star Chrome reference and refresh the font key after T011 Phase B and the Lato ruling.'
+    allowed_files:
+      - examples/music-player/chrome/**
+      - examples/music-player/lane/**
+    verify:
+      - north-star:capture twice, byte-identical; north-star-reference test
+    stop_if:
+      - Need files outside allowed_files.
+      - Verification fails twice.
+    receipt: null
+  - id: T035
+    type: scout
+    assignee: Scout
+    status: done
+    lane: north-star
+    objective: 'Research Lato for the north star (the owner asked for research, then a PM decision): original intent, weights used, licence and versions, proof cost, visual difference.'
+    constraints:
+      - Read-only.
+    expected_output:
+      - Recommendation with evidence
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T035-lato-research.md
+      summary: 'PM ruling from the research: bundle Lato 2.015 Regular and Bold (Google Fonts build 080cb697) and map ''Lato'' to it; sans-serif stays Dragon Sans. The original demo never loaded Lato. Symbol ❚ needs a fallback font (TXT1d).'
+      evidence:
+        - notes/T035-lato-research.md
+        - markless demos/music-player-ssr styles.css:32
+        - github.com/google/fonts ofl/lato
+      spawned_tasks:
+        - T036
+  - id: T036
+    type: worker
+    assignee: Worker
+    status: done
+    lane: fonts
+    objective: Vendor Lato 2.015 Regular and Bold (Google Fonts build, the sha256 values in notes/T035) into vendor/fonts/Lato with OFL and provenance. Add Lato 400 and 700 matching and metric cases to the font captures, and Lato Chrome paragraphs to the HarfBuzz gate corpus (620 plus the new ones, all exact). Map 'Lato' in the north-star font config when T011 Phase B lands. Runs after T028 (which shares packages/dragon/test/fonts).
+    allowed_files:
+      - vendor/fonts/Lato/**
+      - vendor/fonts/README.md
+      - packages/dragon/test/fonts/**
+      - scripts/capture-font-data.ts
+      - packages/text-shaper/**
+      - docs/research/text-spike/**
+    verify:
+      - pnpm typecheck; pnpm test; capture-font-data --check; gate all exact including Lato
+    stop_if:
+      - Lato disagrees with Chrome after checking the Blink source (report it; no tolerance)
+      - Need files outside allowed_files
+      - Verification fails twice
+    receipt:
+      result: done
+      harness: claude-code
+      note: notes/T036-lato.md
+      changed_files:
+        - vendor/fonts/Lato/**
+        - vendor/fonts/README.md
+        - packages/dragon/test/fonts/**
+        - scripts/capture-font-data.ts
+        - packages/text-shaper/**
+        - docs/research/text-spike/**
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1508
+          status: pass
+        - cmd: capture-font-data --check
+          status: pass
+        - cmd: gate 620 + 640 Lato = 1260/1260 exact
+          status: pass
+      summary: 'lato-font 71dbdf4: Lato 2.015 from google/fonts 5d3b7612 (sha256 verified). 80 metric rows and 233 matching requests exact; 640 Chrome gate cases exact on the first run. Retargeted vendored.test size budget (the original eight stay under 4 MB; Lato pinned by byte count).'
+    constraints:
+      - Download from a pinned google/fonts commit, not main, and re-verify sha256 d636e468… (Regular) and 8a0aace7… (Bold); include OFL.txt; record LatoGFVersion 080cb69711ca050d91e9c866e58df7a73095c69a.
+      - The north-star Chrome recapture (T034) follows T011 Phase B and T036.
+      - 'Base: master after T039 merges vf-fence and txt1c-wiring Phase A.'
+  - id: T037
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: device
+    objective: 'Visual gallery (owner visibility): a generated static HTML page, pnpm run native:gallery, showing each fixture side by side as Chrome, the iOS simulator and the Android emulator at the same DPR. It uses P5''s committed or run-output device captures and Chrome pixel references, with each case''s lane verdicts (frames, applied, lines, pixels) and a diff overlay, and filters for failing cases and for feature groups. Evidence only (numbers still decide); read-only over lane outputs. After T007 lands.'
+    allowed_files:
+      - packages/parity/src/gallery.ts (new)
+      - packages/parity/src/cli/native-gallery.ts (new)
+      - packages/parity/test/gallery.test.ts (new)
+      - package.json (one script)
+    verify:
+      - pnpm typecheck; pnpm test; pnpm run native:gallery writes out/gallery/index.html covering every device-lane case
+    stop_if:
+      - Need files outside allowed_files.
+      - Verification fails twice.
+    receipt: null
+  - id: T040
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: device
+    objective: 'Viewer mode for owner visibility (skip if P5 already delivered it): DragonHost on iOS and the Android host take --dragon-view <case ids> to render cases persistently, swiping between them, with an overlay label (case id, DPR), no dumps and no exit. Plus a pnpm run native:view -- --target ios|android [--cases ...|--group ...] command that builds, installs and launches on the leased device. Lanes, dumps and digests are unchanged when the flag is absent (test). After T007.'
+    allowed_files:
+      - packages/parity/src/native-host.ts
+      - packages/parity/src/cli/native-view.ts (new)
+      - packages/dragon/src/emit/native-support.ts (viewer hooks only)
+      - packages/parity/test/native-view.test.ts (new)
+      - package.json (one script)
+    verify:
+      - pnpm typecheck; pnpm test; parity:lanes --run-host unchanged; native:view launches on the iOS simulator and Android emulator and a screenshot shows a fixture
+    stop_if:
+      - Any lane output changes
+      - The device lease is not held
+      - Verification fails twice
+    receipt: null
+  - id: T042
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: integrator
+    objective: 'Keep the parity determinism test (parity.test.ts ''determinism (S5 (c))'', 101 s of its 120 s limit) scalable: either derive the timeout from the fixture count with a measured per-case budget, or parallelise or shard the determinism pass. It must still compile every fixture twice and compare byte-for-byte; no coverage loss. After T007.'
+    allowed_files:
+      - packages/parity/test/parity.test.ts
+      - packages/parity/src/pipeline.ts (only if needed for sharding)
+      - vitest.config.ts
+    verify:
+      - pnpm test green under load; determinism still covers every fixture
+    stop_if:
+      - Coverage would shrink
+      - Verification fails twice
+    receipt: null
+  - id: T043
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: integrator
+    objective: 'Integrator after P5: merge ns-tree (2d812f1, T015), then run TREE''s device step (verify 18) on both leases.'
+    allowed_files:
+      - The ns-tree diff plus regenerated outputs and device-step outputs
+    verify:
+      - As in the T025 note T015 verify, plus the device step
+    stop_if:
+      - As in T002
+    receipt: null
+  - id: T041
+    type: worker
+    assignee: Worker
+    status: done
+    lane: integrator
+    objective: 'Integrator: merge lato-font into master.'
+    allowed_files:
+      - The lato-font diff
+    verify:
+      - typecheck; test; capture-font-data --check; gate 1260/1260
+    stop_if:
+      - As in T002
+    receipt:
+      result: done
+      harness: claude-code
+      changed_files:
+        - The lato-font diff
+      commands:
+        - cmd: pnpm typecheck; pnpm test 1508; capture-font-data --check; gate 1260/1260
+          status: pass
+        - cmd: ff master 71dbdf4
+          status: pass
+      summary: Master is 71dbdf4 with Lato; captures only gained Lato entries.
+  - id: T044
+    type: judge
+    assignee: Judge
+    status: done
+    lane: north-star
+    reasoning_hint: high
+    objective: Spec INL1 and INL2 (inline formatting and atomic inlines).
+    constraints:
+      - Read-only.
+      - Decide by research; never escalate to the owner.
+    expected_output:
+      - Worker packages
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T044-inl-spec.md
+      rationale: 'INL1 is split into INL-P, INL-U, INL-BF, INL1a and INL1b; INL2 stays whole. INL1a wires UAX #14 and replaces P5''s single-font line export. Master''s breaker misses -, ? and | break opportunities. The north star needs INL-BF, INL1a, INL2 and TDEC (a[href] underline). Checkpoint 3 path: P5, V1B, V2a, INL1a, TXT1a, INL2, REPL, FORM-a, plus TDEC.'
+      spawned_tasks:
+        - T054
+        - T055
+        - T057
+        - T058
+        - T059
+        - T060
+  - id: T045
+    type: judge
+    assignee: Judge
+    status: done
+    lane: north-star
+    reasoning_hint: high
+    objective: Spec REPL (replaced elements, the iframe web-view slot) and FORM-a (Dragon-drawn button and range).
+    constraints:
+      - Read-only.
+      - Decide by research; never escalate to the owner.
+    expected_output:
+      - Worker packages
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T045-repl-form-spec.md
+      rationale: Demo images and buttons are block-level or flex items, so REPL and FORM leave the inline chain; RF-INL joins after INL2. Rulings R1-R16 (PNG only under the strict gate, JPEG transcoded at build time, natural size from headers, the web-view slot tested on frames, controls expanded to Chrome's UA shadow structure).
+      spawned_tasks:
+        - T048
+        - T049
+        - T050
+        - T051
+        - T052
+        - T053
+  - id: T046
     type: judge
     assignee: Judge
     status: queued
     lane: north-star
     reasoning_hint: high
-    objective: "Plan checkpoint 3: map every CSS feature and element examples/music-player uses to roadmap packages and their current state on master (merged, in flight, missing), including FORM-a pulled forward. Order the remaining packages for maximum parallelism on disjoint write scopes, define the north-star device lane (the P5 lane rules applied to the demo on both platforms), and give the first two Worker packages that can start now."
-    inputs:
-      - "docs/research/coverage-roadmap.md (north-star paragraph and merge rules)"
-      - "examples/music-player"
-      - "docs/decisions.md course correction 4"
+    objective: 'Spec paint: PNT1, PNT2, BG2, OVFL, POSX-f and P6 fix-and-promote, including the emitter split.'
     constraints:
-      - "Read-only."
+      - Read-only.
+      - Decide by research; never escalate to the owner.
     expected_output:
-      - "Feature-to-package map; ordered package list with lanes; first Worker packages"
+      - Worker packages
+    receipt: null
+  - id: T047
+    type: judge
+    assignee: Judge
+    status: done
+    lane: north-star
+    reasoning_hint: high
+    objective: 'Spec runtime: SELD-R, ANIM, MQ-R and SOV typed overrides.'
+    constraints:
+      - Read-only.
+      - Decide by research; never escalate to the owner.
+    expected_output:
+      - Worker packages
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      harness: claude-code
+      note: notes/T047-runtime-spec.md
+      rationale: "Seven runtime packages. RT-1: states compile to delta tables over a base program. RT-2: Dragon drives frames (PathInterpolator error up to 2.47 device px fails the gate). RT-3: a bit-exact gfx::CubicBezier port. RT-9: Dragon hit testing. RT-11: SOV typed slots. RT-13: additive registry hunks. A DTXT gap was added."
+      spawned_tasks:
+        - T061
+        - T062
+        - T063
+        - T064
+        - T065
+        - T066
+        - T067
+        - T068
+  - id: T048
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: REPL-0 image core and Chrome image data (new files), branch repl0-image-data.
+    allowed_files:
+      - packages/dragon/src/images/**
+      - packages/dragon/test/images/**
+      - scripts/capture-image-data.ts
+      - scripts/capture-ua-defaults.ts
+      - packages/dragon/src/ua/**
+      - packages/dragon/test/ua-elb2.test.ts
+    verify:
+      - See notes/T045-repl-form-spec.md §3 P1 verify (binding)
+    stop_if:
+      - See notes/T045-repl-form-spec.md §3 P1 stop_if (binding)
+    receipt: null
+  - id: T049
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: FORM-0 control data from Chrome via CDP pierce, plus TS reference functions (new files), branch form0-control-data.
+    allowed_files:
+      - scripts/capture-form-data.ts
+      - packages/dragon/src/forms/**
+      - packages/dragon/test/forms/**
+    verify:
+      - See notes/T045-repl-form-spec.md §3 P2 verify (binding)
+    stop_if:
+      - See notes/T045-repl-form-spec.md §3 P2 stop_if (binding)
+    receipt: null
+  - id: T050
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: SIZE-ar aspect-ratio, after T007 and T009 Phase B; it merges before INL1 branches.
+    allowed_files:
+      - See notes/T045-repl-form-spec.md §3 P3 (binding)
+    verify:
+      - See notes/T045-repl-form-spec.md §3 P3 verify (binding)
+    stop_if:
+      - See notes/T045-repl-form-spec.md §3 P3 stop_if (binding)
+    receipt: null
+  - id: T051
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: 'REPL-a: img and iframe (web-view slot) at block level and as flex items, plus object-fit. Phase A after T050, T048, T043 and T038; Phase B after the T046 emitter split and T034, on both leases.'
+    allowed_files:
+      - See notes/T045-repl-form-spec.md §3 P4 (binding)
+    verify:
+      - See notes/T045-repl-form-spec.md §3 P4 verify (binding)
+    stop_if:
+      - See notes/T045-repl-form-spec.md §3 P4 stop_if (binding)
+    receipt: null
+  - id: T052
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: 'FORM-a: CSS-painted button and range, Dragon-drawn with a native feel. Phase A after T051 A and T049; Phase B after T051 B.'
+    allowed_files:
+      - See notes/T045-repl-form-spec.md §3 P5 (binding)
+    verify:
+      - See notes/T045-repl-form-spec.md §3 P5 verify (binding)
+    stop_if:
+      - See notes/T045-repl-form-spec.md §3 P5 stop_if (binding)
+    receipt: null
+  - id: T053
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: 'RF-INL: replaced elements and controls as atomic inlines, after INL2, T051 and T052.'
+    allowed_files:
+      - See notes/T045-repl-form-spec.md §3 P6 (binding)
+    verify:
+      - See notes/T045-repl-form-spec.md §3 P6 verify (binding)
+    stop_if:
+      - See notes/T045-repl-form-spec.md §3 P6 stop_if (binding)
+    receipt: null
+  - id: T054
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL-P: Chrome and Blink inline measurement corpus (new files), branch inl-probe.'
+    allowed_files:
+      - docs/research/inline-spike/**
+      - scripts/capture-inline-probe.ts
+    verify:
+      - See notes/T044-inl-spec.md §3 INL-P verify (binding)
+    stop_if:
+      - See notes/T044-inl-spec.md §3 INL-P stop_if (binding)
+    receipt: null
+  - id: T055
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL-U: UA data for phrasing tags; after T048 (it shares the UA files); merges after P5.'
+    allowed_files:
+      - See notes/T044-inl-spec.md §3 INL-U (binding)
+    verify:
+      - See notes/T044-inl-spec.md §3 INL-U verify (binding)
+    stop_if:
+      - See notes/T044-inl-spec.md §3 INL-U stop_if (binding)
+    receipt: null
+  - id: T057
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL-BF: blockified span, a and label; after T022 and T055.'
+    allowed_files:
+      - See notes/T044-inl-spec.md §3 INL-BF (binding)
+    verify:
+      - See notes/T044-inl-spec.md §3 INL-BF verify (binding)
+    stop_if:
+      - See notes/T044-inl-spec.md §3 INL-BF stop_if (binding)
+    receipt: null
+  - id: T058
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL1a: inline formatting core; wires UAX #14; replaces P5''s buildRun/breakLines export; after T007, T009 B, T026, T057 and T055.'
+    allowed_files:
+      - See notes/T044-inl-spec.md §3 INL1a (binding)
+    verify:
+      - See notes/T044-inl-spec.md §3 INL1a verify (binding)
+    stop_if:
+      - See notes/T044-inl-spec.md §3 INL1a stop_if (binding)
+    receipt: null
+  - id: T059
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL2: atomic inlines, inline-block, inline-flex, vertical-align; after T058 and TXT1a (or before TXT1a if TXT1a is not ready).'
+    allowed_files:
+      - See notes/T044-inl-spec.md §3 INL2 (binding)
+    verify:
+      - See notes/T044-inl-spec.md §3 INL2 verify (binding)
+    stop_if:
+      - See notes/T044-inl-spec.md §3 INL2 stop_if (binding)
+    receipt: null
+  - id: T060
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL1b: inline box decorations; after T058 and the R8 order; off the checkpoint 3 path.'
+    allowed_files:
+      - See notes/T044-inl-spec.md §3 INL1b (binding)
+    verify:
+      - See notes/T044-inl-spec.md §3 INL1b verify (binding)
+    stop_if:
+      - See notes/T044-inl-spec.md §3 INL1b stop_if (binding)
+    receipt: null
+  - id: T056
+    type: judge
+    assignee: Judge
+    status: queued
+    lane: text
+    reasoning_hint: high
+    objective: 'Spec TXT1a: real-font Latin text in the engine and on device through the HarfBuzz shim.'
+    constraints:
+      - Read-only.
+      - Decide by research.
+    expected_output:
+      - Worker packages
+    receipt: null
+  - id: T061
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'ANIM-a: timing and interpolation TS reference plus a bit-exact Chrome oracle (new files).'
+    allowed_files:
+      - packages/layout/src/rt-*.ts
+      - packages/layout/test/rt-*.test.ts
+      - packages/layout/rt-oracle/**
+      - packages/layout/rt-vectors/**
+      - scripts/capture-rt-oracle.ts
+      - package.json
+      - packages/layout/generated/**
+    verify:
+      - See notes/T047-runtime-spec.md §3.1 verify (binding)
+    stop_if:
+      - See notes/T047-runtime-spec.md §3.1 stop_if (binding)
+    receipt: null
+  - id: T062
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'ANIM-a2: rt-* translated to Swift and Kotlin; after T061 and T009 B.'
+    allowed_files:
+      - See notes/T047-runtime-spec.md §3.2 (binding)
+    verify:
+      - See notes/T047-runtime-spec.md §3.2 verify (binding)
+    stop_if:
+      - See notes/T047-runtime-spec.md §3.2 stop_if (binding)
+    receipt: null
+  - id: T063
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'SELD-R1: on-device state runtime, Dragon hit testing, pointer-events; after T007, T043 and T062.'
+    allowed_files:
+      - See notes/T047-runtime-spec.md §3.3 (binding)
+    verify:
+      - See notes/T047-runtime-spec.md §3.3 verify (binding)
+    stop_if:
+      - See notes/T047-runtime-spec.md §3.3 stop_if (binding)
+    receipt: null
+  - id: T064
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'SELD-R2: :hover, :focus, cursor; after T063, T030, PNT1 and PNT2.'
+    allowed_files:
+      - See notes/T047-runtime-spec.md §3.4 (binding)
+    verify:
+      - See notes/T047-runtime-spec.md §3.4 verify (binding)
+    stop_if:
+      - See notes/T047-runtime-spec.md §3.4 stop_if (binding)
+    receipt: null
+  - id: T065
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'ANIM-b: transitions, @keyframes, play-state; after T064 and T062.'
+    allowed_files:
+      - See notes/T047-runtime-spec.md §3.5 (binding)
+    verify:
+      - See notes/T047-runtime-spec.md §3.5 verify (binding)
+    stop_if:
+      - See notes/T047-runtime-spec.md §3.5 stop_if (binding)
+    receipt: null
+  - id: T066
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'SOV: typed override slots (progress translateX(p%), track gradient); after T063, BG2 and PNT2.'
+    allowed_files:
+      - See notes/T047-runtime-spec.md §3.6 (binding)
+    verify:
+      - See notes/T047-runtime-spec.md §3.6 verify (binding)
+    stop_if:
+      - See notes/T047-runtime-spec.md §3.6 stop_if (binding)
+    receipt: null
+  - id: T067
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'MQ-R: runtime band switching on resize and rotation; after T065, T030 and T027.'
+    allowed_files:
+      - See notes/T047-runtime-spec.md §3.7 (binding)
+    verify:
+      - See notes/T047-runtime-spec.md §3.7 verify (binding)
+    stop_if:
+      - See notes/T047-runtime-spec.md §3.7 stop_if (binding)
+    receipt: null
+  - id: T068
+    type: judge
+    assignee: Judge
+    status: queued
+    lane: runtime
+    objective: 'Spec DTXT: typed dynamic-text slots for script-set text (the north star''s .time-* labels), after TXT1a.'
+    constraints:
+      - Read-only.
+      - Decide by research.
+    expected_output:
+      - Worker package
     receipt: null
   - id: T999
     type: judge
     assignee: Judge
     status: queued
     reasoning_hint: high
-    objective: "Audit checkpoints 1-3 per platform against the oracle."
+    objective: Audit checkpoints 1-3 per platform against the oracle.
     inputs:
-      - "All receipts, test output, lane reports, gate report"
+      - All receipts, test output, lane reports, gate report
     constraints:
-      - "Reject if any checkpoint is unmet on either platform, any device lane is not run, stale or failing, tolerances were loosened, or a gate mismatch was tolerated."
-      - "A lane blocked on owner tooling is not met."
+      - Reject if any checkpoint is unmet on either platform, any device lane is not run, stale or failing, tolerances were loosened, or a gate mismatch was tolerated.
+      - A lane blocked on owner tooling is not met.
+      - 'Checkpoint 3: reject unless all 8 NS lanes pass (none stale or not run), north-star:check has 0 errors per target, and the plants and capture-trust checks pass on the NS lane.'
     expected_output:
-      - "complete or not_complete; full_outcome_complete true or false"
+      - complete or not_complete; full_outcome_complete true or false
     receipt: null
-
 checks:
   dirty_fingerprint: unknown
   last_verification:

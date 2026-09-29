@@ -1,0 +1,74 @@
+{
+ "chrome": "145.0.7632.6",
+ "playwright": "1.58.2",
+ "platform": "darwin-arm64",
+ "launches": [
+  {
+   "dpr": 1,
+   "flags": [
+    "--force-device-scale-factor=1",
+    "--force-color-profile=srgb",
+    "--font-render-hinting=none",
+    "--disable-lcd-text",
+    "--hide-scrollbars"
+   ]
+  }
+ ],
+ "fonts": {
+  "Inter/Inter-Light.ttf": "164414f0aacbe98a7e64addc43f7b3bfd2e32f7b90e101feeab227f14c371bda",
+  "Inter/Inter-Regular.ttf": "40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+  "Inter/Inter-Italic.ttf": "bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+  "Inter/Inter-Bold.ttf": "288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f",
+  "Inter/Inter-BoldItalic.ttf": "948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d",
+  "NotoSansMono/NotoSansMono-Regular.ttf": "87f8ce0522a6c99b743ee5fc75b4073cfdd575639119672828b7b9944b65b4f4"
+ },
+ "probe": "P1",
+ "note": "data only: the stated reference uses the CSSOM rewrite (P2), not Page.setFontFamilies",
+ "variants": [
+  {
+   "id": "no-setting",
+   "setting": null,
+   "fontFaceRules": "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Light.ttf\") format(\"truetype\");font-weight:300}\n@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Regular.ttf\") format(\"truetype\");font-weight:400}\n@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Italic.ttf\") format(\"truetype\");font-weight:400;font-style:italic}\n@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Bold.ttf\") format(\"truetype\");font-weight:700}\n@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-BoldItalic.ttf\") format(\"truetype\");font-weight:700;font-style:italic}\n@font-face{font-family:\"Dragon Mono\";src:url(\"fonts/NotoSansMono/NotoSansMono-Regular.ttf\") format(\"truetype\")}",
+   "computed": "sans-serif",
+   "chrome": [
+    {
+     "familyName": "Helvetica",
+     "postScriptName": "Helvetica",
+     "isCustomFont": false,
+     "glyphCount": 4
+    }
+   ],
+   "usesPinnedFace": false
+  },
+  {
+   "id": "setting-web-font",
+   "setting": "Dragon Sans",
+   "fontFaceRules": "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Light.ttf\") format(\"truetype\");font-weight:300}\n@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Regular.ttf\") format(\"truetype\");font-weight:400}\n@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Italic.ttf\") format(\"truetype\");font-weight:400;font-style:italic}\n@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Bold.ttf\") format(\"truetype\");font-weight:700}\n@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-BoldItalic.ttf\") format(\"truetype\");font-weight:700;font-style:italic}\n@font-face{font-family:\"Dragon Mono\";src:url(\"fonts/NotoSansMono/NotoSansMono-Regular.ttf\") format(\"truetype\")}",
+   "computed": "sans-serif",
+   "chrome": [
+    {
+     "familyName": "Times",
+     "postScriptName": "Times-Roman",
+     "isCustomFont": false,
+     "glyphCount": 4
+    }
+   ],
+   "usesPinnedFace": false
+  },
+  {
+   "id": "setting-web-font-no-face",
+   "setting": "Dragon Sans",
+   "fontFaceRules": "",
+   "computed": "sans-serif",
+   "chrome": [
+    {
+     "familyName": "Times",
+     "postScriptName": "Times-Roman",
+     "isCustomFont": false,
+     "glyphCount": 4
+    }
+   ],
+   "usesPinnedFace": false
+  }
+ ]
+}

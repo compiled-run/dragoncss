@@ -1,0 +1,1384 @@
+{
+ "chrome": "145.0.7632.6",
+ "playwright": "1.58.2",
+ "platform": "darwin-arm64",
+ "launches": [
+  {
+   "dpr": 1,
+   "flags": [
+    "--force-device-scale-factor=1",
+    "--force-color-profile=srgb",
+    "--font-render-hinting=none",
+    "--disable-lcd-text",
+    "--hide-scrollbars"
+   ]
+  }
+ ],
+ "fonts": {
+  "Inter/Inter-Light.ttf": "164414f0aacbe98a7e64addc43f7b3bfd2e32f7b90e101feeab227f14c371bda",
+  "Inter/Inter-Regular.ttf": "40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+  "Inter/Inter-Italic.ttf": "bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+  "Inter/Inter-Bold.ttf": "288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f",
+  "Inter/Inter-BoldItalic.ttf": "948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d",
+  "Roboto/Roboto-Regular.ttf": "39548fd9d6250717a5fcfe00b1b0ade234c1f5be8a40818c37e995c13c844df1",
+  "NotoSans/NotoSans-Regular.ttf": "f3961a9cde016d41a4879aecda1474d3a36d6bf54fa0e4643de029cc2248b0e8",
+  "NotoSansMono/NotoSansMono-Regular.ttf": "87f8ce0522a6c99b743ee5fc75b4073cfdd575639119672828b7b9944b65b4f4",
+  "Lato/Lato-Regular.ttf": "d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+  "Lato/Lato-Bold.ttf": "8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1"
+ },
+ "rules": [
+  {
+   "css": "font-family:A;src:url(a.ttf)",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:\"A b\";src:url(\"a.ttf\") format(\"truetype\")",
+   "values": {
+    "font-family": "\"A b\"",
+    "src": "url(\"a.ttf\") format(\"truetype\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A  b   c;src:url(a.ttf) format(truetype)",
+   "values": {
+    "font-family": "\"A b c\"",
+    "src": "url(\"a.ttf\") format(\"truetype\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:serif;src:url(a.ttf)",
+   "values": {
+    "font-family": "",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 0
+  },
+  {
+   "css": "font-family:\"serif\";src:url(a.ttf)",
+   "values": {
+    "font-family": "\"serif\"",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:inherit;src:url(a.ttf)",
+   "values": {
+    "font-family": "",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 0
+  },
+  {
+   "css": "font-family:default;src:url(a.ttf)",
+   "values": {
+    "font-family": "",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 0
+  },
+  {
+   "css": "font-family:default x;src:url(a.ttf)",
+   "values": {
+    "font-family": "\"default x\"",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:ui-monospace;src:url(a.ttf)",
+   "values": {
+    "font-family": "ui-monospace",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A, B;src:url(a.ttf)",
+   "values": {
+    "font-family": "",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 0
+  },
+  {
+   "css": "font-family:1A;src:url(a.ttf)",
+   "values": {
+    "font-family": "",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 0
+  },
+  {
+   "css": "src:url(a.ttf)",
+   "values": {
+    "font-family": "",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 0
+  },
+  {
+   "css": "font-family:A",
+   "values": {
+    "font-family": "A",
+    "src": "",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 0
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf) format(\"woff2\"), url(b.ttf) format(\"embedded-opentype\"), url(c.ttf) format(svg), url(d.ttf)",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\") format(\"woff2\"), url(\"d.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf) format(\"TrueType\"), url(b.ttf) format(\"truetype-variations\"), url(c.otf) format(opentype) tech(variations)",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\") format(\"TrueType\"), url(\"b.ttf\") format(\"truetype-variations\"), url(\"c.otf\") format(\"opentype\") tech(variations)",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf) tech(color-svg), url(b.ttf) tech(incremental), url(c.ttf) tech(features-opentype, palettes)",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"c.ttf\") tech(features-opentype, palettes)",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf) format(foo), url(b.ttf) format(truetype, opentype), url(c.ttf) format()",
+   "values": {
+    "font-family": "A",
+    "src": "",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 0
+  },
+  {
+   "css": "font-family:A;src:local(Foo Bar), local(\"Baz\"), local(), url(x.ttf)",
+   "values": {
+    "font-family": "A",
+    "src": "local(\"Foo Bar\"), local(\"Baz\"), url(\"x.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf) junk, url(b.ttf)",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"b.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:junk",
+   "values": {
+    "font-family": "A",
+    "src": "",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 0
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-weight:bold",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "bold",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-weight:100 900",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "100 900",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-weight:900 100",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "900 100",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-weight:0",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-weight:1001",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-weight:auto",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "auto",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-weight:bolder",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-weight:450.5",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "450.5",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-weight:400 500 600",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-weight:700;font-weight:junk",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "700",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-weight:700 !important",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-style:italic",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "italic",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-style:oblique",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "oblique",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-style:oblique 10deg",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "oblique 10deg",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-style:oblique 30deg 10deg",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "oblique 30deg 10deg",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-style:oblique 0deg",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "normal",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-style:oblique 0deg 0deg",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "normal",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-style:oblique 91deg",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-style:oblique 1rad",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "oblique 1rad",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-style:oblique 0.5turn",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "oblique 0.5turn",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-style:auto",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "auto",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-style:oblique 10",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-stretch:condensed",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "condensed",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-stretch:50% 200%",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "50% 200%",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-stretch:200% 50%",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "200% 50%",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-stretch:-10%",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-stretch:auto",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "auto",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-stretch:1e2%",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "100%",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);unicode-range:U+0-7F, U+4??, u+1e1ee",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "U+0-7F, U+400-4FF, U+1E1EE",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);unicode-range:U+7F-0",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);unicode-range:U+110000",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);unicode-range:U+41",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "U+41",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-display:swap",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "swap",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-display:bogus",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);size-adjust:90%",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "90%",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);size-adjust:-1%",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);size-adjust:90",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);ascent-override:normal;descent-override:12.5%;line-gap-override:0%",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "normal",
+    "descent-override": "12.5%",
+    "line-gap-override": "0%",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);ascent-override:-5%",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-feature-settings:\"liga\" 0, \"kern\"",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "\"liga\" 0, \"kern\"",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-feature-settings:liga",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);font-variation-settings:\"wght\" 500",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": "\"wght\" 500"
+   },
+   "faces": 1
+  },
+  {
+   "css": "font-family:A;src:url(a.ttf);color:red;--x:y",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  },
+  {
+   "css": "FONT-FAMILY:A;SRC:url(a.ttf);FONT-WEIGHT:BOLD",
+   "values": {
+    "font-family": "A",
+    "src": "url(\"a.ttf\")",
+    "font-weight": "bold",
+    "font-style": "",
+    "font-stretch": "",
+    "unicode-range": "",
+    "font-display": "",
+    "size-adjust": "",
+    "ascent-override": "",
+    "descent-override": "",
+    "line-gap-override": "",
+    "font-feature-settings": "",
+    "font-variation-settings": ""
+   },
+   "faces": 1
+  }
+ ],
+ "families": [
+  {
+   "value": "Inter",
+   "parentComputed": "sentinel",
+   "computed": "Inter"
+  },
+  {
+   "value": "\"Inter\"",
+   "parentComputed": "sentinel",
+   "computed": "Inter"
+  },
+  {
+   "value": "Inter Display",
+   "parentComputed": "sentinel",
+   "computed": "\"Inter Display\""
+  },
+  {
+   "value": "\"A b\", sans-serif",
+   "parentComputed": "sentinel",
+   "computed": "\"A b\", sans-serif"
+  },
+  {
+   "value": "serif",
+   "parentComputed": "sentinel",
+   "computed": "serif"
+  },
+  {
+   "value": "\"serif\"",
+   "parentComputed": "sentinel",
+   "computed": "\"serif\""
+  },
+  {
+   "value": "Serif",
+   "parentComputed": "sentinel",
+   "computed": "serif"
+  },
+  {
+   "value": "monospace, \"monospace\"",
+   "parentComputed": "sentinel",
+   "computed": "monospace, \"monospace\""
+  },
+  {
+   "value": "system-ui",
+   "parentComputed": "sentinel",
+   "computed": "system-ui"
+  },
+  {
+   "value": "-webkit-body",
+   "parentComputed": "sentinel",
+   "computed": "-webkit-body"
+  },
+  {
+   "value": "math",
+   "parentComputed": "sentinel",
+   "computed": "math"
+  },
+  {
+   "value": "emoji",
+   "parentComputed": "sentinel",
+   "computed": "emoji"
+  },
+  {
+   "value": "ui-monospace",
+   "parentComputed": "sentinel",
+   "computed": "ui-monospace"
+  },
+  {
+   "value": "fangsong",
+   "parentComputed": "sentinel",
+   "computed": "fangsong"
+  },
+  {
+   "value": "cursive, fantasy",
+   "parentComputed": "sentinel",
+   "computed": "cursive, fantasy"
+  },
+  {
+   "value": "inherit",
+   "parentComputed": "sentinel",
+   "computed": "sentinel"
+  },
+  {
+   "value": "default",
+   "parentComputed": "sentinel",
+   "computed": "sentinel"
+  },
+  {
+   "value": "default x",
+   "parentComputed": "sentinel",
+   "computed": "\"default x\""
+  },
+  {
+   "value": "1A",
+   "parentComputed": "sentinel",
+   "computed": "sentinel"
+  },
+  {
+   "value": "A, , B",
+   "parentComputed": "sentinel",
+   "computed": "sentinel"
+  },
+  {
+   "value": "A,",
+   "parentComputed": "sentinel",
+   "computed": "sentinel"
+  },
+  {
+   "value": "\"a\\\"b\"",
+   "parentComputed": "sentinel",
+   "computed": "\"a\\\"b\""
+  },
+  {
+   "value": "Ab-c_d, e1",
+   "parentComputed": "sentinel",
+   "computed": "Ab-c_d, e1"
+  },
+  {
+   "value": "initial x",
+   "parentComputed": "sentinel",
+   "computed": "\"initial x\""
+  },
+  {
+   "value": "revert-layer",
+   "parentComputed": "sentinel",
+   "computed": "sentinel"
+  },
+  {
+   "value": "\"x y\" z",
+   "parentComputed": "sentinel",
+   "computed": "sentinel"
+  },
+  {
+   "value": "A /* c */ B",
+   "parentComputed": "sentinel",
+   "computed": "\"A B\""
+  }
+ ]
+}

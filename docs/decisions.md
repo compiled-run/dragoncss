@@ -155,6 +155,55 @@ This decision uses the spike's measurements in docs/research/text-spike/: 620 ca
 - **Proof:** Chrome is captured with the scaled root size injected (`:root { font-size: <scaled>px !important }`) from a pinned table of iOS content-size categories and Android font scales. The native hosts report their root size in the device dump. See docs/research/engine-value-model-plan.md §3.
 - **Until the engine value model (V2) lands:** native support rows for sizes that depend on `rem` are `caveat` at any text scale other than 1.
 
+## Runtime styles and animation (PM, T047 research)
+
+- **States:** finite states compile to typed tables of changes over one base program. Each state's own compiled program is the reference the device must equal after any sequence of state changes.
+- **Animation frames:** Dragon computes every frame from a translated port of Chrome's `gfx::CubicBezier` and timing model, checked bit for bit against Chrome's `getComputedTiming`. Core Animation and Android animators are not used; Android's curve approximation misses the 1 device px gate. Handing work to the compositor is a later performance package, allowed only once it proves equal frames.
+- **Clock:** on device, lane runs use a virtual clock equivalent to Chrome's frozen timeline.
+- **Hit testing:** Dragon does its own, checked against Chrome's `elementFromPoint`.
+- **Hover and focus:** tap behaviour follows recorded Chrome traces.
+- **Script-set styles:** these become typed override slots with declared ranges. The music player's progress bar is `translateX(p%)`. Script-set text is covered by DTXT.
+
+## Inline layout (PM, T044 research)
+
+- **The work is split:**
+  - INL-P: a Chrome probe corpus.
+  - INL-U: UA data for phrasing tags.
+  - INL-BF: span, a and label in contexts where CSS makes them block boxes.
+  - INL1a: the inline core. It wires the UAX #14 breaker and linefit, and replaces P5's single-font line export for every caller.
+  - INL1b: inline-box decorations.
+  - INL2: atomic inlines.
+- **Serial order on inline.ts and text.ts:** P5, then V1 Phase B, then V2a, then INL1a, then TXT1a, then INL2, then INL1b. INL2 may go before TXT1a if TXT1a is not ready.
+- **Native drawing uses no platform attributed strings.** Each text leaf is one view that draws its own glyphs at positions from one translated engine function. An inline box is an unpainted box view.
+- **Links:** `href` stays refused until TDEC, because Chrome's UA underline is not modelled yet.
+- **Bold and italic:** b, strong, em and i are accepted on web and refused on native until TXT1a.
+
+## Images, web views and form controls (PM, T045 research)
+
+- **Image sources.** An image is a `data:` URL or a local file mapped as an asset. An unmapped remote URL is a build error, as with fonts. Each asset's sha256 enters the compilation digest.
+- **Formats.** The format is read from the file's bytes. REPL-a accepts only 8-bit untagged or sRGB PNG, the one format that decodes identically in Chrome, on iOS and on Android. JPEG becomes a build-time transcode using Chrome's pinned libjpeg-turbo.
+- **Sizing.** An image's natural size is a build-time constant from its header. Replaced sizing runs in the engine.
+- **object-fit.** The engine computes where the image goes and Dragon draws it; UIImageView and ImageView scaling modes are not used. The proof is Chrome's boxes plus a quadrant screenshot probe, which must match within 1 device px.
+- **Image pixels.** They are compared only where the source is flat, under the unchanged pixel gate. No allowance is added.
+- **Iframes.** An iframe is a 300x150-default replaced slot hosting WKWebView or android.webkit.WebView. It is tested on frames and applied values only, with its content masked out and no network.
+- **Form controls.** Controls expand to Chrome's own UA shadow structure, measured through CDP. Buttons and ranges painted by CSS are Dragon-drawn, with native plumbing (UIControl and View, SeekBar accessibility). Press visuals come from CSS only. Natively themed controls are a later package.
+
+## How decisions are made (owner, 2026-09-28)
+
+- **Decisions come from research, not the owner.** Every open question is settled by researching the space: Scout evidence, Chrome measurements, specifications and precedent. The result is recorded here as a PM ruling. Earlier text that sends a question "to the owner" now means a research-backed ruling.
+- **Exceptions.** The owner still decides anything outside the repo or that costs money: pushes, remotes, publishing, installs outside /tmp, and spending.
+
+## Native viewports, text scale and device sizes (owner, 2026-09-28)
+
+- **Viewport units and safe areas:** on iOS and Android, the small, large and dynamic viewports (`sv*`, `lv*`, `dv*`) all equal the Dragon root view's bounds. The on-screen keyboard does not resize them. `env(safe-area-inset-*)` is the root view's own insets, in CSS px.
+- **The root font always scales with the device text size,** even when it is set in px. The root size at scale 1 is scaled by the platform API (UIFontMetrics on iOS, the font scale on Android). This matches the Chrome reference, which injects the scaled root size with `!important`. Descendants set in px do not scale.
+- **Oversize test cases get bigger devices.** When a fixture's viewport does not fit the default simulator or emulator, Dragon provisions a larger one and never crops a case. A size no device can hold goes back to the owner.
+- **The engine value model is approved (V2a).** The compiler still folds everything it can at build time. Values that depend on the device (the text size, the viewport, the safe area) are resolved by the shared engine on device. Every vector input is migrated by its generator only, every existing output stays byte-identical, and no field gets a default. If an existing output changes, the Worker stops and asks the owner.
+- **Pinned generic fonts (PM, T033).** `sans-serif` maps to "Dragon Sans", the five vendored static Inter 4.1 faces. `monospace` maps to "Dragon Mono" (Noto Sans Mono). Compiled web CSS rewrites the family and emits `@font-face` rules. The Chrome reference applies the same rewrite inside Chrome's own CSSOM. There is no built-in default map: an unmapped generic or family is a build error with a fix.
+- **The north star bundles Lato (PM, T035 research).** The demo CSS names `'Lato', sans-serif`, and the design is the authored CSS (course correction 4). Earlier renders showed Helvetica only because Lato was never loaded. Dragon vendors Lato 2.015 Regular and Bold from the Google Fonts build: googlefonts/LatoGFVersion 080cb697, whose OS/2 metrics equal hhea. The files are sha256 d636e468… (Regular) and 8a0aace7… (Bold). The font map maps `Lato` to them, and `sans-serif` stays pinned to Dragon Sans. Lato is labelled exact only after Lato 400 and 700 Chrome cases pass in the font captures, the HarfBuzz gate and TXT1a. The pause symbol ❚ (U+275A) is in neither Lato nor Inter, so the symbol-fallback work (TXT1d) must add a bundled symbol font for it.
+- **Italic `ch` is caveat (PM, T005).** Chrome's `ch` for italic-trait faces differs from the Blink port by 1 float ulp in 4 of 1,040 captured rows. It is a Core Text italic-trait dependence that the source does not explain. The label stays caveat until TXT1a proves it on the HarfBuzz advance path.
+- **Variable fonts are fenced (PM, T024).** Until more Chrome cases validate them, Dragon refuses variable-font instances outside the tested set (Inter VF at its default instance) and variable fonts without HVAR.
+
 ## Native glyph advances (PM, 2026-09-28)
 
 - **Glyph advances come from the font's integer units:** the `hmtx` table, scaled by size / unitsPerEm, as HarfBuzz does in Chrome. They do not come from platform float measurement. On Android, `Paint.getRunAdvance` returned 999.99609375 units for Ahem's 1000-unit glyphs, which could flip a 1/64 px truncation. Platform measurement stays only as an evidence probe.

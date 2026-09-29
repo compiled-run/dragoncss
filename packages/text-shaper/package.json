@@ -1,0 +1,16 @@
+{
+  "name": "@dragon/text-shaper",
+  "version": "0.0.0",
+  "private": true,
+  "description": "dragon_hb: a Zig shim over HarfBuzz at Chrome 145's pinned revision, built for WASM, iOS and Android, plus the TXT1-0 gate against Chrome's line widths.",
+  "type": "module",
+  "license": "MIT",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "build": "zig build",
+    "build:wasm": "zig build wasm && cp zig-out/wasm/dragon_hb.wasm wasm/dragon_hb.wasm",
+    "gate": "node scripts/gate.ts",
+    "report": "node scripts/report.ts"
+  },
+  "dependencies": {}
+}

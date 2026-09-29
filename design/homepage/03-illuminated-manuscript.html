@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon CSS: The Illuminated Manuscript</title>
+<link rel="stylesheet" href="assets/parchment.css">
+<link rel="stylesheet" href="assets/ink.css">
+<link rel="stylesheet" href="assets/royal-hero.css">
+<link rel="stylesheet" href="assets/integration.css">
+<script src="assets/royal-hero.js" defer></script>
+<script>/* Space on a button or link activates it; keep the section stepper from taking it. Registered before the stepper. */
+addEventListener('keydown', e => { if (e.key === ' ' && e.target.closest && e.target.closest('button, a, [role="button"], summary')) e.stopImmediatePropagation(); });</script>
+<script src="assets/parchment.js"></script>
+<style>
+  /* The page itself is the parchment (set in the hero block below). */
+  body { overflow-x: hidden; }
+
+  /* The book is written straight onto the page parchment: no sheet, no frame. A gold rule with a rubricated
+     fleuron opens it; the illuminated initial, the column rule and the notes rule give it structure. */
+  .desk { padding: 0; }
+  .notes-wrap { max-width: 1100px; margin: 0 auto; padding: 0 170px; box-sizing: border-box; }
+  .notes-head { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 0 0 18px; text-align: center; }
+  .notes-head .ri-proven { margin: 0; }
+  .nb { white-space: nowrap; }
+  .page { position: relative; max-width: 1100px; margin: 0 auto; padding: 50px 170px 50px; }
+  .page::before { content: ""; position: absolute; top: -5px; left: 170px; right: 170px; height: 10px;
+    background: var(--ink-rule-gold) left top / 46% 10px no-repeat, var(--ink-rule-gold-b) right top / 46% 10px no-repeat; }
+  .page::after { content: "\2766"; position: absolute; top: -13px; left: 50%; transform: translateX(-50%); padding: 0 14px;
+    font-size: 18px; line-height: 26px; color: var(--brick); }
+
+  /* The column rule is a quill line drawn down the gutter, stopping above the closing. */
+  .text { column-count: 2; column-gap: 60px; background: var(--ink-vrule-gold) center top / 10px calc(100% - 190px) no-repeat; }
+  .text p { font: 24px/1.45 var(--text); margin: 0 0 16px; text-wrap: pretty; hyphens: auto; }
+  .text p.salute { font: italic 33px/1.2 var(--display); margin: 0 0 14px; min-height: 150px; }
+
+  /* The illuminated initial */
+  .initial { float: left; position: relative; width: 150px; height: 150px; margin: 4px 18px 10px 0; }
+  /* The initial's frame is drawn in gold ink, with rubric corner flourishes: no painted ground, the parchment shows through. */
+  .initial .panel { position: absolute; inset: 0; --ink-frame-color: rgba(160,114,30,.85); --ink-out: -2px; }
+  .initial .panel.ink-bracket::after { background-color: rgba(163,52,43,.7); inset: -9px; }
+  .initial .dragon { position: absolute; right: -26px; bottom: -22px; width: 118px; height: 118px; object-fit: contain; z-index: 2;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,.3)); }
+  .initial .D { position: absolute; left: 16px; top: 6px; z-index: 1; font: 700 168px/1 var(--display); font-style: normal; color: var(--brick);
+    text-shadow: 1px 1px 0 rgba(90,20,15,.25); }
+  .initial .vine { position: absolute; left: 50%; top: 100%; width: 40px; height: 120px; overflow: visible; }
+  .initial .vine path { fill: none; stroke: var(--sage); stroke-width: 2; }
+  .initial .vine circle { fill: var(--gold); }
+
+  /* Footnote markers */
+  a.fn { color: var(--brick); text-decoration: none; font: 600 .78em var(--display); vertical-align: super; line-height: 0; padding: 0 1px; }
+  a.fn:hover, a.fn:focus-visible { color: var(--ink); outline: none; text-shadow: 0 0 .5px currentColor; }
+  .lbl { font-family: var(--mono); font-size: 1em; padding: 0 1px 2px; background: var(--ink-swash) left bottom / 100% 6px no-repeat; }
+  .lbl.exact { color: var(--sage); }
+  .lbl.caveat { color: #8a6516; }
+  .lbl.unsupported { color: var(--brick); }
+
+  /* Marginalia */
+  .marg { position: absolute; width: 96px; margin-top: -6px; z-index: 5; text-align: center; column-span: none; }
+  .marg.side-l { left: 34px; } .marg.side-r { right: 34px; }
+  .marg.open, .marg:hover, .marg:focus-within { z-index: 30; }
+  /* Marginal glosses: rubricated scribal notes in the margin (text, not icons); each opens its note. */
+  .marg button { all: unset; cursor: pointer; display: block; margin: 0 auto; position: relative; padding: 2px 4px; }
+  .marg button::before { content: "\2766"; display: block; font-size: 15px; line-height: 1; color: var(--gold); margin-bottom: 3px; }
+  .marg .gloss { display: block; font: italic 18.5px/1.3 var(--text); color: var(--brick);
+    text-decoration: underline dotted rgba(163,52,43,.5); text-underline-offset: 3px; }
+  .marg:hover .gloss, .marg.open .gloss { color: var(--ink); }
+  /* A note is written into the margin under its gloss, inside a quill frame: no paper card over the text. */
+  .note { position: absolute; top: 100%; margin-top: 12px; width: 128px; padding: 12px 12px 10px; font: 15.5px/1.36 var(--text); color: var(--ink-body); text-align: left;
+    opacity: 0; visibility: hidden; transform: translateY(6px); transition: opacity .25s, transform .25s, visibility 0s .25s; }
+  .side-l .note { left: -26px; transform-origin: left top; }
+  .side-r .note { right: -26px; transform-origin: right top; }
+  /* While a note is shown, the other glosses in that margin step aside so the ink never overlaps. */
+  .page:has(.side-l.open, .side-l:hover, .side-l:focus-within) .marg.side-l:not(.open, :hover, :focus-within),
+  .page:has(.side-r.open, .side-r:hover, .side-r:focus-within) .marg.side-r:not(.open, :hover, :focus-within) { opacity: 0; pointer-events: none; }
+  .marg { transition: opacity .25s; }
+  .marg:hover .note, .marg.open .note, .marg:focus-within .note { opacity: 1; visibility: visible; transform: none; transition: opacity .25s, transform .25s; }
+  .note b { display: block; font: 600 18px/1.2 var(--display); color: var(--brick); margin-bottom: 5px; }
+  .note .scribe { display: block; margin-top: 8px; font: 11px var(--mono); color: var(--ink-soft); }
+
+  /* Closing */
+  .closing { column-span: all; display: flex; justify-content: flex-end; align-items: center; gap: 18px; margin-top: 18px; }
+  .closing .by { text-align: right; font: italic 22.5px/1.4 var(--text); color: var(--ink-soft); }
+  .closing .by b { display: block; font: italic 39.5px/1.15 var(--display); color: var(--ink); }
+  .seal { width: 130px; height: 130px; flex: none; margin: 0 -18px 0 -14px; filter: drop-shadow(0 4px 5px rgba(50,15,5,.3)); }
+
+  /* Footnotes */
+  .notes { margin-top: 0; padding-top: 22px; position: relative; background: var(--ink-rule-brown) left top / 100% 10px no-repeat; }
+  .notes::before { content: ""; position: absolute; top: 5px; left: 0; width: 120px; height: 10px; background: var(--ink-rule-gold-b) 0 0 / 100% 10px no-repeat; }
+  .notes h2 { font: 600 30px var(--display); letter-spacing: .04em; color: var(--brick); margin: 0; }
+  .notes ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 48px; }
+  .notes li { font: 22.5px/1.5 var(--text); color: var(--ink-soft); padding: 6px 8px; margin: 0 -8px; transition: color .6s; scroll-margin-top: 120px; }
+  .notes li .mk { color: var(--brick); font: 600 22.5px var(--display); margin-right: 6px; }
+  .notes li .n { font: 600 1em var(--mono); color: var(--ink); }
+  .notes li a.back { color: var(--brick); text-decoration: none; font-size: 18px; margin-left: 4px; }
+  /* The footnote you jumped to gets a quill frame and full-strength ink, not a highlight. */
+  .notes li { position: relative; }
+  .notes li:target { color: var(--ink); }
+  .notes li:target::before { content: ""; position: absolute; inset: -4px; pointer-events: none; background-color: var(--ink-line);
+    -webkit-mask: var(--ink-frame-b) 0 0 / 100% 100% no-repeat; mask: var(--ink-frame-b) 0 0 / 100% 100% no-repeat; }
+
+  .summary { max-width: 760px; margin: 0 auto; padding: 26px 0 0; font: 22.5px/1.6 var(--text); color: var(--ink-body);
+    background: var(--ink-rule-faint) left top / 100% 10px no-repeat, var(--ink-rule-faint-b) left 0 top 5px / 100% 10px no-repeat; }
+  .summary h2 { font: 600 29px var(--display); margin: 0 0 10px; color: var(--brick); }
+  .summary ul { padding-left: 20px; margin: 0; } .summary li { margin-bottom: 6px; }
+  .summary code { color: var(--brick); font-family: var(--mono); }
+
+  /* No text reveal: the shared .ink-in class is neutralised so all text is present from the start. */
+  .ink-in { animation: none !important; clip-path: none !important; opacity: 1 !important; filter: none !important; }
+
+  @media (max-width: 1060px) {
+    .page { padding: 50px 130px 50px; }
+    .notes-wrap { padding: 0 130px; }
+    .page::before { left: 130px; right: 130px; }
+    .marg { width: 86px; }
+    .marg.side-l { left: 22px; } .marg.side-r { right: 22px; }
+    .note { width: 100px; font-size: 14px; padding: 10px 8px 8px; } .note b { font-size: 15.5px; }
+    .side-l .note { left: -14px; } .side-r .note { right: -14px; }
+  }
+  @media (max-width: 860px) {
+    .text { column-count: 1; }
+  }
+  @media (max-width: 760px) {
+    .page { padding: 40px 0 40px; }
+    .notes-wrap { padding: 0; }
+    .notes-head .ri-proven { width: 90px; }
+    .notes h2 { font-size: 24px; }
+    .page::before { left: 0; right: 0; }
+    .initial { width: 112px; height: 112px; margin-right: 14px; }
+    .initial .D { font-size: 118px; left: 9px; }
+    .initial .dragon { width: 86px; height: 86px; right: -18px; bottom: -16px; }
+    .initial .vine { display: none; }
+    .text p { font-size: 17px; }
+    .text p.salute { font-size: 21px; min-height: 118px; }
+    /* Marginalia fold into the text as floated glosses */
+    .marg, .marg.side-l, .marg.side-r { position: relative; left: auto; right: auto; float: right; width: 84px; margin: 2px 0 4px 12px; }
+    .marg .gloss { font-size: 13px; }
+    /* An opened gloss drops its float and its note joins the text flow, framed in ink. */
+    .marg.open, .marg.open.side-l, .marg.open.side-r { float: none; width: auto; margin: 4px 0 14px; text-align: left; }
+    .marg.open button { margin: 0; }
+    .note, .side-l .note, .side-r .note { position: static; left: auto; right: auto; width: auto; margin: 10px 4px 0; display: none; font-size: 15px; }
+    .marg.open .note { display: block; }
+    .page:has(.marg.open) .marg:not(.open) { opacity: 1; pointer-events: auto; }
+    .text { background: none; }
+    .marg:hover .note { opacity: 0; visibility: hidden; }
+    .marg.open .note { opacity: 1; visibility: visible; }
+    .notes ol { grid-template-columns: 1fr; }
+    .closing { justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  a.skip { color: var(--ink); text-decoration: none; opacity: 1; } /* ink text with an ink swash (ink.css), no box */
+  a.skip:hover, a.skip:focus-visible { color: var(--brick); }
+</style>
+</head>
+<body>
+<a class="skip ink-under" href="#summary">skip the ceremony</a>
+
+<header class="royal-hero"
+  data-headline="One CSS for every realm, <em>proven</em> against Chrome"
+  data-sub="Written into the Book of the Dragon, and weighed number by number."
+  data-cue-href="#book"
+  data-cue-label="Open the book"></header>
+
+<main class="desk">
+<section class="ri-sec" id="book">
+  <article class="page" id="page" aria-label="An illuminated letter">
+    <div class="text">
+      <p class="salute">
+        <span class="initial" aria-hidden="true">
+          <span class="panel gild ink-frame ink-bracket"></span>
+          <span class="D gild">D</span>
+          <img class="dragon gild" src="assets/icons/dragon.png" alt="">
+        </span><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">D</span><span class="ink-in" style="display:inline-block;--ink-delay:1s;--ink-dur:1.2s">ear Lord Developer,</span>
+      </p>
+
+      <p class="ink-in" style="--ink-delay:1.6s" data-marg="realm">Here beginneth the book of the Dragon. You write regular CSS, as ever you have; at build time Dragon compiles it into native view properties, so that one CSS may serve the web, the iPhone and the Android alike.</p>
+
+      <p class="ink-in" style="--ink-delay:2.4s" data-marg="engine">Dragon lays out its pages with an engine of its own making, written in TypeScript: block, flex, text, positioning, and script that runs right to left.</p>
+
+      <p class="ink-in" style="--ink-delay:3.2s" data-marg="proof">And it is proven, not by screenshots but number by number against Chrome. Every box is weighed<a class="fn" href="#fn1" id="r1" aria-label="footnote 1">†</a>, every computed value compared<a class="fn" href="#fn2" id="r2" aria-label="footnote 2">‡</a>, and the trials are counted<a class="fn" href="#fn3" id="r3" aria-label="footnote 3">§</a>.</p>
+
+      <p class="ink-in" style="--ink-delay:4s" data-marg="errors">Where a thing cannot be done, the scribe does not keep silent. What the compiler cannot decide becomes a build error that carries its own fix, never a surprise upon a device. Each property bears its mark<a class="fn" href="#fn4" id="r4" aria-label="footnote 4">‖</a>.</p>
+
+      <p class="ink-in" style="--ink-delay:4.8s">The web is proven this day. The iPhone and the Android are being copied fair in the second campaign, each checked against Chrome in its turn.</p>
+
+      <div class="closing ink-in" style="--ink-delay:5.6s">
+        <div class="by">By the hand of the Dragon,<b>Keeper of the Styles</b></div>
+        <img class="seal" src="assets/gen/wax-seal-dragon.png" alt="The Dragon's wax seal">
+      </div>
+    </div>
+  </article>
+</section>
+
+<section class="ri-sec" id="proofs">
+  <div class="notes-wrap">
+    <section class="notes" aria-label="Footnotes">
+      <div class="notes-head">
+        <img class="ri-proven ri-proven--big" src="assets/kit/proven.png" alt="Proven: 8,671 of 8,671 boxes, to 1/64 px">
+        <h2>Notes of proof</h2>
+      </div>
+      <ol>
+        <li id="fn1"><span class="mk">†</span><span class="n">8,671 of 8,671</span> layout boxes match <span class="nb"><img class="ri-plat" src="assets/kit2/chrome.png" alt="">Chrome</span> exactly, to <span class="n">1/64</span> px. <a class="back" href="#r1" aria-label="back to text">↩</a></li>
+        <li id="fn2"><span class="mk">‡</span><span class="n">339,080</span> computed values are identical between the author's CSS and Dragon's output. <a class="back" href="#r2" aria-label="back to text">↩</a></li>
+        <li id="fn3"><span class="mk">§</span><span class="n">137</span> test fixtures and <span class="n">258</span> cases pass, at the close of milestone 1. <a class="back" href="#r3" aria-label="back to text">↩</a></li>
+        <li id="fn4"><span class="mk">‖</span>Marks are <span class="nb"><img class="seal-mark" src="assets/kit/seal-exact.png" alt=""><span class="lbl exact">exact</span></span>, <span class="nb"><img class="seal-mark" src="assets/kit/seal-caveat.png" alt=""><span class="lbl caveat">caveat</span></span> and <span class="nb"><img class="seal-mark" src="assets/kit/seal-unsupported.png" alt=""><span class="lbl unsupported">unsupported</span></span>. Nothing is marked supported without a passing test. <a class="back" href="#r4" aria-label="back to text">↩</a></li>
+      </ol>
+    </section>
+  </div>
+</section>
+</main>
+
+<!-- Marginalia, moved beside their paragraphs by the script below -->
+<template id="marginalia">
+  <div class="marg" data-for="engine">
+    <button class="ink-focus" aria-expanded="false" aria-label="Scribal note: its own layout engine"><span class="gloss">its own engine</span></button>
+    <span class="note ink-frame" role="note"><b>An engine of its own</b>Dragon does not borrow a browser to lay out your views. Block, flex, text, positioning and right-to-left are computed by Dragon's own TypeScript engine, and the native engines are generated from that one source.<span class="scribe">— the scribe</span></span>
+  </div>
+  <div class="marg" data-for="proof">
+    <button class="ink-focus" aria-expanded="false" aria-label="Scribal note: proof by numbers"><span class="gloss">weighed, not viewed</span></button>
+    <span class="note ink-frame" role="note"><b>Proof by numbers</b>Screenshots can hide a pixel. Dragon compares the numbers: every box position and size against Chrome, to 1/64 of a pixel. 8,671 of 8,671 match.<span class="scribe">— see notes † ‡ §</span></span>
+  </div>
+  <div class="marg" data-for="realm">
+    <button class="ink-focus" aria-expanded="false" aria-label="Scribal note: one CSS for every platform"><span class="gloss">one CSS, every realm</span></button>
+    <span class="note ink-frame" role="note"><b>One CSS for every platform</b>Write the regular CSS you know. The compiler turns it into native view properties at build time. The web is proven today; iPhone and Android parity is the work of milestone 2.<span class="scribe">— the scribe</span></span>
+  </div>
+  <div class="marg" data-for="errors">
+    <button class="ink-focus" aria-expanded="false" aria-label="Scribal note: errors shaped as fixes"><span class="gloss">errors as remedies</span></button>
+    <span class="note ink-frame" role="note"><b>Errors shaped as fixes</b>Diagnostics are typed and come from the support profile, so a style a platform cannot honour is caught at build time, with the remedy beside it.<span class="scribe">— the scribe</span></span>
+  </div>
+</template>
+
+<section class="ri-sec" id="summary">
+<div class="summary">
+  <div class="ri-h"><img src="assets/icons/crown.png" alt=""><h2>Dragon CSS, plainly</h2></div>
+  <ul>
+    <li>Regular CSS, compiled at build time into native view properties. One CSS for web, iOS and Android.</li>
+    <li>Its own TypeScript layout engine: block, flex, text, positioning, right-to-left.</li>
+    <li>Proven against Chrome by numbers, not screenshots: 137 fixtures, 258 cases, 8,671 of 8,671 boxes exact to 1/64 px, 339,080 computed values identical.</li>
+    <li>Support labels: exact, caveat, unsupported. Nothing is marked supported without a passing test. What the compiler cannot decide is a build error with a fix.</li>
+    <li>Web is proven today. iOS and Android parity is in progress (milestone 2).</li>
+    <li>Install: <code class="mono">npm install dragon</code> (coming soon; not yet published).</li>
+  </ul>
+  <ul class="ri-banners" aria-label="Where each realm stands">
+    <li><img src="assets/kit/banner-conquered.png" alt=""><b>Web</b>proven, milestone 1</li>
+    <li><img src="assets/kit/banner-marching.png" alt=""><b>iOS and Android</b>in progress, milestone 2</li>
+    <li><img src="assets/kit/banner-notyet.png" alt=""><b>Custom properties, 1.0</b>not yet ridden</li>
+  </ul>
+</div>
+</section>
+
+<script>
+(function () {
+  const page = document.getElementById('page');
+  const tpl = document.getElementById('marginalia').content;
+  // Put each gloss at the start of its paragraph so it rides alongside it in the flow.
+  tpl.querySelectorAll('.marg').forEach(m => {
+    const p = document.querySelector(`[data-marg="${m.dataset.for}"]`);
+    p.before(m.cloneNode(true));
+  });
+  const margs = [...page.querySelectorAll('.marg')];
+
+  // Choose the margin nearest the column each paragraph fell into.
+  const place = () => {
+    const mid = page.getBoundingClientRect().left + page.offsetWidth / 2;
+    const pr = page.getBoundingClientRect();
+    margs.forEach(m => {
+      const r = m.nextElementSibling.getBoundingClientRect();
+      m.style.top = getComputedStyle(m).position === 'absolute' ? (r.top - pr.top) + 'px' : '';
+      const right = r.left + r.width / 2 > mid;
+      m.classList.toggle('side-r', right); m.classList.toggle('side-l', !right);
+    });
+  };
+  place(); addEventListener('resize', place);
+  if (document.fonts) document.fonts.ready.then(place);
+
+  // Tap or click toggles a note; hover and focus also show it on wide screens.
+  margs.forEach(m => {
+    const b = m.querySelector('button');
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      const open = !m.classList.contains('open');
+      margs.forEach(o => { o.classList.remove('open'); o.querySelector('button').setAttribute('aria-expanded', 'false'); });
+      m.classList.toggle('open', open); b.setAttribute('aria-expanded', String(open));
+    });
+  });
+  document.addEventListener('click', () => margs.forEach(o => { o.classList.remove('open'); o.querySelector('button').setAttribute('aria-expanded', 'false'); }));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') margs.forEach(o => o.classList.remove('open')); });
+
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('js');
+})();
+addEventListener('DOMContentLoaded', () => RoyalHero.enableSnapAndFocus('.royal-hero, #book, #proofs, #summary'));
+</script>
+</body>
+</html>

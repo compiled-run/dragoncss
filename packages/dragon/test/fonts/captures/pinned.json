@@ -1,0 +1,334 @@
+{
+ "chrome": "145.0.7632.6",
+ "playwright": "1.58.2",
+ "platform": "darwin-arm64",
+ "launches": [
+  {
+   "dpr": 1,
+   "flags": [
+    "--force-device-scale-factor=1",
+    "--force-color-profile=srgb",
+    "--font-render-hinting=none",
+    "--disable-lcd-text",
+    "--hide-scrollbars"
+   ]
+  }
+ ],
+ "fonts": {
+  "Inter/Inter-Light.ttf": "164414f0aacbe98a7e64addc43f7b3bfd2e32f7b90e101feeab227f14c371bda",
+  "Inter/Inter-Regular.ttf": "40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+  "Inter/Inter-Italic.ttf": "bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+  "Inter/Inter-Bold.ttf": "288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f",
+  "Inter/Inter-BoldItalic.ttf": "948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d",
+  "Roboto/Roboto-Regular.ttf": "39548fd9d6250717a5fcfe00b1b0ade234c1f5be8a40818c37e995c13c844df1",
+  "NotoSans/NotoSans-Regular.ttf": "f3961a9cde016d41a4879aecda1474d3a36d6bf54fa0e4643de029cc2248b0e8",
+  "NotoSansMono/NotoSansMono-Regular.ttf": "87f8ce0522a6c99b743ee5fc75b4073cfdd575639119672828b7b9944b65b4f4",
+  "Lato/Lato-Regular.ttf": "d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+  "Lato/Lato-Bold.ttf": "8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1"
+ },
+ "map": {
+  "generics": {
+   "monospace": {
+    "mode": "pinned",
+    "family": "Dragon Mono",
+    "faces": [
+     {
+      "src": "fonts/NotoSansMono/NotoSansMono-Regular.ttf"
+     }
+    ]
+   },
+   "sans-serif": {
+    "mode": "pinned",
+    "family": "Dragon Sans",
+    "faces": [
+     {
+      "src": "fonts/Inter/Inter-Light.ttf",
+      "weight": "300"
+     },
+     {
+      "src": "fonts/Inter/Inter-Regular.ttf",
+      "weight": "400"
+     },
+     {
+      "src": "fonts/Inter/Inter-Italic.ttf",
+      "weight": "400",
+      "style": "italic"
+     },
+     {
+      "src": "fonts/Inter/Inter-Bold.ttf",
+      "weight": "700"
+     },
+     {
+      "src": "fonts/Inter/Inter-BoldItalic.ttf",
+      "weight": "700",
+      "style": "italic"
+     }
+    ]
+   },
+   "ui-rounded": {
+    "mode": "pinned",
+    "family": "Dragon Rounded",
+    "faces": [
+     {
+      "src": "fonts/NotoSans/NotoSans-Regular.ttf"
+     }
+    ]
+   },
+   "serif": {
+    "mode": "platform"
+   }
+  },
+  "families": {
+   "Brand Face": {
+    "mode": "pinned",
+    "family": "Dragon Brand",
+    "faces": [
+     {
+      "src": "fonts/Roboto/Roboto-Regular.ttf"
+     }
+    ]
+   }
+  }
+ },
+ "requests": [
+  {
+   "family": "monospace",
+   "weight": 400,
+   "stretch": 100,
+   "style": "normal",
+   "text": "AaBb",
+   "rewritten": "\"Dragon Mono\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Dragon Mono\";src:url(\"fonts/NotoSansMono/NotoSansMono-Regular.ttf\")}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Noto Sans Mono",
+     "postScriptName": "NotoSansMono-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  },
+  {
+   "family": "sans-serif",
+   "weight": 300,
+   "stretch": 100,
+   "style": "normal",
+   "text": "AaBb",
+   "rewritten": "\"Dragon Sans\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Light.ttf\");font-weight:300}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Regular.ttf\");font-weight:400}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Italic.ttf\");font-weight:400;font-style:italic}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Bold.ttf\");font-weight:700}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-BoldItalic.ttf\");font-weight:700;font-style:italic}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Inter Light",
+     "postScriptName": "Inter-Light",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  },
+  {
+   "family": "sans-serif",
+   "weight": 400,
+   "stretch": 100,
+   "style": "normal",
+   "text": "AaBb",
+   "rewritten": "\"Dragon Sans\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Light.ttf\");font-weight:300}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Regular.ttf\");font-weight:400}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Italic.ttf\");font-weight:400;font-style:italic}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Bold.ttf\");font-weight:700}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-BoldItalic.ttf\");font-weight:700;font-style:italic}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  },
+  {
+   "family": "sans-serif",
+   "weight": 400,
+   "stretch": 100,
+   "style": "italic",
+   "text": "AaBb",
+   "rewritten": "\"Dragon Sans\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Light.ttf\");font-weight:300}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Regular.ttf\");font-weight:400}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Italic.ttf\");font-weight:400;font-style:italic}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Bold.ttf\");font-weight:700}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-BoldItalic.ttf\");font-weight:700;font-style:italic}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Italic",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  },
+  {
+   "family": "sans-serif",
+   "weight": 700,
+   "stretch": 100,
+   "style": "normal",
+   "text": "AaBb",
+   "rewritten": "\"Dragon Sans\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Light.ttf\");font-weight:300}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Regular.ttf\");font-weight:400}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Italic.ttf\");font-weight:400;font-style:italic}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Bold.ttf\");font-weight:700}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-BoldItalic.ttf\");font-weight:700;font-style:italic}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Bold",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  },
+  {
+   "family": "sans-serif",
+   "weight": 800,
+   "stretch": 100,
+   "style": "italic",
+   "text": "AaBb",
+   "rewritten": "\"Dragon Sans\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Light.ttf\");font-weight:300}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Regular.ttf\");font-weight:400}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Italic.ttf\");font-weight:400;font-style:italic}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Bold.ttf\");font-weight:700}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-BoldItalic.ttf\");font-weight:700;font-style:italic}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-BoldItalic",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  },
+  {
+   "family": "sans-serif",
+   "weight": 500,
+   "stretch": 100,
+   "style": "normal",
+   "text": "AaBb",
+   "rewritten": "\"Dragon Sans\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Light.ttf\");font-weight:300}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Regular.ttf\");font-weight:400}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Italic.ttf\");font-weight:400;font-style:italic}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Bold.ttf\");font-weight:700}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-BoldItalic.ttf\");font-weight:700;font-style:italic}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  },
+  {
+   "family": "ui-rounded",
+   "weight": 400,
+   "stretch": 100,
+   "style": "normal",
+   "text": "AaBb",
+   "rewritten": "\"Dragon Rounded\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Dragon Rounded\";src:url(\"fonts/NotoSans/NotoSans-Regular.ttf\")}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Noto Sans",
+     "postScriptName": "NotoSans-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  },
+  {
+   "family": "\"Brand Face\", monospace",
+   "weight": 400,
+   "stretch": 100,
+   "style": "normal",
+   "text": "AaBb",
+   "rewritten": "\"Dragon Brand\", \"Dragon Mono\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Dragon Brand\";src:url(\"fonts/Roboto/Roboto-Regular.ttf\")}",
+    "@font-face{font-family:\"Dragon Mono\";src:url(\"fonts/NotoSansMono/NotoSansMono-Regular.ttf\")}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Roboto",
+     "postScriptName": "Roboto-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  },
+  {
+   "family": "Unknown, monospace",
+   "weight": 400,
+   "stretch": 100,
+   "style": "normal",
+   "text": "AaBb",
+   "rewritten": "Unknown, \"Dragon Mono\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Dragon Mono\";src:url(\"fonts/NotoSansMono/NotoSansMono-Regular.ttf\")}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Noto Sans Mono",
+     "postScriptName": "NotoSansMono-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  },
+  {
+   "family": "monospace, sans-serif",
+   "weight": 700,
+   "stretch": 100,
+   "style": "normal",
+   "text": "AaBb",
+   "rewritten": "\"Dragon Mono\", \"Dragon Sans\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Dragon Mono\";src:url(\"fonts/NotoSansMono/NotoSansMono-Regular.ttf\")}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Light.ttf\");font-weight:300}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Regular.ttf\");font-weight:400}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Italic.ttf\");font-weight:400;font-style:italic}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Bold.ttf\");font-weight:700}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-BoldItalic.ttf\");font-weight:700;font-style:italic}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Noto Sans Mono",
+     "postScriptName": "NotoSansMono-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  }
+ ]
+}
