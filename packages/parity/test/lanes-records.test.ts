@@ -5,7 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import type { DeviceSet } from '../src/device-lanes.ts';
 import type { DeviceRun, LanesFile } from '../src/lanes.ts';
-import { fileStatusProblems, LANES_JSON, lanesFile, readLanesFile, runRecordProblems, staleCovers, staleLanes } from '../src/lanes.ts';
+import { deviceEvidence, evidenceProblems } from '../src/device-evidence.ts';
+import { fileStatusProblems, LANES_JSON, lanesFile, readLanesFile, runRecordProblems, staleCovers, staleEvidence, staleLanes } from '../src/lanes.ts';
 import type { TargetConfig } from '../src/targets.ts';
 import { nativeTargets } from '../src/targets.ts';
 
@@ -80,10 +81,35 @@ describe('run-record parity and status', () => {
     const committedSet = committed.targets[0]?.lanes.find((l) => l.lane === 'device-frames')?.device?.sets[0];
     if (committedSet === undefined) throw new Error('no committed set');
     const set = (dpr: number, name: string): DeviceSet => ({ dpr, device: { ...committedSet.device, name }, cases: committedSet.cases, dumps: committedSet.cases, compared: committedSet.compared, dumpsSha256: '0', failures: [], faults: [] });
-    const run: DeviceRun = { vectors: null, sets: [set(3, 'iPhone 17'), set(3, 'other'), set(2, 'iPad (A16)'), set(5, 'odd')], trust: [], blocked: null };
+    const run: DeviceRun = { vectors: null, sets: [set(3, 'iPhone 17'), set(3, 'other'), set(2, 'iPad (A16)'), set(5, 'odd')], trust: [], blocked: null, evidence: { laneCode: 'a', referenceData: 'b', app: 'c' } };
     const f = lanesFile([ios], [], new Map(), null, new Map([['ios', run]]));
     const reason = f.targets[0]?.lanes.find((l) => l.lane === 'device-frames')?.reason ?? '';
     expect(reason).toMatch(/DPR 3 was run 2 times \(iPhone 17, other\)/);
     expect(reason).toMatch(/DPR 5 \(odd\) is not a declared DPR of the lane/);
+  });
+});
+
+describe('the evidence stamp (finding 4131217867)', () => {
+  it('a missing or different stamp is never current', () => {
+    const cur = { laneCode: 'a'.repeat(64), referenceData: 'b'.repeat(64), app: 'c'.repeat(64) };
+    expect(evidenceProblems(cur, cur)).toEqual([]);
+    expect(evidenceProblems(null, cur)).toEqual(['the record has no evidence stamp']);
+    expect(evidenceProblems(undefined, cur)).toEqual(['the record has no evidence stamp']);
+    expect(evidenceProblems({ ...cur, app: 'd'.repeat(64) }, cur)).toEqual(['app dddddddddddd is not the current cccccccccccc']);
+  });
+  it('the committed device lanes carry the current stamp: the code, reference data and app they were made and judged with', () => {
+    expect(staleEvidence(committed)).toEqual([]);
+    for (const t of committed.targets) for (const l of t.lanes.filter((x) => x.where === 'device' && x.state !== 'not run')) expect(l.evidence, `${t.target} ${l.lane}`).toEqual(deviceEvidence(t.target));
+  });
+  it('a device lane without the current stamp is not carried (no grandfathering); host lanes are carried as before', () => {
+    for (const drop of ['missing', 'changed'] as const) {
+      const f = clone() as Mutable<LanesFile>;
+      for (const t of f.targets) for (const l of t.lanes) if (l.where === 'device') (l as { evidence: unknown }).evidence = drop === 'missing' ? null : { ...(l.evidence as object), laneCode: '0'.repeat(64) };
+      expect(staleEvidence(f as LanesFile).length).toBeGreaterThan(0);
+      const out = lanesFile(targets, [], new Map(), null, new Map(), f as LanesFile);
+      for (const t of out.targets) {
+        for (const l of t.lanes) expect(l.state, `${drop} ${t.target} ${l.lane}`).toBe(l.where === 'host' ? 'pass' : 'not run');
+      }
+    }
   });
 });

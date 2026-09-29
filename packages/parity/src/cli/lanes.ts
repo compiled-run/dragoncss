@@ -8,7 +8,7 @@ import { writeFileSync } from 'node:fs';
 import { failuresByKind } from '../device-lanes.ts';
 import { runTargetOnDevices } from '../device-lanes.ts';
 import type { DeviceRun, LaneFault, LanesFile } from '../lanes.ts';
-import { checkLaneParity, fileStatusProblems, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, notPassed, plantLaneFault, readLanesFile, referenceProof, runHostLane, staleCovers, staleLanes, writeLanesFile } from '../lanes.ts';
+import { checkLaneParity, fileStatusProblems, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, notPassed, plantLaneFault, readLanesFile, referenceProof, runHostLane, staleCovers, staleEvidence, staleLanes, writeLanesFile } from '../lanes.ts';
 import { repoPath } from '../paths.ts';
 import type { NativeTarget } from '../targets.ts';
 import { nativeTargets } from '../targets.ts';
@@ -84,7 +84,7 @@ if (runHost || runDevice) {
     console.log(`parity:lanes: ${LANES_JSON} is absent; host lanes are not run (pnpm run parity:lanes -- --run-host)`);
     file = lanesFile(targets, problems, new Map(), null);
   } else {
-    const stale = staleLanes(committed, targets);
+    const stale = [...staleLanes(committed, targets), ...staleEvidence(committed)];
     for (const s of stale) console.log(`STALE ${s}`);
     if (stale.length > 0) exit = 1;
     file = committed;

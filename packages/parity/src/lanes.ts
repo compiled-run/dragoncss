@@ -22,6 +22,8 @@ import { compileFixture } from './pipeline.ts';
 import { SAMPLE_RULES } from './samples.ts';
 import type { Compared, DeviceSet, FaultRow, LaneFailure, TrustRow } from './device-lanes.ts';
 import { DEVICE_CHECK_LANES, failuresByKind, laneFailures } from './device-lanes.ts';
+import type { DeviceEvidence } from './device-evidence.ts';
+import { deviceEvidence, evidenceProblems } from './device-evidence.ts';
 import type { DeviceRecord } from './device-run.ts';
 import { TRUST_CASES } from './device-run.ts';
 import type { CaseSet, LaneConfig, LaneId, NativeTarget, TargetConfig } from './targets.ts';
@@ -373,6 +375,8 @@ export type LaneRecord = {
   readonly run: { readonly toolchain: string | null; readonly suites: readonly SuiteCount[]; readonly digests: HostRun['digests'] } | null;
   /** A device lane's run: per DPR set the device and its record, the counts compared per check and the failures by kind. */
   readonly device: DeviceLaneRun | null;
+  /** A device lane's evidence stamp, written by the device run (device-evidence.ts); null for host lanes and lanes not run. */
+  readonly evidence: DeviceEvidence | null;
 };
 
 /** One DPR set of a device lane run. */
@@ -403,6 +407,8 @@ export type DeviceRun = {
   readonly trust: readonly { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] }[];
   /** A tooling fault that stopped the run (a device that failed to boot twice, a device that cannot hold the root). */
   readonly blocked: string | null;
+  /** The evidence stamp of the code, reference data and app the run was made and judged with. */
+  readonly evidence: DeviceEvidence;
 };
 
 /** The real-dump fault rows of a target, per DPR. */
@@ -430,7 +436,7 @@ export type LanesFile = {
 
 export const DEVICE_NOT_RUN = 'run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked';
 
-function laneRecord(l: LaneConfig, state: LaneState, reason: string | null, run: LaneRecord['run'], device: DeviceLaneRun | null = null): LaneRecord {
+function laneRecord(l: LaneConfig, state: LaneState, reason: string | null, run: LaneRecord['run'], device: DeviceLaneRun | null = null, evidence: DeviceEvidence | null = null): LaneRecord {
   const ids = l.sets.map((s) => ({ dpr: s.dpr, ids: s.ids }));
   return {
     lane: l.lane,
@@ -443,6 +449,7 @@ function laneRecord(l: LaneConfig, state: LaneState, reason: string | null, run:
     totalCases: caseCount(l) + l.corpora.reduce((n, c) => n + c.cases, 0),
     run,
     device,
+    evidence,
   };
 }
 
@@ -481,7 +488,7 @@ function deviceLaneRecord(l: LaneConfig, r: DeviceRun): LaneRecord {
     const mine = s.failures.filter((f) => f.lane === lane);
     return { dpr: s.dpr, device: s.device, cases: s.cases, dumps: s.dumps, compared: s.compared, dumpsSha256: s.dumpsSha256, failures: mine.length, failuresByKind: failuresByKind(mine) };
   });
-  return laneRecord(l, state, problems.length === 0 ? null : problems.join('; '), null, { sets, failuresByKind: failuresByKind(failures), firstFailures: failures.slice(0, FIRST_FAILURES), trust });
+  return laneRecord(l, state, problems.length === 0 ? null : problems.join('; '), null, { sets, failuresByKind: failuresByKind(failures), firstFailures: failures.slice(0, FIRST_FAILURES), trust }, r.evidence);
 }
 
 /**
@@ -515,16 +522,17 @@ function lanesFileOf(targets: readonly TargetConfig[], problems: readonly string
         const keep = kept !== undefined && kept.state !== 'not run' && !stale.some((p) => staleCovers(p, t.target, l.lane));
         if (l.where === 'host') {
           const h = host.get(t.target);
-          if (h === undefined && keep) return { ...kept, device: kept.device ?? null };
+          if (h === undefined && keep) return { ...kept, device: kept.device ?? null, evidence: null };
           return h === undefined ? laneRecord(l, 'not run', 'run pnpm run parity:lanes -- --run-host', null) : laneRecord(l, h.state, h.reason, { toolchain: h.toolchain, suites: h.suites, digests: h.digests });
         }
         const d = device.get(t.target);
         if (d !== undefined) {
           if (l.lane !== 'layout-vectors-device') return deviceLaneRecord(l, d);
           if (d.vectors === null) return laneRecord(l, d.blocked === null ? 'not run' : 'blocked (owner tooling)', d.blocked ?? DEVICE_NOT_RUN, null);
-          return laneRecord(l, d.vectors.state, d.vectors.reason, { toolchain: d.vectors.toolchain, suites: d.vectors.suites, digests: d.vectors.digests });
+          return laneRecord(l, d.vectors.state, d.vectors.reason, { toolchain: d.vectors.toolchain, suites: d.vectors.suites, digests: d.vectors.digests }, null, d.evidence);
         }
-        if (keep) return { ...kept, device: kept.device ?? null };
+        // A device lane is carried only with the current evidence stamp: same lane code, reference data and app source.
+        if (keep && evidenceProblems(kept.evidence, deviceEvidence(t.target)).length === 0) return { ...kept, device: kept.device ?? null };
         return laneRecord(l, 'not run', DEVICE_NOT_RUN, null);
       }),
       referenceProof: reference?.find((r) => r.target === t.target)?.rows.map(({ failures: _f, ...row }) => row) ?? carried?.targets.find((x) => x.target === t.target)?.referenceProof ?? null,
@@ -623,6 +631,18 @@ export function staleLanes(f: LanesFile, targets: readonly TargetConfig[]): stri
     for (const l of t.lanes) {
       const fl = ft.lanes.find((x) => x.lane === l.lane);
       if (fl === undefined || fl.caseListSha256 !== laneRecord(l, 'not run', null, null).caseListSha256) out.push(`${LANES_JSON}: ${t.target} ${l.lane} does not match the configured case list`);
+    }
+  }
+  return out;
+}
+
+/** Device lanes of a file whose evidence stamp is not the current one (missing stamps included); lanes not run are skipped. */
+export function staleEvidence(f: LanesFile): string[] {
+  const out: string[] = [];
+  for (const t of f.targets) {
+    for (const l of t.lanes) {
+      if (l.where !== 'device' || l.state === 'not run') continue;
+      for (const p of evidenceProblems(l.evidence, deviceEvidence(t.target))) out.push(`${LANES_JSON}: ${t.target} ${l.lane} evidence is stale: ${p}`);
     }
   }
   return out;
