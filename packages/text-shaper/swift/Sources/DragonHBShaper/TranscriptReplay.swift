@@ -54,6 +54,20 @@ private func str(_ v: Any?, _ what: String) throws -> String {
 
 private func int(_ v: Any?, _ what: String) throws -> Int64 { try num(v, what).int64Value }
 
+/// A transcript index into `items`: out of range (negative included) is a bad transcript, not a trap.
+private func at<T>(_ items: [T], _ v: Any?, _ what: String) throws -> T {
+    let i = try int(v, what)
+    guard i >= 0, i < Int64(items.count) else { throw ReplayError.badTranscript("\(what) \(i) of \(items.count)") }
+    return items[Int(i)]
+}
+
+/// A transcript value the shim takes as uint32 (codepoint, glyph id): outside 0...UInt32.max is a bad transcript.
+private func u32(_ v: Any?, _ what: String) throws -> UInt32 {
+    let i = try int(v, what)
+    guard let u = UInt32(exactly: i) else { throw ReplayError.badTranscript("\(what) \(i)") }
+    return u
+}
+
 /// A JSON number as the shim's f32 argument: parsed as a double, then rounded to f32 (as JS ToFloat32 does).
 private func f32(_ v: Any?, _ what: String) throws -> Float { Float(try num(v, what).doubleValue) }
 
@@ -80,7 +94,7 @@ public func replayTranscript(json: Data, root: URL) throws -> ReplayReport {
     for f in try arr(t["fonts"], "fonts") {
         let font = try obj(f, "font")
         fonts.append(try DragonHBFont(
-            face: faces[Int(try int(font["face"], "font.face"))],
+            face: try at(faces, font["face"], "font.face"),
             size: try f32(font["size"], "font.size"),
             specifiedSize: try f32(font["specifiedSize"], "font.specifiedSize"),
             weight: try f32(font["weight"], "font.weight"),
@@ -92,15 +106,18 @@ public func replayTranscript(json: Data, root: URL) throws -> ReplayReport {
     var report = ReplayReport()
     for (i, c) in try arr(t["calls"], "calls").enumerated() {
         let call = try obj(c, "call")
-        let font = fonts[Int(try int(call["font"], "call.font"))]
+        let font = try at(fonts, call["font"], "call.font")
         report.calls += 1
         switch try str(call["op"], "call.op") {
         case "shape":
             report.shapeCalls += 1
             // Through the GlyphShaper form: flat integer records {tag as int32, value, start, end}.
             let records = try arr(call["features"], "features").flatMap { f in try arr(f, "feature").map { Double(try int($0, "feature int")) } }
-            let got = try shaper.shape(font: font, text: texts[Int(try int(call["text"], "call.text"))], start: Int(try int(call["start"], "start")),
-                                       end: Int(try int(call["end"], "end")), script: try str(call["script"], "script"), rtl: (call["rtl"] as? Bool) ?? false,
+            let text = try at(texts, call["text"], "call.text")
+            let start = try int(call["start"], "start"), end = try int(call["end"], "end")
+            guard start >= 0, start <= end, end <= Int64(text.count) else { throw ReplayError.badTranscript("call.start \(start), call.end \(end) of text length \(text.count)") }
+            let got = try shaper.shape(font: font, text: text, start: Int(start),
+                                       end: Int(end), script: try str(call["script"], "script"), rtl: (call["rtl"] as? Bool) ?? false,
                                        language: try str(call["language"], "language"), featureRecords: records)
             let expected = try arr(call["glyphs"], "glyphs").map { try int($0, "glyph int") }
             report.glyphs += got.count / DragonHBShaper.glyphStride
@@ -110,12 +127,12 @@ public func replayTranscript(json: Data, root: URL) throws -> ReplayReport {
                 report.mismatches.append(ReplayMismatch(call: i, op: "shape", detail: "int \(at): \(Int64(got[at])), expected \(expected[at])"))
             }
         case "nominal":
-            let cp = UInt32(try int(call["codepoint"], "codepoint"))
+            let cp = try u32(call["codepoint"], "codepoint")
             let got = Int64(font.nominalGlyph(cp))
             let expected = try int(call["glyph"], "glyph")
             if got != expected { report.mismatches.append(ReplayMismatch(call: i, op: "nominal", detail: "U+\(String(cp, radix: 16)): \(got), expected \(expected)")) }
         case "advance":
-            let glyph = UInt32(try int(call["glyph"], "glyph"))
+            let glyph = try u32(call["glyph"], "glyph")
             let got = Int64(font.glyphAdvance(glyph))
             let expected = try int(call["advance"], "advance")
             if got != expected { report.mismatches.append(ReplayMismatch(call: i, op: "advance", detail: "glyph \(glyph): \(got), expected \(expected)")) }

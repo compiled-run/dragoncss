@@ -5,7 +5,8 @@
 //   --swift    replays the committed transcript through the aarch64-macos static library (zig build host) from Swift.
 //   --kotlin   replays it through the JNI dylib (zig build host-jni) from Kotlin on the JVM.
 //   --plant off-by-one   (with --swift, --kotlin or --check) changes one expected integer; the replay must exit 1.
-// Usage: node packages/text-shaper/scripts/replay.ts --record | --check | --swift | --kotlin [--plant off-by-one]
+//   --plant bad-index    points the first call at a font past the last; the replay must exit 1 with a bad-transcript error.
+// Usage: node packages/text-shaper/scripts/replay.ts --record | --check | --swift | --kotlin [--plant off-by-one | bad-index]
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
@@ -14,7 +15,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GATE_REFERENCES, fontPath, loadReference, runGate } from '../src/gate.ts';
 import {
-  parseTranscript, plantTranscript, recordTranscript, replayTranscript, serializeTranscript, sha256Hex, wasmBackend,
+  TRANSCRIPT_PLANTS, parseTranscript, plantTranscript, recordTranscript, replayTranscript, serializeTranscript, sha256Hex, wasmBackend,
 } from '../src/transcript.ts';
 import type { Transcript, TranscriptPlant } from '../src/transcript.ts';
 import { DEFAULT_WASM_PATH, DragonHB } from '../src/wasm.ts';
@@ -122,7 +123,7 @@ function main(argv: readonly string[]): number {
   const args = argv.filter((a) => a !== '--');
   const pi = args.indexOf('--plant');
   const plant = pi >= 0 ? (args[pi + 1] as TranscriptPlant) : undefined;
-  if (pi >= 0 && plant !== 'off-by-one') throw new Error(`unknown plant ${String(plant)}`);
+  if (pi >= 0 && !TRANSCRIPT_PLANTS.includes(plant as TranscriptPlant)) throw new Error(`unknown plant ${String(plant)}`);
   const mode = args.find((a) => ['--record', '--check', '--swift', '--kotlin'].includes(a));
 
   if (mode === '--record') {
@@ -159,7 +160,7 @@ function main(argv: readonly string[]): number {
     process.stdout.write(r.out);
     return r.status;
   }
-  console.error('usage: replay.ts --record | --check | --swift | --kotlin [--plant off-by-one]');
+  console.error('usage: replay.ts --record | --check | --swift | --kotlin [--plant off-by-one | bad-index]');
   return 2;
 }
 

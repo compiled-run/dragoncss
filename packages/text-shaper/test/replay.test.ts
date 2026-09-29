@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { GATE_TRANSCRIPT_PATH, REPO_ROOT, recordGate } from '../scripts/replay.ts';
 import {
-  DEFAULT_WASM_PATH, DragonHB, GLYPH_STRIDE, parseTranscript, plantTranscript, replayTranscript, serializeTranscript, sha256Hex, tagFromString, wasmBackend,
-  withoutFeatures,
+  DEFAULT_WASM_PATH, DragonHB, GLYPH_STRIDE, parseTranscript, plantTranscript, recordTranscript, replayTranscript, serializeTranscript, sha256Hex, tagFromString,
+  wasmBackend, withoutFeatures,
 } from '../src/index.ts';
 
 const committed = readFileSync(GATE_TRANSCRIPT_PATH, 'utf8');
@@ -62,6 +62,41 @@ describe('shape transcript of the TXT1-0 gate', () => {
   it('planted off-by-one: the replay reports exactly the changed integer', () => {
     const r = replayTranscript(plantTranscript(transcript, 'off-by-one'), wasmBackend(DragonHB.load()), readFace);
     expect(r.mismatches.map((m) => [m.op, m.detail.startsWith('int 2:')])).toEqual([['shape', true]]);
+  });
+
+  it('planted bad index: the replay refuses the transcript instead of shaping through a missing font', () => {
+    expect(() => replayTranscript(plantTranscript(transcript, 'bad-index'), wasmBackend(DragonHB.load()), readFace)).toThrow(
+      `bad transcript: call.font ${transcript.fonts.length} of ${transcript.fonts.length}`,
+    );
+  });
+
+  it('refuses out-of-range face, text, range, codepoint and glyph values', () => {
+    const replay = (t: typeof transcript) => () => replayTranscript(t, wasmBackend(DragonHB.load()), readFace);
+    const si = transcript.calls.findIndex((c) => c.op === 'shape');
+    const ni = transcript.calls.findIndex((c) => c.op === 'nominal');
+    const ai = transcript.calls.findIndex((c) => c.op === 'advance');
+    const withCall = (i: number, patch: Record<string, unknown>): typeof transcript => ({ ...transcript, calls: transcript.calls.map((c, j) => (j === i ? { ...c, ...patch } as typeof c : c)) });
+    expect(replay({ ...transcript, fonts: transcript.fonts.map((f, j) => (j === 0 ? { ...f, face: -1 } : f)) })).toThrow('bad transcript: font.face -1 of 7');
+    expect(replay(withCall(si, { font: -1 }))).toThrow('bad transcript: call.font -1');
+    expect(replay(withCall(si, { text: transcript.texts.length }))).toThrow('bad transcript: call.text');
+    expect(replay(withCall(si, { start: -1 }))).toThrow('bad transcript: call.start -1');
+    expect(replay(withCall(si, { end: 1e6 }))).toThrow('bad transcript: call.start');
+    expect(replay(withCall(ni, { codepoint: -1 }))).toThrow('bad transcript: codepoint -1');
+    expect(replay(withCall(ai, { glyph: 2 ** 32 }))).toThrow(`bad transcript: glyph ${2 ** 32}`);
+  });
+
+  it('a second finish returns the first transcript unchanged', () => {
+    const face = readFace(transcript.faces[0] as (typeof transcript.faces)[number]);
+    const hb = DragonHB.load();
+    const recorder = recordTranscript(hb, 'finish twice', 'none', () => 'face');
+    const font = hb.createFont(hb.createFace(face), { size: 16 });
+    hb.shape(font, 'ab', 0, 2, { script: 'Latn', direction: 'ltr', language: 'en' });
+    const first = recorder.finish();
+    const firstJson = serializeTranscript(first);
+    expect(first.calls.some((c) => c.op === 'advance')).toBe(true);
+    const second = recorder.finish();
+    expect(second).toBe(first);
+    expect(serializeTranscript(first)).toBe(firstJson);
   });
 
   it('refuses a face whose bytes do not match the transcript sha256', () => {

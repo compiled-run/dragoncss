@@ -17,7 +17,11 @@ type Case = {
   /** Declarations appended to the container's style (font-size defaults to 10px, line-height to normal). */
   readonly style?: string;
   readonly html: string;
-  /** Pixels read from a screenshot, in CSS px relative to the container's border box (paint order). */
+  /**
+   * Pixels read from a screenshot, in CSS px relative to the container's border box (paint order). x is measured from
+   * the inline-start edge: in rtl it is mirrored to (border-box width - x), where the content sits. Every point targets
+   * painted content, so a sample reading the white page background is a capture error.
+   */
   readonly samples?: readonly Sample[];
 };
 type Family = { readonly id: string; readonly title: string; readonly cases: readonly Case[] };
@@ -404,10 +408,12 @@ async function captureFamily(browsers: Map<number, Awaited<ReturnType<typeof lau
           const box = await page.locator('#c').boundingBox();
           const png = decodePng(await page.screenshot({ fullPage: true }));
           entry.samples = Object.fromEntries(c.samples.map((s) => {
-            const x = Math.floor((box!.x + s.x) * dpr);
+            const x = Math.floor((box!.x + (dir === 'rtl' ? box!.width - s.x : s.x)) * dpr);
             const y = Math.floor((box!.y + s.y) * dpr);
             const i = (y * png.width + x) * png.channels;
-            return [s.name, `rgb(${png.data[i]},${png.data[i + 1]},${png.data[i + 2]})`];
+            const rgb = `rgb(${png.data[i]},${png.data[i + 1]},${png.data[i + 2]})`;
+            if (rgb === 'rgb(255,255,255)') throw new Error(`${c.id} dpr ${dpr} ${dir}: sample ${s.name} reads the page background`);
+            return [s.name, rgb];
           }));
         }
         results[`dpr${dpr}-${dir}`] = entry;

@@ -9844,10 +9844,10 @@
       }
      },
      "samples": {
-      "overlap-a-over-b": "rgb(255,255,255)",
-      "line2-glyph": "rgb(255,255,255)",
-      "line1-glyph": "rgb(255,255,255)",
-      "line1-under-glyph": "rgb(255,255,255)"
+      "overlap-a-over-b": "rgb(255,0,0)",
+      "line2-glyph": "rgb(0,255,0)",
+      "line1-glyph": "rgb(255,0,0)",
+      "line1-under-glyph": "rgb(255,0,0)"
      }
     },
     "dpr2-ltr": {
@@ -10194,10 +10194,10 @@
       }
      },
      "samples": {
-      "overlap-a-over-b": "rgb(255,255,255)",
-      "line2-glyph": "rgb(255,255,255)",
-      "line1-glyph": "rgb(255,255,255)",
-      "line1-under-glyph": "rgb(255,255,255)"
+      "overlap-a-over-b": "rgb(255,0,0)",
+      "line2-glyph": "rgb(0,255,0)",
+      "line1-glyph": "rgb(255,0,0)",
+      "line1-under-glyph": "rgb(255,0,0)"
      }
     },
     "dpr3-ltr": {
@@ -10544,10 +10544,10 @@
       }
      },
      "samples": {
-      "overlap-a-over-b": "rgb(255,255,255)",
-      "line2-glyph": "rgb(255,255,255)",
-      "line1-glyph": "rgb(255,255,255)",
-      "line1-under-glyph": "rgb(255,255,255)"
+      "overlap-a-over-b": "rgb(255,0,0)",
+      "line2-glyph": "rgb(0,255,0)",
+      "line1-glyph": "rgb(255,0,0)",
+      "line1-under-glyph": "rgb(255,0,0)"
      }
     },
     "dpr2.625-ltr": {
@@ -10894,10 +10894,10 @@
       }
      },
      "samples": {
-      "overlap-a-over-b": "rgb(255,255,255)",
-      "line2-glyph": "rgb(255,255,255)",
-      "line1-glyph": "rgb(255,255,255)",
-      "line1-under-glyph": "rgb(255,255,255)"
+      "overlap-a-over-b": "rgb(255,0,0)",
+      "line2-glyph": "rgb(0,255,0)",
+      "line1-glyph": "rgb(255,0,0)",
+      "line1-under-glyph": "rgb(255,0,0)"
      }
     }
    }
@@ -11178,9 +11178,9 @@
       }
      },
      "samples": {
-      "line1-bottom-border-on-line2-glyph": "rgb(255,255,255)",
-      "line2-top-padding": "rgb(255,255,255)",
-      "line1-glyph": "rgb(255,255,255)"
+      "line1-bottom-border-on-line2-glyph": "rgb(0,255,0)",
+      "line2-top-padding": "rgb(0,0,255)",
+      "line1-glyph": "rgb(0,255,0)"
      }
     },
     "dpr2-ltr": {
@@ -11436,9 +11436,9 @@
       }
      },
      "samples": {
-      "line1-bottom-border-on-line2-glyph": "rgb(255,255,255)",
-      "line2-top-padding": "rgb(255,255,255)",
-      "line1-glyph": "rgb(255,255,255)"
+      "line1-bottom-border-on-line2-glyph": "rgb(0,255,0)",
+      "line2-top-padding": "rgb(0,0,255)",
+      "line1-glyph": "rgb(0,255,0)"
      }
     },
     "dpr3-ltr": {
@@ -11694,9 +11694,9 @@
       }
      },
      "samples": {
-      "line1-bottom-border-on-line2-glyph": "rgb(255,255,255)",
-      "line2-top-padding": "rgb(255,255,255)",
-      "line1-glyph": "rgb(255,255,255)"
+      "line1-bottom-border-on-line2-glyph": "rgb(0,255,0)",
+      "line2-top-padding": "rgb(0,0,255)",
+      "line1-glyph": "rgb(0,255,0)"
      }
     },
     "dpr2.625-ltr": {
@@ -11952,9 +11952,9 @@
       }
      },
      "samples": {
-      "line1-bottom-border-on-line2-glyph": "rgb(255,255,255)",
-      "line2-top-padding": "rgb(255,255,255)",
-      "line1-glyph": "rgb(255,255,255)"
+      "line1-bottom-border-on-line2-glyph": "rgb(0,255,0)",
+      "line2-top-padding": "rgb(0,0,255)",
+      "line1-glyph": "rgb(0,255,0)"
      }
     }
    }
