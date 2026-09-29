@@ -1,33 +1,58 @@
-# Dragon CSS
+<p align="center">
+  <img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/dragon-mark.png" alt="" width="160">
+</p>
 
-Regular CSS for native apps, tested against the browser.
+<h1 align="center">Dragon CSS</h1>
 
-Dragon compiles the CSS you already write straight into native view properties: UIKit on iOS first, Android Views next. Anything a platform can't do is a build error that names the file, the line and a fix. It never silently drops a style.
+<p align="center"><b>Regular CSS for native apps, tested against the browser.</b></p>
 
-Every feature Dragon claims to support is backed by a passing test that compares it with Chrome, so "supported" means measured, not hoped. The goal is as much CSS as possible, proven.
+You write the CSS you already know. Dragon compiles it into native view properties (UIKit first, Android Views next) and then makes Chrome the judge: every box and every value is compared, number by number.
 
-## How it works
+No runtime CSS parser. No selector matching on the device. No style quietly dropped. If a platform can't do something, you get a build error with the file, the line and a fix.
 
-1. **Build time (TypeScript, yuku):** read the CSS and the element tree, work out which rules apply to each element and in what order, compute values, and check each target's support list.
-2. **Output:** generated native code that sets view properties directly, for example `layer.cornerRadius = 12`. Where the platform already has a mechanism, Dragon uses it instead of reinventing it:
-   - `light-dark()` becomes a dynamic `UIColor`;
-   - `rem` font sizes become `UIFontMetrics` scaling;
-   - `env(safe-area-inset-*)` becomes the safe-area insets;
-   - class changes driven by state become "when this value changes, set these properties".
+## What the dragon does with your CSS
 
-   The only library on the device is the layout engine (Dragon's own, with a TypeScript reference that native versions must reproduce exactly), because positions depend on real content and screen size. Nothing on the device parses CSS or matches selectors. The same "which properties go on which element" result is also written out as plain data for the test lanes.
-3. **Proof:** Chrome records every box and resolved value. A Linux lane runs the compiled property list through the layout engine, and a simulator lane dumps what the native views actually got. Both are compared number by number. Side-by-side screenshots are published as evidence.
+```css
+.card {
+  border-radius: 12px;                   /* layer.cornerRadius = 12 */
+  color: light-dark(#222, #eee);         /* a dynamic UIColor */
+  font-size: 1.125rem;                   /* scales with UIFontMetrics */
+  padding-top: env(safe-area-inset-top); /* the real safe-area insets */
+}
+```
+
+Where a platform already has the right tool, Dragon uses it instead of reinventing it. The only library that ships to the device is Dragon's layout engine, because positions depend on real content and real screens.
+
+## Proven, not promised
+
+Every feature carries one of three seals, and each seal is earned by a passing comparison against Chrome:
+
+<table>
+  <tr><td><img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/seal-exact.png" alt="" width="40"></td><td><b>exact</b></td><td>Matches Chrome.</td></tr>
+  <tr><td><img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/seal-caveat.png" alt="" width="40"></td><td><b>caveat</b></td><td>Works, with a measured, documented difference.</td></tr>
+  <tr><td><img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/seal-unsupported.png" alt="" width="40"></td><td><b>unsupported</b></td><td>A build error that tells you what to do instead.</td></tr>
+</table>
+
+No test, no seal. Missing data means unsupported.
 
 ## Status
 
-Early. Nothing is released. The npm package `dragon` will publish as `1.0.0-alpha.x` prereleases, because older `0.x` versions of that name are an unrelated drag-and-drop library.
+🥚 Still in the egg. Nothing is released yet. The npm package `dragon` will hatch as `1.0.0-alpha.x` (the old `0.x` versions are an unrelated drag-and-drop library).
 
-Markless (`compiled-run/markless`) is the first user. Dragon's input is plain CSS plus a description of the element tree, so any tool that compiles templates can use it.
+[Markless](https://github.com/compiled-run/markless) is the first rider. Dragon takes plain CSS plus a description of the element tree, so any tool that compiles templates can saddle up.
 
-## Why not StyleX?
+## Read more
 
-StyleX works with any framework on the web, but has no native target of its own. Its only route to native views, React Strict DOM, is React Native-specific and resolves styles at runtime, and nothing proves native output matches the browser. Dragon keeps StyleX's best idea, that styles stay local to the element, and adds real native views and tested parity for any tool. See [docs/why-not-stylex.md](docs/why-not-stylex.md).
+- [How Dragon compares](https://github.com/compiled-run/dragoncss/blob/master/docs/compared.md)
+- [API design](https://github.com/compiled-run/dragoncss/blob/master/docs/api.md)
+- [Research and evidence](https://github.com/compiled-run/dragoncss/blob/master/docs/research/README.md)
 
-## Research
+## Sponsors
 
-The design and evidence behind this project are in [docs/research](docs/research/README.md).
+Dragon CSS is supported by:
+
+- **[Macroscope](https://macroscope.com)**, through the Macroscope Open Source program. It reviews every pull request, using semantic analysis of the code's syntax trees (ASTs) rather than the diff alone.
+- **[Anthropic](https://www.anthropic.com)**, through the Claude Open Source program. [Claude](https://claude.com/claude-code) does the agentic engineering and validation of this project.
+- **[OpenAI](https://openai.com)**, through the Codex for OSS program. [Codex](https://openai.com/codex) is an additional validator.
+
+[MIT licensed](https://github.com/compiled-run/dragoncss/blob/master/LICENSE).

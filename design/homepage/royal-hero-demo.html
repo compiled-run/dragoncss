@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon CSS: royal hero demo</title>
+<link rel="stylesheet" href="assets/parchment.css">
+<link rel="stylesheet" href="assets/royal-hero.css">
+<script src="assets/royal-hero.js" defer></script>
+<style>
+  html, body { background: url(assets/parchment-tile.png) 0 0 / 512px 512px repeat; }
+  body { margin: 0; }
+  .demo-section { box-sizing: border-box; min-height: 100svh; display: grid; place-items: center; padding: 6svh 24px; }
+  .demo-card { width: min(46rem, 100%); font-size: clamp(22px, 1.7vw, 28px); line-height: 1.5; }
+  .demo-card h2 { font: 600 clamp(34px, 3.8vw, 56px)/1.2 var(--display); margin: 0 0 .6em; text-align: center; }
+  .demo-card p { margin: 0 0 1em; }
+  .demo-card .sign { text-align: right; font-style: italic; color: var(--ink-soft); }
+  .demo-card:has(.demo-map) { width: min(64rem, 100%); }
+  .demo-map { position: relative; aspect-ratio: 16 / 8; }
+  .demo-map svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .demo-map figure { position: absolute; margin: 0; width: 20%; transform: translate(-50%, -50%); text-align: center; }
+  .demo-map img { width: 100%; height: auto; display: block; }
+  .demo-map figcaption { font-size: .62em; color: var(--ink-soft); margin-top: .1em; }
+  .demo-map .deco { position: absolute; opacity: .75; }
+  .demo-seal { display: block; width: 190px; height: auto; margin: 0 auto 1em; filter: drop-shadow(0 6px 10px rgba(90,40,20,.3)); }
+  .center { text-align: center; }
+</style>
+</head>
+<body>
+<header class="royal-hero"
+  data-headline="Regular CSS, <em>proven</em> in every realm"
+  data-sub="Write the CSS you already know. Dragon proves every box against Chrome, number by number."
+  data-cue-href="#letter"
+  data-cue-label="Read the letter"></header>
+
+<main>
+  <section class="demo-section" id="letter">
+    <div class="demo-card">
+      <h2>A letter to the realm</h2>
+      <p>To every builder of the web, greetings. For too long, a stylesheet that worked in one kingdom failed in the next.</p>
+      <p>Dragon measures your plain CSS in every realm it will be read in, and tells you, with proof, where it holds and where it breaks.</p>
+      <p class="sign">Sealed at the keep, this day.</p>
+    </div>
+  </section>
+  <section class="demo-section" id="map">
+    <div class="demo-card">
+      <h2>The map of the realms</h2>
+      <div class="demo-map">
+        <svg viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M14 36 C 26 44, 32 20, 40 22 S 52 40, 58 38 S 70 16, 78 20 S 86 34, 88 30" fill="none" stroke="#a3342b" stroke-width=".5" stroke-dasharray="0.1 1.4" stroke-linecap="round" vector-effect="non-scaling-stroke" style="stroke-width:4px;stroke-dasharray:1 12"/>
+        </svg>
+        <img class="deco" src="assets/kit2/mountain.png" alt="" style="left:44%;top:-4%;width:14%">
+        <img class="deco" src="assets/kit2/compass.png" alt="" style="left:0;top:0;width:9%">
+        <img class="deco" src="assets/kit2/cloud.png" alt="" style="right:2%;top:2%;width:10%">
+        <figure style="left:14%;top:62%"><img src="assets/kit2/place-web.png" alt="Camelot of the Web"><figcaption>conquered · M1</figcaption></figure>
+        <figure style="left:36%;top:36%"><img src="assets/kit2/place-ios.png" alt="The Isle of iOS"><figcaption>marching · M2</figcaption></figure>
+        <figure style="left:60%;top:66%"><img src="assets/kit2/place-android.png" alt="The Android Marches"><figcaption>marching · M2</figcaption></figure>
+        <figure style="left:88%;top:52%"><img src="assets/kit2/place-keep.png" alt="The Dragon's Keep"><figcaption>1.0 · the end</figcaption></figure>
+      </div>
+    </div>
+  </section>
+  <section class="demo-section" id="seal">
+    <div class="demo-card center">
+      <h2>The royal seal</h2>
+      <img class="demo-seal" src="assets/gen/wax-seal-dragon.png" alt="">
+      <p>Every rule carries its seal: exact, caveat or unsupported.</p>
+    </div>
+  </section>
+</main>
+<script>
+  addEventListener('DOMContentLoaded', () => RoyalHero.enableSnapAndFocus('.royal-hero, .demo-section'));
+</script>
+</body>
+</html>

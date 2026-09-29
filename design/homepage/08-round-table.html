@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon CSS: The Round Table</title>
+<link rel="stylesheet" href="assets/parchment.css">
+<link rel="stylesheet" href="assets/ink.css">
+<link rel="stylesheet" href="assets/royal-hero.css">
+<link rel="stylesheet" href="assets/integration.css">
+<script src="assets/royal-hero.js" defer></script>
+<script>/* Space on a button or link activates it; keep the section stepper from taking it. Registered before the stepper. */
+addEventListener('keydown', e => { if (e.key === ' ' && e.target.closest && e.target.closest('button, a, [role="button"], summary')) e.stopImmediatePropagation(); });</script>
+<script src="assets/parchment.js"></script>
+<style>
+  body { overflow-x: clip; min-height: 100vh; }
+
+  .hall { margin: 0; padding: 0; }
+  #letter-sec .letter { width: min(700px, 100%); margin: 0 auto; }
+
+  /* ---------- Letter ---------- */
+  /* The speech scroll hangs from the drawn rollers. Joins measured from the art: flap ends at y505 of 724, paper spans x 12.35%..87.65%. */
+  .roller { display: block; width: 100%; height: auto; position: relative; z-index: 2; pointer-events: none; user-select: none; filter: drop-shadow(0 6px 8px rgba(70,45,20,.35)); }
+  .roller.top { margin-top: -10.08%; }
+  .roller.bottom { margin-top: -10.95%; margin-bottom: -10.08%; }
+  .paper { position: relative; z-index: 1; margin: -11.3% 12.35% 0;
+    /* No sheet of its own: the parchment shows through; the scroll's edges are quill lines. */
+    background: var(--ink-vrule-dark) left -4px top 0 / 10px 100% no-repeat, var(--ink-vrule-dark-b) right -4px top 0 / 10px 100% no-repeat; }
+  /* The letter is written straight onto the page parchment: no sheet, no rollers. */
+  .letter { position: relative; padding: 30px 0 22px; font: 24px/1.45 var(--text); color: var(--ink-body);
+    background: var(--ink-rule-gold) left top / 44% 10px no-repeat, var(--ink-rule-gold-b) right top / 44% 10px no-repeat, var(--ink-rule-faint) left bottom / 100% 10px no-repeat; }
+  .letter::before { content: "\2766"; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); padding: 0 12px;
+    font-size: 18px; line-height: 26px; color: var(--brick); }
+  .letter p { margin: 0 0 .7em; }
+  .letter .salute { font: italic 600 29px var(--display); color: var(--brick); }
+  .letter .lead::first-letter { float: left; font: 700 3.3em/.82 var(--display); color: var(--brick); margin: .08em .1em 0 0; }
+  .letter .sign { display: flex; align-items: center; gap: 14px; margin-top: 1em; font-style: italic; font-size: 21px; line-height: 1.35; }
+  .seal { flex: none; width: 76px; height: 76px; object-fit: contain; margin: -10px -8px -10px -12px; filter: drop-shadow(0 2px 3px rgba(60,20,10,.4)); }
+
+  /* ---------- The table ---------- */
+  .stage { --S: min(760px, calc(100svh - 150px), calc(100vw - 40px)); position: relative; width: var(--S); height: var(--S); margin: 0 auto; }
+  /* The table is drawn in ink on the parchment: a double quill rim, a sage ring in five equal strokes (one per knight:
+     parity made visible), and a rubric rose at the centre. No painted wood. */
+  .table { position: absolute; left: 50%; top: 50%; width: calc(var(--S) * .60); aspect-ratio: 1; translate: -50% -50%; transition: opacity .3s; }
+  .table::before, .table::after, .band, .rose::before, .rose::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    -webkit-mask: var(--m) 0 0 / 100% 100% no-repeat; mask: var(--m) 0 0 / 100% 100% no-repeat; }
+  .table::before { --m: var(--ink-ring); background-color: rgba(60,40,22,.85); }
+  .table::after { --m: var(--ink-ring-b); background-color: rgba(60,40,22,.6); }
+  .band { inset: 9%; --m: var(--ink-ring-parts); background-color: rgba(94,122,82,.85); rotate: -36deg; }
+  .rose { position: absolute; left: 50%; top: 50%; width: 38%; aspect-ratio: 1; translate: -50% -50%; transition: opacity .3s; }
+  .rose::before { --m: var(--ink-ring); background-color: rgba(163,52,43,.8); }
+  .rose::after { --m: var(--ink-ring-parts); background-color: rgba(163,52,43,.55); inset: 7%; rotate: -36deg; }
+  .promise { transition: opacity .3s; }
+  /* While a knight speaks, the table's drawing fades back so his scroll reads on bare parchment. */
+  .stage.speaking .table, .stage.speaking .rose, .stage.speaking .promise { opacity: .08; }
+  .promise { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 24%; text-align: center; font: 600 calc(var(--S) * .027)/1.2 var(--display); color: var(--ink); z-index: 1; }
+  .promise b { display: block; color: var(--brick); font-weight: 700; }
+  .promise-crest { display: block; width: 72%; height: auto; margin: 0 auto 6px; filter: drop-shadow(0 3px 3px rgba(90,60,25,.2)); }
+  #wrap { padding-block: 24px; }
+  #summary { padding-block: 48px; }
+  .plain ul:has(.ri-flagged) { list-style: none; padding-left: 0; }
+  li.ri-flagged { display: flow-root; min-height: 80px; margin-bottom: 10px; }
+  li.ri-flagged .ri-flag { float: left; width: 66px; height: auto; margin: 2px 18px 4px 0; filter: drop-shadow(0 3px 3px rgba(90,60,25,.2)); }
+
+  /* Voice: a dotted line from the speaking knight to the centre. */
+  .voice { position: absolute; left: 50%; top: 50%; width: calc(var(--S) * .30); height: 6px; margin-top: -3px; background-color: rgba(184,137,43,.9);
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='6'><circle cx='6' cy='3' r='1.9' fill='black'/></svg>") 0 0 / 12px 6px repeat-x;
+            mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='6'><circle cx='6' cy='3' r='1.9' fill='black'/></svg>") 0 0 / 12px 6px repeat-x;
+    transform-origin: 0 0; rotate: var(--a, -90deg); opacity: 0; transition: rotate .45s cubic-bezier(.4,.1,.2,1), opacity .3s; pointer-events: none; }
+  .stage.speaking .voice { opacity: .45; }
+
+  /* Seats */
+  .seat { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; left: 50%; top: 50%;
+    width: calc(var(--S) * .19); translate: -50% -50%;
+    transform: rotate(var(--a)) translate(calc(var(--S) * .405)) rotate(calc(-1 * var(--a)));
+    display: flex; flex-direction: column; align-items: center; text-align: center; padding: 12px 6px 18px;
+    --ink-frame-mask: var(--ink-frame-soft); --ink-out: 0px;
+    transition: opacity .3s, scale .3s; -webkit-tap-highlight-color: transparent; }
+  .seat.ink-btn:hover::before, .seat.ink-btn:focus-visible::before { --ink-frame-mask: var(--ink-frame-bold); }
+  .seat img { width: 58%; height: auto; filter: drop-shadow(0 2px 2px rgba(60,40,20,.35)); transition: transform .3s; }
+  .seat .name { font: 600 calc(var(--S) * .025)/1.1 var(--display); margin-top: 4px; color: var(--ink); }
+  .seat .seal-badge { margin-top: 6px; font-size: 16px; padding: 1px 8px; }
+  .speech .seal-badge { font-size: 16px; }
+  .seat:hover img { transform: translateY(-3px) rotate(-4deg); }
+  .stage.speaking .seat:not(.on) { opacity: .6; }
+  /* The speaking knight's seat is re-inked in bold gold. */
+  .seat.on { scale: 1.08; z-index: 2; }
+  .seat.on::before { --ink-frame-color: rgba(160,114,30,.95); --ink-frame-mask: var(--ink-frame-bold); }
+
+  /* Speech scroll, laid on the centre of the table */
+  .speech { position: absolute; left: 50%; top: 22%; translate: -50% 0; width: calc(var(--S) * .66); z-index: 5;
+    opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .stage.speaking .speech { opacity: 1; pointer-events: auto; }
+  .speech .body { padding: 18px 18px 18px; }
+  /* The speech scroll hangs from its top roller and drops open under gravity (see dropScroll). */
+  .speech { transform-origin: 50% 0; }
+  .speech .sbottom { margin-top: -10.95%; margin-bottom: -10.08%; }
+  /* Roller spin: ink bands that travel while the bottom roller falls (from scroll-physics.html). */
+  .bottom-wrap { position: relative; z-index: 2; }
+  .bottom-wrap .roller { margin: 0 !important; }
+  .spin { position: absolute; left: 14%; right: 14%; top: 41%; bottom: 35%; overflow: hidden; border-radius: 40px; opacity: .55; mix-blend-mode: multiply; pointer-events: none; }
+  .spin::before { content: ""; position: absolute; left: 0; right: 0; top: -100%; height: 300%;
+    background: repeating-linear-gradient(180deg, rgba(90,60,25,0) 0 10px, rgba(90,60,25,.35) 11px 12px, rgba(90,60,25,0) 13px 26px);
+    transform: translateY(var(--spin, 0px)); }
+
+  @keyframes unroll { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+  .speech h2 { margin: 0 0 2px; font: 600 25.5px/1.15 var(--display); }
+  .speech .who { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-bottom: 8px; }
+  .speech p { margin: 0; font: 21px/1.45 var(--text); }
+  .speech .ri-proven { float: right; width: 80px; margin: 0 0 4px 10px; }
+  .speech .seal-badge .seal-mark { height: 1.2em !important; }
+  .speech .quote::before { content: "\201C"; color: var(--brick); font: 700 34px/0 var(--display); vertical-align: -.35em; margin-right: 2px; }
+  .speech .close { all: unset; cursor: pointer; font: 16px var(--mono); color: var(--ink-soft); margin-top: 8px; display: inline-block; position: relative; }
+  .speech .close:hover, .speech .close:focus-visible { color: var(--ink); }
+  /* No text reveal: the shared .ink-in class is neutralised so all text is present from the start. */
+  .ink-in { animation: none !important; clip-path: none !important; opacity: 1 !important; filter: none !important; }
+
+  .prompt { text-align: center; font: italic 22px var(--text); color: var(--ink-body); margin: 4px 0 0; }
+  .prompt small { display: block; font: 16px var(--mono); color: var(--ink-soft); font-style: normal; margin-top: 3px; }
+
+  /* ---------- Summary ---------- */
+  #summary .plain { max-width: 720px; margin: 0 auto; padding: 30px 4px 0; color: var(--ink); background: var(--ink-rule-faint) left top / 100% 10px no-repeat; }
+  #summary h2 { font: 600 32px var(--display); margin: 0 0 12px; color: var(--brick); }
+  #summary h3 { font: 600 23.5px var(--display); margin: 22px 0 6px; color: var(--slate); }
+  #summary p, #summary li { font: 22px/1.6 var(--text); }
+  #summary ul { padding-left: 20px; }
+  #summary code { font: 1em var(--mono); color: var(--brick); }
+
+  @media (max-width: 759px) {
+    .letter { padding: 28px 0 18px; font-size: 18px; }
+    .letter .sign { font-size: 16px; }
+    .stage { --S: calc(100vw - 20px); margin-top: 16px; }
+    #wrap.ri-sec { padding-left: 10px; padding-right: 10px; }
+    .seat { width: calc(var(--S) * .21); padding: 8px 4px; transform: rotate(var(--a)) translate(calc(var(--S) * .37)) rotate(calc(-1 * var(--a))); }
+    .table { width: calc(var(--S) * .52); }
+    .voice { width: calc(var(--S) * .26); }
+    .seat .name { font-size: 13px; }
+    .seat .seal-badge { font-size: 9.5px; padding: 0 5px; margin-top: 3px; }
+    .promise { font-size: 12px; width: 28%; }
+    .speech { position: static; translate: none; width: auto; margin: 10px 0 0; display: none; }
+    .stage-wrap.speaking .speech { display: block; opacity: 1; pointer-events: auto; }
+
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .voice, .seat, .seat img { transition: none; }
+  }
+</style>
+<style>
+  a.skip { color: var(--ink); text-decoration: none; opacity: 1; } /* ink text with an ink swash (ink.css), no box */
+  a.skip:hover, a.skip:focus-visible { color: var(--brick); }
+</style>
+</head>
+<body>
+<a class="skip ink-under" href="#summary">skip the ceremony &rarr;</a>
+
+<header class="royal-hero"
+  data-headline="Five realms. Five seats. <em>One</em> CSS."
+  data-sub="No seat higher than another: every realm is held to the same proof."
+  data-cue-href="#letter-sec"
+  data-cue-label="Take a seat"></header>
+
+<main class="hall" id="hall">
+  <section class="ri-sec" id="letter-sec" aria-label="The letter">
+  <article class="letter" aria-label="A letter">
+    <img class="ri-sealed" src="assets/kit/letter.png" alt="">
+    <p class="salute ink-in" style="--ink-delay:.2s;--ink-dur:1s">Dear Lord Developer,</p>
+    <p class="lead ink-in" style="--ink-delay:1s">At this table no realm sitteth above another. Web, iOS, Android, macOS and Email each have a seat, and each is judged by one law: thy one CSS, compiled at build time into native view properties, and proven against Chrome, number by number.</p>
+    <p class="ink-in" style="--ink-delay:2.4s">The Knight of the Web hath sworn his proof already. iOS and Android ride now, together. macOS and Email wait their turn, and claim nothing until a test passeth.</p>
+    <p class="ink-in" style="--ink-delay:3.6s">Touch any knight, and he shall tell thee plainly where he stands.</p>
+    <div class="sign ink-in" style="--ink-delay:4.5s"><img class="seal" src="assets/gen/wax-seal-dragon.png" alt=""><div>By the hand of the Dragon,<br>Keeper of the Styles</div></div>
+  </article>
+  </section>
+
+  <section class="stage-wrap ri-sec" id="wrap" aria-label="The Round Table">
+    <div class="stage" id="stage">
+      <div class="table"><div class="band"></div></div>
+      <div class="rose" aria-hidden="true"></div>
+      <p class="promise"><img class="promise-crest" src="assets/kit2/crest.png" alt="">One CSS.<br>Every realm.<b>Proven.</b></p>
+      <div class="voice" aria-hidden="true"></div>
+
+      <button class="seat ink-btn ink-frame" style="--a:-90deg" data-k="web" aria-controls="speech">
+        <img src="assets/icons/shield.png" alt=""><span class="name">Web</span><span class="seal-badge">proven</span>
+      </button>
+      <button class="seat ink-btn ink-frame" style="--a:-18deg" data-k="ios" aria-controls="speech">
+        <img src="assets/icons/shield.png" alt=""><span class="name">iOS</span><span class="seal-badge caveat">riding</span>
+      </button>
+      <button class="seat ink-btn ink-frame" style="--a:54deg" data-k="android" aria-controls="speech">
+        <img src="assets/icons/shield.png" alt=""><span class="name">Android</span><span class="seal-badge caveat">riding</span>
+      </button>
+      <button class="seat ink-btn ink-frame" style="--a:126deg" data-k="macos" aria-controls="speech">
+        <img src="assets/icons/shield.png" alt=""><span class="name">macOS</span><span class="seal-badge unsupported">later</span>
+      </button>
+      <button class="seat ink-btn ink-frame" style="--a:198deg" data-k="email" aria-controls="speech">
+        <img src="assets/icons/shield.png" alt=""><span class="name">Email</span><span class="seal-badge unsupported">later</span>
+      </button>
+
+      <div class="speech" id="speech" aria-live="polite">
+        <img class="roller top" src="assets/gen/scroll-roller-top.png" alt="">
+        <div class="paper sclip" id="sclip"><div class="body" id="speech-body"></div></div>
+        <div class="bottom-wrap sbottom"><img class="roller bottom" src="assets/gen/scroll-roller-bottom.png" alt=""><div class="spin" id="sspin"></div></div>
+      </div>
+    </div>
+    <p class="prompt">Touch a knight and he shall speak.<small>every shield alike; only the proof differs</small></p>
+  </section>
+</main>
+
+<section class="ri-sec" id="summary">
+<div class="plain">
+  <div class="ri-h"><img src="assets/icons/crown.png" alt=""><h2>Dragon CSS, plainly</h2></div>
+  <p>Write regular CSS once. Dragon compiles it at build time into native view properties, and proves the result against Chrome, number by number, never by screenshots.</p>
+  <h3>Where each platform stands</h3>
+  <ul>
+    <li class="ri-flagged"><img class="ri-flag" src="assets/kit/banner-conquered.png" alt="Conquered"><b>Web: proven (milestone 1).</b> Dragon's own TypeScript layout engine (block, flex, text, positioning, right-to-left). 137 test fixtures and 258 cases pass; 8,671 of 8,671 boxes match Chrome exactly, to 1/64 px; 339,080 computed values are identical between the author's CSS and Dragon's output.</li>
+    <li class="ri-flagged"><img class="ri-flag" src="assets/kit/banner-marching.png" alt="Marching now"><b>iOS and Android: in progress (milestone 2), at parity.</b> Native engines are generated from the one TypeScript engine, and each device lane is checked against Chrome.</li>
+    <li class="ri-flagged"><img class="ri-flag" src="assets/kit/banner-notyet.png" alt="Not yet ridden"><b>macOS and Email: later.</b> Nothing is claimed yet.</li>
+  </ul>
+  <p>Support labels: <img class="seal-mark" src="assets/kit/seal-exact.png" alt=""><code>exact</code>, <img class="seal-mark" src="assets/kit/seal-caveat.png" alt=""><code>caveat</code>, <img class="seal-mark" src="assets/kit/seal-unsupported.png" alt=""><code>unsupported</code>. Nothing is marked supported without a passing test.</p>
+  <p>Install: <code>npm install dragon</code> (coming soon; not yet published).</p>
+</div>
+</section>
+
+<script>
+
+  // Scroll physics (after scroll-physics.html): the bottom roller falls under gravity (len = a*t*t/2) until the
+  // sheet runs out, stops hard with no overshoot, rebounds upward on a stiff damped spring, spins while falling,
+  // and the whole scroll sways from the top roller. One-time per opening; never scroll-linked.
+  function dropScroll(hang, clip, spin, onDone) {
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    cancelAnimationFrame(hang._raf);
+    clip.style.height = ''; const cs = getComputedStyle(clip);
+    const max = parseFloat(cs.maxHeight); const L = Math.min(clip.scrollHeight, isNaN(max) ? Infinity : max);
+    if (reduce || !L) { clip.style.height = ''; hang.style.transform = ''; onDone && onDone(); return; }
+    const T = Math.min(.95, .45 + L / 1400), fric = .25, k = 520, zeta = .38, swayAmp = .7, tau = .9, period = 1.4;
+    const a = 2 * L / (T * T), vImpact = a * T, omega = Math.sqrt(k), wd = omega * Math.sqrt(1 - zeta * zeta);
+    clip.style.overflow = 'hidden'; clip.style.height = '0px';
+    const t0 = performance.now();
+    const frame = now => {
+      const t = (now - t0) / 1000; let len, spinPx, rot = 0, done = false;
+      if (t < T) { len = .5 * a * t * t; spinPx = len * 1.2; }
+      else {
+        const s = t - T;
+        const x = (vImpact * (1 - fric) / wd) * Math.exp(-zeta * omega * s) * Math.sin(wd * s);
+        len = L - Math.abs(x) * .06; spinPx = L * 1.2;
+        rot = swayAmp * Math.exp(-s / tau) * Math.sin(2 * Math.PI * s / period);
+        done = s > 2.4;
+      }
+      clip.style.height = Math.max(0, Math.min(L, len)) + 'px';
+      if (spin) spin.style.setProperty('--spin', (spinPx % 26) + 'px');
+      hang.style.transform = rot ? `rotate(${rot}deg)` : '';
+      if (!done) hang._raf = requestAnimationFrame(frame);
+      else { clip.style.height = ''; clip.style.overflow = ''; hang.style.transform = ''; onDone && onDone(); }
+    };
+    hang._raf = requestAnimationFrame(frame);
+  }
+
+(() => {
+  const K = {
+    web: { title: 'The Knight of the Web', badge: '<span class="seal-badge"><img class="seal-mark" src="assets/kit/seal-exact.png" alt="">exact &middot; milestone 1</span>',
+      proven: true,
+      say: 'I have ridden and returned. Thy CSS, laid out by Dragon’s own engine, matcheth Chrome: <b class="mono">8,671 of 8,671</b> boxes to 1/64 px, <b class="mono">339,080</b> computed values identical, <b class="mono">137</b> fixtures and <b class="mono">258</b> cases passing.' },
+    ios: { title: 'The Knight of iOS', badge: '<span class="seal-badge caveat">milestone 2</span>',
+      say: 'I ride now, beside my brother of Android. My engine is generated from the one TypeScript engine, and my lane is checked against Chrome. I bring no numbers yet, so I claim none.' },
+    android: { title: 'The Knight of Android', badge: '<span class="seal-badge caveat">milestone 2</span>',
+      say: 'I ride with iOS; neither arriveth before the other. My engine is born of the same TypeScript engine, and my lane answereth to Chrome. Numbers come when the lane passeth.' },
+    macos: { title: 'The Knight of macOS', badge: '<span class="seal-badge unsupported">later</span>',
+      say: 'My seat is laid, but I have not yet ridden. Until a test passeth for me, mark me unsupported.' },
+    email: { title: 'The Knight of Email', badge: '<span class="seal-badge unsupported">later</span>',
+      say: 'I ride last, and today I promise nothing. Mark me unsupported until proof is brought to this table.' }
+  };
+  const stage = document.getElementById('stage'), wrap = document.getElementById('wrap'), body = document.getElementById('speech-body');
+  const speech = document.getElementById('speech'), voice = stage.querySelector('.voice');
+  const mq = matchMedia('(max-width: 759px)');
+  // On narrow screens the speech scroll sits beneath the table, not on it.
+  const place = () => (mq.matches ? wrap.appendChild(speech) : stage.appendChild(speech));
+  mq.addEventListener('change', place); place();
+
+  let current = null;
+  const hush = () => { current = null; stage.classList.remove('speaking'); wrap.classList.remove('speaking');
+    stage.querySelectorAll('.seat').forEach(s => { s.classList.remove('on'); s.setAttribute('aria-pressed', 'false'); }); };
+  const speak = seat => {
+    const k = seat.dataset.k;
+    if (current === k) { hush(); return; }
+    current = k; const d = K[k];
+    body.innerHTML = `<div class="who"><h2>${d.title}</h2>${d.badge}</div>${d.proven ? '<img class="ri-proven" src="assets/kit/proven.png" alt="Proven: 8,671 of 8,671 boxes, to 1/64 px">' : ''}<p class="quote ink-in">${d.say}</p>` +
+      `<button class="close ink-under ink-focus" type="button">let him sit</button>`;
+    body.querySelector('.close').onclick = () => { const s = seat; hush(); s.focus(); };
+    stage.querySelectorAll('.seat').forEach(s => { const on = s === seat; s.classList.toggle('on', on); s.setAttribute('aria-pressed', on); });
+    voice.style.setProperty('--a', getComputedStyle(seat).getPropertyValue('--a'));
+    stage.classList.remove('speaking'); wrap.classList.remove('speaking'); void stage.offsetWidth;
+    stage.classList.add('speaking'); wrap.classList.add('speaking');
+    dropScroll(speech, document.getElementById('sclip'), document.getElementById('sspin'));
+  };
+  stage.querySelectorAll('.seat').forEach(s => { s.setAttribute('aria-pressed', 'false'); s.addEventListener('click', () => speak(s)); });
+  addEventListener('keydown', e => { if (e.key === 'Escape') hush(); });
+  const pre = location.hash.match(/^#speak-(\w+)/); if (pre) speak(stage.querySelector(`[data-k="${pre[1]}"]`));
+})();
+addEventListener('DOMContentLoaded', () => RoyalHero.enableSnapAndFocus('.royal-hero, #letter-sec, #wrap, #summary'));
+</script>
+</body>
+</html>

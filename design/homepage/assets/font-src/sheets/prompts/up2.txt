@@ -1,0 +1,17 @@
+Use your image generation tool to create ONE image and save it as up2.png in the current directory. Do not modify other files and do not run tests.
+
+The attached image 1 (wordmark-ref.png) is the STYLE REFERENCE: the "Dragon CSS" blackletter wordmark. Image 2 is the full hero it came from (context only). Any further attached images are previously approved glyphs from the same font, attach for consistency.
+
+Create a type-design specimen sheet ("glyph sheet") drawn in EXACTLY the same blackletter lettering as the reference wordmark: the same broad-nib Textura/Fraktur construction, the same thick-thin stroke contrast, the same diamond-shaped (lozenge) pen terminals and feet, the same heavy vertical stems, and the same slightly rough printed-ink texture on the edges.
+
+Glyphs to draw, in this exact order, left to right: uppercase capitals "H I J K L M N", seven glyphs in one row
+
+Strict rules:
+- Pure black ink only, on a pure flat white background (#FFFFFF). No parchment, no paper texture, no colour, NO red, no gold.
+- Glyphs large and evenly spaced on an invisible regular grid, with generous white gaps between them. Glyphs must NEVER touch or overlap each other.
+- All glyphs share one consistent baseline, x-height, cap height and stroke weight, as if set from one font.
+- NO decoration, NO flourish lines, NO swashes, NO ornaments, NO stars, NO borders, NO grid lines, NO labels or captions under the glyphs, no other text anywhere.
+- Solid FLAT black fill inside every stroke: no gloss, no shine, no highlights, no white streaks or specks inside strokes. The only white inside a letter is its counters and the deliberate thin hairline inlines like those in the reference D, C and S.
+- Style guide: capitals are Old English / Fraktur capitals exactly like the reference "D", "C" and "S" (heavy curved bodies with a thin white hairline inline, diamond spur terminals); lowercase is the Textura-style lowercase exactly like the reference "ragon" (straight broken stems, diamond feet and heads).
+
+- Plain, legible, standard letterforms of this blackletter style; each glyph must clearly read as the requested character.

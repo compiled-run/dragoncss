@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon CSS: Dragon Blackletter</title>
+<link rel="stylesheet" href="assets/parchment.css">
+<script src="assets/parchment.js"></script>
+<style>
+  @font-face { font-family: "Dragon Blackletter";
+    src: url(assets/fonts/dragon-blackletter/DragonBlackletter-Regular.woff2) format("woff2"),
+         url(assets/fonts/dragon-blackletter/DragonBlackletter-Regular.otf) format("opentype");
+    font-display: block; }
+  :root { --bl: "Dragon Blackletter", serif; }
+  body { background: url(assets/parchment-tile.png) 0 0 / 512px 512px repeat; padding: 48px max(20px, calc(50% - 540px)) 80px;
+    font-kerning: normal; }
+  a { color: inherit; }
+  .back { font: 12px var(--mono); color: var(--ink-soft); letter-spacing: .12em; text-transform: uppercase; }
+  h1 { font: 64px/1.05 var(--bl); margin: 18px 0 4px; }
+  .lede { margin: 0 0 40px; color: var(--ink-soft); max-width: 62ch; }
+  section { margin: 0 0 56px; }
+  .label { font: 11px var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--ink-soft);
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px; margin: 0 0 18px; display: flex; justify-content: space-between; }
+  .rubric { color: var(--brick); }
+
+  /* Comparison: our font vs the hero wordmark, same cap height */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: center; }
+  .compare figure { margin: 0; }
+  .compare figcaption { font: 11px var(--mono); color: var(--ink-soft); margin-top: 10px; letter-spacing: .08em; }
+  .compare img { width: 100%; display: block; border-radius: 4px; }
+  .wm { font: 104px/1 var(--bl); padding-top: .12em; white-space: nowrap; color: #1d1712; display: flex; align-items: center; justify-content: center;
+    aspect-ratio: 640 / 170; }
+  .wm .dot { color: var(--gold); font-size: .7em; margin: 0 .1em; }
+  .wm-plain { font: 104px/1.1 var(--bl); color: #1d1712; margin-top: 24px; text-align: center; }
+
+  /* Character set */
+  .charset { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+  .charset div { font: 44px/1 var(--bl); height: 86px; display: grid; place-items: center; position: relative;
+    border: 1px solid rgba(120,90,50,.22); border-radius: 4px; background: rgba(255,250,235,.18); padding-bottom: 12px; }
+  .charset div::after { content: attr(data-c); position: absolute; bottom: 4px; font: 9px var(--mono); color: var(--ink-soft); opacity: .7; }
+  .setline { font: 40px/1.35 var(--bl); margin: 22px 0 0; overflow-wrap: anywhere; }
+
+  /* Headings */
+  .heads .h { font-family: var(--bl); font-weight: 400; margin: 0 0 22px; line-height: 1.1; }
+  .heads .meta { font: 10px var(--mono); color: var(--ink-soft); margin: 0 0 2px; letter-spacing: .1em; }
+  .heads p.body { font: 18px/1.6 var(--text); max-width: 62ch; margin-top: -6px; }
+
+  /* Waterfall */
+  .wf div { font-family: var(--bl); white-space: nowrap; overflow: hidden; text-overflow: clip; line-height: 1.25; }
+  .wf div span { font: 10px var(--mono); color: var(--ink-soft); display: inline-block; width: 44px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<a class="back" href="index.html">&larr; homepage drafts</a>
+<h1><span class="rubric">D</span>ragon Blackletter</h1>
+<p class="lede">Our own display face, drawn from the lettering in the hero. Glyph sheets were generated in the hero's hand, checked one by one, traced with potrace and built with FontForge. It covers A&ndash;Z, a&ndash;z, 0&ndash;9 and the punctuation used on the site, and is kerned.</p>
+
+<section>
+  <h2 class="label"><span>Wordmark comparison</span><span>left: the font &middot; right: hero crop</span></h2>
+  <div class="compare">
+    <figure><div class="wm"><span class="rubric">D</span>ragon<span class="dot">&middot;</span>CSS</div>
+      <figcaption>Dragon Blackletter, 104px, first letter in rubric</figcaption></figure>
+    <figure><img src="assets/font-src/wordmark-ref.png" alt="Hero wordmark: Dragon CSS in blackletter">
+      <figcaption>assets/font-src/wordmark-ref.png (style reference)</figcaption></figure>
+  </div>
+  <div class="wm-plain">Dragon CSS</div>
+</section>
+
+<section>
+  <h2 class="label"><span>Character set</span><span id="count"></span></h2>
+  <div class="charset" id="charset"></div>
+  <p class="setline">The quick brown fox jumps over the lazy dragon. 0123456789 &amp; (Sphinx of black quartz, judge my vow!)</p>
+</section>
+
+<section class="heads">
+  <h2 class="label"><span>Headings</span><span>72 &middot; 48 &middot; 32 &middot; 24 px</span></h2>
+  <div class="meta">72px</div><div class="h" style="font-size:72px">Regular CSS, proven in every realm</div>
+  <div class="meta">48px</div><div class="h" style="font-size:48px">The Road Ahead</div>
+  <div class="meta">32px</div><div class="h" style="font-size:32px">Dear Lord Developer</div>
+  <p class="body">Thy stylesheet, written once, shall be rendered faithfully on every platform in the kingdom.</p>
+  <div class="meta">24px</div><div class="h" style="font-size:24px">Regular CSS, proven in every realm</div>
+</section>
+
+<section class="wf">
+  <h2 class="label"><span>Waterfall</span><span>12 &ndash; 120 px</span></h2>
+  <div id="wf"></div>
+</section>
+
+<script>
+const set = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:;!?\'"-()&/@#*+=<>[]{}·';
+const cs = document.getElementById('charset');
+for (const c of set) { const d = document.createElement('div'); d.textContent = c; d.dataset.c = c; cs.appendChild(d); }
+document.getElementById('count').textContent = set.length + ' glyphs + space';
+const wf = document.getElementById('wf');
+for (const px of [12, 14, 16, 18, 21, 24, 30, 36, 48, 60, 72, 96, 120]) {
+  const d = document.createElement('div'); d.style.fontSize = px + 'px';
+  d.innerHTML = `<span>${px}px</span>Dragon CSS: regular CSS, proven in every realm`;
+  wf.appendChild(d);
+}
+</script>
+</body>
+</html>
