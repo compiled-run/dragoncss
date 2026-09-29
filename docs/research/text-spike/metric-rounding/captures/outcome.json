@@ -1,0 +1,72 @@
+{
+ "outcome": "a",
+ "coreTextFormulaExact": true,
+ "rows": 129,
+ "rowsByFace": {
+  "Ahem.ttf": 73,
+  "Inter/Inter-Light.ttf": 10,
+  "Inter/Inter-Regular.ttf": 10,
+  "Inter/Inter-Italic.ttf": 10,
+  "Inter/Inter-Bold.ttf": 10,
+  "Inter/Inter-BoldItalic.ttf": 10,
+  "Lato/Lato-Regular.ttf": 3,
+  "Lato/Lato-Bold.ttf": 3
+ },
+ "mismatches": {
+  "range": {
+   "traced": 0,
+   "halfUp": 79,
+   "halfDown": 56
+  },
+  "lineBox": {
+   "traced": 0,
+   "halfUp": 79,
+   "halfDown": 56
+  }
+ },
+ "observablesDisagree": 0,
+ "exactHalvesByFace": {
+  "Ahem.ttf": {
+   "up": 0,
+   "down": 73
+  },
+  "Inter/Inter-Light.ttf": {
+   "up": 10,
+   "down": 0
+  },
+  "Inter/Inter-Regular.ttf": {
+   "up": 10,
+   "down": 0
+  },
+  "Inter/Inter-Italic.ttf": {
+   "up": 10,
+   "down": 0
+  },
+  "Inter/Inter-Bold.ttf": {
+   "up": 10,
+   "down": 0
+  },
+  "Inter/Inter-BoldItalic.ttf": {
+   "up": 10,
+   "down": 0
+  },
+  "Lato/Lato-Regular.ttf": {
+   "up": 0,
+   "down": 0
+  },
+  "Lato/Lato-Bold.ttf": {
+   "up": 0,
+   "down": 0
+  }
+ },
+ "halfDirectionByFace": {
+  "Ahem.ttf": "down",
+  "Inter/Inter-Light.ttf": "up",
+  "Inter/Inter-Regular.ttf": "up",
+  "Inter/Inter-Italic.ttf": "up",
+  "Inter/Inter-Bold.ttf": "up",
+  "Inter/Inter-BoldItalic.ttf": "up",
+  "Lato/Lato-Regular.ttf": "none",
+  "Lato/Lato-Bold.ttf": "none"
+ }
+}

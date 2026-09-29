@@ -8,3 +8,11 @@ export {
   VALIDATED_VARIABLE_FONTS_PATH, VariableFontRefused, faceFacts, fenceFace, fenceInstance, instanceAxisValues, loadValidatedVariableFonts,
 } from './fence.ts';
 export type { FaceFacts, FvarAxis, ValidatedVariableFont, ValidatedVariableFonts, VariableFontRefusal } from './fence.ts';
+export {
+  TRANSCRIPT_FORMAT, parseTranscript, plantTranscript, recordTranscript, replayTranscript, serializeTranscript, sha256Hex, wasmBackend,
+  withoutFeatures,
+} from './transcript.ts';
+export type {
+  AdvanceCall, NominalCall, Recorder, ReplayBackend, ReplayMismatch, ReplayReport, ShapeCall, Transcript, TranscriptCall, TranscriptFace,
+  TranscriptFeature, TranscriptFont, TranscriptPlant,
+} from './transcript.ts';
