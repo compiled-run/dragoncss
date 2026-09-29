@@ -155,6 +155,15 @@ This decision uses the spike's measurements in docs/research/text-spike/: 620 ca
 - **Proof:** Chrome is captured with the scaled root size injected (`:root { font-size: <scaled>px !important }`) from a pinned table of iOS content-size categories and Android font scales. The native hosts report their root size in the device dump. See docs/research/engine-value-model-plan.md §3.
 - **Until the engine value model (V2) lands:** native support rows for sizes that depend on `rem` are `caveat` at any text scale other than 1.
 
+## Paint (PM, T046 research)
+
+- **Dragon draws:** border-radius, box-shadow, outline and gradients. The native APIs cannot match Chrome: they allow only one radius and clip at the outer edge, CALayer shadows have no spread or inset, and native gradients interpolate unpremultiplied.
+- **Native properties stay:** for opacity and for displaying transforms (Dragon resolves the matrix). z-index is compile-time paint order with re-hosting under the stacking context.
+- **Scrolling:** native scroll views sized by the engine. `position: fixed` is counter-offset in the same frame.
+- **The emitter split (EMS) comes first.** It lands after P5 and V1 Phase B and changes no output, so the paint packages can run in parallel in separate files.
+- **Allowances:** only the shadow-blur and gradient pixel checks may carry a measured allowance. It must be at most 2 channel levels, kept in its own file and recorded here, and any row that depends on it is caveat.
+- **P6 is split:** P6a fix and promote, P6b accessibility, P6c selection, P6d editing, P6e keyboard focus.
+
 ## Runtime styles and animation (PM, T047 research)
 
 - **States:** finite states compile to typed tables of changes over one base program. Each state's own compiled program is the reference the device must equal after any sequence of state changes.
