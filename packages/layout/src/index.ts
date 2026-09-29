@@ -37,3 +37,5 @@ export { dprPlatformRules } from './platform-rules.ts';
 export type { CalcClamp, CalcExpr, CalcInvert, CalcMax, CalcMin, CalcProduct, CalcSum, EmLength, LengthCalc, PixelsAndPercent, ViewportLength } from './input.ts';
 export { applyEnvironment } from './environment.ts';
 export type { BoxShape } from './paint.ts';
+export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';
+export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from './paint-dash.ts';
