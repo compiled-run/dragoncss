@@ -186,6 +186,26 @@ describe('DTXT-0: the Chrome width oracle for {m}:{s:02}', () => {
     expect(exact.boundary).toEqual([]);
   });
 
+  // PM ruling T101 B2: the DPR lanes compare in zoomed LU (1/64 device px) with the engine at zoomFontSize(size, dpr); CSS px widths
+  // may differ by DPR (see the finding above), but zoomed widths must be exact at every ratio.
+  it('at DPR 2, 2.625 and 3 the engine at zoomFontSize equals Chrome in zoomed LU on all 216 boundary widths', () => {
+    const m = shapedMeasurer(faces, shaper, NO_SHAPING_FAULTS, 'en');
+    const rows = oracle.boundary.filter((r) => r.dpr !== 1);
+    expect(rows.map((r) => r.dpr).sort()).toEqual([...Array(6).fill(2), ...Array(6).fill(2.625), ...Array(6).fill(3)]);
+    const wrong: string[] = [];
+    let n = 0;
+    for (const r of rows) {
+      r.widths.forEach((chrome, i) => {
+        const text = oracle.boundaryStrings[i] as string;
+        const got = m.measure(text, faceFont(r.family, zoomFontSize(r.size, r.dpr)));
+        n++;
+        if (!got.ok || got.measure.width !== chrome) wrong.push(`${r.family} ${r.size}px DPR ${r.dpr} ${text}: chrome ${chrome}, engine ${got.ok ? got.measure.width : got.reason}`);
+      });
+    }
+    expect(n).toBe(216);
+    expect(wrong).toEqual([]);
+  });
+
   it('the DT-2 memo keyed by (face sha256, size, string) changes nothing', () => {
     const m = misses(memoized(shapedMeasurer(faces, shaper, NO_SHAPING_FAULTS, 'en'), NO_TEXT_FORMAT_FAULTS));
     expect(m.exhaustive.length + m.boundary.length).toBe(0);
