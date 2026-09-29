@@ -4,8 +4,9 @@
 import { spawnSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { repoPath } from '../src/paths.ts';
+import { trustCoverageProblems } from '../src/lanes.ts';
 import type { DeviceRecord, DeviceSpec } from '../src/device-run.ts';
-import { avdKeys, avdScale, DEVICE_MATRIX, matrixProblems, spawnDetached, PLANT_DEVICES, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
+import { ANDROID_IMAGE_API, avdKeys, avdScale, DEVICE_MATRIX, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_DEVICES, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
 import { layoutCaseIds } from '../src/targets.ts';
 import { deviceDprs } from '../src/targets.ts';
 
@@ -77,5 +78,37 @@ describe('the device CLIs refuse an unknown --target', () => {
     const r = spawnSync(process.execPath, ['--conditions=dragon-internal', repoPath(`packages/parity/src/cli/${cli}`), '--target', ...(value === null ? [] : [value])], { encoding: 'utf8' });
     expect(r.status).toBe(2);
     expect(r.stderr).toMatch(/--target takes ios or android/);
+  });
+});
+
+describe('round 6: live devices and device records', () => {
+  const smoke = DEVICE_MATRIX.find((d) => d.name === 'dragon-smoke');
+  if (smoke === undefined || smoke.target !== 'android') throw new Error('no dragon-smoke');
+  const live = { name: 'dragon-smoke', size: `${smoke.width}x${smoke.height}`, density: String(smoke.density), sdk: String(ANDROID_IMAGE_API) };
+  it('a running emulator is the matrix device only with its live name, display, density and API level', () => {
+    expect(ANDROID_IMAGE_API).toBe(36);
+    expect(liveProblems(smoke, live, ANDROID_IMAGE_API)).toEqual([]);
+    expect(liveProblems(smoke, { ...live, size: '1080x1920' }, ANDROID_IMAGE_API)).toEqual(['display 1080x1920, the matrix 1080x2400']);
+    expect(liveProblems(smoke, { ...live, density: '440' }, ANDROID_IMAGE_API)).toEqual(['density 440, the matrix 420']);
+    expect(liveProblems(smoke, { ...live, sdk: '35' }, ANDROID_IMAGE_API)).toEqual(['API 35, the image 36']);
+    expect(liveProblems(smoke, { ...live, name: 'dragon-320' }, ANDROID_IMAGE_API)).toEqual(['it runs the AVD "dragon-320", not dragon-smoke']);
+    // The floor probe AVD is outside the matrix: its name only.
+    expect(liveProblems({ ...smoke, name: 'dragon-api31' }, { ...live, name: 'dragon-api31', sdk: '31' }, null)).toEqual([]);
+  });
+  const rec = { platform: 'android', model: 'Android SDK built for arm64 / dragon-smoke', os: 'Android 16', build: 'b', scale: 2.625, densityDpi: 420, windowPx: [1080, 2400], stagePx: [1080, 2138], rootOriginPx: [0, 136], textScale: '1.0' };
+  it('the app device record is checked field by field', () => {
+    expect(parseAppRecord(JSON.stringify(rec), 'android').scale).toBe(2.625);
+    expect(() => parseAppRecord(JSON.stringify(rec), 'ios')).toThrow(/platform "android", the target ios/);
+    expect(() => parseAppRecord(JSON.stringify({ ...rec, stagePx: undefined }), 'android')).toThrow(/stagePx is not two whole non-negative device px/);
+    expect(() => parseAppRecord(JSON.stringify({ ...rec, rootOriginPx: [0, -1] }), 'android')).toThrow(/rootOriginPx/);
+    expect(() => parseAppRecord(JSON.stringify({ ...rec, scale: 0 }), 'android')).toThrow(/scale is not a positive number/);
+    expect(() => parseAppRecord(JSON.stringify({ ...rec, extra: 1 }), 'android')).toThrow(/unknown key extra/);
+    expect(() => parseAppRecord('{"platform":', 'android')).toThrow(/not JSON/);
+  });
+  it('capture trust must have run at every declared DPR over every trust case', () => {
+    const rows = TRUST_CASES.map((c) => ({ case: c, points: 10, mismatches: [] }));
+    expect(trustCoverageProblems([2, 3], [{ device: 'a', dpr: 2, rows }, { device: 'b', dpr: 3, rows }])).toEqual([]);
+    expect(trustCoverageProblems([2, 3], [{ device: 'a', dpr: 2, rows }])).toEqual(['capture trust did not run at DPR 3']);
+    expect(trustCoverageProblems([2], [{ device: 'a', dpr: 2, rows: rows.slice(1) }])[0]).toMatch(/^capture trust at DPR 2 covered /);
   });
 });
