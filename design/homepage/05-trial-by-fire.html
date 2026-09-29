@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon CSS · Trial by Fire</title>
+<link rel="stylesheet" href="assets/parchment.css">
+<link rel="stylesheet" href="assets/ink.css">
+<link rel="stylesheet" href="assets/royal-hero.css">
+<link rel="stylesheet" href="assets/integration.css">
+<script src="assets/royal-hero.js" defer></script>
+<script>/* Space on a button or link activates it; keep the section stepper from taking it. Registered before the stepper. */
+addEventListener('keydown', e => { if (e.key === ' ' && e.target.closest && e.target.closest('button, a, [role="button"], summary')) e.stopImmediatePropagation(); });</script>
+<script src="assets/parchment.js"></script>
+<style>
+  /* The letter is written straight onto the page parchment, opened by a gold rule and a rubricated initial. */
+  .letter { max-width: 720px; margin: 0 auto; padding: 34px 20px 10px; font-size: 24px; line-height: 1.45; color: var(--ink-body); position: relative;
+    background: var(--ink-rule-gold) left top / 46% 10px no-repeat, var(--ink-rule-gold-b) right top / 46% 10px no-repeat; }
+  .letter::before { content: "\2766"; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); padding: 0 14px;
+    font-size: 18px; line-height: 26px; color: var(--brick); }
+  .letter .salute { font: italic 500 40px/1.2 var(--display); margin: 0 0 14px; }
+  .letter .salute + p::first-letter { float: left; font: 700 3.3em/.8 var(--display); color: var(--brick); margin: 6px 8px 0 0; }
+  .letter p { margin: 0 0 16px; }
+  .letter .num { font-family: var(--mono); font-size: 1em; color: var(--brick); }
+  .signature { margin-top: 18px; display: flex; align-items: center; justify-content: flex-end; gap: 14px; text-align: right; }
+  .signature .hand { font: italic 24px/1.4 var(--display); }
+  .signature .hand b { display: block; font-style: normal; font-weight: 600; color: var(--brick); }
+  /* No text reveal: the shared .ink-in class is neutralised so all text is present from the start. */
+  .ink-in { animation: none !important; clip-path: none !important; opacity: 1 !important; filter: none !important; }
+
+  /* The trial */
+  .trial { max-width: 1180px; margin: 0 auto; padding: 0 24px; box-sizing: border-box; }
+  .trial-head { text-align: center; margin-bottom: 18px; }
+  #trial { padding-top: 24px; padding-bottom: 24px; }
+  .trial-head h2 { margin: 0; }
+  .trial-head h2 img { width: min(470px, 100%); height: auto; display: block; margin: 0 auto; }
+  .trial-head p { margin: 10px auto 0; max-width: 760px; font-size: 22px; line-height: 1.45; }
+
+  .arena-grid { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 30px; align-items: start; }
+
+  /* Offerings */
+  .offerings { padding: 6px 26px 26px 0; color: var(--ink); background: var(--ink-vrule-brown) right top / 10px 100% no-repeat; }
+  .offerings h3 { font: 500 27.5px/1.2 var(--display); margin: 0 0 4px; }
+  .offerings .hint { font-size: 18px; color: var(--ink-soft); margin: 0 0 14px; }
+  .offer-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .offer { width: 100%; text-align: left; cursor: pointer; display: grid; grid-template-columns: 1fr 26px; align-items: center; gap: 8px;
+    font: 16px/1.4 var(--mono); color: var(--ink); padding: 9px 12px; --ink-out: -1px; transition: transform .15s; }
+  .offer:hover { transform: translateX(3px); }
+  .offer[aria-pressed="true"] { color: var(--brick); }
+  .offer .sel { color: var(--slate); }
+  .offer .mark { width: 26px; height: 26px; object-fit: contain; opacity: 0; }
+  .offer.judged .mark { opacity: 1; }
+
+  .tally { margin-top: 16px; padding-top: 14px; background: var(--ink-rule-faint) left top / 100% 10px no-repeat; display: grid; grid-template-columns: 78px 1fr; gap: 12px; align-items: center; font: 17px/1.6 var(--mono); color: var(--ink-soft); }
+  .tally img { width: 78px; height: auto; transition: transform .4s, filter .4s; }
+  .tally b { color: var(--ink); font-weight: 600; }
+  .tally.won img { filter: drop-shadow(0 0 10px rgba(230,180,60,.85)); transform: rotate(-4deg) scale(1.06); }
+  .tally .prize { color: #8a6516; font-style: italic; font-family: var(--text); font-size: 19px; }
+
+  /* The arena */
+  .arena { padding: 6px 0 12px; min-height: 560px; color: var(--ink); }
+  .gatehouse { position: relative; width: min(400px, 70%); margin: 0 0 0 4%; aspect-ratio: 405 / 269; }
+  .gatehouse > img.gate { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* The portcullis rises: the opening behind it (measured from gate.png: x 25.4%..75.5%, y 15.6%..95.2%) glows, and
+     a copy of the gate clipped to that opening slides up. */
+  .opening, .portcullis { position: absolute; left: 25.4%; width: 50.1%; top: 15.6%; height: 79.6%; border-radius: 50% 50% 0 0 / 28% 28% 0 0; overflow: hidden; }
+  .opening { background: radial-gradient(ellipse 70% 60% at 50% 85%, #f7d98a, #d58a2e 45%, #5a2c10 80%, #241208); }
+  .portcullis img { position: absolute; left: -50.7%; top: -19.6%; width: 199.6%; height: auto; transition: transform 2.2s cubic-bezier(.5,0,.3,1); }
+  .gatehouse.open .portcullis img { transform: translateY(-80%); }
+  .gatehouse.open::after { content: "The gate is open"; position: absolute; left: 0; right: 0; bottom: -26px; text-align: center; font: italic 20px var(--text); color: #8a6516; }
+
+  .dragon { position: absolute; right: -40%; bottom: -6%; width: 62%; transform-origin: 60% 90%; z-index: 3; }
+  .dragon img { width: 100%; height: auto; display: block; filter: drop-shadow(0 8px 10px rgba(50,35,15,.4)); }
+  .dragon.rear { animation: rear 1s cubic-bezier(.3,.7,.3,1); }
+  .dragon.bow { animation: bow 1.1s ease-in-out; }
+  @keyframes rear { 0% { transform: none; } 25% { transform: rotate(-7deg) scale(1.06) translateY(-6px); } 70% { transform: rotate(3deg) scale(1.02); } 100% { transform: none; } }
+  @keyframes bow { 0%,100% { transform: none; } 45% { transform: rotate(9deg) translateY(12px) scale(.97); } }
+
+  /* The breath: a cone of fire from the jaw (the dragon faces left) */
+  .breath { position: absolute; left: 6%; top: 44%; width: 120%; height: 70%; transform-origin: 100% 20%; transform: translate(-100%, 0) rotate(-28deg) scale(0); opacity: 0; pointer-events: none; mix-blend-mode: multiply; }
+  .breath i { position: absolute; border-radius: 50%; }
+  .breath i:nth-child(1) { right: 0; top: 6%; width: 45%; height: 36%; background: radial-gradient(closest-side, #fff2c4, #f0b43c 55%, transparent); }
+  .breath i:nth-child(2) { right: 22%; top: 8%; width: 55%; height: 55%; background: radial-gradient(closest-side, #f6c95a, #d9661f 60%, transparent); }
+  .breath i:nth-child(3) { right: 48%; top: 16%; width: 55%; height: 72%; background: radial-gradient(closest-side, #e0802a, #a3342b 55%, transparent); opacity: .85; }
+  .breath.go { animation: breathe 1.1s cubic-bezier(.2,.7,.3,1) both; }
+  @keyframes breathe { 0% { transform: translate(-100%, 0) rotate(-28deg) scale(.1); opacity: 0; } 20% { opacity: 1; } 55% { transform: translate(-100%, 0) rotate(-24deg) scale(1.05); opacity: 1; } 100% { transform: translate(-100%, 16px) rotate(-20deg) scale(1.2); opacity: 0; } }
+
+  /* The offered slip, and what lands on it */
+  .offered { position: relative; text-align: center; margin: 34px 0 22px; min-height: 44px; }
+  .slip-wrap { position: relative; display: inline-block; max-width: 100%; }
+  .slip { position: relative; display: inline-block; font: 18px var(--mono); color: var(--ink); padding: 11px 20px; max-width: 100%; box-sizing: border-box; }
+  .slip.burn { animation: slip-burn 1s ease-in both; }
+  @keyframes slip-burn { 0% { color: var(--ink); } 50% { color: #7d2019; } 100% { color: #5a2c10; } }
+  .slip.burn::before { --ink-frame-color: rgba(125,32,25,.8); --ink-frame-mask: var(--ink-frame-bold); }
+  /* Blessed: the slip's frame is re-inked in gold. */
+  .slip.bless::before { --ink-frame-color: rgba(160,114,30,.9); --ink-frame-mask: var(--ink-frame-bold); }
+  .stamp { position: absolute; right: -34px; top: 50%; width: 70px; margin-top: -40px; pointer-events: none; }
+  .stamp.slam { animation: slam .45s cubic-bezier(.5,0,.6,1.4) both; }
+  @keyframes slam { 0% { transform: scale(2.6) rotate(-30deg); opacity: 0; } 60% { transform: scale(.92) rotate(-8deg); opacity: 1; } 100% { transform: scale(1) rotate(-10deg); opacity: 1; } }
+  .wreath { position: absolute; right: -46px; top: 50%; width: 82px; margin-top: -40px; pointer-events: none; }
+  .wreath.lower { animation: lower .9s cubic-bezier(.3,.8,.3,1) both; }
+  @keyframes lower { from { transform: translateY(-90px) rotate(-8deg); opacity: 0; } to { transform: none; opacity: 1; } }
+  .placeholder { font: italic 22px var(--text); color: var(--ink-soft); }
+
+  /* Verdict cards */
+  /* Verdicts are written in a quill frame on the parchment; a heavier ink stroke across the head marks refusal (brick) or laurel (gold). */
+  .verdict { position: relative; margin: 0 auto; max-width: 660px; padding: 22px 24px 18px; }
+  .verdict::after { content: ""; position: absolute; left: 34px; right: 34px; top: 9px; height: 10px; opacity: .85; pointer-events: none; background-color: var(--brick);
+    -webkit-mask: var(--ink-rule-a) 0 0 / 100% 100% no-repeat; mask: var(--ink-rule-a) 0 0 / 100% 100% no-repeat; }
+  .verdict.refusal { padding-top: 24px; }
+  .verdict.laurel::after { background-color: var(--gold); }
+  .verdict .plaque { display: block; width: 240px; height: auto; margin: 0 auto 10px; filter: drop-shadow(0 2px 3px rgba(60,40,15,.25)); }
+  .v-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .v-top img { width: 58px; height: auto; }
+  .v-code { font: 600 15px var(--mono); color: var(--brick); letter-spacing: .02em; }
+  .laurel .v-code { color: #8a6516; font: 600 22.5px var(--display); letter-spacing: 0; }
+  .v-targets { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+  .v-line { font: 15px/1.5 var(--mono); color: var(--ink-soft); margin: 12px 0 8px; padding: 8px 12px; white-space: pre-wrap; word-break: break-word; position: relative; }
+  .v-line::before { content: ""; position: absolute; inset: -2px; pointer-events: none; background-color: rgba(60,40,22,.4);
+    -webkit-mask: var(--ink-frame-c) 0 0 / 100% 100% no-repeat; mask: var(--ink-frame-c) 0 0 / 100% 100% no-repeat; }
+  .v-msg { font: 25.5px/1.4 var(--text); margin: 6px 0 10px; }
+  .v-row { display: grid; grid-template-columns: 60px 1fr; gap: 10px; font-size: 19px; line-height: 1.5; margin: 6px 0; }
+  .v-row > span:first-child { font: 15px/1.9 var(--mono); color: var(--ink-soft);  letter-spacing: .08em; }
+  /* The fix as a diff: a quill frame, a ruled head, and struck-out versus new lines told apart by ink colour alone. */
+  .diff { margin: 10px 0 0 70px; font: 16px/1.6 var(--mono); position: relative; padding: 4px 4px 6px; }
+  .diff::before { content: ""; position: absolute; inset: -2px; pointer-events: none; background-color: rgba(60,40,22,.55);
+    -webkit-mask: var(--ink-frame-b) 0 0 / 100% 100% no-repeat; mask: var(--ink-frame-b) 0 0 / 100% 100% no-repeat; }
+  .diff div { padding: 0 10px; white-space: pre; overflow-x: auto; }
+  .diff .h { color: var(--ink-soft); font-size: 14px; padding-bottom: 4px; margin-bottom: 2px; background: var(--ink-rule-faint) left bottom / 100% 10px no-repeat; }
+  .diff .del { color: #8d241c; text-decoration: line-through; text-decoration-color: rgba(141,36,28,.55); }
+  .diff .add { color: #3c5533; }
+  .proofs { font: 16px/1.5 var(--mono); color: var(--ink-soft); }
+  .seal-badge.progress { color: var(--slate); }
+  .v-targets .seal-badge { font-size: 14px; }
+
+  .illus { max-width: 1180px; margin: 18px auto 0; padding: 0 24px; box-sizing: border-box; font: 15px/1.5 var(--mono); display: flex; gap: 8px; }
+  .illus { color: var(--ink-soft); }
+  .illus b { color: var(--brick); letter-spacing: .06em;  }
+
+  .plain { max-width: 820px; margin: 0 auto; padding: 40px 28px 30px; box-sizing: border-box; background: var(--ink-rule-faint) left top / 100% 10px no-repeat; color: var(--ink); }
+  .plain h2 { font: 500 38px/1.2 var(--display); margin: 0 0 14px; color: var(--brick); }
+  #summary { padding-block: 48px; }
+  .plain .ri-banners { background: none; padding: 0; border: 0; }
+  @media (min-width: 1100px) { .plain .ri-foot { margin-inline: -160px; flex-wrap: nowrap; } }
+  .plain ul { padding-left: 22px; line-height: 1.45; font-size: 22px; }
+  .plain li { margin-bottom: 6px; }
+  .plain code { font: 1em var(--mono); color: var(--brick); }
+  .install { display: inline-flex; gap: 12px; align-items: center; padding: 11px 16px; color: var(--ink); font: 19px var(--mono); margin-top: 8px; }
+  .install em { font: italic 19px var(--text); color: var(--brick); }
+  footer { box-sizing: border-box; text-align: center; padding: 30px 20px 0; font: 15px var(--mono); color: var(--ink-soft); }
+
+  @media (max-width: 900px) {
+    .arena-grid { grid-template-columns: minmax(0, 1fr); }
+    .offerings { padding-right: 0; padding-bottom: 20px; background: var(--ink-rule-faint) left bottom / 100% 10px no-repeat; }
+    .offer-list { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  }
+  @media (max-width: 760px) {
+    .letter { padding: 30px 4px 6px; font-size: 19px; }
+    .letter .salute { font-size: 26px; }
+    .plain { padding: 30px 4px 20px; }
+    .plain ul { font-size: 18px; }
+    .offer { font-size: 14px; }
+    .trial { padding: 0; }
+    .offerings { padding: 0 0 20px; }
+    .offer-list { grid-template-columns: minmax(0, 1fr); }
+    .arena { padding: 10px 0 24px; min-height: 0; }
+    .gatehouse { width: 70%; margin-left: 2%; }
+    .dragon { right: -40%; }
+    .wreath { right: -14px; width: 60px; margin-top: -30px; }
+    .slip-wrap { padding-right: 34px; }
+    .slip { font-size: 12.5px; }
+    .stamp { right: -12px; width: 56px; margin-top: -32px; }
+    .v-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .diff { margin-left: 0; }
+    .verdict .plaque { width: 200px; }
+    .illus { padding: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dragon.rear, .dragon.bow, .breath.go, .slip.burn, .slip.bless, .stamp.slam, .wreath.lower { animation: none; }
+    .portcullis img { transition: none; }
+  }
+
+  .seal-img { flex: none; width: 96px; height: auto; display: block; filter: drop-shadow(0 3px 3px rgba(40,15,5,.35)); }
+</style>
+<style>
+  a.skip { color: var(--ink); text-decoration: none; opacity: 1; } /* ink text with an ink swash (ink.css), no box */
+  a.skip:hover, a.skip:focus-visible { color: var(--brick); }
+</style>
+</head>
+<body>
+<a class="skip ink-under" href="#summary">skip the ceremony →</a>
+
+<header class="royal-hero"
+  data-headline="Nothing passes the gate <em>unproven</em>"
+  data-sub="Regular CSS, compiled to native views and tried against Chrome."
+  data-cue-href="#letter"
+  data-cue-label="Face the trial"></header>
+
+<main>
+<section id="letter" class="ri-sec" aria-label="The letter">
+  <article class="letter" aria-label="A letter from the Dragon">
+    <img class="ri-sealed" src="assets/kit/letter.png" alt="">
+    <p class="salute ink-in l" style="--ink-delay:.2s">Dear Lord Developer,</p>
+    <p class="ink-in l" style="--ink-delay:.9s">A dragon keeps the gate between thy stylesheet and the devices of the realm. He is no tyrant. What is proven, he lets pass; what is not, he stops at build time, before it reaches any phone.</p>
+    <p class="ink-in l" style="--ink-delay:1.7s">He never guesses. In the first campaign he held <span class="num">8,671</span> boxes against <span class="nb"><img class="ri-plat" src="assets/kit2/chrome.png" alt="">Chrome</span> and found every one exact, to <span class="num">1/64</span> of a pixel.</p>
+    <p class="ink-in l" style="--ink-delay:2.4s">When he refuses a line, he tells thee why and hands thee the fix. Offer him a line of CSS below, and hear his verdict.</p>
+    <div class="signature ink-in l" style="--ink-delay:3.1s">
+      <div class="hand">By the hand of the Dragon,<b>Keeper of the Styles</b></div>
+      <img class="seal-img" src="assets/gen/wax-seal-dragon.png" alt="">
+    </div>
+  </article>
+</section>
+
+<section id="trial" class="ri-sec" aria-labelledby="trial-title">
+<div class="trial">
+  <div class="trial-head">
+    <h2 id="trial-title"><img src="assets/trial/title.png" alt="The Trial by Fire"></h2>
+    <p>Offer a line of CSS at the gate. The dragon breathes his verdict: a laurel for what is proven, a red seal and a diagnostic for what is not. Find every proven line and the gate will open.</p>
+  </div>
+
+  <div class="arena-grid">
+    <aside class="offerings" aria-label="Offerings">
+      <h3>Thine offerings</h3>
+      <p class="hint">Each line sits in a small rule, because context matters.</p>
+      <ul class="offer-list" id="offers"></ul>
+      <div class="tally" id="tally" aria-live="polite">
+        <img src="assets/trial/chest.png" alt="">
+        <div><div>laurels <b id="t-laurel">0</b>/3 · refusals <b id="t-refuse">0</b>/5</div><div class="prize" id="prize">Three proven lines open the gate.</div></div>
+      </div>
+    </aside>
+
+    <section class="arena" aria-label="The gate">
+      <div class="gatehouse" id="gatehouse">
+        <img class="gate" src="assets/trial/gate.png" alt="A stone gate with a portcullis">
+        <div class="opening" aria-hidden="true"></div>
+        <div class="portcullis" aria-hidden="true"><img src="assets/trial/gate.png" alt=""></div>
+        <div class="dragon" id="dragon"><img src="assets/trial/dragon.png" alt="The dragon guarding the gate"><div class="breath" id="breath"><i></i><i></i><i></i></div></div>
+      </div>
+
+      <div class="offered" id="offered"><span class="placeholder">The gate is shut. Choose an offering.</span></div>
+      <div id="verdict" aria-live="polite"></div>
+    </section>
+  </div>
+</div>
+<p class="illus"><b>Illustration</b><span>these verdicts are written by hand from Dragon's real diagnostic catalogue and milestone-1 support profiles; the compiler does not run on this page. Android is milestone 2.</span></p>
+</section>
+
+<section id="summary" class="ri-sec" aria-labelledby="sum-title">
+<div class="plain">
+  <div class="ri-h" style="justify-content:center"><img src="assets/icons/crown.png" alt=""><h2 id="sum-title">The plain summary</h2></div>
+  <ul>
+    <li>Dragon compiles regular CSS at build time into native view properties, proven against Chrome number by number, never by screenshots.</li>
+    <li>It has its own TypeScript layout engine: block, flex, text, positioning and right-to-left.</li>
+    <li>Milestone 1: 137 test fixtures and 258 cases pass. 8,671 of 8,671 boxes match Chrome exactly, to 1/64 px. 339,080 computed values are identical between the author's CSS and Dragon's output.</li>
+    <li>Support is labelled <img class="seal-mark" src="assets/kit/seal-exact.png" alt=""><code>exact</code>, <img class="seal-mark" src="assets/kit/seal-caveat.png" alt=""><code>caveat</code> or <img class="seal-mark" src="assets/kit/seal-unsupported.png" alt=""><code>unsupported</code>. Nothing is marked supported without a passing test. Anything else is refused at build time with a diagnostic: a code, a message, why, and a fix.</li>
+    <li>Now in progress (milestone 2): iOS and Android at parity. Native engines are generated from the one TypeScript engine, and each device lane is checked against Chrome.</li>
+  </ul>
+  <div class="ri-foot">
+  <ul class="ri-banners" style="margin:0" aria-label="Where each realm stands">
+    <li><img src="assets/kit/banner-conquered.png" alt=""><b>Web</b>proven, milestone 1</li>
+    <li><img src="assets/kit/banner-marching.png" alt=""><b>iOS and Android</b>in progress, milestone 2</li>
+    <li><img src="assets/kit/banner-notyet.png" alt=""><b>Custom properties, 1.0</b>not yet ridden</li>
+  </ul>
+  <div class="ri-install"><img src="assets/kit2/chest.png" alt=""><div class="install ink-frame"><span>$ npm install dragon</span><em>coming soon</em></div></div>
+  </div>
+</div>
+<footer><span class="soft">Dragon CSS · a design draft</span></footer>
+</section>
+</main>
+
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const badge = (t, cls, label) => `<span class="seal-badge ${cls}">${t} · ${label}</span>`;
+  const ANDROID = badge('android', 'progress', 'in progress');
+
+  // Each verdict follows Dragon's diagnostic shape: code, located message, why, fix. Texts come from
+  // packages/dragon/src/diagnostics/catalogue.ts and the milestone-1 web and ios support profiles.
+  const OFFERS = [
+    { sel: '.gallery', decl: 'display: grid;', kind: 'refuse',
+      code: 'DRAGON_UNSUPPORTED_VALUE', targets: 'ios, web', at: 'card.css:1:20',
+      msg: 'display: grid is unsupported (support profile m1-s5); in block/ltr use block, flex or none',
+      why: "The target's support profile has no passing proof for this value.",
+      fix: 'Use a supported value: use a value the target profile supports.',
+      plain: 'Grid layout has no passing proof on any target yet, so the dragon will not let it guess. Flex with wrap is proven.',
+      diff: [['h', '@@ card.css:1 @@'], ['del', '.gallery { display: grid; }'], ['add', '.gallery { display: flex; flex-wrap: wrap; }']] },
+    { sel: '.card', decl: 'border-radius: 8px;', kind: 'refuse',
+      code: 'DRAGON_UNSUPPORTED_PROPERTY', targets: '', at: 'card.css:2:9',
+      msg: 'border-radius is not supported in milestone 1',
+      why: 'The compiler resolves only the milestone-1 longhands and their shorthands.',
+      fix: 'Remove the declaration (1 guarded edit)',
+      plain: 'Rounded corners are not a milestone-1 property. Dragon refuses them rather than drop them silently.',
+      diff: [['h', '@@ card.css:2 @@'], ['del', '.card { border-radius: 8px; }'], ['add', '.card { }']] },
+    { sel: '.row', decl: 'display: flex; flex-direction: row;', kind: 'laurel',
+      web: ['exact', 'dual-exact'], ios: ['exact', '1 device px'],
+      proofs: 'flex-wrap-gap-align-content, profile-initial-values-box, baseline-source-matrix (+ rtl twins)' },
+    { sel: '.row', decl: 'display: flex; gap: 8px;', kind: 'laurel',
+      web: ['exact', 'dual-exact'], ios: ['exact', '1 device px'],
+      proofs: 'gap-contexts, gap-contexts-rtl, flex-wrap-line-grow, flex-nested' },
+    { sel: '.stack', decl: 'gap: 8px;', note: '/* a block box */', kind: 'refuse',
+      code: 'DRAGON_UNPROVEN_CONTEXT', targets: 'ios, web', at: 'card.css:5:15',
+      msg: 'row-gap:<length-px> (set by gap: 8px) on .stack is used in the not-flex-container/ltr context, which is not proven (proven: flex-row-single-line/ltr, flex-column-single-line/ltr, …); row-gap values proven in not-flex-container/ltr: normal',
+      why: 'Profile rows are proven per formatting context; another context may behave differently.',
+      fix: 'Use a proven context: use row-gap:<length-px> only in a proven context, or add a passing parity fixture for not-flex-container/ltr.',
+      plain: 'gap is proven inside flex containers only. On a plain block box it has no passing fixture, so make .stack a flex column.',
+      diff: [['h', '@@ card.css:5 @@'], ['del', '.stack { gap: 8px; }'], ['add', '.stack { display: flex; flex-direction: column; gap: 8px; }']] },
+    { sel: '.title', decl: 'color: hsl(210 100% 40%);', kind: 'laurel',
+      web: ['exact', 'dual-exact'], ios: ['caveat', 'paint'],
+      caveat: 'On iOS the computed colour is proven exact, but device paint is not yet measured, so the row stays caveat.',
+      proofs: 'color-syntax, color-syntax-matrix, color-syntax-matrix-rtl' },
+    { sel: '@media (min-width: 600px)', decl: '{ .row { … } }', kind: 'refuse',
+      code: 'DRAGON_UNSUPPORTED_AT_RULE', targets: '', at: 'card.css:7:1',
+      msg: '@media in the stylesheet is not supported in milestone 1',
+      why: 'Milestone 1 resolves only plain style rules; an at-rule would change which rules apply.',
+      fix: 'Move the rules out of the at-rule: move the declarations you want to keep into plain top-level style rules, then remove the at-rule. Deleting the at-rule alone would also delete the rules inside it.',
+      plain: 'Media queries are not resolved in milestone 1. Keep the rules, lose the at-rule.',
+      diff: [['h', '@@ card.css:7 @@'], ['del', '@media (min-width: 600px) {'], ['del', '  .row { flex-direction: row; }'], ['del', '}'], ['add', '.row { flex-direction: row; }']] },
+    { sel: '.title', decl: 'color: #a3342b !important;', kind: 'refuse',
+      code: 'DRAGON_UNSUPPORTED_IMPORTANT', targets: '', at: 'card.css:9:25',
+      msg: '!important on color is not supported',
+      why: 'Order and specificity decide the cascade in milestone 1.',
+      fix: 'Remove !important (1 guarded edit)',
+      plain: 'In milestone 1 the cascade is decided by order and specificity alone.',
+      diff: [['h', '@@ card.css:9 @@'], ['del', '.title { color: #a3342b !important; }'], ['add', '.title { color: #a3342b; }']] },
+  ];
+
+  const MARK = { laurel: 'assets/trial/laurel.png', refuse: 'assets/trial/seal-reject.png' };
+  const list = document.getElementById('offers');
+  list.innerHTML = OFFERS.map((o, i) => `<li><button class="offer ink-btn ink-frame" type="button" data-i="${i}" aria-pressed="false">
+      <span>${o.sel.startsWith('@') ? `<span class="sel">${esc(o.sel)}</span> ${esc(o.decl)}` : `<span class="sel">${esc(o.sel)}</span> { ${esc(o.decl)} }`}${o.note ? ` <span class="sel">${esc(o.note)}</span>` : ''}</span>
+      <img class="mark" src="${MARK[o.kind]}" alt=""></button></li>`).join('');
+
+  const judged = new Set();
+  const dragon = document.getElementById('dragon');
+  const breath = document.getElementById('breath');
+  const offered = document.getElementById('offered');
+  const verdict = document.getElementById('verdict');
+  const gatehouse = document.getElementById('gatehouse');
+  const LAURELS = OFFERS.filter((o) => o.kind === 'laurel').length;
+  let timer;
+
+  const card = (o) => {
+    if (o.kind === 'laurel') {
+      const lvl = o.ios[0] === 'caveat' ? 'caveat' : '';
+      return `<article class="verdict ink-frame laurel">
+        <div class="v-top"><img src="assets/trial/laurel.png" alt=""><span class="v-code">${o.ios[0] === 'caveat' ? 'Passes, with a caveat' : 'Passes the gate'}</span>
+          <span class="v-targets">${badge('web', '', o.web[0])}${badge('ios', lvl, o.ios[0])}${ANDROID}</span></div>
+        <p class="v-msg"><code class="mono">${esc(o.sel)} { ${esc(o.decl)} }</code> is proven. The dragon bows and lets it through.</p>
+        <div class="v-row"><span>web</span><span><b>${o.web[0]}</b> · tolerance ${o.web[1]} · checked against Chrome</span></div>
+        <div class="v-row"><span>ios</span><span><b>${o.ios[0]}</b> · ${o.ios[0] === 'caveat' ? esc(o.caveat) : 'tolerance 1 device px on the Linux-lane engine proof'}</span></div>
+        <div class="v-row"><span>proof</span><span class="proofs">${esc(o.proofs)}</span></div>
+      </article>`;
+    }
+    const tg = o.targets ? ` [${o.targets}]` : '';
+    return `<article class="verdict ink-frame refusal">
+      <img class="plaque" src="assets/trial/verdict.png" alt="Verdict">
+      <div class="v-top"><span class="v-code">${o.code}</span>
+        <span class="v-targets">${(o.targets || 'ios, web').split(', ').map((t) => badge(t, 'unsupported', 'refused')).join('')}</span></div>
+      <div class="v-line">${esc(`${o.at}: error ${o.code}${tg}: ${o.msg}`)}</div>
+      <p class="v-msg">${esc(o.plain)}</p>
+      <div class="v-row"><span>why</span><span>${esc(o.why)}</span></div>
+      <div class="v-row"><span>fix</span><span>${esc(o.fix)}</span></div>
+      <div class="diff">${o.diff.map(([k, t]) => `<div class="${k}">${k === 'del' ? '- ' : k === 'add' ? '+ ' : ''}${esc(t)}</div>`).join('')}</div>
+    </article>`;
+  };
+
+  const tally = () => {
+    const arr = [...judged].map((i) => OFFERS[i]);
+    const won = arr.filter((o) => o.kind === 'laurel').length;
+    document.getElementById('t-laurel').textContent = won;
+    document.getElementById('t-refuse').textContent = arr.filter((o) => o.kind !== 'laurel').length;
+    if (won === LAURELS && !gatehouse.classList.contains('open')) {
+      gatehouse.classList.add('open');
+      document.getElementById('tally').classList.add('won');
+      document.getElementById('prize').textContent = 'Every proven line found. The gate is open.';
+    }
+  };
+
+  const restart = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
+
+  const judge = (i, instant = false) => {
+    const o = OFFERS[i];
+    clearTimeout(timer);
+    list.querySelectorAll('.offer').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.i === i)));
+    const text = o.sel.startsWith('@') ? `${o.sel} ${o.decl}` : `${o.sel} { ${o.decl} }`;
+    offered.innerHTML = `<span class="slip-wrap"><span class="slip ink-frame">${esc(text)}</span></span>`;
+    const wrap = offered.firstChild, slip = wrap.firstChild;
+    verdict.innerHTML = '';
+    const finish = () => {
+      verdict.innerHTML = card(o);
+      judged.add(i);
+      list.querySelector(`[data-i="${i}"]`).classList.add('judged');
+      tally();
+      const box = verdict.getBoundingClientRect();
+      if (box.top > innerHeight - 120) document.querySelector('.arena').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    };
+    const mark = (cls, src, anim) => { const m = document.createElement('img'); m.className = cls; m.src = src; m.alt = ''; wrap.append(m); if (!reduce && anim) restart(m, anim); };
+    if (reduce || instant) { mark(o.kind === 'laurel' ? 'wreath' : 'stamp', MARK[o.kind], ''); return finish(); }
+    if (o.kind === 'laurel') {
+      restart(dragon, 'bow');
+      restart(slip, 'bless');
+      mark('wreath', MARK.laurel, 'lower');
+      timer = setTimeout(finish, 600);
+    } else {
+      dragon.classList.remove('bow');
+      restart(dragon, 'rear');
+      restart(breath, 'go');
+      setTimeout(() => restart(slip, 'burn'), 250);
+      setTimeout(() => mark('stamp', MARK.refuse, 'slam'), 550);
+      timer = setTimeout(finish, 800);
+    }
+  };
+
+  list.addEventListener('click', (e) => { const b = e.target.closest('.offer'); if (b) judge(+b.dataset.i); });
+  const q = new URLSearchParams(location.search);
+  if (q.has('offer')) q.get('offer').split(',').forEach((n) => judge(+n, true));
+})();
+addEventListener('DOMContentLoaded', () => RoyalHero.enableSnapAndFocus('.royal-hero, #letter, #trial, #summary'));
+</script>
+</body>
+</html>

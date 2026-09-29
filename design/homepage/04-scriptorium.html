@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon CSS · The Scriptorium</title>
+<link rel="stylesheet" href="assets/parchment.css">
+<link rel="stylesheet" href="assets/ink.css">
+<link rel="stylesheet" href="assets/royal-hero.css">
+<link rel="stylesheet" href="assets/integration.css">
+<script src="assets/royal-hero.js" defer></script>
+<script>/* Space on a button or link activates it; keep the section stepper from taking it. Registered before the stepper. */
+addEventListener('keydown', e => { if (e.key === ' ' && e.target.closest && e.target.closest('button, a, [role="button"], summary')) e.stopImmediatePropagation(); });</script>
+<script src="assets/parchment.js"></script>
+<style>
+
+  /* The letter, then the desk, each its own section. */
+  .scriptorium { margin: 0; padding: 0; }
+
+  /* The letter */
+  /* The letter is written straight onto the page parchment; a double rule separates it from the desk. */
+  .letter { max-width: 760px; margin: 0 auto; box-sizing: border-box; padding: 6px 6px 20px; font-size: clamp(22px, 1.75vw, 25px); line-height: 1.45; color: var(--ink-body); }
+  .letter .dateline::before, .letter .dateline::after { content: ""; flex: 1; height: 10px; background: var(--ink-rule-gold) 0 0 / 100% 10px no-repeat; }
+  .letter .dateline::after { background-image: var(--ink-rule-gold-b); }
+  .letter .dateline { justify-content: center; color: var(--brick); }
+  .letter .dateline { display: flex; align-items: center; gap: 10px; font: 17px var(--mono); color: var(--ink-soft); letter-spacing: .06em;  margin-bottom: 22px; }
+  .letter .dateline img { width: 30px; height: 30px; }
+  .letter .salute { font: 500 42px/1.15 var(--display); margin: 0 0 14px; }
+  .letter .salute .initial { float: left; font-size: 74px; line-height: .8; margin: 6px 10px 0 0; color: var(--brick); }
+  .letter p { margin: 0 0 14px; }
+  .letter .num { font-family: var(--mono); font-size: 1em; color: var(--brick); }
+  .letter .lbl { font-family: var(--mono); font-size: 1em; }
+  .lbl.exact { color: var(--sage); } .lbl.caveat { color: #8a6516; } .lbl.unsupported { color: var(--brick); }
+  .nb { white-space: nowrap; }
+  .letter .proof-shield { float: right; width: clamp(110px, 9vw, 132px); margin: 4px 0 8px 18px; }
+  .signature { margin-top: 26px; display: flex; align-items: center; gap: 18px; }
+  .signature .hand { font: italic 24px/1.4 var(--display); }
+  .signature .hand b { display: block; font-style: normal; font-weight: 600; color: var(--brick); }
+
+  /* Wax seal */
+  .signature .wax { animation: stamp .5s cubic-bezier(.3,1.6,.5,1) both; animation-delay: .4s; }
+  @keyframes stamp { from { transform: scale(1.8) rotate(-18deg); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* The desk */
+  .desk { position: relative; max-width: 1240px; margin: 0 auto; box-sizing: border-box; padding: 0 8px 10px 10px; color: var(--ink-body); }
+  .desk-sec { padding-top: clamp(30px, 5svh, 60px); padding-bottom: clamp(30px, 5svh, 60px); }
+  .desk-head { display: flex; align-items: center; gap: 14px; margin: 8px 0 14px; }
+  .desk-head img { width: 96px; height: auto; flex: none; }
+  .desk-head h2 { font: 500 39.5px/1.1 var(--display); margin: 0; }
+  .desk-head p { margin: 4px 0 0; color: var(--ink-soft); font-size: 22px; line-height: 1.4; }
+
+  .work { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  @media (min-width: 1101px) {
+    /* Editor on the left, the three frames and their verdict on the right. */
+    .work { grid-template-columns: minmax(0, 430px) minmax(0, 1fr); column-gap: 34px; align-items: start; }
+    .work > .tablet, .work > .presets { grid-column: 1; }
+    .work > .tablet { grid-row: 1 / span 3; }
+    .work > .presets { grid-row: 4; }
+    .work > .swipe, .work > .frames, .work > .measure, .work > .omens, .work > .illus { grid-column: 2; }
+    .work > .frames { grid-row: 1; } .work > .measure { grid-row: 2; } .work > .omens { grid-row: 3; } .work > .illus { grid-row: 4; }
+  }
+
+  /* The writing tablet: a quill-drawn frame on the parchment itself, with faint ruled lines. No board, no fill. */
+  .tablet { position: relative; padding: 16px 14px 12px; --ink-out: 0px; }
+  .tablet:focus-within::before { --ink-frame-color: var(--ink-line-strong); --ink-frame-mask: var(--ink-frame-bold); }
+  .tablet-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -2px 6px 4px; padding-bottom: 8px; color: var(--ink-soft); font: 15px var(--mono);
+    background: var(--ink-rule-faint) left bottom / 100% 10px no-repeat; }
+  .tablet-bar .file { display: flex; align-items: center; gap: 8px; }
+  .tablet-bar .file img { width: 22px; height: 22px; }
+  .tablet-bar button { font: 15px var(--mono); color: var(--ink); padding: 4px 10px; --ink-out: -1px; }
+  .tablet-bar button:hover { color: var(--brick); }
+  .wax-board { position: relative; }
+  /* Ruled guide lines, drawn faint in ink, one per 22px line of text. */
+  .wax-board::before { content: ""; position: absolute; inset: 0 6px; pointer-events: none; opacity: .35;
+    background: var(--ink-rule-faint) 0 28px / 100% 22px repeat-y; }
+  textarea#css { position: relative; display: block; width: 100%; box-sizing: border-box; min-height: 426px; resize: vertical; border: 0; outline: none; background: transparent;
+    padding: 12px 16px 14px; font: 15px/22px var(--mono); color: #3a2410; caret-color: var(--brick); tab-size: 2;
+    text-shadow: 0 0 .6px rgba(58,36,16,.55); }
+  /* Focus shows as the tablet's frame drawn in bold dark ink (.tablet:focus-within). */
+
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 19px; color: var(--ink-soft); }
+  .presets button { font: 16px var(--mono); color: var(--ink); padding: 6px 13px; --ink-out: -1px; }
+  .presets button[aria-pressed="true"] { color: var(--brick); }
+
+  /* Three device frames */
+  .frames { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; justify-items: center; align-items: start; }
+  .frame { margin: 0; display: grid; justify-items: center; gap: 8px; }
+  .frame figcaption { display: flex; align-items: center; gap: 6px; font: 16px var(--mono); color: var(--ink-soft);  letter-spacing: .08em; }
+  .frame figcaption img.ri-plat { width: 40px; vertical-align: middle; }
+  .frame figcaption .dot::before { content: "\2726"; color: var(--sage); font-size: 10px; }
+  /* Devices are sketched in ink on the parchment: an outer quill outline, a fainter screen outline, and inked details. */
+  .device { position: relative; width: 220px; box-sizing: border-box; }
+  .device::before, .device .screen::before { content: ""; position: absolute; inset: -3px; pointer-events: none; background-color: var(--ink-line);
+    -webkit-mask: var(--m) 0 0 / 100% 100% no-repeat; mask: var(--m) 0 0 / 100% 100% no-repeat; }
+  .device.chrome { --m: var(--ink-frame-a); }
+  .device.iphone, .device.android { --m: var(--ink-frame-round); }
+  .device.android { --m: var(--ink-frame-soft); }
+  .device .screen { width: 200px; min-height: 176px; overflow: visible; position: relative; }
+  .device .screen::before { --m: var(--ink-frame-c); background-color: rgba(60,40,22,.3); inset: -4px; }
+  .device.chrome { padding: 0 10px 10px; }
+  .device.chrome .bar { height: 28px; display: flex; align-items: center; gap: 5px; padding: 0 2px; color: var(--ink-soft); font: 9px/1 var(--mono); }
+  .device.chrome .bar i { font-style: normal; } .device.chrome .bar i::before { content: "\25CB"; }
+  .device.chrome .bar span { flex: 1; margin-left: 6px; font: 8.5px/14px var(--mono); color: var(--ink-soft); padding: 0 7px; white-space: nowrap; position: relative; }
+  .device.chrome .bar span::before { content: ""; position: absolute; inset: -2px 0; background-color: rgba(60,40,22,.45);
+    -webkit-mask: var(--ink-frame-b) 0 0 / 100% 100% no-repeat; mask: var(--ink-frame-b) 0 0 / 100% 100% no-repeat; }
+  .device.iphone { padding: 30px 10px 26px; }
+  .device.iphone::after { content: ""; position: absolute; top: 12px; left: 50%; width: 58px; height: 12px; margin-left: -29px; background-color: var(--ink-line);
+    -webkit-mask: var(--ink-frame-b) 0 0 / 100% 100% no-repeat; mask: var(--ink-frame-b) 0 0 / 100% 100% no-repeat; }
+  .device.iphone .screen::after { content: ""; position: absolute; bottom: -18px; left: 50%; width: 70px; height: 7px; margin-left: -35px; background-color: var(--ink-line);
+    -webkit-mask: var(--ink-swash-mask) center / 100% 100% no-repeat; mask: var(--ink-swash-mask) center / 100% 100% no-repeat; }
+  .device.android { padding: 26px 10px 28px; }
+  .device.android .screen::after { content: "\25CB"; position: absolute; top: -22px; left: 0; right: 0; text-align: center; font: 10px/1 var(--mono); color: var(--ink-soft); }
+  .device.android::after { content: "◁   ○   ▢"; white-space: pre; position: absolute; bottom: 7px; left: 0; right: 0; text-align: center; font: 10px/14px var(--mono); color: var(--ink-soft); }
+  .frame .readout { font: 13px var(--mono); color: var(--ink-soft); text-align: center; }
+
+  /* Measurement line */
+  .measure { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 14px 16px; font: 17px var(--mono);
+    background: var(--ink-rule-faint) left top / 100% 10px no-repeat, var(--ink-rule-faint-b) left bottom / 100% 10px no-repeat; }
+  .measure .delta { font-size: 26px; color: var(--sage); letter-spacing: .02em; }
+  .measure .delta.bad { color: var(--brick); }
+  .measure label { margin-left: auto; display: flex; gap: 6px; align-items: center; cursor: pointer; color: var(--ink-soft); }
+
+  .swipe { display: none; margin: 0 0 -8px; font: 12px var(--mono); color: var(--ink-soft); }
+  .omens { display: grid; gap: 8px; }
+  /* Each omen is marked by a quill stroke down its left side, in brick (refusal) or sage (all clear). */
+  .omen { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; padding: 10px 12px 10px 18px; font-size: 20px; line-height: 1.4; position: relative; }
+  .omen::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 10px; background-color: var(--brick);
+    -webkit-mask: var(--ink-vrule) 0 0 / 100% 100% no-repeat; mask: var(--ink-vrule) 0 0 / 100% 100% no-repeat; }
+  .omen img { width: 34px; height: 34px; object-fit: contain; }
+  .omen code { font: 16px var(--mono); color: var(--brick); display: block; margin-bottom: 2px; }
+  .omen.ok::before { background-color: var(--sage); }
+  .omen.ok code { color: var(--sage); }
+
+  .illus { font: 14px/1.5 var(--mono); color: var(--ink-soft); margin: 0; display: flex; gap: 8px; align-items: baseline; }
+  .illus b { font-weight: 600; color: var(--brick); letter-spacing: .06em;  }
+
+  /* Plain summary */
+  .plain { max-width: 820px; margin: 0 auto; box-sizing: border-box; padding: 0 28px; color: var(--ink); }
+  .plain h2 { color: var(--brick); }
+  #summary { padding-block: 48px; }
+  .royal-hero { --rh-emblem-w: min(1100px, 92vw, calc((100svh - 480px) * 1.895)); }
+  .plain .ri-banners { background: none; padding: 0; border: 0; }
+  @media (min-width: 1100px) { .plain .ri-foot { margin-inline: -160px; flex-wrap: nowrap; } }
+  .plain code { color: var(--brick); }
+  .plain h2 { font: 500 34px/1.2 var(--display); margin: 0 0 14px; display: flex; gap: 12px; align-items: center; }
+  .plain h2 img { width: 40px; height: 40px; }
+  .plain ul { padding-left: 20px; line-height: 1.5; font-size: 22px; padding-top: 18px; background: var(--ink-rule-faint) left top / 100% 10px no-repeat; }
+  .plain li { margin-bottom: 6px; }
+  .plain code, .plain .mono { font: 1em var(--mono); }
+  .plain h2 { justify-content: center; }
+  .install { display: inline-flex; gap: 12px; align-items: center; padding: 11px 16px; color: var(--ink); font: 19px var(--mono); margin-top: 8px; }
+  .install em { font: italic 17px var(--text); color: var(--brick); }
+  .plain .foot { text-align: center; margin: 34px 0 0; font: 14px var(--mono); color: var(--ink-soft); }
+
+  @media (max-width: 1100px) {
+    .desk { padding: 0 0 28px; max-width: 760px; }
+  }
+  @media (max-width: 760px) {
+    .ri-sec { padding-left: 14px; padding-right: 14px; }
+    .letter { padding: 4px 4px 10px; font-size: 18px; }
+    .letter .proof-shield { width: 92px; margin-left: 10px; }
+    .desk-head p, .omen, .plain ul { font-size: 18px; }
+    .letter .salute .initial { font-size: 58px; }
+    .signature { gap: 10px; }
+    .seal-img { width: 72px; }
+    .letter .salute { font-size: 25px; }
+    .frames { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; padding: 8px 4px 12px; margin: 0 -14px; padding-left: 18px; }
+    .frame { scroll-snap-align: center; flex: none; }
+    .measure label { margin-left: 0; }
+    .swipe { display: block; }
+    textarea#css { min-height: 426px; font-size: 13px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .signature .wax { animation: none; }
+  }
+
+  .seal-img { flex: none; width: 96px; height: auto; display: block; filter: drop-shadow(0 3px 3px rgba(40,15,5,.35)); }
+</style>
+<style>
+  a.skip { color: var(--ink); text-decoration: none; opacity: 1; } /* ink text with an ink swash (ink.css), no box */
+  a.skip:hover, a.skip:focus-visible { color: var(--brick); }
+</style>
+</head>
+<body>
+<a class="skip ink-under" href="#summary">skip the ceremony →</a>
+
+<header class="royal-hero"
+  data-headline="Write regular CSS. <em>Watch</em> every box measured."
+  data-sub="Edit a card at the desk; each frame lays out the same box tree and weighs it."
+  data-cue-href="#letter"
+  data-cue-label="Read the letter"></header>
+
+<main class="scriptorium">
+  <section id="letter" class="ri-sec letter-sec" aria-label="A letter from the Dragon">
+  <article class="letter" aria-label="A letter from the Dragon">
+    <div class="dateline">Sealed at Camelot</div>
+    <div class="ink" data-ink>
+      <img class="ri-sealed" src="assets/kit/letter.png" alt="">
+      <p class="salute"><span class="initial">D</span>ear Lord Developer,</p>
+      <p>Thou hast written CSS for the web these many years. Keep it. Dragon compiles that same CSS, at build time, into native views, and proves every box against Chrome, number by number, never by picture.</p>
+      <p class="proof"><img class="ri-proven proof-shield" src="assets/kit/proven.png" alt="Proven: 8,671 of 8,671 boxes, to 1/64 px">In the first campaign <span class="num">137</span> fixtures and <span class="num">258</span> cases passed. <span class="num">8,671</span> of <span class="num">8,671</span> boxes matched Chrome to <span class="num">1/64</span> of a pixel, and <span class="num">339,080</span> computed values stood identical.</p>
+      <p><img class="ri-signpost" src="assets/kit2/signpost.png" alt="">What is not yet proven, we mark plainly: <span class="nb"><img class="seal-mark" src="assets/kit/seal-exact.png" alt=""><span class="lbl exact">exact</span></span>, <span class="nb"><img class="seal-mark" src="assets/kit/seal-caveat.png" alt=""><span class="lbl caveat">caveat</span></span> or <span class="nb"><img class="seal-mark" src="assets/kit/seal-unsupported.png" alt=""><span class="lbl unsupported">unsupported</span></span>. No claim goes out without a passing test.</p>
+      <p>Now the realm rides for iOS and Android at parity. Sit at the desk below and try thy CSS.</p>
+    </div>
+    <div class="signature">
+      <img class="seal-img wax" src="assets/gen/wax-seal-dragon.png" alt="">
+      <div class="hand">By the hand of the Dragon,<b>Keeper of the Styles</b></div>
+    </div>
+  </article>
+  </section>
+
+  <section id="desk" class="ri-sec desk-sec" aria-labelledby="desk-title">
+    <div class="desk">
+    <div class="desk-head">
+      <img src="assets/kit2/css-banner.png" alt="">
+      <div>
+        <h2 id="desk-title">Try thy CSS</h2>
+        <p>Edit the card below. Each frame applies thy CSS to the same box tree, then every box is measured.</p>
+      </div>
+    </div>
+
+    <div class="work">
+      <div class="tablet ink-frame">
+        <div class="tablet-bar">
+          <span class="file">card.css</span>
+          <button type="button" id="reset" class="ink-btn ink-frame ink-b">restore the original</button>
+        </div>
+        <div class="wax-board">
+          <textarea id="css" spellcheck="false" autocomplete="off" aria-label="CSS for the card"></textarea>
+        </div>
+      </div>
+
+      <div class="presets" role="group" aria-label="Quick edits">
+        <span>Quick edits:</span>
+        <button type="button" class="ink-btn ink-frame" data-preset="row">row</button>
+        <button type="button" class="ink-btn ink-frame" data-preset="column">column</button>
+        <button type="button" class="ink-btn ink-frame" data-preset="roomy">roomy</button>
+        <button type="button" class="ink-btn ink-frame" data-preset="night">night ink</button>
+        <button type="button" class="ink-btn ink-frame" data-preset="grid">try grid</button>
+      </div>
+
+      <p class="swipe">swipe the three frames →</p>
+      <div class="frames" id="frames">
+        <figure class="frame"><div class="device chrome"><div class="bar"><i></i><i></i><i></i><span>camelot.dev/knights</span></div><div class="screen" data-screen></div></div><figcaption><img class="ri-plat" src="assets/kit2/chrome.png" alt="">Chrome</figcaption><div class="readout" data-readout></div></figure>
+        <figure class="frame"><div class="device iphone"><div class="screen" data-screen></div></div><figcaption><img class="ri-plat" src="assets/kit2/device-ios.png" alt="">iPhone</figcaption><div class="readout" data-readout></div></figure>
+        <figure class="frame"><div class="device android"><div class="screen" data-screen></div></div><figcaption><img class="ri-plat" src="assets/kit2/device-android.png" alt="">Android</figcaption><div class="readout" data-readout></div></figure>
+      </div>
+
+      <div class="measure" aria-live="polite">
+        <span class="delta" id="delta">Δ 0.000 px</span>
+        <span id="count">measuring…</span>
+        <label><input type="checkbox" class="ink-check" id="show-boxes"> show boxes</label>
+      </div>
+
+      <div class="omens" id="omens" aria-live="polite"></div>
+
+      <p class="illus"><b>Illustration</b><span>all three frames are rendered by your browser here; Dragon's real device lanes are milestone 2. The Δ is measured live from these frames, and the notes above are a sketch of what Dragon's compiler would say, not its output.</span></p>
+    </div>
+    </div>
+  </section>
+</main>
+
+<section id="summary" class="ri-sec" aria-labelledby="sum-title">
+<div class="plain">
+  <div class="ri-h" style="justify-content:center"><img src="assets/kit/crest.png" alt=""><h2 id="sum-title">The plain summary</h2></div>
+  <ul>
+    <li>Dragon compiles regular CSS at build time into native view properties.</li>
+    <li>Every result is proven against Chrome number by number, never by screenshots.</li>
+    <li>It has its own TypeScript layout engine: block, flex, text, positioning and right-to-left.</li>
+    <li>Milestone 1: 137 test fixtures and 258 cases pass. 8,671 of 8,671 boxes match Chrome exactly, to 1/64 px. 339,080 computed values are identical between the author's CSS and Dragon's output.</li>
+    <li>Support is labelled <code>exact</code>, <code>caveat</code> or <code>unsupported</code>. Nothing is marked supported without a passing test.</li>
+    <li>Now in progress (milestone 2): iOS and Android at parity. Native engines are generated from the one TypeScript engine, and each device lane is checked against Chrome.</li>
+  </ul>
+  <div class="ri-foot">
+  <ul class="ri-banners" style="margin:0" aria-label="Where each realm stands">
+    <li><img src="assets/kit/banner-conquered.png" alt=""><b>Web</b>proven, milestone 1</li>
+    <li><img src="assets/kit/banner-marching.png" alt=""><b>iOS and Android</b>in progress, milestone 2</li>
+    <li><img src="assets/kit/banner-notyet.png" alt=""><b>Custom properties, 1.0</b>not yet ridden</li>
+  </ul>
+  <div class="ri-install"><img src="assets/kit2/chest.png" alt=""><div class="install ink-frame"><span>$ npm install dragon</span><em>coming soon</em></div></div>
+  </div>
+  <p class="foot">Dragon CSS · a design draft</p>
+</div>
+</section>
+
+
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // The desk.
+  const ORIGINAL = `.card {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  padding: 14px;
+  background-color: #f3e7c7;
+  border: 2px solid #2b231b;
+}
+.crest {
+  width: 36px; height: 36px;
+  flex-shrink: 0;
+  background-color: #a3342b;
+}
+.name { font-size: 15px; color: #2b231b; }
+.rank { font-size: 12px; color: #5e7a52; }
+.deeds { display: flex; gap: 6px; padding-top: 10px; }
+.deed { padding: 3px 6px; font-size: 12px;
+  color: #f3e7c7; background-color: #3f5673; }`;
+  const MARKUP = `<div class="page"><div class="card"><div class="crest"></div><div class="body"><div class="name">Sir Gawain</div><div class="rank">of the Round Table</div><div class="deeds"><div class="deed">Quest</div><div class="deed">Joust</div></div></div></div></div>`;
+  const BASE = `:host { display: block; } .page { padding: 8px; font: 18.5px/1.3 var(--text); color: #2b231b; }
+    :host(.boxes) .page * { outline: 1px dashed rgba(163,52,43,.55); outline-offset: -1px; }`;
+
+  const ta = document.getElementById('css');
+  ta.value = ORIGINAL;
+  const screens = [...document.querySelectorAll('[data-screen]')];
+  const readouts = [...document.querySelectorAll('[data-readout]')];
+  const roots = screens.map((s) => {
+    const r = s.attachShadow({ mode: 'open' });
+    r.innerHTML = `<style>${BASE}</style><style data-user></style>${MARKUP}`;
+    return r;
+  });
+
+  const measure = (root) => {
+    const page = root.querySelector('.page');
+    const o = page.getBoundingClientRect();
+    return [...page.querySelectorAll('*')].map((el) => {
+      const b = el.getBoundingClientRect();
+      return [b.left - o.left, b.top - o.top, b.width, b.height];
+    });
+  };
+
+  const SUPPORTED = new Set(('display position top right bottom left width height min-width min-height max-width max-height box-sizing ' +
+    'margin margin-top margin-right margin-bottom margin-left padding padding-top padding-right padding-bottom padding-left ' +
+    'border border-top border-right border-bottom border-left border-width border-style border-color ' +
+    'border-top-width border-right-width border-bottom-width border-left-width border-top-style border-right-style border-bottom-style border-left-style ' +
+    'border-top-color border-right-color border-bottom-color border-left-color color background-color overflow overflow-x overflow-y ' +
+    'flex flex-flow flex-direction flex-wrap flex-grow flex-shrink flex-basis order gap row-gap column-gap justify-content align-items align-self align-content ' +
+    'font-size font-family line-height text-align direction white-space white-space-collapse text-wrap-mode').split(' '));
+
+  const omensFor = (css) => {
+    const out = [];
+    const body = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const at = body.match(/@[a-z-]+/i);
+    if (at) out.push(['DRAGON_UNSUPPORTED_AT_RULE', `${at[0]} in the stylesheet is not supported in milestone 1`]);
+    if (/!\s*important/i.test(body)) out.push(['DRAGON_UNSUPPORTED_IMPORTANT', '!important is not supported: order and specificity decide the cascade in milestone 1']);
+    const seen = new Set();
+    for (const m of body.matchAll(/([a-z-]+)\s*:\s*([^;{}]+)/gi)) {
+      const prop = m[1].toLowerCase(), val = m[2].trim().toLowerCase();
+      if (!SUPPORTED.has(prop)) { if (!seen.has(prop)) out.push(['DRAGON_UNSUPPORTED_PROPERTY', `${prop} is not supported in milestone 1`]); seen.add(prop); continue; }
+      if (prop === 'display' && /grid|inline|table|contents/.test(val)) out.push(['DRAGON_UNSUPPORTED_VALUE', `display: ${val} is unsupported; use block, flex or none`]);
+      if (prop === 'position' && /fixed|sticky/.test(val)) out.push(['DRAGON_UNSUPPORTED_VALUE', `position: ${val} is unsupported; use static, relative or absolute`]);
+    }
+    return out;
+  };
+
+  const omens = document.getElementById('omens');
+  const delta = document.getElementById('delta');
+  const count = document.getElementById('count');
+
+  const render = () => {
+    const css = ta.value;
+    roots.forEach((r) => { r.querySelector('style[data-user]').textContent = css; });
+    const all = roots.map(measure);
+    let max = 0;
+    for (let f = 1; f < all.length; f++) all[f].forEach((b, i) => b.forEach((v, k) => { max = Math.max(max, Math.abs(v - all[0][i][k])); }));
+    delta.textContent = `Δ ${max.toFixed(3)} px`;
+    delta.classList.toggle('bad', max > 0);
+    const card = all[0][0];
+    count.textContent = `${all[0].length} boxes × 3 frames · card ${card[2].toFixed(2)} × ${card[3].toFixed(2)}`;
+    all.forEach((boxes, f) => {
+      const c = boxes[0];
+      readouts[f].textContent = `card at (${c[0].toFixed(1)}, ${c[1].toFixed(1)}) · ${c[2].toFixed(1)}×${c[3].toFixed(1)}`;
+    });
+    const list = omensFor(css);
+    omens.innerHTML = list.length
+      ? list.map(([code, msg]) => `<div class="omen"><img src="assets/kit/seal-unsupported.png" alt="unsupported"><div><code>${code}</code>${msg.replace(/</g, '&lt;')}</div></div>`).join('')
+      : `<div class="omen ok"><img src="assets/kit/seal-exact.png" alt="exact"><div><code>no refusals</code>Every property here is one Dragon resolves in milestone 1.</div></div>`;
+  };
+
+  let t;
+  ta.addEventListener('input', () => { clearTimeout(t); t = setTimeout(render, 90); document.querySelectorAll('[data-preset]').forEach((b) => b.setAttribute('aria-pressed', 'false')); });
+  ta.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); ta.setRangeText('  ', ta.selectionStart, ta.selectionEnd, 'end'); ta.dispatchEvent(new Event('input')); }
+  });
+  document.getElementById('reset').addEventListener('click', () => { ta.value = ORIGINAL; render(); });
+
+  const set = (css, prop, val, sel = '.card') => {
+    const re = new RegExp(`(${sel.replace('.', '\\.')}\\s*\\{[^}]*?)${prop}\\s*:[^;]*;`);
+    if (re.test(css)) return css.replace(re, `$1${prop}: ${val};`);
+    return css.replace(new RegExp(`(${sel.replace('.', '\\.')}\\s*\\{)`), `$1\n  ${prop}: ${val};`);
+  };
+  const PRESETS = {
+    row: (c) => set(c, 'flex-direction', 'row'),
+    column: (c) => set(c, 'flex-direction', 'column'),
+    roomy: (c) => set(set(c, 'padding', '22px'), 'gap', '20px'),
+    night: (c) => set(set(set(set(c, 'background-color', '#2b231b'), 'color', '#e9d9b5', '.name'), 'border', '2px solid #b8892b'), 'background-color', '#b8892b', '.crest'),
+    grid: (c) => set(c, 'display', 'grid'),
+  };
+  document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => {
+    ta.value = PRESETS[b.dataset.preset](ta.value);
+    document.querySelectorAll('[data-preset]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    render();
+  }));
+
+  document.getElementById('show-boxes').addEventListener('change', (e) => {
+    screens.forEach((s) => s.classList.toggle('boxes', e.target.checked));
+  });
+
+  render();
+  document.fonts && document.fonts.ready.then(render);
+})();
+addEventListener('DOMContentLoaded', () => RoyalHero.enableSnapAndFocus('.royal-hero, #letter, #desk, #summary'));
+</script>
+</body>
+</html>

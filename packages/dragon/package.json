@@ -5,6 +5,12 @@
   "description": "Regular CSS for native apps, tested against the browser.",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://github.com/compiled-run/dragoncss#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/compiled-run/dragoncss.git",
+    "directory": "packages/dragon"
+  },
   "exports": {
     ".": {
       "dragon-internal": "./src/internal.ts",
@@ -29,5 +35,8 @@
   },
   "devDependencies": {
     "@dragon/layout": "workspace:*"
+  },
+  "scripts": {
+    "prepack": "cp ../../README.md ../../LICENSE ."
   }
 }
