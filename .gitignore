@@ -12,3 +12,6 @@ packages/layout/generated/kotlin/build/
 vendor/wpt/
 packages/wpt/out/
 packages/wpt/generated/
+.vercel/
+packages/dragon/README.md
+packages/dragon/LICENSE

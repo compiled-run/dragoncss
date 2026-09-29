@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon CSS · The Royal Ledger</title>
+<link rel="stylesheet" href="assets/parchment.css">
+<link rel="stylesheet" href="assets/ink.css">
+<link rel="stylesheet" href="assets/royal-hero.css">
+<link rel="stylesheet" href="assets/integration.css">
+<script src="assets/royal-hero.js" defer></script>
+<script>/* Space on a button or link activates it; keep the section stepper from taking it. Registered before the stepper. */
+addEventListener('keydown', e => { if (e.key === ' ' && e.target.closest && e.target.closest('button, a, [role="button"], summary')) e.stopImmediatePropagation(); });</script>
+<script src="assets/parchment.js"></script>
+<style>
+  /* Letter, set beside a crown */
+  .opening { max-width: 1120px; margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 30px; align-items: center; }
+  /* The letter is written straight onto the page parchment: a gold rule with a fleuron above it, no sheet. */
+  .letter { max-width: 720px; width: 100%; justify-self: center; padding: 34px 0 10px; position: relative; font-size: 24px; line-height: 1.45;
+    background: var(--ink-rule-gold) left top / 46% 10px no-repeat, var(--ink-rule-gold-b) right top / 46% 10px no-repeat; }
+  .letter::before { content: "\2766"; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); padding: 0 14px;
+    font-size: 18px; line-height: 26px; color: var(--brick); }
+  .letter .salute { font: 500 38.5px/1.2 var(--display); margin: 0 0 14px; min-height: 1.2em; }
+  /* No text reveal: the shared .ink-in class is neutralised so all text is present from the start. */
+  .ink-in { animation: none !important; clip-path: none !important; opacity: 1 !important; filter: none !important; }
+  .letter p { margin: 0 0 13px; }
+  .letter .lbl { font: .86em var(--mono); }
+  .letter .lbl.e { color: var(--sage); } .letter .lbl.c { color: #8a6516; } .letter .lbl.u { color: var(--brick); }
+  .signature { margin-top: 20px; display: flex; align-items: center; gap: 16px; }
+  .signature .hand { font: italic 22.5px/1.4 var(--display); }
+  .signature .hand b { display: block; font-style: normal; font-weight: 600; color: var(--brick); }
+  .wax { flex: none; width: 70px; height: 70px; position: relative; display: grid; place-items: center;
+    border-radius: 47% 53% 50% 50% / 52% 48% 54% 46%;
+    background: radial-gradient(circle at 36% 30%, #d4655a 0%, var(--brick) 42%, #6d1d17 100%);
+    box-shadow: 0 3px 6px rgba(60,20,10,.45), inset 0 -3px 6px rgba(50,10,5,.45), inset 0 3px 4px rgba(255,190,170,.25); }
+  .wax::before { content: ""; position: absolute; inset: 9px; border-radius: 50%; border: 2px solid rgba(60,12,8,.45); }
+  .wax img { width: 40px; height: 40px; filter: sepia(1) saturate(2.4) hue-rotate(-28deg) brightness(.62) contrast(1.2); mix-blend-mode: multiply; }
+
+  /* The milestone tally, inked in the margin beside the letter (was a red banner on the wall). */
+  .crest { width: 220px; justify-self: center; padding: 18px 0; text-align: center;
+    background: var(--ink-rule-gold) left 0 top 0 / 100% 10px no-repeat, var(--ink-rule-gold-b) left 0 top 5px / 100% 10px no-repeat,
+      var(--ink-rule-gold-b) left 0 bottom 5px / 100% 10px no-repeat, var(--ink-rule-gold) left 0 bottom 0 / 100% 10px no-repeat; }
+  .crest .stat { font: 18px/1.45 var(--mono); color: var(--ink-soft); }
+  .crest .stat b { font: 600 39.5px/1.15 var(--display); color: var(--brick); display: block; }
+  .crest .stat .rule { display: block; width: 40%; height: 10px; margin: 10px auto 8px; background: var(--ink-rule-faint) 0 0 / 100% 10px no-repeat; }
+
+  /* The ledger scroll */
+  .ledger-wrap { max-width: 1100px; margin: 60px auto 0; padding: 0 20px; }
+  .ledger-title { text-align: center; margin-bottom: 18px; }
+  .ledger-title h2 { font: 500 45px/1.1 var(--display); margin: 0; display: inline-flex; align-items: center; gap: 14px; }
+  .ledger-title h2 img { width: 50px; height: 50px; }
+  .ledger-title p { margin: 8px 0 0; font-size: 22px; }
+
+  .unroll { display: flex; margin: 0 auto 10px; align-items: center; gap: 12px; font: 19px var(--mono); color: var(--brick); padding: 10px 20px; }
+  .unroll:hover, .unroll:focus-visible { color: var(--ink); }
+  .unroll img { width: 26px; height: 26px; }
+  .unroll[hidden] { display: none; }
+
+  .ledger-scroll { width: min(800px, calc(100% / 1.304 - 8px)); margin: 0 auto; }
+  .ledger-body { position: relative; z-index: 1; display: grid; grid-template-rows: 0fr; transition: grid-template-rows 1.8s cubic-bezier(.45,.05,.25,1); margin-top: -15%; }
+  .open .ledger-body { grid-template-rows: 1fr; }
+  .ledger-body > div { overflow: hidden; min-height: 0; }
+  .ledger { padding: 34px 48px 40px 78px; position: relative; }
+  /* The ledger's red margin: two quill lines. */
+  .ledger::after { content: ""; position: absolute; top: 20px; bottom: 20px; left: 51px; width: 16px; pointer-events: none; background-color: rgba(163,52,43,.6);
+    -webkit-mask: var(--ink-vrule) left top / 10px 100% no-repeat, var(--ink-vrule) right top / 10px 100% no-repeat;
+            mask: var(--ink-vrule) left top / 10px 100% no-repeat, var(--ink-vrule) right top / 10px 100% no-repeat; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; padding-bottom: 18px; background: var(--ink-rule-brown) left bottom / 100% 10px no-repeat, var(--ink-rule-brown-b) left 0 bottom 3px / 100% 10px no-repeat; font: 16px var(--mono); color: var(--ink-soft); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th { font: 500 21px var(--display); text-align: center; padding: 14px 6px 8px; }
+  /* Rows are ruled in ink across the whole row (the row paints one rule, so it wobbles continuously). */
+  thead tr { background: var(--ink-rule-brown) left bottom / 100% 10px no-repeat; }
+  thead th:first-child { text-align: left; font: 12px var(--mono); color: var(--ink-soft);  letter-spacing: .08em; }
+  thead th img { width: 26px; height: 26px; display: block; margin: 0 auto 2px; }
+  th.plat { width: 132px; }
+  th.plat .plat-mark { display: block; width: 52px; height: auto; margin: 0 auto 4px; }
+  @media (max-width: 760px) { th.plat .plat-mark { width: 30px; } }
+  tbody tr.realm th { text-align: left; padding: 22px 0 6px; font: 500 26.5px var(--display); color: var(--brick); }
+  tbody tr.realm { background: var(--ink-rule-brown-b) left bottom / 100% 10px no-repeat; }
+  tbody tr.realm th span.inner { display: flex; align-items: center; gap: 10px; }
+  tbody tr.realm img { width: 36px; height: 36px; }
+  tbody tr.realm small { font: 12px var(--mono); color: var(--ink-soft); margin-left: auto; }
+  tbody tr.row td { padding: 7px 6px; vertical-align: middle; }
+  tbody tr.row { background: var(--ink-rule-faint) left bottom / 100% 10px no-repeat; }
+  tbody tr.row:nth-child(even) { background-image: var(--ink-rule-faint-b); }
+  tbody tr.row td:first-child { padding-left: 0; }
+  .feat { font: 18px var(--mono); }
+  .feat small { display: block; font: italic 18px var(--text); color: var(--ink-soft); margin-top: 1px; }
+  td.cell { text-align: center; }
+  .feat small.code { font: 14px var(--mono); font-style: normal; color: var(--brick); }
+  .open tbody tr.row { animation: row-in .5s ease-out both; animation-delay: calc(var(--n) * 45ms + .3s); }
+  @keyframes row-in { from { opacity: 0; transform: translateY(-4px); } }
+
+  /* Seals: exact, caveat, unsupported, and in progress */
+  .seal { --c1: #86a877; --c2: var(--sage); --c3: #34472c; display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; padding: 4px 8px; cursor: pointer; font: 15px var(--mono); color: var(--ink-soft); position: relative; }
+  .seal:hover .disc, .seal:focus-visible .disc { transform: scale(1.12) rotate(-6deg); }
+  /* Focus and the open seal: a bold quill frame around the seal, never a fill. */
+  .seal:focus-visible { outline: none; }
+  .seal:focus-visible::after, .seal[aria-expanded="true"]::after { content: ""; position: absolute; inset: -3px; pointer-events: none; background-color: var(--ink-line-strong);
+    -webkit-mask: var(--ink-frame-bold) 0 0 / 100% 100% no-repeat; mask: var(--ink-frame-bold) 0 0 / 100% 100% no-repeat; }
+  .seal[aria-expanded="true"]::after { background-color: rgba(163,52,43,.85); }
+  .seal .disc { width: 30px; height: 30px; flex: none; display: grid; place-items: center; position: relative; transition: transform .2s;
+    border-radius: 46% 54% 50% 50% / 53% 47% 55% 45%;
+    background: radial-gradient(circle at 35% 30%, var(--c1), var(--c2) 48%, var(--c3));
+    box-shadow: 0 2px 3px rgba(40,25,10,.35), inset 0 -2px 3px rgba(0,0,0,.3), inset 0 2px 2px rgba(255,255,255,.2);
+    color: rgba(255,248,230,.9); font: 700 18.5px/1 var(--display); text-shadow: 0 -1px 0 rgba(0,0,0,.35); }
+  .seal .disc::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; border: 1px solid rgba(0,0,0,.25); }
+  .seal.caveat { --c1: #e2bd6a; --c2: var(--gold); --c3: #6e4f12; }
+  .seal.unsupported { --c1: #d0675c; --c2: var(--brick); --c3: #5a1712; }
+  /* In progress: no wax yet, only a quill-drawn ring in slate ink awaiting its seal. */
+  .seal.progress .disc { background: none; box-shadow: none; color: var(--slate); text-shadow: none; }
+  .seal.progress .disc::before { inset: -1px; border: 0; border-radius: 0; background-color: rgba(63,86,115,.8);
+    -webkit-mask: var(--ink-frame-round) 0 0 / 100% 100% no-repeat; mask: var(--ink-frame-round) 0 0 / 100% 100% no-repeat; }
+  .seal.progress .disc img { width: 20px; height: 20px; animation: tip 4s ease-in-out infinite; }
+  @keyframes tip { 0%, 40% { transform: rotate(0); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(360deg); } }
+  .seal.progress .word { color: var(--slate); font-style: italic; }
+
+  .ledger-foot { margin-top: 22px; padding-top: 16px; background: var(--ink-rule-brown) left top / 100% 10px no-repeat, var(--ink-rule-brown-b) left 0 top 3px / 100% 10px no-repeat; display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, 132px); font: 15px/1.6 var(--mono); color: var(--ink-soft); }
+  .ledger-foot div { text-align: center; }
+  .ledger-foot div:first-child { text-align: left; }
+  .ledger-foot .m { display: none; }
+  @media (max-width: 760px) { .ledger-foot br { display: none; } .ledger-foot .m { display: inline; } }
+
+  /* Proof card */
+  /* The proof opens inside the ledger, on a new line under its row, in a quill frame: nothing floats over the ruled text. */
+  tr.proof-row td { padding: 12px 0 16px; }
+  .proof { position: relative; margin: 0 0 0 auto; max-width: 600px; padding: 16px 20px 14px; font-size: 17px; line-height: 1.5; color: var(--ink); }
+  .proof[hidden] { display: none; }
+  .proof::after { content: ""; position: absolute; top: -12px; left: var(--arrow, 50%); width: 18px; height: 12px; margin-left: -9px; background-color: var(--ink-line);
+    transform: rotate(180deg); -webkit-mask: var(--ink-chevron) center / contain no-repeat; mask: var(--ink-chevron) center / contain no-repeat; }
+  .proof.enter { animation: proof-in .28s cubic-bezier(.2,.9,.3,1.2); }
+  @keyframes proof-in { from { opacity: 0; transform: translateY(-6px) scale(.97); } }
+  .proof .p-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .proof .p-head img { width: 34px; height: 34px; }
+  .proof .p-feat { font: 18px var(--mono); }
+  .proof .p-plat { font: 15px var(--mono); color: var(--ink-soft); }
+  .proof dl { display: grid; grid-template-columns: 96px 1fr; gap: 4px 10px; margin: 10px 0 0; font-size: 17px; }
+  .proof dt { font: 15px/1.6 var(--mono); color: var(--ink-soft);  letter-spacing: .06em; }
+  .proof dd { margin: 0; }
+  .proof dd code { font: 15.5px var(--mono); }
+  .proof .fx { display: flex; flex-wrap: wrap; gap: 4px; }
+  .proof .fx { gap: 2px 12px; }
+  .proof .fx code { color: var(--slate); }
+  .proof .close { position: absolute; top: 8px; right: 10px; border: 0; background: none; font: 18px var(--mono); color: var(--ink-soft); cursor: pointer; }
+  .proof .note { margin: 10px 0 0; font-size: 17px; color: var(--ink-soft); font-style: italic; }
+
+  .illus { max-width: 980px; margin: 16px auto 0; padding: 0 30px; font: 15px/1.5 var(--mono); display: flex; gap: 8px; }
+  .illus { color: var(--ink-soft); }
+  .illus b { color: var(--brick); letter-spacing: .06em;  }
+
+  .plain { max-width: 820px; margin: 60px auto 0; padding: 40px 28px 70px; background: var(--ink-rule-faint) left top / 100% 10px no-repeat; }
+  .plain h2 { font: 500 34px/1.2 var(--display); margin: 0 0 14px; display: flex; gap: 12px; align-items: center; }
+  .plain h2 img { width: 40px; height: 40px; }
+  .plain ul { padding-left: 20px; line-height: 1.5; font-size: 22px; }
+  .plain li { margin-bottom: 6px; }
+  .plain code { font: 1em var(--mono); }
+  .install { display: inline-flex; gap: 12px; align-items: center; padding: 11px 16px; color: var(--ink); font: 19px var(--mono); margin-top: 8px; }
+  .install em { font: italic 20px var(--text); color: var(--brick); }
+  .plain h2 { color: var(--brick); }
+  .plain .ri-banners { background: none; padding: 0; border: 0; }
+  #summary { padding-block: 48px; }
+  @media (min-width: 1100px) { .plain .ri-foot { margin-inline: -160px; flex-wrap: nowrap; } }
+  .plain code { color: var(--brick); }
+  footer { text-align: center; padding: 0 20px 40px; font: 15px var(--mono); color: var(--ink-soft); }
+
+  @media (max-width: 760px) {
+    .opening { grid-template-columns: minmax(0, 1fr); padding: 0 14px; gap: 18px; }
+    .crest { width: min(300px, 100%); padding: 14px 0; }
+    .crest .stat b { font-size: 24px; }
+    .letter { padding: 34px 6px 10px; font-size: 18px; }
+    .letter .salute { font-size: 23px; }
+    .seal-img { width: 72px; }
+    .ledger-wrap { padding: 0; margin-top: 44px; }
+    .ledger-title { padding: 0 16px; }
+    .ledger-title h2 { font-size: 27px; }
+    .ledger { padding: 24px 8px 30px 12px; }
+    tbody tr.realm small { display: none; }
+    .ledger::after { display: none; }
+    th.plat { width: 58px; }
+    thead th { font-size: 13px; padding-left: 2px; padding-right: 2px; }
+    .seal .word { display: none; }
+    .feat { font-size: 14px; }
+    .feat small { font-size: 14px; overflow-wrap: anywhere; }
+    th.plat { width: 46px; }
+    .feat small.code { font-size: 9.5px; }
+    .seal { padding: 0; }
+    .seal .disc, .seal img.disc { width: 30px; height: 30px; }
+    .ledger-foot { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .ledger-foot div { text-align: left; }
+    .proof { max-width: none; margin: 0 4px; }
+    .illus { padding: 0 14px; }
+    .plain ul { font-size: 18px; }
+    .crest .stat { font-size: 16px; }
+    .ledger-title p { font-size: 18px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ledger-body { transition: none; }
+    .open tbody tr.row, .proof.enter, .seal.progress .disc img { animation: none; }
+  }
+
+  /* ---- Owner revision: the page is the parchment; only the small ledger scroll keeps drawn rollers ---- */
+  /* A drawn scroll. Measured from scroll-roller-top.png (2172x724): the paper leaves the top roller's curl at
+     x 271..1900 (12.48%..87.52%, so the paper is 75.05% of the roller) and y 505 (69.75%); the bottom roller is the
+     mirror, its curl opening at y 219 (30.25%). Percent margins resolve against the paper width, so the joins
+     stay locked at every size: roller width = 130.4%, offset = -15.2% (tuned by eye so the curl's inked edges sit on the paper's edges), roller height = 43.47% of the paper; the paper tucks 1.9% under each curl. */
+  .scroll { position: relative; }
+  .scroll > .roller { display: block; position: relative; z-index: 2; width: 130.4%; max-width: none; height: auto; margin-left: -15.2%; pointer-events: none; user-select: none;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,.28)); }
+  .scroll > .paper { position: relative; z-index: 1; margin-top: -15%; }
+  .scroll > .roller.bottom { margin-top: -15%; filter: drop-shadow(0 5px 6px rgba(60,35,15,.3)); }
+  /* The scroll's paper is the page parchment itself; only its two edges are drawn, as quill lines meeting the rollers' curls. */
+  .paper { color: var(--ink); }
+  .paper::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    background: var(--ink-vrule-dark) left -3px top 0 / 10px 100% no-repeat, var(--ink-vrule-dark-b) right -3px top 0 / 10px 100% no-repeat; }
+  .paper > * { position: relative; }
+
+  .seal-img { flex: none; width: 96px; height: auto; display: block; filter: drop-shadow(0 3px 3px rgba(40,15,5,.35)); }
+</style>
+<style>
+  a.skip { color: var(--ink); text-decoration: none; opacity: 1; } /* ink text with an ink swash (ink.css), no box */
+  a.skip:hover, a.skip:focus-visible { color: var(--brick); }
+  /* Kit art: the ledger seals are the drawn wax seals; the unroll button carries the seal to break. */
+  .seal img.disc { width: 36px; height: 36px; background: none; box-shadow: none; border-radius: 0; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(40,25,10,.3)); }
+  .unroll img.seal-break { width: 46px; height: auto; }
+  .crest .ri-proven { width: 150px; margin-bottom: 14px; }
+  .ledger-sec .ledger-wrap { margin-top: 0; }
+  .ledger-sec { overflow-x: clip; }
+  #letter > *, #ledger > *, #summary > * { box-sizing: border-box; } /* .ri-sec children are width:100%; include their padding */
+  .summary-sec .plain { margin-top: 0; padding-bottom: 30px; }
+</style>
+</head>
+<body>
+<a class="skip ink-under" href="#summary">skip the ceremony →</a>
+
+<header class="royal-hero"
+  data-headline="Every box, <em>accounted</em> for"
+  data-sub="8,671 of 8,671 boxes match Chrome to 1/64 px. The ledger is sealed below."
+  data-cue-href="#letter"
+  data-cue-label="Read the letter"></header>
+
+
+<section class="ri-sec" id="letter">
+<div class="opening">
+  <article class="letter" aria-label="A letter from the Dragon">
+    <img class="ri-sealed" src="assets/kit/letter.png" alt="">
+    <p class="salute" id="salute" data-text="Dear Lord Developer,">Dear Lord Developer,</p>
+    <p class="ink-in" style="--ink-delay:1.1s">Herein lies the Royal Ledger: each feature of CSS that Dragon claims, realm by realm, with a seal for every platform.</p>
+    <p class="ink-in" style="--ink-delay:1.8s"><img class="ri-signpost" src="assets/kit2/signpost.png" alt="">A seal is pressed only when a test has passed. <img class="seal-mark" src="assets/kit/seal-exact.png" alt=""><span class="lbl e">exact</span> means the boxes match Chrome, number by number. <img class="seal-mark" src="assets/kit/seal-caveat.png" alt=""><span class="lbl c">caveat</span> means part is proven and the rest is written down. <img class="seal-mark" src="assets/kit/seal-unsupported.png" alt=""><span class="lbl u">unsupported</span> means the Dragon refuses it at build time and tells thee why.</p>
+    <p class="ink-in" style="--ink-delay:2.5s">Break any seal to read its proof: the fixtures that stand behind it, and the tolerance they were held to. The Android column is still being inked; it will be sealed the same way, or not at all.</p>
+    <div class="signature ink-in" style="--ink-delay:3.2s">
+      <img class="seal-img" src="assets/gen/wax-seal-dragon.png" alt="">
+      <div class="hand">By the hand of the Dragon,<b>Keeper of the Styles</b></div>
+    </div>
+  </article>
+  <aside class="crest" aria-label="Milestone 1 in numbers">
+    <img class="ri-proven" src="assets/kit/proven.png" alt="">
+    <div class="stat"><b>8,671</b>of 8,671 boxes<br>match Chrome<br>to 1/64 px<span class="rule"></span><b>137</b>fixtures<br>258 cases</div>
+  </aside>
+</div>
+</section>
+
+<section class="ri-sec ledger-sec" id="ledger" aria-labelledby="ledger-title">
+<div class="ledger-wrap" id="ledger-wrap">
+  <div class="ledger-title">
+    <img class="ri-icon" src="assets/icons/shield.png" alt="">
+    <h2 id="ledger-title">The Royal Ledger</h2>
+    <p>Milestone 1 support, sealed per platform. Break a seal for its proof.</p>
+  </div>
+  <button class="unroll ink-btn ink-frame" id="unroll" type="button" aria-controls="ledger-body" aria-expanded="false"><img class="seal-break" src="assets/kit/seal-break.png" alt="">break the seal and unroll</button>
+  <div class="ledger-scroll scroll">
+  <img class="roller" src="assets/gen/scroll-roller-top.png" alt="">
+  <div class="ledger-body" id="ledger-body">
+    <div>
+      <div class="ledger paper">
+        <div class="legend">
+          <span><span class="seal exact" tabindex="-1"><img class="disc" src="assets/kit/seal-exact.png" alt=""></span>exact</span>
+          <span><span class="seal caveat" tabindex="-1"><img class="disc" src="assets/kit/seal-caveat.png" alt=""></span>caveat</span>
+          <span><span class="seal unsupported" tabindex="-1"><img class="disc" src="assets/kit/seal-unsupported.png" alt=""></span>unsupported</span>
+          <span><span class="seal progress" tabindex="-1"><span class="disc"><img src="assets/icons/hourglass.png" alt=""></span></span>in progress (milestone 2)</span>
+        </div>
+        <table>
+          <thead><tr><th scope="col">Feature</th>
+            <th scope="col" class="plat"><img class="plat-mark" src="assets/kit2/device-web.png" alt="">Web</th>
+            <th scope="col" class="plat"><img class="plat-mark" src="assets/kit2/device-ios.png" alt="">iOS</th>
+            <th scope="col" class="plat"><img class="plat-mark" src="assets/kit2/device-android.png" alt="">Android</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div class="ledger-foot" id="foot"></div>
+      </div>
+    </div>
+  </div>
+  <img class="roller bottom" src="assets/gen/scroll-roller-bottom.png" alt="">
+  </div>
+</div>
+<p class="illus"><b>Illustration</b><span>statuses, fixture names and tolerances are copied by hand from Dragon's milestone-1 web and ios support profiles and summarised per row; the real profiles are finer, per value and per formatting context.</span></p>
+</section>
+
+<div class="proof ink-frame" id="proof" role="dialog" aria-modal="false" aria-labelledby="proof-feat" hidden></div>
+
+<section class="ri-sec summary-sec" id="summary" aria-labelledby="sum-title">
+<div class="plain">
+  <h2 id="sum-title"><img src="assets/icons/crown.png" alt="" style="width:90px;height:auto">The plain summary</h2>
+  <ul>
+    <li>Dragon compiles regular CSS at build time into native view properties, proven against Chrome number by number, never by screenshots.</li>
+    <li>Its own TypeScript layout engine covers block, flex, text, positioning and right-to-left.</li>
+    <li>Milestone 1: 137 test fixtures and 258 cases pass. 8,671 of 8,671 boxes match Chrome exactly, to 1/64 px. 339,080 computed values are identical between the author's CSS and Dragon's output.</li>
+    <li>Web: layout, flex, text, colours and positioning are <code>exact</code>. iOS: layout is <code>exact</code> on the Linux-lane engine proof; paint (colours, borders, overflow) is <code>caveat</code>. Android is in progress in milestone 2.</li>
+    <li>Grid, z-index, <code>position: fixed</code> and <code>position: sticky</code> are <code>unsupported</code> everywhere and refused at build time.</li>
+    <li>Now in progress (milestone 2): iOS and Android at parity. Native engines are generated from the one TypeScript engine, and each device lane is checked against Chrome.</li>
+  </ul>
+  <div class="ri-foot">
+  <ul class="ri-banners" style="margin:0" aria-label="Where each realm stands">
+    <li><img src="assets/kit/banner-conquered.png" alt=""><b>Web</b>proven, milestone 1</li>
+    <li><img src="assets/kit/banner-marching.png" alt=""><b>iOS and Android</b>in progress, milestone 2</li>
+    <li><img src="assets/kit/banner-notyet.png" alt=""><b>Custom properties, 1.0</b>not yet ridden</li>
+  </ul>
+  <div class="ri-install"><img src="assets/kit2/chest.png" alt=""><div class="install ink-frame"><span>$ npm install dragon</span><em>coming soon</em></div></div>
+  </div>
+</div>
+</section>
+
+<footer><span class="soft">Dragon CSS · a design draft</span></footer>
+
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  // Status per platform. L = iOS layout on the Linux-lane engine proof (1 device px). P = iOS paint (caveat, computed value proven).
+  const E = 'exact', C = 'caveat', U = 'unsupported', A = 'progress';
+  const LEDGER = [
+    { realm: 'Layout', icon: 'castle', rows: [
+      ['display: block', 'the block formatting context', E, E, ['profile-initial-values-box', 'profile-initial-values-box-rtl']],
+      ['display: none', 'removes the box and its subtree', E, E, ['block-ua-divs', 'text-anonymous-block-mixed', 'rtl-text-anonymous']],
+      ['width · height', 'px, %, min and max', E, E, ['position-absolute-containing-block', 'block-min-max', 'position-absolute-height']],
+      ['margin · padding', 'lengths and auto margins', E, E, ['position-absolute-auto-margins', 'position-absolute-static-block', 'position-absolute-shrink-to-fit']],
+      ['box-sizing', 'content-box and border-box', E, E, ['block-border-box', 'position-absolute-min-max', 'position-absolute-percent']],
+      ['border-width', 'as geometry', E, E, ['position-absolute-containing-block', 'position-absolute-nested']],
+    ]},
+    { realm: 'Flex', icon: 'branch', rows: [
+      ['display: flex', 'the flex formatting context', E, E, ['flex-row-grow-shrink-basis', 'flex-min-max-freeze', 'flex-column']],
+      ['flex-direction', 'row, column and both reverses', E, E, ['flex-wrap-gap-align-content', 'flex-row-reverse', 'flex-column-reverse']],
+      ['flex-wrap', 'nowrap, wrap, wrap-reverse', E, E, ['flex-wrap-line-grow', 'flex-wrap-reverse', 'gap-contexts']],
+      ['gap · row-gap · column-gap', 'inside flex containers', E, E, ['gap-contexts', 'gap-contexts-rtl', 'flex-nested']],
+      ['justify-content · align-*', 'including baseline', E, E, ['flex-abspos-center-shrink', 'baseline-source-matrix', 'flex-align-content-remaining']],
+      ['flex-grow · shrink · basis', 'and order', E, E, ['flex-row-grow-shrink-basis', 'flex-wrap-line-grow', 'flex-order']],
+    ]},
+    { realm: 'Text', icon: 'spellbook', rows: [
+      ['font-size · line-height', 'measured with the Ahem test font', E, E, ['text-ahem-single-line', 'text-line-height-multi-line', 'text-fractional-font-size']],
+      ['text-align', 'start, end, left, right, center', E, E, ['text-align-multi-line', 'rtl-text-align-multi-line']],
+      ['white-space', 'collapse and wrap', E, E, ['text-whitespace-collapse', 'text-unbreakable-overflow', 'text-wrap-zwsp']],
+      ['direction: rtl', 'right-to-left letters and spaces', E, E, ['rtl-text-anonymous', 'rtl-flex-wrap', 'direction-mixed-subtree']],
+    ]},
+    { realm: 'Colour', icon: 'potion', rows: [
+      ['color', 'hex, rgb(), hsl() and names', E, C, ['color-syntax', 'color-syntax-matrix', 'color-syntax-matrix-rtl']],
+      ['background-color', 'every colour syntax above', E, C, ['color-syntax', 'color-syntax-matrix', 'direction-mixed-subtree']],
+      ['border-color · border-style', 'per side', E, C, ['color-border-sides', 'color-syntax-matrix', 'text-wrap-spaces']],
+    ]},
+    { realm: 'Positioning', icon: 'compass', rows: [
+      ['position: relative', 'offsets in block and flex', E, E, ['position-relative-block', 'position-relative-flex', 'position-relative-percent']],
+      ['position: absolute', 'containing blocks, static position', E, E, ['position-absolute-containing-block', 'position-absolute-static-block', 'position-absolute-flex-container']],
+      ['top · right · bottom · left', 'lengths and percentages', E, E, ['position-absolute-initial-containing-block', 'position-absolute-over-constrained']],
+      ['overflow: hidden', 'clipping is paint', E, C, ['overflow-hidden-bfc', 'overflow-hidden-flex-min-size', 'position-absolute-scroll-container']],
+    ]},
+    { realm: 'Beyond the border', icon: 'mountains', note: 'refused at build time', rows: [
+      ['display: grid', 'DRAGON_UNSUPPORTED_VALUE', U, U, [], U],
+      ['z-index', 'DRAGON_UNSUPPORTED_PROPERTY', U, U, [], U],
+      ['position: fixed', 'DRAGON_UNSUPPORTED_VALUE', U, U, [], U],
+      ['position: sticky', 'DRAGON_UNSUPPORTED_VALUE', U, U, [], U],
+    ]},
+  ];
+
+  const WORD = { exact: 'exact', caveat: 'caveat', unsupported: 'unsupported', progress: 'in progress' };
+  const seal = (st, r, i, plat) => `<button type="button" class="seal ${st}" data-r="${r}" data-i="${i}" data-p="${plat}" aria-expanded="false" aria-label="${plat}: ${WORD[st]}. Show proof.">
+      ${st === A ? '<span class="disc"><img src="assets/icons/hourglass.png" alt=""></span>' : `<img class="disc" src="assets/kit/seal-${st}.png" alt="">`}<span class="word">${WORD[st]}</span></button>`;
+
+  let n = 0;
+  document.getElementById('rows').innerHTML = LEDGER.map((g, r) =>
+    `<tr class="realm"><th colspan="4" scope="rowgroup"><span class="inner">${g.realm}${g.note ? `<small>${g.note}</small>` : ''}</span></th></tr>` +
+    g.rows.map((row, i) => `<tr class="row" style="--n:${n++}"><td class="feat">${esc(row[0])}<small${row[1].startsWith('DRAGON_') ? ' class="code"' : ''}>${esc(row[1])}</small></td>
+      <td class="cell">${seal(row[2], r, i, 'web')}</td><td class="cell">${seal(row[3], r, i, 'ios')}</td><td class="cell">${seal(row[5] || A, r, i, 'android')}</td></tr>`).join('')
+  ).join('');
+
+  const all = LEDGER.flatMap((g) => g.rows);
+  const count = (col, st) => all.filter((r) => (col === 5 ? (r[5] || A) : r[col]) === st).length;
+  document.getElementById('foot').innerHTML = `<div>${all.length} rows, ${LEDGER.length} realms</div>
+    <div>${count(2, E)} exact<br><span class="m"> · </span>${count(2, U)} unsupported</div>
+    <div>${count(3, E)} exact · ${count(3, C)} caveat<br><span class="m"> · </span>${count(3, U)} unsupported</div>
+    <div>${count(5, A)} in progress<br><span class="m"> · </span>${count(5, U)} unsupported</div>`;
+
+  // Proof cards.
+  const proof = document.getElementById('proof');
+  let current = null;
+  const cardFor = (row, plat, g) => {
+    const st = plat === 'web' ? row[2] : plat === 'ios' ? row[3] : (row[5] || A);
+    const fx = row[4].map((c) => `<code>${esc(c)}</code>`).join('');
+    let dl, note = '', icon = 'laurel';
+    if (st === U) {
+      icon = 'dragon';
+      dl = `<dt>proof</dt><dd>none. No passing test, so no seal above unsupported.</dd><dt>at build</dt><dd><code>${esc(row[1])}</code>, with a why and a fix</dd>`;
+    } else if (st === A) {
+      icon = 'hourglass';
+      dl = `<dt>status</dt><dd>in progress, milestone 2</dd><dt>lane</dt><dd>Android device lane, checked against Chrome</dd><dt>gate</dt><dd>boxes within <code>1 device px</code> of Chrome, the milestone's rule</dd>`;
+      note = 'The Android engine is generated from the same TypeScript engine. Until its tests pass, this column claims nothing.';
+    } else if (plat === 'web') {
+      dl = `<dt>fixtures</dt><dd class="fx">${fx}</dd><dt>lane</dt><dd><code>chrome-dual</code></dd><dt>tolerance</dt><dd><code>dual-exact</code></dd>`;
+      note = "The author's CSS and Dragon's output are both run in Chrome; every compared number is identical.";
+    } else if (st === E) {
+      dl = `<dt>fixtures</dt><dd class="fx">${fx}</dd><dt>lane</dt><dd><code>linux-dragon-layout</code></dd><dt>tolerance</dt><dd><code>1 device px</code></dd>`;
+      note = "Layout proven by Dragon's engine on the Linux lane against Chrome's boxes. On-device lanes are milestone 2.";
+      if (g.realm === 'Text') note += ' Text is measured with the Ahem test font.';
+    } else {
+      icon = 'scales';
+      dl = `<dt>fixtures</dt><dd class="fx">${fx}</dd><dt>lane</dt><dd><code>chrome-dual</code>${row[0].startsWith('overflow') ? ' + <code>linux-dragon-layout</code>' : ''}</dd><dt>tolerance</dt><dd><code>dual-exact</code> on the computed value${row[0].startsWith('overflow') ? '; <code>1 device px</code> on layout' : ''}</dd>`;
+      note = 'Caveat: this is paint. The computed value is proven; paint on the device is not yet measured, so the seal stays gold, not green.';
+    }
+    return `<button class="close" type="button" aria-label="Close">×</button>
+      <div class="p-head"><img src="assets/icons/${icon}.png" alt=""><div><div class="p-feat" id="proof-feat">${esc(row[0])}</div><div class="p-plat">${plat} · ${WORD[st]}</div></div></div>
+      <dl>${dl}</dl>${note ? `<p class="note">${note}</p>` : ''}`;
+  };
+
+  const close = () => { proof.hidden = true; const r = proof.closest('tr.proof-row'); if (r) { document.body.append(proof); r.remove(); } if (current) current.setAttribute('aria-expanded', 'false'); current = null; };
+  const open = (btn) => {
+    if (current === btn) return close();
+    close();
+    const g = LEDGER[+btn.dataset.r], row = g.rows[+btn.dataset.i];
+    proof.innerHTML = cardFor(row, btn.dataset.p, g);
+    // Open the proof on a new ledger line directly under the seal's row.
+    const tr = document.createElement('tr'); tr.className = 'proof-row';
+    const td = document.createElement('td'); td.colSpan = 4; tr.append(td); td.append(proof);
+    btn.closest('tr').after(tr);
+    proof.hidden = false;
+    const b = btn.querySelector('.disc').getBoundingClientRect();
+    proof.style.setProperty('--arrow', Math.max(20, Math.min(b.left + b.width / 2 - proof.getBoundingClientRect().left, proof.offsetWidth - 20)) + 'px');
+    if (!reduce) { proof.classList.remove('enter'); void proof.offsetWidth; proof.classList.add('enter'); }
+    btn.setAttribute('aria-expanded', 'true');
+    current = btn;
+    proof.querySelector('.close').addEventListener('click', () => { const c = current; close(); c && c.focus(); });
+  };
+  document.getElementById('rows').addEventListener('click', (e) => { const b = e.target.closest('.seal'); if (b) { e.stopPropagation(); open(b); } });
+  document.addEventListener('click', (e) => { if (current && !proof.contains(e.target)) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && current) { const c = current; close(); c.focus(); } });
+  addEventListener('resize', () => { if (current) { const b = current.querySelector('.disc').getBoundingClientRect(); proof.style.setProperty('--arrow', Math.max(20, Math.min(b.left + b.width / 2 - proof.getBoundingClientRect().left, proof.offsetWidth - 20)) + 'px'); } });
+
+  // Unfurl on click, or once the rolled ledger scrolls into view.
+  const wrap = document.getElementById('ledger-wrap');
+  const btn = document.getElementById('unroll');
+  const unfurl = () => { wrap.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); btn.hidden = true; };
+  btn.addEventListener('click', unfurl);
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((es) => { if (es.some((x) => x.isIntersecting)) { setTimeout(unfurl, reduce ? 0 : 500); io.disconnect(); } }, { threshold: 0.6 });
+    io.observe(btn);
+  }
+  if (new URLSearchParams(location.search).has('open')) unfurl();
+})();
+addEventListener('DOMContentLoaded', () => RoyalHero.enableSnapAndFocus('.royal-hero, #letter, #ledger, #summary'));
+</script>
+</body>
+</html>
