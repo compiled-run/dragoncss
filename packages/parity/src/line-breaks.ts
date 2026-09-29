@@ -275,6 +275,18 @@ export function compareVectorWithChrome(v: BreakVector, chrome: ChromeBreaks, en
     if (lines === null) problems.push({ kind: BREAK_MISMATCH, text: t.id, detail: `${t.id}: the DOM text ${JSON.stringify(c.data)} does not collapse to the engine text ${JSON.stringify(text)}` });
     else if (!same(lines, t.lines)) problems.push({ kind: BREAK_MISMATCH, text: t.id, detail: `${t.id}: engine lines ${JSON.stringify(t.lines)}, Chrome ${JSON.stringify(lines)}` });
   }
+  // Chrome text the vector lacks: a mismatch when Chrome shows any of it (a unit with a rect of non-zero width). Text that only
+  // collapses away (every unit without a rect or with a zero-width one) generates no engine leaf.
+  const inVector = new Set(v.texts.map((t) => t.id));
+  for (const c of chrome.texts) {
+    if (inVector.has(c.id)) continue;
+    const blank = new Set(c.blank);
+    // The chromeLines rule: only a white-space unit with a zero-width rect is not shown; U+200B is shown.
+    if (c.units.some((line, i) => line >= 0 && !(blank.has(i) && WHITE.test(c.data[i] as string)))) {
+      compared++;
+      problems.push({ kind: BREAK_MISMATCH, text: c.id, detail: `${c.id}: Chrome shows text ${JSON.stringify(c.data)} that the break vector does not have` });
+    }
+  }
   return { compared, problems };
 }
 

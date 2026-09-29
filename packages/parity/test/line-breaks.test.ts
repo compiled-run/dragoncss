@@ -25,6 +25,13 @@ describe('break vectors', () => {
       }
     }
   });
+  it('every text leaf is found under its container: text-wrap-spaces exports each leaf, with lines', () => {
+    const n = cases.find((c) => c.case.id === 'text-wrap-spaces');
+    if (n === undefined) throw new Error('no text-wrap-spaces');
+    const t = engineTextLines(inputOf(n, 3), m);
+    expect(t.map((x) => x.id)).toEqual([...leafTexts(n.programs.uikit.root).keys()]);
+    expect(t.every((x) => x.lines.length > 0 && x.container === x.id.split(':')[0])).toBe(true);
+  });
   it('both backends run one engine input, so one break vector serves both targets', () => {
     for (const n of cases) expect(JSON.stringify(n.programs.uikit.root), n.case.id).toBe(JSON.stringify(n.programs['android-views'].root));
   });
@@ -75,6 +82,20 @@ describe('Chrome breaks', () => {
     expect(chromeLines(lead, ' YY')).toEqual([[1, 3]]);
     const zwsp: ChromeBreakText = { id: 'a:text2', data: '\u200b', lines: 1, units: [0], blank: [0] };
     expect(chromeLines(zwsp, '\u200b')).toEqual([[0, 1]]);
+  });
+  it('Chrome text the vector lacks is a break-mismatch when Chrome shows it; text that only collapses away is not', () => {
+    const n = cases.find((c) => c.case.id === 'text-wrap-spaces');
+    const v = readBreakVector('text-wrap-spaces', 3);
+    const c = readChromeBreaks('text-wrap-spaces', 3);
+    if (n === undefined || v === null || c === null) throw new Error('no text-wrap-spaces data');
+    const shown = { ...c, texts: [...c.texts, { id: 'w9:text0', data: 'XX', lines: 1, units: [0, 0], blank: [] }] };
+    const r = compareVectorWithChrome(v, shown, leafTexts(n.programs.uikit.root));
+    expect(r.problems.map((p) => p.detail)).toEqual(['w9:text0: Chrome shows text "XX" that the break vector does not have']);
+    const collapsed = { ...c, texts: [...c.texts, { id: 'w9:space0', data: ' ', lines: 1, units: [0], blank: [0] }] };
+    expect(compareVectorWithChrome(v, collapsed, leafTexts(n.programs.uikit.root)).problems).toEqual([]);
+    // U+200B has a zero-width rect but is shown (as chromeLines counts it), so a missing U+200B node is a mismatch.
+    const zwsp = { ...c, texts: [...c.texts, { id: 'w9:text1', data: '\u200b', lines: 1, units: [0], blank: [0] }] };
+    expect(compareVectorWithChrome(v, zwsp, leafTexts(n.programs.uikit.root)).problems.map((p) => p.text)).toEqual(['w9:text1']);
   });
   it('a vector that disagrees with Chrome is a break-mismatch naming the node and both line lists', () => {
     const n = cases.find((c) => c.case.id === 'text-wrap-spaces');

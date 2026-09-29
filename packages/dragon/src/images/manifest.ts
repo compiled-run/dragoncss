@@ -92,15 +92,33 @@ function percentDecode(text: string): Uint8Array {
   return Uint8Array.from(out);
 }
 
+/** Bytes to a Latin-1 string in bounded chunks: spreading a whole payload into one call overflows the engine's argument limit. */
+function latin1(bytes: Uint8Array): string {
+  let out = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) out += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return out;
+}
+
+/**
+ * The URL Chrome's parser fetches for a data: src: leading and trailing C0 controls and spaces stripped (not other Unicode
+ * whitespace, which String.prototype.trim would also strip) and the fragment dropped. The query stays in the body, and tabs and
+ * newlines inside it stay too: Chrome 145 fetches data:,a?b#c as "a?b" and data:,a<TAB>b as "a<TAB>b".
+ */
+function dataUrlOf(src: string): string {
+  const stripped = src.replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, '');
+  const hash = stripped.indexOf('#');
+  return hash < 0 ? stripped : stripped.slice(0, hash);
+}
+
 /** A data: URL (RFC 2397, as the fetch standard reads it): its type (null when absent) and its bytes; null when malformed. */
 export function parseDataUrl(src: string): { readonly type: string | null; readonly bytes: Uint8Array } | null {
-  const m = /^data:([^,]*),(.*)$/is.exec(src.trim());
+  const m = /^data:([^,]*),(.*)$/is.exec(dataUrlOf(src));
   if (m === null) return null;
   const meta = (m[1] as string).trim();
   const isBase64 = /;\s*base64\s*$/i.test(meta);
   const type = (isBase64 ? meta.replace(/;\s*base64\s*$/i, '') : meta).trim();
   const payload = percentDecode(m[2] as string);
-  const bytes = isBase64 ? base64(String.fromCharCode(...payload)) : payload;
+  const bytes = isBase64 ? base64(latin1(payload)) : payload;
   if (bytes === null) return null;
   return { type: type === '' ? null : type, bytes };
 }
@@ -109,11 +127,12 @@ const REMOTE = /^(https?:)?\/\//i;
 
 /** Resolves a src to build-time bytes: a data: URL, or a src the asset map names; anything else is a problem, never an entry. */
 export function resolveImageSource(src: string, assets: ImageAssetMap, read: (path: string) => Uint8Array): ImageSource | ImageSourceProblem {
-  if (/^\s*data:/i.test(src)) {
+  if (/^data:/i.test(dataUrlOf(src))) {
     const d = parseDataUrl(src);
     return d === null ? { kind: 'bad-data-url', src } : { kind: 'data', type: d.type, bytes: d.bytes };
   }
-  const path = assets[src];
+  // Own keys only: an inherited name such as toString is not a mapped asset.
+  const path = Object.hasOwn(assets, src) ? assets[src] : undefined;
   if (path === undefined) return { kind: REMOTE.test(src.trim()) ? 'remote-image' : 'unmapped-image', src };
   return { kind: 'mapped', path, type: typeOfPath(path), bytes: read(path) };
 }

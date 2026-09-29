@@ -44,10 +44,13 @@ export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'i
 
 export const avdScale = (d: AvdDeviceSpec): number => d.density / 160;
 
-/** Matrix problems: every target DPR needs exactly one device whose scale it is; no device may run a DPR its target lacks. */
-export function matrixProblems(scaleOf: (d: DeviceSpec) => number, matrix: readonly DeviceSpec[] = DEVICE_MATRIX): string[] {
+/**
+ * Matrix problems of the given targets: every target DPR needs exactly one device whose scale it is; no device may run a DPR its
+ * target lacks.
+ */
+export function matrixProblems(scaleOf: (d: DeviceSpec) => number, matrix: readonly DeviceSpec[] = DEVICE_MATRIX, targets: readonly NativeTarget[] = ['ios', 'android']): string[] {
   const out: string[] = [];
-  for (const target of ['ios', 'android'] as const) {
+  for (const target of targets) {
     const devices = matrix.filter((d) => d.target === target);
     for (const dpr of deviceDprs(target)) {
       const on = devices.filter((d) => scaleOf(d) === dpr);
@@ -183,6 +186,16 @@ function adb(h: { serial: string; tools: AndroidTools }, args: readonly string[]
 export async function bootIos(spec: IosDeviceSpec): Promise<DeviceHandle> {
   const { udid } = provisionIos(spec.name);
   const was = simState(udid);
+  try {
+    return await bootIosFrom(spec, udid, was);
+  } catch (e) {
+    // A simulator this runner booted is shut down again; one that was already booted is left alone.
+    if (was !== 'Booted') run('xcrun', ['simctl', 'shutdown', udid]);
+    throw e;
+  }
+}
+
+async function bootIosFrom(spec: IosDeviceSpec, udid: string, was: string): Promise<DeviceHandle> {
   for (let attempt = 1; ; attempt++) {
     if (simState(udid) !== 'Booted') run('xcrun', ['simctl', 'boot', udid]);
     const b = run('xcrun', ['simctl', 'bootstatus', udid, '-b'], { timeoutMs: 300_000 });
@@ -199,6 +212,24 @@ function serialsRunning(tools: AndroidTools): string[] {
   return run(tools.adb, ['devices']).out.split('\n').map((l) => /^(emulator-\d+)\s+device/.exec(l)?.[1]).filter((s): s is string => s !== undefined);
 }
 
+/**
+ * A detached child whose spawn error (a missing or unexecutable binary) is kept, not left unhandled: check() rethrows it, so the
+ * caller's retry and tooling-fault handling sees it.
+ */
+export function spawnDetached(cmd: string, args: readonly string[]): { readonly check: () => void } {
+  let failure: Error | null = null;
+  const p = spawn(cmd, [...args], { detached: true, stdio: 'ignore' });
+  p.once('error', (e) => {
+    failure = e;
+  });
+  p.unref();
+  return {
+    check: () => {
+      if (failure !== null) throw new Error(`${cmd} could not be started: ${(failure as Error).message}`);
+    },
+  };
+}
+
 /** Boots an AVD headless on its own console port; provision pins the matrix keys first (the floor probe AVD is not in the matrix). */
 export async function bootAvd(spec: AvdDeviceSpec, provision = true): Promise<DeviceHandle> {
   const tools = androidTools();
@@ -213,10 +244,12 @@ export async function bootAvd(spec: AvdDeviceSpec, provision = true): Promise<De
     return { ...h, startedHere: false };
   }
   for (let attempt = 1; ; attempt++) {
-    const p = spawn(tools.emulator, ['-avd', spec.name, '-port', String(spec.port), '-no-window', '-no-audio', '-no-snapshot', '-no-boot-anim', '-gpu', ANDROID_RENDERER], { detached: true, stdio: 'ignore' });
-    p.unref();
+    const p = spawnDetached(tools.emulator, ['-avd', spec.name, '-port', String(spec.port), '-no-window', '-no-audio', '-no-snapshot', '-no-boot-anim', '-gpu', ANDROID_RENDERER]);
     try {
-      await poll(`${serial} to attach`, 240_000, () => serialsRunning(tools).includes(serial));
+      await poll(`${serial} to attach`, 240_000, () => {
+        p.check();
+        return serialsRunning(tools).includes(serial);
+      });
       await poll(`${serial} sys.boot_completed`, 420_000, () => adb(h, ['shell', 'getprop', 'sys.boot_completed'], 10_000).out.trim() === '1');
       break;
     } catch (e) {
@@ -451,6 +484,8 @@ export function deviceRecord(p: DeviceProfile, a: AppRecord): DeviceRecord {
 /** Problems with a device record: the two scales differ, the root does not fit the stage, or the text scale is not the pinned one. */
 export function recordProblems(r: DeviceRecord, root: { readonly width: number; readonly height: number }): string[] {
   const out: string[] = [];
+  // The app must have run on the device the runner booted: iOS reports SIMULATOR_DEVICE_NAME, Android "<model> / <AVD>".
+  if (!(r.target === 'ios' ? r.model === r.name : r.model.endsWith(` / ${r.name}`))) out.push(`${r.name}: the app ran on ${JSON.stringify(r.model)}, not ${r.name}`);
   if (r.profileScale !== r.appScale) out.push(`${r.name}: the device profile scale ${r.profileScale} differs from the app's ${r.appScale}`);
   if (r.stagePx[0] < root.width || r.stagePx[1] < root.height) out.push(`${r.name}: the stage ${r.stagePx[0]}x${r.stagePx[1]} device px cannot hold the ${root.width}x${root.height} root (device fit, tooling fault; never cropped)`);
   const pinned = r.target === 'ios' ? TEXT_SCALE.ios : TEXT_SCALE.android;

@@ -112,3 +112,30 @@ describe('translator refusals and the compiler gate', () => {
     expect(harnessCalls(`let x = 1; checkLayout('.a')`)).toBeNull();
   });
 });
+
+describe('dead rules', () => {
+  const sidecarOf = (css: string, body: string) => {
+    const t = translate('css/x/case.html', page(css, body), 'c0ffee');
+    if (t.kind !== 'fixture') throw new Error(t.missing);
+    return t;
+  };
+  it('a rule is dropped only when every selector is definitely false on every element; the list is never rewritten', () => {
+    const t = sidecarOf('.a, body > .t { float: left } .x { width: 1px } .t { width: 5px }', '<div class="t" data-expected-width="5"></div>');
+    expect(t.sidecar.deadRules).toEqual(['.x']);
+    expect(t.html).toContain('.a, body > .t { float: left }');
+  });
+  it('keeps rules with a pseudo-class, a pseudo-element, a selector outside the subset, or inside an at-rule', () => {
+    const t = sidecarOf('.x:hover { width: 1px } .x::before { width: 1px } ns|x { width: 1px } @media all { .x { width: 1px } }', '<div class="t"></div>');
+    expect(t.sidecar.deadRules).toBeUndefined();
+  });
+  it('matching is case-folded, so a rule that may match in quirks mode or by a case-insensitive attribute value is kept', () => {
+    const t = sidecarOf('.T { width: 1px } [type="TEXT"] { width: 1px } .Q { width: 1px }', '<div class="t"><input type="text"></div>');
+    expect(t.sidecar.deadRules).toEqual(['.Q']);
+  });
+  it('the reftest mode drops nothing', () => {
+    const t = translate('css/x/case.html', '<!DOCTYPE html><style>.x { float: left }</style><body><div></div></body>', 'c0ffee', () => null, { mode: 'reftest' });
+    if (t.kind !== 'fixture') throw new Error(t.missing);
+    expect(t.sidecar.deadRules).toBeUndefined();
+    expect(t.html).toContain('.x { float: left }');
+  });
+});

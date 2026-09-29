@@ -6,7 +6,7 @@ web-platform-tests". It never edits the WPT copy.
 
 ## Numbers (web, WPT `375cf2548a7c0952c54e141d1eb4e6fc4fe59e41`, web profile m1-s5)
 
-**web: 4 pass of 38054 CSS WPT files (numeric runnable 5)**
+**web: 5 pass of 38054 CSS WPT files (numeric runnable 6)**
 
 | kind | files |
 |---|---:|
@@ -58,19 +58,21 @@ Top not-runnable reasons for numeric files (grouped by property; the exact reaso
 
 | reason | files |
 |---|---:|
-| `DRAGON_UNSUPPORTED_PROPERTY:writing-mode` | 167 |
-| `DRAGON_UNSUPPORTED_PROPERTY:grid-template-columns` | 158 |
-| `DRAGON_UNSUPPORTED_PROPERTY:grid-column` (mostly from the linked `/css/support/grid.css`) | 151 |
-| `DRAGON_UNSUPPORTED_PROPERTY:float` | 64 |
-| `DRAGON_UNSUPPORTED_PROPERTY:font` | 53 |
-| `DRAGON_UNSUPPORTED_PROPERTY:grid` | 40 |
-| `DRAGON_UNSUPPORTED_ELEMENT` | 37 |
+| `DRAGON_UNSUPPORTED_PROPERTY:writing-mode` | 178 |
+| `DRAGON_UNSUPPORTED_PROPERTY:grid-template-columns` | 176 |
+| `DRAGON_UNSUPPORTED_PROPERTY:float` | 70 |
+| `DRAGON_UNSUPPORTED_PROPERTY:font` | 70 |
+| `DRAGON_UNSUPPORTED_PROPERTY:grid-column` | 66 |
+| `DRAGON_UNSUPPORTED_PROPERTY:grid` | 63 |
+| `DRAGON_UNSUPPORTED_ELEMENT` | 38 |
 | `DRAGON_UNSUPPORTED_PROPERTY:anchor-name` | 34 |
 | `DRAGON_UNSUPPORTED_PROPERTY:outline` | 34 |
-| `DRAGON_CSS_INVALID_VALUE:-webkit-flex` | 33 |
 | `DRAGON_UNSUPPORTED_PROPERTY:vertical-align` | 31 |
+| `DRAGON_CSS_INVALID_VALUE:-webkit-flex` | 30 |
+| `DRAGON_UNSUPPORTED_VALUE` | 28 |
 | `DRAGON_UNSUPPORTED_PROPERTY:grid-auto-flow` | 27 |
-| `DRAGON_UNSUPPORTED_PROPERTY:margin-trim` | 27 |
+
+Dead-rule dropping (below) moved 115 files' first reason without making any of them runnable. `grid-column` fell from 151 to 66: most of those came from dead rules in the linked `/css/support/grid.css`. Those files now stop at the first live grid declaration instead.
 
 `translate:script` (161) and `translate:script-src` (88: `style-change.js` 44, `test-common.js` 44) no longer appear: those files now take the snapshot path.
 
@@ -115,6 +117,14 @@ pnpm wpt:interop-labels --metadata <dir>     # re-derives interop-labels.json fr
    - **Scripts:** an inline script or `<body onload>` may only call `checkLayout('<selector>')`, optionally wrapped in load or `document.fonts.ready` callbacks and `setup({ explicit_done: true })`. Anything else, including helper scripts and other handlers, takes the snapshot path below.
    - **Stylesheets:** every `<style>` and linked WPT stylesheet is joined, in document order, into the one sheet. A linked sheet containing `url()` is refused.
    - **Ids and inline styles:** each `#id` selector becomes a generated class. Each inline `style=""` becomes a class rule after every sheet rule.
+   - **Dead rules** (check-layout mode only; the reftest mode drops nothing):
+      - **What is dropped:** a top-level style rule, whole and never rewritten, when css-lite's `matches` returns a definite `false` for every selector in its list on every element of the document. For a snapshot test, that is each state's own DOM.
+      - **What is kept:** any rule with a selector outside css-lite's subset, a pseudo-class or a pseudo-element, a partial (`unknown`) match, or a rule inside an at-rule.
+      - **Case folding:** matching folds tags, ids, classes, attribute names and values to lower case. So quirks mode and HTML's case-insensitive attribute values can only keep a rule.
+      - **The sidecar:** the dropped selector lists are in `deadRules`.
+      - **Chrome's confirmation:** with Chrome, `wpt:run` confirms that `document.querySelectorAll(list).length` is 0 for each dropped list on the original page. A static test is checked after the harness completes. A snapshot test is checked at each state's own `checkLayout` call, in a fresh run of the page. A nonzero count, a list Chrome rejects, or a state the page never reached refuses the test with `translate:dead-rule-live`.
+      - **At the pinned commit** (`--chrome-all`): 80,855 rules are dropped in 237 files (186 static, 51 snapshot). None is live.
+      - **Planted faults** (`test/dead-rules.test.ts`): `dropLiveRule`, `dropUnknownSelector` and `dropFirstStateOnly` each make Chrome report a live dropped rule, and Dragon then fails the synthetic page.
    - **The cascade guard** refuses the test (`translate:specificity-rewrite`) if the lift could change the order of any two interacting declarations on any element.
    - **Other attributes** (`dir`, `lang` and so on) are passed through, so the compiler judges them.
    - **The sidecar** holds check-layout's subtests: one per node matched by the `checkLayout` selector, over the parent's own values and the node's subtree, named as check-layout names them.

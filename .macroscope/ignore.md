@@ -75,6 +75,7 @@ docs/research/text-spike/out/**
 docs/research/text-spike/lato/out/**
 docs/research/text-spike/metric-rounding/captures/**
 docs/research/inline-spike/probe/**
+docs/research/dtxt/widths.json
 
 # === Dragon: not code ===
 design/**

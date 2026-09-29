@@ -108,6 +108,11 @@ describe('Blink Decimal and the range value model', () => {
     expect(Decimal.fromString('1e1').toString()).toBe('1e+1');
     expect(Decimal.fromString('0.1').mul(Decimal.int(3)).toString()).toBe('0.3');
     expect(Decimal.fromString('0.00000123').toString()).toBe('0.00000123');
+    // Blink's FromString: leading fractional zeroes count toward the 18 digits and later digits drop without adjustment
+    // (range-value.json pins Chrome 145 on these: 0.0000000000000000001 sanitises to 0).
+    expect(Decimal.fromString('0.0000000000000000001').isZero()).toBe(true);
+    expect(Decimal.fromString('0.000000000000000001').toString()).toBe('1e-18');
+    expect(Decimal.fromString('0.1234567890123456789')).toMatchObject({ exponent: -18, coefficient: 123456789012345678n });
     expect(Decimal.fromString('2.5').round().toString()).toBe('3');
     expect(Decimal.fromString('-2.5').round().toString()).toBe('-3');
     expect(Decimal.int(1).div(Decimal.int(3)).toString()).toBe('0.333333333333333');
