@@ -2,7 +2,7 @@
 // Run with: pnpm run pr:review [<pr number>] [--wait]
 import { execFileSync } from 'node:child_process';
 
-type CheckRun = { name: string; status: string; conclusion: string | null; html_url: string };
+type CheckRun = { name: string; status: string; conclusion: string | null; html_url: string; output?: { title: string | null } };
 type ReviewComment = {
   id: number;
   in_reply_to_id?: number;
@@ -25,7 +25,9 @@ const gh = (args: string[], attempt = 1): string => {
 };
 const ghJson = <T>(path: string): T[] => (JSON.parse(gh(['api', '--paginate', '--slurp', path])) as T[][]).flat();
 const isMacroscope = (login: string): boolean => login.toLowerCase().includes('macroscope');
-const passed = (run: CheckRun): boolean => ['success', 'neutral', 'skipped'].includes(run.conclusion ?? '');
+// A skipped correctness review (for example over the per-review cost limit) is no review, so it never counts as passed.
+const passed = (run: CheckRun): boolean =>
+  run.name === 'Macroscope - Correctness Check' ? run.conclusion === 'success' : ['success', 'neutral', 'skipped'].includes(run.conclusion ?? '');
 
 const args = process.argv.slice(2);
 const wait = args.includes('--wait');
@@ -52,7 +54,7 @@ while (wait && !settled(runs) && Date.now() < deadline) {
 }
 
 console.log(`PR #${pr} at ${sha}\n\nChecks:`);
-for (const run of runs) console.log(`  ${run.status === 'completed' ? run.conclusion : run.status}\t${run.name}\t${run.html_url}`);
+for (const run of runs) console.log(`  ${run.status === 'completed' ? run.conclusion : run.status}\t${run.name}\t${run.html_url}${run.output?.title ? `\t(${run.output.title})` : ''}`);
 
 // Macroscope reports findings as inline review comments; a finding is answered once anyone else replies in its thread.
 const comments = ghJson<ReviewComment>(`repos/${repo}/pulls/${pr}/comments?per_page=100`);
