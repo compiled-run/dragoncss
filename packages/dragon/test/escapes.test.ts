@@ -76,6 +76,11 @@ describe('CSS escapes', () => {
     expect(preprocessInput('"a\\')).toBe('"a\\');
     expect(preprocessInput('"a"\\')).toBe('"a"\uFFFD');
     expect(preprocessInput('"a\nb\\')).toBe('"a\nb\uFFFD');
+    // An escaped CRLF inside a string is one escaped newline, so the string is still open at the end.
+    expect(preprocessInput('"A\\\r\nB\\')).toBe('"A\\\r\nB\\');
+    expect(preprocessInput('"A\\\rB\\')).toBe('"A\\\rB\\');
+    expect(preprocessInput('"A\\\fB\\')).toBe('"A\\\fB\\');
+    expect(preprocessInput('"A\r\nB\\')).toBe('"A\r\nB\uFFFD');
     expect(preprocessInput('/* a\\')).toBe('/* a\\');
     expect(preprocessInput('/* a */\\')).toBe('/* a */\uFFFD');
     expect(preprocessInput('a\u0000b')).toBe('a\uFFFDb');

@@ -103,7 +103,8 @@ export function preprocessInput(input: string): string {
         i += 2;
       } else i++;
     } else if (quote !== null) {
-      if (c === '\\') i += 2;
+      // css-syntax-3 §3.3: CRLF is one newline, so an escaped CRLF is three code units.
+      if (c === '\\') i += text.startsWith('\r\n', i + 1) ? 3 : 2;
       else {
         if (c === quote || c === '\n' || c === '\r' || c === '\f') quote = null;
         i++;

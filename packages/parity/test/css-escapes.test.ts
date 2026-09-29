@@ -156,6 +156,9 @@ const EDGES: readonly Edge[] = [
   { decl: 'display: \\0000062lock' }, { decl: 'display: \\000062 lock' }, { decl: 'display: \\62\r\n lock' },
   { decl: 'display: block\\', eof: true }, { decl: 'display: \\', eof: true }, { decl: 'width: 1p\\', eof: true }, { decl: 'color: #f0\\', eof: true },
   { decl: '--x: a\\', eof: true }, { decl: '--x: 5px; width: var(--x\\', eof: true }, { decl: 'display: block !important\\', eof: true },
+  { decl: 'font-family: "A\\\r\nB\\', eof: true }, { decl: 'font-family: "A\\\nB\\', eof: true }, { decl: 'font-family: "A\\\rB\\', eof: true },
+  { decl: 'font-family: "A\\\fB\\', eof: true }, { decl: 'font-family: "A\\\r\nB"', eof: false }, { decl: '--x: "A\\\r\nB\\', eof: true },
+  { decl: 'font-family: A\\', eof: true }, { decl: 'font-family: "A\r\n', eof: true },
   { decl: 'width: 1\\65 3' }, { decl: 'width: 1\\45 3' }, { decl: 'width: 1\\65 -3' }, { decl: 'width: 1\\25' }, { decl: 'width: 1\\31 px' },
   { decl: 'width: 1\\-px' }, { decl: 'width: \\31 0px' }, { decl: 'width: \\2d 1px' }, { decl: 'color: \\#f00' }, { decl: 'color: #\\0 00' },
   { decl: 'grid-template-columns: [\\31 foo \\-] 10px' }, { decl: 'grid-template-columns: [\\1F600 a\\ b] 10px' }, { decl: 'grid-template-columns: [\\0] 10px' },
@@ -390,6 +393,6 @@ describe('CSS escapes: Dragon decodes as Chrome 145 does', () => {
     expect(judgeEdges(edges, edgeSeen)).toEqual([]);
     expect(judgeSelectors(selectorSeen)).toEqual([]);
     for (const p of planted) expect(p.problems().length, p.name).toBeGreaterThan(0);
-    expect({ twins: twinSeen.length, edges: edges.length, selectors: selectorSeen.length }).toEqual({ twins: 13732, edges: 72, selectors: 59 });
+    expect({ twins: twinSeen.length, edges: edges.length, selectors: selectorSeen.length }).toEqual({ twins: 13732, edges: 80, selectors: 59 });
   }, 300_000);
 });
