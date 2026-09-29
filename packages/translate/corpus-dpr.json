@@ -21,28 +21,50 @@
     "snapEdge",
     "cachedRangeWidth"
   ],
+  "calcUnitsPerFunction": 5000,
+  "calcUnitsFunctions": [
+    "viewportUnitBase",
+    "viewportLeafPx",
+    "emLeafPx",
+    "pixelsAndPercentAt",
+    "cssLengthFixed",
+    "clampLengthFloat",
+    "floatInvert",
+    "doubleMinStep",
+    "doubleMaxStep",
+    "calcToLu"
+  ],
+  "engineCalc": 4000,
   "snapGenerated": 20000,
   "snapVectors": 966,
   "cases": {
-    "vectors-m2": 64,
-    "vectors-dpr": 966,
-    "engine-dpr": 966,
+    "vectors-m2": 114,
+    "vectors-dpr": 1116,
+    "engine-dpr": 1116,
     "units-m2": 120000,
-    "snap": 20966
+    "snap": 20966,
+    "snap-values": 150,
+    "calc-goldens": 17,
+    "engine-calc": 4000,
+    "units-calc": 50000
   },
   "engineSplit": {
-    "ok": 965,
+    "ok": 1115,
     "unsupported": 1,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "a3bbcf52e7548de7ec4482ec8271ed940913073dba03c1048adf80b3c520d387",
-    "vectors-dpr": "f2887fa4e6eb8f8116b933be47a02d774c537368ef40d9778e632c1e5f74b6b8",
-    "engine-dpr": "76f2a84769b7cfb5bbdb5c61aa61d98f5188c514e9cabb732c64c5b76969cd34",
+    "vectors-m2": "cf95d9309ee341512eddf102ab55eae40deb355520f5168a208cf3e57d4a4319",
+    "vectors-dpr": "9a014d3ff55a6a1fb0117a43e48150c9c351c12e3c56122c952bae0d682461cd",
+    "engine-dpr": "1bf2a876b31dbe163d7e450c95cee27aa19ca57abccc39362525504d5ffc2323",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "4ba68ee11bc2ef290c3e8fcd58fc85a7c543d5387db6aac187fbe55eee3b2521"
+    "snap": "4ba68ee11bc2ef290c3e8fcd58fc85a7c543d5387db6aac187fbe55eee3b2521",
+    "snap-values": "fdeb2cecd1521fdd06c93f68e8a53f0efd51bd155422bff8533ba0224e08b739",
+    "calc-goldens": "7baa7493a35bde492ef150e5118941d10d45ad11d1b852b88e841cd73f777283",
+    "engine-calc": "984f4d269e48870785ed9682d399496fe6a4927301571a4510e601a2c1f8b8c0",
+    "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50"
   },
-  "digest": "a67cebcf148cae1d6ea459e770f774d00949cb3ca44c4f5b5cbbaf675cffd20c"
+  "digest": "4884c5cd5b2fb96609509c143f8351a0d3e851a4a2b25c73d07b8460950b89be"
 }

@@ -28,3 +28,7 @@ export { zoomInput } from './layout.ts';
 export type { Edges } from './box.ts';
 export { resolveBorder } from './box.ts';
 export { platformFontSize, snapEdge, zoomFontSize } from './units.ts';
+export type { DprPlatformRule, DprPlatformRuleNode } from './platform-rules.ts';
+export { dprPlatformRules } from './platform-rules.ts';
+export type { CalcClamp, CalcExpr, CalcInvert, CalcMax, CalcMin, CalcProduct, CalcSum, EmLength, LengthCalc, PixelsAndPercent, ViewportLength } from './input.ts';
+export { applyEnvironment } from './environment.ts';

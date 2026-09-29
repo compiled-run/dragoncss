@@ -670,7 +670,8 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       expect(JSON.stringify(buildReport([again]).fixtures), spec.id).toBe(JSON.stringify(buildReport([main]).fixtures));
     }
     expect(permuted, 'tree fixtures have several sources, modules, components and style uses to reorder').toBeGreaterThanOrEqual(10);
-  });
+    // The loop compiles and runs every fixture again, so its time budget is derived from the fixture count (1 s each, 120 s at least).
+  }, Math.max(120_000, FIXTURES.length * 1_000));
 
   it('determinism negative: swapping two ordered stylesheet uses with conflicting rules changes the digest and the emitted CSS', () => {
     const spec = specFor('tree-ordered-sheets');

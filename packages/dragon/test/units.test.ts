@@ -41,10 +41,17 @@ describe('unit registry conversions', () => {
     expect(lengthToPx(1, 'vw', none)).toBeNull();
   });
   it('viewport, font-metric, line-height and container units and math functions are refused with a reason', () => {
-    for (const u of ['vw', 'vh', 'vmin', 'vmax', 'svh', 'lvh', 'dvh', 'ex', 'ch', 'cap', 'ic', 'lh', 'rlh', 'cqw']) expect(unitRefusal(u), u).not.toBeNull();
+    for (const u of ['svh', 'lvh', 'dvh', 'svw', 'ex', 'ch', 'cap', 'ic', 'lh', 'rlh', 'cqw']) expect(unitRefusal(u), u).not.toBeNull();
     for (const u of ['px', 'cm', 'mm', 'q', 'in', 'pt', 'pc', 'em', 'rem', 'furlong']) expect(unitRefusal(u), u).toBeNull();
-    for (const f of ['calc', 'min', 'max', 'clamp', 'CALC']) expect(mathFunctionRefusal(f), f).not.toBeNull();
+    for (const f of ['round', 'mod', 'rem', 'abs', 'sign', 'env', 'ROUND']) expect(mathFunctionRefusal(f), f).not.toBeNull();
     expect(mathFunctionRefusal('rgb')).toBeNull();
+  });
+  it('V1 of the value model accepts vw, vh, vi, vb, vmin and vmax, and calc(), min(), max() and clamp(); the engine resolves them', () => {
+    for (const u of ['vw', 'vh', 'vi', 'vb', 'vmin', 'vmax']) {
+      expect(unitRefusal(u), u).toBeNull();
+      expect(lengthToPx(1, u, { em: 0, rem: 0 }), u).toBeNull();
+    }
+    for (const f of ['calc', 'min', 'max', 'clamp', 'CALC']) expect(mathFunctionRefusal(f), f).toBeNull();
   });
 });
 
@@ -69,8 +76,14 @@ describe('computed lengths', () => {
     expect(keys).toContain('height:<length-cm>@block/ltr');
   });
   it('a refused unit is DRAGON_UNSUPPORTED_VALUE at its token, with the reason', () => {
-    const c = project().compile(inputFor(`${FONT} .a { width: 50vw; }`, (r) => [div(r, 'a', ['a'])]));
+    const c = project().compile(inputFor(`${FONT} .a { width: 50svw; }`, (r) => [div(r, 'a', ['a'])]));
     const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
-    expect(d?.message).toMatch(/^width: 50vw is unsupported: viewport units resolve against the device viewport at run time/);
+    expect(d?.message).toMatch(/^width: 50svw is unsupported: small, large and dynamic viewport units need the viewport inputs of the value-model package V2/);
+  });
+  it('a viewport unit and a calculation reach the layout projection as engine calculations, with em as a leaf of the element font size', () => {
+    const tree = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'a', ['a'])];
+    const a = style('.a { width: 50vw; height: calc(10px + 2em); }', tree, 'a');
+    expect(a.style.width).toEqual({ kind: 'calc', expr: { kind: 'viewport', value: 50, axis: 'width' }, range: 'non-negative' });
+    expect(a.style.height).toEqual({ kind: 'calc', expr: { kind: 'sum', terms: [{ kind: 'px', value: 10 }, { kind: 'em', value: 2, fontSize: { kind: 'px', value: 10 } }] }, range: 'non-negative' });
   });
 });

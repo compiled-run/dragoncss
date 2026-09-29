@@ -17,6 +17,10 @@ export type CompilerFaults = {
   readonly isSpecificityFirstArgument: boolean;
   /** Spec-reading fault of the Chrome deviation empty-counts-whitespace: :empty ignores whitespace-only text (Selectors-4 §14.2). */
   readonly emptyIgnoresWhitespace: boolean;
+  /** The ios lowering reverses the terms of every calculation sum, so float sums accumulate in the wrong order (css/math.ts). */
+  readonly sumOrderSwapped: boolean;
+  /** The ios lowering drops explicit 0% terms of calculations, so a calculation with only a 0% percentage loses its percentage. */
+  readonly dropExplicitZeroPercent: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, sumOrderSwapped: false, dropExplicitZeroPercent: false };

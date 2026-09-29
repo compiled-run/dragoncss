@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 21760
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 21760
+  },
+  {
+   "id": "def",
+   "parent": "body",
+   "x": 12800,
+   "y": 0,
+   "width": 38400,
+   "height": 19200
+  },
+  {
+   "id": "a",
+   "parent": "def",
+   "x": 30336,
+   "y": 2560,
+   "width": 6400,
+   "height": 1280
+  },
+  {
+   "id": "b",
+   "parent": "def",
+   "x": 29440,
+   "y": 576,
+   "width": 6400,
+   "height": 1280
+  },
+  {
+   "id": "auto",
+   "parent": "body",
+   "x": 0,
+   "y": 19200,
+   "width": 51200,
+   "height": 2560
+  },
+  {
+   "id": "c",
+   "parent": "auto",
+   "x": 55168,
+   "y": 0,
+   "width": 6400,
+   "height": 1280
+  },
+  {
+   "id": "d",
+   "parent": "auto",
+   "x": 40960,
+   "y": 1280,
+   "width": 6400,
+   "height": 1280
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 340,
+   "width": 800,
+   "height": 340
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 340,
+   "width": 800,
+   "height": 340
+  },
+  {
+   "id": "def",
+   "left": 200,
+   "top": 0,
+   "right": 800,
+   "bottom": 300,
+   "width": 600,
+   "height": 300
+  },
+  {
+   "id": "a",
+   "left": 674,
+   "top": 40,
+   "right": 774,
+   "bottom": 60,
+   "width": 100,
+   "height": 20
+  },
+  {
+   "id": "b",
+   "left": 660,
+   "top": 9,
+   "right": 760,
+   "bottom": 29,
+   "width": 100,
+   "height": 20
+  },
+  {
+   "id": "auto",
+   "left": 0,
+   "top": 300,
+   "right": 800,
+   "bottom": 340,
+   "width": 800,
+   "height": 40
+  },
+  {
+   "id": "c",
+   "left": 862,
+   "top": 300,
+   "right": 962,
+   "bottom": 320,
+   "width": 100,
+   "height": 20
+  },
+  {
+   "id": "d",
+   "left": 640,
+   "top": 320,
+   "right": 740,
+   "bottom": 340,
+   "width": 100,
+   "height": 20
+  }
+ ]
+}

@@ -1,0 +1,44 @@
+// Fixture group values: V1 of the engine value model (notes/T006-value-model-spec.md §3-§4). css-values-4 §10 calc(), min(), max()
+// and clamp() and §6.1.2 viewport units, resolved by the engine's environment pass and evaluated at layout as Blink does, in both
+// directions; each planted value-model fault fails a named fixture here. The rejects name what V1 refuses.
+import type { FixtureSpec } from '../fixtures.ts';
+import { both, reject } from './define.ts';
+
+export const VALUES: readonly FixtureSpec[] = [
+  both('values-calc-width-px-percent'),
+  both('values-calc-width-vw-em'),
+  both('values-viewport-units'),
+  both('values-calc-percent-order'),
+  both('values-calc-sum-order'),
+  both('values-calc-nonneg-clamp'),
+  both('values-calc-margin-negative'),
+  both('values-calc-padding-percent'),
+  both('values-calc-inset-abspos'),
+  both('values-calc-relative-offsets'),
+  both('values-calc-flex-basis-definite'),
+  both('values-calc-height-definite'),
+  both('values-calc-height-indefinite'),
+  both('values-calc-zero-percent-height'),
+  both('values-calc-min-max-height-indefinite'),
+  both('values-calc-divide'),
+  both('values-calc-multiply'),
+  both('values-calc-nested-min-max'),
+  both('values-clamp-min-wins'),
+  both('values-min-max-many-args'),
+  both('values-calc-intrinsic'),
+  both('values-calc-border-width-vw'),
+  both('values-calc-gap-px'),
+  both('values-calc-em-fractional'),
+  both('values-calc-flex-factors'),
+  reject('values-reject-env', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + env(safe-area-inset-top))', 'width: calc(10px + env(safe-area-inset-top)) /* env() reads the safe-area insets'),
+  reject('values-reject-sized-viewport', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 5svh)', 'height: calc(10px + 5svh) /* svh is a small, large or dynamic viewport unit'),
+  reject('values-reject-font-metric', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1px + 3ex)', 'height: calc(1px + 3ex) /* ex is measured from the primary font'),
+  reject('values-reject-line-height-unit', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1px + 2lh)', 'height: calc(1px + 2lh) /* lh is the used line height'),
+  reject('values-reject-typed-arithmetic', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px * 2px / 1px)', 'width: calc(10px*2px/1px) /* it multiplies two lengths, which is typed arithmetic'),
+  reject('values-reject-number-length', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 2)', 'width: calc(10px + 2) /* it adds a number and a length'),
+  reject('values-reject-mod', 'DRAGON_UNSUPPORTED_VALUE', 'mod(10px, 3px)', 'width: mod(10px,3px) is unsupported: mod() is a css-values-4 stepped-value function'),
+  reject('values-reject-percent-gap', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 5%)', 'row-gap: calc(10px + 5%) /* a percentage in this property needs percentage gaps'),
+  reject('values-reject-calc-line-height', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1 + 1)', 'line-height: calc(1 + 1) /* a calculation in line-height reaches the font and line metrics'),
+  reject('values-reject-calc-font-size', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 1px)', 'font-size: calc(10px + 1px) /* a calculation in font-size reaches the font and line metrics'),
+  reject('values-reject-border-shorthand', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1px + 0.5vw)', 'border-left: calc(1px + 0.5vw) is unsupported: a calculation in the border-left shorthand is not supported'),
+];
