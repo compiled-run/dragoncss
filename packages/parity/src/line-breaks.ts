@@ -281,7 +281,8 @@ export function compareVectorWithChrome(v: BreakVector, chrome: ChromeBreaks, en
   for (const c of chrome.texts) {
     if (inVector.has(c.id)) continue;
     const blank = new Set(c.blank);
-    if (c.units.some((line, i) => line >= 0 && !blank.has(i))) {
+    // The chromeLines rule: only a white-space unit with a zero-width rect is not shown; U+200B is shown.
+    if (c.units.some((line, i) => line >= 0 && !(blank.has(i) && WHITE.test(c.data[i] as string)))) {
       compared++;
       problems.push({ kind: BREAK_MISMATCH, text: c.id, detail: `${c.id}: Chrome shows text ${JSON.stringify(c.data)} that the break vector does not have` });
     }

@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { repoPath } from '../src/paths.ts';
 import type { DeviceRecord, DeviceSpec } from '../src/device-run.ts';
-import { avdKeys, avdScale, DEVICE_MATRIX, matrixProblems, PLANT_DEVICES, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
+import { avdKeys, avdScale, DEVICE_MATRIX, matrixProblems, spawnDetached, PLANT_DEVICES, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
 import { layoutCaseIds } from '../src/targets.ts';
 import { deviceDprs } from '../src/targets.ts';
 
@@ -24,6 +24,16 @@ describe('device matrix', () => {
     expect(matrixProblems(scaleOf, dup)).toContainEqual('android DPR 3: 2 devices (dragon-320, dragon-480); the matrix needs exactly one');
     const odd = DEVICE_MATRIX.map((d) => (d.name === 'dragon-smoke' ? { ...d, density: 400 } : d));
     expect(matrixProblems(scaleOf, odd)).toContainEqual('dragon-smoke: scale 2.5 is not one of the android device DPRs (2, 3, 2.625)');
+  });
+  it('the problems are those of the selected targets only: a bad android entry does not fail an ios-only check', () => {
+    const odd = DEVICE_MATRIX.map((d) => (d.name === 'dragon-smoke' ? { ...d, density: 400 } : d));
+    expect(matrixProblems(scaleOf, odd, ['ios'])).toEqual([]);
+    expect(matrixProblems(scaleOf, odd, ['android'])).toContainEqual('dragon-smoke: scale 2.5 is not one of the android device DPRs (2, 3, 2.625)');
+  });
+  it('a missing emulator binary is a thrown, catchable error, not an unhandled spawn error', async () => {
+    const p = spawnDetached('/nonexistent/dragon-emulator', []);
+    await new Promise((r) => setTimeout(r, 200));
+    expect(() => p.check()).toThrow(/\/nonexistent\/dragon-emulator could not be started: .*ENOENT/);
   });
   it('AVDs are addressed by their own console ports; the AVD keys pin density, panel size and the android-36 image', () => {
     const avds = DEVICE_MATRIX.filter((d) => d.target === 'android');

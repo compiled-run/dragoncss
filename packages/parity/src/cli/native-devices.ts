@@ -29,7 +29,7 @@ const targets: NativeTarget[] = (['ios', 'android'] as const).filter((t) => only
 const log = (s: string): void => console.log(`native:devices: ${s}`);
 
 const scaleOf = (d: DeviceSpec): number => (d.target === 'ios' ? iosProfileScale(d.name) : avdScale(d));
-const matrix = matrixProblems(scaleOf);
+const matrix = matrixProblems(scaleOf, DEVICE_MATRIX, targets);
 for (const p of matrix) console.log(`native:devices: MATRIX ${p}`);
 let failures = matrix.length;
 const cases = nativeCases();
