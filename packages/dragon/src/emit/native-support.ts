@@ -310,6 +310,23 @@ public let dragonGlyphPlantDevicePx: Double = 0
 /// Device px added to every glyph baseline (down); 0 except in the glyph-offset-y-1 raster plant build (T093).
 public let dragonGlyphPlantYDevicePx: Double = 0
 
+/// The layer a text view's glyphs are drawn in. A UIView's own backing store holds only its bounds, so ink outside the node
+/// frame (a rounded ascent, overflowing text) would be lost; this layer's frame is the bounds grown to the lines' ink.
+public final class DragonGlyphLayer: CALayer {
+  weak var owner: DragonTextView?
+  public override init() {
+    super.init()
+    needsDisplayOnBoundsChange = true
+    actions = ["bounds": NSNull(), "position": NSNull(), "frame": NSNull(), "contents": NSNull()]
+  }
+  public override init(layer: Any) { super.init(layer: layer) }
+  required init?(coder: NSCoder) { fatalError("DragonGlyphLayer is built in code") }
+  public override func draw(in ctx: CGContext) {
+    ctx.translateBy(x: -frame.minX, y: -frame.minY)
+    owner?.dragonDrawGlyphs(in: ctx)
+  }
+}
+
 /// A text node: Dragon owns the line breaks and places every glyph at the engine's advances (PM ruling, option ii); Core Text
 /// only rasterises (CTFontDrawGlyphs). The text is exposed to accessibility through accessibilityLabel.
 public final class DragonTextView: UIView, DragonNodeView {
@@ -324,6 +341,7 @@ public final class DragonTextView: UIView, DragonNodeView {
   public private(set) var dragonFont: UIFont? = nil
   public private(set) var specs: [DragonLineSpec] = []
   private var scale: Double = 1
+  private let glyphLayer = DragonGlyphLayer()
   public init(dragonId: String, kind: String, parent: String?) {
     self.dragonId = dragonId
     self.dragonKind = kind
@@ -332,9 +350,11 @@ public final class DragonTextView: UIView, DragonNodeView {
     isOpaque = false
     backgroundColor = nil
     clipsToBounds = false
-    contentMode = .redraw
     isAccessibilityElement = true
     accessibilityTraits = .staticText
+    glyphLayer.owner = self
+    glyphLayer.isOpaque = false
+    layer.addSublayer(glyphLayer)
   }
   required init?(coder: NSCoder) { fatalError("DragonTextView is built in code") }
 
@@ -353,11 +373,41 @@ public final class DragonTextView: UIView, DragonNodeView {
     dragonFont = font
     specs = lines
     self.scale = scale
-    setNeedsDisplay()
+    glyphLayer.contentsScale = CGFloat(scale)
+    setNeedsLayout()
+    glyphLayer.setNeedsDisplay()
   }
 
-  public override func draw(_ rect: CGRect) {
-    guard let ctx = UIGraphicsGetCurrentContext(), let font = dragonFont, let color = dragonTextColor else { return }
+  public override func layoutSubviews() {
+    super.layoutSubviews()
+    glyphLayer.frame = dragonInkFrame()
+    glyphLayer.setNeedsDisplay()
+  }
+
+  /// The bounds grown to every line's ink (the font's bounding box at each glyph origin) plus 2 device px of antialiasing, with
+  /// edges on whole device px so the glyph origins keep their fractional positions.
+  func dragonInkFrame() -> CGRect {
+    var r = bounds
+    if let font = dragonFont {
+      let box = CTFontGetBoundingBox(font as CTFont)
+      for l in specs where !l.glyphs.isEmpty {
+        guard let lo = l.xs.min(), let hi = l.xs.max() else { continue }
+        let y = CGFloat((l.baseline + dragonGlyphPlantYDevicePx) / scale)
+        let x0 = CGFloat((lo + dragonGlyphPlantDevicePx) / scale) + box.minX
+        let x1 = CGFloat((hi + dragonGlyphPlantDevicePx) / scale) + box.maxX
+        r = r.union(CGRect(x: x0, y: y - box.maxY, width: x1 - x0, height: box.height))
+      }
+    }
+    let s = CGFloat(scale)
+    let pad: CGFloat = 2
+    let left = (floor(r.minX * s) - pad) / s
+    let top = (floor(r.minY * s) - pad) / s
+    return CGRect(x: left, y: top, width: (ceil(r.maxX * s) + pad) / s - left, height: (ceil(r.maxY * s) + pad) / s - top)
+  }
+
+  /// Draws the lines in view coordinates (the glyph layer translates its context to them).
+  func dragonDrawGlyphs(in ctx: CGContext) {
+    guard let font = dragonFont, let color = dragonTextColor else { return }
     let ct = font as CTFont
     // Glyphs at the engine's fractional x: Core Graphics otherwise floors each glyph origin to a whole device px (T093 addendum F3).
     ctx.setAllowsFontSubpixelPositioning(true)
