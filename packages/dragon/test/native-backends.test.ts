@@ -96,7 +96,7 @@ function trapRun(lang: 'swift' | 'kotlin', dir: string): { tool: Tool; outcomes:
   if (lang === 'swift') {
     writeFileSync(join(dir, 'Checked.swift'), checkedConversionSource('uikit'));
     writeFileSync(join(dir, 'main.swift'), 'import Foundation\nlet v = Double(CommandLine.arguments[1])!\nprint(dragonCheckedInt(v, "test"))\n');
-    const c = spawnSync('xcrun', ['swiftc', '-O', '-o', join(dir, 'checked'), join(dir, 'Checked.swift'), join(dir, 'main.swift')], { encoding: 'utf8' });
+    const c = spawnSync('swiftc', ['-O', '-o', join(dir, 'checked'), join(dir, 'Checked.swift'), join(dir, 'main.swift')], { encoding: 'utf8' });
     if (c.status !== 0) return { tool: { ok: false, why: `swiftc: ${c.stderr ?? c.error}` }, outcomes: [] };
     return { tool: { ok: true, why: '' }, outcomes: args.map((arg) => { const r = spawnSync(join(dir, 'checked'), [arg], { encoding: 'utf8' }); return { arg, status: r.status ?? -1, out: `${r.stdout}${r.stderr}` }; }) };
   }
