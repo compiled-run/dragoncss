@@ -74,6 +74,7 @@ docs/research/text-spike/out/**
 docs/research/text-spike/lato/out/**
 docs/research/text-spike/metric-rounding/captures/**
 docs/research/inline-spike/probe/**
+docs/research/skia-aa-oracle/**
 
 # === Dragon: not code ===
 design/**
