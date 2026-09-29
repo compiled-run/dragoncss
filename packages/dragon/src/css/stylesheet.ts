@@ -18,7 +18,7 @@ import type { CssValue } from './values.ts';
 import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, tokenValue, toValue } from './values.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 import type { CustomValue, PendingSubstitution, VarPart } from './variables.ts';
-import { hasEscape, hasVar, parseVarParts, referencedNames } from './variables.ts';
+import { hasEscape, hasVar, MAX_NESTING, nestingDepth, parseVarParts, referencedNames, unescapeName } from './variables.ts';
 
 export type { CssValue } from './values.ts';
 export { featureOf } from './values.ts';
@@ -187,7 +187,12 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   }
   // css-variables-1 §3.1: a value holding var() is valid at parse time; it is parsed against the grammar after substitution.
   const source = sheetText.slice(valueSpan.start - base.start, valueSpan.end - base.start);
-  const mentionsVar = source.toLowerCase().includes('var(');
+  // An escape may spell var( or url( (css-syntax-3 §4.3.7), so a value with one is split too.
+  const mentionsVar = /var\(|\\/i.test(source);
+  if (mentionsVar && nestingDepth(source) > MAX_NESTING) {
+    diagnostics.push(tooDeep(property, valueSpan));
+    return null;
+  }
   const parts = mentionsVar ? parseVarParts(source) : null;
   if (mentionsVar && (parts === null || referencedNames(parts).some(hasEscape))) {
     diagnostics.push(invalidVar(property, text, valueSpan, parts));
@@ -246,6 +251,12 @@ function invalidVar(property: string, text: string, valueSpan: Span, parts: read
     });
 }
 
+const tooDeep = (property: string, valueSpan: Span): Diagnostic => diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+  origin: authored(valueSpan),
+  message: `the value of ${property} nests brackets more than ${MAX_NESTING} deep, which is not supported`,
+  manual: 'Nest var() fallbacks and brackets less deeply.',
+});
+
 /** css-variables-1 §2: a custom property takes any value; a lone CSS-wide keyword is that keyword, not a token sequence. */
 function parseCustomDeclaration(name: string, valueNode: CssNode, span: Span, valueSpan: Span, order: number, important: { important?: true }, diagnostics: Diagnostic[]): Declaration | null {
   // css-variables-1 §2: "--" alone is reserved, so it is not a custom property name.
@@ -260,8 +271,12 @@ function parseCustomDeclaration(name: string, valueNode: CssNode, span: Span, va
   // css-syntax-3 §5.4.6: leading and trailing white space is not part of the value.
   const text = String(valueNode.type === 'Raw' ? valueNode['value'] : generate(valueNode)).replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '');
   // Comments are not tokens, so "inherit /**/" is still the keyword.
-  const bare = text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '').toLowerCase();
+  const bare = unescapeName(text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '')).toLowerCase();
   const wide = CSS_WIDE.has(bare) ? bare : null;
+  if (nestingDepth(text) > MAX_NESTING) {
+    diagnostics.push(tooDeep(name, valueSpan));
+    return null;
+  }
   const parts = wide === null ? parseVarParts(text) : [];
   if (parts === null || referencedNames(parts).some(hasEscape)) {
     diagnostics.push(invalidVar(name, text, valueSpan, parts));
@@ -317,6 +332,8 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
  * computed-value time); the other failures are values the grammar accepts and Dragon cannot express.
  */
 export function parseSubstitutedValue(property: Longhand | Shorthand, text: string, base: Span): ParsedValue {
+  // Substitution can nest brackets past MAX_NESTING, which the css-tree parser would recurse through.
+  if (nestingDepth(text) > MAX_NESTING) return { kind: 'refused', diagnostic: tooDeep(property, base) };
   let failed = false;
   const node = parse(text, { context: 'value', positions: true, onParseError: () => { failed = true; } });
   if (failed) return { kind: 'invalid' };
