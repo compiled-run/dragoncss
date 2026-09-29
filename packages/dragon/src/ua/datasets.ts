@@ -63,3 +63,41 @@ export class ReferencePlatformUnavailable extends Error {
     this.platform = platform;
   }
 }
+
+// INL-U: the phrasing keys (br, strong, b, em, i, code, small, sub, sup, label) and their font sizes, in tables of their own.
+export type { PhrasingKey } from './chrome-145.darwin-arm64.generated.ts';
+
+type PhrasingDirs = { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } };
+
+/** The phrasing-key tables of one dataset; every table is keyed by PhrasingKey. */
+export type PhrasingUaData = {
+  readonly platform: string;
+  readonly colorScheme: string;
+  readonly phrasingKeySpecs: { readonly [K in PhrasingKey]: { readonly tag: string; readonly attributes: { readonly [name: string]: string } } };
+  readonly phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [property: string]: string } };
+  readonly phrasingKeyLonghands: { readonly [K in PhrasingKey]: readonly string[] };
+  /** A captured value, "<n>em", or a relative font-size keyword (smaller, larger). */
+  readonly phrasingKeyDeclared: { readonly [K in PhrasingKey]: PhrasingDirs };
+  readonly phrasingKeyContexts: { readonly [K in PhrasingKey]: readonly string[] };
+  readonly phrasingKeyTextFonts: { readonly [K in PhrasingKey]: { readonly [property: string]: string } };
+  readonly phrasingKeyUnmodelled: { readonly [K in PhrasingKey]: PhrasingDirs };
+  readonly phrasingKeyForced: { readonly [K in PhrasingKey]: PhrasingDirs };
+  /** Computed font-size per key, parent family and parent font-size. */
+  readonly elementKeyFontSizes: { readonly [K in PhrasingKey]: { readonly [family: string]: { readonly [parentFontSize: string]: string } } };
+};
+type PhrasingKey = import('./chrome-145.darwin-arm64.generated.ts').PhrasingKey;
+
+const PHRASING_DATA: ReadonlyMap<string, { readonly light: PhrasingUaData; readonly dark: PhrasingUaData }> = new Map([
+  [darwinArm64.platform, { light: darwinArm64, dark: darwinArm64Dark }],
+]);
+
+export type PhrasingUaDataChoice =
+  | { readonly kind: 'ok'; readonly data: PhrasingUaData }
+  | { readonly kind: 'refused'; readonly code: 'no-ua-dataset'; readonly platform: string; readonly reason: string };
+
+/** The phrasing-key tables for a platform and color scheme; refused like uaDatasetFor where none was captured. */
+export function phrasingDataFor(platform: string, scheme: 'light' | 'dark' = 'light'): PhrasingUaDataChoice {
+  const pair = PHRASING_DATA.get(platform);
+  if (pair === undefined) return { kind: 'refused', code: 'no-ua-dataset', platform, reason: `no Chrome UA dataset with phrasing keys was captured on ${platform}; run pnpm run ua:capture there` };
+  return { kind: 'ok', data: pair[scheme] };
+}
