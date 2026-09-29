@@ -4,9 +4,9 @@
 // (the union of the Ahem glyph rects of each line, per block container), and computed float, clear and display. Each case also
 // lists the environments whose line-relative geometry differs from horizontal-tb (same DPR and direction) or from DPR 1.
 // Run with: node --conditions=dragon-internal scripts/capture-float-probe.ts [--check]
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { CHROME_VERSION, PLAYWRIGHT_VERSION, launchChrome, openPage } from '../packages/parity/src/chrome.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
+import { allNumbers, caseProblems, formatJson, parseProbeArgs, writeOrCheck } from './probe-common.ts';
 
 type Case = {
   readonly id: string;
@@ -265,7 +265,7 @@ const family6: Case[] = [
   { id: 's-not-float', note: 'shape-outside on a non-float has no effect', width: 150, html: blk('f', 30, 'shape-outside:circle(50%)') + SHAPE_TEXT },
 ];
 
-const FAMILIES: readonly Family[] = [
+export const FAMILIES: readonly Family[] = [
   { id: 'family1-placement', title: 'Placement and the top-edge rule', computed: COMPUTED, cases: family1 },
   { id: 'family2-clearance', title: 'Clearance', computed: COMPUTED, cases: family2 },
   { id: 'family3-bfc', title: 'BFC roots beside floats', computed: COMPUTED, cases: family3 },
@@ -388,8 +388,11 @@ async function captureFamily(browsers: Map<number, Awaited<ReturnType<typeof lau
       for (const mode of MODES) {
         for (const dir of DIRS) {
           const page = await openPage(browsers.get(dpr)!, docFor(c, mode), { viewport: { width: 600, height: 600 }, devicePixelRatio: dpr, direction: dir, rootFont: 'ahem' });
-          out.push([dir, mode, `dpr${dpr}-${dir}-${mode}`, await page.evaluate(measure, [...fam.computed])]);
-          await page.context().close();
+          try {
+            out.push([dir, mode, `dpr${dpr}-${dir}-${mode}`, await page.evaluate(measure, [...fam.computed])]);
+          } finally {
+            await page.context().close();
+          }
         }
       }
       return out;
@@ -417,33 +420,24 @@ async function captureFamily(browsers: Map<number, Awaited<ReturnType<typeof lau
   };
 }
 
-/** JSON with one key per line but every array of numbers kept on one line. */
-function format(v: unknown): string {
-  return JSON.stringify(v, null, 1).replace(/\[\s*(-?[\d.e+-]+(?:,\s*-?[\d.e+-]+)*)\s*\]/g, (_, body: string) => `[${body.replace(/\s+/g, '')}]`);
-}
-
-const check = process.argv.includes('--check');
-const browsers = new Map<number, Awaited<ReturnType<typeof launchChrome>>>();
-let failed = false;
-try {
-  for (const dpr of DPRS) browsers.set(dpr, await launchChrome(dpr));
-  if (!check) mkdirSync(repoPath(OUT_DIR), { recursive: true });
-  for (const fam of FAMILIES) {
-    const text = `${format(await captureFamily(browsers, fam))}\n`;
-    const file = repoPath(`${OUT_DIR}/${fam.id}.json`);
-    if (check) {
-      const same = existsSync(file) && readFileSync(file, 'utf8') === text;
-      console.log(`${same ? 'same' : 'DIFFERS'} ${OUT_DIR}/${fam.id}.json (${fam.cases.length} cases)`);
-      if (!same) failed = true;
-    } else {
-      writeFileSync(file, text);
-      console.log(`wrote ${OUT_DIR}/${fam.id}.json (${fam.cases.length} cases x ${DPRS.length * DIRS.length * MODES.length} environments)`);
+if (import.meta.main) {
+  const args = parseProbeArgs(process.argv.slice(2), ['--check']);
+  const problems = caseProblems(FAMILIES);
+  if (problems.length > 0) throw new Error(`capture-float-probe: ${problems.join('; ')}`);
+  const check = args.flags.has('--check');
+  const browsers = new Map<number, Awaited<ReturnType<typeof launchChrome>>>();
+  const outputs: [string, string, string][] = [];
+  try {
+    for (const dpr of DPRS) browsers.set(dpr, await launchChrome(dpr));
+    for (const fam of FAMILIES) {
+      const text = `${formatJson(await captureFamily(browsers, fam), allNumbers)}\n`;
+      outputs.push([repoPath(`${OUT_DIR}/${fam.id}.json`), text, `${OUT_DIR}/${fam.id}.json (${fam.cases.length} cases x ${DPRS.length * DIRS.length * MODES.length} environments)`]);
     }
+  } finally {
+    for (const b of browsers.values()) await b.close();
   }
-} finally {
-  for (const b of browsers.values()) await b.close();
-}
-if (failed) {
-  console.error('capture-float-probe --check: the committed corpus differs from a fresh capture');
-  process.exit(1);
+  if (!writeOrCheck(outputs, check)) {
+    console.error('capture-float-probe --check: the committed corpus differs from a fresh capture');
+    process.exit(1);
+  }
 }

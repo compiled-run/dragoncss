@@ -4,10 +4,11 @@
 // boxes, computed and specified writing-mode styles, each text node's Range client rects, and on request per-character rects with
 // the static position of an out-of-flow marker before each character (the line's block-start edge), and screenshot glyph grids.
 // Run with: node --conditions=dragon-internal scripts/capture-writing-mode-probe.ts [--check]
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { inflateSync } from 'node:zlib';
 import { CHROME_VERSION, PLAYWRIGHT_VERSION, launchChrome, openPage } from '../packages/parity/src/chrome.ts';
+import type { RgbaImage } from '../packages/parity/src/native-compare.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
+import { decodePng } from '../packages/parity/src/pixel-reference.ts';
+import { allPrimitives, caseProblems, formatJson, parseProbeArgs, writeOrCheck } from './probe-common.ts';
 
 type Browser = Awaited<ReturnType<typeof launchChrome>>;
 type Page = Awaited<ReturnType<typeof openPage>>;
@@ -221,7 +222,7 @@ const family8: Case[] = [
   { id: 'c8-table-row-group', note: 'writing-mode on a table row is replaced by the parent\'s (StyleAdjuster)', modes: ['horizontal-tb', 'vertical-rl'], style: 'width:200px;height:100px', html: `<table data-p="tb" style="border-spacing:0"><tbody data-p="tbody" style="writing-mode:vertical-lr"><tr data-p="tr" style="writing-mode:vertical-lr"><td data-p="td">ab</td></tr></tbody></table>` },
 ];
 
-const FAMILIES: readonly Family[] = [
+export const FAMILIES: readonly Family[] = [
   { id: 'family1-block-flow', title: 'Block flow per mode', cases: family1 },
   { id: 'family2-orthogonal', title: 'Orthogonal flows and the fallback inline size', cases: family2 },
   { id: 'family3-flex', title: 'Flex', cases: family3 },
@@ -315,51 +316,17 @@ function measure(arg: { computed: readonly string[]; specified: readonly string[
   return { container: rect(origin), leaves, chars, elements, errors };
 }
 
-/** Decodes an 8-bit non-interlaced RGB or RGBA PNG (Chrome's screenshot format). */
-function decodePng(buf: Buffer): { width: number; height: number; channels: number; data: Uint8Array } {
-  let p = 8;
-  let width = 0, height = 0, channels = 0;
-  const idat: Buffer[] = [];
-  while (p < buf.length) {
-    const len = buf.readUInt32BE(p);
-    const type = buf.toString('ascii', p + 4, p + 8);
-    const body = buf.subarray(p + 8, p + 8 + len);
-    if (type === 'IHDR') {
-      width = body.readUInt32BE(0);
-      height = body.readUInt32BE(4);
-      if (body[8] !== 8 || body[12] !== 0) throw new Error('PNG: expected 8-bit non-interlaced');
-      channels = body[9] === 6 ? 4 : body[9] === 2 ? 3 : 0;
-      if (channels === 0) throw new Error(`PNG: color type ${body[9]}`);
-    } else if (type === 'IDAT') idat.push(body);
-    p += 12 + len;
-  }
-  const raw = inflateSync(Buffer.concat(idat));
-  const stride = width * channels;
-  const out = new Uint8Array(stride * height);
-  for (let y = 0; y < height; y++) {
-    const f = raw[y * (stride + 1)]!;
-    for (let x = 0; x < stride; x++) {
-      const v = raw[y * (stride + 1) + 1 + x]!;
-      const a = x >= channels ? out[y * stride + x - channels]! : 0;
-      const b = y > 0 ? out[(y - 1) * stride + x]! : 0;
-      const cc = x >= channels && y > 0 ? out[(y - 1) * stride + x - channels]! : 0;
-      let pred = 0;
-      if (f === 1) pred = a;
-      else if (f === 2) pred = b;
-      else if (f === 3) pred = (a + b) >> 1;
-      else if (f === 4) {
-        const q = a + b - cc, pa = Math.abs(q - a), pb = Math.abs(q - b), pc = Math.abs(q - cc);
-        pred = pa <= pb && pa <= pc ? a : pb <= pc ? b : cc;
-      }
-      out[y * stride + x] = (v + pred) & 255;
-    }
-  }
-  return { width, height, channels, data: out };
+/** Whether the device pixel (x, y) is dark (R + G + B below 384). A pixel outside the screenshot throws rather than reading as light. */
+export function darkAt(img: RgbaImage, x: number, y: number): boolean {
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= img.width || y >= img.height) throw new Error(`glyph sample (${x}, ${y}) is outside the ${img.width}x${img.height} screenshot`);
+  const k = (y * img.width + x) * 4;
+  return img.data[k]! + img.data[k + 1]! + img.data[k + 2]! < 384;
 }
 
 /** Rows top to bottom of '#' (dark) and '.' (light) over the first character rect of each glyph label's text. */
 async function glyphGrids(page: Page, c: Case, m: Measured, dpr: number): Promise<Record<string, { rect: Rect; rows: string[] }>> {
   const bb = await page.locator('#c').boundingBox();
+  if (!bb) throw new Error(`${c.id}: #c has no bounding box`);
   const png = decodePng(await page.screenshot({ fullPage: true }));
   const out: Record<string, { rect: Rect; rows: string[] }> = {};
   for (const g of c.glyphs ?? []) {
@@ -370,10 +337,9 @@ async function glyphGrids(page: Page, c: Case, m: Measured, dpr: number): Promis
     for (let j = 0; j < g.n; j++) {
       let row = '';
       for (let i = 0; i < g.n; i++) {
-        const x = Math.floor((bb!.x + r[0] + ((i + 0.5) * r[2]) / g.n) * dpr);
-        const y = Math.floor((bb!.y + r[1] + ((j + 0.5) * r[3]) / g.n) * dpr);
-        const k = (y * png.width + x) * png.channels;
-        row += png.data[k]! + png.data[k + 1]! + png.data[k + 2]! < 384 ? '#' : '.';
+        const x = Math.floor((bb.x + r[0] + ((i + 0.5) * r[2]) / g.n) * dpr);
+        const y = Math.floor((bb.y + r[1] + ((j + 0.5) * r[3]) / g.n) * dpr);
+        row += darkAt(png, x, y) ? '#' : '.';
       }
       rows.push(row);
     }
@@ -414,7 +380,9 @@ async function captureFamily(browsers: Map<number, Browser>, fam: Family, modes:
   const cases: Record<string, unknown> = {};
   for (const c of fam.cases) {
     const results: Record<string, Record<string, Record<string, unknown>>> = {};
-    for (const mode of (c.modes ?? modes).filter((x) => modes.includes(x))) {
+    const caseModes = (c.modes ?? modes).filter((x) => modes.includes(x));
+    if (caseModes.length === 0) throw new Error(`${c.id}: Chrome accepts none of the case's writing modes`);
+    for (const mode of caseModes) {
       results[mode] = {};
       for (const dir of DIRS) {
         const byDpr = await Promise.all(DPRS.map((dpr) => captureOne(browsers.get(dpr)!, c, mode, dir, dpr)));
@@ -445,44 +413,35 @@ async function supportTable(browser: Browser): Promise<Record<string, boolean>> 
     ...ALL_MODES.map((m): [string, string] => ['-webkit-writing-mode', m]),
     ['text-orientation', 'sideways'], ['text-orientation', 'sideways-right'], ['text-combine-upright', 'all'], ['text-combine-upright', 'digits 2'],
   ];
-  const out = await page.evaluate((ps) => Object.fromEntries(ps.map(([p, v]) => [`${p}: ${v}`, CSS.supports(p, v)])), pairs);
-  await page.context().close();
-  return out;
-}
-
-/** JSON with one key per line, but arrays of numbers and strings kept on one line. */
-const stringify = (v: unknown): string =>
-  `${JSON.stringify(v, null, 1).replace(/\[\s+([^[\]{}]*?)\s+\]/g, (_, inner: string) => `[${inner.split(/,\s+/).join(',')}]`)}\n`;
-
-const check = process.argv.includes('--check');
-const browsers = new Map<number, Browser>();
-let failed = false;
-try {
-  for (const dpr of DPRS) browsers.set(dpr, await launchChrome(dpr));
-  const supports = await supportTable(browsers.get(1)!);
-  const modes = ALL_MODES.filter((m) => supports[`writing-mode: ${m}`]);
-  const dropped = ALL_MODES.filter((m) => !modes.includes(m));
-  if (dropped.length > 0) console.log(`Chrome ${CHROME_VERSION} rejects ${dropped.join(', ')}: those modes are dropped`);
-  if (!check) mkdirSync(repoPath(OUT_DIR), { recursive: true });
-  const outputs: [string, string, number][] = [
-    ['support.json', stringify({ chrome: CHROME_VERSION, playwright: PLAYWRIGHT_VERSION, cssSupports: supports, modes, dropped }), 0],
-  ];
-  for (const fam of FAMILIES) outputs.push([`${fam.id}.json`, stringify(await captureFamily(browsers, fam, modes)), fam.cases.length]);
-  for (const [name, text, n] of outputs) {
-    const file = repoPath(`${OUT_DIR}/${name}`);
-    if (check) {
-      const same = existsSync(file) && readFileSync(file, 'utf8') === text;
-      console.log(`${same ? 'same' : 'DIFFERS'} ${OUT_DIR}/${name} (${n} cases)`);
-      if (!same) failed = true;
-    } else {
-      writeFileSync(file, text);
-      console.log(`wrote ${OUT_DIR}/${name} (${n} cases)`);
-    }
+  try {
+    return await page.evaluate((ps) => Object.fromEntries(ps.map(([p, v]) => [`${p}: ${v}`, CSS.supports(p, v)])), pairs);
+  } finally {
+    await page.context().close();
   }
-} finally {
-  for (const b of browsers.values()) await b.close();
 }
-if (failed) {
-  console.error('capture-writing-mode-probe --check: the committed corpus differs from a fresh capture');
-  process.exit(1);
+
+const stringify = (v: unknown): string => `${formatJson(v, allPrimitives)}\n`;
+
+if (import.meta.main) {
+  const args = parseProbeArgs(process.argv.slice(2), ['--check']);
+  const problems = caseProblems(FAMILIES);
+  if (problems.length > 0) throw new Error(`capture-writing-mode-probe: ${problems.join('; ')}`);
+  const check = args.flags.has('--check');
+  const browsers = new Map<number, Browser>();
+  const outputs: [string, string, string][] = [];
+  try {
+    for (const dpr of DPRS) browsers.set(dpr, await launchChrome(dpr));
+    const supports = await supportTable(browsers.get(1)!);
+    const modes = ALL_MODES.filter((m) => supports[`writing-mode: ${m}`]);
+    const dropped = ALL_MODES.filter((m) => !modes.includes(m));
+    if (dropped.length > 0) console.log(`Chrome ${CHROME_VERSION} rejects ${dropped.join(', ')}: those modes are dropped`);
+    outputs.push([repoPath(`${OUT_DIR}/support.json`), stringify({ chrome: CHROME_VERSION, playwright: PLAYWRIGHT_VERSION, cssSupports: supports, modes, dropped }), `${OUT_DIR}/support.json`]);
+    for (const fam of FAMILIES) outputs.push([repoPath(`${OUT_DIR}/${fam.id}.json`), stringify(await captureFamily(browsers, fam, modes)), `${OUT_DIR}/${fam.id}.json (${fam.cases.length} cases)`]);
+  } finally {
+    for (const b of browsers.values()) await b.close();
+  }
+  if (!writeOrCheck(outputs, check)) {
+    console.error('capture-writing-mode-probe --check: the committed corpus differs from a fresh capture');
+    process.exit(1);
+  }
 }

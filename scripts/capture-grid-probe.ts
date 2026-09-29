@@ -6,9 +6,10 @@
 // border box). Identical results are stored once: `envs` lists the environments and each case maps them to `distinct` results.
 // Run with: node --conditions=dragon-internal scripts/capture-grid-probe.ts [--check | --only=<family> | --plants]
 // --plants checks the planted-fault and deviation pins against the committed corpus without launching Chrome.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { CHROME_VERSION, PLAYWRIGHT_VERSION, launchChrome, openPage } from '../packages/parity/src/chrome.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
+import { caseProblems, parseProbeArgs, writeOrCheck } from './probe-common.ts';
 
 /** A grid item: `s` is its style, `t` its Ahem text, `k` its children (labelled too, for subgrids). */
 type Item = { readonly s?: string; readonly t?: string; readonly k?: readonly Item[] };
@@ -353,7 +354,7 @@ const randomFamilies: Family[] = Array.from({ length: RANDOM_CASES / RANDOM_SHAR
   cases: Array.from({ length: RANDOM_SHARD }, (_, k) => randomCase(s * RANDOM_SHARD + k)),
 }));
 
-const FAMILIES: Family[] = [
+export const FAMILIES: Family[] = [
   { id: 'placement', title: 'Placement: sparse and dense, spans, negative, named lines and areas, implicit tracks', cases: placement },
   { id: 'sets', title: 'Ranges, sets and the truncating share', cases: sets },
   { id: 'fr', title: 'Flexible tracks and the fr leftover', cases: fr },
@@ -444,10 +445,13 @@ async function captureFamily(browsers: Map<number, Awaited<ReturnType<typeof lau
   const perEnv: Measured[][] = [];
   for (const env of ENVS) {
     const page = await openPage(browsers.get(env.dpr)!, docFor(fam.cases, env.wm), { viewport: { width: 800, height: 600 }, devicePixelRatio: env.dpr, direction: env.dir, rootFont: 'ahem' });
-    const m = await page.evaluate(measure);
-    if (m.length !== fam.cases.length) throw new Error(`${fam.id} ${env.name}: measured ${m.length} of ${fam.cases.length} cases`);
-    perEnv.push(m);
-    await page.context().close();
+    try {
+      const m = await page.evaluate(measure);
+      if (m.length !== fam.cases.length) throw new Error(`${fam.id} ${env.name}: measured ${m.length} of ${fam.cases.length} cases`);
+      perEnv.push(m);
+    } finally {
+      await page.context().close();
+    }
   }
   const lines = fam.cases.map((c, k) => {
     const labels = labelsOf(c.items);
@@ -455,13 +459,13 @@ async function captureFamily(browsers: Map<number, Awaited<ReturnType<typeof lau
     const env = ENVS.map((en, e) => {
       const m = perEnv[e]![k]!;
       if (m.items.length !== labels.length) throw new Error(`${c.id}: measured ${m.items.length} items, expected ${labels.length}`);
+      if ((m.a !== undefined) !== (c.after !== undefined)) throw new Error(`${c.id} ${en.name}: the text run after the grid was ${m.a === undefined ? 'not measured' : 'measured without an after'}`);
       const text = JSON.stringify(logical(m, c, en));
       const at = distinct.indexOf(text);
       if (at >= 0) return at;
       distinct.push(text);
       return distinct.length - 1;
     });
-    if ((perEnv[0]![k]!.a !== undefined) !== (c.after !== undefined)) throw new Error(`${c.id}: the text run after the grid was not measured`);
     const head = JSON.stringify({ note: c.note, cb: c.cb ?? [400, 300], html: gridHtml(c), ...(c.after === undefined ? {} : { after: c.after }), labels, env });
     return `${JSON.stringify(c.id)}:${head.slice(0, -1)},"distinct":[${distinct.join(',')}]}`;
   });
@@ -527,21 +531,25 @@ const DEVIATIONS: readonly (Pin & { readonly verdict: 'confirmed' | 'refuted' })
   { id: 'grid-default-self-overflow-unsafe (content)', verdict: 'confirmed', file: 'alignment', kase: 'a-content-overflow-scroller', at: 'i0.inline-start', chrome: -1920, other: 0 },
 ];
 
-function checkPins(): boolean {
+export function checkPins(corpus: (file: string) => string = (file) => readFileSync(repoPath(`${OUT_DIR}/${file}.json`), 'utf8')): boolean {
   const FIELDS = ['inline-start', 'block-start', 'inline-size', 'block-size'];
   let ok = true;
   for (const [kind, pins] of [['plant', PLANTS], ['deviation', DEVIATIONS]] as const) {
     for (const p of pins) {
-      const j = JSON.parse(readFileSync(repoPath(`${OUT_DIR}/${p.file}.json`), 'utf8'));
-      const c = j.cases[p.kase];
-      const d = c.distinct[c.env[j.envs.indexOf('dpr1-ltr-horizontal-tb')]];
-      let got: number | string;
-      if (p.at === 'cols' || p.at === 'rows') got = d[p.at];
+      const j = JSON.parse(corpus(p.file));
+      const c = j.cases?.[p.kase];
+      const envAt = Array.isArray(j.envs) ? j.envs.indexOf('dpr1-ltr-horizontal-tb') : -1;
+      const d = c && envAt >= 0 ? c.distinct?.[c.env?.[envAt]] : undefined;
+      let got: number | string | undefined;
+      if (d === undefined) got = undefined;
+      else if (p.at === 'cols' || p.at === 'rows') got = d[p.at];
       else {
         const [label, field] = p.at.split('.') as [string, string];
-        got = d.items[c.labels.indexOf(label)][FIELDS.indexOf(field)];
+        const li = Array.isArray(c.labels) ? c.labels.indexOf(label) : -1;
+        const fi = FIELDS.indexOf(field);
+        got = li >= 0 && fi >= 0 ? d.items?.[li]?.[fi] : undefined;
       }
-      const pass = got === p.chrome && got !== p.other;
+      const pass = got !== undefined && got === p.chrome && got !== p.other;
       if (!pass) ok = false;
       console.log(`${pass ? 'ok  ' : 'FAIL'} ${kind} ${p.id}: ${p.kase} ${p.at} = ${JSON.stringify(got)} (Chrome pin ${JSON.stringify(p.chrome)}, ${kind === 'plant' ? 'plant' : 'verdict' in p && p.verdict === 'confirmed' ? 'spec' : 'suspected deviation'} ${JSON.stringify(p.other)})`);
     }
@@ -549,40 +557,35 @@ function checkPins(): boolean {
   return ok;
 }
 
-if (process.argv.includes('--plants')) {
-  const ok = checkPins();
-  console.log(`${PLANTS.length} plants, ${DEVIATIONS.length} deviation pins`);
-  process.exit(ok ? 0 : 1);
-}
-
-const check = process.argv.includes('--check');
-const only = process.argv.find((a) => a.startsWith('--only='))?.slice('--only='.length);
-if (only !== undefined && !FAMILIES.some((fam) => fam.id === only)) {
-  console.error(`capture-grid-probe: unknown family ${only}; families: ${FAMILIES.map((fam) => fam.id).join(', ')}`);
-  process.exit(1);
-}
-const browsers = new Map<number, Awaited<ReturnType<typeof launchChrome>>>();
-let failed = false;
-try {
-  for (const dpr of DPRS) browsers.set(dpr, await launchChrome(dpr));
-  if (!check) mkdirSync(repoPath(OUT_DIR), { recursive: true });
-  for (const fam of FAMILIES) {
-    if (only !== undefined && fam.id !== only) continue;
-    const text = await captureFamily(browsers, fam);
-    const file = repoPath(`${OUT_DIR}/${fam.id}.json`);
-    if (check) {
-      const same = existsSync(file) && readFileSync(file, 'utf8') === text;
-      console.log(`${same ? 'same' : 'DIFFERS'} ${OUT_DIR}/${fam.id}.json (${fam.cases.length} cases)`);
-      if (!same) failed = true;
-    } else {
-      writeFileSync(file, text);
-      console.log(`wrote ${OUT_DIR}/${fam.id}.json (${fam.cases.length} cases x ${ENVS.length} environments, ${text.length} bytes)`);
-    }
+if (import.meta.main) {
+  const args = parseProbeArgs(process.argv.slice(2), ['--check', '--plants'], ['--only']);
+  const problems = caseProblems(FAMILIES);
+  if (problems.length > 0) throw new Error(`capture-grid-probe: ${problems.join('; ')}`);
+  if (args.flags.has('--plants')) {
+    const ok = checkPins();
+    console.log(`${PLANTS.length} plants, ${DEVIATIONS.length} deviation pins`);
+    process.exit(ok ? 0 : 1);
   }
-} finally {
-  for (const b of browsers.values()) await b.close();
-}
-if (failed) {
-  console.error('capture-grid-probe --check: the committed corpus differs from a fresh capture');
-  process.exit(1);
+  const check = args.flags.has('--check');
+  const only = args.values.get('--only');
+  if (only !== undefined && !FAMILIES.some((fam) => fam.id === only)) {
+    console.error(`capture-grid-probe: unknown family ${only}; families: ${FAMILIES.map((fam) => fam.id).join(', ')}`);
+    process.exit(1);
+  }
+  const browsers = new Map<number, Awaited<ReturnType<typeof launchChrome>>>();
+  const outputs: [string, string, string][] = [];
+  try {
+    for (const dpr of DPRS) browsers.set(dpr, await launchChrome(dpr));
+    for (const fam of FAMILIES) {
+      if (only !== undefined && fam.id !== only) continue;
+      const text = await captureFamily(browsers, fam);
+      outputs.push([repoPath(`${OUT_DIR}/${fam.id}.json`), text, `${OUT_DIR}/${fam.id}.json (${fam.cases.length} cases x ${ENVS.length} environments, ${text.length} bytes)`]);
+    }
+  } finally {
+    for (const b of browsers.values()) await b.close();
+  }
+  if (!writeOrCheck(outputs, check)) {
+    console.error('capture-grid-probe --check: the committed corpus differs from a fresh capture');
+    process.exit(1);
+  }
 }
