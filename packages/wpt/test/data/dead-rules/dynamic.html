@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<!-- Synthetic page written for packages/wpt (not a WPT file): .wide .box is dead at the first checkLayout call and live at the
+     second; .gone is dead at both. -->
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="/resources/check-layout-th.js"></script>
+<style>.box { width: 10px; height: 10px; } .wide .box { width: 40px; } .gone { float: left; }</style>
+<body>
+<div class="s1"><div class="box" data-expected-width="10"></div></div>
+<div class="s2"><div class="box" data-expected-width="40"></div></div>
+<script>
+checkLayout('.s1', false);
+document.querySelector('.s2').classList.add('wide');
+checkLayout('.s2');
+</script>
+</body>

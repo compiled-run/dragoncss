@@ -67,7 +67,25 @@ export type ChromeOutcome = {
   readonly checks: readonly ChromeCheck[];
   /** The harness subtests match the sidecar's names and each one's result equals the per-check results. */
   readonly agrees: boolean;
+  /**
+   * The sidecar's dropped dead rules (Sidecar.deadRules) whose selector list querySelectorAll matched in the original page (or
+   * that Chrome could not parse): any one refuses the test with translate:dead-rule-live. Empty when none was dropped.
+   */
+  readonly deadRulesLive: readonly string[];
 };
+
+/** How many elements each selector list matches in the page's document; -1 when Chrome rejects the list. */
+export const DEAD_RULE_COUNTS = (lists: readonly string[]): number[] =>
+  lists.map((sel) => {
+    try {
+      return document.querySelectorAll(sel).length;
+    } catch {
+      return -1;
+    }
+  });
+
+/** The lists whose count is not 0: live, or unreadable by Chrome. */
+export const liveOf = (lists: readonly string[], counts: readonly number[]): string[] => lists.filter((_, i) => counts[i] !== 0);
 
 type RawValue = number | string | null;
 
@@ -118,7 +136,9 @@ export async function runInChrome(browser: Browser, origin: string, sidecar: Sid
       return { name: s.name, pass: own.every((c) => c.pass) };
     });
     const agrees = harness.status === 0 && JSON.stringify(subtests) === JSON.stringify(perSubtest);
-    return { harness: harness.status, subtests, checks, agrees };
+    const dead = sidecar.deadRules ?? [];
+    const deadRulesLive = dead.length === 0 ? [] : liveOf(dead, await page.evaluate(DEAD_RULE_COUNTS, dead));
+    return { harness: harness.status, subtests, checks, agrees, deadRulesLive };
   } finally {
     await context.close();
   }
