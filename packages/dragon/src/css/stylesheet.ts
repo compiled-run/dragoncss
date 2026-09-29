@@ -283,8 +283,7 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   for (const t of baseline === null ? tokens : []) {
     const unitRefused = t.type === 'Dimension' ? unitRefusal(normalizeUnit(String(t['unit']))) : t.type === 'Function' ? mathFunctionRefusal(String(t['name'])) : null;
     if (unitRefused !== null) {
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${unitRefused.reason}`, manual: unitRefused.fix }));
-      return null;
+      return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${unitRefused.reason}`, manual: unitRefused.fix }) };
     }
     const v = wide ? toValue(t, property) : tokenValue(t, property);
     if (typeof v === 'string') return { kind: 'token', token: t, reason: v };
