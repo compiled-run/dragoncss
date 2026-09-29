@@ -484,6 +484,8 @@ export function deviceRecord(p: DeviceProfile, a: AppRecord): DeviceRecord {
 /** Problems with a device record: the two scales differ, the root does not fit the stage, or the text scale is not the pinned one. */
 export function recordProblems(r: DeviceRecord, root: { readonly width: number; readonly height: number }): string[] {
   const out: string[] = [];
+  // The app must have run on the device the runner booted: iOS reports SIMULATOR_DEVICE_NAME, Android "<model> / <AVD>".
+  if (!(r.target === 'ios' ? r.model === r.name : r.model.endsWith(` / ${r.name}`))) out.push(`${r.name}: the app ran on ${JSON.stringify(r.model)}, not ${r.name}`);
   if (r.profileScale !== r.appScale) out.push(`${r.name}: the device profile scale ${r.profileScale} differs from the app's ${r.appScale}`);
   if (r.stagePx[0] < root.width || r.stagePx[1] < root.height) out.push(`${r.name}: the stage ${r.stagePx[0]}x${r.stagePx[1]} device px cannot hold the ${root.width}x${root.height} root (device fit, tooling fault; never cropped)`);
   const pinned = r.target === 'ios' ? TEXT_SCALE.ios : TEXT_SCALE.android;

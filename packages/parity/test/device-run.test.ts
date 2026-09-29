@@ -58,7 +58,7 @@ describe('device matrix', () => {
 });
 
 describe('device records', () => {
-  const good: DeviceRecord = { name: 'dragon-smoke', target: 'android', model: 'x', os: 'Android 16', build: 'b', profileScale: 2.625, appScale: 2.625, windowPx: [1080, 2400], stagePx: [1080, 2138], rootOriginPx: [0, 136], textScale: TEXT_SCALE.android };
+  const good: DeviceRecord = { name: 'dragon-smoke', target: 'android', model: 'Android SDK built for arm64 / dragon-smoke', os: 'Android 16', build: 'b', profileScale: 2.625, appScale: 2.625, windowPx: [1080, 2400], stagePx: [1080, 2138], rootOriginPx: [0, 136], textScale: TEXT_SCALE.android };
   const root = { width: 1050, height: 788 };
   it('passes when both scales agree, the stage holds the root and the text scale is pinned', () => {
     expect(recordProblems(good, root)).toEqual([]);
@@ -67,6 +67,8 @@ describe('device records', () => {
     expect(recordProblems({ ...good, appScale: 2.5 }, root)).toEqual(['dragon-smoke: the device profile scale 2.625 differs from the app\'s 2.5']);
     expect(recordProblems({ ...good, stagePx: [1000, 2138] }, root)[0]).toMatch(/cannot hold the 1050x788 root \(device fit, tooling fault; never cropped\)$/);
     expect(recordProblems({ ...good, textScale: '1.3' }, root)).toEqual(['dragon-smoke: text scale 1.3, pinned 1.0']);
+    expect(recordProblems({ ...good, model: 'Android SDK built for arm64 / dragon-320' }, root)).toEqual(['dragon-smoke: the app ran on "Android SDK built for arm64 / dragon-320", not dragon-smoke']);
+    expect(recordProblems({ ...good, target: 'ios', name: 'iPhone 17', model: 'iPad (A16)', textScale: TEXT_SCALE.ios }, root)).toEqual(['iPhone 17: the app ran on "iPad (A16)", not iPhone 17']);
   });
 });
 

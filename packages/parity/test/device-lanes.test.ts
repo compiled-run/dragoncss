@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { CaseReference, DeviceCheckLane, FailureKind } from '../src/device-lanes.ts';
+import type { CaseReference, DeviceCheckLane, FailureKind, TrustCase } from '../src/device-lanes.ts';
 import { captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, plantVerdict, readDump, splitByLines, trustFailuresOf } from '../src/device-lanes.ts';
 import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
 import { checkAgainstChrome, DUMP_FAULTS, FAULT_CHECK, plantDumpFault, readSamples } from '../src/native-compare.ts';
@@ -14,7 +14,7 @@ import type { NativeDump } from '../src/native-dump.ts';
 import type { NativeCase } from '../src/native-host.ts';
 import { nativeCases, nativeOut, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
-import { expectedPixelsPath, rasterSize } from '../src/pixel-reference.ts';
+import { casePoints, expectedPixelsPath, rasterSize } from '../src/pixel-reference.ts';
 import type { NativeTarget } from '../src/targets.ts';
 
 const cases = nativeCases();
@@ -96,7 +96,7 @@ describe('dump provenance and unreadable files', () => {
     expect(set.failures.filter((f) => f.case === n.case.id).map((f) => f.kind)).toEqual(['dump-invalid', 'dump-invalid', 'dump-invalid', 'dump-invalid']);
     expect(set.failures.filter((f) => f.case === other.case.id)).toEqual([]);
     copyFileSync(expectedPixelsPath(n.case.id, 3), join(dir, `screen-${n.case.id}.png`));
-    expect(captureTrust(dir, [n.case.id], 3, [0, 0])[0]?.mismatches[0]).toMatch(/^the dump is not JSON/);
+    expect(captureTrust(dir, [trustCase(n, 3)], 3, [0, 0])[0]?.mismatches[0]).toMatch(/^the dump is not JSON/);
     rmSync(dir, { recursive: true, force: true });
   });
   it('a trust dump that is JSON but not a dump (null) is a capture-trust mismatch, not a crash', () => {
@@ -105,7 +105,7 @@ describe('dump provenance and unreadable files', () => {
     mkdirSync(dir, { recursive: true });
     writeFileSync(dumpFile(dir, n.case.id, 3), 'null');
     copyFileSync(expectedPixelsPath(n.case.id, 3), join(dir, `screen-${n.case.id}.png`));
-    expect(captureTrust(dir, [n.case.id], 3, [0, 0])[0]?.mismatches[0]).toMatch(/^the dump does not validate: /);
+    expect(captureTrust(dir, [trustCase(n, 3)], 3, [0, 0])[0]?.mismatches[0]).toMatch(/^the dump does not validate: /);
     rmSync(dir, { recursive: true, force: true });
   });
   it('a trust run that did not finish is a capture-trust failure even with no sample mismatch', () => {
@@ -169,6 +169,8 @@ describe('the node and line split of (a) and (d)', () => {
   });
 });
 
+const trustCase = (n: NativeCase, dpr: number): TrustCase => ({ id: n.case.id, points: casePoints(n.programs.uikit, n.case.environment.viewport, dpr), size: rasterSize(n.case.environment.viewport, dpr) });
+
 describe('capture trust', () => {
   it('in-app samples equal the OS screenshot at the root offset; a one-row offset error is caught', () => {
     const dir = join(nativeOut('ios'), 'test-trust');
@@ -179,11 +181,34 @@ describe('capture trust', () => {
     const d = perfectDump('ios', 3, n, ref, relabelledReferenceDumps('ios', 3));
     writeFileSync(dumpFile(dir, n.case.id, 3), JSON.stringify(d));
     copyFileSync(expectedPixelsPath(n.case.id, 3), join(dir, `screen-${n.case.id}.png`));
-    const ok = captureTrust(dir, [n.case.id], 3, [0, 0]);
+    const tc = trustCase(n, 3);
+    const ok = captureTrust(dir, [tc], 3, [0, 0]);
     expect(ok[0]?.points).toBe(ref.points.length);
     expect(ok[0]?.mismatches).toEqual([]);
-    expect(captureTrust(dir, [n.case.id], 3, [0, 1])[0]?.mismatches.length).toBeGreaterThan(0);
-    expect(captureTrust(dir, ['text-wrap-spaces'], 3, [0, 0])[0]?.mismatches).toEqual(['no dump']);
+    expect(captureTrust(dir, [tc], 3, [0, 1])[0]?.mismatches.length).toBeGreaterThan(0);
+    expect(captureTrust(dir, [trustCase(cases.find((c) => c.case.id === 'text-wrap-spaces') as NativeCase, 3)], 3, [0, 0])[0]?.mismatches).toEqual(['no dump']);
+    rmSync(dir, { recursive: true, force: true });
+  });
+  it('the held dump must carry exactly the generated points, the raster size and the case: a host that drops, moves or swaps points fails', () => {
+    const dir = join(nativeOut('ios'), 'test-trust-points');
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
+    const n = cases.find((c) => c.case.id === 'color-border-sides') as NativeCase;
+    const ref = caseReference('ios', n, 3);
+    const d = perfectDump('ios', 3, n, ref, relabelledReferenceDumps('ios', 3));
+    const tc = trustCase(n, 3);
+    copyFileSync(expectedPixelsPath(n.case.id, 3), join(dir, `screen-${n.case.id}.png`));
+    const withSamples = (samples: typeof d.pixels extends null ? never : NonNullable<typeof d.pixels>['samples'], extra: Partial<NativeDump> = {}): readonly string[] => {
+      writeFileSync(dumpFile(dir, n.case.id, 3), JSON.stringify({ ...d, ...extra, pixels: { ...(d.pixels as NonNullable<typeof d.pixels>), samples } }));
+      return captureTrust(dir, [tc], 3, [0, 0])[0]?.mismatches ?? [];
+    };
+    const samples = (d.pixels as NonNullable<typeof d.pixels>).samples;
+    expect(withSamples(samples)).toEqual([]);
+    expect(withSamples(samples.slice(0, 1))[0]).toMatch(/^the dump has 1 samples, the generator \d+$/);
+    expect(withSamples(samples.map((s, i) => (i === 3 ? { ...s, x: s.x + 1 } : s)))[0]).toMatch(/^sample 3 is .* the generator's is /);
+    expect(withSamples(samples, { case: { ...d.case, id: 'text-wrap-spaces' } })[0]).toMatch(/^the dump is case text-wrap-spaces at DPR 3, not color-border-sides at 3$/);
+    writeFileSync(dumpFile(dir, n.case.id, 3), JSON.stringify({ ...d, pixels: { ...(d.pixels as NonNullable<typeof d.pixels>), width: 1199 } }));
+    expect(captureTrust(dir, [tc], 3, [0, 0])[0]?.mismatches).toEqual(['the in-app capture is 1199x900, the raster rule 1200x900']);
     rmSync(dir, { recursive: true, force: true });
   });
 });

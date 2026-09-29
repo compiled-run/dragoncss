@@ -27,7 +27,7 @@ import { validateNativeDump } from './native-dump.ts';
 import type { NativeCase } from './native-host.ts';
 import { BACKEND_OF, buildAndroid, buildIos, engineBoxes, expectedEngine, nativeCases, nativeOut } from './native-host.ts';
 import { casePoints, checkCasePixels, committedPixels, decodePng, rasterSize, runFileText } from './pixel-reference.ts';
-import type { SamplePoint } from './samples.ts';
+import type { ImageSize, SamplePoint } from './samples.ts';
 import { ruleKind } from './samples.ts';
 import type { LaneId, NativeTarget, TargetConfig } from './targets.ts';
 
@@ -261,12 +261,16 @@ export function evaluateSet(target: NativeTarget, dpr: number, dir: string, devi
 
 export type TrustRow = { readonly case: string; readonly points: number; readonly mismatches: readonly string[] };
 
+/** A capture-trust case: its generated sample points and the raster size its capture must have. */
+export type TrustCase = { readonly id: string; readonly points: readonly SamplePoint[]; readonly size: ImageSize };
+
 /**
- * The capture-trust probe of one device: for each held case, the in-app capture's samples (the dump) against the OS screenshot
- * at the same points shifted by the root's window offset, every channel within GATE_CHANNEL_DELTA.
+ * The capture-trust probe of one device: for each held case, the dump must be that case at this DPR, its capture the raster size,
+ * and its samples exactly the generated points (count, order, coordinates and rule); then the in-app samples are compared with
+ * the OS screenshot at the same points shifted by the root's window offset, every channel within GATE_CHANNEL_DELTA.
  */
-export function captureTrust(dir: string, caseIds: readonly string[], dpr: number, origin: readonly [number, number]): TrustRow[] {
-  return caseIds.map((id) => {
+export function captureTrust(dir: string, trustCases: readonly TrustCase[], dpr: number, origin: readonly [number, number]): TrustRow[] {
+  return trustCases.map(({ id, points, size }) => {
     const dumpPath = dumpFile(dir, id, dpr);
     const shot = join(dir, `screen-${id}.png`);
     if (!existsSync(dumpPath) || !existsSync(shot)) return { case: id, points: 0, mismatches: [`${existsSync(dumpPath) ? 'no OS screenshot' : 'no dump'}`] };
@@ -275,6 +279,16 @@ export function captureTrust(dir: string, caseIds: readonly string[], dpr: numbe
     const valid = validateNativeDump(read.raw);
     if (!valid.ok) return { case: id, points: 0, mismatches: [`the dump does not validate: ${valid.errors.slice(0, 5).map((e) => `${e.path} ${e.code}`).join('; ')}`] };
     const dump = valid.dump;
+    if (dump.case.id !== id || dump.case.dpr !== dpr) return { case: id, points: 0, mismatches: [`the dump is case ${dump.case.id} at DPR ${dump.case.dpr}, not ${id} at ${dpr}`] };
+    if (dump.pixels === null) return { case: id, points: 0, mismatches: ['the dump has no pixels'] };
+    if (dump.pixels.width !== size.width || dump.pixels.height !== size.height) return { case: id, points: 0, mismatches: [`the in-app capture is ${dump.pixels.width}x${dump.pixels.height}, the raster rule ${size.width}x${size.height}`] };
+    const samples = dump.pixels.samples;
+    if (points.length === 0) return { case: id, points: 0, mismatches: ['the case has no generated points'] };
+    const placed = samples.length !== points.length ? `the dump has ${samples.length} samples, the generator ${points.length}` : (() => {
+      const k = points.findIndex((p, i) => samples[i]?.x !== p.x || samples[i]?.y !== p.y || samples[i]?.rule !== p.rule);
+      return k < 0 ? null : `sample ${k} is ${samples[k]?.rule} at ${samples[k]?.x},${samples[k]?.y}, the generator's is ${points[k]?.rule} at ${points[k]?.x},${points[k]?.y}`;
+    })();
+    if (placed !== null) return { case: id, points: 0, mismatches: [placed] };
     let img: RgbaImage;
     try {
       img = decodePng(readFileSync(shot));
@@ -282,7 +296,6 @@ export function captureTrust(dir: string, caseIds: readonly string[], dpr: numbe
       return { case: id, points: 0, mismatches: [`the OS screenshot is not a readable PNG: ${e instanceof Error ? e.message : String(e)}`] };
     }
     const mismatches: string[] = [];
-    const samples = dump.pixels?.samples ?? [];
     for (const s of samples) {
       const x = s.x + origin[0];
       const y = s.y + origin[1];
@@ -293,7 +306,6 @@ export function captureTrust(dir: string, caseIds: readonly string[], dpr: numbe
       const os = pixelAt(img, x, y);
       if (!s.rgba.every((v, k) => Math.abs(v - (os[k] as number)) <= GATE_CHANNEL_DELTA)) mismatches.push(`${s.rule} at ${s.x},${s.y}: in-app ${JSON.stringify(s.rgba)}, OS screenshot ${JSON.stringify(os)}`);
     }
-    if (samples.length === 0) mismatches.push('the dump has no samples');
     return { case: id, points: samples.length, mismatches };
   });
 }
@@ -386,9 +398,13 @@ export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, 
       sets.push(set);
       log(`${spec.name}: checked ${set.dumps}/${set.cases} dumps; compared a ${set.compared.a}, b ${set.compared.b}, c ${set.compared.c}, d ${set.compared.d}, breaks ${set.compared.breaks}; failures ${JSON.stringify(failuresByKind(set.failures))}`);
       const trustDir = join(nativeOut(t.target), 'lanes', `${spec.name}-trust`);
-      const trustCases = cases.filter((n) => TRUST_CASES.includes(n.case.id));
-      const tr = await runApp(h, build.artifact, { runFile: runFileText(trustCases.map((n) => ({ id: n.case.id, points: casePoints(n.programs[backend], n.case.environment.viewport, dpr) })), true), caseCount: trustCases.length, outDir: trustDir, onHold: async (_id, shot) => void (await shot()) });
-      const rows = captureTrust(trustDir, TRUST_CASES, dpr, tr.record.rootOriginPx);
+      const trustCases: TrustCase[] = TRUST_CASES.map((id) => {
+        const tc = cases.find((c) => c.case.id === id);
+        if (tc === undefined) throw new Error(`no trust case ${id}`);
+        return { id, points: casePoints(tc.programs[backend], tc.case.environment.viewport, dpr), size: rasterSize(tc.case.environment.viewport, dpr) };
+      });
+      const tr = await runApp(h, build.artifact, { runFile: runFileText(trustCases, true), caseCount: trustCases.length, outDir: trustDir, onHold: async (_id, shot) => void (await shot()) });
+      const rows = captureTrust(trustDir, trustCases, dpr, tr.record.rootOriginPx);
       trust.push({ device: spec.name, dpr, rows });
       // Trust mismatches are device-pixels failures of the set, so the failure lists and counts hold them.
       const trustFailures = trustFailuresOf(rows, dpr, spec.name, tr.error);
