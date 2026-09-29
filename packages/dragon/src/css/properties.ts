@@ -10,6 +10,7 @@ import { LOGICAL_ASPECTS, LOGICAL_CONTAINER, LOGICAL_INHERITED, LOGICAL_LONGHAND
 import { OVERFLOW_ASPECTS, OVERFLOW_CONTAINER, OVERFLOW_INHERITED, OVERFLOW_LONGHANDS, OVERFLOW_SHORTHANDS, OVERFLOW_TEXT_ROLE } from './properties/overflow.ts';
 import { POSITION_ASPECTS, POSITION_CONTAINER, POSITION_INHERITED, POSITION_LONGHANDS, POSITION_SHORTHANDS, POSITION_TEXT_ROLE } from './properties/position.ts';
 import { TEXT_FAMILY_ASPECTS, TEXT_FAMILY_CONTAINER, TEXT_FAMILY_INHERITED, TEXT_FAMILY_LONGHANDS, TEXT_FAMILY_SHORTHANDS, TEXT_FAMILY_TEXT_ROLE } from './properties/text.ts';
+import { WRITING_MODE_ASPECTS, WRITING_MODE_CONTAINER, WRITING_MODE_INHERITED, WRITING_MODE_LONGHANDS, WRITING_MODE_SHORTHANDS, WRITING_MODE_TEXT_ROLE } from './properties/writing-mode.ts';
 
 /** What a longhand affects: layout (box geometry) and paint (pixels). */
 export type PropertyAspect = { readonly layout: boolean; readonly paint: boolean };
@@ -23,6 +24,7 @@ export const LONGHANDS = [
   ...TEXT_FAMILY_LONGHANDS,
   ...BACKGROUND_LONGHANDS,
   ...LOGICAL_LONGHANDS,
+  ...WRITING_MODE_LONGHANDS,
 ] as const;
 
 export type Longhand = (typeof LONGHANDS)[number];
@@ -36,6 +38,7 @@ export const SHORTHANDS = [
   ...TEXT_FAMILY_SHORTHANDS,
   ...BACKGROUND_SHORTHANDS,
   ...LOGICAL_SHORTHANDS,
+  ...WRITING_MODE_SHORTHANDS,
 ] as const;
 
 export type Shorthand = (typeof SHORTHANDS)[number];
@@ -49,6 +52,7 @@ export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([
   ...TEXT_FAMILY_INHERITED,
   ...BACKGROUND_INHERITED,
   ...LOGICAL_INHERITED,
+  ...WRITING_MODE_INHERITED,
 ]);
 
 /**
@@ -88,6 +92,7 @@ export const PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {
   ...TEXT_FAMILY_ASPECTS,
   ...BACKGROUND_ASPECTS,
   ...LOGICAL_ASPECTS,
+  ...WRITING_MODE_ASPECTS,
 };
 
 /** The role of a longhand in its row key (M2): which formatting context, if any, the row names. */
@@ -102,6 +107,7 @@ const CONTAINER_LONGHANDS: readonly Longhand[] = [
   ...TEXT_FAMILY_CONTAINER,
   ...BACKGROUND_CONTAINER,
   ...LOGICAL_CONTAINER,
+  ...WRITING_MODE_CONTAINER,
 ];
 const TEXT_ROLE_LONGHANDS: readonly Longhand[] = [
   ...POSITION_TEXT_ROLE,
@@ -112,6 +118,7 @@ const TEXT_ROLE_LONGHANDS: readonly Longhand[] = [
   ...TEXT_FAMILY_TEXT_ROLE,
   ...BACKGROUND_TEXT_ROLE,
   ...LOGICAL_TEXT_ROLE,
+  ...WRITING_MODE_TEXT_ROLE,
 ];
 
 /**

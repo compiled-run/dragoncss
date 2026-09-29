@@ -38,6 +38,7 @@ describe('E2 seams: the property registry', () => {
       'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow', 'white-space',
       'background',
       ...LOGICAL_SHORTHANDS,
+      'writing-mode', 'text-orientation', 'text-combine-upright',
     ]);
   });
   it('PROPERTY_ASPECTS keys follow LONGHANDS, and INHERITED and PROPERTY_ROLE are unchanged', () => {
