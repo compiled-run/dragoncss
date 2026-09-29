@@ -9,6 +9,8 @@ import type { CapturedNode, WebCapture } from './capture.ts';
 /** Owner decision 13: boxes must match within one physical screen pixel. Fixtures cannot override it. */
 export const GATE_DEVICE_PX = 1;
 export const GATE_CHANNEL_DELTA = 0;
+/** T093 ruling A: a line's glyph centre (midpoint of its paired glyph-edge scanlines) within this of Chrome's; raising it loosens. */
+export const GATE_GLYPH_CENTRE_DEVICE_PX = 0.5;
 
 export type Edges = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
 

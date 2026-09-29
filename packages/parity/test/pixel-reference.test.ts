@@ -13,8 +13,11 @@ import { readSamples } from '../src/native-compare.ts';
 import { nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
 import type { PixelManifest } from '../src/pixel-reference.ts';
-import { ahemGlyphBoxes, casePoints, checkCasePixels, committedPixels, decodePng, expectedPixelsDir, expectedPixelsPath, glyphLines, PIXEL_MANIFEST, rasterSize, RASTER_RULE, runFileText } from '../src/pixel-reference.ts';
-import { generateGlyphSamples, ruleKind, SAMPLE_INSET_DEVICE_PX } from '../src/samples.ts';
+import { ahemGlyphBoxes, casePoints, caseSamples, checkCasePixels, committedPixels, decodePng, expectedPixelsDir, expectedPixelsPath, glyphLines, PIXEL_MANIFEST, rasterSize, RASTER_RULE, runFileText } from '../src/pixel-reference.ts';
+import { BACKEND_OF } from '../src/native-host.ts';
+import { deviceDprs } from '../src/targets.ts';
+import type { SamplePoint } from '../src/samples.ts';
+import { generateGlyphSamples, GLYPH_EDGE_RULE, glyphClearance, ruleKind, SAMPLE_INSET_DEVICE_PX } from '../src/samples.ts';
 
 const cases = nativeCases();
 const I = SAMPLE_INSET_DEVICE_PX;
@@ -96,6 +99,48 @@ describe('the glyph rule', () => {
     const other = JSON.parse(JSON.stringify(n.programs.uikit).replaceAll('"family":"Ahem"', '"family":"Inter"')) as NativeProgram;
     expect(() => glyphLines(other, n.case.environment.viewport, 3)).toThrow(/refuses the font family Inter/);
   });
+});
+
+describe('the glyph clearance over the corpus (T093 ruling A)', () => {
+  // Per target and device DPR, the rules whose point no along-position keeps clear of the engine's glyph boxes, by rule kind
+  // (edge:glyph is a glyph-edge scanline). A change here changes what the device lanes compare; it needs a written reason.
+  const DROPPED = {
+    ios: { 2: { edge: 1030, 'edge:glyph': 1079, glyph: 26, clip: 4, border: 16, interior: 5 }, 3: { edge: 1055, 'edge:glyph': 1040, glyph: 20, border: 18, interior: 5, clip: 2 } },
+    android: {
+      2: { edge: 1030, 'edge:glyph': 1079, glyph: 26, clip: 4, border: 16, interior: 5 },
+      3: { edge: 1055, 'edge:glyph': 1040, glyph: 20, border: 18, interior: 5, clip: 2 },
+      2.625: { edge: 1018, 'edge:glyph': 1064, glyph: 28, outside: 6, clip: 13, border: 16, interior: 5 },
+    },
+  } as const;
+  for (const target of ['ios', 'android'] as const) {
+    it(`${target}: the dropped points are pinned, and every point is clear of every glyph box edge but a glyph-edge scanline's own`, () => {
+      const got: Record<string, Record<string, number>> = {};
+      for (const dpr of deviceDprs(target)) {
+        const byKind: Record<string, number> = {};
+        for (const n of cases) {
+          const p = n.programs[BACKEND_OF[target]];
+          const r = caseSamples(p, n.case.environment.viewport, dpr);
+          for (const d of r.dropped) {
+            const k = `${ruleKind(d)}${GLYPH_EDGE_RULE.test(d) ? ':glyph' : ''}`;
+            byKind[k] = (byKind[k] ?? 0) + 1;
+          }
+          const glyphs = glyphLines(p, n.case.environment.viewport, dpr).flatMap((l) => l.glyphs);
+          const unclear = (q: SamplePoint) => glyphs.filter((g) => glyphClearance(q.x, q.y, g) < I).length;
+          const scanlines = new Map<string, SamplePoint[]>();
+          for (const q of r.points) {
+            if (GLYPH_EDGE_RULE.test(q.rule)) scanlines.set(q.rule, [...(scanlines.get(q.rule) ?? []), q]);
+            else if (unclear(q) > 0) throw new Error(`${target} ${n.case.id}@${dpr}: ${q.rule} at ${q.x},${q.y} is within ${I} device px of a glyph box edge`);
+          }
+          for (const [rule, line] of scanlines) {
+            const ends = [line[0], line[line.length - 1]] as SamplePoint[];
+            if (ends.some((q) => unclear(q) > 0) || line.some((q) => unclear(q) > 1)) throw new Error(`${target} ${n.case.id}@${dpr}: ${rule} is not clear of the other glyph boxes`);
+          }
+        }
+        got[String(dpr)] = byKind;
+      }
+      expect(got).toEqual(JSON.parse(JSON.stringify(DROPPED[target])));
+    });
+  }
 });
 
 describe('the points protocol and check (c)', () => {

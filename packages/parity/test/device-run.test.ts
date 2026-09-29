@@ -3,7 +3,10 @@
 // disagreement, a root that does not fit (never cropped) and a text scale other than the pinned one.
 import { describe, expect, it } from 'vitest';
 import type { DeviceRecord, DeviceSpec } from '../src/device-run.ts';
-import { avdKeys, avdScale, DEVICE_MATRIX, matrixProblems, PLANT_DEVICES, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
+import { avdKeys, avdScale, DEVICE_MATRIX, judgeGlyphPlant, matrixProblems, PLANT_AXIS, PLANT_DEVICES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
+import { emitNativeSupport, SUPPORT_PLANTS } from 'dragon';
+import { GATE_GLYPH_CENTRE_DEVICE_PX } from '../src/compare.ts';
+import type { GlyphCentre } from '../src/native-compare.ts';
 import { layoutCaseIds } from '../src/targets.ts';
 import { deviceDprs } from '../src/targets.ts';
 
@@ -55,5 +58,45 @@ describe('device records', () => {
     expect(recordProblems({ ...good, appScale: 2.5 }, root)).toEqual(['dragon-smoke: the device profile scale 2.625 differs from the app\'s 2.5']);
     expect(recordProblems({ ...good, stagePx: [1000, 2138] }, root)[0]).toMatch(/cannot hold the 1050x788 root \(device fit, tooling fault; never cropped\)$/);
     expect(recordProblems({ ...good, textScale: '1.3' }, root)).toEqual(['dragon-smoke: text scale 1.3, pinned 1.0']);
+  });
+});
+
+describe('raster plants judged against the clean run (T093 ruling A)', () => {
+  const G = GATE_GLYPH_CENTRE_DEVICE_PX;
+  const line = (l: string, axis: 'x' | 'y', native: number, chrome: number): GlyphCentre => ({ line: l, axis, native, chrome });
+  const clean = { failures: 0, centres: [line('a:line0', 'x', 100.1, 100), line('a:line0', 'y', 50.2, 50), line('b:line0', 'x', 200, 200.05)] };
+  it('the constants and one axis per plant', () => {
+    expect([PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, PLANT_MARGIN_DEVICE_PX]).toEqual([1, 0.05, 0.2]);
+    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1']);
+    expect(PLANT_AXIS).toEqual({ 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' });
+  });
+  it('each plant changes one line of each backend support: its glyph offset constant from 0 to 1', () => {
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const clean = emitNativeSupport(backend).flatMap((f) => f.text.split('\n'));
+      for (const plant of SUPPORT_PLANTS) {
+        const planted = emitNativeSupport(backend, plant).flatMap((f) => f.text.split('\n'));
+        const changed = planted.flatMap((l, i) => (l === clean[i] ? [] : [[clean[i], l]]));
+        expect(changed.length, `${backend} ${plant}`).toBe(1);
+        const [from, to] = changed[0] as [string, string];
+        expect(from.replace(/= 0(\.0)?$/, '')).toBe(to.replace(/= 1(\.0)?$/, ''));
+        expect(from).toMatch(PLANT_AXIS[plant] === 'x' ? /(dragonGlyphPlantDevicePx|DRAGON_GLYPH_PLANT_DEVICE_PX)\b/ : /(dragonGlyphPlantYDevicePx|DRAGON_GLYPH_PLANT_Y_DEVICE_PX)\b/);
+      }
+    }
+  });
+  it('caught: every line on the axis moved 1 device px and fails the centre check with the margin', () => {
+    const v = judgeGlyphPlant('glyph-offset-1', clean, [line('a:line0', 'x', 101.12, 100), line('a:line0', 'y', 50.2, 50), line('b:line0', 'x', 200.98, 200.05)], G);
+    expect(v).toMatchObject({ caught: true, problems: [] });
+    expect(v.lines.map((l) => l.line)).toEqual(['a:line0', 'b:line0']);
+    expect(judgeGlyphPlant('glyph-offset-y-1', clean, [line('a:line0', 'y', 51.21, 50)], G).caught).toBe(true);
+  });
+  it('not caught: a dirty clean run, a shift off 1 by more than the spread, a thin margin, a missing line or no line', () => {
+    const planted = [line('a:line0', 'x', 101.12, 100), line('b:line0', 'x', 200.98, 200.05)];
+    expect(judgeGlyphPlant('glyph-offset-1', { ...clean, failures: 2 }, planted, G).problems).toEqual(['the clean run has 2 device-pixels failure(s)']);
+    expect(judgeGlyphPlant('glyph-offset-1', clean, [line('a:line0', 'x', 101.2, 100), planted[1] as GlyphCentre], G).problems).toEqual(['a:line0: the glyph centre moved 1.100 device px from the clean run, not 1 within 0.05']);
+    // Chrome's centre 0.35 right of the clean native one: the plant's centre error is 0.65, 0.15 beyond the gate.
+    const thin = { failures: 0, centres: [line('c:line0', 'x', 10, 10.35)] };
+    expect(judgeGlyphPlant('glyph-offset-1', thin, [line('c:line0', 'x', 11, 10.35)], G).problems).toEqual(['c:line0: the centre check fails by 0.150 device px beyond the gate, less than 0.2']);
+    expect(judgeGlyphPlant('glyph-offset-1', clean, planted.slice(0, 1), G).problems).toEqual(['the planted run measured 1 x centre lines, the clean run 2, not the same lines']);
+    expect(judgeGlyphPlant('glyph-offset-y-1', { failures: 0, centres: [] }, [], G).problems).toEqual(['no y glyph centre line was measured']);
   });
 });
