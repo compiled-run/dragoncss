@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { join } from 'node:path';
 import type { Page } from 'playwright';
 import type { Ctx, InlineLine, InlineRun, LayoutBox, LayoutInput, LayoutRect, LU, TextLeaf, TextMeasurer } from '@dragon/layout';
-import { absoluteRects, breakLines, buildRun, fromCssPx, layout, NO_ENGINE_FAULTS, resolveBorder, resolvePadding, snapEdges, zoomInput } from '@dragon/layout';
+import { absoluteRects, breakLines, buildRun, fromCssPx, layout, NO_ENGINE_FAULTS, NO_GRID_FAULTS, resolveBorder, resolvePadding, snapEdges, zoomInput } from '@dragon/layout';
 import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
@@ -62,7 +62,7 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
     cache.set(id, w);
     return w;
   };
-  const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS };
+  const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
   const out: EngineText[] = [];
   for (const r of boxes) {
     if (isLine(r) || zBoxes.has(r.id)) continue;

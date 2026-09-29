@@ -1,6 +1,6 @@
 // GRID G1a lowering (lower/grid-layout.ts): computed grid values to the engine's grid input, with every item line resolved by the
 // compiler as Blink's GridLineResolver does; the grid formatting contexts of the support profiles; and the refusals of the values
-// G1a does not lay out. The engine and its Chrome proofs (the G-P differential test, the grid fixtures) are the next G1a packages.
+// G1a does not lay out. Layout itself is proven against Chrome by packages/parity/test/grid-corpus-*.test.ts and the grid fixtures.
 import { describe, expect, it } from 'vitest';
 import type { GridItemStyle, LayoutBox } from '@dragon/layout';
 import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/internal.ts';

@@ -7,6 +7,8 @@ import type { Frag, OutOfFlow, StaticAxis } from './box.ts';
 import { resolveBorder } from './box.ts';
 import type { Ctx, EngineFaults } from './block.ts';
 import { blockLevelInlineSize, directionOf, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
+import type { GridFaults } from './grid.ts';
+import { NO_GRID_FAULTS } from './grid.ts';
 import type { ContainingBlock } from './position.ts';
 import { layoutAbsolute, relativeOffset } from './position.ts';
 import type { TextMeasurer } from './text.ts';
@@ -37,6 +39,11 @@ type Placement = { readonly boxes: LayoutRect[]; readonly absolute: Map<string, 
 
 /** layout with seeded engine errors; only the parity harness's planted tests pass anything but NO_ENGINE_FAULTS. */
 export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults): LayoutResult {
+  return layoutWithGridFaults(given, measurer, faults, NO_GRID_FAULTS);
+}
+
+/** layoutWithFaults with seeded grid errors; only the G-P differential test passes anything but NO_GRID_FAULTS. */
+export function layoutWithGridFaults(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults, gridFaults: GridFaults): LayoutResult {
   const input = zoomInput(given, faults);
   const root = input.root;
   const icbWidth = fromCssPx(input.viewport.width);
@@ -44,7 +51,7 @@ export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, fau
   try {
     // Planted platform-rule faults replace the Ahem measurer's two macOS rules (platform-rules.ts).
     const m = faults.metricHalfUp || faults.untruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }) : measurer;
-    const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults };
+    const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults, gridFaults };
     const icbDirection = directionOf(ctx, root);
     const inline = blockLevelInlineSize(ctx, root, icbWidth, icbDirection);
     const r = layoutContents(ctx, root, {
