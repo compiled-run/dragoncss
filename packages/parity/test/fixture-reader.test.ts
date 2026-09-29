@@ -2,6 +2,7 @@
 // snapshot source, and reader identity: the FrontEndResult of every fixture present at BASE (12af7cb) is byte-identical, pinned
 // by the sha256 of its canonical JSON computed at BASE before the reader changed.
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { canonicalJson } from '../../dragon/src/digest.ts';
 import { FIXTURES } from '../src/fixtures.ts';
@@ -209,11 +210,24 @@ const BASE_DIGESTS: Readonly<Record<string, string>> = {
 
 const digest = (value: unknown): string => createHash('sha256').update(canonicalJson(value), 'utf8').digest('hex');
 
+// BASE fixtures a later package removed on purpose, with their BASE text, so the reader is still checked on them.
+// reject-background-important: casc-logical supports !important and replaced it with the layout fixture background-important.
+const REMOVED_AFTER_BASE: Readonly<Record<string, string>> = {
+  'reject-background-important': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.swatch { width: 20px; height: 20px; background: red !important; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="swatch" class="swatch"></div>\n</body>\n</html>\n',
+};
+
 describe('fixture reader identity', () => {
   it('every fixture present at BASE reads to the byte-identical FrontEndResult', () => {
     expect(Object.keys(BASE_DIGESTS)).toHaveLength(195);
     for (const [id, expected] of Object.entries(BASE_DIGESTS)) {
       const spec = FIXTURES.find((f) => f.id === id);
+      const removed = REMOVED_AFTER_BASE[id];
+      if (removed !== undefined) {
+        expect(spec, `${id} is listed as removed`).toBeUndefined();
+        expect(existsSync(new URL(`../fixtures/${id}.html`, import.meta.url)), `${id} is listed as removed`).toBe(false);
+        expect(digest(fixtureToInput(id, removed)), id).toBe(expected);
+        continue;
+      }
       if (spec === undefined) throw new Error(`BASE fixture ${id} is no longer registered`);
       const input = spec.format === 'html' ? readHtmlFixture(id).input : readTreeFixture(id);
       expect(digest(input), id).toBe(expected);
