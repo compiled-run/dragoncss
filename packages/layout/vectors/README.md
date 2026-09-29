@@ -18,7 +18,8 @@ Every field is required and there are no defaults: the compiler writes every val
 
 - `viewport` `{ width, height }` in CSS px, the initial containing block. `devicePixelRatio`: border widths snap to whole device px.
 - `root`: a `LayoutBox` `{ kind: "box", id, boxType: "element" | "anonymous", style: LayoutStyle, children }`. Children are all boxes or all text leaves. The compiler wraps mixed text in anonymous boxes `<element>:anon<k>`; the engine never creates boxes.
-- `style` has all 41 `LayoutStyle` fields. Lengths are tagged `{ kind: "px", value }` (CSS px), `{ kind: "percent", value }` (100 is the whole basis), or keywords such as `{ kind: "auto" }`, `{ kind: "none" }`, `{ kind: "normal" }` and `{ kind: "content" }`, as each field allows. Enumerations are strings; flexGrow, flexShrink and order are numbers.
+- `style` has all 42 `LayoutStyle` fields. Lengths are tagged `{ kind: "px", value }` (CSS px), `{ kind: "percent", value }` (100 is the whole basis), or keywords such as `{ kind: "auto" }`, `{ kind: "none" }`, `{ kind: "normal" }` and `{ kind: "content" }`, as each field allows. Enumerations are strings; flexGrow, flexShrink and order are numbers.
+- `aspectRatio` is `{ kind: "auto" }`, or Blink's layout ratio `{ kind: "ratio" | "auto-ratio", width, height }` in raw LayoutUnit values (positive integers; `auto-ratio` is `auto && <ratio>`, which sizes the content box). A percentage height, min-height or max-height beside a ratio is refused.
 - The four border widths also take `{ kind: "device-px", value }`: an initial line width (no width declared, or a border shorthand that omits it), which Chrome keeps in device px at every pixel ratio (rule R5 below).
 - A text leaf is `{ kind: "text", id: "<element>:text<k>", text, font: { family: "Ahem", size }, lineHeight, whiteSpaceCollapse: "collapse", textWrapMode }`. The text is already collapsed, and the leaf carries every inherited text property itself.
 - Ids are unique. Parents come before children, and children are in document order. `order` and the reverse flex directions are applied by the engine, never by reordering the input.
@@ -149,7 +150,10 @@ Input:
    "columnGap": {
     "kind": "normal"
    },
-   "textAlign": "start"
+   "textAlign": "start",
+   "aspectRatio": {
+    "kind": "auto"
+   }
   },
   "children": [
    {
@@ -260,7 +264,10 @@ Input:
      "columnGap": {
       "kind": "normal"
      },
-     "textAlign": "start"
+     "textAlign": "start",
+     "aspectRatio": {
+      "kind": "auto"
+     }
     },
     "children": [
      {

@@ -3,6 +3,7 @@
 import type { EngineFaults } from '../../layout/src/block.ts';
 import type {
   AlignContent,
+  AspectRatioValue,
   AlignItems,
   AlignSelf,
   BorderWidthValue,
@@ -469,12 +470,27 @@ function lineHeightValue(v: JsonValue, path: string): LineHeightValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
+function aspectRatioValue(v: JsonValue, path: string): AspectRatioValue {
+  const k = kindOf(v, path);
+  if (k === 'auto') {
+    obj(v, ['kind'], path);
+    return { kind: 'auto' };
+  }
+  if (k === 'ratio' || k === 'auto-ratio') {
+    const o = obj(v, ['kind', 'width', 'height'], path);
+    const width = numField(o, 'width', path);
+    const height = numField(o, 'height', path);
+    return k === 'ratio' ? { kind: 'ratio', width, height } : { kind: 'auto-ratio', width, height };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
 const STYLE_KEYS: readonly string[] = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height',
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio',
 ];
 
 const ALIGN_ITEMS: readonly string[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
@@ -525,6 +541,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     rowGap: gapValue(f('rowGap'), p('rowGap')),
     columnGap: gapValue(f('columnGap'), p('columnGap')),
     textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify'], p('textAlign')) as TextAlign,
+    aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
   };
 }
 

@@ -233,6 +233,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     rowGap: gap(id, get, 'row-gap', l),
     columnGap: gap(id, get, 'column-gap', l),
     textAlign: keyword<TextAlign>(id, get, 'text-align', ['start', 'end', 'left', 'right', 'center', 'justify']),
+    aspectRatio: { kind: 'auto' },
   };
 }
 

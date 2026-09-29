@@ -71,6 +71,15 @@ export type GapValue = Px | Percent | NormalValue | LengthCalc;
 /** CSS2 §9.3.2 box offsets (css-position-3 inset properties). */
 export type InsetValue = Px | Percent | Auto | LengthCalc;
 export type LineHeightValue = NormalValue | NumberValue | Px;
+/**
+ * css-sizing-4 §5.1 aspect-ratio as Blink's layout ratio (StyleAspectRatio::GetLayoutRatio): width and height are raw LayoutUnit
+ * values, positive integers, which the compiler derives from the <ratio> as Blink's LayoutRatioFromSizeF does. ratio is
+ * `<ratio>`; auto-ratio is `auto && <ratio>`, which sizes the content box whatever box-sizing says. A degenerate ratio is auto.
+ */
+export type AspectRatioValue =
+  | Auto
+  | { readonly kind: 'ratio'; readonly width: number; readonly height: number }
+  | { readonly kind: 'auto-ratio'; readonly width: number; readonly height: number };
 
 /** display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. */
 export type Display = 'block' | 'flex';
@@ -163,6 +172,7 @@ export type LayoutStyle = {
   readonly rowGap: GapValue;
   readonly columnGap: GapValue;
   readonly textAlign: TextAlign;
+  readonly aspectRatio: AspectRatioValue;
 };
 
 export type TextFont = { readonly family: 'Ahem'; readonly size: number };

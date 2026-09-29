@@ -6,6 +6,7 @@ import { borderBoxFromSpecified, hasPercent, resolveBorder, resolveLength, sumEd
 import type { Ctx } from './block.ts';
 import { inlineIntrinsicSize } from './inline.ts';
 import { isOutOfFlow } from './position.ts';
+import { hasAspectRatio, ratioInlineContribution } from './ratio.ts';
 import { unsupported } from './unsupported.ts';
 
 export type IntrinsicKind = 'min' | 'max';
@@ -35,6 +36,7 @@ export function inlineContribution(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind
   const bp = sumEdges(bor.left, bor.right, pad(s.paddingLeft), pad(s.paddingRight));
   let size: LU;
   if (s.width.kind === 'px') size = borderBoxFromSpecified(fromCssPx(s.width.value), bp, s.boxSizing);
+  else if (hasAspectRatio(s)) size = ratioInlineContribution(ctx, box, kind);
   else size = add(intrinsicContentInlineSize(ctx, box, kind), bp);
   if (s.maxWidth.kind === 'px') size = min(size, borderBoxFromSpecified(fromCssPx(s.maxWidth.value), bp, s.boxSizing));
   if (s.minWidth.kind === 'px') size = max(size, borderBoxFromSpecified(fromCssPx(s.minWidth.value), bp, s.boxSizing));
