@@ -16,10 +16,10 @@ type ReviewComment = {
 // GitHub's API times out now and then; a transient failure must not end a --wait.
 const gh = (args: string[], attempt = 1): string => {
   try {
-    return execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    return execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 });
   } catch (error) {
     if (attempt >= 5) throw error;
-    execFileSync('sleep', [String(attempt * 5)]);
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, attempt * 5_000);
     return gh(args, attempt + 1);
   }
 };
@@ -31,15 +31,18 @@ const args = process.argv.slice(2);
 const wait = args.includes('--wait');
 const pr = args.find((a) => /^\d+$/.test(a)) ?? gh(['pr', 'view', '--json', 'number', '--jq', '.number']).trim();
 const repo = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']).trim();
-const sha = gh(['pr', 'view', pr, '--json', 'headRefOid', '--jq', '.headRefOid']).trim();
-
-const checkRuns = (): CheckRun[] =>
-  (JSON.parse(gh(['api', `repos/${repo}/commits/${sha}/check-runs?per_page=100`])) as { check_runs: CheckRun[] }).check_runs;
+// The head is re-read on every poll, so a push during --wait is judged on its own checks, never on the previous commit's.
+let sha = '';
+const checkRuns = (): CheckRun[] => {
+  sha = gh(['pr', 'view', pr, '--json', 'headRefOid', '--jq', '.headRefOid']).trim();
+  return ghJson<{ check_runs: CheckRun[] }>(`repos/${repo}/commits/${sha}/check-runs?per_page=100`).flatMap((page) => page.check_runs);
+};
 
 // Macroscope's correctness review starts only after CI passes, so a green CI alone is not "done"; a failed check ends the wait.
 const CORRECTNESS = 'Macroscope - Correctness Check';
 const settled = (rs: CheckRun[]): boolean =>
-  rs.length > 0 && rs.every((r) => r.status === 'completed') && (rs.some((r) => r.name === CORRECTNESS) || rs.some((r) => !passed(r)));
+  rs.some((r) => r.status === 'completed' && !passed(r)) ||
+  (rs.length > 0 && rs.every((r) => r.status === 'completed') && rs.some((r) => r.name === CORRECTNESS));
 
 let runs = checkRuns();
 const deadline = Date.now() + 45 * 60_000;
@@ -48,7 +51,7 @@ while (wait && !settled(runs) && Date.now() < deadline) {
   runs = checkRuns();
 }
 
-console.log(`PR #${pr} at ${sha.slice(0, 7)}\n\nChecks:`);
+console.log(`PR #${pr} at ${sha}\n\nChecks:`);
 for (const run of runs) console.log(`  ${run.status === 'completed' ? run.conclusion : run.status}\t${run.name}\t${run.html_url}`);
 
 // Macroscope reports findings as inline review comments; a finding is answered once anyone else replies in its thread.

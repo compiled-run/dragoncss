@@ -22,9 +22,9 @@ Code reaches `master` only through a pull request that Macroscope has reviewed. 
 4. **Read the review.** Run `pnpm pr:review <number> --wait`. It waits for CI and then for Macroscope's correctness review of the latest commit, and lists failed checks and every Macroscope finding nobody has answered. Macroscope only posts findings of Medium severity or higher, so every one it lists matters.
 5. **Answer every finding.** Fix it, push, and reply `Fixed in <sha>` in its thread; or reply with why the code is intentional. Reply with `gh api repos/compiled-run/dragoncss/pulls/<number>/comments/<id>/replies -f body='...'`. Never reply only to clear the list, and never edit `.macroscope/` to silence a finding. If a fix would break a rule above, stop and report it.
 6. **Repeat until Macroscope is done.** Every push gets a new review, which may find new issues. Go back to step 4 until a review of the latest commit leaves nothing unanswered. After five rounds that still find new issues, stop and report instead of merging.
-7. **Merge.** When `pnpm pr:review <number>` exits 0, run `gh pr merge <number> --merge --delete-branch` without asking. A failed check blocks the merge: fix the cause, or report it. Never retry until it goes green.
+7. **Merge.** When `pnpm pr:review <number>` exits 0, run `gh pr merge <number> --merge --delete-branch --match-head-commit <sha>` without asking, using the commit `pr:review` printed, so a later unreviewed push can't slip in. Then bring every other open branch and worktree up to date with `git fetch origin && git merge origin/master`, and rerun its checks. A failed check blocks the merge: fix the cause, or report it. Never retry until it goes green.
 
 Two cases skip the pull request and push straight to `master`: PM board updates that touch only `docs/goals/**`, and small changes the owner asks for directly in the conversation (README wording, docs, config). Still run step 2 first.
 
-Workers dispatched in worktrees stop at step 3 and return the PR number in their receipt. The PM runs steps 4–7, or sends the findings back to a worker.
+Dispatched workers (opus-worker, goal-worker, grok) never push; they finish with a verified, committed branch and a receipt. The PM (the session coordinating them) runs steps 3–7 for each worker branch, and sends findings back to a worker when the fix is more than a line or two.
 
