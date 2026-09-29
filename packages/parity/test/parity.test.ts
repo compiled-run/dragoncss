@@ -3,7 +3,7 @@ import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromeDeviations, NO_ENGINE_FAULTS, platformRules } from '@dragon/layout';
 import type { Assignment, ProfileRow } from 'dragon';
-import { CATALOGUE, iosProfile, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
+import { androidProfile, CATALOGUE, iosProfile, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
 import type { Longhand } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
 import { captureFixture, captureJson } from '../src/capture.ts';
@@ -19,7 +19,7 @@ import { fixtureInput } from '../src/cases.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import { compilerChromeDeviations } from '../src/compiler-deviations.ts';
 import { readTreeExpectation } from '../src/tree-fixture.ts';
-import { deriveRows } from '../src/profile-rows.ts';
+import { committedLanes, deriveRows, promotionBlocker } from '../src/profile-rows.ts';
 import { buildReport, renderSummary, writeReport } from '../src/report.ts';
 import { hostPlatform, REFERENCE_PLATFORM, requireReferencePlatform } from '../src/platform.ts';
 import type { FrontEndResult } from 'dragon';
@@ -320,44 +320,45 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
 
   it('profile proofs (M1): every row and proof names exactly the cases that passed its lane and use its key; every used key has a row', () => {
     const cases = allCases();
-    for (const [target, profile] of [['ios', iosProfile], ['web', webProfile]] as const) {
+    const { evidence } = committedLanes();
+    for (const [target, profile] of [['ios', iosProfile], ['android', androidProfile], ['web', webProfile]] as const) {
+      const keyTarget = target === 'web' ? 'web' : 'ios';
       expect(profile.rows.length).toBeGreaterThan(0);
       for (const row of profile.rows) {
         const key = `${row.feature}@${row.context}`;
         for (const proof of row.proofs) {
-          const expected = cases.filter((c) => c.lanes[proof.lane] === 'pass' && c.features[target].includes(key)).map((c) => c.id);
+          const expected = cases.filter((c) => c.lanes[proof.lane] === 'pass' && c.features[keyTarget].includes(key)).map((c) => c.id);
           expect(proof.cases, `${target} ${key} ${proof.lane}`).toEqual(expected);
           expect(proof.cases.length, `${target} ${key}`).toBeGreaterThan(0);
           expect([proof.valueSubset, proof.context], key).toEqual([row.feature.slice(row.feature.indexOf(':') + 1), row.context]);
         }
       }
       const keys = new Set(profile.rows.map((r) => `${r.feature}@${r.context}`));
-      for (const c of cases) for (const k of c.features[target]) expect(keys.has(k), `${target} ${k} used by ${c.id} has no row`).toBe(true);
-      expect(profile.rows, `${target} rows must be exactly what pnpm run profile:rows derives from this run`).toEqual(deriveRows(target, cases));
+      for (const c of cases) for (const k of c.features[keyTarget]) expect(keys.has(k), `${target} ${k} used by ${c.id} has no row`).toBe(true);
+      expect(profile.rows, `${target} rows must be exactly what pnpm run profile:rows derives from this run and the committed lanes`).toEqual(deriveRows(target, cases, target === 'web' ? null : evidence(target)));
     }
   });
 
-  it('paint classification comes from PROPERTY_ASPECTS (M8): no iOS paint row is exact, border-*-style:solid included', () => {
+  it('paint classification comes from PROPERTY_ASPECTS (M8) and native promotion from the device lanes (P6a): a native row is exact only when every proving case passes every device lane of its target, device-pixels included for paint rows', () => {
     const aspects = (row: ProfileRow) => PROPERTY_ASPECTS[row.feature.slice(0, row.feature.indexOf(':')) as Longhand];
-    for (const row of iosProfile.rows) {
-      const a = aspects(row);
-      expect(a, row.feature).toBeDefined();
-      if (a.paint) {
-        expect(row.status, `${row.feature}: no native paint lane yet`).toBe('caveat');
-        expect(row.proofs.some((p) => p.aspect === 'computed-value' && p.lane === 'chrome-dual'), row.feature).toBe(true);
-      } else {
-        expect(row.status, row.feature).toBe('exact');
+    const { evidence } = committedLanes();
+    for (const [target, profile] of [['ios', iosProfile], ['android', androidProfile]] as const) {
+      const ev = evidence(target);
+      for (const row of profile.rows) {
+        const a = aspects(row);
+        expect(a, row.feature).toBeDefined();
+        if (a.paint) expect(row.proofs.some((p) => p.aspect === 'computed-value' && p.lane === 'chrome-dual'), row.feature).toBe(true);
+        if (a.layout) expect(row.proofs.some((p) => p.aspect === 'layout' && p.lane === 'linux-dragon-layout'), row.feature).toBe(true);
+        const proving = [...new Set(row.proofs.flatMap((p) => p.cases))];
+        const blocker = promotionBlocker(ev, proving, a.paint);
+        expect(row.status, `${target} ${row.feature}@${row.context}: ${blocker ?? 'every proving case passes'}`).toBe(blocker === null ? 'exact' : 'caveat');
       }
-      if (a.layout) expect(row.proofs.some((p) => p.aspect === 'layout' && p.lane === 'linux-dragon-layout'), row.feature).toBe(true);
     }
-    expect(iosProfile.rows.filter((r) => r.status === 'exact' && aspects(r).paint)).toEqual([]);
-    // iOS clipping is a paint aspect: overflow rows carry a layout proof and stay caveat.
+    // iOS clipping is a paint aspect: overflow rows carry a layout and a dual proof, and need device-pixels to be exact.
     const overflow = iosProfile.rows.filter((r) => /^overflow-[xy]:/.test(r.feature));
     expect(overflow.length).toBeGreaterThan(0);
-    for (const r of overflow) expect([r.status, r.proofs.map((p) => p.lane).sort()], `${r.feature}@${r.context}`).toEqual(['caveat', ['chrome-dual', 'linux-dragon-layout']]);
-    const solid = iosProfile.rows.filter((r) => /^border-(top|right|bottom|left)-style:solid$/.test(r.feature));
-    expect(solid.length).toBeGreaterThan(0);
-    for (const r of solid) expect(r.status).toBe('caveat');
+    for (const r of overflow) expect(r.proofs.map((p) => p.lane).sort(), `${r.feature}@${r.context}`).toEqual(['chrome-dual', 'linux-dragon-layout']);
+    expect(PROPERTY_ASPECTS['overflow-x'].paint && PROPERTY_ASPECTS['border-top-style'].paint).toBe(true);
     for (const row of webProfile.rows) {
       expect(row.status).toBe('exact');
       for (const p of row.proofs) expect(p.lane).toBe('chrome-dual');
