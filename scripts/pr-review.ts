@@ -13,7 +13,16 @@ type ReviewComment = {
   html_url: string;
 };
 
-const gh = (args: string[]): string => execFileSync('gh', args, { encoding: 'utf8' });
+// GitHub's API times out now and then; a transient failure must not end a --wait.
+const gh = (args: string[], attempt = 1): string => {
+  try {
+    return execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (error) {
+    if (attempt >= 5) throw error;
+    execFileSync('sleep', [String(attempt * 5)]);
+    return gh(args, attempt + 1);
+  }
+};
 const ghJson = <T>(path: string): T[] => (JSON.parse(gh(['api', '--paginate', '--slurp', path])) as T[][]).flat();
 const isMacroscope = (login: string): boolean => login.toLowerCase().includes('macroscope');
 const passed = (run: CheckRun): boolean => ['success', 'neutral', 'skipped'].includes(run.conclusion ?? '');
