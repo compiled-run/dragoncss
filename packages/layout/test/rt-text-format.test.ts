@@ -1,6 +1,7 @@
 // DTXT-0 (docs/goals/milestone-2-proof/notes/T068-dtxt-spec.md DT-1): templates, the typed integer guard, enumeration and
 // repertoire facts. '{m}:{s:02}' must equal Markless formatTime(60m + s) on all 60,000 strings (rt-vectors/text-format), and the
 // planted faults padDropped, minutesWrapped and textDomainUnchecked must each flip a vector.
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import { describe, expect, it } from 'vitest';
@@ -9,7 +10,7 @@ import { codePointCount, domainSize, enumerateTexts, formatText, guardValue, MAX
 import { scriptCode, USCRIPT_COMMON, USCRIPT_LATIN } from '../src/script-data.ts';
 
 type FormatTimeVectors = {
-  readonly source: { readonly repo: string; readonly file: string; readonly sha256: string; readonly function: string };
+  readonly source: { readonly repo: string; readonly file: string; readonly sha256: string; readonly functionSha256: string; readonly function: string };
   readonly template: string;
   readonly inputs: readonly IntDomain[];
   readonly strings: readonly string[];
@@ -117,8 +118,16 @@ describe('DTXT-0: the typed input guard', () => {
 describe("DTXT-0: '{m}:{s:02}' against Markless formatTime", () => {
   const formatTime = new Function(`${stripTypeScriptTypes(vectors.source.function)}\nreturn formatTime;`)() as (t: number) => string;
 
-  it('the vectors are Markless formatTime(60m + s), recomputed from the recorded source, 60,000 strings', () => {
+  it('the recorded source is the pinned Markless formatTime: file and function digests are literals here', () => {
+    // Markless is not in this repo: capture-dtxt-widths.ts --check reads the file and its digest. Pinning both here means
+    // replacing the source, the strings and the digests together still has to change this test.
     expect(vectors.source.file).toBe('demos/music-player-ssr/src/youtube-controller.ts');
+    expect(vectors.source.sha256).toBe('8fd07911a5d78c0caab2ce2c8ca3155815034b79fb15f2056381aff6e3247e6f');
+    expect(vectors.source.functionSha256).toBe('6fc2c8b4592c4c9947d83019ae35b31f704390ce70df8581b5578d8c47f3efb8');
+    expect(createHash('sha256').update(vectors.source.function).digest('hex')).toBe(vectors.source.functionSha256);
+  });
+
+  it('the vectors are Markless formatTime(60m + s), recomputed from the recorded source, 60,000 strings', () => {
     expect(vectors.template).toBe('{m}:{s:02}');
     expect(vectors.inputs).toEqual(DEMO);
     expect(vectors.strings.length).toBe(60000);

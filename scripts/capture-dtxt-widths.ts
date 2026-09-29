@@ -54,7 +54,7 @@ function formatTimeVectors(): object {
   for (let mm = 0; mm <= 999; mm++) for (let s = 0; s <= 59; s++) strings.push(formatTime(60 * mm + s));
   return {
     about: 'Markless formatTime(60 * m + s) for m in [0, 999] and s in [0, 59], index 60 * m + s. Written by node --conditions=dragon-internal scripts/capture-dtxt-widths.ts; do not edit.',
-    source: { repo: 'markless', file: MARKLESS_FILE, sha256: sha256(text), function: source },
+    source: { repo: 'markless', file: MARKLESS_FILE, sha256: sha256(text), functionSha256: sha256(source), function: source },
     template: TEMPLATE,
     inputs: DOMAINS,
     strings,
