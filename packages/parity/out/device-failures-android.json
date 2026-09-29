@@ -2201,91 +2201,75 @@
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-placement",
+  "case": "attr-neutral-none",
   "dpr": 2,
-  "node": "outside:f1",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "outside:f1 at 20,101: native [255,255,255,255], Chrome [229,229,229,255] (channel delta limit 0)"
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-placement",
+  "case": "attr-neutral-id",
   "dpr": 2,
-  "node": "edge:f1:top",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "edge:f1:top: Chrome shows an edge 2.962 device px along the scanline, the native capture none"
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-placement-rtl",
+  "case": "attr-neutral-data",
   "dpr": 2,
-  "node": "outside:f2",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "outside:f2 at 740,101: native [255,255,255,255], Chrome [229,229,229,255] (channel delta limit 0)"
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-placement-rtl",
+  "case": "attr-neutral-aria",
   "dpr": 2,
-  "node": "edge:f2:top",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "edge:f2:top: Chrome shows an edge 2.962 device px along the scanline, the native capture none"
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-templates",
+  "case": "attr-neutral-role",
   "dpr": 2,
-  "node": "edge:t2:bottom",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "edge:t2:bottom: Chrome shows an edge 3.154 device px along the scanline, the native capture none"
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-templates",
+  "case": "attr-neutral-title",
   "dpr": 2,
-  "node": "edge:t2:anon0:bottom",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "edge:t2:anon0:bottom: Chrome shows an edge 3.154 device px along the scanline, the native capture none"
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-templates",
+  "case": "attr-neutral-ui",
   "dpr": 2,
-  "node": "interior:t3",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "interior:t3 at 120,82: native [255,255,255,255], Chrome [229,229,229,255] (channel delta limit 0)"
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-templates",
+  "case": "attr-neutral-rel",
   "dpr": 2,
-  "node": "edge:t3:top",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "edge:t3:top: Chrome shows an edge 2.846 device px along the scanline, the native capture none"
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-templates",
+  "case": "attr-neutral-target",
   "dpr": 2,
-  "node": "edge:t3:bottom",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "edge:t3:bottom: Chrome shows an edge 3.038 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "grid-inert-templates-rtl",
-  "dpr": 2,
-  "node": "outside:t4",
-  "kind": "pixel",
-  "detail": "outside:t4 at 700,89: native [255,255,255,255], Chrome [229,229,229,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "grid-inert-templates-rtl",
-  "dpr": 2,
-  "node": "edge:t4:top",
-  "kind": "pixel",
-  "detail": "edge:t4:top: Chrome shows an edge 2.962 device px along the scanline, the native capture none"
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -9241,59 +9225,75 @@
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-placement",
+  "case": "attr-neutral-none",
   "dpr": 2.625,
-  "node": "outside:f1",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "outside:f1 at 26,133: native [255,255,255,255], Chrome [161,161,161,255] (channel delta limit 0)"
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-placement",
+  "case": "attr-neutral-id",
   "dpr": 2.625,
-  "node": "edge:f1:top",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "edge:f1:top: Chrome shows an edge 3.202 device px along the scanline, the native capture none"
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-placement-rtl",
+  "case": "attr-neutral-data",
   "dpr": 2.625,
-  "node": "outside:f2",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "outside:f2 at 971,133: native [255,255,255,255], Chrome [161,161,161,255] (channel delta limit 0)"
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-placement-rtl",
+  "case": "attr-neutral-aria",
   "dpr": 2.625,
-  "node": "edge:f2:top",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "edge:f2:top: Chrome shows an edge 3.202 device px along the scanline, the native capture none"
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-templates",
+  "case": "attr-neutral-role",
   "dpr": 2.625,
-  "node": "interior:t3",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "interior:t3 at 157,107: native [207,207,207,255], Chrome [96,96,96,255] (channel delta limit 0)"
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-templates",
+  "case": "attr-neutral-title",
   "dpr": 2.625,
-  "node": "outside:t4",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "outside:t4 at 131,117: native [93,93,93,255], Chrome [14,14,14,255] (channel delta limit 0)"
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
-  "case": "grid-inert-templates-rtl",
+  "case": "attr-neutral-ui",
   "dpr": 2.625,
-  "node": "interior:t3",
+  "node": "interior:p",
   "kind": "pixel",
-  "detail": "interior:t3 at 892,107: native [125,125,125,255], Chrome [36,36,36,255] (channel delta limit 0)"
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-rel",
+  "dpr": 2.625,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-target",
+  "dpr": 2.625,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",
@@ -11142,93 +11142,5 @@
   "node": "edge:label:top",
   "kind": "pixel",
   "detail": "edge:label:top: Chrome shows an edge 5.000 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "grid-inert-placement",
-  "dpr": 3,
-  "node": "outside:f1",
-  "kind": "pixel",
-  "detail": "outside:f1 at 30,153: native [255,255,255,255], Chrome [216,216,216,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "grid-inert-placement",
-  "dpr": 3,
-  "node": "edge:f1:top",
-  "kind": "pixel",
-  "detail": "edge:f1:top: Chrome shows an edge 2.923 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "grid-inert-placement-rtl",
-  "dpr": 3,
-  "node": "outside:f2",
-  "kind": "pixel",
-  "detail": "outside:f2 at 1110,153: native [255,255,255,255], Chrome [216,216,216,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "grid-inert-placement-rtl",
-  "dpr": 3,
-  "node": "edge:f2:top",
-  "kind": "pixel",
-  "detail": "edge:f2:top: Chrome shows an edge 2.923 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "grid-inert-templates",
-  "dpr": 3,
-  "node": "edge:t2:bottom",
-  "kind": "pixel",
-  "detail": "edge:t2:bottom: Chrome shows an edge 3.256 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "grid-inert-templates",
-  "dpr": 3,
-  "node": "edge:t2:anon0:bottom",
-  "kind": "pixel",
-  "detail": "edge:t2:anon0:bottom: Chrome shows an edge 3.256 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "grid-inert-templates",
-  "dpr": 3,
-  "node": "interior:t3",
-  "kind": "pixel",
-  "detail": "interior:t3 at 180,123: native [255,255,255,255], Chrome [216,216,216,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "grid-inert-templates",
-  "dpr": 3,
-  "node": "edge:t3:top",
-  "kind": "pixel",
-  "detail": "edge:t3:top: Chrome shows an edge 2.744 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "grid-inert-templates",
-  "dpr": 3,
-  "node": "edge:t3:bottom",
-  "kind": "pixel",
-  "detail": "edge:t3:bottom: Chrome shows an edge 3.077 device px along the scanline, the native capture none"
- },
- {
-  "lane": "device-pixels",
-  "case": "grid-inert-templates-rtl",
-  "dpr": 3,
-  "node": "outside:t4",
-  "kind": "pixel",
-  "detail": "outside:t4 at 1050,135: native [255,255,255,255], Chrome [216,216,216,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "grid-inert-templates-rtl",
-  "dpr": 3,
-  "node": "edge:t4:top",
-  "kind": "pixel",
-  "detail": "edge:t4:top: Chrome shows an edge 2.923 device px along the scanline, the native capture none"
  }
 ]

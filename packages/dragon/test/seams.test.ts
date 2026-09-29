@@ -114,11 +114,11 @@ describe('E2 seams: every at-rule is still refused', () => {
       const { diagnostics, enclosed } = run(text);
       return { text, diagnostics, enclosed };
     }));
-    // The selectors package added Compound.pseudos and Selector.anchor: every selector here must carry the defaults ([] and
-    // null), and without them the runs are byte-identical to the 4c1331c pin.
+    // The selectors package added Compound.pseudos and Selector.anchor, and TREE added Compound.ids and Selector.dropped: every
+    // selector here must carry the defaults ([], null, [] and false), and without them the runs are byte-identical to the 4c1331c pin.
     const added: unknown[] = [];
     const strip = (v: unknown): unknown => JSON.parse(JSON.stringify(v, (k, x: unknown) => {
-      if (k === 'pseudos' || k === 'anchor') {
+      if (k === 'pseudos' || k === 'anchor' || k === 'ids' || k === 'dropped') {
         added.push(x);
         return undefined;
       }
@@ -126,7 +126,7 @@ describe('E2 seams: every at-rule is still refused', () => {
     }));
     expect(sha(strip(runs))).toBe('4cfb6ef08f1acac7d6a9a22586a28031d40a74e0a60059bb7612cc16726f68e8');
     expect(added.length).toBeGreaterThan(0);
-    for (const x of added) expect([[], null]).toContainEqual(x);
+    for (const x of added) expect([[], null, false]).toContainEqual(x);
   });
 });
 
