@@ -18,8 +18,8 @@ import { withinTolerance } from './assertions.ts';
 import type { DomDocument, DomElement, DomNode } from './dom.ts';
 import { XHTML_NS } from './dom.ts';
 import { packagePath } from './paths.ts';
-import type { Check, ReadWpt, Sidecar, Translation } from './translate.ts';
-import { CHECK_ATTRIBUTES, translateDocument, WPT_VIEWPORT } from './translate.ts';
+import type { Check, DeadRuleFaults, ReadWpt, Sidecar, Translation } from './translate.ts';
+import { CHECK_ATTRIBUTES, NO_DEAD_RULE_FAULTS, translateDocument, WPT_VIEWPORT } from './translate.ts';
 
 /** One element of a snapshot: local name, namespace, attributes in order, children (text as strings), check-layout values. */
 export type SnapshotNode = {
@@ -413,10 +413,14 @@ export function snapshotProblem(f: SnapshotFile | null, source: string, commit: 
 }
 
 /** One translation per state, numbered as check-layout numbers its subtests across calls; one case per state. */
-export function translateSnapshot(path: string, states: readonly SnapshotState[], commit: string, readWpt: ReadWpt): Translation[] {
+export function translateSnapshot(path: string, states: readonly SnapshotState[], commit: string, readWpt: ReadWpt, deadRuleFaults: DeadRuleFaults = NO_DEAD_RULE_FAULTS): Translation[] {
   let before = 0;
+  const first = states[0];
   return states.map((s, i) => {
-    const t = translateDocument(path, snapshotDocument(s), commit, readWpt, { calls: [s.call], firstTestNumber: before, idSuffix: states.length > 1 ? `.state-${i}` : '' });
+    const t = translateDocument(path, snapshotDocument(s), commit, readWpt, {
+      calls: [s.call], firstTestNumber: before, idSuffix: states.length > 1 ? `.state-${i}` : '', deadRuleFaults,
+      ...(deadRuleFaults.dropFirstStateOnly && first !== undefined ? { deadRuleDocument: snapshotDocument(first) } : {}),
+    });
     before += s.matched;
     return t;
   });
@@ -439,5 +443,36 @@ export function chromeFromSnapshot(result: Extract<SnapshotResult, { states: unk
     }
   });
   const subtests = result.harness.tests.map((t) => ({ name: t.name, pass: t.pass }));
-  return { harness: result.harness.status, subtests, checks, agrees: result.harness.status === 0 && JSON.stringify(subtests) === JSON.stringify(perSubtest) };
+  return { harness: result.harness.status, subtests, checks, agrees: result.harness.status === 0 && JSON.stringify(subtests) === JSON.stringify(perSubtest), deadRulesLive: [] };
+}
+
+/**
+ * Chrome's confirmation of each state's dropped dead rules (Sidecar.deadRules): the original page runs again with its scripts,
+ * and at its k-th checkLayout call (state k) querySelectorAll counts each of that state's dropped selector lists. Returns the lists
+ * that matched something, that Chrome could not parse, or whose state the page never reached, as "state <k>: <list>".
+ */
+export async function liveDeadRulesInSnapshot(browser: Browser, origin: string, path: string, perState: readonly (readonly string[])[]): Promise<string[]> {
+  if (perState.every((l) => l.length === 0)) return [];
+  const context = await browser.newContext({ viewport: { ...WPT_VIEWPORT }, deviceScaleFactor: 1 });
+  try {
+    await context.addInitScript(`(() => {
+  const lists = ${JSON.stringify(perState)};
+  const counts = [];
+  Object.defineProperty(window, '__dragonDeadRules', { value: counts });
+  let real;
+  const hooked = function () {
+    const own = lists[counts.length] || [];
+    counts.push(own.map((sel) => { try { return document.querySelectorAll(sel).length; } catch (e) { return -1; } }));
+    return real.apply(this, arguments);
+  };
+  Object.defineProperty(window, 'checkLayout', { configurable: true, get() { return real === undefined ? undefined : hooked; }, set(fn) { real = fn; } });
+})();`);
+    const page = await context.newPage();
+    await page.goto(`${origin}/${path}`, { waitUntil: 'load' });
+    await page.waitForFunction(() => (window as unknown as { __dragonWpt?: unknown }).__dragonWpt !== undefined, undefined, { timeout: 20_000 }).catch(() => undefined);
+    const counts = await page.evaluate(() => (window as unknown as { __dragonDeadRules: number[][] }).__dragonDeadRules);
+    return perState.flatMap((lists, k) => lists.filter((_, i) => counts[k]?.[i] !== 0).map((l) => `state ${k}: ${l}`));
+  } finally {
+    await context.close();
+  }
 }
