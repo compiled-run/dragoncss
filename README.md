@@ -47,4 +47,11 @@ No test, no seal. Missing data means unsupported.
 - [API design](https://github.com/compiled-run/dragoncss/blob/master/docs/api.md)
 - [Research and evidence](https://github.com/compiled-run/dragoncss/blob/master/docs/research/README.md)
 
+## Sponsors
+
+Dragon CSS is supported by:
+
+- **[Anthropic](https://www.anthropic.com)**, through the Claude Open Source program. [Claude Code](https://claude.com/claude-code) writes much of the code.
+- **[Macroscope](https://macroscope.com)**, through the Macroscope Open Source program. It reviews every pull request.
+
 MIT licensed.
