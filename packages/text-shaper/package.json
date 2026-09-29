@@ -10,7 +10,12 @@
     "build": "zig build",
     "build:wasm": "zig build wasm && cp zig-out/wasm/dragon_hb.wasm wasm/dragon_hb.wasm",
     "gate": "node scripts/gate.ts",
-    "report": "node scripts/report.ts"
+    "report": "node scripts/report.ts",
+    "replay:record": "node scripts/replay.ts --record",
+    "replay:check": "node scripts/replay.ts --check",
+    "replay:swift": "node scripts/replay.ts --swift",
+    "replay:kotlin": "node scripts/replay.ts --kotlin",
+    "replay:device": "node scripts/replay-device.ts"
   },
   "dependencies": {}
 }
