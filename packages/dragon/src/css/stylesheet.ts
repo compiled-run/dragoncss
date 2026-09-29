@@ -82,7 +82,8 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
   }
   const errors: { message: string; offset: number }[] = [];
   const ast = parse(text, { positions: true, parseValue: true, onParseError: (e) => errors.push({ message: e.message, offset: e.offset }) });
-  canonicalizeEscapes(ast);
+  // Only a backslash spells an escape once the input is preprocessed.
+  if (text.includes('\\')) canonicalizeEscapes(ast);
   for (const e of errors) {
     const at = { source: base.source, start: base.start + e.offset, end: base.start + e.offset };
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error: ${e.message}` }));
@@ -340,7 +341,7 @@ export function parseSubstitutedValue(property: Longhand | Shorthand, text: stri
   let failed = false;
   const node = parse(text, { context: 'value', positions: true, onParseError: () => { failed = true; } });
   if (failed) return { kind: 'invalid' };
-  canonicalizeEscapes(node);
+  if (text.includes('\\')) canonicalizeEscapes(node);
   const tokens = list(node, 'children').filter((n) => n.type !== 'WhiteSpace');
   if (tokens.length === 0) return { kind: 'invalid' };
   return parseValue(property, node, tokens, base, text);
