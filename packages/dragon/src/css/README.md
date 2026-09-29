@@ -12,7 +12,8 @@ and ids, and the at-rule refusals as they were before it.
 | `at-rules.ts` | The at-rule handler registry. Every at-rule is refused today. |
 | `shorthands/index.ts` | The shorthand registry: one handler per shorthand, gathered from `box.ts`, `border.ts`, `flex.ts`, `overflow.ts`, `text.ts` and `logical.ts`. `shared.ts` holds the handler type and helpers. |
 | `values.ts` | The `CssValue` model, token-to-value conversion, and support-profile feature keys. |
-| `units.ts` | The unit registry: px, the absolute units, em and rem convert to px; viewport, font-metric, line-height and container units and math functions are refused with their reason. |
+| `units.ts` | The unit registry: px, the absolute units, em and rem convert to px; vw, vh, vi, vb, vmin and vmax are resolved by the engine; small, large and dynamic viewport, font-metric, line-height and container units, env() and the stepped-value and sign functions are refused with their reason. |
+| `math.ts` | css-values-4 §10 `calc()`, `min()`, `max()` and `clamp()`: parsing, type checking and Blink's parse-time simplification, the refusals of what V1 of the value model does not support, the lowering to the engine's `CalcExpr`, and Chrome's serialization. |
 | `properties.ts` | The aggregate of `properties/<family>.ts`: `LONGHANDS`, `SHORTHANDS`, `INHERITED`, `PROPERTY_ASPECTS`, `PROPERTY_ROLE`. |
 | `properties/<family>.ts` | Each family's longhands, shorthands, aspects, inherited set and role memberships. |
 | `color.ts`, `lexer.ts`, `grammar.generated.ts` | Colour parsing and serialization, the webref lexer, and the generated grammar (`pnpm run grammar:gen`). |
@@ -31,6 +32,10 @@ and ids, and the at-rule refusals as they were before it.
   parse driver reports at the token. An unregistered unit already parses and keeps a `<length-<unit>>` feature key, and the
   profiles refuse it. `computeLengths` in `analysis/computed.ts` converts every declared length to px (font-size first); the
   declared value keeps its unit, so its feature key stays `<length-<unit>>`.
+- **A math function.** `values.ts` hands `calc()`, `min()`, `max()` and `clamp()` to `math.ts` with the property's context
+  (`mathContextFor`): a number calculation folds to a number, a length calculation keeps its text with feature key `<calc()>`
+  (or `<min()>`, `<max()>`, `<clamp()>`) and is lowered per element in `lower/ios-layout.ts`, and a refused one keeps its text
+  with the reason as a comment and a feature type no profile row supports, so it is refused with that reason.
 - **An at-rule.** Replace its entry in `AT_RULE_HANDLERS` in `at-rules.ts`, one line per at-rule. The driver still reports
   the handler's outcome. An outcome other than `refuse` is a new `AtRuleOutcome` kind, which the driver handles.
 - **A selector.** Parse the new part in `selectors.ts` and extend `Compound`, then match it in `analysis/match.ts`.

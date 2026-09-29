@@ -49,7 +49,10 @@ describe('native targets', () => {
     const p1 = p1Manifest();
     const x = extendedManifest();
     expect(Object.fromEntries(suites.filter((s) => s.corpus === 'p1').map((s) => [s.suite, s.cases]))).toEqual(p1.cases);
-    expect(Object.fromEntries(suites.filter((s) => s.corpus === 'extended').map((s) => [s.suite, s.cases]))).toEqual(x.cases);
+    // Every declared extended suite agrees with the lock; the lock's other suites are exactly the V1 value-model suites (notes/T006).
+    const declared = Object.fromEntries(suites.filter((s) => s.corpus === 'extended').map((s) => [s.suite, s.cases]));
+    expect(declared).toEqual(Object.fromEntries(Object.entries(x.cases).filter(([k]) => k in declared)));
+    expect(Object.keys(x.cases).filter((k) => !(k in declared))).toEqual(['snap-values', 'calc-goldens', 'engine-calc', 'units-calc']);
     expect(suites.find((s) => s.suite === 'vectors')?.cases).toBe(m1CaseIds().length);
   });
   it('device lanes: the shared DPRs on both, 2.625 only on android and only through EXTRA_DPRS', () => {
