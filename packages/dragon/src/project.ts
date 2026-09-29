@@ -2,7 +2,7 @@
 // Every reachable assignment is resolved, checked and lowered as its own case; nothing is deduplicated (docs/api.md §7).
 import type { LayoutBox } from '@dragon/layout';
 import { attributeRefusal } from './attributes.ts';
-import { canonicalJson, sha256Hex } from './digest.ts';
+import { CanonicalText, canonicalJson, sha256Hex } from './digest.ts';
 import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
 import type { Longhand } from './css/properties.ts';
@@ -340,6 +340,17 @@ function canonicalInput(input: FrontEndResult): unknown {
   };
 }
 
+/** Each support profile's canonical JSON, written once: profiles are megabytes, and a profile is never changed after it is built. */
+const profileTexts = new WeakMap<SupportProfile, CanonicalText>();
+function profileText(profile: SupportProfile): CanonicalText {
+  let t = profileTexts.get(profile);
+  if (t === undefined) {
+    t = new CanonicalText(canonicalJson(profile));
+    profileTexts.set(profile, t);
+  }
+  return t;
+}
+
 function analyze<K extends string>(config: { projectId: string; targets: object }, configDiagnostics: readonly Diagnostic[], options: Resolved, input: FrontEndResult): Analysis<K> {
   const targets = Object.keys(config.targets).filter((k): k is KnownTarget => (KNOWN_TARGETS as readonly string[]).includes(k)).sort();
   const diagnostics: Diagnostic[] = [...configDiagnostics];
@@ -351,7 +362,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     // The reference platform of the UA dataset and the environment's root font are compilation inputs (docs/api.md §10.1).
     platform: options.ua.platform,
     rootFont: options.rootFont,
-    profiles: targets.map((t) => profileFor(profiles, t)),
+    profiles: targets.map((t) => profileText(profileFor(profiles, t))),
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
     direction: options.direction,
