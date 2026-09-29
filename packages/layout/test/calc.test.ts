@@ -5,10 +5,11 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import type { EngineFaults, LayoutInput, LayoutRect } from '../src/index.ts';
-import { layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, validateLayoutInput, zoomInput } from '../src/index.ts';
+import type { CalcExpr, EngineFaults, LayoutBox, LayoutInput, LayoutRect, LayoutStyle } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, validateLayoutInput, zoomInput } from '../src/index.ts';
 import { hasPercent, resolveLength, resolveLengthOrNull, resolveMinLength } from '../src/box.ts';
 import { evaluateCalc } from '../src/calc.ts';
+import { box, text } from './helpers.ts';
 import type { LU } from '../src/units.ts';
 import { calcToLu, doubleMaxStep, doubleMinStep, floatDiv, floatInvert, floatMul, fromCssPx, pixelsAndPercentAt, pixelsAndPercentPlainOrder, toFloat, viewportUnitBase } from '../src/units.ts';
 
@@ -183,5 +184,46 @@ describe('the validator takes calculation trees (validate.ts calc rule)', () => 
       expect(r.ok, JSON.stringify(bad)).toBe(false);
       if (!r.ok) expect(r.errors.map((e) => e.code), JSON.stringify(bad)).toEqual(['bad-value']);
     }
+  });
+});
+
+describe('intrinsic contributions of calculations with a percentage (css-sizing-3 §5.2.1; Blink ResolveInlineLengthInternal)', () => {
+  // Expected sizes are Chrome 145.0.7632.6's for the same styles: a child of 'XXXX' in 10px Ahem (40px of content) under a
+  // shrink-to-fit abspos parent, a flex item with an auto basis, a column flex item at flex-start and a nested flex container.
+  const px = (value: number) => ({ kind: 'px', value }) as const;
+  const pc = (value: number) => ({ kind: 'percent', value }) as const;
+  const calc = (expr: CalcExpr) => ({ kind: 'calc', expr, range: 'non-negative' }) as const;
+  const CASES: readonly (readonly [string, Partial<LayoutStyle>, number])[] = [
+    ['min-width: calc(60px - 10%) resolves against 0', { minWidth: calc({ kind: 'sum', terms: [px(60), pc(-10)] }) }, 60],
+    ['min-width: calc(60px + 5%) resolves against 0', { minWidth: calc({ kind: 'sum', terms: [px(60), pc(5)] }) }, 60],
+    ['min-width: min(60px, 50%) resolves against 0', { minWidth: calc({ kind: 'min', terms: [px(60), pc(50)] }) }, 40],
+    ['min-width: clamp(55px, 10%, 70px) resolves against 0', { minWidth: calc({ kind: 'clamp', min: px(55), value: pc(10), max: px(70) }) }, 55],
+    ['min-width: 60% resolves against 0', { minWidth: pc(60) }, 40],
+    ['width: calc(50px - 10%) is auto', { width: calc({ kind: 'sum', terms: [px(50), pc(-10)] }) }, 40],
+    ['width: min(30px, 50%) is auto', { width: calc({ kind: 'min', terms: [px(30), pc(50)] }) }, 40],
+    ['max-width: calc(10px + 5%) is none', { maxWidth: calc({ kind: 'sum', terms: [px(10), pc(5)] }) }, 40],
+    ['max-width: calc(100% - 20px) is none', { maxWidth: calc({ kind: 'sum', terms: [pc(100), px(-20)] }) }, 40],
+  ];
+  const child = (s: Partial<LayoutStyle>) => box('c', { height: px(10), ...s }, [text('t', 'XXXX')]);
+  const PARENTS: readonly (readonly [string, (c: LayoutBox) => LayoutBox])[] = [
+    ['abspos shrink-to-fit', (c) => box('w', { position: 'relative', height: px(20) }, [box('p', { position: 'absolute', top: px(0), left: px(0) }, [c])])],
+    ['flex item with an auto basis', (c) => box('w', { display: 'flex', width: px(400) }, [box('p', { flexShrink: 0 }, [c])])],
+    ['column flex item at flex-start', (c) => box('w', { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: px(400) }, [box('p', {}, [c])])],
+    ['nested flex container', (c) => box('w', { display: 'flex', width: px(400) }, [box('p', { display: 'flex', flexShrink: 0 }, [c])])],
+  ];
+  for (const [parent, wrap] of PARENTS) {
+    it(`${parent}: each contributes as Chrome 145 does`, () => {
+      for (const [name, s, want] of CASES) {
+        const root = box('html', {}, [box('body', { marginTop: px(0), marginLeft: px(0) }, [wrap(child(s))])]);
+        const r = layoutWithFaults({ viewport: { width: 800, height: 600 }, devicePixelRatio: 1, root }, ahemMeasurer, NO_ENGINE_FAULTS);
+        if (r.kind !== 'ok') throw new Error(JSON.stringify(r.unsupported));
+        expect(absoluteRects(r.boxes).get('p')?.width, `${parent}, ${name}`).toBe(want * 64);
+      }
+    });
+  }
+  it('a calculation with no percentage is definite: the environment pass makes it px before any contribution is taken', () => {
+    const r = layoutWithFaults({ viewport: { width: 800, height: 600 }, devicePixelRatio: 1, root: box('html', {}, [box('w', { position: 'relative' }, [box('p', { position: 'absolute' }, [child({ width: calc({ kind: 'sum', terms: [px(20), px(5)] }) })])])]) }, ahemMeasurer, NO_ENGINE_FAULTS);
+    if (r.kind !== 'ok') throw new Error(JSON.stringify(r.unsupported));
+    expect(absoluteRects(r.boxes).get('p')?.width).toBe(25 * 64);
   });
 });
