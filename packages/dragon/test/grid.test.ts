@@ -234,6 +234,29 @@ describe('grid family: parse and expand', () => {
     expect(hook('grid', 'dense auto-flow 1fr / 10px')).toBe('none | 10px | none | 1fr | auto | dense');
     expect(hook('justify-items', 'anchor-center')).toBe('anchor-center');
   });
+  it('computed text takes Chrome 145\'s computed form: zero lengths, number forms, empty names, flex minmax, span 1 and clamped integers (PR #23 round 5)', () => {
+    const cases = [
+      ['grid-template-columns', 'minmax(0, 1fr)', 'minmax(0px, 1fr)'],
+      ['grid-template-columns', '0', '0px'],
+      ['grid-template-columns', 'repeat(2, 0)', 'repeat(2, 0px)'],
+      ['grid-template-columns', '[a] 0 [b]', '[a] 0px [b]'],
+      ['grid-template-columns', 'fit-content(0)', 'fit-content(0px)'],
+      ['grid-auto-rows', '0', '0px'],
+      ['grid-template-columns', '+5px .5fr 1e1px 10.0% -0px', '5px 0.5fr 10px 10% 0px'],
+      ['grid-template-columns', '[] 10px repeat(2, [] 1px) []', '10px repeat(2, 1px)'],
+      ['grid-template-columns', 'minmax(auto, 1fr) minmax(AUTO, 0fr) minmax(min-content, 1fr)', '1fr 0fr minmax(min-content, 1fr)'],
+      ['grid-template-columns', 'repeat(99999999999, 1px 1px) repeat(+3, 1px)', 'repeat(5000000, 1px 1px) repeat(3, 1px)'],
+      ['grid-template-columns', '[\\1F600 x\\ y] 1px [\\-\\-a \\31 foo \\-]', '[😀x\\ y] 1px [--a \\31 foo \\-]'],
+      ['grid-row-start', 'span 1 a', 'span a'],
+      ['grid-row-start', 'span 1', 'span 1'],
+      ['grid-row-start', '99999999999', '10000000'],
+      ['grid-row-start', '-99999999999 a', '-10000000 a'],
+      ['grid-row-start', '+3', '3'],
+      ['grid-row-start', '\\1F600', '😀'],
+    ] as const;
+    for (const [p, v, want] of cases) expect(expanded(p, v).map((x) => x.slice(x.indexOf('=') + 1)).join(' | '), `${p}: ${v}`).toBe(want);
+    expect(expanded('grid-template', '[] "a" minmax(auto, 1fr) [] / [] minmax(auto, 2fr)')).toEqual(['grid-template-rows=1fr', 'grid-template-columns=2fr', 'grid-template-areas="a"']);
+  });
   it('area rows are scanned by code point, so non-BMP names are one cell', () => {
     expect(expanded('grid-template-areas', '"a😀b c" "d d"')).toEqual(['grid-template-areas="a😀b c" "d d"']);
     expect(expanded('grid-template-areas', '"😀"')).toEqual(['grid-template-areas="😀"']);

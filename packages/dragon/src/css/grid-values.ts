@@ -49,36 +49,81 @@ function splitSlash(tokens: readonly CssNode[]): CssNode[][] {
 
 // ---- Serialization -------------------------------------------------------------------------------------------------------
 
-type DimensionText = (value: string, unit: string) => string;
-const keepDimension: DimensionText = (value, unit) => `${value}${unit}`;
+// Every value is written in Chrome 145's computed form (probed): lowercase keywords, function names and units; numbers without
+// sign, leading dot or exponent where CSS allows; a unitless zero track size as 0px; one space between tokens and after each
+// comma; names serialized as CSSOM identifiers. Numbers keep their full value: Chrome displays 6 significant digits, but the
+// emitted CSS must give Chrome the value it computed from the authored CSS.
 
-/** A track-list token as CSS text: keywords and function names lowercased, line names kept as written. */
+type DimensionText = (value: string, unit: string) => string;
+/** A CSS number in its shortest form: +5 is 5, .5 is 0.5, 1e1 is 10, 12.50 is 12.5, -0 is 0. */
+const cssNumber = (raw: string): string => String(Number(raw) + 0);
+const keepDimension: DimensionText = (value, unit) => `${cssNumber(value)}${unit}`;
+
+/** CSSOM "serialize an identifier" (css-cssom-1 §2.1), on the decoded identifier; Chrome serializes custom idents this way. */
+export function serializeIdentifier(decoded: string): string {
+  const points = Array.from(decoded);
+  let out = '';
+  points.forEach((c, i) => {
+    const cp = c.codePointAt(0) as number;
+    const hex = (): string => `\\${cp.toString(16)} `;
+    if (cp === 0) out += '\uFFFD';
+    else if ((cp >= 0x1 && cp <= 0x1f) || cp === 0x7f || (i === 0 && /[0-9]/.test(c)) || (i === 1 && /[0-9]/.test(c) && points[0] === '-')) out += hex();
+    else if (i === 0 && c === '-' && points.length === 1) out += '\\-';
+    else if (cp >= 0x80 || /[-_0-9A-Za-z]/.test(c)) out += c;
+    else out += `\\${c}`;
+  });
+  return out;
+}
+
+/** A custom identifier (a line name) in its serialized form. */
+const nameText = (n: CssNode): string => serializeIdentifier(cssIdent.decode(String(n['name'])));
+
+/** A track-list token as CSS text in Chrome's computed form (the comment above). */
 function trackText(n: CssNode, dim: DimensionText): string {
   switch (n.type) {
     case 'Identifier':
       return lowerIdent(n) as string;
     case 'Number':
-      return String(n['value']);
+      // A unitless number in a track list is a zero length or a repeat() count.
+      return Number(n['value']) === 0 ? dim('0', CANONICAL_LENGTH_UNIT) : cssNumber(String(n['value']));
     case 'Dimension':
       return dim(String(n['value']), normalizeUnit(String(n['unit'])));
     case 'Percentage':
-      return `${String(n['value'])}%`;
+      return `${cssNumber(String(n['value']))}%`;
     case 'Brackets':
-      return `[${children(n).map((c) => String(c['name'])).join(' ')}]`;
+      // Empty line names name nothing; Chrome omits them.
+      return children(n).length === 0 ? '' : `[${children(n).map(nameText).join(' ')}]`;
     case 'Function': {
-      const args: string[][] = [[]];
+      const name = String(n['name']).toLowerCase();
+      const parts: CssNode[][] = [[]];
       for (const c of children(n)) {
-        if (c.type === 'Operator' && c['value'] === ',') args.push([]);
-        else (args[args.length - 1] as string[]).push(trackText(c, dim));
+        if (c.type === 'Operator' && c['value'] === ',') parts.push([]);
+        else (parts[parts.length - 1] as CssNode[]).push(c);
       }
-      return `${String(n['name']).toLowerCase()}(${args.map((a) => a.join(' ')).join(', ')})`;
+      // css-grid-2 §7.2.4: a flexible size is minmax(auto, <flex>), and Chrome writes it as the flex.
+      const [first, second] = parts as [CssNode[], CssNode[]?];
+      if (name === 'minmax' && first.length === 1 && lowerIdent(first[0]) === 'auto' && second?.length === 1 && isFlex(second[0])) return trackText(second[0] as CssNode, dim);
+      const text = parts.map((a, i) => {
+        // Blink ConsumeGridTrackRepeatFunction: a repetition count is clamped so the repeat() holds at most kGridMaxTracks tracks.
+        if (name === 'repeat' && i === 0 && a.length === 1 && isInteger(a[0])) return String(clampCount(Number((a[0] as CssNode)['value']), (parts[1] ?? []).filter((t) => t.type !== 'Brackets').length));
+        return tracksText(a, dim);
+      });
+      return `${name}(${text.join(', ')})`;
     }
     default:
       return generate(n);
   }
 }
 
-const tracksText = (tokens: readonly CssNode[], dim: DimensionText = keepDimension): string => tokens.map((t) => trackText(t, dim)).join(' ');
+const tracksText = (tokens: readonly CssNode[], dim: DimensionText = keepDimension): string => tokens.map((t) => trackText(t, dim)).filter((t) => t !== '').join(' ');
+
+/** Blink kGridMaxTracks: grid line integers are clamped to ±1e7, and a repeat() to 1e7 tracks. */
+const GRID_MAX_TRACKS = 10000000;
+const clampLine = (n: number): number => (n > GRID_MAX_TRACKS ? GRID_MAX_TRACKS : n < -GRID_MAX_TRACKS ? -GRID_MAX_TRACKS : n);
+const clampCount = (count: number, tracks: number): number => {
+  const max = tracks > 0 ? (GRID_MAX_TRACKS - (GRID_MAX_TRACKS % tracks)) / tracks : GRID_MAX_TRACKS;
+  return count > max ? max : count;
+};
 
 /**
  * css-values-4 §6: the lengths of a track-list value computed to px (em against the element's computed font-size, rem against the
@@ -87,9 +132,9 @@ const tracksText = (tokens: readonly CssNode[], dim: DimensionText = keepDimensi
 export function absolutizeGridText(text: string, fonts: FontBases): string {
   const node = parse(text, { context: 'value' });
   return tracksText(children(node), (value, unit) => {
-    if (unit === CANONICAL_LENGTH_UNIT || unitEntry(unit) === null) return `${value}${unit}`;
+    if (unit === CANONICAL_LENGTH_UNIT || unitEntry(unit) === null) return `${cssNumber(value)}${unit}`;
     const px = lengthToPx(Number(value), unit, fonts);
-    return px === null ? `${value}${unit}` : `${String(px)}${CANONICAL_LENGTH_UNIT}`;
+    return px === null ? `${cssNumber(value)}${unit}` : `${cssNumber(String(px))}${CANONICAL_LENGTH_UNIT}`;
   });
 }
 
@@ -151,10 +196,10 @@ const reservedName = (n: CssNode): boolean => {
   return lower === 'auto' || lower === 'span' || lower === 'default' || CSS_WIDE.has(lower);
 };
 
-/** A grid line's <custom-ident> as written (escapes kept), or null when it is not one. */
+/** A grid line's <custom-ident> in its serialized form, or null when it is not one. */
 function lineName(n: CssNode | undefined): string | null {
   const name = ident(n);
-  return name === null || reservedName(n as CssNode) ? null : name;
+  return name === null || reservedName(n as CssNode) ? null : nameText(n as CssNode);
 }
 
 /**
@@ -201,7 +246,9 @@ function gridLine(tokens: readonly CssNode[]): GridLine | 'auto' | null {
 
 function lineValue(line: GridLine | 'auto'): CssValue {
   if (line === 'auto') return kw('auto');
-  const parts = [line.span ? 'span' : null, line.integer === null ? null : String(line.integer), line.name].filter((p) => p !== null);
+  // Chrome writes span 1 <name> as span <name> (1 is the default span) and clamps the integer (clampLine).
+  const integer = line.integer === null || (line.span && line.integer === 1 && line.name !== null) ? null : String(clampLine(line.integer));
+  const parts = [line.span ? 'span' : null, integer, line.name].filter((p) => p !== null);
   const type = [line.span ? 'span' : null, line.integer === null ? null : 'integer', line.name === null ? null : 'custom-ident'].filter((p) => p !== null).join('-');
   return other(type, parts.join(' '));
 }
@@ -447,7 +494,7 @@ function gridTemplate(tokens: readonly CssNode[]): LonghandValue[] | null {
     const t = before[i];
     if (t === undefined || t.type !== 'Brackets') return true;
     if (!isLineNames(t)) return false;
-    names.push(...children(t).map((c) => String(c['name'])));
+    names.push(...children(t).map(nameText));
     i++;
     return true;
   };

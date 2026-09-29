@@ -28,7 +28,8 @@ export function generateGridDeclarations(seed: number = GRID_FUZZ_SEED, count: n
   const chance = (p: number): boolean => r() < p;
   const times = (lo: number, hi: number, f: () => string): string[] => Array.from({ length: int(lo, hi) }, f);
 
-  const NAMES = ['a', 'b', 'c', 'x', 'Foo', 'start', 'end', 'span', 'auto', 'default', 'inherit', 'none', 'subgrid', 'dense', 'row', 'é', 'a-1', '_z'];
+  // Escaped names too: Dragon serializes them as CSSOM identifiers, as Chrome does ([\\31 x], [\\-], [a\\ b], [\\1F600]).
+  const NAMES = ['a', 'b', 'c', 'x', 'Foo', 'start', 'end', 'span', 'auto', 'default', 'inherit', 'none', 'subgrid', 'dense', 'row', 'é', 'a-1', '_z', '\\31 x', '\\-', 'a\\ b', '\\1F600', '\\-\\-y'];
   const LENGTH_UNITS = ['px', 'px', 'px', 'em', 'rem', 'cm', 'mm', 'q', 'in', 'pt', 'pc', 'vw', 'vh', 'ch', 'ex', 'lh', 'cqw', 'PX', 'Em'];
   const number = (): string => pick(['0', '1', '2', '3', '10', '12.5', '0.5', '100', '1e1', '-1', '-10', '+5', '99999999']);
   const length = (): string => {
@@ -158,7 +159,10 @@ export function generateGridDeclarations(seed: number = GRID_FUZZ_SEED, count: n
   /** Comments and odd white space around tokens: css-syntax-3 treats a comment as nothing. */
   const noise = (v: string): string => {
     if (chance(0.9)) return v;
-    return chance(0.5) ? `/* c */ ${v}` : v.replace(' ', pick(['  ', '\n', '/**/ ', ' /* x */ ']));
+    const k = r();
+    if (k < 0.4) return `/* c */ ${v}`;
+    if (k < 0.7) return v.replace(' ', pick(['  ', '\n', '/**/ ', ' /* x */ ']));
+    return v.replace(/\(/g, '( ').replace(/\)/g, ' )').replace(/, /g, ' ,  ');
   };
 
   const PROPS: [string, () => string][] = [
