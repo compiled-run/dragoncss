@@ -1,41 +1,51 @@
 // pnpm run north-star:check: the north-star screen through Dragon's public compiler, every diagnostic collected.
 //
-// Input: snapshot.html + styles.css (verbatim), converted to the parity fixture HTML subset and read into a FrontEndResult by the
-// parity fixture reader (packages/parity/src/fixture-reader.ts), exactly as the HTML parity fixtures are. Compiled with the public
-// createProject, targets web and ios (minimum 15.0); android is not public before P4.
+// Input: the north star as a tree fixture (examples/music-player/tree: the Markless demo's components with libraryStatus and
+// isPlaying as free states, and styles.css verbatim), read into one FrontEndResult by the parity tree reader
+// (packages/parity/src/tree-fixture.ts). One compile covers all 4 cases. Compiled with the public createProject, targets web,
+// ios (minimum 15.0) and android (minSdk 31).
 //
 // Dragon treats every target-less error (unsupported element, attribute, selector, property, invalid value) as fatal to the
 // per-case analysis, and does not check the declarations inside an unsupported at-rule on a fatal input. One pass over the authored
 // input therefore hides whole classes of diagnostics. The check runs three passes, each offset-preserving so every CSS
 // diagnostic maps back to a styles.css line:
-//   A authored:    the snapshot as written, every screen state.
+//   A authored:    the tree and stylesheet as written.
 //   B unwrapped:   @media preludes and braces blanked (both media queries match the 390 and 412 px target viewports, so this
 //                  is the cascade those devices see); @keyframes blanked and from/to renamed to unmatched classes, so every
 //                  declaration inside an at-rule gets the context-free value check.
 //   C context:     B, with every rule and declaration a target-less error names blanked out (repeated to a fixed point), and
-//                  the tree projected to supported tags (the compiler's element table) with non-ui attributes dropped. This is the only way
-//                  Dragon reaches its per-case checks (computed values, fonts, contextual proof) on this screen. It is a probe:
-//                  rules keyed on the projected tags (button, a, img, input, span) no longer match.
-// Output (deterministic, no timestamps): examples/music-player/dragon/north-star-check.json. Prints the diagnostic count and
-// the support percentage.
+//                  the tree projected to supported tags (the compiler's element table), keeping only the attributes Dragon accepts.
+//                  This is the only way Dragon reaches its per-case checks (computed values, fonts, contextual proof) on this
+//                  screen. It is a probe: rules keyed on the projected tags (button, a, img, input, span) no longer match.
+// Output (deterministic, no timestamps): examples/music-player/dragon/north-star-check.json, with per-target counts. Prints the
+// diagnostic count and the support percentage.
 import { mkdirSync, writeFileSync } from 'node:fs';
-import type { Diagnostic, FrontEndResult, Origin } from '../../../packages/dragon/src/index.ts';
+import type { Diagnostic, FrontEndResult, Origin, TreeNode } from '../../../packages/dragon/src/index.ts';
 import { createProject } from '../../../packages/dragon/src/index.ts';
 import { SUPPORTED_TAGS } from '../../../packages/dragon/src/analysis/elements.ts';
-import { fixtureToInput } from '../../../packages/parity/src/fixture-reader.ts';
+import { attributeRefusal } from '../../../packages/dragon/src/attributes.ts';
+import { authoredModel } from '../../../packages/parity/src/render.ts';
+import type { TreeFixtureFile } from '../../../packages/parity/src/tree-fixture.ts';
+import { readTreeFixtureDir } from '../../../packages/parity/src/tree-fixture.ts';
 import type { CssDeclaration, Span } from './css-inventory.ts';
 import { inventory } from './css-inventory.ts';
-import type { StateId } from './snapshot.ts';
-import { examplePath, readSnapshot, STATES, stateHtml, toFixtureHtml } from './snapshot.ts';
+import { examplePath, readSnapshot } from './snapshot.ts';
 
 export const OUTPUT = 'dragon/north-star-check.json';
 const PROJECT_ID = 'dragon-parity';
+const TREE_DIR = 'examples/music-player/tree';
+/** The stylesheet's path in the tree fixture's source list. */
+const STYLES_SOURCE = '../styles.css';
+const TARGETS = { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
+const TARGET_IDS = ['web', 'ios', 'android'] as const;
+type TargetId = (typeof TARGET_IDS)[number];
 
 type Pass = 'A-authored' | 'B-unwrapped' | 'C-context';
 
 type Location =
   | { readonly kind: 'css'; readonly start: number; readonly end: number; readonly line: number; readonly column: number; readonly text: string }
   | { readonly kind: 'element'; readonly id: string; readonly tag: string }
+  | { readonly kind: 'source'; readonly file: string; readonly text: string }
   | { readonly kind: 'unlocated'; readonly what: string };
 
 export type CollectedDiagnostic = {
@@ -45,9 +55,8 @@ export type CollectedDiagnostic = {
   readonly target: string | null;
   readonly location: Location;
   readonly message: string;
-  /** The first pass that reported it, every pass and state that did, and whether it came as an at-rule's related entry. */
+  /** The first pass that reported it, every pass that did, and whether it came as an at-rule's related entry. */
   readonly passes: readonly Pass[];
-  readonly states: readonly StateId[];
   readonly viaRelated: boolean;
 };
 
@@ -86,166 +95,162 @@ export function unwrapAtRules(css: string, decls: readonly CssDeclaration[]): st
   return out;
 }
 
-/** Pass C's tree: unsupported tags become div, non-ui attributes (except the fixture id and class) are dropped. */
-export function projectTree(fixtureHtml: string): string {
-  const bodyAt = fixtureHtml.indexOf('<body');
-  const head = fixtureHtml.slice(0, bodyAt).replace(/<html\b[^>]*>/, (m) => `<html data-dragon-id="${(/data-dragon-id="([^"]+)"/.exec(m) as RegExpExecArray)[1] as string}">`);
-  const body = fixtureHtml.slice(bodyAt).replace(/<(\/?)([a-z][a-z0-9-]*)((?:\s+[a-z][a-z0-9-]*="[^"]*")*)(\s*)>/g, (_m, close: string, tag: string, attrs: string, ws: string) => {
-    const t = SUPPORTED_TAGS.has(tag) ? tag : 'div';
-    const kept = [...attrs.matchAll(/\s+([a-z][a-z0-9-]*)="([^"]*)"/g)].filter((a) => a[1] === 'data-dragon-id' || a[1] === 'class' || (a[1] as string).startsWith('ui-')).map((a) => ` ${a[1]}="${a[2]}"`).join('');
-    return `<${close}${t}${close === '' ? kept : ''}${ws}>`;
-  });
-  return head + body;
+/** Pass C's tree: unsupported tags become div; only the attributes Dragon accepts on the projected tag are kept. */
+export function projectTree(spec: TreeFixtureFile): TreeFixtureFile {
+  type Spec = { el?: string; attr?: readonly { name: string }[]; children?: readonly Spec[]; then?: readonly Spec[]; else?: readonly Spec[]; slots?: Record<string, readonly Spec[]> };
+  const node = (n: Spec): Spec => {
+    const out: Spec = { ...n };
+    if (n.el !== undefined) {
+      const tag = SUPPORTED_TAGS.has(n.el) ? n.el : 'div';
+      out.el = tag;
+      if (n.attr !== undefined) out.attr = n.attr.filter((a) => attributeRefusal(tag, a.name) === null);
+    }
+    if (n.children !== undefined) out.children = n.children.map(node);
+    if (n.then !== undefined) out.then = n.then.map(node);
+    if (n.else !== undefined) out.else = n.else.map(node);
+    if (n.slots !== undefined) out.slots = Object.fromEntries(Object.entries(n.slots).map(([k, v]) => [k, v.map(node)]));
+    return out;
+  };
+  return { ...spec, components: spec.components.map((c) => ({ ...c, root: (c.root as readonly Spec[]).map(node) as unknown as typeof c.root })) };
 }
 
-function withCss(fixtureHtml: string, originalCss: string, css: string): string {
-  const at = fixtureHtml.indexOf(originalCss);
-  if (at < 0 || css.length !== originalCss.length) throw new Error('stylesheet not found in the fixture HTML, or its length changed');
-  return fixtureHtml.slice(0, at) + css + fixtureHtml.slice(at + originalCss.length);
-}
-
-function compile(html: string, id: string): { input: FrontEndResult; diagnostics: readonly Diagnostic[]; targets: Record<string, string> } {
-  const input = fixtureToInput(id, html);
-  const project = createProject({ projectId: PROJECT_ID, targets: { web: {}, ios: { minimum: '15.0' } } });
-  const compiled = project.compile(input);
+function compile(id: string, css: string, projected: boolean): { input: FrontEndResult; diagnostics: readonly Diagnostic[]; targets: Record<string, string> } {
+  const input = readTreeFixtureDir(TREE_DIR, id, { text: (file, text) => (file === STYLES_SOURCE ? css : text), ...(projected ? { spec: projectTree } : {}) });
+  const compiled = createProject({ projectId: PROJECT_ID, targets: TARGETS }).compile(input);
   return { input, diagnostics: compiled.diagnostics, targets: { ...compiled.targets } };
 }
 
-function locate(origin: Origin, html: string, styleStart: number, css: string): Location {
-  if (origin.kind !== 'authored') return { kind: 'unlocated', what: origin.kind === 'unlocated' ? String((origin as { what?: unknown }).what ?? 'unlocated') : origin.kind };
-  const { start, end } = origin.span;
-  if (start >= styleStart && end <= styleStart + css.length) {
-    const s = start - styleStart;
-    return { kind: 'css', start: s, end: end - styleStart, ...lineCol(css, s), text: css.slice(s, end - styleStart) };
-  }
-  // A tree origin: an element (its own id is the first data-dragon-id in the span) or a text node (its parent's, the nearest before).
-  const inside = /data-dragon-id="([^"]+)"/.exec(html.slice(start, end));
-  const text = html.slice(start, end);
-  if (inside !== null && text.startsWith('<')) return { kind: 'element', id: inside[1] as string, tag: (/^<([a-z0-9-]+)/.exec(text) as RegExpExecArray)[1] as string };
-  const before = html.slice(0, start);
-  const idAt = before.lastIndexOf('data-dragon-id="');
-  const id = before.slice(idAt + 16, before.indexOf('"', idAt + 16));
-  const tag = (/<([a-z0-9-]+)[^<]*$/.exec(before) as RegExpExecArray)[1] as string;
-  return { kind: 'element', id: `${id} (text)`, tag };
+const isStyles = (uri: string): boolean => uri.endsWith('/examples/music-player/styles.css');
+
+/** Every element template node of the tree, keyed by the spans that point at it (its own and its attributes'). */
+function elementSpans(input: FrontEndResult): Map<string, { id: string; tag: string }> {
+  const out = new Map<string, { id: string; tag: string }>();
+  const key = (o: Origin): string | null => (o.kind === 'authored' ? `${o.span.source.uri}@${o.span.start}-${o.span.end}` : null);
+  const visit = (component: string, nodes: readonly TreeNode[]): void => {
+    for (const n of nodes) {
+      if (n.kind === 'element') {
+        const at = { id: `${component}/${n.id}`, tag: n.tag };
+        for (const o of [n.origin, ...n.attributes.map((a) => a.origin)]) {
+          const k = key(o);
+          if (k !== null && !out.has(k)) out.set(k, at);
+        }
+        visit(component, n.children);
+      } else if (n.kind === 'branch') {
+        visit(component, n.then);
+        visit(component, n.else);
+      } else if (n.kind === 'call') for (const s of n.slots) visit(component, s.children);
+    }
+  };
+  for (const c of input.tree?.components ?? []) visit(c.id, c.root);
+  return out;
 }
 
-const locKey = (l: Location): string => (l.kind === 'css' ? `css@${l.start}-${l.end}` : l.kind === 'element' ? `el@${l.id}` : `un@${l.what}`);
+function locate(origin: Origin, input: FrontEndResult, css: string, elements: Map<string, { id: string; tag: string }>): Location {
+  if (origin.kind !== 'authored') return { kind: 'unlocated', what: origin.kind === 'unlocated' ? String((origin as { reason?: unknown }).reason ?? 'unlocated') : origin.kind };
+  const { start, end, source } = origin.span;
+  if (isStyles(source.uri)) return { kind: 'css', start, end, ...lineCol(css, start), text: css.slice(start, end) };
+  const el = elements.get(`${source.uri}@${start}-${end}`);
+  if (el !== undefined) return { kind: 'element', ...el };
+  const file = input.snapshot.sources.find((s) => s.ref.uri === source.uri);
+  return { kind: 'source', file: file?.displayPath ?? source.uri, text: file === undefined ? '' : file.text.slice(start, end) };
+}
+
+const locKey = (l: Location): string => (l.kind === 'css' ? `css@${l.start}-${l.end}` : l.kind === 'element' ? `el@${l.id}` : l.kind === 'source' ? `src@${l.file}:${l.text}` : `un@${l.what}`);
+const applies = (target: string | null, t: TargetId): boolean => target === null || target === t;
 
 function main(): void {
-  const { html, css } = readSnapshot();
+  const { css } = readSnapshot();
   if ([...css].length !== css.length) throw new Error('styles.css is not BMP-only; offsets would drift');
   const inv = inventory(css);
-  const collected = new Map<string, { d: Omit<CollectedDiagnostic, 'passes' | 'states'>; passes: Set<Pass>; states: Set<StateId> }>();
-  const tagOf = new Map<string, string>();
-  for (const state of STATES) for (const m of stateHtml(html, state.id).matchAll(/<([a-z][a-z0-9-]*)\b[^>]*data-dragon-id="([^"]+)"/g)) tagOf.set(m[2] as string, m[1] as string);
+  const collected = new Map<string, { d: Omit<CollectedDiagnostic, 'passes'>; passes: Set<Pass> }>();
   const passTargets: Record<string, Record<string, string>> = {};
   const passCounts: Record<string, number> = {};
-  const producerEdits = new Set<string>();
 
-  const record = (pass: Pass, state: StateId, html: string, input: FrontEndResult, d: Diagnostic, viaRelated: boolean, message: string, code: string, target: string | null, origin: Origin): void => {
-    const styleStart = html.indexOf('<style>') + '<style>'.length;
-    void input;
-    const found = locate(origin, html, styleStart, css);
-    // Report the authored tag, not pass C's projected div.
-    const location: Location = found.kind === 'element' ? { ...found, tag: tagOf.get(found.id.replace(/ \(text\)$/, '')) ?? found.tag } : found;
+  const record = (pass: Pass, location: Location, severity: string, viaRelated: boolean, message: string, code: string, target: string | null): void => {
     const key = `${code}|${target ?? '*'}|${locKey(location)}|${message}`;
     const hit = collected.get(key);
     if (hit !== undefined) {
       hit.passes.add(pass);
-      hit.states.add(state);
       return;
     }
-    collected.set(key, { d: { key, code, severity: d.severity, target, location, message, viaRelated }, passes: new Set([pass]), states: new Set([state]) });
+    collected.set(key, { d: { key, code, severity, target, location, message, viaRelated }, passes: new Set([pass]) });
   };
 
-  const run = (pass: Pass, state: StateId, fixture: string): { diagnostics: readonly Diagnostic[] } => {
-    const { input, diagnostics, targets } = compile(fixture, `north-star-${state}-${pass}`);
-    passTargets[`${pass}/${state}`] = targets;
-    passCounts[`${pass}/${state}`] = diagnostics.length;
+  const run = (pass: Pass, sheet: string, projected: boolean): { diagnostics: readonly Diagnostic[] } => {
+    const { input, diagnostics, targets } = compile(`north-star-${pass}`, sheet, projected);
+    const elements = elementSpans(input);
+    passTargets[pass] = targets;
+    passCounts[pass] = diagnostics.length;
     for (const d of diagnostics) {
       if (d.code === 'DRAGON_UNSUPPORTED_AT_RULE' && pass === 'C-context') continue;
-      record(pass, state, fixture, input, d, false, d.message, d.code, d.target, d.origin);
+      record(pass, locate(d.origin, input, css, elements), d.severity, false, d.message, d.code, d.target);
       // An unsupported at-rule's related entries are the diagnostics of the rules inside it ("CODE [target]: message").
       if (d.code === 'DRAGON_UNSUPPORTED_AT_RULE') {
         for (const r of d.related) {
           const m = /^(DRAGON_[A-Z_]+)(?: \[([a-z]+)\])?: ([\s\S]*)$/.exec(r.message);
-          if (m !== null) record(pass, state, fixture, input, d, true, m[3] as string, m[1] as string, m[2] ?? null, r.origin);
+          if (m !== null) record(pass, locate(r.origin, input, css, elements), d.severity, true, m[3] as string, m[1] as string, m[2] ?? null);
         }
       }
     }
     return { diagnostics };
   };
 
+  run('A-authored', css, false);
   const unwrapped = unwrapAtRules(css, inv.declarations);
-  const contextProbe: Record<string, { rounds: number; blankedRules: number; blankedDeclarations: number; residualTargetless: number }> = {};
-  for (const state of STATES) {
-    const fx = toFixtureHtml(stateHtml(html, state.id), css);
-    for (const e of fx.edits) producerEdits.add(e);
-    run('A-authored', state.id, fx.html);
-    const b = run('B-unwrapped', state.id, withCss(fx.html, css, unwrapped));
+  const b = run('B-unwrapped', unwrapped, false);
 
-    // Pass C: blank what the target-less errors of B name, to a fixed point.
-    const projected = projectTree(fx.html);
-    const ruleBlanks = new Map<number, Span>();
-    const declBlanks = new Map<number, Span>();
-    let diags = b.diagnostics;
-    let fixture = '';
-    let rounds = 0;
-    let residual = 0;
-    for (;;) {
-      const styleStart = fx.html.indexOf('<style>') + '<style>'.length;
-      let added = 0;
-      for (const d of diags) {
-        if (d.severity !== 'error' || d.target !== null || d.origin.kind !== 'authored') continue;
-        const s = d.origin.span.start - styleStart;
-        const e = d.origin.span.end - styleStart;
-        if (s < 0 || e > css.length) continue;
-        const owner = inv.declarations.find((x) => s >= x.selectorSpan.start && e <= x.selectorSpan.end);
-        if (owner !== undefined) {
-          if (!ruleBlanks.has(owner.ruleSpan.start)) added++;
-          ruleBlanks.set(owner.ruleSpan.start, owner.ruleSpan);
-          continue;
-        }
-        const decl = inv.declarations.find((x) => s >= x.span.start && e <= x.span.end);
-        if (decl !== undefined) {
-          if (!declBlanks.has(decl.span.start)) added++;
-          declBlanks.set(decl.span.start, decl.span);
-        }
+  // Pass C: blank what the target-less errors of B name, to a fixed point.
+  const ruleBlanks = new Map<number, Span>();
+  const declBlanks = new Map<number, Span>();
+  let diags = b.diagnostics;
+  let probeCss = unwrapped;
+  let rounds = 0;
+  let residual = 0;
+  for (;;) {
+    let added = 0;
+    for (const d of diags) {
+      if (d.severity !== 'error' || d.target !== null || d.origin.kind !== 'authored' || !isStyles(d.origin.span.source.uri)) continue;
+      const s = d.origin.span.start;
+      const e = d.origin.span.end;
+      const owner = inv.declarations.find((x) => s >= x.selectorSpan.start && e <= x.selectorSpan.end);
+      if (owner !== undefined) {
+        if (!ruleBlanks.has(owner.ruleSpan.start)) added++;
+        ruleBlanks.set(owner.ruleSpan.start, owner.ruleSpan);
+        continue;
       }
-      const probeCss = blank(unwrapped, [...ruleBlanks.values(), ...declBlanks.values()]);
-      fixture = withCss(projected, css, probeCss);
-      rounds++;
-      if (added === 0 && rounds > 1) break;
-      const r = compile(fixture, `north-star-${state.id}-probe`);
-      diags = r.diagnostics;
-      residual = diags.filter((d) => d.severity === 'error' && d.target === null).length;
-      if (residual === 0 || rounds >= 8) break;
+      const decl = inv.declarations.find((x) => s >= x.span.start && e <= x.span.end);
+      if (decl !== undefined) {
+        if (!declBlanks.has(decl.span.start)) added++;
+        declBlanks.set(decl.span.start, decl.span);
+      }
     }
-    run('C-context', state.id, fixture);
-    contextProbe[state.id] = { rounds, blankedRules: ruleBlanks.size, blankedDeclarations: declBlanks.size, residualTargetless: residual };
+    probeCss = blank(unwrapped, [...ruleBlanks.values(), ...declBlanks.values()]);
+    rounds++;
+    if (added === 0 && rounds > 1) break;
+    const r = compile('north-star-probe', probeCss, true);
+    diags = r.diagnostics;
+    residual = diags.filter((d) => d.severity === 'error' && d.target === null).length;
+    if (residual === 0 || rounds >= 8) break;
   }
+  run('C-context', probeCss, true);
+  const contextProbe = { rounds, blankedRules: ruleBlanks.size, blankedDeclarations: declBlanks.size, residualTargetless: residual };
 
   const PASS_ORDER: readonly Pass[] = ['A-authored', 'B-unwrapped', 'C-context'];
-  const STATE_ORDER = STATES.map((s) => s.id);
-  const diagnostics: CollectedDiagnostic[] = [...collected.values()].map(({ d, passes, states }) => ({
-    ...d,
-    passes: PASS_ORDER.filter((p) => passes.has(p)),
-    states: STATE_ORDER.filter((s) => states.has(s)),
-  }));
+  const diagnostics: CollectedDiagnostic[] = [...collected.values()].map(({ d, passes }) => ({ ...d, passes: PASS_ORDER.filter((p) => passes.has(p)) }));
   const pos = (l: Location): number => (l.kind === 'css' ? l.start : 1e9);
   diagnostics.sort((a, b) => PASS_ORDER.indexOf(a.passes[0] as Pass) - PASS_ORDER.indexOf(b.passes[0] as Pass) || pos(a.location) - pos(b.location) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
 
-  // Per declaration: blocked on a target when a diagnostic for it (or for every target) lands on the declaration, on its
-  // rule's selector, or is an unsupported-at-rule diagnostic on its enclosing at-rule.
+  // Per declaration: blocked on a target when an error for it (or for every target) lands on the declaration, on its rule's
+  // selector, or is an unsupported-at-rule diagnostic on its enclosing at-rule.
   const overlaps = (a: Span, l: Location): boolean => l.kind === 'css' && l.start < a.end && l.end > a.start;
-  const perDeclaration = inv.declarations.map((decl) => {
+  const perDeclaration = inv.declarations.map((decl: CssDeclaration) => {
     const hits = diagnostics.filter((d) => d.severity === 'error' && d.location.kind === 'css' && (
       overlaps(decl.span, d.location) || overlaps(decl.selectorSpan, d.location)
       || (d.code === 'DRAGON_UNSUPPORTED_AT_RULE' && decl.atRuleSpan !== null && d.location.start === decl.atRuleSpan.start)));
-    const blocked = (t: string): boolean => hits.some((d) => d.target === null || d.target === t);
+    const status = (t: TargetId): string => (hits.some((d) => applies(d.target, t)) ? 'blocked' : 'supported');
     return {
       index: decl.index, line: decl.line, selector: decl.selector.trim(), atRule: decl.atRule, property: decl.property, value: decl.value,
-      web: blocked('web') ? 'blocked' : 'supported', ios: blocked('ios') ? 'blocked' : 'supported',
+      web: status('web'), ios: status('ios'), android: status('android'),
       codes: [...new Set(hits.map((d) => d.code))].sort(),
     };
   });
@@ -253,46 +258,58 @@ function main(): void {
   const supportedBoth = perDeclaration.filter((d) => d.web === 'supported' && d.ios === 'supported').length;
   const pct = (n: number): number => Math.round((n / total) * 1000) / 10;
 
-  // Elements of the main state.
-  const elementTags = [...stateHtml(html, 'main').matchAll(/<([a-z][a-z0-9-]*)\b[^>]*data-dragon-id="([^"]+)"/g)].map((m) => ({ tag: m[1] as string, id: m[2] as string }));
-  const unsupportedElementIds = new Set(diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_ELEMENT' && d.location.kind === 'element').map((d) => (d.location as { id: string }).id));
+  // Elements of the initial case, rendered from the tree.
+  const input = readTreeFixtureDir(TREE_DIR, 'north-star');
+  const model = authoredModel(input);
+  const initial = model.render(model.assignments[model.initialIndex] ?? [], { kind: 'authored' });
+  const elementTags = [...initial.matchAll(/<([a-z][a-z0-9-]*) data-dragon-id="([^"]+)"/g)].map((m) => ({ tag: m[1] as string, id: m[2] as string }));
   const tags: Record<string, { count: number; supported: boolean }> = {};
   for (const e of elementTags) {
-    const t = tags[e.tag] ?? { count: 0, supported: !unsupportedElementIds.has(e.id) };
+    const t = tags[e.tag] ?? { count: 0, supported: SUPPORTED_TAGS.has(e.tag) };
     t.count++;
     tags[e.tag] = t;
   }
 
+  const sortKeys = (r: Record<string, number>): Record<string, number> => Object.fromEntries(Object.keys(r).sort().map((k) => [k, r[k] as number]));
   const byCode: Record<string, number> = {};
   for (const d of diagnostics) byCode[`${d.code}${d.target === null ? '' : ` [${d.target}]`}`] = (byCode[`${d.code}${d.target === null ? '' : ` [${d.target}]`}`] ?? 0) + 1;
-  const sortedByCode: Record<string, number> = {};
-  for (const k of Object.keys(byCode).sort()) sortedByCode[k] = byCode[k] as number;
+  // Per target: every diagnostic that applies to it (its own and the target-less ones), by severity and code.
+  const perTarget = Object.fromEntries(TARGET_IDS.map((t) => {
+    const count = (severity: string): Record<string, number> => {
+      const out: Record<string, number> = {};
+      for (const d of diagnostics) if (d.severity === severity && applies(d.target, t)) out[d.code] = (out[d.code] ?? 0) + 1;
+      return sortKeys(out);
+    };
+    return [t, { errors: count('error'), warnings: count('warning') }];
+  }));
 
   const report = {
-    schema: 'dragon-north-star-check/1',
-    source: 'examples/music-player/snapshot.html + styles.css (Markless demos/music-player-ssr)',
-    compiler: { entry: 'createProject (public)', targets: { web: {}, ios: { minimum: '15.0' } }, android: 'not public until P4' },
+    schema: 'dragon-north-star-check/2',
+    source: 'examples/music-player/tree (the Markless demos/music-player-ssr components as a dragon/tree@0 fixture) + styles.css',
+    compiler: { entry: 'createProject (public)', targets: TARGETS },
     method: {
       passes: {
-        'A-authored': 'the snapshot as written, every screen state',
+        'A-authored': 'the tree and stylesheet as written, all cases in one compile',
         'B-unwrapped': '@media and @keyframes wrappers blanked (offsets kept), so declarations inside at-rules get the context-free check',
-        'C-context': 'B with target-less errors blanked to a fixed point and the tree projected to html/body/div; reaches the per-case checks',
+        'C-context': 'B with target-less errors blanked to a fixed point and the tree projected to supported tags and accepted attributes; reaches the per-case checks',
       },
-      states: STATES.map((s) => ({ id: s.id, description: s.description })),
-      producerEdits: [...producerEdits].sort(),
+      cases: model.assignments.length,
+      freeStates: model.free.map((f) => `${f.instance}.${f.state}`),
       contextProbe,
     },
     summary: {
       diagnostics: diagnostics.length,
       errors: diagnostics.filter((d) => d.severity === 'error').length,
-      byCode: sortedByCode,
+      byCode: sortKeys(byCode),
+      perTarget,
       declarations: total,
       supportedBothTargets: supportedBoth,
       supportedWeb: perDeclaration.filter((d) => d.web === 'supported').length,
       supportedIos: perDeclaration.filter((d) => d.ios === 'supported').length,
+      supportedAndroid: perDeclaration.filter((d) => d.android === 'supported').length,
       supportPercent: pct(supportedBoth),
       elements: elementTags.length,
-      supportedElements: elementTags.filter((e) => !unsupportedElementIds.has(e.id)).length,
+      supportedElements: elementTags.filter((e) => SUPPORTED_TAGS.has(e.tag)).length,
       tags,
       targetsPerPass: passTargets,
       rawDiagnosticsPerPass: passCounts,
@@ -304,9 +321,10 @@ function main(): void {
   mkdirSync(examplePath('dragon'), { recursive: true });
   writeFileSync(examplePath(OUTPUT), `${JSON.stringify(report, null, 1)}\n`);
   const s = report.summary;
-  console.log(`north-star: ${s.diagnostics} diagnostics (${s.errors} errors) over ${STATES.length} states and 3 passes`);
-  console.log(`north-star: ${s.supportedBothTargets}/${s.declarations} declarations supported on web and ios = ${s.supportPercent}% (web ${s.supportedWeb}, ios ${s.supportedIos})`);
+  console.log(`north-star: ${s.diagnostics} diagnostics (${s.errors} errors) over ${report.method.cases} cases and 3 passes`);
+  console.log(`north-star: ${s.supportedBothTargets}/${s.declarations} declarations supported on web and ios = ${s.supportPercent}% (web ${s.supportedWeb}, ios ${s.supportedIos}, android ${s.supportedAndroid})`);
   console.log(`north-star: ${s.supportedElements}/${s.elements} elements supported`);
+  for (const t of TARGET_IDS) console.log(`north-star: ${t} errors ${JSON.stringify(perTarget[t]?.errors)}`);
   console.log(`north-star: wrote examples/music-player/${OUTPUT}`);
 }
 

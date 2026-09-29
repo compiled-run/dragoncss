@@ -21,6 +21,12 @@ export type CompilerFaults = {
   readonly directionBeforeVar: boolean;
   /** A flow-relative declaration holding var() is not narrowed to the element's direction: it competes on both physical sides. */
   readonly varLogicalBothSides: boolean;
+  /** The cascade counts an #id selector in the class column instead of the id column (Selectors-4 §17). */
+  readonly idSpecificityAsClass: boolean;
+  /** Attribute values compare case-sensitively even for names in HTML's case-insensitive list (HTML §4.16.2). */
+  readonly attributeCaseAlwaysSensitive: boolean;
+  /** A rule whose selector list Chrome drops (one selector it does not parse) keeps its other selectors. */
+  readonly invalidSelectorListKept: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false };
