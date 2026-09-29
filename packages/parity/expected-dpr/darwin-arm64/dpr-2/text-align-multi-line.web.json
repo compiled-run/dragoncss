@@ -74,7 +74,11 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-top-left-radius": "0px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+        "border-bottom-left-radius": "0px"
       }
     },
     {
@@ -141,7 +145,11 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-top-left-radius": "0px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+        "border-bottom-left-radius": "0px"
       }
     },
     {
@@ -208,7 +216,11 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-top-left-radius": "0px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+        "border-bottom-left-radius": "0px"
       }
     },
     {
@@ -305,7 +317,11 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-top-left-radius": "0px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+        "border-bottom-left-radius": "0px"
       }
     },
     {
@@ -402,7 +418,11 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-top-left-radius": "0px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+        "border-bottom-left-radius": "0px"
       }
     },
     {
@@ -499,7 +519,11 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-top-left-radius": "0px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+        "border-bottom-left-radius": "0px"
       }
     },
     {
@@ -596,7 +620,11 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-top-left-radius": "0px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+        "border-bottom-left-radius": "0px"
       }
     },
     {
@@ -693,7 +721,11 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-top-left-radius": "0px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+        "border-bottom-left-radius": "0px"
       }
     },
     {
@@ -790,7 +822,11 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-top-left-radius": "0px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+        "border-bottom-left-radius": "0px"
       }
     },
     {
@@ -887,7 +923,11 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-top-left-radius": "0px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+        "border-bottom-left-radius": "0px"
       }
     },
     {
@@ -984,7 +1024,11 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-top-left-radius": "0px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+        "border-bottom-left-radius": "0px"
       }
     },
     {
@@ -1081,7 +1125,11 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-top-left-radius": "0px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+        "border-bottom-left-radius": "0px"
       }
     },
     {
@@ -1178,7 +1226,11 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-top-left-radius": "0px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+        "border-bottom-left-radius": "0px"
       }
     },
     {
@@ -1245,7 +1297,11 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-top-left-radius": "0px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+        "border-bottom-left-radius": "0px"
       }
     },
     {

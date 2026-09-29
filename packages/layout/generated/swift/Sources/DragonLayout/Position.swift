@@ -87,7 +87,7 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
   if try jsSome(box.children, { (k: any U_LayoutBox_TextLeaf) throws -> Bool in
     return ((k.kind == S.s_text) || ((k as! LayoutBox).boxType == S.s_anonymous))
 }) {
-    try unsupported_unsupported(S.s_abspos_in_inline, jsUnwrap(oof).id, S.s22, jsConcat(S.s34, jsUnwrap(oof).id, S.s4, box.id, S.s13))
+    try unsupported_unsupported(S.s_abspos_in_inline, jsUnwrap(oof).id, S.s27, jsConcat(S.s39, jsUnwrap(oof).id, S.s4, box.id, S.s18))
   }
 }
 
@@ -116,7 +116,7 @@ public func position_blockInset(_ box: LayoutBox, _ v: any U_Auto_LengthCalc_Per
   }
   // ts: packages/layout/src/position.ts:53
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s56, S.s116)
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s61, S.s124)
   }
   return try box_resolveLengthOrNull((v as! any U_LengthCalc_Percent_Px), nil, faults)
 }

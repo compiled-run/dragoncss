@@ -42,7 +42,7 @@ public func snap_snapEdges(_ boxes: JsArray<LayoutRect>) throws -> JsArray<Snapp
       let r: LayoutRect? = abs.get(b.id)
       // ts: packages/layout/src/snap.ts:33
       if (r == nil) {
-        throw JsError(message: jsConcat(S.s101, b.id))
+        throw JsError(message: jsConcat(S.s106, b.id))
       }
       _ = try jsPush(out, snap_snapRect(jsUnwrap(r)))
     }

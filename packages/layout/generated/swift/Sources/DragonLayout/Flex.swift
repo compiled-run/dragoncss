@@ -160,7 +160,7 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
       _i12 += 1
       // ts: packages/layout/src/flex.ts:136
       if (k.kind == S.s_text) {
-        throw JsError(message: jsConcat((k as! TextLeaf).id, S.s8, box.id, S.s19))
+        throw JsError(message: jsConcat((k as! TextLeaf).id, S.s9, box.id, S.s24))
       }
       // ts: packages/layout/src/flex.ts:138
       if try position_isOutOfFlow(ctx, (k as! LayoutBox)) {
@@ -186,7 +186,7 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
   if (mainInner == nil) {
     // ts: packages/layout/src/flex.ts:155
     if (!singleLine) {
-      try unsupported_unsupported(S.s_flex_wrap_indefinite_main, box.id, S.s55, S.s99)
+      try unsupported_unsupported(S.s_flex_wrap_indefinite_main, box.id, S.s60, S.s104)
     }
     let hypo: Double = try units_add(units_sum(jsMap(items, { (i: Item) throws -> Double in
     return try flex_outerHypothetical(i)
@@ -444,7 +444,7 @@ public func flex_gapValue(_ box: LayoutBox, _ v: any U_LengthCalc_NormalValue_Pe
   }
   // ts: packages/layout/src/flex.ts:357
   if try box_hasPercent((v as! any U_LengthCalc_Percent_Px)) {
-    try unsupported_unsupported(S.s_percent_gap, box.id, S.s52, S.s115)
+    try unsupported_unsupported(S.s_percent_gap, box.id, S.s57, S.s123)
   }
   return try box_resolveLength((v as! any U_LengthCalc_Percent_Px), units_ZERO, faults)
 }
@@ -557,12 +557,12 @@ public func flex_buildItem(_ ctx: Ctx, _ container: LayoutBox, _ box: LayoutBox,
   let basis: any U_Auto_ContentValue_LengthCalc_Percent_Px = s.flexBasis
   // ts: packages/layout/src/flex.ts:477
   if (basis.kind == S.s_content) {
-    try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s54, S.s71)
+    try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s59, S.s76)
   } else if ((basis as! any U_Auto_LengthCalc_Percent_Px).kind != S.s_auto) {
     let resolved: Double? = try box_resolveLengthOrNull((basis as! any U_LengthCalc_Percent_Px), mainInner, ctx.faults)
     // ts: packages/layout/src/flex.ts:481
     if (resolved == nil) {
-      try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s54, S.s114)
+      try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s59, S.s122)
     }
     try base = box_contentBox(box_borderBoxFromSpecified(jsUnwrap(resolved), mainBp, s.boxSizing), mainBp)
   } else {
@@ -607,7 +607,7 @@ public func flex_percentMainHeight(_ box: LayoutBox, _ basis: any U_HeightBasis_
   if ((basis as! any U_HeightBasis_definite_HeightBasis_flexDependent).kind == S.s_definite) {
     return (basis as! HeightBasis_definite).value
   }
-  try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s56, jsConcat(prop, S.s12))
+  try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s61, jsConcat(prop, S.s13))
 }
 
 // ts: packages/layout/src/flex.ts:546
@@ -888,7 +888,7 @@ public func flex_alignContent(_ box: LayoutBox, _ axes: Axes, _ lines: JsArray<F
   let v: JsString = box.style.alignContent
   // ts: packages/layout/src/flex.ts:751
   if (v == S.s_baseline) {
-    try unsupported_unsupported(S.s_flex_baseline, box.id, S.s53, S.s38)
+    try unsupported_unsupported(S.s_flex_baseline, box.id, S.s58, S.s43)
   }
   let flowLines: JsArray<Flex_Line> = (axes.wrapReverse ? jsReverse(jsCopy(lines)) : lines)
   let n: Double = jsLength(flowLines)
