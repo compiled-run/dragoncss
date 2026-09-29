@@ -62,6 +62,18 @@ export function matrixProblems(scaleOf: (d: DeviceSpec) => number, matrix: reado
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+/** run() without blocking the event loop: the exit status (1 on a timeout or spawn error) and the output. */
+export function runAsync(cmd: string, args: readonly string[], timeoutMs: number): Promise<{ readonly status: number; readonly out: string }> {
+  return new Promise((resolve) => {
+    const p = spawn(cmd, [...args], { stdio: ['ignore', 'pipe', 'pipe'], timeout: timeoutMs, killSignal: 'SIGKILL' });
+    let out = '';
+    p.stdout.on('data', (d: Buffer) => void (out += d.toString('utf8')));
+    p.stderr.on('data', (d: Buffer) => void (out += d.toString('utf8')));
+    p.once('error', (e) => resolve({ status: 127, out: `${out}${String(e)}` }));
+    p.once('close', (code, signal) => resolve({ status: code ?? 1, out: signal === null ? out : `${out} (killed by ${signal})` }));
+  });
+}
 async function poll(what: string, timeoutMs: number, done: () => boolean | Promise<boolean>): Promise<void> {
   const t0 = Date.now();
   while (!(await done())) {
@@ -198,7 +210,8 @@ export async function bootIos(spec: IosDeviceSpec): Promise<DeviceHandle> {
 async function bootIosFrom(spec: IosDeviceSpec, udid: string, was: string): Promise<DeviceHandle> {
   for (let attempt = 1; ; attempt++) {
     if (simState(udid) !== 'Booted') run('xcrun', ['simctl', 'boot', udid]);
-    const b = run('xcrun', ['simctl', 'bootstatus', udid, '-b'], { timeoutMs: 300_000 });
+    // Awaited, not blocking, so a device process can compute its cases while the simulator boots.
+    const b = await runAsync('xcrun', ['simctl', 'bootstatus', udid, '-b'], 300_000);
     if (b.status === 0) break;
     if (attempt === 2 || was !== 'Shutdown') throw new Error(`the ${spec.name} simulator failed to boot${was === 'Shutdown' ? ' twice' : ` (it was ${was} before this run, so it is left alone)`} (tooling fault): ${b.out.slice(-500)}`);
     run('xcrun', ['simctl', 'shutdown', udid]);
