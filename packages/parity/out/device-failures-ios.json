@@ -513,14 +513,6 @@
  },
  {
   "lane": "device-pixels",
-  "case": "units-em",
-  "dpr": 3,
-  "node": "edge:s:text0:line0:glyph-top",
-  "kind": "pixel",
-  "detail": "edge:s:text0:line0:glyph-top: edge at 4.000 device px, Chrome 2.984; exceeds 1 device px"
- },
- {
-  "lane": "device-pixels",
   "case": "color-border-sides",
   "dpr": 2,
   "node": "border:one:right",
