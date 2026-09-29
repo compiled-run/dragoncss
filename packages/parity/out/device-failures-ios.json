@@ -4294,5 +4294,77 @@
   "node": "interior:app",
   "kind": "pixel",
   "detail": "interior:app at 696,27: native [17,17,17,255], Chrome [97,97,97,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-none",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [153,153,153,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-id",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [153,153,153,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-data",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [153,153,153,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-aria",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [153,153,153,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-role",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [153,153,153,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-title",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [153,153,153,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-ui",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [153,153,153,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-rel",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [153,153,153,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-target",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [153,153,153,255], Chrome [162,162,162,255] (channel delta limit 0)"
  }
 ]

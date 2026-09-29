@@ -2201,6 +2201,78 @@
  },
  {
   "lane": "device-pixels",
+  "case": "attr-neutral-none",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-id",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-data",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-aria",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-role",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-title",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-ui",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-rel",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-target",
+  "dpr": 2,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 136,124: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
   "case": "text-ahem-single-line",
   "dpr": 2.625,
   "node": "edge:t4:right",
@@ -9150,6 +9222,78 @@
   "node": "interior:label",
   "kind": "pixel",
   "detail": "interior:label at 913,49: native [151,151,151,255], Chrome [206,206,206,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-none",
+  "dpr": 2.625,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-id",
+  "dpr": 2.625,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-data",
+  "dpr": 2.625,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-aria",
+  "dpr": 2.625,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-role",
+  "dpr": 2.625,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-title",
+  "dpr": 2.625,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-ui",
+  "dpr": 2.625,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-rel",
+  "dpr": 2.625,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "attr-neutral-target",
+  "dpr": 2.625,
+  "node": "interior:p",
+  "kind": "pixel",
+  "detail": "interior:p at 178,162: native [175,175,175,255], Chrome [162,162,162,255] (channel delta limit 0)"
  },
  {
   "lane": "device-pixels",

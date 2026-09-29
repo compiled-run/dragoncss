@@ -65,19 +65,28 @@ describe('precise refusals', () => {
     ['.a:has(:has(.b))', ':has(.b) is invalid inside :has()'],
     ['.a:has(:is(:has(.b)))', ':has(.b) is invalid inside :has()'],
     ['[ui-x="a" s]', 'is invalid in Chrome 145, which does not implement the s flag'],
-    ['[data-x]', 'attribute selector "[data-x]" is not supported: only ui-*'],
-    ['#x', 'selector part "#x" is not supported'],
     ['svg|rect', 'namespaced selector'],
     ['.a:nth-of-type(2 of .b)', 'is invalid: only :nth-child() and :nth-last-child() take "of S"'],
     ['.a:checked', ':checked depends on user interaction'],
     ['.a:lang(en)', ':lang(en) is not supported'],
     ['.a:not()', 'needs a selector list argument'],
+    ['#\\31 a', 'id selector "#\\31 a" holds an escape'],
+    ['[data-\\41]', 'holds an escape'],
+    ['[data-x=\\41]', 'holds an escape'],
   ])('%s', (sel, message) => {
     const { selectors, diagnostics } = parse(`${sel} { width: 1px; }`);
     expect(selectors).toEqual([]);
     expect(diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_SELECTOR']);
     expect((diagnostics[0] as Diagnostic).message).toContain(message);
     expectCatalogued(diagnostics);
+  });
+
+  it('[data-x] and #x are accepted: every attribute is element data, and an id selector matches the id attribute', () => {
+    for (const [sel, sp] of [['[data-x]', [0, 1, 0]], ['#x', [1, 0, 0]]] as const) {
+      const { selectors, diagnostics } = parse(`${sel} { width: 1px; }`);
+      expect(diagnostics, sel).toEqual([]);
+      expect((selectors[0] as Selector).specificity, sel).toEqual(sp);
+    }
   });
 
   it('a component-scoped sheet needs a class on the subject compound; other compounds may be structural', () => {
@@ -207,5 +216,63 @@ describe('matching on the fixed tree', () => {
     expect(all('b', 'height')).toEqual([['[false]', '5px'], ['[true]', 'auto']]);
     expect(all('x', 'height')).toEqual([['[true]', '5px']]);
     expect(all('list', 'width')).toEqual([['[false]', 'auto'], ['[true]', '50px']]);
+  });
+});
+
+describe('TREE: ids, every attribute name, HTML case-insensitive attribute values and Chrome-invalid rule drops', () => {
+  const el = (r: SourceRef, id: string, attrs: [string, string][]): ElementNode => ({ ...div(r, id, ['a']), attributes: attrs.map(([n, v]) => attr(n, v)) });
+  const tree = (r: SourceRef): TreeNode[] => [el(r, 'a1', [['id', 'x'], ['rel', 'foo'], ['data-x', 'foo'], ['title', '']]), el(r, 'a2', [['id', 'X'], ['rel', 'FOO'], ['data-x', 'FOO']]), el(r, 'a3', [['id', 'x y']])];
+  const hitsOf = (css: string, faults = NO_FAULTS): string[] => {
+    const c = project(faults).compile(inputFor(css, tree));
+    expect(c.diagnostics.filter((d) => d.severity === 'error'), css).toEqual([]);
+    return ['a1', 'a2', 'a3'].filter((n) => explainOne(c, 'ios', n, 'width').value === '7px');
+  };
+
+  it.each([
+    ['#x', ['a1']],
+    ['.a#X', ['a2']],
+    ['[rel=FOO]', ['a1', 'a2']],
+    ['[rel~=foo]', ['a1', 'a2']],
+    ['[data-x=FOO]', ['a2']],
+    ['[data-x=FOO i]', ['a1', 'a2']],
+    ['[title]', ['a1']],
+    ['[id="x y"]', ['a3']],
+  ])('%s', (sel, expected) => {
+    expect(hitsOf(`${sel} { width: 7px; }`)).toEqual(expected);
+  });
+
+  it('an id beats any number of classes; the planted fault idSpecificityAsClass counts it as a class', () => {
+    const css = '#x { width: 7px; } .a.a.a { width: 8px; }';
+    expect(hitsOf(css)).toEqual(['a1']);
+    expect(hitsOf(css, { ...NO_FAULTS, idSpecificityAsClass: true })).toEqual([]);
+    expect(specificity('div#x.a')).toEqual([1, 1, 1]);
+  });
+
+  it('the planted fault attributeCaseAlwaysSensitive ignores HTML\'s list', () => {
+    expect(hitsOf('[rel=FOO] { width: 7px; }', { ...NO_FAULTS, attributeCaseAlwaysSensitive: true })).toEqual(['a2']);
+  });
+
+  it('a list with a selector Chrome does not parse drops the whole rule with one warning; the planted fault keeps the rest', () => {
+    const css = '.a, .a::-moz-range-thumb { width: 7px; }';
+    const { selectors, diagnostics } = parse(css);
+    expect(diagnostics.map((d) => [d.code, d.severity])).toEqual([['DRAGON_SELECTOR_DROPPED', 'warning']]);
+    expect(diagnostics[0]?.message).toContain('::-moz-range-thumb');
+    expectCatalogued(diagnostics);
+    expect(selectors.map((s) => s.dropped)).toEqual([true]);
+    expect(hitsOf(css)).toEqual([]);
+    expect(hitsOf(css, { ...NO_FAULTS, invalidSelectorListKept: true })).toEqual(['a1', 'a2', 'a3']);
+    // Chrome drops the rule, so a Dragon refusal elsewhere in the list is moot.
+    expect(parse('.a:hover, .a:-moz-focusring { width: 1px; }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_SELECTOR_DROPPED']);
+    // Chrome never parses the block of a dropped rule, so unsupported declarations in it are not errors.
+    expect(parse('.a, .a::-moz-range-thumb { -webkit-appearance: none; display: grid; @media (width > 1px) {} }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_SELECTOR_DROPPED']);
+    expect(hitsOf('.a, .a::-moz-range-thumb { width: 7px; background: transparent; border: none; }')).toEqual([]);
+  });
+
+  it('Chrome-valid pseudo-elements stay refused and name their owner package; inside :is() an invalid one is refused', () => {
+    const msg = (css: string): string[] => parse(css).diagnostics.map((d) => `${d.code} ${d.message}`);
+    expect(msg('.a::-webkit-slider-thumb { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*FORM-a/)]);
+    expect(msg('.a::-webkit-scrollbar-thumb { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*OVFL-s/)]);
+    expect(msg(':is(.a::-moz-range-thumb) { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*forgiving/)]);
+    expect(parse('[ns|x] { width: 1px; }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_SELECTOR']);
   });
 });

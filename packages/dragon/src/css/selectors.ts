@@ -5,11 +5,12 @@ import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
+import { PSEUDO_CLASS_VALID, PSEUDO_ELEMENT_VALID } from './selector-validity.generated.ts';
 import type { SheetUse } from './stylesheet.ts';
 
 /** Selectors-4 §6 attribute operators; null tests presence only. */
 export type AttributeMatcher = '=' | '~=' | '|=' | '^=' | '$=' | '*=';
-/** [ui-name], [ui-name op "value"] and [ui-name op "value" i]. */
+/** [name], [name op "value"] and [name op "value" i]; name is ASCII-lowercased (HTML documents). */
 export type AttributeTest = { readonly name: string; readonly value: string | null; readonly matcher: AttributeMatcher | null; readonly caseInsensitive: boolean };
 export type Combinator = ' ' | '>' | '+' | '~';
 
@@ -28,6 +29,8 @@ export type PseudoClass =
 
 export type Compound = {
   readonly tag: string | null;
+  /** #id selectors: each matches the element's id attribute, case-sensitively (no-quirks documents). */
+  readonly ids: readonly string[];
   readonly classes: readonly string[];
   readonly attributes: readonly AttributeTest[];
   readonly pseudos: readonly PseudoClass[];
@@ -41,10 +44,15 @@ export type Selector = {
   readonly parts: readonly { readonly compound: Compound; readonly combinator: Combinator | null }[];
   readonly specificity: Specificity;
   readonly anchor: Combinator | null;
+  /**
+   * The rule's selector list holds a selector Chrome 145 does not parse, so Chrome drops the whole rule: this selector never
+   * matches (the planted fault invalidSelectorListKept keeps it).
+   */
+  readonly dropped: boolean;
 };
 
 const SELECTOR_FIX =
-  'Use type, class, [ui-*] attribute and structural pseudo-class selectors (:root, :empty, :first-child, :nth-child(), :is(), :where(), :not(), :has() and the like), joined by descendant, child or sibling combinators.';
+  'Use type, class, id, attribute and structural pseudo-class selectors (:root, :empty, :first-child, :nth-child(), :is(), :where(), :not(), :has() and the like), joined by descendant, child or sibling combinators.';
 const INTERACTIVE = new Set(['hover', 'focus', 'active', 'focus-visible', 'focus-within', 'target', 'visited', 'link', 'any-link', 'checked', 'disabled', 'enabled']);
 const COMBINATORS: ReadonlySet<string> = new Set([' ', '>', '+', '~']);
 const ZERO: Specificity = [0, 0, 0];
@@ -56,32 +64,53 @@ const greater = (a: Specificity, b: Specificity): boolean => (a[0] !== b[0] ? a[
  * Selectors-4 §17: the most specific complex selector of an :is(), :not(), :has() or "of S" argument. firstArgumentOfIs is the
  * planted fault: :is() takes its first argument's specificity instead.
  */
-function maxSpecificity(selectors: readonly Selector[], firstArgumentOfIs: boolean): Specificity {
+function maxSpecificity(selectors: readonly Selector[], firstArgumentOfIs: boolean, idAsClass: boolean): Specificity {
   let best = ZERO;
   for (const s of selectors) {
-    const sp = specificityOf(s, firstArgumentOfIs);
+    const sp = specificityOf(s, firstArgumentOfIs, idAsClass);
     if (greater(sp, best)) best = sp;
   }
   return best;
 }
 
-/** Selectors-4 §17 specificity of a complex selector; firstArgumentOfIs applies the planted fault (see maxSpecificity). */
-export function specificityOf(sel: Selector, firstArgumentOfIs = false): Specificity {
+/**
+ * Selectors-4 §17 specificity of a complex selector; firstArgumentOfIs applies the planted fault (see maxSpecificity), idAsClass
+ * the planted fault idSpecificityAsClass (an id counts in the class column).
+ */
+export function specificityOf(sel: Selector, firstArgumentOfIs = false, idAsClass = false): Specificity {
   let total = ZERO;
   for (const { compound: c } of sel.parts) {
-    total = add(total, [0, c.classes.length + c.attributes.length, c.tag === null ? 0 : 1]);
+    const ids = c.ids.length;
+    total = add(total, [idAsClass ? 0 : ids, c.classes.length + c.attributes.length + (idAsClass ? ids : 0), c.tag === null ? 0 : 1]);
     for (const p of c.pseudos) {
       if (p.kind === 'is' && p.where) continue;
-      if (p.kind === 'is') total = add(total, firstArgumentOfIs ? (p.selectors[0] === undefined ? ZERO : specificityOf(p.selectors[0], true)) : maxSpecificity(p.selectors, false));
-      else if (p.kind === 'not' || p.kind === 'has') total = add(total, maxSpecificity(p.selectors, firstArgumentOfIs));
-      else total = add(total, add([0, 1, 0], p.kind === 'nth' && p.of !== null ? maxSpecificity(p.of, firstArgumentOfIs) : ZERO));
+      if (p.kind === 'is') total = add(total, firstArgumentOfIs ? (p.selectors[0] === undefined ? ZERO : specificityOf(p.selectors[0], true, idAsClass)) : maxSpecificity(p.selectors, false, idAsClass));
+      else if (p.kind === 'not' || p.kind === 'has') total = add(total, maxSpecificity(p.selectors, firstArgumentOfIs, idAsClass));
+      else total = add(total, add([0, 1, 0], p.kind === 'nth' && p.of !== null ? maxSpecificity(p.of, firstArgumentOfIs, idAsClass) : ZERO));
     }
   }
   return total;
 }
 
 type Refuse = (node: CssNode, message: string, manual?: string) => void;
-type Context = { readonly insideHas: boolean };
+/** forgiving: inside an :is() or :where() argument list; drop: records a selector Chrome 145 does not parse. */
+type Context = { readonly insideHas: boolean; readonly forgiving: boolean; readonly drop: (node: CssNode, text: string) => void };
+
+/**
+ * A selector Chrome 145 does not parse (selector-validity.generated.ts). Outside :is() and :where() Chrome drops the whole rule,
+ * and so does Dragon; inside them Chrome drops only that argument (a forgiving list), which Dragon refuses rather than models.
+ */
+function chromeInvalid(node: CssNode, text: string, ctx: Context, refuse: Refuse): void {
+  if (ctx.forgiving) refuse(node, `${text} is invalid in Chrome 145, which drops only that argument of the forgiving :is() or :where() list; Dragon does not model forgiving lists`, 'Remove the invalid selector from the :is() or :where() argument.');
+  else ctx.drop(node, text);
+}
+
+/** The package that owns the rendering of a pseudo-element Chrome 145 parses. */
+function pseudoElementOwner(name: string): string {
+  if (name === '-webkit-slider-thumb' || name === '-webkit-slider-runnable-track') return 'the form-control package FORM-a';
+  if (name.startsWith('-webkit-scrollbar')) return 'the scrollbar package OVFL-s';
+  return 'a later package';
+}
 
 const asciiLower = (s: string): string => s.replace(/[A-Z]/g, (c) => c.toLowerCase());
 
@@ -118,6 +147,10 @@ function parsePseudoClass(part: CssNode, ctx: Context, refuse: Refuse): PseudoCl
   const name = asciiLower(String(part['name']));
   const args = part['children'] === null ? null : list(part, 'children');
   const text = generate(part);
+  if (args === null && PSEUDO_CLASS_VALID[name]?.valid === false) {
+    chromeInvalid(part, text, ctx, refuse);
+    return null;
+  }
   if (INTERACTIVE.has(name)) {
     refuse(part, `${text} depends on user interaction or document state, which a later package models as runtime state`, 'Model the state as a component state and select it with a class or a [ui-*] attribute.');
     return null;
@@ -156,7 +189,8 @@ function parsePseudoClass(part: CssNode, ctx: Context, refuse: Refuse): PseudoCl
       refuse(part, `${text} needs a selector list argument`);
       return null;
     }
-    const inner = parseList(argList, name === 'has' ? ' ' : null, { insideHas: ctx.insideHas || name === 'has' }, refuse);
+    const forgiving = name === 'is' || name === 'where' ? true : ctx.forgiving;
+    const inner = parseList(argList, name === 'has' ? ' ' : null, { ...ctx, insideHas: ctx.insideHas || name === 'has', forgiving }, refuse);
     if (inner === undefined) return null;
     if (name === 'has') return { kind: 'has', selectors: inner };
     if (name === 'not') return { kind: 'not', selectors: inner };
@@ -183,9 +217,9 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
     refuse(sel, `selector "${generate(sel)}" is not supported`);
     return null;
   }
-  type Mutable = { tag: string | null; classes: string[]; attributes: AttributeTest[]; pseudos: PseudoClass[] };
+  type Mutable = { tag: string | null; ids: string[]; classes: string[]; attributes: AttributeTest[]; pseudos: PseudoClass[] };
   const compounds: { compound: Mutable; combinator: Combinator | null }[] = [];
-  const fresh = (): Mutable => ({ tag: null, classes: [], attributes: [], pseudos: [] });
+  const fresh = (): Mutable => ({ tag: null, ids: [], classes: [], attributes: [], pseudos: [] });
   let current = fresh();
   let started = false;
   let pending: Combinator | null = null;
@@ -220,6 +254,12 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
       } else if (name !== '*') current.tag = asciiLower(name);
     } else if (part.type === 'ClassSelector') {
       current.classes.push(String(part['name']));
+    } else if (part.type === 'IdSelector') {
+      const id = String(part['name']);
+      if (id.includes('\\')) {
+        ok = false;
+        refuse(part, `id selector "${generate(part)}" holds an escape, which Dragon does not unescape`, 'Write the id without escapes.');
+      } else current.ids.push(id);
     } else if (part.type === 'AttributeSelector') {
       const test = parseAttribute(part, refuse);
       if (test === null) ok = false;
@@ -230,7 +270,9 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
       else current.pseudos.push(p);
     } else if (part.type === 'PseudoElementSelector') {
       ok = false;
-      refuse(part, `pseudo-element ${generate(part)} is not supported: pseudo-elements generate boxes Dragon does not build yet (a later package)`, 'Style a real element instead of the pseudo-element.');
+      const name = asciiLower(String(part['name']));
+      if (part['children'] === null && PSEUDO_ELEMENT_VALID[name]?.valid === false) chromeInvalid(part, generate(part), ctx, refuse);
+      else refuse(part, `pseudo-element ${generate(part)} is not supported: pseudo-elements generate boxes Dragon does not build yet (${pseudoElementOwner(name)})`, 'Style a real element instead of the pseudo-element.');
     } else {
       ok = false;
       refuse(part, `selector part "${generate(part)}" is not supported`);
@@ -242,7 +284,7 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
     compound: c.compound as Compound,
     combinator: i === 0 ? null : (all[i - 1] as { combinator: Combinator | null }).combinator,
   }));
-  const partial: Selector = { parts, specificity: ZERO, anchor: relative === null ? null : anchor };
+  const partial: Selector = { parts, specificity: ZERO, anchor: relative === null ? null : anchor, dropped: false };
   return { ...partial, specificity: specificityOf(partial) };
 }
 
@@ -253,12 +295,16 @@ function parseAttribute(part: CssNode, refuse: Refuse): AttributeTest | null {
   const matcher = part['matcher'] as AttributeMatcher | null;
   const valueNode = part['value'] as CssNode | null;
   const flags = part['flags'] === null ? null : asciiLower(String(part['flags']));
-  if (raw.includes('|') || !/^ui-[a-z0-9-]+$/.test(name)) {
-    refuse(part, `attribute selector "${generate(part)}" is not supported: only ui-* attributes take part in matching`);
+  if (raw.includes('\\') || (valueNode !== null && valueNode.type !== 'String' && String(valueNode['name']).includes('\\'))) {
+    refuse(part, `attribute selector "${generate(part)}" holds an escape, which Dragon does not unescape`, 'Write the attribute name without escapes, and the value as a quoted string.');
+    return null;
+  }
+  if (raw.includes('|')) {
+    refuse(part, `attribute selector "${generate(part)}" is not supported: namespaced attribute names are not`);
     return null;
   }
   if (flags === 's') {
-    refuse(part, `attribute selector "${generate(part)}" is invalid in Chrome 145, which does not implement the s flag and drops the rule`, 'Remove the s flag: ui-* attribute values already compare case-sensitively.');
+    refuse(part, `attribute selector "${generate(part)}" is invalid in Chrome 145, which does not implement the s flag and drops the rule`, 'Remove the s flag; attribute values outside HTML\'s case-insensitive list already compare case-sensitively.');
     return null;
   }
   if (flags !== null && flags !== 'i') {
@@ -275,18 +321,22 @@ function subjectNeedsClass(sel: Selector): boolean {
   return subject.classes.length > 0 || subject.pseudos.some((p) => p.kind === 'is' && p.selectors.length > 0 && p.selectors.every(subjectNeedsClass));
 }
 
-// Selectors-4: type, universal, class, ui-* attribute and structural pseudo-class compounds, joined by descendant, child and
+// Selectors-4: type, universal, class, id, attribute and structural pseudo-class compounds, joined by descendant, child and
 // sibling combinators, matched at build time on the fixed element tree (docs/decisions.md "Selectors and scrollbars"). In a
 // component-scoped sheet the subject compound needs a class, so the rule can only style elements carrying the owner's symbols.
+// A list holding a selector Chrome 145 does not parse is dropped whole, as Chrome drops the rule: its selectors never match.
 export function parseSelectorList(prelude: CssNode, base: Span, use: SheetUse, diagnostics: Diagnostic[]): Selector[] | null {
   const out: Selector[] = [];
+  const refusals: Diagnostic[] = [];
+  const drops: { node: CssNode; text: string }[] = [];
   let ok = true;
   const refuse: Refuse = (node, message, manual = SELECTOR_FIX) => {
     ok = false;
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin: authored(spanOf(node, base)), message, manual }));
+    refusals.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin: authored(spanOf(node, base)), message, manual }));
   };
+  const ctx: Context = { insideHas: false, forgiving: false, drop: (node, text) => drops.push({ node, text }) };
   for (const sel of list(prelude, 'children')) {
-    const s = parseComplex(sel, null, { insideHas: false }, refuse);
+    const s = parseComplex(sel, null, ctx, refuse);
     if (s === null) continue;
     if (use.scope === 'component' && !subjectNeedsClass(s)) {
       refuse(sel, `the subject compound of "${generate(sel)}" needs a class in a component-scoped sheet, so it can only style the owner's elements`);
@@ -294,5 +344,14 @@ export function parseSelectorList(prelude: CssNode, base: Span, use: SheetUse, d
     }
     out.push(s);
   }
+  const first = drops[0];
+  if (first !== undefined) {
+    diagnostics.push(diagnostic('DRAGON_SELECTOR_DROPPED', {
+      origin: authored(spanOf(first.node, base)),
+      message: `the rule "${generate(prelude)}" is dropped: Chrome 145 does not parse ${first.text}, so it drops the whole rule, and Dragon drops it too`,
+    }));
+    return out.map((s) => ({ ...s, dropped: true }));
+  }
+  diagnostics.push(...refusals);
   return ok ? out : null;
 }

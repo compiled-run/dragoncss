@@ -3,6 +3,7 @@
 // front end would supply. fixture.json is a compact authoring form of dragon/tree@0 (see TreeFixtureFile).
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { posix } from 'node:path';
 import type { ClassSymbol, Condition, FrontEndResult, Origin, Scalar, SourceFile, SourceRef, StateRef, TreeNode } from 'dragon';
 import { TREE_SCHEMA_REVISION } from 'dragon';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
@@ -79,11 +80,48 @@ export function readTreeExpectation(id: string): TreeExpectation | null {
 export function readTreeFixture(id: string): FrontEndResult {
   const dir = `packages/parity/fixtures/${id}`;
   const spec = JSON.parse(readFileSync(repoPath(`${dir}/fixture.json`), 'utf8')) as TreeFixtureFile;
+  return treeFixtureInput(id, spec, (file) => ({ uri: `dragon-source://${PROJECT_ID}/fixtures/${id}/${file}`, displayPath: `${dir}/${file}`, text: readFileSync(repoPath(sourcePath(id, dir, file)), 'utf8') }));
+}
+
+/** The repo-relative path of a listed source; a backslash or a path leaving the repository is refused. */
+function sourcePath(id: string, dir: string, file: string): string {
+  const path = posix.normalize(`${dir}/${file}`);
+  if (file.includes('\\') || path === '..' || path.startsWith('../') || posix.isAbsolute(path)) throw new Error(`${id}: source ${file} is outside the repository or not a posix path`);
+  return path;
+}
+
+/** A tree fixture directory anywhere in the repository (repo-relative dir); its source paths may leave the directory ("../x.css"). */
+export type TreeFixtureDirOptions = {
+  /** Replaces a source file's text (same length and offsets are the caller's concern), for example a probe stylesheet. */
+  readonly text?: (file: string, text: string) => string;
+  /** Rewrites the parsed fixture.json before it is read, for example a projected tree. */
+  readonly spec?: (spec: TreeFixtureFile) => TreeFixtureFile;
+};
+
+export function readTreeFixtureFile(dir: string): TreeFixtureFile {
+  return JSON.parse(readFileSync(repoPath(`${dir}/fixture.json`), 'utf8')) as TreeFixtureFile;
+}
+
+export function readTreeFixtureDir(dir: string, id: string, options: TreeFixtureDirOptions = {}): FrontEndResult {
+  const read = readTreeFixtureFile(dir);
+  const spec = options.spec === undefined ? read : options.spec(read);
+  return treeFixtureInput(id, spec, (file) => {
+    const path = sourcePath(id, dir, file);
+    const text = readFileSync(repoPath(path), 'utf8');
+    return { uri: `dragon-source://${PROJECT_ID}/${path}`, displayPath: path, text: options.text === undefined ? text : options.text(file, text) };
+  });
+}
+
+function treeFixtureInput(id: string, spec: TreeFixtureFile, load: (file: string) => { uri: string; displayPath: string; text: string }): FrontEndResult {
   const sources = new Map<string, SourceFile>();
+  const uris = new Set<string>();
   for (const file of spec.sources) {
-    const text = readFileSync(repoPath(`${dir}/${file}`), 'utf8');
-    const ref: SourceRef = { uri: `dragon-source://${PROJECT_ID}/fixtures/${id}/${file}`, revision: 'fixture', hash: `sha256:${createHash('sha256').update(text, 'utf8').digest('hex')}` };
-    sources.set(file, { ref, text, displayPath: `${dir}/${file}` });
+    const { uri, displayPath, text } = load(file);
+    // Two entries for one file would become two snapshot sources with one uri.
+    if (sources.has(file) || uris.has(uri)) throw new Error(`${id}: source ${file} is listed twice`);
+    uris.add(uri);
+    const ref: SourceRef = { uri, revision: 'fixture', hash: `sha256:${createHash('sha256').update(text, 'utf8').digest('hex')}` };
+    sources.set(file, { ref, text, displayPath });
   }
   const source = (file: string): SourceFile => {
     const s = sources.get(file);
@@ -93,6 +131,7 @@ export function readTreeFixture(id: string): FrontEndResult {
   const find = (file: string, at: At): Origin => {
     const s = source(file);
     const [text, nth] = typeof at === 'string' ? [at, 0] : at;
+    if (text === '' || !Number.isInteger(nth) || nth < 0) throw new Error(`${id}: bad origin ${JSON.stringify(at)} in ${file}`);
     let start = -1;
     for (let i = 0; i <= nth; i++) {
       start = s.text.indexOf(text, start + 1);

@@ -1,0 +1,1531 @@
+{
+ "sources": [
+  "src/document.tsrx",
+  "src/pages/index.tsrx",
+  "src/components/Nav.tsrx",
+  "src/components/Song.tsrx",
+  "src/components/YouTubePlayer.tsrx",
+  "src/components/Player.tsrx",
+  "src/components/Library.tsrx",
+  "src/components/LibrarySong.tsrx",
+  "../styles.css"
+ ],
+ "modules": [
+  {
+   "id": "document",
+   "source": "src/document.tsrx"
+  },
+  {
+   "id": "index",
+   "source": "src/pages/index.tsrx"
+  },
+  {
+   "id": "Nav",
+   "source": "src/components/Nav.tsrx"
+  },
+  {
+   "id": "Song",
+   "source": "src/components/Song.tsrx"
+  },
+  {
+   "id": "YouTubePlayer",
+   "source": "src/components/YouTubePlayer.tsrx"
+  },
+  {
+   "id": "Player",
+   "source": "src/components/Player.tsrx"
+  },
+  {
+   "id": "Library",
+   "source": "src/components/Library.tsrx"
+  },
+  {
+   "id": "LibrarySong",
+   "source": "src/components/LibrarySong.tsrx"
+  }
+ ],
+ "styles": [
+  {
+   "id": "styles",
+   "file": "../styles.css",
+   "scope": "document"
+  }
+ ],
+ "document": {
+  "root": "Document",
+  "documentElement": "html",
+  "styles": [
+   "styles"
+  ]
+ },
+ "components": [
+  {
+   "id": "Document",
+   "module": "document",
+   "at": "export default function Document",
+   "root": [
+    {
+     "el": "html",
+     "id": "html",
+     "at": "<Html>",
+     "attr": [
+      {
+       "name": "lang",
+       "value": "en"
+      }
+     ],
+     "children": [
+      {
+       "el": "body",
+       "id": "body",
+       "at": "<body>",
+       "children": [
+        {
+         "call": "App",
+         "id": "page",
+         "at": "{children}"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "App",
+   "module": "index",
+   "at": "export function App()",
+   "states": [
+    {
+     "id": "libraryStatus",
+     "domain": [
+      false,
+      true
+     ],
+     "initial": false,
+     "at": "let libraryStatus = state(false);"
+    },
+    {
+     "id": "isPlaying",
+     "domain": [
+      false,
+      true
+     ],
+     "initial": false,
+     "at": "let isPlaying = state(false);"
+    }
+   ],
+   "root": [
+    {
+     "el": "div",
+     "id": "app",
+     "at": "<div class={libraryStatus ? 'App library-active' : 'App'}",
+     "class": [
+      "styles.App",
+      {
+       "when": [
+        "libraryStatus",
+        true
+       ],
+       "class": "styles.library-active",
+       "at": "libraryStatus ? 'App library-active' : 'App'"
+      }
+     ],
+     "children": [
+      {
+       "call": "Nav",
+       "id": "nav-call",
+       "at": "<Nav libraryOpen={libraryStatus}",
+       "aliases": [
+        {
+         "local": "libraryOpen",
+         "caller": "libraryStatus"
+        }
+       ]
+      },
+      {
+       "call": "Song",
+       "id": "song-call",
+       "at": "<Song",
+       "aliases": [
+        {
+         "local": "isPlaying",
+         "caller": "isPlaying"
+        }
+       ]
+      },
+      {
+       "el": "div",
+       "id": "youtube-state-sync",
+       "at": "<div class=\"youtube-state-sync\">",
+       "class": [
+        "styles.youtube-state-sync"
+       ],
+       "children": [
+        {
+         "el": "button",
+         "id": "youtube-sync-playing",
+         "at": "<button",
+         "class": [
+          "styles.youtube-sync-playing"
+         ],
+         "attr": [
+          {
+           "name": "type",
+           "value": "button"
+          }
+         ]
+        },
+        {
+         "el": "button",
+         "id": "youtube-sync-paused",
+         "at": [
+          "<button",
+          1
+         ],
+         "class": [
+          "styles.youtube-sync-paused"
+         ],
+         "attr": [
+          {
+           "name": "type",
+           "value": "button"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "call": "Player",
+       "id": "player-call",
+       "at": "<Player",
+       "aliases": [
+        {
+         "local": "isPlaying",
+         "caller": "isPlaying"
+        }
+       ]
+      },
+      {
+       "call": "Library",
+       "id": "library-call",
+       "at": "<Library",
+       "aliases": [
+        {
+         "local": "libraryOpen",
+         "caller": "libraryStatus"
+        }
+       ]
+      },
+      {
+       "el": "div",
+       "id": "youtube-disclosure",
+       "at": "<div class=\"youtube-disclosure\">",
+       "class": [
+        "styles.youtube-disclosure"
+       ],
+       "children": [
+        {
+         "el": "span",
+         "id": "disclosure-text",
+         "at": "<span>",
+         "children": [
+          {
+           "text": "Demo music streams from the visible YouTube embed. This app does not bundle, download, or redistribute audio.",
+           "id": "disclosure-words",
+           "at": "Demo music streams from the visible YouTube embed. This app does not bundle,\n\t\t\t\tdownload, or redistribute audio."
+          }
+         ]
+        },
+        {
+         "el": "a",
+         "id": "terms-link",
+         "at": "<a href=\"https://www.youtube.com/t/terms\"",
+         "attr": [
+          {
+           "name": "href",
+           "value": "https://www.youtube.com/t/terms"
+          },
+          {
+           "name": "rel",
+           "value": "noreferrer"
+          },
+          {
+           "name": "target",
+           "value": "_blank"
+          }
+         ],
+         "children": [
+          {
+           "text": "YouTube Terms",
+           "id": "terms-words",
+           "at": "YouTube Terms"
+          }
+         ]
+        },
+        {
+         "el": "a",
+         "id": "privacy-link",
+         "at": "<a href=\"https://policies.google.com/privacy\"",
+         "attr": [
+          {
+           "name": "href",
+           "value": "https://policies.google.com/privacy"
+          },
+          {
+           "name": "rel",
+           "value": "noreferrer"
+          },
+          {
+           "name": "target",
+           "value": "_blank"
+          }
+         ],
+         "children": [
+          {
+           "text": "Google Privacy",
+           "id": "privacy-words",
+           "at": "Google Privacy"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "Nav",
+   "module": "Nav",
+   "at": "export function Nav",
+   "states": [
+    {
+     "id": "libraryOpen",
+     "domain": [
+      false,
+      true
+     ],
+     "initial": false,
+     "at": "libraryOpen"
+    }
+   ],
+   "root": [
+    {
+     "el": "nav",
+     "id": "nav",
+     "at": "<nav>",
+     "children": [
+      {
+       "el": "h1",
+       "id": "nav-title",
+       "at": "<h1>",
+       "children": [
+        {
+         "text": "Waves",
+         "id": "nav-title-words",
+         "at": "Waves"
+        }
+       ]
+      },
+      {
+       "el": "button",
+       "id": "library-button",
+       "at": "<button",
+       "class": [
+        "styles.library-button",
+        {
+         "when": [
+          "libraryOpen",
+          true
+         ],
+         "class": "styles.active",
+         "at": "libraryOpen ? 'library-button active' : 'library-button'"
+        }
+       ],
+       "attr": [
+        {
+         "name": "type",
+         "value": "button"
+        }
+       ],
+       "children": [
+        {
+         "text": "Library ♪",
+         "id": "library-button-words",
+         "at": "Library ♪"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "Song",
+   "module": "Song",
+   "at": "export function Song",
+   "states": [
+    {
+     "id": "isPlaying",
+     "domain": [
+      false,
+      true
+     ],
+     "initial": false,
+     "at": "isPlaying"
+    }
+   ],
+   "root": [
+    {
+     "el": "div",
+     "id": "song-container",
+     "at": "<div class=\"song-container\">",
+     "class": [
+      "styles.song-container"
+     ],
+     "children": [
+      {
+       "el": "div",
+       "id": "mini-video-shell",
+       "at": "<div class=\"mini-video-shell\">",
+       "class": [
+        "styles.mini-video-shell"
+       ],
+       "children": [
+        {
+         "call": "YouTubePlayer",
+         "id": "youtube-call",
+         "at": "<YouTubePlayer"
+        }
+       ]
+      },
+      {
+       "el": "div",
+       "id": "record",
+       "at": "<div class={isPlaying ? 'record rotating' : 'record'}>",
+       "class": [
+        "styles.record",
+        {
+         "when": [
+          "isPlaying",
+          true
+         ],
+         "class": "styles.rotating",
+         "at": "isPlaying ? 'record rotating' : 'record'"
+        }
+       ],
+       "children": [
+        {
+         "el": "span",
+         "id": "record-shine",
+         "at": "<span class=\"record-shine\">",
+         "class": [
+          "styles.record-shine"
+         ]
+        },
+        {
+         "el": "span",
+         "id": "record-marker-one",
+         "at": "<span class=\"record-marker record-marker-one\">",
+         "class": [
+          "styles.record-marker",
+          "styles.record-marker-one"
+         ]
+        },
+        {
+         "el": "span",
+         "id": "record-marker-two",
+         "at": "<span class=\"record-marker record-marker-two\">",
+         "class": [
+          "styles.record-marker",
+          "styles.record-marker-two"
+         ]
+        },
+        {
+         "el": "span",
+         "id": "record-label",
+         "at": "<span class=\"record-label\">",
+         "class": [
+          "styles.record-label"
+         ],
+         "children": [
+          {
+           "el": "img",
+           "id": "record-cover",
+           "at": "<img alt={currentSong.name} src={currentSong.cover} />",
+           "attr": [
+            {
+             "name": "alt",
+             "value": "Do I Clench My Fists? (Slowed + Reverb)"
+            },
+            {
+             "name": "src",
+             "value": "https://i.ytimg.com/vi/DwTzcZxyUUg/maxresdefault.jpg"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "el": "span",
+         "id": "record-center",
+         "at": "<span class=\"record-center\">",
+         "class": [
+          "styles.record-center"
+         ]
+        }
+       ]
+      },
+      {
+       "el": "h2",
+       "id": "song-title",
+       "at": "<h2 class=\"song-title\">",
+       "class": [
+        "styles.song-title"
+       ],
+       "children": [
+        {
+         "text": "Do I Clench My Fists? (Slowed + Reverb)",
+         "id": "song-title-words",
+         "at": [
+          "{currentSong.name}",
+          1
+         ]
+        }
+       ]
+      },
+      {
+       "el": "h3",
+       "id": "song-artist",
+       "at": "<h3 class=\"song-artist\">",
+       "class": [
+        "styles.song-artist"
+       ],
+       "children": [
+        {
+         "text": "ridgeclub",
+         "id": "song-artist-words",
+         "at": "{currentSong.artist}"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "YouTubePlayer",
+   "module": "YouTubePlayer",
+   "at": "export function YouTubePlayer",
+   "root": [
+    {
+     "el": "div",
+     "id": "youtube-player",
+     "at": "<div class=\"youtube-player\">",
+     "class": [
+      "styles.youtube-player"
+     ],
+     "children": [
+      {
+       "el": "div",
+       "id": "youtube-frame-host",
+       "at": "class=\"youtube-frame-host\"",
+       "class": [
+        "styles.youtube-frame-host"
+       ],
+       "attr": [
+        {
+         "name": "data-video-id",
+         "value": "DwTzcZxyUUg",
+         "at": "data-video-id={track.videoId}"
+        },
+        {
+         "name": "data-playing",
+         "value": "false",
+         "at": "data-playing={isPlaying}"
+        },
+        {
+         "name": "data-command",
+         "value": "cue",
+         "at": "data-command={playerCommand}"
+        },
+        {
+         "name": "data-command-version",
+         "value": "0",
+         "at": "data-command-version={playerCommandVersion}"
+        }
+       ],
+       "children": [
+        {
+         "el": "div",
+         "id": "video-placeholder",
+         "at": "<div class=\"youtube-player-target\">",
+         "class": [
+          "styles.youtube-player-target"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "Player",
+   "module": "Player",
+   "at": "export function Player",
+   "states": [
+    {
+     "id": "isPlaying",
+     "domain": [
+      false,
+      true
+     ],
+     "initial": false,
+     "at": "isPlaying"
+    }
+   ],
+   "root": [
+    {
+     "el": "div",
+     "id": "player",
+     "at": "<div class=\"player\">",
+     "class": [
+      "styles.player"
+     ],
+     "children": [
+      {
+       "el": "div",
+       "id": "time-control",
+       "at": "<div class=\"time-control\">",
+       "class": [
+        "styles.time-control"
+       ],
+       "children": [
+        {
+         "el": "p",
+         "id": "time-current",
+         "at": "<p class=\"time-current\">",
+         "class": [
+          "styles.time-current"
+         ],
+         "children": [
+          {
+           "text": "0:00",
+           "id": "time-current-words",
+           "at": "0:00"
+          }
+         ]
+        },
+        {
+         "el": "div",
+         "id": "track",
+         "at": "class=\"track\"",
+         "class": [
+          "styles.track"
+         ],
+         "attr": [
+          {
+           "name": "data-color-start",
+           "value": "#2f4f66",
+           "at": "data-color-start={currentSong.color[0]}"
+          },
+          {
+           "name": "data-color-end",
+           "value": "#a57c5b",
+           "at": "data-color-end={currentSong.color[1]}"
+          }
+         ],
+         "children": [
+          {
+           "el": "input",
+           "id": "progress-input",
+           "at": "<input class=\"progress-input\"",
+           "class": [
+            "styles.progress-input"
+           ],
+           "attr": [
+            {
+             "name": "min",
+             "value": "0"
+            },
+            {
+             "name": "max",
+             "value": "0"
+            },
+            {
+             "name": "value",
+             "value": "0"
+            },
+            {
+             "name": "type",
+             "value": "range"
+            }
+           ]
+          },
+          {
+           "el": "div",
+           "id": "animate-track",
+           "at": "<div class=\"animate-track\">",
+           "class": [
+            "styles.animate-track"
+           ]
+          }
+         ]
+        },
+        {
+         "el": "p",
+         "id": "time-duration",
+         "at": "<p class=\"time-duration\">",
+         "class": [
+          "styles.time-duration"
+         ],
+         "children": [
+          {
+           "text": "0:00",
+           "id": "time-duration-words",
+           "at": [
+            "0:00",
+            1
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "el": "div",
+       "id": "play-control",
+       "at": "<div class=\"play-control\">",
+       "class": [
+        "styles.play-control"
+       ],
+       "children": [
+        {
+         "el": "button",
+         "id": "skip-back",
+         "at": "<button",
+         "class": [
+          "styles.skip-back"
+         ],
+         "attr": [
+          {
+           "name": "type",
+           "value": "button"
+          },
+          {
+           "name": "aria-label",
+           "value": "Previous track"
+          }
+         ],
+         "children": [
+          {
+           "text": "‹",
+           "id": "skip-back-words",
+           "at": "‹"
+          }
+         ]
+        },
+        {
+         "el": "button",
+         "id": "play",
+         "at": [
+          "<button",
+          1
+         ],
+         "class": [
+          "styles.play",
+          {
+           "when": [
+            "isPlaying",
+            true
+           ],
+           "class": "styles.active",
+           "at": "isPlaying ? 'play active' : 'play'"
+          }
+         ],
+         "attr": [
+          {
+           "name": "type",
+           "value": "button"
+          },
+          {
+           "name": "aria-label",
+           "value": "Play or pause"
+          }
+         ],
+         "children": [
+          {
+           "if": [
+            "isPlaying",
+            true
+           ],
+           "id": "play-icon-branch",
+           "at": "@if (isPlaying) {",
+           "then": [
+            {
+             "el": "span",
+             "id": "pause-icon",
+             "at": "<span class=\"play-icon\">",
+             "class": [
+              "styles.play-icon"
+             ],
+             "children": [
+              {
+               "text": "❚❚",
+               "id": "pause-icon-words",
+               "at": "❚❚"
+              }
+             ]
+            }
+           ],
+           "else": [
+            {
+             "el": "span",
+             "id": "play-icon",
+             "at": [
+              "<span class=\"play-icon\">",
+              1
+             ],
+             "class": [
+              "styles.play-icon"
+             ],
+             "children": [
+              {
+               "text": "▶",
+               "id": "play-icon-words",
+               "at": "▶"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "el": "button",
+         "id": "skip-forward",
+         "at": "<button type=\"button\" class=\"skip-forward\"",
+         "class": [
+          "styles.skip-forward"
+         ],
+         "attr": [
+          {
+           "name": "type",
+           "value": "button"
+          },
+          {
+           "name": "aria-label",
+           "value": "Next track"
+          }
+         ],
+         "children": [
+          {
+           "text": "›",
+           "id": "skip-forward-words",
+           "at": "›"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "Library",
+   "module": "Library",
+   "at": "export function Library",
+   "states": [
+    {
+     "id": "libraryOpen",
+     "domain": [
+      false,
+      true
+     ],
+     "initial": false,
+     "at": "libraryOpen"
+    }
+   ],
+   "root": [
+    {
+     "el": "div",
+     "id": "library",
+     "at": "<div class={libraryOpen ? 'library active-library' : 'library'}>",
+     "class": [
+      "styles.library",
+      {
+       "when": [
+        "libraryOpen",
+        true
+       ],
+       "class": "styles.active-library",
+       "at": "libraryOpen ? 'library active-library' : 'library'"
+      }
+     ],
+     "children": [
+      {
+       "el": "h2",
+       "id": "library-title",
+       "at": "<h2>",
+       "children": [
+        {
+         "text": "Library",
+         "id": "library-title-words",
+         "at": [
+          "Library",
+          3
+         ]
+        }
+       ]
+      },
+      {
+       "el": "div",
+       "id": "library-songs",
+       "at": "<div class=\"library-songs\">",
+       "class": [
+        "styles.library-songs"
+       ],
+       "children": [
+        {
+         "call": "LibrarySong",
+         "id": "song-1",
+         "at": "<LibrarySong song={songOne}",
+         "args": {
+          "song": "track-one",
+          "selected": true
+         }
+        },
+        {
+         "call": "LibrarySong",
+         "id": "song-2",
+         "at": "<LibrarySong song={songTwo}",
+         "args": {
+          "song": "track-two",
+          "selected": false
+         }
+        },
+        {
+         "call": "LibrarySong",
+         "id": "song-3",
+         "at": "<LibrarySong song={songThree}",
+         "args": {
+          "song": "track-three",
+          "selected": false
+         }
+        },
+        {
+         "call": "LibrarySong",
+         "id": "song-4",
+         "at": "<LibrarySong song={songFour}",
+         "args": {
+          "song": "track-four",
+          "selected": false
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "LibrarySong",
+   "module": "LibrarySong",
+   "at": "export function LibrarySong",
+   "params": [
+    {
+     "id": "song",
+     "domain": [
+      "track-one",
+      "track-two",
+      "track-three",
+      "track-four"
+     ],
+     "at": "song"
+    },
+    {
+     "id": "selected",
+     "domain": [
+      false,
+      true
+     ],
+     "at": "selected"
+    }
+   ],
+   "root": [
+    {
+     "el": "button",
+     "id": "library-song",
+     "at": "<button",
+     "class": [
+      "styles.library-song",
+      {
+       "when": [
+        "selected",
+        true
+       ],
+       "class": "styles.selected",
+       "at": "selected ? 'library-song selected' : 'library-song'"
+      }
+     ],
+     "attr": [
+      {
+       "name": "type",
+       "value": "button"
+      }
+     ],
+     "children": [
+      {
+       "el": "img",
+       "id": "cover",
+       "at": "<img alt={song.name} src={song.cover} />",
+       "attr": [
+        {
+         "name": "alt",
+         "choice": [
+          {
+           "when": [
+            "song",
+            "track-one"
+           ],
+           "value": "Do I Clench My Fists? (Slowed + Reverb)"
+          },
+          {
+           "when": [
+            "song",
+            "track-two"
+           ],
+           "value": "Empty Crown"
+          },
+          {
+           "when": [
+            "song",
+            "track-three"
+           ],
+           "value": "No Problem"
+          },
+          {
+           "when": [
+            "song",
+            "track-four"
+           ],
+           "value": "Fallin'"
+          }
+         ],
+         "at": "alt={song.name}"
+        },
+        {
+         "name": "src",
+         "choice": [
+          {
+           "when": [
+            "song",
+            "track-one"
+           ],
+           "value": "https://i.ytimg.com/vi/DwTzcZxyUUg/maxresdefault.jpg"
+          },
+          {
+           "when": [
+            "song",
+            "track-two"
+           ],
+           "value": "https://i.ytimg.com/vi/m_qlgFQs7E4/maxresdefault.jpg"
+          },
+          {
+           "when": [
+            "song",
+            "track-three"
+           ],
+           "value": "https://i.ytimg.com/vi/UQ0KmrvBPaY/maxresdefault.jpg"
+          },
+          {
+           "when": [
+            "song",
+            "track-four"
+           ],
+           "value": "https://i.ytimg.com/vi/JhkqWaiYgA8/maxresdefault.jpg"
+          }
+         ],
+         "at": "src={song.cover}"
+        }
+       ]
+      },
+      {
+       "el": "span",
+       "id": "song-description",
+       "at": "<span class=\"song-description\">",
+       "class": [
+        "styles.song-description"
+       ],
+       "children": [
+        {
+         "el": "h3",
+         "id": "song-name",
+         "at": "<h3>",
+         "children": [
+          {
+           "if": [
+            "song",
+            "track-one"
+           ],
+           "id": "name-is-track-one",
+           "at": [
+            "{song.name}",
+            1
+           ],
+           "then": [
+            {
+             "text": "Do I Clench My Fists? (Slowed + Reverb)",
+             "id": "name-track-one",
+             "at": [
+              "{song.name}",
+              1
+             ]
+            }
+           ],
+           "else": [
+            {
+             "if": [
+              "song",
+              "track-two"
+             ],
+             "id": "name-is-track-two",
+             "at": [
+              "{song.name}",
+              1
+             ],
+             "then": [
+              {
+               "text": "Empty Crown",
+               "id": "name-track-two",
+               "at": [
+                "{song.name}",
+                1
+               ]
+              }
+             ],
+             "else": [
+              {
+               "if": [
+                "song",
+                "track-three"
+               ],
+               "id": "name-is-track-three",
+               "at": [
+                "{song.name}",
+                1
+               ],
+               "then": [
+                {
+                 "text": "No Problem",
+                 "id": "name-track-three",
+                 "at": [
+                  "{song.name}",
+                  1
+                 ]
+                }
+               ],
+               "else": [
+                {
+                 "text": "Fallin'",
+                 "id": "name-track-four",
+                 "at": [
+                  "{song.name}",
+                  1
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "el": "h4",
+         "id": "song-artist",
+         "at": "<h4>",
+         "children": [
+          {
+           "if": [
+            "song",
+            "track-one"
+           ],
+           "id": "artist-is-track-one",
+           "at": "{song.artist} - YouTube",
+           "then": [
+            {
+             "text": "ridgeclub - YouTube",
+             "id": "artist-track-one",
+             "at": "{song.artist} - YouTube"
+            }
+           ],
+           "else": [
+            {
+             "if": [
+              "song",
+              "track-two"
+             ],
+             "id": "artist-is-track-two",
+             "at": "{song.artist} - YouTube",
+             "then": [
+              {
+               "text": "Yas - YouTube",
+               "id": "artist-track-two",
+               "at": "{song.artist} - YouTube"
+              }
+             ],
+             "else": [
+              {
+               "if": [
+                "song",
+                "track-three"
+               ],
+               "id": "artist-is-track-three",
+               "at": "{song.artist} - YouTube",
+               "then": [
+                {
+                 "text": "J.Lamotta, Misha, cocabona - YouTube",
+                 "id": "artist-track-three",
+                 "at": "{song.artist} - YouTube"
+                }
+               ],
+               "else": [
+                {
+                 "text": "Ruck P - YouTube",
+                 "id": "artist-track-four",
+                 "at": "{song.artist} - YouTube"
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "expected": {
+  "freeStates": [
+   {
+    "instance": "doc/page",
+    "state": "libraryStatus",
+    "domain": [
+     false,
+     true
+    ]
+   },
+   {
+    "instance": "doc/page",
+    "state": "isPlaying",
+    "domain": [
+     false,
+     true
+    ]
+   }
+  ],
+  "cases": 4,
+  "initial": [
+   {
+    "instance": "doc/page",
+    "state": "libraryStatus",
+    "value": false
+   },
+   {
+    "instance": "doc/page",
+    "state": "isPlaying",
+    "value": false
+   }
+  ],
+  "textTopology": [
+   {
+    "address": "page/nav-call/nav-title:text0",
+    "component": "Nav",
+    "template": "nav-title-words",
+    "at": "Waves",
+    "ownerInstance": "doc/page/nav-call",
+    "insertionParent": "page/nav-call/nav-title",
+    "context": {
+     "ltr": "text-in-flex-item/row/ltr",
+     "rtl": "text-in-flex-item/row/rtl"
+    }
+   },
+   {
+    "address": "page/nav-call/library-button:text0",
+    "component": "Nav",
+    "template": "library-button-words",
+    "at": "Library ♪",
+    "ownerInstance": "doc/page/nav-call",
+    "insertionParent": "page/nav-call/library-button",
+    "context": {
+     "ltr": "text-in-flex-item/row/ltr",
+     "rtl": "text-in-flex-item/row/rtl"
+    }
+   },
+   {
+    "address": "page/song-call/song-title:text0",
+    "component": "Song",
+    "template": "song-title-words",
+    "at": "{currentSong.name}",
+    "ownerInstance": "doc/page/song-call",
+    "insertionParent": "page/song-call/song-title",
+    "context": {
+     "ltr": "text-in-flex-item/column/ltr",
+     "rtl": "text-in-flex-item/column/rtl"
+    }
+   },
+   {
+    "address": "page/song-call/song-artist:text0",
+    "component": "Song",
+    "template": "song-artist-words",
+    "at": "{currentSong.artist}",
+    "ownerInstance": "doc/page/song-call",
+    "insertionParent": "page/song-call/song-artist",
+    "context": {
+     "ltr": "text-in-flex-item/column/ltr",
+     "rtl": "text-in-flex-item/column/rtl"
+    }
+   },
+   {
+    "address": "page/player-call/time-current:text0",
+    "component": "Player",
+    "template": "time-current-words",
+    "at": "0:00",
+    "ownerInstance": "doc/page/player-call",
+    "insertionParent": "page/player-call/time-current",
+    "context": {
+     "ltr": "text-in-flex-item/row/ltr",
+     "rtl": "text-in-flex-item/row/rtl"
+    }
+   },
+   {
+    "address": "page/player-call/time-duration:text0",
+    "component": "Player",
+    "template": "time-duration-words",
+    "at": "0:00",
+    "ownerInstance": "doc/page/player-call",
+    "insertionParent": "page/player-call/time-duration",
+    "context": {
+     "ltr": "text-in-flex-item/row/ltr",
+     "rtl": "text-in-flex-item/row/rtl"
+    }
+   },
+   {
+    "address": "page/player-call/skip-back:text0",
+    "component": "Player",
+    "template": "skip-back-words",
+    "at": "‹",
+    "ownerInstance": "doc/page/player-call",
+    "insertionParent": "page/player-call/skip-back",
+    "context": {
+     "ltr": "text-in-flex-item/row/ltr",
+     "rtl": "text-in-flex-item/row/rtl"
+    }
+   },
+   {
+    "address": "page/player-call/pause-icon:text0",
+    "component": "Player",
+    "template": "pause-icon-words",
+    "at": "❚❚",
+    "ownerInstance": "doc/page/player-call",
+    "insertionParent": "page/player-call/pause-icon",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    },
+    "when": [
+     [
+      "doc/page",
+      "isPlaying",
+      true
+     ]
+    ]
+   },
+   {
+    "address": "page/player-call/play-icon:text0",
+    "component": "Player",
+    "template": "play-icon-words",
+    "at": "▶",
+    "ownerInstance": "doc/page/player-call",
+    "insertionParent": "page/player-call/play-icon",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    },
+    "when": [
+     [
+      "doc/page",
+      "isPlaying",
+      false
+     ]
+    ]
+   },
+   {
+    "address": "page/player-call/skip-forward:text0",
+    "component": "Player",
+    "template": "skip-forward-words",
+    "at": "›",
+    "ownerInstance": "doc/page/player-call",
+    "insertionParent": "page/player-call/skip-forward",
+    "context": {
+     "ltr": "text-in-flex-item/row/ltr",
+     "rtl": "text-in-flex-item/row/rtl"
+    }
+   },
+   {
+    "address": "page/library-call/library-title:text0",
+    "component": "Library",
+    "template": "library-title-words",
+    "at": "Library",
+    "ownerInstance": "doc/page/library-call",
+    "insertionParent": "page/library-call/library-title",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "page/library-call/song-1/song-name:text0",
+    "component": "LibrarySong",
+    "template": "name-track-one",
+    "at": "{song.name}",
+    "ownerInstance": "doc/page/library-call/song-1",
+    "insertionParent": "page/library-call/song-1/song-name",
+    "context": {
+     "ltr": "text-in-flex-item/column/ltr",
+     "rtl": "text-in-flex-item/column/rtl"
+    }
+   },
+   {
+    "address": "page/library-call/song-1/song-artist:text0",
+    "component": "LibrarySong",
+    "template": "artist-track-one",
+    "at": "{song.artist} - YouTube",
+    "ownerInstance": "doc/page/library-call/song-1",
+    "insertionParent": "page/library-call/song-1/song-artist",
+    "context": {
+     "ltr": "text-in-flex-item/column/ltr",
+     "rtl": "text-in-flex-item/column/rtl"
+    }
+   },
+   {
+    "address": "page/library-call/song-2/song-name:text0",
+    "component": "LibrarySong",
+    "template": "name-track-two",
+    "at": "{song.name}",
+    "ownerInstance": "doc/page/library-call/song-2",
+    "insertionParent": "page/library-call/song-2/song-name",
+    "context": {
+     "ltr": "text-in-flex-item/column/ltr",
+     "rtl": "text-in-flex-item/column/rtl"
+    }
+   },
+   {
+    "address": "page/library-call/song-2/song-artist:text0",
+    "component": "LibrarySong",
+    "template": "artist-track-two",
+    "at": "{song.artist} - YouTube",
+    "ownerInstance": "doc/page/library-call/song-2",
+    "insertionParent": "page/library-call/song-2/song-artist",
+    "context": {
+     "ltr": "text-in-flex-item/column/ltr",
+     "rtl": "text-in-flex-item/column/rtl"
+    }
+   },
+   {
+    "address": "page/library-call/song-3/song-name:text0",
+    "component": "LibrarySong",
+    "template": "name-track-three",
+    "at": "{song.name}",
+    "ownerInstance": "doc/page/library-call/song-3",
+    "insertionParent": "page/library-call/song-3/song-name",
+    "context": {
+     "ltr": "text-in-flex-item/column/ltr",
+     "rtl": "text-in-flex-item/column/rtl"
+    }
+   },
+   {
+    "address": "page/library-call/song-3/song-artist:text0",
+    "component": "LibrarySong",
+    "template": "artist-track-three",
+    "at": "{song.artist} - YouTube",
+    "ownerInstance": "doc/page/library-call/song-3",
+    "insertionParent": "page/library-call/song-3/song-artist",
+    "context": {
+     "ltr": "text-in-flex-item/column/ltr",
+     "rtl": "text-in-flex-item/column/rtl"
+    }
+   },
+   {
+    "address": "page/library-call/song-4/song-name:text0",
+    "component": "LibrarySong",
+    "template": "name-track-four",
+    "at": "{song.name}",
+    "ownerInstance": "doc/page/library-call/song-4",
+    "insertionParent": "page/library-call/song-4/song-name",
+    "context": {
+     "ltr": "text-in-flex-item/column/ltr",
+     "rtl": "text-in-flex-item/column/rtl"
+    }
+   },
+   {
+    "address": "page/library-call/song-4/song-artist:text0",
+    "component": "LibrarySong",
+    "template": "artist-track-four",
+    "at": "{song.artist} - YouTube",
+    "ownerInstance": "doc/page/library-call/song-4",
+    "insertionParent": "page/library-call/song-4/song-artist",
+    "context": {
+     "ltr": "text-in-flex-item/column/ltr",
+     "rtl": "text-in-flex-item/column/rtl"
+    }
+   },
+   {
+    "address": "page/disclosure-text:text0",
+    "component": "App",
+    "template": "disclosure-words",
+    "at": "Demo music streams from the visible YouTube embed. This app does not bundle,\n\t\t\t\tdownload, or redistribute audio.",
+    "ownerInstance": "doc/page",
+    "insertionParent": "page/disclosure-text",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "page/terms-link:text0",
+    "component": "App",
+    "template": "terms-words",
+    "at": "YouTube Terms",
+    "ownerInstance": "doc/page",
+    "insertionParent": "page/terms-link",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "page/privacy-link:text0",
+    "component": "App",
+    "template": "privacy-words",
+    "at": "Google Privacy",
+    "ownerInstance": "doc/page",
+    "insertionParent": "page/privacy-link",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   }
+  ]
+ }
+}
