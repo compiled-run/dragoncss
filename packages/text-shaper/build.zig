@@ -1,9 +1,11 @@
 //! Builds dragon_hb (src/dragon_hb.zig over vendor/harfbuzz, unmodified) three ways:
 //!   zig build wasm     -> zig-out/wasm/dragon_hb.wasm (Node: compiler, TS reference engine, tests)
 //!   zig build ios      -> zig-out/ios/DragonHB.xcframework (arm64 device + arm64 simulator, static)
-//!   zig build android  -> zig-out/android/{arm64-v8a,x86_64}/libdragon_hb.so
-//!   zig build          -> all three
-//! Android needs an NDK: -Dandroid-ndk=<path> or ANDROID_NDK_HOME.
+//!   zig build android  -> zig-out/android/{arm64-v8a,x86_64}/libdragon_hb.so (plus the JNI glue, src/dragon_hb_jni.zig)
+//!   zig build host     -> zig-out/host/libdragon_hb.a (aarch64-macos, static, for SwiftPM: swift/)
+//!   zig build host-jni -> zig-out/host-jni/libdragon_hb.dylib (aarch64-macos, with the JNI glue, for the JVM: kotlin/)
+//!   zig build          -> all five
+//! Android needs an NDK: -Dandroid-ndk=<path> or ANDROID_NDK_HOME. host-jni needs a JDK: -Djava-home=<path> or JAVA_HOME.
 const std = @import("std");
 
 const hb_src = "../../vendor/harfbuzz/src";
@@ -62,6 +64,21 @@ fn libcFile(b: *std.Build, name: []const u8, include_dir: []const u8, sys_includ
         "include_dir={s}\nsys_include_dir={s}\ncrt_dir={s}\nmsvc_lib_dir=\nkernel32_lib_dir=\ngcc_dir=\n",
         .{ include_dir, sys_include_dir, crt_dir },
     ));
+}
+
+/// src/dragon_hb_jni.zig as an object for a library that already holds the shim; jni.h comes from jni_include.
+fn jniObject(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, jni_include: []const []const u8) *std.Build.Step.Compile {
+    const m = b.createModule(.{
+        .root_source_file = b.path("src/dragon_hb_jni.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .strip = true,
+        .pic = true,
+    });
+    m.addIncludePath(b.path("include"));
+    for (jni_include) |dir| m.addSystemIncludePath(.{ .cwd_relative = dir });
+    return b.addObject(.{ .name = "dragon_hb_jni", .root_module = m });
 }
 
 pub fn build(b: *std.Build) void {
@@ -133,13 +150,18 @@ pub fn build(b: *std.Build) void {
                     .android_api_level = api,
                 });
                 const lib = b.addLibrary(.{ .name = "dragon_hb", .linkage = .dynamic, .root_module = hbModule(b, target, optimize, .pthread) });
-                lib.setLibCFile(libcFile(
+                const libc = libcFile(
                     b,
                     b.fmt("libc-{s}.txt", .{a.triple}),
                     b.fmt("{s}/usr/include", .{sysroot}),
                     b.fmt("{s}/usr/include/{s}", .{ sysroot, a.triple }),
                     b.fmt("{s}/usr/lib/{s}/{d}", .{ sysroot, a.triple, api }),
-                ));
+                );
+                lib.setLibCFile(libc);
+                // The NDK's jni.h is self-contained (no jni_md.h).
+                const jni = jniObject(b, target, optimize, &.{b.fmt("{s}/usr/include", .{sysroot})});
+                jni.setLibCFile(libc);
+                lib.root_module.addObject(jni);
                 // 16 KB page devices (Android 15+) need segment alignment of at least 16 KB.
                 lib.link_z_max_page_size = 16384;
                 const install = b.addInstallArtifact(lib, .{ .dest_dir = .{ .override = .{ .custom = b.fmt("android/{s}", .{a.dir}) } } });
@@ -151,7 +173,35 @@ pub fn build(b: *std.Build) void {
         }
     }
 
+    // ---- macOS host (aarch64): the static library SwiftPM links (swift/) and the JNI dylib the JVM loads (kotlin/) ----
+    const host_target = b.resolveTargetQuery(.{
+        .cpu_arch = .aarch64,
+        .os_tag = .macos,
+        .os_version_min = .{ .semver = .{ .major = 13, .minor = 0, .patch = 0 } },
+    });
+    const host_step = b.step("host", "Build libdragon_hb.a for aarch64-macos (Swift host replay)");
+    {
+        const lib = b.addLibrary(.{ .name = "dragon_hb", .linkage = .static, .root_module = hbModule(b, host_target, optimize, .pthread) });
+        const install = b.addInstallArtifact(lib, .{ .dest_dir = .{ .override = .{ .custom = "host" } } });
+        host_step.dependOn(&install.step);
+    }
+    const host_jni_step = b.step("host-jni", "Build libdragon_hb.dylib with the JNI glue for aarch64-macos (Kotlin host replay)");
+    {
+        const java_home = b.option([]const u8, "java-home", "JDK home for jni.h (default: JAVA_HOME)") orelse b.graph.environ_map.get("JAVA_HOME");
+        if (java_home) |jh| {
+            const lib = b.addLibrary(.{ .name = "dragon_hb", .linkage = .dynamic, .root_module = hbModule(b, host_target, optimize, .pthread) });
+            lib.root_module.addObject(jniObject(b, host_target, optimize, &.{ b.fmt("{s}/include", .{jh}), b.fmt("{s}/include/darwin", .{jh}) }));
+            const install = b.addInstallArtifact(lib, .{ .dest_dir = .{ .override = .{ .custom = "host-jni" } } });
+            host_jni_step.dependOn(&install.step);
+        } else {
+            const fail = b.addFail("host-jni needs a JDK: pass -Djava-home=<path> or set JAVA_HOME");
+            host_jni_step.dependOn(&fail.step);
+        }
+    }
+
     b.getInstallStep().dependOn(wasm_step);
     b.getInstallStep().dependOn(ios_step);
     b.getInstallStep().dependOn(android_step);
+    b.getInstallStep().dependOn(host_step);
+    b.getInstallStep().dependOn(host_jni_step);
 }
