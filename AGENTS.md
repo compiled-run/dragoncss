@@ -24,7 +24,7 @@ Code reaches `master` only through a pull request that Macroscope has reviewed. 
 6. **Repeat until Macroscope is done.** Every push gets a new review, which may find new issues. Go back to step 4 until a review of the latest commit leaves nothing unanswered. After five rounds that still find new issues, stop and report instead of merging.
 7. **Merge.** When `pnpm pr:review <number>` exits 0, run `gh pr merge <number> --merge --delete-branch` without asking. A failed check blocks the merge: fix the cause, or report it. Never retry until it goes green.
 
-Two cases may push straight to `master`: PM board updates that touch only `docs/goals/**`, and the owner asking for a direct push.
+Two cases skip the pull request and push straight to `master`: PM board updates that touch only `docs/goals/**`, and small changes the owner asks for directly in the conversation (README wording, docs, config). Still run step 2 first.
 
 Workers dispatched in worktrees stop at step 3 and return the PR number in their receipt. The PM runs steps 4–7, or sends the findings back to a worker.
 
