@@ -1,7 +1,8 @@
 // pnpm run parity:pixel-capture [-- --recheck <n>] (notes/T015-p4-review-p5-plan.md section 4 item 5): Chrome's pixels of every layout
 // case at every device DPR, by CDP Page.captureScreenshot with chrome.ts flags (imported, unchanged) and the zoom guard, into
 // packages/parity/expected-pixels/<platform>/dpr-<d>/<case>.png with a manifest (sha256, Chrome, flags, size, the raster rule).
-// --recheck n re-captures every n-th case per DPR and requires it byte-identical to the committed PNG; nothing is written.
+// --recheck n re-captures every n-th case per DPR and requires it byte-identical to the committed PNG; nothing is written. Every
+// launch first requires CDP SystemInfo to report the software raster path (requireSoftwareRaster) and records it in the manifest.
 import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Browser } from 'playwright';
@@ -10,7 +11,8 @@ import type { ParityCase } from '../cases.ts';
 import { atDpr, DPRS, zoomGuard } from '../dpr.ts';
 import { nativeCases } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
-import { decodePng, expectedPixelsDir, expectedPixelsPath, manifestText, PIXEL_MANIFEST, pixelManifest, rasterSize } from '../pixel-reference.ts';
+import type { RasterPath } from '../pixel-reference.ts';
+import { decodePng, expectedPixelsDir, expectedPixelsPath, manifestText, PIXEL_MANIFEST, pixelManifest, rasterSize, requireSoftwareRaster } from '../pixel-reference.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
 
 const args = process.argv.slice(2);
@@ -47,11 +49,21 @@ function dirBytes(dir: string): number {
 }
 
 let exit = 0;
-const sets: { dpr: number; cases: { case: string; png: Uint8Array }[] }[] = [];
+const sets: { dpr: number; raster: RasterPath; cases: { case: string; png: Uint8Array }[] }[] = [];
 for (const dpr of DPRS) {
   const dir = expectedPixelsDir(dpr, platform);
   const browser = await launchChrome(dpr);
   try {
+    // The software-raster precondition (T085, P6a): no pixel is captured unless SystemInfo proves the CPU raster path.
+    const raster = await requireSoftwareRaster(async () => {
+      const cdp = await browser.newBrowserCDPSession();
+      try {
+        return await cdp.send('SystemInfo.getInfo');
+      } finally {
+        await cdp.detach();
+      }
+    });
+    console.log(`parity:pixel-capture: DPR ${dpr}: SystemInfo rasterization ${raster.rasterization}, gpu_compositing ${raster.gpu_compositing}`);
     await zoomGuard(browser, dpr);
     const t = Date.now();
     if (recheck !== null) {
@@ -76,7 +88,7 @@ for (const dpr of DPRS) {
         writeFileSync(expectedPixelsPath(n.case.id, dpr, platform), png);
         set.push({ case: n.case.id, png });
       }
-      sets.push({ dpr, cases: set });
+      sets.push({ dpr, raster, cases: set });
       const written = readdirSync(dir).filter((f) => f.endsWith('.png')).length;
       if (written !== cases.length) throw new Error(`DPR ${dpr}: ${written} PNGs written, ${cases.length} cases`);
       console.log(`parity:pixel-capture: DPR ${dpr}: ${written} cases in ${((Date.now() - t) / 1000).toFixed(1)} s -> packages/parity/expected-pixels/${platform}/dpr-${dpr}`);
