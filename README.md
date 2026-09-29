@@ -1,6 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/crest.png" alt="Dragon CSS" width="220">
+  <img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/dragon-mark.png" alt="" width="160">
 </p>
+
+<h1 align="center">Dragon CSS</h1>
 
 <h3 align="center">Regular CSS for native apps, tested against the browser.</h3>
 
