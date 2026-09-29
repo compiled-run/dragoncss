@@ -1,0 +1,19 @@
+{
+  "case": "text-min-content-word-positions",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"m1a:text0","data":"XXX XX XXXX","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[3,6]},
+    {"id":"m1b:text0","data":"XX XXXX X","lines":3,"units":[0,0,0,1,1,1,1,1,2],"blank":[2,7]},
+    {"id":"m1c:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"m2a:text0","data":"XXX XX XXXX","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[3,6]},
+    {"id":"m2b:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"m3a:text0","data":"XXX XX XXXX","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[3,6]},
+    {"id":"m3b:text0","data":"XX XXXX X","lines":3,"units":[0,0,0,1,1,1,1,1,2],"blank":[2,7]},
+    {"id":"m3c:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"m4a:text0","data":"XXX XX XXXX","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[3,6]},
+    {"id":"m4b:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"m5a:text0","data":"XXX XX XXXX","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[3,6]},
+    {"id":"m5b:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]}
+  ]
+}

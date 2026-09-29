@@ -305,6 +305,9 @@ public struct DragonLineSpec {
   public let end: Int
 }
 
+/// Device px added to every glyph x; 0 except in the glyph-offset-1 raster plant build (P5), which proves the pixel lane sees ink.
+public let dragonGlyphPlantDevicePx: Double = 0
+
 /// A text node: Dragon owns the line breaks and places every glyph at the engine's advances (PM ruling, option ii); Core Text
 /// only rasterises (CTFontDrawGlyphs). The text is exposed to accessibility through accessibilityLabel.
 public final class DragonTextView: UIView, DragonNodeView {
@@ -360,7 +363,7 @@ public final class DragonTextView: UIView, DragonNodeView {
       ctx.textMatrix = .identity
       ctx.translateBy(x: 0, y: CGFloat(l.baseline / scale))
       ctx.scaleBy(x: 1, y: -1)
-      let positions = l.xs.map { CGPoint(x: CGFloat($0 / scale), y: 0) }
+      let positions = l.xs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
       CTFontDrawGlyphs(ct, l.glyphs, positions, l.glyphs.count, ctx)
       ctx.restoreGState()
     }
@@ -677,10 +680,34 @@ public func dragonCapture(_ view: UIView, scale: Double, points: [(x: Int, y: In
   }
   let sha = SHA256.hash(data: Data(buf)).map { String(format: "%02x", $0) }.joined()
   let samples = points.map { p -> DumpPixelsSamples in
+    if p.x < 0 || p.y < 0 || p.x >= w || p.y >= h { fatalError("dragon: sample point \(p.x),\(p.y) (\(p.rule)) is outside the \(w)x\(h) capture") }
     let i = (p.y * w + p.x) * 4
     return DumpPixelsSamples(x: Double(p.x), y: Double(p.y), rgba: [Double(buf[i]), Double(buf[i + 1]), Double(buf[i + 2]), Double(buf[i + 3])], rule: p.rule)
   }
   return DumpPixels(capture: "drawHierarchy", width: Double(w), height: Double(h), sha256: sha, samples: samples)
+}
+
+/// The host's run file (the P5 points protocol), tab separated: "case <id>" lines name the cases in order, "point <id> <x> <y>
+/// <rule>" lines are a case's generated sample points in device px, and "hold 1" makes the app wait after each case until the host
+/// has taken its OS screenshot (the host then writes release-<id> into DRAGON_OUT).
+public struct DragonRun {
+  public var ids: [String] = []
+  public var points: [String: [(x: Int, y: Int, rule: String)]] = [:]
+  public var hold = false
+  public init() {}
+}
+
+public func dragonReadRun(_ path: String) -> DragonRun? {
+  guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
+  var r = DragonRun()
+  for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
+    let f = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+    if f[0] == "case" && f.count == 2 { r.ids.append(f[1]); continue }
+    if f[0] == "hold" && f.count == 2 { r.hold = f[1] == "1"; continue }
+    guard f[0] == "point", f.count == 5, let x = Int(f[2]), let y = Int(f[3]) else { fatalError("dragon: bad run file line: \(line)") }
+    r.points[f[1], default: []].append((x: x, y: y, rule: f[4]))
+  }
+  return r
 }
 `;
 
@@ -985,6 +1012,9 @@ fun dragonDrawBorders(canvas: Canvas, w: Float, h: Float, widths: IntArray, styl
  */
 class DragonLineSpec(val text: String, val glyphs: IntArray, val xs: DoubleArray, val xLU: Double, val widthLU: Double, val top: Int, val baseline: Int, val start: Int, val end: Int)
 
+/** Device px added to every glyph x; 0 except in the glyph-offset-1 raster plant build (P5), which proves the pixel lane sees ink. */
+const val DRAGON_GLYPH_PLANT_DEVICE_PX = 0.0
+
 /**
  * A text node: Dragon owns the line breaks and places every glyph at the engine's advances (PM ruling, option ii); the platform only
  * rasterises, with Canvas.drawGlyphs (API 31, the Android floor). The text is exposed to accessibility through contentDescription.
@@ -1030,7 +1060,7 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
       val y = l.baseline.toFloat()
       val positions = FloatArray(2 * l.glyphs.size)
       for (k in l.glyphs.indices) {
-        positions[2 * k] = l.xs[k].toFloat()
+        positions[2 * k] = (l.xs[k] + DRAGON_GLYPH_PLANT_DEVICE_PX).toFloat()
         positions[2 * k + 1] = y
       }
       canvas.drawGlyphs(l.glyphs, 0, positions, 0, l.glyphs.size, f, paint)
@@ -1161,6 +1191,7 @@ import dev.dragon.dump.DumpNodesLines
 import dev.dragon.dump.DumpNodesLinesDeviceEdges
 import dev.dragon.dump.DumpNodesLinesFrame
 import dev.dragon.dump.DumpPixels
+import dev.dragon.dump.DumpPixelsSamples
 import dev.dragon.dump.DumpTiming
 import dev.dragon.layout.Ctx
 import dev.dragon.layout.LayoutBox
@@ -1400,14 +1431,60 @@ class DragonTree(val context: Context) {
 fun dragonBackground(v: DragonBoxView, c: DragonRGBA8) {
   v.background = ColorDrawable(dragonArgb(c))
 }
+
+/** One generated sample point of a case, in device px of the capture. */
+class DragonPoint(val x: Int, val y: Int, val rule: String)
+
+/**
+ * The host's run file (the P5 points protocol), tab separated: "case <id>" lines name the cases in order, "point <id> <x> <y> <rule>"
+ * lines are a case's generated sample points in device px, and "hold 1" makes the app wait after each case until the host has
+ * taken its OS screenshot (the host then writes release-<id> into the files dir).
+ */
+class DragonRun(val ids: List<String>, val points: Map<String, List<DragonPoint>>, val hold: Boolean)
+
+fun dragonReadRun(f: java.io.File): DragonRun? {
+  if (!f.exists()) return null
+  val ids = ArrayList<String>()
+  val points = HashMap<String, ArrayList<DragonPoint>>()
+  var hold = false
+  for (line in f.readText().split("\n")) {
+    if (line.isEmpty()) continue
+    val p = line.split("\t")
+    if (p[0] == "case" && p.size == 2) ids.add(p[1])
+    else if (p[0] == "hold" && p.size == 2) hold = p[1] == "1"
+    else if (p[0] == "point" && p.size == 5) points.getOrPut(p[1]) { ArrayList() }.add(DragonPoint(p[2].toInt(), p[3].toInt(), p[4]))
+    else throw IllegalStateException("dragon: bad run file line: " + line)
+  }
+  return DragonRun(ids, points, hold)
+}
+
+/** The capture's RGBA8 pixels at the generated points (a point outside the capture fails loudly). */
+fun dragonSamples(rgba: ByteArray, w: Int, h: Int, points: List<DragonPoint>): List<DumpPixelsSamples> = points.map { p ->
+  if (p.x < 0 || p.y < 0 || p.x >= w || p.y >= h) throw IllegalStateException("dragon: sample point " + p.x + "," + p.y + " (" + p.rule + ") is outside the " + w + "x" + h + " capture")
+  val i = (p.y * w + p.x) * 4
+  DumpPixelsSamples(p.x.toDouble(), p.y.toDouble(), listOf(rgba[i], rgba[i + 1], rgba[i + 2], rgba[i + 3]).map { (it.toInt() and 0xff).toDouble() }, p.rule)
+}
 `;
 
 export type SupportFile = { readonly path: string; readonly text: string };
 
 const header = (comment: string, what: string): string => `${comment} GENERATED by dragon emit/native-support.ts (${NATIVE_SUPPORT_VERSION}): ${what}. Do not edit.\n`;
 
-/** The support files of a backend, relative to the generated source root. */
-export function emitNativeSupport(backend: NativeBackend): GeneratedFile[] {
+/** Raster plants of the support code (P5): glyph-offset-1 draws every glyph 1 device px right of the engine's position. */
+export type SupportPlant = 'glyph-offset-1';
+export const SUPPORT_PLANTS: readonly SupportPlant[] = ['glyph-offset-1'];
+
+/** The support files of a backend, relative to the generated source root; a plant changes only the glyph offset constant. */
+export function emitNativeSupport(backend: NativeBackend, plant: SupportPlant | null = null): GeneratedFile[] {
+  const files = supportFiles(backend);
+  if (plant === null) return files;
+  const [from, to] = backend === 'uikit' ? ['public let dragonGlyphPlantDevicePx: Double = 0\n', 'public let dragonGlyphPlantDevicePx: Double = 1\n'] : ['const val DRAGON_GLYPH_PLANT_DEVICE_PX = 0.0\n', 'const val DRAGON_GLYPH_PLANT_DEVICE_PX = 1.0\n'];
+  const planted = files.map((f) => (f.text.includes(from) ? { ...f, text: f.text.replace(from, to) } : f));
+  if (planted.every((f, i) => f.text === (files[i] as GeneratedFile).text)) throw new Error(`the ${plant} plant found no glyph offset constant in the ${backend} support`);
+  return planted;
+}
+
+function supportFiles(backend: NativeBackend): GeneratedFile[] {
   if (backend === 'uikit') {
     return [
       { path: 'Support/DragonChecked.swift', text: header('//', 'checked conversions') + SWIFT_CHECKED },

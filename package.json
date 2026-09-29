@@ -38,7 +38,11 @@
     "native:encoders": "node --conditions=dragon-internal packages/parity/src/cli/native-encoders.ts",
     "text:build": "pnpm --dir packages/text-shaper run build",
     "text:gate": "node packages/text-shaper/scripts/gate.ts",
-    "text:report": "node packages/text-shaper/scripts/report.ts"
+    "text:report": "node packages/text-shaper/scripts/report.ts",
+    "layout:break-vectors": "node --conditions=dragon-internal packages/parity/src/cli/break-vectors.ts",
+    "parity:break-capture": "node --conditions=dragon-internal packages/parity/src/cli/break-capture.ts",
+    "parity:pixel-capture": "node --conditions=dragon-internal packages/parity/src/cli/pixel-capture.ts",
+    "native:devices": "node --conditions=dragon-internal packages/parity/src/cli/native-devices.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",

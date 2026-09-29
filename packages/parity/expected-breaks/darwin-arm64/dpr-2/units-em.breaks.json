@@ -1,0 +1,17 @@
+{
+  "case": "units-em",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"m:text0","data":"XX XXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"m:text1","data":"XXX X","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"i:text0","data":"X XX XXX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"q:text0","data":"XX X XXX","lines":2,"units":[0,0,0,0,0,1,1,1],"blank":[4]},
+    {"id":"r:text0","data":"XXX XX X XXXX","lines":2,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1],"blank":[8]},
+    {"id":"s:text0","data":"XX X","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"u:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"f1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"f2:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"k1:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}

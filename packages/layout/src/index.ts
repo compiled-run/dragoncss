@@ -28,3 +28,7 @@ export { zoomInput } from './layout.ts';
 export type { Edges } from './box.ts';
 export { resolveBorder } from './box.ts';
 export { platformFontSize, snapEdge, zoomFontSize } from './units.ts';
+export type { Char as InlineChar, Line as InlineLine, Run as InlineRun } from './inline.ts';
+export { breakLines, buildRun } from './inline.ts';
+export type { Ctx } from './block.ts';
+export { resolvePadding } from './box.ts';

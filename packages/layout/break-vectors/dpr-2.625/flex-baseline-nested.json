@@ -1,0 +1,27 @@
+{
+  "case": "flex-baseline-nested",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"r:text0","lines":[[0,1]]},
+    {"id":"f2:text0","lines":[[0,2]]},
+    {"id":"rr2:text0","lines":[[0,1]]},
+    {"id":"rr1:text0","lines":[[0,1]]},
+    {"id":"cr2:text0","lines":[[0,1]]},
+    {"id":"cr1:text0","lines":[[0,1]]},
+    {"id":"col1:text0","lines":[[0,1]]},
+    {"id":"col2:text0","lines":[[0,2]]},
+    {"id":"o2:text0","lines":[[0,1]]},
+    {"id":"o1:text0","lines":[[0,1]]},
+    {"id":"fb1:text0","lines":[[0,1]]},
+    {"id":"fb2:text0","lines":[[0,1]]},
+    {"id":"k2:text0","lines":[[0,2]]},
+    {"id":"d1a:text0","lines":[[0,1]]},
+    {"id":"d1b:text0","lines":[[0,2]]},
+    {"id":"d2:text0","lines":[[0,1]]},
+    {"id":"s0:text0","lines":[[0,1]]},
+    {"id":"s1:text0","lines":[[0,2]]},
+    {"id":"s2a:text0","lines":[[0,2]]},
+    {"id":"s3:text0","lines":[[0,2]]},
+    {"id":"s4a:text0","lines":[[0,2]]}
+  ]
+}

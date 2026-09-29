@@ -1,0 +1,10 @@
+{
+  "case": "flex-baseline-synthesized",
+  "dpr": 3,
+  "texts": [
+    {"id":"t1:text0","lines":[[0,1]]},
+    {"id":"t2:text0","lines":[[0,2]]},
+    {"id":"c3a:text0","lines":[[0,1]]},
+    {"id":"c3c2:text0","lines":[[0,2]]}
+  ]
+}

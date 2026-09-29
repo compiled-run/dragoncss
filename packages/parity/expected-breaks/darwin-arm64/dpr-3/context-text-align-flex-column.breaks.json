@@ -1,0 +1,13 @@
+{
+  "case": "context-text-align-flex-column",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"t1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"t2:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"t3:text0","data":"XX XXX XXXX","lines":2,"units":[0,0,0,0,0,0,0,1,1,1,1],"blank":[6]},
+    {"id":"t4:text0","data":"XXXX XX XXX","lines":2,"units":[0,0,0,0,0,0,0,0,1,1,1],"blank":[7]},
+    {"id":"t5:text0","data":"X XX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"t6:text0","data":"XXXXX XX","lines":2,"units":[0,0,0,0,0,0,1,1],"blank":[5]}
+  ]
+}

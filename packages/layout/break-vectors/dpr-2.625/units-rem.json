@@ -1,0 +1,11 @@
+{
+  "case": "units-rem",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"b:text0","lines":[[0,14],[14,16]]},
+    {"id":"c:text0","lines":[[0,8]]},
+    {"id":"d:text0","lines":[[0,1]]},
+    {"id":"f1:text0","lines":[[0,5]]},
+    {"id":"k2:text0","lines":[[0,6]]}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "case": "overflow-hidden-flex-min-size",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"r1a:text0","data":"XXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"r1b:text0","data":"XXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"r2a:text0","data":"XXXX XXXX","lines":2,"units":[0,0,0,0,0,1,1,1,1],"blank":[4]},
+    {"id":"r2b:text0","data":"XXXXX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"r2c:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"r3a:text0","data":"XXXXXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"r3b:text0","data":"XX XX XX","lines":3,"units":[0,0,0,1,1,1,2,2],"blank":[2,5]},
+    {"id":"c2b:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"r4a:text0","data":"XXXXXXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"r4b:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]}
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "case": "flex-abspos-center-shrink",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a1:text0","data":"XX XX XX XX XX XX XX XX XX XX XX","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2],"blank":[11,23]},
+    {"id":"a2:text0","data":"XX XX XX XX XX XX XX XX XX XX XX","lines":4,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,3,3,3,3,3],"blank":[8,17,26]},
+    {"id":"a4:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"a5:text0","data":"XX XX XX XX XX XX XX XX","lines":3,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,2,2,2,2,2],"blank":[8,17]},
+    {"id":"a6:text0","data":"XX XX XX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a7:text0","data":"XX XX XX XX XX","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,1,1],"blank":[11]}
+  ]
+}

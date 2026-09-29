@@ -1,0 +1,13 @@
+{
+  "case": "flex-text-min-content-shrink",
+  "dpr": 3,
+  "texts": [
+    {"id":"a:text0","lines":[[0,4],[4,6]]},
+    {"id":"b:text0","lines":[[0,5],[5,8]]},
+    {"id":"c:text0","lines":[[0,5],[5,7]]},
+    {"id":"d:text0","lines":[[0,5]]},
+    {"id":"e:text0","lines":[[0,5],[5,7]]},
+    {"id":"f:text0","lines":[[0,3],[3,6]]},
+    {"id":"g:text0","lines":[[0,1]]}
+  ]
+}

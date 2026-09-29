@@ -52,7 +52,8 @@ export { BACKEND_TARGET, NATIVE_BACKENDS, NATIVE_CLASSES, PROGRAM_VERSIONS, VOCA
 export type { ExpectedDump, ExpectedEngine, ExpectedNode, NodeGeometry } from './emit/expected-dump.ts';
 export { appliedKeyMap, appliedValue, borderDevicePx, cssCoverage, EXPECTED_SCHEMA, expectedDigest, expectedDump, programInput, textInstanceSize } from './emit/expected-dump.ts';
 export type { EmitCase } from './emit/native-support.ts';
-export { emitNativeSupport, NATIVE_SUPPORT_VERSION, SUPPORT_FILES } from './emit/native-support.ts';
+export { emitNativeSupport, NATIVE_SUPPORT_VERSION, SUPPORT_FILES, SUPPORT_PLANTS } from './emit/native-support.ts';
+export type { SupportPlant } from './emit/native-support.ts';
 export { emitUikitCases, UIKIT_EMITTER_VERSION } from './emit/uikit.ts';
 export { emitAndroidViewsCases, ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
 export { ANDROID_MIN_SDK } from './project.ts';

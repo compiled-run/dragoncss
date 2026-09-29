@@ -1,0 +1,28 @@
+{
+  "case": "tree-whitespace-leaves#0",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"a:space0","data":" ","lines":1,"units":[0],"blank":[]},
+    {"id":"a:text1","data":"YY","lines":1,"units":[0,0],"blank":[]},
+    {"id":"a:text2","data":"​","lines":1,"units":[0],"blank":[0]},
+    {"id":"a:text3","data":"ZZ WW","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"b:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"b:text1","data":"YYYY","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"b:text2","data":"ZZ","lines":1,"units":[0,0],"blank":[]},
+    {"id":"c:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"c:text1","data":"​","lines":1,"units":[0],"blank":[0]},
+    {"id":"c:text2","data":"YY ZZ","lines":2,"units":[0,0,0,1,1],"blank":[2]},
+    {"id":"d:text0","data":"XX ","lines":1,"units":[0,0,0],"blank":[2]},
+    {"id":"d:text1","data":"YY","lines":1,"units":[0,0],"blank":[]},
+    {"id":"d:text2","data":"​","lines":1,"units":[0],"blank":[0]},
+    {"id":"d:text3","data":"ZZZ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"e:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"e:space0","data":" ","lines":1,"units":[0],"blank":[]},
+    {"id":"e:text1","data":"Y","lines":1,"units":[0],"blank":[]},
+    {"id":"e:text2","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"e:text3","data":"​","lines":1,"units":[0],"blank":[0]},
+    {"id":"e:text4","data":"W","lines":1,"units":[0],"blank":[]}
+  ]
+}
