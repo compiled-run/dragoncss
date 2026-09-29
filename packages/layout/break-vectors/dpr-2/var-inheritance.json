@@ -1,0 +1,8 @@
+{
+  "case": "var-inheritance",
+  "dpr": 2,
+  "texts": [
+    {"id":"c1x:text0","lines":[[0,4]]},
+    {"id":"c2x:text0","lines":[[0,4]]}
+  ]
+}

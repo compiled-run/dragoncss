@@ -1,0 +1,13 @@
+component App(theme: "light" | "dark" = "light", dense: boolean = false) {
+  <html>
+    <body>
+      <div app class="app" ui-theme={theme} ui-dense={dense}>
+        <div row class="row">
+          <div chip1 class="chip" />
+          <div chip2 class="chip" />
+        </div>
+        <div label class="label">AB CD</div>
+      </div>
+    </body>
+  </html>
+}

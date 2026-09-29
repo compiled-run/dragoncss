@@ -1,8 +1,9 @@
 // Reads a fixture file (a strict HTML subset) into the FrontEndResult a framework producer would supply.
 // <head> is not part of the element tree: it generates no boxes. Text node ids are "<parent id>:text<k>".
+// The stylesheet is one <style>, or one <link rel="stylesheet" href> resolved by the caller into a snapshot source.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import type { ElementNode, FrontEndResult, Origin, SourceRef, TreeNode } from 'dragon';
+import type { ElementNode, FrontEndResult, Origin, SourceFile, SourceRef, TreeNode } from 'dragon';
 import { TREE_SCHEMA_REVISION } from 'dragon';
 import { repoPath } from './paths.ts';
 
@@ -10,6 +11,21 @@ export const PROJECT_ID = 'dragon-parity';
 
 type RawElement = { tag: string; attrs: Map<string, string>; children: (RawElement | RawText)[]; start: number; openEnd: number; end: number };
 type RawText = { text: string; start: number; end: number };
+
+/** HTML void elements the subset reads: written without an end tag, or with an immediate explicit one (<hr ...></hr>). */
+export const VOID_ELEMENTS: ReadonlySet<string> = new Set(['img', 'input', 'br', 'meta', 'link', 'hr']);
+
+/** A <link rel="stylesheet" href> of the head: the offsets of its start tag. */
+export type StylesheetLink = { readonly href: string; readonly start: number; readonly end: number };
+
+/** Resolves a stylesheet link's href to its text, snapshot uri and display path. */
+export type StylesheetResolver = (href: string) => { readonly text: string; readonly uri: string; readonly displayPath: string };
+
+export type FixtureReadOptions = {
+  readonly resolveStylesheet?: StylesheetResolver;
+  /** The HTML source's uri and display path; default: the parity fixture's. */
+  readonly source?: { readonly uri: string; readonly displayPath: string };
+};
 
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"' };
 
@@ -23,14 +39,18 @@ function decode(s: string): string {
   });
 }
 
-/** Parses the fixture HTML subset: a doctype, double-quoted attributes, raw <style> text, no comments or void elements. */
-export function parseFixtureHtml(html: string): { root: RawElement; style: { start: number; end: number } } {
+/**
+ * Parses the fixture HTML subset: a doctype, double-quoted attributes, raw <style> text, the void elements of VOID_ELEMENTS and no
+ * comments. The stylesheet is exactly one <style> or one <link rel="stylesheet" href>.
+ */
+export function parseFixtureHtml(html: string): { root: RawElement; style: { start: number; end: number } | null; links: readonly StylesheetLink[] } {
   const doctype = /^<!DOCTYPE html>\s*/i.exec(html);
   if (doctype === null) throw new Error('fixture must start with <!DOCTYPE html>');
   let i = doctype[0].length;
   const stack: RawElement[] = [];
   let root: RawElement | null = null;
   let style: { start: number; end: number } | null = null;
+  const links: StylesheetLink[] = [];
   while (i < html.length) {
     if (html.startsWith('</', i)) {
       const close = /^<\/([a-z][a-z0-9-]*)\s*>/.exec(html.slice(i));
@@ -56,6 +76,19 @@ export function parseFixtureHtml(html: string): { root: RawElement; style: { sta
         if (root !== null) throw new Error('more than one root element');
         root = el;
       } else parent.children.push(el);
+      if (VOID_ELEMENTS.has(el.tag)) {
+        const close = new RegExp(`^</${el.tag}\\s*>`).exec(html.slice(i));
+        el.end = close === null ? el.openEnd : i + close[0].length;
+        i = el.end;
+        const rels = (attrs.get('rel') ?? '').toLowerCase().split(/[ \t\n\f\r]+/).filter((r) => r !== '');
+        if (el.tag === 'link' && rels.includes('stylesheet')) {
+          if (rels.length !== 1) throw new Error(`<link rel="${attrs.get('rel')}"> at ${el.start}: only rel="stylesheet" is read`);
+          const href = attrs.get('href');
+          if (href === undefined) throw new Error(`<link rel="stylesheet"> at ${el.start} has no href`);
+          links.push({ href, start: el.start, end: el.openEnd });
+        }
+        continue;
+      }
       if (el.tag === 'style') {
         const endAt = html.indexOf('</style>', i);
         if (endAt < 0 || style !== null) throw new Error('fixtures need exactly one closed <style>');
@@ -76,8 +109,10 @@ export function parseFixtureHtml(html: string): { root: RawElement; style: { sta
     } else parent.children.push({ text: decode(text), start: i, end: endText });
     i = endText;
   }
-  if (stack.length > 0 || root === null || style === null) throw new Error('unclosed elements, no root, or no <style>');
-  return { root, style };
+  if (stack.length > 0 || root === null || (style === null) === (links.length === 0) || links.length > 1) {
+    throw new Error('unclosed elements, no root, or not exactly one <style> or <link rel="stylesheet">');
+  }
+  return { root, style, links };
 }
 
 const escapeAttr = (s: string): string => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
@@ -88,6 +123,7 @@ const escapeAttr = (s: string): string => s.replace(/&/g, '&amp;').replace(/"/g,
  */
 export function compiledFixtureHtml(html: string, css: string, classOf: ReadonlyMap<string, string>): string {
   const { root, style } = parseFixtureHtml(html);
+  if (style === null) throw new Error('the compiled rendering needs a <style> fixture');
   const edits: { start: number; end: number; text: string }[] = [{ start: style.start, end: style.end, text: `\n${css}` }];
   const visit = (el: RawElement): void => {
     const id = el.attrs.get('data-dragon-id');
@@ -120,14 +156,26 @@ export function readHtmlFixture(id: string): { html: string; input: FrontEndResu
 /** The document id of every parity fixture; class symbols of its document-scoped sheet are owned by it. */
 export const DOCUMENT_ID = 'doc';
 
-export function fixtureToInput(id: string, html: string): FrontEndResult {
-  const { root, style } = parseFixtureHtml(html);
+export function fixtureToInput(id: string, html: string, options: FixtureReadOptions = {}): FrontEndResult {
+  const { root, style, links } = parseFixtureHtml(html);
   const ref: SourceRef = {
-    uri: `dragon-source://${PROJECT_ID}/fixtures/${id}.html`,
+    uri: options.source === undefined ? `dragon-source://${PROJECT_ID}/fixtures/${id}.html` : options.source.uri,
     revision: 'fixture',
     hash: `sha256:${createHash('sha256').update(html, 'utf8').digest('hex')}`,
   };
   const origin = (start: number, end: number): Origin => ({ kind: 'authored', span: { source: ref, start, end } });
+  const sources: SourceFile[] = [{ ref, text: html, displayPath: options.source === undefined ? `packages/parity/fixtures/${id}.html` : options.source.displayPath }];
+  let sheet: { source: SourceRef; start: number; end: number };
+  const link = links[0];
+  if (style !== null) sheet = { source: ref, start: style.start, end: style.end };
+  else {
+    if (link === undefined || options.resolveStylesheet === undefined) throw new Error('a <link rel="stylesheet"> fixture needs a stylesheet resolver');
+    const css = options.resolveStylesheet(link.href);
+    if (css.uri === ref.uri) throw new Error(`the stylesheet ${link.href} resolves to the fixture's own uri ${ref.uri}`);
+    const cssRef: SourceRef = { uri: css.uri, revision: 'fixture', hash: `sha256:${createHash('sha256').update(css.text, 'utf8').digest('hex')}` };
+    sources.push({ ref: cssRef, text: css.text, displayPath: css.displayPath });
+    sheet = { source: cssRef, start: 0, end: css.text.length };
+  }
   if (root.tag !== 'html') throw new Error('root must be <html>');
   const always = { kind: 'true' } as const;
   const convert = (el: RawElement): ElementNode => {
@@ -164,7 +212,7 @@ export function fixtureToInput(id: string, html: string): FrontEndResult {
     snapshot: {
       projectId: PROJECT_ID,
       revision: 'fixture',
-      sources: [{ ref, text: html, displayPath: `packages/parity/fixtures/${id}.html` }],
+      sources,
       assets: [],
       resolutions: [],
     },
@@ -175,7 +223,7 @@ export function fixtureToInput(id: string, html: string): FrontEndResult {
       modules: [{ id: 'fixture', source: ref.uri }],
       components: [{ id: 'Fixture', module: 'fixture', params: [], states: [], slots: [], root: [tree], origin: origin(0, html.length) }],
       documents: [{ id: DOCUMENT_ID, rootInstance: 'Fixture', documentElement: tree.id, styles: ['sheet'], initial: [] }],
-      styles: [{ id: 'sheet', css: { source: ref, start: style.start, end: style.end }, scope: { kind: 'document' } }],
+      styles: [{ id: 'sheet', css: sheet, scope: { kind: 'document' } }],
     },
     completeness: 'closed-application',
   };

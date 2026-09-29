@@ -1,6 +1,5 @@
 ---
 ignoreTests: false
----
 # Tests are reviewed on purpose: a loosened tolerance or a deleted check is the bug we care most about.
 # Creating this file replaces Macroscope's defaults, so the text-file defaults are copied first
 # (docs.macroscope.com/bug-detection-and-fixes, 2026-09-28). Binary files are always skipped anyway.
@@ -56,6 +55,11 @@ packages/wpt/expectations/**
 examples/*/chrome/**
 **/*.generated.ts
 packages/layout/src/script-data.ts
+packages/dragon/src/profiles/web.ts
+packages/dragon/src/profiles/ios.ts
+packages/dragon/src/profiles/android.ts
+packages/dragon/test/data/grid-corpus-declarations.json
+packages/dragon/test/data/grid-fuzz-corpus.json
 packages/layout/rt-oracle/**
 packages/layout/rt-vectors/**
 packages/layout/break-vectors/**
@@ -75,6 +79,27 @@ docs/research/text-spike/out/**
 docs/research/text-spike/lato/out/**
 docs/research/text-spike/metric-rounding/captures/**
 docs/research/inline-spike/probe/**
+docs/research/skia-aa-oracle/**
+docs/research/skia-oracle/**
+docs/research/dtxt/widths.json
+# General shapes, so a new capture directory is skipped without an edit here
+**/captures/**
+**/reftest-captures/**
+**/chrome-145/**
+**/probe/**
+**/generated/**
+**/out/**
+**/vectors/**
+**/*-vectors/**
+**/*-oracle/**
+**/expected-*/**
+**/*.generated.*
+packages/translate/corpus*.json
+packages/layout/test/fixtures/linebreak/*.json
+examples/*/dragon/north-star-check.json
+docs/research/**/*.json
+docs/research/**/*.md
+docs/research/**/assets/**
 
 # === Dragon: not code ===
 design/**

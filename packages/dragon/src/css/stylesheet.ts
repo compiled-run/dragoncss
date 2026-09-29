@@ -7,6 +7,7 @@ import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
 import { handleAtRule } from './at-rules.ts';
+import { GRID_VALUE_PROPERTIES, parseGridValue } from './grid-values.ts';
 import { webrefLexer } from './lexer.ts';
 import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand } from './properties.ts';
@@ -16,6 +17,8 @@ import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
 import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, tokenValue, toValue } from './values.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
+import type { CustomValue, PendingSubstitution, VarPart } from './variables.ts';
+import { hasEscape, hasVar, MAX_NESTING, nestingDepth, parseVarParts, referencedNames, unescapeName } from './variables.ts';
 
 export type { CssValue } from './values.ts';
 export { featureOf } from './values.ts';
@@ -37,6 +40,12 @@ export type Declaration = {
   readonly valueSpan: Span;
   readonly longhands: readonly LonghandValue[];
   readonly order: number;
+  /** css-cascade-5 §6.4: present and true on an !important declaration. */
+  readonly important?: true;
+  /** A custom property declaration (css-variables-1 §2); its longhands are empty. */
+  readonly custom?: CustomValue;
+  /** A declaration whose value holds var(); its longhands are empty until substitution (css-variables-1 §3.1). */
+  readonly pending?: PendingSubstitution;
 };
 
 /** A class selector in this rule matches only class symbols with this owner and sheet (docs/api.md §3.1). */
@@ -82,14 +91,18 @@ export function parseStylesheet(text: string, base: Span, use: SheetUse, orderSt
 }
 
 function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[]): Rule | null {
+  const before = diagnostics.length;
   const selectors = parseSelectorList(node['prelude'] as CssNode, st.base, st.use, diagnostics);
+  // Chrome never parses the block of a rule it drops, so neither do its diagnostics count.
+  const dropped = diagnostics.slice(before).some((d) => d.code === 'DRAGON_SELECTOR_DROPPED');
+  const blockDiagnostics = dropped ? [] : diagnostics;
   const declarations: Declaration[] = [];
   for (const d of list(node['block'] as CssNode, 'children')) {
     if (d.type !== 'Declaration') {
-      refuseNode(d, st, { label: 'a rule block', selectors }, diagnostics, enclosed);
+      refuseNode(d, st, { label: 'a rule block', selectors }, blockDiagnostics, dropped ? [] : enclosed);
       continue;
     }
-    const parsed = parseDeclaration(d, st.base, st.text, st.order++, diagnostics);
+    const parsed = parseDeclaration(d, st.base, st.text, st.order++, blockDiagnostics);
     if (parsed !== null) declarations.push(parsed);
   }
   return selectors === null ? null : { sheet: st.use.id, owner: st.use.owner, selectors, declarations };
@@ -149,23 +162,25 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
 }
 
 function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: number, diagnostics: Diagnostic[]): Declaration | null {
-  const property = String(d['property']).toLowerCase();
+  const written = String(d['property']);
+  // css-variables-1 §2: custom property names are case-sensitive.
+  const property = written.startsWith('--') ? written : written.toLowerCase();
   const span = spanOf(d, base);
   const valueNode = d['value'] as CssNode;
   const valueSpan = spanOf(valueNode, base);
   const text = generate(valueNode);
-  if (d['important'] !== false) {
-    const local = sheetText.slice(span.start - base.start, span.end - base.start);
-    const bang = local.lastIndexOf('!');
-    let from = bang;
-    while (from > 0 && /\s/.test(local[from - 1] as string)) from--;
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_IMPORTANT', {
+  const priority = d['important'];
+  // css-syntax-3 §5.4.6: "!important" (ASCII case-insensitive) is the only priority; any other "!name" drops the declaration.
+  if (priority !== false && priority !== true && String(priority).toLowerCase() !== 'important') {
+    diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', {
       origin: authored(span),
-      message: `!important on ${property} is not supported`,
-      edits: [{ span: { source: span.source, start: span.start + from, end: span.end }, replacement: '' }],
+      message: `"!${String(priority)}" on ${property} is not a valid priority; only !important is (css-syntax-3 §5.4.6)`,
+      manual: 'Remove the priority or write !important.',
     }));
     return null;
   }
+  const important = priority === false ? {} : { important: true as const };
+  if (property.startsWith('--')) return parseCustomDeclaration(property, valueNode, span, valueSpan, order, important, diagnostics);
   if (!isLonghand(property) && !isShorthand(property)) {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_PROPERTY', {
       origin: authored(span),
@@ -174,51 +189,161 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     }));
     return null;
   }
+  // css-variables-1 §3.1: a value holding var() is valid at parse time; it is parsed against the grammar after substitution.
+  const source = sheetText.slice(valueSpan.start - base.start, valueSpan.end - base.start);
+  // An escape may spell var( or url( (css-syntax-3 §4.3.7), so a value with one is split too.
+  const mentionsVar = /var\(|\\/i.test(source);
+  if (mentionsVar && nestingDepth(source) > MAX_NESTING) {
+    diagnostics.push(tooDeep(property, valueSpan));
+    return null;
+  }
+  const parts = mentionsVar ? parseVarParts(source) : null;
+  if (mentionsVar && (parts === null || referencedNames(parts).some(hasEscape))) {
+    diagnostics.push(invalidVar(property, text, valueSpan, parts));
+    return null;
+  }
+  if (parts !== null && hasVar(parts)) {
+    const longhands: readonly Longhand[] = isLonghand(property) ? [property] : shorthandHandler(property).longhands;
+    const sides = directionSides(property);
+    // The source text, since serializing the parsed value would add white space between adjacent var() references.
+    return { property, text: source.trim(), span, valueSpan, longhands: [], order, ...important, pending: { parts, longhands, ...(sides === null ? {} : { sides }) } };
+  }
   const tokens = list(valueNode, 'children').filter((n) => n.type !== 'WhiteSpace');
-  const wide = tokens.length === 1 && tokens[0]?.type === 'Identifier' && CSS_WIDE.has(String(tokens[0]['name']).toLowerCase());
-  if (!wide) {
-    const match = webrefLexer().matchProperty(property, valueNode);
-    if (match.error !== null) {
+  const parsed = parseValue(property, valueNode, tokens, base, sheetText);
+  switch (parsed.kind) {
+    case 'invalid':
       diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', {
         origin: authored(valueSpan),
-        message: `"${text}" is not a valid value for ${property} (@webref/css grammar)`,
+        message: parsed.reason === undefined ? `"${text}" is not a valid value for ${property} (@webref/css grammar)` : `"${text}" is not a valid value for ${property}: ${parsed.reason}`,
         manual: `Use a value that matches the ${property} grammar.`,
       }));
       return null;
-    }
+    case 'token':
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(parsed.token, base)), message: `${property}: ${generate(parsed.token)} is unsupported: ${parsed.reason}`, manual: COLOR_FIX }));
+      return null;
+    case 'refused':
+      diagnostics.push(parsed.diagnostic);
+      return null;
+    case 'multi':
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(valueSpan), message: `multi-token value "${text}" for ${property} is not supported in milestone 1`, manual: 'Use a single value.' }));
+      return null;
+    case 'ok':
+      return { property, text, span, valueSpan, longhands: parsed.longhands, order, ...important };
   }
+}
+
+/** css-logical-1 §3: the physical longhands a flow-relative property sets in each direction, or null when it maps the same in both. */
+function directionSides(property: string): { ltr: Longhand[]; rtl: Longhand[] } | null {
+  const mapped = expandWide(property, { kind: 'keyword', value: 'unset' });
+  if (!mapped.some((lh) => lh.direction !== undefined)) return null;
+  const side = (dir: 'ltr' | 'rtl'): Longhand[] => [...new Set(mapped.filter((lh) => lh.direction === undefined || lh.direction === dir).map((lh) => lh.property))];
+  return { ltr: side('ltr'), rtl: side('rtl') };
+}
+
+/** A malformed var(), or one naming a custom property with an escape, which Dragon does not unescape. */
+function invalidVar(property: string, text: string, valueSpan: Span, parts: readonly VarPart[] | null): Diagnostic {
+  return parts === null
+    ? diagnostic('DRAGON_CSS_INVALID_VALUE', {
+      origin: authored(valueSpan),
+      message: `"${text}" is not a valid value for ${property}: it holds a malformed var() (css-variables-1 §3: var( <custom-property-name> [, <fallback>]? )), an unmatched ")", "]" or "}", or a bad url()`,
+      manual: 'Write var(--name) or var(--name, fallback), and balance every bracket.',
+    })
+    : diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+      origin: authored(valueSpan),
+      message: `${property}: "${text}" names a custom property with an escape, which is not supported`,
+      manual: 'Write the custom property name without escapes.',
+    });
+}
+
+const tooDeep = (property: string, valueSpan: Span): Diagnostic => diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+  origin: authored(valueSpan),
+  message: `the value of ${property} nests brackets more than ${MAX_NESTING} deep, which is not supported`,
+  manual: 'Nest var() fallbacks and brackets less deeply.',
+});
+
+/** css-variables-1 §2: a custom property takes any value; a lone CSS-wide keyword is that keyword, not a token sequence. */
+function parseCustomDeclaration(name: string, valueNode: CssNode, span: Span, valueSpan: Span, order: number, important: { important?: true }, diagnostics: Diagnostic[]): Declaration | null {
+  // css-variables-1 §2: "--" alone is reserved, so it is not a custom property name.
+  if (name === '--') {
+    diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', { origin: authored(span), message: 'the property name "--" is reserved and is not a custom property (css-variables-1 §2)', manual: 'Give the custom property a name after "--".' }));
+    return null;
+  }
+  if (hasEscape(name)) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), message: `the custom property name ${name} holds an escape, which is not supported`, manual: 'Write the custom property name without escapes.' }));
+    return null;
+  }
+  // css-syntax-3 §5.4.6: leading and trailing white space is not part of the value.
+  const text = String(valueNode.type === 'Raw' ? valueNode['value'] : generate(valueNode)).replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '');
+  // Comments are not tokens, so "inherit /**/" is still the keyword.
+  const bare = unescapeName(text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '')).toLowerCase();
+  const wide = CSS_WIDE.has(bare) ? bare : null;
+  if (nestingDepth(text) > MAX_NESTING) {
+    diagnostics.push(tooDeep(name, valueSpan));
+    return null;
+  }
+  const parts = wide === null ? parseVarParts(text) : [];
+  if (parts === null || referencedNames(parts).some(hasEscape)) {
+    diagnostics.push(invalidVar(name, text, valueSpan, parts));
+    return null;
+  }
+  return { property: name, text, span, valueSpan, longhands: [], order, ...important, custom: { name, wide, parts } };
+}
+
+/** How a value parses for a longhand or shorthand; the parse driver and var() substitution report the failures differently. */
+export type ParsedValue =
+  | { readonly kind: 'ok'; readonly longhands: readonly LonghandValue[] }
+  /** reason: why a grammar-valid value is invalid (a rule Chrome's parser applies beyond the grammar); absent for a grammar mismatch. */
+  | { readonly kind: 'invalid'; readonly reason?: string }
+  | { readonly kind: 'token'; readonly token: CssNode; readonly reason: string }
+  | { readonly kind: 'refused'; readonly diagnostic: Diagnostic }
+  | { readonly kind: 'multi' };
+
+/** Grammar validation, token conversion and shorthand expansion of one value; base locates a shorthand refusal in sheetText. */
+export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, tokens: readonly CssNode[], base: Span, sheetText: string): ParsedValue {
+  const wide = tokens.length === 1 && tokens[0]?.type === 'Identifier' && CSS_WIDE.has(String(tokens[0]['name']).toLowerCase());
+  if (!wide) {
+    const match = webrefLexer().matchProperty(property, valueNode);
+    if (match.error !== null) return { kind: 'invalid' };
+  }
+  // css-grid-2 and justify-*: multi-token values, with the checks Chrome makes beyond the grammar (grid-values.ts).
+  if (!wide && GRID_VALUE_PROPERTIES.has(property)) return parseGridValue(property, tokens, base);
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
   const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
   const values: CssValue[] = baseline === null ? [] : [baseline];
   for (const t of baseline === null ? tokens : []) {
     const unitRefused = t.type === 'Dimension' ? unitRefusal(normalizeUnit(String(t['unit']))) : t.type === 'Function' ? mathFunctionRefusal(String(t['name'])) : null;
     if (unitRefused !== null) {
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${unitRefused.reason}`, manual: unitRefused.fix }));
-      return null;
+      return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${unitRefused.reason}`, manual: unitRefused.fix }) };
     }
     const v = wide ? toValue(t, property) : tokenValue(t, property);
-    if (typeof v === 'string') {
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${v}`, manual: COLOR_FIX }));
-      return null;
-    }
+    if (typeof v === 'string') return { kind: 'token', token: t, reason: v };
     values.push(v);
   }
   // A shorthand may refuse a grammar-valid value it cannot express (white-space-trim, shorthands/text.ts).
   const refusal = isShorthand(property) && !wide ? (shorthandHandler(property).refuse?.(tokens, base, sheetText) ?? null) : null;
-  if (refusal !== null) {
-    diagnostics.push(refusal);
-    return null;
-  }
+  if (refusal !== null) return { kind: 'refused', diagnostic: refusal };
   const longhands = wide
     ? expandWide(property, values[0] as CssValue)
     : isLonghand(property)
       ? [{ property, value: property === 'font-family' ? familyValue(tokens) : (values[0] as CssValue), explicit: true }]
       : shorthandHandler(property).expand(values, tokens);
-  if (isLonghand(property) && !wide && values.length !== 1 && property !== 'font-family') {
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(valueSpan), message: `multi-token value "${text}" for ${property} is not supported in milestone 1`, manual: 'Use a single value.' }));
-    return null;
-  }
-  return { property, text, span, valueSpan, longhands, order };
+  if (isLonghand(property) && !wide && values.length !== 1 && property !== 'font-family') return { kind: 'multi' };
+  return { kind: 'ok', longhands };
+}
+
+/**
+ * css-variables-1 §3.1: parses a value after var() substitution. A parse error or a grammar mismatch is 'invalid' (invalid at
+ * computed-value time); the other failures are values the grammar accepts and Dragon cannot express.
+ */
+export function parseSubstitutedValue(property: Longhand | Shorthand, text: string, base: Span): ParsedValue {
+  // Substitution can nest brackets past MAX_NESTING, which the css-tree parser would recurse through.
+  if (nestingDepth(text) > MAX_NESTING) return { kind: 'refused', diagnostic: tooDeep(property, base) };
+  let failed = false;
+  const node = parse(text, { context: 'value', positions: true, onParseError: () => { failed = true; } });
+  if (failed) return { kind: 'invalid' };
+  const tokens = list(node, 'children').filter((n) => n.type !== 'WhiteSpace');
+  if (tokens.length === 0) return { kind: 'invalid' };
+  return parseValue(property, node, tokens, base, text);
 }
 
 /** A CSS-wide keyword sets the longhand itself, or every longhand of the shorthand. */

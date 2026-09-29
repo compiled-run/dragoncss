@@ -15,6 +15,7 @@ import type { WebCapture } from './capture.ts';
 import { GATE_CHANNEL_DELTA } from './compare.ts';
 import type { DeviceHandle, DeviceRecord } from './device-run.ts';
 import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, recordProblems, release, runApp, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
+import { deviceEvidence } from './device-evidence.ts';
 import { runDeviceVectors } from './device-vectors.ts';
 import type { DeviceRun, HostRun } from './lanes.ts';
 import { committedDprCapture } from './dpr.ts';
@@ -27,8 +28,8 @@ import { validateNativeDump } from './native-dump.ts';
 import type { NativeCase } from './native-host.ts';
 import { BACKEND_OF, buildAndroid, buildIos, engineBoxes, expectedEngine, nativeCases, nativeOut } from './native-host.ts';
 import { casePoints, checkCasePixels, committedPixels, decodePng, rasterSize, runFileText } from './pixel-reference.ts';
-import type { SamplePoint } from './samples.ts';
-import { ruleKind } from './samples.ts';
+import type { ImageSize, SamplePoint } from './samples.ts';
+import { ruleKind, SAMPLE_RULES } from './samples.ts';
 import type { LaneId, NativeTarget, TargetConfig } from './targets.ts';
 
 export const DEVICE_CHECK_LANES = ['device-frames', 'device-applied', 'device-lines', 'device-pixels'] as const;
@@ -36,7 +37,7 @@ export type DeviceCheckLane = (typeof DEVICE_CHECK_LANES)[number];
 
 export type FailureKind =
   | 'dump-missing' | 'dump-invalid' | 'device-scale' | 'frame-chrome' | 'frame-engine' | 'applied' | 'native-class' | 'expected-digest'
-  | 'line-chrome' | 'line-engine' | typeof BREAK_MISMATCH | 'pixel' | 'raster-size' | 'capture-trust' | 'device-record' | 'compiler-digest';
+  | 'line-chrome' | 'line-engine' | typeof BREAK_MISMATCH | 'pixel' | 'raster-size' | 'capture-trust' | 'device-record' | 'compiler-digest' | 'case-identity' | 'capture-kind';
 
 /** One failure, named: lane, case, DPR, node (or sample rule), kind and the values. */
 export type LaneFailure = { readonly lane: DeviceCheckLane; readonly case: string; readonly dpr: number; readonly node: string | null; readonly kind: FailureKind; readonly detail: string };
@@ -104,14 +105,19 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
   }
   const dump = v.dump;
   const lane = target === 'ios' ? 'ios-sim' : 'android-emu';
-  if (dump.lane !== lane || dump.device.scale !== dpr || dump.case.id !== id) everyLane('device-scale', `lane ${dump.lane}, case ${dump.case.id}, device.scale ${dump.device.scale}; expected ${lane}, ${id}, ${dpr}`);
+  if (dump.lane !== lane || dump.device.platform !== target || dump.device.scale !== dpr || dump.case.dpr !== dpr || dump.case.id !== id) everyLane('device-scale', `lane ${dump.lane}, platform ${dump.device.platform}, case ${dump.case.id} at case.dpr ${dump.case.dpr}, device.scale ${dump.device.scale}; expected ${lane}, ${target}, ${id} at ${dpr}`);
+  // The case identity the dump claims must be the case under test: fixture, direction and viewport.
+  const env = n.case.environment;
+  if (dump.case.fixture !== n.spec.id || dump.case.direction !== env.direction || dump.case.viewport.width !== env.viewport.width || dump.case.viewport.height !== env.viewport.height) everyLane('case-identity', `fixture ${dump.case.fixture}, ${dump.case.direction}, viewport ${dump.case.viewport.width}x${dump.case.viewport.height}; expected ${n.spec.id}, ${env.direction}, ${env.viewport.width}x${env.viewport.height}`);
   // The dump must come from the compile under test, not a stale app.
   if (dump.case.compilerDigest !== n.compiled.digest) everyLane('compiler-digest', `compilerDigest ${dump.case.compilerDigest}, the compile under test ${n.compiled.digest}`);
 
   // (a) and (d), split into nodes (device-frames) and lines (device-lines).
-  const chromeLines = ref.chrome.nodes.filter((c) => c.kind === 'line').length;
+  // The line boxes each check actually compared: those present in both the reference and the dump.
+  const dumpLines = new Set(dump.nodes.flatMap((x) => x.lines.map((_, j) => `${x.id}:line${j}`)));
+  const chromeLines = ref.chrome.nodes.filter((c) => c.kind === 'line' && dumpLines.has(c.id)).length;
   const a = splitByLines(checkAgainstChrome(dump, ref.chrome), chromeLines);
-  const engineLines = ref.engine.filter((r) => r.parent !== null && r.id.startsWith(`${r.parent}:line`)).length;
+  const engineLines = ref.engine.filter((r) => r.parent !== null && r.id.startsWith(`${r.parent}:line`) && dumpLines.has(r.id)).length;
   const d = splitByLines(checkAgainstEngine(dump, ref.engine), engineLines);
   compared.a += a.nodes.compared + a.lines.compared;
   compared.d += d.nodes.compared + d.lines.compared;
@@ -143,6 +149,8 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
 
   // (c) at the generated points against the committed Chrome PNG.
   let passingSamples: number[] = [];
+  const captureKind = target === 'ios' ? 'drawHierarchy' : 'PixelCopy';
+  if (dump.pixels !== null && dump.pixels.capture !== captureKind) fail('device-pixels', 'capture-kind', `capture ${dump.pixels.capture}, the ${target} compositor capture is ${captureKind}`);
   if (dump.pixels === null) fail('device-pixels', 'pixel', 'the dump has no pixels');
   else if (ref.pixels === null) fail('device-pixels', 'pixel', 'no committed Chrome PNG (pnpm run parity:pixel-capture)');
   else {
@@ -152,7 +160,8 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
     for (const p of c.problems) fail('device-pixels', /raster rule/.test(p) ? 'raster-size' : 'pixel', p, /^([a-z]+:\S+?)(?: at |: )/.exec(p)?.[1] ?? null);
     const img = ref.pixels;
     passingSamples = dump.pixels.samples.flatMap((s, i) => {
-      if (ruleKind(s.rule) === 'edge' || s.x >= img.width || s.y >= img.height) return [];
+      // A rule no generator emits is already a (c) failure (the points do not match); it is never a passing sample.
+      if (!isSampleRule(s.rule) || ruleKind(s.rule) === 'edge' || s.x >= img.width || s.y >= img.height) return [];
       const ch = pixelAt(img, s.x, s.y);
       return s.rgba.every((x, k) => x === ch[k]) ? [i] : [];
     });
@@ -259,18 +268,34 @@ export function evaluateSet(target: NativeTarget, dpr: number, dir: string, devi
 
 export type TrustRow = { readonly case: string; readonly points: number; readonly mismatches: readonly string[] };
 
+/** A capture-trust case: its generated sample points and the raster size its capture must have. */
+export type TrustCase = { readonly id: string; readonly points: readonly SamplePoint[]; readonly size: ImageSize };
+
 /**
- * The capture-trust probe of one device: for each held case, the in-app capture's samples (the dump) against the OS screenshot
- * at the same points shifted by the root's window offset, every channel within GATE_CHANNEL_DELTA.
+ * The capture-trust probe of one device: for each held case, the dump must be that case at this DPR, its capture the raster size,
+ * and its samples exactly the generated points (count, order, coordinates and rule); then the in-app samples are compared with
+ * the OS screenshot at the same points shifted by the root's window offset, every channel within GATE_CHANNEL_DELTA.
  */
-export function captureTrust(dir: string, caseIds: readonly string[], dpr: number, origin: readonly [number, number]): TrustRow[] {
-  return caseIds.map((id) => {
+export function captureTrust(dir: string, trustCases: readonly TrustCase[], dpr: number, origin: readonly [number, number]): TrustRow[] {
+  return trustCases.map(({ id, points, size }) => {
     const dumpPath = dumpFile(dir, id, dpr);
     const shot = join(dir, `screen-${id}.png`);
     if (!existsSync(dumpPath) || !existsSync(shot)) return { case: id, points: 0, mismatches: [`${existsSync(dumpPath) ? 'no OS screenshot' : 'no dump'}`] };
     const read = readDump(dumpPath);
     if (read.kind !== 'ok') return { case: id, points: 0, mismatches: [read.kind === 'unparseable' ? read.detail : 'no dump'] };
-    const dump = read.raw as NativeDump;
+    const valid = validateNativeDump(read.raw);
+    if (!valid.ok) return { case: id, points: 0, mismatches: [`the dump does not validate: ${valid.errors.slice(0, 5).map((e) => `${e.path} ${e.code}`).join('; ')}`] };
+    const dump = valid.dump;
+    if (dump.case.id !== id || dump.case.dpr !== dpr) return { case: id, points: 0, mismatches: [`the dump is case ${dump.case.id} at DPR ${dump.case.dpr}, not ${id} at ${dpr}`] };
+    if (dump.pixels === null) return { case: id, points: 0, mismatches: ['the dump has no pixels'] };
+    if (dump.pixels.width !== size.width || dump.pixels.height !== size.height) return { case: id, points: 0, mismatches: [`the in-app capture is ${dump.pixels.width}x${dump.pixels.height}, the raster rule ${size.width}x${size.height}`] };
+    const samples = dump.pixels.samples;
+    if (points.length === 0) return { case: id, points: 0, mismatches: ['the case has no generated points'] };
+    const placed = samples.length !== points.length ? `the dump has ${samples.length} samples, the generator ${points.length}` : (() => {
+      const k = points.findIndex((p, i) => samples[i]?.x !== p.x || samples[i]?.y !== p.y || samples[i]?.rule !== p.rule);
+      return k < 0 ? null : `sample ${k} is ${samples[k]?.rule} at ${samples[k]?.x},${samples[k]?.y}, the generator's is ${points[k]?.rule} at ${points[k]?.x},${points[k]?.y}`;
+    })();
+    if (placed !== null) return { case: id, points: 0, mismatches: [placed] };
     let img: RgbaImage;
     try {
       img = decodePng(readFileSync(shot));
@@ -278,7 +303,6 @@ export function captureTrust(dir: string, caseIds: readonly string[], dpr: numbe
       return { case: id, points: 0, mismatches: [`the OS screenshot is not a readable PNG: ${e instanceof Error ? e.message : String(e)}`] };
     }
     const mismatches: string[] = [];
-    const samples = dump.pixels?.samples ?? [];
     for (const s of samples) {
       const x = s.x + origin[0];
       const y = s.y + origin[1];
@@ -289,14 +313,21 @@ export function captureTrust(dir: string, caseIds: readonly string[], dpr: numbe
       const os = pixelAt(img, x, y);
       if (!s.rgba.every((v, k) => Math.abs(v - (os[k] as number)) <= GATE_CHANNEL_DELTA)) mismatches.push(`${s.rule} at ${s.x},${s.y}: in-app ${JSON.stringify(s.rgba)}, OS screenshot ${JSON.stringify(os)}`);
     }
-    if (samples.length === 0) mismatches.push('the dump has no samples');
     return { case: id, points: samples.length, mismatches };
   });
 }
 
-/** The capture-trust mismatches of a device as device-pixels failures of kind capture-trust. */
-export function trustFailuresOf(rows: readonly TrustRow[], dpr: number, device: string): LaneFailure[] {
-  return rows.flatMap((r) => r.mismatches.map((m): LaneFailure => ({ lane: 'device-pixels', case: r.case, dpr, node: null, kind: 'capture-trust', detail: `${device}: ${m}` })));
+/** The capture-trust mismatches of a device, and a trust run that did not finish, as device-pixels failures of kind capture-trust. */
+export function trustFailuresOf(rows: readonly TrustRow[], dpr: number, device: string, runError: string | null = null): LaneFailure[] {
+  const out = rows.flatMap((r) => r.mismatches.map((m): LaneFailure => ({ lane: 'device-pixels', case: r.case, dpr, node: null, kind: 'capture-trust', detail: `${device}: ${m}` })));
+  if (runError !== null) out.push({ lane: 'device-pixels', case: '-', dpr, node: null, kind: 'capture-trust', detail: `${device}: the capture-trust run did not finish: ${runError}` });
+  return out;
+}
+
+/** Whether a sample rule string names one of SAMPLE_RULES (ruleKind throws on any other). */
+export function isSampleRule(rule: string): boolean {
+  const k = rule.indexOf(':');
+  return k > 0 && (SAMPLE_RULES as readonly string[]).includes(rule.slice(0, k));
 }
 
 /** The ids of the pulled dumps of a run directory at a DPR. */
@@ -328,6 +359,8 @@ export type RunLog = (line: string) => void;
  * A device that fails to boot twice, or cannot hold the root, is a tooling fault: its DPR is recorded as not run, never as a pass.
  */
 export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, log: RunLog, opts: { readonly vectors?: boolean } = {}): Promise<DeviceRun> {
+  // Stamped before any device work: the code, reference data and app sources this run is made and judged with.
+  const evidence = deviceEvidence(t.target);
   const cases = nativeCases();
   const build = t.target === 'ios' ? buildIos({ reuse: true }) : buildAndroid({ reuse: true });
   for (const l of build.log) log(`${t.target} build: ${l}`);
@@ -367,12 +400,16 @@ export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, 
       sets.push(set);
       log(`${spec.name}: checked ${set.dumps}/${set.cases} dumps; compared a ${set.compared.a}, b ${set.compared.b}, c ${set.compared.c}, d ${set.compared.d}, breaks ${set.compared.breaks}; failures ${JSON.stringify(failuresByKind(set.failures))}`);
       const trustDir = join(nativeOut(t.target), 'lanes', `${spec.name}-trust`);
-      const trustCases = cases.filter((n) => TRUST_CASES.includes(n.case.id));
-      const tr = await runApp(h, build.artifact, { runFile: runFileText(trustCases.map((n) => ({ id: n.case.id, points: casePoints(n.programs[backend], n.case.environment.viewport, dpr) })), true), caseCount: trustCases.length, outDir: trustDir, onHold: async (_id, shot) => void (await shot()) });
-      const rows = captureTrust(trustDir, TRUST_CASES, dpr, tr.record.rootOriginPx);
+      const trustCases: TrustCase[] = TRUST_CASES.map((id) => {
+        const tc = cases.find((c) => c.case.id === id);
+        if (tc === undefined) throw new Error(`no trust case ${id}`);
+        return { id, points: casePoints(tc.programs[backend], tc.case.environment.viewport, dpr), size: rasterSize(tc.case.environment.viewport, dpr) };
+      });
+      const tr = await runApp(h, build.artifact, { runFile: runFileText(trustCases, true), caseCount: trustCases.length, outDir: trustDir, onHold: async (_id, shot) => void (await shot()) });
+      const rows = captureTrust(trustDir, trustCases, dpr, tr.record.rootOriginPx);
       trust.push({ device: spec.name, dpr, rows });
       // Trust mismatches are device-pixels failures of the set, so the failure lists and counts hold them.
-      const trustFailures = trustFailuresOf(rows, dpr, spec.name);
+      const trustFailures = trustFailuresOf(rows, dpr, spec.name, tr.error);
       if (trustFailures.length > 0) sets[sets.length - 1] = { ...set, failures: [...set.failures, ...trustFailures] };
       log(`${spec.name}: capture trust ${rows.map((x) => `${x.case} ${x.points - x.mismatches.length}/${x.points}`).join(', ')}`);
       if (opts.vectors !== false && spec.name === VECTOR_DEVICES[t.target]) {
@@ -384,5 +421,5 @@ export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, 
       await release(h);
     }
   }
-  return { vectors, sets, trust, blocked: blocked.length === 0 ? null : blocked.join('; ') };
+  return { vectors, sets, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
 }
