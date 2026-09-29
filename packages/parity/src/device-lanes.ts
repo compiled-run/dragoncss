@@ -15,6 +15,7 @@ import type { WebCapture } from './capture.ts';
 import { GATE_CHANNEL_DELTA } from './compare.ts';
 import type { DeviceHandle, DeviceRecord } from './device-run.ts';
 import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, recordProblems, release, runApp, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
+import { deviceEvidence } from './device-evidence.ts';
 import { runDeviceVectors } from './device-vectors.ts';
 import type { DeviceRun, HostRun } from './lanes.ts';
 import { committedDprCapture } from './dpr.ts';
@@ -371,6 +372,8 @@ export type RunLog = (line: string) => void;
  * A device that fails to boot twice, or cannot hold the root, is a tooling fault: its DPR is recorded as not run, never as a pass.
  */
 export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, log: RunLog, opts: { readonly vectors?: boolean } = {}): Promise<DeviceRun> {
+  // Stamped before any device work: the code, reference data and app sources this run is made and judged with.
+  const evidence = deviceEvidence(t.target);
   const cases = nativeCases();
   const build = t.target === 'ios' ? buildIos({ reuse: true }) : buildAndroid({ reuse: true });
   for (const l of build.log) log(`${t.target} build: ${l}`);
@@ -431,5 +434,5 @@ export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, 
       await release(h);
     }
   }
-  return { vectors, sets, trust, blocked: blocked.length === 0 ? null : blocked.join('; ') };
+  return { vectors, sets, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
 }

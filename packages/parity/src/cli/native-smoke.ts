@@ -66,7 +66,8 @@ async function smokeIos(outDir: string): Promise<{ scale: number; files: string 
     if (dev.state !== 'Booted') run('xcrun', ['simctl', 'boot', dev.udid]);
     const b = run('xcrun', ['simctl', 'bootstatus', dev.udid, '-b'], { timeoutMs: 180_000 });
     if (b.status === 0) break;
-    if (attempt === 2) throw new Error(`the ${IOS_DEVICE} simulator failed to boot twice (tooling fault): ${b.out.slice(-500)}`);
+    // A simulator booting or booted elsewhere is never shut down by this run.
+    if (attempt === 2 || dev.state !== 'Shutdown') throw new Error(`the ${IOS_DEVICE} simulator failed to boot (tooling fault; it was ${dev.state} before this run): ${b.out.slice(-500)}`);
     run('xcrun', ['simctl', 'shutdown', dev.udid]);
   }
   const build = buildIos({ reuse: true });

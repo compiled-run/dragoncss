@@ -54,6 +54,9 @@ describe('the rendering-neutral attribute table', () => {
     expect(neutralAttribute('a', 'rel')).toBeUndefined();
     expect(neutralAttribute('link', 'target')).toBeUndefined();
     expect(neutralAttribute('div', 'titles')).toBeUndefined();
+    // HTML lowercases attribute names; a mixed-case name would miss its lowercased selector.
+    expect(neutralAttribute('div', 'data-X')).toBeUndefined();
+    expect(neutralAttribute('div', 'ID')).toBeUndefined();
   });
 });
 
@@ -63,6 +66,7 @@ describe('refused attributes name the package that owns their effect', () => {
     ['img', 'src', 'REPL'], ['img', 'alt', 'REPL'], ['img', 'width', 'REPL'], ['img', 'height', 'REPL'],
     ['a', 'href', 'INL1'], ['a', 'rel', 'INL1'], ['a', 'target', 'INL1'], ['html', 'lang', 'TXT1-C'], ['div', 'dir', 'bidi'],
     ['div', 'hidden', 'display'], ['div', 'style', 'SOV'], ['div', 'tabindex', 'not proven neutral'],
+    ['div', 'constructor', 'not proven neutral'], ['div', 'toString', 'not proven neutral'],
   ])('<%s %s> names %s', (tag, name, owner) => {
     expect(attributeRefusal(tag, name)).toContain(owner);
   });

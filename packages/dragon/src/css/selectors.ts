@@ -255,7 +255,11 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
     } else if (part.type === 'ClassSelector') {
       current.classes.push(String(part['name']));
     } else if (part.type === 'IdSelector') {
-      current.ids.push(String(part['name']));
+      const id = String(part['name']);
+      if (id.includes('\\')) {
+        ok = false;
+        refuse(part, `id selector "${generate(part)}" holds an escape, which Dragon does not unescape`, 'Write the id without escapes.');
+      } else current.ids.push(id);
     } else if (part.type === 'AttributeSelector') {
       const test = parseAttribute(part, refuse);
       if (test === null) ok = false;
@@ -291,6 +295,10 @@ function parseAttribute(part: CssNode, refuse: Refuse): AttributeTest | null {
   const matcher = part['matcher'] as AttributeMatcher | null;
   const valueNode = part['value'] as CssNode | null;
   const flags = part['flags'] === null ? null : asciiLower(String(part['flags']));
+  if (raw.includes('\\') || (valueNode !== null && valueNode.type !== 'String' && String(valueNode['name']).includes('\\'))) {
+    refuse(part, `attribute selector "${generate(part)}" holds an escape, which Dragon does not unescape`, 'Write the attribute name without escapes, and the value as a quoted string.');
+    return null;
+  }
   if (raw.includes('|')) {
     refuse(part, `attribute selector "${generate(part)}" is not supported: namespaced attribute names are not`);
     return null;

@@ -98,10 +98,12 @@ type Dump = { readonly properties: readonly string[]; readonly elements: readonl
 function chromeTextContext(dump: Dump, el: Norm, parent: Norm | null): string {
   const value = (n: Norm, p: string): string => {
     const e = dump.elements.find((x) => x.id === n.id);
-    if (e === undefined) throw new Error(`${n.id} is not in the Chrome dump`);
-    return e.values[dump.properties.indexOf(p)] as string;
+    const v = e?.values[dump.properties.indexOf(p)];
+    if (v === undefined) throw new Error(`${n.id} ${p} is not in the Chrome dump`);
+    return v;
   };
-  const dir = value(el, 'direction') === 'rtl' ? 'rtl' : 'ltr';
+  // The dumps do not record direction; the page is ltr because nothing sets it (checked in the test below).
+  const dir = 'ltr';
   const axis = (n: Norm): string => (value(n, 'flex-direction').startsWith('column') ? 'column' : 'row');
   const display = value(el, 'display');
   if (display === 'none') return `text-in-display-none/${dir}`;
@@ -151,7 +153,9 @@ describe('the north star as a tree fixture', () => {
 
   it('the declared text topology equals the tree walk in every case, with contexts read from the Chrome reference dumps', async () => {
     const { readSnapshot, freeStateHtml } = await loadSnapshot();
-    const { html } = readSnapshot();
+    const { html, css } = readSnapshot();
+    expect(css).not.toMatch(/(^|[^-])direction\s*:|unicode-bidi/);
+    expect(html).not.toMatch(/\sdir=/);
     for (const a of model.assignments) {
       const id = await freeOf(a);
       const holds = (t: readonly [string, string, Scalar]): boolean => a.some((e) => e.state.instance === t[0] && e.state.state === t[1] && e.value === t[2]);
