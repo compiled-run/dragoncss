@@ -37,3 +37,5 @@ export { dprPlatformRules } from './platform-rules.ts';
 export type { CalcClamp, CalcExpr, CalcInvert, CalcMax, CalcMin, CalcProduct, CalcSum, EmLength, LengthCalc, PixelsAndPercent, ViewportLength } from './input.ts';
 export { applyEnvironment } from './environment.ts';
 export type { BoxShape } from './paint.ts';
+export type { RadiusFaults, RadiusLength } from './paint-radius.ts';
+export { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from './paint-radius.ts';

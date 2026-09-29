@@ -11,9 +11,57 @@ const SWIFT_MEMBERS = String.raw`  /// Points, top right bottom left: the engine
 
 const SWIFT = String.raw`import UIKit
 
-/// The border stage: the four sides over the box's bounds.
+/// The border stage: the four sides over the box's bounds, between the rounded border-box and padding-edge paths when the radius
+/// module rounds the box.
 public func dragonPaintBorderStage(_ v: DragonBoxView, _ ctx: CGContext, _ shape: DragonBoxShape) {
+  if let outer = dragonRoundedPath(v, shape, inner: false), let inner = dragonRoundedPath(v, shape, inner: true) {
+    dragonDrawRoundedBorders(ctx, v.bounds, outer, inner, v.dragonBorderWidths.map { CGFloat($0) }, v.dragonBorderStyles, v.dragonBorderColors)
+    return
+  }
   dragonDrawBorders(ctx, v.bounds, v.dragonBorderWidths.map { CGFloat($0) }, v.dragonBorderStyles, v.dragonBorderColors)
+}
+
+/// Rounded solid borders (PNT1): the ring between the border-box and padding-edge paths, filled even-odd; four sides of one colour
+/// fill it once (Blink's FillDRRect), otherwise each side fills its part of the ring cut by the corner diagonals. Rounded dashed,
+/// dotted and double sides are refused at compile time (PNT1b), so meeting one here is a fault.
+public func dragonDrawRoundedBorders(_ ctx: CGContext, _ o: CGRect, _ outer: CGPath, _ inner: CGPath, _ w: [CGFloat], _ styles: [String], _ colors: [DragonRGBA8]) {
+  var visible: [Int] = []
+  for k in 0..<4 {
+    if w[k] <= 0 || styles[k] == "none" || styles[k] == "hidden" || colors[k].a == 0 { continue }
+    if styles[k] != "solid" { fatalError("dragon: a rounded \(styles[k]) border is PNT1b, which the compiler refuses") }
+    visible.append(k)
+  }
+  if visible.isEmpty { return }
+  let ring = CGMutablePath()
+  ring.addPath(outer)
+  ring.addPath(inner)
+  if visible.count == 4 && visible.allSatisfy({ colors[$0] == colors[0] }) {
+    ctx.saveGState()
+    ctx.addPath(ring)
+    ctx.setFillColor(dragonUIColor(colors[0]).cgColor)
+    ctx.fillPath(using: .evenOdd)
+    ctx.restoreGState()
+    return
+  }
+  let i = CGRect(x: o.minX + w[3], y: o.minY + w[0], width: o.width - w[3] - w[1], height: o.height - w[0] - w[2])
+  let quads: [[CGPoint]] = [
+    [CGPoint(x: o.minX, y: o.minY), CGPoint(x: o.maxX, y: o.minY), CGPoint(x: i.maxX, y: i.minY), CGPoint(x: i.minX, y: i.minY)],
+    [CGPoint(x: o.maxX, y: o.minY), CGPoint(x: o.maxX, y: o.maxY), CGPoint(x: i.maxX, y: i.maxY), CGPoint(x: i.maxX, y: i.minY)],
+    [CGPoint(x: o.maxX, y: o.maxY), CGPoint(x: o.minX, y: o.maxY), CGPoint(x: i.minX, y: i.maxY), CGPoint(x: i.maxX, y: i.maxY)],
+    [CGPoint(x: o.minX, y: o.maxY), CGPoint(x: o.minX, y: o.minY), CGPoint(x: i.minX, y: i.minY), CGPoint(x: i.minX, y: i.maxY)],
+  ]
+  for k in visible {
+    ctx.saveGState()
+    let q = CGMutablePath()
+    q.addLines(between: quads[k])
+    q.closeSubpath()
+    ctx.addPath(q)
+    ctx.clip()
+    ctx.addPath(ring)
+    ctx.setFillColor(dragonUIColor(colors[k]).cgColor)
+    ctx.fillPath(using: .evenOdd)
+    ctx.restoreGState()
+  }
 }
 
 /// After every layout: the side widths in points from the engine's device px.
@@ -107,9 +155,66 @@ import android.graphics.Path
 import android.graphics.RectF
 import dev.dragon.dump.DumpJson
 
-/** The border stage: the four sides over the box's size. */
+/**
+ * The border stage: the four sides over the box's size, between the rounded border-box and padding-edge paths when the radius
+ * module rounds the box.
+ */
 fun dragonPaintBorderStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShape) {
+  val outer = dragonRoundedPath(v, shape, false)
+  val inner = dragonRoundedPath(v, shape, true)
+  if (outer != null && inner != null) {
+    dragonDrawRoundedBorders(canvas, v.width.toFloat(), v.height.toFloat(), outer, inner, v.dragonBorderWidths, v.dragonBorderStyles, v.dragonBorderColors)
+    return
+  }
   dragonDrawBorders(canvas, v.width.toFloat(), v.height.toFloat(), v.dragonBorderWidths, v.dragonBorderStyles, v.dragonBorderColors)
+}
+
+/**
+ * Rounded solid borders (PNT1): the ring between the border-box and padding-edge paths, filled even-odd; four sides of one colour
+ * fill it once (Blink's FillDRRect), otherwise each side fills its part of the ring cut by the corner diagonals. Rounded dashed,
+ * dotted and double sides are refused at compile time (PNT1b), so meeting one here is a fault.
+ */
+fun dragonDrawRoundedBorders(canvas: Canvas, w: Float, h: Float, outer: Path, inner: Path, widths: IntArray, styles: Array<String>, colors: Array<DragonRGBA8>) {
+  val visible = ArrayList<Int>()
+  for (k in 0 until 4) {
+    if (widths[k] <= 0 || styles[k] == "none" || styles[k] == "hidden" || colors[k].a == 0) continue
+    if (styles[k] != "solid") throw IllegalStateException("dragon: a rounded " + styles[k] + " border is PNT1b, which the compiler refuses")
+    visible.add(k)
+  }
+  if (visible.isEmpty()) return
+  val ring = Path()
+  ring.fillType = Path.FillType.EVEN_ODD
+  ring.addPath(outer)
+  ring.addPath(inner)
+  val paint = Paint()
+  paint.isAntiAlias = true
+  paint.style = Paint.Style.FILL
+  val first = colors[visible[0]]
+  if (visible.size == 4 && visible.all { colors[it].r == first.r && colors[it].g == first.g && colors[it].b == first.b && colors[it].a == first.a }) {
+    paint.color = dragonArgb(first)
+    canvas.drawPath(ring, paint)
+    return
+  }
+  val t = widths[0].toFloat()
+  val r = widths[1].toFloat()
+  val b = widths[2].toFloat()
+  val l = widths[3].toFloat()
+  val quads = arrayOf(
+    floatArrayOf(0f, 0f, w, 0f, w - r, t, l, t),
+    floatArrayOf(w, 0f, w, h, w - r, h - b, w - r, t),
+    floatArrayOf(w, h, 0f, h, l, h - b, w - r, h - b),
+    floatArrayOf(0f, h, 0f, 0f, l, t, l, h - b),
+  )
+  for (k in visible) {
+    canvas.save()
+    val q = quads[k]
+    val clip = Path()
+    clip.moveTo(q[0], q[1]); clip.lineTo(q[2], q[3]); clip.lineTo(q[4], q[5]); clip.lineTo(q[6], q[7]); clip.close()
+    canvas.clipPath(clip)
+    paint.color = dragonArgb(colors[k])
+    canvas.drawPath(ring, paint)
+    canvas.restore()
+  }
 }
 
 /** After every layout: the side widths in whole device px from the engine. */

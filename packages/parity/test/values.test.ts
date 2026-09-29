@@ -28,7 +28,9 @@ const committed = (c: ParityCase, dpr: number): WebCapture => (dpr === 1 ? (JSON
 
 describe('values group registration (fixture-groups/values.ts)', () => {
   it('is the last group; every layout fixture runs in both directions and every id carries the values- prefix the corpus keys on', () => {
-    expect(FIXTURE_GROUPS[FIXTURE_GROUPS.length - 1]?.id).toBe('values');
+    // The paint groups (PNT1) append after values, so every earlier case keeps its position in the case lists.
+    const ids = FIXTURE_GROUPS.map((g) => g.id);
+    expect(ids.slice(ids.indexOf('values') + 1)).toEqual(['radius']);
     for (const f of VALUES) expect(f.id.startsWith('values-'), f.id).toBe(true);
     for (const f of LAYOUT) expect(f.kind === 'layout' && f.environments, f.id).toEqual(['ltr', 'rtl']);
     expect(LAYOUT.length).toBeGreaterThanOrEqual(25);

@@ -3,6 +3,7 @@
 // killed), batch launches of the host app with the run file, pulled dumps, the per-device record (model, OS and build, the scale
 // from the device profile and from the app, the window and stage in device px, the text scale), the root-fits-window check, and
 // the OS screenshots of the capture-trust probe. One device runs at a time.
+import type { SupportPlant } from 'dragon';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -39,6 +40,15 @@ export const VECTOR_DEVICES: { readonly [T in NativeTarget]: string } = { ios: '
 export const TRUST_CASES: readonly string[] = ['color-border-sides', 'text-wrap-spaces', 'overflow-hidden-bfc'];
 /** The glyph-offset-1 plant case (section 4 item 5). */
 export const PLANT_CASE = 'text-wrap-spaces';
+
+/**
+ * Each raster plant's probe: the case it runs, the lane that must fail, and the sample rules (node field of a failure) that must
+ * fail on it; device-frames and device-lines must pass. Paint plants (PNT1) run on a case of their own fixture group.
+ */
+export const PLANT_PROBES: { readonly [P in SupportPlant]: { readonly case: string; readonly lane: 'device-pixels' | 'device-applied'; readonly nodes: RegExp } } = {
+  'glyph-offset-1': { case: PLANT_CASE, lane: 'device-pixels', nodes: /^(glyph:|edge:\S*:glyph-)/ },
+  'radius-square': { case: 'radius-basic', lane: 'device-pixels', nodes: /^radius:/ },
+};
 /** The devices of the glyph-offset-1 raster plant run (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
 

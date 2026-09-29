@@ -14,7 +14,7 @@ import { expectedDigest, expectedDump } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { GATE_CHANNEL_DELTA } from './compare.ts';
 import type { DeviceHandle, DeviceRecord } from './device-run.ts';
-import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, recordProblems, release, runApp, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
+import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, PLANT_PROBES, recordProblems, release, runApp, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
 import { runDeviceVectors } from './device-vectors.ts';
 import type { DeviceRun, HostRun } from './lanes.ts';
 import { committedDprCapture } from './dpr.ts';
@@ -324,13 +324,13 @@ export function trustFailuresOf(rows: readonly TrustRow[], dpr: number, device: 
 }
 
 /**
- * The glyph-offset-1 plant verdict on the plant case: caught only when the host finished, device-pixels failed on a glyph or
- * glyph-edge rule, and device-frames and device-lines have no failure (pixels see what (d) cannot).
+ * A raster plant's verdict on its probe case (PLANT_PROBES; glyph-offset-1 by default): caught only when the host finished, the
+ * probe's lane failed on one of its rules, and device-frames and device-lines have no failure (pixels see what (d) cannot).
  */
-export function plantVerdict(failures: readonly LaneFailure[], hostError: string | null): { readonly caught: boolean; readonly pixels: number; readonly inked: number; readonly frames: number; readonly lines: number } {
+export function plantVerdict(failures: readonly LaneFailure[], hostError: string | null, probe: { readonly lane: 'device-pixels' | 'device-applied'; readonly nodes: RegExp } = PLANT_PROBES['glyph-offset-1']): { readonly caught: boolean; readonly pixels: number; readonly inked: number; readonly frames: number; readonly lines: number } {
   const of = (lane: DeviceCheckLane): LaneFailure[] => failures.filter((f) => f.lane === lane);
   const pixels = of('device-pixels');
-  const inked = pixels.filter((f) => f.kind === 'pixel' && /^(glyph:|edge:\S*:glyph-)/.test(f.node ?? '')).length;
+  const inked = of(probe.lane).filter((f) => (probe.lane === 'device-applied' || f.kind === 'pixel') && probe.nodes.test(f.node ?? '')).length;
   const frames = of('device-frames').length;
   const lines = of('device-lines').length;
   return { caught: hostError === null && inked > 0 && frames === 0 && lines === 0, pixels: pixels.length, inked, frames, lines };

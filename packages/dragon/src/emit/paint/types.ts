@@ -28,6 +28,15 @@ export type NativePaint = {
   readonly container: string | null;
 };
 
+/**
+ * The TS paint references the host passes in with the engine (the compiler core imports the engine for types only): the same
+ * functions the device runs translated, for the expected applied values.
+ */
+export type PaintEngine = {
+  /** paint-radius.ts roundedShape: the outer then the padding-edge radii of a snapped border box, in device px. */
+  readonly roundedShape: (left: number, top: number, right: number, bottom: number, borders: readonly number[], lengths: readonly { readonly percent: boolean; readonly value: number }[], dpr: number, faults: { readonly radiusUnclamped: boolean; readonly innerRadiusNotReduced: boolean }) => number[];
+};
+
 export const NO_NATIVE_PAINT: NativePaint = { boxMembers: '', file: null, stages: {}, afterLayout: null, applied: null, roundedPath: null, container: null };
 
 /** A raster plant a module declares: one text replacement in its support source per backend, proving a pixel lane sees it. */

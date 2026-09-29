@@ -8,6 +8,7 @@ import { canonicalJson, sha256Hex } from '../digest.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { NativeBackend, NativeProgram, ProgramNode, ProgramWrite } from '../lower/native-program.ts';
 import { isPaintKind, paintAppliedValue } from './paint/registry.ts';
+import type { PaintEngine } from './paint/types.ts';
 
 export type JsonValue = null | boolean | number | string | readonly JsonValue[] | { readonly [k: string]: JsonValue };
 
@@ -39,6 +40,8 @@ export type ExpectedEngine = {
   readonly platformFontSize: (px: number) => number;
   readonly zoomFontSize: (px: number, zoom: number) => number;
   readonly float32: (x: number) => number;
+  /** The TS paint references (paint-*.ts) whose translations the device runs. */
+  readonly paint: PaintEngine;
 };
 
 /** The device values of one node at one scale, from the engine: border widths in whole device px and the snapped border box. */

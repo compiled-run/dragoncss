@@ -73,7 +73,8 @@ describe('the emitted Swift and Kotlin', () => {
     const swift = emitUikitCases([emitCase(p.uikit)]).map((f) => f.text).join('\n');
     const kotlin = emitAndroidViewsCases([emitCase(p['android-views'])]).map((f) => f.text).join('\n');
     expect(swift).toContain('LayoutStyle(JsString("block")');
-    expect(swift).toContain('.backgroundColor = dragonUIColor(DragonRGBA8(51, 102, 255, 255))');
+    // The background writer is the module's runtime writer on both backends (PNT1: a rounded box paints its colour itself).
+    expect(swift).toMatch(/dragonBackground\(v\d+, DragonRGBA8\(51, 102, 255, 255\)\)/);
     expect(swift).toContain('.dragonEnableClip()');
     expect(kotlin).toContain('LayoutStyle("block"');
     expect(kotlin).toContain('dragonBackground(v');
