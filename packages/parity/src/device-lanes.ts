@@ -339,7 +339,7 @@ export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, 
       log(`${spec.name}: checked ${set.dumps}/${set.cases} dumps; compared a ${set.compared.a}, b ${set.compared.b}, c ${set.compared.c}, d ${set.compared.d}, breaks ${set.compared.breaks}; failures ${JSON.stringify(failuresByKind(set.failures))}`);
       const trustDir = join(nativeOut(t.target), 'lanes', `${spec.name}-trust`);
       const trustCases = cases.filter((n) => TRUST_CASES.includes(n.case.id));
-      const tr = await runApp(h, build.artifact, { runFile: runFileText(trustCases.map((n) => ({ id: n.case.id, points: casePoints(n.programs[backend], n.case.environment.viewport, dpr) })), true), caseCount: trustCases.length, outDir: trustDir, onHold: (_id, shot) => void shot() });
+      const tr = await runApp(h, build.artifact, { runFile: runFileText(trustCases.map((n) => ({ id: n.case.id, points: casePoints(n.programs[backend], n.case.environment.viewport, dpr) })), true), caseCount: trustCases.length, outDir: trustDir, onHold: async (_id, shot) => void (await shot()) });
       const rows = captureTrust(trustDir, TRUST_CASES, dpr, tr.record.rootOriginPx);
       trust.push({ device: spec.name, dpr, rows });
       log(`${spec.name}: capture trust ${rows.map((x) => `${x.case} ${x.points - x.mismatches.length}/${x.points}`).join(', ')}`);
