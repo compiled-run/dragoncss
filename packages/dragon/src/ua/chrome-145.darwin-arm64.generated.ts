@@ -2403,3 +2403,168 @@ export const systemColors: { readonly [name: string]: string | null } = {
   "AccentColor": null,
   "AccentColorText": null,
 };
+
+/** Replaced-element keys (REPL-0): iframe, and img with a loaded data: src. Their tables follow the element-key tables. */
+export type ReplacedKey = "iframe" | "img[src]";
+
+/** The element and attributes each replaced key was captured on. */
+export const replacedKeySpecs: { readonly [K in ReplacedKey]: { readonly tag: string; readonly attributes: { readonly [name: string]: string } } } = {
+  "iframe": { tag: "iframe", attributes: {  } },
+  "img[src]": { tag: "img", attributes: { "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" } },
+};
+
+/** computed, for the replaced keys. */
+export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [property: string]: string } } = {
+  "iframe": {
+    "align-content": "normal",
+    "align-items": "normal",
+    "align-self": "auto",
+    "background-color": "rgba(0, 0, 0, 0)",
+    "border-bottom-color": "rgb(0, 0, 0)",
+    "border-bottom-style": "inset",
+    "border-bottom-width": "2px",
+    "border-left-color": "rgb(0, 0, 0)",
+    "border-left-style": "inset",
+    "border-left-width": "2px",
+    "border-right-color": "rgb(0, 0, 0)",
+    "border-right-style": "inset",
+    "border-right-width": "2px",
+    "border-top-color": "rgb(0, 0, 0)",
+    "border-top-style": "inset",
+    "border-top-width": "2px",
+    "bottom": "auto",
+    "box-sizing": "content-box",
+    "color": "rgb(0, 0, 0)",
+    "column-gap": "normal",
+    "direction": "ltr",
+    "display": "inline",
+    "flex-basis": "auto",
+    "flex-direction": "row",
+    "flex-grow": "0",
+    "flex-shrink": "1",
+    "flex-wrap": "nowrap",
+    "font-family": "Times",
+    "font-size": "16px",
+    "height": "auto",
+    "justify-content": "normal",
+    "left": "auto",
+    "line-height": "normal",
+    "margin-bottom": "0px",
+    "margin-left": "0px",
+    "margin-right": "0px",
+    "margin-top": "0px",
+    "max-height": "none",
+    "max-width": "none",
+    "min-height": "0px",
+    "min-width": "0px",
+    "order": "0",
+    "overflow-x": "clip",
+    "overflow-y": "clip",
+    "padding-bottom": "0px",
+    "padding-left": "0px",
+    "padding-right": "0px",
+    "padding-top": "0px",
+    "position": "static",
+    "right": "auto",
+    "row-gap": "normal",
+    "text-align": "start",
+    "text-wrap-mode": "wrap",
+    "top": "auto",
+    "white-space-collapse": "collapse",
+    "width": "auto",
+  },
+  "img[src]": {
+    "align-content": "normal",
+    "align-items": "normal",
+    "align-self": "auto",
+    "background-color": "rgba(0, 0, 0, 0)",
+    "border-bottom-color": "rgb(0, 0, 0)",
+    "border-bottom-style": "none",
+    "border-bottom-width": "0px",
+    "border-left-color": "rgb(0, 0, 0)",
+    "border-left-style": "none",
+    "border-left-width": "0px",
+    "border-right-color": "rgb(0, 0, 0)",
+    "border-right-style": "none",
+    "border-right-width": "0px",
+    "border-top-color": "rgb(0, 0, 0)",
+    "border-top-style": "none",
+    "border-top-width": "0px",
+    "bottom": "auto",
+    "box-sizing": "content-box",
+    "color": "rgb(0, 0, 0)",
+    "column-gap": "normal",
+    "direction": "ltr",
+    "display": "inline",
+    "flex-basis": "auto",
+    "flex-direction": "row",
+    "flex-grow": "0",
+    "flex-shrink": "1",
+    "flex-wrap": "nowrap",
+    "font-family": "Times",
+    "font-size": "16px",
+    "height": "auto",
+    "justify-content": "normal",
+    "left": "auto",
+    "line-height": "normal",
+    "margin-bottom": "0px",
+    "margin-left": "0px",
+    "margin-right": "0px",
+    "margin-top": "0px",
+    "max-height": "none",
+    "max-width": "none",
+    "min-height": "0px",
+    "min-width": "0px",
+    "order": "0",
+    "overflow-x": "clip",
+    "overflow-y": "clip",
+    "padding-bottom": "0px",
+    "padding-left": "0px",
+    "padding-right": "0px",
+    "padding-top": "0px",
+    "position": "static",
+    "right": "auto",
+    "row-gap": "normal",
+    "text-align": "start",
+    "text-wrap-mode": "wrap",
+    "top": "auto",
+    "white-space-collapse": "collapse",
+    "width": "auto",
+  },
+};
+
+/** userAgentLonghands, for the replaced keys. */
+export const replacedKeyLonghands: { readonly [K in ReplacedKey]: readonly string[] } = {
+  "iframe": ["border-bottom-style","border-bottom-width","border-left-style","border-left-width","border-right-style","border-right-width","border-top-style","border-top-width"],
+  "img[src]": ["overflow-x","overflow-y"],
+};
+
+/** userAgentDeclared, for the replaced keys. */
+export const replacedKeyDeclared: { readonly [K in ReplacedKey]: { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } } } = {
+  "iframe": { ltr: { "border-bottom-style": "inset", "border-bottom-width": "2px", "border-left-style": "inset", "border-left-width": "2px", "border-right-style": "inset", "border-right-width": "2px", "border-top-style": "inset", "border-top-width": "2px" }, rtl: { "border-bottom-style": "inset", "border-bottom-width": "2px", "border-left-style": "inset", "border-left-width": "2px", "border-right-style": "inset", "border-right-width": "2px", "border-top-style": "inset", "border-top-width": "2px" } },
+  "img[src]": { ltr: { "overflow-x": "clip", "overflow-y": "clip" }, rtl: { "overflow-x": "clip", "overflow-y": "clip" } },
+};
+
+/** userAgentContexts, for the replaced keys. */
+export const replacedKeyContexts: { readonly [K in ReplacedKey]: readonly string[] } = {
+  "iframe": [],
+  "img[src]": [],
+};
+
+/** userAgentTextFonts, for the replaced keys. */
+export const replacedKeyTextFonts: { readonly [K in ReplacedKey]: { readonly [property: string]: string } } = {
+  "iframe": {  },
+  "img[src]": {  },
+};
+
+/** userAgentUnmodelled, for the replaced keys. */
+export const replacedKeyUnmodelled: { readonly [K in ReplacedKey]: { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } } } = {
+  "iframe": { ltr: { "overflow-clip-margin": "content-box" }, rtl: { "overflow-clip-margin": "content-box" } },
+  "img[src]": { ltr: { "overflow-clip-margin": "content-box" }, rtl: { "overflow-clip-margin": "content-box" } },
+};
+
+/** userAgentForced, for the replaced keys. */
+export const replacedKeyForced: { readonly [K in ReplacedKey]: { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } } } = {
+  "iframe": { ltr: { "overflow-x": "clip", "overflow-y": "clip" }, rtl: { "overflow-x": "clip", "overflow-y": "clip" } },
+  "img[src]": { ltr: {  }, rtl: {  } },
+};

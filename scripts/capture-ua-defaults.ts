@@ -2,7 +2,8 @@
 // and which longhands a UA rule sets per tag: those whose value differs from the same element with "<longhand>: initial".
 // It also derives each tag's UA declared values per direction (a length that scales with the font size is written in em), the
 // ancestor tags under which Chrome's UA sheet gives a tag other values, and the UA font-weight and font-style no longhand models.
-// The element keys (button, input, a, img, span, ...) are captured the same way into tables of their own; every element gets
+// The element keys (button, input, a, img, span, ...) and the replaced keys (iframe, img with a data: src) are captured the same
+// way into tables of their own; every element gets
 // its UA-set properties no longhand models (userAgentUnmodelled) and the system colors, and all of it is captured again under
 // html{color-scheme:dark} into the dark dataset. Each key must be reproduced by an unstyled element given its captured values.
 // Blink's html.css is LGPL, so Dragon stores these captured values as data instead of copying the sheet.
@@ -38,10 +39,21 @@ const KEY_SPECS = {
 } as const satisfies Record<string, { tag: string; attrs: Record<string, string> }>;
 type ElementKey = keyof typeof KEY_SPECS;
 const ELEMENT_KEYS = Object.keys(KEY_SPECS) as ElementKey[];
+/** A 1x1 opaque PNG, so the img key is a loaded image with a data: src (REPL-0). */
+const PIXEL_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+/** Replaced-element keys (REPL-0), captured like the element keys into tables of their own so the existing tables stay byte-identical. */
+const REPLACED_KEY_SPECS = {
+  iframe: { tag: 'iframe', attrs: {} },
+  'img[src]': { tag: 'img', attrs: { src: PIXEL_PNG } },
+} as const satisfies Record<string, { tag: string; attrs: Record<string, string> }>;
+type ReplacedKey = keyof typeof REPLACED_KEY_SPECS;
+const REPLACED_KEYS = Object.keys(REPLACED_KEY_SPECS) as ReplacedKey[];
+/** Every key captured outside the element table; replaced elements are never an ancestor context. */
+const ALL_KEYS: readonly string[] = [...ELEMENT_KEYS, ...REPLACED_KEYS];
 /** Void elements have no children, so they are never an ancestor context. */
 const ANCESTOR_KEYS = ELEMENT_KEYS.filter((k) => !['input', 'img'].includes(KEY_SPECS[k].tag));
 type Spec = { readonly tag: string; readonly attrs: Readonly<Record<string, string>> };
-const SPECS: Record<string, Spec> = { ...Object.fromEntries(TAGS.map((t) => [t, { tag: t, attrs: {} }])), ...KEY_SPECS };
+const SPECS: Record<string, Spec> = { ...Object.fromEntries(TAGS.map((t) => [t, { tag: t, attrs: {} }])), ...KEY_SPECS, ...REPLACED_KEY_SPECS };
 /** Inherited font properties no milestone longhand models; a UA value for them changes how text is drawn. */
 const TEXT_FONT_PROPERTIES = ['font-weight', 'font-style'] as const;
 const BORDER_KEYWORDS = ['thin', 'medium', 'thick'] as const;
@@ -136,7 +148,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       for (const key of keys) read(document.querySelector(`[data-key="${key}"]`) as HTMLElement, key);
       return { out, initial };
     },
-    { tags: [...TAGS], keys: ELEMENT_KEYS, specs: SPECS, props: [...LONGHANDS] },
+    { tags: [...TAGS], keys: ALL_KEYS, specs: SPECS, props: [...LONGHANDS] },
   );
   const borderKeywords = await hidden.evaluate(() =>
     Object.fromEntries(
@@ -212,7 +224,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       }
       return out;
     },
-    { tags: [...ELEMENT_TAGS, ...ELEMENT_KEYS], specs: SPECS, props: [...LONGHANDS] },
+    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, props: [...LONGHANDS] },
   );
   // Chrome's minimum logical font size: an em font size under the keyword-sized root is clamped up to it; an authored px size is not.
   const { minimumLogicalFontSize, authoredPx } = await host.evaluate(() => {
@@ -289,7 +301,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       }
       return out;
     },
-    { tags: [...ELEMENT_TAGS, ...ELEMENT_KEYS], ancestors: [...ELEMENT_TAGS, ...ANCESTOR_KEYS], specs: SPECS, props: [...LONGHANDS], minimum: minimumLogicalFontSize },
+    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], ancestors: [...ELEMENT_TAGS, ...ANCESTOR_KEYS], specs: SPECS, props: [...LONGHANDS], minimum: minimumLogicalFontSize },
   );
   const textFonts = await host.evaluate(
     ({ tags, specs, props }) => {
@@ -311,7 +323,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
         return [tag, row];
       }));
     },
-    { tags: [...ELEMENT_TAGS, ...ELEMENT_KEYS], specs: SPECS, props: [...TEXT_FONT_PROPERTIES] },
+    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, props: [...TEXT_FONT_PROPERTIES] },
   );
   // Unmodelled: every property of Chrome's full computed list whose value differs from dragon-unstyled under the same parent
   // given the element's declared and text-font values, other than the milestone longhands and their logical aliases. A milestone
@@ -358,7 +370,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       }
       return { unmodelled, forced };
     },
-    { tags: [...ELEMENT_TAGS, ...ELEMENT_KEYS], specs: SPECS, longhands: [...LONGHANDS], declared, textFonts },
+    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, longhands: [...LONGHANDS], declared, textFonts },
   );
   const systemColors = await host.evaluate((names) => {
     const hostEl = document.getElementById('host') as HTMLElement;
@@ -372,7 +384,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
     }));
   }, [...SYSTEM_COLORS]);
   // The declared ltr values at the 16px root must reproduce the captured table exactly.
-  for (const tag of [...ELEMENT_TAGS, ...ELEMENT_KEYS]) {
+  for (const tag of [...ELEMENT_TAGS, ...ALL_KEYS]) {
     const ltr = (declared[tag] as Dirs)['ltr'] as Record<string, string>;
     const own = values[tag] as Record<string, string>;
     const init = initial[tag] as Record<string, string>;
@@ -420,7 +432,7 @@ async function selfConsistency(browser: Browser, scheme: Scheme, c: Capture): Pr
       }
       return out;
     },
-    { tags: [...ELEMENT_TAGS, ...ELEMENT_KEYS], specs: SPECS, declared: c.declared, textFonts: c.textFonts, unmodelled: c.unmodelled, forced: c.forced, scheme },
+    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, declared: c.declared, textFonts: c.textFonts, unmodelled: c.unmodelled, forced: c.forced, scheme },
   );
   await page.context().close();
   return faults;
@@ -549,6 +561,58 @@ function render(c: Capture, scheme: Scheme): string {
   for (const n of SYSTEM_COLORS) lines.push(`  ${JSON.stringify(n)}: ${JSON.stringify(systemColors[n])},`);
   lines.push('};');
   lines.push('');
+  const dirsOf = (table: Record<string, Dirs>, k: string): string => {
+    const d = table[k] as Dirs;
+    return `{ ltr: ${field(d['ltr'] as Record<string, string>)}, rtl: ${field(d['rtl'] as Record<string, string>)} }`;
+  };
+  lines.push('/** Replaced-element keys (REPL-0): iframe, and img with a loaded data: src. Their tables follow the element-key tables. */');
+  lines.push('export type ReplacedKey = ' + REPLACED_KEYS.map((t) => JSON.stringify(t)).join(' | ') + ';');
+  lines.push('');
+  lines.push('/** The element and attributes each replaced key was captured on. */');
+  lines.push('export const replacedKeySpecs: { readonly [K in ReplacedKey]: { readonly tag: string; readonly attributes: { readonly [name: string]: string } } } = {');
+  for (const k of REPLACED_KEYS) lines.push(`  ${JSON.stringify(k)}: { tag: ${JSON.stringify(REPLACED_KEY_SPECS[k].tag)}, attributes: ${field(REPLACED_KEY_SPECS[k].attrs)} },`);
+  lines.push('};');
+  lines.push('');
+  lines.push('/** computed, for the replaced keys. */');
+  lines.push('export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [property: string]: string } } = {');
+  for (const k of REPLACED_KEYS) {
+    lines.push(`  ${JSON.stringify(k)}: {`);
+    const row = values[k] as Record<string, string>;
+    for (const p of [...LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
+    lines.push('  },');
+  }
+  lines.push('};');
+  lines.push('');
+  lines.push('/** userAgentLonghands, for the replaced keys. */');
+  lines.push('export const replacedKeyLonghands: { readonly [K in ReplacedKey]: readonly string[] } = {');
+  for (const k of REPLACED_KEYS) lines.push(`  ${JSON.stringify(k)}: ${JSON.stringify(longhandsOf(k))},`);
+  lines.push('};');
+  lines.push('');
+  lines.push('/** userAgentDeclared, for the replaced keys. */');
+  lines.push('export const replacedKeyDeclared: { readonly [K in ReplacedKey]: { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } } } = {');
+  for (const k of REPLACED_KEYS) lines.push(`  ${JSON.stringify(k)}: ${declaredOf(k)},`);
+  lines.push('};');
+  lines.push('');
+  lines.push('/** userAgentContexts, for the replaced keys. */');
+  lines.push('export const replacedKeyContexts: { readonly [K in ReplacedKey]: readonly string[] } = {');
+  for (const k of REPLACED_KEYS) lines.push(`  ${JSON.stringify(k)}: ${JSON.stringify(contexts[k] ?? [])},`);
+  lines.push('};');
+  lines.push('');
+  lines.push('/** userAgentTextFonts, for the replaced keys. */');
+  lines.push('export const replacedKeyTextFonts: { readonly [K in ReplacedKey]: { readonly [property: string]: string } } = {');
+  for (const k of REPLACED_KEYS) lines.push(`  ${JSON.stringify(k)}: ${field((textFonts[k] ?? {}) as Record<string, string>)},`);
+  lines.push('};');
+  lines.push('');
+  lines.push('/** userAgentUnmodelled, for the replaced keys. */');
+  lines.push('export const replacedKeyUnmodelled: { readonly [K in ReplacedKey]: { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } } } = {');
+  for (const k of REPLACED_KEYS) lines.push(`  ${JSON.stringify(k)}: ${dirsOf(unmodelled, k)},`);
+  lines.push('};');
+  lines.push('');
+  lines.push('/** userAgentForced, for the replaced keys. */');
+  lines.push('export const replacedKeyForced: { readonly [K in ReplacedKey]: { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } } } = {');
+  for (const k of REPLACED_KEYS) lines.push(`  ${JSON.stringify(k)}: ${dirsOf(forced, k)},`);
+  lines.push('};');
+  lines.push('');
   return lines.join('\n');
 }
 
@@ -627,7 +691,7 @@ try {
     if (plant !== undefined) console.log(`plant ${plant} applied`);
     for (const f of faults) console.error(`FAULT ${f}`);
     if (faults.length > 0) process.exitCode = 1;
-    else console.log(`check: ${lightFile} and ${darkFile} recapture byte-identically; self-consistency holds for ${ELEMENT_TAGS.length + ELEMENT_KEYS.length} elements in ltr and rtl, light and dark`);
+    else console.log(`check: ${lightFile} and ${darkFile} recapture byte-identically; self-consistency holds for ${ELEMENT_TAGS.length + ALL_KEYS.length} elements in ltr and rtl, light and dark`);
   } else {
     if (faults.length > 0) throw new Error(`ua:capture refuses to write:\n${faults.join('\n')}`);
     for (const [file, text] of outputs) {
