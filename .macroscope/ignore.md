@@ -58,6 +58,7 @@ packages/layout/src/script-data.ts
 packages/dragon/src/profiles/web.ts
 packages/dragon/src/profiles/ios.ts
 packages/dragon/src/profiles/android.ts
+packages/dragon/test/data/grid-corpus-declarations.json
 packages/layout/rt-oracle/**
 packages/layout/rt-vectors/**
 packages/layout/break-vectors/**
