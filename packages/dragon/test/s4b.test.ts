@@ -67,6 +67,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       if (f.endsWith(join('css', 'color.ts'))) continue;
       // The font metrics port Blink's float32 arithmetic (Math.fround, floorf), so src/fonts/** is exempt by path.
       if (f.includes(`${join('src', 'fonts')}${sep}`)) continue;
+      // The forms port Blink's Decimal and geometry math (LayoutUnit truncation), so src/forms/** is exempt by path.
+      if (f.includes(`${join('src', 'forms')}${sep}`)) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });
