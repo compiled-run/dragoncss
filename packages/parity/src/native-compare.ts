@@ -305,5 +305,98 @@ export function referenceDump(c: ReferenceCase, faults: ReferenceFaults = NO_REF
 // ---------------------------------------------------------------- planted dump faults
 
 /** The dump faults the checks must catch, the same on every native target (native-strategy.md 3.1, 3.3; T009 P3 item 6). */
-export const DUMP_FAULTS = ['edge-plus-2-device-px', 'edge-plus-1-device-px', 'applied-changed', 'applied-missing', 'channel-delta-1', 'missing-node', 'snap-disabled'] as const;
+export const DUMP_FAULTS = ['edge-plus-2-device-px', 'edge-plus-1-device-px', 'applied-changed', 'applied-missing', 'channel-delta-1', 'missing-node', 'snap-disabled', 'break-shifted'] as const;
 export type DumpFault = (typeof DUMP_FAULTS)[number];
+
+// ---------------------------------------------------------------- dump faults on real device dumps (P5)
+
+/** The check each fault targets: (a) Chrome, (b) applied, (c) pixels, (d) engine, or the line-break check. */
+export type NamedCheck = 'a' | 'b' | 'c' | 'd' | 'breaks';
+export const FAULT_CHECK: { readonly [F in DumpFault]: NamedCheck } = {
+  'edge-plus-2-device-px': 'a',
+  'edge-plus-1-device-px': 'd',
+  'applied-changed': 'b',
+  'applied-missing': 'b',
+  'channel-delta-1': 'c',
+  'missing-node': 'a',
+  'snap-disabled': 'd',
+  'break-shifted': 'breaks',
+};
+
+/** What a fault may need besides the dump: the engine's absolute rects (snap-disabled) and the sample indices check (c) passes. */
+export type FaultContext = { readonly engine: readonly LayoutRect[]; readonly passingSamples: readonly number[] };
+
+const withEdges = (e: DumpEdges, scale: number): { frame: DumpFrame; deviceEdges: DumpEdges } => ({ frame: frameOf(e, scale), deviceEdges: e });
+
+function changedValue(v: JsonValue): JsonValue {
+  if (typeof v === 'number') return v + 1;
+  if (typeof v === 'string') return `${v}x`;
+  if (typeof v === 'boolean') return !v;
+  if (v === null) return 0;
+  if (Array.isArray(v)) return [...v, 0];
+  return { ...(v as { readonly [k: string]: JsonValue }), dragonPlanted: 1 };
+}
+
+/**
+ * A real dump with one planted fault, or null when the dump has nothing the fault applies to. The node is the first that qualifies
+ * in dump order: an element for the edge faults, a node with applied values, a leaf node for missing-node, a text node with two
+ * lines for break-shifted (the first line ends one code unit early and the second starts there); channel-delta-1 moves the red
+ * channel of the first sample check (c) passes by one; snap-disabled writes the unsnapped engine frames with truncated edges.
+ */
+export function plantDumpFault(fault: DumpFault, dump: NativeDump, ctx: FaultContext): NativeDump | null {
+  const scale = dump.device.scale;
+  switch (fault) {
+    case 'edge-plus-2-device-px':
+    case 'edge-plus-1-device-px': {
+      const px = fault === 'edge-plus-2-device-px' ? 2 : 1;
+      const i = dump.nodes.findIndex((n) => n.kind === 'element');
+      if (i < 0) return null;
+      return { ...dump, nodes: dump.nodes.map((n, k) => (k === i ? { ...n, ...withEdges({ ...n.deviceEdges, right: n.deviceEdges.right + px }, scale) } : n)) };
+    }
+    case 'applied-changed':
+    case 'applied-missing': {
+      const i = dump.nodes.findIndex((n) => Object.keys(n.applied).length > 0);
+      if (i < 0) return null;
+      const n = dump.nodes[i] as DumpNode;
+      const k = Object.keys(n.applied).sort()[0] as string;
+      const applied: { [key: string]: JsonValue } = { ...n.applied };
+      if (fault === 'applied-missing') delete applied[k];
+      else applied[k] = changedValue(n.applied[k] as JsonValue);
+      return { ...dump, nodes: dump.nodes.map((x, j) => (j === i ? { ...x, applied } : x)) };
+    }
+    case 'channel-delta-1': {
+      const i = ctx.passingSamples[0];
+      if (dump.pixels === null || i === undefined) return null;
+      const samples = dump.pixels.samples.map((x, j) => (j === i ? { ...x, rgba: x.rgba.map((v, c) => (c === 0 ? (v === 255 ? 254 : v + 1) : v)) } : x));
+      return { ...dump, pixels: { ...dump.pixels, samples } };
+    }
+    case 'missing-node': {
+      const parents = new Set(dump.nodes.map((n) => n.parent));
+      const i = dump.nodes.findIndex((n) => n.parent !== null && n.kind !== 'anonymous' && !parents.has(n.id));
+      if (i < 0) return null;
+      return { ...dump, nodes: dump.nodes.filter((_, j) => j !== i) };
+    }
+    case 'snap-disabled': {
+      const abs = absoluteRects(ctx.engine);
+      const unsnapped = (id: string, fallback: { frame: DumpFrame; deviceEdges: DumpEdges }): { frame: DumpFrame; deviceEdges: DumpEdges } => {
+        const a = abs.get(id);
+        if (a === undefined) return fallback;
+        const s = LU_PER_PX * scale;
+        return {
+          frame: { x: a.x / s, y: a.y / s, width: a.width / s, height: a.height / s },
+          deviceEdges: { left: Math.trunc(a.x / LU_PER_PX), top: Math.trunc(a.y / LU_PER_PX), right: Math.trunc((a.x + a.width) / LU_PER_PX), bottom: Math.trunc((a.y + a.height) / LU_PER_PX) },
+        };
+      };
+      const nodes = dump.nodes.map((n) => ({ ...n, ...unsnapped(n.id, n), lines: n.lines.map((l, j) => ({ ...l, ...unsnapped(`${n.id}:line${j}`, l) })) }));
+      const planted = { ...dump, nodes };
+      return JSON.stringify(planted.nodes) === JSON.stringify(dump.nodes) ? null : planted;
+    }
+    case 'break-shifted': {
+      const i = dump.nodes.findIndex((n) => n.lines.length >= 2 && n.lines[0]?.end !== null && n.lines[1]?.start !== null && (n.lines[0]?.end ?? 0) > (n.lines[0]?.start ?? 0) + 1);
+      if (i < 0) return null;
+      const n = dump.nodes[i] as DumpNode;
+      const lines = n.lines.map((l, j) => (j === 0 ? { ...l, end: (l.end as number) - 1 } : j === 1 ? { ...l, start: (l.start as number) - 1 } : l));
+      return { ...dump, nodes: dump.nodes.map((x, j) => (j === i ? { ...x, lines } : x)) };
+    }
+  }
+}

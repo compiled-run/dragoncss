@@ -13,9 +13,9 @@ const SPACE = 0x20;
 const ZWSP = 0x200b;
 
 /** One code point of the formatting context, the leaf it belongs to and its code point index in that leaf. */
-type Char = { readonly leaf: number; readonly at: number; readonly ch: string; readonly cp: number };
+export type Char = { readonly leaf: number; readonly at: number; readonly ch: string; readonly cp: number };
 
-type Run = {
+export type Run = {
   readonly leaves: readonly TextLeaf[];
   readonly chars: readonly Char[];
   readonly wrap: boolean;
@@ -28,7 +28,7 @@ type Run = {
 };
 
 /** A line: chars [start, end), where end includes the spaces that end the line; [start, visibleEnd) is what the line shows. */
-type Line = { readonly start: number; readonly end: number; readonly visibleEnd: number };
+export type Line = { readonly start: number; readonly end: number; readonly visibleEnd: number };
 
 /** UAX #9: in an rtl paragraph these code points keep logical order without reordering (strong L letters, space, U+200B). */
 export function isRtlSafe(text: string): boolean {
@@ -64,7 +64,7 @@ function checkRtlText(box: LayoutBox, leaves: readonly TextLeaf[]): void {
 }
 
 // CSS2 §10.8: the leaves of one inline formatting context must share their font and line-height (no inline elements yet).
-function buildRun(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[]): Run {
+export function buildRun(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[]): Run {
   const first = leaves[0] as TextLeaf;
   if (directionOf(ctx, box) === 'rtl') checkRtlText(box, leaves);
   for (const t of leaves) {
@@ -170,7 +170,7 @@ function cachedWidth(ctx: Ctx, run: Run, start: number, end: number): LU {
 }
 
 // css-text-3 §5: greedy line breaking at soft wrap opportunities; a segment wider than the line overflows it alone.
-function breakLines(ctx: Ctx, run: Run, available: LU): Line[] {
+export function breakLines(ctx: Ctx, run: Run, available: LU): Line[] {
   // Planted fault breakOffByOne: a line accepts one more glyph advance than fits, so breaks land one glyph late.
   const glyph = ctx.measurer.measure('X', (run.leaves[0] as TextLeaf).font);
   const slack = ctx.faults.breakOffByOne && glyph.ok ? glyph.measure.width : ZERO;

@@ -1,0 +1,20 @@
+{
+  "case": "position-absolute-shrink-to-fit",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"s1:text0","lines":[[0,16]]},
+    {"id":"s2:text0","lines":[[0,3],[3,7],[7,9]]},
+    {"id":"s3:text0","lines":[[0,4],[4,6]]},
+    {"id":"s4:text0","lines":[[0,3],[3,7],[7,9]]},
+    {"id":"s5:text0","lines":[[0,2]]},
+    {"id":"s6:text0","lines":[[0,15],[15,20]]},
+    {"id":"r1:text0","lines":[[0,16]]},
+    {"id":"r2:text0","lines":[[0,3],[3,7],[7,9]]},
+    {"id":"r3:text0","lines":[[0,4],[4,6]]},
+    {"id":"r4:text0","lines":[[0,3],[3,7],[7,9]]},
+    {"id":"r6:text0","lines":[[0,15],[15,20]]},
+    {"id":"m1:text0","lines":[[0,3],[3,7],[7,9]]},
+    {"id":"m2:text0","lines":[[0,4]]},
+    {"id":"m3:text0","lines":[[0,2]]}
+  ]
+}

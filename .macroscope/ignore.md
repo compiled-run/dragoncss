@@ -55,11 +55,17 @@ packages/wpt/expectations/**
 examples/*/chrome/**
 **/*.generated.ts
 packages/layout/src/script-data.ts
+packages/dragon/src/profiles/web.ts
+packages/dragon/src/profiles/ios.ts
+packages/dragon/src/profiles/android.ts
+packages/dragon/test/data/grid-corpus-declarations.json
+packages/dragon/test/data/grid-fuzz-corpus.json
 packages/layout/rt-oracle/**
 packages/layout/rt-vectors/**
 packages/layout/break-vectors/**
 packages/parity/expected-breaks/**
 packages/parity/expected-pixels/**
+packages/parity/out/**
 packages/dragon/test/fonts/captures/**
 packages/dragon/test/fonts/reference/**
 packages/dragon/test/forms/chrome-145/**
@@ -79,6 +85,24 @@ docs/research/writing-mode-spike/probe/**
 docs/research/skia-aa-oracle/**
 docs/research/skia-oracle/**
 docs/research/dtxt/widths.json
+# General shapes, so a new capture directory is skipped without an edit here
+**/captures/**
+**/reftest-captures/**
+**/chrome-145/**
+**/probe/**
+**/generated/**
+**/out/**
+**/vectors/**
+**/*-vectors/**
+**/*-oracle/**
+**/expected-*/**
+**/*.generated.*
+packages/translate/corpus*.json
+packages/layout/test/fixtures/linebreak/*.json
+examples/*/dragon/north-star-check.json
+docs/research/**/*.json
+docs/research/**/*.md
+docs/research/**/assets/**
 
 # === Dragon: not code ===
 design/**

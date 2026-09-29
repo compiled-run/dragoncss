@@ -1,0 +1,12 @@
+{
+  "case": "flex-column-text-wrap",
+  "dpr": 3,
+  "texts": [
+    {"id":"a:text0","lines":[[0,6],[6,11]]},
+    {"id":"b:text0","lines":[[0,4],[4,8],[8,10]]},
+    {"id":"c:text0","lines":[[0,3],[3,10]]},
+    {"id":"d:text0","lines":[[0,3],[3,5]]},
+    {"id":"e:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"f:text0","lines":[[0,4]]}
+  ]
+}

@@ -1,0 +1,6 @@
+.app { display: flex; flex-direction: column; row-gap: var(--gap); width: var(--w); padding: var(--gap); background-color: var(--bg); }
+.app[ui-theme="dark"] { --fg: #eeeeee; --bg: #111111; }
+.app[ui-dense] { --gap: 2px; --w: 100px; }
+.row { display: flex; column-gap: var(--gap); border-bottom: 1px solid var(--fg); }
+.chip { flex: var(--chip, 1 1 0px); height: 8px; background-color: var(--fg); }
+.label { color: var(--fg); }

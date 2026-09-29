@@ -1,0 +1,7 @@
+{
+  "case": "overflow-hidden-bfc",
+  "dpr": 3,
+  "texts": [
+    {"id":"txt:text0","lines":[[0,3],[3,6],[6,9],[9,11]]}
+  ]
+}

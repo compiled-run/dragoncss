@@ -1,0 +1,10 @@
+{
+  "case": "tree-projected-text#0-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"card/head:text0","lines":[[0,6],[6,8]]},
+    {"id":"card/head:text1","lines":[[0,3]]},
+    {"id":"note:text0","lines":[[0,3],[3,5]]},
+    {"id":"card/content:text0","lines":[[0,6],[6,8]]}
+  ]
+}

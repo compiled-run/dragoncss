@@ -1,0 +1,13 @@
+{
+  "case": "text-line-height-multi-line",
+  "dpr": 3,
+  "texts": [
+    {"id":"normal:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"num:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"num12:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"px:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"neg5:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"neg7:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"big:text0","lines":[[0,3],[3,6],[6,8]]}
+  ]
+}

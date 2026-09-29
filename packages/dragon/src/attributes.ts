@@ -1,0 +1,61 @@
+// Element attributes: every attribute is element data for selector matching (analysis/link.ts, analysis/match.ts), but only a
+// rendering-neutral attribute compiles without a diagnostic. An attribute is neutral when HTML §15 (Rendering) gives it no
+// presentational hint and no UA style rule on the supported tags, and a parity fixture pair proves it: the same tree with and
+// without the attribute gives identical Chrome captures in both directions (packages/parity/src/fixture-groups/attributes.ts).
+
+export type NeutralAttribute = {
+  /** An exact name, or a prefix ending in "-" for a family (data-*, aria-*, ui-*). */
+  readonly name: string;
+  /** Tags on which the attribute is not neutral, and so stays refused. */
+  readonly exceptOn: readonly string[];
+  /** Why HTML §15 gives it no rendering on the supported tags. */
+  readonly html: string;
+  /** The parity fixture that carries it; its pair without the attribute is attr-neutral-none. */
+  readonly proof: string;
+};
+
+export const NEUTRAL_ATTRIBUTES: readonly NeutralAttribute[] = [
+  { name: 'id', exceptOn: [], html: 'HTML §15 has no rule or presentational hint keyed on id; it only names the element (HTML §3.2.6).', proof: 'attr-neutral-id' },
+  { name: 'data-', exceptOn: [], html: 'HTML §3.2.6.6: custom data attributes are for the page\'s scripts and styles; HTML §15 has no rule keyed on them.', proof: 'attr-neutral-data' },
+  { name: 'aria-', exceptOn: [], html: 'ARIA attributes (HTML §3.2.8) expose accessibility semantics; HTML §15 has no rule keyed on them.', proof: 'attr-neutral-aria' },
+  { name: 'role', exceptOn: [], html: 'role (HTML §3.2.8) is accessibility semantics; HTML §15 has no rule keyed on it.', proof: 'attr-neutral-role' },
+  { name: 'title', exceptOn: [], html: 'title (HTML §3.2.6.1) is advisory information shown as a tooltip; HTML §15 has no rule keyed on it.', proof: 'attr-neutral-title' },
+  { name: 'ui-', exceptOn: [], html: 'ui-* is Dragon\'s state-attribute convention; HTML defines no such attribute, so HTML §15 has no rule keyed on it.', proof: 'attr-neutral-ui' },
+  { name: 'rel', exceptOn: ['a', 'area', 'link'], html: 'rel is defined only on a, area, link and form (HTML §4.6.6); HTML §15 styles only hyperlinks, so elsewhere it has no rendering.', proof: 'attr-neutral-rel' },
+  { name: 'target', exceptOn: ['a', 'area', 'link'], html: 'target is defined only on a, area and form (HTML §4.6.5); HTML §15 styles only hyperlinks, so elsewhere it has no rendering.', proof: 'attr-neutral-target' },
+];
+
+/** The package that owns the rendering effect of a refused attribute. */
+const OWNERS: Readonly<Record<string, string>> = {
+  type: 'the form-control package FORM-a',
+  min: 'the form-control package FORM-a',
+  max: 'the form-control package FORM-a',
+  value: 'the form-control package FORM-a',
+  src: 'the replaced-element package REPL',
+  alt: 'the replaced-element package REPL',
+  width: 'the replaced-element package REPL',
+  height: 'the replaced-element package REPL',
+  href: 'the inline and link package INL1 (an href makes the :link UA rules apply)',
+  lang: 'the text package TXT1-C (lang feeds locale font fallback)',
+  dir: 'the bidi package (dir sets direction and unicode-bidi)',
+  hidden: 'the display package (hidden applies display: none)',
+  style: 'the style-attribute package SOV',
+};
+
+// HTML lowercases attribute names, so a name with ASCII uppercase would not match its lowercased selector as it does in Chrome.
+const matchesName = (entry: NeutralAttribute, name: string): boolean =>
+  !/[A-Z]/.test(name) && (entry.name.endsWith('-') ? name.startsWith(entry.name) && name.length > entry.name.length : name === entry.name);
+
+/** The neutral-table entry that admits this attribute on this tag, or undefined. */
+export function neutralAttribute(tag: string, name: string): NeutralAttribute | undefined {
+  return NEUTRAL_ATTRIBUTES.find((e) => matchesName(e, name) && !e.exceptOn.includes(tag));
+}
+
+/** null when the attribute is rendering-neutral on the tag; otherwise why it is refused, naming the package that owns its effect. */
+export function attributeRefusal(tag: string, name: string): string | null {
+  if (neutralAttribute(tag, name) !== undefined) return null;
+  const owner = (Object.hasOwn(OWNERS, name) ? OWNERS[name] : undefined) ?? ((name === 'rel' || name === 'target') ? 'the inline and link package INL1 (on a hyperlink it changes link behaviour)' : null);
+  return owner === null
+    ? 'its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)'
+    : `its rendering effect belongs to ${owner}`;
+}

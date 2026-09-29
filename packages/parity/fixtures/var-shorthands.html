@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; --m: 4px 8px; --p: 2px; --b: 3px dashed #00aa00; --bt: 2px solid; }
+.box { width: 50px; height: 20px; background-color: #ddd; }
+.a { margin: var(--m); padding: var(--p) 6px; border: var(--b); }
+.b { margin: var(--bad); margin-left: 9px; }
+.c { margin-left: 9px; margin: var(--bad); }
+.d { border-top: var(--bt); border-bottom: var(--bw, 1px) var(--bs, solid) var(--bc, #ff0000); }
+.e { --pad: 1px 2px 3px; padding: var(--pad); margin: var(--m) !important; margin-top: 0; }
+.f { border-width: var(--bwidths, 1px 2px); border-style: var(--bstyle, solid); border-color: var(--bcolor, #111 #222 #333 #444); }
+.g { padding: var(--p) var(--p) var(--p); border: var(--bad) solid; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="box a"></div>
+<div data-dragon-id="b" class="box b"></div>
+<div data-dragon-id="c" class="box c"></div>
+<div data-dragon-id="d" class="box d"></div>
+<div data-dragon-id="e" class="box e"></div>
+<div data-dragon-id="f" class="box f"></div>
+<div data-dragon-id="g" class="box g"></div>
+</body>
+</html>

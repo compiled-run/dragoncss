@@ -1,0 +1,16 @@
+{
+  "case": "overflow-hidden-flex-min-size",
+  "dpr": 3,
+  "texts": [
+    {"id":"r1a:text0","lines":[[0,8]]},
+    {"id":"r1b:text0","lines":[[0,8]]},
+    {"id":"r2a:text0","lines":[[0,5],[5,9]]},
+    {"id":"r2b:text0","lines":[[0,5]]},
+    {"id":"r2c:text0","lines":[[0,3]]},
+    {"id":"r3a:text0","lines":[[0,6]]},
+    {"id":"r3b:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"c2b:text0","lines":[[0,5]]},
+    {"id":"r4a:text0","lines":[[0,12]]},
+    {"id":"r4b:text0","lines":[[0,3]]}
+  ]
+}

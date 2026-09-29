@@ -1,0 +1,1005 @@
+{
+"source": "GRID G0 edge declarations: values Chrome 145's parser treats differently from the webref grammar, shorthand forms, serialization cases, escaped identifiers, subgrid as a line name and non-BMP area names (probed with Chrome 145.0.7632.6; PR #23 round 1 appended the last three groups).",
+"declarations": [
+[
+"grid-template-columns",
+"repeat(auto-fill, 1fr)"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, auto)"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, minmax(auto, 10px))"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, minmax(10px, 1fr))"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, 10px) 1fr"
+],
+[
+"grid-template-columns",
+"[span] 10px"
+],
+[
+"grid-template-columns",
+"[auto] 10px"
+],
+[
+"grid-template-columns",
+"[A b] 10PX [c] MinMax(1Em, 1FR)"
+],
+[
+"grid-template-columns",
+"[a] [b] 10px"
+],
+[
+"grid-template-columns",
+"repeat(2, [a] 10px) [b]"
+],
+[
+"grid-template-columns",
+"repeat(2, 10px) repeat(2, 1fr)"
+],
+[
+"grid-template-columns",
+"subgrid"
+],
+[
+"grid-template-columns",
+"subgrid [a] repeat(2, [b])"
+],
+[
+"grid-template-rows",
+"masonry"
+],
+[
+"grid-template-columns",
+"1in 1cm 1pt"
+],
+[
+"grid-template-columns",
+"0"
+],
+[
+"grid-template-columns",
+"fit-content(10%)"
+],
+[
+"grid-template-columns",
+"calc(10px + 5%)"
+],
+[
+"grid-template-columns",
+"repeat(10001, 1px)"
+],
+[
+"grid-template-columns",
+"1e1px"
+],
+[
+"grid-template-columns",
+"none"
+],
+[
+"grid-template-areas",
+"\"a b\" \"c d\""
+],
+[
+"grid-template-areas",
+"\"a b\" \"c\""
+],
+[
+"grid-template-areas",
+"\"a b\" \"b a\""
+],
+[
+"grid-template-areas",
+"\"a a\" \"a b\""
+],
+[
+"grid-template-areas",
+"\"\""
+],
+[
+"grid-template-areas",
+"\"   \""
+],
+[
+"grid-template-areas",
+"\"a.b\""
+],
+[
+"grid-template-areas",
+"\"a...b  ..c\""
+],
+[
+"grid-template-areas",
+"\"a # b\""
+],
+[
+"grid-template-areas",
+"\"1a é-x\""
+],
+[
+"grid-template-areas",
+"'a' 'b'"
+],
+[
+"grid-auto-flow",
+"dense"
+],
+[
+"grid-auto-flow",
+"dense column"
+],
+[
+"grid-auto-flow",
+"row"
+],
+[
+"grid-auto-columns",
+"1fr 10px"
+],
+[
+"grid-auto-columns",
+"MIN-CONTENT"
+],
+[
+"grid-row-start",
+"span 2"
+],
+[
+"grid-row-start",
+"a 2"
+],
+[
+"grid-row-start",
+"a span 2"
+],
+[
+"grid-row-start",
+"2 span"
+],
+[
+"grid-row-start",
+"span a"
+],
+[
+"grid-row-start",
+"span 1"
+],
+[
+"grid-row-start",
+"-1"
+],
+[
+"grid-row-start",
+"Foo"
+],
+[
+"grid-row-start",
+"span"
+],
+[
+"grid-row-start",
+"span auto"
+],
+[
+"grid-row-start",
+"0"
+],
+[
+"grid-row-start",
+"span -1"
+],
+[
+"grid-row-start",
+"1.0"
+],
+[
+"grid-row-start",
+"default"
+],
+[
+"grid-row",
+"a"
+],
+[
+"grid-row",
+"a / b"
+],
+[
+"grid-row",
+"2"
+],
+[
+"grid-row",
+"span 2 / 3"
+],
+[
+"grid-column",
+"a 2"
+],
+[
+"grid-area",
+"a"
+],
+[
+"grid-area",
+"a / b"
+],
+[
+"grid-area",
+"a / b / c"
+],
+[
+"grid-area",
+"1 / a"
+],
+[
+"grid-area",
+"1 / 2 / 3 / 4"
+],
+[
+"grid-template",
+"none"
+],
+[
+"grid-template",
+"10px 1fr / auto"
+],
+[
+"grid-template",
+"\"a b\" 10px \"c d\" / 1fr 2fr"
+],
+[
+"grid-template",
+"[x] \"a b\" 10px [y] [z] \"c d\" [w] / [p] 1fr [q] 2fr"
+],
+[
+"grid-template",
+"\"a b\" \"c d\""
+],
+[
+"grid-template",
+"\"a b\" repeat(2, 10px)"
+],
+[
+"grid-template",
+"\"a b\" 10px / repeat(2, 1fr)"
+],
+[
+"grid-template",
+"\"a b\" 10px / repeat(auto-fill, 10px)"
+],
+[
+"grid-template",
+"\"a b\" \"c\""
+],
+[
+"grid",
+"none"
+],
+[
+"grid",
+"10px / 20px"
+],
+[
+"grid",
+"auto-flow / 10px"
+],
+[
+"grid",
+"auto-flow dense 10px / 1fr"
+],
+[
+"grid",
+"dense auto-flow / 1fr"
+],
+[
+"grid",
+"10px / auto-flow 20px"
+],
+[
+"grid",
+"10px / auto-flow dense"
+],
+[
+"grid",
+"\"a\" 10px / 1fr"
+],
+[
+"grid",
+"repeat(2, 10px) / auto-flow minmax(1px, 2px) 3px"
+],
+[
+"justify-items",
+"legacy"
+],
+[
+"justify-items",
+"legacy left"
+],
+[
+"justify-items",
+"center legacy"
+],
+[
+"justify-items",
+"safe center"
+],
+[
+"justify-items",
+"first baseline"
+],
+[
+"justify-items",
+"baseline first"
+],
+[
+"justify-items",
+"last baseline"
+],
+[
+"justify-items",
+"anchor-center"
+],
+[
+"justify-items",
+"normal"
+],
+[
+"justify-items",
+"left"
+],
+[
+"justify-items",
+"unsafe left"
+],
+[
+"justify-self",
+"anchor-center"
+],
+[
+"justify-self",
+"safe normal"
+],
+[
+"justify-self",
+"unsafe self-end"
+],
+[
+"justify-self",
+"first baseline"
+],
+[
+"justify-self",
+"auto"
+],
+[
+"grid-gap",
+"1px 2px"
+],
+[
+"grid-row-gap",
+"1px"
+],
+[
+"grid-column-gap",
+"normal"
+],
+[
+"grid-template-columns",
+"repeat(auto-fit, [a] 10px [b] minmax(20%, 1fr))"
+],
+[
+"grid-template-columns",
+"[a] repeat(auto-fill, 10px) [b] 20px"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, fit-content(10px))"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, minmax(min-content, 10px))"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, minmax(1fr, 10px))"
+],
+[
+"grid-template-columns",
+"2em 1rem 1Q 1pc 1mm"
+],
+[
+"grid-template-columns",
+"fit-content(2em)"
+],
+[
+"grid-template-rows",
+"[a b c] auto [d]"
+],
+[
+"grid-template-rows",
+"[] 10px"
+],
+[
+"grid-template-rows",
+"[Inherit] 10px"
+],
+[
+"grid-template-rows",
+"[default] 10px"
+],
+[
+"grid-template-rows",
+"repeat(2, [SPAN] 10px)"
+],
+[
+"grid-auto-rows",
+"minmax(1em, max-content) fit-content(5px)"
+],
+[
+"grid-auto-rows",
+"1fr"
+],
+[
+"grid-auto-rows",
+"auto"
+],
+[
+"grid-template-areas",
+"\"a\\62 c\""
+],
+[
+"grid-template-areas",
+"\". .\" \". .\""
+],
+[
+"grid-template-areas",
+"\"a b\" \"a b\" \"c c\""
+],
+[
+"grid-template-areas",
+"\"a b a\""
+],
+[
+"grid-template-areas",
+"\"_x -y\""
+],
+[
+"grid-row-start",
+"span 2 a"
+],
+[
+"grid-row-start",
+"span a 2"
+],
+[
+"grid-row-start",
+"2 a span"
+],
+[
+"grid-row-start",
+"a span"
+],
+[
+"grid-row-start",
+"-2 a"
+],
+[
+"grid-row-start",
+"+3"
+],
+[
+"grid-row-start",
+"AUTO"
+],
+[
+"grid-row-start",
+"Span 2"
+],
+[
+"grid-row-start",
+"span 2 3"
+],
+[
+"grid-row-start",
+"a b"
+],
+[
+"grid-row-end",
+"span -2 a"
+],
+[
+"grid-column",
+"a / span b"
+],
+[
+"grid-column",
+"span a"
+],
+[
+"grid-column",
+"2 a / -1"
+],
+[
+"grid-area",
+"a / 2 / span 3 / b"
+],
+[
+"grid-area",
+"auto"
+],
+[
+"grid-area",
+"a/b/c/d"
+],
+[
+"grid-template",
+"auto 1fr / auto 1fr auto"
+],
+[
+"grid-template",
+"[a] \"x\" [b] / 10px"
+],
+[
+"grid-template",
+"\"x\" [b] [c] \"y\" 5px [d]"
+],
+[
+"grid-template",
+"\"a\" [span] \"b\""
+],
+[
+"grid-template",
+"\"a b\" / [x] 10px [y]"
+],
+[
+"grid-template",
+"repeat(auto-fill, 10px) / 1fr"
+],
+[
+"grid-template",
+"subgrid / 10px"
+],
+[
+"grid",
+"\"a\" \"b\" / 1fr"
+],
+[
+"grid",
+"auto-flow 1fr / 100px"
+],
+[
+"grid",
+"none / auto-flow 1fr"
+],
+[
+"grid",
+"auto-flow dense / auto-flow dense"
+],
+[
+"grid",
+"10px / 20px dense"
+],
+[
+"grid",
+"auto-flow repeat(2, 10px) / 1fr"
+],
+[
+"justify-items",
+"legacy right"
+],
+[
+"justify-items",
+"right legacy"
+],
+[
+"justify-items",
+"stretch"
+],
+[
+"justify-items",
+"self-end"
+],
+[
+"justify-items",
+"flex-start"
+],
+[
+"justify-items",
+"unsafe normal"
+],
+[
+"justify-items",
+"safe legacy"
+],
+[
+"justify-self",
+"left"
+],
+[
+"justify-self",
+"safe right"
+],
+[
+"justify-self",
+"last baseline"
+],
+[
+"justify-self",
+"baseline last"
+],
+[
+"justify-self",
+"normal"
+],
+[
+"justify-self",
+"stretch"
+],
+[
+"justify-self",
+"unsafe stretch"
+],
+[
+"grid-auto-flow",
+"column"
+],
+[
+"grid-auto-flow",
+"row dense"
+],
+[
+"grid-auto-flow",
+"dense row"
+],
+[
+"grid-gap",
+"5%"
+],
+[
+"grid-row-gap",
+"normal"
+],
+[
+"grid-template-columns",
+"[\\31 foo] 10px"
+],
+[
+"grid-template-columns",
+"[\\-] 10px"
+],
+[
+"grid-template-columns",
+"[a\\ b] 10px"
+],
+[
+"grid-template-columns",
+"[\\61uto] 10px"
+],
+[
+"grid-template-columns",
+"[subgrid] 10px"
+],
+[
+"grid-template-columns",
+"[masonry] 10px"
+],
+[
+"grid-template-columns",
+"repeat(2, [subgrid] 10px)"
+],
+[
+"grid-template-columns",
+"-10px"
+],
+[
+"grid-template-columns",
+"repeat(0, 10px)"
+],
+[
+"grid-template-columns",
+"repeat(99999999999, 1px)"
+],
+[
+"grid-template-columns",
+"repeat(2.0, 1px)"
+],
+[
+"grid-template-columns",
+"minmax(10px, auto)"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, minmax(10px, auto))"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, minmax(min-content, 1fr))"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, 10px) repeat(auto-fit, 10px)"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, 10px) repeat(2, 1fr)"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, 10px) minmax(auto, 10px)"
+],
+[
+"grid-template-columns",
+"1e-7px"
+],
+[
+"grid-template-columns",
+"[\\1F600] 1px"
+],
+[
+"grid-template-columns",
+"[é] 1px"
+],
+[
+"grid-template-columns",
+"[revert-layer] 1px"
+],
+[
+"grid-template-columns",
+"[none] 1px"
+],
+[
+"grid-row-start",
+"subgrid"
+],
+[
+"grid-row-start",
+"masonry"
+],
+[
+"grid-row-start",
+"\\31 foo"
+],
+[
+"grid-row-start",
+"2 \\31 foo"
+],
+[
+"grid-row-start",
+"\\73 pan 2"
+],
+[
+"grid-row-start",
+"\\61uto"
+],
+[
+"grid-row-start",
+"100000"
+],
+[
+"grid-row-start",
+"-100000"
+],
+[
+"grid-row-start",
+"99999999999"
+],
+[
+"grid-row-start",
+"span 99999999999"
+],
+[
+"grid-row-start",
+"1e2"
+],
+[
+"grid-row-start",
+"none"
+],
+[
+"grid-row-start",
+"dense"
+],
+[
+"grid-row-start",
+"é"
+],
+[
+"grid-area",
+"subgrid"
+],
+[
+"grid-area",
+"subgrid / a"
+],
+[
+"grid-column",
+"\\31 foo"
+],
+[
+"grid-template-areas",
+"\"😀\""
+],
+[
+"grid-template-areas",
+"\"a😀b c\""
+],
+[
+"grid-template-areas",
+"\"\\1F600 x\""
+],
+[
+"grid-template-areas",
+"\"a\\\"b\""
+],
+[
+"grid-template-areas",
+"\"...\""
+],
+[
+"grid-template-areas",
+"\"a\" \"\""
+],
+[
+"grid-template-areas",
+"\"a b\""
+],
+[
+"grid-template",
+"\"😀 x\" 10px / 1fr 1fr"
+],
+[
+"grid-template",
+"[\\31 x] \"a\" [y] / [\\32 z] 1fr"
+],
+[
+"grid-template",
+"\"a\" subgrid"
+],
+[
+"grid",
+"subgrid / auto-flow 10px"
+],
+[
+"grid",
+"auto-flow / subgrid"
+],
+[
+"grid",
+"[subgrid] 10px / auto-flow"
+],
+[
+"grid-auto-rows",
+"minmax(1px, 1fr) repeat(2, 1px)"
+],
+[
+"justify-self",
+"legacy"
+],
+[
+"justify-items",
+"legacy legacy"
+],
+[
+"justify-items",
+"left right"
+],
+[
+"justify-self",
+"safe left"
+],
+[
+"justify-self",
+"unsafe first baseline"
+],
+[
+"justify-self",
+"first last baseline"
+],
+[
+"grid-template",
+"[a] \"x\" [a] [a] \"y\" / 1fr"
+],
+[
+"grid-row",
+"span a"
+],
+[
+"grid-area",
+"a 2 / b"
+],
+[
+"grid-area",
+"\\61 "
+],
+[
+"grid",
+"\\61uto-flow / 10px"
+],
+[
+"grid",
+"10px / \\61uto-flow \\64 ense"
+],
+[
+"grid-template-columns",
+"repeat(\\61uto-fill, 10px)"
+],
+[
+"grid-template-columns",
+"\\6d in-content 10px"
+],
+[
+"grid-template-columns",
+"[\\73 pan] 10px"
+],
+[
+"grid-template-columns",
+"[\\64 efault] 10px"
+],
+[
+"grid-template-columns",
+"[\\69nherit] 10px"
+],
+[
+"grid-template-columns",
+"\\73ubgrid"
+],
+[
+"grid-template-rows",
+"\\6eone"
+],
+[
+"grid-auto-columns",
+"\\61uto"
+],
+[
+"grid-auto-flow",
+"\\64 ense"
+],
+[
+"justify-self",
+"\\63 enter"
+],
+[
+"justify-items",
+"\\6c egacy \\6c eft"
+],
+[
+"justify-self",
+"\\66irst baseline"
+],
+[
+"grid-row-start",
+"\\69nherit"
+],
+[
+"grid-row-start",
+"\\64 efault"
+],
+[
+"grid-row-start",
+"span \\61uto"
+],
+[
+"grid-row",
+"\\61uto / 2"
+],
+[
+"grid-row",
+"\\73ubgrid"
+],
+[
+"grid-template-areas",
+"\"\\2e a\""
+]
+]
+}

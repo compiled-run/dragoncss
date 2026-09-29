@@ -198,7 +198,7 @@ describe('(c) pixel samples against synthetic images', () => {
 
 describe('dump faults', () => {
   it('every planted dump fault has a failing check above, the same list for both targets', () => {
-    expect(DUMP_FAULTS).toEqual(['edge-plus-2-device-px', 'edge-plus-1-device-px', 'applied-changed', 'applied-missing', 'channel-delta-1', 'missing-node', 'snap-disabled']);
+    expect(DUMP_FAULTS).toEqual(['edge-plus-2-device-px', 'edge-plus-1-device-px', 'applied-changed', 'applied-missing', 'channel-delta-1', 'missing-node', 'snap-disabled', 'break-shifted']);
     for (const t of nativeTargets()) expect(t.plantedFaults).toBe(DUMP_FAULTS);
   });
 });

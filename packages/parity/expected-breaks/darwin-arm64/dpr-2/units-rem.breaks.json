@@ -1,0 +1,12 @@
+{
+  "case": "units-rem",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"b:text0","data":"XX XXX X XXXX XX","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],"blank":[13]},
+    {"id":"c:text0","data":"XX X XXX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"d:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"f1:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"k2:text0","data":"XXX XX","lines":1,"units":[0,0,0,0,0,0],"blank":[]}
+  ]
+}

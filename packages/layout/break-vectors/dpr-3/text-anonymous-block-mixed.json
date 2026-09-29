@@ -1,0 +1,14 @@
+{
+  "case": "text-anonymous-block-mixed",
+  "dpr": 3,
+  "texts": [
+    {"id":"m1:text0","lines":[[0,5]]},
+    {"id":"m1:text1","lines":[[0,6],[6,8]]},
+    {"id":"m2:text0","lines":[[0,5],[5,10],[10,12]]},
+    {"id":"b2:text0","lines":[[0,3],[3,6]]},
+    {"id":"m2:text1","lines":[[0,4]]},
+    {"id":"m3:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"m4:text0","lines":[[0,3],[3,5]]},
+    {"id":"m4:text1","lines":[[0,3],[3,4]]}
+  ]
+}

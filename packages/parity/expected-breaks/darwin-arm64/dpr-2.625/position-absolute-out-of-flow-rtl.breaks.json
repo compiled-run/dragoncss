@@ -1,0 +1,9 @@
+{
+  "case": "position-absolute-out-of-flow-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"b1a:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"b1c:text0","data":"Y","lines":1,"units":[0],"blank":[]}
+  ]
+}

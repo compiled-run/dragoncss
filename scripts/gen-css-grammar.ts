@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../packages/dragon/src/css/properties/grid.ts';
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
 
 type WebrefEntry = {
@@ -35,6 +36,9 @@ const SUBSET = [
   'justify-content', 'align-items', 'align-self', 'align-content', 'gap', 'row-gap', 'column-gap',
   'font-size', 'font-family', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
   ...LOGICAL_SHORTHANDS,
+
+  // Grid (css-grid-2), after the writing-mode family.
+  ...GRID_LONGHANDS, ...GRID_SHORTHANDS,
 ] as const;
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));

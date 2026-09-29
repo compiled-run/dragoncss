@@ -12,7 +12,7 @@ type Path = readonly LinkedElement[];
 
 /**
  * The HTML document's <head>: the first element child of <html> in every web rendering, and absent from the logical tree. It is
- * modelled as an element with no class symbols, no ui-* attributes and unknown, non-empty contents.
+ * modelled as an element with no class symbols, no attributes and unknown, non-empty contents.
  */
 const HEAD: LinkedElement = { kind: 'element', address: ':head', node: null as never, instance: '', owner: '', tag: 'head', classes: [], attributes: new Map(), children: [] };
 
@@ -34,13 +34,29 @@ const withLast = (path: Path, el: LinkedElement): Path => [...path.slice(0, -1),
 const asciiLower = (s: string): string => s.replace(/[A-Z]/g, (c) => c.toLowerCase());
 const WHITE = /[ \t\n\r\f]/;
 
-/** Selectors-4 §6.1-§6.3 (case-sensitive unless the i flag is given, since ui-* values are not in HTML's case-insensitive list). */
-function attributeMatches(el: LinkedElement, a: AttributeTest): boolean {
+/**
+ * HTML §4.16.2: attributes whose values compare ASCII case-insensitively in selectors on HTML elements, keyed by name whatever
+ * the element. Blink 145.0.7632.6 HTMLDocument::IsCaseSensitiveAttribute (html_document.cc) holds the same 46 names, and
+ * scripts/capture-selector-validity.ts observes each in Chrome (OBSERVED_ATTRIBUTE_CASE_INSENSITIVE).
+ */
+export const HTML_CASE_INSENSITIVE_ATTRIBUTES: ReadonlySet<string> = new Set([
+  'accept', 'accept-charset', 'align', 'alink', 'axis', 'bgcolor', 'charset', 'checked', 'clear', 'codetype', 'color', 'compact',
+  'declare', 'defer', 'dir', 'direction', 'disabled', 'enctype', 'face', 'frame', 'hreflang', 'http-equiv', 'lang', 'language', 'link',
+  'media', 'method', 'multiple', 'nohref', 'noresize', 'noshade', 'nowrap', 'readonly', 'rel', 'rev', 'rules', 'scope', 'scrolling',
+  'selected', 'shape', 'target', 'text', 'type', 'valign', 'valuetype', 'vlink',
+]);
+
+/**
+ * Selectors-4 §6.1-§6.3: case-sensitive unless the i flag is given or the name is in HTML's case-insensitive list. The planted
+ * fault attributeCaseAlwaysSensitive ignores the list.
+ */
+function attributeMatches(el: LinkedElement, a: AttributeTest, faults: CompilerFaults): boolean {
   const actual = el.attributes.get(a.name);
   if (actual === undefined) return false;
   if (a.matcher === null || a.value === null) return true;
-  const v = a.caseInsensitive ? asciiLower(actual) : actual;
-  const w = a.caseInsensitive ? asciiLower(a.value) : a.value;
+  const fold = a.caseInsensitive || (!faults.attributeCaseAlwaysSensitive && HTML_CASE_INSENSITIVE_ATTRIBUTES.has(a.name));
+  const v = fold ? asciiLower(actual) : actual;
+  const w = fold ? asciiLower(a.value) : a.value;
   switch (a.matcher) {
     case '=':
       return v === w;
@@ -97,13 +113,15 @@ function pseudoMatches(path: Path, rule: Rule, p: PseudoClass, faults: CompilerF
   }
 }
 
-// A class selector matches only class symbols of the rule's own owner and sheet (docs/api.md §3.1); [ui-*] tests the attribute.
+// A class selector matches only class symbols of the rule's own owner and sheet (docs/api.md §3.1); #id and [name] test the
+// element's attributes (every element carrying the id matches, as in Chrome).
 function compoundMatches(path: Path, rule: Rule, c: Compound, faults: CompilerFaults): boolean {
   const el = last(path);
   if (c.tag !== null && c.tag !== el.tag) return false;
+  if (!c.ids.every((id) => el.attributes.get('id') === id)) return false;
   const classes = faults.variantCollapse && c.classes.length >= 2 ? c.classes.slice(0, -1) : c.classes;
   if (!classes.every((k) => el.classes.some((s) => s.owner === rule.owner && s.sheet === rule.sheet && s.name === k))) return false;
-  if (!c.attributes.every((a) => attributeMatches(el, a))) return false;
+  if (!c.attributes.every((a) => attributeMatches(el, a, faults))) return false;
   return c.pseudos.every((p) => pseudoMatches(path, rule, p, faults));
 }
 
@@ -181,10 +199,14 @@ function hasMatches(rule: Rule, sel: Selector, anchorPath: Path, faults: Compile
  */
 export function selectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], index: number, part: number, faults: CompilerFaults): boolean {
   if (index < 0 || chain[index] === undefined) return false;
+  if (sel.dropped && !faults.invalidSelectorListKept) return false;
   return matchFrom(rule, sel, chain.slice(0, index + 1), part, faults, () => true);
 }
 
-/** The specificity the cascade uses: the parsed one, or the planted :is() fault's (its first argument's instead of the largest). */
+/**
+ * The specificity the cascade uses: the parsed one, or a planted fault's: :is() with its first argument's instead of the largest,
+ * or ids counted as classes.
+ */
 export function specificityFor(sel: Selector, faults: CompilerFaults): Specificity {
-  return faults.isSpecificityFirstArgument ? specificityOf(sel, true) : sel.specificity;
+  return faults.isSpecificityFirstArgument || faults.idSpecificityAsClass ? specificityOf(sel, faults.isSpecificityFirstArgument, faults.idSpecificityAsClass) : sel.specificity;
 }

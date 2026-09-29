@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.c { width: 200px; border: 1px solid #000; margin-bottom: 2px; }
+.b { height: 4px; width: 50px; margin-inline-start: 10px; padding-inline-end: 6px; background-color: #888; }
+.defr { --d: rtl; }
+.defl { --d: ltr; }
+.use { direction: var(--d); }
+.local { --d: rtl; direction: var(--d); }
+.localbeat { --d: ltr; direction: var(--d); }
+.fb { direction: var(--missing, rtl); }
+.fbl { direction: var(--missing, ltr); }
+.miss { direction: var(--missing); }
+.bad { --bad: 10px; direction: var(--bad); }
+.imp { direction: var(--d) !important; }
+.imp.imp { direction: ltr; }
+.inh { --d: inherit; direction: var(--d); }
+.ini { --d: initial; direction: var(--d, rtl); }
+.late { direction: rtl; direction: var(--d); }
+.lit { direction: var(--d); direction: ltr; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="c defr"><div data-dragon-id="a1" class="use"><div data-dragon-id="a1a" class="b"></div></div><div data-dragon-id="a2" class="b use"></div><div data-dragon-id="a3"><div data-dragon-id="a3a" class="b use"></div></div><div data-dragon-id="a4" class="b defl use"></div><div data-dragon-id="a5" class="b inh"></div></div>
+<div data-dragon-id="c2" class="c"><div data-dragon-id="b1" class="b local"></div><div data-dragon-id="b2" class="local"><div data-dragon-id="b2a" class="b"></div><div data-dragon-id="b2b" class="b localbeat"></div><div data-dragon-id="b2c" class="b use"></div></div><div data-dragon-id="b3" class="b fb"></div><div data-dragon-id="b4" class="b ini"></div></div>
+<div data-dragon-id="c3" class="c local"><div data-dragon-id="d1" class="b miss"></div><div data-dragon-id="d2" class="b bad"></div><div data-dragon-id="d3" class="b fbl"></div><div data-dragon-id="d4" class="b defl imp"></div><div data-dragon-id="d5" class="b defl late"></div><div data-dragon-id="d6" class="b lit"></div></div>
+<div data-dragon-id="c4" class="c defl use"><div data-dragon-id="e1" class="b miss"></div><div data-dragon-id="e2" class="b defr use"></div><div data-dragon-id="e3" class="b bad defr"></div></div>
+</body>
+</html>

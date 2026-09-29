@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.t { width: 10px; height: 4px; margin-bottom: 1px; background-color: #eee; }
+.t[rel=FOO] { width: 20px; }
+.t[rel~=BAR] { margin-left: 3px; }
+.t[target=_BLANK] { height: 6px; }
+.t[data-x=FOO] { width: 30px; }
+.t[data-x=foo i] { margin-left: 5px; }
+.t[title=T] { background-color: #f00; }
+.t[aria-label^=AB] { height: 8px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="r1" class="t" rel="foo"></div>
+<div data-dragon-id="r2" class="t" rel="FOO"></div>
+<div data-dragon-id="r3" class="t" rel="fo"></div>
+<div data-dragon-id="r4" class="t" rel="x bar"></div>
+<div data-dragon-id="g1" class="t" target="_blank"></div>
+<div data-dragon-id="g2" class="t" target="blank"></div>
+<div data-dragon-id="d1" class="t" data-x="foo"></div>
+<div data-dragon-id="d2" class="t" data-x="FOO"></div>
+<div data-dragon-id="d3" class="t" data-x="Foo"></div>
+<div data-dragon-id="i1" class="t" title="t"></div>
+<div data-dragon-id="i2" class="t" title="T"></div>
+<div data-dragon-id="a1" class="t" aria-label="abc"></div>
+<div data-dragon-id="a2" class="t" aria-label="ABc"></div>
+</body>
+</html>

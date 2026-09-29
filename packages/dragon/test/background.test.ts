@@ -134,10 +134,11 @@ describe('background shorthand: refusals', () => {
     }
   });
 
-  it('!important on background is DRAGON_UNSUPPORTED_IMPORTANT with an edit removing it', () => {
+  it('!important on background is accepted and marks the declaration important (css-cascade-5 §6.4; parity background-important)', () => {
     const { declaration, diagnostics } = declare('red !important');
-    expect(declaration).toBeNull();
-    expect(diagnostics.map((d) => [d.code, d.message])).toEqual([['DRAGON_UNSUPPORTED_IMPORTANT', '!important on background is not supported']]);
+    expect(diagnostics).toEqual([]);
+    expect(declaration?.important).toBe(true);
+    expect(declaration?.longhands.find((l) => l.property === 'background-color')?.value).toMatchObject({ kind: 'color' });
   });
 
   it('a refused background blocks both targets through the public compile', () => {
