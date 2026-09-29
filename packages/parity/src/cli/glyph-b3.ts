@@ -10,22 +10,26 @@
 // pixel-reference.test.ts pins, and exits.
 import { readFileSync, writeFileSync } from 'node:fs';
 import type { LaneFailure } from '../device-lanes.ts';
+import type { B3Reference, Bucket } from '../glyph-b3.ts';
+import { b3Bucket, BUCKETS } from '../glyph-b3.ts';
 import { BACKEND_OF, nativeCases } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
 import type { BottomScanlines } from '../pixel-reference.ts';
 import { BOTTOM_SCANLINES_PATH, bottomScanlines, caseSamples, glyphLines } from '../pixel-reference.ts';
-import type { GlyphBox, SamplePoint } from '../samples.ts';
-import { CLEAR_SUFFIX, GLYPH_EDGE_RULE, glyphClearance, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
 import type { NativeTarget } from '../targets.ts';
 import { deviceDprs } from '../targets.ts';
 
 const args = process.argv.slice(2);
-const only = args.includes('--target') ? (args[args.indexOf('--target') + 1] as NativeTarget) : null;
+const targetAt = args.indexOf('--target');
+const onlyArg = targetAt < 0 ? null : (args[targetAt + 1] ?? '');
+if (onlyArg !== null && onlyArg !== 'ios' && onlyArg !== 'android') {
+  console.error(`parity:glyph-b3: --target takes ios or android, not ${JSON.stringify(onlyArg)}`);
+  process.exit(2);
+}
+const only: NativeTarget | null = onlyArg;
 const before = args.includes('--before-clearance');
 const itemise = args.includes('--itemise');
 const log = (s: string): void => console.log(`parity:glyph-b3: ${s}`);
-const BUCKETS = ['glyph-position', 'glyph-ink-edge', 'dropped', 'fringe', 'clear'] as const;
-type Bucket = (typeof BUCKETS)[number];
 
 const cases = nativeCases();
 if (args.includes('--write-bottom-pins')) {
@@ -48,7 +52,7 @@ if (args.includes('--write-bottom-pins')) {
 }
 let fringeTotal = 0;
 for (const target of (['ios', 'android'] as const).filter((t) => only === null || t === only)) {
-  const reference = new Map<string, { points: readonly SamplePoint[]; run: readonly SamplePoint[]; glyphs: readonly GlyphBox[] }>();
+  const reference = new Map<string, B3Reference>();
   const dropped: Record<string, number> = {};
   const rescued: Record<string, number> = {};
   for (const dpr of deviceDprs(target)) {
@@ -72,34 +76,11 @@ for (const target of (['ios', 'android'] as const).filter((t) => only === null |
   const named: string[] = [];
   let pixel = 0;
   for (const f of failures) {
-    if (f.lane !== 'device-pixels' || f.kind !== 'pixel' || f.node === null) continue;
+    if (f.lane !== 'device-pixels' || f.kind !== 'pixel') continue;
     pixel++;
     const ref = reference.get(`${f.case}@${f.dpr}`);
     if (ref === undefined) throw new Error(`${f.case}@${f.dpr} is not a case of the ${target} corpus`);
-    const at = / at (\d+),(\d+):/.exec(f.detail);
-    // The pixels the check compares: a glyph-edge scanline Chrome shows no edge across is compared by colour at its two ends only.
-    // A run before the clearance compared every pixel of such a scanline.
-    const comparedOf = (ps: readonly SamplePoint[], endsOnly: boolean): SamplePoint[] => {
-      const line = ps.filter((p) => p.rule === f.node);
-      const ends = endsOnly && GLYPH_EDGE_RULE.test(f.node ?? '') && at !== null ? [line[0], line[line.length - 1]].filter((p): p is SamplePoint => p !== undefined) : line;
-      return at === null ? ends : ends.filter((p) => p.x === Number(at[1]) && p.y === Number(at[2]));
-    };
-    const failed = comparedOf(ref.run, !before);
-    const now = comparedOf(ref.points, true);
-    const key = (ps: readonly SamplePoint[]): string => ps.map((p) => `${p.x},${p.y}`).join(';');
-    const clearance = (ps: readonly SamplePoint[]): Bucket => (Math.min(...ps.flatMap((p) => ref.glyphs.map((g) => glyphClearance(p.x, p.y, g)))) < SAMPLE_INSET_DEVICE_PX ? 'fringe' : 'clear');
-    // In a list from before the clearance, a colour failure whose pixel the fallback now keeps as "<rule>:clear".
-    const restoredAt = before && at !== null ? ref.points.filter((p) => p.rule === `${f.node}${CLEAR_SUFFIX}` && p.x === Number(at[1]) && p.y === Number(at[2])) : [];
-    let bucket: Bucket;
-    let restored = false;
-    if (/^(centre|bottom):/.test(f.node)) bucket = 'glyph-position';
-    else if (failed.length === 0 && !f.node.endsWith(CLEAR_SUFFIX)) throw new Error(`${target} ${f.case}@${f.dpr} ${f.node}: the failure names no generated point${before ? '' : '; a list from before the glyph clearance needs --before-clearance'}`);
-    else if (f.node.endsWith(CLEAR_SUFFIX)) bucket = clearance(ref.points.filter((p) => p.rule === f.node && (at === null || (p.x === Number(at[1]) && p.y === Number(at[2])))));
-    else if (key(failed) !== key(now)) {
-      restored = restoredAt.length > 0;
-      bucket = restored ? clearance(restoredAt) : 'dropped';
-    } else if (at === null && GLYPH_EDGE_RULE.test(f.node)) bucket = 'glyph-ink-edge';
-    else bucket = clearance(failed);
+    const { bucket, restored } = b3Bucket(f, ref, before);
     counts[bucket]++;
     if ((bucket !== 'clear' && bucket !== 'dropped') || (itemise && (bucket === 'dropped' || restored))) named.push(`${bucket}${restored ? ' (restored)' : ''} ${f.case}@${f.dpr} ${f.detail}`);
   }

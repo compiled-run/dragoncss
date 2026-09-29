@@ -86,7 +86,7 @@ describe('device records', () => {
 });
 
 describe('the device CLIs refuse an unknown --target', () => {
-  it.each([['native-devices.ts', 'foo'], ['native-devices.ts', null], ['lanes.ts', 'web']] as const)('%s --target %s exits 2 before running anything', (cli, value) => {
+  it.each([['native-devices.ts', 'foo'], ['native-devices.ts', null], ['lanes.ts', 'web'], ['glyph-b3.ts', 'web'], ['glyph-b3.ts', null]] as const)('%s --target %s exits 2 before running anything', (cli, value) => {
     const r = spawnSync(process.execPath, ['--conditions=dragon-internal', repoPath(`packages/parity/src/cli/${cli}`), '--target', ...(value === null ? [] : [value])], { encoding: 'utf8' });
     expect(r.status).toBe(2);
     expect(r.stderr).toMatch(/--target takes ios or android/);

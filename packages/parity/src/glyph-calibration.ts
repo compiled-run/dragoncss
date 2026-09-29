@@ -193,3 +193,30 @@ export function calibrationManifestText(m: CalibrationManifest): string {
   const sets = m.sets.map((s) => `    {\n      "dpr": ${JSON.stringify(s.dpr)},\n      "flags": ${JSON.stringify(s.flags)},\n      "width": ${s.width},\n      "height": ${s.height},\n      "sha256": ${JSON.stringify(s.sha256)},\n      "cells": [\n${s.cells.map((c) => `        ${JSON.stringify(c)}`).join(',\n')}\n      ]\n    }`).join(',\n');
   return `{\n  "chrome": ${JSON.stringify(m.chrome)},\n  "capture": ${JSON.stringify(m.capture)},\n  "sets": [\n${sets}\n  ]\n}\n`;
 }
+
+/**
+ * What a --recheck capture changes against the committed manifest text: the Chrome version, the capture, and per DPR the flags, size,
+ * sha256 and every cell (the probed pen and baseline included). Empty when the re-capture reproduces the manifest.
+ */
+export function calibrationRecheck(captured: CalibrationManifest, committedText: string): string[] {
+  const committed = JSON.parse(committedText) as CalibrationManifest;
+  const out: string[] = [];
+  if (captured.chrome !== committed.chrome) out.push(`Chrome ${captured.chrome}, the manifest ${committed.chrome}`);
+  if (captured.capture !== committed.capture) out.push(`capture ${captured.capture}, the manifest ${committed.capture}`);
+  const dprs = [...new Set([...captured.sets, ...committed.sets].map((s) => s.dpr))];
+  for (const dpr of dprs) {
+    const a = captured.sets.find((s) => s.dpr === dpr);
+    const b = committed.sets.find((s) => s.dpr === dpr);
+    if (a === undefined || b === undefined) {
+      out.push(`DPR ${dpr}: ${a === undefined ? 'not re-captured' : 'not in the manifest'}`);
+      continue;
+    }
+    for (const k of ['flags', 'width', 'height', 'sha256'] as const) if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) out.push(`DPR ${dpr}: ${k} ${JSON.stringify(a[k])}, the manifest ${JSON.stringify(b[k])}`);
+    if (a.cells.length !== b.cells.length) out.push(`DPR ${dpr}: ${a.cells.length} cells, the manifest ${b.cells.length}`);
+    a.cells.forEach((c, i) => {
+      if (JSON.stringify(c) !== JSON.stringify(b.cells[i])) out.push(`DPR ${dpr}: cell ${i} ${JSON.stringify(c)}, the manifest ${JSON.stringify(b.cells[i] ?? null)}`);
+    });
+  }
+  if (out.length === 0 && calibrationManifestText(captured) !== committedText) out.push('the manifest text differs from its canonical form');
+  return out;
+}

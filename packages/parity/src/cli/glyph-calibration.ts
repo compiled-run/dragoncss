@@ -2,13 +2,14 @@
 // device size and x phase (glyph-calibration.ts), by CDP Page.captureScreenshot with chrome.ts flags (imported, unchanged) and the
 // zoom guard, into packages/parity/expected-glyphs/<platform>/dpr-<d>.png with a manifest of the cells (the glyph boxes from
 // Chrome's pen and baseline, probed per cell). Prints each set's worst fringe extent, x centre error and bottom edge error; exits 1
-// when any exceeds its limit. --recheck re-captures every set and requires it byte-identical to the committed PNG; nothing is written.
+// when any exceeds its limit. --recheck re-captures every set and requires it byte-identical to the committed PNG, and the manifest
+// it would write equal to the committed one (calibrationRecheck); nothing is written.
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { chromeArgsAt, CHROME_VERSION, launchChrome, openPage } from '../chrome.ts';
 import { zoomGuard } from '../dpr.ts';
 import type { CalibrationSet } from '../glyph-calibration.ts';
-import { CALIBRATION_DPRS, calibrationHtml, calibrationManifestText, capturedCell, GLYPH_BOTTOM_ERROR_MAX_DEVICE_PX, GLYPH_CENTRE_ERROR_MAX_DEVICE_PX, GLYPH_FRINGE_MAX_DEVICE_PX, glyphCalibrationDir, glyphCalibrationManifestPath, glyphCalibrationPath, overlappingCells, planCells, strayInk, summarise } from '../glyph-calibration.ts';
+import { CALIBRATION_DPRS, calibrationHtml, calibrationManifestText, calibrationRecheck, capturedCell, GLYPH_BOTTOM_ERROR_MAX_DEVICE_PX, GLYPH_CENTRE_ERROR_MAX_DEVICE_PX, GLYPH_FRINGE_MAX_DEVICE_PX, glyphCalibrationDir, glyphCalibrationManifestPath, glyphCalibrationPath, overlappingCells, planCells, strayInk, summarise } from '../glyph-calibration.ts';
 import { decodePng, PIXEL_CAPTURE } from '../pixel-reference.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
 
@@ -68,7 +69,12 @@ for (const dpr of CALIBRATION_DPRS) {
     await browser.close();
   }
 }
-if (!recheck) {
+if (recheck) {
+  const diffs = calibrationRecheck({ chrome: CHROME_VERSION, capture: PIXEL_CAPTURE, sets }, readFileSync(glyphCalibrationManifestPath(platform), 'utf8'));
+  for (const d of diffs) log(`--recheck manifest: ${d}`);
+  log(`--recheck: the manifest is ${diffs.length === 0 ? 'reproduced' : `DIFFERENT (${diffs.length})`}`);
+  if (diffs.length > 0) exit = 1;
+} else {
   writeFileSync(glyphCalibrationManifestPath(platform), calibrationManifestText({ chrome: CHROME_VERSION, capture: PIXEL_CAPTURE, sets }));
   log(`wrote ${sets.length} sets and ${glyphCalibrationManifestPath(platform)}`);
 }

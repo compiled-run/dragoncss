@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { chromeArgsAt, CHROME_VERSION } from '../src/chrome.ts';
 import type { CalibrationManifest } from '../src/glyph-calibration.ts';
-import { CALIBRATION_DPRS, CALIBRATION_PHASES, CALIBRATION_SIZES_DEVICE_PX, fringeExtent, GLYPH_BOTTOM_ERROR_MAX_DEVICE_PX, GLYPH_CENTRE_ERROR_MAX_DEVICE_PX, GLYPH_FRINGE_MAX_DEVICE_PX, glyphCalibrationManifestPath, glyphCalibrationPath, overlappingCells, planCells, positionErrors, strayInk } from '../src/glyph-calibration.ts';
+import { CALIBRATION_DPRS, calibrationRecheck, CALIBRATION_PHASES, CALIBRATION_SIZES_DEVICE_PX, fringeExtent, GLYPH_BOTTOM_ERROR_MAX_DEVICE_PX, GLYPH_CENTRE_ERROR_MAX_DEVICE_PX, GLYPH_FRINGE_MAX_DEVICE_PX, glyphCalibrationManifestPath, glyphCalibrationPath, overlappingCells, planCells, positionErrors, strayInk } from '../src/glyph-calibration.ts';
 import { BACKEND_OF, nativeCases } from '../src/native-host.ts';
 import { decodePng, glyphLines, PIXEL_CAPTURE } from '../src/pixel-reference.ts';
 import { SAMPLE_INSET_DEVICE_PX } from '../src/samples.ts';
@@ -80,6 +80,20 @@ describe('the committed glyph calibration set', () => {
       expect(over).toEqual([]);
     });
   }
+});
+
+describe('--recheck compares the manifest, not only the PNGs', () => {
+  it('the committed manifest reproduces itself; a changed cell, sha, flag or missing set is reported', () => {
+    const text = readFileSync(glyphCalibrationManifestPath(), 'utf8');
+    const m = JSON.parse(text) as CalibrationManifest;
+    expect(calibrationRecheck(m, text)).toEqual([]);
+    const set = m.sets[0] as CalibrationManifest['sets'][number];
+    const cells = set.cells.map((c, i) => (i === 3 ? { ...c, glyphs: c.glyphs.map((g) => ({ ...g, bottom: g.bottom + 1 / 64 })) } : c));
+    expect(calibrationRecheck({ ...m, sets: [{ ...set, cells }, ...m.sets.slice(1)] }, text)).toEqual([expect.stringMatching(new RegExp(`^DPR ${set.dpr}: cell 3 `))]);
+    expect(calibrationRecheck({ ...m, sets: [{ ...set, sha256: '0' }, ...m.sets.slice(1)] }, text)).toEqual([expect.stringMatching(new RegExp(`^DPR ${set.dpr}: sha256 "0"`))]);
+    expect(calibrationRecheck({ ...m, sets: [{ ...set, flags: [] }, ...m.sets.slice(1)] }, text)[0]).toMatch(/: flags \[\]/);
+    expect(calibrationRecheck({ ...m, sets: m.sets.slice(1) }, text)).toEqual([`DPR ${set.dpr}: not re-captured`]);
+  });
 });
 
 describe('the corpus against the calibration', () => {
