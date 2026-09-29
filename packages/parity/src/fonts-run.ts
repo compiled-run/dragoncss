@@ -109,10 +109,13 @@ export async function runFontFixture(f: FontFixture, browser: Browser, opts: Fon
       continue;
     }
     const compiledHtml = c.compiledHtml(css, classOf);
-    const dual = compareDual(await opts.authored(c), await captureFixture(browser, c.id, compiledHtml, c.environment), colors, textColors);
+    const authored = await opts.authored(c);
+    const dual = compareDual(authored, await captureFixture(browser, c.id, compiledHtml, c.environment), colors, textColors);
+    // Every element whose own text Chrome lays out must have its face listed, so no text node escapes the face check.
+    const unlisted = [...new Set(authored.nodes.filter((n) => n.kind === 'text').map((n) => n.id.replace(/:text\d+$/, '')))].filter((id) => !ids.includes(id));
     const authoredFaces = await facesOf(browser, c.authoredHtml, c, ids, referenceTransform(f));
     const compiledFaces = await facesOf(browser, compiledHtml, c, ids, undefined);
-    const problems = [...dual.problems];
+    const problems = [...dual.problems, ...unlisted.map((id) => `${id} has text but no expected face`)];
     ids.forEach((id, i) => {
       const a = authoredFaces[i] ?? [];
       const b = compiledFaces[i] ?? [];

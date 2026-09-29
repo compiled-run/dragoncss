@@ -107,6 +107,10 @@ describe('planted fonts faults fail their named case', () => {
     const o = await runFixture(spec, browser, { authored: () => Promise.reject(new Error('a reject renders nothing')), faults: { ...NO_FAULTS, unmappedFamilyAccepted: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
     expect(o.status).toBe('fail');
   });
+  it('a text element with no expected face fails its case', async () => {
+    const cases = await runFontFixture({ ...fixture('fonts-platform'), faces: {} }, browser, { authored: committedFontAuthored });
+    for (const c of cases) expect(c.reason, c.id).toMatch(/text has text but no expected face/);
+  }, 120_000);
   for (const [fault, id] of planted) {
     it(`${fault} fails ${id}`, async () => {
       const cases = await runFontFixture(fixture(id), browser, { authored: committedFontAuthored, faults: { ...NO_FAULTS, [fault]: true } });
