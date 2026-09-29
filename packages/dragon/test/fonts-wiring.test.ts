@@ -133,10 +133,11 @@ describe('font-family resolution', () => {
 
   it('without a web row the pinned key is unsupported; resolved support queries read the font key the case used', () => {
     const input = fontInput('.a { font-family: sans-serif }');
-    const blocked = createProject({ projectId: 'test', targets: { web: {} }, fonts: MAP }).compile(input);
+    const without = { ...webProfile, rows: webProfile.rows.filter((r) => r.feature !== 'font-family:<pinned>') };
+    const blocked = createProjectWith({ projectId: 'test', targets: { web: {} }, fonts: MAP }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', supportProfiles: { web: without, ios: iosProfile } }).compile(input);
     expect(blocked.diagnostics.map((d) => [d.code, d.profile?.feature])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'font-family:<pinned>']]);
     const row = { feature: 'font-family:<pinned>', context: 'text-in-block/ltr', status: 'exact' as const, proofs: [] };
-    const web = { ...webProfile, rows: [...webProfile.rows, row] };
+    const web = { ...without, rows: [...without.rows, row] };
     const c = createProjectWith({ projectId: 'test', targets: { web: {} }, fonts: MAP }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', supportProfiles: { web, ios: iosProfile } }).compile(input);
     expect(c.diagnostics).toEqual([]);
     const answer = querySupport({ kind: 'resolved', result: c, target: 'web', instance: DOC, node: 'a', property: 'font-family', assignment: [] });
