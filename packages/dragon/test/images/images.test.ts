@@ -1,0 +1,235 @@
+// REPL-0: the images module against the Chrome 145 captures of scripts/capture-image-data.ts.
+import { readdirSync, readFileSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
+import { describe, expect, it } from 'vitest';
+import {
+  buildImageManifest, compareNaturalSizes, decodePng, faultsOfPlant, IMAGE_PLANTS, imageRefusal, manifestDigestInput, NO_IMAGE_FAULTS,
+  parseDataUrl, parseJpeg, parsePng, readImageHeader, sniffImage, typeOfPath,
+} from '../../src/images/index.ts';
+import type { ImagePlant, NaturalCapture } from '../../src/images/index.ts';
+
+const here = (p: string): URL => new URL(p, import.meta.url);
+const json = <T>(name: string): T => JSON.parse(readFileSync(here(`./chrome-145/${name}`), 'utf8')) as T;
+const corpus = (file: string): Uint8Array => new Uint8Array(readFileSync(here(`./corpus/${file}`)));
+const inflate = (d: Uint8Array): Uint8Array => new Uint8Array(inflateSync(d));
+
+const natural = json<NaturalCapture>('natural.json');
+type Pixels = { images: { file: string; width: number; height: number; rgba: string }[] };
+const pixels = json<Pixels>('pixels.json');
+type Offset = ['left' | 'right' | 'top' | 'bottom', number, number];
+type Probe = {
+  box: { width: number; height: number };
+  cases: { dpr: number; ratio: string; natural: [number, number]; fit: string; position: { css: string; x: Offset; y: Offset }; rect: [number, number, number, number]; anchors: string[] }[];
+};
+const probe = json<Probe>('probe.json');
+
+// Chrome stores a decoded image premultiplied (SkMulDiv255Round) and getImageData unpremultiplies it in Skia's float32 raster
+// pipeline: load x float32(1/255), times float32(1 / alpha), clamp to 1, x 255, round half to even. Opaque pixels pass unchanged.
+const f = Math.fround;
+const INV255 = f(1 / 255);
+const halfEven = (v: number): number => {
+  const fl = Math.floor(v);
+  const d = v - fl;
+  return d > 0.5 ? fl + 1 : d < 0.5 ? fl : fl % 2 === 0 ? fl : fl + 1;
+};
+function throughCanvas(rgba: Uint8Array): Uint8Array {
+  const out = new Uint8Array(rgba.length);
+  for (let i = 0; i < rgba.length; i += 4) {
+    const a = rgba[i + 3] as number;
+    out[i + 3] = a;
+    for (let k = 0; k < 3; k++) {
+      const c = rgba[i + k] as number;
+      if (a === 255) out[i + k] = c;
+      else if (a === 0) out[i + k] = 0;
+      else {
+        const p = Math.round((c * a) / 255);
+        out[i + k] = halfEven(f(Math.min(1, f(f(p * INV255) * f(1 / f(a * INV255)))) * 255));
+      }
+    }
+  }
+  return out;
+}
+
+describe('natural size (R4)', () => {
+  it('the header natural size equals Chrome naturalWidth/naturalHeight for every PNG and JPEG of the corpus', () => {
+    const r = compareNaturalSizes(natural, corpus);
+    expect(r.mismatches).toEqual([]);
+    const readable = natural.images.filter((i) => readImageHeader(corpus(i.file), i.type) !== null);
+    expect(r.compared).toBe(readable.length);
+    expect(r.compared).toBe(64);
+  });
+  it.each(Object.keys(IMAGE_PLANTS) as ImagePlant[])('plant %s breaks at least one pair', (plant) => {
+    expect(compareNaturalSizes(natural, corpus, faultsOfPlant(plant)).mismatches.length).toBeGreaterThan(0);
+  });
+  it('pins the measured rules: EXIF orientation swaps 5-8, density correction needs inch and matching pixel dimensions, pHYs is ignored', () => {
+    const chrome = (file: string): [number, number] => {
+      const i = natural.images.find((x) => x.file === file);
+      return [i?.chrome.naturalWidth ?? -1, i?.chrome.naturalHeight ?? -1];
+    };
+    expect(chrome('orientation-5.jpg')).toEqual([32, 48]);
+    expect(chrome('orientation-9-invalid.jpg')).toEqual([48, 32]);
+    expect(chrome('res-144dpi.jpg')).toEqual([24, 16]);
+    expect(chrome('res-144dpi-orientation-6.jpg')).toEqual([16, 24]);
+    expect(chrome('res-144dpi-no-pixel-size.jpg')).toEqual([48, 32]);
+    expect(chrome('res-144dpi-centimetre.jpg')).toEqual([48, 32]);
+    expect(chrome('res-96dpi.jpg')).toEqual([36, 24]);
+    expect(chrome('rgba8-phys-144dpi.png')).toEqual([13, 7]);
+    expect(chrome('png-served-as-jpeg.jpg')).toEqual([13, 7]);
+  });
+});
+
+describe('PNG decode (R3)', () => {
+  const accepted = pixels.images.filter((p) => p.file.endsWith('.png') && imageRefusal(corpus(p.file), 'image/png') === null);
+  it('covers every accepted corpus PNG', () => {
+    const all = natural.images.filter((i) => i.file.endsWith('.png') && imageRefusal(corpus(i.file), i.type) === null).map((i) => i.file);
+    expect(accepted.map((p) => p.file)).toEqual(all);
+    expect(all.length).toBe(34);
+  });
+  it.each(accepted.map((p) => [p.file, p] as const))('%s: the TS decode equals Chrome getImageData byte for byte', (_file, p) => {
+    const d = decodePng(corpus(p.file), inflate);
+    expect([d.width, d.height]).toEqual([p.width, p.height]);
+    const chrome = new Uint8Array(Buffer.from(p.rgba, 'base64'));
+    expect(Buffer.from(throughCanvas(d.data)).equals(Buffer.from(chrome))).toBe(true);
+  });
+  it('opaque pixels equal getImageData with no canvas step, over every accepted PNG', () => {
+    let opaque = 0;
+    for (const p of accepted) {
+      const d = decodePng(corpus(p.file), inflate).data;
+      const chrome = Buffer.from(p.rgba, 'base64');
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] !== 255) continue;
+        opaque += 1;
+        expect([d[i], d[i + 1], d[i + 2], d[i + 3]]).toEqual([chrome[i], chrome[i + 1], chrome[i + 2], chrome[i + 3]]);
+      }
+    }
+    expect(opaque).toBeGreaterThan(1000);
+  });
+});
+
+describe('refusals (R1-R3)', () => {
+  it('the refusal list over the corpus is exact', () => {
+    const files = readdirSync(here('./corpus')).sort();
+    const refused = Object.fromEntries(files.flatMap((file) => {
+      const r = imageRefusal(corpus(file), typeOfPath(file));
+      return r === null ? [] : [[file, r.package]];
+    }));
+    const jpegs = files.filter((f) => f.endsWith('.jpg') && f !== 'png-served-as-jpeg.jpg');
+    expect(refused).toEqual({
+      ...Object.fromEntries(jpegs.map((f) => [f, 'REPL-j'])),
+      'canvas.webp': 'REPL-g', 'colours.gif': 'REPL-g', 'colours.bmp': 'REPL-g', 'rgba8-in.ico': 'REPL-g', 'rect.svg': 'REPL-svg',
+      'not-an-image.png': null,
+      'grey16.png': 'REPL-c', 'rgb16.png': 'REPL-c', 'grey-alpha16.png': 'REPL-c', 'rgba16.png': 'REPL-c',
+      'rgb8-gama.png': 'REPL-c', 'rgb8-chrm.png': 'REPL-c', 'rgb8-gama-chrm.png': 'REPL-c', 'rgb8-iccp.png': 'REPL-c', 'rgb8-cicp.png': 'REPL-c',
+      'rgba8-apng.png': 'REPL-an',
+    });
+    expect(jpegs.length).toBe(19);
+  });
+  it('Chrome decodes every refused corpus image but the non-image, so each refusal is a Dragon limit, not a broken image', () => {
+    for (const i of natural.images) expect(i.chrome.decoded, i.file).toBe(i.file !== 'not-an-image.png');
+  });
+});
+
+describe('sniffing (R2)', () => {
+  it('decides by magic bytes, whatever the URL or type says, except SVG which only the type names', () => {
+    expect(sniffImage(corpus('png-served-as-jpeg.jpg'), 'image/jpeg')).toBe('png');
+    expect(sniffImage(corpus('base.jpg'), 'image/png')).toBe('jpeg');
+    expect(sniffImage(corpus('canvas.webp'), null)).toBe('webp');
+    expect(sniffImage(corpus('colours.gif'), null)).toBe('gif');
+    expect(sniffImage(corpus('colours.bmp'), null)).toBe('bmp');
+    expect(sniffImage(corpus('rgba8-in.ico'), null)).toBe('ico');
+    expect(sniffImage(corpus('rect.svg'), 'image/svg+xml; charset=utf-8')).toBe('svg');
+    expect(sniffImage(corpus('rect.svg'), 'image/png')).toBeNull();
+    expect(sniffImage(corpus('rgba8.png'), 'image/svg+xml')).toBe('svg');
+    const avif = Uint8Array.from([0, 0, 0, 24, ...Buffer.from('ftypmif1\0\0\0\0mif1avif')]);
+    expect(sniffImage(avif, null)).toBe('avif');
+    expect(sniffImage(corpus('rgba8.png').subarray(0, 13), 'image/png')).toBeNull();
+  });
+});
+
+describe('PNG and JPEG headers', () => {
+  it('reads the colour chunks, tRNS, interlace and acTL', () => {
+    const facts = (file: string) => {
+      const p = parsePng(corpus(file));
+      if (!p.ok) throw new Error(p.reason);
+      return p.facts;
+    };
+    expect(facts('palette4-trns.png')).toMatchObject({ bitDepth: 4, colourType: 3, hasTrns: true, interlaced: false });
+    expect(facts('rgb8-interlaced.png')).toMatchObject({ interlaced: true });
+    expect(facts('rgba8-srgb-gama-chrm.png')).toMatchObject({ srgbIntent: 0, gama: 45455, hasChrm: true });
+    expect(facts('rgba8-apng.png').animated).toBe(true);
+    expect(facts('rgba8-phys-144dpi.png').phys).toEqual({ x: 5669, y: 5669, unit: 1 });
+    const bad = corpus('rgba8.png').slice();
+    bad[20] = (bad[20] as number) ^ 1;
+    expect(parsePng(bad)).toEqual({ ok: false, reason: 'IHDR CRC mismatch' });
+  });
+  it('reads SOFn, progressive, EXIF in both byte orders and the ICC APP2', () => {
+    const j = parseJpeg(corpus('res-144dpi-orientation-8-big-endian.jpg'));
+    expect(j).toMatchObject({ ok: true, facts: { width: 48, height: 32, sof: 0xc0, progressive: false, hasIcc: true, exif: { orientation: 8, resolutionUnit: 2, resolution: { x: [144, 1], y: [144, 1] }, pixelSize: { width: 24, height: 16 } } } });
+    const sof2 = Uint8Array.from([0xff, 0xd8, 0xff, 0xc2, 0, 11, 8, 0, 3, 0, 5, 1, 1, 0x11, 0, 0xff, 0xda, 0, 2, 0xff, 0xd9]);
+    expect(parseJpeg(sof2)).toMatchObject({ ok: true, facts: { width: 5, height: 3, progressive: true, exif: null } });
+  });
+});
+
+describe('the image manifest (R1)', () => {
+  const png = corpus('rgba8.png');
+  const dataUrl = `data:image/png;base64,${Buffer.from(png).toString('base64')}`;
+  const read = (path: string): Uint8Array => corpus(path.replace(/^covers\//, ''));
+  it('takes data: URLs and mapped files; a remote or unmapped src never yields an entry', () => {
+    const ok = buildImageManifest([dataUrl, 'https://i.ytimg.com/vi/x/maxresdefault.jpg'], { 'https://i.ytimg.com/vi/x/maxresdefault.jpg': 'covers/png-served-as-jpeg.jpg' }, read);
+    expect(ok.ok).toBe(true);
+    if (!ok.ok) return;
+    expect(ok.manifest.images.map((e) => [e.source, e.path, e.format, e.naturalSize, e.refusal])).toEqual([
+      ['data', null, 'png', { width: 13, height: 7 }, null],
+      ['mapped', 'covers/png-served-as-jpeg.jpg', 'png', { width: 13, height: 7 }, null],
+    ]);
+    expect(ok.manifest.images[0]?.hash).toMatch(/^sha256:[0-9a-f]{64}$/);
+    const bad = buildImageManifest(['https://example.com/a.png', '//cdn.example.com/b.png', 'img/c.png', 'data:image/png;base64,@@'], {}, read);
+    expect(bad).toEqual({ ok: false, problems: [
+      { kind: 'remote-image', src: '//cdn.example.com/b.png' },
+      { kind: 'bad-data-url', src: 'data:image/png;base64,@@' },
+      { kind: 'remote-image', src: 'https://example.com/a.png' },
+      { kind: 'unmapped-image', src: 'img/c.png' },
+    ] });
+  });
+  it('the digest input is canonical and independent of the src order', () => {
+    const a = buildImageManifest([dataUrl, 'x.jpg'], { 'x.jpg': 'orientation-6.jpg' }, corpus);
+    const b = buildImageManifest(['x.jpg', dataUrl, 'x.jpg'], { 'x.jpg': 'orientation-6.jpg' }, corpus);
+    if (!a.ok || !b.ok) throw new Error('manifest refused');
+    expect(JSON.stringify(manifestDigestInput(a.manifest))).toBe(JSON.stringify(manifestDigestInput(b.manifest)));
+    expect(a.manifest.images.find((e) => e.src === 'x.jpg')).toMatchObject({ format: 'jpeg', naturalSize: { width: 32, height: 48 }, refusal: { package: 'REPL-j' } });
+  });
+  it('parses data: URLs as the fetch standard does', () => {
+    expect(parseDataUrl('data:,A%20b')).toEqual({ type: null, bytes: Uint8Array.from([0x41, 0x20, 0x62]) });
+    expect(parseDataUrl('data:image/svg+xml;charset=utf-8,<svg/>')?.type).toBe('image/svg+xml;charset=utf-8');
+    expect(parseDataUrl('data:image/png;base64,iVBO Rw==')?.bytes).toEqual(Uint8Array.from([0x89, 0x50, 0x4e, 0x47]));
+    expect(parseDataUrl('data:image/png;base64')).toBeNull();
+  });
+  it('the planted faults move only the natural size', () => {
+    const e = buildImageManifest([dataUrl], {}, corpus, faultsOfPlant('ihdr-swap'));
+    expect(e.ok && e.manifest.images[0]?.naturalSize).toEqual({ width: 7, height: 13 });
+    expect(NO_IMAGE_FAULTS).toEqual({ ihdrSwap: false, exifIgnored: false, densityIgnored: false });
+  });
+});
+
+describe('the quadrant probe (R7)', () => {
+  const offset = ([edge, fraction, px]: Offset, free: number): number => (edge === 'left' || edge === 'top' ? fraction * free + px : free - (fraction * free + px));
+  it('covers fit x position x ratio at DPR 2, 3 and 2.625', () => {
+    expect(probe.cases.length).toBe(5 * 9 * 3 * 3);
+    expect([...new Set(probe.cases.map((c) => c.dpr))]).toEqual([2, 3, 2.625]);
+  });
+  it('every captured destination rect is within 1 device px (GATE_DEVICE_PX) of the css-images-3 object-fit rect', () => {
+    const { width: W, height: H } = probe.box;
+    const off: string[] = [];
+    for (const c of probe.cases) {
+      const [nw, nh] = c.natural;
+      const contain = Math.min(W / nw, H / nh);
+      const scale = ({ contain, cover: Math.max(W / nw, H / nh), none: 1, 'scale-down': Math.min(1, contain) } as Record<string, number>)[c.fit];
+      const dw = scale === undefined ? W : nw * scale;
+      const dh = scale === undefined ? H : nh * scale;
+      const want = [offset(c.position.x, W - dw), offset(c.position.y, H - dh), dw, dh].map((v) => v * c.dpr);
+      const worst = Math.max(...want.map((v, i) => Math.abs(v - (c.rect[i] as number))));
+      if (worst > 1) off.push(`${c.dpr} ${c.ratio} ${c.fit} ${c.position.css}: ${c.rect.join(',')} vs ${want.join(',')}`);
+    }
+    expect(off).toEqual([]);
+  });
+});
