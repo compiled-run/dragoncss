@@ -168,6 +168,22 @@ describe('PNG and JPEG headers', () => {
     const sof2 = Uint8Array.from([0xff, 0xd8, 0xff, 0xc2, 0, 11, 8, 0, 3, 0, 5, 1, 1, 0x11, 0, 0xff, 0xda, 0, 2, 0xff, 0xd9]);
     expect(parseJpeg(sof2)).toMatchObject({ ok: true, facts: { width: 5, height: 3, progressive: true, exif: null } });
   });
+  it('fails a SOF whose length does not match its components, and a frame with no SOS (Chrome 145 fails both)', () => {
+    const soi = [0xff, 0xd8];
+    const sof = (length: number, components: number, extra: number[]): number[] => [0xff, 0xc0, 0, length, 8, 0, 3, 0, 5, components, ...extra];
+    const sos = [0xff, 0xda, 0, 2, 0xff, 0xd9];
+    // Three components declared, none specified (the six-byte header only).
+    expect(parseJpeg(Uint8Array.from([...soi, ...sof(8, 3, []), ...sos]))).toMatchObject({ ok: false });
+    // One component plus three stray bytes.
+    expect(parseJpeg(Uint8Array.from([...soi, ...sof(14, 1, [1, 0x11, 0, 0, 0, 0]), ...sos]))).toMatchObject({ ok: false });
+    expect(parseJpeg(Uint8Array.from([...soi, ...sof(11, 1, [1, 0x11, 0]), ...sos]))).toMatchObject({ ok: true });
+    // A complete frame then EOF, or EOI, before any SOS.
+    expect(parseJpeg(Uint8Array.from([...soi, ...sof(11, 1, [1, 0x11, 0])]))).toEqual({ ok: false, reason: 'no SOS after SOF' });
+    expect(parseJpeg(Uint8Array.from([...soi, ...sof(11, 1, [1, 0x11, 0]), 0xff, 0xd9]))).toEqual({ ok: false, reason: 'no SOS after SOF' });
+    const truncated = corpus('orientation-1.jpg');
+    const sosAt = truncated.findIndex((b, i) => b === 0xff && truncated[i + 1] === 0xda);
+    expect(imageRefusal(truncated.subarray(0, sosAt), 'image/jpeg')?.package).toBeNull();
+  });
 });
 
 describe('the image manifest (R1)', () => {
@@ -203,6 +219,27 @@ describe('the image manifest (R1)', () => {
     expect(parseDataUrl('data:image/svg+xml;charset=utf-8,<svg/>')?.type).toBe('image/svg+xml;charset=utf-8');
     expect(parseDataUrl('data:image/png;base64,iVBO Rw==')?.bytes).toEqual(Uint8Array.from([0x89, 0x50, 0x4e, 0x47]));
     expect(parseDataUrl('data:image/png;base64')).toBeNull();
+  });
+  it('reads a data: URL as Chrome 145 fetches it: fragment dropped, C0 and space stripped at the ends only', () => {
+    // Observed with fetch() in Chrome 145: data:,a?b#c is "a?b"; tabs and newlines inside the body stay; a trailing NBSP stays.
+    expect(parseDataUrl('data:,a?b#c')?.bytes).toEqual(Uint8Array.from([0x61, 0x3f, 0x62]));
+    expect(parseDataUrl('data:,a\tb\nc\rd')?.bytes).toEqual(Uint8Array.from([0x61, 9, 0x62, 10, 0x63, 13, 0x64]));
+    expect(parseDataUrl('\u0001 data:,x \u0002')?.bytes).toEqual(Uint8Array.from([0x78]));
+    expect(parseDataUrl('data:,x\u00a0')?.bytes).toEqual(Uint8Array.from([0x78, 0xc2, 0xa0]));
+    expect(parseDataUrl(`${dataUrl.slice(0, 40)}\n${dataUrl.slice(40)}#frag`)?.bytes).toEqual(png);
+    expect(buildImageManifest([`\u0001${dataUrl}#frag`], {}, read)).toMatchObject({ ok: true, manifest: { images: [{ source: 'data', format: 'png' }] } });
+  });
+  it('decodes a data: URL larger than the engine argument limit', () => {
+    const big = new Uint8Array(1_000_000).fill(7);
+    const parsed = parseDataUrl(`data:;base64,${Buffer.from(big).toString('base64')}`);
+    expect(parsed?.bytes).toEqual(big);
+  });
+  it('an inherited name is not a mapped asset', () => {
+    expect(buildImageManifest(['toString', 'constructor', '__proto__'], {}, read)).toEqual({ ok: false, problems: [
+      { kind: 'unmapped-image', src: '__proto__' },
+      { kind: 'unmapped-image', src: 'constructor' },
+      { kind: 'unmapped-image', src: 'toString' },
+    ] });
   });
   it('the planted faults move only the natural size', () => {
     const e = buildImageManifest([dataUrl], {}, corpus, faultsOfPlant('ihdr-swap'));
