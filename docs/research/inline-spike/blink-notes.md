@@ -197,6 +197,7 @@ At DPR 2.625, a 10px Ahem glyph box is 26/2.625 = 9.9048 px (f3-*, f2-big-font).
     - `overlap-a-over-b` is red.
     - `line2-glyph` is green.
   - f4-overlap-same: line 2's glyph paints over line 1's bottom border (`line1-bottom-border-on-line2-glyph` is green).
+  - Sample x is measured from the inline-start edge, so rtl reads the mirrored point (border-box width - x). Every rtl sample equals its ltr counterpart at all four DPRs. Before T111 the rtl samples read x from the left edge and hit the white page background.
   - The spec's name `NGInlineBoxFragmentPainter` is `InlineBoxFragmentPainter` at this tag.
 
 ## 9. `smaller`, `larger` and the monospace medium size

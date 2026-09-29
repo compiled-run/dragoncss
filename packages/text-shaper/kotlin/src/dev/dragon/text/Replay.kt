@@ -22,10 +22,21 @@ private fun obj(v: Any?): Map<String, Any?> = v as Map<String, Any?>
 @Suppress("UNCHECKED_CAST")
 private fun arr(v: Any?): List<Any?> = v as List<Any?>
 private fun long(v: Any?): Long = (v as JsonNumber).toLong()
-private fun int(v: Any?): Int = long(v).toInt()
 /** Unsigned or signed 32-bit JSON values (feature tag, value, start, end) as the Int the JNI passes through. */
 private fun u32(v: Any?): Int = long(v).toInt()
 private fun f32(v: Any?): Float = (v as JsonNumber).toF32()
+/** A transcript index into items: out of range (negative included) is a bad transcript, not an IndexOutOfBounds. */
+private fun <T> at(items: List<T>, v: Any?, what: String): T {
+    val i = long(v)
+    require(i >= 0 && i < items.size) { "bad transcript: $what $i of ${items.size}" }
+    return items[i.toInt()]
+}
+/** A value the shim takes as uint32 (codepoint, glyph id): outside 0..2^32-1 is a bad transcript. */
+private fun u32of(v: Any?, what: String): Int {
+    val i = long(v)
+    require(i in 0L..0xFFFFFFFFL) { "bad transcript: $what $i" }
+    return i.toInt()
+}
 
 fun sha256Hex(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
@@ -46,7 +57,7 @@ fun replayTranscript(json: String, root: File): ReplayReport {
     val fonts = arr(t["fonts"]).map {
         val f = obj(it)
         DragonHB.fontCreate(
-            faces[int(f["face"])], f32(f["size"]), f32(f["specifiedSize"]), f32(f["weight"]), f32(f["width"]), f32(f["slope"]),
+            at(faces, f["face"], "font.face"), f32(f["size"]), f32(f["specifiedSize"]), f32(f["weight"]), f32(f["width"]), f32(f["slope"]),
             f["opticalSizingAuto"] as Boolean, null, null,
         ).also { h -> check(h != 0L) { "fontCreate failed" } }
     }
@@ -54,7 +65,7 @@ fun replayTranscript(json: String, root: File): ReplayReport {
     val report = ReplayReport()
     arr(t["calls"]).forEachIndexed { i, c ->
         val call = obj(c)
-        val font = fonts[int(call["font"])]
+        val font = at(fonts, call["font"], "call.font")
         report.calls++
         when (val op = call["op"] as String) {
             "shape" -> {
@@ -69,9 +80,12 @@ fun replayTranscript(json: String, root: File): ReplayReport {
                         out[j * 4 + 3] = u32(a[3])
                     }
                 }
-                val start = int(call["start"])
+                val text = at(texts, call["text"], "call.text")
+                val start = long(call["start"])
+                val end = long(call["end"])
+                require(start >= 0 && start <= end && end <= text.length) { "bad transcript: call.start $start, call.end $end of text length ${text.length}" }
                 val got = DragonHB.shape(
-                    shaper, font, texts[int(call["text"])], start, int(call["end"]) - start,
+                    shaper, font, text, start.toInt(), (end - start).toInt(),
                     DragonHB.tag(call["script"] as String), call["rtl"] as Boolean, call["language"] as String, features,
                 ) ?: throw IllegalStateException("shape: out of memory")
                 val expected = arr(call["glyphs"]).map { long(it) }
@@ -84,13 +98,13 @@ fun replayTranscript(json: String, root: File): ReplayReport {
                 }
             }
             "nominal" -> {
-                val cp = int(call["codepoint"])
+                val cp = u32of(call["codepoint"], "codepoint")
                 val got = DragonHB.nominalGlyph(font, cp).toLong() and 0xFFFFFFFFL
                 val expected = long(call["glyph"])
                 if (got != expected) report.mismatches.add(ReplayMismatch(i, op, "U+${cp.toString(16)}: $got, expected $expected"))
             }
             "advance" -> {
-                val glyph = int(call["glyph"])
+                val glyph = u32of(call["glyph"], "glyph")
                 val got = DragonHB.glyphAdvance(font, glyph).toLong()
                 val expected = long(call["advance"])
                 if (got != expected) report.mismatches.add(ReplayMismatch(i, op, "glyph $glyph: $got, expected $expected"))
