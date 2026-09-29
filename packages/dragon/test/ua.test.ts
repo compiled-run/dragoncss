@@ -9,6 +9,7 @@ import { NO_FAULTS } from '../src/faults.ts';
 import { borderWidthKeywords, chromeVersion, computed, platform, userAgentLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
 import { elementKeyComputed, elementKeyLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
+import { phrasingKeyComputed, phrasingKeyLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import type { LinkedElement } from '../src/analysis/link.ts';
 
 describe('captured Chrome defaults and the webref grammar', () => {
@@ -157,6 +158,17 @@ describe('UA longhands of the element keys (ELB-2)', () => {
     });
     for (const key of Object.keys(elementKeyComputed) as (keyof typeof elementKeyComputed)[]) {
       for (const p of LONGHANDS) expect(elementKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');
+    }
+  });
+});
+
+describe('UA longhands of the phrasing keys (INL-U)', () => {
+  it('pins the longhands a Chrome UA rule sets on br, strong, b, em, i, code, small, sub, sup and label', () => {
+    expect(phrasingKeyLonghands).toEqual({
+      br: [], strong: [], b: [], em: [], i: [], code: ['font-family'], small: ['font-size'], sub: ['font-size'], sup: ['font-size'], label: [],
+    });
+    for (const key of Object.keys(phrasingKeyComputed) as (keyof typeof phrasingKeyComputed)[]) {
+      for (const p of LONGHANDS) expect(phrasingKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');
     }
   });
 });
