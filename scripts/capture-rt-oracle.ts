@@ -18,6 +18,8 @@ const ORACLE_DIR = repoPath('packages/layout/rt-oracle');
 const VECTOR_DIR = repoPath('packages/layout/rt-vectors');
 const BOX_WIDTH = 250.5;
 const BOX_HEIGHT = 97.25;
+/** Timeline seconds the reference advances before reading a held animation; Chrome's hold records are read three frames later. */
+const HOLD_ELAPSED_SECONDS = 0.05;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Derived grids.
@@ -99,6 +101,14 @@ function timingCombos(): TimingJson[] {
   // T014: album-spin, 20 s linear infinite.
   add(0, 0, 20000, 'Infinity', 0, 'normal', 'none', linear());
   return out;
+}
+
+/** The held animations: every alternate-direction, fill-both combo at every third of its derived times. */
+function holdInputs(): { readonly combo: number; readonly times: number[] }[] {
+  return timingCombos()
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => c.fill === 'both' && c.direction === 'alternate')
+    .map(({ c, i }) => ({ combo: i, times: comboTimes(c).filter((_, k) => k % 3 === 0) }));
 }
 
 /** Boundary-derived current times for one combo: every phase and iteration edge, a microsecond around each, and midpoints. */
@@ -288,7 +298,7 @@ async function capture(): Promise<{ timing: TimingRecord[]; easing: EasingRecord
       { list: eas.map((e) => easingCss(e.spec)), times: etimes },
     );
     // Hold time: paused animations must keep their current time while the timeline advances.
-    const holdJobs = tjobs.filter((j) => combos[j.i]?.fill === 'both' && combos[j.i]?.direction === 'alternate').map((j) => ({ ...j, times: j.times.filter((_, k) => k % 3 === 0) }));
+    const holdJobs = holdInputs().map((h) => ({ ...(tjobs[h.combo] as (typeof tjobs)[number]), times: h.times }));
     const hold = await page.evaluate(async (jobs) => {
       const bits = (globalThis as unknown as { bits: (v: number | null | undefined) => string | null }).bits;
       const el = document.getElementById('t') as HTMLElement;
@@ -354,8 +364,9 @@ function specOf(c: TimingJson): EffectTimingSpec {
   return { ...c, iterations: c.iterations === 'Infinity' ? Infinity : c.iterations, easing: easingFromSpec(c.easing) };
 }
 
-function referenceTiming(c: TimingJson, timeMs: number): { progress: string | null; iteration: string | null } {
-  const t = computeTiming(specOf(c), currentTimeAt(seekPaused(timeMs, 0, 1), 0, NO_RT_FAULTS), NO_RT_FAULTS);
+/** The reference for an animation paused at `timeMs` (timeline time 0) and read `elapsedSeconds` of timeline time later. */
+function referenceTiming(c: TimingJson, timeMs: number, elapsedSeconds: number = 0): { progress: string | null; iteration: string | null } {
+  const t = computeTiming(specOf(c), currentTimeAt(seekPaused(timeMs, 0, 1), elapsedSeconds, NO_RT_FAULTS), NO_RT_FAULTS);
   return { progress: bitsOf(t.progress), iteration: bitsOf(t.currentIteration) };
 }
 
@@ -412,11 +423,13 @@ function vectorFiles(): Map<string, string> {
   const easing = easingList.flatMap((e, i) => easingTimes().map((t) => ({ easing: i, timeMs: t, progress: referenceTiming({ delayMs: 0, endDelayMs: 0, durationMs: 1000, iterations: 1, iterationStart: 0, direction: 'normal', fill: 'both', easing: e.spec, css: '' }, t).progress })));
   const cases = interpCases();
   const interp = cases.flatMap((c, i) => interpTimes().map((t) => ({ case: i, timeMs: t, ...referenceInterp(c, t) })));
+  const hold = holdInputs().flatMap((h) => h.times.map((t) => ({ combo: h.combo, timeMs: t, ...referenceTiming(combos[h.combo] as TimingJson, t, HOLD_ELAPSED_SECONDS) })));
   const files = new Map<string, string>();
-  files.set('README.md', ['# rt vectors', '', 'The TypeScript rt reference (packages/layout/src/rt-*.ts) on the rt oracle inputs, written by `pnpm run rt:oracle`.', 'ANIM-a2 requires the translated Swift and Kotlin to reproduce every record bit for bit and string for string. Do not edit.', ''].join('\n'));
+  files.set('README.md', ['# rt vectors', '', 'The TypeScript rt reference (packages/layout/src/rt-*.ts) on the rt oracle inputs, written by `pnpm run rt:oracle`.', 'ANIM-a2 requires the translated Swift and Kotlin to reproduce every record bit for bit and string for string. Do not edit.', '', '`hold.json` records animations paused at `timeMs` at timeline time 0 and read `elapsedSeconds` of timeline time later.', ''].join('\n'));
   files.set('timing.json', json({ combos, records: timing.map((r) => [r.combo, r.timeMs, r.progress, r.iteration]) }));
   files.set('easing.json', json({ easings: easingList, records: easing.map((r) => [r.easing, r.timeMs, r.progress]) }));
   files.set('interp.json', json({ box: { width: BOX_WIDTH, height: BOX_HEIGHT }, cases, records: interp.map((r) => [r.case, r.timeMs, r.progress, r.value]) }));
+  files.set('hold.json', json({ elapsedSeconds: HOLD_ELAPSED_SECONDS, combos, records: hold.map((r) => [r.combo, r.timeMs, r.progress, r.iteration]) }));
   return files;
 }
 
@@ -433,7 +446,7 @@ function compare(cap: Awaited<ReturnType<typeof capture>>): { counts: Record<str
   }
   for (const r of cap.hold) {
     counts.hold = (counts.hold ?? 0) + 1;
-    const ref = referenceTiming(combos[r.combo] as TimingJson, r.timeMs);
+    const ref = referenceTiming(combos[r.combo] as TimingJson, r.timeMs, HOLD_ELAPSED_SECONDS);
     if (ref.progress !== r.progress || ref.iteration !== r.iteration) failures.push(`hold combo ${r.combo} t=${r.timeMs}: chrome ${r.progress}/${r.iteration}, reference ${ref.progress}/${ref.iteration}`);
   }
   for (const r of cap.easing) {
