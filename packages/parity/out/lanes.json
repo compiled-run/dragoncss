@@ -644,7 +644,7 @@
           "lane": "device-pixels",
           "where": "device",
           "state": "fail",
-          "reason": "capture trust on iPad (A16): 64 mismatches in 1005 points; 515 failures (pixel 515)",
+          "reason": "515 failures (pixel 515)",
           "sets": [
             {
               "dpr": 2,
@@ -922,7 +922,7 @@
                 "dpr": 2,
                 "cases": 3,
                 "points": 1005,
-                "mismatches": 64
+                "mismatches": 0
               }
             ]
           }
