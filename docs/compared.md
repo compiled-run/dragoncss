@@ -20,7 +20,7 @@ This is a summary. The evidence, with sources accessed on 2026-09-26, is in [T02
 
 **React Native styling** (NativeWind, react-native-css, Uniwind, Unistyles, Tamagui). Mature and well loved, and the right pick if you are already on React Native. All of them live inside React Native's runtime, and none checks its native output against a browser. The closest in shape, react-native-css, compiles CSS to tables at build time but still matches selectors on the device, keys rules by class name, flattens `@layer` and supports only the descendant combinator.
 
-**StyleX and React Strict DOM.** StyleX is excellent on the web, and Dragon borrows its best idea: an element's styles come only from what is written for that element. Its only native route, React Strict DOM, is React-specific and resolves styles at runtime. More in [Why not StyleX?](why-not-stylex.md).
+**StyleX and React Strict DOM.** StyleX is excellent on the web, and Dragon borrows its best idea: an element's styles come only from what is written for that element. Its only native route, React Strict DOM, is React-specific and resolves styles at runtime. The full comparison is in [T023](research/T023-stylex.md).
 
 **Engines with their own runtime** (Lynx, NativeScript, Blitz). Real CSS, but welded to a runtime you have to adopt wholesale. Lynx and NativeScript match selectors on the device. Blitz draws its own pixels instead of using platform views.
 
