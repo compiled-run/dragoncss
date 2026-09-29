@@ -236,8 +236,8 @@ function invalidVar(property: string, text: string, valueSpan: Span, parts: read
   return parts === null
     ? diagnostic('DRAGON_CSS_INVALID_VALUE', {
       origin: authored(valueSpan),
-      message: `"${text}" holds a malformed var() for ${property} (css-variables-1 §3: var( <custom-property-name> [, <fallback>]? ))`,
-      manual: 'Write var(--name) or var(--name, fallback).',
+      message: `"${text}" is not a valid value for ${property}: it holds a malformed var() (css-variables-1 §3: var( <custom-property-name> [, <fallback>]? )), an unmatched ")", "]" or "}", or a bad url()`,
+      manual: 'Write var(--name) or var(--name, fallback), and balance every bracket.',
     })
     : diagnostic('DRAGON_UNSUPPORTED_VALUE', {
       origin: authored(valueSpan),
@@ -248,13 +248,20 @@ function invalidVar(property: string, text: string, valueSpan: Span, parts: read
 
 /** css-variables-1 §2: a custom property takes any value; a lone CSS-wide keyword is that keyword, not a token sequence. */
 function parseCustomDeclaration(name: string, valueNode: CssNode, span: Span, valueSpan: Span, order: number, important: { important?: true }, diagnostics: Diagnostic[]): Declaration | null {
+  // css-variables-1 §2: "--" alone is reserved, so it is not a custom property name.
+  if (name === '--') {
+    diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', { origin: authored(span), message: 'the property name "--" is reserved and is not a custom property (css-variables-1 §2)', manual: 'Give the custom property a name after "--".' }));
+    return null;
+  }
   if (hasEscape(name)) {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), message: `the custom property name ${name} holds an escape, which is not supported`, manual: 'Write the custom property name without escapes.' }));
     return null;
   }
   // css-syntax-3 §5.4.6: leading and trailing white space is not part of the value.
   const text = String(valueNode.type === 'Raw' ? valueNode['value'] : generate(valueNode)).replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '');
-  const wide = CSS_WIDE.has(text.toLowerCase()) ? text.toLowerCase() : null;
+  // Comments are not tokens, so "inherit /**/" is still the keyword.
+  const bare = text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '').toLowerCase();
+  const wide = CSS_WIDE.has(bare) ? bare : null;
   const parts = wide === null ? parseVarParts(text) : [];
   if (parts === null || referencedNames(parts).some(hasEscape)) {
     diagnostics.push(invalidVar(name, text, valueSpan, parts));
