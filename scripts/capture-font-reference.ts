@@ -13,6 +13,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CHROME_VERSION, PLAYWRIGHT_VERSION, chromeArgsAt, launchChrome, openPage } from '../packages/parity/src/chrome.ts';
 import type { PageEnvironment } from '../packages/parity/src/chrome.ts';
+import { applyFontReference, pinnedFaceCss, pinnedGenerics, platformFonts, REFERENCE_PLANTS, settleFonts } from '../packages/parity/src/font-reference.ts';
+import type { ReferencePlant, Visit } from '../packages/parity/src/font-reference.ts';
+import type { FontMap } from '../packages/dragon/src/index.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
 import { hostPlatform } from '../packages/parity/src/platform.ts';
 
@@ -20,8 +23,8 @@ type Browser = Awaited<ReturnType<typeof launchChrome>>;
 type Page = Awaited<ReturnType<typeof openPage>>;
 
 const REFERENCE_DIR = 'packages/dragon/test/fonts/reference';
-const PLANTS = ['quoted-generic-rewritten', 'generic-not-rewritten'] as const;
-type Plant = (typeof PLANTS)[number];
+const PLANTS = REFERENCE_PLANTS;
+type Plant = ReferencePlant;
 
 const LIGHT = 'Inter/Inter-Light.ttf';
 const REGULAR = 'Inter/Inter-Regular.ttf';
@@ -44,9 +47,7 @@ const REFERENCE_MAP = {
 } as const;
 
 /** Unquoted generic keyword to pinned family, from the map; what the in-page rewrite replaces. */
-const PINNED: Record<string, string> = Object.fromEntries(
-  Object.entries(REFERENCE_MAP.generics).flatMap(([k, e]) => (e.mode === 'pinned' ? [[k, e.family]] : [])),
-);
+const PINNED: Record<string, string> = pinnedGenerics(REFERENCE_MAP as unknown as FontMap);
 
 const bytesOf = (f: string): Buffer => readFileSync(repoPath(`vendor/fonts/${f}`));
 const sha = (b: Buffer | string): string => createHash('sha256').update(b).digest('hex');
@@ -61,105 +62,16 @@ const header = () => ({
   fonts: fontHashes,
 });
 
-const quoteCss = (s: string): string => `"${s.replace(/["\\]/g, (c) => `\\${c}`)}"`;
 
 /** The pinned faces as @font-face rules, src written as url("fonts/<file>"); embed() gives Chrome the same bytes as data: URIs. */
-const PINNED_FACE_CSS = Object.values(REFERENCE_MAP.generics).flatMap((e) => (e.mode !== 'pinned' ? [] : e.faces.map((f) => {
-  const d = f as { src: string; weight?: string; style?: string };
-  return `@font-face{font-family:${quoteCss(e.family)};src:url("${d.src}") format("truetype")${d.weight === undefined ? '' : `;font-weight:${d.weight}`}${d.style === undefined ? '' : `;font-style:${d.style}`}}`;
-}))).join('\n');
+const PINNED_FACE_CSS = pinnedFaceCss(REFERENCE_MAP as unknown as FontMap, (src) => src);
 const embed = (css: string): string => css.replace(/url\("fonts\/([^"]+)"\)/g, (_m, f: string) => `url("data:font/ttf;base64,${bytesOf(f).toString('base64')}")`);
 
 const ENV: PageEnvironment = { viewport: { width: 800, height: 600 }, devicePixelRatio: DPR, direction: 'ltr', rootFont: 'ua-default' };
 
-type PlatformFont = { readonly familyName: string; readonly postScriptName: string; readonly isCustomFont: boolean; readonly glyphCount: number };
-
-async function platformFonts(page: Page, selectors: readonly string[]): Promise<PlatformFont[][]> {
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send('DOM.enable');
-  await cdp.send('CSS.enable');
-  const { root } = await cdp.send('DOM.getDocument', { depth: -1 });
-  const out: PlatformFont[][] = [];
-  for (const sel of selectors) {
-    const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: sel });
-    const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId });
-    out.push(fonts.map((f) => ({ familyName: f.familyName, postScriptName: f.postScriptName, isCustomFont: f.isCustomFont, glyphCount: f.glyphCount }))
-      .sort((a, b) => (a.postScriptName < b.postScriptName ? -1 : a.postScriptName > b.postScriptName ? 1 : 0)));
-  }
-  await cdp.detach();
-  return out;
-}
-
-async function settle(page: Page): Promise<void> {
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-    await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-  });
-}
-
-/** What the in-page rewrite did to each font-family declaration it met: Chrome's serialization before and after. */
-type Visit = { readonly where: string; readonly before: string; readonly after: string };
-
-/**
- * The stated-reference transform, run in the page: inject the pinned faces, then for every font-family longhand in every style
- * rule (grouping rules included) and every style attribute, split Chrome's serialization into entries and replace each unquoted
- * entry that is a pinned generic keyword. Chrome serializes a generic keyword unquoted and lowercase, and quotes a family name that
- * spells an inferred generic ("sans-serif"), so the quoted name is not replaced.
- */
-async function applyReference(page: Page, plant: Plant | null): Promise<Visit[]> {
-  const visits = await page.evaluate(({ faceCss, pinned, plant: p }) => {
-    const style = document.createElement('style');
-    style.setAttribute('data-dragon-reference', '');
-    style.textContent = faceCss;
-    document.head.append(style);
-    const quote = (s: string): string => `"${s.replace(/["\\]/g, (c) => `\\${c}`)}"`;
-    const unquote = (s: string): string => s.slice(1, -1).replace(/\\(.)/g, '$1');
-    const split = (text: string): string[] => {
-      const out: string[] = [];
-      let cur = '';
-      let inString = false;
-      for (let i = 0; i < text.length; i++) {
-        const c = text[i] as string;
-        if (inString && c === '\\') {
-          cur += c + (text[i + 1] ?? '');
-          i++;
-        } else if (c === '"') {
-          inString = !inString;
-          cur += c;
-        } else if (c === ',' && !inString) {
-          out.push(cur.trim());
-          cur = '';
-        } else cur += c;
-      }
-      out.push(cur.trim());
-      return out;
-    };
-    const rewrite = (text: string): string => split(text).map((e) => {
-      if (!e.startsWith('"') && Object.hasOwn(pinned, e) && p !== 'generic-not-rewritten') return quote(pinned[e] as string);
-      if (e.startsWith('"') && p === 'quoted-generic-rewritten' && Object.hasOwn(pinned, unquote(e))) return quote(pinned[unquote(e)] as string);
-      return e;
-    }).join(', ');
-    const out: { where: string; before: string; after: string }[] = [];
-    const visit = (decls: CSSStyleDeclaration, where: string): void => {
-      const before = decls.getPropertyValue('font-family');
-      if (before === '') return;
-      const after = rewrite(before);
-      if (after !== before) decls.setProperty('font-family', after, decls.getPropertyPriority('font-family'));
-      out.push({ where, before, after: decls.getPropertyValue('font-family') });
-    };
-    const walk = (rules: CSSRuleList): void => {
-      for (const rule of [...rules]) {
-        if (rule instanceof CSSStyleRule) visit(rule.style, rule.selectorText);
-        if ('cssRules' in rule) walk((rule as CSSGroupingRule).cssRules);
-      }
-    };
-    for (const sheet of [...document.styleSheets]) walk(sheet.cssRules);
-    for (const el of [...document.querySelectorAll('[style]')]) visit((el as HTMLElement).style, `#${el.id}[style]`);
-    return out;
-  }, { faceCss: embed(PINNED_FACE_CSS), pinned: PINNED, plant });
-  await settle(page);
-  return visits;
-}
+/** The stated-reference transform (packages/parity/src/font-reference.ts), with the reference map's faces embedded as data: URLs. */
+const applyReference = (page: Page, plant: Plant | null): Promise<Visit[]> => applyFontReference(page, embed(PINNED_FACE_CSS), PINNED, plant);
+const settle = settleFonts;
 
 const doc = (css: string, body: string): string => `<!DOCTYPE html><html><head><style>${css}</style></head><body>${body}</body></html>`;
 

@@ -2,7 +2,8 @@
 // <head> is not part of the element tree: it generates no boxes. Text node ids are "<parent id>:text<k>".
 // The stylesheet is one <style>, or one <link rel="stylesheet" href> resolved by the caller into a snapshot source.
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { posix } from 'node:path';
 import type { ElementNode, FrontEndResult, Origin, SourceFile, SourceRef, TreeNode } from 'dragon';
 import { TREE_SCHEMA_REVISION } from 'dragon';
 import { repoPath } from './paths.ts';
@@ -148,6 +149,28 @@ export function compiledFixtureHtml(html: string, css: string, classOf: Readonly
 
 const isBlankText = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
 
+/** A url() of an @font-face rule that names a vendored font: its specifier as written and its repository path, the asset id. */
+export type FontFaceUrl = { readonly specifier: string; readonly id: string };
+
+/**
+ * The src url()s of the @font-face rules in a fixture stylesheet that resolve, relative to packages/parity/fixtures, to a file
+ * under vendor/fonts, in order and once each. Any other URL (remote, data:, missing, or outside vendor/fonts) is left
+ * unresolved, so the compiler reports it.
+ */
+export function fontFaceUrls(css: string): FontFaceUrl[] {
+  const out: FontFaceUrl[] = [];
+  for (const rule of css.matchAll(/@font-face\s*\{[^}]*\}/gi)) {
+    for (const m of rule[0].matchAll(/url\(\s*(?:"([^"\\]*)"|'([^'\\]*)'|([^)"'\s\\]*))\s*\)/gi)) {
+      const specifier = m[1] ?? m[2] ?? m[3] ?? '';
+      if (/^[a-z][a-z0-9+.-]*:|^\/\//i.test(specifier) || out.some((u) => u.specifier === specifier)) continue;
+      const id = posix.normalize(posix.join('packages/parity/fixtures', specifier));
+      if (!id.startsWith('vendor/fonts/') || !existsSync(repoPath(id))) continue;
+      out.push({ specifier, id });
+    }
+  }
+  return out;
+}
+
 export function readHtmlFixture(id: string): { html: string; input: FrontEndResult } {
   const html = readFileSync(repoPath(`packages/parity/fixtures/${id}.html`), 'utf8');
   return { html, input: fixtureToInput(id, html) };
@@ -176,6 +199,14 @@ export function fixtureToInput(id: string, html: string, options: FixtureReadOpt
     sources.push({ ref: cssRef, text: css.text, displayPath: css.displayPath });
     sheet = { source: cssRef, start: 0, end: css.text.length };
   }
+  // TXT1-C: @font-face url()s that name vendored fonts become snapshot assets, resolved from the stylesheet's source.
+  const sheetSource = sources.find((f) => f.ref.uri === sheet.source.uri) as SourceFile;
+  const fontUrls = fontFaceUrls(sheetSource.text.slice(sheet.start, sheet.end));
+  const fontAssets = [...new Map(fontUrls.map((u) => {
+    const bytes = new Uint8Array(readFileSync(repoPath(u.id)));
+    return [u.id, { id: u.id, hash: `sha256:${createHash('sha256').update(bytes).digest('hex')}`, bytes }] as const;
+  })).values()];
+  const fontResolutions = fontUrls.map((u) => ({ from: sheet.source, specifier: u.specifier, kind: 'asset' as const, to: u.id }));
   if (root.tag !== 'html') throw new Error('root must be <html>');
   const always = { kind: 'true' } as const;
   const convert = (el: RawElement): ElementNode => {
@@ -213,8 +244,8 @@ export function fixtureToInput(id: string, html: string, options: FixtureReadOpt
       projectId: PROJECT_ID,
       revision: 'fixture',
       sources,
-      assets: [],
-      resolutions: [],
+      assets: fontAssets,
+      resolutions: fontResolutions,
     },
     diagnostics: [],
     tree: {

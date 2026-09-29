@@ -12,6 +12,8 @@ import { environmentsOf, FIXTURES } from '../fixtures.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
 import { repoPath } from '../paths.ts';
 import { compileFixture } from '../pipeline.ts';
+import { FONT_FIXTURES } from '../fixture-groups/fonts.ts';
+import { fontCases, fontEmittedDir, fontEmittedPath, fontExpectedDir, fontExpectedPath, liveFontAuthored } from '../fonts-run.ts';
 
 const platform = hostPlatform();
 const reference = platform === REFERENCE_PLATFORM;
@@ -40,6 +42,27 @@ try {
       }
     }
     console.log(`captured ${spec.id} (${cases.length} case${cases.length === 1 ? '' : 's'})${notes.length === 0 ? '' : `; ${notes.join('; ')}`}`);
+  }
+  // TXT1-C: the web-only fonts fixtures, each authored document captured under its stated reference, into expected-fonts.
+  mkdirSync(fontExpectedDir(platform), { recursive: true });
+  for (const f of readdirSync(fontExpectedDir(platform))) if (f.endsWith('.web.json')) rmSync(`${fontExpectedDir(platform)}/${f}`);
+  if (reference) {
+    mkdirSync(fontEmittedDir(), { recursive: true });
+    for (const f of readdirSync(fontEmittedDir())) if (f.endsWith('.css')) rmSync(`${fontEmittedDir()}/${f}`);
+  }
+  for (const f of FONT_FIXTURES) {
+    const cases = fontCases(f);
+    for (const c of cases) writeFileSync(fontExpectedPath(c.id, platform), captureJson(await liveFontAuthored(browser, f)(c)));
+    const notes: string[] = [];
+    if (reference) {
+      for (const env of environmentsOf(f.spec)) {
+        const web = compileFixture(f.spec, undefined, 'enforce', env.direction).compiled.outputs.web;
+        const css = web.kind === 'ready' ? web.files.find((x) => x.path === WEB_CSS_PATH) : undefined;
+        if (css !== undefined) writeFileSync(fontEmittedPath(f.spec.id, env.direction), css.text);
+        else notes.push(`${env.direction} web output not ready, no CSS written`);
+      }
+    }
+    console.log(`captured ${f.spec.id} (${cases.length} cases, web only)${notes.length === 0 ? '' : `; ${notes.join('; ')}`}`);
   }
 } finally {
   await browser.close();
