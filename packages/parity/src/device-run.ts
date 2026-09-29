@@ -189,8 +189,8 @@ export async function bootIos(spec: IosDeviceSpec): Promise<DeviceHandle> {
   try {
     return await bootIosFrom(spec, udid, was);
   } catch (e) {
-    // A simulator this runner booted is shut down again; one that was already booted is left alone.
-    if (was !== 'Booted') run('xcrun', ['simctl', 'shutdown', udid]);
+    // A simulator this runner booted is shut down again; one already booted or booting elsewhere is left alone.
+    if (was === 'Shutdown') run('xcrun', ['simctl', 'shutdown', udid]);
     throw e;
   }
 }
@@ -200,12 +200,12 @@ async function bootIosFrom(spec: IosDeviceSpec, udid: string, was: string): Prom
     if (simState(udid) !== 'Booted') run('xcrun', ['simctl', 'boot', udid]);
     const b = run('xcrun', ['simctl', 'bootstatus', udid, '-b'], { timeoutMs: 300_000 });
     if (b.status === 0) break;
-    if (attempt === 2) throw new Error(`the ${spec.name} simulator failed to boot twice (tooling fault): ${b.out.slice(-500)}`);
+    if (attempt === 2 || was !== 'Shutdown') throw new Error(`the ${spec.name} simulator failed to boot${was === 'Shutdown' ? ' twice' : ` (it was ${was} before this run, so it is left alone)`} (tooling fault): ${b.out.slice(-500)}`);
     run('xcrun', ['simctl', 'shutdown', udid]);
   }
   const ui = run('xcrun', ['simctl', 'ui', udid, 'content_size', 'large']);
   if (ui.status !== 0) throw new Error(`simctl ui content_size large failed on ${spec.name}: ${ui.out}`);
-  return { spec, udid, startedHere: was !== 'Booted' };
+  return { spec, udid, startedHere: was === 'Shutdown' };
 }
 
 function serialsRunning(tools: AndroidTools): string[] {
@@ -216,7 +216,7 @@ function serialsRunning(tools: AndroidTools): string[] {
  * A detached child whose spawn error (a missing or unexecutable binary) is kept, not left unhandled: check() rethrows it, so the
  * caller's retry and tooling-fault handling sees it.
  */
-export function spawnDetached(cmd: string, args: readonly string[]): { readonly check: () => void } {
+export function spawnDetached(cmd: string, args: readonly string[]): { readonly check: () => void; readonly alive: () => boolean } {
   let failure: Error | null = null;
   const p = spawn(cmd, [...args], { detached: true, stdio: 'ignore' });
   p.once('error', (e) => {
@@ -227,6 +227,7 @@ export function spawnDetached(cmd: string, args: readonly string[]): { readonly 
     check: () => {
       if (failure !== null) throw new Error(`${cmd} could not be started: ${(failure as Error).message}`);
     },
+    alive: () => failure === null && p.exitCode === null && p.signalCode === null,
   };
 }
 
@@ -284,6 +285,8 @@ export async function bootAvd(spec: AvdDeviceSpec, provision = true): Promise<De
       await poll(`${serial} sys.boot_completed`, 420_000, () => adb(h, ['shell', 'getprop', 'sys.boot_completed'], 10_000).out.trim() === '1');
       break;
     } catch (e) {
+      // Only the emulator this attempt spawned is killed: if it exited (say, the port was taken), the serial is someone else's.
+      if (!p.alive()) throw new Error(`the ${spec.name} emulator exited before it booted; ${serial} is left alone (tooling fault): ${e instanceof Error ? e.message : String(e)}`);
       adb(h, ['emu', 'kill']);
       await sleep(5000);
       if (attempt === 2) throw new Error(`the ${spec.name} emulator failed to boot twice (tooling fault): ${e instanceof Error ? e.message : String(e)}`);
@@ -313,11 +316,19 @@ async function prepareAvd(h: { readonly serial: string; readonly tools: AndroidT
   adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_WAKEUP']);
   adb(h, ['shell', 'wm', 'dismiss-keyguard']);
   const focus = (): string => adb(h, ['shell', 'dumpsys', 'window', '|', 'grep', 'mCurrentFocus'], 20_000).out;
-  await poll(`${h.serial} to show no error dialog`, 180_000, () => {
+  // A freshly booted image brings up its launcher some seconds after sys.boot_completed; an app launched before that is sent to
+  // the back and its window detached. So the run starts only once the home screen has held the focus for 3 s, with no dialog.
+  let settled = 0;
+  await poll(`${h.serial} to settle on the home screen`, 300_000, () => {
     const f = focus();
-    if (!/Not Responding|has stopped|isn't responding/i.test(f)) return true;
-    adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_BACK']);
-    return false;
+    if (/Not Responding|has stopped|isn't responding/i.test(f)) {
+      adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_BACK']);
+      settled = 0;
+      return false;
+    }
+    settled = /[Ll]auncher/.test(f) ? settled + 1 : 0;
+    if (settled === 0) adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_HOME']);
+    return settled >= 6;
   });
 }
 
