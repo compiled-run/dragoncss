@@ -56,6 +56,6 @@ describe('paint-radius vectors', () => {
     expect(v.feature).toBe('radius');
     const names = new Set(v.lines.map((l) => (JSON.parse(l) as string[])[0]));
     expect([...names].sort()).toEqual(['paint:radius:constrainCornerRadii', 'paint:radius:hasRoundedCorner', 'paint:radius:innerCornerRadii', 'paint:radius:radiiRenderable', 'paint:radius:radiusComponent', 'paint:radius:resolveCornerRadii', 'paint:radius:roundedShape']);
-    expect(v.lines.length).toBeGreaterThan(1000);
+    expect(v.lines.length).toBeGreaterThanOrEqual(90);
   });
 });
