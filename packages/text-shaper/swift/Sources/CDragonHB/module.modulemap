@@ -1,0 +1,6 @@
+module CDragonHB [system] {
+    header "../../../include/dragon_hb.h"
+    link "dragon_hb"
+    link "c++"
+    export *
+}
