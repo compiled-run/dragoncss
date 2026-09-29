@@ -195,8 +195,9 @@ describe('(f4) Node consumer and (f5) publish shape of the packed dragon tarball
     expect(manifest.dependencies).toEqual({ 'css-tree': '3.2.1' });
     const packed = files(pkgDir).map((f) => relative(pkgDir, f)).sort();
     expect(packed.length).toBeGreaterThan(40);
+    expect(readFileSync(join(pkgDir, 'README.md'), 'utf8')).toBe(readFileSync(repoPath('README.md'), 'utf8'));
     for (const f of packed) {
-      expect(f, f).toMatch(/^(package\.json|build\/.+\.(js|d\.ts))$/);
+      expect(f, f).toMatch(/^(package\.json|README\.md|build\/.+\.(js|d\.ts))$/);
       expect(f, f).not.toMatch(/internal|\.test\.|test\//);
       expect(readFileSync(join(pkgDir, f), 'utf8'), f).not.toMatch(/dragon-internal|internal\.ts/);
     }
