@@ -20,6 +20,8 @@ type Case = {
   readonly items: readonly Item[];
   /** The wrapper's logical inline and block size (default 400 x 300). */
   readonly cb?: readonly [number, number];
+  /** Ahem text placed in the wrapper after the grid, so its position shows where the line box put an inline-level grid's baseline. */
+  readonly after?: string;
 };
 type Family = { readonly id: string; readonly title: string; readonly cases: readonly Case[] };
 
@@ -249,7 +251,7 @@ const baselines: Case[] = [
   { id: 'b-synthesized', note: 'empty boxes synthesize their baseline from the border box', style: 'grid-template-columns:repeat(3,auto);align-items:baseline;justify-content:start', items: [box(10, 30), box(10, 17.5), { s: 'font-size:13px', t: 'X' }] },
   { id: 'b-columns', note: 'justify-self baseline with orthogonal items', style: 'grid-template-columns:auto;grid-template-rows:repeat(3,auto);justify-items:baseline;justify-content:start', items: [{ s: 'writing-mode:vertical-rl', t: 'X' }, { s: 'writing-mode:vertical-rl;font-size:20px', t: 'X' }, { s: 'writing-mode:vertical-lr;font-size:13px', t: 'X' }] },
   { id: 'b-fixed-row', note: 'baseline items in a fixed 50px row', style: 'grid-template-columns:repeat(2,auto);grid-template-rows:50px;align-items:baseline;justify-content:start', items: [{ t: 'X' }, { s: 'font-size:25px', t: 'X' }] },
-  { id: 'b-container-baseline', note: 'an inline-grid baseline next to text', style: 'display:inline-grid;grid-template-columns:auto auto;align-items:baseline', items: [{ s: 'font-size:7px', t: 'X' }, { s: 'font-size:15px', t: 'X' }] },
+  { id: 'b-container-baseline', note: 'an inline-grid baseline next to text: the text run (a) sits on the grid baseline', after: 'X', style: 'display:inline-grid;grid-template-columns:auto auto;align-items:baseline', items: [{ s: 'font-size:7px', t: 'X' }, { s: 'font-size:15px', t: 'X' }] },
   { id: 'b-nested-grid', note: 'a nested grid item exports its first baseline', style: 'grid-template-columns:repeat(2,auto);align-items:baseline;justify-content:start', items: [{ s: 'display:grid;padding-block-start:5px', k: [{ s: 'font-size:15px', t: 'X' }] }, { t: 'X' }] },
 ];
 
@@ -380,11 +382,11 @@ const labelsOf = (items: readonly Item[], prefix = 'i'): string[] =>
 
 const docFor = (cases: readonly Case[], wm: string): string =>
   `<!DOCTYPE html><html><head><style>body{margin:0}.cb{position:absolute;top:0;left:0;font-size:10px;line-height:1}</style></head><body>${cases
-    .map((c) => `<div class="cb" style="writing-mode:${wm};inline-size:${(c.cb ?? [400, 300])[0]}px;block-size:${(c.cb ?? [400, 300])[1]}px">${gridHtml(c)}</div>`)
+    .map((c) => `<div class="cb" style="writing-mode:${wm};inline-size:${(c.cb ?? [400, 300])[0]}px;block-size:${(c.cb ?? [400, 300])[1]}px">${gridHtml(c)}${c.after === undefined ? '' : `<span class="a">${escapeText(c.after)}</span>`}</div>`)
     .join('')}</body></html>`;
 
 type Rect = [number, number, number, number];
-type Measured = { c: Rect; cols: string; rows: string; items: Rect[] };
+type Measured = { c: Rect; cols: string; rows: string; items: Rect[]; a?: Rect };
 
 /** Runs in the page: measures every .g container. Kept self-contained because Playwright serializes it. */
 function measure(): Measured[] {
@@ -398,6 +400,7 @@ function measure(): Measured[] {
       cols: cs.gridTemplateColumns,
       rows: cs.gridTemplateRows,
       items: Array.from(g.querySelectorAll('[data-i]')).map((e) => rel(e.getBoundingClientRect(), origin)),
+      ...(cb.querySelector('.a') ? { a: rel(cb.querySelector('.a')!.getBoundingClientRect(), origin) } : {}),
     };
   });
 }
@@ -415,7 +418,7 @@ type Env = (typeof ENVS)[number];
  * Converts a physical measurement to logical [inline-start, block-start, inline-size, block-size] in raw units of the case's
  * writing mode and direction. The container is relative to the wrapper border box, items to the container border box.
  */
-function logical(m: Measured, c: Case, env: Env): { c: Rect; cols: string; rows: string; items: Rect[] } {
+function logical(m: Measured, c: Case, env: Env): { c: Rect; cols: string; rows: string; items: Rect[]; a?: Rect } {
   const vertical = env.wm !== 'horizontal-tb';
   const [ci, cbk] = c.cb ?? [400, 300];
   const toLogical = (r: Rect, outerW: number, outerH: number, what: string): Rect => {
@@ -433,6 +436,7 @@ function logical(m: Measured, c: Case, env: Env): { c: Rect; cols: string; rows:
     cols: m.cols,
     rows: m.rows,
     items: m.items.map((r, j) => toLogical(r, cw, ch, `${c.id} ${env.name} item ${j}`)),
+    ...(m.a === undefined ? {} : { a: toLogical(m.a, cw, ch, `${c.id} ${env.name} text run`) }),
   };
 }
 
@@ -457,7 +461,8 @@ async function captureFamily(browsers: Map<number, Awaited<ReturnType<typeof lau
       distinct.push(text);
       return distinct.length - 1;
     });
-    const head = JSON.stringify({ note: c.note, cb: c.cb ?? [400, 300], html: gridHtml(c), labels, env });
+    if ((perEnv[0]![k]!.a !== undefined) !== (c.after !== undefined)) throw new Error(`${c.id}: the text run after the grid was not measured`);
+    const head = JSON.stringify({ note: c.note, cb: c.cb ?? [400, 300], html: gridHtml(c), ...(c.after === undefined ? {} : { after: c.after }), labels, env });
     return `${JSON.stringify(c.id)}:${head.slice(0, -1)},"distinct":[${distinct.join(',')}]}`;
   });
   const header = {
@@ -552,6 +557,10 @@ if (process.argv.includes('--plants')) {
 
 const check = process.argv.includes('--check');
 const only = process.argv.find((a) => a.startsWith('--only='))?.slice('--only='.length);
+if (only !== undefined && !FAMILIES.some((fam) => fam.id === only)) {
+  console.error(`capture-grid-probe: unknown family ${only}; families: ${FAMILIES.map((fam) => fam.id).join(', ')}`);
+  process.exit(1);
+}
 const browsers = new Map<number, Awaited<ReturnType<typeof launchChrome>>>();
 let failed = false;
 try {

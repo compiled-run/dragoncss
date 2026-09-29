@@ -46,6 +46,8 @@ A result is `{ c, cols, rows, items }`:
   off (the float32 noise is under 0.005).
 - `c` is the container border box within the wrapper border box. `items` are the item border boxes within the container
   border box.
+- `a`, only in cases with `after` (b-container-baseline), is the border box of an Ahem text run placed in the wrapper after the
+  grid, within the container border box. It shows where the line box put an inline-level grid's baseline.
 - `cols` and `rows` are `getComputedStyle(grid).gridTemplateColumns` and `gridTemplateRows` as Chrome serializes them (6
   significant digits).
 
