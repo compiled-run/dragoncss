@@ -27,13 +27,13 @@
   "contextProbe": {
    "rounds": 1,
    "blankedRules": 9,
-   "blankedDeclarations": 88,
+   "blankedDeclarations": 87,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 785,
-  "errors": 784,
+  "diagnostics": 771,
+  "errors": 770,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 27,
@@ -43,10 +43,10 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 21,
    "DRAGON_UNSUPPORTED_FONT [android]": 22,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 68,
+   "DRAGON_UNSUPPORTED_PROPERTY": 67,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
    "DRAGON_UNSUPPORTED_VALUE": 20,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 499,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 486,
    "DRAGON_UNSUPPORTED_VALUE [ios]": 16,
    "DRAGON_UNSUPPORTED_VALUE [web]": 16
   },
@@ -57,7 +57,7 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 21,
-     "DRAGON_UNSUPPORTED_PROPERTY": 68,
+     "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 36
     },
@@ -72,7 +72,7 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 21,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 68,
+     "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 36
     },
@@ -86,9 +86,9 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 21,
      "DRAGON_UNSUPPORTED_FONT": 22,
-     "DRAGON_UNSUPPORTED_PROPERTY": 68,
+     "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 519
+     "DRAGON_UNSUPPORTED_VALUE": 506
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -96,11 +96,11 @@
    }
   },
   "declarations": 291,
-  "supportedBothTargets": 159,
-  "supportedWeb": 159,
-  "supportedIos": 159,
-  "supportedAndroid": 34,
-  "supportPercent": 54.6,
+  "supportedBothTargets": 160,
+  "supportedWeb": 160,
+  "supportedIos": 160,
+  "supportedAndroid": 37,
+  "supportPercent": 55,
   "elements": 62,
   "supportedElements": 33,
   "tags": {
@@ -179,9 +179,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 408,
-   "B-unwrapped": 440,
-   "C-context": 419
+   "A-authored": 394,
+   "B-unwrapped": 426,
+   "C-context": 406
   }
  },
  "features": {
@@ -2713,12 +2713,10 @@
    "atRule": null,
    "property": "-webkit-appearance",
    "value": "none",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 175,
@@ -2729,10 +2727,8 @@
    "value": "transparent",
    "web": "supported",
    "ios": "supported",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 176,
@@ -2743,10 +2739,8 @@
    "value": "none",
    "web": "supported",
    "ios": "supported",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 177,
@@ -8697,299 +8691,6 @@
     "text": "::-moz-range-thumb"
    },
    "message": "the rule \"input[type=\"range\"]::-moz-range-thumb\" is dropped: Chrome 145 does not parse ::-moz-range-thumb, so it drops the whole rule, and Dragon drops it too",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5578-5602|-webkit-appearance is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 5578,
-    "end": 5602,
-    "line": 316,
-    "column": 2,
-    "text": "-webkit-appearance: none"
-   },
-   "message": "-webkit-appearance is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5617-5628|background-color: transparent (set by background: transparent) is unsupported (support profile m1-s5); no background-color value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5617,
-    "end": 5628,
-    "line": 317,
-    "column": 14,
-    "text": "transparent"
-   },
-   "message": "background-color: transparent (set by background: transparent) is unsupported (support profile m1-s5); no background-color value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-bottom-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-bottom-color value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-bottom-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-bottom-color value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-bottom-style: none (set by border: none) is unsupported (support profile m1-s5); no border-bottom-style value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-bottom-style: none (set by border: none) is unsupported (support profile m1-s5); no border-bottom-style value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-bottom-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-bottom-width value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-bottom-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-bottom-width value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-left-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-left-color value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-left-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-left-color value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-left-style: none (set by border: none) is unsupported (support profile m1-s5); no border-left-style value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-left-style: none (set by border: none) is unsupported (support profile m1-s5); no border-left-style value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-left-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-left-width value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-left-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-left-width value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-right-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-right-color value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-right-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-right-color value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-right-style: none (set by border: none) is unsupported (support profile m1-s5); no border-right-style value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-right-style: none (set by border: none) is unsupported (support profile m1-s5); no border-right-style value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-right-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-right-width value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-right-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-right-width value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-top-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-top-color value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-top-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-top-color value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-top-style: none (set by border: none) is unsupported (support profile m1-s5); no border-top-style value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-top-style: none (set by border: none) is unsupported (support profile m1-s5); no border-top-style value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-top-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-top-width value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-top-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-top-width value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
