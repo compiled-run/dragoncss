@@ -33,16 +33,19 @@ const SEPARATOR = '/**/';
 // css-variables-1 §3.3: a longer value is invalid at computed-value time (Blink's kMaxVariableBytes, which counts fewer separators).
 export const MAX_SUBSTITUTED_LENGTH = 2 * 1024 * 1024;
 
-/** Substitutes every var() in parts; null when any reference had neither a value nor a usable fallback, or the result is too long. */
-function substitute(parts: readonly VarPart[], lookup: (name: string) => string | null): string | null {
+/**
+ * Substitutes every var() in parts; null when any reference had neither a value nor a usable fallback, or the result is too long.
+ * lookup is a generator so computeCustoms can resolve a reference without recursing (it yields the names it needs resolved).
+ */
+function* substituteSteps(parts: readonly VarPart[], lookup: (name: string) => Generator<string, string | null, void>): Generator<string, string | null, void> {
   let out = '';
   let ok = true;
   for (const p of parts) {
     if (p.kind === 'text') {
       if (ok) out += p.text;
     } else {
-      const value = lookup(p.name);
-      const used = value !== null ? value : p.fallback === null ? null : substitute(p.fallback, lookup);
+      const value = yield* lookup(p.name);
+      const used = value !== null ? value : p.fallback === null ? null : yield* substituteSteps(p.fallback, lookup);
       if (used === null) ok = false;
       else if (ok) out += `${SEPARATOR}${used}${SEPARATOR}`;
     }
@@ -52,6 +55,13 @@ function substitute(parts: readonly VarPart[], lookup: (name: string) => string 
     }
   }
   return ok ? out : null;
+}
+
+/** substituteSteps with values that are already known. */
+function substitute(parts: readonly VarPart[], values: CustomProperties): string | null {
+  const r = substituteSteps(parts, function* (name) { return values.get(name) ?? null; }).next();
+  if (r.done !== true) throw new Error('substitution with known values asked to resolve a name');
+  return r.value;
 }
 
 /**
@@ -65,7 +75,8 @@ export function computeCustoms(winners: ReadonlyMap<string, Declaration>, inheri
   const state = new Map<string, 'resolving' | 'done'>();
   const stack: string[] = [];
   const cyclic = new Set<string>();
-  const resolve = (name: string): void => {
+  // A referenced name is resolved in a new frame on this heap stack, not the call stack, so a long chain cannot overflow it.
+  function* resolve(name: string): Generator<string, void, void> {
     const custom = winners.get(name)?.custom;
     if (custom === undefined || custom.wide !== null || state.get(name) === 'done') return;
     if (state.get(name) === 'resolving') {
@@ -74,17 +85,25 @@ export function computeCustoms(winners: ReadonlyMap<string, Declaration>, inheri
     }
     state.set(name, 'resolving');
     stack.push(name);
-    const text = substitute(custom.parts, (ref) => {
-      resolve(ref);
+    const text = yield* substituteSteps(custom.parts, function* (ref) {
+      yield ref;
       return state.get(ref) === 'resolving' || cyclic.has(ref) ? null : (out.get(ref) ?? null);
     });
     stack.pop();
     state.set(name, 'done');
     if (text === null || cyclic.has(name)) out.delete(name);
     else out.set(name, text);
+  }
+  const run = (name: string): void => {
+    const frames = [resolve(name)];
+    while (frames.length > 0) {
+      const step = (frames[frames.length - 1] as Generator<string, void, void>).next();
+      if (step.done === true) frames.pop();
+      else frames.push(resolve(step.value));
+    }
   };
   for (const [name, d] of winners) if (d.custom?.wide === 'initial') out.delete(name);
-  for (const name of winners.keys()) resolve(name);
+  for (const name of winners.keys()) run(name);
   return out;
 }
 
@@ -107,7 +126,7 @@ const readable = (text: string): string => text.split(SEPARATOR).join('').trim()
  */
 export function substituteDeclaration(d: Declaration, customs: CustomProperties): SubstitutedDeclaration {
   const pending = d.pending as NonNullable<Declaration['pending']>;
-  const text = substitute(pending.parts, (name) => customs.get(name) ?? null);
+  const text = substitute(pending.parts, customs);
   const make = (longhands: readonly LonghandValue[], refusal: string | null, isInvalid = false): SubstitutedDeclaration => ({
     declaration: { property: d.property, text: d.text, span: d.span, valueSpan: d.valueSpan, longhands, order: d.order, ...(d.important === true ? { important: true as const } : {}) },
     substitution: { source: d, text, invalid: isInvalid, refusal },

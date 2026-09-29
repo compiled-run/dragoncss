@@ -6,7 +6,7 @@ import type { ResolvedElement, ResolvedValue } from '../src/analysis/resolve.ts'
 import { resolveTree, valueToString } from '../src/analysis/resolve.ts';
 import type { Longhand } from '../src/css/properties.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
-import { parseVarParts } from '../src/css/variables.ts';
+import { MAX_NESTING, parseVarParts } from '../src/css/variables.ts';
 import { NO_FAULTS } from '../src/faults.ts';
 import type { Diagnostic } from '../src/types.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
@@ -151,6 +151,27 @@ describe('parse-time validity', () => {
     expect(one('.a { --x: 7px; width: 3px; width: v\\61r(--x); }', 'a', 'width')).toBe('7px');
     expect(one('.a { --x: 7px; width: 3px; width: v\\61 r(--x); }', 'a', 'width')).toBe('7px');
     expect(parse('.a { --x: red; color: u\\72l(var(--x)); }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+  });
+  it('a bad url or bad string ends at any newline (\\n, \\r, \\f) or a non-printable code point (css-syntax-3 §4.3.5-§4.3.6)', () => {
+    const codes = (css: string): string[] => parse(css).diagnostics.map((d) => d.code);
+    for (const v of ['url(a\\\n)', 'url(a\\\r\n)', 'url(\u0007)', 'url(a\u007f)', '"a\rb"', '"a\fb"']) expect(codes(`.a { --t: ${v}; }`), JSON.stringify(v)).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    for (const v of ['url(a\\31 b)', 'url(a\\))', '"a\\\r\nb"', '"a\\\fb"']) expect(codes(`.a { --t: ${v}; }`), JSON.stringify(v)).toEqual([]);
+    // The bad --x is dropped, so var(--x, 5px) takes its fallback.
+    expect(parse('.a { --x: url(a\\\n); width: var(--x, 5px); }').rules.flatMap((r) => r.declarations.map((d) => d.property))).toEqual(['width']);
+  });
+  it('a long dependency chain resolves without recursion; nesting past MAX_NESTING is refused', () => {
+    const n = 20000;
+    const chain = Array.from({ length: n }, (_, k) => `--p${n - k}: var(--p${n - k - 1});`).join(' ');
+    expect(one(`.a { ${chain} --p0: 4px; width: var(--p${n}); }`, 'a', 'width')).toBe('4px');
+    const deep = `${'('.repeat(MAX_NESTING + 1)}${')'.repeat(MAX_NESTING + 1)}`;
+    expect(parse(`.a { --t: ${deep}; }`).diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+    expect(parse(`.a { --t: ${deep.slice(1, -1)}; }`).diagnostics).toEqual([]);
+    const nested = `${'var(--m, '.repeat(MAX_NESTING + 1)}1px${')'.repeat(MAX_NESTING + 1)}`;
+    expect(parse(`.a { width: ${nested}; }`).diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+    // Each substitution adds a level, so the substituted value is refused rather than parsed.
+    const wrap = Array.from({ length: MAX_NESTING + 1 }, (_, k) => `--w${k + 1}: (var(--w${k}));`).join(' ');
+    const at = resolve(`.a { --w0: 1px; ${wrap} width: var(--w${MAX_NESTING + 1}); }`, [el('a', ['a'])]);
+    expect(at('a', 'width').substitution?.refusal).toMatch(/nests brackets more than 256 deep/);
   });
   it('a value past the substitution length limit is invalid at computed-value time, and a doubling chain stays bounded', () => {
     const chain = Array.from({ length: 40 }, (_, i) => `--p${i + 1}: var(--p${i})var(--p${i});`).join(' ');

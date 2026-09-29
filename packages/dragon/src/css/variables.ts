@@ -23,6 +23,9 @@ export type PendingSubstitution = {
 };
 
 const WS = /[ \t\n\r\f]/;
+const NEWLINE = /[\n\r\f]/;
+// css-syntax-3 §4.2: a non-printable code point; one makes an unquoted url( a bad url.
+const NON_PRINTABLE = /[\u0000-\u0008\u000b\u000e-\u001f\u007f]/;
 const isNameChar = (c: string): boolean => /[A-Za-z0-9_-]/.test(c) || c.charCodeAt(0) >= 0x80;
 
 /** Whether the value holds a var() reference at any depth. */
@@ -42,9 +45,9 @@ function stringEnd(text: string, i: number): { end: number; bad: boolean } {
   let j = i + 1;
   while (j < text.length) {
     const c = text[j] as string;
-    if (c === '\\') j += 2;
+    if (c === '\\') j += text.startsWith('\r\n', j + 1) ? 3 : 2;
     else if (c === quote) return { end: j + 1, bad: false };
-    else if (c === '\n') return { end: j, bad: true };
+    else if (NEWLINE.test(c)) return { end: j, bad: true };
     else j++;
   }
   return { end: text.length, bad: false };
@@ -61,7 +64,7 @@ function nameEnd(text: string, i: number): number {
   let j = i;
   while (j < text.length) {
     const c = text[j] as string;
-    if (c === '\\' && j + 1 < text.length && text[j + 1] !== '\n') j = escapeEnd(text, j);
+    if (c === '\\' && j + 1 < text.length && !NEWLINE.test(text[j + 1] as string)) j = escapeEnd(text, j);
     else if (isNameChar(c)) j++;
     else break;
   }
@@ -77,7 +80,10 @@ export function unescapeName(name: string): string {
   });
 }
 
-/** css-syntax-3 §4.3.6: the end of an unquoted url( whose contents start at i, and whether a quote, "(" or inner white space makes it a bad url. */
+/**
+ * css-syntax-3 §4.3.6: the end of an unquoted url( whose contents start at i, and whether it is a bad url: a quote, "(", inner white
+ * space, a non-printable code point, or a backslash before a newline.
+ */
 function urlEnd(text: string, i: number): { end: number; bad: boolean } {
   let bad = false;
   let blank = false;
@@ -86,12 +92,12 @@ function urlEnd(text: string, i: number): { end: number; bad: boolean } {
     const c = text[j] as string;
     if (c === ')') return { end: j + 1, bad };
     if (c === '\\') {
-      bad ||= blank;
-      j += 2;
+      bad ||= blank || NEWLINE.test(text[j + 1] ?? '');
+      j = escapeEnd(text, j);
       continue;
     }
     if (WS.test(c)) blank = true;
-    else if (blank || c === '"' || c === "'" || c === '(') bad = true;
+    else if (blank || c === '"' || c === "'" || c === '(' || NON_PRINTABLE.test(c)) bad = true;
     j++;
   }
   return { end: text.length, bad };
@@ -114,6 +120,28 @@ function skipBlank(text: string, i: number): number {
     else break;
   }
   return j;
+}
+
+/** Dragon's limit on bracket nesting in a value holding var() or in a custom property; parsing and substitution recurse per level. */
+export const MAX_NESTING = 256;
+
+/** The deepest nesting of "(", "[" and "{" in a value, outside strings, comments and escapes. */
+export function nestingDepth(text: string): number {
+  let depth = 0;
+  let max = 0;
+  let j = 0;
+  while (j < text.length) {
+    const c = text[j] as string;
+    if (c === '"' || c === "'") j = stringEnd(text, j).end;
+    else if (text.startsWith('/*', j)) j = commentEnd(text, j);
+    else if (c === '\\') j += 2;
+    else {
+      if (c === '(' || c === '[' || c === '{') max = Math.max(max, ++depth);
+      else if (c === ')' || c === ']' || c === '}') depth--;
+      j++;
+    }
+  }
+  return max;
 }
 
 /** The index of the ")" closing the block opened just before i, or -1 when it is unbalanced. */
