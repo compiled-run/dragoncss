@@ -209,7 +209,7 @@ export async function bootAvd(spec: AvdDeviceSpec, provision = true): Promise<De
   if (serialsRunning(tools).includes(serial)) {
     const name = adb(h, ['emu', 'avd', 'name']).out.split('\n')[0]?.trim();
     if (name !== spec.name) throw new Error(`${serial} runs the AVD ${name}, not ${spec.name}; it is not this runner's, so it is left running (tooling fault)`);
-    prepareAvd(h);
+    await prepareAvd(h);
     return { ...h, startedHere: false };
   }
   for (let attempt = 1; ; attempt++) {
@@ -225,17 +225,28 @@ export async function bootAvd(spec: AvdDeviceSpec, provision = true): Promise<De
       if (attempt === 2) throw new Error(`the ${spec.name} emulator failed to boot twice (tooling fault): ${e instanceof Error ? e.message : String(e)}`);
     }
   }
-  prepareAvd(h);
+  await prepareAvd(h);
   return { ...h, startedHere: true };
 }
 
-/** No animations, the pinned text scale, and the screen awake and unlocked for the whole run. */
-function prepareAvd(h: { readonly serial: string; readonly tools: AndroidTools }): void {
+/**
+ * No animations, the pinned text scale, the screen awake and unlocked for the whole run, and no error dialogs: a freshly booted
+ * image under load may raise an ANR dialog for System UI, which takes the focus from the app (Settings.Global.HIDE_ERROR_DIALOGS).
+ */
+async function prepareAvd(h: { readonly serial: string; readonly tools: AndroidTools }): Promise<void> {
+  adb(h, ['shell', 'settings', 'put', 'global', 'hide_error_dialogs', '1']);
   for (const k of ['window_animation_scale', 'transition_animation_scale', 'animator_duration_scale']) adb(h, ['shell', 'settings', 'put', 'global', k, '0']);
   adb(h, ['shell', 'settings', 'put', 'system', 'font_scale', TEXT_SCALE.android]);
   adb(h, ['shell', 'svc', 'power', 'stayon', 'true']);
   adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_WAKEUP']);
   adb(h, ['shell', 'wm', 'dismiss-keyguard']);
+  const focus = (): string => adb(h, ['shell', 'dumpsys', 'window', '|', 'grep', 'mCurrentFocus'], 20_000).out;
+  await poll(`${h.serial} to show no error dialog`, 180_000, () => {
+    const f = focus();
+    if (!/Not Responding|has stopped|isn't responding/i.test(f)) return true;
+    adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_BACK']);
+    return false;
+  });
 }
 
 export async function boot(spec: DeviceSpec): Promise<DeviceHandle> {
