@@ -1,0 +1,11 @@
+{
+  "case": "position-relative-flow",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"t1:text0","data":"XX XX XX XXX X","lines":3,"units":[0,0,0,0,0,0,1,1,1,1,1,1,1,2],"blank":[5,12]},
+    {"id":"t2:text0","data":"XX XXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"t3:text0","data":"XX XX XX XXX X","lines":3,"units":[0,0,0,0,0,0,1,1,1,1,1,1,1,2],"blank":[5,12]},
+    {"id":"t4:text0","data":"XX X","lines":1,"units":[0,0,0,0],"blank":[]}
+  ]
+}

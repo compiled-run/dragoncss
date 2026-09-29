@@ -1,0 +1,10 @@
+{
+  "case": "position-absolute-static-direction-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"t1:text0","lines":[[0,5]]},
+    {"id":"t2:text0","lines":[[0,5]]},
+    {"id":"t3:text0","lines":[[0,18],[18,36],[36,47]]},
+    {"id":"t4:text0","lines":[[0,18],[18,36],[36,47]]}
+  ]
+}

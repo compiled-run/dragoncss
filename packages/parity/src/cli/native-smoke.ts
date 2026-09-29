@@ -2,7 +2,6 @@
 // platforms, on the iPhone 17 simulator (scale 3) and the dragon-smoke AVD (density 420, scale 2.625). For each case the dump must
 // validate, device.scale must equal the device's scale, check (d) must pass against the TS engine and check (b) against the
 // expected dump at that DPR, and the bridge self-check must pass. This is not a lane and is not recorded in lanes.json.
-import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -12,7 +11,9 @@ import type { ExpectedApplied } from '../native-compare.ts';
 import { checkAgainstEngine, checkApplied } from '../native-compare.ts';
 import type { NativeDump } from '../native-dump.ts';
 import { validateNativeDump } from '../native-dump.ts';
-import { androidTools, BACKEND_OF, buildAndroid, buildIos, engineBoxes, expectedEngine, HOST_BUNDLE, nativeCases, nativeOut, run } from '../native-host.ts';
+import type { AvdDeviceSpec } from '../device-run.ts';
+import { bootAvd, DEVICE_MATRIX, installApk, release as releaseDevice } from '../device-run.ts';
+import { BACKEND_OF, buildAndroid, buildIos, engineBoxes, expectedEngine, HOST_BUNDLE, nativeCases, nativeOut, run } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
 import type { NativeTarget } from '../targets.ts';
 import { deviceDprs } from '../targets.ts';
@@ -23,6 +24,8 @@ const IOS_DEVICE = 'iPhone 17';
 /** The AVD: dragon-smoke (API 36) by default; --avd names another AVD at or above the API 31 floor. */
 const AVD = args.includes('--avd') ? (args[args.indexOf('--avd') + 1] as string) : 'dragon-smoke';
 const RENDERER = 'swiftshader_indirect';
+/** The console port of an AVD outside the matrix (the floor probe). */
+const SMOKE_PORT = 5590;
 
 const target = args[args.indexOf('--target') + 1] as NativeTarget;
 if (target !== 'ios' && target !== 'android') {
@@ -66,7 +69,7 @@ async function smokeIos(outDir: string): Promise<{ scale: number; files: string 
     if (attempt === 2) throw new Error(`the ${IOS_DEVICE} simulator failed to boot twice (tooling fault): ${b.out.slice(-500)}`);
     run('xcrun', ['simctl', 'shutdown', dev.udid]);
   }
-  const build = buildIos();
+  const build = buildIos({ reuse: true });
   log(`built ${build.cases} cases, source sha256 ${build.sourceSha256}`);
   const inst = run('xcrun', ['simctl', 'install', dev.udid, build.artifact]);
   if (inst.status !== 0) throw new Error(`simctl install failed: ${inst.out}`);
@@ -80,32 +83,12 @@ async function smokeIos(outDir: string): Promise<{ scale: number; files: string 
 // ---------------------------------------------------------------- Android
 
 async function smokeAndroid(outDir: string): Promise<{ scale: number; files: string }> {
-  const tools = androidTools();
-  const adb = (a: readonly string[], timeoutMs = 120_000) => run(tools.adb, a, { timeoutMs });
-  const booted = (): boolean => adb(['shell', 'getprop', 'sys.boot_completed'], 10_000).out.trim() === '1';
-  let started = false;
-  let running = adb(['devices']).out.split('\n').some((l) => /^emulator-\d+\s+device/.test(l));
-  if (running && !adb(['emu', 'avd', 'name']).out.split('\n').some((l) => l.trim() === AVD)) {
-    // Another AVD is running: stop it, so the run is on the named device.
-    adb(['emu', 'kill']);
-    await sleep(5000);
-    running = false;
-  }
-  if (!running) {
-    for (let attempt = 1; ; attempt++) {
-      const p = spawn(tools.emulator, ['-avd', AVD, '-no-window', '-no-audio', '-no-snapshot', '-no-boot-anim', '-gpu', RENDERER], { detached: true, stdio: 'ignore' });
-      p.unref();
-      started = true;
-      try {
-        adb(['wait-for-device'], 180_000);
-        await poll('sys.boot_completed', 240_000, booted);
-        break;
-      } catch (e) {
-        adb(['emu', 'kill']);
-        if (attempt === 2) throw new Error(`the ${AVD} emulator failed to boot twice (tooling fault): ${e instanceof Error ? e.message : String(e)}`);
-      }
-    }
-  }
+  // By serial (O3): the matrix AVD on its own port, or another AVD (the floor probe) on a port of its own; an emulator this run
+  // did not start is never killed.
+  const spec: AvdDeviceSpec = (DEVICE_MATRIX.find((d) => d.target === 'android' && d.name === AVD) as AvdDeviceSpec | undefined) ?? { target: 'android', name: AVD, density: 0, width: 0, height: 0, port: SMOKE_PORT };
+  const h = await bootAvd(spec, false);
+  if ('udid' in h) throw new Error('not an emulator');
+  const adb = (a: readonly string[], timeoutMs = 120_000) => run(h.tools.adb, ['-s', h.serial, ...a], { timeoutMs });
   try {
     const density = /Physical density:\s*(\d+)/.exec(adb(['shell', 'wm', 'density']).out)?.[1];
     if (density === undefined) throw new Error('adb shell wm density gave no physical density');
@@ -113,11 +96,10 @@ async function smokeAndroid(outDir: string): Promise<{ scale: number; files: str
     lastScale = scale;
     const release = adb(['shell', 'getprop', 'ro.build.version.release']).out.trim();
     const sdk = adb(['shell', 'getprop', 'ro.build.version.sdk']).out.trim();
-    log(`${AVD}, Android ${release} (API ${sdk}; text drawn with Canvas.drawGlyphs), density ${density}, scale ${scale}`);
-    for (const k of ['window_animation_scale', 'transition_animation_scale', 'animator_duration_scale']) adb(['shell', 'settings', 'put', 'global', k, '0']);
-    const build = buildAndroid();
+    log(`${AVD} (${h.serial}), Android ${release} (API ${sdk}; text drawn with Canvas.drawGlyphs), density ${density}, scale ${scale}`);
+    const build = buildAndroid({ reuse: true });
     log(`built ${build.cases} cases, source sha256 ${build.sourceSha256}`);
-    const inst = adb(['install', '-r', '-t', build.artifact], 300_000);
+    const inst = installApk(h, build.artifact);
     if (inst.status !== 0 || !/Success/.test(inst.out)) throw new Error(`adb install failed: ${inst.out}`);
     const remote = `/sdcard/Android/data/${HOST_BUNDLE}/files`;
     adb(['shell', 'rm', '-rf', remote]);
@@ -138,7 +120,7 @@ async function smokeAndroid(outDir: string): Promise<{ scale: number; files: str
   } finally {
     const crash = adb(['logcat', '-d', '-b', 'crash'], 20_000).out.trim();
     if (crash !== '') console.error(crash.slice(-4000));
-    if (started) adb(['emu', 'kill']);
+    await releaseDevice(h);
   }
 }
 

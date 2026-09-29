@@ -1,0 +1,8 @@
+{
+  "case": "overflow-hidden-bfc",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"txt:text0","data":"XX XX XX XX","lines":4,"units":[0,0,0,1,1,1,2,2,2,3,3],"blank":[2,5,8]}
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "case": "block-elements-margin-collapse-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"p1:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"p2:text0","data":"XXX XX XXXX","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"bq-p:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"dt-p:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"p-last:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}

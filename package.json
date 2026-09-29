@@ -34,7 +34,11 @@
     "wpt:interop-labels": "node packages/wpt/src/cli/interop-labels.ts",
     "native:build": "node --conditions=dragon-internal packages/parity/src/cli/native-build.ts",
     "native:smoke": "node --conditions=dragon-internal packages/parity/src/cli/native-smoke.ts",
-    "native:encoders": "node --conditions=dragon-internal packages/parity/src/cli/native-encoders.ts"
+    "native:encoders": "node --conditions=dragon-internal packages/parity/src/cli/native-encoders.ts",
+    "layout:break-vectors": "node --conditions=dragon-internal packages/parity/src/cli/break-vectors.ts",
+    "parity:break-capture": "node --conditions=dragon-internal packages/parity/src/cli/break-capture.ts",
+    "parity:pixel-capture": "node --conditions=dragon-internal packages/parity/src/cli/pixel-capture.ts",
+    "native:devices": "node --conditions=dragon-internal packages/parity/src/cli/native-devices.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",

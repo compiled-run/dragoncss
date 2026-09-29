@@ -1,0 +1,17 @@
+{
+  "case": "block-elements-text",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"p1:text0","data":"XX XX XXX XX","lines":2,"units":[0,0,0,0,0,0,1,1,1,1,1,1],"blank":[5]},
+    {"id":"p2:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"bq-p:text0","data":"XX XXX XX","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"li1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"li2:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"dt:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"dd:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"cap:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"hd:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"ft:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]}
+  ]
+}

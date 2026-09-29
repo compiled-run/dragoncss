@@ -1,0 +1,10 @@
+{
+  "case": "flex-baseline-column-fallback",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"c1t:text0","lines":[[0,4]]},
+    {"id":"c2t:text0","lines":[[0,4]]},
+    {"id":"c3t:text0","lines":[[0,3]]},
+    {"id":"c4t:text0","lines":[[0,2]]}
+  ]
+}

@@ -9,8 +9,8 @@ import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
 import type { LayoutInput, LayoutRect } from '@dragon/layout';
 import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, resolveBorder, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
-import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram } from 'dragon';
-import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput } from 'dragon';
+import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
+import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
 import { layoutCases } from './dpr.ts';
@@ -158,45 +158,75 @@ func dragonWrite(_ path: String, _ text: String) {
   do { try text.write(toFile: path, atomically: true, encoding: .utf8) } catch { fatalError("dragon host: cannot write \(path): \(error)") }
 }
 
-/// Runs the cases named by --dragon-cases at the screen's own scale and writes one dump per case into DRAGON_OUT.
+/// Runs the cases of the run file in the app container's Documents (or --dragon-cases) at the screen's own scale, in a stage
+/// inside the safe area, and writes one dump per case, the bridge record and the device record into DRAGON_OUT.
 func dragonRun(window: UIWindow, host: UIView) {
   UIView.setAnimationsEnabled(false)
   let env = ProcessInfo.processInfo.environment
   guard let out = env["DRAGON_OUT"] else { fatalError("dragon host: DRAGON_OUT is not set") }
-  let ids = (dragonArgument("--dragon-cases") ?? "").split(separator: ",").map(String.init)
+  var run = dragonReadRun(NSHomeDirectory() + "/Documents/dragon-run.tsv") ?? DragonRun()
+  if run.ids.isEmpty { run.ids = (dragonArgument("--dragon-cases") ?? "").split(separator: ",").map(String.init) }
   let bridge = DragonBridge.shared
   dragonWrite(out + "/bridge-ios.json", bridge.record(platform: "ios"))
   let scale = Double(window.screen.scale)
   if Double(window.traitCollection.displayScale) != scale { fatalError("dragon host: traitCollection.displayScale differs from UIScreen.scale") }
+  host.layoutIfNeeded()
+  let insets = window.safeAreaInsets
+  let stage = UIView(frame: CGRect(x: insets.left, y: insets.top, width: host.bounds.width - insets.left - insets.right, height: host.bounds.height - insets.top - insets.bottom))
+  stage.backgroundColor = .white
+  host.addSubview(stage)
+  let origin = stage.convert(CGPoint.zero, to: nil)
+  let f = { (v: Double) -> String in DumpJsonWriter.format(v) }
+  let model = env["SIMULATOR_DEVICE_NAME"] ?? UIDevice.current.model
+  let os = ProcessInfo.processInfo.operatingSystemVersionString
+  dragonWrite(out + "/device-ios.json", "{\"platform\":\"ios\",\"model\":\(DumpJsonWriter.quote(model)),\"os\":\(DumpJsonWriter.quote(os)),\"build\":\(DumpJsonWriter.quote(env["SIMULATOR_RUNTIME_BUILD_VERSION"] ?? "")),\"scale\":\(f(scale)),\"windowPx\":[\(f(Double(window.bounds.width) * scale)),\(f(Double(window.bounds.height) * scale))],\"stagePx\":[\(f(Double(stage.bounds.width) * scale)),\(f(Double(stage.bounds.height) * scale))],\"rootOriginPx\":[\(f(Double(origin.x) * scale)),\(f(Double(origin.y) * scale))],\"textScale\":\"\(UIApplication.shared.preferredContentSizeCategory.rawValue)\"}")
   #if arch(arm64)
   let abi = "arm64"
   #else
   let abi = "x86_64"
   #endif
-  let device = DumpDevice(platform: "ios", os: ProcessInfo.processInfo.operatingSystemVersionString, model: env["SIMULATOR_DEVICE_NAME"] ?? UIDevice.current.model, abi: abi, scale: scale, toolchain: dragonToolchain, renderer: "simulator-metal")
-  for id in ids {
-    guard let c = dragonCaseTable[id] else { fatalError("dragon host: no case \(id)") }
-    let tree = DragonTree()
-    c.build(tree)
-    host.addSubview(tree.root)
-    let t0 = CACurrentMediaTime()
-    do {
-      try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
-    } catch {
-      fatalError("dragon host: \(id): \(error)")
-    }
-    host.layoutIfNeeded()
-    tree.root.layoutIfNeeded()
-    CATransaction.flush()
-    let t1 = CACurrentMediaTime()
-    let pixels = dragonCapture(tree.root, scale: scale, points: [])
-    let t2 = CACurrentMediaTime()
-    let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000))
-    dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))
-    tree.root.removeFromSuperview()
+  let device = DumpDevice(platform: "ios", os: os, model: model, abi: abi, scale: scale, toolchain: dragonToolchain, renderer: "simulator-metal")
+  dragonCase(0, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
+}
+
+func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Double, device: DumpDevice, bridge: DragonBridge) {
+  if k >= run.ids.count {
+    dragonWrite(out + "/done-ios", "ok")
+    exit(0)
   }
-  dragonWrite(out + "/done-ios", "ok")
-  exit(0)
+  let id = run.ids[k]
+  guard let c = dragonCaseTable[id] else { fatalError("dragon host: no case \(id)") }
+  let tree = DragonTree()
+  c.build(tree)
+  stage.addSubview(tree.root)
+  let t0 = CACurrentMediaTime()
+  do {
+    try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
+  } catch {
+    fatalError("dragon host: \(id): \(error)")
+  }
+  stage.layoutIfNeeded()
+  tree.root.layoutIfNeeded()
+  CATransaction.flush()
+  let t1 = CACurrentMediaTime()
+  let pixels = dragonCapture(tree.root, scale: scale, points: run.points[id] ?? [])
+  let t2 = CACurrentMediaTime()
+  let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000))
+  dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))
+  let next = {
+    tree.root.removeFromSuperview()
+    dragonCase(k + 1, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
+  }
+  if !run.hold {
+    DispatchQueue.main.async(execute: next)
+    return
+  }
+  // The capture-trust probe: the case stays on screen until the host has taken the OS screenshot.
+  dragonWrite(out + "/hold-" + id, "ok")
+  func wait() {
+    if FileManager.default.fileExists(atPath: out + "/release-" + id) { next() } else { DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { wait() } }
+  }
+  wait()
 }
 
 _ = UIApplicationMain(CommandLine.argc, CommandLine.unsafeArgv, nil, NSStringFromClass(DragonAppDelegate.self))
@@ -243,6 +273,8 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.Choreographer
 import android.view.PixelCopy
+import android.view.WindowInsets
+import android.view.WindowManager
 import android.widget.FrameLayout
 import dev.dragon.cases.dragonCaseTable
 import dev.dragon.dump.DumpDevice
@@ -251,73 +283,145 @@ import dev.dragon.dump.DumpPixels
 import dev.dragon.dump.DumpTiming
 import dev.dragon.dump.dumpJson
 import dev.dragon.views.DragonBridge
+import dev.dragon.views.DragonRun
 import dev.dragon.views.DragonTree
+import dev.dragon.views.dragonReadRun
+import dev.dragon.views.dragonSamples
 import java.io.File
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 
-/** Runs the cases named by the dragon.cases extra at the display density and writes one dump per case to the app's files. */
+/**
+ * Runs the cases of the run file in the app's files dir (or the dragon.cases extra) at the display density, in a stage inset by
+ * the system bars, and writes one dump per case, the bridge record and the device record to the app's files.
+ */
 class DragonActivity : Activity() {
   private val frame by lazy { FrameLayout(this) }
-  private var ids: List<String> = emptyList()
+  private lateinit var run: DragonRun
   private lateinit var out: File
   private lateinit var bridge: DragonBridge
   private lateinit var device: DumpDevice
   private var scale = 0.0
+  private var insetsApplied = false
+  private val main = Handler(Looper.getMainLooper())
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     frame.setBackgroundColor(0xffffffff.toInt())
+    frame.setOnApplyWindowInsetsListener { v, insets ->
+      val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+      v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+      insetsApplied = true
+      insets
+    }
     setContentView(frame)
-    ids = (intent.getStringExtra("dragon.cases") ?: "").split(",").filter { it.isNotEmpty() }
     out = getExternalFilesDir(null) ?: throw IllegalStateException("dragon host: no external files dir")
     File(out, "done-android").delete()
+    val listed = (intent.getStringExtra("dragon.cases") ?: "").split(",").filter { it.isNotEmpty() }
+    run = dragonReadRun(File(out, "dragon-run.tsv")) ?: DragonRun(listed, emptyMap(), false)
     bridge = DragonBridge.shared(this)
     File(out, "bridge-android.json").writeText(bridge.record("android"))
     scale = resources.displayMetrics.density.toDouble()
     val os = "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ", " + Build.ID + ")"
     val model = Build.MODEL + " / " + (intent.getStringExtra("dragon.model") ?: "unnamed")
     device = DumpDevice("android", os, model, Build.SUPPORTED_ABIS[0], scale, DRAGON_TOOLCHAIN, intent.getStringExtra("dragon.renderer") ?: "unknown")
-    frame.post { runCase(0) }
+    frame.post(object : Runnable {
+      var waited = 0
+      override fun run() {
+        // The stage is placed once the system bar insets have been applied; below API 35 (no enforced edge-to-edge) the decor
+        // view places the content below the bars and consumes the insets, so a laid-out stage after 0.5 s is placed too.
+        waited++
+        val placed = insetsApplied || (frame.isLaidOut && waited > 30)
+        if (placed && !frame.isLayoutRequested) runCase(0) else main.postDelayed(this, 16)
+      }
+    })
+  }
+
+  private fun q(s: String): String = "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+  private fun deviceRecord(tree: DragonTree) {
+    val at = IntArray(2)
+    tree.root.getLocationOnScreen(at)
+    val d = window.decorView
+    val f = { v: Double -> DumpJsonWriter.format(v) }
+    File(out, "device-android.json").writeText("{\"platform\":\"android\",\"model\":" + q(device.model) + ",\"os\":" + q(device.os) + ",\"build\":" + q(Build.DISPLAY) + ",\"scale\":" + f(scale) + ",\"densityDpi\":" + resources.displayMetrics.densityDpi + ",\"windowPx\":[" + d.width + "," + d.height + "],\"stagePx\":[" + (frame.width - frame.paddingLeft - frame.paddingRight) + "," + (frame.height - frame.paddingTop - frame.paddingBottom) + "],\"rootOriginPx\":[" + at[0] + "," + at[1] + "],\"textScale\":\"" + resources.configuration.fontScale + "\"}")
   }
 
   private fun runCase(k: Int) {
-    if (k >= ids.size) {
+    if (k >= run.ids.size) {
       File(out, "done-android").writeText("ok")
       finish()
       return
     }
-    val id = ids[k]
+    val id = run.ids[k]
     val c = dragonCaseTable[id] ?: throw IllegalStateException("dragon host: no case " + id)
     val tree = DragonTree(this)
     c.build(tree)
     val t0 = SystemClock.elapsedRealtimeNanos()
     tree.apply(c.input(scale), bridge.measurer, scale, bridge)
     frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
-    // Settle on explicit signals: two frame callbacks after the tree is attached, then a compositor copy of the window.
-    Choreographer.getInstance().postFrameCallback {
+    // Settle on explicit signals: at least two frame callbacks after the tree is attached and until the root is laid out, then a
+    // compositor copy of the window.
+    fun settle(frames: Int) {
       Choreographer.getInstance().postFrameCallback {
+        if (frames < 2 || !tree.root.isLaidOut || tree.root.width == 0) {
+          if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")
+          settle(frames + 1)
+          return@postFrameCallback
+        }
         val t1 = SystemClock.elapsedRealtimeNanos()
+        deviceRecord(tree)
         val at = IntArray(2)
         tree.root.getLocationInWindow(at)
         val w = tree.root.width
         val h = tree.root.height
         val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        PixelCopy.request(window, Rect(at[0], at[1], at[0] + w, at[1] + h), bitmap, { result ->
-          if (result != PixelCopy.SUCCESS) throw IllegalStateException("dragon host: PixelCopy failed with " + result)
-          val t2 = SystemClock.elapsedRealtimeNanos()
-          val buf = ByteBuffer.allocate(w * h * 4)
-          bitmap.copyPixelsToBuffer(buf)
-          val bytes = buf.array()
-          val sha = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { String.format("%02x", it.toInt() and 0xff) }
-          val pixels = DumpPixels("PixelCopy", w.toDouble(), h.toDouble(), sha, emptyList())
-          val dump = tree.dump(c, scale, device, pixels, DumpTiming((t1 - t0) / 1e6, (SystemClock.elapsedRealtimeNanos() - t2) / 1e6))
-          File(out, id + "@" + DumpJsonWriter.format(scale) + ".json").writeText(dumpJson(dump))
-          frame.removeView(tree.root)
-          frame.post { runCase(k + 1) }
-        }, Handler(Looper.getMainLooper()))
+        // A window that has not yet produced a frame, or has no surface yet, has nothing to copy: copy again on the next frame.
+        fun copy(attempt: Int) {
+          if (!window.decorView.isAttachedToWindow) throw IllegalStateException("dragon host: the window is detached")
+          val done = PixelCopy.OnPixelCopyFinishedListener { result ->
+            if (result == PixelCopy.ERROR_SOURCE_NO_DATA && attempt < 6000) {
+              Choreographer.getInstance().postFrameCallback { copy(attempt + 1) }
+              return@OnPixelCopyFinishedListener
+            }
+            if (result != PixelCopy.SUCCESS) throw IllegalStateException("dragon host: PixelCopy failed with " + result + " after " + attempt + " retries")
+            val t2 = SystemClock.elapsedRealtimeNanos()
+            val buf = ByteBuffer.allocate(w * h * 4)
+            bitmap.copyPixelsToBuffer(buf)
+            val bytes = buf.array()
+            val sha = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { String.format("%02x", it.toInt() and 0xff) }
+            val pixels = DumpPixels("PixelCopy", w.toDouble(), h.toDouble(), sha, dragonSamples(bytes, w, h, run.points[id] ?: emptyList()))
+            val dump = tree.dump(c, scale, device, pixels, DumpTiming((t1 - t0) / 1e6, (SystemClock.elapsedRealtimeNanos() - t2) / 1e6))
+            File(out, id + "@" + DumpJsonWriter.format(scale) + ".json").writeText(dumpJson(dump))
+            val next = Runnable {
+              frame.removeView(tree.root)
+              frame.post { runCase(k + 1) }
+            }
+            if (!run.hold) next.run()
+            else {
+              // The capture-trust probe: the case stays on screen until the host has taken the OS screenshot.
+              File(out, "hold-" + id).writeText("ok")
+              val release = File(out, "release-" + id)
+              val poll = object : Runnable {
+                override fun run() {
+                  if (release.exists()) next.run() else main.postDelayed(this, 50)
+                }
+              }
+              main.post(poll)
+            }
+          }
+          try {
+            PixelCopy.request(window, Rect(at[0], at[1], at[0] + w, at[1] + h), bitmap, done, main)
+          } catch (e: IllegalArgumentException) {
+            if (attempt >= 6000) throw e
+            Choreographer.getInstance().postFrameCallback { copy(attempt + 1) }
+          }
+        }
+        copy(0)
       }
     }
+    settle(1)
   }
 }
 `;
@@ -338,9 +442,10 @@ function androidManifest(): string {
 `;
 }
 
-/** Faults planted in a host build: an API above the floor on either platform. */
-export type BuildPlant = 'ios-16' | 'api-34';
-const PLANTED: { readonly [P in BuildPlant]: GeneratedFile } = {
+/** Faults planted in a host build: an API above the floor on either platform, or the glyph-offset-1 raster plant (P5, both). */
+export type BuildPlant = 'ios-16' | 'api-34' | SupportPlant;
+export const BUILD_PLANTS: { readonly [T in NativeTarget]: readonly BuildPlant[] } = { ios: ['ios-16', ...SUPPORT_PLANTS], android: ['api-34', ...SUPPORT_PLANTS] };
+const PLANTED: { readonly [P in Exclude<BuildPlant, SupportPlant>]: GeneratedFile } = {
   'ios-16': { path: 'Host/DragonPlanted.swift', text: 'import UIKit\n\n/// Planted floor fault: UICalendarView is iOS 16 only.\nfunc dragonPlantedIos16() -> UIView { return UICalendarView() }\n' },
   'api-34': { path: 'kotlin/dev/dragon/host/DragonPlanted.kt', text: 'package dev.dragon.host\n\n/** Planted floor fault: Context.createDeviceContext is API 34. */\nfun dragonPlantedApi34(c: android.content.Context): Any? = c.createDeviceContext(0)\n' },
 };
@@ -365,9 +470,10 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
     files.push({ path: 'kotlin/dev/dragon/host/DragonToolchain.kt', text: `// GENERATED by @dragon/parity native-host.ts. Do not edit.\npackage dev.dragon.host\n\nconst val DRAGON_TOOLCHAIN = ${JSON.stringify(toolchain)}\n` });
     files.push({ path: 'AndroidManifest.xml', text: androidManifest() });
   }
-  files.push(...emitNativeSupport(backend));
+  const supportPlant = plant !== null && (SUPPORT_PLANTS as readonly string[]).includes(plant) ? (plant as SupportPlant) : null;
+  files.push(...emitNativeSupport(backend, supportPlant));
   files.push(...(backend === 'uikit' ? emitUikitCases(cases) : emitAndroidViewsCases(cases)));
-  if (plant !== null) files.push(PLANTED[plant]);
+  if (plant !== null && supportPlant === null) files.push(PLANTED[plant as Exclude<BuildPlant, SupportPlant>]);
   return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
 
@@ -432,13 +538,27 @@ export function androidTools(): AndroidTools {
 
 export type BuildResult = { readonly target: NativeTarget; readonly cases: number; readonly sourceSha256: string; readonly artifact: string; readonly log: readonly string[] };
 
+/** Build options: a plant, and reuse, which keeps an artifact built from the same source tree (its sha256 is stamped beside it). */
+export type BuildOptions = { readonly plant?: BuildPlant | null; readonly reuse?: boolean };
+
+/** The build directory of a target: a planted build never overwrites the clean one. */
+export const buildDir = (target: NativeTarget, plant: BuildPlant | null = null): string => (plant === null ? nativeOut(target) : join(nativeOut(target), `plant-${plant}`));
+
+const stampOf = (artifact: string): string => `${artifact}.sha256`;
+function reused(artifact: string, sha: string): boolean {
+  return existsSync(artifact) && existsSync(stampOf(artifact)) && readFileSync(stampOf(artifact), 'utf8') === sha;
+}
+
 /** The iOS host app: swiftc for the iOS 15 simulator target with -O, Info.plist and Ahem, ad-hoc signed. */
-export function buildIos(opts: { plant?: BuildPlant | null } = {}): BuildResult {
-  const dir = nativeOut('ios');
+export function buildIos(opts: BuildOptions = {}): BuildResult {
+  const dir = buildDir('ios', opts.plant ?? null);
   const toolchain = xcodeVersion();
   const files = hostSources('ios', toolchain, opts.plant ?? null);
-  const src = writeSources(dir, files);
+  const sha = sourceTreeSha256(files);
   const app = join(dir, 'build', 'DragonHost.app');
+  if (opts.reuse === true && reused(app, sha)) return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: app, log: [`reused ${app} (source sha256 ${sha})`] };
+  rmSync(stampOf(app), { force: true });
+  const src = writeSources(dir, files);
   rmSync(app, { recursive: true, force: true });
   mkdirSync(app, { recursive: true });
   const swift = files.filter((f) => f.path.endsWith('.swift')).map((f) => join(src, f.path));
@@ -450,18 +570,23 @@ export function buildIos(opts: { plant?: BuildPlant | null } = {}): BuildResult 
   copyFileSync(repoPath('vendor/fonts/Ahem.ttf'), join(app, 'Ahem.ttf'));
   must(run('codesign', ['--force', '--sign', '-', '--timestamp=none', app]), 'codesign -s -');
   log.push('codesign --sign - (ad hoc)');
-  return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sourceTreeSha256(files), artifact: app, log };
+  writeFileSync(stampOf(app), sha);
+  return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: app, log };
 }
 
 /** The Android host APK from the SDK tools alone: aapt2 link, kotlinc against android.jar, d8 --min-api 31, zipalign, apksigner. */
-export function buildAndroid(opts: { plant?: BuildPlant | null } = {}): BuildResult & { readonly dexes: readonly string[]; readonly tools: AndroidTools } {
+export function buildAndroid(opts: BuildOptions = {}): BuildResult & { readonly dexes: readonly string[]; readonly tools: AndroidTools } {
   const tools = androidTools();
-  const dir = nativeOut('android');
+  const dir = buildDir('android', opts.plant ?? null);
   const kotlinVersion = must(run(tools.kotlinc, ['-version']), 'kotlinc -version').trim().split('\n').pop() ?? '';
   const toolchain = `${kotlinVersion.replace(/^info:\s*/, '')}; d8 and aapt2 ${ANDROID_BUILD_TOOLS}; android-${ANDROID_TARGET_SDK}.jar; no Gradle`;
   const files = hostSources('android', toolchain, opts.plant ?? null);
-  const src = writeSources(dir, files);
+  const sha = sourceTreeSha256(files);
   const build = join(dir, 'build');
+  const apk = join(build, 'DragonHost.apk');
+  const dexDir = join(build, 'dex');
+  if (opts.reuse === true && reused(apk, sha)) return { target: 'android', cases: emitCases('android').length, sourceSha256: sha, artifact: apk, log: [`reused ${apk} (source sha256 ${sha})`], dexes: readdirSync(dexDir).filter((f) => /^classes\d*\.dex$/.test(f)).sort().map((d) => join(dexDir, d)), tools };
+  const src = writeSources(dir, files);
   rmSync(build, { recursive: true, force: true });
   mkdirSync(join(build, 'assets', 'fonts'), { recursive: true });
   mkdirSync(join(build, 'dex'), { recursive: true });
@@ -488,10 +613,10 @@ export function buildAndroid(opts: { plant?: BuildPlant | null } = {}): BuildRes
   if (!existsSync(keystore)) {
     must(run(join(tools.javaHome, 'bin', 'keytool'), ['-genkeypair', '-keystore', keystore, '-storepass', 'android', '-keypass', 'android', '-alias', 'dragondebug', '-keyalg', 'RSA', '-keysize', '2048', '-validity', '10000', '-dname', 'CN=Dragon Debug,O=Dragon,C=US'], { env }), 'keytool');
   }
-  const apk = join(build, 'DragonHost.apk');
   must(run(bt('apksigner'), ['sign', '--ks', keystore, '--ks-pass', 'pass:android', '--key-pass', 'pass:android', '--ks-key-alias', 'dragondebug', '--out', apk, aligned], { env }), 'apksigner sign');
   log.push('zipalign -p 4; apksigner sign with a debug key generated under out/');
-  return { target: 'android', cases: emitCases('android').length, sourceSha256: sourceTreeSha256(files), artifact: apk, log, dexes: dexes.map((d) => join(build, 'dex', d)), tools };
+  writeFileSync(stampOf(apk), sha);
+  return { target: 'android', cases: emitCases('android').length, sourceSha256: sha, artifact: apk, log, dexes: dexes.map((d) => join(build, 'dex', d)), tools };
 }
 
 // ---------------------------------------------------------------- dump encoders on the host

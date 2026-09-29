@@ -1,0 +1,27 @@
+{
+  "case": "tree-whitespace-leaves#0",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a:text0","lines":[[0,2]]},
+    {"id":"a:space0","lines":[[0,1]]},
+    {"id":"a:text1","lines":[[0,2]]},
+    {"id":"a:text2","lines":[[0,1]]},
+    {"id":"a:text3","lines":[[0,5]]},
+    {"id":"b:text0","lines":[[0,4]]},
+    {"id":"b:text1","lines":[[0,4]]},
+    {"id":"b:text2","lines":[[0,2]]},
+    {"id":"c:text0","lines":[[0,2]]},
+    {"id":"c:text1","lines":[[0,1]]},
+    {"id":"c:text2","lines":[[0,3],[3,5]]},
+    {"id":"d:text0","lines":[[0,3]]},
+    {"id":"d:text1","lines":[[0,2]]},
+    {"id":"d:text2","lines":[[0,1]]},
+    {"id":"d:text3","lines":[[0,3]]},
+    {"id":"e:text0","lines":[[0,2]]},
+    {"id":"e:space0","lines":[[0,1]]},
+    {"id":"e:text1","lines":[[0,1]]},
+    {"id":"e:text2","lines":[[0,4]]},
+    {"id":"e:text3","lines":[[0,1]]},
+    {"id":"e:text4","lines":[[0,1]]}
+  ]
+}

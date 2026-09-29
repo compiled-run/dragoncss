@@ -1,0 +1,9 @@
+{
+  "case": "position-absolute-min-max-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a5:text0","lines":[[0,3],[3,7],[7,9]]},
+    {"id":"a6:text0","lines":[[0,1]]},
+    {"id":"b5:text0","lines":[[0,3],[3,7],[7,9]]}
+  ]
+}

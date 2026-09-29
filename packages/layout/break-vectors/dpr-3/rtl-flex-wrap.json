@@ -1,0 +1,9 @@
+{
+  "case": "rtl-flex-wrap",
+  "dpr": 3,
+  "texts": [
+    {"id":"t1a:text0","lines":[[0,3],[3,7],[7,9]]},
+    {"id":"t1b:text0","lines":[[0,5],[5,6]]},
+    {"id":"t1c:text0","lines":[[0,2],[2,5],[5,8]]}
+  ]
+}

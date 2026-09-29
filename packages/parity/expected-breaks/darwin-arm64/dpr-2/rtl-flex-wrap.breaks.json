@@ -1,0 +1,10 @@
+{
+  "case": "rtl-flex-wrap",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"t1a:text0","data":"XX XXX XX","lines":3,"units":[0,0,0,1,1,1,1,2,2],"blank":[2,6]},
+    {"id":"t1b:text0","data":"XXXX X","lines":2,"units":[0,0,0,0,0,1],"blank":[4]},
+    {"id":"t1c:text0","data":"X XX XXX","lines":3,"units":[0,0,1,1,1,2,2,2],"blank":[1,4]}
+  ]
+}

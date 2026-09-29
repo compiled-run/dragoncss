@@ -1,0 +1,8 @@
+{
+  "case": "tree-switch-two-instances#14",
+  "dpr": 2,
+  "texts": [
+    {"id":"a/label:text0","lines":[[0,2]]},
+    {"id":"b/label:text0","lines":[[0,2]]}
+  ]
+}

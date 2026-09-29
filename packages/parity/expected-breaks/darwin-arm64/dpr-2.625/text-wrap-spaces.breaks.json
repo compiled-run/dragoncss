@@ -1,0 +1,15 @@
+{
+  "case": "text-wrap-spaces",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"w1:text0","data":"XX XX XX","lines":3,"units":[0,0,0,1,1,1,2,2],"blank":[2,5]},
+    {"id":"w2:text0","data":"XX XX XX","lines":2,"units":[0,0,0,0,0,0,1,1],"blank":[5]},
+    {"id":"w3:text0","data":"X XX XXX XXXX","lines":3,"units":[0,0,0,0,0,1,1,1,1,2,2,2,2],"blank":[4,8]},
+    {"id":"w4:text0","data":"XX XX X","lines":3,"units":[0,0,0,1,1,1,2],"blank":[2,5]},
+    {"id":"w5:text0","data":"XX XX XX XX","lines":4,"units":[0,0,0,1,1,1,2,2,2,3,3],"blank":[2,5,8]},
+    {"id":"w6:text0","data":"XXX XXX XX X XXXXX","lines":3,"units":[0,0,0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2],"blank":[7,12]},
+    {"id":"w7:text0","data":"XX X XXX XX","lines":3,"units":[0,0,0,0,0,1,1,1,1,2,2],"blank":[4,8]},
+    {"id":"w8:text0","data":"X X X X X X X","lines":4,"units":[0,0,0,0,1,1,1,1,2,2,2,2,3],"blank":[3,7,11]}
+  ]
+}

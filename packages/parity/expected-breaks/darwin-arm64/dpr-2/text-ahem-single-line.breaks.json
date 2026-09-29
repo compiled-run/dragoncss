@@ -1,0 +1,17 @@
+{
+  "case": "text-ahem-single-line",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"t1:text0","data":"XX X","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"t2:text0","data":"XX​XX","lines":1,"units":[0,0,0,0,0],"blank":[2]},
+    {"id":"t3:text0","data":"X X","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"t4:text0","data":"XXXXXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"t5:text0","data":"XXp","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"fi1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"fi2:text0","data":"XXX X","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"fi3:text0","data":"XXXXX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"sh1:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"sh2:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]}
+  ]
+}

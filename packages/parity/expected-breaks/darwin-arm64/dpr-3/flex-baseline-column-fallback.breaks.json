@@ -1,0 +1,11 @@
+{
+  "case": "flex-baseline-column-fallback",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"c1t:text0","data":"XX X","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"c2t:text0","data":"XX X","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"c3t:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"c4t:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

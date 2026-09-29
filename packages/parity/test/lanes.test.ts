@@ -182,10 +182,42 @@ describe('committed out/lanes.json', () => {
       expect(host?.state, t.target).toBe('pass');
       expect(host?.run?.digests).toEqual({ p1: p1Manifest().digest, extended: extendedManifest().digest });
       expect(host?.run?.suites.every((s) => s.total === s.declared && s.pass === s.declared)).toBe(true);
-      for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
       expect(t.referenceProof?.map((r) => r.dpr)).toEqual(t.target === 'ios' ? SHARED_DPRS : [...SHARED_DPRS, ...EXTRA_DPRS.map((e) => e.dpr)]);
       for (const r of t.referenceProof ?? []) expect([r.valid, r.chrome, r.engine]).toEqual([r.cases, r.cases, r.cases]);
     }
-    expect(notPassed(f).length).toBe(2 * (LANES.length - 1));
+    // P5: the committed file holds device run records (below); a file written from the committed host runs alone, with no
+    // device run and nothing carried, still has every device lane not run.
+    const hostOnly = new Map(f.targets.map((t) => {
+      const l = t.lanes.find((x) => x.lane === 'layout-vectors-host');
+      return [t.target, { state: l?.state ?? 'not run', reason: l?.reason ?? null, toolchain: l?.run?.toolchain ?? null, suites: l?.run?.suites ?? [], digests: l?.run?.digests ?? { p1: null, extended: null } } as HostRun] as const;
+    }));
+    const unrun = lanesFile(targets, [], hostOnly, null);
+    for (const t of unrun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
+    expect(notPassed(unrun).length).toBe(2 * (LANES.length - 1));
+  });
+  it('every device lane ran (P5): per DPR the device, OS, both scales, a dump per case and the counts compared; vectors equal the host lane; every dump fault caught; capture trust on every device', () => {
+    if (f === null) return;
+    for (const t of f.targets) {
+      const host = t.lanes.find((l) => l.lane === 'layout-vectors-host');
+      const vectors = t.lanes.find((l) => l.lane === 'layout-vectors-device');
+      expect(vectors?.state, `${t.target} layout-vectors-device`).toBe('pass');
+      expect(vectors?.run?.digests).toEqual(host?.run?.digests);
+      expect(vectors?.run?.suites).toEqual(host?.run?.suites);
+      for (const l of t.lanes.filter((x) => x.where === 'device' && x.lane !== 'layout-vectors-device')) {
+        expect(['pass', 'fail'], `${t.target} ${l.lane}`).toContain(l.state);
+        expect([...(l.device?.sets.map((s) => s.dpr) ?? [])].sort(), `${t.target} ${l.lane}`).toEqual(l.sets.map((s) => s.dpr).sort());
+        for (const s of l.device?.sets ?? []) {
+          expect([s.device.profileScale, s.device.appScale, s.dumps], `${t.target} ${l.lane} ${s.dpr}`).toEqual([s.dpr, s.dpr, s.cases]);
+          expect(s.cases).toBe(ids.length);
+          expect(s.compared.a > 0 && s.compared.b > 0 && s.compared.c > 0 && s.compared.d > 0 && s.compared.breaks > 0).toBe(true);
+        }
+        if (l.lane === 'device-pixels') expect(l.device?.trust?.map((x) => [x.dpr, x.mismatches])).toEqual(l.device?.sets.map((s) => [s.dpr, 0]));
+      }
+      expect(t.dumpFaults?.map((r) => r.dpr).sort()).toEqual([...t.dprs].sort());
+      for (const r of t.dumpFaults ?? []) {
+        expect(r.rows.map((x) => x.fault)).toEqual([...DUMP_FAULTS]);
+        for (const x of r.rows) expect([x.fault, x.applicable > 0, x.caught === x.applicable]).toEqual([x.fault, true, true]);
+      }
+    }
   });
 });

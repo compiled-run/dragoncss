@@ -4,7 +4,7 @@
 // native capture with Chrome's pixels at the same points.
 
 /** The rule kinds, in the order the generator emits them per box. Both native targets bind this list. */
-export const SAMPLE_RULES = ['interior', 'border', 'outside', 'radius', 'clip', 'edge'] as const;
+export const SAMPLE_RULES = ['interior', 'border', 'outside', 'radius', 'clip', 'edge', 'glyph'] as const;
 export type SampleRule = (typeof SAMPLE_RULES)[number];
 
 /** Sample geometry, not a tolerance: how far a colour point stays from any edge or arc (T002 section 6). */
@@ -129,4 +129,47 @@ export function ruleKind(rule: string): SampleRule {
   const k = rule.slice(0, rule.indexOf(':'));
   if (!(SAMPLE_RULES as readonly string[]).includes(k)) throw new Error(`unknown sample rule ${rule}`);
   return k as SampleRule;
+}
+
+// ---------------------------------------------------------------- the glyph rule (P5)
+
+/** One glyph's ink box in device px, from engine data only: the pen x and the font's glyph box scaled to the instance size. */
+export type GlyphBox = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
+/** A line box's inked glyphs in drawing order; id is the line id "<text>:line<j>". */
+export type GlyphLine = { readonly id: string; readonly glyphs: readonly GlyphBox[] };
+
+/**
+ * The glyph rule: an interior point of every glyph box wide and tall enough to hold one clear of its edges by the inset, then one
+ * edge scanline (an edge rule, so check (c) compares its position) across the left edge of the line's first glyph and one across
+ * the right edge of its last, at the glyph's vertical middle, from a clear outside pixel to a clear inside pixel. Edges may be
+ * fractional device px; points are whole pixels. Nothing here reads a capture.
+ */
+export function generateGlyphSamples(lines: readonly GlyphLine[], size: ImageSize, inset: number = SAMPLE_INSET_DEVICE_PX): SamplePoint[] {
+  const out: SamplePoint[] = [];
+  const inImage = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < size.width && y < size.height;
+  const clear = (p: number, lo: number, hi: number): boolean => p >= lo + inset && p + 1 <= hi - inset;
+  for (const line of lines) {
+    line.glyphs.forEach((g, k) => {
+      const x = Math.floor((g.left + g.right) / 2);
+      const y = Math.floor((g.top + g.bottom) / 2);
+      if (clear(x, g.left, g.right) && clear(y, g.top, g.bottom) && inImage(x, y)) out.push({ x, y, rule: `glyph:${line.id}:${k}` });
+    });
+    const first = line.glyphs[0];
+    const last = line.glyphs[line.glyphs.length - 1];
+    if (first === undefined || last === undefined) continue;
+    for (const [g, side] of [[first, 'left'], [last, 'right']] as const) {
+      const y = Math.floor((g.top + g.bottom) / 2);
+      if (!clear(y, g.top, g.bottom) || g.right - g.left < 2 * inset + 2) continue;
+      const edge = side === 'left' ? g.left : g.right;
+      const inward = side === 'left' ? 1 : -1;
+      // From the first pixel clear outside the edge to the first pixel clear inside it.
+      const outer = inward > 0 ? Math.floor(edge - inset) - 1 : Math.ceil(edge + inset);
+      const inner = inward > 0 ? Math.ceil(edge + inset) : Math.floor(edge - inset) - 1;
+      const points: number[] = [];
+      for (let p = outer; inward > 0 ? p <= inner : p >= inner; p += inward) points.push(p);
+      if (!points.every((p) => inImage(p, y))) continue;
+      for (const p of points) out.push({ x: p, y, rule: `edge:${line.id}:glyph-${side}` });
+    }
+  }
+  return out;
 }

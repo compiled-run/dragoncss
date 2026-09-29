@@ -1,0 +1,7 @@
+{
+  "case": "position-absolute-nested",
+  "dpr": 2,
+  "texts": [
+    {"id":"tt:text0","lines":[[0,7],[7,12]]}
+  ]
+}
