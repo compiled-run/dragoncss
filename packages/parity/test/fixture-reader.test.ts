@@ -246,7 +246,11 @@ describe('fixture reader identity', () => {
   it('refuses a source outside the repository and an origin with a bad occurrence index', () => {
     const id = 'tree-controlled-aliases';
     const dir = `packages/parity/fixtures/${id}`;
-    expect(() => readTreeFixtureDir(dir, id, { spec: (s) => ({ ...s, sources: [...s.sources, '../../../../../x.css'] }) })).toThrow(/outside the repository/);
+    for (const bad of ['../../../../../x.css', '..\\..\\..\\..\\..\\x.css', '../../../../..']) {
+      expect(() => readTreeFixtureDir(dir, id, { spec: (s) => ({ ...s, sources: [...s.sources, bad] }) }), bad).toThrow(/outside the repository/);
+    }
+    expect(() => readTreeFixtureDir(dir, id, { spec: (s) => ({ ...s, sources: [...s.sources, './fixture.json', 'fixture.json'] }) })).toThrow(/listed twice/);
+    expect(() => readTreeFixtureDir(dir, id, { spec: (s) => ({ ...s, sources: [...s.sources, s.sources[0] as string] }) })).toThrow(/listed twice/);
     const at = (a: unknown) => (s: TreeFixtureFile): TreeFixtureFile => ({ ...s, components: s.components.map((c, i) => (i === 0 ? { ...c, at: a as TreeFixtureFile['components'][number]['at'] } : c)) });
     for (const bad of [['<', -1], ['<', 0.5], '']) expect(() => readTreeFixtureDir(dir, id, { spec: at(bad) }), JSON.stringify(bad)).toThrow(/bad origin/);
   });
@@ -287,6 +291,7 @@ describe('<link rel="stylesheet" href>', () => {
 
   it('needs a resolver, and exactly one stylesheet', () => {
     expect(() => fixtureToInput('linked', html)).toThrow(/needs a stylesheet resolver/);
+    expect(() => fixtureToInput('linked', html, { resolveStylesheet: () => ({ text: css, uri: 'dragon-source://dragon-parity/fixtures/linked.html', displayPath: 'x' }) })).toThrow(/fixture's own uri/);
     expect(() => parseFixtureHtml(page('<link rel="stylesheet" href="a.css"><style></style>', ''))).toThrow(/exactly one/);
     expect(() => parseFixtureHtml(page('', ''))).toThrow(/exactly one/);
     // rel is an ASCII case-insensitive token list, so neither link may be skipped silently.

@@ -171,6 +171,7 @@ export function fixtureToInput(id: string, html: string, options: FixtureReadOpt
   else {
     if (link === undefined || options.resolveStylesheet === undefined) throw new Error('a <link rel="stylesheet"> fixture needs a stylesheet resolver');
     const css = options.resolveStylesheet(link.href);
+    if (css.uri === ref.uri) throw new Error(`the stylesheet ${link.href} resolves to the fixture's own uri ${ref.uri}`);
     const cssRef: SourceRef = { uri: css.uri, revision: 'fixture', hash: `sha256:${createHash('sha256').update(css.text, 'utf8').digest('hex')}` };
     sources.push({ ref: cssRef, text: css.text, displayPath: css.displayPath });
     sheet = { source: cssRef, start: 0, end: css.text.length };
