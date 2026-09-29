@@ -147,7 +147,7 @@ describe('the validator takes calculation trees (validate.ts calc rule)', () => 
     return copy;
   };
   it('accepts every node kind and rejects an unknown kind, an empty operand list, a missing key and a non-finite number', () => {
-    const ok = { kind: 'calc', range: 'all', expr: { kind: 'sum', terms: [{ kind: 'px', value: 1 }, { kind: 'percent', value: 2 }, { kind: 'viewport', value: 1, axis: 'min' }, { kind: 'em', value: 1, fontSize: { kind: 'px', value: 10 } }, { kind: 'product', terms: [{ kind: 'number', value: 2 }, { kind: 'invert', term: { kind: 'number', value: 3 } }] }, { kind: 'clamp', min: { kind: 'px', value: 0 }, value: { kind: 'min', terms: [{ kind: 'px', value: 1 }] }, max: { kind: 'max', terms: [{ kind: 'px', value: 2 }] } }, { kind: 'pixels-and-percent', pixels: 1, percent: 2, explicitPixels: true, explicitPercent: false }] } };
+    const ok = { kind: 'calc', range: 'all', expr: { kind: 'sum', terms: [{ kind: 'px', value: 1 }, { kind: 'percent', value: 2 }, { kind: 'viewport', value: 1, axis: 'min' }, { kind: 'em', value: 1, fontSize: { kind: 'px', value: 10 } }, { kind: 'product', terms: [{ kind: 'px', value: 2 }, { kind: 'invert', term: { kind: 'number', value: 3 } }] }, { kind: 'clamp', min: { kind: 'px', value: 0 }, value: { kind: 'min', terms: [{ kind: 'px', value: 1 }] }, max: { kind: 'max', terms: [{ kind: 'px', value: 2 }] } }, { kind: 'pixels-and-percent', pixels: 1, percent: 2, explicitPixels: true, explicitPercent: false }] } };
     expect(validateLayoutInput(withWidth(ok)).ok).toBe(true);
     for (const bad of [
       { kind: 'calc', range: 'all', expr: { kind: 'pow', terms: [] } },
@@ -157,5 +157,31 @@ describe('the validator takes calculation trees (validate.ts calc rule)', () => 
       { kind: 'calc', range: 'all', expr: { kind: 'viewport', value: 1, axis: 'inline' } },
       { kind: 'calc', range: 'all', expr: { kind: 'pixels-and-percent', pixels: 1, percent: 2, explicitPixels: 1, explicitPercent: false } },
     ]) expect(validateLayoutInput(withWidth(bad)).ok, JSON.stringify(bad)).toBe(false);
+  });
+  it('type-checks the tree (css-values-4 §10.9): no number beside a length, one non-number factor, only numbers inverted, px em font sizes, no number result', () => {
+    const px = (value: number) => ({ kind: 'px', value });
+    const n = (value: number) => ({ kind: 'number', value });
+    const pct = (value: number) => ({ kind: 'percent', value });
+    const calc = (expr: unknown) => ({ kind: 'calc', range: 'all', expr });
+    for (const ok of [
+      calc({ kind: 'product', terms: [n(2), { kind: 'sum', terms: [px(1), pct(5)] }, { kind: 'invert', term: { kind: 'sum', terms: [n(1), n(2)] } }] }),
+      calc({ kind: 'clamp', min: px(1), value: pct(50), max: { kind: 'em', value: 2, fontSize: px(10) } }),
+      calc({ kind: 'max', terms: [pct(10), pct(20)] }),
+    ]) expect(validateLayoutInput(withWidth(ok)).ok, JSON.stringify(ok)).toBe(true);
+    for (const bad of [
+      calc({ kind: 'sum', terms: [px(1), n(2)] }),
+      calc({ kind: 'min', terms: [pct(1), n(2)] }),
+      calc({ kind: 'clamp', min: n(0), value: px(1), max: px(2) }),
+      calc({ kind: 'product', terms: [px(1), pct(2)] }),
+      calc({ kind: 'product', terms: [px(1), { kind: 'invert', term: px(2) }] }),
+      calc({ kind: 'em', value: 1, fontSize: pct(50) }),
+      calc({ kind: 'sum', terms: [px(1), { kind: 'em', value: 1, fontSize: n(10) }] }),
+      calc(n(3)),
+      calc({ kind: 'product', terms: [n(2), n(3)] }),
+    ]) {
+      const r = validateLayoutInput(withWidth(bad));
+      expect(r.ok, JSON.stringify(bad)).toBe(false);
+      if (!r.ok) expect(r.errors.map((e) => e.code), JSON.stringify(bad)).toEqual(['bad-value']);
+    }
   });
 });
