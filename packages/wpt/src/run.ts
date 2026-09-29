@@ -16,7 +16,9 @@ import { lockedCommit, packagePath, pinnedWptDir } from './paths.ts';
 import type { ReftestEntry, ReftestLayoutReport } from './reftest.ts';
 import { captureReftest, judgeReftest, readReftestCapture, REFTEST_CAPTURE_DIR, REFTEST_LAYOUT_KIND, reftestDragonSide, RUN_REFTEST_CAPTURE_DIR, writeReftestCapture } from './reftest.ts';
 import type { SnapshotFile } from './snapshot.ts';
-import { captureSnapshot, chromeFromSnapshot, needsSnapshot, readSnapshot, RUN_SNAPSHOT_DIR, SNAPSHOT_DIR, snapshotProblem, translateSnapshot, writeSnapshot } from './snapshot.ts';
+import type { DeadRuleFaults } from './translate.ts';
+import { NO_DEAD_RULE_FAULTS } from './translate.ts';
+import { captureSnapshot, chromeFromSnapshot, liveDeadRulesInSnapshot, needsSnapshot, readSnapshot, RUN_SNAPSHOT_DIR, SNAPSHOT_DIR, snapshotProblem, translateSnapshot, writeSnapshot } from './snapshot.ts';
 
 export type TestRecord = {
   readonly path: string;
@@ -60,6 +62,9 @@ export type RunOptions = {
   readonly log?: (line: string) => void;
 };
 
+/** A dropped dead rule that Chrome's querySelectorAll matched in the original page refuses the test. */
+export const DEAD_RULE_LIVE: DragonOutcome = { status: 'not-runnable', missing: 'translate:dead-rule-live' };
+
 const readWptFrom = (wpt: string) => (p: string): string | null => {
   try {
     return readFileSync(join(wpt, p), 'utf8');
@@ -69,12 +74,12 @@ const readWptFrom = (wpt: string) => (p: string): string | null => {
 };
 
 /** The Dragon side of a script-driven test from its snapshot file (or the reason it cannot be used). */
-export function runSnapshotTest(wpt: string, path: string, commit: string, target: Target, file: SnapshotFile | null, source: string = readFileSync(join(wpt, path), 'utf8')): NumericRun {
+export function runSnapshotTest(wpt: string, path: string, commit: string, target: Target, file: SnapshotFile | null, source: string = readFileSync(join(wpt, path), 'utf8'), deadRuleFaults: DeadRuleFaults = NO_DEAD_RULE_FAULTS): NumericRun {
   const problem = snapshotProblem(file, source, commit);
   if (problem !== null) return { outcome: { status: 'not-runnable', missing: problem }, fixtures: [] };
   const result = (file as SnapshotFile).result;
   if ('refused' in result) return { outcome: { status: 'not-runnable', missing: result.refused }, fixtures: [] };
-  return runTranslations(translateSnapshot(path, result.states, commit, readWptFrom(wpt)), target);
+  return runTranslations(translateSnapshot(path, result.states, commit, readWptFrom(wpt), deadRuleFaults), target);
 }
 
 /** The Dragon side of one numeric test file in the WPT copy. */
@@ -137,11 +142,20 @@ export async function runTarget(opts: RunOptions): Promise<RunResult> {
         writeSnapshot(RUN_SNAPSHOT_DIR, file);
         log(`snapshot ${path}: ${'refused' in file.result ? file.result.refused : `${file.result.states.length} state(s)`}`);
       } else file = readSnapshot(opts.snapshotDir ?? SNAPSHOT_DIR, path);
-      const run = runSnapshotTest(wpt, path, commit, opts.target, file, source);
+      let run = runSnapshotTest(wpt, path, commit, opts.target, file, source);
       const at = records.findIndex((r) => r.path === path);
       const result = file === null ? null : file.result;
       let chrome: ChromeOutcome | null = null;
       const translatedAll = result !== null && !('refused' in result) && run.fixtures.length === result.states.length;
+      // Dropped dead rules are confirmed in the original page at each state's checkLayout call.
+      if (capture && translatedAll && run.fixtures.some((f) => (f.sidecar.deadRules ?? []).length > 0)) {
+        const { browser, server } = await chromeSession();
+        const live = await liveDeadRulesInSnapshot(browser, server.origin, path, run.fixtures.map((f) => f.sidecar.deadRules ?? []));
+        if (live.length > 0) {
+          log(`dead rule live ${path}: ${live.join(' | ')}`);
+          run = { ...run, outcome: DEAD_RULE_LIVE };
+        }
+      }
       if (capture && translatedAll && (opts.chrome === 'translated' || run.outcome.status !== 'not-runnable')) {
         chrome = chromeFromSnapshot(result as Extract<SnapshotFile['result'], { states: unknown }>, run.fixtures.map((f) => f.sidecar));
       }
@@ -182,7 +196,8 @@ export async function runTarget(opts: RunOptions): Promise<RunResult> {
       for (const r of runnable) {
         const { browser, server } = await chromeSession();
         const chrome = await runInChrome(browser, server.origin, (r.fixtures[0] as Fixture).sidecar);
-        records[records.indexOf(r)] = { ...r, chrome };
+        if (chrome.deadRulesLive.length > 0) log(`dead rule live ${r.path}: ${chrome.deadRulesLive.join(' | ')}`);
+        records[records.indexOf(r)] = { ...r, chrome, ...(chrome.deadRulesLive.length > 0 ? { dragon: DEAD_RULE_LIVE } : {}) };
         log(`chrome ${r.path}: harness ${chrome.harness}, ${chrome.checks.filter((c) => c.pass).length}/${chrome.checks.length} checks${chrome.agrees ? '' : ' (DISAGREES with the per-check reading)'}`);
       }
     }
