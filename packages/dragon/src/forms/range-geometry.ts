@@ -6,9 +6,9 @@ import type { FormFaults } from './faults.ts';
 
 export const LU_PER_PX = 64;
 
-/** Truncation toward zero, as C++ integer division and LayoutUnit(double) do; x % 1 keeps the sign of x. */
+/** Truncation toward zero, as C++ integer division and LayoutUnit(double) do. */
 export function truncate(x: number): number {
-  return x - (x % 1);
+  return Math.trunc(x);
 }
 
 /** LayoutUnit divided by an integer: the raw value divided with truncation. */
