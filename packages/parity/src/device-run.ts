@@ -313,11 +313,19 @@ async function prepareAvd(h: { readonly serial: string; readonly tools: AndroidT
   adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_WAKEUP']);
   adb(h, ['shell', 'wm', 'dismiss-keyguard']);
   const focus = (): string => adb(h, ['shell', 'dumpsys', 'window', '|', 'grep', 'mCurrentFocus'], 20_000).out;
-  await poll(`${h.serial} to show no error dialog`, 180_000, () => {
+  // A freshly booted image brings up its launcher some seconds after sys.boot_completed; an app launched before that is sent to
+  // the back and its window detached. So the run starts only once the home screen has held the focus for 3 s, with no dialog.
+  let settled = 0;
+  await poll(`${h.serial} to settle on the home screen`, 300_000, () => {
     const f = focus();
-    if (!/Not Responding|has stopped|isn't responding/i.test(f)) return true;
-    adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_BACK']);
-    return false;
+    if (/Not Responding|has stopped|isn't responding/i.test(f)) {
+      adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_BACK']);
+      settled = 0;
+      return false;
+    }
+    settled = /[Ll]auncher/.test(f) ? settled + 1 : 0;
+    if (settled === 0) adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_HOME']);
+    return settled >= 6;
   });
 }
 
