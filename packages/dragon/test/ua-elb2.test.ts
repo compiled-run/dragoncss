@@ -74,3 +74,27 @@ describe('the dark UA dataset (ELB-2)', () => {
     for (const n of SYSTEM_COLORS.filter((c) => !c.startsWith('Accent'))) expect(light.systemColors[n], n).toBeTypeOf('string');
   });
 });
+
+// REPL-0: the replaced keys (iframe, img with a data: src) in tables of their own after the element-key tables.
+describe('replaced keys (REPL-0)', () => {
+  const REPLACED = ['iframe', 'img[src]'];
+  it('are captured in tables of their own, light and dark; the element-key tables do not list them', () => {
+    for (const ds of [light, dark]) {
+      for (const table of [ds.replacedKeySpecs, ds.replacedKeyComputed, ds.replacedKeyLonghands, ds.replacedKeyDeclared, ds.replacedKeyContexts, ds.replacedKeyTextFonts, ds.replacedKeyUnmodelled, ds.replacedKeyForced]) {
+        expect(Object.keys(table)).toEqual(REPLACED);
+      }
+      for (const table of [ds.elementKeySpecs, ds.userAgentUnmodelled, ds.userAgentForced, ds.computed]) for (const k of REPLACED) expect(k in table, k).toBe(false);
+    }
+    expect(light.replacedKeySpecs['img[src]'].attributes['src']).toMatch(/^data:image\/png;base64,/);
+  });
+  it('pin the UA values Chrome gives an iframe and a loaded img', () => {
+    const inset = Object.fromEntries(['top', 'right', 'bottom', 'left'].flatMap((s) => [[`border-${s}-style`, 'inset'], [`border-${s}-width`, '2px']]));
+    expect(light.replacedKeyDeclared.iframe.ltr).toEqual(inset);
+    expect(light.replacedKeyForced.iframe.ltr).toEqual({ 'overflow-x': 'clip', 'overflow-y': 'clip' });
+    expect(light.replacedKeyUnmodelled.iframe.ltr).toEqual({ 'overflow-clip-margin': 'content-box' });
+    expect(light.replacedKeyDeclared['img[src]']).toEqual(light.elementKeyDeclared.img);
+    expect(light.replacedKeyUnmodelled['img[src]'].ltr).toEqual({ 'overflow-clip-margin': 'content-box' });
+    expect(light.replacedKeyForced['img[src]']).toEqual({ ltr: {}, rtl: {} });
+    expect(dark.replacedKeyDeclared).toEqual(light.replacedKeyDeclared);
+  });
+});
