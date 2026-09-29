@@ -83,6 +83,8 @@ export type Report = {
       readonly channelsEqual: number;
     };
     readonly unsupportedCodes: readonly string[];
+    /** The web-only fonts cases (chrome-dual alone): counted apart from the two-lane corpus's cases and failures. */
+    readonly webOnly: { readonly cases: number; readonly passed: number; readonly failed: readonly { readonly case: string; readonly reason: string | null }[] };
   };
   /** Every Chrome deviation and platform rule with its branches, and each registered node's exactness in every case that has it. */
   readonly deviations: readonly { readonly id: string; readonly specSection: string; readonly spec: string; readonly blink: string; readonly fault: string; readonly finding: { readonly kind: 'distinguished' } | { readonly kind: 'contradicted'; readonly detail: string }; readonly branches: readonly { readonly id: string; readonly description: string }[]; readonly nodes: readonly RegistryNode[]; readonly controls: readonly (RegistryNode & { readonly reason: string })[] }[];
@@ -91,6 +93,7 @@ export type Report = {
   readonly profileRows: readonly { readonly target: 'ios' | 'web'; readonly feature: string; readonly context: string; readonly status: string; readonly proofs: readonly { readonly lane: string; readonly aspect: string; readonly cases: readonly string[] }[]; readonly casesPassingInReport: boolean }[];
   /** Per case, the row keys ("<feature>@<context>") whose proofs name it, per target. */
   readonly caseRows: readonly { readonly case: string; readonly ios: readonly string[]; readonly web: readonly string[] }[];
+  readonly webOnlyCases: readonly { readonly case: string; readonly status: 'pass' | 'fail'; readonly web: readonly string[] }[];
   readonly fixtures: readonly FixtureOutcome[];
   /** The native lanes as out/lanes.json records them (parity:lanes); a lane that did not pass is not met. */
   readonly nativeLanes: NativeLanes;
@@ -123,12 +126,16 @@ function registryNodes(outcomes: readonly FixtureOutcome[], nodes: readonly { re
   }));
 }
 
-export function buildReport(outcomes: readonly FixtureOutcome[]): Report {
+/**
+ * webOnly: the cases of the web-only fonts fixtures (fonts-run.ts), which run chrome-dual alone; they prove web rows, so a row they
+ * prove links to them, and they are counted apart from the two-lane corpus.
+ */
+export function buildReport(outcomes: readonly FixtureOutcome[], webOnly: readonly CaseOutcome[] = []): Report {
   const allCases: CaseOutcome[] = outcomes.flatMap((o) => o.cases);
   const nodes = allCases.flatMap((o) => (o.comparison === null ? [] : o.comparison.nodes));
   const duals = allCases.flatMap((o) => (o.dual === null ? [] : [o.dual]));
   const total = (f: (d: (typeof duals)[number]) => number): number => duals.reduce((s, d) => s + f(d), 0);
-  const passing = new Set(allCases.filter((c) => c.status === 'pass').map((c) => c.id));
+  const passing = new Set([...allCases, ...webOnly].filter((c) => c.status === 'pass').map((c) => c.id));
   const rows = [['ios', iosProfile] as const, ['web', webProfile] as const].flatMap(([target, profile]) => profile.rows.map((r) => ({
     target,
     feature: r.feature,
@@ -188,11 +195,13 @@ export function buildReport(outcomes: readonly FixtureOutcome[]): Report {
         channelsEqual: total((d) => d.channelsEqual),
       },
       unsupportedCodes: [...new Set(allCases.flatMap((o) => (o.unsupported === null ? [] : [o.unsupported.code])))].sort(),
+      webOnly: { cases: webOnly.length, passed: webOnly.filter((c) => c.status === 'pass').length, failed: webOnly.filter((c) => c.status === 'fail').map((c) => ({ case: c.id, reason: c.reason })) },
     },
     deviations: chromeDeviations.map((d) => ({ ...d, nodes: registryNodes(outcomes, d.nodes), controls: d.controls.map((c) => ({ ...registryNodes(outcomes, [{ branch: 'control', fixture: c.fixture, node: c.node }])[0] as RegistryNode, reason: c.reason })) })),
     platformRules: platformRules.map((r) => ({ ...r, nodes: registryNodes(outcomes, r.nodes) })),
     profileRows: rows,
     caseRows: allCases.map((c) => ({ case: c.id, ios: proves('ios', c.id), web: proves('web', c.id) })),
+    webOnlyCases: webOnly.map((c) => ({ case: c.id, status: c.status, web: proves('web', c.id) })),
     fixtures: outcomes.map((o) => ({ ...o, webCss: { ltr: null, rtl: null }, cases: o.cases.map((c) => ({ ...c, vector: null, topology: null })) })),
     nativeLanes: nativeLanesSection(readLanesFile()),
   };
@@ -315,6 +324,7 @@ export function renderSummary(r: Report): string {
     `| Anonymous boxes | ${s.anonymousBoxes.length} |`,
     `| chrome-dual | boxes ${d.boxesEqual}/${d.boxesCompared}, values ${d.valuesEqual}/${d.valuesCompared}, channels ${d.channelsEqual}/${d.channelsCompared} |`,
     `| unsupportedCodes | ${JSON.stringify(s.unsupportedCodes)} |`,
+    `| Web-only cases (fonts, chrome-dual only) | ${s.webOnly.passed}/${s.webOnly.cases} pass |`,
     `| Profile rows | ${r.profileRows.length} (${exactRows.length} exact; ${r.profileRows.filter((x) => !x.casesPassingInReport).length} with a proof case that is not a passing case of this report) |`,
     '',
     '## Chrome deviations and platform rules',
