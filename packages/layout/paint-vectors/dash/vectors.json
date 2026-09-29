@@ -1,0 +1,7 @@
+{
+  "note": "Written by pnpm run layout:paint-vectors from paint-dash.ts through the harness (units mode); native runs must equal expected bit for bit.",
+  "feature": "dash",
+  "cases": 0,
+  "lines": [],
+  "expected": []
+}

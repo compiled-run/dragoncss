@@ -20,6 +20,7 @@ import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { GlyphBox, GlyphLine, ImageSize, SampleBox, SamplePoint } from './samples.ts';
 import { generateGlyphSamples, generateSamples } from './samples.ts';
+import { withPaintSamples } from './paint-samples/registry.ts';
 
 // ---------------------------------------------------------------- PNG
 
@@ -265,7 +266,7 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
 
 /**
  * The sample points of a program at a DPR: generateSamples over every element and anonymous box (snapped edges, the engine's
- * border widths in device px, no radius, the program's clip), then the glyph rule over every text line.
+ * border widths in device px, no radius, the program's clip), then the glyph rule over every text line, then the paint modules' points.
  */
 export function casePoints(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): SamplePoint[] {
   const input = programInput(p, viewport, dpr);
@@ -285,7 +286,9 @@ export function casePoints(p: NativeProgram, viewport: { readonly width: number;
     sampleBoxes.push({ id: r.id, left: s.left, top: s.top, right: s.right, bottom: s.bottom, border: { top: b[0], right: b[1], bottom: b[2], left: b[3] }, radius: 0, clips: n.clips });
   });
   const size = rasterSize(viewport, dpr);
-  return [...generateSamples(sampleBoxes, size), ...generateGlyphSamples(glyphLines(p, viewport, dpr), size)];
+  const base = [...generateSamples(sampleBoxes, size), ...generateGlyphSamples(glyphLines(p, viewport, dpr), size)];
+  // The paint modules' points follow the base points; a module may suppress base points its paint replaces (paint-samples/).
+  return withPaintSamples({ program: p, viewport, dpr, size, boxes: sampleBoxes, base });
 }
 
 /** The run file the device app reads (native-support.ts dragonReadRun): the cases in order, their points, and the hold flag. */

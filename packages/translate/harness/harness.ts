@@ -752,6 +752,18 @@ function unitsResult(name: string, a: readonly JsonValue[]): number {
   }
 }
 
+// ---------------------------------------------------------------- paint suites (EMS)
+
+/**
+ * One paint case, run through the units mode: ["paint:<feature>:<function>", arg...] in, the whole result line out; null for any
+ * other name. Registration point (RT-13 style): each paint package adds one case per root; its vectors are
+ * packages/layout/paint-vectors/<feature>/*.json.
+ */
+function paintResult(name: string, a: readonly JsonValue[]): string | null {
+  if (a.length === 0) return fail(`paint case ${name} has no name`);
+  return null;
+}
+
 /** One units case: ["name", arg bits...] in, the result bits out. */
 export function runUnitsCase(line: string): string {
   try {
@@ -760,6 +772,8 @@ export function runUnitsCase(line: string): string {
     if (first === undefined) return fail('empty case');
     const name = str(first, '$[0]');
     try {
+      const paint = paintResult(name, a);
+      if (paint !== null) return paint;
       return `["ok",${h(unitsResult(name, a))}]`;
     } catch (e) {
       if (e instanceof HarnessError) throw e;

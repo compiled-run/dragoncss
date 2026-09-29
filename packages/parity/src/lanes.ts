@@ -37,6 +37,9 @@ export const LANE_FILES: readonly string[] = [
   'packages/parity/src/native-dump.ts',
   'packages/parity/src/samples.ts',
   'packages/parity/src/cli/lanes.ts',
+  // The measured allowances (EMS, notes/T046-paint-spec.md §2): a channel delta there is an imported constant too.
+  'packages/parity/src/allowances/shadow.ts',
+  'packages/parity/src/allowances/gradient.ts',
 ];
 
 export type SourceFile = { readonly path: string; readonly text: string };

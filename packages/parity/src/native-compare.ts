@@ -5,9 +5,11 @@ import type { LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
 import { absoluteRects, LU_PER_PX, snapEdges } from '@dragon/layout';
 import type { WebCapture } from './capture.ts';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
+import { GRADIENT_CHANNEL_DELTA } from './allowances/gradient.ts';
+import { SHADOW_CHANNEL_DELTA } from './allowances/shadow.ts';
 import type { DumpEdges, DumpFrame, DumpLine, DumpNode, DumpSample, JsonValue, NativeDump } from './native-dump.ts';
 import { frameOf, REFERENCE_LANE } from './native-dump.ts';
-import type { SamplePoint } from './samples.ts';
+import type { SamplePoint, SampleRule } from './samples.ts';
 import { ruleKind } from './samples.ts';
 
 export type CheckResult = { readonly pass: boolean; readonly compared: number; readonly problems: readonly string[] };
@@ -141,7 +143,20 @@ function edgeDistance(colors: readonly (readonly number[])[], channel: number): 
   return colors.reduce((s, c) => s + (1 - Math.min(1, Math.max(0, ((c[channel] as number) - bg) / (fg - bg)))), 0);
 }
 
-/** The generated points must be the dump's samples in order; colours equal within GATE_CHANNEL_DELTA; edges within GATE_DEVICE_PX. */
+/** The channel delta per rule kind: GATE_CHANNEL_DELTA for every kind but shadow and gradient, which take their allowances/ constant. */
+export const CHANNEL_DELTA_BY_KIND: { readonly [K in SampleRule]: number } = {
+  interior: GATE_CHANNEL_DELTA,
+  border: GATE_CHANNEL_DELTA,
+  outside: GATE_CHANNEL_DELTA,
+  radius: GATE_CHANNEL_DELTA,
+  clip: GATE_CHANNEL_DELTA,
+  edge: GATE_CHANNEL_DELTA,
+  glyph: GATE_CHANNEL_DELTA,
+  shadow: SHADOW_CHANNEL_DELTA,
+  gradient: GRADIENT_CHANNEL_DELTA,
+};
+
+/** The generated points must be the dump's samples in order; colours equal within their kind's channel delta; edges within GATE_DEVICE_PX. */
 export function checkPixels(samples: readonly DumpSample[], points: readonly SamplePoint[], chrome: RgbaImage): CheckResult {
   const problems: string[] = [];
   if (samples.length !== points.length) problems.push(`the dump has ${samples.length} samples, the generator ${points.length}`);
@@ -154,7 +169,8 @@ export function checkPixels(samples: readonly DumpSample[], points: readonly Sam
   const colourCheck = (s: DumpSample): void => {
     compared++;
     const c = pixelAt(chrome, s.x, s.y);
-    if (!s.rgba.every((v, k) => Math.abs(v - (c[k] as number)) <= GATE_CHANNEL_DELTA)) problems.push(`${s.rule} at ${s.x},${s.y}: native ${JSON.stringify(s.rgba)}, Chrome ${JSON.stringify(c)} (channel delta limit ${GATE_CHANNEL_DELTA})`);
+    const limit = CHANNEL_DELTA_BY_KIND[ruleKind(s.rule)];
+    if (!s.rgba.every((v, k) => Math.abs(v - (c[k] as number)) <= limit)) problems.push(`${s.rule} at ${s.x},${s.y}: native ${JSON.stringify(s.rgba)}, Chrome ${JSON.stringify(c)} (channel delta limit ${limit})`);
   };
   for (let i = 0; i < samples.length;) {
     const s = samples[i] as DumpSample;
