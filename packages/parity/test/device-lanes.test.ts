@@ -7,7 +7,7 @@ import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'no
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CaseReference, DeviceCheckLane, FailureKind, TrustCase } from '../src/device-lanes.ts';
-import { captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, plantVerdict, readDump, splitByLines, trustFailuresOf } from '../src/device-lanes.ts';
+import { captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, isSampleRule, plantVerdict, readDump, splitByLines, trustFailuresOf } from '../src/device-lanes.ts';
 import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
 import { checkAgainstChrome, DUMP_FAULTS, FAULT_CHECK, plantDumpFault, readSamples } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
@@ -124,6 +124,33 @@ describe('dump provenance and unreadable files', () => {
       { lane: 'device-pixels', case: 'a', dpr: 2, node: null, kind: 'capture-trust', detail: 'iPad (A16): m1' },
       { lane: 'device-pixels', case: 'a', dpr: 2, node: null, kind: 'capture-trust', detail: 'iPad (A16): m2' },
     ]);
+  });
+});
+
+describe('dump identity and malformed samples (round 6)', () => {
+  const n = cases.find((c) => c.case.id === 'text-wrap-spaces') as NativeCase;
+  const ref = caseReference('ios', n, 3);
+  const d = perfectDump('ios', 3, n, ref, relabelledReferenceDumps('ios', 3));
+  const kinds = (x: unknown) => [...new Set(evaluateCase('ios', n, 3, x, ref).failures.map((f) => f.kind))];
+  it('case.dpr, the device platform, fixture, direction and viewport must be the case under test', () => {
+    expect(kinds(d)).toEqual([]);
+    expect(kinds({ ...d, case: { ...d.case, dpr: 2 } })).toContain('device-scale');
+    expect(kinds({ ...d, device: { ...d.device, platform: 'android' } })).toContain('device-scale');
+    expect(kinds({ ...d, case: { ...d.case, fixture: 'color-border-sides' } })).toContain('case-identity');
+    expect(kinds({ ...d, case: { ...d.case, direction: 'rtl' } })).toContain('case-identity');
+    expect(kinds({ ...d, case: { ...d.case, viewport: { width: 401, height: 300 } } })).toContain('case-identity');
+  });
+  it("the capture must be the target's compositor capture", () => {
+    expect(kinds({ ...d, pixels: { ...(d.pixels as NonNullable<typeof d.pixels>), capture: 'PixelCopy' } })).toContain('capture-kind');
+  });
+  it('an unknown sample rule is a pixel failure, not a crash of the run', () => {
+    const samples = (d.pixels as NonNullable<typeof d.pixels>).samples.map((s, i) => (i === 0 ? { ...s, rule: 'bogus:x' } : s));
+    const o = evaluateCase('ios', n, 3, { ...d, pixels: { ...(d.pixels as NonNullable<typeof d.pixels>), samples } }, ref);
+    expect(o.failures.some((f) => f.lane === 'device-pixels' && f.kind === 'pixel')).toBe(true);
+    expect(o.passingSamples).not.toContain(0);
+    expect(isSampleRule('bogus:x')).toBe(false);
+    expect(isSampleRule('glyph:w1:text0:line0:0')).toBe(true);
+    expect(isSampleRule('edge')).toBe(false);
   });
 });
 

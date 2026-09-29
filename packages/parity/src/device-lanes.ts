@@ -28,7 +28,7 @@ import type { NativeCase } from './native-host.ts';
 import { BACKEND_OF, buildAndroid, buildIos, engineBoxes, expectedEngine, nativeCases, nativeOut } from './native-host.ts';
 import { casePoints, checkCasePixels, committedPixels, decodePng, rasterSize, runFileText } from './pixel-reference.ts';
 import type { ImageSize, SamplePoint } from './samples.ts';
-import { ruleKind } from './samples.ts';
+import { ruleKind, SAMPLE_RULES } from './samples.ts';
 import type { LaneId, NativeTarget, TargetConfig } from './targets.ts';
 
 export const DEVICE_CHECK_LANES = ['device-frames', 'device-applied', 'device-lines', 'device-pixels'] as const;
@@ -36,7 +36,7 @@ export type DeviceCheckLane = (typeof DEVICE_CHECK_LANES)[number];
 
 export type FailureKind =
   | 'dump-missing' | 'dump-invalid' | 'device-scale' | 'frame-chrome' | 'frame-engine' | 'applied' | 'native-class' | 'expected-digest'
-  | 'line-chrome' | 'line-engine' | typeof BREAK_MISMATCH | 'pixel' | 'raster-size' | 'capture-trust' | 'device-record' | 'compiler-digest';
+  | 'line-chrome' | 'line-engine' | typeof BREAK_MISMATCH | 'pixel' | 'raster-size' | 'capture-trust' | 'device-record' | 'compiler-digest' | 'case-identity' | 'capture-kind';
 
 /** One failure, named: lane, case, DPR, node (or sample rule), kind and the values. */
 export type LaneFailure = { readonly lane: DeviceCheckLane; readonly case: string; readonly dpr: number; readonly node: string | null; readonly kind: FailureKind; readonly detail: string };
@@ -104,7 +104,10 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
   }
   const dump = v.dump;
   const lane = target === 'ios' ? 'ios-sim' : 'android-emu';
-  if (dump.lane !== lane || dump.device.scale !== dpr || dump.case.id !== id) everyLane('device-scale', `lane ${dump.lane}, case ${dump.case.id}, device.scale ${dump.device.scale}; expected ${lane}, ${id}, ${dpr}`);
+  if (dump.lane !== lane || dump.device.platform !== target || dump.device.scale !== dpr || dump.case.dpr !== dpr || dump.case.id !== id) everyLane('device-scale', `lane ${dump.lane}, platform ${dump.device.platform}, case ${dump.case.id} at case.dpr ${dump.case.dpr}, device.scale ${dump.device.scale}; expected ${lane}, ${target}, ${id} at ${dpr}`);
+  // The case identity the dump claims must be the case under test: fixture, direction and viewport.
+  const env = n.case.environment;
+  if (dump.case.fixture !== n.spec.id || dump.case.direction !== env.direction || dump.case.viewport.width !== env.viewport.width || dump.case.viewport.height !== env.viewport.height) everyLane('case-identity', `fixture ${dump.case.fixture}, ${dump.case.direction}, viewport ${dump.case.viewport.width}x${dump.case.viewport.height}; expected ${n.spec.id}, ${env.direction}, ${env.viewport.width}x${env.viewport.height}`);
   // The dump must come from the compile under test, not a stale app.
   if (dump.case.compilerDigest !== n.compiled.digest) everyLane('compiler-digest', `compilerDigest ${dump.case.compilerDigest}, the compile under test ${n.compiled.digest}`);
 
@@ -145,6 +148,8 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
 
   // (c) at the generated points against the committed Chrome PNG.
   let passingSamples: number[] = [];
+  const captureKind = target === 'ios' ? 'drawHierarchy' : 'PixelCopy';
+  if (dump.pixels !== null && dump.pixels.capture !== captureKind) fail('device-pixels', 'capture-kind', `capture ${dump.pixels.capture}, the ${target} compositor capture is ${captureKind}`);
   if (dump.pixels === null) fail('device-pixels', 'pixel', 'the dump has no pixels');
   else if (ref.pixels === null) fail('device-pixels', 'pixel', 'no committed Chrome PNG (pnpm run parity:pixel-capture)');
   else {
@@ -154,7 +159,8 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
     for (const p of c.problems) fail('device-pixels', /raster rule/.test(p) ? 'raster-size' : 'pixel', p, /^([a-z]+:\S+?)(?: at |: )/.exec(p)?.[1] ?? null);
     const img = ref.pixels;
     passingSamples = dump.pixels.samples.flatMap((s, i) => {
-      if (ruleKind(s.rule) === 'edge' || s.x >= img.width || s.y >= img.height) return [];
+      // A rule no generator emits is already a (c) failure (the points do not match); it is never a passing sample.
+      if (!isSampleRule(s.rule) || ruleKind(s.rule) === 'edge' || s.x >= img.width || s.y >= img.height) return [];
       const ch = pixelAt(img, s.x, s.y);
       return s.rgba.every((x, k) => x === ch[k]) ? [i] : [];
     });
@@ -328,6 +334,12 @@ export function plantVerdict(failures: readonly LaneFailure[], hostError: string
   const frames = of('device-frames').length;
   const lines = of('device-lines').length;
   return { caught: hostError === null && inked > 0 && frames === 0 && lines === 0, pixels: pixels.length, inked, frames, lines };
+}
+
+/** Whether a sample rule string names one of SAMPLE_RULES (ruleKind throws on any other). */
+export function isSampleRule(rule: string): boolean {
+  const k = rule.indexOf(':');
+  return k > 0 && (SAMPLE_RULES as readonly string[]).includes(rule.slice(0, k));
 }
 
 /** The ids of the pulled dumps of a run directory at a DPR. */
