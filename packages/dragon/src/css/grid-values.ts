@@ -99,21 +99,40 @@ const SUBGRID_REASON = 'subgrid needs the grid engine and its subgrid package';
 /** Where subgrid is the track-list keyword; elsewhere, and inside line-name brackets, it is a name like any other. */
 const SUBGRID_PROPERTIES: ReadonlySet<string> = new Set(['grid-template-columns', 'grid-template-rows', 'grid-template', 'grid']);
 
+const ESCAPE_REASON = 'Dragon does not decode CSS escapes in grid values yet, so an escaped function name, unit or keyword could be read as a different value';
+const ESCAPE_FIX = 'Write the function name, unit or keyword without backslash escapes.';
+/** The grid-line properties, where an identifier that is not a keyword is a custom line name. */
+const LINE_PROPERTIES: ReadonlySet<string> = new Set(['grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end', 'grid-row', 'grid-column', 'grid-area']);
+
 /**
- * The first token Dragon cannot express: a unit with no build-time conversion or a math function at any depth, or the top-level
- * subgrid keyword of a track list.
+ * Fails closed on escapes: an escaped function name, unit or keyword is refused. Custom line names (in brackets, or a grid line's
+ * name) and area strings keep their escaped text, which Chrome 145 reads as the same name (T113 probe).
  */
-function refusal(property: string, tokens: readonly CssNode[], base: Span, top = true): ParsedValue | null {
+function escaped(property: string, t: CssNode, inNames: boolean): boolean {
+  if (t.type === 'Function') return String(t['name']).includes('\\');
+  if (t.type === 'Dimension') return String(t['unit']).includes('\\');
+  if (t.type !== 'Identifier' || inNames) return false;
+  const raw = String(t['name']);
+  if (!raw.includes('\\')) return false;
+  return !LINE_PROPERTIES.has(property) || reservedName(t);
+}
+
+/**
+ * The first token Dragon cannot express: an escaped function name, unit or keyword, a unit with no build-time conversion or a math
+ * function at any depth, or the top-level subgrid keyword of a track list.
+ */
+function refusal(property: string, tokens: readonly CssNode[], base: Span, top = true, inNames = false): ParsedValue | null {
   for (const t of tokens) {
     let found: { reason: string; fix: string } | null = null;
-    if (t.type === 'Dimension') found = unitRefusal(normalizeUnit(String(t['unit'])));
+    if (escaped(property, t, inNames)) found = { reason: ESCAPE_REASON, fix: ESCAPE_FIX };
+    else if (t.type === 'Dimension') found = unitRefusal(normalizeUnit(String(t['unit'])));
     else if (t.type === 'Function') found = mathFunctionRefusal(String(t['name']));
     else if (top && SUBGRID_PROPERTIES.has(property) && lowerIdent(t) === 'subgrid') found = { reason: SUBGRID_REASON, fix: 'Give the element its own track list.' };
     if (found !== null) {
       return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${found.reason}`, manual: found.fix }) };
     }
     if (t.type === 'Function' || t.type === 'Brackets') {
-      const inner = refusal(property, children(t), base, false);
+      const inner = refusal(property, children(t), base, false, t.type === 'Brackets');
       if (inner !== null) return inner;
     }
   }

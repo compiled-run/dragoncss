@@ -13,6 +13,9 @@ import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../src/css/properties/grid.ts';
 import { SHORTHAND_HANDLERS } from '../src/css/shorthands/index.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
+import { parseGridValue } from '../src/css/grid-values.ts';
+import { list } from '../src/css/ast.ts';
+import { parse } from 'css-tree';
 import { NO_FAULTS } from '../src/faults.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
 import { div, expectCatalogued, inputFor, spanTextOf, text } from './helpers.ts';
@@ -155,13 +158,33 @@ describe('grid family: parse and expand', () => {
       'grid-template-rows=[subgrid] 10px', 'grid-template-columns=none', 'grid-template-areas=none', 'grid-auto-rows(i)=auto', 'grid-auto-columns(i)=auto', 'grid-auto-flow=column',
     ]);
   });
-  it('escaped identifiers: keywords and reserved names match after decoding, and names keep their escapes', () => {
+  it('escaped function names, units and keywords fail closed; escaped line and area names keep their escaped text', () => {
+    // Through a declaration the webref grammar already drops the finding's examples; the grid hook refuses them on its own too.
+    const examples = ['c\\61lc(10px + 5%)', '\\72epeat(auto-fill, 1fr)', 'repeat(auto-fill, 1\\66r)', '2\\65m', '10\\76w'];
+    for (const v of examples) {
+      expect(declare('grid-template-columns', v).declaration, v).toBeNull();
+      const node = parse(v, { context: 'value', positions: true });
+      const tokens = list(node, 'children').filter((n) => n.type !== 'WhiteSpace');
+      const r = parseGridValue('grid-template-columns', tokens, { source: SOURCE, start: 0, end: v.length });
+      expect(r.kind, v).toBe('refused');
+      const d = (r as { diagnostic: Diagnostic }).diagnostic;
+      expect(d.code, v).toBe('DRAGON_UNSUPPORTED_VALUE');
+      expect(d.message, v).toContain('Dragon does not decode CSS escapes in grid values yet');
+      expect(d.fix !== null && 'manual' in d.fix ? d.fix.manual : null, v).toBe('Write the function name, unit or keyword without backslash escapes.');
+      expectCatalogued([d]);
+    }
+    for (const [p, v, token] of [['grid-row-start', '\\73 pan 2', '\\73 pan'], ['grid-row-start', '\\61uto', '\\61uto'], ['grid-row-start', 'span \\61uto', '\\61uto'], ['grid-row', '\\61uto / 2', '\\61uto'], ['grid-row-start', '\\64 efault', '\\64 efault']] as const) {
+      const { declaration, diagnostics, span } = declare(p, v);
+      expect(declaration, `${p}: ${v}`).toBeNull();
+      expect(diagnostics.map((d) => d.code), `${p}: ${v}`).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+      expect(span, `${p}: ${v}`).toBe(token);
+    }
     expect(expanded('grid-template-columns', '[\\31 foo] 10px')).toEqual(['grid-template-columns=[\\31 foo] 10px']);
     expect(expanded('grid-column', '\\31 foo')).toEqual(['grid-column-start=\\31 foo', 'grid-column-end=\\31 foo']);
-    expect(expanded('grid-row-start', '\\73 pan 2')).toEqual(['grid-row-start=span 2']);
-    expect(declare('grid-row-start', '\\61uto').declaration?.longhands[0]?.value).toEqual({ kind: 'keyword', value: 'auto' });
-    for (const [p, v] of [['grid-template-columns', '[\\73 pan] 10px'], ['grid-template-columns', '[\\61uto] 10px'], ['grid-template-columns', '[\\64 efault] 10px'], ['grid-template-columns', '[\\69nherit] 10px'], ['grid-row-start', '\\64 efault'], ['grid-row-start', 'span \\61uto']] as const) {
-      expect(declare(p, v).diagnostics.map((d) => d.code), `${p}: ${v}`).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    expect(expanded('grid-row-start', '2 \\31 foo')).toEqual(['grid-row-start=2 \\31 foo']);
+    expect(expanded('grid-template-areas', '"\\2e a"')).toEqual(['grid-template-areas=". a"']);
+    for (const v of ['[\\73 pan] 10px', '[\\61uto] 10px', '[\\64 efault] 10px', '[\\69nherit] 10px']) {
+      expect(declare('grid-template-columns', v).diagnostics.map((d) => d.code), v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     }
   });
   it('area rows are scanned by code point, so non-BMP names are one cell', () => {

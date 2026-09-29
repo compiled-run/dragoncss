@@ -52,7 +52,6 @@ describe('grid family: Chrome 145 computed values', () => {
     'justify-self: \\63 enter',
     'justify-items: \\6c egacy \\6c eft',
     'justify-self: \\66irst baseline',
-    'grid-row-start: \\69nherit',
   ];
 
   const judge = (items: readonly Item[], seen: readonly Seen[]): string[] => items.flatMap((it, i) => {
@@ -103,7 +102,7 @@ describe('grid family: Chrome 145 computed values', () => {
     const [realSeen, ...plantSeen] = seen;
     expect(judge(real, realSeen as Seen[])).toEqual([]);
     const accepted = (items: readonly Item[]): number => items.filter((it) => it.code === null).length;
-    expect({ corpus: corpus.length, accepted: accepted(real.slice(0, corpus.length)), edges: edges.length, edgesAccepted: accepted(real.slice(corpus.length)) }).toEqual({ corpus: 2515, accepted: 2510, edges: 250, edgesAccepted: 165 });
+    expect({ corpus: corpus.length, accepted: accepted(real.slice(0, corpus.length)), edges: edges.length, edgesAccepted: accepted(real.slice(corpus.length)) }).toEqual({ corpus: 2515, accepted: 2510, edges: 250, edgesAccepted: 162 });
     expect(real.filter((it) => it.code !== null && it.code !== 'DRAGON_CSS_INVALID_VALUE').map((it) => `${it.code as string} ${it.p}: ${it.v}`)).toEqual([
       'DRAGON_UNSUPPORTED_VALUE column-gap: calc(5% + 2px)',
       'DRAGON_UNSUPPORTED_VALUE grid-template-columns: calc(20% + 3.3px) 1fr',
@@ -114,8 +113,15 @@ describe('grid family: Chrome 145 computed values', () => {
       'DRAGON_UNSUPPORTED_VALUE grid-template-columns: subgrid [a] repeat(2, [b])',
       'DRAGON_UNSUPPORTED_VALUE grid-template-columns: calc(10px + 5%)',
       'DRAGON_UNSUPPORTED_VALUE grid-template: subgrid / 10px',
+      // Escaped keywords fail closed (grid-values.ts escaped()); escaped custom line names are kept.
+      'DRAGON_UNSUPPORTED_VALUE grid-row-start: \\73 pan 2',
+      'DRAGON_UNSUPPORTED_VALUE grid-row-start: \\61uto',
       'DRAGON_UNSUPPORTED_VALUE grid: subgrid / auto-flow 10px',
       'DRAGON_UNSUPPORTED_VALUE grid: auto-flow / subgrid',
+      'DRAGON_UNSUPPORTED_VALUE grid-row-start: \\69nherit',
+      'DRAGON_UNSUPPORTED_VALUE grid-row-start: \\64 efault',
+      'DRAGON_UNSUPPORTED_VALUE grid-row-start: span \\61uto',
+      'DRAGON_UNSUPPORTED_VALUE grid-row: \\61uto / 2',
     ]);
     planted.forEach((p, i) => {
       expect(p.items.length, p.name).toBeGreaterThan(0);
