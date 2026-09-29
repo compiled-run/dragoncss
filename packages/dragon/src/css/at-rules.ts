@@ -28,8 +28,8 @@ export const refuseAtRule: AtRuleHandler = (at) => ({
 });
 
 /**
- * css-fonts-4 §4: @font-face at the top level of a stylesheet, with no prelude and a block, is accepted. Chrome ignores it
- * anywhere else (in a style rule, or inside another at-rule), so there it keeps the milestone-1 refusal.
+ * css-fonts-4 §4: @font-face at the top level of a stylesheet, with no prelude and a block, is accepted. Nested in a style rule
+ * Chrome ignores it; inside a conditional rule (@media, @supports) it is refused with that rule until the rule is supported.
  */
 export const acceptFontFace: AtRuleHandler = (at) => {
   const prelude = at.node['prelude'] as CssNode | null | undefined;
