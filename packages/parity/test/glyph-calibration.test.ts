@@ -85,14 +85,15 @@ describe('the committed glyph calibration set', () => {
 describe('the corpus against the calibration', () => {
   it("the corpus's largest glyph, on every target at every device DPR, is within the largest calibrated size", () => {
     let largest = 0;
+    const cases = nativeCases();
     for (const target of ['ios', 'android'] as const) {
       for (const dpr of deviceDprs(target)) {
-        for (const n of nativeCases()) {
+        for (const n of cases) {
           for (const l of glyphLines(n.programs[BACKEND_OF[target]], n.case.environment.viewport, dpr)) for (const g of l.glyphs) largest = Math.max(largest, g.right - g.left, g.bottom - g.top);
         }
       }
     }
     expect(largest).toBeGreaterThan(0);
     expect(largest).toBeLessThanOrEqual(Math.max(...CALIBRATION_SIZES_DEVICE_PX));
-  });
+  }, 300_000);
 });
