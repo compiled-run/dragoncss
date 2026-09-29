@@ -1,0 +1,719 @@
+{
+ "chrome": "145.0.7632.6",
+ "playwright": "1.58.2",
+ "platform": "darwin-arm64",
+ "launches": [
+  {
+   "dpr": 1,
+   "flags": [
+    "--force-device-scale-factor=1",
+    "--force-color-profile=srgb",
+    "--font-render-hinting=none",
+    "--disable-lcd-text",
+    "--hide-scrollbars"
+   ]
+  }
+ ],
+ "images": [
+  {
+   "file": "grey1.png",
+   "type": "image/png",
+   "sha256": "8ff96f9ef5776726b3307285f8fbc25cd658bbaf18d35c0fe2b5812a5a2a59ad",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "grey1-interlaced.png",
+   "type": "image/png",
+   "sha256": "871d1e52a8f9cddfb5a99f25fe7f3c656d600cd2e99c23e9a94f1c98ee20a3a0",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "grey2.png",
+   "type": "image/png",
+   "sha256": "addf8ac6340f039ef3a3565e24957da7a22c0e87223543a7e2868c65a823843a",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "grey2-interlaced.png",
+   "type": "image/png",
+   "sha256": "b34c6d74bd90d062e1727e8760bb3a918c53b39ea1cd108586c646d25a14e0b5",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "grey4.png",
+   "type": "image/png",
+   "sha256": "c249bfc144fef9f50cb1b1def013ae8b0df2075e1757248099a7d2675434034f",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "grey4-interlaced.png",
+   "type": "image/png",
+   "sha256": "cdd800e10bdfb40577e101ac1b4bd63cfa147df08ea0b252dcb36e0f5d705ef8",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "grey8.png",
+   "type": "image/png",
+   "sha256": "dba1cce10a5d721bee7c8cd727a2067989eead01bc864ba0f5e6cbfef9a0c69d",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "grey8-interlaced.png",
+   "type": "image/png",
+   "sha256": "7b27c9f2c30f040efc2b356295e373c0b0c13e1bef1a282fd43f649cf75dd8ab",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "grey2-trns.png",
+   "type": "image/png",
+   "sha256": "06b041306cfab16e8b9e93e990adfa324b18f4d7eb639c318d15c8625829f3a7",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "grey8-trns.png",
+   "type": "image/png",
+   "sha256": "9844d1ed849a913adebb4d9ceedf2027611dedd8f3342336835e74b75a5acacb",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgb8.png",
+   "type": "image/png",
+   "sha256": "eb40395425783f95cfef6798dc51869be0ae963c0cf3f0ab70c20e7eb680bb42",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgb8-interlaced.png",
+   "type": "image/png",
+   "sha256": "4eae3aa64e2106c7819f5c003ffa303eaf5ac82b221f91968bfab775ee23d4d4",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgb8-trns.png",
+   "type": "image/png",
+   "sha256": "f7ba6383498b1f99da58b58a623a806221bf07124701199951edd6bd27e4e08b",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "palette1.png",
+   "type": "image/png",
+   "sha256": "b237492ac84998c09a47073f1a880edbe55cc17f8e78942e4a5a2c9f10a34f7e",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "palette1-interlaced.png",
+   "type": "image/png",
+   "sha256": "8b386cf9021e429bd58e0b5a70fa4ff2a822d3daf24f08b50477891f40abea2b",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "palette2.png",
+   "type": "image/png",
+   "sha256": "d5eb4e70be14d531030a743cc69216d5de7cebcc91acb4ced823862347ba84bc",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "palette2-interlaced.png",
+   "type": "image/png",
+   "sha256": "43a8f343d12e01b9ccec09b001fac236801424bf1f2776cd7b31c94180ec82c9",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "palette4.png",
+   "type": "image/png",
+   "sha256": "d74b7052f84f2fcea066bf3ee394ffec4ce928852fa63202589531abcc8628eb",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "palette4-interlaced.png",
+   "type": "image/png",
+   "sha256": "a82b102a1282385394206333f2a8c006309fa6d99b42c695133dee7e3acc4fa9",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "palette8.png",
+   "type": "image/png",
+   "sha256": "5a77ea5533aa1a014ee2931884c46eb8efa5a84f34c11cbd3bef0b83c5084266",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "palette8-interlaced.png",
+   "type": "image/png",
+   "sha256": "3b6cb71e3d9debfd80ae0d31bfa224b80e7991b446ae5fd1c348169f11791d8b",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "palette4-trns.png",
+   "type": "image/png",
+   "sha256": "86abc20ae67c94a8e3f5608343d5c7d61e452253af620347fa95132bdbc260e4",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "palette8-trns.png",
+   "type": "image/png",
+   "sha256": "20c38a711e7fb02668c3f8e49e04b81d24aa66ce3760504e0a375119db933a2d",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "grey-alpha8.png",
+   "type": "image/png",
+   "sha256": "1c7879a8a241dbccf72bc818a8971b8b2f02dd3a1dc4740ed3fb0a0be26c6769",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "grey-alpha8-interlaced.png",
+   "type": "image/png",
+   "sha256": "d5c9eccd661714a410513b5ffcc7ffc4ca63ec0c16bf764017400ac60c9a9f46",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgba8.png",
+   "type": "image/png",
+   "sha256": "d3b7528ea16286d2f74c624e57ee1e1fff3b747e7b3c740843fbc30d1585824b",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgba8-interlaced.png",
+   "type": "image/png",
+   "sha256": "e35a40cf91bcf08e5c3db46dac0592c476cdf5d2b93e92c36607de9435f74726",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgba8-alpha-sweep.png",
+   "type": "image/png",
+   "sha256": "a22c67e0b6710fb63c0ef63abc7a36d50095aa169b7d022e04053b69ac9a2f58",
+   "chrome": {
+    "naturalWidth": 256,
+    "naturalHeight": 3,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgba8-1x1.png",
+   "type": "image/png",
+   "sha256": "c5d042019b8892806a14b8426706f8d4101902160b131c4551e54b588deda1ef",
+   "chrome": {
+    "naturalWidth": 1,
+    "naturalHeight": 1,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgb8-wide.png",
+   "type": "image/png",
+   "sha256": "641f203d322d67345719a8cf5bd7be7cd3c504bb67e8e2dac3f8c8ee327baad9",
+   "chrome": {
+    "naturalWidth": 301,
+    "naturalHeight": 2,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgb8-tall.png",
+   "type": "image/png",
+   "sha256": "189ea8e4f06177af6b0c4915310c5304ce5fd339061b03ba678338273197d623",
+   "chrome": {
+    "naturalWidth": 2,
+    "naturalHeight": 173,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgba8-srgb.png",
+   "type": "image/png",
+   "sha256": "e68b1f9c6a693075f0864423e8c044d4259972efb6eae18208cbcac3025627f2",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgba8-srgb-gama-chrm.png",
+   "type": "image/png",
+   "sha256": "449df476f55f3c35225876c5788df8b430bee1921377fda4bf34bc06c227331b",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgba8-phys-144dpi.png",
+   "type": "image/png",
+   "sha256": "f8433fa6f3b92dce942500574250748705afc0228cd0473682d957af071606cd",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgb8-gama.png",
+   "type": "image/png",
+   "sha256": "e8ed22beaf9161e07c9a910038060f1deaf8fd930858db149334abb117116df7",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgb8-chrm.png",
+   "type": "image/png",
+   "sha256": "b0c809cac859816eb6c700eaf1f726c9040d02e29fd8aef319f00995b5de34ba",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgb8-gama-chrm.png",
+   "type": "image/png",
+   "sha256": "acf84df96eb4f3c55d995ee505778fc53d6c1e49a37d3249401c0e3c62853fcc",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgb8-iccp.png",
+   "type": "image/png",
+   "sha256": "ff36a5ab1a6c076ea4e1032e5642371e1382f38386345a3a8b2322c3c87944c4",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgb8-cicp.png",
+   "type": "image/png",
+   "sha256": "6243c573dcb303e9bd30a1833a0097288abcc2485deb97bb474cfa1be0742078",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgba8-apng.png",
+   "type": "image/png",
+   "sha256": "fd36f6c3d79787af59061c9ba24471661c147f36eeb9e8bf4981af9dc1e83f4b",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "grey16.png",
+   "type": "image/png",
+   "sha256": "5e7e8c081c71698b1191f312dd0e334f8d1cd771ca1876eb55fba8f765a1341e",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgb16.png",
+   "type": "image/png",
+   "sha256": "cb0495f22efcba3ab7fa56aca715966fae11a48ce74f551f276ff7cd02ead5ff",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "grey-alpha16.png",
+   "type": "image/png",
+   "sha256": "71385a449f9c68cd01ce8560813228d141545a2dbd10e854a3c9b1ac8305cb61",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgba16.png",
+   "type": "image/png",
+   "sha256": "b004c1f1aeccd7dcd400f3cd6ef49c9c1efa790896ce5f08a76bca18b8f38e4c",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "base.jpg",
+   "type": "image/jpeg",
+   "sha256": "f680e00e2b89c861dcf287cad839bf64ef09115aff181f3537daaf2d6f6420df",
+   "chrome": {
+    "naturalWidth": 48,
+    "naturalHeight": 32,
+    "decoded": true
+   }
+  },
+  {
+   "file": "orientation-1.jpg",
+   "type": "image/jpeg",
+   "sha256": "64dd57440fe53fd4d57bec503c3aee0d9e9f18378db1f97ed3902a6632d5c966",
+   "chrome": {
+    "naturalWidth": 48,
+    "naturalHeight": 32,
+    "decoded": true
+   }
+  },
+  {
+   "file": "orientation-2.jpg",
+   "type": "image/jpeg",
+   "sha256": "c23aeaf47bfd69313a33502c16920eb4aeb16ee1071de2d0662324bc13e2a6c1",
+   "chrome": {
+    "naturalWidth": 48,
+    "naturalHeight": 32,
+    "decoded": true
+   }
+  },
+  {
+   "file": "orientation-3.jpg",
+   "type": "image/jpeg",
+   "sha256": "a7e60d33922c98812dd8c8055bd540d41ae5a2b91277c875b45058b52e51f172",
+   "chrome": {
+    "naturalWidth": 48,
+    "naturalHeight": 32,
+    "decoded": true
+   }
+  },
+  {
+   "file": "orientation-4.jpg",
+   "type": "image/jpeg",
+   "sha256": "e6ddfb093d932ba872cd82eb36a439948574cb59364576f1d3e91a45b086af72",
+   "chrome": {
+    "naturalWidth": 48,
+    "naturalHeight": 32,
+    "decoded": true
+   }
+  },
+  {
+   "file": "orientation-5.jpg",
+   "type": "image/jpeg",
+   "sha256": "c8edb7e31ebf65271ddaf593f7cc11b257e8e933fb71a4429a777b7da871d5e6",
+   "chrome": {
+    "naturalWidth": 32,
+    "naturalHeight": 48,
+    "decoded": true
+   }
+  },
+  {
+   "file": "orientation-6.jpg",
+   "type": "image/jpeg",
+   "sha256": "0417713f287ff8b4bfd39fe9703296a9e4e865761f9e64b98bfc8d722c934d84",
+   "chrome": {
+    "naturalWidth": 32,
+    "naturalHeight": 48,
+    "decoded": true
+   }
+  },
+  {
+   "file": "orientation-7.jpg",
+   "type": "image/jpeg",
+   "sha256": "31d2bd58701eb6a7ade6b7730735acdda48c738c50e0eeec6c0efb3dc755625c",
+   "chrome": {
+    "naturalWidth": 32,
+    "naturalHeight": 48,
+    "decoded": true
+   }
+  },
+  {
+   "file": "orientation-8.jpg",
+   "type": "image/jpeg",
+   "sha256": "02c35735b4505a40c4305b7c80f78ef145b944785d2bf3948737f52ac3c18824",
+   "chrome": {
+    "naturalWidth": 32,
+    "naturalHeight": 48,
+    "decoded": true
+   }
+  },
+  {
+   "file": "orientation-6-big-endian.jpg",
+   "type": "image/jpeg",
+   "sha256": "c3e40628527f41d1178cbf103d575b354ece45f0befa1bb7f4b882cea2f75a6d",
+   "chrome": {
+    "naturalWidth": 32,
+    "naturalHeight": 48,
+    "decoded": true
+   }
+  },
+  {
+   "file": "orientation-9-invalid.jpg",
+   "type": "image/jpeg",
+   "sha256": "7bff6fe2a181b74a89e9be87bdc91039c11ceb7f776e8b3c91c229f70805c15f",
+   "chrome": {
+    "naturalWidth": 48,
+    "naturalHeight": 32,
+    "decoded": true
+   }
+  },
+  {
+   "file": "res-72dpi.jpg",
+   "type": "image/jpeg",
+   "sha256": "5e053baa68a006fdbd3708461cecc06bb8c8c4b0e0347e9b9f10e87e2369e9de",
+   "chrome": {
+    "naturalWidth": 48,
+    "naturalHeight": 32,
+    "decoded": true
+   }
+  },
+  {
+   "file": "res-144dpi.jpg",
+   "type": "image/jpeg",
+   "sha256": "9e57d25f74e4792216d67971ec26d7b43b4130315b870a783ac80a76adba9b45",
+   "chrome": {
+    "naturalWidth": 24,
+    "naturalHeight": 16,
+    "decoded": true
+   }
+  },
+  {
+   "file": "res-144dpi-orientation-6.jpg",
+   "type": "image/jpeg",
+   "sha256": "7901579dc63e29a24ccfc766c1fbee2b3615bb0e2bb61e616bd9c4cc2ae14a6a",
+   "chrome": {
+    "naturalWidth": 16,
+    "naturalHeight": 24,
+    "decoded": true
+   }
+  },
+  {
+   "file": "res-144dpi-orientation-8-big-endian.jpg",
+   "type": "image/jpeg",
+   "sha256": "2a46cb5269e2615610051eed04eab71c0687a03ff335c36e19ac56f2fe01da2f",
+   "chrome": {
+    "naturalWidth": 16,
+    "naturalHeight": 24,
+    "decoded": true
+   }
+  },
+  {
+   "file": "res-144dpi-no-pixel-size.jpg",
+   "type": "image/jpeg",
+   "sha256": "a50905742b3ee34900b5c9fb064588fca58249073c51460707ca21073cae0f20",
+   "chrome": {
+    "naturalWidth": 48,
+    "naturalHeight": 32,
+    "decoded": true
+   }
+  },
+  {
+   "file": "res-144dpi-physical-pixel-size.jpg",
+   "type": "image/jpeg",
+   "sha256": "5d766f4d50ed500346b3b3a9baf7839a097a2064c64cad8a961510b5a26e29ba",
+   "chrome": {
+    "naturalWidth": 48,
+    "naturalHeight": 32,
+    "decoded": true
+   }
+  },
+  {
+   "file": "res-144dpi-centimetre.jpg",
+   "type": "image/jpeg",
+   "sha256": "d6f8d52d3f4ab310316be30c35800cb707ce2dac5ca1a287a7a4906772a43770",
+   "chrome": {
+    "naturalWidth": 48,
+    "naturalHeight": 32,
+    "decoded": true
+   }
+  },
+  {
+   "file": "res-96dpi.jpg",
+   "type": "image/jpeg",
+   "sha256": "2f96a4371e4876e08abbc6e3d68988820b9b22b11c1170757cf7e3c01fd330d7",
+   "chrome": {
+    "naturalWidth": 36,
+    "naturalHeight": 24,
+    "decoded": true
+   }
+  },
+  {
+   "file": "png-served-as-jpeg.jpg",
+   "type": "image/jpeg",
+   "sha256": "d3b7528ea16286d2f74c624e57ee1e1fff3b747e7b3c740843fbc30d1585824b",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "canvas.webp",
+   "type": "image/webp",
+   "sha256": "acaee5db8c781af13b396701a25d4638967a357d154526ae8bc39457f147df57",
+   "chrome": {
+    "naturalWidth": 48,
+    "naturalHeight": 32,
+    "decoded": true
+   }
+  },
+  {
+   "file": "colours.gif",
+   "type": "image/gif",
+   "sha256": "6c63cc5063ac82d8bbc925f9a31adf3a87f1510c021e0fde51854d60484b5019",
+   "chrome": {
+    "naturalWidth": 1,
+    "naturalHeight": 1,
+    "decoded": true
+   }
+  },
+  {
+   "file": "colours.bmp",
+   "type": "image/bmp",
+   "sha256": "f1b3e205fe09f30beed454d11be052e8cfc669bee94341ceca09ffcd1425052f",
+   "chrome": {
+    "naturalWidth": 5,
+    "naturalHeight": 3,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rgba8-in.ico",
+   "type": "image/x-icon",
+   "sha256": "09e6745e40b9536f90a6762be41d1309f1316a4f78fb0bc271ea9f4a743b9b58",
+   "chrome": {
+    "naturalWidth": 13,
+    "naturalHeight": 7,
+    "decoded": true
+   }
+  },
+  {
+   "file": "rect.svg",
+   "type": "image/svg+xml",
+   "sha256": "9e783c1a13c51ccb019b0793211019ccfe8a6fcc9ea508947a135ab317a94f21",
+   "chrome": {
+    "naturalWidth": 40,
+    "naturalHeight": 20,
+    "decoded": true
+   }
+  },
+  {
+   "file": "not-an-image.png",
+   "type": "image/png",
+   "sha256": "9ae8befeedb1d0af1b4e340807813e6e5ba563dba869d39244bcaff4981a8a90",
+   "chrome": {
+    "naturalWidth": 0,
+    "naturalHeight": 0,
+    "decoded": false
+   }
+  }
+ ]
+}
