@@ -43,7 +43,7 @@ No test, no seal. Missing data means unsupported.
 
 ## Read more
 
-- [Why not StyleX?](https://github.com/compiled-run/dragoncss/blob/master/docs/why-not-stylex.md)
+- [How Dragon compares](https://github.com/compiled-run/dragoncss/blob/master/docs/compared.md)
 - [API design](https://github.com/compiled-run/dragoncss/blob/master/docs/api.md)
 - [Research and evidence](https://github.com/compiled-run/dragoncss/blob/master/docs/research/README.md)
 
