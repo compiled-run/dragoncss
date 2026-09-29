@@ -44,6 +44,8 @@ const complete = {
   rowGap: { kind: 'normal' },
   columnGap: { kind: 'normal' },
   textAlign: 'start',
+  grid: null,
+  gridItem: null,
 } as const satisfies LayoutStyle;
 
 const { boxSizing: _dropped, ...withoutBoxSizing } = complete;
