@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.t1 { width: 150px; grid-template-columns: [a] 10px repeat(2, 1fr [b]) minmax(20px, auto) fit-content(30%); grid-template-rows: repeat(auto-fill, minmax(10px, 1fr)); grid-auto-flow: column dense; grid-auto-rows: 1em; grid-auto-columns: min-content 2em; justify-items: normal; }
+.i { height: 6px; grid-template-columns: inherit; grid-template-rows: unset; grid-auto-rows: inherit; }
+.t2 { width: 120px; grid-template-areas: "a a b" ". c c"; grid-auto-flow: row; }
+.t3 { width: 120px; grid-template: [x] "a b" 10px [y] "c d" / 1fr 2fr; justify-items: legacy; }
+.t4 { width: 100px; grid: auto-flow dense 10px / repeat(3, 1fr); }
+.t5 { width: 100px; grid: 20px / auto-flow 1fr; }
+.t6 { width: 90px; grid: none; grid-template-rows: 1in 2cm; grid-template-columns: 2em 1rem 3pt; }
+.t7 { width: 80px; grid-template: 10px auto / [s] 1fr [e]; grid-auto-columns: 5px; justify-items: initial; }
+.fx { display: flex; width: 200px; grid-template-columns: 1fr 1fr; grid-auto-flow: column; grid-gap: 5px 7px; justify-items: normal; }
+.fw { display: flex; flex-wrap: wrap; width: 60px; grid-row-gap: 3px; grid-column-gap: 4px; grid-template-areas: "x"; }
+.it { width: 25px; height: 10px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="t1" class="t1">XX XXX<div data-dragon-id="i" class="i"></div></div>
+<div data-dragon-id="t2" class="t2"><div data-dragon-id="t2a" class="it"></div>X XX</div>
+<div data-dragon-id="t3" class="t3">XXX XX X</div>
+<div data-dragon-id="t4" class="t4"><div data-dragon-id="t4a" class="it"></div><div data-dragon-id="t4b" class="it"></div></div>
+<div data-dragon-id="t5" class="t5">XX</div>
+<div data-dragon-id="t6" class="t6">X</div>
+<div data-dragon-id="t7" class="t7"><div data-dragon-id="t7a" class="it"></div></div>
+<div data-dragon-id="fx" class="fx"><div data-dragon-id="fx1" class="it"></div><div data-dragon-id="fx2" class="it"></div><div data-dragon-id="fx3" class="it"></div></div>
+<div data-dragon-id="fw" class="fw"><div data-dragon-id="fw1" class="it"></div><div data-dragon-id="fw2" class="it"></div><div data-dragon-id="fw3" class="it"></div></div>
+</body>
+</html>
