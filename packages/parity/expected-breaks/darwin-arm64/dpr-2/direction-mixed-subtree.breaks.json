@@ -1,0 +1,14 @@
+{
+  "case": "direction-mixed-subtree",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"o1a:text0","data":"XX XXX XX XX","lines":3,"units":[0,0,0,1,1,1,1,2,2,2,2,2],"blank":[2,6]},
+    {"id":"o1c:text0","data":"XX XXX XX XX","lines":3,"units":[0,0,0,1,1,1,1,2,2,2,2,2],"blank":[2,6]},
+    {"id":"o1d1:text0","data":"XXX XX X","lines":2,"units":[0,0,0,0,1,1,1,1],"blank":[3]},
+    {"id":"o1e2:text0","data":"XX XXX","lines":2,"units":[0,0,0,1,1,1],"blank":[2]},
+    {"id":"o2a:text0","data":"XX XXX XX","lines":3,"units":[0,0,0,1,1,1,1,2,2],"blank":[2,6]},
+    {"id":"o2b2:text0","data":"XX XX XXXX","lines":2,"units":[0,0,0,0,0,0,1,1,1,1],"blank":[5]},
+    {"id":"o2c2:text0","data":"XX XX","lines":2,"units":[0,0,0,1,1],"blank":[2]}
+  ]
+}

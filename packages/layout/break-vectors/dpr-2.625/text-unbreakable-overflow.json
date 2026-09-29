@@ -1,0 +1,12 @@
+{
+  "case": "text-unbreakable-overflow",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"o1:text0","lines":[[0,5]]},
+    {"id":"o2:text0","lines":[[0,2],[2,8],[8,9]]},
+    {"id":"o3:text0","lines":[[0,6],[6,11]]},
+    {"id":"o4:text0","lines":[[0,8]]},
+    {"id":"o5:text0","lines":[[0,5]]},
+    {"id":"o6:text0","lines":[[0,3],[3,10],[10,11]]}
+  ]
+}

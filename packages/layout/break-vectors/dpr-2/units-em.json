@@ -1,0 +1,16 @@
+{
+  "case": "units-em",
+  "dpr": 2,
+  "texts": [
+    {"id":"m:text0","lines":[[0,6]]},
+    {"id":"i:text0","lines":[[0,8]]},
+    {"id":"m:text1","lines":[[0,5]]},
+    {"id":"q:text0","lines":[[0,5],[5,8]]},
+    {"id":"r:text0","lines":[[0,9],[9,13]]},
+    {"id":"s:text0","lines":[[0,4]]},
+    {"id":"u:text0","lines":[[0,2]]},
+    {"id":"f1:text0","lines":[[0,1]]},
+    {"id":"f2:text0","lines":[[0,5]]},
+    {"id":"k1:text0","lines":[[0,1]]}
+  ]
+}

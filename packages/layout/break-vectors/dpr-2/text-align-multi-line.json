@@ -1,0 +1,17 @@
+{
+  "case": "text-align-multi-line",
+  "dpr": 2,
+  "texts": [
+    {"id":"c:text0","lines":[[0,6],[6,11]]},
+    {"id":"r:text0","lines":[[0,6],[6,11]]},
+    {"id":"e:text0","lines":[[0,6],[6,11]]},
+    {"id":"l:text0","lines":[[0,6],[6,11]]},
+    {"id":"s:text0","lines":[[0,6],[6,11]]},
+    {"id":"co:text0","lines":[[0,6],[6,8]]},
+    {"id":"ro:text0","lines":[[0,6],[6,8]]},
+    {"id":"codd:text0","lines":[[0,6],[6,9]]},
+    {"id":"rodd:text0","lines":[[0,6],[6,9]]},
+    {"id":"cpad:text0","lines":[[0,7],[7,13]]},
+    {"id":"child:text0","lines":[[0,8],[8,11]]}
+  ]
+}

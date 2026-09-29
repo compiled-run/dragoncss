@@ -1,0 +1,9 @@
+{
+  "case": "tree-switch-two-instances#12-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"a/label:text0","data":"On","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b/label:text0","data":"Off","lines":1,"units":[0,0,0],"blank":[]}
+  ]
+}

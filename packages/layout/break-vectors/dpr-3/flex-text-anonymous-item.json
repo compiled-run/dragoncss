@@ -1,0 +1,13 @@
+{
+  "case": "flex-text-anonymous-item",
+  "dpr": 3,
+  "texts": [
+    {"id":"f1:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"i1:text0","lines":[[0,2]]},
+    {"id":"f1:text1","lines":[[0,2]]},
+    {"id":"f2:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"f3:text0","lines":[[0,6]]},
+    {"id":"i3:text0","lines":[[0,2]]},
+    {"id":"f4:text0","lines":[[0,6],[6,11]]}
+  ]
+}

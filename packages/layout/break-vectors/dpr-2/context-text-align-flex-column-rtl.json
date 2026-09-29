@@ -1,0 +1,12 @@
+{
+  "case": "context-text-align-flex-column-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"t1:text0","lines":[[0,2]]},
+    {"id":"t2:text0","lines":[[0,3]]},
+    {"id":"t3:text0","lines":[[0,7],[7,11]]},
+    {"id":"t4:text0","lines":[[0,8],[8,11]]},
+    {"id":"t5:text0","lines":[[0,4]]},
+    {"id":"t6:text0","lines":[[0,6],[6,8]]}
+  ]
+}

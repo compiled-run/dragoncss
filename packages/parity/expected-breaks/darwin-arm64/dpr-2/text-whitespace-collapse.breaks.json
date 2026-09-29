@@ -1,0 +1,13 @@
+{
+  "case": "text-whitespace-collapse",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"a:text0","data":"  XX   XX\n   XX\tXX  ","lines":4,"units":[0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,2,3,3,3,3],"blank":[0,1,4,5,6,9,10,11,12,15,18,19]},
+    {"id":"b:text0","data":"XX​\nYY","lines":2,"units":[0,0,0,0,1,1],"blank":[2,3]},
+    {"id":"c:text0","data":"\n\tXX XX\n\n XX\n","lines":3,"units":[0,0,0,0,0,1,1,1,2,2,2,2,2],"blank":[0,1,4,7,8,9,12]},
+    {"id":"d:text0","data":"XX    XX","lines":2,"units":[0,0,0,1,1,1,1,1],"blank":[2,3,4,5]},
+    {"id":"e1:text0","data":"XX  XX","lines":1,"units":[0,0,0,0,0,0],"blank":[3]},
+    {"id":"e2:text0","data":"XX \n XX","lines":2,"units":[0,0,0,1,1,1,1],"blank":[2,3,4]}
+  ]
+}

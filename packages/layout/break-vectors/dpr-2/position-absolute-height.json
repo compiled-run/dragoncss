@@ -1,0 +1,9 @@
+{
+  "case": "position-absolute-height",
+  "dpr": 2,
+  "texts": [
+    {"id":"h3:text0","lines":[[0,3],[3,6],[6,10]]},
+    {"id":"h4:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"h5:text0","lines":[[0,1]]}
+  ]
+}

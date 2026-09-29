@@ -1,0 +1,14 @@
+{
+  "case": "flex-text-anonymous-item",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"f1:text0","data":"XX XX XX","lines":3,"units":[0,0,0,1,1,1,2,2],"blank":[2,5]},
+    {"id":"f1:text1","data":"ZZ","lines":1,"units":[0,0],"blank":[]},
+    {"id":"i1:text0","data":"YY","lines":1,"units":[0,0],"blank":[]},
+    {"id":"f2:text0","data":"XX XX XX","lines":3,"units":[0,0,0,1,1,1,2,2],"blank":[2,5]},
+    {"id":"f3:text0","data":"XXX XX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"i3:text0","data":"YY","lines":1,"units":[0,0],"blank":[]},
+    {"id":"f4:text0","data":"XX XX XXX X","lines":2,"units":[0,0,0,0,0,0,1,1,1,1,1],"blank":[5]}
+  ]
+}

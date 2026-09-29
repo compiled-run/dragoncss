@@ -1,0 +1,8 @@
+{
+  "case": "position-absolute-flex-container",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"f3c:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

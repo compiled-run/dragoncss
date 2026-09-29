@@ -1,0 +1,11 @@
+{
+  "case": "block-elements-margin-collapse-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"p1:text0","lines":[[0,5]]},
+    {"id":"p2:text0","lines":[[0,11]]},
+    {"id":"bq-p:text0","lines":[[0,2]]},
+    {"id":"dt-p:text0","lines":[[0,1]]},
+    {"id":"p-last:text0","lines":[[0,1]]}
+  ]
+}

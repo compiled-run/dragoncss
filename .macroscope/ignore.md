@@ -60,6 +60,7 @@ packages/layout/rt-vectors/**
 packages/layout/break-vectors/**
 packages/parity/expected-breaks/**
 packages/parity/expected-pixels/**
+packages/parity/out/**
 packages/dragon/test/fonts/captures/**
 packages/dragon/test/fonts/reference/**
 packages/dragon/test/forms/chrome-145/**

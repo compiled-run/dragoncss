@@ -1,0 +1,33 @@
+{
+  "case": "text-fractional-font-size",
+  "dpr": 2,
+  "texts": [
+    {"id":"a:text0","lines":[[0,7],[7,14],[14,16]]},
+    {"id":"b:text0","lines":[[0,2]]},
+    {"id":"b:text1","lines":[[0,4]]},
+    {"id":"b:text2","lines":[[1,8],[8,10]]},
+    {"id":"c:text0","lines":[[0,3]]},
+    {"id":"c:text1","lines":[[0,5],[5,12]]},
+    {"id":"d:text0","lines":[[0,4]]},
+    {"id":"d:text1","lines":[[1,5],[5,8],[8,12]]},
+    {"id":"e:text0","lines":[[0,7],[7,13],[13,14]]},
+    {"id":"g:text0","lines":[[0,4]]},
+    {"id":"g:text1","lines":[[1,5]]},
+    {"id":"g:text2","lines":[[0,2],[2,4]]},
+    {"id":"r1:text0","lines":[[0,5]]},
+    {"id":"r2:text0","lines":[[0,4],[4,7],[7,11]]},
+    {"id":"s1:text0","lines":[[0,4],[4,6]]},
+    {"id":"s2:text0","lines":[[0,3],[3,4]]},
+    {"id":"half:text0","lines":[[0,6]]},
+    {"id":"half:text1","lines":[[1,7]]},
+    {"id":"half2:text0","lines":[[0,6],[6,11]]},
+    {"id":"h3a:text0","lines":[[0,2]]},
+    {"id":"h3b:text0","lines":[[0,1]]},
+    {"id":"h3c:text0","lines":[[0,2]]},
+    {"id":"q:text0","lines":[[0,8],[8,14]]},
+    {"id":"q:text1","lines":[[0,8],[8,19]]},
+    {"id":"q2:text0","lines":[[0,12],[12,22]]},
+    {"id":"k1:text0","lines":[[0,6]]},
+    {"id":"k2:text0","lines":[[0,9],[9,11]]}
+  ]
+}

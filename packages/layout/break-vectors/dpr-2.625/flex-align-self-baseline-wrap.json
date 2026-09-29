@@ -1,0 +1,24 @@
+{
+  "case": "flex-align-self-baseline-wrap",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"w1a:text0","lines":[[0,2]]},
+    {"id":"w1b:text0","lines":[[0,1]]},
+    {"id":"w1d:text0","lines":[[0,2]]},
+    {"id":"w1f:text0","lines":[[0,1]]},
+    {"id":"w1g:text0","lines":[[0,2]]},
+    {"id":"w2a:text0","lines":[[0,1]]},
+    {"id":"w2b:text0","lines":[[0,2]]},
+    {"id":"w2c:text0","lines":[[0,1]]},
+    {"id":"w2d:text0","lines":[[0,1]]},
+    {"id":"w2e:text0","lines":[[0,1]]},
+    {"id":"w3a:text0","lines":[[0,2]]},
+    {"id":"w3b:text0","lines":[[0,1]]},
+    {"id":"w3d:text0","lines":[[0,2]]},
+    {"id":"w3e:text0","lines":[[0,1]]},
+    {"id":"w4a:text0","lines":[[0,1]]},
+    {"id":"w4b:text0","lines":[[0,2]]},
+    {"id":"w4c:text0","lines":[[0,1]]},
+    {"id":"w4d:text0","lines":[[0,1]]}
+  ]
+}
