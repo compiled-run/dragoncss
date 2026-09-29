@@ -43,13 +43,20 @@ public func dragonDrawRoundedBorders(_ ctx: CGContext, _ o: CGRect, _ outer: CGP
     ctx.restoreGState()
     return
   }
-  let i = CGRect(x: o.minX + w[3], y: o.minY + w[0], width: o.width - w[3] - w[1], height: o.height - w[0] - w[2])
-  let quads: [[CGPoint]] = [
-    [CGPoint(x: o.minX, y: o.minY), CGPoint(x: o.maxX, y: o.minY), CGPoint(x: i.maxX, y: i.minY), CGPoint(x: i.minX, y: i.minY)],
-    [CGPoint(x: o.maxX, y: o.minY), CGPoint(x: o.maxX, y: o.maxY), CGPoint(x: i.maxX, y: i.maxY), CGPoint(x: i.maxX, y: i.minY)],
-    [CGPoint(x: o.maxX, y: o.maxY), CGPoint(x: o.minX, y: o.maxY), CGPoint(x: i.minX, y: i.maxY), CGPoint(x: i.maxX, y: i.maxY)],
-    [CGPoint(x: o.minX, y: o.maxY), CGPoint(x: o.minX, y: o.minY), CGPoint(x: i.minX, y: i.minY), CGPoint(x: i.minX, y: i.maxY)],
-  ]
+  // Each side owns the sector between the rays from its outer corners through the inner corners, extended to the box's middle
+  // lines, so a rounded corner's curved band belongs to the side of its diagonal even where the other side has no width.
+  let outerCorners = [CGPoint(x: o.minX, y: o.minY), CGPoint(x: o.maxX, y: o.minY), CGPoint(x: o.maxX, y: o.maxY), CGPoint(x: o.minX, y: o.maxY)]
+  let innerCorners = [CGPoint(x: o.minX + w[3], y: o.minY + w[0]), CGPoint(x: o.maxX - w[1], y: o.minY + w[0]), CGPoint(x: o.maxX - w[1], y: o.maxY - w[2]), CGPoint(x: o.minX + w[3], y: o.maxY - w[2])]
+  let mid = CGPoint(x: o.midX, y: o.midY)
+  let ends: [CGPoint] = (0..<4).map { c in
+    let p = outerCorners[c], q = innerCorners[c]
+    let dx = q.x - p.x, dy = q.y - p.y
+    var t = CGFloat.greatestFiniteMagnitude
+    if dx != 0 { t = min(t, (mid.x - p.x) / dx) }
+    if dy != 0 { t = min(t, (mid.y - p.y) / dy) }
+    return t == CGFloat.greatestFiniteMagnitude ? p : CGPoint(x: p.x + dx * t, y: p.y + dy * t)
+  }
+  let quads: [[CGPoint]] = (0..<4).map { k in [outerCorners[k], outerCorners[(k + 1) % 4], ends[(k + 1) % 4], ends[k]] }
   for k in visible {
     ctx.saveGState()
     let q = CGMutablePath()
@@ -195,16 +202,29 @@ fun dragonDrawRoundedBorders(canvas: Canvas, w: Float, h: Float, outer: Path, in
     canvas.drawPath(ring, paint)
     return
   }
+  // Each side owns the sector between the rays from its outer corners through the inner corners, extended to the box's middle
+  // lines, so a rounded corner's curved band belongs to the side of its diagonal even where the other side has no width.
   val t = widths[0].toFloat()
   val r = widths[1].toFloat()
   val b = widths[2].toFloat()
   val l = widths[3].toFloat()
-  val quads = arrayOf(
-    floatArrayOf(0f, 0f, w, 0f, w - r, t, l, t),
-    floatArrayOf(w, 0f, w, h, w - r, h - b, w - r, t),
-    floatArrayOf(w, h, 0f, h, l, h - b, w - r, h - b),
-    floatArrayOf(0f, h, 0f, 0f, l, t, l, h - b),
-  )
+  val outerCorners = arrayOf(floatArrayOf(0f, 0f), floatArrayOf(w, 0f), floatArrayOf(w, h), floatArrayOf(0f, h))
+  val innerCorners = arrayOf(floatArrayOf(l, t), floatArrayOf(w - r, t), floatArrayOf(w - r, h - b), floatArrayOf(l, h - b))
+  val ends = Array(4) { c ->
+    val p = outerCorners[c]
+    val q = innerCorners[c]
+    val dx = q[0] - p[0]
+    val dy = q[1] - p[1]
+    var s = Float.MAX_VALUE
+    if (dx != 0f) s = minOf(s, (w / 2f - p[0]) / dx)
+    if (dy != 0f) s = minOf(s, (h / 2f - p[1]) / dy)
+    if (s == Float.MAX_VALUE) p else floatArrayOf(p[0] + dx * s, p[1] + dy * s)
+  }
+  val quads = Array(4) { k ->
+    val a = outerCorners[k]
+    val c = outerCorners[(k + 1) % 4]
+    floatArrayOf(a[0], a[1], c[0], c[1], ends[(k + 1) % 4][0], ends[(k + 1) % 4][1], ends[k][0], ends[k][1])
+  }
   for (k in visible) {
     canvas.save()
     val q = quads[k]

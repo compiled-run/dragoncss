@@ -159,8 +159,8 @@ fun dragonRadiusShape(v: DragonBoxView, shape: DragonBoxShape): DoubleArray? {
   if (v.dragonRadiusLengths.isEmpty()) return null
   val e = shape.edges
   val r = paintRadius_roundedShape(e[0], e[1], e[2], e[3], JsArray(shape.borders.toMutableList()), JsArray(v.dragonRadiusLengths.toMutableList()), v.dragonRadiusScale, RadiusFaults(false, false))
-  if (r.items.size != 16) throw IllegalStateException("dragon: " + v.dragonId + ": paint-radius gave " + r.items.size + " radii, not 16")
-  return r.items.toDoubleArray()
+  if (r.size != 16) throw IllegalStateException("dragon: " + v.dragonId + ": paint-radius gave " + r.size + " radii, not 16")
+  return r.toDoubleArray()
 }
 
 /** A rounded rect path in device px from a rect and eight radii in device px (horizontal then vertical, top-left first). */
