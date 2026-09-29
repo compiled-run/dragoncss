@@ -37,6 +37,6 @@
     "@dragon/layout": "workspace:*"
   },
   "scripts": {
-    "prepack": "cp ../../README.md README.md"
+    "prepack": "cp ../../README.md ../../LICENSE ."
   }
 }

@@ -19,6 +19,7 @@
     "parity:dpr-report": "node --conditions=dragon-internal packages/parity/src/cli/dpr-report.ts",
     "parity:lanes": "node --conditions=dragon-internal packages/parity/src/cli/lanes.ts",
     "build": "node scripts/build-dist.ts",
+    "pr:review": "node scripts/pr-review.ts",
     "layout:subset": "node packages/translate/src/cli/subset.ts",
     "linebreak:gen": "node scripts/gen-linebreak-data.ts",
     "linebreak:conformance": "node scripts/gen-linebreak-data.ts --conformance",
@@ -41,7 +42,8 @@
     "native:devices": "node --conditions=dragon-internal packages/parity/src/cli/native-devices.ts",
     "text:build": "pnpm --dir packages/text-shaper run build",
     "text:gate": "node packages/text-shaper/scripts/gate.ts",
-    "text:report": "node packages/text-shaper/scripts/report.ts"
+    "text:report": "node packages/text-shaper/scripts/report.ts",
+    "rt:oracle": "node --conditions=dragon-internal scripts/capture-rt-oracle.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",
