@@ -3,6 +3,7 @@ import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import type { ColorSyntax, Rgba8 } from './color.ts';
 import { parseColorNode } from './color.ts';
+import { decodeName } from './escapes.ts';
 import type { Longhand } from './properties.ts';
 import { CANONICAL_LENGTH_UNIT, lengthFeatureType, normalizeUnit } from './units.ts';
 
@@ -86,7 +87,7 @@ export function familyValue(tokens: readonly CssNode[]): CssValue {
   const text = tokens.map((t) => (t.type === 'String' ? JSON.stringify(t['value']) : generate(t))).join(' ');
   if (tokens.length === 1 && (tokens[0]?.type === 'Identifier' || tokens[0]?.type === 'String')) {
     const t = tokens[0];
-    return { kind: 'family', value: String(t.type === 'Identifier' ? t['name'] : t['value']) };
+    return { kind: 'family', value: t.type === 'Identifier' ? decodeName(String(t['name'])) : String(t['value']) };
   }
   return { kind: 'other', type: 'family-list', text };
 }
