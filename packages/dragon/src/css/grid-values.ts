@@ -210,34 +210,122 @@ function lineValue(line: GridLine | 'auto'): CssValue {
 const copied = (line: GridLine | 'auto'): GridLine | 'auto' => (line !== 'auto' && !line.span && line.integer === null ? line : 'auto');
 
 // ---- Track lists ---------------------------------------------------------------------------------------------------------
+// css-grid-2 §7.2 checked in full on the tokens, so the value is right whether or not the webref grammar ran first:
+//   <track-list>          = [ <line-names>? [ <track-size> | <track-repeat> ] ]+ <line-names>?
+//   <auto-track-list>     = [ <line-names>? [ <fixed-size> | <fixed-repeat> ] ]* <line-names>? <auto-repeat>
+//                           [ <line-names>? [ <fixed-size> | <fixed-repeat> ] ]* <line-names>?
+//   <explicit-track-list> = [ <line-names>? <track-size> ]+ <line-names>?
+//   <track-size>  = <track-breadth> | minmax( <inflexible-breadth> , <track-breadth> ) | fit-content( <length-percentage [0,∞]> )
+//   <fixed-size>  = <fixed-breadth> | minmax( <fixed-breadth> , <track-breadth> ) | minmax( <inflexible-breadth> , <fixed-breadth> )
+//   <track-repeat> = repeat( <integer [1,∞]> , [ <line-names>? <track-size> ]+ <line-names>? )
+//   <auto-repeat>  = repeat( [ auto-fill | auto-fit ] , [ <line-names>? <fixed-size> ]+ <line-names>? )
+//   <fixed-repeat> = repeat( <integer [1,∞]> , [ <line-names>? <fixed-size> ]+ <line-names>? )
 
-const isFixedBreadth = (n: CssNode | undefined): boolean =>
-  n !== undefined && (n.type === 'Percentage' || n.type === 'Number' || (n.type === 'Dimension' && normalizeUnit(String(n['unit'])) !== 'fr'));
+const INTRINSIC = new Set(['min-content', 'max-content', 'auto']);
+const fnName = (n: CssNode): string | null => (n.type === 'Function' ? String(n['name']).toLowerCase() : null);
+const nonNegative = (n: CssNode): boolean => Number(n['value']) >= 0;
 
-/** css-grid-2 §7.2.3: <fixed-size>, a fixed breadth or a minmax() with one fixed side. */
+/** <length-percentage [0,∞]>: a length in a length unit, a percentage, or a unitless zero; never negative. */
+function isFixedBreadth(n: CssNode | undefined): boolean {
+  if (n === undefined) return false;
+  if (n.type === 'Percentage') return nonNegative(n);
+  if (n.type === 'Number') return Number(n['value']) === 0;
+  if (n.type !== 'Dimension') return false;
+  return unitEntry(normalizeUnit(String(n['unit'])))?.dimension === 'length' && nonNegative(n);
+}
+const isFlex = (n: CssNode | undefined): boolean => n !== undefined && n.type === 'Dimension' && normalizeUnit(String(n['unit'])) === 'fr' && nonNegative(n);
+const isInflexibleBreadth = (n: CssNode | undefined): boolean => isFixedBreadth(n) || INTRINSIC.has(lowerIdent(n) ?? '');
+const isTrackBreadth = (n: CssNode | undefined): boolean => isInflexibleBreadth(n) || isFlex(n);
+
+/** A function's arguments: its tokens split at each comma, or null when an argument is empty. */
+function args(n: CssNode): CssNode[][] | null {
+  const out: CssNode[][] = [[]];
+  for (const c of children(n)) {
+    if (c.type === 'Operator' && c['value'] === ',') out.push([]);
+    else (out[out.length - 1] as CssNode[]).push(c);
+  }
+  return out.some((a) => a.length === 0) ? null : out;
+}
+/** A function's arguments when there are exactly count of them, each one token. */
+function singleArgs(n: CssNode, count: number): CssNode[] | null {
+  const a = args(n);
+  return a === null || a.length !== count || a.some((x) => x.length !== 1) ? null : a.map((x) => x[0] as CssNode);
+}
+
+function isTrackSize(n: CssNode): boolean {
+  if (isTrackBreadth(n)) return true;
+  const name = fnName(n);
+  if (name === 'minmax') {
+    const a = singleArgs(n, 2);
+    return a !== null && isInflexibleBreadth(a[0]) && isTrackBreadth(a[1]);
+  }
+  if (name === 'fit-content') {
+    const a = singleArgs(n, 1);
+    return a !== null && isFixedBreadth(a[0]);
+  }
+  return false;
+}
+
 function isFixedSize(n: CssNode): boolean {
   if (isFixedBreadth(n)) return true;
-  if (n.type !== 'Function' || String(n['name']).toLowerCase() !== 'minmax') return false;
-  const args = children(n).filter((c) => !(c.type === 'Operator' && c['value'] === ','));
-  return isFixedBreadth(args[0]) || isFixedBreadth(args[1]);
+  if (fnName(n) !== 'minmax') return false;
+  const a = singleArgs(n, 2);
+  return a !== null && ((isFixedBreadth(a[0]) && isTrackBreadth(a[1])) || (isInflexibleBreadth(a[0]) && isFixedBreadth(a[1])));
 }
 
-/** Line names may not be reserved names (Blink ConsumeGridLineNames); the webref grammar allows span and auto, and escaped forms of all. */
-const badLineNames = (tokens: readonly CssNode[]): boolean =>
-  tokens.some((t) => (t.type === 'Brackets' && children(t).some(reservedName)) || (t.type === 'Function' && badLineNames(children(t))));
+/** <line-names>: brackets holding only identifiers that are not reserved names (Blink ConsumeGridLineNames). */
+const isLineNames = (n: CssNode): boolean => n.type === 'Brackets' && children(n).every((c) => c.type === 'Identifier' && !reservedName(c));
 
-/** A grid-template-rows or -columns value, or null when Chrome drops it. */
+/** [ <line-names>? <item> ]+ <line-names>? (or * when empty is allowed): at most one set of names between items. */
+function isNamedSequence(tokens: readonly CssNode[], item: (n: CssNode) => boolean, allowEmpty: boolean): boolean {
+  let items = 0;
+  let names = false;
+  for (const t of tokens) {
+    if (t.type === 'Brackets') {
+      if (names || !isLineNames(t)) return false;
+      names = true;
+    } else if (item(t)) {
+      items++;
+      names = false;
+    } else {
+      return false;
+    }
+  }
+  return allowEmpty || items > 0;
+}
+
+type RepeatKind = 'auto' | 'fixed' | 'track' | null;
+/** A repeat(): auto (auto-fill or auto-fit over fixed sizes), fixed (a count over fixed sizes), track (a count over track sizes), or null. */
+function repeatKind(n: CssNode): RepeatKind {
+  if (fnName(n) !== 'repeat') return null;
+  const a = args(n);
+  if (a === null || a.length !== 2 || (a[0] as CssNode[]).length !== 1) return null;
+  const count = (a[0] as CssNode[])[0] as CssNode;
+  const body = a[1] as CssNode[];
+  const auto = ['auto-fill', 'auto-fit'].includes(lowerIdent(count) ?? '');
+  if (!auto && !(isInteger(count) && Number(count['value']) >= 1)) return null;
+  if (isNamedSequence(body, isFixedSize, false)) return auto ? 'auto' : 'fixed';
+  return !auto && isNamedSequence(body, isTrackSize, false) ? 'track' : null;
+}
+
+const isTrackList = (tokens: readonly CssNode[]): boolean => isNamedSequence(tokens, (t) => isTrackSize(t) || repeatKind(t) !== null && repeatKind(t) !== 'auto', false);
+function isAutoTrackList(tokens: readonly CssNode[]): boolean {
+  if (tokens.filter((t) => repeatKind(t) === 'auto').length !== 1) return false;
+  return isNamedSequence(tokens, (t) => isFixedSize(t) || repeatKind(t) === 'auto' || repeatKind(t) === 'fixed', false);
+}
+const isExplicitTrackList = (tokens: readonly CssNode[]): boolean => isNamedSequence(tokens, isTrackSize, false);
+
+/** A grid-template-rows or -columns value (none, <track-list> or <auto-track-list>), or null when Chrome drops it. */
 function templateValue(tokens: readonly CssNode[]): CssValue | null {
   if (tokens.length === 1 && lowerIdent(tokens[0]) === 'none') return kw('none');
-  if (badLineNames(tokens)) return null;
-  const autoRepeat = tokens.find((t) => t.type === 'Function' && String(t['name']).toLowerCase() === 'repeat' && ['auto-fill', 'auto-fit'].includes(lowerIdent(children(t)[0]) ?? ''));
-  // css-grid-2 §7.2.3.2: an automatic repetition takes only fixed sizes (webref's <auto-repeat> says <track-size>).
-  if (autoRepeat !== undefined && !children(autoRepeat).slice(2).every((c) => c.type === 'Brackets' || isFixedSize(c))) return null;
-  return other(autoRepeat === undefined ? 'track-list' : 'auto-track-list', tracksText(tokens));
+  if (isTrackList(tokens)) return other('track-list', tracksText(tokens));
+  if (isAutoTrackList(tokens)) return other('auto-track-list', tracksText(tokens));
+  return null;
 }
 
-/** A grid-auto-rows or -columns value. */
-function autoTracksValue(tokens: readonly CssNode[]): CssValue {
+/** A grid-auto-rows or -columns value (<track-size>+), or null when Chrome drops it. */
+function autoTracksValue(tokens: readonly CssNode[]): CssValue | null {
+  if (tokens.length === 0 || !tokens.every(isTrackSize)) return null;
   const only = tokens.length === 1 ? lowerIdent(tokens[0]) : null;
   if (only !== null) return kw(only);
   return other(tokens.length === 1 ? 'track-size' : 'track-size-list', tracksText(tokens));
@@ -295,20 +383,43 @@ const stringOf = (n: CssNode): string => String(n['value']);
 
 // ---- Alignment keywords --------------------------------------------------------------------------------------------------
 
+const SELF_POSITIONS = new Set(['center', 'start', 'end', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right']);
+
 /**
- * css-align-3 §6.1, §6.2 as Chrome 145 parses them: [first | last]? baseline with the prefix first ("first baseline" is
- * "baseline"), an overflow position only before a self position, left or right (never before normal), and legacy with left,
- * right or center in either order, written "legacy <position>".
+ * css-align-3 §6.1 (justify-self) and §6.2 (justify-items) as Chrome 145 parses them, every token an identifier:
+ * - one keyword: normal, stretch, baseline, anchor-center, a self position, left or right; auto for justify-self; legacy for
+ *   justify-items;
+ * - [first | last] baseline, written baseline or last baseline;
+ * - safe or unsafe before a self position, left or right (never before normal, stretch or baseline);
+ * - justify-items only: legacy with left, right or center in either order, written legacy <position>.
  */
-function alignmentValue(tokens: readonly CssNode[]): CssValue | null {
-  const names = tokens.map((t) => lowerIdent(t) ?? '');
-  if (names.includes('baseline')) {
-    if (names[names.length - 1] !== 'baseline') return null;
-    return kw(names[0] === 'last' ? 'last baseline' : 'baseline');
+function alignmentValue(property: string, tokens: readonly CssNode[]): CssValue | null {
+  if (!tokens.every((t) => t.type === 'Identifier')) return null;
+  const names = tokens.map((t) => lowerIdent(t) as string);
+  const [a, b] = names;
+  const items = property === 'justify-items';
+  if (names.length === 1) {
+    const single = ['normal', 'stretch', 'baseline', 'anchor-center', items ? 'legacy' : 'auto'];
+    return single.includes(a as string) || SELF_POSITIONS.has(a as string) ? kw(a as string) : null;
   }
-  if (names.includes('legacy')) return kw(names.length === 1 ? 'legacy' : `legacy ${names.find((n) => n !== 'legacy') as string}`);
-  if ((names[0] === 'safe' || names[0] === 'unsafe') && names[1] === 'normal') return null;
-  return kw(names.join(' '));
+  if (names.length !== 2) return null;
+  if ((a === 'first' || a === 'last') && b === 'baseline') return kw(a === 'last' ? 'last baseline' : 'baseline');
+  if ((a === 'safe' || a === 'unsafe') && SELF_POSITIONS.has(b as string)) return kw(`${a} ${b as string}`);
+  if (items) {
+    const other = a === 'legacy' ? b : b === 'legacy' ? a : null;
+    if (other === 'left' || other === 'right' || other === 'center') return kw(`legacy ${other}`);
+  }
+  return null;
+}
+
+/** css-grid-2 §7.7: [ row | column ] || dense, written row, column, dense or column dense. */
+function autoFlowValue(tokens: readonly CssNode[]): CssValue | null {
+  const names = tokens.map((t) => lowerIdent(t) ?? '');
+  const axes = names.filter((n) => n === 'row' || n === 'column');
+  const dense = names.filter((n) => n === 'dense');
+  if (names.length === 0 || axes.length > 1 || dense.length > 1 || axes.length + dense.length !== names.length) return null;
+  const column = axes[0] === 'column';
+  return kw(column ? (dense.length > 0 ? 'column dense' : 'column') : (dense.length > 0 ? 'dense' : 'row'));
 }
 
 // ---- Longhands and shorthands --------------------------------------------------------------------------------------------
@@ -327,30 +438,40 @@ function gridTemplate(tokens: readonly CssNode[]): LonghandValue[] | null {
     return [explicit('grid-template-rows', rows), explicit('grid-template-columns', columns), explicit('grid-template-areas', kw('none'))];
   }
   // css-grid-2 §7.4: [ <line-names>? <string> <track-size>? <line-names>? ]+ [ / <explicit-track-list> ]?; the trailing names of a
-  // row and the leading names of the next are one set of line names.
+  // row and the leading names of the next are one set of line names in grid-template-rows.
   const strings: string[] = [];
   const rowText: string[] = [];
   let names: string[] = [];
-  let sized = true;
-  for (const t of before) {
-    if (t.type === 'Brackets') {
-      names.push(...children(t).map((c) => String(c['name'])));
-    } else if (t.type === 'String') {
-      if (!sized) rowText.push('auto');
-      if (names.length > 0) rowText.push(`[${names.join(' ')}]`);
-      names = [];
-      strings.push(stringOf(t));
-      sized = false;
+  let i = 0;
+  const lineNames = (): boolean => {
+    const t = before[i];
+    if (t === undefined || t.type !== 'Brackets') return true;
+    if (!isLineNames(t)) return false;
+    names.push(...children(t).map((c) => String(c['name'])));
+    i++;
+    return true;
+  };
+  while (i < before.length) {
+    if (!lineNames()) return null;
+    const str = before[i];
+    if (str === undefined || str.type !== 'String') return null;
+    if (names.length > 0) rowText.push(`[${names.join(' ')}]`);
+    names = [];
+    strings.push(stringOf(str));
+    i++;
+    const size = before[i];
+    if (size !== undefined && size.type !== 'Brackets' && size.type !== 'String') {
+      if (!isTrackSize(size)) return null;
+      rowText.push(trackText(size, keepDimension));
+      i++;
     } else {
-      rowText.push(trackText(t, keepDimension));
-      sized = true;
+      rowText.push('auto');
     }
+    if (!lineNames()) return null;
   }
-  if (!sized) rowText.push('auto');
   if (names.length > 0) rowText.push(`[${names.join(' ')}]`);
-  if (badLineNames(before)) return null;
   const areas = areasValue(strings);
-  const columns = after === undefined ? kw('none') : templateValue(after);
+  const columns = after === undefined ? kw('none') : isExplicitTrackList(after) ? other('track-list', tracksText(after)) : null;
   if (areas === null || columns === null) return null;
   return [explicit('grid-template-rows', other('track-list', rowText.join(' '))), explicit('grid-template-columns', columns), explicit('grid-template-areas', areas)];
 }
@@ -366,13 +487,18 @@ function grid(tokens: readonly CssNode[]): LonghandValue[] | null {
     return template === null ? null : [...template, ...AUTO_RESETS()];
   }
   if (parts.length !== 2) return null;
+  // [ auto-flow && dense? ] <'grid-auto-rows'>?: the keywords first, in either order, then the track sizes.
   const flow = parts[flowSide] as CssNode[];
-  const dense = flow.some((t) => lowerIdent(t) === 'dense');
-  const sizes = flow.filter((t) => !['auto-flow', 'dense'].includes(lowerIdent(t) ?? ''));
+  let k = 0;
+  while (k < flow.length && ['auto-flow', 'dense'].includes(lowerIdent(flow[k]) ?? '')) k++;
+  const keywords = flow.slice(0, k).map((t) => lowerIdent(t));
+  if (keywords.filter((w) => w === 'auto-flow').length !== 1 || keywords.filter((w) => w === 'dense').length > 1) return null;
+  const dense = keywords.includes('dense');
+  const sizes = flow.slice(k);
   const template = templateValue(parts[1 - flowSide] as CssNode[]);
-  if (template === null || badLineNames(sizes)) return null;
-  const rowFlow = flowSide === 0;
   const autoSizes = sizes.length === 0 ? null : autoTracksValue(sizes);
+  if (template === null || (sizes.length > 0 && autoSizes === null)) return null;
+  const rowFlow = flowSide === 0;
   const flowValue = kw(rowFlow ? (dense ? 'dense' : 'row') : (dense ? 'column dense' : 'column'));
   return [
     explicit('grid-template-rows', rowFlow ? kw('none') : template),
@@ -421,15 +547,13 @@ export function gridLonghands(property: string, tokens: readonly CssNode[]): Lon
     case 'grid-template-rows':
       return one(property, templateValue(tokens));
     case 'grid-template-areas':
-      return one(property, tokens.length === 1 && lowerIdent(tokens[0]) === 'none' ? kw('none') : areasValue(tokens.map(stringOf)));
+      if (tokens.length === 1 && lowerIdent(tokens[0]) === 'none') return one(property, kw('none'));
+      return one(property, tokens.every((t) => t.type === 'String') ? areasValue(tokens.map(stringOf)) : null);
     case 'grid-auto-columns':
     case 'grid-auto-rows':
-      return badLineNames(tokens) ? null : one(property, autoTracksValue(tokens));
-    case 'grid-auto-flow': {
-      const names = tokens.map((t) => lowerIdent(t) ?? '');
-      const dense = names.includes('dense');
-      return one(property, kw(names.includes('column') ? (dense ? 'column dense' : 'column') : (dense ? 'dense' : 'row')));
-    }
+      return one(property, autoTracksValue(tokens));
+    case 'grid-auto-flow':
+      return one(property, autoFlowValue(tokens));
     case 'grid-row-start':
     case 'grid-row-end':
     case 'grid-column-start':
@@ -439,7 +563,7 @@ export function gridLonghands(property: string, tokens: readonly CssNode[]): Lon
     }
     case 'justify-items':
     case 'justify-self':
-      return one(property, alignmentValue(tokens));
+      return one(property, alignmentValue(property, tokens));
     case 'grid':
       return grid(tokens);
     case 'grid-template':
@@ -453,7 +577,7 @@ export function gridLonghands(property: string, tokens: readonly CssNode[]): Lon
   }
 }
 
-const TRACKS_REASON = 'line names may not be span, auto, default or a CSS-wide keyword, and an automatic repetition takes only fixed sizes (css-grid-2 §7.2)';
+const TRACKS_REASON = 'line names may not be span, auto, default or a CSS-wide keyword, and an automatic repetition takes only fixed sizes, with only fixed sizes and fixed repeats beside it and no second one (css-grid-2 §7.2)';
 const AREAS_REASON = 'every row needs the same number of cells, every named area must be a filled rectangle, and a cell name uses only name code points (css-grid-2 §7.3)';
 const LINE_REASON = 'a grid line is <integer> <name>? span?, span <integer>? <name>? or <name> <integer>? span?, with a nonzero integer and a positive span (css-grid-2 §8.3)';
 const ALIGN_REASON = 'first or last goes before baseline, and safe or unsafe goes only before a position (css-align-3 §6)';

@@ -187,6 +187,53 @@ describe('grid family: parse and expand', () => {
       expect(declare('grid-template-columns', v).diagnostics.map((d) => d.code), v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     }
   });
+  it('the hook checks the whole css-grid-2 track grammar itself, not only what the webref grammar leaves (PR #23 round 4)', () => {
+    const hook = (p: string, v: string): string => {
+      const tokens = list(parse(v, { context: 'value', positions: true }), 'children').filter((n) => n.type !== 'WhiteSpace');
+      const r = parseGridValue(p, tokens, { source: SOURCE, start: 0, end: v.length });
+      return r.kind === 'ok' ? r.longhands.map((l) => valueToString(l.value)).join(' | ') : r.kind;
+    };
+    const dropped = [
+      // 4137427164: <auto-track-list> holds exactly one automatic repetition.
+      ['grid-template-columns', 'repeat(auto-fill, 10px) repeat(auto-fit, 10px)'],
+      // 4137427213: the tracks beside an automatic repetition are fixed sizes or fixed repeats.
+      ['grid-template-columns', 'repeat(auto-fill, 10px) repeat(2, 1fr)'],
+      ['grid-template-columns', 'repeat(auto-fill, 10px) 1fr'],
+      // 4137427204: minmax(<inflexible-breadth>, <fixed-breadth>) takes no flexible minimum.
+      ['grid-template-columns', 'repeat(auto-fill, minmax(1fr, 10px))'],
+      ['grid-template-columns', 'minmax(1fr, 10px)'],
+      // 4137427189: the areas form of grid-template takes <track-size> rows and an <explicit-track-list>, so no repeat().
+      ['grid-template', '"a b" repeat(2, 10px)'],
+      ['grid-template', '"a b" 10px / repeat(auto-fill, 10px)'],
+      ['grid-template', '"a b" 10px / repeat(2, 1fr)'],
+      ['grid', '"a b" 10px / repeat(2, 1fr)'],
+      // The rest of the grammar the hook now checks on its own.
+      ['grid-template-columns', '[a] [b] 10px'],
+      ['grid-template-columns', '-10px'],
+      ['grid-template-columns', 'repeat(0, 10px)'],
+      ['grid-template-columns', 'repeat(2, repeat(2, 10px))'],
+      ['grid-auto-rows', '[a] 10px'],
+      ['grid-auto-rows', 'repeat(2, 10px)'],
+      ['grid-auto-flow', 'row column'],
+      ['grid', 'auto-flow auto-flow / 10px'],
+      ['grid', '10px auto-flow / 10px'],
+      ['justify-self', 'safe stretch'],
+      ['justify-self', 'legacy'],
+      ['justify-items', 'auto'],
+      ['justify-items', 'legacy start'],
+      ['grid-template-areas', '"a" none'],
+    ] as const;
+    for (const [p, v] of dropped) {
+      expect(hook(p, v), `${p}: ${v}`).toBe('invalid');
+      expect(declare(p, v).declaration, `${p}: ${v}`).toBeNull();
+    }
+    expect(hook('grid-template-columns', 'repeat(auto-fill, 10px) minmax(auto, 10px) repeat(2, 5px)')).toBe('repeat(auto-fill, 10px) minmax(auto, 10px) repeat(2, 5px)');
+    expect(hook('grid-template-columns', 'repeat(auto-fill, minmax(auto, 10px))')).toBe('repeat(auto-fill, minmax(auto, 10px))');
+    expect(hook('grid-template-columns', 'repeat(2, [a] 1fr minmax(min-content, 2fr)) [b]')).toBe('repeat(2, [a] 1fr minmax(min-content, 2fr)) [b]');
+    expect(hook('grid-template', '[a] "x" 10px [b] [c] "y" / [d] 1fr')).toBe('[a] 10px [b c] auto | [d] 1fr | "x" "y"');
+    expect(hook('grid', 'dense auto-flow 1fr / 10px')).toBe('none | 10px | none | 1fr | auto | dense');
+    expect(hook('justify-items', 'anchor-center')).toBe('anchor-center');
+  });
   it('area rows are scanned by code point, so non-BMP names are one cell', () => {
     expect(expanded('grid-template-areas', '"a😀b c" "d d"')).toEqual(['grid-template-areas="a😀b c" "d d"']);
     expect(expanded('grid-template-areas', '"😀"')).toEqual(['grid-template-areas="😀"']);
