@@ -92,6 +92,7 @@ export function parseJpeg(bytes: Uint8Array): JpegParse {
   let frame: Omit<JpegFacts, 'exif' | 'hasIcc' | 'markers'> | null = null;
   let exif: ExifFacts | null = null;
   let hasIcc = false;
+  let sawSos = false;
   const markers: string[] = [];
   while (at < bytes.length) {
     if (bytes[at] !== 0xff) return { ok: false, reason: `expected a marker at ${at}` };
@@ -106,7 +107,8 @@ export function parseJpeg(bytes: Uint8Array): JpegParse {
     if (length < 2 || data.length !== length - 2) return { ok: false, reason: `truncated ${hex(m)} segment` };
     markers.push(hex(m));
     if (SOF.has(m)) {
-      if (data.length < 6) return { ok: false, reason: 'short SOF' };
+      // libjpeg's get_sof: the length is exactly 8 + 3 per component (JERR_BAD_LENGTH); Chrome 145 fails a short or long SOF.
+      if (data.length < 6 || data.length !== 6 + 3 * (data[5] as number)) return { ok: false, reason: 'SOF length does not match its components' };
       frame = {
         width: ((data[3] as number) << 8) | (data[4] as number),
         height: ((data[1] as number) << 8) | (data[2] as number),
@@ -121,10 +123,15 @@ export function parseJpeg(bytes: Uint8Array): JpegParse {
     } else if (m === 0xe2 && ICC_ID.every((v, i) => data[i] === v)) {
       hasIcc = true;
     }
-    if (m === 0xda) break;
+    if (m === 0xda) {
+      sawSos = true;
+      break;
+    }
     at += length;
   }
   if (frame === null) return { ok: false, reason: 'no SOF before SOS' };
+  // jpeg_read_header completes only at SOS; EOF or EOI first (JERR_NO_IMAGE) is a failed decode in Chrome 145.
+  if (!sawSos) return { ok: false, reason: 'no SOS after SOF' };
   if (frame.width === 0 || frame.height === 0) return { ok: false, reason: 'zero frame size' };
   return { ok: true, facts: { ...frame, exif, hasIcc, markers } };
 }
