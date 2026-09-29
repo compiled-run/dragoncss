@@ -4,7 +4,7 @@
 // proof; --run-device runs the device lanes of each target on its simulators or emulators, one device at a time (device-lanes.ts),
 // every failure printed and written to out/device-failures-<target>.json. Either rewrites out/lanes.json, keeping the committed
 // records of lanes not run now when they still describe the configuration. --target limits --run-device to one target.
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { failuresByKind } from '../device-lanes.ts';
 import { runTargetOnDevices } from '../device-lanes.ts';
 import type { DeviceRun, LaneFault, LanesFile } from '../lanes.ts';
@@ -69,6 +69,7 @@ if (runHost || runDevice) {
       const d = await runTargetOnDevices(t, hostRun, (l) => console.log(`parity:lanes --run-device ${t.target}: ${l}`));
       device.set(t.target, d);
       const all = d.sets.flatMap((s) => s.failures);
+      mkdirSync(repoPath('packages/parity/out'), { recursive: true });
       writeFileSync(repoPath(`packages/parity/out/device-failures-${t.target}.json`), `${JSON.stringify(all, null, 1)}\n`);
       for (const f of all) console.log(`DEVICE FAIL ${t.target} ${f.lane} ${f.case}@${f.dpr} ${f.kind}${f.node === null ? '' : ` ${f.node}`}: ${f.detail}`);
       console.log(`parity:lanes --run-device ${t.target}: ${all.length} failures ${JSON.stringify(failuresByKind(all))} (listed in packages/parity/out/device-failures-${t.target}.json)`);
