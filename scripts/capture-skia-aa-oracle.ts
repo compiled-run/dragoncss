@@ -184,6 +184,14 @@ const BORDERS: readonly (readonly [string, CaseDef])[] = [
   ['frac-pos', { left: 12.375, top: 9.625, width: 50.25, height: 41.5, radii: [r(13.5), r(8.25), r(6), r(10.75)], border: [2, 1, 3, 1] }],
   // Small enough for MaskAdditiveBlitter at DPR 2 and 2.625 (aaa_walk_edges into the mask).
   ['small-mask', { width: 12, height: 12, radii: all(r(5)), border: [1, 2, 1, 2] }],
+  // Uniform width and circular corners: Blink strokes the rrect (FillDRRect's IsSimpleDRRect), so SkStroke builds the ring.
+  ['uniform-circular', { width: 64, height: 48, radii: all(r(12)), border: [2, 2, 2, 2] }],
+  ['uniform-thick', { width: 80, height: 60, radii: all(r(20)), border: [6, 6, 6, 6] }],
+  ['uniform-square-corners', { width: 72, height: 50, radii: [r(12), r(0), r(20), r(0)], border: [3, 3, 3, 3] }],
+  ['circle-ring', { width: 40, height: 40, radii: all(r(20)), border: [4, 4, 4, 4] }],
+  ['pill-ring', { width: 80, height: 24, radii: all(r(12)), border: [2, 2, 2, 2] }],
+  ['uniform-frac-pos', { left: 12.375, top: 9.625, width: 50.25, height: 41.5, radii: all(r(9.5)), border: [1, 1, 1, 1] }],
+  ['uniform-small-mask', { width: 12, height: 12, radii: all(r(5)), border: [1, 1, 1, 1] }],
 ];
 
 function boxCase(id: string, family: 'fill' | 'border', def: CaseDef, dpr: number): OracleCase {

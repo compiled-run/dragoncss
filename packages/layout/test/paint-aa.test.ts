@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import type { AaFaults, BorderWidths, IRect, RoundedBoxSpec } from '../src/paint-aa.ts';
-import { backgroundRoute, borderRoundedRect, borderRoute, devicePixels, fixedMul, NO_AA_FAULTS, paintRoundedBackground, paintRoundedBorder, sqrt32, toSkRRect, whiteDevice } from '../src/paint-aa.ts';
+import { backgroundRoute, borderRoundedRect, borderRoute, devicePixels, fixedMul, NO_AA_FAULTS, paintRoundedBackground, paintRoundedBorder, sqrt32, sqrt64, toSkRRect, whiteDevice } from '../src/paint-aa.ts';
 
 type AaCase = { readonly id: string; readonly family: 'fill' | 'border'; readonly dpr: number; readonly device: RoundedBoxSpec; readonly widths: BorderWidths | null; readonly crop: IRect; readonly file: string };
 type Manifest = { readonly chrome: string; readonly skia: string; readonly featureStatus: Record<string, Record<string, string>>; readonly cases: readonly AaCase[] };
@@ -152,10 +152,10 @@ describe('SKIA-AA analytic anti-aliasing: Chrome 145 oracle', () => {
     }
   });
 
-  it('exercises the mask and RLE blitters with both the convex and the general edge walk, and the rect fill', () => {
+  it('exercises the mask and RLE blitters with both edge walks, the rect fill, and SkStroke rings through both blitters', () => {
     const routes = new Set<string>();
     for (const c of manifest.cases) routes.add(c.widths === null ? backgroundRoute(c.device) : borderRoute(c.device, c.widths));
-    expect([...routes].sort()).toEqual(['mask-convex', 'mask-edges', 'rect', 'rle-convex', 'safe-rle-edges']);
+    expect([...routes].sort()).toEqual(['mask-convex', 'mask-edges', 'rect', 'rle-convex', 'safe-rle-edges', 'stroke-mask-edges', 'stroke-safe-rle-edges']);
   });
 
   it('catches every planted fault', () => {
@@ -190,10 +190,22 @@ describe('SKIA-AA arithmetic', () => {
     }
   });
 
-  it('refuses the uniform circular border that Blink strokes, until SkStroke is ported', () => {
+  it('sqrt64 is the correctly rounded double square root', () => {
+    let seed = 777;
+    const next = (): number => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
+    for (let i = 0; i < 20000; i++) {
+      const x = (next() + next() / 2147483648) * 10 ** Math.floor(next() * 16 - 8);
+      expect(sqrt64(x)).toBe(Math.sqrt(x));
+    }
+    for (const x of [1, 2, 3, 4, 0.25, 4 - 2 ** -51, 1 + 2 ** -52, 2 ** 60, 2 ** -60, 1e-300 * 1e10]) expect(sqrt64(x)).toBe(Math.sqrt(x));
+  });
+
+  it('refuses a stroke of at most 1 device px, which Skia draws as a hairline', () => {
     const spec: RoundedBoxSpec = { box: { left: 10, top: 10, right: 90, bottom: 70 }, radii: { topLeft: { x: 16, y: 16 }, topRight: { x: 16, y: 16 }, bottomRight: { x: 16, y: 16 }, bottomLeft: { x: 16, y: 16 } }, tileSize: 512 };
-    const widths: BorderWidths = { top: 4, right: 4, bottom: 4, left: 4 };
-    expect(borderRoute(spec, widths)).toBe('stroke');
-    expect(() => paintRoundedBorder(whiteDevice({ left: 0, top: 0, right: 100, bottom: 80 }), spec, widths, NO_AA_FAULTS)).toThrow(/SkStroke/);
+    const widths: BorderWidths = { top: 1, right: 1, bottom: 1, left: 1 };
+    expect(() => paintRoundedBorder(whiteDevice({ left: 0, top: 0, right: 100, bottom: 80 }), spec, widths, NO_AA_FAULTS)).toThrow(/hairline/);
   });
 });

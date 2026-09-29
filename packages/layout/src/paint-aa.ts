@@ -2108,9 +2108,10 @@ export function antiFillPath(dev: Device, path: AaPath, tileClip: IRect, faults:
     return;
   }
   if (canHandleRect(ir)) {
-    let conics = false;
-    for (const v of path.verbs) if (v === VERB_CONIC) conics = true;
-    if (!conics) throw new Error('SKIA-AA: try_blit_fat_anti_rect on a line-only path is not modelled');
+    // try_blit_fat_anti_rect: SkPathRaw::isRect is false for any path with a curve.
+    let curves = false;
+    for (const v of path.verbs) if (v === VERB_CONIC || v === VERB_QUAD) curves = true;
+    if (!curves) throw new Error('SKIA-AA: try_blit_fat_anti_rect on a line-only path is not modelled');
     const acc = makeAcc(KIND_MASK, dev, ir, tileClip, faults);
     aaaFillPath(path, tileClip, acc, ir.top, ir.bottom, true);
     const c = acc.clip;
@@ -2191,6 +2192,779 @@ function supersampleFill(dev: Device, path: AaPath, ir: IRect, faults: AaFaults)
       blend(dev, x, y, faults.coverageNotAccumulated ? 0 : minNum(255, n * 16));
     }
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// A correctly rounded double sqrt (the subset has no Math.sqrt): Newton, then exact midpoint tests on 24-bit limbs.
+
+const LIMB = 16777216;
+const TWO_POW_52 = 4503599627370496;
+
+function limbsOf(v: number): number[] {
+  const out: number[] = [];
+  let r = v;
+  for (let i = 0; i < 3; i++) {
+    const q = floorOf(r / LIMB);
+    out.push(r - q * LIMB);
+    r = q;
+  }
+  return out;
+}
+
+function normalizeLimbs(xs: readonly number[]): number[] {
+  const out: number[] = [];
+  let carry = 0;
+  for (const x of xs) {
+    const v = x + carry;
+    carry = floorOf(v / LIMB);
+    out.push(v - carry * LIMB);
+  }
+  while (carry > 0) {
+    const q = floorOf(carry / LIMB);
+    out.push(carry - q * LIMB);
+    carry = q;
+  }
+  return out;
+}
+
+function compareLimbs(a: readonly number[], b: readonly number[]): number {
+  const n = maxNum(a.length, b.length);
+  for (let i = n - 1; i >= 0; i--) {
+    const x = i < a.length ? at(a, i) : 0;
+    const y = i < b.length ? at(b, i) : 0;
+    if (x !== y) return x < y ? -1 : 1;
+  }
+  return 0;
+}
+
+/** (2Y + d)^2 for an integer Y < 2^54 and d = +1 or -1, normalized base 2^24. */
+function oddSquare(yLimbs: readonly number[], d: number): number[] {
+  const c0 = 2 * at(yLimbs, 0) + d;
+  const c1 = 2 * at(yLimbs, 1);
+  const c2 = 2 * at(yLimbs, 2);
+  return normalizeLimbs([c0 * c0, 2 * c0 * c1, 2 * c0 * c2 + c1 * c1, 2 * c1 * c2, c2 * c2]);
+}
+
+/** sqrt (IEEE double, round to nearest). */
+export function sqrt64(x: number): number {
+  if (x === 0) return 0;
+  if (!(x > 0)) throw new Error('SKIA-AA: sqrt of a negative or NaN double');
+  let xs = x;
+  let scale = 1;
+  while (xs >= 4) {
+    xs = xs / 4;
+    scale = scale * 2;
+  }
+  while (xs < 1) {
+    xs = xs * 4;
+    scale = scale / 2;
+  }
+  let y = 2;
+  for (let i = 0; i < 200; i++) {
+    const n = (y + xs / y) / 2;
+    if (!(n < y)) break;
+    y = n;
+  }
+  const xl = limbsOf(xs * TWO_POW_52);
+  const lhs = normalizeLimbs([0, 0, 64 * at(xl, 0), 64 * at(xl, 1), 64 * at(xl, 2)]);
+  for (let i = 0; i < 8; i++) {
+    const yl = limbsOf(y * TWO_POW_52);
+    if (compareLimbs(lhs, oddSquare(yl, 1)) > 0) y = y + 1 / TWO_POW_52;
+    else if (y > 1 && compareLimbs(lhs, oddSquare(yl, -1)) < 0) y = y - 1 / TWO_POW_52;
+    else break;
+  }
+  return y * scale;
+}
+
+function isFiniteNum(v: number): boolean {
+  return v - v === 0;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// SkPoint arithmetic (float32 lanes, no contraction).
+
+function padd(a: Pt, b: Pt): Pt {
+  return pt(f32(a.x + b.x), f32(a.y + b.y));
+}
+
+function psub(a: Pt, b: Pt): Pt {
+  return pt(f32(a.x - b.x), f32(a.y - b.y));
+}
+
+function pscale(a: Pt, s: number): Pt {
+  return pt(f32(a.x * s), f32(a.y * s));
+}
+
+function pneg(a: Pt): Pt {
+  return pt(-a.x, -a.y);
+}
+
+function dot(a: Pt, b: Pt): number {
+  return f32(f32(a.x * b.x) + f32(a.y * b.y));
+}
+
+function cross(a: Pt, b: Pt): number {
+  return f32(f32(a.x * b.y) - f32(a.y * b.x));
+}
+
+function ptEq(a: Pt, b: Pt): boolean {
+  return a.x === b.x && a.y === b.y;
+}
+
+function distanceToSqd(a: Pt, b: Pt): number {
+  const dx = f32(a.x - b.x);
+  const dy = f32(a.y - b.y);
+  return f32(f32(dx * dx) + f32(dy * dy));
+}
+
+function canNormalize(dx: number, dy: number): boolean {
+  return isFiniteNum(dx) && isFiniteNum(dy) && (dx !== 0 || dy !== 0);
+}
+
+/** SkPoint::setLength(x, y, length) through doubles (set_point_length<false>); null when it fails. */
+function setLength(x: number, y: number, length: number): Pt | null {
+  const dmag = sqrt64(x * x + y * y);
+  if (dmag === 0) return null;
+  const dscale = length / dmag;
+  const nx = f32(x * dscale);
+  const ny = f32(y * dscale);
+  if (!isFiniteNum(nx) || !isFiniteNum(ny) || (nx === 0 && ny === 0)) return null;
+  return pt(nx, ny);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// SkPathBuilder, as much as the stroker uses.
+
+type PtCell = { x: number; y: number };
+
+/** A path under construction: points, verbs, and the index of the last moveTo. */
+type Builder = { readonly pts: PtCell[]; readonly verbs: number[]; lastMove: number };
+
+function newBuilder(): Builder {
+  return { pts: [], verbs: [], lastMove: -1 };
+}
+
+function bPoint(b: Builder, i: number): Pt {
+  const c = b.pts[i];
+  if (c === undefined) throw new Error('SKIA-AA: builder point out of range');
+  return pt(c.x, c.y);
+}
+
+function bLastVerb(b: Builder): number {
+  return b.verbs.length === 0 ? -1 : at(b.verbs, b.verbs.length - 1);
+}
+
+function bMoveTo(b: Builder, p: Pt): void {
+  if (bLastVerb(b) === VERB_MOVE) {
+    const c = b.pts[b.pts.length - 1] as PtCell;
+    c.x = p.x;
+    c.y = p.y;
+    return;
+  }
+  b.lastMove = b.pts.length;
+  b.pts.push({ x: p.x, y: p.y });
+  b.verbs.push(VERB_MOVE);
+}
+
+function bEnsureMove(b: Builder): void {
+  if (b.verbs.length === 0) bMoveTo(b, pt(0, 0));
+  else if (bLastVerb(b) === VERB_CLOSE) bMoveTo(b, bPoint(b, b.lastMove));
+}
+
+function bLineTo(b: Builder, p: Pt): void {
+  bEnsureMove(b);
+  b.pts.push({ x: p.x, y: p.y });
+  b.verbs.push(VERB_LINE);
+}
+
+function bQuadTo(b: Builder, p1: Pt, p2: Pt): void {
+  bEnsureMove(b);
+  b.pts.push({ x: p1.x, y: p1.y });
+  b.pts.push({ x: p2.x, y: p2.y });
+  b.verbs.push(VERB_QUAD);
+}
+
+function bClose(b: Builder): void {
+  if (b.verbs.length > 0 && bLastVerb(b) !== VERB_CLOSE) {
+    bEnsureMove(b);
+    b.verbs.push(VERB_CLOSE);
+  }
+}
+
+function bSetLastPoint(b: Builder, p: Pt): void {
+  const c = b.pts[b.pts.length - 1];
+  if (c === undefined) return;
+  c.x = p.x;
+  c.y = p.y;
+}
+
+/** SkPathBuilder::privateReversePathTo: appends src's last contour reversed (lines and quads only). */
+function bReversePathTo(b: Builder, src: Builder): void {
+  let p = src.pts.length - 1;
+  for (let i = src.verbs.length - 1; i >= 0; i--) {
+    const v = at(src.verbs, i);
+    if (v === VERB_MOVE) return;
+    if (v === VERB_LINE) {
+      p -= 1;
+      bLineTo(b, bPoint(src, p));
+    } else if (v === VERB_QUAD) {
+      p -= 2;
+      bQuadTo(b, bPoint(src, p + 1), bPoint(src, p));
+    } else if (v !== VERB_CLOSE) throw new Error('SKIA-AA: reversing a conic or cubic is not modelled');
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// SkStroke.cpp SkPathStroker for a closed line-and-conic contour: butt cap, miter join (limit 4), res scale 1.
+
+const RESULT_SPLIT = 0;
+const RESULT_DEGENERATE = 1;
+const RESULT_QUAD = 2;
+const CONIC_RECURSIVE_LIMIT = 33;
+const NEARLY_ZERO = 0.000244140625;
+const ONE_OVER_SQRT2 = 0.7071067690849304;
+
+/** SkQuadConstruct. */
+type QuadConstruct = {
+  q0: Pt;
+  q1: Pt;
+  q2: Pt;
+  tangentStart: Pt;
+  tangentEnd: Pt;
+  startT: number;
+  midT: number;
+  endT: number;
+  startSet: boolean;
+  endSet: boolean;
+  oppositeTangents: boolean;
+};
+
+type Stroker = {
+  readonly radius: number;
+  readonly invMiterLimit: number;
+  readonly invResScale: number;
+  readonly invResScaleSquared: number;
+  firstNormal: Pt;
+  prevNormal: Pt;
+  firstUnitNormal: Pt;
+  prevUnitNormal: Pt;
+  firstPt: Pt;
+  prevPt: Pt;
+  firstOuterPt: Pt;
+  segmentCount: number;
+  prevIsLine: boolean;
+  joinCompleted: boolean;
+  readonly outer: Builder;
+  inner: Builder;
+  strokeType: number;
+  recursionDepth: number;
+};
+
+type NormalPair = { readonly normal: Pt; readonly unit: Pt };
+
+function newQuadConstruct(): QuadConstruct {
+  const z = pt(0, 0);
+  return { q0: z, q1: z, q2: z, tangentStart: z, tangentEnd: z, startT: 0, midT: 0, endT: 0, startSet: false, endSet: false, oppositeTangents: false };
+}
+
+function qcInit(q: QuadConstruct, start: number, end: number): boolean {
+  q.startT = start;
+  q.midT = f32(f32(start + end) * 0.5);
+  q.endT = end;
+  q.startSet = false;
+  q.endSet = false;
+  return q.startT < q.midT && q.midT < q.endT;
+}
+
+function qcInitWithStart(q: QuadConstruct, parent: QuadConstruct): boolean {
+  if (!qcInit(q, parent.startT, parent.midT)) return false;
+  q.q0 = parent.q0;
+  q.tangentStart = parent.tangentStart;
+  q.startSet = true;
+  return true;
+}
+
+function qcInitWithEnd(q: QuadConstruct, parent: QuadConstruct): boolean {
+  if (!qcInit(q, parent.midT, parent.endT)) return false;
+  q.q2 = parent.q2;
+  q.tangentEnd = parent.tangentEnd;
+  q.endSet = true;
+  return true;
+}
+
+function setNormalUnitNormal(before: Pt, after: Pt, radius: number): NormalPair | null {
+  const u = setLength(f32(f32(after.x - before.x) * 1), f32(f32(after.y - before.y) * 1), 1);
+  if (u === null) return null;
+  const unit = pt(u.y, -u.x);
+  return { normal: pscale(unit, radius), unit };
+}
+
+function isClockwise(before: Pt, after: Pt): boolean {
+  return f32(before.x * after.y) > f32(before.y * after.x);
+}
+
+/** SkStrokerPriv MiterJoiner. */
+function miterJoiner(outer0: Builder, inner0: Builder, beforeUnitNormal: Pt, pivot: Pt, afterUnitNormal: Pt, radius: number, invMiterLimit: number, prevIsLine: boolean, currIsLine0: boolean): void {
+  const dotProd = dot(beforeUnitNormal, afterUnitNormal);
+  const nearlyLine = dotProd >= 0 && abs32(f32(1 - dotProd)) <= NEARLY_ZERO;
+  const nearly180 = dotProd < 0 && abs32(f32(1 + dotProd)) <= NEARLY_ZERO;
+  let before = beforeUnitNormal;
+  let after = afterUnitNormal;
+  let outer = outer0;
+  let inner = inner0;
+  let currIsLine = currIsLine0;
+  if (nearlyLine) return;
+  let blunt = false;
+  let mid: Pt = pt(0, 0);
+  if (nearly180) {
+    currIsLine = false;
+    blunt = true;
+  } else {
+    const ccw = !isClockwise(before, after);
+    if (ccw) {
+      const t = outer;
+      outer = inner;
+      inner = t;
+      before = pneg(before);
+      after = pneg(after);
+    }
+    if (dotProd === 0 && invMiterLimit <= ONE_OVER_SQRT2) {
+      mid = pscale(padd(before, after), radius);
+    } else {
+      const sinHalfAngle = sqrt32(f32(f32(1 + dotProd) * 0.5));
+      if (sinHalfAngle < invMiterLimit) {
+        currIsLine = false;
+        blunt = true;
+      } else {
+        const sharp = dotProd < 0;
+        if (sharp) {
+          mid = pt(f32(after.y - before.y), f32(before.x - after.x));
+          if (ccw) mid = pneg(mid);
+        } else mid = padd(before, after);
+        const m = setLength(mid.x, mid.y, f32(radius / sinHalfAngle));
+        mid = m === null ? pt(0, 0) : m;
+      }
+    }
+    if (!blunt) {
+      if (prevIsLine) bSetLastPoint(outer, padd(pivot, mid));
+      else bLineTo(outer, padd(pivot, mid));
+    }
+  }
+  const a = pscale(after, radius);
+  if (!currIsLine) bLineTo(outer, pt(f32(pivot.x + a.x), f32(pivot.y + a.y)));
+  bLineTo(inner, pt(pivot.x, pivot.y));
+  bLineTo(inner, pt(f32(pivot.x - a.x), f32(pivot.y - a.y)));
+}
+
+function preJoinTo(s: Stroker, currPt: Pt, currIsLine: boolean): NormalPair | null {
+  const n = setNormalUnitNormal(s.prevPt, currPt, s.radius);
+  if (n === null) return null;
+  if (s.segmentCount === 0) {
+    s.firstNormal = n.normal;
+    s.firstUnitNormal = n.unit;
+    s.firstOuterPt = padd(s.prevPt, n.normal);
+    bMoveTo(s.outer, s.firstOuterPt);
+    bMoveTo(s.inner, psub(s.prevPt, n.normal));
+  } else {
+    miterJoiner(s.outer, s.inner, s.prevUnitNormal, s.prevPt, n.unit, s.radius, s.invMiterLimit, s.prevIsLine, currIsLine);
+  }
+  s.prevIsLine = currIsLine;
+  return n;
+}
+
+function postJoinTo(s: Stroker, currPt: Pt, n: NormalPair): void {
+  s.joinCompleted = true;
+  s.prevPt = currPt;
+  s.prevUnitNormal = n.unit;
+  s.prevNormal = n.normal;
+  s.segmentCount += 1;
+}
+
+function strokerLineTo(s: Stroker, currPt: Pt): void {
+  const tol = f32(NEARLY_ZERO * s.invResScale);
+  const teeny = abs32(f32(s.prevPt.x - currPt.x)) <= tol && abs32(f32(s.prevPt.y - currPt.y)) <= tol;
+  if (teeny) return;
+  const n = preJoinTo(s, currPt, true);
+  if (n === null) return;
+  bLineTo(s.outer, padd(currPt, n.normal));
+  bLineTo(s.inner, psub(currPt, n.normal));
+  postJoinTo(s, currPt, n);
+}
+
+function finishContour(s: Stroker, close: boolean, currIsLine: boolean): void {
+  if (s.segmentCount > 0) {
+    if (!close) throw new Error('SKIA-AA: stroke caps are not modelled');
+    miterJoiner(s.outer, s.inner, s.prevUnitNormal, s.prevPt, s.firstUnitNormal, s.radius, s.invMiterLimit, s.prevIsLine, currIsLine);
+    bClose(s.outer);
+    if (s.inner.pts.length > 0) {
+      bMoveTo(s.outer, bPoint(s.inner, s.inner.pts.length - 1));
+      bReversePathTo(s.outer, s.inner);
+      bClose(s.outer);
+    }
+  }
+  s.inner = newBuilder();
+  s.segmentCount = -1;
+}
+
+/** SkConicCoeff(conic).eval(t). */
+function conicEval(c: Conic, t: number): Pt {
+  const p1w = pt(f32(c.p1.x * c.w), f32(c.p1.y * c.w));
+  const ax = f32(f32(c.p2.x - f32(p1w.x + p1w.x)) + c.p0.x);
+  const ay = f32(f32(c.p2.y - f32(p1w.y + p1w.y)) + c.p0.y);
+  const bx0 = f32(p1w.x - c.p0.x);
+  const by0 = f32(p1w.y - c.p0.y);
+  const bx = f32(bx0 + bx0);
+  const by = f32(by0 + by0);
+  const db0 = f32(c.w - 1);
+  const db = f32(db0 + db0);
+  const da = f32(0 - db);
+  const nx = f32(f32(f32(f32(ax * t) + bx) * t) + c.p0.x);
+  const ny = f32(f32(f32(f32(ay * t) + by) * t) + c.p0.y);
+  const d = f32(f32(f32(f32(da * t) + db) * t) + 1);
+  return pt(f32(nx / d), f32(ny / d));
+}
+
+/** SkConic::evalTangentAt. */
+function conicTangent(c: Conic, t: number): Pt {
+  if ((t === 0 && ptEq(c.p0, c.p1)) || (t === 1 && ptEq(c.p1, c.p2))) return psub(c.p2, c.p0);
+  const p20 = psub(c.p2, c.p0);
+  const p10 = psub(c.p1, c.p0);
+  const C = pscale(p10, c.w);
+  const A = psub(pscale(p20, c.w), p20);
+  const B = psub(psub(p20, C), C);
+  return pt(f32(f32(f32(f32(A.x * t) + B.x) * t) + C.x), f32(f32(f32(f32(A.y * t) + B.y) * t) + C.y));
+}
+
+/** SkEvalQuadAt(quad, t): SkQuadCoeff eval. */
+function quadEval(q0: Pt, q1: Pt, q2: Pt, t: number): Pt {
+  const bx0 = f32(q1.x - q0.x);
+  const by0 = f32(q1.y - q0.y);
+  const bx = f32(bx0 + bx0);
+  const by = f32(by0 + by0);
+  const ax = f32(f32(q2.x - f32(q1.x + q1.x)) + q0.x);
+  const ay = f32(f32(q2.y - f32(q1.y + q1.y)) + q0.y);
+  return pt(f32(f32(f32(f32(ax * t) + bx) * t) + q0.x), f32(f32(f32(f32(ay * t) + by) * t) + q0.y));
+}
+
+type PerpRay = { readonly tPt: Pt; readonly onPt: Pt; readonly tangent: Pt };
+
+function setRayPts(s: Stroker, tPt: Pt, dxy0: Pt): PerpRay {
+  const l = setLength(dxy0.x, dxy0.y, s.radius);
+  const dxy = l === null ? pt(s.radius, 0) : l;
+  const flip = s.strokeType;
+  return { tPt, onPt: pt(f32(tPt.x + f32(flip * dxy.y)), f32(tPt.y - f32(flip * dxy.x))), tangent: dxy };
+}
+
+function conicPerpRay(s: Stroker, c: Conic, t: number): PerpRay {
+  const tPt = conicEval(c, t);
+  let dxy = conicTangent(c, t);
+  if (dxy.x === 0 && dxy.y === 0) dxy = psub(c.p2, c.p0);
+  return setRayPts(s, tPt, dxy);
+}
+
+function conicQuadEnds(s: Stroker, c: Conic, q: QuadConstruct): void {
+  if (!q.startSet) {
+    const r = conicPerpRay(s, c, q.startT);
+    q.q0 = r.onPt;
+    q.tangentStart = r.tangent;
+    q.startSet = true;
+  }
+  if (!q.endSet) {
+    const r = conicPerpRay(s, c, q.endT);
+    q.q2 = r.onPt;
+    q.tangentEnd = r.tangent;
+    q.endSet = true;
+  }
+}
+
+function ieeeDivide(a: number, b: number): number {
+  return f32(a / b);
+}
+
+function ptToTangentLine(p: Pt, lineStart: Pt, tangent: Pt): number {
+  const ab0 = psub(p, lineStart);
+  const numer = dot(tangent, ab0);
+  const denom = dot(tangent, tangent);
+  const t = ieeeDivide(numer, denom);
+  if (t >= 0 && t <= 1) return distanceToSqd(padd(lineStart, pscale(tangent, t)), p);
+  return distanceToSqd(p, lineStart);
+}
+
+function intersectRay(s: Stroker, q: QuadConstruct, wantCtrlPt: boolean): number {
+  const start = q.q0;
+  const end = q.q2;
+  const aLen = q.tangentStart;
+  const bLen = q.tangentEnd;
+  const denom = cross(aLen, bLen);
+  if (denom === 0 || !isFiniteNum(denom)) {
+    q.oppositeTangents = dot(aLen, bLen) < 0;
+    return RESULT_DEGENERATE;
+  }
+  q.oppositeTangents = false;
+  const ab0 = psub(start, end);
+  let numerA = cross(bLen, ab0);
+  const numerB = cross(aLen, ab0);
+  if (numerA >= 0 === numerB >= 0) {
+    const dist1 = ptToTangentLine(start, end, q.tangentEnd);
+    const dist2 = ptToTangentLine(end, start, q.tangentStart);
+    if (maxNum(dist1, dist2) <= s.invResScaleSquared) return RESULT_DEGENERATE;
+    return RESULT_SPLIT;
+  }
+  numerA = f32(numerA / denom);
+  const validDivide = numerA > f32(numerA - 1);
+  if (validDivide) {
+    if (wantCtrlPt) q.q1 = padd(start, pscale(q.tangentStart, numerA));
+    return RESULT_QUAD;
+  }
+  q.oppositeTangents = dot(aLen, bLen) < 0;
+  return RESULT_DEGENERATE;
+}
+
+function ptInQuadBounds(s: Stroker, q0: Pt, q1: Pt, q2: Pt, p: Pt): boolean {
+  const xMin = minNum(minNum(q0.x, q1.x), q2.x);
+  if (f32(p.x + s.invResScale) < xMin) return false;
+  const xMax = maxNum(maxNum(q0.x, q1.x), q2.x);
+  if (f32(p.x - s.invResScale) > xMax) return false;
+  const yMin = minNum(minNum(q0.y, q1.y), q2.y);
+  if (f32(p.y + s.invResScale) < yMin) return false;
+  const yMax = maxNum(maxNum(q0.y, q1.y), q2.y);
+  if (f32(p.y - s.invResScale) > yMax) return false;
+  return true;
+}
+
+function pointsWithinDist(nearPt: Pt, farPt: Pt, limit: number): boolean {
+  return distanceToSqd(nearPt, farPt) <= f32(limit * limit);
+}
+
+function sharpAngle(q0: Pt, q1: Pt, q2: Pt): boolean {
+  let smaller = psub(q1, q0);
+  let larger = psub(q1, q2);
+  const smallerLen = dot(smaller, smaller);
+  let largerLen = dot(larger, larger);
+  if (smallerLen > largerLen) {
+    const t = smaller;
+    smaller = larger;
+    larger = t;
+    largerLen = smallerLen;
+  }
+  const l = setLength(smaller.x, smaller.y, largerLen);
+  if (l === null) return false;
+  return dot(l, larger) > 0;
+}
+
+/** SkFindUnitQuadRoots. */
+function findUnitQuadRoots(A: number, B: number, C: number): number[] {
+  const out: number[] = [];
+  if (A === 0) {
+    const r = validUnitDivide(-C, B);
+    if (r > 0) out.push(r);
+    return out;
+  }
+  let dr = B * B - 4 * A * C;
+  if (dr < 0) return out;
+  dr = sqrt64(dr);
+  const R = f32(dr);
+  if (!isFiniteNum(R)) return out;
+  const Q = B < 0 ? f32(f32(-f32(B - R)) / 2) : f32(f32(-f32(B + R)) / 2);
+  const r0 = validUnitDivide(Q, A);
+  if (r0 > 0) out.push(r0);
+  const r1 = validUnitDivide(C, Q);
+  if (r1 > 0) out.push(r1);
+  if (out.length === 2) {
+    const a = at(out, 0);
+    const b = at(out, 1);
+    if (a > b) return [b, a];
+    if (a === b) return [a];
+  }
+  return out;
+}
+
+function intersectQuadRay(line0: Pt, line1: Pt, q0: Pt, q1: Pt, q2: Pt): number[] {
+  const vec = psub(line1, line0);
+  const r0 = cross(vec, psub(q0, line0));
+  const r1 = cross(vec, psub(q1, line0));
+  const r2 = cross(vec, psub(q2, line0));
+  const A = f32(r2 + f32(r0 - f32(2 * r1)));
+  const B = f32(r1 - r0);
+  return findUnitQuadRoots(A, f32(2 * B), r0);
+}
+
+function strokeCloseEnough(s: Stroker, q: QuadConstruct, ray0: Pt, ray1: Pt): number {
+  const strokeMid = quadEval(q.q0, q.q1, q.q2, 0.5);
+  if (pointsWithinDist(ray0, strokeMid, s.invResScale)) return sharpAngle(q.q0, q.q1, q.q2) ? RESULT_SPLIT : RESULT_QUAD;
+  if (!ptInQuadBounds(s, q.q0, q.q1, q.q2, ray0)) return RESULT_SPLIT;
+  const roots = intersectQuadRay(ray0, ray1, q.q0, q.q1, q.q2);
+  if (roots.length !== 1) return RESULT_SPLIT;
+  const r = at(roots, 0);
+  const quadPt = quadEval(q.q0, q.q1, q.q2, r);
+  const error = f32(s.invResScale * f32(1 - f32(abs32(f32(r - 0.5)) * 2)));
+  if (pointsWithinDist(ray0, quadPt, error)) return sharpAngle(q.q0, q.q1, q.q2) ? RESULT_SPLIT : RESULT_QUAD;
+  return RESULT_SPLIT;
+}
+
+function compareQuadConic(s: Stroker, c: Conic, q: QuadConstruct): number {
+  conicQuadEnds(s, c, q);
+  const result = intersectRay(s, q, true);
+  if (result !== RESULT_QUAD) return result;
+  const ray = conicPerpRay(s, c, q.midT);
+  return strokeCloseEnough(s, q, ray.onPt, ray.tPt);
+}
+
+function sink(s: Stroker): Builder {
+  return s.strokeType === 1 ? s.outer : s.inner;
+}
+
+function conicStroke(s: Stroker, c: Conic, q: QuadConstruct): boolean {
+  const result = compareQuadConic(s, c, q);
+  if (result === RESULT_QUAD) {
+    bQuadTo(sink(s), q.q1, q.q2);
+    return true;
+  }
+  if (result === RESULT_DEGENERATE) {
+    bLineTo(sink(s), q.q2);
+    return true;
+  }
+  s.recursionDepth++;
+  if (s.recursionDepth > CONIC_RECURSIVE_LIMIT) {
+    bLineTo(sink(s), q.q2);
+    return true;
+  }
+  const half = newQuadConstruct();
+  qcInitWithStart(half, q);
+  if (!conicStroke(s, c, half)) return false;
+  qcInitWithEnd(half, q);
+  if (!conicStroke(s, c, half)) return false;
+  s.recursionDepth--;
+  return true;
+}
+
+function ptToLine(p: Pt, lineStart: Pt, lineEnd: Pt): number {
+  const dxy = psub(lineEnd, lineStart);
+  const ab0 = psub(p, lineStart);
+  const numer = dot(dxy, ab0);
+  const denom = dot(dxy, dxy);
+  const t = ieeeDivide(numer, denom);
+  if (t >= 0 && t <= 1) {
+    const hit = padd(pscale(lineStart, f32(1 - t)), pscale(lineEnd, t));
+    return distanceToSqd(hit, p);
+  }
+  return distanceToSqd(p, lineStart);
+}
+
+/** quad_in_line on a conic's points. */
+function conicInLine(c: Conic): boolean {
+  const q = [c.p0, c.p1, c.p2];
+  let ptMax = -1;
+  let outer1 = 0;
+  let outer2 = 0;
+  for (let index = 0; index < 2; index++) {
+    for (let inner = index + 1; inner < 3; inner++) {
+      const d = psub(q[inner] as Pt, q[index] as Pt);
+      const testMax = maxNum(abs32(d.x), abs32(d.y));
+      if (ptMax < testMax) {
+        outer1 = index;
+        outer2 = inner;
+        ptMax = testMax;
+      }
+    }
+  }
+  const mid = 3 - outer1 - outer2;
+  const lineSlop = f32(f32(ptMax * ptMax) * f32(0.000005));
+  return ptToLine(q[mid] as Pt, q[outer1] as Pt, q[outer2] as Pt) <= lineSlop;
+}
+
+function strokerConicTo(s: Stroker, pt1: Pt, pt2: Pt, w: number): void {
+  const c: Conic = { p0: s.prevPt, p1: pt1, p2: pt2, w };
+  const ab = psub(c.p1, c.p0);
+  const bc = psub(c.p2, c.p1);
+  const degAB = !canNormalize(ab.x, ab.y);
+  const degBC = !canNormalize(bc.x, bc.y);
+  if (degAB || degBC) {
+    strokerLineTo(s, pt2);
+    return;
+  }
+  if (conicInLine(c)) throw new Error('SKIA-AA: a degenerate conic stroke (round join) is not modelled');
+  const nAB = preJoinTo(s, pt1, false);
+  if (nAB === null) {
+    strokerLineTo(s, pt2);
+    return;
+  }
+  const q = newQuadConstruct();
+  s.strokeType = 1;
+  qcInit(q, 0, 1);
+  conicStroke(s, c, q);
+  s.strokeType = -1;
+  qcInit(q, 0, 1);
+  conicStroke(s, c, q);
+  const nBC = setNormalUnitNormal(pt1, pt2, s.radius);
+  postJoinTo(s, pt2, nBC === null ? nAB : nBC);
+}
+
+/** SkStroke::strokePath of a closed contour of lines and conics (an SkPath::RRect or SkPath::Oval), filled non-zero. */
+export function strokePath(src: AaPath, width: number): AaPath {
+  const radius = f32(width * 0.5);
+  if (!(radius > 0)) throw new Error('SKIA-AA: an empty stroke');
+  const invResScale = f32(1 / f32(1 * 4));
+  const s: Stroker = {
+    radius,
+    invMiterLimit: f32(1 / 4),
+    invResScale,
+    invResScaleSquared: f32(invResScale * invResScale),
+    firstNormal: pt(0, 0),
+    prevNormal: pt(0, 0),
+    firstUnitNormal: pt(0, 0),
+    prevUnitNormal: pt(0, 0),
+    firstPt: pt(0, 0),
+    prevPt: pt(0, 0),
+    firstOuterPt: pt(0, 0),
+    segmentCount: -1,
+    prevIsLine: false,
+    joinCompleted: false,
+    outer: newBuilder(),
+    inner: newBuilder(),
+    strokeType: 1,
+    recursionDepth: 0,
+  };
+  let p = 0;
+  let wi = 0;
+  let moveTo = pt(0, 0);
+  let last = pt(0, 0);
+  let lastSegmentIsLine = false;
+  for (const v of src.verbs) {
+    if (v === VERB_MOVE) {
+      if (s.segmentCount > 0) finishContour(s, false, false);
+      moveTo = src.pts[p] as Pt;
+      last = moveTo;
+      s.segmentCount = 0;
+      s.firstPt = moveTo;
+      s.prevPt = moveTo;
+      s.joinCompleted = false;
+      p++;
+    } else if (v === VERB_LINE) {
+      last = src.pts[p] as Pt;
+      strokerLineTo(s, last);
+      lastSegmentIsLine = true;
+      p++;
+    } else if (v === VERB_CONIC) {
+      const c = src.pts[p] as Pt;
+      last = src.pts[p + 1] as Pt;
+      strokerConicTo(s, c, last, at(src.weights, wi));
+      lastSegmentIsLine = false;
+      p += 2;
+      wi++;
+    } else if (v === VERB_CLOSE) {
+      if (!ptEq(last, moveTo)) {
+        strokerLineTo(s, moveTo);
+        lastSegmentIsLine = true;
+        last = moveTo;
+      }
+      finishContour(s, true, lastSegmentIsLine);
+    } else throw new Error('SKIA-AA: stroking a quad or cubic is not modelled');
+  }
+  finishContour(s, false, lastSegmentIsLine);
+  const pts: Pt[] = [];
+  for (const c of s.outer.pts) pts.push(pt(c.x, c.y));
+  return { pts, verbs: s.outer.verbs, weights: [], evenOdd: false, convex: false, bounds: boundsOf(pts) };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -2296,8 +3070,40 @@ export function paintRoundedBorder(dev: Device, spec: RoundedBoxSpec, widths: Bo
   const inner = innerRoundedRect(outer, widths);
   if (radiiIsZero(outer.radii)) throw new Error('SKIA-AA: a square border takes DrawSolidBorderRect, which is not modelled here');
   if (!isRenderable(inner)) throw new Error('SKIA-AA: a border whose inner rrect is not renderable takes the clipped path');
-  if (isSimpleDRRect(outer, inner)) throw new Error('SKIA-AA: a uniform circular border is drawn as a stroked rrect (SkStroke), not modelled yet');
+  if (isSimpleDRRect(outer, inner)) {
+    const strokeWidth = f32(inner.rect.left - outer.rect.left);
+    strokeRRect(dev, insetRRect(toSkRRect(outer, faults), f32(strokeWidth / 2), faults), strokeWidth, tileClip(spec), faults);
+    return;
+  }
   drawDRRect(dev, toSkRRect(outer, faults), toSkRRect(inner, faults), tileClip(spec), faults);
+}
+
+/** SkRRect::inset(d, d). */
+export function insetRRect(rr: SkRRect, d: number, faults: AaFaults): SkRRect {
+  let r: FRect = { left: f32(rr.rect.left + d), top: f32(rr.rect.top + d), right: f32(rr.rect.right - d), bottom: f32(rr.rect.bottom - d) };
+  let degenerate = false;
+  if (r.right <= r.left) {
+    degenerate = true;
+    const m = midpoint(r.left, r.right);
+    r = { left: m, top: r.top, right: m, bottom: r.bottom };
+  }
+  if (r.bottom <= r.top) {
+    degenerate = true;
+    const m = midpoint(r.top, r.bottom);
+    r = { left: r.left, top: m, right: r.right, bottom: m };
+  }
+  if (degenerate) return rectRRect(r);
+  const radii: Radius[] = [];
+  for (const c of rr.radii) radii.push({ x: c.x !== 0 ? f32(c.x - d) : 0, y: c.y !== 0 ? f32(c.y - d) : 0 });
+  return setRectRadii(r, radii, faults);
+}
+
+/** SkCanvas::drawRRect with a stroke paint (butt cap, miter join, limit 4): SkDraw::drawPath's SkStroke, then a fill. */
+export function strokeRRect(dev: Device, rr: SkRRect, width: number, tileClip: IRect, faults: AaFaults): void {
+  if (width <= 1) throw new Error('SKIA-AA: a stroke of at most 1 device px is drawn as a hairline, which is not modelled');
+  if (rr.type === 'empty') return;
+  if (rr.type === 'rect') throw new Error('SKIA-AA: a stroked rect (SkScan::AntiFrameRect) is not modelled');
+  antiFillPath(dev, strokePath(rr.type === 'oval' ? ovalPath(rr.rect) : rrectPath(rr), width), tileClip, faults);
 }
 
 /** The route of a background fill: 'rect' for a plain rect fill, otherwise aaRoute of its path. */
@@ -2313,7 +3119,11 @@ export function backgroundRoute(spec: RoundedBoxSpec): string {
 export function borderRoute(spec: RoundedBoxSpec, widths: BorderWidths): string {
   const outer = borderRoundedRect(spec, NO_AA_FAULTS);
   const inner = innerRoundedRect(outer, widths);
-  if (isSimpleDRRect(outer, inner)) return 'stroke';
+  if (isSimpleDRRect(outer, inner)) {
+    const w = f32(inner.rect.left - outer.rect.left);
+    const rr = insetRRect(toSkRRect(outer, NO_AA_FAULTS), f32(w / 2), NO_AA_FAULTS);
+    return `stroke-${aaRoute(strokePath(rr.type === 'oval' ? ovalPath(rr.rect) : rrectPath(rr), w))}`;
+  }
   return aaRoute(drrectPath(toSkRRect(outer, NO_AA_FAULTS), toSkRRect(inner, NO_AA_FAULTS)));
 }
 
