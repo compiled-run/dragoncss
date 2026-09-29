@@ -1,7 +1,7 @@
 // css-grid-2 and css-align-3 values: the longhand values of the grid properties and justify-items / justify-self, the expansions of
 // the grid shorthands, and the checks Chrome 145's parser makes beyond the webref grammar (Blink css_parsing_utils.cc
 // ConsumeGridLine, ConsumeGridTrackList, ParseGridTemplateAreasRow; css_property_parser_helpers ConsumeSelfPositionOverflowPosition).
-import { generate, parse } from 'css-tree';
+import { generate, ident as cssIdent, parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Span } from '../types.ts';
@@ -27,8 +27,13 @@ const explicit = (property: Longhand, value: CssValue): LonghandValue => ({ prop
 const implicit = (property: Longhand, value: CssValue): LonghandValue => ({ property, value, explicit: false });
 const other = (type: string, text: string): CssValue => ({ kind: 'other', type, text });
 
+/** An identifier as written: css-tree keeps its escapes, so this text is also its valid CSS serialization. */
 const ident = (n: CssNode | undefined): string | null => (n !== undefined && n.type === 'Identifier' ? String(n['name']) : null);
-const lowerIdent = (n: CssNode | undefined): string | null => ident(n)?.toLowerCase() ?? null;
+/** css-syntax-3 §4.3.11: keywords match on the identifier's value after escapes are decoded (\\61uto is auto), ASCII case-insensitively. */
+const lowerIdent = (n: CssNode | undefined): string | null => {
+  const raw = ident(n);
+  return raw === null ? null : cssIdent.decode(raw).toLowerCase();
+};
 const isSlash = (n: CssNode): boolean => n.type === 'Operator' && n['value'] === '/';
 const children = (n: CssNode): CssNode[] => list(n, 'children').filter((c) => c.type !== 'WhiteSpace');
 
@@ -51,7 +56,7 @@ const keepDimension: DimensionText = (value, unit) => `${value}${unit}`;
 function trackText(n: CssNode, dim: DimensionText): string {
   switch (n.type) {
     case 'Identifier':
-      return String(n['name']).toLowerCase();
+      return lowerIdent(n) as string;
     case 'Number':
       return String(n['value']);
     case 'Dimension':
@@ -91,19 +96,24 @@ export function absolutizeGridText(text: string, fonts: FontBases): string {
 // ---- Refusals ------------------------------------------------------------------------------------------------------------
 
 const SUBGRID_REASON = 'subgrid needs the grid engine and its subgrid package';
+/** Where subgrid is the track-list keyword; elsewhere, and inside line-name brackets, it is a name like any other. */
+const SUBGRID_PROPERTIES: ReadonlySet<string> = new Set(['grid-template-columns', 'grid-template-rows', 'grid-template', 'grid']);
 
-/** The first nested token Dragon cannot express: a unit with no build-time conversion, a math function, or subgrid. */
-function refusal(property: string, tokens: readonly CssNode[], base: Span): ParsedValue | null {
+/**
+ * The first token Dragon cannot express: a unit with no build-time conversion or a math function at any depth, or the top-level
+ * subgrid keyword of a track list.
+ */
+function refusal(property: string, tokens: readonly CssNode[], base: Span, top = true): ParsedValue | null {
   for (const t of tokens) {
     let found: { reason: string; fix: string } | null = null;
     if (t.type === 'Dimension') found = unitRefusal(normalizeUnit(String(t['unit'])));
     else if (t.type === 'Function') found = mathFunctionRefusal(String(t['name']));
-    else if (lowerIdent(t) === 'subgrid') found = { reason: SUBGRID_REASON, fix: 'Give the element its own track list.' };
+    else if (top && SUBGRID_PROPERTIES.has(property) && lowerIdent(t) === 'subgrid') found = { reason: SUBGRID_REASON, fix: 'Give the element its own track list.' };
     if (found !== null) {
       return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${found.reason}`, manual: found.fix }) };
     }
     if (t.type === 'Function' || t.type === 'Brackets') {
-      const inner = refusal(property, children(t), base);
+      const inner = refusal(property, children(t), base, false);
       if (inner !== null) return inner;
     }
   }
@@ -116,12 +126,16 @@ type GridLine = { readonly span: boolean; readonly integer: number | null; reado
 
 const isInteger = (n: CssNode | undefined): boolean => n !== undefined && n.type === 'Number' && /^[+-]?\d+$/.test(String(n['value']));
 
-/** Blink ConsumeCustomIdentForGridLine: a custom ident other than auto, span, a CSS-wide keyword or default. */
+/** Blink ConsumeCustomIdentForGridLine and ConsumeGridLineNames: names other than auto, span, default and the CSS-wide keywords. */
+const reservedName = (n: CssNode): boolean => {
+  const lower = lowerIdent(n) ?? '';
+  return lower === 'auto' || lower === 'span' || lower === 'default' || CSS_WIDE.has(lower);
+};
+
+/** A grid line's <custom-ident> as written (escapes kept), or null when it is not one. */
 function lineName(n: CssNode | undefined): string | null {
   const name = ident(n);
-  if (name === null) return null;
-  const lower = name.toLowerCase();
-  return lower === 'auto' || lower === 'span' || lower === 'default' || CSS_WIDE.has(lower) ? null : name;
+  return name === null || reservedName(n as CssNode) ? null : name;
 }
 
 /**
@@ -189,9 +203,9 @@ function isFixedSize(n: CssNode): boolean {
   return isFixedBreadth(args[0]) || isFixedBreadth(args[1]);
 }
 
-/** Line names may not be span or auto (Blink ConsumeGridLineNames), which the webref grammar allows. */
+/** Line names may not be reserved names (Blink ConsumeGridLineNames); the webref grammar allows span and auto, and escaped forms of all. */
 const badLineNames = (tokens: readonly CssNode[]): boolean =>
-  tokens.some((t) => (t.type === 'Brackets' && children(t).some((c) => ['span', 'auto'].includes(lowerIdent(c) ?? ''))) || (t.type === 'Function' && badLineNames(children(t))));
+  tokens.some((t) => (t.type === 'Brackets' && children(t).some(reservedName)) || (t.type === 'Function' && badLineNames(children(t))));
 
 /** A grid-template-rows or -columns value, or null when Chrome drops it. */
 function templateValue(tokens: readonly CssNode[]): CssValue | null {
@@ -212,22 +226,23 @@ function autoTracksValue(tokens: readonly CssNode[]): CssValue {
 
 // ---- Areas ---------------------------------------------------------------------------------------------------------------
 
-const NAME_CODE_POINT = /[A-Za-z0-9_\-\u{80}-\u{10FFFF}]/u;
+const NAME_CODE_POINT = /^[A-Za-z0-9_\-\u{80}-\u{10FFFF}]$/u;
 
-/** css-grid-2 §7.3: one row's cells (null cells as "."), or null for a trash token or an empty row. */
+/** css-grid-2 §7.3: one row's cells (null cells as "."), or null for a trash token or an empty row; scanned by code point. */
 function areaRow(text: string): string[] | null {
+  const points = Array.from(text);
   const cells: string[] = [];
   let i = 0;
-  while (i < text.length) {
-    const c = text[i] as string;
+  while (i < points.length) {
+    const c = points[i] as string;
     if (/[ \t\n\r\f]/.test(c)) {
       i++;
     } else if (c === '.') {
-      while (text[i] === '.') i++;
+      while (points[i] === '.') i++;
       cells.push('.');
     } else if (NAME_CODE_POINT.test(c)) {
       let name = '';
-      while (i < text.length && NAME_CODE_POINT.test(text[i] as string)) name += text[i++];
+      while (i < points.length && NAME_CODE_POINT.test(points[i] as string)) name += points[i++];
       cells.push(name);
     } else {
       return null;
@@ -419,7 +434,7 @@ export function gridLonghands(property: string, tokens: readonly CssNode[]): Lon
   }
 }
 
-const TRACKS_REASON = 'line names may not be span or auto, and an automatic repetition takes only fixed sizes (css-grid-2 §7.2)';
+const TRACKS_REASON = 'line names may not be span, auto, default or a CSS-wide keyword, and an automatic repetition takes only fixed sizes (css-grid-2 §7.2)';
 const AREAS_REASON = 'every row needs the same number of cells, every named area must be a filled rectangle, and a cell name uses only name code points (css-grid-2 §7.3)';
 const LINE_REASON = 'a grid line is <integer> <name>? span?, span <integer>? <name>? or <name> <integer>? span?, with a nonzero integer and a positive span (css-grid-2 §8.3)';
 const ALIGN_REASON = 'first or last goes before baseline, and safe or unsafe goes only before a position (css-align-3 §6)';

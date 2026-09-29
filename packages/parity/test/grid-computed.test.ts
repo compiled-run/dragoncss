@@ -19,7 +19,7 @@ function declare(property: string, value: string): { declaration: Declaration | 
 }
 
 // The dual computed check: every grid declaration of the G-P corpus and the edge list, rendered by Chrome as authored and as
-// Dragon's longhands on a block box, must compute identically; every value Dragon calls invalid must be dropped by Chrome. Four
+// Dragon's longhands on a block box, must compute identically; every value Dragon calls invalid must be dropped by Chrome. Five
 // planted faults in Dragon's longhands must each be caught by the same comparison.
 describe('grid family: Chrome 145 computed values', () => {
   const load = async <T>(file: string): Promise<T> => (await import(new URL(`../src/${file}`, import.meta.url).href)) as T;
@@ -35,8 +35,25 @@ describe('grid family: Chrome 145 computed values', () => {
     return { p, v, code: diagnostics[0]?.code ?? null, longhands: (declaration?.longhands ?? []).map((l) => [l.property, valueToString(l.value)] as const) };
   };
   const COMPARED = [...GRID_LONGHANDS, 'row-gap', 'column-gap'];
-  /** Values Chrome parses that the webref grammar lacks, so Dragon reports them invalid: a refusal, never a wrong acceptance. */
-  const GRAMMAR_GAPS = ['justify-items: anchor-center'];
+  /**
+   * Values Chrome parses that Dragon reports invalid, a refusal and never a wrong acceptance: anchor-center is missing from the webref
+   * grammar, and the webref lexer matches keywords without decoding escapes (css-syntax-3 §4.3.11), for every property.
+   */
+  const GRAMMAR_GAPS = [
+    'justify-items: anchor-center',
+    'grid: \\61uto-flow / 10px',
+    'grid: 10px / \\61uto-flow \\64 ense',
+    'grid-template-columns: repeat(\\61uto-fill, 10px)',
+    'grid-template-columns: \\6d in-content 10px',
+    'grid-template-columns: \\73ubgrid',
+    'grid-template-rows: \\6eone',
+    'grid-auto-columns: \\61uto',
+    'grid-auto-flow: \\64 ense',
+    'justify-self: \\63 enter',
+    'justify-items: \\6c egacy \\6c eft',
+    'justify-self: \\66irst baseline',
+    'grid-row-start: \\69nherit',
+  ];
 
   const judge = (items: readonly Item[], seen: readonly Seen[]): string[] => items.flatMap((it, i) => {
     const s = seen[i] as Seen;
@@ -57,6 +74,7 @@ describe('grid family: Chrome 145 computed values', () => {
       { name: 'lineEndNotCopied', items: real.filter((it) => ['grid-row', 'grid-column', 'grid-area'].includes(it.p) && !it.v.includes('/') && it.code === null).map((it) => ({ ...it, longhands: it.longhands.map(([l, v]) => [l, l.endsWith('-end') ? 'auto' : v] as const) })) },
       { name: 'autoRepeatTakesFlex', items: [{ p: 'grid-template-columns', v: 'repeat(auto-fill, 1fr)', code: null, longhands: [['grid-template-columns', 'repeat(auto-fill, 1fr)']] }] },
       { name: 'denseDropped', items: real.filter((it) => it.v.includes('dense') && it.code === null).map((it) => ({ ...it, longhands: it.longhands.map(([l, v]) => [l, l === 'grid-auto-flow' ? v.replace(/ ?dense/, '') || 'row' : v] as const) })) },
+      { name: 'escapedReservedNameAccepted', items: ['[\\73 pan] 10px', '[\\61uto] 10px', '[\\64 efault] 10px'].map((v) => ({ p: 'grid-template-columns', v, code: null, longhands: [['grid-template-columns', v]] })) },
       { name: 'areaRowNamesNotMerged', items: real.filter((it) => it.p === 'grid-template' && it.v.includes('[y] [z]')).map((it) => ({ ...it, longhands: it.longhands.map(([l, v]) => [l, v.replace('[y z]', '[y] [z]')] as const) })) },
     ];
     const sets = [real, ...planted.map((p) => p.items)];
@@ -85,7 +103,7 @@ describe('grid family: Chrome 145 computed values', () => {
     const [realSeen, ...plantSeen] = seen;
     expect(judge(real, realSeen as Seen[])).toEqual([]);
     const accepted = (items: readonly Item[]): number => items.filter((it) => it.code === null).length;
-    expect({ corpus: corpus.length, accepted: accepted(real.slice(0, corpus.length)), edges: edges.length, edgesAccepted: accepted(real.slice(corpus.length)) }).toEqual({ corpus: 2515, accepted: 2510, edges: 167, edgesAccepted: 119 });
+    expect({ corpus: corpus.length, accepted: accepted(real.slice(0, corpus.length)), edges: edges.length, edgesAccepted: accepted(real.slice(corpus.length)) }).toEqual({ corpus: 2515, accepted: 2510, edges: 250, edgesAccepted: 165 });
     expect(real.filter((it) => it.code !== null && it.code !== 'DRAGON_CSS_INVALID_VALUE').map((it) => `${it.code as string} ${it.p}: ${it.v}`)).toEqual([
       'DRAGON_UNSUPPORTED_VALUE column-gap: calc(5% + 2px)',
       'DRAGON_UNSUPPORTED_VALUE grid-template-columns: calc(20% + 3.3px) 1fr',
@@ -96,6 +114,8 @@ describe('grid family: Chrome 145 computed values', () => {
       'DRAGON_UNSUPPORTED_VALUE grid-template-columns: subgrid [a] repeat(2, [b])',
       'DRAGON_UNSUPPORTED_VALUE grid-template-columns: calc(10px + 5%)',
       'DRAGON_UNSUPPORTED_VALUE grid-template: subgrid / 10px',
+      'DRAGON_UNSUPPORTED_VALUE grid: subgrid / auto-flow 10px',
+      'DRAGON_UNSUPPORTED_VALUE grid: auto-flow / subgrid',
     ]);
     planted.forEach((p, i) => {
       expect(p.items.length, p.name).toBeGreaterThan(0);

@@ -13,7 +13,7 @@ export const GRID: readonly FixtureSpec[] = [
   reject('reject-grid-subgrid', 'DRAGON_UNSUPPORTED_VALUE', 'subgrid', 'grid-template-columns: subgrid is unsupported: subgrid needs the grid engine'),
   reject('reject-grid-masonry', 'DRAGON_CSS_INVALID_VALUE', 'masonry'),
   reject('reject-grid-areas-not-rectangular', 'DRAGON_CSS_INVALID_VALUE', '"a a" "a b"', '""a a""a b"" is not a valid value for grid-template-areas: every row needs the same number of cells'),
-  reject('reject-grid-auto-repeat-flex', 'DRAGON_CSS_INVALID_VALUE', 'repeat(auto-fill, 1fr)', '"repeat(auto-fill,1fr)" is not a valid value for grid-template-columns: line names may not be span or auto, and an automatic repetition takes only fixed sizes'),
+  reject('reject-grid-auto-repeat-flex', 'DRAGON_CSS_INVALID_VALUE', 'repeat(auto-fill, 1fr)', '"repeat(auto-fill,1fr)" is not a valid value for grid-template-columns: line names may not be span, auto, default or a CSS-wide keyword, and an automatic repetition takes only fixed sizes'),
   reject('reject-grid-track-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 5%)', 'grid-template-columns: calc(10px + 5%) is unsupported: calc() is a css-values-4 math function'),
   reject('reject-grid-justify-self-block', 'DRAGON_UNPROVEN_CONTEXT', 'center', 'justify-self:center on cell is used in the block/ltr context, which is not proven'),
   reject('reject-grid-justify-items', 'DRAGON_UNSUPPORTED_VALUE', 'center', 'justify-items: center is unsupported'),

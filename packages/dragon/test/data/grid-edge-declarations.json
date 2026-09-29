@@ -1,5 +1,5 @@
 {
-"source": "GRID G0 edge declarations: values Chrome 145's parser treats differently from the webref grammar, shorthand forms, and serialization cases (probed with Chrome 145.0.7632.6).",
+"source": "GRID G0 edge declarations: values Chrome 145's parser treats differently from the webref grammar, shorthand forms, serialization cases, escaped identifiers, subgrid as a line name and non-BMP area names (probed with Chrome 145.0.7632.6; PR #23 round 1 appended the last three groups).",
 "declarations": [
 [
 "grid-template-columns",
@@ -123,7 +123,7 @@
 ],
 [
 "grid-template-areas",
-"\"1a \u00e9-x\""
+"\"1a é-x\""
 ],
 [
 "grid-template-areas",
@@ -668,6 +668,338 @@
 [
 "grid-row-gap",
 "normal"
+],
+[
+"grid-template-columns",
+"[\\31 foo] 10px"
+],
+[
+"grid-template-columns",
+"[\\-] 10px"
+],
+[
+"grid-template-columns",
+"[a\\ b] 10px"
+],
+[
+"grid-template-columns",
+"[\\61uto] 10px"
+],
+[
+"grid-template-columns",
+"[subgrid] 10px"
+],
+[
+"grid-template-columns",
+"[masonry] 10px"
+],
+[
+"grid-template-columns",
+"repeat(2, [subgrid] 10px)"
+],
+[
+"grid-template-columns",
+"-10px"
+],
+[
+"grid-template-columns",
+"repeat(0, 10px)"
+],
+[
+"grid-template-columns",
+"repeat(99999999999, 1px)"
+],
+[
+"grid-template-columns",
+"repeat(2.0, 1px)"
+],
+[
+"grid-template-columns",
+"minmax(10px, auto)"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, minmax(10px, auto))"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, minmax(min-content, 1fr))"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, 10px) repeat(auto-fit, 10px)"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, 10px) repeat(2, 1fr)"
+],
+[
+"grid-template-columns",
+"repeat(auto-fill, 10px) minmax(auto, 10px)"
+],
+[
+"grid-template-columns",
+"1e-7px"
+],
+[
+"grid-template-columns",
+"[\\1F600] 1px"
+],
+[
+"grid-template-columns",
+"[é] 1px"
+],
+[
+"grid-template-columns",
+"[revert-layer] 1px"
+],
+[
+"grid-template-columns",
+"[none] 1px"
+],
+[
+"grid-row-start",
+"subgrid"
+],
+[
+"grid-row-start",
+"masonry"
+],
+[
+"grid-row-start",
+"\\31 foo"
+],
+[
+"grid-row-start",
+"2 \\31 foo"
+],
+[
+"grid-row-start",
+"\\73 pan 2"
+],
+[
+"grid-row-start",
+"\\61uto"
+],
+[
+"grid-row-start",
+"100000"
+],
+[
+"grid-row-start",
+"-100000"
+],
+[
+"grid-row-start",
+"99999999999"
+],
+[
+"grid-row-start",
+"span 99999999999"
+],
+[
+"grid-row-start",
+"1e2"
+],
+[
+"grid-row-start",
+"none"
+],
+[
+"grid-row-start",
+"dense"
+],
+[
+"grid-row-start",
+"é"
+],
+[
+"grid-area",
+"subgrid"
+],
+[
+"grid-area",
+"subgrid / a"
+],
+[
+"grid-column",
+"\\31 foo"
+],
+[
+"grid-template-areas",
+"\"😀\""
+],
+[
+"grid-template-areas",
+"\"a😀b c\""
+],
+[
+"grid-template-areas",
+"\"\\1F600 x\""
+],
+[
+"grid-template-areas",
+"\"a\\\"b\""
+],
+[
+"grid-template-areas",
+"\"...\""
+],
+[
+"grid-template-areas",
+"\"a\" \"\""
+],
+[
+"grid-template-areas",
+"\"a b\""
+],
+[
+"grid-template",
+"\"😀 x\" 10px / 1fr 1fr"
+],
+[
+"grid-template",
+"[\\31 x] \"a\" [y] / [\\32 z] 1fr"
+],
+[
+"grid-template",
+"\"a\" subgrid"
+],
+[
+"grid",
+"subgrid / auto-flow 10px"
+],
+[
+"grid",
+"auto-flow / subgrid"
+],
+[
+"grid",
+"[subgrid] 10px / auto-flow"
+],
+[
+"grid-auto-rows",
+"minmax(1px, 1fr) repeat(2, 1px)"
+],
+[
+"justify-self",
+"legacy"
+],
+[
+"justify-items",
+"legacy legacy"
+],
+[
+"justify-items",
+"left right"
+],
+[
+"justify-self",
+"safe left"
+],
+[
+"justify-self",
+"unsafe first baseline"
+],
+[
+"justify-self",
+"first last baseline"
+],
+[
+"grid-template",
+"[a] \"x\" [a] [a] \"y\" / 1fr"
+],
+[
+"grid-row",
+"span a"
+],
+[
+"grid-area",
+"a 2 / b"
+],
+[
+"grid-area",
+"\\61 "
+],
+[
+"grid",
+"\\61uto-flow / 10px"
+],
+[
+"grid",
+"10px / \\61uto-flow \\64 ense"
+],
+[
+"grid-template-columns",
+"repeat(\\61uto-fill, 10px)"
+],
+[
+"grid-template-columns",
+"\\6d in-content 10px"
+],
+[
+"grid-template-columns",
+"[\\73 pan] 10px"
+],
+[
+"grid-template-columns",
+"[\\64 efault] 10px"
+],
+[
+"grid-template-columns",
+"[\\69nherit] 10px"
+],
+[
+"grid-template-columns",
+"\\73ubgrid"
+],
+[
+"grid-template-rows",
+"\\6eone"
+],
+[
+"grid-auto-columns",
+"\\61uto"
+],
+[
+"grid-auto-flow",
+"\\64 ense"
+],
+[
+"justify-self",
+"\\63 enter"
+],
+[
+"justify-items",
+"\\6c egacy \\6c eft"
+],
+[
+"justify-self",
+"\\66irst baseline"
+],
+[
+"grid-row-start",
+"\\69nherit"
+],
+[
+"grid-row-start",
+"\\64 efault"
+],
+[
+"grid-row-start",
+"span \\61uto"
+],
+[
+"grid-row",
+"\\61uto / 2"
+],
+[
+"grid-row",
+"\\73ubgrid"
+],
+[
+"grid-template-areas",
+"\"\\2e a\""
 ]
 ]
 }

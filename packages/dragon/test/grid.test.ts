@@ -109,7 +109,7 @@ describe('grid family: parse and expand', () => {
   it('values Chrome drops beyond the webref grammar are DRAGON_CSS_INVALID_VALUE with the rule', () => {
     const cases = [
       ['grid-template-columns', 'repeat(auto-fill, 1fr)', 'an automatic repetition takes only fixed sizes'],
-      ['grid-template-columns', '[span] 10px', 'line names may not be span or auto'],
+      ['grid-template-columns', '[span] 10px', 'line names may not be span, auto, default or a CSS-wide keyword'],
       ['grid-template-areas', '"a a" "a b"', 'every named area must be a filled rectangle'],
       ['grid-template-areas', '"a b" "c"', 'every row needs the same number of cells'],
       ['grid-template-areas', '"a # b"', 'a cell name uses only name code points'],
@@ -141,6 +141,33 @@ describe('grid family: parse and expand', () => {
       expect(diagnostics.map((d) => d.code), `${p}: ${v}`).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
       expect(span, `${p}: ${v}`).toBe(token);
     }
+  });
+  it('subgrid is refused only as the top-level track-list keyword; as a line name it is a name like any other', () => {
+    for (const [p, v] of [['grid-template-columns', 'subgrid'], ['grid-template-rows', 'subgrid [a]'], ['grid-template', 'subgrid / 10px'], ['grid', 'auto-flow / subgrid']] as const) {
+      const { diagnostics, span } = declare(p, v);
+      expect(diagnostics.map((d) => d.code), `${p}: ${v}`).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+      expect(span, `${p}: ${v}`).toBe('subgrid');
+    }
+    expect(expanded('grid-row-start', 'subgrid')).toEqual(['grid-row-start=subgrid']);
+    expect(expanded('grid-area', 'subgrid / a')).toEqual(['grid-row-start=subgrid', 'grid-column-start=a', 'grid-row-end=subgrid', 'grid-column-end=a']);
+    expect(expanded('grid-template-columns', 'repeat(2, [subgrid] 10px)')).toEqual(['grid-template-columns=repeat(2, [subgrid] 10px)']);
+    expect(expanded('grid', '[subgrid] 10px / auto-flow')).toEqual([
+      'grid-template-rows=[subgrid] 10px', 'grid-template-columns=none', 'grid-template-areas=none', 'grid-auto-rows(i)=auto', 'grid-auto-columns(i)=auto', 'grid-auto-flow=column',
+    ]);
+  });
+  it('escaped identifiers: keywords and reserved names match after decoding, and names keep their escapes', () => {
+    expect(expanded('grid-template-columns', '[\\31 foo] 10px')).toEqual(['grid-template-columns=[\\31 foo] 10px']);
+    expect(expanded('grid-column', '\\31 foo')).toEqual(['grid-column-start=\\31 foo', 'grid-column-end=\\31 foo']);
+    expect(expanded('grid-row-start', '\\73 pan 2')).toEqual(['grid-row-start=span 2']);
+    expect(declare('grid-row-start', '\\61uto').declaration?.longhands[0]?.value).toEqual({ kind: 'keyword', value: 'auto' });
+    for (const [p, v] of [['grid-template-columns', '[\\73 pan] 10px'], ['grid-template-columns', '[\\61uto] 10px'], ['grid-template-columns', '[\\64 efault] 10px'], ['grid-template-columns', '[\\69nherit] 10px'], ['grid-row-start', '\\64 efault'], ['grid-row-start', 'span \\61uto']] as const) {
+      expect(declare(p, v).diagnostics.map((d) => d.code), `${p}: ${v}`).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    }
+  });
+  it('area rows are scanned by code point, so non-BMP names are one cell', () => {
+    expect(expanded('grid-template-areas', '"a😀b c" "d d"')).toEqual(['grid-template-areas="a😀b c" "d d"']);
+    expect(expanded('grid-template-areas', '"😀"')).toEqual(['grid-template-areas="😀"']);
+    expect(declare('grid-template-areas', '"😀 😀" "😀 x"').diagnostics.map((d) => d.code)).toEqual(['DRAGON_CSS_INVALID_VALUE']);
   });
   it('masonry is outside the grammar', () => {
     expect(declare('grid-template-rows', 'masonry').diagnostics.map((d) => d.code)).toEqual(['DRAGON_CSS_INVALID_VALUE']);
