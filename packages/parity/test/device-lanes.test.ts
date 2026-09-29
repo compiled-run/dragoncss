@@ -7,7 +7,7 @@ import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'no
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CaseReference, DeviceCheckLane, FailureKind } from '../src/device-lanes.ts';
-import { captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, readDump, splitByLines, trustFailuresOf } from '../src/device-lanes.ts';
+import { captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, plantVerdict, readDump, splitByLines, trustFailuresOf } from '../src/device-lanes.ts';
 import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
 import { checkAgainstChrome, DUMP_FAULTS, FAULT_CHECK, plantDumpFault, readSamples } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
@@ -124,6 +124,22 @@ describe('dump provenance and unreadable files', () => {
       { lane: 'device-pixels', case: 'a', dpr: 2, node: null, kind: 'capture-trust', detail: 'iPad (A16): m1' },
       { lane: 'device-pixels', case: 'a', dpr: 2, node: null, kind: 'capture-trust', detail: 'iPad (A16): m2' },
     ]);
+  });
+});
+
+describe('the glyph-offset-1 plant verdict', () => {
+  const f = (lane: DeviceCheckLane, kind: FailureKind, node: string | null) => ({ lane, case: 'text-wrap-spaces', dpr: 3, node, kind, detail: 'x' });
+  const glyph = f('device-pixels', 'pixel', 'edge:w6:text0:line0:glyph-left');
+  it('caught: a glyph-edge pixel failure with frames and lines clean and the host finished', () => {
+    expect(plantVerdict([glyph], null).caught).toBe(true);
+    expect(plantVerdict([f('device-pixels', 'pixel', 'glyph:w1:text0:line0:0')], null).caught).toBe(true);
+  });
+  it('not caught: the host did not finish, only box rules failed, or frames or lines failed too', () => {
+    expect(plantVerdict([glyph], 'timed out').caught).toBe(false);
+    expect(plantVerdict([f('device-pixels', 'pixel', 'edge:w1:bottom')], null).caught).toBe(false);
+    expect(plantVerdict([glyph, f('device-frames', 'frame-engine', 'w1')], null).caught).toBe(false);
+    expect(plantVerdict([glyph, f('device-lines', 'break-mismatch', 'w1:text0')], null).caught).toBe(false);
+    expect(plantVerdict([], null).caught).toBe(false);
   });
 });
 

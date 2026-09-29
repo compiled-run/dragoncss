@@ -305,6 +305,19 @@ export function trustFailuresOf(rows: readonly TrustRow[], dpr: number, device: 
   return out;
 }
 
+/**
+ * The glyph-offset-1 plant verdict on the plant case: caught only when the host finished, device-pixels failed on a glyph or
+ * glyph-edge rule, and device-frames and device-lines have no failure (pixels see what (d) cannot).
+ */
+export function plantVerdict(failures: readonly LaneFailure[], hostError: string | null): { readonly caught: boolean; readonly pixels: number; readonly inked: number; readonly frames: number; readonly lines: number } {
+  const of = (lane: DeviceCheckLane): LaneFailure[] => failures.filter((f) => f.lane === lane);
+  const pixels = of('device-pixels');
+  const inked = pixels.filter((f) => f.kind === 'pixel' && /^(glyph:|edge:\S*:glyph-)/.test(f.node ?? '')).length;
+  const frames = of('device-frames').length;
+  const lines = of('device-lines').length;
+  return { caught: hostError === null && inked > 0 && frames === 0 && lines === 0, pixels: pixels.length, inked, frames, lines };
+}
+
 /** The ids of the pulled dumps of a run directory at a DPR. */
 export function dumpedIds(dir: string, dpr: number): string[] {
   const suffix = `@${dpr}.json`;

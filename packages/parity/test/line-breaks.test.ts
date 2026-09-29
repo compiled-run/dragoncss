@@ -25,6 +25,13 @@ describe('break vectors', () => {
       }
     }
   });
+  it('every text leaf is found under its container: text-wrap-spaces exports each leaf, with lines', () => {
+    const n = cases.find((c) => c.case.id === 'text-wrap-spaces');
+    if (n === undefined) throw new Error('no text-wrap-spaces');
+    const t = engineTextLines(inputOf(n, 3), m);
+    expect(t.map((x) => x.id)).toEqual([...leafTexts(n.programs.uikit.root).keys()]);
+    expect(t.every((x) => x.lines.length > 0 && x.container === x.id.split(':')[0])).toBe(true);
+  });
   it('both backends run one engine input, so one break vector serves both targets', () => {
     for (const n of cases) expect(JSON.stringify(n.programs.uikit.root), n.case.id).toBe(JSON.stringify(n.programs['android-views'].root));
   });

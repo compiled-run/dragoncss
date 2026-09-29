@@ -6,7 +6,7 @@
 // plant case on each target's plant device; device-pixels must fail on glyph or edge rules while device-frames and device-lines pass.
 import { SUPPORT_PLANTS } from 'dragon';
 import type { SupportPlant } from 'dragon';
-import { caseReference, dumpFile, evaluateCase, readDump } from '../device-lanes.ts';
+import { caseReference, dumpFile, evaluateCase, plantVerdict, readDump } from '../device-lanes.ts';
 import type { DeviceSpec } from '../device-run.ts';
 import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, matrixProblems, PLANT_CASE, PLANT_DEVICES, recordProblems, release, runApp } from '../device-run.ts';
 import { existsSync, readFileSync } from 'node:fs';
@@ -74,19 +74,16 @@ for (const target of targets) {
   try {
     const dpr = deviceProfile(h).profileScale;
     const dir = join(nativeOut(target), 'devices', `${spec.name}-${plant}`);
-    await runApp(h, build.artifact, { runFile: runFileText([{ id: n.case.id, points: casePoints(n.programs[BACKEND_OF[target]], n.case.environment.viewport, dpr) }], false), caseCount: 1, outDir: dir });
+    const r = await runApp(h, build.artifact, { runFile: runFileText([{ id: n.case.id, points: casePoints(n.programs[BACKEND_OF[target]], n.case.environment.viewport, dpr) }], false), caseCount: 1, outDir: dir });
+    if (r.error !== null) log(`${target} ${spec.name} @${dpr} ${plant}: FAIL the host did not finish: ${r.error}`);
     const file = dumpFile(dir, n.case.id, dpr);
     const read = readDump(file);
     const raw = read.kind === 'ok' ? read.raw : read.kind === 'unparseable' ? { unparseable: read.detail } : null;
     const o = evaluateCase(target, n, dpr, raw, caseReference(target, n, dpr));
-    const of = (lane: string) => o.failures.filter((f) => f.lane === lane);
-    const pixels = of('device-pixels');
-    const inked = pixels.filter((f) => f.kind === 'pixel' && /^(glyph:|edge:[^\s]*:glyph-)/.test(f.node ?? ''));
-    for (const f of pixels) log(`${target} ${spec.name} @${dpr} ${plant}: device-pixels ${f.kind} ${f.node ?? ''}: ${f.detail}`);
-    for (const lane of ['device-frames', 'device-lines', 'device-applied']) for (const f of of(lane)) log(`${target} ${spec.name} @${dpr} ${plant}: ${lane} ${f.kind}: ${f.detail}`);
-    const caught = inked.length > 0 && of('device-frames').length === 0 && of('device-lines').length === 0;
-    log(`${target} ${spec.name} @${dpr} ${plant} on ${PLANT_CASE}: device-pixels ${pixels.length} failures (${inked.length} on glyph or glyph-edge rules); device-frames ${of('device-frames').length}, device-lines ${of('device-lines').length} failures: plant ${caught ? 'CAUGHT' : 'NOT CAUGHT'}`);
-    if (!caught) failures++;
+    for (const f of o.failures) log(`${target} ${spec.name} @${dpr} ${plant}: ${f.lane} ${f.kind} ${f.node ?? ''}: ${f.detail}`);
+    const v = plantVerdict(o.failures, r.error);
+    log(`${target} ${spec.name} @${dpr} ${plant} on ${PLANT_CASE}: device-pixels ${v.pixels} failures (${v.inked} on glyph or glyph-edge rules); device-frames ${v.frames}, device-lines ${v.lines} failures${r.error === null ? '' : '; the host did not finish'}: plant ${v.caught ? 'CAUGHT' : 'NOT CAUGHT'}`);
+    if (!v.caught) failures++;
   } finally {
     await release(h);
   }
