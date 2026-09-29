@@ -70,10 +70,24 @@ const MINS = [null, '0', '10', '-5', 'abc', '50', '0.1'];
 const MAXES = [null, '100', '10', '20', 'x', '50'];
 const STEPS = [null, '1', '10', '0.1', '3', 'any', '0', '-1', '2.5', '0.3'];
 const VALUES = [null, '', '0', '33', '7.5', '150', '-20', 'abc', '1e1', '.5', '+5', '5.', '49.95', '15', '0.35'];
+// Fractions past Decimal's 18-digit coefficient: Blink's FromString counts leading fractional zeroes against the limit and drops
+// later digits without an exponent adjustment, so 0.0000000000000000001 parses to zero (a Macroscope finding on #11 asked
+// otherwise; Chrome answers here).
+const LONG_FRACTIONS: readonly RangeAttributes[] = [
+  { min: '-1', max: '1', step: 'any', value: '0.0000000000000000001' },
+  { min: '-1', max: '1', step: 'any', value: '-0.00000000000000000012345' },
+  { min: '0', max: '1', step: 'any', value: '0.1234567890123456789' },
+  { min: '0', max: '1', step: 'any', value: '0.99999999999999999999' },
+  { min: '0', max: '1', step: 'any', value: '0.000000000000000001' },
+  { min: '0.0000000000000000001', max: '1', step: 'any', value: '0' },
+  { min: '-1', max: '1', step: '0.0000000000000000001', value: '0.4' },
+  { min: '0', max: '100', step: '0.0000000000000000003', value: '33' },
+];
 
 async function captureRangeValues(page: Page, chrome: string): Promise<RangeValueCapture> {
   const attrs: RangeAttributes[] = [];
   for (const min of MINS) for (const max of MAXES) for (const step of STEPS) for (const value of VALUES) attrs.push({ min, max, step, value });
+  attrs.push(...LONG_FRACTIONS);
   // Parsed markup, as a compiled page has it: attribute changes made by script after type=range re-sanitise a stored value.
   const markup = attrs.map((a) => `<input type="range"${attrMarkup(a)}>`).join('');
   const got = await page.evaluate((html: string) => {
