@@ -74,8 +74,27 @@ docs/research/text-spike/out/**
 docs/research/text-spike/lato/out/**
 docs/research/text-spike/metric-rounding/captures/**
 docs/research/inline-spike/probe/**
+docs/research/skia-aa-oracle/**
 docs/research/skia-oracle/**
 docs/research/dtxt/widths.json
+# General shapes, so a new capture directory is skipped without an edit here
+**/captures/**
+**/reftest-captures/**
+**/chrome-145/**
+**/probe/**
+**/generated/**
+**/out/**
+**/vectors/**
+**/*-vectors/**
+**/*-oracle/**
+**/expected-*/**
+**/*.generated.*
+packages/translate/corpus*.json
+packages/layout/test/fixtures/linebreak/*.json
+examples/*/dragon/north-star-check.json
+docs/research/**/*.json
+docs/research/**/*.md
+docs/research/**/assets/**
 
 # === Dragon: not code ===
 design/**
