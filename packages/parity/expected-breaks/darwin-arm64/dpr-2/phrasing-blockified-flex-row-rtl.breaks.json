@@ -1,0 +1,15 @@
+{
+  "case": "phrasing-blockified-flex-row-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"s1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"a1:text0","data":"XXX XX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"l1:text0","data":"XX XX","lines":2,"units":[0,0,0,1,1],"blank":[2]},
+    {"id":"l2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"a2:text0","data":"XXXX XXXX","lines":2,"units":[0,0,0,0,0,1,1,1,1],"blank":[4]},
+    {"id":"c3:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"c3:text1","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"s3:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}
