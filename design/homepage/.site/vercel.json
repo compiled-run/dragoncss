@@ -1,0 +1,5 @@
+{
+  "redirects": [
+    { "source": "/(.*)", "has": [{ "type": "host", "value": "www.dragoncss.com" }], "destination": "https://dragoncss.com/$1", "permanent": true }
+  ]
+}

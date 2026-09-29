@@ -1,0 +1,120 @@
+@font-face { font-family: 'Eagle Lake'; src: url(fonts/eaglelake/EagleLake-Regular.ttf) format('truetype'); font-display: swap; }
+@font-face { font-family: 'Rudelsberg'; src: url(fonts/rudelsberg/Rudelsberg.ttf) format('truetype'); font-display: swap; } /* free for commercial use; family also has Initialen, Titel, Plakatschrift, Schmuck */
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime/CourierPrime-Regular.ttf) format('truetype'); font-display: swap; } /* OFL */
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime/CourierPrime-Bold.ttf) format('truetype'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime/CourierPrime-Italic.ttf) format('truetype'); font-style: italic; font-display: swap; }
+/* Dragon CSS homepage drafts: shared parchment. Colours sampled from assets/icon-sheet.png. */
+:root {
+  --paper: #dbcaac;
+  --paper-light: #e4d6bb;
+  --paper-edge: #c6aa7f;
+  --paper-rim: #b39468;
+  --table: #d6c9ae;
+  --rule: rgba(150, 128, 92, .38);
+  --ink: #2b231b;
+  --ink-body: #4d4337;   /* letter paragraphs: slightly faded ink */
+  --ink-soft: #7a6e5f;   /* secondary text: sub-lines, captions, hints, labels: faded grey-brown */
+  --brick: #a3342b;
+  --gold: #b8892b;
+  --sage: #5e7a52;
+  --slate: #3f5673;
+  --display: 'Rudelsberg', 'Eagle Lake', 'Iowan Old Style', 'Palatino', Georgia, serif; /* owner trial 2026-09-27: Rudelsberg (Moria Citadel, Wicked Knight, Vinque Antique, Night Sacred, Eagle Lake, MedievalSharp still loaded) */
+  --text: 'Rudelsberg', 'Eagle Lake', 'Iowan Old Style', 'Palatino', Georgia, serif; /* owner trial 2026-09-27 */
+  /* A hand-drawn ink underline (drawn in currentColor via mask) for marks like exact / caveat / unsupported. */
+  --ink-swash: linear-gradient(currentColor, currentColor);
+  --code: 'Courier Prime', 'Courier New', ui-monospace, monospace; /* owner 2026-09-27: code must read as code */
+  --mono: 'Rudelsberg', 'Eagle Lake', Georgia, serif; /* owner 2026-09-27: code and numbers in the same font */
+
+  /* Fine paper fibre and grain. */
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .27  0 0 0 0 .17  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.32'/></svg>");
+  /* Soft mottled stains, low frequency. */
+  --stains: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1600'><filter id='s'><feTurbulence type='fractalNoise' baseFrequency='.0035' numOctaves='5' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .55  0 0 0 0 .44  0 0 0 0 .28  0 0 0 -1.1 .62'/></filter><rect width='100%' height='100%' filter='url(%23s)' opacity='.38'/></svg>");
+  /* Dark speckles and foxing. */
+  --speckle: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='2' seed='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .22  0 0 0 0 .16  0 0 0 0 .1  0 0 0 -9 5.2'/></filter><rect width='100%' height='100%' filter='url(%23p)' opacity='.22'/></svg>");
+  /* The sheet's faint grid with four-point star marks at the crossings. */
+  --grid: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='230' height='225'><path d='M0 .5H230M.5 0V225' stroke='%23967f5c' stroke-opacity='.2' stroke-width='1'/><path d='M.5 -7 L2.2 -1.8 L9.5 .5 L2.2 2.8 L.5 10 L-1.2 2.8 L-8.5 .5 L-1.2 -1.8Z' fill='%239c8560' fill-opacity='.85'/><path d='M230.5 -7 L232 -1.5 L237.5 .5 L232 2 L230.5 7.5 L229 2 L223.5 .5 L229 -1.5Z' fill='%239c8560' fill-opacity='.85'/><path d='M.5 218 L2 223.5 L7.5 225.5 L2 227 L.5 232.5 L-1 227 L-6.5 225.5 L-1 223.5Z' fill='%239c8560' fill-opacity='.85'/></svg>");
+}
+
+html { background: var(--table); }
+body { margin: 0; color: var(--ink-body); font-family: var(--text); -webkit-font-smoothing: antialiased; }
+
+/* Headings stay in full dark ink; running text is one step fainter. */
+h1, h2, h3, h4, h5, h6, b, strong, .salute { color: var(--ink); }
+
+/* A torn sheet of parchment. Content sits above; the paper itself is ::before so the deckle filter never distorts text. */
+.sheet { position: relative; isolation: isolate; }
+.sheet::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  /* The owner's seamless parchment tile, with an edge vignette so the sheet darkens toward its torn border. */
+  background:
+    radial-gradient(ellipse 82% 80% at 50% 48%, rgba(255,250,235,.10) 0%, rgba(0,0,0,0) 55%, rgba(120,85,40,.16) 88%, rgba(105,72,32,.30) 100%),
+    url(parchment-tile.png) 0 0 / 512px 512px repeat;
+  filter: url(#deckle) drop-shadow(0 1px 1.5px rgba(95,70,35,.55)) drop-shadow(0 10px 22px rgba(80,60,30,.22));
+  box-shadow: inset 0 0 70px rgba(150, 110, 60, .26), inset 0 0 16px rgba(135, 95, 45, .38), inset 0 0 3px rgba(110, 75, 35, .6);
+}
+/* Variants: .aged adds soft stains and foxing; .worn burns the edge harder. */
+.sheet.aged::before {
+  background:
+    radial-gradient(ellipse 82% 80% at 50% 48%, rgba(255,250,235,.10) 0%, rgba(0,0,0,0) 55%, rgba(120,85,40,.16) 88%, rgba(105,72,32,.30) 100%),
+    var(--stains),
+    url(parchment-tile.png) 0 0 / 512px 512px repeat;
+  background-blend-mode: normal, multiply, normal;
+}
+.sheet.worn::before { box-shadow: inset 0 0 110px rgba(130, 90, 40, .42), inset 0 0 26px rgba(115, 78, 35, .5), inset 0 0 4px rgba(90, 60, 25, .75); }
+/* The page surface itself can use the tile too. */
+.paper-page { background: url(parchment-tile.png) 0 0 / 512px 512px repeat; }
+.sheet.gridded::after {
+  content: ""; position: absolute; inset: 26px; z-index: -1; background-size: 230px 225px; pointer-events: none;
+  background: var(--grid); background-position: 0 0; opacity: .9;
+}
+
+/* Rolled scroll ends, for letter-style variants. */
+.rod { height: 34px; margin: 0 -18px; border-radius: 17px; position: relative; z-index: 2;
+  background: linear-gradient(#b89b6c, #e2d1ae 35%, #c2a574 60%, #8e7047);
+  box-shadow: 0 6px 14px rgba(0,0,0,.45), inset 0 -3px 6px rgba(70,45,15,.35); }
+.rod::before, .rod::after { content: ""; position: absolute; top: 3px; width: 34px; height: 28px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #8a5a2b, #4a2c12 70%); box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+.rod::before { left: -26px; } .rod::after { right: -26px; }
+
+/* Shared type and ink details. */
+.rubric { color: var(--brick); }
+.gold { color: var(--gold); }
+.mono { font-family: var(--mono); }
+.icon { display: inline-block; width: 56px; height: 56px; object-fit: contain; }
+.seal-badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 6px; border-radius: 999px;
+  font: 12px var(--mono); background: rgba(94,122,82,.16); color: var(--sage); border: 1px solid rgba(94,122,82,.35); }
+.seal-badge.caveat { background: rgba(184,137,43,.14); color: #8a6516; border-color: rgba(184,137,43,.4); }
+.seal-badge.unsupported { background: rgba(163,52,43,.1); color: var(--brick); border-color: rgba(163,52,43,.35); }
+.skip { position: fixed; top: 10px; right: 14px; z-index: 50; font: 13px var(--mono); color: #d9c9a8; opacity: .75; }
+.skip:hover { opacity: 1; }
+
+/* Animated ink: text reveals left to right, then the ink "settles". */
+@keyframes ink-in { from { clip-path: inset(0 100% 0 0); filter: blur(1.2px); opacity: .6; } to { clip-path: inset(0 0 0 0); filter: blur(0); opacity: 1; } }
+.ink-in { animation: ink-in var(--ink-dur, 1.6s) cubic-bezier(.4,.1,.3,1) both; animation-delay: var(--ink-delay, 0s); }
+@media (prefers-reduced-motion: reduce) { .ink-in { animation: none; } }
+
+/* Ink swash under status marks: an uneven pen stroke, never a chip or box. */
+.lbl { position: relative; background: none !important; }
+.lbl::after { content: ''; position: absolute; left: -2px; right: -2px; bottom: -1px; height: 7px; background: currentColor; opacity: .55;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 8' preserveAspectRatio='none'><path d='M1 5.2 C 12 3.1, 25 6.4, 38 4.6 S 62 3.2, 76 5.1 S 92 4.2, 99 3.4' fill='none' stroke='black' stroke-width='2.1' stroke-linecap='round'/></svg>") center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 8' preserveAspectRatio='none'><path d='M1 5.2 C 12 3.1, 25 6.4, 38 4.6 S 62 3.2, 76 5.1 S 92 4.2, 99 3.4' fill='none' stroke='black' stroke-width='2.1' stroke-linecap='round'/></svg>") center / 100% 100% no-repeat; }
+
+/* Code and numbers use the page font too (owner 2026-09-27). */
+code, kbd, samp, pre { font-family: var(--code); font-size: .92em; }
+
+/* Code blocks: typewriter mono on a dark slate (owner 2026-09-27: "a darker background ... to have that kind of colors"),
+   warm syntax inks, quiet line numbers. The ink frame still draws the edge. */
+pre.code { counter-reset: ln; font-family: var(--code); line-height: 1.55; tab-size: 2; color: #eadfc6 !important;
+  background: linear-gradient(rgba(20,15,10,.25), rgba(20,15,10,.25)), url(gen/bg-dark.png) 0 0 / 512px 512px repeat;
+  border-radius: 14px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.35), inset 0 2px 18px rgba(0,0,0,.45), 0 6px 18px -6px rgba(40,25,10,.45); }
+pre.code .l { display: block; padding-left: 2.6em; position: relative; min-height: 1.55em; }
+pre.code .l::before { counter-increment: ln; content: counter(ln); position: absolute; left: 0; width: 1.6em; text-align: right; color: #7d7263; }
+pre.code .kw { color: #e8816b; font-weight: 700; }
+pre.code .str { color: #b5c98f; }
+pre.code .fn { color: #8fb3de; }
+pre.code .num { color: #efc76a; }
+pre.code .com { color: #9d917e; font-style: italic; }
+pre.code .pun { color: #b8aa90; }
+pre.code .sel { color: #8fb3de; font-weight: 700; }
+pre.code .prop { color: #e8816b; }
+pre.code.ink-frame::before, pre.code.ink-frame::after { display: none; }

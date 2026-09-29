@@ -9,5 +9,28 @@ Dragon CSS compiles regular CSS straight into native view properties, and proves
 - **Remove pitfalls by design.** Platform-specific choices belong to the compiler, which resolves every element style for every reachable state from semantic analysis; web output is compiled from the same result when a native target is configured. Never ask the developer to know a platform difference the compiler can decide. See the design principles in docs/goals/milestone-1/goal.md.
 - **Support facts live in the support profiles.** Import them; never restate them as literals in the compiler, docs or runtimes.
 - **Before reporting work done, run `pnpm typecheck` and `pnpm test`,** and say exactly what passed.
-- **Publishing needs an explicit owner directive:** npm (the `dragon` package), git pushes and new remotes.
+- **Publishing needs an explicit owner directive:** npm (the `dragon` package), new remotes, and pushes to `master` other than the two cases under Landing work.
 - **Write in plain, concrete language.** Comments only where the code can't show a constraint, one line at most.
+
+## Landing work
+
+Code reaches `master` only through a pull request that Macroscope has reviewed. The owner's standing directive allows the pushes and merges below, and nothing else.
+
+1. **Branch from the latest `master`.** `git fetch origin`, then branch from `origin/master`, never from a stale local `master`. Work on a branch, never on `master`. Keep one change per branch. Put regenerated outputs (vectors, captures, expected files) in their own commit whose message names the command that produced them.
+2. **Catch up, then verify.** Run `git fetch origin && git merge origin/master` so the branch includes everything merged while you worked, then `pnpm typecheck` and `pnpm test`.
+3. **Open the PR.** `git push -u origin <branch>`, then `gh pr create --base master --title '...' --body '...'`. In the body, say what changed and exactly what passed. Give a written reason for every tolerance, check, test or fixture the PR changes or removes.
+4. **Read the review.** Run `pnpm pr:review <number> --wait`. It waits for CI and then for Macroscope's correctness review of the latest commit, and lists failed checks and every Macroscope finding nobody has answered. Macroscope only posts findings of Medium severity or higher, so every one it lists matters.
+5. **Answer every finding.** Fix it, push, and reply `Fixed in <sha>` in its thread; or reply with why the code is intentional. Reply with `gh api repos/compiled-run/dragoncss/pulls/<number>/comments/<id>/replies -f body='...'`. Never reply only to clear the list, and never edit `.macroscope/` to silence a finding. If a fix would break a rule above, stop and report it.
+6. **Repeat until Macroscope is done.** Every push gets a new review, which may find new issues. Go back to step 4 until a review of the latest commit leaves nothing unanswered. After five rounds that still find new issues, stop and report instead of merging.
+7. **Merge.** When `pnpm pr:review <number>` exits 0, run `gh pr merge <number> --merge --delete-branch --match-head-commit <sha>` without asking, using the commit `pr:review` printed, so a later unreviewed push can't slip in. Then run `git pull --ff-only` in the main checkout, and bring every other finished branch up to date with `git fetch origin && git merge origin/master` and rerun its checks. Leave a running worker's worktree alone; it catches up at step 2. A failed check blocks the merge: fix the cause, or report it. Never retry until it goes green.
+
+**Staying current while agents run.** `master` moves every time a PR merges, so:
+
+- The main checkout follows `origin/master`: after every merge, and before dispatching new work, run `git pull --ff-only` there. Never stash, reset or discard uncommitted edits to do it; if it can't fast-forward, report why.
+- Before pushing anything straight to `master`, run `git pull --rebase origin master` first.
+- A long-running branch merges `origin/master` whenever another PR lands, and at least before each push.
+
+Two cases skip the pull request and push straight to `master`: PM board updates that touch only `docs/goals/**`, and small changes the owner asks for directly in the conversation (README wording, docs, config). Still run step 2 first.
+
+Dispatched workers (opus-worker, goal-worker, grok) never push; they finish with a verified, committed branch and a receipt. The PM (the session coordinating them) runs steps 3–7 for each worker branch, and sends findings back to a worker when the fix is more than a line or two.
+

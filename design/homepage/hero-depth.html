@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon CSS: royal opening</title>
+<link rel="stylesheet" href="assets/parchment.css">
+<link rel="stylesheet" href="assets/ink.css">
+<style>
+  html, body { background: url(assets/parchment-tile.png) 0 0 / 512px 512px repeat; }
+  body { margin: 0; color: var(--ink-body); font-family: var(--text); }
+  .controls { position: fixed; top: 10px; left: 10px; z-index: 20; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    font: 13px var(--mono); color: var(--ink); padding: 10px 14px; text-shadow: 0 0 4px rgba(222,206,176,.95); }
+  /* Demo controls, drawn in ink: a quill frame around the group, framed button and select, an inked slider. */
+  .controls label { display: flex; gap: 6px; align-items: center; }
+  .controls button, .controls select { font: 13px var(--mono); color: var(--ink); }
+  .controls button { padding: 5px 12px; --ink-out: -1px; }
+  .controls select { -webkit-appearance: none; appearance: none; border: 0; padding: 5px 12px; cursor: pointer; background: var(--ink-frame-brown-b) 0 0 / 100% 100% no-repeat; }
+  .controls select:hover, .controls select:focus-visible { outline: none; background-image: var(--ink-frame-brown-bold); }
+  .controls input[type=range] { -webkit-appearance: none; appearance: none; width: 110px; height: 18px; background: var(--ink-rule-brown) 0 4px / 100% 10px no-repeat; cursor: pointer; }
+  .controls input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: 1px; border: 0; background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'><path d='M7.2 1.6 C 10.6 1.4, 12.6 4, 12.4 7.1 C 12.2 10.4, 9.8 12.5, 6.8 12.4 C 3.6 12.3, 1.5 9.9, 1.7 6.8 C 1.9 3.9, 4.1 1.9, 7.9 1.8' fill='none' stroke='rgba(43,28,14,.9)' stroke-width='1.6' stroke-linecap='round'/></svg>") 0 0 / 100% 100% no-repeat; }
+  .controls input[type=range]:focus-visible { outline: none; }
+  .controls input[type=range]:focus-visible::-webkit-slider-thumb { transform: scale(1.3); }
+  .stage { perspective: 1400px; padding: 28px 0 0; }
+  .hero { position: relative; width: min(1200px, 94vw); margin: 0 auto; aspect-ratio: 1836 / 740;
+    transform-style: preserve-3d; transition: transform .8s cubic-bezier(.2,.7,.2,1); }
+  .wrap { position: absolute; inset: 0; transform-style: preserve-3d; }
+  .layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; will-change: transform;
+    transition: filter .6s; }
+  /* Nearer planes cast a soft warm shadow onto the parchment: the raised, diorama feel. */
+  .layer[data-depth="emblem"] { filter: drop-shadow(0 3px 3px rgba(90,60,25,.14)); }
+  .layer[data-depth="vines"]  { filter: drop-shadow(0 6px 6px rgba(90,60,25,.20)); }
+  /* Gold glint: light that exists only where the art is gold (the mask), sent out once from the crown as a ring. */
+  @property --r { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+  .hero { --gold-mask: url(data:image/png;base64,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LAEAAIgISwAAACLCEgAAgIiwBAAAICIsAQAAiAhLAAAAIsISAACAiLAEAAAgIiwBAACICEsAAAAiwhIAAICIsAQAACAiLAEAAIgISwAAACLCEgAAgIiwBAAAICIsAQAAiAhLAAAAIsISAACAiLAEAAAgIiwBAACICEsAAAAiwhIAAICIsAQAACAiLAEAAIgISwAAACLCEgAAgIiwBAAAICIsAQAAiAhLAAAAIsISAACAiLAEAAAgIiwBAACICEsAAAAiwhIAAICIsAQAACAiLAEAAIgISwAAACLCEgAAgIiwBAAAICIsAQAAiAhLAAAAIsISAACAiLAEAAAgIiwBAACICEsAAAAiwhIAAICIsAQAACAiLAEAAIgISwAAACLCEgAAgIiwBAAAICIsAQAAiAhLAAAAIsISAACAiLAEAAAgIiwBAACICEsAAAAiwhIAAICIsAQAACAiLAEAAIgISwAAACLCEgAAgIiwBAAAICIsAQAAiAhLAAAAIsISAACAiLAEAAAgIiwBAACICEsAAAAiwhIAAICIsAQAACAiLAEAAIgISwAAACLCEgAAgIiwBAAAICIsAQAAiAhLAAAAIsISAACAiLAEAAAgIiwBAACICEsAAAAiwhIAAICIsAQAACAiLAEAAIgISwAAACLCEgAAgIiwBAAAICIsAQAAiAhLAAAAIsISAACAiLAEAAAg8j9GkJccRJlbpgAAAABJRU5ErkJggg==); }
+  .glint { -webkit-mask: var(--gold-mask) 0 0 / 100% 100% no-repeat; mask: var(--gold-mask) 0 0 / 100% 100% no-repeat;
+    mix-blend-mode: screen; opacity: 0; filter: none !important;
+    background: radial-gradient(circle at 49.9% 6.4%, rgba(255,244,200,0) calc(var(--r) - 9%), rgba(255,240,190,.95) var(--r), rgba(255,244,200,0) calc(var(--r) + 9%)); }
+  .flat .layer { filter: none !important; }
+  .exploded .hero { transform: rotateX(38deg) rotateZ(-8deg) scale(.82); }
+  .exploded .layer { background: var(--ink-frame-brown-b) 0 0 / 100% 100% no-repeat; }
+  .opening { text-align: center; margin: 6px auto 0; }
+  .opening h1 { font: 600 clamp(34px, 3.4vw, 44px)/1.15 var(--display); margin: 0; }
+  .opening h1 em { color: var(--brick); }
+  .opening p { font-style: italic; opacity: .8; margin: 8px 0 0; }
+  .spacer { height: 120vh; }
+  .note { max-width: 72ch; margin: 30px auto; font-size: 16px; line-height: 1.6; padding: 0 20px; }
+  .note b { color: var(--brick); }
+  .note ol { padding-left: 1.3em; }
+  @media (prefers-reduced-motion: reduce) { .layer, .hero { transition: none; } }
+</style>
+</head>
+<body>
+<div class="controls ink-frame">
+  <button id="replay" type="button" class="ink-btn ink-frame">replay opening</button>
+  <label>pace <select id="speed"><option value="1.3">stately</option><option value="1" selected>normal</option><option value="0.75">brisk</option></select></label>
+  <label><input type="checkbox" class="ink-check" id="wind" checked> wind</label>
+  <label><input type="checkbox" class="ink-check" id="exploded"> exploded view</label>
+  <label><input type="checkbox" class="ink-check" id="shadows" checked> shadows</label>
+  <label>parallax <input type="range" id="strength" min="0" max="2" step="0.1" value="1"></label>
+</div>
+
+<div class="stage">
+  <div class="hero" id="hero" role="img" aria-label="Dragon CSS: a crowned dragon crest between raised banners, with a castle and a village">
+    <div class="wrap" id="w-far"><img class="layer" data-depth="far" src="assets/hero-layers/far.png" alt=""><img class="layer" data-depth="far" data-cloud src="assets/hero-layers/clouds.png" alt=""></div>
+    <div class="wrap" id="w-flags"><canvas class="layer" data-depth="emblem" id="flags" width="1836" height="740"></canvas></div>
+    <div class="wrap" id="w-emblem"><img class="layer" data-depth="emblem" src="assets/hero-layers/emblem-still.png" alt=""></div>
+    <div class="wrap" id="w-crown"><img class="layer" data-depth="emblem" src="assets/hero-layers/crown.png" alt=""></div>
+    <div class="wrap"><div class="layer glint" data-depth="emblem" id="glint"></div></div>
+    <div class="wrap" id="w-vines"><img class="layer" data-depth="vines" src="assets/hero-layers/vines.png" alt=""></div>
+  </div>
+</div>
+<div class="opening">
+  <h1>Regular CSS, <em>proven</em> in every realm</h1>
+  <p>Click, scroll or press a key to skip the ceremony. After it, the scene keeps breathing on its own.</p>
+</div>
+<div class="note">
+  <p><b>The coronation, in order:</b></p>
+  <ol>
+    <li>The realm appears: the scenery soaks into the parchment.</li>
+    <li>The banners are raised: each flag unfurls outward from its pole, catches a strong gust, and settles into a light breeze.</li>
+    <li>The name is inked: the dragon crest, "Dragon CSS" and the sword soak in.</li>
+    <li>The coronation: the crown lowers onto the dragon's head and settles.</li>
+    <li>Gold fanfare: one ring of light spreads out from the crown across every gold element.</li>
+    <li>The frame: the corner vines arrive.</li>
+  </ol>
+  <p>It plays once per visit. Any click, scroll or key finishes it at once. With reduced motion, the finished hero is shown.</p>
+</div>
+<div class="spacer"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Parallax: the emblem is the focal plane; scenery and vines move in opposite directions.
+const DEPTH = { far: -5, emblem: 0, vines: 11 };
+const LIFT = { far: -0.04, emblem: 0, vines: 0.09 };
+const Z = { far: -160, emblem: 0, vines: 160 };
+const layers = [...document.querySelectorAll('.layer')];
+let mx = 0, my = 0, strength = 1, exploded = false, cloudX = 0, cloudY = 0;
+function parallax() {
+  const sy = scrollY;
+  for (const el of layers) {
+    const d = el.dataset.depth;
+    const x = reduce ? 0 : -mx * DEPTH[d] * strength;
+    const y = reduce ? 0 : (-my * DEPTH[d] * 0.6 - sy * LIFT[d]) * strength;
+    const cx = el.dataset.cloud !== undefined ? cloudX : 0, cy = el.dataset.cloud !== undefined ? cloudY : 0;
+    el.style.transform = `translate3d(${(x + cx).toFixed(2)}px, ${(y + cy).toFixed(2)}px, ${exploded ? Z[d] : 0}px)`;
+  }
+}
+addEventListener('scroll', parallax, { passive: true });
+$('strength').oninput = e => { strength = +e.target.value; parallax(); };
+$('exploded').onchange = e => { exploded = e.target.checked; document.body.classList.toggle('exploded', exploded); parallax(); };
+$('shadows').onchange = e => document.body.classList.toggle('flat', !e.target.checked);
+parallax();
+
+// Ambient life: the hero moves on its own, never with the mouse. A slow camera drift on two out-of-step
+// periods (23 s and 31 s) keeps revealing the depth; the clouds drift with the wind across the sky and back.
+const amb0 = performance.now();
+function ambient(now) {
+  const t = (now - amb0) / 1000, TAU = Math.PI * 2;
+  mx = 0.75 * Math.sin(TAU * t / 23) + 0.25 * Math.sin(TAU * t / 9.7 + 1.3);
+  my = 0.55 * Math.sin(TAU * t / 31 + 0.8);
+  cloudX = 16 * Math.sin(TAU * t / 42);
+  cloudY = 1.5 * Math.sin(TAU * t / 13 + 0.5);
+  parallax();
+  requestAnimationFrame(ambient);
+}
+if (!reduce) requestAnimationFrame(ambient);
+
+// Flags: unfurl outward from the pole, then wind. Drawn in vertical strips; displacement is zero at the pole.
+const ctx = $('flags').getContext('2d');
+const src = new Image(); src.src = 'assets/hero-layers/banners.png';
+const BANNERS = [ { x0: 405, x1: 784, y0: 60, y1: 318, pole: 644 }, { x0: 1050, x1: 1423, y0: 60, y1: 318, pole: 1194 } ];
+const STRIP = 3, BREEZE = 3.2;
+let wind = !reduce, unfurlStart = null, unfurlDur = 1300;
+const clock0 = performance.now();
+function drawFlags(now) {
+  const t = (now - clock0) / 1000;
+  const since = unfurlStart === null ? Infinity : now - unfurlStart;
+  const u = unfurlStart === null ? 1 : Math.min(1, Math.max(0, since / unfurlDur));
+  const reachEased = 1 - Math.pow(1 - u, 3);                         // cloth runs out fast, then slows as it straightens
+  const gust = unfurlStart === null || since < 0 ? 0 : 9 * Math.exp(-since / 900);   // strong gust that dies into the breeze
+  ctx.clearRect(0, 0, 1836, 740);
+  for (const b of BANNERS) {
+    const reach = Math.max(b.pole - b.x0, b.x1 - b.pole);
+    for (let x = b.x0; x < b.x1; x += STRIP) {
+      const dist = Math.abs(x - b.pole);
+      if (dist > reachEased * reach + 12) continue;                  // not yet unfurled this far from the pole
+      const w = Math.min(1, Math.max(0, (dist - 10) / 220));
+      const dir = x < b.pole ? -1 : 1;
+      const amp = (wind ? BREEZE : 0) + gust;
+      const dy = amp * w * (0.7 * Math.sin(dir * x * 0.045 - t * 1.4) + 0.3 * Math.sin(dir * x * 0.11 - t * 2.3 + 1.1));
+      ctx.drawImage(src, x, b.y0, STRIP, b.y1 - b.y0, x, b.y0 + dy, STRIP, b.y1 - b.y0);
+    }
+  }
+  requestAnimationFrame(drawFlags);
+}
+src.onload = () => requestAnimationFrame(drawFlags);
+$('wind').onchange = e => { wind = e.target.checked && !reduce; };
+
+// The coronation timeline (ms at normal pace).
+const soak = [
+  { opacity: 0, transform: 'translateY(10px)', filter: 'blur(1.6px)' },
+  { opacity: 1, transform: 'none', filter: 'blur(0)' },
+];
+const EASE = 'cubic-bezier(.25,.1,.25,1)';
+let running = [], unfurlTimer = 0;
+function play(pace) {
+  for (const a of running) a.cancel();
+  running = []; clearTimeout(unfurlTimer);
+  unfurlStart = Infinity;                                            // flags furled until their moment
+  const at = (el, keyframes, delay, duration, easing = EASE) =>
+    running.push(el.animate(keyframes, { delay: delay * pace, duration: duration * pace, easing, fill: 'both' }));
+  at($('w-far'), soak, 0, 1500);                                     // 1. the realm appears
+  at($('w-flags'), [{ opacity: 0 }, { opacity: 1 }], 950, 350);      // 2. banners raised
+  unfurlTimer = setTimeout(() => { unfurlStart = performance.now(); unfurlDur = 1300 * pace; }, 950 * pace);
+  at($('w-emblem'), soak, 1600, 1400);                               // 3. the name is inked
+  at($('w-crown'), [                                                 // 4. the coronation
+    { opacity: 0, transform: 'translateY(-38px)', easing: 'cubic-bezier(.45,0,.75,.6)' },
+    { opacity: 1, transform: 'translateY(2px)', offset: .72, easing: 'ease-out' },
+    { transform: 'translateY(-1px)', offset: .86, easing: 'ease-in-out' },
+    { opacity: 1, transform: 'translateY(0)' },
+  ], 2700, 1150, 'linear');
+  at($('glint'), [                                                   // 5. gold fanfare ring from the crown
+    { opacity: 0, '--r': '0%' }, { opacity: 1, '--r': '12%', offset: .15 }, { opacity: .9, '--r': '70%', offset: .8 }, { opacity: 0, '--r': '95%' },
+  ], 3750, 1600, 'cubic-bezier(.3,.1,.3,1)');
+  at($('w-vines'), soak, 4000, 1500);                                // 6. the frame
+}
+function finish() {
+  for (const a of running) a.finish();
+  clearTimeout(unfurlTimer);
+  unfurlStart = null;
+}
+// Skip on any intent to move on (the demo controls are exempt).
+for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart'])
+  addEventListener(ev, e => { if (!(e.target.closest && e.target.closest('.controls'))) finish(); }, { passive: true });
+
+// For review the opening plays on every load. Set true for the real site so it plays once per visit.
+const ONCE_PER_VISIT = new URLSearchParams(location.search).has('once');
+$('replay').onclick = () => play(+$('speed').value);
+if (reduce) {
+  unfurlStart = null;
+} else if (ONCE_PER_VISIT && sessionStorage.getItem('dragon-opening-played')) {
+  play(1); finish();                                                  // already seen this visit: show the finished hero
+} else {
+  sessionStorage.setItem('dragon-opening-played', '1');
+  play(1);
+}
+</script>
+</body>
+</html>

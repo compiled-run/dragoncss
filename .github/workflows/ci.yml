@@ -1,0 +1,28 @@
+# Pull request checks. Macroscope's correctness review waits for this job (.macroscope/correctness/correctness.md).
+name: ci
+on:
+  pull_request:
+    branches: [master]
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Set up pnpm 10.33.2
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Platform-free suites (packages/layout, packages/dragon)
+        run: pnpm exec vitest run packages/layout packages/dragon

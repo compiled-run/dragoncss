@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<title>Dragon CSS: background options</title>
+<link rel="stylesheet" href="assets/parchment.css">
+<style>
+body{margin:0;background:#15100c;color:#efe3c8;font-family:var(--text)}
+header{padding:20px 24px 6px}h1{font:600 24px var(--display);margin:0}header p{margin:4px 0 0;opacity:.75}
+.row{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+.opt{min-height:760px;padding:26px 0 40px;position:relative}
+.opt h2{font:600 13px var(--mono);letter-spacing:.08em;text-transform:uppercase;text-align:center;margin:0 0 16px;color:#e9c46a;text-shadow:0 1px 2px #000}
+.glow::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 60% 55% at 50% 45%,rgba(255,190,110,.14),transparent 70%);pointer-events:none}
+.hang{width:78%;margin:0 auto;position:relative}
+.roller{display:block;width:100%;position:relative;z-index:2}.roller.top{margin-bottom:-10.6%}
+.paper{margin:0 12.4%;padding:42px 22px 30px;background:url(assets/parchment-tile.png) 0 0/512px repeat;color:var(--ink);box-shadow:inset 10px 0 14px -10px rgba(90,60,25,.55),inset -10px 0 14px -10px rgba(90,60,25,.55)}
+.paper h3{font:600 24px var(--display);margin:0 0 8px}.paper p{font-size:15px;line-height:1.55;margin:0 0 8px}
+.roller.bottom{margin-top:-10.6%}
+.hang{filter:drop-shadow(0 16px 26px rgba(0,0,0,.55))}
+@media(max-width:1100px){.row{grid-template-columns:1fr 1fr}}
+</style></head><body>
+<header><h1>Background options</h1><p>The same scroll on each candidate. The brick is kept only for comparison.</p></header>
+<div class="row">
+ <div class="opt" style="background:url(assets/gen/bg-oak.png) 0 0/512px repeat"><h2>A · Dark oak desk</h2><div class="hang">X</div></div>
+ <div class="opt" style="background:url(assets/gen/bg-velvet.png) 0 0/512px repeat"><h2>B · Red velvet</h2><div class="hang">X</div></div>
+ <div class="opt glow" style="background:url(assets/gen/bg-dark.png) 0 0/512px repeat"><h2>C · Candlelit dark</h2><div class="hang">X</div></div>
+ <div class="opt" style="background:#221a14 url(assets/gen/stone-wall.original.png) 0 0/512px repeat"><h2>(old) Brick</h2><div class="hang">X</div></div>
+</div>
+<script>
+const inner=`<img class="roller top" src="assets/gen/scroll-roller-top.png" alt=""><div class="paper"><h3><span class="rubric">D</span>ear Lord Developer,</h3><p>Be it known in every realm: the style you write for the web shall serve the iPhone and the Android as well.</p><p>No herald's word is taken on trust. Every box is weighed against Chrome, number by number.</p></div><img class="roller bottom" src="assets/gen/scroll-roller-bottom.png" alt="">`;
+document.querySelectorAll('.hang').forEach(h=>h.innerHTML=inner);
+</script></body></html>

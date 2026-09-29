@@ -1,0 +1,39 @@
+/* The ink control bar for the 07a-07d quest-map variants: the hero-depth.html controls, pinned bottom-centre.
+   A quill frame around the group, framed buttons and selects, ink-ring checks and an inked slider. The bar is
+   backed by the same parchment tile as the page, so the art behind it never shows through the words.
+   On narrow screens it folds down to the sound check and a "more" button. */
+.realm-bar { position: fixed; left: 50%; bottom: 12px; z-index: 50; translate: -50% 0; box-sizing: border-box;
+  display: flex; flex-wrap: nowrap; gap: 10px 12px; align-items: center; justify-content: center; white-space: nowrap;
+  max-width: calc(100vw - 20px); padding: 9px 16px; font: 13px var(--mono); color: var(--ink);
+  background: url(parchment-tile.png) 0 0 / 512px 512px repeat; border-radius: 22px;
+  text-shadow: 0 0 4px rgba(222,206,176,.95); --ink-out: -3px; }
+.realm-bar label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.realm-bar button, .realm-bar select { font: 13px var(--mono); color: var(--ink); }
+.realm-bar button { padding: 5px 12px; --ink-out: -1px; }
+.realm-bar select { -webkit-appearance: none; appearance: none; border: 0; padding: 5px 12px; cursor: pointer; background: var(--ink-frame-brown-b) 0 0 / 100% 100% no-repeat; }
+.realm-bar select:hover, .realm-bar select:focus-visible { outline: none; background-image: var(--ink-frame-brown-bold); }
+.realm-bar input[type=range] { -webkit-appearance: none; appearance: none; width: 90px; height: 18px; margin: 0; background: var(--ink-rule-brown) 0 4px / 100% 10px no-repeat; cursor: pointer; }
+.realm-bar input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: 1px; border: 0; background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'><path d='M7.2 1.6 C 10.6 1.4, 12.6 4, 12.4 7.1 C 12.2 10.4, 9.8 12.5, 6.8 12.4 C 3.6 12.3, 1.5 9.9, 1.7 6.8 C 1.9 3.9, 4.1 1.9, 7.9 1.8' fill='none' stroke='rgba(43,28,14,.9)' stroke-width='1.6' stroke-linecap='round'/></svg>") 0 0 / 100% 100% no-repeat; }
+.realm-bar input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border: 0; background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'><path d='M7.2 1.6 C 10.6 1.4, 12.6 4, 12.4 7.1 C 12.2 10.4, 9.8 12.5, 6.8 12.4 C 3.6 12.3, 1.5 9.9, 1.7 6.8 C 1.9 3.9, 4.1 1.9, 7.9 1.8' fill='none' stroke='rgba(43,28,14,.9)' stroke-width='1.6' stroke-linecap='round'/></svg>") 0 0 / 100% 100% no-repeat; }
+.realm-bar input[type=range]:focus-visible { outline: none; }
+.realm-bar input[type=range]:focus-visible::-webkit-slider-thumb { transform: scale(1.3); }
+.realm-bar input[type=range]:disabled, .realm-bar .quiet { opacity: .45; }
+/* A short quill stroke between the sound group and the play group. */
+.realm-bar .sep { flex: none; width: 10px; height: 24px; background: var(--ink-vrule-brown) center / 10px 100% no-repeat; opacity: .8; }
+.realm-bar .soft { color: var(--ink-soft); }
+.realm-bar .more { display: none; }
+.realm-bar img.glyph { width: 20px; height: 20px; object-fit: contain; margin: -4px 0; }
+
+/* While a scroll card is open the bar steps back with the rest of the page (07 fades body children). */
+
+@media (max-width: 760px) {
+  .realm-bar { flex-wrap: wrap; white-space: normal; width: max-content; bottom: 10px; padding: 8px 14px; gap: 10px 12px; border-radius: 20px; }
+  .realm-bar .more { display: inline-block; }
+  .realm-bar .sep { display: none; }
+  .realm-bar:not(.open) .extra { display: none; }
+  .realm-bar.open { width: calc(100vw - 20px); }
+  .realm-bar.open .more { order: 99; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .realm-bar input[type=range]:focus-visible::-webkit-slider-thumb { transform: none; }
+}

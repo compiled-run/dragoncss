@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<title>Dragon CSS: scroll physics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="assets/parchment.css">
+<style>
+  html, body { background: #221a14 url(assets/gen/stone-wall.png) 0 0 / 512px 512px repeat; }
+  body::before { content: ""; position: fixed; inset: 0; background: rgba(18, 12, 8, .62); pointer-events: none; }
+  main { position: relative; max-width: 1200px; margin: 0 auto; padding: 28px 20px 80px; color: #efe3c8; font-family: var(--text); }
+  h1 { font: 600 26px var(--display); margin: 0 0 4px; }
+  p.lead { margin: 0 0 18px; opacity: .8; max-width: 70ch; }
+  .stage { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+  .col h2 { font: 600 16px var(--mono); letter-spacing: .06em; text-transform: uppercase; margin: 0 0 10px; color: #e9c46a; }
+  .col.fake h2 { color: #b9a98a; }
+  /* The hanging scroll: the pivot is the top roller, so sway rotates around it. */
+  .hang { position: relative; width: 100%; max-width: 520px; margin: 0 auto; transform-origin: 50% 0; }
+  .roller { display: block; width: 100%; height: auto; position: relative; z-index: 2; pointer-events: none; }
+  .roller.top { margin-bottom: -10.6%; }
+  .paper-clip { position: relative; overflow: hidden; margin: 0 12.4%; }
+  .paper { height: 560px; background: url(assets/parchment-tile.png) 0 0 / 512px 512px repeat;
+    box-shadow: inset 12px 0 18px -12px rgba(90,60,25,.55), inset -12px 0 18px -12px rgba(90,60,25,.55);
+    padding: 64px 34px 40px; box-sizing: border-box; color: var(--ink); }
+  .paper h3 { font: 600 30px var(--display); margin: 0 0 12px; }
+  .paper h3 .rubric { font-size: 1.3em; }
+  .paper p { margin: 0 0 12px; line-height: 1.55; font-size: 17px; }
+  .bottom-wrap { position: relative; z-index: 2; margin-top: -10.6%; }
+  .roller.bottom { transform-origin: 50% 50%; }
+  .spin { position: absolute; left: 12.4%; right: 12.4%; top: 22%; bottom: 22%; overflow: hidden; border-radius: 40px; opacity: .55; mix-blend-mode: multiply; pointer-events: none; }
+  .spin::before { content: ""; position: absolute; left: 0; right: 0; top: -100%; height: 300%;
+    background: repeating-linear-gradient(180deg, rgba(90,60,25,0) 0 10px, rgba(90,60,25,.35) 11px 12px, rgba(90,60,25,0) 13px 26px);
+    transform: translateY(var(--spin, 0px)); }
+  .controls { position: sticky; top: 10px; z-index: 5; display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center;
+    background: rgba(30, 22, 15, .88); border: 1px solid rgba(233,196,106,.25); border-radius: 10px; padding: 12px 16px; margin: 0 0 22px; font: 13px var(--mono); }
+  .controls label { display: flex; flex-direction: column; gap: 4px; min-width: 150px; }
+  .controls output { color: #e9c46a; }
+  button { font: 600 14px var(--mono); background: #a3342b; color: #fff4e0; border: 0; border-radius: 8px; padding: 10px 16px; cursor: pointer; }
+  button.ghost { background: transparent; border: 1px solid rgba(233,196,106,.4); color: #efe3c8; }
+  .notes { margin-top: 26px; font-size: 15px; line-height: 1.6; opacity: .88; max-width: 80ch; }
+  .notes b { color: #e9c46a; }
+  @media (max-width: 760px) { .stage { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Scroll physics</h1>
+  <p class="lead">Left: a hanging scroll dropped and unrolled by gravity. Right: the usual ease-out, for comparison. Press <b>Drop the scroll</b>, then tune it.</p>
+
+  <div class="controls">
+    <button id="go">Drop the scroll</button>
+    <button class="ghost" id="hand">Unroll by hand</button>
+    <label>Fall time <output id="o-fall">0.95 s</output><input id="fall" type="range" min="0.4" max="2" step="0.05" value="0.95"></label>
+    <label>Friction <output id="o-fric">0.25</output><input id="fric" type="range" min="0" max="0.8" step="0.05" value="0.25"></label>
+    <label>Bounce stiffness <output id="o-k">520</output><input id="k" type="range" min="150" max="1200" step="10" value="520"></label>
+    <label>Bounce damping <output id="o-z">0.38</output><input id="z" type="range" min="0.1" max="1" step="0.02" value="0.38"></label>
+    <label>Sway <output id="o-sway">0.7°</output><input id="sway" type="range" min="0" max="2" step="0.05" value="0.7"></label>
+  </div>
+
+  <div class="stage">
+    <div class="col real">
+      <h2>Realistic: gravity, hard stop, rebound, sway</h2>
+      <div class="hang" id="real">
+        <img class="roller top" src="assets/gen/scroll-roller-top.png" alt="">
+        <div class="paper-clip"><div class="paper">
+          <h3><span class="rubric">D</span>ear Lord Developer,</h3>
+          <p>Be it known in every realm: the style you write for the web shall serve the iPhone and the Android as well.</p>
+          <p>No herald's word is taken on trust. Every box is weighed against Chrome, number by number.</p>
+        </div></div>
+        <div class="bottom-wrap"><img class="roller bottom" src="assets/gen/scroll-roller-bottom.png" alt=""><div class="spin"></div></div>
+      </div>
+    </div>
+    <div class="col fake">
+      <h2>Typical: ease-out glide</h2>
+      <div class="hang" id="fake">
+        <img class="roller top" src="assets/gen/scroll-roller-top.png" alt="">
+        <div class="paper-clip"><div class="paper">
+          <h3><span class="rubric">D</span>ear Lord Developer,</h3>
+          <p>Be it known in every realm: the style you write for the web shall serve the iPhone and the Android as well.</p>
+          <p>No herald's word is taken on trust. Every box is weighed against Chrome, number by number.</p>
+        </div></div>
+        <div class="bottom-wrap"><img class="roller bottom" src="assets/gen/scroll-roller-bottom.png" alt=""><div class="spin"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <p><b>Fall:</b> the bottom roller starts at rest and accelerates, with position proportional to t² scaled by (1 − friction), until the sheet runs out. There's no deceleration, because gravity keeps pulling.</p>
+    <p><b>Hard stop:</b> parchment doesn't stretch, so the roller never passes full length. The jolt becomes an upward rebound: a damped spring (stiffness k, damping ratio ζ) that starts with the roller's impact speed and can only pull the roller up, never below full length.</p>
+    <p><b>Spin:</b> while it falls, the roller turns. Its surface speed equals the fall speed, shown by the moving ink bands. It stops dead at the jolt.</p>
+    <p><b>Sway:</b> the impact sets the whole sheet swinging from the top roller, as a pendulum whose angle decays by e<sup>−t/τ</sup> with a period of about 1.4 s.</p>
+    <p><b>By hand:</b> smooth acceleration and deceleration, with no bounce and no sway. That's a person controlling it.</p>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const P = { fall: .95, fric: .25, k: 520, z: .38, sway: .7 };
+for (const [id, fmt] of [['fall', v => v.toFixed(2) + ' s'], ['fric', v => v.toFixed(2)], ['k', v => v.toFixed(0)], ['z', v => v.toFixed(2)], ['sway', v => v.toFixed(2) + '°']]) {
+  $(id).addEventListener('input', e => { P[id] = +e.target.value; $('o-' + id).textContent = fmt(P[id]); });
+}
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function parts(root) {
+  return { hang: root, clip: root.querySelector('.paper-clip'), bottom: root.querySelector('.roller.bottom'),
+    spin: root.querySelector('.spin'), full: root.querySelector('.paper').offsetHeight };
+}
+
+// One animation loop driving clip height (length unrolled), roller spin, rebound and sway.
+function run(root, mode) {
+  const p = parts(root); const L = p.full; const t0 = performance.now();
+  const T = P.fall;                       // time to reach full length
+  const a = 2 * L / (T * T);              // uniform acceleration that covers L in T
+  const vImpact = a * T;                  // speed at the jolt (px/s)
+  const omega = Math.sqrt(P.k), zeta = P.z, wd = omega * Math.sqrt(Math.max(1e-6, 1 - zeta * zeta));
+  const swayAmp = P.sway, tau = 0.9, period = 1.4;
+  cancelAnimationFrame(root._raf);
+  const frame = now => {
+    const t = (now - t0) / 1000; let len, spin = 0, rot = 0, done = false;
+    if (reduce) { len = L; done = true; }
+    else if (mode === 'fake') {
+      const u = Math.min(1, t / 1.1); len = L * (1 - Math.pow(1 - u, 3)); spin = len * 1.2; done = u >= 1;
+    } else if (mode === 'hand') {
+      const u = Math.min(1, t / 1.6); len = L * (u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2); spin = len * 1.2; done = u >= 1;
+    } else if (t < T) {
+      len = 0.5 * a * t * t; spin = len * 1.2;
+    } else {
+      // Rebound: damped spring driven by the impact speed. It can only shorten the sheet (the roller moves up), never lengthen it.
+      const s = t - T;
+      const x = (vImpact * (1 - P.fric) / wd) * Math.exp(-zeta * omega * s) * Math.sin(wd * s);
+      len = L - Math.abs(x) * 0.06; spin = L * 1.2;
+      rot = swayAmp * Math.exp(-s / tau) * Math.sin(2 * Math.PI * s / period);
+      done = s > 3.2;
+    }
+    p.clip.style.height = Math.max(0, len) + 'px';
+    p.spin.style.setProperty('--spin', (spin % 26) + 'px');
+    p.hang.style.transform = `rotate(${rot}deg)`;
+    if (!done) root._raf = requestAnimationFrame(frame); else { p.clip.style.height = L + 'px'; p.hang.style.transform = ''; }
+  };
+  p.clip.style.height = '0px';
+  root._raf = requestAnimationFrame(frame);
+}
+$('go').onclick = () => { run($('real'), 'real'); run($('fake'), 'fake'); };
+$('hand').onclick = () => { run($('real'), 'hand'); run($('fake'), 'fake'); };
+addEventListener('load', () => setTimeout(() => $('go').click(), 400));
+</script>
+</body>
+</html>

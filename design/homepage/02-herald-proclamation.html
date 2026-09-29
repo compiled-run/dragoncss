@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon CSS: The Herald's Proclamation</title>
+<link rel="stylesheet" href="assets/parchment.css">
+<link rel="stylesheet" href="assets/ink.css">
+<link rel="stylesheet" href="assets/royal-hero.css">
+<link rel="stylesheet" href="assets/integration.css">
+<script src="assets/royal-hero.js" defer></script>
+<script>/* Space on a button or link activates it; keep the section stepper from taking it. Registered before the stepper. */
+addEventListener('keydown', e => { if (e.key === ' ' && e.target.closest && e.target.closest('button, a, [role="button"], summary')) e.stopImmediatePropagation(); });</script>
+<script src="assets/parchment.js"></script>
+<style>
+  /* The page itself is the parchment (set in the hero block below). */
+  html, body { overflow-x: hidden; }
+
+  /* The proclamation is written straight onto the page parchment: no sheet. A gold rule with a rubricated
+     fleuron opens it; the rubricated initial and the proof rule give it structure. */
+  .floor { position: relative; padding: 0; }
+  .procl { max-width: 700px; margin: 0 auto; padding: 34px 0 10px; position: relative;
+    background: var(--ink-rule-gold) left top / 46% 10px no-repeat, var(--ink-rule-gold-b) right top / 46% 10px no-repeat; }
+  .procl::before { content: "\2766"; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); padding: 0 14px;
+    font-size: 18px; line-height: 26px; color: var(--brick); }
+  .procl .salute { font: italic 34px/1.3 var(--display); margin: 0 0 16px; color: var(--ink); }
+  .procl p { font: 25.5px/1.45 var(--text); margin: 0 0 15px; text-wrap: pretty; color: var(--ink-body); }
+  .procl p.lead::first-letter { color: var(--brick); font: 700 3.3em/.82 var(--display); float: left; margin: .08em .05em 0 -.02em; }
+
+  /* Proof stat line */
+  .stat-row { margin: 26px 0 8px; }
+  #proclamation { padding-block: 40px; }
+  .stat { flex: 1; padding: 14px 6px; text-align: left; font: 21px/1.55 var(--mono); color: var(--ink);
+    background: var(--ink-rule-gold) left top / 100% 10px no-repeat, var(--ink-rule-gold-b) left bottom / 100% 10px no-repeat; }
+  .procl .stat .stat-note { text-align: left; font: 16px/1.4 var(--mono); margin: 4px 0 0; }
+  .lbl { font-family: var(--mono); font-size: 1em; padding: 0 1px 2px; }
+  .lbl.exact { color: var(--sage); } .lbl.caveat { color: #8a6516; } .lbl.unsupported { color: var(--brick); }
+  .nb { white-space: nowrap; }
+  .stat b { color: var(--brick); font-weight: 600; }
+  .stat .sep { color: var(--gold); margin: 0 .5em; }
+
+  /* Signature and the drawn seal */
+  .sign { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 30px; }
+  .sign .by { text-align: right; font: italic 22.5px/1.4 var(--text); color: var(--ink-soft); }
+  .sign .by b { display: block; font: italic 37px/1.2 var(--display); color: var(--ink); }
+  .sign img { width: 140px; height: 140px; margin: -20px -26px -30px 0; filter: drop-shadow(0 4px 5px rgba(50,15,5,.3)); }
+
+  /* Decrees: three small scrolls hung on the wall, with the drawn rollers */
+  .decrees-wrap { max-width: 980px; margin: 0 auto; padding: 0; overflow-x: clip; overflow-clip-margin: 0; }
+  .decrees-h { text-align: center; font: 600 22px var(--display); letter-spacing: .38em;  color: var(--brick); margin: 0 0 6px; }
+  .decrees-sub { text-align: center; font: italic 22.5px var(--text); color: var(--ink-soft); margin: 0 0 22px; }
+  .decrees { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 100px; align-items: start; padding: 0 44px; }
+  .decree { container-type: inline-size; --w: 100cqw; position: relative; }
+  .roller { position: relative; z-index: 2; pointer-events: none; display: block;
+    width: calc(var(--w) * 4 / 3); margin-left: calc(var(--w) * -0.16636);
+    background-repeat: no-repeat; background-size: 100% auto; filter: drop-shadow(0 8px 8px rgba(70,45,20,.26)); }
+  .roller.top { height: calc(var(--w) * 0.17618); background-image: url(assets/gen/scroll-roller-top.png); background-position: 0 calc(var(--w) * -0.13382); }
+  .roller.bottom { height: calc(var(--w) * 0.17680); background-image: url(assets/gen/scroll-roller-bottom.png); background-position: 0 calc(var(--w) * -0.13260); }
+  /* Paper tinted to the roller art and feathered into its paper tail, so the joins are seamless. */
+  .dpaper { position: relative; z-index: 3;
+    margin: calc(var(--w) * -0.026) 0 calc(var(--w) * -0.022);
+    padding: calc(var(--w) * .03) 0 calc(var(--w) * .026);
+    -webkit-mask-image: linear-gradient(transparent, #000 calc(var(--w) * .02), #000 calc(100% - var(--w) * .017), transparent);
+            mask-image: linear-gradient(transparent, #000 calc(var(--w) * .02), #000 calc(100% - var(--w) * .017), transparent);
+    /* No paper of its own: the page parchment shows through, and the scroll's edges are two quill lines. */
+    background: var(--ink-vrule-dark) left -3px top 0 / 10px 100% no-repeat, var(--ink-vrule-dark-b) right -3px top 0 / 10px 100% no-repeat; }
+  .d-head { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; text-align: center; padding: 8px 12px 12px; }
+  .d-head img { width: 92px; height: 92px; object-fit: contain; display: block; margin: 0 auto 2px; transition: transform .4s; }
+  .d-head:hover img { transform: translateY(-3px) rotate(-4deg); }
+  .d-head .realm { display: block; font: 700 27.5px var(--display); color: var(--ink); }
+  .d-head .state { margin-top: 6px; font-size: 16px; }
+  .d-head .cue { display: block; margin-top: 8px; font: 16px var(--mono); color: var(--brick); letter-spacing: .06em; }
+  .d-head .cue::after { content: " ▾"; }
+  .decree.open .d-head .cue::after { content: " ▴"; }
+  .d-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 1.2s cubic-bezier(.45,0,.55,1); }
+  /* Unrolled by hand: smooth ease-in-out, no bounce. The bottom roller's ink bands turn with the paper. */
+  .roller.bottom .spin { position: absolute; left: 12.6%; right: 12.6%; top: 27%; bottom: 8%; overflow: hidden; border-radius: 30px;
+    opacity: 0; mix-blend-mode: multiply; pointer-events: none; transition: opacity .25s; }
+  .rolling .roller.bottom .spin { opacity: .55; }
+  .roller.bottom .spin::before { content: ""; position: absolute; left: 0; right: 0; top: -100%; height: 300%;
+    background: repeating-linear-gradient(180deg, rgba(90,60,25,0) 0 7px, rgba(90,60,25,.35) 8px 9px, rgba(90,60,25,0) 10px 18px);
+    transform: translateY(var(--spin, 0px)); }
+  .d-body > div { overflow: hidden; }
+  .decree.open .d-body { grid-template-rows: 1fr; }
+  .d-text { padding: 4px 20px 16px; font: 22px/1.42 var(--text); color: var(--ink-body); text-align: left; background: var(--ink-rule-gold) left top / 100% 10px no-repeat; margin: 0 14px; padding-left: 4px; padding-right: 4px; }
+  .d-text p { margin: 10px 0; }
+  .d-text ul { margin: 0; padding: 0; list-style: none; font: 18px/1.5 var(--mono); }
+  .d-text li::before { content: "✦ "; color: var(--gold); }
+  .d-text .wax { display: block; text-align: right; font: italic 17px var(--text); color: var(--brick); margin-top: 6px; }
+
+  .summary { max-width: 700px; margin: 0 auto; padding: 26px 0 0; font: 22.5px/1.6 var(--text); color: var(--ink-body);
+    background: var(--ink-rule-faint) left top / 100% 10px no-repeat, var(--ink-rule-faint-b) left 0 top 5px / 100% 10px no-repeat; }
+  .summary h2 { font: 600 29px var(--display); margin: 0 0 10px; color: var(--brick); }
+  .summary ul { padding-left: 20px; margin: 0; } .summary li { margin-bottom: 6px; }
+  .summary code { color: var(--brick); font-family: var(--mono); }
+
+  @media (max-width: 900px) {
+    .decrees { grid-template-columns: 1fr; max-width: 360px; margin: 0 auto; gap: 34px; }
+  }
+  @media (max-width: 760px) {
+    .procl p { font-size: 17px; }
+    .stat-row { flex-direction: column; gap: 8px; }
+    .stat { font-size: 16px; text-align: center; }
+    .procl .stat .stat-note { text-align: center; font-size: 13px; }
+    .stat .sep { display: block; height: 0; overflow: hidden; }
+    .sign { justify-content: center; }
+    .sign img { width: 110px; height: 110px; margin: -10px -14px -20px 0; }
+    .decrees { padding: 0; max-width: none; width: 76vw; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  a.skip { color: var(--ink); text-decoration: none; opacity: 1; } /* ink text with an ink swash (ink.css), no box */
+  a.skip:hover, a.skip:focus-visible { color: var(--brick); }
+</style>
+</head>
+<body>
+<a class="skip ink-under" href="#summary">skip the ceremony</a>
+
+<header class="royal-hero"
+  data-headline="Regular CSS, <em>proven</em> in every realm"
+  data-sub="Hear ye: by order of the Dragon, the proclamation is posted below."
+  data-cue-href="#proclamation"
+  data-cue-label="Read the proclamation"></header>
+
+
+
+<main class="floor">
+<section class="ri-sec" id="proclamation">
+  <article class="procl" aria-label="The proclamation">
+    <img class="ri-sealed" src="assets/kit/letter.png" alt=""><p class="salute ink-lines">Dear Lord Developer,</p>
+    <p class="lead ink-lines">Be it known in every realm: the style you write for the web shall serve the iPhone and the Android as well. Dragon takes regular CSS and, at build time, compiles it into native view properties.</p>
+    <p class="ink-lines">No herald's word is taken on trust. Dragon keeps its own layout engine, and every box it lays out is weighed against Chrome, number by number, never by screenshots.</p>
+    <p class="ink-lines">Nothing is proclaimed supported without a passing test. Each property carries a mark: <span class="nb"><img class="seal-mark" src="assets/kit/seal-exact.png" alt=""><span class="lbl exact">exact</span>,</span> <span class="nb"><img class="seal-mark" src="assets/kit/seal-caveat.png" alt=""><span class="lbl caveat">caveat</span></span> or <span class="nb"><img class="seal-mark" src="assets/kit/seal-unsupported.png" alt=""><span class="lbl unsupported">unsupported</span>.</span></p>
+
+    <div class="ri-proven-row stat-row">
+    <img class="ri-proven" src="assets/kit/proven.png" alt="Proven: 8,671 of 8,671 boxes, to 1/64 px">
+    <div class="stat" aria-label="Proof at the end of milestone 1">
+      <b>137</b> fixtures<span class="sep">·</span><b>258</b> cases<span class="sep">·</span><b>8,671/8,671</b> boxes exact to 1/64&nbsp;px<span class="sep">·</span><b>339,080</b> values identical
+      <p class="stat-note">measured against Chrome at the close of milestone 1</p>
+    </div>
+    </div>
+
+    <div class="sign">
+      <div class="by">By the hand of the Dragon,<b>Keeper of the Styles</b></div>
+      <img src="assets/gen/wax-seal-dragon.png" alt="The Dragon's wax seal">
+    </div>
+  </article>
+</section>
+</main>
+
+<section class="ri-sec" id="decrees" aria-labelledby="decrees-h">
+<div class="decrees-wrap">
+  <img class="ri-icon" src="assets/kit2/scroll-seal.png" alt="">
+  <h2 class="decrees-h" id="decrees-h">The three decrees</h2>
+  <p class="decrees-sub">Unroll each to read what is proven in that realm.</p>
+  <div class="decrees">
+    <section class="decree" data-realm="web">
+      <div class="roller top" aria-hidden="true"></div>
+      <div class="dpaper">
+        <button class="d-head ink-focus" aria-expanded="false" aria-controls="d-web">
+          <img src="assets/kit2/device-web.png" alt="">
+          <span class="realm">The Web</span>
+          <span class="state seal-badge">proven today</span>
+          <span class="cue">unroll the decree</span>
+        </button>
+        <div class="d-body" id="d-web"><div><div class="d-text">
+          <p>The layout engine is checked against Chrome in every test run.</p>
+          <ul><li>137 fixtures, 258 cases pass</li><li>8,671/8,671 boxes exact to 1/64 px</li><li>339,080 values identical</li></ul>
+          <span class="wax">Sealed, milestone 1</span>
+        </div></div></div>
+      </div>
+      <div class="roller bottom" aria-hidden="true"><div class="spin"></div></div>
+    </section>
+
+    <section class="decree" data-realm="ios">
+      <div class="roller top" aria-hidden="true"></div>
+      <div class="dpaper">
+        <button class="d-head ink-focus" aria-expanded="false" aria-controls="d-ios">
+          <img src="assets/kit2/device-ios.png" alt="">
+          <span class="realm">iPhone</span>
+          <span class="state seal-badge caveat">in progress</span>
+          <span class="cue">unroll the decree</span>
+        </button>
+        <div class="d-body" id="d-ios"><div><div class="d-text">
+          <p>Not yet proven, and so not yet claimed. In milestone 2 a native engine is generated from the one TypeScript engine.</p>
+          <ul><li>iOS lane checked against Chrome</li><li>goal: parity with the web</li></ul>
+          <span class="wax">Riding out, milestone 2</span>
+        </div></div></div>
+      </div>
+      <div class="roller bottom" aria-hidden="true"><div class="spin"></div></div>
+    </section>
+
+    <section class="decree" data-realm="android">
+      <div class="roller top" aria-hidden="true"></div>
+      <div class="dpaper">
+        <button class="d-head ink-focus" aria-expanded="false" aria-controls="d-android">
+          <img src="assets/kit2/device-android.png" alt="">
+          <span class="realm">Android</span>
+          <span class="state seal-badge caveat">in progress</span>
+          <span class="cue">unroll the decree</span>
+        </button>
+        <div class="d-body" id="d-android"><div><div class="d-text">
+          <p>Not yet proven, and so not yet claimed. Its engine is generated from the same TypeScript source as the iPhone's.</p>
+          <ul><li>Android lane checked against Chrome</li><li>goal: parity with the web</li></ul>
+          <span class="wax">Riding out, milestone 2</span>
+        </div></div></div>
+      </div>
+      <div class="roller bottom" aria-hidden="true"><div class="spin"></div></div>
+    </section>
+  </div>
+</div>
+</section>
+
+<section class="ri-sec" id="summary">
+<div class="summary">
+  <div class="ri-h"><img src="assets/icons/crown.png" alt=""><h2>Dragon CSS, plainly</h2></div>
+  <ul>
+    <li>Regular CSS, compiled at build time into native view properties.</li>
+    <li>Its own TypeScript layout engine: block, flex, text, positioning, right-to-left.</li>
+    <li>Web: proven today against Chrome by numbers, not screenshots. 137 fixtures, 258 cases, 8,671 of 8,671 boxes exact to 1/64 px, 339,080 computed values identical.</li>
+    <li>iOS and Android: in progress (milestone 2). Native engines are generated from the one TypeScript engine; each device lane is checked against Chrome.</li>
+    <li>Support labels: exact, caveat, unsupported. Nothing is marked supported without a passing test.</li>
+    <li>Install: <code class="mono">npm install dragon</code> (coming soon; not yet published).</li>
+  </ul>
+  <ul class="ri-banners" aria-label="Where each realm stands">
+    <li><img src="assets/kit/banner-conquered.png" alt=""><b>Web</b>proven, milestone 1</li>
+    <li><img src="assets/kit/banner-marching.png" alt=""><b>iOS and Android</b>in progress, milestone 2</li>
+    <li><img src="assets/kit/banner-notyet.png" alt=""><b>Custom properties, 1.0</b>not yet ridden</li>
+  </ul>
+</div>
+</section>
+
+<script>
+(function () {
+  // Decrees unroll on click.
+  document.querySelectorAll('.decree .d-head').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const d = btn.closest('.decree'), open = d.classList.toggle('open');
+      // Turn the roller's ink bands with the same ease-in-out as the paper: forward to unroll, back to roll up.
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const spin = d.querySelector('.roller.bottom .spin'), dist = d.querySelector('.d-text').offsetHeight;
+        d.classList.add('rolling');
+        const t0 = performance.now();
+        const tick = now => { const u = Math.min(1, (now - t0) / 1200); const e = u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+          spin.style.setProperty('--spin', ((open ? 1 : -1) * e * dist * 1.2 % 18) + 'px');
+          if (u < 1) requestAnimationFrame(tick); else d.classList.remove('rolling'); };
+        requestAnimationFrame(tick);
+      }
+      btn.setAttribute('aria-expanded', String(open));
+      btn.querySelector('.cue').textContent = open ? 'roll it up' : 'unroll the decree';
+    });
+  });
+
+})();
+addEventListener('DOMContentLoaded', () => RoyalHero.enableSnapAndFocus('.royal-hero, #proclamation, #decrees, #summary'));
+</script>
+</body>
+</html>
