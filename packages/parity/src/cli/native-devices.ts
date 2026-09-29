@@ -1,4 +1,4 @@
-// pnpm run native:devices [-- --target ios|android] [-- --plant glyph-offset-1] (notes/T015-p4-review-p5-plan.md section 4 items 1
+// pnpm run native:devices [-- --target ios|android] [-- --plant glyph-offset-1|dash-phase-1|dash-gap-unfitted] (notes/T015-p4-review-p5-plan.md section 4 items 1
 // and 5). Without --plant: provisions and verifies the device matrix, one device at a time: boots it headless (emulators by
 // serial), runs the app once, and prints the model, OS and build, the scale from the device profile and from the app, the window
 // and stage in device px, the root's window offset and the text scale; any disagreement, a root that does not fit, or a text scale
@@ -8,7 +8,7 @@ import { SUPPORT_PLANTS } from 'dragon';
 import type { SupportPlant } from 'dragon';
 import { caseReference, dumpFile, evaluateCase, plantVerdict, readDump } from '../device-lanes.ts';
 import type { DeviceSpec } from '../device-run.ts';
-import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, matrixProblems, PLANT_CASE, PLANT_DEVICES, recordProblems, release, runApp } from '../device-run.ts';
+import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, matrixProblems, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, recordProblems, release, runApp } from '../device-run.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BACKEND_OF, buildAndroid, buildIos, nativeCases, nativeOut } from '../native-host.ts';
@@ -63,26 +63,30 @@ if (plant === null) {
   process.exit(failures === 0 ? 0 : 1);
 }
 
-// The raster plant: pixels must see what (d) cannot.
+// The raster plant: pixels must see what (d) cannot, on the plant's cases (PLANT_CASES) and sample rules (PLANT_RULES).
 for (const target of targets) {
   const build = target === 'ios' ? buildIos({ reuse: true, plant }) : buildAndroid({ reuse: true, plant });
   const spec = DEVICE_MATRIX.find((d) => d.name === PLANT_DEVICES[target]);
   if (spec === undefined) throw new Error(`no plant device ${PLANT_DEVICES[target]}`);
-  const n = cases.find((c) => c.case.id === PLANT_CASE);
-  if (n === undefined) throw new Error(`no case ${PLANT_CASE}`);
+  const ns = PLANT_CASES[plant].map((id) => {
+    const n = cases.find((c) => c.case.id === id);
+    if (n === undefined) throw new Error(`no case ${id}`);
+    return n;
+  });
   const h = await boot(spec);
   try {
     const dpr = deviceProfile(h).profileScale;
     const dir = join(nativeOut(target), 'devices', `${spec.name}-${plant}`);
-    const r = await runApp(h, build.artifact, { runFile: runFileText([{ id: n.case.id, points: casePoints(n.programs[BACKEND_OF[target]], n.case.environment.viewport, dpr) }], false), caseCount: 1, outDir: dir });
+    const r = await runApp(h, build.artifact, { runFile: runFileText(ns.map((n) => ({ id: n.case.id, points: casePoints(n.programs[BACKEND_OF[target]], n.case.environment.viewport, dpr) })), false), caseCount: ns.length, outDir: dir });
     if (r.error !== null) log(`${target} ${spec.name} @${dpr} ${plant}: FAIL the host did not finish: ${r.error}`);
-    const file = dumpFile(dir, n.case.id, dpr);
-    const read = readDump(file);
-    const raw = read.kind === 'ok' ? read.raw : read.kind === 'unparseable' ? { unparseable: read.detail } : null;
-    const o = evaluateCase(target, n, dpr, raw, caseReference(target, n, dpr));
-    for (const f of o.failures) log(`${target} ${spec.name} @${dpr} ${plant}: ${f.lane} ${f.kind} ${f.node ?? ''}: ${f.detail}`);
-    const v = plantVerdict(o.failures, r.error);
-    log(`${target} ${spec.name} @${dpr} ${plant} on ${PLANT_CASE}: device-pixels ${v.pixels} failures (${v.inked} on glyph or glyph-edge rules); device-frames ${v.frames}, device-lines ${v.lines} failures${r.error === null ? '' : '; the host did not finish'}: plant ${v.caught ? 'CAUGHT' : 'NOT CAUGHT'}`);
+    const all = ns.flatMap((n) => {
+      const read = readDump(dumpFile(dir, n.case.id, dpr));
+      const raw = read.kind === 'ok' ? read.raw : read.kind === 'unparseable' ? { unparseable: read.detail } : null;
+      return evaluateCase(target, n, dpr, raw, caseReference(target, n, dpr)).failures;
+    });
+    for (const f of all) log(`${target} ${spec.name} @${dpr} ${plant}: ${f.case} ${f.lane} ${f.kind} ${f.node ?? ''}: ${f.detail}`);
+    const v = plantVerdict(all, r.error, PLANT_RULES[plant]);
+    log(`${target} ${spec.name} @${dpr} ${plant} on ${PLANT_CASES[plant].join(', ')}: device-pixels ${v.pixels} failures (${v.inked} on ${PLANT_RULES[plant].source} rules); device-frames ${v.frames}, device-lines ${v.lines} failures${r.error === null ? '' : '; the host did not finish'}: plant ${v.caught ? 'CAUGHT' : 'NOT CAUGHT'}`);
     if (!v.caught) failures++;
   } finally {
     await release(h);
