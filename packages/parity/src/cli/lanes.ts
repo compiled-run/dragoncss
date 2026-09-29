@@ -8,7 +8,7 @@ import { writeFileSync } from 'node:fs';
 import { failuresByKind } from '../device-lanes.ts';
 import { runTargetOnDevices } from '../device-lanes.ts';
 import type { DeviceRun, LaneFault, LanesFile } from '../lanes.ts';
-import { checkLaneParity, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, notPassed, plantLaneFault, readLanesFile, referenceProof, runHostLane, staleLanes, writeLanesFile } from '../lanes.ts';
+import { checkLaneParity, fileStatusProblems, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, notPassed, plantLaneFault, readLanesFile, referenceProof, runHostLane, staleCovers, staleLanes, writeLanesFile } from '../lanes.ts';
 import { repoPath } from '../paths.ts';
 import type { NativeTarget } from '../targets.ts';
 import { nativeTargets } from '../targets.ts';
@@ -64,7 +64,8 @@ if (runHost || runDevice) {
   if (runDevice) {
     for (const t of targets) {
       if (only !== null && t.target !== only) continue;
-      const hostRun = host.get(t.target) ?? hostOf(committed, t.target);
+      // A committed host run judges the device vectors only while it still describes the configuration.
+      const hostRun = host.get(t.target) ?? (committed !== null && staleLanes(committed, targets).some((p) => staleCovers(p, t.target, 'layout-vectors-host')) ? null : hostOf(committed, t.target));
       const d = await runTargetOnDevices(t, hostRun, (l) => console.log(`parity:lanes --run-device ${t.target}: ${l}`));
       device.set(t.target, d);
       const all = d.sets.flatMap((s) => s.failures);
@@ -103,8 +104,11 @@ for (const t of file.targets) {
   for (const r of t.dumpFaults ?? []) console.log(`  dump faults at DPR ${r.dpr}: ${r.rows.map((x) => `${x.fault} ${x.caught}/${x.applicable}`).join(', ')}`);
   for (const r of t.referenceProof ?? []) console.log(`  reference proof DPR ${r.dpr} (${r.role}): ${r.cases} cases, ${r.valid} valid dumps, (a) ${r.chrome}/${r.cases} (${r.chromeCompared} nodes and lines), (d) ${r.engine}/${r.cases} (${r.engineCompared} nodes and lines)`);
 }
-if (problems.length > 0) {
-  console.log(`parity:lanes: parity FAILS:\n  ${problems.join('\n  ')}`);
+// The status is the file's parity (configuration problems plus run-record problems such as an uncaught dump fault), rechecked
+// here for a committed file, not only the configuration problems this process found.
+const status = fileStatusProblems(file, problems);
+if (status.length > 0) {
+  console.log(`parity:lanes: parity FAILS:\n  ${status.join('\n  ')}`);
   exit = 1;
 } else {
   console.log('parity:lanes: lanes, case lists, tolerances, sample rules, dump faults and the projection agree on ios and android');
