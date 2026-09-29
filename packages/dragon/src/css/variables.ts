@@ -36,18 +36,24 @@ function commentEnd(text: string, i: number): number {
   return end < 0 ? text.length : end + 2;
 }
 
-/** The end of a string starting at i (its quote), after its closing quote or at an unescaped newline or the end. */
-function stringEnd(text: string, i: number): number {
+/** The end of a string starting at i (its quote), after its closing quote or at an unescaped newline (a bad string) or the end. */
+function stringEnd(text: string, i: number): { end: number; bad: boolean } {
   const quote = text[i];
   let j = i + 1;
   while (j < text.length) {
     const c = text[j] as string;
     if (c === '\\') j += 2;
-    else if (c === quote) return j + 1;
-    else if (c === '\n') return j;
+    else if (c === quote) return { end: j + 1, bad: false };
+    else if (c === '\n') return { end: j, bad: true };
     else j++;
   }
-  return text.length;
+  return { end: text.length, bad: false };
+}
+
+/** css-syntax-3 §4.3.7: the end of an escape starting at i ("\\"): up to six hex digits and one white space, or one code point. */
+function escapeEnd(text: string, i: number): number {
+  const hex = /^[0-9A-Fa-f]{1,6}(\r\n|[ \t\n\r\f])?/.exec(text.slice(i + 1, i + 9));
+  return hex === null ? i + 2 : i + 1 + hex[0].length;
 }
 
 /** The end of a run of name code points and escapes starting at i. */
@@ -55,11 +61,20 @@ function nameEnd(text: string, i: number): number {
   let j = i;
   while (j < text.length) {
     const c = text[j] as string;
-    if (c === '\\' && j + 1 < text.length && text[j + 1] !== '\n') j += 2;
+    if (c === '\\' && j + 1 < text.length && text[j + 1] !== '\n') j = escapeEnd(text, j);
     else if (isNameChar(c)) j++;
     else break;
   }
   return j;
+}
+
+/** css-syntax-3 §4.3.7: a name with its escapes decoded (so "v\\61 r" is "var"). */
+export function unescapeName(name: string): string {
+  return name.replace(/\\([0-9A-Fa-f]{1,6})(?:\r\n|[ \t\n\r\f])?|\\([\s\S])/g, (_, hex: string | undefined, ch: string | undefined) => {
+    if (hex === undefined) return ch as string;
+    const cp = parseInt(hex, 16);
+    return cp === 0 || (cp >= 0xd800 && cp <= 0xdfff) || cp > 0x10ffff ? '\ufffd' : String.fromCodePoint(cp);
+  });
 }
 
 /** css-syntax-3 §4.3.6: the end of an unquoted url( whose contents start at i, and whether a quote, "(" or inner white space makes it a bad url. */
@@ -107,7 +122,7 @@ function blockEnd(text: string, i: number): number {
   let j = i;
   while (j < text.length) {
     const c = text[j] as string;
-    if (c === '"' || c === "'") j = stringEnd(text, j);
+    if (c === '"' || c === "'") j = stringEnd(text, j).end;
     else if (text.startsWith('/*', j)) j = commentEnd(text, j);
     else if (c === '\\') j += 2;
     else if (c === '(' || c === '[' || c === '{') {
@@ -125,7 +140,7 @@ function blockEnd(text: string, i: number): number {
 
 /**
  * Splits a value into text and var() parts, or returns null when a var() is malformed (css-variables-1 §3: var( <custom-property-name>
- * [ , <declaration-value>? ]? ) ) or the value is not a <declaration-value> (an unmatched ")", "]" or "}", or a bad url()), which
+ * [ , <declaration-value>? ]? ) ) or the value is not a <declaration-value> (an unmatched ")", "]" or "}", a bad string or a bad url()), which
  * makes the declaration invalid at parse time.
  */
 export function parseVarParts(text: string): VarPart[] | null {
@@ -145,7 +160,8 @@ export function parseVarParts(text: string): VarPart[] | null {
       continue;
     }
     if (c === '"' || c === "'") {
-      const e = stringEnd(text, i);
+      const { end: e, bad } = stringEnd(text, i);
+      if (bad) return null;
       literal += text.slice(i, e);
       i = e;
       continue;
@@ -164,7 +180,8 @@ export function parseVarParts(text: string): VarPart[] | null {
         continue;
       }
       const name = text.slice(i, e);
-      if (text[e] === '(' && isIdent(name) && name.toLowerCase() === 'var') {
+      const fn = text[e] === '(' && isIdent(name) ? unescapeName(name).toLowerCase() : null;
+      if (fn === 'var') {
         const close = blockEnd(text, e + 1);
         if (close < 0) return null;
         const ref = parseReference(text.slice(e + 1, close));
@@ -175,7 +192,7 @@ export function parseVarParts(text: string): VarPart[] | null {
         i = close + 1;
         continue;
       }
-      if (text[e] === '(' && isIdent(name) && name.toLowerCase() === 'url') {
+      if (fn === 'url') {
         // css-syntax-3 §4.3.6: an unquoted url( is one token; its contents are never a function.
         const inner = skipBlank(text, e + 1);
         if (text[inner] !== '"' && text[inner] !== "'") {
@@ -202,7 +219,8 @@ function parseReference(inner: string): VarPart | null {
   const start = skipBlank(inner, 0);
   const end = nameEnd(inner, start);
   const name = inner.slice(start, end);
-  if (!name.startsWith('--')) return null;
+  // "--" alone is reserved (css-variables-1 §2); Chrome 145 drops a declaration that references it.
+  if (!name.startsWith('--') || name === '--') return null;
   const after = skipBlank(inner, end);
   if (after === inner.length) return { kind: 'var', name, fallback: null };
   if (inner[after] !== ',') return null;

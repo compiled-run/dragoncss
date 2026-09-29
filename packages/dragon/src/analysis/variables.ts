@@ -30,19 +30,26 @@ export type SubstitutedDeclaration = { readonly declaration: Declaration; readon
 // is of tokens, so "var(--a)var(--b)" with 1 and px is two tokens, never "1px").
 const SEPARATOR = '/**/';
 
-/** Substitutes every var() in parts; null when any reference had neither a value nor a usable fallback. */
+// css-variables-1 §3.3: a longer value is invalid at computed-value time (Blink's kMaxVariableBytes, which counts fewer separators).
+export const MAX_SUBSTITUTED_LENGTH = 2 * 1024 * 1024;
+
+/** Substitutes every var() in parts; null when any reference had neither a value nor a usable fallback, or the result is too long. */
 function substitute(parts: readonly VarPart[], lookup: (name: string) => string | null): string | null {
   let out = '';
   let ok = true;
   for (const p of parts) {
     if (p.kind === 'text') {
-      out += p.text;
-      continue;
+      if (ok) out += p.text;
+    } else {
+      const value = lookup(p.name);
+      const used = value !== null ? value : p.fallback === null ? null : substitute(p.fallback, lookup);
+      if (used === null) ok = false;
+      else if (ok) out += `${SEPARATOR}${used}${SEPARATOR}`;
     }
-    const value = lookup(p.name);
-    const used = value !== null ? value : p.fallback === null ? null : substitute(p.fallback, lookup);
-    if (used === null) ok = false;
-    else out += `${SEPARATOR}${used}${SEPARATOR}`;
+    if (out.length > MAX_SUBSTITUTED_LENGTH) {
+      ok = false;
+      out = '';
+    }
   }
   return ok ? out : null;
 }
