@@ -1,0 +1,142 @@
+{
+ "platform": "darwin-arm64",
+ "macos": "26.6.2",
+ "probe": "docs/research/text-spike/metric-rounding/coretext-probe.swift",
+ "faces": [
+  {
+   "file": "Ahem.ttf",
+   "sha256": "b719ecb31c5b21fc573c03f6421c74ac63c271a5a3ff841e34f9705fb94b8448",
+   "unitsPerEm": 1000,
+   "hhea": {
+    "ascender": 800,
+    "descender": -200,
+    "lineGap": 0
+   }
+  },
+  {
+   "file": "Inter/Inter-Light.ttf",
+   "sha256": "164414f0aacbe98a7e64addc43f7b3bfd2e32f7b90e101feeab227f14c371bda",
+   "unitsPerEm": 2048,
+   "hhea": {
+    "ascender": 1984,
+    "descender": -494,
+    "lineGap": 0
+   }
+  },
+  {
+   "file": "Inter/Inter-Regular.ttf",
+   "sha256": "40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+   "unitsPerEm": 2048,
+   "hhea": {
+    "ascender": 1984,
+    "descender": -494,
+    "lineGap": 0
+   }
+  },
+  {
+   "file": "Inter/Inter-Italic.ttf",
+   "sha256": "bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+   "unitsPerEm": 2048,
+   "hhea": {
+    "ascender": 1984,
+    "descender": -494,
+    "lineGap": 0
+   }
+  },
+  {
+   "file": "Inter/Inter-Bold.ttf",
+   "sha256": "288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f",
+   "unitsPerEm": 2048,
+   "hhea": {
+    "ascender": 1984,
+    "descender": -494,
+    "lineGap": 0
+   }
+  },
+  {
+   "file": "Inter/Inter-BoldItalic.ttf",
+   "sha256": "948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d",
+   "unitsPerEm": 2048,
+   "hhea": {
+    "ascender": 1984,
+    "descender": -494,
+    "lineGap": 0
+   }
+  },
+  {
+   "file": "Lato/Lato-Regular.ttf",
+   "sha256": "d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+   "unitsPerEm": 2000,
+   "hhea": {
+    "ascender": 1974,
+    "descender": -426,
+    "lineGap": 0
+   }
+  },
+  {
+   "file": "Lato/Lato-Bold.ttf",
+   "sha256": "8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1",
+   "unitsPerEm": 2000,
+   "hhea": {
+    "ascender": 1974,
+    "descender": -426,
+    "lineGap": 0
+   }
+  }
+ ],
+ "sweep": {
+  "from": 0.01,
+  "to": 192,
+  "step": 0.01,
+  "perFace": [
+   {
+    "file": "Ahem.ttf",
+    "sizes": 19200,
+    "rawSha256": "b876e150c67cfaccdb546655f33e3fab6df7504a4753729ad9b9f7431383e159",
+    "formulaMismatches": 0
+   },
+   {
+    "file": "Inter/Inter-Light.ttf",
+    "sizes": 19200,
+    "rawSha256": "fc973be915fa2b21e99e6b6945b48f6189f28807f2ff26ee49ea74e335167af4",
+    "formulaMismatches": 0
+   },
+   {
+    "file": "Inter/Inter-Regular.ttf",
+    "sizes": 19200,
+    "rawSha256": "fc973be915fa2b21e99e6b6945b48f6189f28807f2ff26ee49ea74e335167af4",
+    "formulaMismatches": 0
+   },
+   {
+    "file": "Inter/Inter-Italic.ttf",
+    "sizes": 19200,
+    "rawSha256": "fc973be915fa2b21e99e6b6945b48f6189f28807f2ff26ee49ea74e335167af4",
+    "formulaMismatches": 0
+   },
+   {
+    "file": "Inter/Inter-Bold.ttf",
+    "sizes": 19200,
+    "rawSha256": "fc973be915fa2b21e99e6b6945b48f6189f28807f2ff26ee49ea74e335167af4",
+    "formulaMismatches": 0
+   },
+   {
+    "file": "Inter/Inter-BoldItalic.ttf",
+    "sizes": 19200,
+    "rawSha256": "fc973be915fa2b21e99e6b6945b48f6189f28807f2ff26ee49ea74e335167af4",
+    "formulaMismatches": 0
+   },
+   {
+    "file": "Lato/Lato-Regular.ttf",
+    "sizes": 19200,
+    "rawSha256": "4139a3eaefb531591faabeea715fced3479847a6961f6a81e948755dee0124ed",
+    "formulaMismatches": 0
+   },
+   {
+    "file": "Lato/Lato-Bold.ttf",
+    "sizes": 19200,
+    "rawSha256": "4139a3eaefb531591faabeea715fced3479847a6961f6a81e948755dee0124ed",
+    "formulaMismatches": 0
+   }
+  ]
+ }
+}

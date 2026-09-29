@@ -295,3 +295,30 @@ export function distributedOffset(mode: DistributedMode, free: LU, n: number, k:
   if (mode === 'space-around') return add(cumulativeShareTruncated(free, 1, 2 * n), cumulativeShareRounded(free, k, n));
   return add(cumulativeShareTruncated(free, 1, n + 1), cumulativeShareRounded(free, k, n + 1));
 }
+
+// Shaping arithmetic (TXT1-S, shaping.ts): HarfBuzz positions are 16.16 fixed point, Blink's InlineLayoutUnit (FixedPoint<16, int64>).
+
+/** InlineLayoutUnit::ToFloat: static_cast<float>(raw) / 65536, in float. */
+export function inlineToFloat(raw: number): number {
+  return Math.fround(Math.fround(raw) / 65536);
+}
+
+/** float + float, in float: how Blink sums ShapeResult run widths and ShapeResultView part widths. */
+export function floatAdd(a: number, b: number): number {
+  return Math.fround(a + b);
+}
+
+/** InlineLayoutUnit::ToCeil<LayoutUnit>: a 16.16 value as 1/64 px, rounded up (raw / 1024 is exact in a double). */
+export function inlineToLayoutUnitCeil(raw: number): LU {
+  return saturate(Math.ceil(raw / 1024));
+}
+
+/**
+ * R5, traced (docs/research/text-spike/metric-rounding): Core Text keeps a vertical metric as a 16.16 fraction of the em and returns
+ * (fraction * upem) * (size / upem) in CGFloat; Skia stores it as a float and Blink rounds with SkScalarRoundToScalar, floorf(x + 0.5f).
+ * Probed for sizes 0.01 to 192 px; Skia measures sizes above 256 px on a 64 px strike, which this does not model.
+ */
+export function roundCoreTextMetricToWholePx(units: number, unitsPerEm: number, sizePx: number): LU {
+  const coreText = ((Math.round((units * 65536) / unitsPerEm) * unitsPerEm) / 65536) * (sizePx / unitsPerEm);
+  return fromWholePx(Math.floor(Math.fround(Math.fround(coreText) + 0.5)));
+}
