@@ -19,11 +19,12 @@ Code reaches `master` only through a pull request that Macroscope has reviewed. 
 1. **Branch.** Work on a branch, never on `master`. Keep one change per branch. Put regenerated outputs (vectors, captures, expected files) in their own commit whose message names the command that produced them.
 2. **Verify.** Run `pnpm typecheck` and `pnpm test` before pushing.
 3. **Open the PR.** `git push -u origin <branch>`, then `gh pr create --base master --title '...' --body '...'`. In the body, say what changed and exactly what passed. Give a written reason for every tolerance, check, test or fixture the PR changes or removes.
-4. **Read the review.** Run `pnpm pr:review <number> --wait`. It waits for CI and Macroscope, then lists failed checks and every Macroscope finding nobody has answered. Macroscope re-reviews each push.
-5. **Answer every finding.** Either fix it and push, or reply in its thread with why it's intentional: `gh api repos/compiled-run/dragoncss/pulls/<number>/comments/<id>/replies -f body='...'`. Never reply only to clear the list, and never edit `.macroscope/` to silence a finding. If the fix would break a rule above, stop and report it.
-6. **Merge.** When `pnpm pr:review <number>` exits 0, run `gh pr merge <number> --merge --delete-branch`. A failed check blocks the merge. Report it instead of retrying until it goes green.
+4. **Read the review.** Run `pnpm pr:review <number> --wait`. It waits for CI and then for Macroscope's correctness review of the latest commit, and lists failed checks and every Macroscope finding nobody has answered. Macroscope only posts findings of Medium severity or higher, so every one it lists matters.
+5. **Answer every finding.** Fix it, push, and reply `Fixed in <sha>` in its thread; or reply with why the code is intentional. Reply with `gh api repos/compiled-run/dragoncss/pulls/<number>/comments/<id>/replies -f body='...'`. Never reply only to clear the list, and never edit `.macroscope/` to silence a finding. If a fix would break a rule above, stop and report it.
+6. **Repeat until Macroscope is done.** Every push gets a new review, which may find new issues. Go back to step 4 until a review of the latest commit leaves nothing unanswered. After five rounds that still find new issues, stop and report instead of merging.
+7. **Merge.** When `pnpm pr:review <number>` exits 0, run `gh pr merge <number> --merge --delete-branch` without asking. A failed check blocks the merge: fix the cause, or report it. Never retry until it goes green.
 
 Two cases may push straight to `master`: PM board updates that touch only `docs/goals/**`, and the owner asking for a direct push.
 
-Workers dispatched in worktrees stop at step 3 and return the PR number in their receipt. The PM runs steps 4–6, or sends the findings back to a worker.
+Workers dispatched in worktrees stop at step 3 and return the PR number in their receipt. The PM runs steps 4–7, or sends the findings back to a worker.
 

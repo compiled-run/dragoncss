@@ -27,9 +27,14 @@ const sha = gh(['pr', 'view', pr, '--json', 'headRefOid', '--jq', '.headRefOid']
 const checkRuns = (): CheckRun[] =>
   (JSON.parse(gh(['api', `repos/${repo}/commits/${sha}/check-runs?per_page=100`])) as { check_runs: CheckRun[] }).check_runs;
 
+// Macroscope's correctness review starts only after CI passes, so a green CI alone is not "done"; a failed check ends the wait.
+const CORRECTNESS = 'Macroscope - Correctness Check';
+const settled = (rs: CheckRun[]): boolean =>
+  rs.length > 0 && rs.every((r) => r.status === 'completed') && (rs.some((r) => r.name === CORRECTNESS) || rs.some((r) => !passed(r)));
+
 let runs = checkRuns();
 const deadline = Date.now() + 45 * 60_000;
-while (wait && (runs.length === 0 || runs.some((r) => r.status !== 'completed')) && Date.now() < deadline) {
+while (wait && !settled(runs) && Date.now() < deadline) {
   await new Promise((resolve) => setTimeout(resolve, 30_000));
   runs = checkRuns();
 }
@@ -46,6 +51,7 @@ console.log(`\nUnanswered Macroscope findings: ${open.length}`);
 for (const c of open) console.log(`\n--- ${c.path}:${c.line ?? '?'} (comment ${c.id})\n${c.html_url}\n${c.body.trim()}`);
 
 const pending = runs.filter((r) => r.status !== 'completed');
+if (!runs.some((r) => r.name === CORRECTNESS)) pending.push({ name: CORRECTNESS, status: 'not started', conclusion: null, html_url: '' });
 const failed = runs.filter((r) => r.status === 'completed' && !passed(r));
 if (pending.length > 0) console.log(`\nStill running: ${pending.map((r) => r.name).join(', ')}`);
 if (failed.length > 0) console.log(`\nFailed: ${failed.map((r) => r.name).join(', ')}`);
