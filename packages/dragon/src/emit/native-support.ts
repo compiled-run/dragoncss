@@ -1551,10 +1551,50 @@ export const STYLE_FIELDS = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height', 'minWidth', 'minHeight',
   'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
   'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order',
-  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign',
+  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'grid', 'gridItem',
 ] as const;
 
-const VALUE_CLASSES: Readonly<Record<string, string>> = { px: 'Px', percent: 'Percent', auto: 'Auto', none: 'NoneValue', content: 'ContentValue', normal: 'NormalValue', number: 'NumberValue', 'device-px': 'DevicePx' };
+const VALUE_CLASSES: Readonly<Record<string, string>> = {
+  px: 'Px', percent: 'Percent', auto: 'Auto', none: 'NoneValue', content: 'ContentValue', normal: 'NormalValue', number: 'NumberValue', 'device-px': 'DevicePx',
+  fr: 'Fr', 'min-content': 'MinContent', 'max-content': 'MaxContent',
+};
+
+/** The translated engine's union type of TrackSize (grid.ts input), the element type of a track-size array. */
+const TRACK_SIZE_UNION = 'U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax';
+
+/** A typed array of the translated engine: JsArray in Swift, jsArrayOf in Kotlin. */
+function engineArray(lang: Lang, elem: string, union: boolean, items: readonly string[]): string {
+  return lang === 'swift' ? `JsArray<${union ? 'any ' : ''}${elem}>([${items.join(', ')}])` : `jsArrayOf<${elem}>(${items.join(', ')})`;
+}
+
+type TrackSizeInput = import('@dragon/layout').TrackSize;
+type GridSpanInput = import('@dragon/layout').GridSpan;
+
+function trackSizeValue(lang: Lang, t: TrackSizeInput, str: (s: string) => string): string {
+  if (t.kind === 'breadth') return `TrackSize_breadth(${str('breadth')}, ${engineValue(lang, t.breadth)})`;
+  if (t.kind === 'minmax') return `TrackSize_minmax(${str('minmax')}, ${engineValue(lang, t.min)}, ${engineValue(lang, t.max)})`;
+  return `TrackSize_fitContent(${str('fit-content')}, ${engineValue(lang, t.limit)})`;
+}
+
+function gridSpanValue(lang: Lang, s: GridSpanInput, str: (s: string) => string): string {
+  return s.kind === 'definite' ? `GridSpan_definite(${str('definite')}, ${doubleLit(s.start)}, ${doubleLit(s.end)})` : `GridSpan_auto(${str('auto')}, ${doubleLit(s.span)})`;
+}
+
+/** The grid and gridItem fields of a LayoutStyle (css-grid-2; input.ts GridContainerStyle and GridItemStyle), or null. */
+function gridValue(lang: Lang, field: 'grid' | 'gridItem', v: unknown, str: (s: string) => string): string {
+  if (v === null) return lang === 'swift' ? 'nil' : 'null';
+  if (field === 'gridItem') {
+    const g = v as import('@dragon/layout').GridItemStyle;
+    return `GridItemStyle(${gridSpanValue(lang, g.column, str)}, ${gridSpanValue(lang, g.row, str)}, ${str(g.justifySelf)})`;
+  }
+  const g = v as import('@dragon/layout').GridContainerStyle;
+  const sizes = (ts: readonly TrackSizeInput[]): string => engineArray(lang, TRACK_SIZE_UNION, true, ts.map((t) => trackSizeValue(lang, t, str)));
+  const reps = (rs: readonly import('@dragon/layout').TrackRepeater[]): string => engineArray(lang, 'TrackRepeater', false, rs.map((r) => `TrackRepeater(${doubleLit(r.count)}, ${sizes(r.sizes)})`));
+  return `GridContainerStyle(${[
+    reps(g.templateColumns), reps(g.templateRows), sizes(g.autoColumns), sizes(g.autoRows), doubleLit(g.explicitColumnCount), doubleLit(g.explicitRowCount),
+    str(g.autoFlow), g.dense ? 'true' : 'false', str(g.justifyItems),
+  ].join(', ')})`;
+}
 
 /** A typed engine value as a constructor call of the translated engine. */
 function engineValue(lang: Lang, v: unknown): string {
@@ -1580,7 +1620,11 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
     const kids = b.children.map((c) => (c.kind === 'box'
       ? `${visit(c)}()`
       : `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, TextFont(${str(c.font.family)}, ${doubleLit(c.font.size)}), ${engineValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)})`));
-    const style = `LayoutStyle(${STYLE_FIELDS.map((f) => engineValue(lang, (b.style as unknown as Record<string, unknown>)[f])).join(', ')})`;
+    const fieldValue = (f: (typeof STYLE_FIELDS)[number]): string => {
+      const v = (b.style as unknown as Record<string, unknown>)[f];
+      return f === 'grid' || f === 'gridItem' ? gridValue(lang, f, v, str) : engineValue(lang, v);
+    };
+    const style = `LayoutStyle(${STYLE_FIELDS.map(fieldValue).join(', ')})`;
     const arr = lang === 'swift' ? `JsArray<any U_LayoutBox_TextLeaf>([${kids.join(', ')}])` : `jsArrayOf<U_LayoutBox_TextLeaf>(${kids.join(', ')})`;
     const body = `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${style}, ${arr})`;
     decls.push(lang === 'swift' ? `private func ${name}() -> LayoutBox {\n  return ${body}\n}` : `private fun ${name}(): LayoutBox =\n  ${body}`);

@@ -11,7 +11,9 @@ export type UnsupportedCode =
   | 'flex-baseline'
   | 'flex-basis-content'
   | 'flex-wrap-indefinite-main'
-  | 'flex-intrinsic-wrap-column';
+  | 'flex-intrinsic-wrap-column'
+  | 'grid-baseline'
+  | 'grid-abspos';
 
 export type LayoutUnsupported = {
   readonly code: UnsupportedCode;

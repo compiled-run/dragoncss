@@ -19,6 +19,8 @@ import {
   sumEdges,
 } from './box.ts';
 import { layoutFlexContainer } from './flex.ts';
+import type { GridFaults } from './grid.ts';
+import { layoutGridContainer } from './grid.ts';
 import { layoutInline } from './inline.ts';
 import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffset } from './position.ts';
 import type { TextMeasurer } from './text.ts';
@@ -75,7 +77,8 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   initialLineWidthZoomed: false,
 };
 
-export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
+/** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */
+export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults; readonly gridFaults: GridFaults };
 
 /** css-writing-modes-4 §2.1: the box's inline base direction. */
 export function directionOf(ctx: Ctx, box: LayoutBox): Direction {
@@ -160,6 +163,22 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
       },
       childBasis,
       sizeIsFlexDependent: a.forcedBorderBoxHeight !== null && !a.forcedHeightDefinite,
+    });
+    const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
+    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
+    return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
+  }
+
+  if (s.display === 'grid') {
+    const r = layoutGridContainer(ctx, box, {
+      pad,
+      bor,
+      contentWidth,
+      definiteInnerHeight: fixedBorderBox === null ? null : contentBox(fixedBorderBox, vbp),
+      innerHeightMinMax: {
+        min: contentBox(minMax.min, vbp),
+        max: minMax.max === null ? null : contentBox(minMax.max, vbp),
+      },
     });
     const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
     const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
