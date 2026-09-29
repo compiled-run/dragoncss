@@ -27,6 +27,14 @@ export type CompilerFaults = {
   readonly attributeCaseAlwaysSensitive: boolean;
   /** A rule whose selector list Chrome drops (one selector it does not parse) keeps its other selectors. */
   readonly invalidSelectorListKept: boolean;
+  /** The web output writes a pinned generic as authored instead of its pinned family. */
+  readonly pinnedGenericNotRewritten: boolean;
+  /** The web output omits the @font-face rules of the pinned and declared faces. */
+  readonly fontFaceNotEmitted: boolean;
+  /** The compilation digest leaves out the font manifest. */
+  readonly fontManifestOutOfDigest: boolean;
+  /** A family that is neither declared nor mapped is accepted without a diagnostic. */
+  readonly unmappedFamilyAccepted: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false };

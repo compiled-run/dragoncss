@@ -36,17 +36,20 @@ export type SnapshotAsset = { readonly id: string; readonly hash: string; readon
 
 export type CollectedFontFaces = { readonly results: readonly FontFaceResult[]; readonly problems: readonly FontWireProblem[] };
 
+/** Resolves a relative src URL of the @font-face rule in context (whose span names its stylesheet source) to its snapshot asset. */
+export type ContextAssetResolver = (specifier: string, context: AtRuleContext) => ReturnType<FontAssetResolver>;
+
 /**
  * Parses the accepted @font-face at-rules in document order with font-face.ts. resolveUrl maps a relative src URL to its snapshot
  * asset. Contexts of any other at-rule are skipped.
  */
-export function collectFontFaces(contexts: readonly AtRuleContext[], resolveUrl: FontAssetResolver): CollectedFontFaces {
+export function collectFontFaces(contexts: readonly AtRuleContext[], resolveUrl: ContextAssetResolver): CollectedFontFaces {
   const results: FontFaceResult[] = [];
   const problems: FontWireProblem[] = [];
   for (const context of contexts) {
     if (asciiLower(context.name) !== 'font-face') continue;
     const order = results.length;
-    const result = parseFontFace(context.node, order, resolveUrl);
+    const result = parseFontFace(context.node, order, (specifier) => resolveUrl(specifier, context));
     results.push(result);
     for (const issue of result.issues) problems.push({ kind: 'font-face', blocking: FONT_FACE_ERRORS.has(issue.kind), source: { kind: 'rule', context, order }, issue });
   }

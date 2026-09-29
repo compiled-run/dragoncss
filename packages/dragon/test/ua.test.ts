@@ -115,6 +115,11 @@ describe('dependency boundaries', () => {
       "import { serializeColor } from '../css/color.ts';",
       "import { LONGHANDS } from '../css/properties.ts';",
       "import type { CssValue } from '../css/stylesheet.ts';",
+      // TXT1-C: the font-family rewrite through the font map, from the resolved value alone.
+      "import { familyListText } from '../css/values.ts';",
+      "import { parseFamilyList } from '../fonts/family-list.ts';",
+      "import { rewriteFamilyList } from '../fonts/font-map.ts';",
+      "import type { FontMap } from '../fonts/font-map.ts';",
       "import type { GeneratedFile } from '../types.ts';",
     ]);
     expect(text).not.toMatch(/selectorMatches|compoundMatches|\.selectors|\.classes|\.attributes|parseStylesheet|resolveTree/);
