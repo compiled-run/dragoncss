@@ -9,6 +9,7 @@ import { list, spanOf } from './ast.ts';
 import type { Longhand } from './properties.ts';
 import type { LonghandValue, ParsedValue } from './stylesheet.ts';
 import type { FontBases } from './units.ts';
+import { V1_MATH_FUNCTIONS } from './math.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, mathFunctionRefusal, normalizeUnit, unitEntry, unitRefusal } from './units.ts';
 import type { CssValue } from './values.ts';
 import { CSS_WIDE, kw } from './values.ts';
@@ -162,6 +163,13 @@ function escaped(property: string, t: CssNode, inNames: boolean): boolean {
   return !LINE_PROPERTIES.has(property) || reservedName(t);
 }
 
+/** calc(), min(), max() and clamp(), which V1 of the value model lowers only for box lengths, not inside grid values. */
+function trackMathRefusal(name: string): { reason: string; fix: string } | null {
+  const lower = name.toLowerCase();
+  if (!V1_MATH_FUNCTIONS.has(lower)) return null;
+  return { reason: `${lower}() is a css-values-4 math function, which grid values take only with the grid engine`, fix: 'Write the size as px, a percentage, fr or a keyword.' };
+}
+
 /**
  * The first token Dragon cannot express: an escaped function name, unit or keyword, a unit with no build-time conversion or a math
  * function at any depth, or the top-level subgrid keyword of a track list.
@@ -171,7 +179,7 @@ function refusal(property: string, tokens: readonly CssNode[], base: Span, top =
     let found: { reason: string; fix: string } | null = null;
     if (escaped(property, t, inNames)) found = { reason: ESCAPE_REASON, fix: ESCAPE_FIX };
     else if (t.type === 'Dimension') found = unitRefusal(normalizeUnit(String(t['unit'])));
-    else if (t.type === 'Function') found = mathFunctionRefusal(String(t['name']));
+    else if (t.type === 'Function') found = mathFunctionRefusal(String(t['name'])) ?? trackMathRefusal(String(t['name']));
     else if (top && SUBGRID_PROPERTIES.has(property) && lowerIdent(t) === 'subgrid') found = { reason: SUBGRID_REASON, fix: 'Give the element its own track list.' };
     if (found !== null) {
       return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${found.reason}`, manual: found.fix }) };
