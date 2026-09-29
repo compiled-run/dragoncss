@@ -2,7 +2,7 @@
 import type { LayoutBox, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, fromCssPx, max, min, sum, ZERO, mulInt } from './units.ts';
-import { borderBoxFromSpecified, resolveBorder, sumEdges } from './box.ts';
+import { borderBoxFromSpecified, hasPercent, resolveBorder, resolveLength, sumEdges } from './box.ts';
 import type { Ctx } from './block.ts';
 import { inlineIntrinsicSize } from './inline.ts';
 import { isOutOfFlow } from './position.ts';
@@ -30,7 +30,8 @@ export function intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: Intri
 export function inlineContribution(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
   const s = box.style;
   const bor = resolveBorder(s, ctx.devicePixelRatio);
-  const pad = (v: typeof s.paddingLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : ZERO);
+  // A calculation evaluates against a basis of 0 (Blink MinimumValueForLength with no percentage resolution size): calc(10px + 5%) is 10px.
+  const pad = (v: typeof s.paddingLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : v.kind === 'calc' ? resolveLength(v, ZERO, ctx.faults) : ZERO);
   const bp = sumEdges(bor.left, bor.right, pad(s.paddingLeft), pad(s.paddingRight));
   let size: LU;
   if (s.width.kind === 'px') size = borderBoxFromSpecified(fromCssPx(s.width.value), bp, s.boxSizing);
@@ -38,7 +39,7 @@ export function inlineContribution(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind
   if (s.maxWidth.kind === 'px') size = min(size, borderBoxFromSpecified(fromCssPx(s.maxWidth.value), bp, s.boxSizing));
   if (s.minWidth.kind === 'px') size = max(size, borderBoxFromSpecified(fromCssPx(s.minWidth.value), bp, s.boxSizing));
   size = max(size, bp);
-  const margin = (v: typeof s.marginLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : ZERO);
+  const margin = (v: typeof s.marginLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : v.kind === 'calc' ? resolveLength(v, ZERO, ctx.faults) : ZERO);
   return add(size, add(margin(s.marginLeft), margin(s.marginRight)));
 }
 
@@ -56,8 +57,8 @@ function flexIntrinsicContent(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU
     return widest;
   }
   const gap = s.columnGap;
-  if (gap.kind === 'percent') unsupported('percent-gap', box.id, 'css-align-3 §8.1', 'percentage gap (not yet supported)');
-  const gapLu = gap.kind === 'px' ? fromCssPx(gap.value) : ZERO;
+  if (gap.kind !== 'normal' && hasPercent(gap)) unsupported('percent-gap', box.id, 'css-align-3 §8.1', 'percentage gap (not yet supported)');
+  const gapLu = gap.kind === 'normal' ? ZERO : resolveLength(gap, ZERO, ctx.faults);
   const gaps = items.length > 1 ? mulInt(gapLu, items.length - 1) : ZERO;
   return add(sum(contributions), gaps);
 }

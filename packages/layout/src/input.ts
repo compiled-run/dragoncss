@@ -9,23 +9,67 @@ export type ContentValue = { readonly kind: 'content' };
 export type NormalValue = { readonly kind: 'normal' };
 export type NumberValue = { readonly kind: 'number'; readonly value: number };
 
-export type SizeValue = Px | Percent | Auto;
-export type MinSizeValue = Px | Percent | Auto;
-export type MaxSizeValue = Px | Percent | NoneValue;
-export type MarginValue = Px | Percent | Auto;
-export type PaddingValue = Px | Percent;
+/** A viewport-percentage length (css-values-4 §6.1.2); the compiler maps vi and vb to width and height (horizontal writing mode). */
+export type ViewportLength = { readonly kind: 'viewport'; readonly value: number; readonly axis: 'width' | 'height' | 'min' | 'max' };
+/**
+ * A font-relative length inside a math function: value * float(fontSize * zoom) (Blink css_length_resolver.cc kEms, kRems). The
+ * compiler writes fontSize as the specified font size in px: the element's for em, the root's at text scale 1 for rem.
+ */
+export type EmLength = { readonly kind: 'em'; readonly value: number; readonly fontSize: CalcExpr };
+/** Terms added left to right; a subtracted term arrives negated. */
+export type CalcSum = { readonly kind: 'sum'; readonly terms: readonly CalcExpr[] };
+/** Factors multiplied left to right. */
+export type CalcProduct = { readonly kind: 'product'; readonly terms: readonly CalcExpr[] };
+/** 1 / term: a division by term is a product with its inverse (Blink CSSMathExpressionOperation::CreateArithmeticOperation). */
+export type CalcInvert = { readonly kind: 'invert'; readonly term: CalcExpr };
+export type CalcMin = { readonly kind: 'min'; readonly terms: readonly CalcExpr[] };
+export type CalcMax = { readonly kind: 'max'; readonly terms: readonly CalcExpr[] };
+export type CalcClamp = { readonly kind: 'clamp'; readonly min: CalcExpr; readonly value: CalcExpr; readonly max: CalcExpr };
+/** Blink PixelsAndPercent in zoomed px, written only by the environment pass (environment.ts): pixels + percent / 100 * basis in float. */
+export type PixelsAndPercent = {
+  readonly kind: 'pixels-and-percent';
+  readonly pixels: number;
+  readonly percent: number;
+  readonly explicitPixels: boolean;
+  readonly explicitPercent: boolean;
+};
+/**
+ * A css-values-4 §10 calculation. The compiler writes the tree after Blink's parse-time simplification, with CSS-level leaves;
+ * the environment pass rewrites it into Blink's CalculationExpression shape (numbers and pixels-and-percent leaves) in zoomed px.
+ */
+export type CalcExpr =
+  | Px
+  | Percent
+  | NumberValue
+  | ViewportLength
+  | EmLength
+  | CalcSum
+  | CalcProduct
+  | CalcInvert
+  | CalcMin
+  | CalcMax
+  | CalcClamp
+  | PixelsAndPercent;
+/** A math function in a length property; non-negative clamps the result to 0 (Blink CalculationValue::Evaluate). */
+export type LengthCalc = { readonly kind: 'calc'; readonly expr: CalcExpr; readonly range: 'all' | 'non-negative' };
+
+export type SizeValue = Px | Percent | Auto | LengthCalc;
+export type MinSizeValue = Px | Percent | Auto | LengthCalc;
+export type MaxSizeValue = Px | Percent | NoneValue | LengthCalc;
+export type MarginValue = Px | Percent | Auto | LengthCalc;
+export type PaddingValue = Px | Percent | LengthCalc;
 /**
  * R5 (Chrome deviation initial-line-width-unzoomed, chrome-deviations-dpr.ts): an initial line width in device px. Blink stores
  * the initial border width 3 in zoomed px without ZoomedComputedPixels, so it stays 3 device px at every pixel ratio. The compiler
  * writes it only for a border width that is its initial value (no width declared, or a shorthand that omits it).
  */
 export type DevicePx = { readonly kind: 'device-px'; readonly value: number };
-/** The computed border width before device-pixel snapping, which the engine applies for the environment: CSS px, or R5 device px. */
-export type BorderWidthValue = Px | DevicePx;
-export type FlexBasisValue = Px | Percent | Auto | ContentValue;
-export type GapValue = Px | Percent | NormalValue;
+/** The computed border width before device-pixel snapping, which the engine applies for the environment: CSS px, R5 device px, or a calculation without a percentage. */
+export type BorderWidthValue = Px | DevicePx | LengthCalc;
+export type FlexBasisValue = Px | Percent | Auto | ContentValue | LengthCalc;
+export type GapValue = Px | Percent | NormalValue | LengthCalc;
 /** CSS2 §9.3.2 box offsets (css-position-3 inset properties). */
-export type InsetValue = Px | Percent | Auto;
+export type InsetValue = Px | Percent | Auto | LengthCalc;
 export type LineHeightValue = NormalValue | NumberValue | Px;
 
 /** display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. */

@@ -30,8 +30,15 @@ export const SNAP_DPRS: readonly number[] = [1, 2, 3, 2.625];
 /** units-m2: the zoom model (R1 and the length and font zoom), R2 FromFloatRound, the snap rule and the R4 range width. */
 export const UNITS_M2_FUNCTIONS = ['fromFloatRound', 'zoomCssPx', 'zoomFontSize', 'zoomViewportPx', 'snapEdge', 'cachedRangeWidth'] as const;
 
-/** Every engine fault, initialLineWidthZoomed included: the extended engine suite draws from all of them. */
-const ALL_FAULT_NAMES = Object.keys(NO_ENGINE_FAULTS) as (keyof EngineFaults)[];
+/**
+ * The engine faults engine-dpr draws from: every fault up to P2b (initialLineWidthZoomed included), fixed so its inputs do not move
+ * when a package adds faults (V1 adds the calc faults, which engine-calc draws).
+ */
+const ALL_FAULT_NAMES: readonly (keyof EngineFaults)[] = [
+  'breakOffByOne', 'rtlAsLtr', 'ignoreOrder', 'baselineFromBorderTop', 'scrollMinAuto', 'absposInFlow', 'cbIgnoresPadding',
+  'staticPosLtr', 'relativeShiftsFlow', 'metricHalfUp', 'untruncatedFontSize', 'halfLeadingSpec', 'minMaxEndMarginSpec',
+  'wrapReverseBaselineSpec', 'initialLineWidthZoomed',
+];
 
 // ---------------------------------------------------------------- vectors
 

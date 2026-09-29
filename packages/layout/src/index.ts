@@ -32,3 +32,7 @@ export type { Char as InlineChar, Line as InlineLine, Run as InlineRun } from '.
 export { breakLines, buildRun } from './inline.ts';
 export type { Ctx } from './block.ts';
 export { resolvePadding } from './box.ts';
+export type { DprPlatformRule, DprPlatformRuleNode } from './platform-rules.ts';
+export { dprPlatformRules } from './platform-rules.ts';
+export type { CalcClamp, CalcExpr, CalcInvert, CalcMax, CalcMin, CalcProduct, CalcSum, EmLength, LengthCalc, PixelsAndPercent, ViewportLength } from './input.ts';
+export { applyEnvironment } from './environment.ts';
