@@ -1,0 +1,6634 @@
+{
+ "chrome": "145.0.7632.6",
+ "playwright": "1.58.2",
+ "platform": "darwin-arm64",
+ "macos": "26.6.2",
+ "launches": [
+  {
+   "dpr": 1,
+   "flags": [
+    "--force-device-scale-factor=1",
+    "--force-color-profile=srgb",
+    "--font-render-hinting=none",
+    "--disable-lcd-text",
+    "--hide-scrollbars"
+   ]
+  },
+  {
+   "dpr": 2,
+   "flags": [
+    "--force-device-scale-factor=2",
+    "--force-color-profile=srgb",
+    "--font-render-hinting=none",
+    "--disable-lcd-text",
+    "--hide-scrollbars"
+   ]
+  },
+  {
+   "dpr": 2.625,
+   "flags": [
+    "--force-device-scale-factor=2.625",
+    "--force-color-profile=srgb",
+    "--font-render-hinting=none",
+    "--disable-lcd-text",
+    "--hide-scrollbars"
+   ]
+  },
+  {
+   "dpr": 3,
+   "flags": [
+    "--force-device-scale-factor=3",
+    "--force-color-profile=srgb",
+    "--font-render-hinting=none",
+    "--disable-lcd-text",
+    "--hide-scrollbars"
+   ]
+  }
+ ],
+ "fonts": {
+  "Ahem.ttf": "b719ecb31c5b21fc573c03f6421c74ac63c271a5a3ff841e34f9705fb94b8448",
+  "Inter/Inter-Light.ttf": "164414f0aacbe98a7e64addc43f7b3bfd2e32f7b90e101feeab227f14c371bda",
+  "Inter/Inter-Regular.ttf": "40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+  "Inter/Inter-Italic.ttf": "bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+  "Inter/Inter-Bold.ttf": "288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f",
+  "Inter/Inter-BoldItalic.ttf": "948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d",
+  "Lato/Lato-Regular.ttf": "d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+  "Lato/Lato-Bold.ttf": "8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1"
+ },
+ "selection": "CSS sizes 1 to 64 px in hundredths whose device size gives an exact n.5 ascent or descent, or where the traced, half-up and half-down rules disagree",
+ "rows": [
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 2.5,
+   "deviceSize": 2.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 2.0000076293945312,
+    "descent": 0.49999237060546875,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 2,
+    "descent": 0.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 2,
+     "descent": 0
+    },
+    "lineBox": {
+     "ascent": 2,
+     "descent": 0,
+     "height": 2
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 2,
+    "markerTop": 2,
+    "boxTop": 0,
+    "boxHeight": 2
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 2,
+     "descent": 0
+    },
+    "halfUp": {
+     "ascent": 2,
+     "descent": 1
+    },
+    "halfDown": {
+     "ascent": 2,
+     "descent": 0
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 7.5,
+   "deviceSize": 7.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 6.000022888183594,
+    "descent": 1.4999771118164062,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 6,
+    "descent": 1.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 6,
+     "descent": 1
+    },
+    "lineBox": {
+     "ascent": 6,
+     "descent": 1,
+     "height": 7
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 7,
+    "markerTop": 6,
+    "boxTop": 0,
+    "boxHeight": 7
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 6,
+     "descent": 1
+    },
+    "halfUp": {
+     "ascent": 6,
+     "descent": 2
+    },
+    "halfDown": {
+     "ascent": 6,
+     "descent": 1
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 12.5,
+   "deviceSize": 12.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 10.000038146972656,
+    "descent": 2.4999618530273438,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 10,
+    "descent": 2.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 10,
+     "descent": 2
+    },
+    "lineBox": {
+     "ascent": 10,
+     "descent": 2,
+     "height": 12
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 12,
+    "markerTop": 10,
+    "boxTop": 0,
+    "boxHeight": 12
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 10,
+     "descent": 2
+    },
+    "halfUp": {
+     "ascent": 10,
+     "descent": 3
+    },
+    "halfDown": {
+     "ascent": 10,
+     "descent": 2
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 17.5,
+   "deviceSize": 17.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 14.00005340576172,
+    "descent": 3.4999465942382817,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 14,
+    "descent": 3.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 14,
+     "descent": 3
+    },
+    "lineBox": {
+     "ascent": 14,
+     "descent": 3,
+     "height": 17
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 17,
+    "markerTop": 14,
+    "boxTop": 0,
+    "boxHeight": 17
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 14,
+     "descent": 3
+    },
+    "halfUp": {
+     "ascent": 14,
+     "descent": 4
+    },
+    "halfDown": {
+     "ascent": 14,
+     "descent": 3
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 22.5,
+   "deviceSize": 22.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 18.00006866455078,
+    "descent": 4.499931335449219,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 18,
+    "descent": 4.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 18,
+     "descent": 4
+    },
+    "lineBox": {
+     "ascent": 18,
+     "descent": 4,
+     "height": 22
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 22,
+    "markerTop": 18,
+    "boxTop": 0,
+    "boxHeight": 22
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 18,
+     "descent": 4
+    },
+    "halfUp": {
+     "ascent": 18,
+     "descent": 5
+    },
+    "halfDown": {
+     "ascent": 18,
+     "descent": 4
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 27.5,
+   "deviceSize": 27.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 22.000083923339844,
+    "descent": 5.499916076660156,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 22,
+    "descent": 5.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 22,
+     "descent": 5
+    },
+    "lineBox": {
+     "ascent": 22,
+     "descent": 5,
+     "height": 27
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 27,
+    "markerTop": 22,
+    "boxTop": 0,
+    "boxHeight": 27
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 22,
+     "descent": 5
+    },
+    "halfUp": {
+     "ascent": 22,
+     "descent": 6
+    },
+    "halfDown": {
+     "ascent": 22,
+     "descent": 5
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 32.5,
+   "deviceSize": 32.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 26.000099182128906,
+    "descent": 6.499900817871094,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 26,
+    "descent": 6.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 26,
+     "descent": 6
+    },
+    "lineBox": {
+     "ascent": 26,
+     "descent": 6,
+     "height": 32
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 32,
+    "markerTop": 26,
+    "boxTop": 0,
+    "boxHeight": 32
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 26,
+     "descent": 6
+    },
+    "halfUp": {
+     "ascent": 26,
+     "descent": 7
+    },
+    "halfDown": {
+     "ascent": 26,
+     "descent": 6
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 32.51,
+   "deviceSize": 32.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 26.000099182128906,
+    "descent": 6.499900817871094,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 26,
+    "descent": 6.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 26,
+     "descent": 6
+    },
+    "lineBox": {
+     "ascent": 26,
+     "descent": 6,
+     "height": 32
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 32,
+    "markerTop": 26,
+    "boxTop": 0,
+    "boxHeight": 32
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 26,
+     "descent": 6
+    },
+    "halfUp": {
+     "ascent": 26,
+     "descent": 7
+    },
+    "halfDown": {
+     "ascent": 26,
+     "descent": 6
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 37.5,
+   "deviceSize": 37.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 30.00011444091797,
+    "descent": 7.499885559082031,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 30,
+    "descent": 7.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 30,
+     "descent": 7
+    },
+    "lineBox": {
+     "ascent": 30,
+     "descent": 7,
+     "height": 37
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 37,
+    "markerTop": 30,
+    "boxTop": 0,
+    "boxHeight": 37
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 30,
+     "descent": 7
+    },
+    "halfUp": {
+     "ascent": 30,
+     "descent": 8
+    },
+    "halfDown": {
+     "ascent": 30,
+     "descent": 7
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 37.51,
+   "deviceSize": 37.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 30.00011444091797,
+    "descent": 7.499885559082031,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 30,
+    "descent": 7.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 30,
+     "descent": 7
+    },
+    "lineBox": {
+     "ascent": 30,
+     "descent": 7,
+     "height": 37
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 37,
+    "markerTop": 30,
+    "boxTop": 0,
+    "boxHeight": 37
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 30,
+     "descent": 7
+    },
+    "halfUp": {
+     "ascent": 30,
+     "descent": 8
+    },
+    "halfDown": {
+     "ascent": 30,
+     "descent": 7
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 42.5,
+   "deviceSize": 42.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 34.00012969970703,
+    "descent": 8.499870300292969,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 34,
+    "descent": 8.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 34,
+     "descent": 8
+    },
+    "lineBox": {
+     "ascent": 34,
+     "descent": 8,
+     "height": 42
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 42,
+    "markerTop": 34,
+    "boxTop": 0,
+    "boxHeight": 42
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 34,
+     "descent": 8
+    },
+    "halfUp": {
+     "ascent": 34,
+     "descent": 9
+    },
+    "halfDown": {
+     "ascent": 34,
+     "descent": 8
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 47.5,
+   "deviceSize": 47.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 38.000144958496094,
+    "descent": 9.499855041503906,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 38,
+    "descent": 9.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 38,
+     "descent": 9
+    },
+    "lineBox": {
+     "ascent": 38,
+     "descent": 9,
+     "height": 47
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 47,
+    "markerTop": 38,
+    "boxTop": 0,
+    "boxHeight": 47
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 38,
+     "descent": 9
+    },
+    "halfUp": {
+     "ascent": 38,
+     "descent": 10
+    },
+    "halfDown": {
+     "ascent": 38,
+     "descent": 9
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 52.5,
+   "deviceSize": 52.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 42.000160217285156,
+    "descent": 10.499839782714844,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 42,
+    "descent": 10.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 42,
+     "descent": 10
+    },
+    "lineBox": {
+     "ascent": 42,
+     "descent": 10,
+     "height": 52
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 52,
+    "markerTop": 42,
+    "boxTop": 0,
+    "boxHeight": 52
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 42,
+     "descent": 10
+    },
+    "halfUp": {
+     "ascent": 42,
+     "descent": 11
+    },
+    "halfDown": {
+     "ascent": 42,
+     "descent": 10
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 57.5,
+   "deviceSize": 57.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.00017547607422,
+    "descent": 11.499824523925781,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46,
+    "descent": 11.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 46,
+     "descent": 11
+    },
+    "lineBox": {
+     "ascent": 46,
+     "descent": 11,
+     "height": 57
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 57,
+    "markerTop": 46,
+    "boxTop": 0,
+    "boxHeight": 57
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 46,
+     "descent": 11
+    },
+    "halfUp": {
+     "ascent": 46,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 11
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 1,
+   "cssSize": 62.5,
+   "deviceSize": 62.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 50.00019073486328,
+    "descent": 12.499809265136719,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 50,
+    "descent": 12.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 50,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 50,
+     "descent": 12,
+     "height": 62
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 62,
+    "markerTop": 50,
+    "boxTop": 0,
+    "boxHeight": 62
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 50,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 50,
+     "descent": 13
+    },
+    "halfDown": {
+     "ascent": 50,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Light.ttf",
+   "dpr": 1,
+   "cssSize": 16,
+   "deviceSize": 16,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 15.5,
+    "descent": 3.859375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 15.5,
+    "descent": 3.859375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "lineBox": {
+     "ascent": 16,
+     "descent": 4,
+     "height": 20
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 20,
+    "markerTop": 16,
+    "boxTop": 0,
+    "boxHeight": 20
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfUp": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfDown": {
+     "ascent": 15,
+     "descent": 4
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Light.ttf",
+   "dpr": 1,
+   "cssSize": 48,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 59,
+    "markerTop": 47,
+    "boxTop": 0,
+    "boxHeight": 59
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Regular.ttf",
+   "dpr": 1,
+   "cssSize": 16,
+   "deviceSize": 16,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 15.5,
+    "descent": 3.859375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 15.5,
+    "descent": 3.859375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "lineBox": {
+     "ascent": 16,
+     "descent": 4,
+     "height": 20
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 20,
+    "markerTop": 16,
+    "boxTop": 0,
+    "boxHeight": 20
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfUp": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfDown": {
+     "ascent": 15,
+     "descent": 4
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Regular.ttf",
+   "dpr": 1,
+   "cssSize": 48,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 59,
+    "markerTop": 47,
+    "boxTop": 0,
+    "boxHeight": 59
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Italic.ttf",
+   "dpr": 1,
+   "cssSize": 16,
+   "deviceSize": 16,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 15.5,
+    "descent": 3.859375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 15.5,
+    "descent": 3.859375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "lineBox": {
+     "ascent": 16,
+     "descent": 4,
+     "height": 20
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 20,
+    "markerTop": 16,
+    "boxTop": 0,
+    "boxHeight": 20
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfUp": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfDown": {
+     "ascent": 15,
+     "descent": 4
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Italic.ttf",
+   "dpr": 1,
+   "cssSize": 48,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 59,
+    "markerTop": 47,
+    "boxTop": 0,
+    "boxHeight": 59
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Bold.ttf",
+   "dpr": 1,
+   "cssSize": 16,
+   "deviceSize": 16,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 15.5,
+    "descent": 3.859375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 15.5,
+    "descent": 3.859375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "lineBox": {
+     "ascent": 16,
+     "descent": 4,
+     "height": 20
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 20,
+    "markerTop": 16,
+    "boxTop": 0,
+    "boxHeight": 20
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfUp": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfDown": {
+     "ascent": 15,
+     "descent": 4
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Bold.ttf",
+   "dpr": 1,
+   "cssSize": 48,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 59,
+    "markerTop": 47,
+    "boxTop": 0,
+    "boxHeight": 59
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-BoldItalic.ttf",
+   "dpr": 1,
+   "cssSize": 16,
+   "deviceSize": 16,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 15.5,
+    "descent": 3.859375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 15.5,
+    "descent": 3.859375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "lineBox": {
+     "ascent": 16,
+     "descent": 4,
+     "height": 20
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 20,
+    "markerTop": 16,
+    "boxTop": 0,
+    "boxHeight": 20
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfUp": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfDown": {
+     "ascent": 15,
+     "descent": 4
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-BoldItalic.ttf",
+   "dpr": 1,
+   "cssSize": 48,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 59,
+    "markerTop": 47,
+    "boxTop": 0,
+    "boxHeight": 59
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 1.25,
+   "deviceSize": 2.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 2.0000076293945312,
+    "descent": 0.49999237060546875,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 2,
+    "descent": 0.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 2,
+     "descent": 0
+    },
+    "lineBox": {
+     "ascent": 2,
+     "descent": 0,
+     "height": 2
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 1,
+    "markerTop": 1,
+    "boxTop": 0,
+    "boxHeight": 1
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 2,
+     "descent": 0
+    },
+    "halfUp": {
+     "ascent": 2,
+     "descent": 1
+    },
+    "halfDown": {
+     "ascent": 2,
+     "descent": 0
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 3.75,
+   "deviceSize": 7.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 6.000022888183594,
+    "descent": 1.4999771118164062,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 6,
+    "descent": 1.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 6,
+     "descent": 1
+    },
+    "lineBox": {
+     "ascent": 6,
+     "descent": 1,
+     "height": 7
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 3.5,
+    "markerTop": 3,
+    "boxTop": 0,
+    "boxHeight": 3.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 6,
+     "descent": 1
+    },
+    "halfUp": {
+     "ascent": 6,
+     "descent": 2
+    },
+    "halfDown": {
+     "ascent": 6,
+     "descent": 1
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 6.25,
+   "deviceSize": 12.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 10.000038146972656,
+    "descent": 2.4999618530273438,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 10,
+    "descent": 2.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 10,
+     "descent": 2
+    },
+    "lineBox": {
+     "ascent": 10,
+     "descent": 2,
+     "height": 12
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 6,
+    "markerTop": 5,
+    "boxTop": 0,
+    "boxHeight": 6
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 10,
+     "descent": 2
+    },
+    "halfUp": {
+     "ascent": 10,
+     "descent": 3
+    },
+    "halfDown": {
+     "ascent": 10,
+     "descent": 2
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 8.75,
+   "deviceSize": 17.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 14.00005340576172,
+    "descent": 3.4999465942382817,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 14,
+    "descent": 3.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 14,
+     "descent": 3
+    },
+    "lineBox": {
+     "ascent": 14,
+     "descent": 3,
+     "height": 17
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 8.5,
+    "markerTop": 7,
+    "boxTop": 0,
+    "boxHeight": 8.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 14,
+     "descent": 3
+    },
+    "halfUp": {
+     "ascent": 14,
+     "descent": 4
+    },
+    "halfDown": {
+     "ascent": 14,
+     "descent": 3
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 11.25,
+   "deviceSize": 22.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 18.00006866455078,
+    "descent": 4.499931335449219,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 18,
+    "descent": 4.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 18,
+     "descent": 4
+    },
+    "lineBox": {
+     "ascent": 18,
+     "descent": 4,
+     "height": 22
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 11,
+    "markerTop": 9,
+    "boxTop": 0,
+    "boxHeight": 11
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 18,
+     "descent": 4
+    },
+    "halfUp": {
+     "ascent": 18,
+     "descent": 5
+    },
+    "halfDown": {
+     "ascent": 18,
+     "descent": 4
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 13.75,
+   "deviceSize": 27.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 22.000083923339844,
+    "descent": 5.499916076660156,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 22,
+    "descent": 5.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 22,
+     "descent": 5
+    },
+    "lineBox": {
+     "ascent": 22,
+     "descent": 5,
+     "height": 27
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 13.5,
+    "markerTop": 11,
+    "boxTop": 0,
+    "boxHeight": 13.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 22,
+     "descent": 5
+    },
+    "halfUp": {
+     "ascent": 22,
+     "descent": 6
+    },
+    "halfDown": {
+     "ascent": 22,
+     "descent": 5
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 16.25,
+   "deviceSize": 32.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 26.000099182128906,
+    "descent": 6.499900817871094,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 26,
+    "descent": 6.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 26,
+     "descent": 6
+    },
+    "lineBox": {
+     "ascent": 26,
+     "descent": 6,
+     "height": 32
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 16,
+    "markerTop": 13,
+    "boxTop": 0,
+    "boxHeight": 16
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 26,
+     "descent": 6
+    },
+    "halfUp": {
+     "ascent": 26,
+     "descent": 7
+    },
+    "halfDown": {
+     "ascent": 26,
+     "descent": 6
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 18.75,
+   "deviceSize": 37.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 30.00011444091797,
+    "descent": 7.499885559082031,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 30,
+    "descent": 7.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 30,
+     "descent": 7
+    },
+    "lineBox": {
+     "ascent": 30,
+     "descent": 7,
+     "height": 37
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 18.5,
+    "markerTop": 15,
+    "boxTop": 0,
+    "boxHeight": 18.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 30,
+     "descent": 7
+    },
+    "halfUp": {
+     "ascent": 30,
+     "descent": 8
+    },
+    "halfDown": {
+     "ascent": 30,
+     "descent": 7
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 21.25,
+   "deviceSize": 42.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 34.00012969970703,
+    "descent": 8.499870300292969,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 34,
+    "descent": 8.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 34,
+     "descent": 8
+    },
+    "lineBox": {
+     "ascent": 34,
+     "descent": 8,
+     "height": 42
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 21,
+    "markerTop": 17,
+    "boxTop": 0,
+    "boxHeight": 21
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 34,
+     "descent": 8
+    },
+    "halfUp": {
+     "ascent": 34,
+     "descent": 9
+    },
+    "halfDown": {
+     "ascent": 34,
+     "descent": 8
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 23.75,
+   "deviceSize": 47.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 38.000144958496094,
+    "descent": 9.499855041503906,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 38,
+    "descent": 9.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 38,
+     "descent": 9
+    },
+    "lineBox": {
+     "ascent": 38,
+     "descent": 9,
+     "height": 47
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 23.5,
+    "markerTop": 19,
+    "boxTop": 0,
+    "boxHeight": 23.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 38,
+     "descent": 9
+    },
+    "halfUp": {
+     "ascent": 38,
+     "descent": 10
+    },
+    "halfDown": {
+     "ascent": 38,
+     "descent": 9
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 26.25,
+   "deviceSize": 52.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 42.000160217285156,
+    "descent": 10.499839782714844,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 42,
+    "descent": 10.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 42,
+     "descent": 10
+    },
+    "lineBox": {
+     "ascent": 42,
+     "descent": 10,
+     "height": 52
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 26,
+    "markerTop": 21,
+    "boxTop": 0,
+    "boxHeight": 26
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 42,
+     "descent": 10
+    },
+    "halfUp": {
+     "ascent": 42,
+     "descent": 11
+    },
+    "halfDown": {
+     "ascent": 42,
+     "descent": 10
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 28.75,
+   "deviceSize": 57.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.00017547607422,
+    "descent": 11.499824523925781,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46,
+    "descent": 11.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 46,
+     "descent": 11
+    },
+    "lineBox": {
+     "ascent": 46,
+     "descent": 11,
+     "height": 57
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 28.5,
+    "markerTop": 23,
+    "boxTop": 0,
+    "boxHeight": 28.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 46,
+     "descent": 11
+    },
+    "halfUp": {
+     "ascent": 46,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 11
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 31.25,
+   "deviceSize": 62.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 50.00019073486328,
+    "descent": 12.499809265136719,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 50,
+    "descent": 12.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 50,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 50,
+     "descent": 12,
+     "height": 62
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 31,
+    "markerTop": 25,
+    "boxTop": 0,
+    "boxHeight": 31
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 50,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 50,
+     "descent": 13
+    },
+    "halfDown": {
+     "ascent": 50,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 33.75,
+   "deviceSize": 67.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 54.00020599365235,
+    "descent": 13.499794006347656,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 54,
+    "descent": 13.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 54,
+     "descent": 13
+    },
+    "lineBox": {
+     "ascent": 54,
+     "descent": 13,
+     "height": 67
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 33.5,
+    "markerTop": 27,
+    "boxTop": 0,
+    "boxHeight": 33.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 54,
+     "descent": 13
+    },
+    "halfUp": {
+     "ascent": 54,
+     "descent": 14
+    },
+    "halfDown": {
+     "ascent": 54,
+     "descent": 13
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 36.25,
+   "deviceSize": 72.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 58.0002212524414,
+    "descent": 14.499778747558592,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 58,
+    "descent": 14.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 58,
+     "descent": 14
+    },
+    "lineBox": {
+     "ascent": 58,
+     "descent": 14,
+     "height": 72
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 36,
+    "markerTop": 29,
+    "boxTop": 0,
+    "boxHeight": 36
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 58,
+     "descent": 14
+    },
+    "halfUp": {
+     "ascent": 58,
+     "descent": 15
+    },
+    "halfDown": {
+     "ascent": 58,
+     "descent": 14
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 38.75,
+   "deviceSize": 77.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 62.00023651123047,
+    "descent": 15.499763488769531,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 62,
+    "descent": 15.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 62,
+     "descent": 15
+    },
+    "lineBox": {
+     "ascent": 62,
+     "descent": 15,
+     "height": 77
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 38.5,
+    "markerTop": 31,
+    "boxTop": 0,
+    "boxHeight": 38.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 62,
+     "descent": 15
+    },
+    "halfUp": {
+     "ascent": 62,
+     "descent": 16
+    },
+    "halfDown": {
+     "ascent": 62,
+     "descent": 15
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 41.25,
+   "deviceSize": 82.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 66.00025177001953,
+    "descent": 16.49974822998047,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 66,
+    "descent": 16.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 66,
+     "descent": 16
+    },
+    "lineBox": {
+     "ascent": 66,
+     "descent": 16,
+     "height": 82
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 41,
+    "markerTop": 33,
+    "boxTop": 0,
+    "boxHeight": 41
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 66,
+     "descent": 16
+    },
+    "halfUp": {
+     "ascent": 66,
+     "descent": 17
+    },
+    "halfDown": {
+     "ascent": 66,
+     "descent": 16
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 43.75,
+   "deviceSize": 87.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 70.0002670288086,
+    "descent": 17.499732971191406,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 70,
+    "descent": 17.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 70,
+     "descent": 17
+    },
+    "lineBox": {
+     "ascent": 70,
+     "descent": 17,
+     "height": 87
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 43.5,
+    "markerTop": 35,
+    "boxTop": 0,
+    "boxHeight": 43.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 70,
+     "descent": 17
+    },
+    "halfUp": {
+     "ascent": 70,
+     "descent": 18
+    },
+    "halfDown": {
+     "ascent": 70,
+     "descent": 17
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 46.25,
+   "deviceSize": 92.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 74.00028228759766,
+    "descent": 18.499717712402344,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 74,
+    "descent": 18.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 74,
+     "descent": 18
+    },
+    "lineBox": {
+     "ascent": 74,
+     "descent": 18,
+     "height": 92
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 46,
+    "markerTop": 37,
+    "boxTop": 0,
+    "boxHeight": 46
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 74,
+     "descent": 18
+    },
+    "halfUp": {
+     "ascent": 74,
+     "descent": 19
+    },
+    "halfDown": {
+     "ascent": 74,
+     "descent": 18
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 48.75,
+   "deviceSize": 97.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 78.00029754638672,
+    "descent": 19.49970245361328,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 78,
+    "descent": 19.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "lineBox": {
+     "ascent": 78,
+     "descent": 19,
+     "height": 97
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 48.5,
+    "markerTop": 39,
+    "boxTop": 0,
+    "boxHeight": 48.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "halfUp": {
+     "ascent": 78,
+     "descent": 20
+    },
+    "halfDown": {
+     "ascent": 78,
+     "descent": 19
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 51.25,
+   "deviceSize": 102.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 82.00031280517578,
+    "descent": 20.49968719482422,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 82,
+    "descent": 20.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 82,
+     "descent": 20
+    },
+    "lineBox": {
+     "ascent": 82,
+     "descent": 20,
+     "height": 102
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 51,
+    "markerTop": 41,
+    "boxTop": 0,
+    "boxHeight": 51
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 82,
+     "descent": 20
+    },
+    "halfUp": {
+     "ascent": 82,
+     "descent": 21
+    },
+    "halfDown": {
+     "ascent": 82,
+     "descent": 20
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 53.75,
+   "deviceSize": 107.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 86.00032806396484,
+    "descent": 21.499671936035156,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 86,
+    "descent": 21.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 86,
+     "descent": 21
+    },
+    "lineBox": {
+     "ascent": 86,
+     "descent": 21,
+     "height": 107
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 53.5,
+    "markerTop": 43,
+    "boxTop": 0,
+    "boxHeight": 53.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 86,
+     "descent": 21
+    },
+    "halfUp": {
+     "ascent": 86,
+     "descent": 22
+    },
+    "halfDown": {
+     "ascent": 86,
+     "descent": 21
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 56.25,
+   "deviceSize": 112.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 90.0003433227539,
+    "descent": 22.499656677246094,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 90,
+    "descent": 22.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 90,
+     "descent": 22
+    },
+    "lineBox": {
+     "ascent": 90,
+     "descent": 22,
+     "height": 112
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 56,
+    "markerTop": 45,
+    "boxTop": 0,
+    "boxHeight": 56
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 90,
+     "descent": 22
+    },
+    "halfUp": {
+     "ascent": 90,
+     "descent": 23
+    },
+    "halfDown": {
+     "ascent": 90,
+     "descent": 22
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 58.75,
+   "deviceSize": 117.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 94.00035858154297,
+    "descent": 23.49964141845703,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 94,
+    "descent": 23.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 94,
+     "descent": 23
+    },
+    "lineBox": {
+     "ascent": 94,
+     "descent": 23,
+     "height": 117
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 58.5,
+    "markerTop": 47,
+    "boxTop": 0,
+    "boxHeight": 58.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 94,
+     "descent": 23
+    },
+    "halfUp": {
+     "ascent": 94,
+     "descent": 24
+    },
+    "halfDown": {
+     "ascent": 94,
+     "descent": 23
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 61.25,
+   "deviceSize": 122.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 98.00037384033203,
+    "descent": 24.49962615966797,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 98,
+    "descent": 24.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 98,
+     "descent": 24
+    },
+    "lineBox": {
+     "ascent": 98,
+     "descent": 24,
+     "height": 122
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 61,
+    "markerTop": 49,
+    "boxTop": 0,
+    "boxHeight": 61
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 98,
+     "descent": 24
+    },
+    "halfUp": {
+     "ascent": 98,
+     "descent": 25
+    },
+    "halfDown": {
+     "ascent": 98,
+     "descent": 24
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2,
+   "cssSize": 63.75,
+   "deviceSize": 127.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 102.0003890991211,
+    "descent": 25.499610900878906,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 102,
+    "descent": 25.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 102,
+     "descent": 25
+    },
+    "lineBox": {
+     "ascent": 102,
+     "descent": 25,
+     "height": 127
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 63.5,
+    "markerTop": 51,
+    "boxTop": 0,
+    "boxHeight": 63.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 102,
+     "descent": 25
+    },
+    "halfUp": {
+     "ascent": 102,
+     "descent": 26
+    },
+    "halfDown": {
+     "ascent": 102,
+     "descent": 25
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Light.ttf",
+   "dpr": 2,
+   "cssSize": 8,
+   "deviceSize": 16,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 15.5,
+    "descent": 3.859375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 15.5,
+    "descent": 3.859375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "lineBox": {
+     "ascent": 16,
+     "descent": 4,
+     "height": 20
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 10,
+    "markerTop": 8,
+    "boxTop": 0,
+    "boxHeight": 10
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfUp": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfDown": {
+     "ascent": 15,
+     "descent": 4
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Light.ttf",
+   "dpr": 2,
+   "cssSize": 24,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 29.5,
+    "markerTop": 23.5,
+    "boxTop": 0,
+    "boxHeight": 29.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Light.ttf",
+   "dpr": 2,
+   "cssSize": 40,
+   "deviceSize": 80,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 77.5,
+    "descent": 19.296875,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 77.5,
+    "descent": 19.296875
+   },
+   "chrome": {
+    "range": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "lineBox": {
+     "ascent": 78,
+     "descent": 19,
+     "height": 97
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 48.5,
+    "markerTop": 39,
+    "boxTop": 0,
+    "boxHeight": 48.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "halfUp": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "halfDown": {
+     "ascent": 77,
+     "descent": 19
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Light.ttf",
+   "dpr": 2,
+   "cssSize": 56,
+   "deviceSize": 112,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 108.5,
+    "descent": 27.015625,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 108.5,
+    "descent": 27.015625
+   },
+   "chrome": {
+    "range": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "lineBox": {
+     "ascent": 109,
+     "descent": 27,
+     "height": 136
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 68,
+    "markerTop": 54.5,
+    "boxTop": 0,
+    "boxHeight": 68
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfUp": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfDown": {
+     "ascent": 108,
+     "descent": 27
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Regular.ttf",
+   "dpr": 2,
+   "cssSize": 8,
+   "deviceSize": 16,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 15.5,
+    "descent": 3.859375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 15.5,
+    "descent": 3.859375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "lineBox": {
+     "ascent": 16,
+     "descent": 4,
+     "height": 20
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 10,
+    "markerTop": 8,
+    "boxTop": 0,
+    "boxHeight": 10
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfUp": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfDown": {
+     "ascent": 15,
+     "descent": 4
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Regular.ttf",
+   "dpr": 2,
+   "cssSize": 24,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 29.5,
+    "markerTop": 23.5,
+    "boxTop": 0,
+    "boxHeight": 29.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Regular.ttf",
+   "dpr": 2,
+   "cssSize": 40,
+   "deviceSize": 80,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 77.5,
+    "descent": 19.296875,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 77.5,
+    "descent": 19.296875
+   },
+   "chrome": {
+    "range": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "lineBox": {
+     "ascent": 78,
+     "descent": 19,
+     "height": 97
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 48.5,
+    "markerTop": 39,
+    "boxTop": 0,
+    "boxHeight": 48.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "halfUp": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "halfDown": {
+     "ascent": 77,
+     "descent": 19
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Regular.ttf",
+   "dpr": 2,
+   "cssSize": 56,
+   "deviceSize": 112,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 108.5,
+    "descent": 27.015625,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 108.5,
+    "descent": 27.015625
+   },
+   "chrome": {
+    "range": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "lineBox": {
+     "ascent": 109,
+     "descent": 27,
+     "height": 136
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 68,
+    "markerTop": 54.5,
+    "boxTop": 0,
+    "boxHeight": 68
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfUp": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfDown": {
+     "ascent": 108,
+     "descent": 27
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Italic.ttf",
+   "dpr": 2,
+   "cssSize": 8,
+   "deviceSize": 16,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 15.5,
+    "descent": 3.859375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 15.5,
+    "descent": 3.859375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "lineBox": {
+     "ascent": 16,
+     "descent": 4,
+     "height": 20
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 10,
+    "markerTop": 8,
+    "boxTop": 0,
+    "boxHeight": 10
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfUp": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfDown": {
+     "ascent": 15,
+     "descent": 4
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Italic.ttf",
+   "dpr": 2,
+   "cssSize": 24,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 29.5,
+    "markerTop": 23.5,
+    "boxTop": 0,
+    "boxHeight": 29.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Italic.ttf",
+   "dpr": 2,
+   "cssSize": 40,
+   "deviceSize": 80,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 77.5,
+    "descent": 19.296875,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 77.5,
+    "descent": 19.296875
+   },
+   "chrome": {
+    "range": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "lineBox": {
+     "ascent": 78,
+     "descent": 19,
+     "height": 97
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 48.5,
+    "markerTop": 39,
+    "boxTop": 0,
+    "boxHeight": 48.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "halfUp": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "halfDown": {
+     "ascent": 77,
+     "descent": 19
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Italic.ttf",
+   "dpr": 2,
+   "cssSize": 56,
+   "deviceSize": 112,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 108.5,
+    "descent": 27.015625,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 108.5,
+    "descent": 27.015625
+   },
+   "chrome": {
+    "range": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "lineBox": {
+     "ascent": 109,
+     "descent": 27,
+     "height": 136
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 68,
+    "markerTop": 54.5,
+    "boxTop": 0,
+    "boxHeight": 68
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfUp": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfDown": {
+     "ascent": 108,
+     "descent": 27
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Bold.ttf",
+   "dpr": 2,
+   "cssSize": 8,
+   "deviceSize": 16,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 15.5,
+    "descent": 3.859375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 15.5,
+    "descent": 3.859375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "lineBox": {
+     "ascent": 16,
+     "descent": 4,
+     "height": 20
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 10,
+    "markerTop": 8,
+    "boxTop": 0,
+    "boxHeight": 10
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfUp": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfDown": {
+     "ascent": 15,
+     "descent": 4
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Bold.ttf",
+   "dpr": 2,
+   "cssSize": 24,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 29.5,
+    "markerTop": 23.5,
+    "boxTop": 0,
+    "boxHeight": 29.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Bold.ttf",
+   "dpr": 2,
+   "cssSize": 40,
+   "deviceSize": 80,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 77.5,
+    "descent": 19.296875,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 77.5,
+    "descent": 19.296875
+   },
+   "chrome": {
+    "range": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "lineBox": {
+     "ascent": 78,
+     "descent": 19,
+     "height": 97
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 48.5,
+    "markerTop": 39,
+    "boxTop": 0,
+    "boxHeight": 48.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "halfUp": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "halfDown": {
+     "ascent": 77,
+     "descent": 19
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Bold.ttf",
+   "dpr": 2,
+   "cssSize": 56,
+   "deviceSize": 112,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 108.5,
+    "descent": 27.015625,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 108.5,
+    "descent": 27.015625
+   },
+   "chrome": {
+    "range": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "lineBox": {
+     "ascent": 109,
+     "descent": 27,
+     "height": 136
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 68,
+    "markerTop": 54.5,
+    "boxTop": 0,
+    "boxHeight": 68
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfUp": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfDown": {
+     "ascent": 108,
+     "descent": 27
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-BoldItalic.ttf",
+   "dpr": 2,
+   "cssSize": 8,
+   "deviceSize": 16,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 15.5,
+    "descent": 3.859375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 15.5,
+    "descent": 3.859375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "lineBox": {
+     "ascent": 16,
+     "descent": 4,
+     "height": 20
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 10,
+    "markerTop": 8,
+    "boxTop": 0,
+    "boxHeight": 10
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfUp": {
+     "ascent": 16,
+     "descent": 4
+    },
+    "halfDown": {
+     "ascent": 15,
+     "descent": 4
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-BoldItalic.ttf",
+   "dpr": 2,
+   "cssSize": 24,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 29.5,
+    "markerTop": 23.5,
+    "boxTop": 0,
+    "boxHeight": 29.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-BoldItalic.ttf",
+   "dpr": 2,
+   "cssSize": 40,
+   "deviceSize": 80,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 77.5,
+    "descent": 19.296875,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 77.5,
+    "descent": 19.296875
+   },
+   "chrome": {
+    "range": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "lineBox": {
+     "ascent": 78,
+     "descent": 19,
+     "height": 97
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 48.5,
+    "markerTop": 39,
+    "boxTop": 0,
+    "boxHeight": 48.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "halfUp": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "halfDown": {
+     "ascent": 77,
+     "descent": 19
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-BoldItalic.ttf",
+   "dpr": 2,
+   "cssSize": 56,
+   "deviceSize": 112,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 108.5,
+    "descent": 27.015625,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 108.5,
+    "descent": 27.015625
+   },
+   "chrome": {
+    "range": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "lineBox": {
+     "ascent": 109,
+     "descent": 27,
+     "height": 136
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 68,
+    "markerTop": 54.5,
+    "boxTop": 0,
+    "boxHeight": 68
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfUp": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfDown": {
+     "ascent": 108,
+     "descent": 27
+    }
+   }
+  },
+  {
+   "face": "Lato/Lato-Regular.ttf",
+   "dpr": 2,
+   "cssSize": 41.08,
+   "deviceSize": 82.16000366210938,
+   "why": [
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 81.09188349731266,
+    "descent": 17.499870164785534,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 81.09192657470703,
+    "descent": 17.500080108642578
+   },
+   "chrome": {
+    "range": {
+     "ascent": 81,
+     "descent": 17
+    },
+    "lineBox": {
+     "ascent": 81,
+     "descent": 17,
+     "height": 98
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 49,
+    "markerTop": 40.5,
+    "boxTop": 0,
+    "boxHeight": 49
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 81,
+     "descent": 17
+    },
+    "halfUp": {
+     "ascent": 81,
+     "descent": 18
+    },
+    "halfDown": {
+     "ascent": 81,
+     "descent": 18
+    }
+   }
+  },
+  {
+   "face": "Lato/Lato-Regular.ttf",
+   "dpr": 2,
+   "cssSize": 50.47,
+   "deviceSize": 100.94000244140625,
+   "why": [
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 99.6277331225574,
+    "descent": 21.499961762689054,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 99.6277847290039,
+    "descent": 21.500221252441406
+   },
+   "chrome": {
+    "range": {
+     "ascent": 100,
+     "descent": 21
+    },
+    "lineBox": {
+     "ascent": 100,
+     "descent": 21,
+     "height": 121
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 60.5,
+    "markerTop": 50,
+    "boxTop": 0,
+    "boxHeight": 60.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 100,
+     "descent": 21
+    },
+    "halfUp": {
+     "ascent": 100,
+     "descent": 22
+    },
+    "halfDown": {
+     "ascent": 100,
+     "descent": 22
+    }
+   }
+  },
+  {
+   "face": "Lato/Lato-Bold.ttf",
+   "dpr": 2,
+   "cssSize": 41.08,
+   "deviceSize": 82.16000366210938,
+   "why": [
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 81.09188349731266,
+    "descent": 17.499870164785534,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 81.09192657470703,
+    "descent": 17.500080108642578
+   },
+   "chrome": {
+    "range": {
+     "ascent": 81,
+     "descent": 17
+    },
+    "lineBox": {
+     "ascent": 81,
+     "descent": 17,
+     "height": 98
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 49,
+    "markerTop": 40.5,
+    "boxTop": 0,
+    "boxHeight": 49
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 81,
+     "descent": 17
+    },
+    "halfUp": {
+     "ascent": 81,
+     "descent": 18
+    },
+    "halfDown": {
+     "ascent": 81,
+     "descent": 18
+    }
+   }
+  },
+  {
+   "face": "Lato/Lato-Bold.ttf",
+   "dpr": 2,
+   "cssSize": 50.47,
+   "deviceSize": 100.94000244140625,
+   "why": [
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 99.6277331225574,
+    "descent": 21.499961762689054,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 99.6277847290039,
+    "descent": 21.500221252441406
+   },
+   "chrome": {
+    "range": {
+     "ascent": 100,
+     "descent": 21
+    },
+    "lineBox": {
+     "ascent": 100,
+     "descent": 21,
+     "height": 121
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 60.5,
+    "markerTop": 50,
+    "boxTop": 0,
+    "boxHeight": 60.5
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 100,
+     "descent": 21
+    },
+    "halfUp": {
+     "ascent": 100,
+     "descent": 22
+    },
+    "halfDown": {
+     "ascent": 100,
+     "descent": 22
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2.625,
+   "cssSize": 2.86,
+   "deviceSize": 7.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 6.000022888183594,
+    "descent": 1.4999771118164062,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 6,
+    "descent": 1.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 6,
+     "descent": 1
+    },
+    "lineBox": {
+     "ascent": 6,
+     "descent": 1,
+     "height": 7
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 2.6666667461395264,
+    "markerTop": 2.2857143878936768,
+    "boxTop": 0,
+    "boxHeight": 2.6666667461395264
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 6,
+     "descent": 1
+    },
+    "halfUp": {
+     "ascent": 6,
+     "descent": 2
+    },
+    "halfDown": {
+     "ascent": 6,
+     "descent": 1
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2.625,
+   "cssSize": 6.67,
+   "deviceSize": 17.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 14.00005340576172,
+    "descent": 3.4999465942382817,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 14,
+    "descent": 3.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 14,
+     "descent": 3
+    },
+    "lineBox": {
+     "ascent": 14,
+     "descent": 3,
+     "height": 17
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 6.476190567016602,
+    "markerTop": 5.333333492279053,
+    "boxTop": 0,
+    "boxHeight": 6.476190567016602
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 14,
+     "descent": 3
+    },
+    "halfUp": {
+     "ascent": 14,
+     "descent": 4
+    },
+    "halfDown": {
+     "ascent": 14,
+     "descent": 3
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2.625,
+   "cssSize": 10.48,
+   "deviceSize": 27.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 22.000083923339844,
+    "descent": 5.499916076660156,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 22,
+    "descent": 5.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 22,
+     "descent": 5
+    },
+    "lineBox": {
+     "ascent": 22,
+     "descent": 5,
+     "height": 27
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 10.285714149475098,
+    "markerTop": 8.380952835083008,
+    "boxTop": 0,
+    "boxHeight": 10.285714149475098
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 22,
+     "descent": 5
+    },
+    "halfUp": {
+     "ascent": 22,
+     "descent": 6
+    },
+    "halfDown": {
+     "ascent": 22,
+     "descent": 5
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2.625,
+   "cssSize": 20,
+   "deviceSize": 52.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 42.000160217285156,
+    "descent": 10.499839782714844,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 42,
+    "descent": 10.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 42,
+     "descent": 10
+    },
+    "lineBox": {
+     "ascent": 42,
+     "descent": 10,
+     "height": 52
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 19.809524536132812,
+    "markerTop": 16,
+    "boxTop": 0,
+    "boxHeight": 19.809524536132812
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 42,
+     "descent": 10
+    },
+    "halfUp": {
+     "ascent": 42,
+     "descent": 11
+    },
+    "halfDown": {
+     "ascent": 42,
+     "descent": 10
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2.625,
+   "cssSize": 23.81,
+   "deviceSize": 62.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 50.00019073486328,
+    "descent": 12.499809265136719,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 50,
+    "descent": 12.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 50,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 50,
+     "descent": 12,
+     "height": 62
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 23.619047164916992,
+    "markerTop": 19.047618865966797,
+    "boxTop": 0,
+    "boxHeight": 23.619047164916992
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 50,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 50,
+     "descent": 13
+    },
+    "halfDown": {
+     "ascent": 50,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2.625,
+   "cssSize": 27.62,
+   "deviceSize": 72.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 58.0002212524414,
+    "descent": 14.499778747558592,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 58,
+    "descent": 14.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 58,
+     "descent": 14
+    },
+    "lineBox": {
+     "ascent": 58,
+     "descent": 14,
+     "height": 72
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 27.428571701049805,
+    "markerTop": 22.095237731933594,
+    "boxTop": 0,
+    "boxHeight": 27.428571701049805
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 58,
+     "descent": 14
+    },
+    "halfUp": {
+     "ascent": 58,
+     "descent": 15
+    },
+    "halfDown": {
+     "ascent": 58,
+     "descent": 14
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2.625,
+   "cssSize": 31.43,
+   "deviceSize": 82.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 66.00025177001953,
+    "descent": 16.49974822998047,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 66,
+    "descent": 16.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 66,
+     "descent": 16
+    },
+    "lineBox": {
+     "ascent": 66,
+     "descent": 16,
+     "height": 82
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 31.238096237182617,
+    "markerTop": 25.142858505249023,
+    "boxTop": 0,
+    "boxHeight": 31.238096237182617
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 66,
+     "descent": 16
+    },
+    "halfUp": {
+     "ascent": 66,
+     "descent": 17
+    },
+    "halfDown": {
+     "ascent": 66,
+     "descent": 16
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2.625,
+   "cssSize": 35.24,
+   "deviceSize": 92.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 74.00028228759766,
+    "descent": 18.499717712402344,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 74,
+    "descent": 18.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 74,
+     "descent": 18
+    },
+    "lineBox": {
+     "ascent": 74,
+     "descent": 18,
+     "height": 92
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 35.0476188659668,
+    "markerTop": 28.19047737121582,
+    "boxTop": 0,
+    "boxHeight": 35.0476188659668
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 74,
+     "descent": 18
+    },
+    "halfUp": {
+     "ascent": 74,
+     "descent": 19
+    },
+    "halfDown": {
+     "ascent": 74,
+     "descent": 18
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2.625,
+   "cssSize": 39.05,
+   "deviceSize": 102.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 82.00031280517578,
+    "descent": 20.49968719482422,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 82,
+    "descent": 20.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 82,
+     "descent": 20
+    },
+    "lineBox": {
+     "ascent": 82,
+     "descent": 20,
+     "height": 102
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 38.85714340209961,
+    "markerTop": 31.238096237182617,
+    "boxTop": 0,
+    "boxHeight": 38.85714340209961
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 82,
+     "descent": 20
+    },
+    "halfUp": {
+     "ascent": 82,
+     "descent": 21
+    },
+    "halfDown": {
+     "ascent": 82,
+     "descent": 20
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2.625,
+   "cssSize": 42.86,
+   "deviceSize": 112.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 90.0003433227539,
+    "descent": 22.499656677246094,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 90,
+    "descent": 22.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 90,
+     "descent": 22
+    },
+    "lineBox": {
+     "ascent": 90,
+     "descent": 22,
+     "height": 112
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 42.66666793823242,
+    "markerTop": 34.28571319580078,
+    "boxTop": 0,
+    "boxHeight": 42.66666793823242
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 90,
+     "descent": 22
+    },
+    "halfUp": {
+     "ascent": 90,
+     "descent": 23
+    },
+    "halfDown": {
+     "ascent": 90,
+     "descent": 22
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2.625,
+   "cssSize": 46.67,
+   "deviceSize": 122.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 98.00037384033203,
+    "descent": 24.49962615966797,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 98,
+    "descent": 24.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 98,
+     "descent": 24
+    },
+    "lineBox": {
+     "ascent": 98,
+     "descent": 24,
+     "height": 122
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 46.476192474365234,
+    "markerTop": 37.333335876464844,
+    "boxTop": 0,
+    "boxHeight": 46.476192474365234
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 98,
+     "descent": 24
+    },
+    "halfUp": {
+     "ascent": 98,
+     "descent": 25
+    },
+    "halfDown": {
+     "ascent": 98,
+     "descent": 24
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2.625,
+   "cssSize": 50.48,
+   "deviceSize": 132.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 106.00040435791016,
+    "descent": 26.499595642089844,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 106,
+    "descent": 26.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 106,
+     "descent": 26
+    },
+    "lineBox": {
+     "ascent": 106,
+     "descent": 26,
+     "height": 132
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 50.28571701049805,
+    "markerTop": 40.38095474243164,
+    "boxTop": 0,
+    "boxHeight": 50.28571701049805
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 106,
+     "descent": 26
+    },
+    "halfUp": {
+     "ascent": 106,
+     "descent": 27
+    },
+    "halfDown": {
+     "ascent": 106,
+     "descent": 26
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2.625,
+   "cssSize": 60,
+   "deviceSize": 157.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 126.00048065185547,
+    "descent": 31.49951934814453,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 126,
+    "descent": 31.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 126,
+     "descent": 31
+    },
+    "lineBox": {
+     "ascent": 126,
+     "descent": 31,
+     "height": 157
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 59.80952453613281,
+    "markerTop": 48,
+    "boxTop": 0,
+    "boxHeight": 59.80952453613281
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 126,
+     "descent": 31
+    },
+    "halfUp": {
+     "ascent": 126,
+     "descent": 32
+    },
+    "halfDown": {
+     "ascent": 126,
+     "descent": 31
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 2.625,
+   "cssSize": 63.81,
+   "deviceSize": 167.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 134.0005111694336,
+    "descent": 33.499488830566406,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 134,
+    "descent": 33.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 134,
+     "descent": 33
+    },
+    "lineBox": {
+     "ascent": 134,
+     "descent": 33,
+     "height": 167
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 63.619049072265625,
+    "markerTop": 51.0476188659668,
+    "boxTop": 0,
+    "boxHeight": 63.619049072265625
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 134,
+     "descent": 33
+    },
+    "halfUp": {
+     "ascent": 134,
+     "descent": 34
+    },
+    "halfDown": {
+     "ascent": 134,
+     "descent": 33
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Light.ttf",
+   "dpr": 2.625,
+   "cssSize": 42.67,
+   "deviceSize": 112,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 108.5,
+    "descent": 27.015625,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 108.5,
+    "descent": 27.015625
+   },
+   "chrome": {
+    "range": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "lineBox": {
+     "ascent": 109,
+     "descent": 27,
+     "height": 136
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 51.80952453613281,
+    "markerTop": 41.52381134033203,
+    "boxTop": 0,
+    "boxHeight": 51.80952453613281
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfUp": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfDown": {
+     "ascent": 108,
+     "descent": 27
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Light.ttf",
+   "dpr": 2.625,
+   "cssSize": 54.86,
+   "deviceSize": 144,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 139.5,
+    "descent": 34.734375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 139.5,
+    "descent": 34.734375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "lineBox": {
+     "ascent": 140,
+     "descent": 35,
+     "height": 175
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 66.66666412353516,
+    "markerTop": 53.333335876464844,
+    "boxTop": 0,
+    "boxHeight": 66.66666412353516
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfUp": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfDown": {
+     "ascent": 139,
+     "descent": 35
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Regular.ttf",
+   "dpr": 2.625,
+   "cssSize": 42.67,
+   "deviceSize": 112,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 108.5,
+    "descent": 27.015625,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 108.5,
+    "descent": 27.015625
+   },
+   "chrome": {
+    "range": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "lineBox": {
+     "ascent": 109,
+     "descent": 27,
+     "height": 136
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 51.80952453613281,
+    "markerTop": 41.52381134033203,
+    "boxTop": 0,
+    "boxHeight": 51.80952453613281
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfUp": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfDown": {
+     "ascent": 108,
+     "descent": 27
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Regular.ttf",
+   "dpr": 2.625,
+   "cssSize": 54.86,
+   "deviceSize": 144,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 139.5,
+    "descent": 34.734375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 139.5,
+    "descent": 34.734375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "lineBox": {
+     "ascent": 140,
+     "descent": 35,
+     "height": 175
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 66.66666412353516,
+    "markerTop": 53.333335876464844,
+    "boxTop": 0,
+    "boxHeight": 66.66666412353516
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfUp": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfDown": {
+     "ascent": 139,
+     "descent": 35
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Italic.ttf",
+   "dpr": 2.625,
+   "cssSize": 42.67,
+   "deviceSize": 112,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 108.5,
+    "descent": 27.015625,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 108.5,
+    "descent": 27.015625
+   },
+   "chrome": {
+    "range": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "lineBox": {
+     "ascent": 109,
+     "descent": 27,
+     "height": 136
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 51.80952453613281,
+    "markerTop": 41.52381134033203,
+    "boxTop": 0,
+    "boxHeight": 51.80952453613281
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfUp": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfDown": {
+     "ascent": 108,
+     "descent": 27
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Italic.ttf",
+   "dpr": 2.625,
+   "cssSize": 54.86,
+   "deviceSize": 144,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 139.5,
+    "descent": 34.734375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 139.5,
+    "descent": 34.734375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "lineBox": {
+     "ascent": 140,
+     "descent": 35,
+     "height": 175
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 66.66666412353516,
+    "markerTop": 53.333335876464844,
+    "boxTop": 0,
+    "boxHeight": 66.66666412353516
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfUp": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfDown": {
+     "ascent": 139,
+     "descent": 35
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Bold.ttf",
+   "dpr": 2.625,
+   "cssSize": 42.67,
+   "deviceSize": 112,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 108.5,
+    "descent": 27.015625,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 108.5,
+    "descent": 27.015625
+   },
+   "chrome": {
+    "range": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "lineBox": {
+     "ascent": 109,
+     "descent": 27,
+     "height": 136
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 51.80952453613281,
+    "markerTop": 41.52381134033203,
+    "boxTop": 0,
+    "boxHeight": 51.80952453613281
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfUp": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfDown": {
+     "ascent": 108,
+     "descent": 27
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Bold.ttf",
+   "dpr": 2.625,
+   "cssSize": 54.86,
+   "deviceSize": 144,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 139.5,
+    "descent": 34.734375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 139.5,
+    "descent": 34.734375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "lineBox": {
+     "ascent": 140,
+     "descent": 35,
+     "height": 175
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 66.66666412353516,
+    "markerTop": 53.333335876464844,
+    "boxTop": 0,
+    "boxHeight": 66.66666412353516
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfUp": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfDown": {
+     "ascent": 139,
+     "descent": 35
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-BoldItalic.ttf",
+   "dpr": 2.625,
+   "cssSize": 42.67,
+   "deviceSize": 112,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 108.5,
+    "descent": 27.015625,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 108.5,
+    "descent": 27.015625
+   },
+   "chrome": {
+    "range": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "lineBox": {
+     "ascent": 109,
+     "descent": 27,
+     "height": 136
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 51.80952453613281,
+    "markerTop": 41.52381134033203,
+    "boxTop": 0,
+    "boxHeight": 51.80952453613281
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfUp": {
+     "ascent": 109,
+     "descent": 27
+    },
+    "halfDown": {
+     "ascent": 108,
+     "descent": 27
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-BoldItalic.ttf",
+   "dpr": 2.625,
+   "cssSize": 54.86,
+   "deviceSize": 144,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 139.5,
+    "descent": 34.734375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 139.5,
+    "descent": 34.734375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "lineBox": {
+     "ascent": 140,
+     "descent": 35,
+     "height": 175
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 66.66666412353516,
+    "markerTop": 53.333335876464844,
+    "boxTop": 0,
+    "boxHeight": 66.66666412353516
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfUp": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfDown": {
+     "ascent": 139,
+     "descent": 35
+    }
+   }
+  },
+  {
+   "face": "Lato/Lato-Regular.ttf",
+   "dpr": 2.625,
+   "cssSize": 31.3,
+   "deviceSize": 82.16000366210938,
+   "why": [
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 81.09188349731266,
+    "descent": 17.499870164785534,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 81.09192657470703,
+    "descent": 17.500080108642578
+   },
+   "chrome": {
+    "range": {
+     "ascent": 81,
+     "descent": 17
+    },
+    "lineBox": {
+     "ascent": 81,
+     "descent": 17,
+     "height": 98
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 37.333335876464844,
+    "markerTop": 30.85714340209961,
+    "boxTop": 0,
+    "boxHeight": 37.333335876464844
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 81,
+     "descent": 17
+    },
+    "halfUp": {
+     "ascent": 81,
+     "descent": 18
+    },
+    "halfDown": {
+     "ascent": 81,
+     "descent": 18
+    }
+   }
+  },
+  {
+   "face": "Lato/Lato-Bold.ttf",
+   "dpr": 2.625,
+   "cssSize": 31.3,
+   "deviceSize": 82.16000366210938,
+   "why": [
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 81.09188349731266,
+    "descent": 17.499870164785534,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 81.09192657470703,
+    "descent": 17.500080108642578
+   },
+   "chrome": {
+    "range": {
+     "ascent": 81,
+     "descent": 17
+    },
+    "lineBox": {
+     "ascent": 81,
+     "descent": 17,
+     "height": 98
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 37.333335876464844,
+    "markerTop": 30.85714340209961,
+    "boxTop": 0,
+    "boxHeight": 37.333335876464844
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 81,
+     "descent": 17
+    },
+    "halfUp": {
+     "ascent": 81,
+     "descent": 18
+    },
+    "halfDown": {
+     "ascent": 81,
+     "descent": 18
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 2.5,
+   "deviceSize": 7.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 6.000022888183594,
+    "descent": 1.4999771118164062,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 6,
+    "descent": 1.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 6,
+     "descent": 1
+    },
+    "lineBox": {
+     "ascent": 6,
+     "descent": 1,
+     "height": 7
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 2.3333334922790527,
+    "markerTop": 2,
+    "boxTop": 0,
+    "boxHeight": 2.3333334922790527
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 6,
+     "descent": 1
+    },
+    "halfUp": {
+     "ascent": 6,
+     "descent": 2
+    },
+    "halfDown": {
+     "ascent": 6,
+     "descent": 1
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 7.5,
+   "deviceSize": 22.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 18.00006866455078,
+    "descent": 4.499931335449219,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 18,
+    "descent": 4.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 18,
+     "descent": 4
+    },
+    "lineBox": {
+     "ascent": 18,
+     "descent": 4,
+     "height": 22
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 7.333333492279053,
+    "markerTop": 6,
+    "boxTop": 0,
+    "boxHeight": 7.333333492279053
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 18,
+     "descent": 4
+    },
+    "halfUp": {
+     "ascent": 18,
+     "descent": 5
+    },
+    "halfDown": {
+     "ascent": 18,
+     "descent": 4
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 12.5,
+   "deviceSize": 37.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 30.00011444091797,
+    "descent": 7.499885559082031,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 30,
+    "descent": 7.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 30,
+     "descent": 7
+    },
+    "lineBox": {
+     "ascent": 30,
+     "descent": 7,
+     "height": 37
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 12.333333969116211,
+    "markerTop": 10,
+    "boxTop": 0,
+    "boxHeight": 12.333333969116211
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 30,
+     "descent": 7
+    },
+    "halfUp": {
+     "ascent": 30,
+     "descent": 8
+    },
+    "halfDown": {
+     "ascent": 30,
+     "descent": 7
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 17.5,
+   "deviceSize": 52.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 42.000160217285156,
+    "descent": 10.499839782714844,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 42,
+    "descent": 10.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 42,
+     "descent": 10
+    },
+    "lineBox": {
+     "ascent": 42,
+     "descent": 10,
+     "height": 52
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 17.33333396911621,
+    "markerTop": 14,
+    "boxTop": 0,
+    "boxHeight": 17.33333396911621
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 42,
+     "descent": 10
+    },
+    "halfUp": {
+     "ascent": 42,
+     "descent": 11
+    },
+    "halfDown": {
+     "ascent": 42,
+     "descent": 10
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 22.5,
+   "deviceSize": 67.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 54.00020599365235,
+    "descent": 13.499794006347656,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 54,
+    "descent": 13.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 54,
+     "descent": 13
+    },
+    "lineBox": {
+     "ascent": 54,
+     "descent": 13,
+     "height": 67
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 22.33333396911621,
+    "markerTop": 18,
+    "boxTop": 0,
+    "boxHeight": 22.33333396911621
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 54,
+     "descent": 13
+    },
+    "halfUp": {
+     "ascent": 54,
+     "descent": 14
+    },
+    "halfDown": {
+     "ascent": 54,
+     "descent": 13
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 27.5,
+   "deviceSize": 82.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 66.00025177001953,
+    "descent": 16.49974822998047,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 66,
+    "descent": 16.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 66,
+     "descent": 16
+    },
+    "lineBox": {
+     "ascent": 66,
+     "descent": 16,
+     "height": 82
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 27.33333396911621,
+    "markerTop": 22,
+    "boxTop": 0,
+    "boxHeight": 27.33333396911621
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 66,
+     "descent": 16
+    },
+    "halfUp": {
+     "ascent": 66,
+     "descent": 17
+    },
+    "halfDown": {
+     "ascent": 66,
+     "descent": 16
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 32.5,
+   "deviceSize": 97.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 78.00029754638672,
+    "descent": 19.49970245361328,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 78,
+    "descent": 19.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "lineBox": {
+     "ascent": 78,
+     "descent": 19,
+     "height": 97
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 32.333335876464844,
+    "markerTop": 26,
+    "boxTop": 0,
+    "boxHeight": 32.333335876464844
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 78,
+     "descent": 19
+    },
+    "halfUp": {
+     "ascent": 78,
+     "descent": 20
+    },
+    "halfDown": {
+     "ascent": 78,
+     "descent": 19
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 34.17,
+   "deviceSize": 102.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 82.00031280517578,
+    "descent": 20.49968719482422,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 82,
+    "descent": 20.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 82,
+     "descent": 20
+    },
+    "lineBox": {
+     "ascent": 82,
+     "descent": 20,
+     "height": 102
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 34,
+    "markerTop": 27.33333396911621,
+    "boxTop": 0,
+    "boxHeight": 34
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 82,
+     "descent": 20
+    },
+    "halfUp": {
+     "ascent": 82,
+     "descent": 21
+    },
+    "halfDown": {
+     "ascent": 82,
+     "descent": 20
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 37.5,
+   "deviceSize": 112.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 90.0003433227539,
+    "descent": 22.499656677246094,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 90,
+    "descent": 22.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 90,
+     "descent": 22
+    },
+    "lineBox": {
+     "ascent": 90,
+     "descent": 22,
+     "height": 112
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 37.333335876464844,
+    "markerTop": 30,
+    "boxTop": 0,
+    "boxHeight": 37.333335876464844
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 90,
+     "descent": 22
+    },
+    "halfUp": {
+     "ascent": 90,
+     "descent": 23
+    },
+    "halfDown": {
+     "ascent": 90,
+     "descent": 22
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 39.17,
+   "deviceSize": 117.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 94.00035858154297,
+    "descent": 23.49964141845703,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 94,
+    "descent": 23.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 94,
+     "descent": 23
+    },
+    "lineBox": {
+     "ascent": 94,
+     "descent": 23,
+     "height": 117
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 39,
+    "markerTop": 31.33333396911621,
+    "boxTop": 0,
+    "boxHeight": 39
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 94,
+     "descent": 23
+    },
+    "halfUp": {
+     "ascent": 94,
+     "descent": 24
+    },
+    "halfDown": {
+     "ascent": 94,
+     "descent": 23
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 42.5,
+   "deviceSize": 127.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 102.0003890991211,
+    "descent": 25.499610900878906,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 102,
+    "descent": 25.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 102,
+     "descent": 25
+    },
+    "lineBox": {
+     "ascent": 102,
+     "descent": 25,
+     "height": 127
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 42.333335876464844,
+    "markerTop": 34,
+    "boxTop": 0,
+    "boxHeight": 42.333335876464844
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 102,
+     "descent": 25
+    },
+    "halfUp": {
+     "ascent": 102,
+     "descent": 26
+    },
+    "halfDown": {
+     "ascent": 102,
+     "descent": 25
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 44.17,
+   "deviceSize": 132.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 106.00040435791016,
+    "descent": 26.499595642089844,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 106,
+    "descent": 26.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 106,
+     "descent": 26
+    },
+    "lineBox": {
+     "ascent": 106,
+     "descent": 26,
+     "height": 132
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 44,
+    "markerTop": 35.333335876464844,
+    "boxTop": 0,
+    "boxHeight": 44
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 106,
+     "descent": 26
+    },
+    "halfUp": {
+     "ascent": 106,
+     "descent": 27
+    },
+    "halfDown": {
+     "ascent": 106,
+     "descent": 26
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 47.5,
+   "deviceSize": 142.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 114.00043487548827,
+    "descent": 28.499565124511715,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 114,
+    "descent": 28.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 114,
+     "descent": 28
+    },
+    "lineBox": {
+     "ascent": 114,
+     "descent": 28,
+     "height": 142
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 47.333335876464844,
+    "markerTop": 38,
+    "boxTop": 0,
+    "boxHeight": 47.333335876464844
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 114,
+     "descent": 28
+    },
+    "halfUp": {
+     "ascent": 114,
+     "descent": 29
+    },
+    "halfDown": {
+     "ascent": 114,
+     "descent": 28
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 49.17,
+   "deviceSize": 147.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 118.00045013427734,
+    "descent": 29.499549865722656,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 118,
+    "descent": 29.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 118,
+     "descent": 29
+    },
+    "lineBox": {
+     "ascent": 118,
+     "descent": 29,
+     "height": 147
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 49,
+    "markerTop": 39.333335876464844,
+    "boxTop": 0,
+    "boxHeight": 49
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 118,
+     "descent": 29
+    },
+    "halfUp": {
+     "ascent": 118,
+     "descent": 30
+    },
+    "halfDown": {
+     "ascent": 118,
+     "descent": 29
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 52.5,
+   "deviceSize": 157.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 126.00048065185547,
+    "descent": 31.49951934814453,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 126,
+    "descent": 31.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 126,
+     "descent": 31
+    },
+    "lineBox": {
+     "ascent": 126,
+     "descent": 31,
+     "height": 157
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 52.333335876464844,
+    "markerTop": 42,
+    "boxTop": 0,
+    "boxHeight": 52.333335876464844
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 126,
+     "descent": 31
+    },
+    "halfUp": {
+     "ascent": 126,
+     "descent": 32
+    },
+    "halfDown": {
+     "ascent": 126,
+     "descent": 31
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 54.17,
+   "deviceSize": 162.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 130.00049591064453,
+    "descent": 32.49950408935547,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 130,
+    "descent": 32.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 130,
+     "descent": 32
+    },
+    "lineBox": {
+     "ascent": 130,
+     "descent": 32,
+     "height": 162
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 54,
+    "markerTop": 43.333335876464844,
+    "boxTop": 0,
+    "boxHeight": 54
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 130,
+     "descent": 32
+    },
+    "halfUp": {
+     "ascent": 130,
+     "descent": 33
+    },
+    "halfDown": {
+     "ascent": 130,
+     "descent": 32
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 57.5,
+   "deviceSize": 172.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 138.00052642822266,
+    "descent": 34.499473571777344,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 138,
+    "descent": 34.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 138,
+     "descent": 34
+    },
+    "lineBox": {
+     "ascent": 138,
+     "descent": 34,
+     "height": 172
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 57.333335876464844,
+    "markerTop": 46,
+    "boxTop": 0,
+    "boxHeight": 57.333335876464844
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 138,
+     "descent": 34
+    },
+    "halfUp": {
+     "ascent": 138,
+     "descent": 35
+    },
+    "halfDown": {
+     "ascent": 138,
+     "descent": 34
+    }
+   }
+  },
+  {
+   "face": "Ahem.ttf",
+   "dpr": 3,
+   "cssSize": 62.5,
+   "deviceSize": 187.5,
+   "why": [
+    "descent-exact-half",
+    "descent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 150.00057220458984,
+    "descent": 37.499427795410156,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 150,
+    "descent": 37.5
+   },
+   "chrome": {
+    "range": {
+     "ascent": 150,
+     "descent": 37
+    },
+    "lineBox": {
+     "ascent": 150,
+     "descent": 37,
+     "height": 187
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 62.333335876464844,
+    "markerTop": 50,
+    "boxTop": 0,
+    "boxHeight": 62.333335876464844
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 150,
+     "descent": 37
+    },
+    "halfUp": {
+     "ascent": 150,
+     "descent": 38
+    },
+    "halfDown": {
+     "ascent": 150,
+     "descent": 37
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Light.ttf",
+   "dpr": 3,
+   "cssSize": 16,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 19.666667938232422,
+    "markerTop": 15.666666984558105,
+    "boxTop": 0,
+    "boxHeight": 19.666667938232422
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Light.ttf",
+   "dpr": 3,
+   "cssSize": 48,
+   "deviceSize": 144,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 139.5,
+    "descent": 34.734375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 139.5,
+    "descent": 34.734375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "lineBox": {
+     "ascent": 140,
+     "descent": 35,
+     "height": 175
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 58.333335876464844,
+    "markerTop": 46.66666793823242,
+    "boxTop": 0,
+    "boxHeight": 58.333335876464844
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfUp": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfDown": {
+     "ascent": 139,
+     "descent": 35
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Regular.ttf",
+   "dpr": 3,
+   "cssSize": 16,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 19.666667938232422,
+    "markerTop": 15.666666984558105,
+    "boxTop": 0,
+    "boxHeight": 19.666667938232422
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Regular.ttf",
+   "dpr": 3,
+   "cssSize": 48,
+   "deviceSize": 144,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 139.5,
+    "descent": 34.734375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 139.5,
+    "descent": 34.734375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "lineBox": {
+     "ascent": 140,
+     "descent": 35,
+     "height": 175
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 58.333335876464844,
+    "markerTop": 46.66666793823242,
+    "boxTop": 0,
+    "boxHeight": 58.333335876464844
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfUp": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfDown": {
+     "ascent": 139,
+     "descent": 35
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Italic.ttf",
+   "dpr": 3,
+   "cssSize": 16,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 19.666667938232422,
+    "markerTop": 15.666666984558105,
+    "boxTop": 0,
+    "boxHeight": 19.666667938232422
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Italic.ttf",
+   "dpr": 3,
+   "cssSize": 48,
+   "deviceSize": 144,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 139.5,
+    "descent": 34.734375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 139.5,
+    "descent": 34.734375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "lineBox": {
+     "ascent": 140,
+     "descent": 35,
+     "height": 175
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 58.333335876464844,
+    "markerTop": 46.66666793823242,
+    "boxTop": 0,
+    "boxHeight": 58.333335876464844
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfUp": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfDown": {
+     "ascent": 139,
+     "descent": 35
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Bold.ttf",
+   "dpr": 3,
+   "cssSize": 16,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 19.666667938232422,
+    "markerTop": 15.666666984558105,
+    "boxTop": 0,
+    "boxHeight": 19.666667938232422
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-Bold.ttf",
+   "dpr": 3,
+   "cssSize": 48,
+   "deviceSize": 144,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 139.5,
+    "descent": 34.734375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 139.5,
+    "descent": 34.734375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "lineBox": {
+     "ascent": 140,
+     "descent": 35,
+     "height": 175
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 58.333335876464844,
+    "markerTop": 46.66666793823242,
+    "boxTop": 0,
+    "boxHeight": 58.333335876464844
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfUp": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfDown": {
+     "ascent": 139,
+     "descent": 35
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-BoldItalic.ttf",
+   "dpr": 3,
+   "cssSize": 16,
+   "deviceSize": 48,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 46.5,
+    "descent": 11.578125,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 46.5,
+    "descent": 11.578125
+   },
+   "chrome": {
+    "range": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "lineBox": {
+     "ascent": 47,
+     "descent": 12,
+     "height": 59
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 19.666667938232422,
+    "markerTop": 15.666666984558105,
+    "boxTop": 0,
+    "boxHeight": 19.666667938232422
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfUp": {
+     "ascent": 47,
+     "descent": 12
+    },
+    "halfDown": {
+     "ascent": 46,
+     "descent": 12
+    }
+   }
+  },
+  {
+   "face": "Inter/Inter-BoldItalic.ttf",
+   "dpr": 3,
+   "cssSize": 48,
+   "deviceSize": 144,
+   "why": [
+    "ascent-exact-half",
+    "ascent-rules-disagree"
+   ],
+   "coreText": {
+    "ascent": 139.5,
+    "descent": 34.734375,
+    "lineGap": 0
+   },
+   "untruncated": {
+    "ascent": 139.5,
+    "descent": 34.734375
+   },
+   "chrome": {
+    "range": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "lineBox": {
+     "ascent": 140,
+     "descent": 35,
+     "height": 175
+    }
+   },
+   "raw": {
+    "rangeTop": 0,
+    "rangeBottom": 58.333335876464844,
+    "markerTop": 46.66666793823242,
+    "boxTop": 0,
+    "boxHeight": 58.333335876464844
+   },
+   "predicted": {
+    "traced": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfUp": {
+     "ascent": 140,
+     "descent": 35
+    },
+    "halfDown": {
+     "ascent": 139,
+     "descent": 35
+    }
+   }
+  }
+ ]
+}
