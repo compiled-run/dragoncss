@@ -1,6 +1,6 @@
 // Shared by the layout probe capture scripts (capture-grid-probe, capture-float-probe, capture-writing-mode-probe): argument
 // parsing, corpus JSON formatting, case validation and the all-or-nothing corpus write.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 /** Parses `--flag` and `--name=value` arguments; anything not listed throws, so a typo never runs a capture that overwrites the corpus. */
@@ -22,7 +22,7 @@ export function formatJson(v: unknown, inline: (a: readonly unknown[]) => boolea
     const inner = `${ind} `;
     if (Array.isArray(x)) {
       if (x.length === 0) return '[]';
-      if (inline(x)) return JSON.stringify(x);
+      if (inline(x)) return `[${x.map((e) => walk(e, inner)).join(',')}]`;
       return `[\n${x.map((e) => inner + walk(e, inner)).join(',\n')}\n${ind}]`;
     }
     if (x !== null && typeof x === 'object') {
@@ -30,6 +30,7 @@ export function formatJson(v: unknown, inline: (a: readonly unknown[]) => boolea
       if (entries.length === 0) return '{}';
       return `{\n${entries.map(([k, e]) => `${inner}${JSON.stringify(k)}: ${walk(e, inner)}`).join(',\n')}\n${ind}}`;
     }
+    if (typeof x === 'number' && !Number.isFinite(x)) throw new Error(`formatJson: ${x} is not JSON`);
     const s = JSON.stringify(x);
     if (s === undefined) throw new Error(`formatJson: ${typeof x} is not JSON`);
     return s;
@@ -60,20 +61,42 @@ export function caseProblems(families: readonly { readonly id: string; readonly 
 
 /**
  * Writes every [path, text] pair, or with `check` compares them to the files on disk. Called once after every family has been
- * captured, so a failed capture leaves the committed corpus untouched. Returns false when a check finds a difference.
+ * captured. Writing is all or nothing: every text is staged beside its target first, then renamed into place; if staging fails
+ * no target is touched, and if a rename fails the targets already replaced get their original contents back. Returns false when
+ * a check finds a difference.
  */
 export function writeOrCheck(outputs: readonly (readonly [path: string, text: string, label: string])[], check: boolean): boolean {
-  let ok = true;
-  for (const [path, text, label] of outputs) {
-    if (check) {
+  if (check) {
+    let ok = true;
+    for (const [path, text, label] of outputs) {
       const same = existsSync(path) && readFileSync(path, 'utf8') === text;
       console.log(`${same ? 'same' : 'DIFFERS'} ${label}`);
       if (!same) ok = false;
-    } else {
-      mkdirSync(dirname(path), { recursive: true });
-      writeFileSync(path, text);
-      console.log(`wrote ${label}`);
     }
+    return ok;
   }
-  return ok;
+  const staged: string[] = [];
+  const replaced: [path: string, original: string | null][] = [];
+  try {
+    for (const [path, text] of outputs) {
+      mkdirSync(dirname(path), { recursive: true });
+      const tmp = `${path}.${process.pid}.tmp`;
+      staged.push(tmp);
+      writeFileSync(tmp, text);
+    }
+    for (const [k, [path]] of outputs.entries()) {
+      const original = existsSync(path) ? readFileSync(path, 'utf8') : null;
+      renameSync(staged[k]!, path);
+      replaced.push([path, original]);
+    }
+  } catch (e) {
+    for (const [path, original] of replaced) {
+      if (original === null) rmSync(path, { force: true });
+      else writeFileSync(path, original);
+    }
+    for (const tmp of staged) rmSync(tmp, { force: true });
+    throw e;
+  }
+  for (const [, , label] of outputs) console.log(`wrote ${label}`);
+  return true;
 }

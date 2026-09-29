@@ -1,7 +1,7 @@
 // The grid, float and writing-mode probe capture scripts: their argument checks, case validation, corpus formatting, pin checks
 // and screenshot sampling, exercised without Chrome.
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -63,6 +63,13 @@ describe('probe corpus JSON', () => {
     for (const inline of [allNumbers, allPrimitives]) expect(JSON.parse(formatJson(v, inline))).toEqual(v);
     expect(formatJson(v, allPrimitives)).toContain('["x, y","z"]');
   });
+  it('throws on a value JSON would silently turn into null', () => {
+    for (const inline of [allNumbers, allPrimitives]) {
+      expect(() => formatJson({ a: [1, Number.NaN] }, inline)).toThrow(/NaN is not JSON/);
+      expect(() => formatJson({ a: Number.POSITIVE_INFINITY }, inline)).toThrow(/Infinity is not JSON/);
+      expect(() => formatJson([undefined], inline)).toThrow(/undefined is not JSON/);
+    }
+  });
 });
 
 describe('grid probe pins', () => {
@@ -104,6 +111,34 @@ describe('probe corpus writes', () => {
       expect(writeOrCheck([[join(dir, 'a.json'), 'x', 'a.json']], false)).toBe(true);
       expect(writeOrCheck([[join(dir, 'a.json'), 'x', 'a.json']], true)).toBe(true);
       expect(writeOrCheck([[join(dir, 'a.json'), 'y', 'a.json']], true)).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it('a failure while staging a later file leaves every target untouched and no staged files behind', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'probe-'));
+    try {
+      writeFileSync(join(dir, 'a.json'), 'old');
+      writeFileSync(join(dir, 'blocker'), '');
+      // b.json's parent is a regular file, so staging it fails after a.json is staged.
+      expect(() => writeOrCheck([[join(dir, 'a.json'), 'new', 'a'], [join(dir, 'blocker', 'b.json'), 'new', 'b']], false)).toThrow();
+      expect(readFileSync(join(dir, 'a.json'), 'utf8')).toBe('old');
+      expect(readdirSync(dir).sort()).toEqual(['a.json', 'blocker']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it('a failure while replacing a later file restores the files already replaced', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'probe-'));
+    try {
+      writeFileSync(join(dir, 'a.json'), 'old');
+      // c.json is a non-empty directory: staging succeeds, replacing it fails after a.json and b.json were replaced.
+      mkdirSync(join(dir, 'c.json'));
+      writeFileSync(join(dir, 'c.json', 'x'), '');
+      const outputs = [[join(dir, 'a.json'), 'new', 'a'], [join(dir, 'b.json'), 'new', 'b'], [join(dir, 'c.json'), 'new', 'c']] as const;
+      expect(() => writeOrCheck(outputs, false)).toThrow();
+      expect(readFileSync(join(dir, 'a.json'), 'utf8')).toBe('old');
+      expect(readdirSync(dir).sort()).toEqual(['a.json', 'c.json']);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
