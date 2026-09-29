@@ -467,17 +467,64 @@ export function digestsOf(suites: readonly Suite[]): { readonly digest: string; 
   return { digest: all.digest('hex'), digests };
 }
 
+// ---------------------------------------------------------------- rt suite (ANIM-a2, T047 section 3.2)
+
+/** The rt vectors (packages/layout/rt-vectors): the TypeScript rt reference on the Chrome oracle inputs, which Swift and Kotlin must equal. */
+export const RT_VECTORS_DIR = join(ROOT, 'packages/layout/rt-vectors');
+
+type RtEasingJson = { readonly kind: string; readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number; readonly steps: number; readonly position: string };
+type RtComboJson = { readonly delayMs: number; readonly endDelayMs: number; readonly durationMs: number; readonly iterations: number | 'Infinity'; readonly iterationStart: number; readonly direction: string; readonly fill: string; readonly easing: RtEasingJson };
+type RtLengthJson = { readonly kind: string; readonly px: number; readonly percent: number };
+type RtOpJson = { readonly fn: string; readonly x: RtLengthJson; readonly y: RtLengthJson; readonly angle: number; readonly sx: number; readonly sy: number };
+type RtValueJson = { readonly kind: string; readonly number: number; readonly length: RtLengthJson; readonly color: { readonly r: number; readonly g: number; readonly b: number; readonly alpha: number }; readonly ops: readonly RtOpJson[] };
+type RtCaseJson = { readonly from: RtValueJson; readonly to: RtValueJson; readonly effectEasing: RtEasingJson; readonly keyframeEasing: RtEasingJson };
+
+const rtRead = <T>(name: string): T => JSON.parse(readFileSync(join(RT_VECTORS_DIR, name), 'utf8')) as T;
+const rtEasingLine = (e: RtEasingJson): unknown[] => [e.kind, bitsHex(e.x1), bitsHex(e.y1), bitsHex(e.x2), bitsHex(e.y2), bitsHex(e.steps), e.position];
+const rtComboLine = (c: RtComboJson): unknown[] => [
+  bitsHex(c.delayMs), bitsHex(c.endDelayMs), bitsHex(c.durationMs), bitsHex(c.iterations === 'Infinity' ? Number.POSITIVE_INFINITY : c.iterations), bitsHex(c.iterationStart), c.direction, c.fill, rtEasingLine(c.easing),
+];
+const rtLengthLine = (l: RtLengthJson): unknown[] => [l.kind, bitsHex(l.px), bitsHex(l.percent)];
+const rtValueLine = (v: RtValueJson): unknown[] => [
+  v.kind, bitsHex(v.number), rtLengthLine(v.length), [bitsHex(v.color.r), bitsHex(v.color.g), bitsHex(v.color.b), bitsHex(v.color.alpha)],
+  v.ops.map((o) => [o.fn, rtLengthLine(o.x), rtLengthLine(o.y), bitsHex(o.angle), bitsHex(o.sx), bitsHex(o.sy)]),
+];
+
+/**
+ * The rt suite: one library-mode line per rt vector record, in file order: timing.json, easing.json, hold.json, then interp.json.
+ * Every number is its bit pattern. The expected results are the translated harness in TypeScript; rt-vectors.test.ts in this
+ * package proves they are the vectors' records.
+ */
+export function rtCases(): string[] {
+  const out: string[] = [];
+  const timing = rtRead<{ combos: RtComboJson[]; records: [number, number, string | null, string | null][] }>('timing.json');
+  for (const [i, t] of timing.records) out.push(JSON.stringify(['rt-timing', rtComboLine(timing.combos[i] as RtComboJson), bitsHex(t)]));
+  const easing = rtRead<{ easings: { spec: RtEasingJson }[]; records: [number, number, string | null][] }>('easing.json');
+  for (const [i, t] of easing.records) out.push(JSON.stringify(['rt-easing', rtEasingLine((easing.easings[i] as { spec: RtEasingJson }).spec), bitsHex(t)]));
+  const hold = rtRead<{ elapsedSeconds: number; combos: RtComboJson[]; records: [number, number, string | null, string | null][] }>('hold.json');
+  for (const [i, t] of hold.records) out.push(JSON.stringify(['rt-hold', rtComboLine(hold.combos[i] as RtComboJson), bitsHex(t), bitsHex(hold.elapsedSeconds)]));
+  const interp = rtRead<{ box: { width: number; height: number }; cases: RtCaseJson[]; records: [number, number, string | null, string][] }>('interp.json');
+  for (const [i, t] of interp.records) {
+    const c = interp.cases[i] as RtCaseJson;
+    out.push(JSON.stringify(['rt-interp', rtValueLine(c.from), rtValueLine(c.to), rtEasingLine(c.effectEasing), rtEasingLine(c.keyframeEasing), bitsHex(t), bitsHex(interp.box.width), bitsHex(interp.box.height)]));
+  }
+  return out;
+}
+
 export function buildCorpus(): Corpus {
   const vectors = vectorCases();
   const vLines = vectors.map((v) => v.line);
   const units = unitsCases();
   const engine = engineCases(vectors);
   const library = libraryCases();
+  const rt = rtCases();
   const suites: Suite[] = [
     { name: 'vectors', mode: 'engine', lines: vLines, expected: vLines.map(runEngineCase) },
     { name: 'units', mode: 'units', lines: units, expected: units.map(runUnitsCase) },
     { name: 'engine', mode: 'engine', lines: engine.lines, expected: engine.lines.map(runEngineCase) },
     { name: 'library', mode: 'library', lines: library, expected: library.map(runLibraryCase) },
+    // ANIM-a2: the rt vectors (timing, easing, hold and interpolation), after the P1 suites.
+    { name: 'rt', mode: 'library', lines: rt, expected: rt.map(runLibraryCase) },
   ];
   const d = digestsOf(suites);
   return { suites, vectors, engineSplit: split(suites[2]?.expected ?? []), digest: d.digest, digests: d.digests };

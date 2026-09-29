@@ -165,6 +165,8 @@ describe('lane states', () => {
     for (const v1 of ['snap-values', 'calc-goldens', 'engine-calc', 'units-calc']) {
       expect(judgeHost(ios, parseNativeOutput(text(v1, p1))), v1).toMatchObject({ state: 'fail', reason: expect.stringContaining(`extended/${v1} -/-, declared`) });
     }
+    // The ANIM-a2 rt suite is parsed and judged too: a dropped rt line fails the host lane.
+    expect(judgeHost(ios, parseNativeOutput(text('rt', p1)))).toMatchObject({ state: 'fail', reason: expect.stringContaining('p1/rt -/-, declared') });
     expect(judgeHost(ios, parseNativeOutput(text(null, '0'.repeat(64))))).toMatchObject({ state: 'fail', reason: expect.stringContaining('P1 corpus digest') });
     expect(judgeHost(ios, parseNativeOutput('native:swift: generated files are stale'))).toMatchObject({ state: 'fail' });
   });

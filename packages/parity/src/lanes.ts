@@ -216,7 +216,7 @@ const translateNative = async (): Promise<TranslateNative> => (await import(path
 export type SuiteCount = { readonly corpus: 'p1' | 'extended'; readonly suite: string; readonly declared: number; readonly total: number | null; readonly pass: number | null };
 export type HostRun = { readonly state: LaneState; readonly reason: string | null; readonly toolchain: string | null; readonly suites: readonly SuiteCount[]; readonly digests: { readonly p1: string | null; readonly extended: string | null } };
 
-const SUITE_LINE = /^(vectors|units|engine corpus|library corpus|vectors-m2|vectors-dpr|engine-dpr|units-m2|snap|snap-values|calc-goldens|engine-calc|units-calc) (\d+)\/(\d+)/;
+const SUITE_LINE = /^(vectors|units|engine corpus|library corpus|vectors-m2|vectors-dpr|engine-dpr|units-m2|snap|snap-values|calc-goldens|engine-calc|units-calc|rt) (\d+)\/(\d+)/;
 const FINAL_LINE = /^native:(swift|kotlin): P1 corpus digest ([0-9a-f]+); extended corpus digest ([0-9a-f]+); status (pass|fail|blocked \(owner tooling\))$/m;
 
 /** Parses the native CLI's output into the P1 and extended suite counts, digests and status; null when it cannot. */

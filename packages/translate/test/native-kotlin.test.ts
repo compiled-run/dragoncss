@@ -14,7 +14,7 @@ describe('Kotlin host run (native:kotlin)', () => {
       expect(r.suites).toEqual([]);
       return;
     }
-    expect(r.suites.map((s) => `${s.name} ${s.pass}/${s.total}`)).toEqual(['vectors 258/258', 'units 320000/320000', 'engine 20258/20258', 'library 22000/22000']);
+    expect(r.suites.map((s) => `${s.name} ${s.pass}/${s.total}`)).toEqual(['vectors 258/258', 'units 320000/320000', 'engine 20258/20258', 'library 22000/22000', 'rt 54588/54588']);
     expect(r.status).toBe('pass');
   }, 600_000);
 });
