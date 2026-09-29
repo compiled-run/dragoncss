@@ -70,6 +70,9 @@ describe('precise refusals', () => {
     ['.a:checked', ':checked depends on user interaction'],
     ['.a:lang(en)', ':lang(en) is not supported'],
     ['.a:not()', 'needs a selector list argument'],
+    ['#\\31 a', 'id selector "#\\31 a" holds an escape'],
+    ['[data-\\41]', 'holds an escape'],
+    ['[data-x=\\41]', 'holds an escape'],
   ])('%s', (sel, message) => {
     const { selectors, diagnostics } = parse(`${sel} { width: 1px; }`);
     expect(selectors).toEqual([]);
@@ -260,6 +263,9 @@ describe('TREE: ids, every attribute name, HTML case-insensitive attribute value
     expect(hitsOf(css, { ...NO_FAULTS, invalidSelectorListKept: true })).toEqual(['a1', 'a2', 'a3']);
     // Chrome drops the rule, so a Dragon refusal elsewhere in the list is moot.
     expect(parse('.a:hover, .a:-moz-focusring { width: 1px; }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_SELECTOR_DROPPED']);
+    // Chrome never parses the block of a dropped rule, so unsupported declarations in it are not errors.
+    expect(parse('.a, .a::-moz-range-thumb { -webkit-appearance: none; display: grid; @media (width > 1px) {} }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_SELECTOR_DROPPED']);
+    expect(hitsOf('.a, .a::-moz-range-thumb { width: 7px; background: transparent; border: none; }')).toEqual([]);
   });
 
   it('Chrome-valid pseudo-elements stay refused and name their owner package; inside :is() an invalid one is refused', () => {

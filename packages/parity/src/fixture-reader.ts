@@ -80,7 +80,9 @@ export function parseFixtureHtml(html: string): { root: RawElement; style: { sta
         const close = new RegExp(`^</${el.tag}\\s*>`).exec(html.slice(i));
         el.end = close === null ? el.openEnd : i + close[0].length;
         i = el.end;
-        if (el.tag === 'link' && attrs.get('rel') === 'stylesheet') {
+        const rels = (attrs.get('rel') ?? '').toLowerCase().split(/[ \t\n\f\r]+/).filter((r) => r !== '');
+        if (el.tag === 'link' && rels.includes('stylesheet')) {
+          if (rels.length !== 1) throw new Error(`<link rel="${attrs.get('rel')}"> at ${el.start}: only rel="stylesheet" is read`);
           const href = attrs.get('href');
           if (href === undefined) throw new Error(`<link rel="stylesheet"> at ${el.start} has no href`);
           links.push({ href, start: el.start, end: el.openEnd });

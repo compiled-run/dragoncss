@@ -90,14 +90,18 @@ export function parseStylesheet(text: string, base: Span, use: SheetUse, orderSt
 }
 
 function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[]): Rule | null {
+  const before = diagnostics.length;
   const selectors = parseSelectorList(node['prelude'] as CssNode, st.base, st.use, diagnostics);
+  // Chrome never parses the block of a rule it drops, so neither do its diagnostics count.
+  const dropped = diagnostics.slice(before).some((d) => d.code === 'DRAGON_SELECTOR_DROPPED');
+  const blockDiagnostics = dropped ? [] : diagnostics;
   const declarations: Declaration[] = [];
   for (const d of list(node['block'] as CssNode, 'children')) {
     if (d.type !== 'Declaration') {
-      refuseNode(d, st, { label: 'a rule block', selectors }, diagnostics, enclosed);
+      refuseNode(d, st, { label: 'a rule block', selectors }, blockDiagnostics, dropped ? [] : enclosed);
       continue;
     }
-    const parsed = parseDeclaration(d, st.base, st.text, st.order++, diagnostics);
+    const parsed = parseDeclaration(d, st.base, st.text, st.order++, blockDiagnostics);
     if (parsed !== null) declarations.push(parsed);
   }
   return selectors === null ? null : { sheet: st.use.id, owner: st.use.owner, selectors, declarations };

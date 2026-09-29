@@ -100,6 +100,7 @@ export function readTreeFixtureDir(dir: string, id: string, options: TreeFixture
   const spec = options.spec === undefined ? read : options.spec(read);
   return treeFixtureInput(id, spec, (file) => {
     const path = posix.normalize(`${dir}/${file}`);
+    if (path.startsWith('../') || posix.isAbsolute(path)) throw new Error(`${id}: source ${file} is outside the repository`);
     const text = readFileSync(repoPath(path), 'utf8');
     return { uri: `dragon-source://${PROJECT_ID}/${path}`, displayPath: path, text: options.text === undefined ? text : options.text(file, text) };
   });
@@ -120,6 +121,7 @@ function treeFixtureInput(id: string, spec: TreeFixtureFile, load: (file: string
   const find = (file: string, at: At): Origin => {
     const s = source(file);
     const [text, nth] = typeof at === 'string' ? [at, 0] : at;
+    if (text === '' || !Number.isInteger(nth) || nth < 0) throw new Error(`${id}: bad origin ${JSON.stringify(at)} in ${file}`);
     let start = -1;
     for (let i = 0; i <= nth; i++) {
       start = s.text.indexOf(text, start + 1);

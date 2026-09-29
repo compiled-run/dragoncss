@@ -212,6 +212,8 @@ const setBy = (d: Declaration, property: Longhand): string => (d.property === pr
 function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], profiles: SupportProfiles, used: readonly UsedKey[], diagnostics: Diagnostic[]): void {
   const seen = new Set<Declaration>();
   for (const rule of rules) {
+    // A rule Chrome drops never applies (css/selectors.ts), so its values need no support.
+    if (rule.selectors.every((s) => s.dropped)) continue;
     for (const d of rule.declarations) {
       if (seen.has(d)) continue;
       seen.add(d);
