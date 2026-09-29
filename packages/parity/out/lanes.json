@@ -379,11 +379,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 71517,
+                  "c": 73662,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "c96dd44eda27dba1c72d1dfe0f048811f98e9c394ba18dd32b199c4c1e8294a4",
+                "dumpsSha256": "dcf0a5dbe40065c390a557af364a1ffed08f82ab30e46a6e2ff1188c960c42d6",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -416,11 +416,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 73446,
+                  "c": 76593,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "0c9ebacd6c10a8b3de5630386e290f0789400eab788530d5ecccb2cd650f18c5",
+                "dumpsSha256": "5198ea7f4f210a6415fee64a246c3e239dfe386e4ac87f16d74b4ea693812bbd",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -484,11 +484,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 71517,
+                  "c": 73662,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "c96dd44eda27dba1c72d1dfe0f048811f98e9c394ba18dd32b199c4c1e8294a4",
+                "dumpsSha256": "dcf0a5dbe40065c390a557af364a1ffed08f82ab30e46a6e2ff1188c960c42d6",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -521,11 +521,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 73446,
+                  "c": 76593,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "0c9ebacd6c10a8b3de5630386e290f0789400eab788530d5ecccb2cd650f18c5",
+                "dumpsSha256": "5198ea7f4f210a6415fee64a246c3e239dfe386e4ac87f16d74b4ea693812bbd",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -589,11 +589,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 71517,
+                  "c": 73662,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "c96dd44eda27dba1c72d1dfe0f048811f98e9c394ba18dd32b199c4c1e8294a4",
+                "dumpsSha256": "dcf0a5dbe40065c390a557af364a1ffed08f82ab30e46a6e2ff1188c960c42d6",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -626,11 +626,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 73446,
+                  "c": 76593,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "0c9ebacd6c10a8b3de5630386e290f0789400eab788530d5ecccb2cd650f18c5",
+                "dumpsSha256": "5198ea7f4f210a6415fee64a246c3e239dfe386e4ac87f16d74b4ea693812bbd",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -644,7 +644,7 @@
           "lane": "device-pixels",
           "where": "device",
           "state": "fail",
-          "reason": "515 failures (pixel 515)",
+          "reason": "130 failures (pixel 130)",
           "sets": [
             {
               "dpr": 2,
@@ -694,14 +694,14 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 71517,
+                  "c": 73662,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "c96dd44eda27dba1c72d1dfe0f048811f98e9c394ba18dd32b199c4c1e8294a4",
-                "failures": 245,
+                "dumpsSha256": "dcf0a5dbe40065c390a557af364a1ffed08f82ab30e46a6e2ff1188c960c42d6",
+                "failures": 65,
                 "failuresByKind": {
-                  "pixel": 245
+                  "pixel": 65
                 }
               },
               {
@@ -733,19 +733,19 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 73446,
+                  "c": 76593,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "0c9ebacd6c10a8b3de5630386e290f0789400eab788530d5ecccb2cd650f18c5",
-                "failures": 270,
+                "dumpsSha256": "5198ea7f4f210a6415fee64a246c3e239dfe386e4ac87f16d74b4ea693812bbd",
+                "failures": 65,
                 "failuresByKind": {
-                  "pixel": 270
+                  "pixel": 65
                 }
               }
             ],
             "failuresByKind": {
-              "pixel": 515
+              "pixel": 130
             },
             "firstFailures": [
               {
@@ -878,35 +878,35 @@
               },
               {
                 "lane": "device-pixels",
-                "case": "text-align-multi-line",
+                "case": "position-relative-block",
                 "dpr": 3,
-                "node": "interior:co",
+                "node": "interior:a1",
                 "kind": "pixel",
-                "detail": "interior:co at 37,330: native [65,65,65,255], Chrome [33,33,33,255] (channel delta limit 0)"
+                "detail": "interior:a1 at 108,33: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)"
               },
               {
                 "lane": "device-pixels",
-                "case": "text-align-multi-line",
+                "case": "position-relative-block",
                 "dpr": 3,
-                "node": "outside:ro",
+                "node": "edge:a1:right",
                 "kind": "pixel",
-                "detail": "outside:ro at 37,357: native [65,65,65,255], Chrome [33,33,33,255] (channel delta limit 0)"
+                "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
               },
               {
                 "lane": "device-pixels",
-                "case": "text-align-multi-line",
+                "case": "position-relative-block",
                 "dpr": 3,
-                "node": "outside:codd",
+                "node": "edge:a1:bottom",
                 "kind": "pixel",
-                "detail": "outside:codd at 75,417: native [255,255,255,255], Chrome [216,216,216,255] (channel delta limit 0)"
+                "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
               },
               {
                 "lane": "device-pixels",
-                "case": "text-align-multi-line",
+                "case": "position-relative-block",
                 "dpr": 3,
-                "node": "edge:codd:top",
+                "node": "edge:a1:left",
                 "kind": "pixel",
-                "detail": "edge:codd:top: Chrome shows an edge 2.923 device px along the scanline, the native capture none"
+                "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
               }
             ],
             "trust": [
@@ -914,14 +914,14 @@
                 "device": "iPhone 17",
                 "dpr": 3,
                 "cases": 3,
-                "points": 1005,
+                "points": 1171,
                 "mismatches": 0
               },
               {
                 "device": "iPad (A16)",
                 "dpr": 2,
                 "cases": 3,
-                "points": 1005,
+                "points": 1171,
                 "mismatches": 0
               }
             ]
@@ -1422,11 +1422,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 73446,
+                  "c": 76593,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "bd59b277ad74dbe2aa98a033a952f5d4f34d2e4f0c4cd1bec07fd7bc2df8cdb3",
+                "dumpsSha256": "b4d410e763e50d5040d6b912d379da23a32b8d8cac5d85936f1c4c571c1b73ed",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -1459,11 +1459,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 73528,
+                  "c": 76191,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "6169386796aef9cf081f9b0d34fc5bcab6d178f84fa41083a4e355eb397a039f",
+                "dumpsSha256": "546be7efc4a864fc589fc4000c2e45da1fafc12ec0e12fd39c3fcc81c52f102e",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -1496,11 +1496,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 71517,
+                  "c": 73662,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "9d3972159f119da46c29188173ce4e868f54ba2cb20425caee9544b19450fded",
+                "dumpsSha256": "40949ae416f7c038342742fc506971f202f20c953b3e2293b6a5031e78d6f226",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -1570,11 +1570,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 73446,
+                  "c": 76593,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "bd59b277ad74dbe2aa98a033a952f5d4f34d2e4f0c4cd1bec07fd7bc2df8cdb3",
+                "dumpsSha256": "b4d410e763e50d5040d6b912d379da23a32b8d8cac5d85936f1c4c571c1b73ed",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -1607,11 +1607,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 73528,
+                  "c": 76191,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "6169386796aef9cf081f9b0d34fc5bcab6d178f84fa41083a4e355eb397a039f",
+                "dumpsSha256": "546be7efc4a864fc589fc4000c2e45da1fafc12ec0e12fd39c3fcc81c52f102e",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -1644,11 +1644,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 71517,
+                  "c": 73662,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "9d3972159f119da46c29188173ce4e868f54ba2cb20425caee9544b19450fded",
+                "dumpsSha256": "40949ae416f7c038342742fc506971f202f20c953b3e2293b6a5031e78d6f226",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -1718,11 +1718,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 73446,
+                  "c": 76593,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "bd59b277ad74dbe2aa98a033a952f5d4f34d2e4f0c4cd1bec07fd7bc2df8cdb3",
+                "dumpsSha256": "b4d410e763e50d5040d6b912d379da23a32b8d8cac5d85936f1c4c571c1b73ed",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -1755,11 +1755,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 73528,
+                  "c": 76191,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "6169386796aef9cf081f9b0d34fc5bcab6d178f84fa41083a4e355eb397a039f",
+                "dumpsSha256": "546be7efc4a864fc589fc4000c2e45da1fafc12ec0e12fd39c3fcc81c52f102e",
                 "failures": 0,
                 "failuresByKind": {}
               },
@@ -1792,11 +1792,11 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 71517,
+                  "c": 73662,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "9d3972159f119da46c29188173ce4e868f54ba2cb20425caee9544b19450fded",
+                "dumpsSha256": "40949ae416f7c038342742fc506971f202f20c953b3e2293b6a5031e78d6f226",
                 "failures": 0,
                 "failuresByKind": {}
               }
@@ -1810,7 +1810,7 @@
           "lane": "device-pixels",
           "where": "device",
           "state": "fail",
-          "reason": "1341 failures (pixel 1341)",
+          "reason": "172 failures (pixel 172)",
           "sets": [
             {
               "dpr": 2,
@@ -1866,14 +1866,14 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 73446,
+                  "c": 76593,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "bd59b277ad74dbe2aa98a033a952f5d4f34d2e4f0c4cd1bec07fd7bc2df8cdb3",
-                "failures": 261,
+                "dumpsSha256": "b4d410e763e50d5040d6b912d379da23a32b8d8cac5d85936f1c4c571c1b73ed",
+                "failures": 65,
                 "failuresByKind": {
-                  "pixel": 261
+                  "pixel": 65
                 }
               },
               {
@@ -1905,14 +1905,14 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 73528,
+                  "c": 76191,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "6169386796aef9cf081f9b0d34fc5bcab6d178f84fa41083a4e355eb397a039f",
-                "failures": 857,
+                "dumpsSha256": "546be7efc4a864fc589fc4000c2e45da1fafc12ec0e12fd39c3fcc81c52f102e",
+                "failures": 45,
                 "failuresByKind": {
-                  "pixel": 857
+                  "pixel": 45
                 }
               },
               {
@@ -1944,29 +1944,21 @@
                 "compared": {
                   "a": 9832,
                   "b": 30496,
-                  "c": 71517,
+                  "c": 73662,
                   "d": 9891,
                   "breaks": 1671
                 },
-                "dumpsSha256": "9d3972159f119da46c29188173ce4e868f54ba2cb20425caee9544b19450fded",
-                "failures": 223,
+                "dumpsSha256": "40949ae416f7c038342742fc506971f202f20c953b3e2293b6a5031e78d6f226",
+                "failures": 62,
                 "failuresByKind": {
-                  "pixel": 223
+                  "pixel": 62
                 }
               }
             ],
             "failuresByKind": {
-              "pixel": 1341
+              "pixel": 172
             },
             "firstFailures": [
-              {
-                "lane": "device-pixels",
-                "case": "text-ahem-single-line",
-                "dpr": 2,
-                "node": "edge:t4:bottom",
-                "kind": "pixel",
-                "detail": "edge:t4:bottom at 30,150: native [133,133,133,255], Chrome [0,0,0,255] (channel delta limit 0)"
-              },
               {
                 "lane": "device-pixels",
                 "case": "color-border-sides",
@@ -2081,43 +2073,51 @@
               },
               {
                 "lane": "device-pixels",
-                "case": "text-wrap-zwsp",
+                "case": "position-relative-block",
                 "dpr": 2,
-                "node": "edge:z6:top",
+                "node": "interior:a1",
                 "kind": "pixel",
-                "detail": "edge:z6:top: Chrome shows an edge 5.000 device px along the scanline, the native capture none"
+                "detail": "interior:a1 at 72,22: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)"
               },
               {
                 "lane": "device-pixels",
-                "case": "text-align-multi-line",
+                "case": "position-relative-block",
                 "dpr": 2,
-                "node": "outside:codd",
+                "node": "edge:a1:right",
                 "kind": "pixel",
-                "detail": "outside:codd at 50,277: native [255,255,255,255], Chrome [229,229,229,255] (channel delta limit 0)"
+                "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
               },
               {
                 "lane": "device-pixels",
-                "case": "text-align-multi-line",
+                "case": "position-relative-block",
                 "dpr": 2,
-                "node": "edge:codd:top",
+                "node": "edge:a1:bottom",
                 "kind": "pixel",
-                "detail": "edge:codd:top: Chrome shows an edge 2.962 device px along the scanline, the native capture none"
+                "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
               },
               {
                 "lane": "device-pixels",
-                "case": "text-line-height-multi-line",
+                "case": "position-relative-block",
                 "dpr": 2,
-                "node": "edge:big:top",
+                "node": "edge:a1:left",
                 "kind": "pixel",
-                "detail": "edge:big:top: Chrome shows an edge 5.000 device px along the scanline, the native capture none"
+                "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
               },
               {
                 "lane": "device-pixels",
-                "case": "text-anonymous-block-mixed",
+                "case": "position-relative-block",
                 "dpr": 2,
-                "node": "edge:b2:bottom",
+                "node": "edge:f1a:bottom",
                 "kind": "pixel",
-                "detail": "edge:b2:bottom at 50,247: native [255,255,255,255], Chrome [199,199,199,255] (channel delta limit 0)"
+                "detail": "edge:f1a:bottom: edge at 5.000 device px, Chrome 3.000; exceeds 1 device px"
+              },
+              {
+                "lane": "device-pixels",
+                "case": "position-relative-block-rtl",
+                "dpr": 2,
+                "node": "interior:a1",
+                "kind": "pixel",
+                "detail": "interior:a1 at 768,22: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)"
               }
             ],
             "trust": [
@@ -2125,21 +2125,21 @@
                 "device": "dragon-320",
                 "dpr": 2,
                 "cases": 3,
-                "points": 1005,
+                "points": 1171,
                 "mismatches": 0
               },
               {
                 "device": "dragon-smoke",
                 "dpr": 2.625,
                 "cases": 3,
-                "points": 1032,
+                "points": 1211,
                 "mismatches": 0
               },
               {
                 "device": "dragon-480",
                 "dpr": 3,
                 "cases": 3,
-                "points": 1005,
+                "points": 1171,
                 "mismatches": 0
               }
             ]
