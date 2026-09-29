@@ -10,6 +10,9 @@ import { parseVarParts } from '../src/css/variables.ts';
 import { NO_FAULTS } from '../src/faults.ts';
 import type { Diagnostic } from '../src/types.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
+import { COMMITTED_PROFILES, createProjectWith } from '../src/internal.ts';
+import type { SupportProfiles } from '../src/internal.ts';
+import { div, inputFor } from './helpers.ts';
 
 const SRC = { uri: 's.css', revision: 'r', hash: 'h' };
 const origin = { kind: 'unlocated', reason: 'test' } as const;
@@ -127,9 +130,42 @@ describe('parse-time validity', () => {
     expect(codes('.a { --a\\62: 1px; }')).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
     expect(codes('.a { --Ab: 5px; width: var(--Ab); height: 1px !important; }')).toEqual([]);
   });
+  it('drops the reserved name "--", and a custom property value with an unmatched closing bracket or a bad url() (WPT test_variable_legal_values)', () => {
+    const codes = (css: string): string[] => parse(css).diagnostics.map((d) => d.code);
+    for (const v of [')', ']', '(])', '[)]', '(})', 'url(a b)', 'url(a"b)', 'url(var(--b))']) expect(codes(`.a { --t: ${v}; }`), v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    for (const v of ['( )', '{ }', '[ ]', 'foo(bar())', '(;)', 'url( a )', 'url(a\\ b\\))', '")"']) expect(codes(`.a { --t: ${v}; }`), v).toEqual([]);
+    expect(codes('.a { --: red; }')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    expect(parse('.a { --: red; }').rules.flatMap((r) => r.declarations)).toEqual([]);
+    // WPT variable-declaration-29: "--" is never defined, so var(--, green) takes its fallback.
+    expect(one('.a { color: red; color: var(--, green); }', 'a', 'color')).toBe('rgb(0, 128, 0)');
+  });
+  it('a CSS-wide keyword beside comments is still that keyword', () => {
+    expect(one('.p { --x: 8px; } .a { --x: /* c */ inherit /**/; width: var(--x); }', 'a', 'width')).toBe('8px');
+    expect(one('.p { --x: 8px; } .a { --x: inh/**/erit; width: var(--x, 3px); }', 'a', 'width')).toBe('auto');
+  });
+  it('var( right after "#" or "@" is part of a hash or at-keyword token, not a var() reference', () => {
+    expect(parseVarParts('#var(--a) @var(--b)')?.some((p) => p.kind === 'var')).toBe(false);
+    expect(parseVarParts('+var(--a)')?.some((p) => p.kind === 'var')).toBe(true);
+  });
   it('finds var() only where it is a function token', () => {
-    expect(parseVarParts('"var(--a)" url(var(--b)) x-var(--c) /* var(--d) */')?.some((p) => p.kind === 'var')).toBe(false);
+    expect(parseVarParts('"var(--a)" url(var\\(--b\\)) x-var(--c) /* var(--d) */')?.some((p) => p.kind === 'var')).toBe(false);
     expect(parseVarParts('rgb(var(--r), 0, 0)')).toEqual([{ kind: 'text', text: 'rgb(' }, { kind: 'var', name: '--r', fallback: null }, { kind: 'text', text: ', 0, 0)' }]);
     expect(parseVarParts('VAR(--k, var(--j,))')).toEqual([{ kind: 'var', name: '--k', fallback: [{ kind: 'text', text: ' ' }, { kind: 'var', name: '--j', fallback: [] }] }]);
+  });
+});
+
+describe('a substituted value is checked against each target\'s profile', () => {
+  const FEATURE = 'width:<length-px>';
+  const drop = (profile: SupportProfiles['ios']): SupportProfiles['ios'] => ({ ...profile, rows: profile.rows.filter((r) => r.feature !== FEATURE) });
+  const input = inputFor('.a { --w: 7px; width: var(--w); }', (r) => [div(r, 'a', ['a'])]);
+  const refused = (targets: Parameters<typeof createProjectWith>[0]['targets'], supportProfiles: SupportProfiles, profiles: 'enforce' | 'derive' = 'enforce'): (string | null)[] =>
+    createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles, direction: 'ltr', supportProfiles }).compile(input).diagnostics
+      .filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.includes('substitutes to 7px')).map((d) => d.target);
+
+  it('reads the replacement profiles and the android profile, not only the committed ios and web ones', () => {
+    expect(COMMITTED_PROFILES.ios.rows.some((r) => r.feature === FEATURE)).toBe(true);
+    expect(refused({ ios: { minimum: '15.0' }, web: {} }, { ios: drop(COMMITTED_PROFILES.ios), web: COMMITTED_PROFILES.web })).toEqual(['ios']);
+    expect(refused({ android: { minSdk: 31 } }, { ...COMMITTED_PROFILES, android: drop(COMMITTED_PROFILES.android) })).toEqual(['android']);
+    expect(refused({ ios: { minimum: '15.0' } }, { ios: drop(COMMITTED_PROFILES.ios), web: COMMITTED_PROFILES.web }, 'derive')).toEqual([]);
   });
 });

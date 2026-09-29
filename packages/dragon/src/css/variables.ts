@@ -62,6 +62,26 @@ function nameEnd(text: string, i: number): number {
   return j;
 }
 
+/** css-syntax-3 §4.3.6: the end of an unquoted url( whose contents start at i, and whether a quote, "(" or inner white space makes it a bad url. */
+function urlEnd(text: string, i: number): { end: number; bad: boolean } {
+  let bad = false;
+  let blank = false;
+  let j = i;
+  while (j < text.length) {
+    const c = text[j] as string;
+    if (c === ')') return { end: j + 1, bad };
+    if (c === '\\') {
+      bad ||= blank;
+      j += 2;
+      continue;
+    }
+    if (WS.test(c)) blank = true;
+    else if (blank || c === '"' || c === "'" || c === '(') bad = true;
+    j++;
+  }
+  return { end: text.length, bad };
+}
+
 /** css-syntax-3 §4.3.9: whether a name run is an identifier (so a following "(" makes it a function token). */
 function isIdent(name: string): boolean {
   const a = name[0] ?? '';
@@ -105,14 +125,25 @@ function blockEnd(text: string, i: number): number {
 
 /**
  * Splits a value into text and var() parts, or returns null when a var() is malformed (css-variables-1 §3: var( <custom-property-name>
- * [ , <declaration-value>? ]? ) ), which makes the declaration invalid at parse time.
+ * [ , <declaration-value>? ]? ) ) or the value is not a <declaration-value> (an unmatched ")", "]" or "}", or a bad url()), which
+ * makes the declaration invalid at parse time.
  */
 export function parseVarParts(text: string): VarPart[] | null {
   const parts: VarPart[] = [];
+  const open: string[] = [];
   let literal = '';
   let i = 0;
   while (i < text.length) {
     const c = text[i] as string;
+    if (c === '(' || c === '[' || c === '{') open.push(c === '(' ? ')' : c === '[' ? ']' : '}');
+    else if ((c === ')' || c === ']' || c === '}') && open.pop() !== c) return null;
+    // css-syntax-3 §4.3.1: "#" or "@" and a name is one hash or at-keyword token, so a "var(" right after it is not a function.
+    if ((c === '#' || c === '@') && i + 1 < text.length) {
+      const e = nameEnd(text, i + 1);
+      literal += text.slice(i, e);
+      i = e;
+      continue;
+    }
     if (c === '"' || c === "'") {
       const e = stringEnd(text, i);
       literal += text.slice(i, e);
@@ -148,8 +179,8 @@ export function parseVarParts(text: string): VarPart[] | null {
         // css-syntax-3 §4.3.6: an unquoted url( is one token; its contents are never a function.
         const inner = skipBlank(text, e + 1);
         if (text[inner] !== '"' && text[inner] !== "'") {
-          const close = text.indexOf(')', inner);
-          const end = close < 0 ? text.length : close + 1;
+          const { end, bad } = urlEnd(text, inner);
+          if (bad) return null;
           literal += text.slice(i, end);
           i = end;
           continue;
