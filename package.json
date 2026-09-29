@@ -43,6 +43,7 @@
     "parity:break-capture": "node --conditions=dragon-internal packages/parity/src/cli/break-capture.ts",
     "parity:pixel-capture": "node --conditions=dragon-internal packages/parity/src/cli/pixel-capture.ts",
     "native:devices": "node --conditions=dragon-internal packages/parity/src/cli/native-devices.ts",
+    "native:gallery": "node --conditions=dragon-internal packages/parity/src/cli/gallery.ts",
     "rt:oracle": "node --conditions=dragon-internal scripts/capture-rt-oracle.ts"
   },
   "devDependencies": {
