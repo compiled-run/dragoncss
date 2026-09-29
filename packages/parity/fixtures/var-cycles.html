@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; color: #336699; }
+.sw { height: 10px; margin-bottom: 2px; }
+.a { --a: var(--b); --b: var(--a); background-color: var(--a, green); width: var(--b, 40px); color: var(--a); }
+.b { --a: var(--b, 1px); --b: var(--a, 2px); --c: var(--a, 30px); width: var(--c); }
+.c { --self: var(--self); width: var(--self, 25px); }
+.d { --b: 50px; --a: var(--b, var(--a)); width: var(--a, 9px); }
+.e { --a: var(--b, var(--a)); width: var(--a, 35px); }
+.f { --a: var(--b); --b: var(--c); --c: var(--b); --d: var(--a, 45px); width: var(--d); }
+.g { --a: var(--missing) var(--b); --b: var(--a, 5px); width: var(--b, 55px); }
+.h { --x: 60px; }
+.h .k { --x: var(--y); --y: var(--x); width: var(--x, 65px); }
+.h .k .m { width: var(--x, 70px); height: 4px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="sw a"></div>
+<div data-dragon-id="b" class="sw b"></div>
+<div data-dragon-id="c" class="sw c"></div>
+<div data-dragon-id="d" class="sw d"></div>
+<div data-dragon-id="e" class="sw e"></div>
+<div data-dragon-id="f" class="sw f"></div>
+<div data-dragon-id="g" class="sw g"></div>
+<div data-dragon-id="h" class="h"><div data-dragon-id="k" class="sw k"><div data-dragon-id="m" class="m"></div></div></div>
+</body>
+</html>
