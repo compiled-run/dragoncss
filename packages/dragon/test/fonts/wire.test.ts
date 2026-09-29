@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { AtRuleContext } from '../../src/css/at-rules.ts';
-import { parseFamilyList, readSfnt, serializeFamilyList } from '../../src/fonts/index.ts';
+import { parseFamilyList, readSfnt, rewriteFamilyList, serializeFamilyList } from '../../src/fonts/index.ts';
 import type { FontFaceIssue, FontMap, FontMapError } from '../../src/fonts/index.ts';
 import {
   collectFontFaces, familySupport, FONT_WIRE_PROBLEM_KINDS, pinnedFacesOf, projectFonts, webFontOutput,
@@ -21,7 +21,7 @@ const contexts = (css: string): AtRuleContext[] =>
 const collect = (css: string) => collectFontFaces(contexts(css), resolveFonts);
 
 const INTER = ['Inter/Inter-Light.ttf', 'Inter/Inter-Regular.ttf', 'Inter/Inter-Italic.ttf', 'Inter/Inter-Bold.ttf', 'Inter/Inter-BoldItalic.ttf'];
-const FILES = [...INTER, 'NotoSansMono/NotoSansMono-Regular.ttf', 'NotoSans/NotoSans-Regular.ttf', 'Roboto/Roboto-Regular.ttf'];
+const FILES = [...INTER, 'NotoSansMono/NotoSansMono-Regular.ttf', 'NotoSans/NotoSans-Regular.ttf', 'Roboto/Roboto-Regular.ttf', 'Lato/Lato-Regular.ttf', 'Lato/Lato-Bold.ttf'];
 const hex = (b: Uint8Array): string => createHash('sha256').update(b).digest('hex');
 /** Snapshot assets whose ids are the fonts/<file> srcs of the captured maps. */
 const ASSETS: SnapshotAsset[] = FILES.map((f) => {
@@ -193,10 +193,11 @@ describe('familySupport', () => {
       ['"Mine"', 'font-family:<declared>'],
       ['serif', 'font-family:<platform>'],
       ['Mine, serif', 'font-family:<platform>'],
-      ["'Lato', sans-serif", 'font-family:<unmapped>'],
-      ['Lato', 'font-family:<unmapped>'],
+      ["'Nope', sans-serif", 'font-family:<unmapped>'],
+      ['Nope', 'font-family:<unmapped>'],
       ['cursive', 'font-family:<unmapped>'],
-      ['Mine, Lato, serif', 'font-family:<unmapped>'],
+      ['Mine, Nope, serif', 'font-family:<unmapped>'],
+      ['"sans-serif"', 'font-family:<unmapped>'],
     ];
     const got = cases.map(([text]) => {
       const s = familySupport(text, PINNED_MAP, new Set(['mine']));
@@ -347,6 +348,17 @@ describe('stated-reference probes (reference/*.json)', () => {
     const p2 = capture<{ cases: { id: string; ok: boolean }[] }>('../reference/p2-cssom-rewrite.json');
     expect(p2.cases.length).toBeGreaterThan(0);
     expect(p2.cases.filter((c) => !c.ok).map((c) => c.id)).toEqual([]);
+  });
+
+  it("P2: Dragon's rewriteFamilyList of each Chrome-serialized value equals Chrome's CSSOM rewrite (quoted generics are kept)", () => {
+    const p2 = capture<{ map: FontMap; cases: { id: string; visits: { before: string; after: string }[] }[] }>('../reference/p2-cssom-rewrite.json');
+    const visits = p2.cases.flatMap((c) => c.visits.map((v) => ({ id: c.id, ...v })));
+    expect(visits.some((v) => v.before.includes('"sans-serif"'))).toBe(true);
+    for (const v of visits) {
+      const list = parseFamilyList(v.before);
+      if (list === null) throw new Error(`${v.id}: ${v.before}`);
+      expect(rewriteFamilyList(list, p2.map, new Set()).value, v.id).toBe(v.after);
+    }
   });
 
   it('P3: the rewrite leaves every computed value and box of the control document identical', () => {

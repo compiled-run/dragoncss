@@ -1,8 +1,8 @@
 // The project font map: each generic family (and optionally a named platform family) is either pinned to bundled faces, which
 // the web output also uses (exact), or left to the platform (caveat). A family that is neither declared with @font-face nor in the
 // map is an unmapped-family result: Dragon never silently uses a font installed on the machine.
-import { tokenize } from './css-tokens.ts';
-import { parseDescriptor } from './font-face.ts';
+import { asciiLower, tokenize } from './css-tokens.ts';
+import { GENERIC_FAMILY_KEYWORDS, parseDescriptor } from './font-face.ts';
 import { serializeFamilyName, serializeString } from './family-list.ts';
 import type { FamilyEntry, FamilyList } from './family-list.ts';
 import { foldFamily } from './selection.ts';
@@ -142,8 +142,9 @@ export function rewriteFamilyList(list: FamilyList, map: FontMap, declared: Read
       out.push(original);
       continue;
     }
-    // ui-serif, ui-monospace, emoji and the other newer generics are family names to Chrome 145's parser.
-    const generic = (GENERIC_KEYS as readonly string[]).includes(entry.name) && isBareIdent(entry.name) ? map.generics[entry.name as GenericKey] : undefined;
+    // ui-serif, ui-monospace, emoji and the other newer generics are family names to Chrome 145's parser. A family entry named
+    // like a parser generic (sans-serif...) was quoted, so it names a family, never the generic.
+    const generic = (GENERIC_KEYS as readonly string[]).includes(entry.name) && isBareIdent(entry.name) && !isParserGeneric(entry.name) ? map.generics[entry.name as GenericKey] : undefined;
     const namedKey = Object.keys(map.families ?? {}).find((k) => foldFamily(k) === foldFamily(entry.name));
     const named = namedKey === undefined ? undefined : map.families?.[namedKey];
     const e = generic ?? named;
@@ -154,6 +155,8 @@ export function rewriteFamilyList(list: FamilyList, map: FontMap, declared: Read
   }
   return { value: out.join(', '), fontFaceRules: rules, resolutions };
 }
+
+const isParserGeneric = (name: string): boolean => (GENERIC_FAMILY_KEYWORDS as readonly string[]).includes(asciiLower(name));
 
 const isBareIdent = (name: string): boolean => {
   const t = tokenize(name);
