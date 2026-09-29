@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest';
 import type { DeviceRecord, DeviceSpec } from '../src/device-run.ts';
 import { avdKeys, avdScale, DEVICE_MATRIX, judgeGlyphPlant, matrixProblems, PLANT_AXIS, PLANT_DEVICES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
 import { emitNativeSupport, SUPPORT_PLANTS } from 'dragon';
-import { GATE_GLYPH_CENTRE_DEVICE_PX } from '../src/compare.ts';
-import type { GlyphCentre } from '../src/native-compare.ts';
+import { GATE_GLYPH_POSITION_DEVICE_PX } from '../src/compare.ts';
+import type { GlyphPosition } from '../src/native-compare.ts';
 import { layoutCaseIds } from '../src/targets.ts';
 import { deviceDprs } from '../src/targets.ts';
 
@@ -62,8 +62,8 @@ describe('device records', () => {
 });
 
 describe('raster plants judged against the clean run (T093 ruling A)', () => {
-  const G = GATE_GLYPH_CENTRE_DEVICE_PX;
-  const line = (l: string, axis: 'x' | 'y', native: number, chrome: number): GlyphCentre => ({ line: l, axis, native, chrome });
+  const G = GATE_GLYPH_POSITION_DEVICE_PX;
+  const line = (l: string, axis: 'x' | 'y', native: number, chrome: number): GlyphPosition => ({ line: l, axis, native, chrome });
   const clean = { failures: 0, centres: [line('a:line0', 'x', 100.1, 100), line('a:line0', 'y', 50.2, 50), line('b:line0', 'x', 200, 200.05)] };
   it('the constants and one axis per plant', () => {
     expect([PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, PLANT_MARGIN_DEVICE_PX]).toEqual([1, 0.05, 0.2]);
@@ -83,7 +83,7 @@ describe('raster plants judged against the clean run (T093 ruling A)', () => {
       }
     }
   });
-  it('caught: every line on the axis moved 1 device px and fails the centre check with the margin', () => {
+  it('caught: every line on the axis moved 1 device px and fails the position check with the margin', () => {
     const v = judgeGlyphPlant('glyph-offset-1', clean, [line('a:line0', 'x', 101.12, 100), line('a:line0', 'y', 50.2, 50), line('b:line0', 'x', 200.98, 200.05)], G);
     expect(v).toMatchObject({ caught: true, problems: [] });
     expect(v.lines.map((l) => l.line)).toEqual(['a:line0', 'b:line0']);
@@ -92,11 +92,12 @@ describe('raster plants judged against the clean run (T093 ruling A)', () => {
   it('not caught: a dirty clean run, a shift off 1 by more than the spread, a thin margin, a missing line or no line', () => {
     const planted = [line('a:line0', 'x', 101.12, 100), line('b:line0', 'x', 200.98, 200.05)];
     expect(judgeGlyphPlant('glyph-offset-1', { ...clean, failures: 2 }, planted, G).problems).toEqual(['the clean run has 2 device-pixels failure(s)']);
-    expect(judgeGlyphPlant('glyph-offset-1', clean, [line('a:line0', 'x', 101.2, 100), planted[1] as GlyphCentre], G).problems).toEqual(['a:line0: the glyph centre moved 1.100 device px from the clean run, not 1 within 0.05']);
+    expect(judgeGlyphPlant('glyph-offset-1', clean, [line('a:line0', 'x', 101.2, 100), planted[1] as GlyphPosition], G).problems).toEqual(['a:line0: the glyph centre moved 1.100 device px from the clean run, not 1 within 0.05']);
     // Chrome's centre 0.35 right of the clean native one: the plant's centre error is 0.65, 0.15 beyond the gate.
     const thin = { failures: 0, centres: [line('c:line0', 'x', 10, 10.35)] };
-    expect(judgeGlyphPlant('glyph-offset-1', thin, [line('c:line0', 'x', 11, 10.35)], G).problems).toEqual(['c:line0: the centre check fails by 0.150 device px beyond the gate, less than 0.2']);
-    expect(judgeGlyphPlant('glyph-offset-1', clean, planted.slice(0, 1), G).problems).toEqual(['the planted run measured 1 x centre lines, the clean run 2, not the same lines']);
-    expect(judgeGlyphPlant('glyph-offset-y-1', { failures: 0, centres: [] }, [], G).problems).toEqual(['no y glyph centre line was measured']);
+    expect(judgeGlyphPlant('glyph-offset-1', thin, [line('c:line0', 'x', 11, 10.35)], G).problems).toEqual(['c:line0: the position check fails by 0.150 device px beyond the gate, less than 0.2']);
+    expect(judgeGlyphPlant('glyph-offset-1', clean, planted.slice(0, 1), G).problems).toEqual(['the planted run measured 1 x position lines, the clean run 2, not the same lines']);
+    expect(judgeGlyphPlant('glyph-offset-y-1', clean, [line('a:line0', 'y', 50.9, 50)], G).problems).toEqual(['a:line0: the glyph bottom edge moved 0.700 device px from the clean run, not 1 within 0.05']);
+    expect(judgeGlyphPlant('glyph-offset-y-1', { failures: 0, centres: [] }, [], G).problems).toEqual(['no y glyph position line was measured']);
   });
 });

@@ -359,6 +359,10 @@ public final class DragonTextView: UIView, DragonNodeView {
   public override func draw(_ rect: CGRect) {
     guard let ctx = UIGraphicsGetCurrentContext(), let font = dragonFont, let color = dragonTextColor else { return }
     let ct = font as CTFont
+    // Glyphs at the engine's fractional x: Core Graphics otherwise floors each glyph origin to a whole device px (T093 addendum F3).
+    ctx.setAllowsFontSubpixelPositioning(true)
+    ctx.setShouldSubpixelPositionFonts(true)
+    ctx.setShouldSubpixelQuantizeFonts(false)
     ctx.setFillColor(color.cgColor)
     for l in specs where !l.glyphs.isEmpty {
       ctx.saveGState()

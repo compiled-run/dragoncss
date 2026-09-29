@@ -2,7 +2,7 @@
 // clear of every edge by SAMPLE_INSET_DEVICE_PX, and edge scanlines that cross exactly one edge.
 import { describe, expect, it } from 'vitest';
 import type { GlyphBox, SampleBox, SamplePoint } from '../src/samples.ts';
-import { ALONG_POSITIONS, clearOfGlyphs, generateGlyphSamples, generateSamples, glyphClearance, ruleKind, SAMPLE_INSET_DEVICE_PX, SAMPLE_RULES, sampleBoxes, sampleGlyphs } from '../src/samples.ts';
+import { ALONG_POSITIONS, CLEAR_SUFFIX, clearOfGlyphs, isScanlineRule, generateGlyphSamples, generateSamples, glyphClearance, ruleKind, SAMPLE_INSET_DEVICE_PX, SAMPLE_RULES, sampleBoxes, sampleGlyphs } from '../src/samples.ts';
 
 const SIZE = { width: 1200, height: 900 };
 const card: SampleBox = { id: 'n3', left: 60, top: 60, right: 420, bottom: 180, border: { top: 6, right: 6, bottom: 6, left: 6 }, radius: 24, clips: true };
@@ -110,7 +110,22 @@ describe('glyph clearance (T093 ruling A)', () => {
     const r = sampleBoxes([b], SIZE, row);
     expect(r.points).toEqual([]);
     expect(r.dropped).toEqual(['interior:q', 'outside:q', 'edge:q:top', 'edge:q:right', 'edge:q:bottom', 'edge:q:left']);
-    expect(sampleBoxes([card, plain], SIZE)).toEqual({ points: generateSamples([card, plain], SIZE), dropped: [] });
+    expect(sampleBoxes([card, plain], SIZE)).toEqual({ points: generateSamples([card, plain], SIZE), dropped: [], rescued: [] });
+  });
+  it('a dropped edge scanline or border point keeps each pixel that is itself clear, as "<rule>:clear" (addendum F2)', () => {
+    // position-absolute-out-of-flow@3: i2's bottom edge lies on the top edge of the Y glyph below it.
+    const i2: SampleBox = { id: 'i2', left: 63, top: 81, right: 75, bottom: 105, border: { top: 3, right: 3, bottom: 3, left: 3 }, radius: 0, clips: false };
+    const y: GlyphBox = { left: 30, top: 105, right: 90, bottom: 165 };
+    const r = sampleBoxes([i2], SIZE, [y]);
+    expect(r.dropped).toEqual(['border:i2:bottom', 'edge:i2:bottom']);
+    expect(r.rescued).toEqual(['border:i2:bottom', 'edge:i2:bottom']);
+    expect(r.points.filter((p) => p.rule.endsWith(CLEAR_SUFFIX))).toEqual([
+      { x: 69, y: 102, rule: 'border:i2:bottom:clear' },
+      { x: 69, y: 107, rule: 'edge:i2:bottom:clear' },
+      { x: 69, y: 102, rule: 'edge:i2:bottom:clear' },
+    ]);
+    for (const p of r.points) expect(clearOfGlyphs(p.x, p.y, [y]), `${p.rule} at ${p.x},${p.y}`).toBe(true);
+    expect([isScanlineRule('edge:i2:bottom'), isScanlineRule('edge:i2:bottom:clear'), isScanlineRule('border:i2:bottom:clear')]).toEqual([true, false, false]);
   });
   it('glyph points and glyph-edge scanlines stay clear of every other glyph box; a line abutting another text loses the scanline at the seam', () => {
     const a = { id: 'a:text0:line0', glyphs: [{ left: 10.25, top: 10, right: 40.25, bottom: 40 }, { left: 40.25, top: 10, right: 70.25, bottom: 40 }] };

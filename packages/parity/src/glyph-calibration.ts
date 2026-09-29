@@ -1,12 +1,14 @@
 // The Chrome glyph calibration set (T093 ruling A): Ahem "X" and "XX" rasterised by the pinned Chrome at each calibrated device DPR,
 // at device font sizes from 20 to 192 px and at the four x phases Skia positions glyphs at (1/4 px), each in its own cell. The set
-// proves the two facts the sampler's glyph clearance rests on: every pixel Chrome inks differently from the glyph geometry lies
-// within GLYPH_FRINGE_MAX_DEVICE_PX of a glyph box edge (so SAMPLE_INSET_DEVICE_PX clears it), and Chrome's glyph centres, measured
-// by the same scanlines and centre pairing check (c) uses, lie within GLYPH_CENTRE_ERROR_MAX_DEVICE_PX of the geometry.
+// proves the facts the sampler's glyph clearance and check (c)'s glyph positions rest on: every pixel Chrome inks differently from
+// the glyph geometry lies within GLYPH_FRINGE_MAX_DEVICE_PX of a glyph box edge (so SAMPLE_INSET_DEVICE_PX clears it); and, measured
+// by the same scanlines check (c) uses, Chrome's glyph x centres lie within GLYPH_CENTRE_ERROR_MAX_DEVICE_PX of the geometry and its
+// glyph bottom edges within GLYPH_BOTTOM_ERROR_MAX_DEVICE_PX. Chrome's darwin fringe grows glyph tops, so the y centre is not a
+// bound (T093 addendum F1).
 import { AHEM_FONT_DATA, coveredIndex, platformFontSize, zoomFontSize } from '@dragon/layout';
 import { dprLabel } from './dpr.ts';
 import type { RgbaImage } from './native-compare.ts';
-import { glyphCentres, pixelAt, readSamples } from './native-compare.ts';
+import { glyphPositions, pixelAt, readSamples } from './native-compare.ts';
 import { ahemGlyphBoxes } from './pixel-reference.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
@@ -21,8 +23,10 @@ export const CALIBRATION_SIZES_DEVICE_PX: readonly number[] = [20, 22, 24, 27, 3
 export const CALIBRATION_PHASES: readonly number[] = [0, 0.25, 0.5, 0.75];
 /** The farthest Chrome's ink may differ from the glyph geometry, from any glyph box edge; SAMPLE_INSET_DEVICE_PX must exceed it. */
 export const GLYPH_FRINGE_MAX_DEVICE_PX = 1.5;
-/** The farthest Chrome's measured glyph centre may be from the geometry's. */
+/** The farthest Chrome's measured glyph x centre may be from the geometry's. */
 export const GLYPH_CENTRE_ERROR_MAX_DEVICE_PX = 0.25;
+/** The farthest Chrome's measured glyph bottom edge may be from the geometry's (T093 addendum F1: never widened). */
+export const GLYPH_BOTTOM_ERROR_MAX_DEVICE_PX = 0.1;
 
 /** Cell padding around the glyph boxes and the space between cells, in device px. */
 const PAD = 8;
@@ -130,13 +134,13 @@ export function fringeExtent(img: RgbaImage, cell: CalibrationCell): number {
   return extent;
 }
 
-/** Chrome's glyph centres of a cell against the geometry's, by the glyph rule's scanlines and check (c)'s centre pairing. */
-export function centreErrors(img: RgbaImage, cell: CalibrationCell): { readonly axis: 'x' | 'y'; readonly error: number }[] {
+/** Chrome's glyph x centre and bottom edge of a cell against the geometry's, by the glyph rule's scanlines and check (c)'s pairing. */
+export function positionErrors(img: RgbaImage, cell: CalibrationCell): { readonly axis: 'x' | 'y'; readonly error: number }[] {
   const line = { id: 'cal:line0', glyphs: cell.glyphs };
   const points = sampleGlyphs([line], { width: img.width, height: img.height }).points;
   const first = cell.glyphs[0] as GlyphBox;
   const last = cell.glyphs[cell.glyphs.length - 1] as GlyphBox;
-  return glyphCentres(readSamples(img, points), img).map((c) => ({ axis: c.axis, error: c.chrome - (c.axis === 'x' ? (first.left + last.right) / 2 : (first.top + first.bottom) / 2) }));
+  return glyphPositions(readSamples(img, points), img).map((c) => ({ axis: c.axis, error: c.chrome - (c.axis === 'x' ? (first.left + last.right) / 2 : first.bottom) }));
 }
 
 /** Pixels outside every cell that are not paper, as "x,y". */
@@ -163,26 +167,26 @@ export function overlappingCells(cells: readonly CalibrationCell[]): string[] {
   return out;
 }
 
-/** The worst fringe extent and centre error of one DPR set, and the cell each came from. */
-export type CalibrationSummary = { readonly dpr: number; readonly cells: number; readonly fringe: number; readonly fringeCell: string; readonly centre: number; readonly centreCell: string; readonly centres: number };
+/** The worst fringe extent, x centre error and bottom edge error of one DPR set, and the cell each came from. */
+export type CalibrationSummary = { readonly dpr: number; readonly cells: number; readonly fringe: number; readonly fringeCell: string; readonly centre: number; readonly centreCell: string; readonly bottom: number; readonly bottomCell: string; readonly positions: number };
 
 const cellName = (c: CalibrationCell): string => `${c.text}@${c.size}+${c.phase}`;
 
 export function summarise(dpr: number, img: RgbaImage, cells: readonly CalibrationCell[]): CalibrationSummary {
   let fringe = 0;
   let fringeCell = '';
-  let centre = 0;
-  let centreCell = '';
-  let centres = 0;
+  const worst = { x: 0, y: 0 };
+  const worstCell = { x: '', y: '' };
+  let positions = 0;
   for (const c of cells) {
     const f = fringeExtent(img, c);
     if (f > fringe || fringeCell === '') [fringe, fringeCell] = [f, cellName(c)];
-    for (const e of centreErrors(img, c)) {
-      centres++;
-      if (Math.abs(e.error) > centre || centreCell === '') [centre, centreCell] = [Math.abs(e.error), `${cellName(c)} ${e.axis}`];
+    for (const e of positionErrors(img, c)) {
+      positions++;
+      if (Math.abs(e.error) > worst[e.axis] || worstCell[e.axis] === '') [worst[e.axis], worstCell[e.axis]] = [Math.abs(e.error), cellName(c)];
     }
   }
-  return { dpr, cells: cells.length, fringe, fringeCell, centre, centreCell, centres };
+  return { dpr, cells: cells.length, fringe, fringeCell, centre: worst.x, centreCell: worstCell.x, bottom: worst.y, bottomCell: worstCell.y, positions };
 }
 
 export function calibrationManifestText(m: CalibrationManifest): string {

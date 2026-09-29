@@ -1,14 +1,14 @@
 // pnpm run parity:glyph-calibration [-- --recheck] (T093 ruling A): Chrome's rasterisation of Ahem X and XX at every calibrated DPR,
 // device size and x phase (glyph-calibration.ts), by CDP Page.captureScreenshot with chrome.ts flags (imported, unchanged) and the
 // zoom guard, into packages/parity/expected-glyphs/<platform>/dpr-<d>.png with a manifest of the cells (the glyph boxes from
-// Chrome's pen and baseline, probed per cell). Prints each set's worst fringe extent and centre error; exits 1 when either exceeds
-// its limit. --recheck re-captures every set and requires it byte-identical to the committed PNG; nothing is written.
+// Chrome's pen and baseline, probed per cell). Prints each set's worst fringe extent, x centre error and bottom edge error; exits 1
+// when any exceeds its limit. --recheck re-captures every set and requires it byte-identical to the committed PNG; nothing is written.
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { chromeArgsAt, CHROME_VERSION, launchChrome, openPage } from '../chrome.ts';
 import { zoomGuard } from '../dpr.ts';
 import type { CalibrationSet } from '../glyph-calibration.ts';
-import { CALIBRATION_DPRS, calibrationHtml, calibrationManifestText, capturedCell, GLYPH_CENTRE_ERROR_MAX_DEVICE_PX, GLYPH_FRINGE_MAX_DEVICE_PX, glyphCalibrationDir, glyphCalibrationManifestPath, glyphCalibrationPath, overlappingCells, planCells, strayInk, summarise } from '../glyph-calibration.ts';
+import { CALIBRATION_DPRS, calibrationHtml, calibrationManifestText, capturedCell, GLYPH_BOTTOM_ERROR_MAX_DEVICE_PX, GLYPH_CENTRE_ERROR_MAX_DEVICE_PX, GLYPH_FRINGE_MAX_DEVICE_PX, glyphCalibrationDir, glyphCalibrationManifestPath, glyphCalibrationPath, overlappingCells, planCells, strayInk, summarise } from '../glyph-calibration.ts';
 import { decodePng, PIXEL_CAPTURE } from '../pixel-reference.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
 
@@ -59,8 +59,8 @@ for (const dpr of CALIBRATION_DPRS) {
       const s = summarise(dpr, img, cells);
       const stray = strayInk(img, cells);
       const overlaps = overlappingCells(cells);
-      log(`DPR ${dpr}: ${img.width}x${img.height} device px, ${s.cells} cells; worst fringe ${s.fringe.toFixed(3)} device px (${s.fringeCell}; limit ${GLYPH_FRINGE_MAX_DEVICE_PX}); worst centre error ${s.centre.toFixed(3)} device px over ${s.centres} centres (${s.centreCell}; limit ${GLYPH_CENTRE_ERROR_MAX_DEVICE_PX}); ink outside the cells ${stray.length}; overlapping cells ${overlaps.length}`);
-      if (s.fringe > GLYPH_FRINGE_MAX_DEVICE_PX || s.centre > GLYPH_CENTRE_ERROR_MAX_DEVICE_PX || stray.length > 0 || overlaps.length > 0) exit = 1;
+      log(`DPR ${dpr}: ${img.width}x${img.height} device px, ${s.cells} cells; worst fringe ${s.fringe.toFixed(3)} device px (${s.fringeCell}; limit ${GLYPH_FRINGE_MAX_DEVICE_PX}); worst x centre error ${s.centre.toFixed(3)} device px (${s.centreCell}; limit ${GLYPH_CENTRE_ERROR_MAX_DEVICE_PX}); worst bottom edge error ${s.bottom.toFixed(3)} device px (${s.bottomCell}; limit ${GLYPH_BOTTOM_ERROR_MAX_DEVICE_PX}) over ${s.positions} positions; ink outside the cells ${stray.length}; overlapping cells ${overlaps.length}`);
+      if (s.fringe > GLYPH_FRINGE_MAX_DEVICE_PX || s.centre > GLYPH_CENTRE_ERROR_MAX_DEVICE_PX || s.bottom > GLYPH_BOTTOM_ERROR_MAX_DEVICE_PX || stray.length > 0 || overlaps.length > 0) exit = 1;
     } finally {
       await page.context().close();
     }

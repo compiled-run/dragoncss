@@ -297,7 +297,18 @@ export function caseSamples(p: NativeProgram, viewport: { readonly width: number
   const lines = glyphLines(p, viewport, dpr);
   const box = sampleBoxes(boxes, size, clearance ? lines.flatMap((l) => l.glyphs) : []);
   const glyph = sampleGlyphs(lines, size, SAMPLE_INSET_DEVICE_PX, clearance);
-  return { points: [...box.points, ...glyph.points], dropped: [...box.dropped, ...glyph.dropped] };
+  return { points: [...box.points, ...glyph.points], dropped: [...box.dropped, ...glyph.dropped], rescued: box.rescued };
+}
+
+/** Per target, device DPR and case: [lines with a glyph-bottom scanline, lines with glyphs] (T093 addendum F1), in corpus order. */
+export type BottomScanlines = { readonly [target: string]: { readonly [dpr: string]: { readonly [caseId: string]: readonly [number, number] } } };
+export const BOTTOM_SCANLINES_PATH = (): string => repoPath('packages/parity/expected-glyphs/bottom-scanlines.json');
+
+/** The bottom-scanline counts of one program at one DPR: [lines with a glyph-bottom scanline, lines with glyphs]. */
+export function bottomScanlines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): [number, number] {
+  const lines = glyphLines(p, viewport, dpr).filter((l) => l.glyphs.length > 0);
+  const rules = new Set(casePoints(p, viewport, dpr).map((q) => q.rule));
+  return [lines.filter((l) => rules.has(`edge:${l.id}:glyph-bottom`)).length, lines.length];
 }
 
 /** The run file the device app reads (native-support.ts dragonReadRun): the cases in order, their points, and the hold flag. */

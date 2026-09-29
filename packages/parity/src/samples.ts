@@ -33,8 +33,19 @@ export type SamplePoint = { readonly x: number; readonly y: number; readonly rul
 
 export type ImageSize = { readonly width: number; readonly height: number };
 
-/** Sample points and the rules whose point was dropped because no along-position was clear of every glyph box. */
-export type SampleResult = { readonly points: SamplePoint[]; readonly dropped: string[] };
+/**
+ * Sample points, the rules whose point was dropped because no along-position was clear of every glyph box, and the dropped edge and
+ * border rules whose individually clear pixels were kept as colour points (CLEAR_SUFFIX).
+ */
+export type SampleResult = { readonly points: SamplePoint[]; readonly dropped: string[]; readonly rescued: string[] };
+
+/**
+ * T093 addendum F2: a dropped edge scanline or border point keeps each of its middle pixels that is itself clear of every glyph box
+ * edge, as a colour point of the same rule kind named "<rule>:clear". Check (c) compares these by colour, never as a scanline.
+ */
+export const CLEAR_SUFFIX = ':clear';
+/** Whether a sample rule is an edge scanline, whose samples check (c) reads together as one edge position. */
+export const isScanlineRule = (rule: string): boolean => ruleKind(rule) === 'edge' && !rule.endsWith(CLEAR_SUFFIX);
 
 const along = (lo: number, hi: number, f: number): number => Math.floor(lo + (hi - lo) * f);
 
@@ -72,15 +83,23 @@ export function generateSamples(boxes: readonly SampleBox[], size: ImageSize, gl
 export function sampleBoxes(boxes: readonly SampleBox[], size: ImageSize, glyphs: readonly GlyphBox[] = [], inset: number = SAMPLE_INSET_DEVICE_PX): SampleResult {
   const out: SamplePoint[] = [];
   const dropped: string[] = [];
+  const rescued: string[] = [];
   const inImage = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < size.width && y < size.height;
   const clear = (ps: readonly (readonly [number, number])[]): boolean => ps.every(([x, y]) => clearOfGlyphs(x, y, glyphs, inset));
   // The rule's pixels at each along-position, middle first: a middle that does not fit emits nothing, as before the ruling; otherwise
   // the first position that fits and is clear is taken, and the point is dropped when none is.
-  const take = (rule: string, candidates: readonly (readonly (readonly [number, number])[] | null)[]): void => {
+  // A dropped edge or border rule passes fallback: its middle pixels, of which each clear one is kept as "<rule>:clear" (F2).
+  const take = (rule: string, candidates: readonly (readonly (readonly [number, number])[] | null)[], fallback: readonly (readonly [number, number])[] | null = null): void => {
     if (candidates.length === 0 || candidates[0] === null || candidates[0] === undefined) return;
     const hit = candidates.find((ps) => ps !== null && clear(ps));
-    if (hit === undefined || hit === null) dropped.push(rule);
-    else for (const [x, y] of hit) out.push({ x, y, rule });
+    if (hit !== undefined && hit !== null) {
+      for (const [x, y] of hit) out.push({ x, y, rule });
+      return;
+    }
+    dropped.push(rule);
+    const kept = (fallback ?? []).filter(([x, y]) => inImage(x, y) && clear([[x, y]]));
+    if (kept.length > 0) rescued.push(rule);
+    for (const [x, y] of kept) out.push({ x, y, rule: `${rule}${CLEAR_SUFFIX}` });
   };
   const inImageOnly = (ps: readonly (readonly [number, number])[]): (readonly [number, number])[] | null => {
     const kept = ps.filter(([x, y]) => inImage(x, y));
@@ -115,10 +134,17 @@ export function sampleBoxes(boxes: readonly SampleBox[], size: ImageSize, glyphs
       const horizontal = side === 'top' || side === 'bottom';
       const band = side === 'top' ? b.top + Math.floor((w - 1) / 2) : side === 'bottom' ? b.bottom - 1 - Math.floor((w - 1) / 2) : side === 'left' ? b.left + Math.floor((w - 1) / 2) : b.right - 1 - Math.floor((w - 1) / 2);
       const [lo, hi] = horizontal ? [b.left, b.right] : [b.top, b.bottom];
+      // The fallback pixels: the whole band across the side, at the middle.
+      const middle = along(lo, hi, 1 / 2);
+      const across: (readonly [number, number])[] = [];
+      for (let k = 0; k < w; k++) {
+        const p = side === 'top' ? b.top + k : side === 'bottom' ? b.bottom - 1 - k : side === 'left' ? b.left + k : b.right - 1 - k;
+        across.push(horizontal ? [middle, p] : [p, middle]);
+      }
       take(`border:${b.id}:${side}`, alongSide(lo, hi).map((a) => {
         const [x, y] = horizontal ? [a, band] : [band, a];
         return clearOfCorners(a, lo, hi) && inImage(x, y) ? [[x, y] as const] : null;
-      }));
+      }), across);
     }
 
     // outside: the first side, in SIDES order, whose middle pixel outside the border box is inside the image; then that side's
@@ -169,7 +195,7 @@ export function sampleBoxes(boxes: readonly SampleBox[], size: ImageSize, glyphs
         const inward = side === 'top' || side === 'left' ? 1 : -1;
         const first = inward > 0 ? edge - inset - 1 : edge + inset;
         const [lo, hi] = horizontal ? [b.left, b.right] : [b.top, b.bottom];
-        take(`edge:${b.id}:${side}`, alongSide(lo, hi).map((a) => {
+        const scanlines = alongSide(lo, hi).map((a) => {
           if (!clearOfCorners(a, lo, hi)) return null;
           const line: (readonly [number, number])[] = [];
           for (let k = 0; k < 2 * inset + 2; k++) {
@@ -177,11 +203,12 @@ export function sampleBoxes(boxes: readonly SampleBox[], size: ImageSize, glyphs
             line.push(horizontal ? [a, p] : [p, a]);
           }
           return line.every(([x, y]) => inImage(x, y)) ? line : null;
-        }));
+        });
+        take(`edge:${b.id}:${side}`, scanlines, scanlines[0] ?? null);
       }
     }
   }
-  return { points: out, dropped };
+  return { points: out, dropped, rescued };
 }
 
 /** The rule kind of a sample rule string ("interior:n3" is interior). */
@@ -196,14 +223,14 @@ export function ruleKind(rule: string): SampleRule {
 const GLYPH_SIDES = ['left', 'right', 'top', 'bottom'] as const;
 type GlyphSide = (typeof GLYPH_SIDES)[number];
 
-/** The glyph-edge scanline rules check (c) pairs into a centre check per line: left with right, top with bottom. */
+/** The glyph-edge scanline rules: check (c) pairs left with right into a centre per line and reads the bottom edge's position. */
 export const GLYPH_EDGE_RULE = /^edge:(.+):glyph-(left|right|top|bottom)$/;
 
 /**
  * The glyph rule: an interior point of every glyph box wide and tall enough to hold one clear of its edges by the inset; one edge
  * scanline (an edge rule, so check (c) compares its position) across the left edge of the line's first glyph and one across the
- * right edge of its last, at the glyph's vertical middle; and one across the top and one across the bottom edge of the line's
- * first glyph whose two vertical scanlines are clear, at its horizontal middle. Scanlines run from a clear outside pixel to a clear
+ * right edge of its last, at the glyph's vertical middle; and one across the top and one across the bottom edge, each of the line's
+ * first glyph where that scanline is clear, at the glyph's horizontal middle. Scanlines run from a clear outside pixel to a clear
  * inside pixel. Every point and scanline pixel stays inset device px clear of the edges of every other glyph box of the case, and
  * of the crossed glyph's other edges; a point that is not is dropped. Edges may be fractional device px; points are whole pixels.
  * Nothing here reads a capture.
@@ -255,15 +282,15 @@ export function sampleGlyphs(lines: readonly GlyphLine[], size: ImageSize, inset
       else dropped.push(rule);
     }
     if (!clearance) continue;
-    const vertical = line.glyphs.map((g) => ({ g, top: scanline(g, 'top'), bottom: scanline(g, 'bottom') })).filter((v) => v.top !== null && v.bottom !== null && [...v.top, ...v.bottom].every(([x, y]) => inImage(x, y)));
-    if (vertical.length === 0) continue;
-    const pick = vertical.find((v) => usable(v.g, v.top ?? []) && usable(v.g, v.bottom ?? []));
-    if (pick === undefined) {
-      dropped.push(`edge:${line.id}:glyph-top`, `edge:${line.id}:glyph-bottom`);
-      continue;
+    // The top and the bottom scanline each cross the first glyph of the line where that scanline is clear.
+    for (const side of ['top', 'bottom'] as const) {
+      const candidates = line.glyphs.map((g) => ({ g, points: scanline(g, side) })).filter((v): v is { g: GlyphBox; points: (readonly [number, number])[] } => v.points !== null && v.points.every(([x, y]) => inImage(x, y)));
+      if (candidates.length === 0) continue;
+      const rule = `edge:${line.id}:glyph-${side}`;
+      const pick = candidates.find((v) => usable(v.g, v.points));
+      if (pick === undefined) dropped.push(rule);
+      else for (const [x, y] of pick.points) out.push({ x, y, rule });
     }
-    for (const [x, y] of pick.top ?? []) out.push({ x, y, rule: `edge:${line.id}:glyph-top` });
-    for (const [x, y] of pick.bottom ?? []) out.push({ x, y, rule: `edge:${line.id}:glyph-bottom` });
   }
-  return { points: out, dropped };
+  return { points: out, dropped, rescued: [] };
 }

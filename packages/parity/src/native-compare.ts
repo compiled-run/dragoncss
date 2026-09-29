@@ -1,15 +1,15 @@
 // The four native dump checks (docs/research/native-strategy.md 3.1): (a) frames and lines against Chrome at the same DPR within
 // GATE_DEVICE_PX, (b) applied against expected exactly, (c) pixel samples against Chrome's pixels (channel delta GATE_CHANNEL_DELTA,
-// edge positions within GATE_DEVICE_PX, glyph centres per line within GATE_GLYPH_CENTRE_DEVICE_PX), (d) frames against snapRect of
+// edge positions within GATE_DEVICE_PX, each line's glyph x centre and bottom edge within GATE_GLYPH_POSITION_DEVICE_PX), (d) frames against snapRect of
 // the TS engine frames exactly. Tolerances are imported only.
 import type { LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
 import { absoluteRects, LU_PER_PX, snapEdges } from '@dragon/layout';
 import type { WebCapture } from './capture.ts';
-import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX, GATE_GLYPH_CENTRE_DEVICE_PX } from './compare.ts';
+import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX, GATE_GLYPH_POSITION_DEVICE_PX } from './compare.ts';
 import type { DumpEdges, DumpFrame, DumpLine, DumpNode, DumpSample, JsonValue, NativeDump } from './native-dump.ts';
 import { frameOf, REFERENCE_LANE } from './native-dump.ts';
 import type { SamplePoint } from './samples.ts';
-import { GLYPH_EDGE_RULE, ruleKind } from './samples.ts';
+import { GLYPH_EDGE_RULE, isScanlineRule } from './samples.ts';
 
 export type CheckResult = { readonly pass: boolean; readonly compared: number; readonly problems: readonly string[] };
 
@@ -162,8 +162,11 @@ export function edgePosition(pixels: readonly { readonly x: number; readonly y: 
   return last > first ? first + distance : first + 1 - distance;
 }
 
-/** One line's glyph centre on one axis: the midpoint of its glyph-left and glyph-right (x) or glyph-top and glyph-bottom (y) edges. */
-export type GlyphCentre = { readonly line: string; readonly axis: 'x' | 'y'; readonly native: number; readonly chrome: number };
+/**
+ * One line's glyph position on one axis: x is the midpoint of its glyph-left and glyph-right edges; y is its glyph-bottom edge alone,
+ * since Chrome's darwin fringe grows glyph tops and not bottoms (T093 addendum F1).
+ */
+export type GlyphPosition = { readonly line: string; readonly axis: 'x' | 'y'; readonly native: number; readonly chrome: number };
 
 type ScanlineEdge = { readonly rule: string; readonly native: number | null; readonly chrome: number | null };
 
@@ -172,8 +175,8 @@ function scanlineEdges(samples: readonly DumpSample[], chrome: RgbaImage): Scanl
   for (let i = 0; i < samples.length;) {
     const s = samples[i] as DumpSample;
     let j = i + 1;
-    if (ruleKind(s.rule) === 'edge') while (j < samples.length && (samples[j] as DumpSample).rule === s.rule) j++;
-    if (ruleKind(s.rule) === 'edge') {
+    if (isScanlineRule(s.rule)) while (j < samples.length && (samples[j] as DumpSample).rule === s.rule) j++;
+    if (isScanlineRule(s.rule)) {
       const line = samples.slice(i, j);
       const chromeColors = line.map((x) => pixelAt(chrome, x.x, x.y));
       const channel = contrastChannel(chromeColors);
@@ -187,10 +190,10 @@ function scanlineEdges(samples: readonly DumpSample[], chrome: RgbaImage): Scanl
 }
 
 /**
- * The glyph centres of a dump's samples (the generated points, in order): per line, left with right and top with bottom, where both
- * scanlines show an edge in Chrome and in the capture. Check (c) holds each within GATE_GLYPH_CENTRE_DEVICE_PX of Chrome's (T093).
+ * The glyph positions of a dump's samples (the generated points, in order): per line, the x centre of left and right and the bottom
+ * edge, where the scanlines show an edge in Chrome and in the capture. Check (c) holds each within GATE_GLYPH_POSITION_DEVICE_PX.
  */
-export function glyphCentres(samples: readonly DumpSample[], chrome: RgbaImage): GlyphCentre[] {
+export function glyphPositions(samples: readonly DumpSample[], chrome: RgbaImage): GlyphPosition[] {
   const edges = new Map<string, { native: number; chrome: number }>();
   const order: string[] = [];
   for (const e of scanlineEdges(samples, chrome)) {
@@ -200,20 +203,20 @@ export function glyphCentres(samples: readonly DumpSample[], chrome: RgbaImage):
     if (!order.includes(line)) order.push(line);
     edges.set(`${line}\t${m[2]}`, { native: e.native, chrome: e.chrome });
   }
-  const out: GlyphCentre[] = [];
+  const out: GlyphPosition[] = [];
   for (const line of order) {
-    for (const [axis, lo, hi] of [['x', 'left', 'right'], ['y', 'top', 'bottom']] as const) {
-      const a = edges.get(`${line}\t${lo}`);
-      const b = edges.get(`${line}\t${hi}`);
-      if (a !== undefined && b !== undefined) out.push({ line, axis, native: (a.native + b.native) / 2, chrome: (a.chrome + b.chrome) / 2 });
-    }
+    const a = edges.get(`${line}\tleft`);
+    const b = edges.get(`${line}\tright`);
+    if (a !== undefined && b !== undefined) out.push({ line, axis: 'x', native: (a.native + b.native) / 2, chrome: (a.chrome + b.chrome) / 2 });
+    const bottom = edges.get(`${line}\tbottom`);
+    if (bottom !== undefined) out.push({ line, axis: 'y', ...bottom });
   }
   return out;
 }
 
 /**
  * The generated points must be the dump's samples in order; colours equal within GATE_CHANNEL_DELTA; edges within GATE_DEVICE_PX;
- * glyph centres per line within GATE_GLYPH_CENTRE_DEVICE_PX. A glyph-edge scanline across which Chrome shows no contrast is
+ * each line's glyph x centre and bottom edge within GATE_GLYPH_POSITION_DEVICE_PX. A glyph-edge scanline across which Chrome shows no contrast is
  * compared by colour at its two ends only: the pixels between are within SAMPLE_INSET_DEVICE_PX of the glyph edge (T093 ruling A).
  */
 export function checkPixels(samples: readonly DumpSample[], points: readonly SamplePoint[], chrome: RgbaImage): CheckResult {
@@ -232,7 +235,7 @@ export function checkPixels(samples: readonly DumpSample[], points: readonly Sam
   };
   for (let i = 0; i < samples.length;) {
     const s = samples[i] as DumpSample;
-    if (ruleKind(s.rule) !== 'edge') {
+    if (!isScanlineRule(s.rule)) {
       colourCheck(s);
       i++;
       continue;
@@ -254,9 +257,10 @@ export function checkPixels(samples: readonly DumpSample[], points: readonly Sam
     }
     i = j;
   }
-  for (const c of glyphCentres(samples, chrome)) {
+  for (const c of glyphPositions(samples, chrome)) {
     compared++;
-    if (Math.abs(c.native - c.chrome) > GATE_GLYPH_CENTRE_DEVICE_PX) problems.push(`centre:${c.line}:${c.axis}: glyph centre at ${c.native.toFixed(3)} device px, Chrome ${c.chrome.toFixed(3)}; differs by more than ${GATE_GLYPH_CENTRE_DEVICE_PX} device px`);
+    const what = c.axis === 'x' ? ['centre', 'glyph centre'] : ['bottom', 'glyph bottom edge'];
+    if (Math.abs(c.native - c.chrome) > GATE_GLYPH_POSITION_DEVICE_PX) problems.push(`${what[0]}:${c.line}:${c.axis}: ${what[1]} at ${c.native.toFixed(3)} device px, Chrome ${c.chrome.toFixed(3)}; differs by more than ${GATE_GLYPH_POSITION_DEVICE_PX} device px`);
   }
   return result(compared, problems);
 }

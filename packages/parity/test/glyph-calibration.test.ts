@@ -1,13 +1,15 @@
 // The committed Chrome glyph calibration set (T093 ruling A): the PNGs and manifest pnpm run parity:glyph-calibration wrote, the
 // cells covering 20 to 192 device px at every device DPR and the four x phases, apart from each other, with no ink outside them;
-// Chrome's fringe within GLYPH_FRINGE_MAX_DEVICE_PX of a glyph edge and its glyph centres within GLYPH_CENTRE_ERROR_MAX_DEVICE_PX of
-// the geometry; the sampler's clearance beyond the fringe; and the corpus's largest glyph within the calibrated sizes.
+// Chrome's fringe within GLYPH_FRINGE_MAX_DEVICE_PX of a glyph edge, its glyph x centres within GLYPH_CENTRE_ERROR_MAX_DEVICE_PX
+// and its glyph bottom edges within GLYPH_BOTTOM_ERROR_MAX_DEVICE_PX of the geometry; the sampler's clearance beyond the fringe;
+// and the corpus's largest glyph within the calibrated sizes. The y centre is not bounded: Chrome's darwin fringe grows glyph tops
+// by 0.21 to 0.60 device px and not bottoms (T093 addendum F1, which retargeted the y centre assertion to the bottom edge).
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { chromeArgsAt, CHROME_VERSION } from '../src/chrome.ts';
 import type { CalibrationManifest } from '../src/glyph-calibration.ts';
-import { CALIBRATION_DPRS, CALIBRATION_PHASES, CALIBRATION_SIZES_DEVICE_PX, centreErrors, fringeExtent, GLYPH_CENTRE_ERROR_MAX_DEVICE_PX, GLYPH_FRINGE_MAX_DEVICE_PX, glyphCalibrationManifestPath, glyphCalibrationPath, overlappingCells, planCells, strayInk } from '../src/glyph-calibration.ts';
+import { CALIBRATION_DPRS, CALIBRATION_PHASES, CALIBRATION_SIZES_DEVICE_PX, fringeExtent, GLYPH_BOTTOM_ERROR_MAX_DEVICE_PX, GLYPH_CENTRE_ERROR_MAX_DEVICE_PX, GLYPH_FRINGE_MAX_DEVICE_PX, glyphCalibrationManifestPath, glyphCalibrationPath, overlappingCells, planCells, positionErrors, strayInk } from '../src/glyph-calibration.ts';
 import { BACKEND_OF, nativeCases } from '../src/native-host.ts';
 import { decodePng, glyphLines, PIXEL_CAPTURE } from '../src/pixel-reference.ts';
 import { SAMPLE_INSET_DEVICE_PX } from '../src/samples.ts';
@@ -62,16 +64,16 @@ describe('the committed glyph calibration set', () => {
       for (const c of s.cells) expect(fringeExtent(image(s.dpr), c), `${c.text}@${c.size}+${c.phase} at DPR ${s.dpr}`).toBeLessThanOrEqual(GLYPH_FRINGE_MAX_DEVICE_PX);
     }
   });
-  for (const axis of ['x', 'y'] as const) {
-    it(`Chrome's ${axis} glyph centres, by check (c)'s scanlines, are within ${GLYPH_CENTRE_ERROR_MAX_DEVICE_PX} device px of the geometry`, () => {
+  for (const [axis, what, bound] of [['x', 'x centres', GLYPH_CENTRE_ERROR_MAX_DEVICE_PX], ['y', 'bottom edges', GLYPH_BOTTOM_ERROR_MAX_DEVICE_PX]] as const) {
+    it(`Chrome's glyph ${what}, by check (c)'s scanlines, are within ${bound} device px of the geometry`, () => {
       const over: string[] = [];
       let measured = 0;
       for (const s of manifest.sets) {
         for (const c of s.cells) {
-          const e = centreErrors(image(s.dpr), c).filter((x) => x.axis === axis);
+          const e = positionErrors(image(s.dpr), c).filter((x) => x.axis === axis);
           expect(e.length, `${c.text}@${c.size}+${c.phase} at DPR ${s.dpr}`).toBe(1);
           measured += e.length;
-          for (const x of e) if (Math.abs(x.error) > GLYPH_CENTRE_ERROR_MAX_DEVICE_PX) over.push(`${c.text}@${c.size}+${c.phase} at DPR ${s.dpr}: ${x.error.toFixed(3)}`);
+          for (const x of e) if (Math.abs(x.error) > bound) over.push(`${c.text}@${c.size}+${c.phase} at DPR ${s.dpr}: ${x.error.toFixed(3)}`);
         }
       }
       expect(measured).toBe(manifest.sets.reduce((n, s) => n + s.cells.length, 0));
