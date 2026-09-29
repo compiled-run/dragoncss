@@ -380,11 +380,12 @@ class DragonActivity : Activity() {
         val h = tree.root.height
         val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         var previous: String? = null
-        // A window that has not yet produced a frame, or has no surface yet, has nothing to copy: copy again on the next frame.
+        // A window that has not yet produced a frame, or has no surface yet, has nothing to copy, and a copy under load may time out:
+        // copy again on the next frame.
         fun copy(attempt: Int) {
           if (!window.decorView.isAttachedToWindow) throw IllegalStateException("dragon host: the window is detached")
           val done = PixelCopy.OnPixelCopyFinishedListener { result ->
-            if (result == PixelCopy.ERROR_SOURCE_NO_DATA && attempt < 6000) {
+            if ((result == PixelCopy.ERROR_SOURCE_NO_DATA || result == PixelCopy.ERROR_TIMEOUT) && attempt < 6000) {
               Choreographer.getInstance().postFrameCallback { copy(attempt + 1) }
               return@OnPixelCopyFinishedListener
             }
