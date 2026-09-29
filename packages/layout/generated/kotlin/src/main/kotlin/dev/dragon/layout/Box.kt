@@ -48,13 +48,13 @@ class Point(
 // ts: packages/layout/src/box.ts:37
 class HeightBasis_indefinite(
   override val kind: String,
-) : U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, U_HeightBasis_flexDependent_HeightBasis_indefinite
+) : U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, U_HeightBasis_definite_HeightBasis_indefinite, U_HeightBasis_flexDependent_HeightBasis_indefinite
 
 // ts: packages/layout/src/box.ts:38
 class HeightBasis_definite(
   override val kind: String,
   val value: Double,
-) : U_HeightBasis_definite_HeightBasis_flexDependent, U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite
+) : U_HeightBasis_definite_HeightBasis_flexDependent, U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, U_HeightBasis_definite_HeightBasis_indefinite
 
 // ts: packages/layout/src/box.ts:39
 class HeightBasis_flexDependent(

@@ -5,18 +5,18 @@ package dev.dragon.layout
 class Px(
   override val kind: String,
   override val value: Double,
-) : U_Auto_ContentValue_Percent_Px, U_Auto_Fr_MaxContent_MinContent_Percent_Px, U_Auto_Percent_Px, U_Auto_Px, U_DevicePx_Px, U_NoneValue_Percent_Px, U_NormalValue_NumberValue_Px, U_NormalValue_Percent_Px, U_NormalValue_Px, U_NumberValue_Px, U_Percent_Px
+) : U_Auto_ContentValue_Percent_Px, U_Auto_Fr_MaxContent_MinContent_Percent_Px, U_Auto_Fr_MaxContent_Percent_Px, U_Auto_Fr_MinContent_Percent_Px, U_Auto_Percent_Px, U_Auto_Px, U_DevicePx_Px, U_NoneValue_Percent_Px, U_NormalValue_NumberValue_Px, U_NormalValue_Percent_Px, U_NormalValue_Px, U_NumberValue_Px, U_Percent_Px
 
 // ts: packages/layout/src/input.ts:5
 class Percent(
   override val kind: String,
   override val value: Double,
-) : U_Auto_ContentValue_Percent, U_Auto_ContentValue_Percent_Px, U_Auto_Fr_MaxContent_MinContent_Percent, U_Auto_Fr_MaxContent_MinContent_Percent_Px, U_Auto_Percent, U_Auto_Percent_Px, U_NoneValue_Percent, U_NoneValue_Percent_Px, U_NormalValue_Percent, U_NormalValue_Percent_Px, U_Percent_Px
+) : U_Auto_ContentValue_Percent, U_Auto_ContentValue_Percent_Px, U_Auto_Fr_MaxContent_MinContent_Percent, U_Auto_Fr_MaxContent_MinContent_Percent_Px, U_Auto_Fr_MaxContent_Percent_Px, U_Auto_Fr_MinContent_Percent_Px, U_Auto_Percent, U_Auto_Percent_Px, U_NoneValue_Percent, U_NoneValue_Percent_Px, U_NormalValue_Percent, U_NormalValue_Percent_Px, U_Percent_Px
 
 // ts: packages/layout/src/input.ts:6
 class Auto(
   override val kind: String,
-) : U_Auto_ContentValue_Percent, U_Auto_ContentValue_Percent_Px, U_Auto_Fr_MaxContent_MinContent_Percent, U_Auto_Fr_MaxContent_MinContent_Percent_Px, U_Auto_Percent, U_Auto_Percent_Px, U_Auto_Px
+) : U_Auto_ContentValue_Percent, U_Auto_ContentValue_Percent_Px, U_Auto_Fr_MaxContent_MinContent, U_Auto_Fr_MaxContent_MinContent_Percent, U_Auto_Fr_MaxContent_MinContent_Percent_Px, U_Auto_Fr_MaxContent_Percent_Px, U_Auto_Fr_MinContent_Percent_Px, U_Auto_Percent, U_Auto_Percent_Px, U_Auto_Px
 
 // ts: packages/layout/src/input.ts:7
 class NoneValue(
@@ -49,17 +49,17 @@ class DevicePx(
 class Fr(
   override val kind: String,
   val value: Double,
-) : U_Auto_Fr_MaxContent_MinContent_Percent, U_Auto_Fr_MaxContent_MinContent_Percent_Px
+) : U_Auto_Fr_MaxContent_MinContent, U_Auto_Fr_MaxContent_MinContent_Percent, U_Auto_Fr_MaxContent_MinContent_Percent_Px, U_Auto_Fr_MaxContent_Percent_Px, U_Auto_Fr_MinContent_Percent_Px
 
 // ts: packages/layout/src/input.ts:82
 class MinContent(
   override val kind: String,
-) : U_Auto_Fr_MaxContent_MinContent_Percent, U_Auto_Fr_MaxContent_MinContent_Percent_Px
+) : U_Auto_Fr_MaxContent_MinContent, U_Auto_Fr_MaxContent_MinContent_Percent, U_Auto_Fr_MaxContent_MinContent_Percent_Px, U_Auto_Fr_MinContent_Percent_Px
 
 // ts: packages/layout/src/input.ts:83
 class MaxContent(
   override val kind: String,
-) : U_Auto_Fr_MaxContent_MinContent_Percent, U_Auto_Fr_MaxContent_MinContent_Percent_Px
+) : U_Auto_Fr_MaxContent_MinContent, U_Auto_Fr_MaxContent_MinContent_Percent, U_Auto_Fr_MaxContent_MinContent_Percent_Px, U_Auto_Fr_MaxContent_Percent_Px
 
 // ts: packages/layout/src/input.ts:91
 class TrackSize_breadth(
