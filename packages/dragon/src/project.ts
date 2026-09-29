@@ -24,7 +24,7 @@ import type { FamilyKeyContext } from './css/values.ts';
 import { familyListText } from './css/values.ts';
 import type { DeclaredFace, FontFaceIssue } from './fonts/font-face.ts';
 import { GENERIC_KEYS, validateFontMap } from './fonts/font-map.ts';
-import type { FontMapError } from './fonts/font-map.ts';
+import type { EntryResolution, FontMapError } from './fonts/font-map.ts';
 import { bestSegmentedFace, segmentedFaces, selectionRequest } from './fonts/selection.ts';
 import { fenceVariableInstance } from './fonts/variable-fence.ts';
 import type { VariableFontRefusal } from './fonts/variable-fence.ts';
@@ -56,6 +56,7 @@ import type {
   Origin,
   Project,
   ProjectConfig,
+  Span,
   Target,
   Targets,
   TreeNode,
@@ -408,56 +409,77 @@ function checkFamilies(rules: readonly Rule[], fonts: FamilyKeyContext, faults: 
           diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', { origin: authored(d.valueSpan), message: `font-family: ${d.text} is not a font-family list Chrome parses`, manual: 'Write a comma-separated list of family names and generic keywords.' }));
           continue;
         }
-        if (faults.unmappedFamilyAccepted) continue;
-        for (const r of support.resolutions) {
-          if (r.kind !== 'unmapped-family') continue;
-          const name = r.entry.kind === 'generic' ? `the generic ${r.entry.keyword}` : `the family "${r.entry.name}"`;
-          const fix = r.entry.kind === 'generic'
-            ? `Pin ${r.entry.keyword} in the font map (fonts.generics["${r.entry.keyword}"]: { mode: "pinned", family, faces }, for example the recommended "Dragon Sans" faces), or map it with { mode: "platform" }.`
-            : `Declare "${r.entry.name}" with an @font-face rule whose src is a bundled font file, or map it under fonts.families.`;
-          diagnostics.push(diagnostic('DRAGON_FONT_UNMAPPED_FAMILY', { origin: authored(d.valueSpan), message: `font-family: ${d.text}: ${name} is neither declared with @font-face nor in the font map, so it would be a font installed on the machine`, manual: fix }));
-        }
+        if (!faults.unmappedFamilyAccepted) unmappedDiagnostics(support.resolutions, d.text, d.valueSpan, diagnostics);
       }
     }
   }
 }
 
+/** The unmapped-family diagnostics of one resolved font-family list, located at its value. */
+function unmappedDiagnostics(resolutions: readonly EntryResolution[], text: string, valueSpan: Span, diagnostics: Diagnostic[]): void {
+  for (const r of resolutions) {
+    if (r.kind !== 'unmapped-family') continue;
+    const name = r.entry.kind === 'generic' ? `the generic ${r.entry.keyword}` : `the family "${r.entry.name}"`;
+    const fix = r.entry.kind === 'generic'
+      ? `Pin ${r.entry.keyword} in the font map (fonts.generics["${r.entry.keyword}"]: { mode: "pinned", family, faces }, for example the recommended "Dragon Sans" faces), or map it with { mode: "platform" }.`
+      : `Declare "${r.entry.name}" with an @font-face rule whose src is a bundled font file, or map it under fonts.families.`;
+    diagnostics.push(diagnostic('DRAGON_FONT_UNMAPPED_FAMILY', { origin: authored(valueSpan), message: `font-family: ${text}: ${name} is neither declared with @font-face nor in the font map, so it would be a font installed on the machine`, manual: fix }));
+  }
+}
+
+type TextFont = { readonly weight: number; readonly style: 'normal' | 'italic' };
+
 /**
- * The variable-font fence at style resolution (T028): every text node's font-family resolves to the best capability group of each
- * declared or pinned family it lists (Dragon's text is weight 400, stretch 100%, style normal), and every variable face of that group
- * must be validated at the node's size.
+ * Per case, on every text node: a font-family value that holds var() is checked after substitution like checkFamilies checks the
+ * others, and the variable-font fence (T028) runs at style resolution on the faces Chrome selects (the best capability group of
+ * each declared or pinned family the list names). No author longhand sets font-weight or font-style, so they are the UA's,
+ * inherited (userAgentTextFonts: h1 to h6 bold, address italic).
  */
-function fenceInstances(root: ResolvedElement, fonts: ProjectFonts, diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: CompilerFaults, ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>): void {
   const faces = [...fonts.declaredFaces, ...fonts.projected.pinned.flatMap((p) => (p.result.face === null ? [] : [p.result.face]))];
-  if (!faces.some((f) => f.source?.font.variable === true)) return;
-  const request = selectionRequest(400, 100, { kind: 'normal' });
-  const walk = (el: ResolvedElement): void => {
+  const fence = faces.some((f) => f.source?.font.variable === true);
+  const once = (id: string): boolean => {
+    if (reported.has(id)) return false;
+    reported.add(id);
+    return true;
+  };
+  const walk = (el: ResolvedElement, inherited: TextFont): void => {
+    const tf = (ua.userAgentTextFonts as { readonly [tag: string]: { readonly [p: string]: string } | undefined })[el.element.tag] ?? {};
+    const weight = tf['font-weight'] === undefined ? inherited.weight : Number(tf['font-weight']);
+    const own: TextFont = { weight: Number.isFinite(weight) ? weight : inherited.weight, style: tf['font-style'] === undefined ? inherited.style : tf['font-style'] === 'italic' ? 'italic' : 'normal' };
+    const declared = el.props.get('font-family') as ResolvedValue;
+    const sub = declared.substitution;
+    const subText = sub === undefined ? null : familyListText(declared.value);
+    const subSupport = subText === null ? null : familySupport(subText, fonts.keys.map, fonts.keys.declared);
+    if (sub !== undefined && subSupport !== null && once(`substituted|${sub.source.valueSpan.source.uri}|${sub.source.valueSpan.start}|${subText}`)) {
+      if (subSupport.kind === 'invalid') diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', { origin: authored(sub.source.valueSpan), message: `font-family: ${sub.source.text} substitutes to ${subText}, which is not a font-family list Chrome parses`, manual: 'Write a comma-separated list of family names and generic keywords.' }));
+      else if (!faults.unmappedFamilyAccepted) unmappedDiagnostics(subSupport.resolutions, `${sub.source.text} (substituted: ${subText})`, sub.source.valueSpan, diagnostics);
+    }
     for (const c of el.children) {
       if (c.kind === 'element') {
-        walk(c);
+        walk(c, own);
         continue;
       }
       const family = c.props.get('font-family') as ResolvedValue;
-      const size = (c.props.get('font-size') as ResolvedValue).value;
       const text = familyListText(family.value);
       const support = text === null ? null : familySupport(text, fonts.keys.map, fonts.keys.declared);
-      if (support === null || support.kind !== 'resolved' || size.kind !== 'length' || size.unit !== 'px') continue;
+      if (support === null) continue;
+      const size = (c.props.get('font-size') as ResolvedValue).value;
+      if (!fence || support.kind !== 'resolved' || size.kind !== 'length' || size.unit !== 'px') continue;
       for (const r of support.resolutions) {
         if (r.kind !== 'declared' && r.kind !== 'pinned') continue;
-        for (const face of bestSegmentedFace(segmentedFaces(faces, r.family), request)?.faces ?? []) {
-          const refused = fenceVariableInstance(face, { weight: 400, stretch: 100, style: { kind: 'normal' }, specifiedSize: size.value, opticalSizing: 'auto' });
+        const group = bestSegmentedFace(segmentedFaces(faces, r.family), selectionRequest(own.weight, 100, { kind: own.style }));
+        for (const face of group?.faces ?? []) {
+          const refused = fenceVariableInstance(face, { weight: own.weight, stretch: 100, style: { kind: own.style }, specifiedSize: size.value, opticalSizing: 'auto' });
           if (refused === null) continue;
           const origin = family.declaration === null ? c.node.node.origin : authored(family.declaration.valueSpan);
           const message = `font-family ${r.family} at ${size.value}px on ${c.node.address}: ${variableMessage(refused)}`;
-          const id = `${message}|${JSON.stringify(origin)}`;
-          if (reported.has(id)) continue;
-          reported.add(id);
-          diagnostics.push(diagnostic('DRAGON_FONT_VARIABLE_REFUSED', { origin, message }));
+          if (once(`${message}|${JSON.stringify(origin)}`)) diagnostics.push(diagnostic('DRAGON_FONT_VARIABLE_REFUSED', { origin, message }));
         }
       }
     }
   };
-  walk(root);
+  walk(root, { weight: 400, style: 'normal' });
 }
 
 type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[] };
@@ -478,7 +500,7 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     const resolved = resolveTree(c.root, rules, options.faults, { direction: options.direction, rootFont: options.rootFont, ua: options.ua });
     checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t);
-    if (projectFonts !== null) fenceInstances(resolved, projectFonts, diagnostics, fenced);
+    if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);
     const used = usedKeys(resolved, keys);
     out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used });
     if (options.profiles === 'derive') continue;

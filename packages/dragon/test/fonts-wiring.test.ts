@@ -66,6 +66,8 @@ describe('the font map in the project configuration', () => {
     expect(c.diagnostics.map((d) => d.message)).toEqual(['fonts entry sans-serif: a pinned entry needs a non-empty family', 'fonts.generics.nope is not a generic family (the generics are serif, sans-serif, monospace, cursive, fantasy, system-ui, ui-serif, ui-sans-serif, ui-monospace, ui-rounded, math, emoji, fangsong)']);
     expect(c.outputs.web.kind).toBe('blocked');
     expect(codes(compileWith(input, 42 as unknown as FontMap))).toEqual(['DRAGON_FONT_MAP_INVALID']);
+    const extra = { generics: { monospace: { mode: 'pinned', family: 'M', faces: [{ src: 'fonts/NotoSansMono-Regular.ttf' }], fallback: 'x' } } } as unknown as FontMap;
+    expect(compileWith(input, extra).diagnostics.map((d) => d.message)).toEqual(['fonts entry monospace: a pinned entry is exactly { mode, family, faces }']);
   });
 
   it('a pinned face whose src is neither a snapshot asset nor a data: URL is DRAGON_FONT_UNRESOLVED_ASSET', () => {
@@ -94,6 +96,12 @@ describe('font-family resolution', () => {
     expect(fixes[1]).toMatch(/Dragon Sans/);
     expect(c.outputs.web.kind).toBe('blocked');
     expect(c.targets).toEqual({ web: 'blocked', ios: 'blocked' });
+  });
+
+  it('a font-family holding var() is checked after substitution', () => {
+    const c = compileWith(fontInput('.a { --f: Nope; font-family: var(--f) }'), MAP);
+    expect(codes(c)).toContain('DRAGON_FONT_UNMAPPED_FAMILY');
+    expect(c.diagnostics.find((d) => d.code === 'DRAGON_FONT_UNMAPPED_FAMILY')?.message).toMatch(/^font-family: var\(--f\) \(substituted: "Nope"\): the family "Nope"/);
   });
 
   it('with no font map every generic is unmapped: there is no built-in default', () => {
@@ -167,6 +175,17 @@ describe('the variable-font fence at style resolution (T028)', () => {
   });
   it('and accepted at 16px', () => {
     expect(codes(compileWith(fontInput(css(16), { urls: ['fonts/Inter-VF.ttf'] }), undefined))).toEqual([]);
+  });
+  it('UA bold text (h1) selects the wght 700 instance, which is refused, while the same face at 400 in a div is accepted', () => {
+    const body = (h1: boolean) => (r: Parameters<typeof div>[0]): TreeNode[] => [{ ...div(r, 'a', ['a'], [text(r, 't', 'Ab')]), tag: h1 ? 'h1' : 'div' }];
+    const at = (h1: boolean) => {
+      const base = fontInput(css(16), { urls: ['fonts/Inter-VF.ttf'] });
+      const shaped = inputFor(css(16), body(h1));
+      return compileWith({ ...shaped, snapshot: base.snapshot }, undefined);
+    };
+    expect(codes(at(false))).toEqual([]);
+    const refused = at(true).diagnostics.filter((d) => d.code === 'DRAGON_FONT_VARIABLE_REFUSED');
+    expect(refused.map((d) => [d.target, d.message])).toEqual([[null, 'font-family V at 16px on a:text0: InterVF wght 400, 700 is outside the validated range 400 to 400']]);
   });
 });
 

@@ -49,6 +49,10 @@ export function validateFontMap(raw: unknown): { readonly ok: true; readonly map
       if (Object.keys(e).length !== 1) errors.push({ kind: 'invalid-entry', key, reason: 'a platform entry has only mode' });
       return;
     }
+    if (Object.keys(e).some((k) => !['mode', 'family', 'faces'].includes(k))) {
+      errors.push({ kind: 'invalid-entry', key, reason: 'a pinned entry is exactly { mode, family, faces }' });
+      return;
+    }
     const family = e['family'];
     const faces = e['faces'];
     if (typeof family !== 'string' || family.length === 0) {
