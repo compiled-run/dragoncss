@@ -4,17 +4,7 @@
 
 <h1 align="center">Dragon CSS</h1>
 
-<h3 align="center">Regular CSS for native apps, tested against the browser.</h3>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/css-banner.png" alt="CSS" height="90">
-  &nbsp;&nbsp;➜&nbsp;&nbsp;
-  <img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/device-ios.png" alt="iOS" height="90">
-  &nbsp;
-  <img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/device-android.png" alt="Android" height="90">
-  &nbsp;&nbsp;⚖&nbsp;&nbsp;
-  <img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/chrome.png" alt="Chrome" height="90">
-</p>
+<p align="center"><b>Regular CSS for native apps, tested against the browser.</b></p>
 
 You write the CSS you already know. Dragon compiles it into native view properties (UIKit first, Android Views next) and then makes Chrome the judge: every box and every value is compared, number by number.
 
@@ -38,16 +28,9 @@ Where a platform already has the right tool, Dragon uses it instead of reinventi
 Every feature carries one of three seals, and each seal is earned by a passing comparison against Chrome:
 
 <table>
-  <tr>
-    <td align="center"><img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/seal-exact.png" alt="" width="64"><br><b>exact</b></td>
-    <td align="center"><img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/seal-caveat.png" alt="" width="64"><br><b>caveat</b></td>
-    <td align="center"><img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/seal-unsupported.png" alt="" width="64"><br><b>unsupported</b></td>
-  </tr>
-  <tr>
-    <td>Matches Chrome.</td>
-    <td>Works, with a measured, documented difference.</td>
-    <td>A build error that tells you what to do instead.</td>
-  </tr>
+  <tr><td><img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/seal-exact.png" alt="" width="40"></td><td><b>exact</b></td><td>Matches Chrome.</td></tr>
+  <tr><td><img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/seal-caveat.png" alt="" width="40"></td><td><b>caveat</b></td><td>Works, with a measured, documented difference.</td></tr>
+  <tr><td><img src="https://raw.githubusercontent.com/compiled-run/dragoncss/master/docs/assets/readme/seal-unsupported.png" alt="" width="40"></td><td><b>unsupported</b></td><td>A build error that tells you what to do instead.</td></tr>
 </table>
 
 No test, no seal. Missing data means unsupported.
