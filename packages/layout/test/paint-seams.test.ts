@@ -9,7 +9,7 @@ import type { BoxShape } from '../src/index.ts';
 const layout = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FEATURES = ['radius', 'shadow', 'gradient', 'transform', 'dash', 'scrollbar'];
 /** The seams a package has filled (PNT1: radius); the rest are stubs. */
-const FILLED = ['radius'];
+const FILLED = ['radius', 'shadow'];
 
 describe('EMS: engine paint seams', () => {
   it('paint.ts and the paint-<feature>.ts stubs a package has not filled exist and export no function yet', () => {
@@ -26,6 +26,8 @@ describe('EMS: engine paint seams', () => {
       "export type { BoxShape } from './paint.ts';",
       "export type { RadiusFaults, RadiusLength } from './paint-radius.ts';",
       "export { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from './paint-radius.ts';",
+      "export type { ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from './paint-shadow.ts';",
+      "export { insetShadowLayer, NO_SHADOW_FAULTS, outerShadowLayer } from './paint-shadow.ts';",
     ]);
   });
   it('every stub feature has an empty paint-vectors suite', () => {

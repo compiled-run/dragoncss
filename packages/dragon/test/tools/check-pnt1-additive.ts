@@ -6,15 +6,22 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { LONGHANDS } from '../../src/css/properties.ts';
-import { RADIUS_LONGHANDS } from '../../src/css/properties/radius.ts';
 
 const base = process.argv[2];
 if (base === undefined) throw new Error('usage: check-pnt1-additive.ts <base-commit>');
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 const git = (...args: string[]): string => execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 1 << 30 });
-/** The PNT1 longhands, in LONGHANDS order (the order captures and emitted rules list them in). */
-const PNT1: ReadonlySet<string> = new Set<string>([...RADIUS_LONGHANDS]);
-const NEW: readonly string[] = LONGHANDS.filter((p) => PNT1.has(p));
+/**
+ * The longhands added since the base, in LONGHANDS order (the order captures and emitted rules list them in): those the base's
+ * captures do not record (read from one base capture, since the base's compiler is not importable here). PNT1 adds its families
+ * branch by branch, so the set depends on the base.
+ */
+const probe = git('ls-tree', '-r', '--name-only', base, '--', 'packages/parity/expected').split('\n').find((p) => p.endsWith('.web.json'));
+if (probe === undefined) throw new Error(`base ${base} has no capture to read its longhands from`);
+const baseKeys = new Set(Object.keys(((JSON.parse(git('show', `${base}:${probe}`)) as { nodes: { computed: Record<string, string> | null }[] }).nodes.find((n) => n.computed !== null)?.computed) ?? {}));
+if (baseKeys.size === 0) throw new Error(`base capture ${probe} has no computed record`);
+const NEW: readonly string[] = LONGHANDS.filter((p) => !baseKeys.has(p));
+console.log(`longhands added since ${base}: ${NEW.join(', ')}`);
 const NEW_SET = new Set(NEW);
 
 const CAPTURES = /^packages\/parity\/(expected|expected-dpr)\/.*\.json$/;
