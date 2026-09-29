@@ -36,6 +36,15 @@ describe('device matrix', () => {
     await new Promise((r) => setTimeout(r, 200));
     expect(() => p.check()).toThrow(/\/nonexistent\/dragon-emulator could not be started: .*ENOENT/);
   });
+  it('only a spawned child still running counts as alive, so a failed boot never kills a serial it does not own', async () => {
+    const missing = spawnDetached('/nonexistent/dragon-emulator', []);
+    const quick = spawnDetached(process.execPath, ['-e', '']);
+    const slow = spawnDetached(process.execPath, ['-e', 'setTimeout(() => {}, 1500)']);
+    await new Promise((r) => setTimeout(r, 700));
+    expect(missing.alive()).toBe(false);
+    expect(quick.alive()).toBe(false);
+    expect(slow.alive()).toBe(true);
+  });
   it('AVDs are addressed by their own console ports; the AVD keys pin density, panel size and the android-36 image', () => {
     const avds = DEVICE_MATRIX.filter((d) => d.target === 'android');
     expect(new Set(avds.map((d) => (d.target === 'android' ? d.port : 0))).size).toBe(avds.length);

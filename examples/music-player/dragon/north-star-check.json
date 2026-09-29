@@ -27,13 +27,13 @@
   "contextProbe": {
    "rounds": 1,
    "blankedRules": 9,
-   "blankedDeclarations": 88,
+   "blankedDeclarations": 87,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 785,
-  "errors": 784,
+  "diagnostics": 811,
+  "errors": 810,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 27,
@@ -43,10 +43,10 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 21,
    "DRAGON_UNSUPPORTED_FONT [android]": 22,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 68,
+   "DRAGON_UNSUPPORTED_PROPERTY": 67,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
    "DRAGON_UNSUPPORTED_VALUE": 20,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 499,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 526,
    "DRAGON_UNSUPPORTED_VALUE [ios]": 16,
    "DRAGON_UNSUPPORTED_VALUE [web]": 16
   },
@@ -57,7 +57,7 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 21,
-     "DRAGON_UNSUPPORTED_PROPERTY": 68,
+     "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 36
     },
@@ -72,7 +72,7 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 21,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 68,
+     "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 36
     },
@@ -86,9 +86,9 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 21,
      "DRAGON_UNSUPPORTED_FONT": 22,
-     "DRAGON_UNSUPPORTED_PROPERTY": 68,
+     "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 519
+     "DRAGON_UNSUPPORTED_VALUE": 546
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -96,11 +96,11 @@
    }
   },
   "declarations": 291,
-  "supportedBothTargets": 159,
-  "supportedWeb": 159,
-  "supportedIos": 159,
-  "supportedAndroid": 34,
-  "supportPercent": 54.6,
+  "supportedBothTargets": 160,
+  "supportedWeb": 160,
+  "supportedIos": 160,
+  "supportedAndroid": 21,
+  "supportPercent": 55,
   "elements": 62,
   "supportedElements": 33,
   "tags": {
@@ -179,9 +179,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 408,
-   "B-unwrapped": 440,
-   "C-context": 419
+   "A-authored": 394,
+   "B-unwrapped": 426,
+   "C-context": 446
   }
  },
  "features": {
@@ -534,8 +534,10 @@
    "value": "var(--app-bg)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 18,
@@ -546,8 +548,10 @@
    "value": "var(--text-primary)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 19,
@@ -642,8 +646,10 @@
    "value": "var(--text-primary)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 26,
@@ -668,8 +674,10 @@
    "value": "var(--text-muted)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 28,
@@ -818,8 +826,10 @@
    "value": "var(--content-max-width)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 39,
@@ -886,8 +896,10 @@
    "value": "2px solid var(--border)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 44,
@@ -898,8 +910,10 @@
    "value": "var(--text-primary)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 45,
@@ -1136,8 +1150,10 @@
    "value": "1px solid var(--border)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 62,
@@ -2284,8 +2300,10 @@
    "value": "var(--text-primary)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 144,
@@ -2394,8 +2412,10 @@
    "value": "var(--text-primary)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 152,
@@ -2518,8 +2538,10 @@
    "value": "var(--track-mask)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 161,
@@ -2713,12 +2735,10 @@
    "atRule": null,
    "property": "-webkit-appearance",
    "value": "none",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 175,
@@ -2729,10 +2749,8 @@
    "value": "transparent",
    "web": "supported",
    "ios": "supported",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 176,
@@ -2743,10 +2761,8 @@
    "value": "none",
    "web": "supported",
    "ios": "supported",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 177,
@@ -2980,8 +2996,10 @@
    "value": "var(--text-muted)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 194,
@@ -3048,8 +3066,10 @@
    "value": "var(--panel-bg)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 199,
@@ -3060,8 +3080,10 @@
    "value": "1px solid var(--border)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 200,
@@ -3476,8 +3498,10 @@
    "value": "var(--selected-bg)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 230,
@@ -3628,8 +3652,10 @@
    "value": "var(--text-soft)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 241,
@@ -8705,299 +8731,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5578-5602|-webkit-appearance is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 5578,
-    "end": 5602,
-    "line": 316,
-    "column": 2,
-    "text": "-webkit-appearance: none"
-   },
-   "message": "-webkit-appearance is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5617-5628|background-color: transparent (set by background: transparent) is unsupported (support profile m1-s5); no background-color value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5617,
-    "end": 5628,
-    "line": 317,
-    "column": 14,
-    "text": "transparent"
-   },
-   "message": "background-color: transparent (set by background: transparent) is unsupported (support profile m1-s5); no background-color value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-bottom-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-bottom-color value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-bottom-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-bottom-color value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-bottom-style: none (set by border: none) is unsupported (support profile m1-s5); no border-bottom-style value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-bottom-style: none (set by border: none) is unsupported (support profile m1-s5); no border-bottom-style value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-bottom-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-bottom-width value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-bottom-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-bottom-width value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-left-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-left-color value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-left-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-left-color value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-left-style: none (set by border: none) is unsupported (support profile m1-s5); no border-left-style value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-left-style: none (set by border: none) is unsupported (support profile m1-s5); no border-left-style value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-left-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-left-width value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-left-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-left-width value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-right-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-right-color value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-right-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-right-color value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-right-style: none (set by border: none) is unsupported (support profile m1-s5); no border-right-style value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-right-style: none (set by border: none) is unsupported (support profile m1-s5); no border-right-style value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-right-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-right-width value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-right-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-right-width value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-top-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-top-color value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-top-color: currentcolor (set by border: none) is unsupported (support profile m1-s5); no border-top-color value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-top-style: none (set by border: none) is unsupported (support profile m1-s5); no border-top-style value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-top-style: none (set by border: none) is unsupported (support profile m1-s5); no border-top-style value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5639-5643|border-top-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-top-width value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 5639,
-    "end": 5643,
-    "line": 318,
-    "column": 10,
-    "text": "none"
-   },
-   "message": "border-top-width: medium (set by border: none) is unsupported (support profile m1-s5); no border-top-width value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5678-5684|align-items: center is unsupported (support profile m1-s5); no align-items value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -13435,6 +13168,44 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@515-528|background-color: var(--app-bg) substitutes to rgb(16, 18, 22) on body; background-color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 515,
+    "end": 528,
+    "line": 29,
+    "column": 14,
+    "text": "var(--app-bg)"
+   },
+   "message": "background-color: var(--app-bg) substitutes to rgb(16, 18, 22) on body; background-color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@538-557|color: var(--text-primary) substitutes to rgb(237, 240, 245) on body; color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 538,
+    "end": 557,
+    "line": 30,
+    "column": 9,
+    "text": "var(--text-primary)"
+   },
+   "message": "color: var(--text-primary) substitutes to rgb(237, 240, 245) on body; color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); no font-family value is proven in text-in-block/ltr; no font-family value is proven in text-in-flex-item/column/ltr; no font-family value is proven in text-in-flex-item/row/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -13486,6 +13257,44 @@
     "text": "'Lato', sans-serif"
    },
    "message": "font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); in text-in-block/ltr use Ahem; in text-in-flex-item/column/ltr use Ahem; in text-in-flex-item/row/ltr use Ahem",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@762-781|color: var(--text-primary) substitutes to rgb(237, 240, 245) on page/nav-call/nav-title; color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 762,
+    "end": 781,
+    "line": 53,
+    "column": 9,
+    "text": "var(--text-primary)"
+   },
+   "message": "color: var(--text-primary) substitutes to rgb(237, 240, 245) on page/nav-call/nav-title; color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@823-840|color: var(--text-muted) substitutes to rgb(167, 175, 189) on page/song-call/song-artist; color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 823,
+    "end": 840,
+    "line": 59,
+    "column": 9,
+    "text": "var(--text-muted)"
+   },
+   "message": "color: var(--text-muted) substitutes to rgb(167, 175, 189) on page/song-call/song-artist; color:<hex-color> is unsupported (support profile m1-s5)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -13701,6 +13510,25 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1156-1180|max-width: var(--content-max-width) substitutes to 58rem on page/nav-call/nav; max-width:<length-rem> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1156,
+    "end": 1180,
+    "line": 79,
+    "column": 13,
+    "text": "var(--content-max-width)"
+   },
+   "message": "max-width: var(--content-max-width) substitutes to 58rem on page/nav-call/nav; max-width:<length-rem> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1209-1213|width: 100% is unsupported (support profile m1-s5); no width value is proven in block/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -13752,6 +13580,253 @@
     "text": "transparent"
    },
    "message": "background-color: transparent (set by background: transparent) is unsupported (support profile m1-s5); no background-color value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1303-1326|border-bottom-color: 2px solid var(--border) substitutes to rgb(58, 65, 79) on page/nav-call/library-button; border-bottom-color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1303,
+    "end": 1326,
+    "line": 90,
+    "column": 10,
+    "text": "2px solid var(--border)"
+   },
+   "message": "border-bottom-color: 2px solid var(--border) substitutes to rgb(58, 65, 79) on page/nav-call/library-button; border-bottom-color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1303-1326|border-bottom-style: 2px solid var(--border) substitutes to solid on page/nav-call/library-button; border-bottom-style:solid is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1303,
+    "end": 1326,
+    "line": 90,
+    "column": 10,
+    "text": "2px solid var(--border)"
+   },
+   "message": "border-bottom-style: 2px solid var(--border) substitutes to solid on page/nav-call/library-button; border-bottom-style:solid is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1303-1326|border-bottom-width: 2px solid var(--border) substitutes to 2px on page/nav-call/library-button; border-bottom-width:<length-px> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1303,
+    "end": 1326,
+    "line": 90,
+    "column": 10,
+    "text": "2px solid var(--border)"
+   },
+   "message": "border-bottom-width: 2px solid var(--border) substitutes to 2px on page/nav-call/library-button; border-bottom-width:<length-px> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1303-1326|border-left-color: 2px solid var(--border) substitutes to rgb(58, 65, 79) on page/nav-call/library-button; border-left-color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1303,
+    "end": 1326,
+    "line": 90,
+    "column": 10,
+    "text": "2px solid var(--border)"
+   },
+   "message": "border-left-color: 2px solid var(--border) substitutes to rgb(58, 65, 79) on page/nav-call/library-button; border-left-color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1303-1326|border-left-style: 2px solid var(--border) substitutes to solid on page/nav-call/library-button; border-left-style:solid is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1303,
+    "end": 1326,
+    "line": 90,
+    "column": 10,
+    "text": "2px solid var(--border)"
+   },
+   "message": "border-left-style: 2px solid var(--border) substitutes to solid on page/nav-call/library-button; border-left-style:solid is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1303-1326|border-left-width: 2px solid var(--border) substitutes to 2px on page/nav-call/library-button; border-left-width:<length-px> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1303,
+    "end": 1326,
+    "line": 90,
+    "column": 10,
+    "text": "2px solid var(--border)"
+   },
+   "message": "border-left-width: 2px solid var(--border) substitutes to 2px on page/nav-call/library-button; border-left-width:<length-px> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1303-1326|border-right-color: 2px solid var(--border) substitutes to rgb(58, 65, 79) on page/nav-call/library-button; border-right-color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1303,
+    "end": 1326,
+    "line": 90,
+    "column": 10,
+    "text": "2px solid var(--border)"
+   },
+   "message": "border-right-color: 2px solid var(--border) substitutes to rgb(58, 65, 79) on page/nav-call/library-button; border-right-color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1303-1326|border-right-style: 2px solid var(--border) substitutes to solid on page/nav-call/library-button; border-right-style:solid is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1303,
+    "end": 1326,
+    "line": 90,
+    "column": 10,
+    "text": "2px solid var(--border)"
+   },
+   "message": "border-right-style: 2px solid var(--border) substitutes to solid on page/nav-call/library-button; border-right-style:solid is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1303-1326|border-right-width: 2px solid var(--border) substitutes to 2px on page/nav-call/library-button; border-right-width:<length-px> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1303,
+    "end": 1326,
+    "line": 90,
+    "column": 10,
+    "text": "2px solid var(--border)"
+   },
+   "message": "border-right-width: 2px solid var(--border) substitutes to 2px on page/nav-call/library-button; border-right-width:<length-px> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1303-1326|border-top-color: 2px solid var(--border) substitutes to rgb(58, 65, 79) on page/nav-call/library-button; border-top-color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1303,
+    "end": 1326,
+    "line": 90,
+    "column": 10,
+    "text": "2px solid var(--border)"
+   },
+   "message": "border-top-color: 2px solid var(--border) substitutes to rgb(58, 65, 79) on page/nav-call/library-button; border-top-color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1303-1326|border-top-style: 2px solid var(--border) substitutes to solid on page/nav-call/library-button; border-top-style:solid is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1303,
+    "end": 1326,
+    "line": 90,
+    "column": 10,
+    "text": "2px solid var(--border)"
+   },
+   "message": "border-top-style: 2px solid var(--border) substitutes to solid on page/nav-call/library-button; border-top-style:solid is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1303-1326|border-top-width: 2px solid var(--border) substitutes to 2px on page/nav-call/library-button; border-top-width:<length-px> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1303,
+    "end": 1326,
+    "line": 90,
+    "column": 10,
+    "text": "2px solid var(--border)"
+   },
+   "message": "border-top-width: 2px solid var(--border) substitutes to 2px on page/nav-call/library-button; border-top-width:<length-px> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1336-1355|color: var(--text-primary) substitutes to rgb(237, 240, 245) on page/nav-call/library-button; color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1336,
+    "end": 1355,
+    "line": 91,
+    "column": 9,
+    "text": "var(--text-primary)"
+   },
+   "message": "color: var(--text-primary) substitutes to rgb(237, 240, 245) on page/nav-call/library-button; color:<hex-color> is unsupported (support profile m1-s5)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -14170,6 +14245,234 @@
     "text": "#050608"
    },
    "message": "background-color: rgb(5, 6, 8) (set by background: #050608) is unsupported (support profile m1-s5); no background-color value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1986-2009|border-bottom-color: 1px solid var(--border) substitutes to rgb(58, 65, 79) on page/song-call/mini-video-shell; border-bottom-color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1986,
+    "end": 2009,
+    "line": 119,
+    "column": 10,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-bottom-color: 1px solid var(--border) substitutes to rgb(58, 65, 79) on page/song-call/mini-video-shell; border-bottom-color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1986-2009|border-bottom-style: 1px solid var(--border) substitutes to solid on page/song-call/mini-video-shell; border-bottom-style:solid is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1986,
+    "end": 2009,
+    "line": 119,
+    "column": 10,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-bottom-style: 1px solid var(--border) substitutes to solid on page/song-call/mini-video-shell; border-bottom-style:solid is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1986-2009|border-bottom-width: 1px solid var(--border) substitutes to 1px on page/song-call/mini-video-shell; border-bottom-width:<length-px> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1986,
+    "end": 2009,
+    "line": 119,
+    "column": 10,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-bottom-width: 1px solid var(--border) substitutes to 1px on page/song-call/mini-video-shell; border-bottom-width:<length-px> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1986-2009|border-left-color: 1px solid var(--border) substitutes to rgb(58, 65, 79) on page/song-call/mini-video-shell; border-left-color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1986,
+    "end": 2009,
+    "line": 119,
+    "column": 10,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-left-color: 1px solid var(--border) substitutes to rgb(58, 65, 79) on page/song-call/mini-video-shell; border-left-color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1986-2009|border-left-style: 1px solid var(--border) substitutes to solid on page/song-call/mini-video-shell; border-left-style:solid is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1986,
+    "end": 2009,
+    "line": 119,
+    "column": 10,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-left-style: 1px solid var(--border) substitutes to solid on page/song-call/mini-video-shell; border-left-style:solid is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1986-2009|border-left-width: 1px solid var(--border) substitutes to 1px on page/song-call/mini-video-shell; border-left-width:<length-px> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1986,
+    "end": 2009,
+    "line": 119,
+    "column": 10,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-left-width: 1px solid var(--border) substitutes to 1px on page/song-call/mini-video-shell; border-left-width:<length-px> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1986-2009|border-right-color: 1px solid var(--border) substitutes to rgb(58, 65, 79) on page/song-call/mini-video-shell; border-right-color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1986,
+    "end": 2009,
+    "line": 119,
+    "column": 10,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-right-color: 1px solid var(--border) substitutes to rgb(58, 65, 79) on page/song-call/mini-video-shell; border-right-color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1986-2009|border-right-style: 1px solid var(--border) substitutes to solid on page/song-call/mini-video-shell; border-right-style:solid is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1986,
+    "end": 2009,
+    "line": 119,
+    "column": 10,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-right-style: 1px solid var(--border) substitutes to solid on page/song-call/mini-video-shell; border-right-style:solid is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1986-2009|border-right-width: 1px solid var(--border) substitutes to 1px on page/song-call/mini-video-shell; border-right-width:<length-px> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1986,
+    "end": 2009,
+    "line": 119,
+    "column": 10,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-right-width: 1px solid var(--border) substitutes to 1px on page/song-call/mini-video-shell; border-right-width:<length-px> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1986-2009|border-top-color: 1px solid var(--border) substitutes to rgb(58, 65, 79) on page/song-call/mini-video-shell; border-top-color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1986,
+    "end": 2009,
+    "line": 119,
+    "column": 10,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-top-color: 1px solid var(--border) substitutes to rgb(58, 65, 79) on page/song-call/mini-video-shell; border-top-color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1986-2009|border-top-style: 1px solid var(--border) substitutes to solid on page/song-call/mini-video-shell; border-top-style:solid is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1986,
+    "end": 2009,
+    "line": 119,
+    "column": 10,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-top-style: 1px solid var(--border) substitutes to solid on page/song-call/mini-video-shell; border-top-style:solid is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1986-2009|border-top-width: 1px solid var(--border) substitutes to 1px on page/song-call/mini-video-shell; border-top-width:<length-px> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1986,
+    "end": 2009,
+    "line": 119,
+    "column": 10,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-top-width: 1px solid var(--border) substitutes to 1px on page/song-call/mini-video-shell; border-top-width:<length-px> is unsupported (support profile m1-s5)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -15867,6 +16170,25 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4723-4742|color: var(--text-primary) substitutes to rgb(237, 240, 245) on page/player-call/time-control; color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4723,
+    "end": 4742,
+    "line": 264,
+    "column": 9,
+    "text": "var(--text-primary)"
+   },
+   "message": "color: var(--text-primary) substitutes to rgb(237, 240, 245) on page/player-call/time-control; color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4750-4754|column-gap: 1rem (set by gap: 1rem) is unsupported (support profile m1-s5); no column-gap value is proven in flex-row-single-line/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -15899,6 +16221,25 @@
     "text": "1rem"
    },
    "message": "row-gap: 1rem (set by gap: 1rem) is unsupported (support profile m1-s5); no row-gap value is proven in flex-row-single-line/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4953-4972|color: var(--text-primary) substitutes to rgb(237, 240, 245) on page/player-call/time-current; color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4953,
+    "end": 4972,
+    "line": 278,
+    "column": 9,
+    "text": "var(--text-primary)"
+   },
+   "message": "color: var(--text-primary) substitutes to rgb(237, 240, 245) on page/player-call/time-current; color:<hex-color> is unsupported (support profile m1-s5)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -16127,6 +16468,25 @@
     "text": "relative"
    },
    "message": "position: relative is unsupported (support profile m1-s5); no position value is proven in relative-in-flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5204-5221|background-color: var(--track-mask) substitutes to rgb(42, 48, 57) on page/player-call/animate-track; background-color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5204,
+    "end": 5221,
+    "line": 293,
+    "column": 14,
+    "text": "var(--track-mask)"
+   },
+   "message": "background-color: var(--track-mask) substitutes to rgb(42, 48, 57) on page/player-call/animate-track; background-color:<hex-color> is unsupported (support profile m1-s5)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -16589,6 +16949,25 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6140-6157|color: var(--text-muted) substitutes to rgb(167, 175, 189) on page/player-call/play; color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 6140,
+    "end": 6157,
+    "line": 349,
+    "column": 9,
+    "text": "var(--text-muted)"
+   },
+   "message": "color: var(--text-muted) substitutes to rgb(167, 175, 189) on page/player-call/play; color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6185-6196|display: inline-flex is unsupported (support profile m1-s5); no display value is proven in block/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -16697,6 +17076,82 @@
     "text": "none"
    },
    "message": "display: none is unsupported (support profile m1-s5); no display value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6313-6328|background-color: var(--panel-bg) substitutes to rgb(24, 27, 33) on page/library-call/library; background-color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 6313,
+    "end": 6328,
+    "line": 363,
+    "column": 14,
+    "text": "var(--panel-bg)"
+   },
+   "message": "background-color: var(--panel-bg) substitutes to rgb(24, 27, 33) on page/library-call/library; background-color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6344-6367|border-left-color: 1px solid var(--border) substitutes to rgb(58, 65, 79) on page/library-call/library; border-left-color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 6344,
+    "end": 6367,
+    "line": 364,
+    "column": 15,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-left-color: 1px solid var(--border) substitutes to rgb(58, 65, 79) on page/library-call/library; border-left-color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6344-6367|border-left-style: 1px solid var(--border) substitutes to solid on page/library-call/library; border-left-style:solid is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 6344,
+    "end": 6367,
+    "line": 364,
+    "column": 15,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-left-style: 1px solid var(--border) substitutes to solid on page/library-call/library; border-left-style:solid is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6344-6367|border-left-width: 1px solid var(--border) substitutes to 1px on page/library-call/library; border-left-width:<length-px> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 6344,
+    "end": 6367,
+    "line": 364,
+    "column": 15,
+    "text": "1px solid var(--border)"
+   },
+   "message": "border-left-width: 1px solid var(--border) substitutes to 1px on page/library-call/library; border-left-width:<length-px> is unsupported (support profile m1-s5)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -17501,6 +17956,25 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7133-7151|background-color: var(--selected-bg) substitutes to rgba(101, 168, 177, 0.22) on page/library-call/song-1/library-song; background-color:<rgba()> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 7133,
+    "end": 7151,
+    "line": 414,
+    "column": 14,
+    "text": "var(--selected-bg)"
+   },
+   "message": "background-color: var(--selected-bg) substitutes to rgba(101, 168, 177, 0.22) on page/library-call/song-1/library-song; background-color:<rgba()> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7186-7190|display: flex is unsupported (support profile m1-s5); no display value is proven in flex-row/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -17666,6 +18140,25 @@
     "text": "center"
    },
    "message": "align-items: center is unsupported (support profile m1-s5); no align-items value is proven in not-flex-container/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7475-7491|color: var(--text-soft) substitutes to rgb(116, 125, 140) on page/youtube-disclosure; color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 7475,
+    "end": 7491,
+    "line": 440,
+    "column": 9,
+    "text": "var(--text-soft)"
+   },
+   "message": "color: var(--text-soft) substitutes to rgb(116, 125, 140) on page/youtube-disclosure; color:<hex-color> is unsupported (support profile m1-s5)",
    "viaRelated": false,
    "passes": [
     "C-context"

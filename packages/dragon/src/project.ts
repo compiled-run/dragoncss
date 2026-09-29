@@ -212,6 +212,8 @@ const setBy = (d: Declaration, property: Longhand): string => (d.property === pr
 function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], profiles: SupportProfiles, used: readonly UsedKey[], diagnostics: Diagnostic[]): void {
   const seen = new Set<Declaration>();
   for (const rule of rules) {
+    // A rule Chrome drops never applies (css/selectors.ts), so its values need no support.
+    if (rule.selectors.every((s) => s.dropped)) continue;
     for (const d of rule.declarations) {
       if (seen.has(d)) continue;
       seen.add(d);
@@ -276,7 +278,7 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   const out: CaseResult[] = [];
   for (const c of linked.cases) {
     const resolved = resolveTree(c.root, rules, options.faults, { direction: options.direction, rootFont: options.rootFont, ua: options.ua });
-    checkComputed(resolved, targets, diagnostics, refused);
+    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t);
     const used = usedKeys(resolved);
     out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used });

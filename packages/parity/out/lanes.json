@@ -184,7 +184,8 @@
               "extended": "813f159ec6e82b08d3cae4145aa3690a8b011ccf9b23fd2721ce80f33eb67dd4"
             }
           },
-          "device": null
+          "device": null,
+          "evidence": null
         },
         {
           "lane": "layout-vectors-device",
@@ -323,7 +324,12 @@
               "extended": "b0beeb793ee5f661647f74f24d5b5a2cb9c826e8adcef3fdffcb71227c3fa942"
             }
           },
-          "device": null
+          "device": null,
+          "evidence": {
+            "laneCode": "346ad56a9f397ba64f528e8cfae5a24efdd1fb1d595433ef0d534a74c48d7c91",
+            "referenceData": "1ce8b61226594930bbc73cb0a9501efc6646efd71c0ee0986725489802388e8e",
+            "app": "21ef74aaa707f67c13135e7ce43b00df6f008e8c7937e6f497809d454f27aa36"
+          }
         },
         {
           "lane": "device-frames",
@@ -428,6 +434,11 @@
             "failuresByKind": {},
             "firstFailures": [],
             "trust": null
+          },
+          "evidence": {
+            "laneCode": "346ad56a9f397ba64f528e8cfae5a24efdd1fb1d595433ef0d534a74c48d7c91",
+            "referenceData": "1ce8b61226594930bbc73cb0a9501efc6646efd71c0ee0986725489802388e8e",
+            "app": "21ef74aaa707f67c13135e7ce43b00df6f008e8c7937e6f497809d454f27aa36"
           }
         },
         {
@@ -533,6 +544,11 @@
             "failuresByKind": {},
             "firstFailures": [],
             "trust": null
+          },
+          "evidence": {
+            "laneCode": "346ad56a9f397ba64f528e8cfae5a24efdd1fb1d595433ef0d534a74c48d7c91",
+            "referenceData": "1ce8b61226594930bbc73cb0a9501efc6646efd71c0ee0986725489802388e8e",
+            "app": "21ef74aaa707f67c13135e7ce43b00df6f008e8c7937e6f497809d454f27aa36"
           }
         },
         {
@@ -638,6 +654,11 @@
             "failuresByKind": {},
             "firstFailures": [],
             "trust": null
+          },
+          "evidence": {
+            "laneCode": "346ad56a9f397ba64f528e8cfae5a24efdd1fb1d595433ef0d534a74c48d7c91",
+            "referenceData": "1ce8b61226594930bbc73cb0a9501efc6646efd71c0ee0986725489802388e8e",
+            "app": "21ef74aaa707f67c13135e7ce43b00df6f008e8c7937e6f497809d454f27aa36"
           }
         },
         {
@@ -925,6 +946,11 @@
                 "mismatches": 0
               }
             ]
+          },
+          "evidence": {
+            "laneCode": "346ad56a9f397ba64f528e8cfae5a24efdd1fb1d595433ef0d534a74c48d7c91",
+            "referenceData": "1ce8b61226594930bbc73cb0a9501efc6646efd71c0ee0986725489802388e8e",
+            "app": "21ef74aaa707f67c13135e7ce43b00df6f008e8c7937e6f497809d454f27aa36"
           }
         }
       ],
@@ -1221,7 +1247,8 @@
               "extended": "813f159ec6e82b08d3cae4145aa3690a8b011ccf9b23fd2721ce80f33eb67dd4"
             }
           },
-          "device": null
+          "device": null,
+          "evidence": null
         },
         {
           "lane": "layout-vectors-device",
@@ -1360,7 +1387,12 @@
               "extended": "b0beeb793ee5f661647f74f24d5b5a2cb9c826e8adcef3fdffcb71227c3fa942"
             }
           },
-          "device": null
+          "device": null,
+          "evidence": {
+            "laneCode": "346ad56a9f397ba64f528e8cfae5a24efdd1fb1d595433ef0d534a74c48d7c91",
+            "referenceData": "1ce8b61226594930bbc73cb0a9501efc6646efd71c0ee0986725489802388e8e",
+            "app": "5268dde2ce21dfc9c5c0a22e9d11cfd9cb886461f0b0c6b971224eb0a9b21b75"
+          }
         },
         {
           "lane": "device-frames",
@@ -1508,6 +1540,11 @@
             "failuresByKind": {},
             "firstFailures": [],
             "trust": null
+          },
+          "evidence": {
+            "laneCode": "346ad56a9f397ba64f528e8cfae5a24efdd1fb1d595433ef0d534a74c48d7c91",
+            "referenceData": "1ce8b61226594930bbc73cb0a9501efc6646efd71c0ee0986725489802388e8e",
+            "app": "5268dde2ce21dfc9c5c0a22e9d11cfd9cb886461f0b0c6b971224eb0a9b21b75"
           }
         },
         {
@@ -1656,6 +1693,11 @@
             "failuresByKind": {},
             "firstFailures": [],
             "trust": null
+          },
+          "evidence": {
+            "laneCode": "346ad56a9f397ba64f528e8cfae5a24efdd1fb1d595433ef0d534a74c48d7c91",
+            "referenceData": "1ce8b61226594930bbc73cb0a9501efc6646efd71c0ee0986725489802388e8e",
+            "app": "5268dde2ce21dfc9c5c0a22e9d11cfd9cb886461f0b0c6b971224eb0a9b21b75"
           }
         },
         {
@@ -1804,6 +1846,11 @@
             "failuresByKind": {},
             "firstFailures": [],
             "trust": null
+          },
+          "evidence": {
+            "laneCode": "346ad56a9f397ba64f528e8cfae5a24efdd1fb1d595433ef0d534a74c48d7c91",
+            "referenceData": "1ce8b61226594930bbc73cb0a9501efc6646efd71c0ee0986725489802388e8e",
+            "app": "5268dde2ce21dfc9c5c0a22e9d11cfd9cb886461f0b0c6b971224eb0a9b21b75"
           }
         },
         {
@@ -2143,6 +2190,11 @@
                 "mismatches": 0
               }
             ]
+          },
+          "evidence": {
+            "laneCode": "346ad56a9f397ba64f528e8cfae5a24efdd1fb1d595433ef0d534a74c48d7c91",
+            "referenceData": "1ce8b61226594930bbc73cb0a9501efc6646efd71c0ee0986725489802388e8e",
+            "app": "5268dde2ce21dfc9c5c0a22e9d11cfd9cb886461f0b0c6b971224eb0a9b21b75"
           }
         }
       ],

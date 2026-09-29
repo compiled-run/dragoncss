@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { canonicalJson } from '../../dragon/src/digest.ts';
 import { FIXTURES } from '../src/fixtures.ts';
 import { fixtureToInput, parseFixtureHtml, readHtmlFixture, VOID_ELEMENTS } from '../src/fixture-reader.ts';
+import type { TreeFixtureFile } from '../src/tree-fixture.ts';
 import { readTreeFixture, readTreeFixtureDir } from '../src/tree-fixture.ts';
 
 /** sha256 of canonicalJson(FrontEndResult) per fixture, at BASE 12af7cb. */
@@ -241,6 +242,18 @@ describe('fixture reader identity', () => {
     const strip = (x: unknown): string => canonicalJson(x).replace(/dragon-source:\/\/dragon-parity\/(packages\/parity\/)?fixtures\//g, '');
     expect(strip(b)).toBe(strip(a));
   });
+
+  it('refuses a source outside the repository and an origin with a bad occurrence index', () => {
+    const id = 'tree-controlled-aliases';
+    const dir = `packages/parity/fixtures/${id}`;
+    for (const bad of ['../../../../../x.css', '..\\..\\..\\..\\..\\x.css', '../../../../..']) {
+      expect(() => readTreeFixtureDir(dir, id, { spec: (s) => ({ ...s, sources: [...s.sources, bad] }) }), bad).toThrow(/outside the repository/);
+    }
+    expect(() => readTreeFixtureDir(dir, id, { spec: (s) => ({ ...s, sources: [...s.sources, './fixture.json', 'fixture.json'] }) })).toThrow(/listed twice/);
+    expect(() => readTreeFixtureDir(dir, id, { spec: (s) => ({ ...s, sources: [...s.sources, s.sources[0] as string] }) })).toThrow(/listed twice/);
+    const at = (a: unknown) => (s: TreeFixtureFile): TreeFixtureFile => ({ ...s, components: s.components.map((c, i) => (i === 0 ? { ...c, at: a as TreeFixtureFile['components'][number]['at'] } : c)) });
+    for (const bad of [['<', -1], ['<', 0.5], '']) expect(() => readTreeFixtureDir(dir, id, { spec: at(bad) }), JSON.stringify(bad)).toThrow(/bad origin/);
+  });
 });
 
 const page = (head: string, body: string): string => `<!DOCTYPE html>\n<html data-dragon-id="html"><head>${head}</head><body data-dragon-id="body">${body}</body></html>\n`;
@@ -278,7 +291,11 @@ describe('<link rel="stylesheet" href>', () => {
 
   it('needs a resolver, and exactly one stylesheet', () => {
     expect(() => fixtureToInput('linked', html)).toThrow(/needs a stylesheet resolver/);
+    expect(() => fixtureToInput('linked', html, { resolveStylesheet: () => ({ text: css, uri: 'dragon-source://dragon-parity/fixtures/linked.html', displayPath: 'x' }) })).toThrow(/fixture's own uri/);
     expect(() => parseFixtureHtml(page('<link rel="stylesheet" href="a.css"><style></style>', ''))).toThrow(/exactly one/);
     expect(() => parseFixtureHtml(page('', ''))).toThrow(/exactly one/);
+    // rel is an ASCII case-insensitive token list, so neither link may be skipped silently.
+    expect(() => parseFixtureHtml(page('<link rel="Stylesheet" href="a.css"><style></style>', ''))).toThrow(/exactly one/);
+    expect(() => parseFixtureHtml(page('<link rel="alternate stylesheet" href="a.css"><style></style>', ''))).toThrow(/only rel="stylesheet"/);
   });
 });
