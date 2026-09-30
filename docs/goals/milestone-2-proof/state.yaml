@@ -3486,6 +3486,23 @@ tasks:
       - passing needs a changed assertion, fixture expectation, planted-fault meaning or new allowance
       - a file outside allowed_files must change
     receipt: null
+  - id: T124
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: tooling
+    objective: 'pnpm run north-star:check fails on master (SyntaxError: ''dragon'' does not provide collectFontFaces): the package.json script lacks --conditions=dragon-internal, which every sibling script
+      has and regen commits worked around. Fix the script, and add a test that every package.json script running a repo .ts file that imports dragon-internal exports uses the condition.'
+    allowed_files:
+      - package.json
+      - packages/parity/test/**
+    verify:
+      - pnpm run north-star:check
+      - pnpm typecheck
+      - pnpm test
+    stop_if:
+      - the check itself fails after the fix
+    receipt: null
   - id: T999
     type: judge
     assignee: Judge
