@@ -161,7 +161,8 @@
       "grid-inert-placement": [3,3],
       "grid-inert-placement-rtl": [3,3],
       "grid-inert-templates": [5,5],
-      "grid-inert-templates-rtl": [5,5]
+      "grid-inert-templates-rtl": [5,5],
+      "showcase-player-card": [5,5]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -324,7 +325,8 @@
       "grid-inert-placement": [3,3],
       "grid-inert-placement-rtl": [3,3],
       "grid-inert-templates": [5,5],
-      "grid-inert-templates-rtl": [5,5]
+      "grid-inert-templates-rtl": [5,5],
+      "showcase-player-card": [5,5]
     }
   },
   "android": {
@@ -489,7 +491,8 @@
       "grid-inert-placement": [3,3],
       "grid-inert-placement-rtl": [3,3],
       "grid-inert-templates": [5,5],
-      "grid-inert-templates-rtl": [5,5]
+      "grid-inert-templates-rtl": [5,5],
+      "showcase-player-card": [5,5]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -652,7 +655,8 @@
       "grid-inert-placement": [3,3],
       "grid-inert-placement-rtl": [3,3],
       "grid-inert-templates": [5,5],
-      "grid-inert-templates-rtl": [5,5]
+      "grid-inert-templates-rtl": [5,5],
+      "showcase-player-card": [5,5]
     },
     "2.625": {
       "text-ahem-single-line": [10,10],
@@ -815,7 +819,8 @@
       "grid-inert-placement": [3,3],
       "grid-inert-placement-rtl": [3,3],
       "grid-inert-templates": [5,5],
-      "grid-inert-templates-rtl": [5,5]
+      "grid-inert-templates-rtl": [5,5],
+      "showcase-player-card": [5,5]
     }
   }
 }
