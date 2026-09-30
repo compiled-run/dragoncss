@@ -143,6 +143,13 @@ describe('font-family resolution', () => {
     const answer = querySupport({ kind: 'resolved', result: c, target: 'web', instance: DOC, node: 'a', property: 'font-family', assignment: [] });
     expect(answer.kind === 'decided' && answer.cases.map((x) => x.decision?.feature)).toEqual(['font-family:<pinned>']);
   });
+
+  it('a font-family holding var() is keyed after substitution by how it resolves, so an enforced profile accepts a pinned generic', () => {
+    const row = { feature: 'font-family:<pinned>', context: 'text-in-block/ltr', status: 'exact' as const, proofs: [] };
+    const web = { ...webProfile, rows: [...webProfile.rows.filter((r) => r.feature !== 'font-family:<pinned>'), row] };
+    const c = createProjectWith({ projectId: 'test', targets: { web: {} }, fonts: MAP }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', supportProfiles: { web, ios: iosProfile } }).compile(fontInput('.a { --f: sans-serif; font-family: var(--f) }'));
+    expect(c.diagnostics).toEqual([]);
+  });
 });
 
 describe('@font-face rules', () => {
