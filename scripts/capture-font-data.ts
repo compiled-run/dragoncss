@@ -295,11 +295,16 @@ export const PINNED_MAP: FontMap = {
     'ui-rounded': { mode: 'pinned', family: 'Dragon Rounded', faces: [{ src: `fonts/${NOTO}` }] },
     serif: { mode: 'platform' },
   },
-  families: { 'Brand Face': { mode: 'pinned', family: 'Dragon Brand', faces: [{ src: `fonts/${ROBOTO}` }] } },
+  families: {
+    'Brand Face': { mode: 'pinned', family: 'Dragon Brand', faces: [{ src: `fonts/${ROBOTO}` }] },
+    // The north star's 'Lato' (T036, T038): pinned to the vendored Lato 2.015 Regular and Bold under its own name.
+    Lato: { mode: 'pinned', family: 'Lato', faces: [{ src: `fonts/${LATO}`, weight: '400' }, { src: `fonts/${LATO_BOLD}`, weight: '700' }] },
+  },
 };
 const PINNED_REQUESTS: readonly Request[] = [
   req('monospace', 400), req('sans-serif', 300), req('sans-serif', 400), req('sans-serif', 400, 100, 'italic'), req('sans-serif', 700), req('sans-serif', 800, 100, 'italic'),
   req('sans-serif', 500), req('ui-rounded', 400), req('"Brand Face", monospace', 400), req('Unknown, monospace', 400), req('monospace, sans-serif', 700),
+  req("'Lato', sans-serif", 400), req("'Lato', sans-serif", 700), req('Lato', 400, 100, 'italic'), req('"sans-serif", monospace', 400),
 ];
 
 async function capturePinned(browser: Browser): Promise<unknown> {

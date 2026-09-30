@@ -4,6 +4,7 @@ import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS, PROPERTY_ROLE } from '../css/properties.ts';
 import type { Declaration } from '../css/stylesheet.ts';
 import { featureOf } from '../css/stylesheet.ts';
+import type { FamilyKeyContext } from '../css/values.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 
 /** The direction facet (docs/api.md §10.1): a left-to-right proof never covers right-to-left. */
@@ -125,9 +126,10 @@ export const rowKey = (feature: string, context: string): string => `${feature}@
 
 /**
  * Every author declaration that won the cascade on an element of this case, with its row key. A text property is keyed at each
- * text node its value reaches by inheritance, in that text node's context, with the declaration it was inherited from.
+ * text node its value reaches by inheritance, in that text node's context, with the declaration it was inherited from. fonts: the
+ * project's font context, which keys a font-family value by how it resolves (css/values.ts featureOf).
  */
-export function usedKeys(root: ResolvedElement): UsedKey[] {
+export function usedKeys(root: ResolvedElement, fonts?: FamilyKeyContext): UsedKey[] {
   const out: UsedKey[] = [];
   const walk = (el: ResolvedElement, chain: readonly ResolvedElement[]): void => {
     const parent = chain[chain.length - 1];
@@ -152,7 +154,7 @@ export function usedKeys(root: ResolvedElement): UsedKey[] {
         while (at !== undefined) {
           const v = at.props.get(p) as ResolvedValue;
           if (v.declaration !== null && v.declared !== null) {
-            const feature = featureOf(p, v.declared);
+            const feature = featureOf(p, v.declared, p === 'font-family' ? fonts : undefined);
             out.push({ key: rowKey(feature, context), feature, context, property: p, declaration: v.declaration, address: c.node.address });
             break;
           }

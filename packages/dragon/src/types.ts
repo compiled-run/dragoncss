@@ -1,5 +1,6 @@
 // Public input and result types (docs/api.md §2.1-2.2, §3.1-3.2, §6.1-6.2), narrowed to the milestone-1 slice.
 import type { DiagnosticCode } from './diagnostics/codes.ts';
+import type { FontMap } from './fonts/font-map.ts';
 
 export type { DiagnosticCode } from './diagnostics/codes.ts';
 
@@ -199,8 +200,17 @@ export type CheckReport<K extends string> = {
 
 export type GeneratedFile = { readonly path: string; readonly text: string };
 
+/** A binary output written beside the files: a bundled font at fonts/<sha256-hex-16>.<ttf|otf>, hash sha256:<hex> of its bytes. */
+export type GeneratedAsset = { readonly path: string; readonly hash: string; readonly bytes: Uint8Array };
+
+export type { FontMap, FontMapEntry, GenericKey, PinnedFace } from './fonts/font-map.ts';
+
+/** The project configuration: its identity, its targets and, optionally, the font map (docs/api.md, Fonts). */
+export type ProjectConfig<T extends Targets> = { readonly projectId: string; readonly targets: T; readonly fonts?: FontMap };
+
 export type ArtifactState =
-  | { readonly kind: 'ready'; readonly digest: string; readonly files: readonly GeneratedFile[] }
+  /** assets: the web output's bundled fonts; empty when the project uses none. */
+  | { readonly kind: 'ready'; readonly digest: string; readonly files: readonly GeneratedFile[]; readonly assets: readonly GeneratedAsset[] }
   | { readonly kind: 'analysis-only'; readonly digest: string; readonly reason: string }
   | { readonly kind: 'blocked'; readonly diagnostics: readonly Diagnostic[] };
 
