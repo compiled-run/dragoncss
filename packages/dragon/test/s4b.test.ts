@@ -51,11 +51,27 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   const paint = LONGHANDS.filter((p) => PROPERTY_ROLE[p] === 'paint');
   it('(i) paint holds exactly for the aspect-table longhands with a paint aspect and no layout aspect', () => {
     for (const p of LONGHANDS) expect(PROPERTY_ROLE[p] === 'paint', p).toBe(!PROPERTY_ASPECTS[p].layout && PROPERTY_ASPECTS[p].paint);
-    expect([...paint].sort()).toEqual(['background-color', 'border-bottom-color', 'border-left-color', 'border-right-color', 'border-top-color', 'color']);
+    // BG2 adds the eight background layer longhands.
+    expect([...paint].sort()).toEqual([
+      'background-attachment', 'background-clip', 'background-color', 'background-image', 'background-origin', 'background-position-x', 'background-position-y', 'background-repeat', 'background-size',
+      'border-bottom-color', 'border-left-color', 'border-right-color', 'border-top-color', 'color',
+    ]);
   });
   it('(ii) a paint longhand never reaches the layout input: two elements that differ only in it lower to identical styles', () => {
+    // Colour longhands take two colours; the background layer longhands (BG2) two values of their own syntax.
+    const pairs: Readonly<Record<string, readonly [string, string]>> = {
+      'background-image': ['linear-gradient(red, blue)', 'radial-gradient(red, blue)'],
+      'background-position-x': ['10%', '3px'],
+      'background-position-y': ['10%', '3px'],
+      'background-size': ['auto', 'cover'],
+      'background-repeat': ['no-repeat', 'repeat-x'],
+      'background-attachment': ['scroll', 'scroll'],
+      'background-origin': ['padding-box', 'border-box'],
+      'background-clip': ['border-box', 'padding-box'],
+    };
     for (const p of paint) {
-      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; } .a { ${p}: #102030; } .b { ${p}: rgba(200, 100, 50, 0.5); }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
+      const [va, vb] = pairs[p] ?? ['#102030', 'rgba(200, 100, 50, 0.5)'];
+      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
       const m = boxes(input);
       const [a, b] = [m.get('a') as LayoutBox, m.get('b') as LayoutBox];
       expect(a.style, p).toEqual(b.style);

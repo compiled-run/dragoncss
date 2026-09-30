@@ -188,13 +188,15 @@ public final class DragonClipView: UIView {
 
 /// The box geometry every paint stage and after-layout hook receives: the snapped border-box edges (left, top, right, bottom) and
 /// the border widths (top, right, bottom, left) in device px, and the eight corner radii in device px (horizontal then vertical,
-/// top-left first), zero until the radius module fills them (PNT1).
+/// top-left first), zero until the radius module fills them (PNT1). lu is the unsnapped absolute border box (x, y, width, height)
+/// in LU at the device scale, which Blink's background geometry reads (BG2).
 public struct DragonBoxShape {
   public var edges: [Double]
   public var borders: [Double]
   public var radii: [Double]
-  public init(edges: [Double], borders: [Double], radii: [Double] = [0, 0, 0, 0, 0, 0, 0, 0]) {
-    self.edges = edges; self.borders = borders; self.radii = radii
+  public var lu: [Double]
+  public init(edges: [Double], borders: [Double], radii: [Double] = [0, 0, 0, 0, 0, 0, 0, 0], lu: [Double] = [0, 0, 0, 0]) {
+    self.edges = edges; self.borders = borders; self.radii = radii; self.lu = lu
   }
 }
 
@@ -521,7 +523,8 @@ public final class DragonTree {
         let px = [be.top / lu, be.right / lu, be.bottom / lu, be.left / lu]
         borders[id] = px
         bv.dragonScale = s
-        bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px)
+        guard let a = abs.get(r.id) else { fatalError("dragon: no absolute rect for \(id)") }
+        bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px, lu: [a.x, a.y, a.width, a.height])
         dragonAfterLayout(bv, bv.dragonShape, s)
         bv.setNeedsDisplay()
       }
@@ -855,9 +858,10 @@ class DragonClipView(ctx: Context) : DragonGroup(ctx) {
 /**
  * The box geometry every paint stage and after-layout hook receives: the snapped border-box edges (left, top, right, bottom) and
  * the border widths (top, right, bottom, left) in device px, and the eight corner radii in device px (horizontal then vertical,
- * top-left first), zero until the radius module fills them (PNT1).
+ * top-left first), zero until the radius module fills them (PNT1). lu is the unsnapped absolute border box (x, y, width, height)
+ * in LU at the device scale, which Blink's background geometry reads (BG2).
  */
-class DragonBoxShape(val edges: DoubleArray, val borders: DoubleArray, val radii: DoubleArray = DoubleArray(8))
+class DragonBoxShape(val edges: DoubleArray, val borders: DoubleArray, val radii: DoubleArray = DoubleArray(8), val lu: DoubleArray = DoubleArray(4))
 
 /** A box: the background is a native ColorDrawable; every other paint is a paint module's (views/paint), drawn in CSS stage order. */
 class DragonBoxView(ctx: Context, override val dragonId: String, override val dragonKind: String, override val dragonParent: String?) : DragonGroup(ctx), DragonNodeView {
@@ -1196,7 +1200,8 @@ class DragonTree(val context: Context) {
         val be = box_resolveBorder(z.style, zoomed.devicePixelRatio)
         val px = doubleArrayOf(be.top / lu, be.right / lu, be.bottom / lu, be.left / lu)
         borders[id] = px
-        v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px)
+        val a = abs.get(r.id) ?: throw IllegalStateException("dragon: no absolute rect for " + id)
+        v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px, DoubleArray(8), doubleArrayOf(a.x, a.y, a.width, a.height))
         dragonAfterLayout(v, v.dragonShape, scale)
         v.invalidate()
       }

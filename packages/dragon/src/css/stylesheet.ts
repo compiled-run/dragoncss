@@ -12,7 +12,9 @@ import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand } from './properties.ts';
 import type { Selector } from './selectors.ts';
 import { parseSelectorList } from './selectors.ts';
+import { layerLonghandValue } from './shorthands/background.ts';
 import { shorthandHandler } from './shorthands/index.ts';
+import { isBackgroundLayerLonghand } from './properties/background-layers.ts';
 import type { CssValue } from './values.ts';
 import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, tokenValue, toValue } from './values.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
@@ -277,6 +279,8 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
     const match = webrefLexer().matchProperty(property, valueNode);
     if (match.error !== null) return { kind: 'invalid' };
   }
+  // css-backgrounds-3 §2.2: a background layer longhand holds one comma-separated item per layer (BG2).
+  if (!wide && isBackgroundLayerLonghand(property)) return layerLonghandValue(property, tokens, base, sheetText);
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
   const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
   const values: CssValue[] = baseline === null ? [] : [baseline];
