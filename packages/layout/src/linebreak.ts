@@ -449,7 +449,7 @@ export function lineBreakOpportunitiesWith(text: readonly number[], style: LineB
   const refused = refusal(text, style);
   if (refused !== null) return { ok: false, reason: refused };
   if (style.textWrapMode === 'nowrap') return { ok: true, opportunities: [] };
-  let uax: readonly boolean[] | null = null;
+  const uax = uax14BreakAllowed(text, true);
   const opportunities: BreakOpportunity[] = [];
   for (let i = 1; i < text.length; i++) {
     const cur = text[i] as number;
@@ -460,7 +460,6 @@ export function lineBreakOpportunitiesWith(text: readonly number[], style: LineB
     else {
       const fast = fastBreak(i >= 2 ? (text[i - 2] as number) : -1, last, cur, faults);
       if (fast === FAST_UNKNOWN) {
-        uax ??= uax14BreakAllowed(text, true);
         breaks = uax[i] as boolean;
       } else {
         breaks = fast === FAST_YES;
