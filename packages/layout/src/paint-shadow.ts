@@ -10,12 +10,15 @@
 // shadow is on top. Every exported function is a translated engine root (translate/src/generate.ts), proven TS = Swift = Kotlin by
 // packages/layout/paint-vectors/shadow.
 //
-// Where this is not bit-exact with Chrome: the antialiased source of a rounded, oval or fractional-edged shape is supersampled
-// 16 x 16 per pixel here (Skia uses its analytic AA scan converter), and the platform composites the layer over the backdrop with
-// its own rounding. Both are measured against Chrome by packages/parity/test/pnt1-shadow.test.ts; the shadow sample rule carries
-// the measured allowance (packages/parity/src/allowances/shadow.ts, at most 2 channel levels).
+// Where this is not bit-exact with Chrome: a rounded source shape is filled by Skia's analytic AA (paint-aa.ts AntiFillPath, exact)
+// whenever its path lies inside the mask it is drawn into; a square source with a fractional edge, a rounded one a trimmed mask
+// cuts, and the antialiased clips (the border box an outer shadow is clipped out of, the padding box an inset one is clipped to)
+// are supersampled 16 x 16 per pixel. The platform composites the layer over the backdrop with its own rounding, where Chrome
+// blits each shadow onto the backdrop. packages/parity/test/pnt1-shadow.test.ts measures both against Chrome.
 import type { A8Mask, BlurFaults, IRect } from './paint-blur.ts';
 import { boxBlur, boxBlurMargin, hasNoBlur, maskBounds, mulDiv255Round, rectShadowCoverage, shadowSigma } from './paint-blur.ts';
+import type { AaPath, Device, IRect as AaIRect, Radius, SkRRect } from './paint-aa.ts';
+import { antiFillPath, devicePixels, drrectPath, NO_AA_FAULTS, ovalPath, rrectPath, setRectRadii, whiteDevice } from './paint-aa.ts';
 import { ccTileEnd, ccTileIndex, ccTileStart } from './paint-dither.ts';
 import { constrainCornerRadii, hasRoundedCorner } from './paint-radius.ts';
 import { floorOf, froundOf } from './rt-easing.ts';
@@ -221,8 +224,46 @@ export function shapeCoverage(s: ShadowShape, x: number, y: number): number {
   return n === SUPERSAMPLE * SUPERSAMPLE ? 255 : floorOf((n * 255) / (SUPERSAMPLE * SUPERSAMPLE) + 0.5);
 }
 
-/** An A8 mask of a shape over bounds, minus an optional hole (the even-odd rect-with-hole of an inset shadow). */
-function rasterMask(s: ShadowShape, hole: ShadowShape | null, b: IRect): A8Mask {
+/** The SkRRect of a shape (radii in Skia corner order UL, UR, LR, LL), through SkRRect::setRectRadii. */
+function skRRect(s: ShadowShape): SkRRect {
+  const radii: Radius[] = [];
+  for (let k = 0; k < 4; k++) {
+    const r: Radius = { x: at(s.radii, k), y: at(s.radii, k + 4) };
+    radii.push(r);
+  }
+  return setRectRadii({ left: s.left, top: s.top, right: s.right, bottom: s.bottom }, radii, NO_AA_FAULTS);
+}
+
+/** The path Skia fills for a shape: SkCanvas::drawRRect's oval delegation, else SkPath::RRect; with a hole, SkDevice::drawDRRect's. */
+function shapePath(s: ShadowShape, hole: ShadowShape | null): AaPath {
+  const rr = skRRect(s);
+  if (hole !== null) return drrectPath(rr, skRRect(hole));
+  return rr.type === 'oval' ? ovalPath(rr.rect) : rrectPath(rr);
+}
+
+/** Whether the rounded-out bounds of a path lie inside a clip. */
+function pathInside(path: AaPath, clip: IRect): boolean {
+  const r = roundOut(path.bounds.left, path.bounds.top, path.bounds.right, path.bounds.bottom);
+  return r.left >= clip.left && r.top >= clip.top && r.right <= clip.right && r.bottom <= clip.bottom;
+}
+
+/**
+ * An A8 mask of a shape over bounds, minus an optional hole (the even-odd rect-with-hole of an inset shadow). A rounded shape
+ * whose path lies inside clip is filled by Skia's analytic AA (paint-aa.ts AntiFillPath, exact), its coverage read back from
+ * the black blitter over white; a square one, or one crossing clip, is supersampled.
+ */
+function rasterMask(s: ShadowShape, hole: ShadowShape | null, b: IRect, clip: IRect): A8Mask {
+  const rounded = hasRoundedCorner(s.radii) || (hole !== null && hasRoundedCorner(hole.radii));
+  const path = rounded ? shapePath(s, hole) : null;
+  if (path !== null && pathInside(path, clip) && width(b) > 0 && height(b) > 0) {
+    const devBounds: AaIRect = { left: b.left, top: b.top, right: b.right, bottom: b.bottom };
+    const aaClip: AaIRect = { left: clip.left, top: clip.top, right: clip.right, bottom: clip.bottom };
+    const dev: Device = whiteDevice(devBounds);
+    antiFillPath(dev, path, aaClip, NO_AA_FAULTS);
+    const data: number[] = [];
+    for (const v of devicePixels(dev)) data.push(255 - v);
+    return { bounds: b, data };
+  }
   const data: number[] = [];
   for (let y = b.top; y < b.bottom; y++) {
     for (let x = b.left; x < b.right; x++) {
@@ -286,7 +327,8 @@ function rrectNine(s: ShadowShape, sigma: number): A8Mask | null {
   const totalH = topUnstretched + bottomUnstretched + 1;
   if (totalH >= f32(s.bottom - s.top)) return null;
   const small: ShadowShape = { left: 0, top: 0, right: totalW, bottom: totalH, radii: s.radii };
-  const blurred = boxBlur(rasterMask(small, null, { left: 0, top: 0, right: totalW, bottom: totalH }), sigma, NO_BLUR);
+  const smallBounds: IRect = { left: 0, top: 0, right: totalW, bottom: totalH };
+  const blurred = boxBlur(rasterMask(small, null, smallBounds, smallBounds), sigma, NO_BLUR);
   const local: A8Mask = { bounds: { left: 0, top: 0, right: width(blurred.bounds), bottom: height(blurred.bounds) }, data: blurred.data };
   const src = roundOut(s.left, s.top, s.right, s.bottom);
   const outer: IRect = { left: src.left - margin, top: src.top - margin, right: src.right + margin, bottom: src.bottom + margin };
@@ -296,12 +338,13 @@ function rrectNine(s: ShadowShape, sigma: number): A8Mask | null {
 /** SkDraw::DrawToMask then SkBlurMask::BoxBlur: the shape (minus a hole) rastered over its mask bounds, trimmed to the tile clip. */
 function pathBlur(s: ShadowShape, hole: ShadowShape | null, sigma: number, clip: IRect): A8Mask {
   const b = maskBounds({ left: s.left, top: s.top, right: s.right, bottom: s.bottom }, clip, boxBlurMargin(sigma));
-  return boxBlur(rasterMask(s, hole, b), sigma, NO_BLUR);
+  return boxBlur(rasterMask(s, hole, b, b), sigma, NO_BLUR);
 }
 
 /** A shape drawn with no blur: its antialiased coverage over its rounded-out bounds. */
 function plainMask(s: ShadowShape, hole: ShadowShape | null): A8Mask {
-  return rasterMask(s, hole, roundOut(s.left, s.top, s.right, s.bottom));
+  const b = roundOut(s.left, s.top, s.right, s.bottom);
+  return rasterMask(s, hole, b, b);
 }
 
 /** The coverage of a filled shape drawn with a normal blur of sigma, through the path Skia picks, rastered into a tile at clip. */
@@ -495,7 +538,7 @@ export function insetShadowLayer(left: number, top: number, right: number, botto
     const shape = offsetShape(outer, ox, oy);
     const moved = offsetShape(hole, ox, oy);
     const perTile = tileDependent(sigma);
-    const once = perTile ? null : !(sigma > 0) || hasNoBlur(sigma) ? rasterMask(shape, moved, b) : pathBlur(shape, moved, sigma, UNCLIPPED);
+    const once = perTile ? null : !(sigma > 0) || hasNoBlur(sigma) ? rasterMask(shape, moved, b, roundOut(shape.left, shape.top, shape.right, shape.bottom)) : pathBlur(shape, moved, sigma, UNCLIPPED);
     const cache: TileMask[] = [];
     compositeOnto(layer, b, sh, (x, y) => {
       let m = once;

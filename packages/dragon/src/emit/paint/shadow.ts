@@ -88,14 +88,14 @@ public func dragonAfterLayoutShadow(_ v: DragonBoxView, _ shape: DragonBoxShape,
     CATransaction.begin()
     CATransaction.setDisableActions(true)
     if let s = v.dragonShadowView {
-      let w = Int(outer.right - outer.left)
-      let h = Int(outer.bottom - outer.top)
+      let w = dragonCheckedInt(outer.right - outer.left, "\(v.dragonId) shadow width")
+      let h = dragonCheckedInt(outer.bottom - outer.top, "\(v.dragonId) shadow height")
       s.bitmapLayer.contents = dragonShadowImage(outer.rgba.items, w, h)
       s.bitmapLayer.frame = CGRect(x: CGFloat(outer.left - e[0] + dragonShadowPlantDevicePx) / cg, y: CGFloat(outer.top - e[1]) / cg, width: CGFloat(w) / cg, height: CGFloat(h) / cg)
     }
     CATransaction.commit()
-    let iw = Int(inset.right - inset.left)
-    let ih = Int(inset.bottom - inset.top)
+    let iw = dragonCheckedInt(inset.right - inset.left, "\(v.dragonId) inset width")
+    let ih = dragonCheckedInt(inset.bottom - inset.top, "\(v.dragonId) inset height")
     v.dragonInsetShadowImage = dragonShadowImage(inset.rgba.items, iw, ih)
     v.dragonInsetShadowRect = CGRect(x: CGFloat(inset.left - e[0]) / cg, y: CGFloat(inset.top - e[1]) / cg, width: CGFloat(iw) / cg, height: CGFloat(ih) / cg)
   } catch {

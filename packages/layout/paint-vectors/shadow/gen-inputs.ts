@@ -36,6 +36,10 @@ out.push(line('blurredCoverage', [2, 2, 5, 5, ...SQUARE, 1.5, ...CLIP]));
 out.push(line('blurredCoverage', [2, 2, 22, 18, ...ROUND, 1, ...CLIP]));
 out.push(line('blurredCoverage', [2, 2, 12, 12, 5, 5, 5, 5, 5, 5, 5, 5, 0.75, ...CLIP]));
 out.push(line('blurredCoverage', [2, 2, 12, 12, 5, 5, 5, 5, 5, 5, 5, 5, 2.5, ...CLIP]));
+// Rounded sources through Skia's analytic AA: a complex rrect's nine-patch, an oval's and a clipped rrect's path blur.
+out.push(line('blurredCoverage', [1, 1, 41, 31, ...MIXED, 1.5, ...CLIP]));
+out.push(line('blurredCoverage', [0.5, 1.25, 20.5, 21.25, 10, 10, 10, 10, 10, 10, 10, 10, 1.25, ...CLIP]));
+out.push(line('blurredCoverage', [2, 2, 22, 18, ...ROUND, 3, 0, 0, 12, 10]));
 const one = shadow(false, 1, 2, 2, 0, 0, 0, 0, 128);
 const two = [...shadow(false, 0, 0, 0, 1, 255, 0, 0, 255), ...shadow(false, -1, 1, 3, 0.5, 20, 40, 200, 77)];
 for (const [radii, opaque] of [[SQUARE, 1], [ROUND, 1], [ROUND, 0]] as const) {
@@ -51,6 +55,7 @@ for (const [borders, radii] of [[[0, 0, 0, 0], SQUARE], [[1, 2, 1, 2], SQUARE], 
   out.push(line('insetShadowLayer', [2, 2, 16, 12, ...borders, ...radii, 2, ...ins, 2, ...NO]));
 }
 out.push(line('insetShadowLayer', [2, 2, 16, 12, 0, 0, 0, 0, ...SQUARE, 1, ...shadow(true, 0, 0, 0, 20, 10, 20, 30, 255), 1, ...NO]));
+out.push(line('insetShadowLayer', [2, 2, 26, 20, 1, 1, 1, 1, 5, 3, 5, 3, 4, 2, 4, 2, 1, ...shadow(true, 1, 1, 3, 0.5, 0, 0, 0, 180), 2.625, ...NO]));
 out.push(line('insetShadowLayer', [2, 2, 16, 12, 0, 0, 0, 0, ...SQUARE, 2, ...ins, 2, 1, 0, 0]));
 writeFileSync(join(dirname(fileURLToPath(import.meta.url)), 'inputs.jsonl'), `${out.join('\n')}\n`);
 console.log(`shadow inputs: ${out.length} cases`);
