@@ -3436,7 +3436,7 @@ tasks:
     status: queued
     lane: port
     objective: 'CALC-2: calc() in the contexts V1 still refuses (after V1b: unproven contexts, line-height, order, border-width and the sv/lv/dv units), porting the rules from Blink''s css_math_expression_node.cc
-      and css_length_resolver.cc (BSD) under PORT-0. Proven against Chrome; rerun tw:sweep and report the change. After V1b.'
+      and css_length_resolver.cc (BSD) under PORT-0. Proven against Chrome; rerun tw:sweep and report the change. After V1b. Also add a Chrome golden that reaches CSS_LENGTH_MAX (33554429) (T118J).'
     receipt: null
   - id: T121
     type: worker
@@ -3453,6 +3453,38 @@ tasks:
     lane: device
     objective: 'LANE-SPEED (#42, notes/LANE-SPEED.md): device lanes run a target''s devices at once under a machine-wide memory budget; fix the cross-target memory overcommit finding; record device timings;
       land.'
+    receipt: null
+  - id: T123
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: port
+    objective: 'Clean-room rewrite of the class-B LGPL translations (notes/T118J-lgpl-ruling.md): range-value.ts parseStep, stepRange, roundByStep, clampValue, defaultValue, rangeRatio; linebreak.ts fastBreak,
+      isBreakableSpace, lineBreakOpportunitiesWith; from spec text (HTML Range state, css-text-3, UAX #14, BSD FillAscii) and Chrome captures only, by a worker that has not read the LGPL files or the old
+      bodies. After the PORT-0 amendment lands and the PM stub commit.'
+    allowed_files:
+      - packages/dragon/src/forms/range-value.ts
+      - packages/layout/src/linebreak.ts
+      - packages/dragon/test/forms/forms.test.ts
+      - packages/dragon/test/forms/chrome-145/range-value.json
+      - scripts/capture-form-data.ts
+      - packages/layout/test/linebreak.test.ts
+      - packages/layout/test/fixtures/linebreak/chrome145-rules.json
+      - packages/layout/test/fixtures/linebreak/capture/**
+      - docs/ports.json
+      - packages/parity/test/chrome-ports.test.ts
+    verify:
+      - pnpm typecheck
+      - npx vitest run packages/dragon/test/forms/forms.test.ts packages/layout/test/linebreak.test.ts packages/parity/test/chrome-ports.test.ts
+      - pnpm test
+      - no lgpl entry in docs/ports.json has a port use
+      - git diff --name-only <stub>...HEAD within allowed_files
+    stop_if:
+      - the stub commit is missing
+      - the work needs an LGPL upstream file or the old bodies (git show/log -p/blame at or before the stub)
+      - a Chrome capture row disagrees and spec text plus a new observation cannot settle it
+      - passing needs a changed assertion, fixture expectation, planted-fault meaning or new allowance
+      - a file outside allowed_files must change
     receipt: null
   - id: T999
     type: judge
