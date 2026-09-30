@@ -7,6 +7,7 @@ import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
 import { handleAtRule } from './at-rules.ts';
+import type { AtRuleContext } from './at-rules.ts';
 import { asciiLower, canonicalizeEscapes, decodeName, preprocessInput, trimValue } from './escapes.ts';
 import { GRID_VALUE_PROPERTIES, parseGridValue } from './grid-values.ts';
 import { webrefLexer } from './lexer.ts';
@@ -66,12 +67,13 @@ export type SheetUse = { readonly id: string; readonly owner: string; readonly s
  */
 export type EnclosedRules = { readonly atRule: Diagnostic; readonly span: Span; readonly rules: readonly Rule[]; readonly diagnostics: readonly Diagnostic[] };
 
-type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse };
+type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[] };
 
 /** Where a node that is not a style rule or declaration sits: top level (or inside a top-level at-rule), or in a rule block. */
 type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top' };
 
-export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = []): Rule[] {
+/** fontFaces: collects the accepted @font-face rules, in document order, for the fonts module. */
+export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = []): Rule[] {
   const text = preprocessInput(authoredText);
   // Chrome 145 reads a literal U+0000 as U+FFFD inside a name but not where it would start a hash or follow a leading "-" (probed),
   // so Dragon reports it rather than guess which reading applies.
@@ -89,7 +91,7 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error: ${e.message}` }));
   }
   const rules: Rule[] = [];
-  const st: ParseState = { order: orderStart, base, text, use };
+  const st: ParseState = { order: orderStart, base, text, use, fontFaces };
   for (const node of list(ast, 'children')) {
     if (node.type !== 'Rule') {
       refuseNode(node, st, { label: 'the stylesheet', selectors: 'top' }, diagnostics, enclosed);
@@ -131,8 +133,13 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
   if (where === 'the stylesheet' && (node.type === 'CDO' || node.type === 'CDC')) return;
   if (node.type === 'Raw' && EMPTY_RAW.test(String(node['value']))) return;
   if (node.type === 'Atrule') {
-    // at-rules.ts decides each at-rule; every one is refused today.
-    const refusal = handleAtRule({ node, name: String(node['name']), where, span }).diagnostic;
+    // at-rules.ts decides each at-rule; an accepted @font-face goes to the fonts collector, every other one is refused.
+    const outcome = handleAtRule({ node, name: String(node['name']), where, span });
+    if (outcome.kind === 'font-face') {
+      st.fontFaces.push(outcome.context);
+      return;
+    }
+    const refusal = outcome.diagnostic;
     diagnostics.push(refusal);
     const block = node['block'] as CssNode | null | undefined;
     if (block === null || block === undefined) return;
