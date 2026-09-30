@@ -2,7 +2,7 @@
 // Every reachable assignment is resolved, checked and lowered as its own case; nothing is deduplicated (docs/api.md §7).
 import type { LayoutBox } from '@dragon/layout';
 import { attributeRefusal } from './attributes.ts';
-import { canonicalJson, sha256Hex } from './digest.ts';
+import { CanonicalText, canonicalJson, sha256Hex } from './digest.ts';
 import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
 import type { Longhand } from './css/properties.ts';
@@ -25,10 +25,10 @@ import { familyListText } from './css/values.ts';
 import type { DeclaredFace, FontFaceIssue } from './fonts/font-face.ts';
 import { GENERIC_KEYS, validateFontMap } from './fonts/font-map.ts';
 import type { EntryResolution, FontMapError } from './fonts/font-map.ts';
-import { bestSegmentedFace, segmentedFaces, selectionRequest } from './fonts/selection.ts';
+import { foldFamily, selectionRequest } from './fonts/selection.ts';
 import { fenceVariableInstance } from './fonts/variable-fence.ts';
 import type { VariableFontRefusal } from './fonts/variable-fence.ts';
-import { collectFontFaces, familySupport, pinnedFacesOf, projectFonts, webFontOutput } from './fonts/wire.ts';
+import { collectFontFaces, familySupport, pinnedFacesOf, projectFonts, renderedFaces, webFontOutput } from './fonts/wire.ts';
 import type { FontWireProblem, ProjectedFonts } from './fonts/wire.ts';
 import type { CompilerFaults } from './faults.ts';
 import { NO_FAULTS } from './faults.ts';
@@ -75,12 +75,42 @@ export const ANDROID_MIN_SDK = { min: 31, max: 36 } as const;
 /** @internal Test-only replacement profiles may omit android, which then reads the committed android profile. */
 export type SupportProfiles = { readonly web: SupportProfile; readonly ios: SupportProfile; readonly android?: SupportProfile };
 
-/** @internal The committed support profiles. */
-export const COMMITTED_PROFILES: Required<SupportProfiles> = { web: webProfile, ios: iosProfile, android: androidProfile };
+/** Profiles copied and deep-frozen by snapshotProfile: the only profiles a project reads, for its checks and its digest alike. */
+const profileSnapshots = new WeakSet<SupportProfile>();
+
+/** A copy of plain data (objects, arrays, strings, numbers, booleans, null); anything else throws. */
+function copyPlain(v: unknown): unknown {
+  if (v === null || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v;
+  if (Array.isArray(v)) return v.map(copyPlain);
+  if (typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, copyPlain(x)]));
+  throw new Error(`a support profile holds ${typeof v}, not plain data`);
+}
+
+/** A deep-frozen copy of a profile (the profile itself when it is already one), so no caller can change it after a project reads it. */
+function snapshotProfile(profile: SupportProfile): SupportProfile {
+  if (profileSnapshots.has(profile)) return profile;
+  const copy = deepFreeze(copyPlain(profile) as SupportProfile);
+  profileSnapshots.add(copy);
+  return copy;
+}
+
+/** The generated profiles are this module's own data: frozen in place, so they are their own snapshots. */
+function ownSnapshot(profile: SupportProfile): SupportProfile {
+  if (Object.isFrozen(profile)) throw new Error(`the ${profile.target} profile is already frozen, so it cannot be frozen whole here`);
+  profileSnapshots.add(deepFreeze(profile));
+  return profile;
+}
+
+/** @internal The committed support profiles, deep-frozen. */
+export const COMMITTED_PROFILES: Required<SupportProfiles> = Object.freeze({ web: ownSnapshot(webProfile), ios: ownSnapshot(iosProfile), android: ownSnapshot(androidProfile) });
 
 /** @internal The profile of one target. */
 export function profileFor(profiles: SupportProfiles, t: KnownTarget): SupportProfile {
-  return t === 'android' ? (profiles.android === undefined ? androidProfile : profiles.android) : profiles[t];
+  return t === 'android' ? (profiles.android === undefined ? COMMITTED_PROFILES.android : profiles.android) : profiles[t];
+}
+
+function snapshotProfiles(profiles: SupportProfiles): Required<SupportProfiles> {
+  return Object.freeze({ web: snapshotProfile(profiles.web), ios: snapshotProfile(profiles.ios), android: snapshotProfile(profileFor(profiles, 'android')) });
 }
 
 /**
@@ -148,7 +178,8 @@ type Resolved = {
   readonly direction: 'ltr' | 'rtl';
   readonly rootFont: RootFont;
   readonly ua: UaDataset;
-  readonly supportProfiles: SupportProfiles;
+  /** Snapshots (snapshotProfile): the support checks and the digest read these same objects. */
+  readonly supportProfiles: Required<SupportProfiles>;
 };
 
 function deepFreeze<T>(v: T): T {
@@ -281,7 +312,7 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
 }
 
 /** The lowering's font refusal, reported for every laid-out text node of every case, whether or not another error blocks ios. */
-function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>, target: 'ios' | 'android'): void {
+function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>, target: 'ios' | 'android', ahemDeclared: boolean): void {
   const walk = (el: ResolvedElement): void => {
     const display = (el.props.get('display') as ResolvedValue).value;
     if (display.kind === 'keyword' && display.value === 'none') return;
@@ -290,7 +321,8 @@ function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: 
         walk(c);
         continue;
       }
-      const message = textFontProblem(c);
+      // Native draws its bundled Ahem, so an @font-face that declares Ahem for web would make the targets disagree: it blocks native.
+      const message = textFontProblem(c) ?? (ahemDeclared ? `font-family Ahem on ${c.node.address} names the family an @font-face rule declares, while ${target} draws the bundled Ahem` : null);
       if (message === null) continue;
       const id = `${target}|${c.node.address}|font-family|${message}`;
       if (reported.has(id)) continue;
@@ -431,9 +463,10 @@ type TextFont = { readonly weight: number; readonly style: 'normal' | 'italic' }
 
 /**
  * Per case, on every text node: a font-family value that holds var() is checked after substitution like checkFamilies checks the
- * others, and the variable-font fence (T028) runs at style resolution on the faces Chrome selects (the best capability group of
- * each declared or pinned family the list names). No author longhand sets font-weight or font-style, so they are the UA's,
- * inherited (userAgentTextFonts: h1 to h6 bold, address italic).
+ * others, and the variable-font fence (T028) runs at style resolution on the faces Chrome draws the text with (renderedFaces).
+ * No author longhand sets font-weight or font-style, so they are the UA's, inherited (userAgentTextFonts: h1 to h6 bold, address italic).
+ * Text in a display: none subtree is never drawn, so Chrome selects no face for it and the fence skips it, as checkFonts does; the
+ * substitution check is per declaration, like checkFamilies, and runs everywhere.
  */
 function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: CompilerFaults, ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>): void {
   const faces = [...fonts.declaredFaces, ...fonts.projected.pinned.flatMap((p) => (p.result.face === null ? [] : [p.result.face]))];
@@ -443,7 +476,9 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
     reported.add(id);
     return true;
   };
-  const walk = (el: ResolvedElement, inherited: TextFont): void => {
+  const walk = (el: ResolvedElement, inherited: TextFont, hiddenAbove: boolean): void => {
+    const display = (el.props.get('display') as ResolvedValue).value;
+    const hidden = hiddenAbove || (display.kind === 'keyword' && display.value === 'none');
     const tf = (ua.userAgentTextFonts as { readonly [tag: string]: { readonly [p: string]: string } | undefined })[el.element.tag] ?? {};
     const weight = tf['font-weight'] === undefined ? inherited.weight : Number(tf['font-weight']);
     const own: TextFont = { weight: Number.isFinite(weight) ? weight : inherited.weight, style: tf['font-style'] === undefined ? inherited.style : tf['font-style'] === 'italic' ? 'italic' : 'normal' };
@@ -457,29 +492,27 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
     }
     for (const c of el.children) {
       if (c.kind === 'element') {
-        walk(c, own);
+        walk(c, own, hidden);
         continue;
       }
+      if (hidden) continue;
       const family = c.props.get('font-family') as ResolvedValue;
       const text = familyListText(family.value);
       const support = text === null ? null : familySupport(text, fonts.keys.map, fonts.keys.declared);
       if (support === null) continue;
       const size = (c.props.get('font-size') as ResolvedValue).value;
       if (!fence || support.kind !== 'resolved' || size.kind !== 'length' || size.unit !== 'px') continue;
-      for (const r of support.resolutions) {
-        if (r.kind !== 'declared' && r.kind !== 'pinned') continue;
-        const group = bestSegmentedFace(segmentedFaces(faces, r.family), selectionRequest(own.weight, 100, { kind: own.style }));
-        for (const face of group?.faces ?? []) {
-          const refused = fenceVariableInstance(face, { weight: own.weight, stretch: 100, style: { kind: own.style }, specifiedSize: size.value, opticalSizing: 'auto' });
-          if (refused === null) continue;
-          const origin = family.declaration === null ? c.node.node.origin : authored(family.declaration.valueSpan);
-          const message = `font-family ${r.family} at ${size.value}px on ${c.node.address}: ${variableMessage(refused)}`;
-          if (once(`${message}|${JSON.stringify(origin)}`)) diagnostics.push(diagnostic('DRAGON_FONT_VARIABLE_REFUSED', { origin, message }));
-        }
+      const request = selectionRequest(own.weight, 100, { kind: own.style });
+      for (const { family: name, face } of renderedFaces(faces, support.resolutions, c.text, request)) {
+        const refused = fenceVariableInstance(face, { weight: own.weight, stretch: 100, style: { kind: own.style }, specifiedSize: size.value, opticalSizing: 'auto' });
+        if (refused === null) continue;
+        const origin = family.declaration === null ? c.node.node.origin : authored(family.declaration.valueSpan);
+        const message = `font-family ${name} at ${size.value}px on ${c.node.address}: ${variableMessage(refused)}`;
+        if (once(`${message}|${JSON.stringify(origin)}`)) diagnostics.push(diagnostic('DRAGON_FONT_VARIABLE_REFUSED', { origin, message }));
       }
     }
   };
-  walk(root, { weight: 400, style: 'normal' });
+  walk(root, { weight: 400, style: 'normal' }, false);
 }
 
 type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[] };
@@ -498,8 +531,9 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   const out: CaseResult[] = [];
   for (const c of linked.cases) {
     const resolved = resolveTree(c.root, rules, options.faults, { direction: options.direction, rootFont: options.rootFont, ua: options.ua });
-    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget));
-    for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t);
+    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys);
+    const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
+    for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);
     const used = usedKeys(resolved, keys);
     out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used });
@@ -581,6 +615,18 @@ function canonicalInput(input: FrontEndResult): unknown {
   };
 }
 
+/** Each profile snapshot's canonical JSON, written once: profiles are megabytes, and a snapshot never changes. */
+const profileTexts = new WeakMap<SupportProfile, CanonicalText>();
+function profileText(profile: SupportProfile): CanonicalText {
+  if (!profileSnapshots.has(profile)) throw new Error('profileText reads only profile snapshots');
+  let t = profileTexts.get(profile);
+  if (t === undefined) {
+    t = new CanonicalText(canonicalJson(profile));
+    profileTexts.set(profile, t);
+  }
+  return t;
+}
+
 function analyze<K extends string>(config: { projectId: string; targets: object; fonts?: unknown }, configDiagnostics: readonly Diagnostic[], options: Resolved, input: FrontEndResult): Analysis<K> {
   const targets = Object.keys(config.targets).filter((k): k is KnownTarget => (KNOWN_TARGETS as readonly string[]).includes(k)).sort();
   const diagnostics: Diagnostic[] = [...configDiagnostics];
@@ -628,6 +674,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (enclosed.length > 0) {
         const scratch: Diagnostic[] = [];
         const unwrapped = enclosed.flatMap((e) => e.rules);
+        checkFamilies(unwrapped, keys, options.faults, scratch);
         const scratchCases = checkCases(linked, [...rules, ...unwrapped], targets, options, scratch, fonts);
         if (options.profiles === 'enforce') checkValues(unwrapped, targets, profiles, scratchCases.flatMap((c) => c.used), scratch, keys);
         for (const e of enclosed) {
@@ -659,7 +706,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // The reference platform of the UA dataset and the environment's root font are compilation inputs (docs/api.md §10.1).
     platform: options.ua.platform,
     rootFont: options.rootFont,
-    profiles: targets.map((t) => profileFor(profiles, t)),
+    profiles: targets.map((t) => profileText(profileFor(profiles, t))),
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
     direction: options.direction,
@@ -836,7 +883,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     direction: options.direction,
     rootFont: options.rootFont === undefined ? 'ua-default' : options.rootFont,
     ua: choice.dataset,
-    supportProfiles: options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles,
+    supportProfiles: snapshotProfiles(options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles),
   };
   const configDiagnostics = validateConfig(config);
   const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object; fonts?: unknown };

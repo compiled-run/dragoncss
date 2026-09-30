@@ -14,7 +14,8 @@ import { rewriteFamilyList, validateFontMap } from './font-map.ts';
 import type { EntryResolution, FontMap, FontMapError, PinnedFace } from './font-map.ts';
 import { buildManifest, manifestDigestInput } from './manifest.ts';
 import type { FontManifest } from './manifest.ts';
-import { foldFamily } from './selection.ts';
+import { candidates, foldFamily } from './selection.ts';
+import type { FontSelectionRequest } from './selection.ts';
 
 /** Where a font problem comes from: an authored @font-face rule, or one face of a pinned font map entry. */
 export type FontProblemSource =
@@ -161,7 +162,9 @@ export function familySupport(listText: string, map: FontMap | null, declared: R
   const list = parseFamilyList(listText);
   if (list === null) return { kind: 'invalid' };
   const only = list[0];
-  if (list.length === 1 && only?.kind === 'family' && foldFamily(only.name) === foldFamily('Ahem')) return null;
+  // The bundled milestone font keeps font-family:Ahem, unless an @font-face declares Ahem, which then names the authored face.
+  const ahemDeclared = [...declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
+  if (list.length === 1 && only?.kind === 'family' && foldFamily(only.name) === foldFamily('Ahem') && !ahemDeclared) return null;
   const { resolutions } = rewriteFamilyList(list, map ?? { generics: {} }, declared);
   const worst = KEY_RANK.find((k) => resolutions.some((r) => r.kind === k)) ?? 'unmapped-family';
   return { kind: 'resolved', list, resolutions, key: KEY_OF[worst] };
@@ -208,4 +211,30 @@ export function webFontOutput(usedPinned: readonly DeclaredFace[], declaredFaces
   }
   const sorted = [...assets.values()].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   return { css: rules.join('\n'), assets: sorted, problems };
+}
+
+/**
+ * The faces Chrome draws a text with: the primary font (the first family's first face whose unicode-range holds U+0020) and, per
+ * code point, the first face down the list whose unicode-range and cmap hold it. Entries without bundled faces are passed over,
+ * so a later family counts whenever an earlier one might not cover the character. Tabs and segment breaks are drawn as spaces or not
+ * at all (css-text-3 §4), so they count as U+0020.
+ */
+export function renderedFaces(faces: readonly DeclaredFace[], resolutions: readonly EntryResolution[], text: string, request: FontSelectionRequest): { readonly family: string; readonly face: DeclaredFace }[] {
+  const families = resolutions.flatMap((r) => (r.kind === 'declared' || r.kind === 'pinned' ? [r.family] : []));
+  const out = new Map<DeclaredFace, string>();
+  for (const family of families) {
+    const primary = candidates(faces, family, request, 0x20)[0];
+    if (primary === undefined) continue;
+    out.set(primary, family);
+    break;
+  }
+  for (const cp of new Set([...text].map((ch) => (/[\t\n\r\f]/.test(ch) ? 0x20 : (ch.codePointAt(0) as number))))) {
+    for (const family of families) {
+      const face = candidates(faces, family, request, cp).find((f) => f.source !== null && f.source.font.glyphForCodePoint(cp) !== 0);
+      if (face === undefined) continue;
+      if (!out.has(face)) out.set(face, family);
+      break;
+    }
+  }
+  return [...out].map(([face, family]) => ({ family, face }));
 }

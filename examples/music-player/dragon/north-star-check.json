@@ -117,7 +117,7 @@
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 27,
-   "DRAGON_UNPROVEN_CONTEXT [web]": 29,
+   "DRAGON_UNPROVEN_CONTEXT [web]": 27,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
    "DRAGON_UNSUPPORTED_AT_RULE": 3,
    "DRAGON_UNSUPPORTED_ELEMENT": 21,
@@ -128,18 +128,18 @@
    "DRAGON_UNSUPPORTED_VALUE": 20,
    "DRAGON_UNSUPPORTED_VALUE [android]": 526,
    "DRAGON_UNSUPPORTED_VALUE [ios]": 16,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 14
+   "DRAGON_UNSUPPORTED_VALUE [web]": 16
   },
   "perTarget": {
    "web": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 29,
+     "DRAGON_UNPROVEN_CONTEXT": 27,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 21,
      "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 34
+     "DRAGON_UNSUPPORTED_VALUE": 36
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -259,9 +259,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 393,
-   "B-unwrapped": 425,
-   "C-context": 447
+   "A-authored": 394,
+   "B-unwrapped": 426,
+   "C-context": 446
   }
  },
  "features": {
@@ -658,7 +658,6 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
@@ -4716,6 +4715,26 @@
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 594,
+    "end": 612,
+    "line": 32,
+    "column": 15,
+    "text": "'Lato', sans-serif"
+   },
+   "message": "font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
    "location": {
     "kind": "css",
     "start": 594,
@@ -13267,44 +13286,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@594-612|font-family:<pinned> on page/nav-call/nav-title:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/row/ltr: Ahem",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 594,
-    "end": 612,
-    "line": 32,
-    "column": 15,
-    "text": "'Lato', sans-serif"
-   },
-   "message": "font-family:<pinned> on page/nav-call/nav-title:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/row/ltr: Ahem",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@594-612|font-family:<pinned> on page/song-call/song-title:text0 is used in the text-in-flex-item/column/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/column/ltr: Ahem",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 594,
-    "end": 612,
-    "line": 32,
-    "column": 15,
-    "text": "'Lato', sans-serif"
-   },
-   "message": "font-family:<pinned> on page/song-call/song-title:text0 is used in the text-in-flex-item/column/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/column/ltr: Ahem",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); no font-family value is proven in text-in-block/ltr; no font-family value is proven in text-in-flex-item/column/ltr; no font-family value is proven in text-in-flex-item/row/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -13328,6 +13309,25 @@
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 594,
+    "end": 612,
+    "line": 32,
+    "column": 15,
+    "text": "'Lato', sans-serif"
+   },
+   "message": "font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); in text-in-block/ltr use Ahem; in text-in-flex-item/column/ltr use Ahem; in text-in-flex-item/row/ltr use Ahem",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); in text-in-block/ltr use Ahem; in text-in-flex-item/column/ltr use Ahem; in text-in-flex-item/row/ltr use Ahem",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
    "location": {
     "kind": "css",
     "start": 594,

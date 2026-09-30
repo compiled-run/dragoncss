@@ -11,6 +11,9 @@ import { repoPath } from './paths.ts';
 export const REFERENCE_PLANTS = ['quoted-generic-rewritten', 'generic-not-rewritten'] as const;
 export type ReferencePlant = (typeof REFERENCE_PLANTS)[number];
 
+/** Blink's generic family keywords (css_parsing_utils.cc ConsumeGenericFamily), matched ASCII case-insensitively. */
+const PARSER_GENERICS = ['serif', 'sans-serif', 'cursive', 'fantasy', 'monospace', 'system-ui', '-webkit-body', 'math'];
+
 /** What the in-page rewrite did to one font-family declaration: Chrome's serialization before and after. */
 export type Visit = { readonly where: string; readonly before: string; readonly after: string };
 
@@ -89,7 +92,7 @@ export async function settleFonts(page: Page): Promise<void> {
  * spells an inferred generic ("sans-serif"), so the quoted name is not replaced.
  */
 export async function applyFontReference(page: Page, faceCss: string, pinned: Record<string, string>, plant: ReferencePlant | null = null): Promise<Visit[]> {
-  const visits = await page.evaluate(({ faceCss: css, pinned: map, plant: p }) => {
+  const visits = await page.evaluate(({ faceCss: css, pinned: map, plant: p, generics }) => {
     const style = document.createElement('style');
     style.setAttribute('data-dragon-reference', '');
     style.textContent = css;
@@ -119,6 +122,8 @@ export async function applyFontReference(page: Page, faceCss: string, pinned: Re
     const rewrite = (text: string): string => split(text).map((e) => {
       if (!e.startsWith('"') && Object.hasOwn(map, e) && p !== 'generic-not-rewritten') return quote(map[e] as string);
       if (e.startsWith('"') && p === 'quoted-generic-rewritten' && Object.hasOwn(map, unquote(e))) return quote(map[unquote(e)] as string);
+      // Chrome writes a family named like a generic in other case ("SANS-SERIF") bare, and bare it re-parses as the generic.
+      if (!e.startsWith('"') && e !== e.toLowerCase() && generics.includes(e.replace(/[A-Z]/g, (c) => c.toLowerCase()))) return quote(e);
       return e;
     }).join(', ');
     const out: { where: string; before: string; after: string }[] = [];
@@ -138,7 +143,7 @@ export async function applyFontReference(page: Page, faceCss: string, pinned: Re
     for (const sheet of [...document.styleSheets]) walk(sheet.cssRules);
     for (const el of [...document.querySelectorAll('[style]')]) visit((el as HTMLElement).style, `#${el.id}[style]`);
     return out;
-  }, { faceCss, pinned, plant });
+  }, { faceCss, pinned, plant, generics: PARSER_GENERICS });
   await settleFonts(page);
   return visits;
 }

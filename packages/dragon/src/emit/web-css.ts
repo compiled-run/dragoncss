@@ -4,11 +4,12 @@
 // rule sets them on a supported tag (ua.test.ts), so leaving them out gives the same computed values.
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
+import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import { familyListText } from '../css/values.ts';
 import { parseFamilyList } from '../fonts/family-list.ts';
-import { rewriteFamilyList } from '../fonts/font-map.ts';
+import { outputFamilyName, rewriteFamilyList } from '../fonts/font-map.ts';
 import type { FontMap } from '../fonts/font-map.ts';
 import type { GeneratedFile } from '../types.ts';
 
@@ -42,20 +43,12 @@ function cssNumber(n: number): string {
   return exp < 0 ? `${sign}0.${'0'.repeat(-exp - 1)}${digits}` : `${sign}${digits}${'0'.repeat(exp - frac.length)}`;
 }
 
-// css-fonts-4 §2.1: a family name that is a valid identifier sequence and not a generic keyword can be written bare.
-const GENERIC_FAMILIES = new Set(['serif', 'sans-serif', 'cursive', 'fantasy', 'monospace', 'system-ui', 'math', 'emoji', 'fangsong', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded', 'inherit', 'initial', 'unset', 'revert', 'revert-layer', 'default']);
-
-function familyName(name: string): string {
-  if (/^-?[_a-zA-Z][_a-zA-Z0-9-]*$/.test(name) && !GENERIC_FAMILIES.has(name.toLowerCase())) return name;
-  return `"${name.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
-}
-
 function valueText(v: CssValue): string {
   switch (v.kind) {
     case 'keyword':
       return v.value;
     case 'family':
-      return familyName(v.value);
+      return outputFamilyName(v.value);
     case 'length':
       return `${cssNumber(v.value)}${v.unit}`;
     case 'percentage':

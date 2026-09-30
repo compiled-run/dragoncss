@@ -158,28 +158,18 @@ describe('grid family: parse and expand', () => {
       'grid-template-rows=[subgrid] 10px', 'grid-template-columns=none', 'grid-template-areas=none', 'grid-auto-rows(i)=auto', 'grid-auto-columns(i)=auto', 'grid-auto-flow=column',
     ]);
   });
-  it('escaped function names, units and keywords fail closed; escaped line and area names keep their escaped text', () => {
-    // Through a declaration the webref grammar already drops the finding's examples; the grid hook refuses them on its own too.
-    const examples = ['c\\61lc(10px + 5%)', '\\72epeat(auto-fill, 1fr)', 'repeat(auto-fill, 1\\66r)', '2\\65m', '10\\76w'];
-    for (const v of examples) {
-      expect(declare('grid-template-columns', v).declaration, v).toBeNull();
-      const node = parse(v, { context: 'value', positions: true });
-      const tokens = list(node, 'children').filter((n) => n.type !== 'WhiteSpace');
-      const r = parseGridValue('grid-template-columns', tokens, { source: SOURCE, start: 0, end: v.length });
-      expect(r.kind, v).toBe('refused');
-      const d = (r as { diagnostic: Diagnostic }).diagnostic;
-      expect(d.code, v).toBe('DRAGON_UNSUPPORTED_VALUE');
-      expect(d.message, v).toContain('Dragon does not decode CSS escapes in grid values yet');
-      expect(d.fix !== null && 'manual' in d.fix ? d.fix.manual : null, v).toBe('Write the function name, unit or keyword without backslash escapes.');
-      expectCatalogued([d]);
-    }
-    for (const [p, v, token] of [['grid-row-start', '\\73 pan 2', '\\73 pan'], ['grid-row-start', '\\61uto', '\\61uto'], ['grid-row-start', 'span \\61uto', '\\61uto'], ['grid-row', '\\61uto / 2', '\\61uto'], ['grid-row-start', '\\64 efault', '\\64 efault']] as const) {
-      const { declaration, diagnostics, span } = declare(p, v);
-      expect(declaration, `${p}: ${v}`).toBeNull();
-      expect(diagnostics.map((d) => d.code), `${p}: ${v}`).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
-      expect(span, `${p}: ${v}`).toBe(token);
-    }
+  it('escaped function names, units and keywords read as their decoded value (css-syntax-3 §4.3.7); names serialize as CSSOM identifiers', () => {
+    // CSS-ESC: Chrome 145 decodes escapes before keyword and grammar matching, so these are the unescaped values (probed).
+    expect(declare('grid-template-columns', 'c\\61lc(10px + 5%)').diagnostics.map((d) => d.message)).toEqual([expect.stringContaining('calc() is a css-values-4 math function')]);
+    expect(declare('grid-template-columns', '10\\76w').diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+    for (const v of ['\\72 epeat(auto-fill, 1fr)', 'repeat(auto-fill, 1\\66r)']) expect(declare('grid-template-columns', v).diagnostics.map((d) => d.code), v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    expect(expanded('grid-template-columns', '2\\65m \\72 epeat(2, 1\\66r) \\6d in-content')).toEqual(['grid-template-columns=2em repeat(2, 1fr) min-content']);
+    expect(expanded('grid-row-start', '\\73 pan 2')).toEqual(['grid-row-start=span 2']);
+    expect(expanded('grid-row-start', '\\61uto')).toEqual(['grid-row-start=auto']);
+    expect(expanded('grid-row', '\\61uto / 2')).toEqual(['grid-row-start=auto', 'grid-row-end=2']);
+    for (const v of ['span \\61uto', '\\64 efault']) expect(declare('grid-row-start', v).diagnostics.map((d) => d.code), v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     expect(expanded('grid-template-columns', '[\\31 foo] 10px')).toEqual(['grid-template-columns=[\\31 foo] 10px']);
+    expect(expanded('grid-template-columns', '[\\61 bc \\31 23] 10px')).toEqual(['grid-template-columns=[abc \\31 23] 10px']);
     expect(expanded('grid-column', '\\31 foo')).toEqual(['grid-column-start=\\31 foo', 'grid-column-end=\\31 foo']);
     expect(expanded('grid-row-start', '2 \\31 foo')).toEqual(['grid-row-start=2 \\31 foo']);
     expect(expanded('grid-template-areas', '"\\2e a"')).toEqual(['grid-template-areas=". a"']);

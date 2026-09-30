@@ -103,7 +103,8 @@ async function probeSetFontFamilies(browser: Browser): Promise<unknown> {
 }
 
 // ---------------------------------------------------------------------------------------------------------------- P2
-type P2Case = { readonly id: string; readonly css: string; readonly body: string; readonly expect: string };
+/** authored: the font-family list as written, when Chrome's serialization of it is lossy or decodes escapes (Dragon reads the source). */
+type P2Case = { readonly id: string; readonly css: string; readonly body: string; readonly expect: string; readonly authored?: string };
 const T = 'AaBb';
 const P2_CASES: readonly P2Case[] = [
   { id: 'unquoted', css: '.c{font-family:sans-serif}', body: `<div class="c">${T}</div>`, expect: 'Inter-Regular' },
@@ -128,6 +129,11 @@ const P2_CASES: readonly P2Case[] = [
   { id: 'inside-media', css: '@media (min-width:1px){.c{font-family:sans-serif;font-style:italic}}', body: `<div class="c">${T}</div>`, expect: 'Inter-Italic' },
   { id: 'important-beats-attribute', css: '.c{font-family:sans-serif !important}', body: `<div class="c" style="font-family:serif">${T}</div>`, expect: 'Inter-Regular' },
   { id: 'inherited', css: '.p{font-family:sans-serif}', body: `<div class="p"><span class="c">${T}</span></div>`, expect: 'Inter-Regular' },
+  { id: 'quoted-monospace', css: '.c{font-family:"monospace"}', body: `<div class="c">${T}</div>`, expect: 'platform' },
+  { id: 'escaped-generic', css: '.c{font-family:s\\61ns-serif}', body: `<div class="c">${T}</div>`, expect: 'Inter-Regular', authored: 's\\61ns-serif' },
+  { id: 'quoted-escaped-generic', css: '.c{font-family:"s\\61ns-serif"}', body: `<div class="c">${T}</div>`, expect: 'platform', authored: '"s\\61ns-serif"' },
+  { id: 'quoted-upper-then-mono', css: '.c{font-family:"SANS-SERIF", monospace}', body: `<div class="c">${T}</div>`, expect: 'NotoSansMono-Regular', authored: '"SANS-SERIF", monospace' },
+  { id: 'quoted-ui-serif', css: '.c{font-family:"ui-serif"}', body: `<div class="c">${T}</div>`, expect: 'platform', authored: '"ui-serif"' },
 ];
 
 async function probeRewrite(browser: Browser, plant: Plant | null): Promise<unknown> {
@@ -142,7 +148,7 @@ async function probeRewrite(browser: Browser, plant: Plant | null): Promise<unkn
     const ok = c.expect === 'platform'
       ? chrome.length > 0 && chrome.every((f) => !f.isCustomFont)
       : chrome.length === 1 && chrome[0]?.isCustomFont === true && chrome[0]?.postScriptName === c.expect;
-    rows.push({ id: c.id, css: c.css, body: c.body, visits, computed, chrome, expect: c.expect, ok });
+    rows.push({ id: c.id, css: c.css, body: c.body, ...(c.authored === undefined ? {} : { authored: c.authored }), visits, computed, chrome, expect: c.expect, ok });
   }
   return { ...header(), probe: 'P2', map: REFERENCE_MAP, fontFaceRules: PINNED_FACE_CSS, cases: rows };
 }

@@ -63,6 +63,11 @@ export function validateFontMap(raw: unknown): { readonly ok: true; readonly map
       errors.push({ kind: 'invalid-entry', key, reason: 'a pinned entry needs at least one face' });
       return;
     }
+    // Ahem is the milestone font, bundled on every target (decisions.md): no entry may pin another face under its name.
+    if (foldFamily(family) === foldFamily('Ahem')) {
+      errors.push({ kind: 'invalid-entry', key, reason: 'the family Ahem is the bundled milestone font; pin another family name' });
+      return;
+    }
     pinnedBy.set(family, [...(pinnedBy.get(family) ?? []), key]);
     for (const f of faces) {
       if (!isObj(f) || typeof f['src'] !== 'string' || Object.keys(f).some((k) => !['src', 'weight', 'style', 'stretch', 'unicodeRange'].includes(k))) {
@@ -80,7 +85,10 @@ export function validateFontMap(raw: unknown): { readonly ok: true; readonly map
     if (!(GENERIC_KEYS as readonly string[]).includes(key)) errors.push({ kind: 'unknown-generic', key });
     else check(key, e);
   }
-  for (const [key, e] of Object.entries((raw['families'] ?? {}) as Record<string, unknown>)) check(key, e);
+  for (const [key, e] of Object.entries((raw['families'] ?? {}) as Record<string, unknown>)) {
+    if (foldFamily(key) === foldFamily('Ahem')) errors.push({ kind: 'invalid-entry', key, reason: 'Ahem is the bundled milestone font and is never mapped' });
+    else check(key, e);
+  }
   // Two keys may share a pinned family only if they pin the same faces; otherwise the rewritten web CSS would be ambiguous.
   for (const [family, keys] of pinnedBy) {
     if (keys.length < 2) continue;
@@ -140,7 +148,7 @@ export function rewriteFamilyList(list: FamilyList, map: FontMap, declared: Read
       } else use(entry.keyword, e, entry.keyword);
       continue;
     }
-    const original = serializeFamilyName(entry.name);
+    const original = outputFamilyName(entry.name);
     if (declaredFolded.has(foldFamily(entry.name))) {
       resolutions.push({ kind: 'declared', family: entry.name });
       out.push(original);
@@ -161,6 +169,12 @@ export function rewriteFamilyList(list: FamilyList, map: FontMap, declared: Read
 }
 
 const isParserGeneric = (name: string): boolean => (GENERIC_FAMILY_KEYWORDS as readonly string[]).includes(asciiLower(name));
+
+/**
+ * A family name as Dragon writes it into CSS: Chrome's serialization, but quoted when it ASCII case-folds to a parser generic.
+ * Chrome's own serialization leaves "SANS-SERIF" bare, and bare it re-parses as the generic (Chrome 145, reference P2).
+ */
+export const outputFamilyName = (name: string): string => (isParserGeneric(name) ? serializeString(name) : serializeFamilyName(name));
 
 const isBareIdent = (name: string): boolean => {
   const t = tokenize(name);

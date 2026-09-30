@@ -1,0 +1,28 @@
+{
+ "chrome": "145.0.7632.6",
+ "playwright": "1.58.2",
+ "cssSupports": {
+  "writing-mode: horizontal-tb": true,
+  "writing-mode: vertical-rl": true,
+  "writing-mode: vertical-lr": true,
+  "writing-mode: sideways-rl": true,
+  "writing-mode: sideways-lr": true,
+  "writing-mode: lr": true,
+  "writing-mode: lr-tb": true,
+  "writing-mode: rl": true,
+  "writing-mode: rl-tb": true,
+  "writing-mode: tb": true,
+  "writing-mode: tb-rl": true,
+  "-webkit-writing-mode: horizontal-tb": true,
+  "-webkit-writing-mode: vertical-rl": true,
+  "-webkit-writing-mode: vertical-lr": true,
+  "-webkit-writing-mode: sideways-rl": false,
+  "-webkit-writing-mode: sideways-lr": false,
+  "text-orientation: sideways": true,
+  "text-orientation: sideways-right": true,
+  "text-combine-upright: all": true,
+  "text-combine-upright: digits 2": false
+ },
+ "modes": ["horizontal-tb","vertical-rl","vertical-lr","sideways-rl","sideways-lr"],
+ "dropped": []
+}
