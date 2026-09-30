@@ -350,15 +350,24 @@ describe('stated-reference probes (reference/*.json)', () => {
     expect(p2.cases.filter((c) => !c.ok).map((c) => c.id)).toEqual([]);
   });
 
-  it("P2: Dragon's rewriteFamilyList of each Chrome-serialized value equals Chrome's CSSOM rewrite (quoted generics are kept)", () => {
-    const p2 = capture<{ map: FontMap; cases: { id: string; visits: { before: string; after: string }[] }[] }>('../reference/p2-cssom-rewrite.json');
-    const visits = p2.cases.flatMap((c) => c.visits.map((v) => ({ id: c.id, ...v })));
+  it("P2: Dragon's rewriteFamilyList of each authored or Chrome-serialized value equals Chrome's CSSOM rewrite (quoted generics are kept)", () => {
+    const p2 = capture<{ map: FontMap; cases: { id: string; authored?: string; visits: { before: string; after: string }[] }[] }>('../reference/p2-cssom-rewrite.json');
+    // Chrome writes "SANS-SERIF" bare, which reads back as the generic, so such a case carries the list as authored.
+    const lossy = (text: string): boolean => (parseFamilyList(text) ?? []).some((e) => e.kind === 'generic' && !text.split(/,\s*/).includes(e.keyword));
+    const visits = p2.cases.flatMap((c) => c.visits.map((v) => ({ id: c.id, ...v, input: c.authored ?? v.before })));
     expect(visits.some((v) => v.before.includes('"sans-serif"'))).toBe(true);
+    expect(visits.filter((v) => v.input === v.before && lossy(v.before)).map((v) => v.id)).toEqual([]);
+    expect(visits.filter((v) => v.input !== v.before).length).toBeGreaterThan(0);
     for (const v of visits) {
-      const list = parseFamilyList(v.before);
+      const list = parseFamilyList(v.input);
       if (list === null) throw new Error(`${v.id}: ${v.before}`);
-      expect(rewriteFamilyList(list, p2.map, new Set()).value, v.id).toBe(v.after);
+      const out = rewriteFamilyList(list, p2.map, new Set()).value;
+      // Chrome's serialization of the rewritten list (lossy for "SANS-SERIF"); Dragon's own text must equal it where it is not.
+      expect(serializeFamilyList(parseFamilyList(out) ?? []), v.id).toBe(v.after);
+      if (!lossy(v.after)) expect(out, v.id).toBe(v.after);
     }
+    const upper = visits.find((v) => v.id === 'quoted-upper-then-mono');
+    expect(upper === undefined ? null : rewriteFamilyList(parseFamilyList(upper.input) ?? [], p2.map, new Set()).value).toBe('"SANS-SERIF", "Dragon Mono"');
   });
 
   it('P3: the rewrite leaves every computed value and box of the control document identical', () => {

@@ -140,7 +140,7 @@ export function rewriteFamilyList(list: FamilyList, map: FontMap, declared: Read
       } else use(entry.keyword, e, entry.keyword);
       continue;
     }
-    const original = serializeFamilyName(entry.name);
+    const original = outputFamilyName(entry.name);
     if (declaredFolded.has(foldFamily(entry.name))) {
       resolutions.push({ kind: 'declared', family: entry.name });
       out.push(original);
@@ -161,6 +161,12 @@ export function rewriteFamilyList(list: FamilyList, map: FontMap, declared: Read
 }
 
 const isParserGeneric = (name: string): boolean => (GENERIC_FAMILY_KEYWORDS as readonly string[]).includes(asciiLower(name));
+
+/**
+ * A family name as Dragon writes it into CSS: Chrome's serialization, but quoted when it ASCII case-folds to a parser generic.
+ * Chrome's own serialization leaves "SANS-SERIF" bare, and bare it re-parses as the generic (Chrome 145, reference P2).
+ */
+export const outputFamilyName = (name: string): string => (isParserGeneric(name) ? serializeString(name) : serializeFamilyName(name));
 
 const isBareIdent = (name: string): boolean => {
   const t = tokenize(name);

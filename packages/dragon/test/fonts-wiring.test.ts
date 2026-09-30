@@ -120,6 +120,29 @@ describe('font-family resolution', () => {
     expect(c.diagnostics[0]?.message).toMatch(/the family "sans-serif"/);
   });
 
+  it('a quoted name stays a family and a bare or escaped generic keyword stays generic on every path: key, resolution and web output', () => {
+    const face = (family: string): string => `@font-face { font-family: ${family}; src: url(fonts/Inter-Regular.ttf) }`;
+    const compile = (css: string) => compileWith(fontInput(`${face('"SANS-SERIF"')} ${face('"-webkit-body"')} ${face('"ui-serif"')} ${css}`, { urls: ['fonts/Inter-Regular.ttf'] }), MAP);
+    const family = (c: Compiled<Web>): string | undefined => [...cssOf(c).matchAll(/^ {2}font-family: (.*);$/gm)].map((m) => m[1]).pop();
+    // Chrome 145 (reference P2): "SANS-SERIF" is a family that its CSSOM writes bare, and bare it is the generic; quote it.
+    expect(family(compile('.a { font-family: "SANS-SERIF", monospace }'))).toBe('"SANS-SERIF", "Dragon Mono"');
+    expect(family(compile('.a { font-family: "-webkit-body" }'))).toBe('"-webkit-body"');
+    expect(family(compile('.a { font-family: SANS-SERIF }'))).toBe('"Dragon Sans"');
+    expect(family(compile('.a { font-family: s\\61ns-serif }'))).toBe('"Dragon Sans"');
+    // Chrome 145 reads "ui-serif" and ui-serif alike (both serialize as ui-serif), so both name the declared family.
+    expect(family(compile('.a { font-family: "ui-serif" }'))).toBe(family(compile('.a { font-family: ui-serif }')));
+    // A quoted "sans-serif" (escaped or not) is a family, which matches the declared "SANS-SERIF" (FontFaceCache folds case).
+    expect(family(compile('.a { font-family: "s\\61ns-serif" }'))).toBe('"sans-serif"');
+    expect(family(compile('.a { --f: "sans-serif"; font-family: var(--f) }'))).toBe('"sans-serif"');
+    expect(codes(compileWith(fontInput('.a { --f: "sans-serif"; font-family: var(--f) }'), MAP))).toEqual(['DRAGON_FONT_UNMAPPED_FAMILY']);
+    expect(family(compile('.a { --f: s\\61ns-serif; font-family: var(--f) }'))).toBe('"Dragon Sans"');
+    expect(webFeatures(compile('.a { --f: "SANS-SERIF"; font-family: var(--f) }'))).toEqual(['font-family:<declared>@text-in-block/ltr']);
+    // Without fonts the web emitter writes the family itself (reached here through the planted unmappedFamilyAccepted).
+    const bare = (css: string): string | undefined => family(compileWith(fontInput(css), undefined, { unmappedFamilyAccepted: true }));
+    expect(bare('.a { font-family: "-webkit-body" }')).toBe('"-webkit-body"');
+    expect(bare('.a { font-family: "SANS-SERIF" }')).toBe('"SANS-SERIF"');
+  });
+
   it('keys font-family by resolution kind and never by an author family name; the single family Ahem keeps font-family:Ahem', () => {
     const at = '@text-in-block/ltr';
     const key = (css: string): readonly string[] => webFeatures(compileWith(fontInput(`@font-face { font-family: Mine; src: url(fonts/Inter-Regular.ttf) } ${css}`, { urls: ['fonts/Inter-Regular.ttf'] }), MAP));
