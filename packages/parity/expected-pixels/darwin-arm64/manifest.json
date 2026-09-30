@@ -437,7 +437,19 @@
         {"case":"radius-clamp","width":800,"height":600,"sha256":"4e6cea6e8a229cd309ac08b6c708334e5599a47f16e93989e972f6ce26280df7"},
         {"case":"radius-clamp-rtl","width":800,"height":600,"sha256":"fd26028f0a4295a7a7a64b3f9588a37c50ef46347b4856fffc150b7a0dc21326"},
         {"case":"radius-cascade","width":800,"height":600,"sha256":"d502a2819dfcd99239a4d70a02a3d2af9dc4557d7dc4927fea56b4124bceb72e"},
-        {"case":"radius-cascade-rtl","width":800,"height":600,"sha256":"c936405efb5d5e96e3782e1a4283d11e972d4bd341368e44910c924cf7aa166e"}
+        {"case":"radius-cascade-rtl","width":800,"height":600,"sha256":"c936405efb5d5e96e3782e1a4283d11e972d4bd341368e44910c924cf7aa166e"},
+        {"case":"shadow-basic","width":800,"height":600,"sha256":"a111cb27576bf81cf0265e1e7821b6b281c39f124f7534957734e402a83847d1"},
+        {"case":"shadow-basic-rtl","width":800,"height":600,"sha256":"50c129467fcd120edc35b0464b01d4946580e1df9c2114f594c666a65e90fa33"},
+        {"case":"shadow-rounded","width":800,"height":600,"sha256":"422a0d4e576c04b8c33a72e0bed8c52a7ba333561b59c17a1505c3ba8a9c3e57"},
+        {"case":"shadow-rounded-rtl","width":800,"height":600,"sha256":"6790346ee2cd52ed77070b4e5dbe00a51f04c18f5f54c8840278927027bc1c79"},
+        {"case":"shadow-inset","width":800,"height":600,"sha256":"1c6e6edcc86ee29676d0a35d92742c5f59151dcbe4bf53c1236201f0fec52b14"},
+        {"case":"shadow-inset-rtl","width":800,"height":600,"sha256":"98c9ad7ffad9e177aa404cf9f699d838b37dff58eb092d7e4813aead609a0026"},
+        {"case":"shadow-cascade","width":800,"height":600,"sha256":"66d200f0090a10d7706a6c590d4788f5f99f9fb141ed75041da846fbb1be5c1e"},
+        {"case":"shadow-cascade-rtl","width":800,"height":600,"sha256":"842388b0273eb65bbb5643e6d080d8cdfc268b1f860cf549586f438fe9d8c918"},
+        {"case":"calib-shadow-blur","width":800,"height":600,"sha256":"3eb5c913557abceeb425fd64bcbe82f1170356261e23c571fa8881ac1edfbea7"},
+        {"case":"calib-shadow-blur-rtl","width":800,"height":600,"sha256":"02ac68288202b146fbff9331f9ce48c7521ab595263a3db644de2143f383d2d6"},
+        {"case":"calib-shadow-colors","width":800,"height":600,"sha256":"94a2e73ea2d7e9f731a7b2fa23eaecbe3b5a85edce175b69997c94d601544bd2"},
+        {"case":"calib-shadow-colors-rtl","width":800,"height":600,"sha256":"a01e93e2fb4c6798271e568d5f33c0671323a40daf398b7092691d40d98d0145"}
       ]
     },
     {
@@ -874,7 +886,19 @@
         {"case":"radius-clamp","width":1200,"height":900,"sha256":"147e1b77a0b8e28e261e0e1553ada94eb9520e4ebaec095c148ac62190185f71"},
         {"case":"radius-clamp-rtl","width":1200,"height":900,"sha256":"7f4793502532de0ee41587498515c91d46df07328ee9b77b92fa396acc431431"},
         {"case":"radius-cascade","width":1200,"height":900,"sha256":"3f7a5675d9abf622e2995460f20e6e37e089cd1d45124a2fbae36dac47f97832"},
-        {"case":"radius-cascade-rtl","width":1200,"height":900,"sha256":"337ff559812cfa3b0c9a1aad312d63bf8492af7d977de794ac81fd3641d5075f"}
+        {"case":"radius-cascade-rtl","width":1200,"height":900,"sha256":"337ff559812cfa3b0c9a1aad312d63bf8492af7d977de794ac81fd3641d5075f"},
+        {"case":"shadow-basic","width":1200,"height":900,"sha256":"fa4e3d745deecc198f2455f53562588d2f290f0bfc0196c1c0498f3195ee4ddd"},
+        {"case":"shadow-basic-rtl","width":1200,"height":900,"sha256":"b105872f79e1e01e76af3aa298dbae4be5694c8f04a19ba968db9b8d1da84cc0"},
+        {"case":"shadow-rounded","width":1200,"height":900,"sha256":"a4542929afcf15e84bfc4ac2975113fa586a1494946548b46c047596ff4216ff"},
+        {"case":"shadow-rounded-rtl","width":1200,"height":900,"sha256":"7ebac786ca04dfd55f166274d6114abe9111269762ed5b888e1187be6c1d726f"},
+        {"case":"shadow-inset","width":1200,"height":900,"sha256":"75266d1c647af7e6f54b490c36fdaecbfb2c2670ae7cf22b081a2f0bd87025ee"},
+        {"case":"shadow-inset-rtl","width":1200,"height":900,"sha256":"df82de8a28a387fa5870f8f7be71b09ce4c8c1a510d8bc1f47ad259ef80db746"},
+        {"case":"shadow-cascade","width":1200,"height":900,"sha256":"7120be60000ea0c9618de89ac8aacffd13f9540b70c18d8abe87fd0f83b9d6f5"},
+        {"case":"shadow-cascade-rtl","width":1200,"height":900,"sha256":"aee5460ffebdc8cc433ca8a46b6e1d2c7617b6f583c37f7effbdcd7b65cdecdd"},
+        {"case":"calib-shadow-blur","width":1200,"height":900,"sha256":"156d382647ad224668677d1f34adbba0a1013a6132803418213f3affc385b06c"},
+        {"case":"calib-shadow-blur-rtl","width":1200,"height":900,"sha256":"f24371c71b865828c093daffb8eb7c4b5dc8b58b762198889153e2e63db55007"},
+        {"case":"calib-shadow-colors","width":1200,"height":900,"sha256":"e8b251b978be65c2b73eb486c80a71d0d07419b947fc66cb3d38e08328dc4608"},
+        {"case":"calib-shadow-colors-rtl","width":1200,"height":900,"sha256":"e110e7509dfc263ca8a20a18b54c5b17a9e67291116824fa5283a0d6caa5433b"}
       ]
     },
     {
@@ -1311,7 +1335,19 @@
         {"case":"radius-clamp","width":1050,"height":788,"sha256":"f6ebc2b444e9f515509308cc8196ebe455c5e4b48778d7f6b2c732c241ec8cbd"},
         {"case":"radius-clamp-rtl","width":1050,"height":788,"sha256":"fcdd2e80c4062ffd9d1d5b5d7b9dbdfb39db99beb1d721ccbd4ca27b702aecf7"},
         {"case":"radius-cascade","width":1050,"height":788,"sha256":"708180f5f4db7e5247f4f477a7663c7c11b13da846dbab42b97bd1203d020c21"},
-        {"case":"radius-cascade-rtl","width":1050,"height":788,"sha256":"38281ec7edae80fa07046b6e4fe46f3c1c71a99944ed7680226e94f9c96e6f45"}
+        {"case":"radius-cascade-rtl","width":1050,"height":788,"sha256":"38281ec7edae80fa07046b6e4fe46f3c1c71a99944ed7680226e94f9c96e6f45"},
+        {"case":"shadow-basic","width":1050,"height":788,"sha256":"c23bf3f5a0434d32d47e40848c8748f4abd5d819021836dfe281dbc489b3ea78"},
+        {"case":"shadow-basic-rtl","width":1050,"height":788,"sha256":"0b37b635b13824ab1e6a1c9bdfb4f51ab7884c346e7753c1544031d0e0299f29"},
+        {"case":"shadow-rounded","width":1050,"height":788,"sha256":"ea75a7fb8f1d5a774f23b12d134a9b42e88fc5da92d3ed96a144d2862cfd172c"},
+        {"case":"shadow-rounded-rtl","width":1050,"height":788,"sha256":"03d2e61a15d4d8400a3385c8992ad4a6b7dac846450a38d29abd86d127eb65be"},
+        {"case":"shadow-inset","width":1050,"height":788,"sha256":"8d2cc319873f894142d75e8a8677ce067b556a8b6912083ae15e20d3cb7001ba"},
+        {"case":"shadow-inset-rtl","width":1050,"height":788,"sha256":"99fc7b1f0f779eaea875397fc60d627ca7abbaeb21ca4facd164372f4f8657d1"},
+        {"case":"shadow-cascade","width":1050,"height":788,"sha256":"906b815f1f6313ebd0bc8b67b9ac045221e479a64b94f114da347db9bdd6ef09"},
+        {"case":"shadow-cascade-rtl","width":1050,"height":788,"sha256":"dd29de6af00007858f19956c6e369745e43a3bfc439e01017819cf3f8504ba55"},
+        {"case":"calib-shadow-blur","width":1050,"height":788,"sha256":"e6762408a5bc296a7fbb4875ff6cb526fb1b82d947375d900e8fbfb4ebcfe16d"},
+        {"case":"calib-shadow-blur-rtl","width":1050,"height":788,"sha256":"d7784c0682fa040d94432c94f42cca9e54d7203cd6a95767adfe140ad6d6bf4d"},
+        {"case":"calib-shadow-colors","width":1050,"height":788,"sha256":"d09aab30fa6db2b2b186b24bacdf8da705ddc7ae445869bc84fc7f0e9520eac2"},
+        {"case":"calib-shadow-colors-rtl","width":1050,"height":788,"sha256":"3a718d84fd84387adbe5facd7262a545fb800d675de6fb3f438815a3d6ce2298"}
       ]
     }
   ]
