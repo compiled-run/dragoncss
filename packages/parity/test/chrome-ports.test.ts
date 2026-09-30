@@ -103,7 +103,7 @@ function proofProblem(proof: string, read: RepoReader): string | null {
   return null;
 }
 
-// Source files scanned for citations: every TypeScript, Swift, Kotlin or Java file under packages/, scripts/ and examples/ that git
+// Source files scanned for citations: every TypeScript, JavaScript, Swift, Kotlin or Java file under packages/, scripts/ and examples/ that git
 // tracks or would track (.gitignore'd output is skipped). Generated native output is regenerated from the TypeScript, so it is covered
 // by its sources.
 const SCAN_TOPS = ['packages', 'scripts', 'examples'];
@@ -113,7 +113,7 @@ function sourceFiles(): string[] {
   const git = (args: string[]) => execFileSync('git', ['-C', ROOT, 'ls-files', '-z', ...args, '--', ...SCAN_TOPS], { encoding: 'utf8' }).split('\0');
   const files = new Set([...git(['--cached']), ...git(['--others', '--exclude-standard'])]);
   return [...files]
-    .filter((f) => f !== '' && f !== SELF && /\.(ts|mts|swift|kt|java)$/.test(f) && !f.endsWith('.d.ts'))
+    .filter((f) => f !== '' && f !== SELF && /\.(ts|mts|js|mjs|cjs|swift|kt|java)$/.test(f) && !f.endsWith('.d.ts'))
     .filter((f) => !f.split('/').some((part) => SKIP_DIRS.includes(part)))
     .filter((f) => existsSync(join(ROOT, f))) // a tracked file deleted in the working tree
     .sort();
@@ -127,7 +127,7 @@ export interface Citation { file: string; line: number; token: string; path: str
 /** Every citation in a file's comments and string literals (never code: `i.h` is a property access, not a file). */
 export function citationsIn(file: string, text: string): Citation[] {
   if (!/\.(cc|cpp|h)\b/.test(text)) return [];
-  if (!/\.m?ts$/.test(file)) return nativeCitationsIn(file, text);
+  if (!/\.(m?ts|[mc]?js)$/.test(file)) return nativeCitationsIn(file, text);
   const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const spans = new Map<number, number>();
   const visit = (n: ts.Node) => {
@@ -162,7 +162,7 @@ function nativeCitationsIn(file: string, text: string): Citation[] {
 
 /** Every declared name in a file (functions, classes, interfaces, types, enums, variables, methods, properties). */
 export function declaredNames(file: string, text: string): Set<string> {
-  if (!/\.m?ts$/.test(file)) {
+  if (!/\.(m?ts|[mc]?js)$/.test(file)) {
     const native = /\b(?:func|fun|class|struct|enum|protocol|interface|object|let|var|val|typealias)\s+([A-Za-z_]\w*)/g;
     return new Set([...text.matchAll(native)].map((m) => m[1]!));
   }
@@ -397,6 +397,13 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
     }
     const changed = thirdPartyNotices({ ...registry, entries: registry.entries.map((e, i) => (i === 0 ? { ...e, copyright: 'Copyright 1999 Planted' } : e)) }, readFileSync(join(ROOT, 'vendor', 'harfbuzz', 'COPYING'), 'utf8'));
     expect(changed).not.toBe(notices);
+    // Bad input is refused, never written out.
+    const harfbuzz = readFileSync(join(ROOT, 'vendor', 'harfbuzz', 'COPYING'), 'utf8');
+    expect(() => thirdPartyNotices({ ...registry, entries: [{ ...registry.entries[0]!, copyright: '' }] }, harfbuzz)).toThrow('no copyright line');
+    expect(() => thirdPartyNotices({ ...registry, entries: [{ ...registry.entries[0]!, noticeText: 'no-such-text' }] }, harfbuzz)).toThrow('is not in licenceTexts');
+    const { noticeText: _n, ...noText } = registry.entries[0]!;
+    expect(() => thirdPartyNotices({ ...registry, entries: [noText] }, harfbuzz)).toThrow('no noticeText');
+    expect(() => thirdPartyNotices(registry, 'not a licence')).toThrow('not the HarfBuzz MIT licence');
   });
 
   it('fails when a Dragon file or declaration is gone', () => {

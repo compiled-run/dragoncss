@@ -18,7 +18,7 @@
 
 ## What the test checks
 
-- Every `.cc`, `.cpp` or `.h` file named in a comment or string of a TypeScript, Swift, Kotlin or Java file under `packages/`, `scripts/` or `examples/` (files git tracks or would track; generated output is skipped) resolves to exactly one entry (by full path, by a trailing part of the path, or by a `citedAs` name), and that entry lists the citing file.
+- Every `.cc`, `.cpp` or `.h` file named in a comment or string of a TypeScript, JavaScript, Swift, Kotlin or Java file under `packages/`, `scripts/` or `examples/` (files git tracks or would track; generated output is skipped) resolves to exactly one entry (by full path, by a trailing part of the path, or by a `citedAs` name), and that entry lists the citing file.
 - Every `lgpl` entry has a ruling; none has a `port` use unless it is class B and on `KNOWN_LGPL_CLEAN_ROOM`; every proof file exists; the licence phrase matches the kind.
 - A `bsd-other` file's copyright line stays in each Dragon file that ports it.
 - `THIRD_PARTY_NOTICES.md` is exactly what `pnpm notices:gen` (`scripts/gen-third-party-notices.ts`) writes from `docs/ports.json` and `vendor/harfbuzz/COPYING`. The published `dragon` package ships it next to `LICENSE`.

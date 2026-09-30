@@ -18,7 +18,7 @@ const TITLES: [RegExp, string][] = [
   [/^rapidhash-bsd-2$/, 'rapidhash: BSD 2-Clause'],
 ];
 
-/** The id of the licence text that covers an entry, or null for an entry that is not a source of Dragon code (LGPL, reference only). */
+/** The id of the licence text that covers an entry, or null for an LGPL entry (no Dragon code comes from those). */
 export function noticeTextOf(e: NoticeEntry): string | null {
   if (e.licence === 'lgpl') return null;
   if (e.noticeText === undefined) throw new Error(`${e.upstream}: no noticeText for licence ${e.licence}`);
@@ -33,6 +33,13 @@ function titleOf(id: string): string {
 
 /** THIRD_PARTY_NOTICES.md for a registry and HarfBuzz's COPYING. */
 export function thirdPartyNotices(registry: NoticeRegistry, harfbuzzCopying: string): string {
+  if (typeof registry.licenceTexts !== 'object' || registry.licenceTexts === null) throw new Error('docs/ports.json: no licenceTexts');
+  if (!Array.isArray(registry.entries)) throw new Error('docs/ports.json: no entries');
+  for (const e of registry.entries) {
+    if (typeof e.copyright !== 'string' || !e.copyright.startsWith('Copyright')) throw new Error(`${e.upstream}: no copyright line`);
+  }
+  for (const [id, text] of Object.entries(registry.licenceTexts)) if (typeof text !== 'string' || text.trim() === '') throw new Error(`licence text ${id} is empty`);
+  if (!harfbuzzCopying.includes('Permission is hereby granted')) throw new Error('vendor/harfbuzz/COPYING is not the HarfBuzz MIT licence');
   const groups = new Map<string, NoticeEntry[]>();
   for (const id of Object.keys(registry.licenceTexts)) groups.set(id, []);
   for (const e of registry.entries) {
