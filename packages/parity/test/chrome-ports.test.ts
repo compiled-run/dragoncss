@@ -37,13 +37,9 @@ const PHRASE: Record<string, RegExp> = {
 
 // The T118J ruling (docs/goals/milestone-2-proof/notes/T118J-lgpl-ruling.md, accepted by the PM on 2026-09-30) put every
 // LGPL-headered entry in class A (Dragon follows the spec or a Chrome observation; its uses are references) or class B (Dragon's code
-// follows the LGPL code closely). These are the class B files. Board task T123 rewrites their Dragon code clean-room; until then
-// they are the only LGPL entries allowed a 'port' use.
-const KNOWN_LGPL_CLEAN_ROOM: readonly string[] = [
-  'third_party/blink/renderer/core/html/forms/step_range.cc',
-  'third_party/blink/renderer/core/html/forms/step_range.h',
-  'third_party/blink/renderer/platform/text/text_break_iterator.cc',
-];
+// follows the LGPL code closely). This list names the class B files awaiting a clean-room rewrite; they are the only LGPL entries
+// allowed a 'port' use. T123 rewrote the three it held (step_range.cc, step_range.h, text_break_iterator.cc), now class A.
+const KNOWN_LGPL_CLEAN_ROOM: readonly string[] = [];
 const CLEAN_ROOM_TASK = 'T123';
 
 // Upstream roots inside the Chromium tree at the tag (third_party/skia is resolved at the DEPS-pinned Skia revision).
@@ -360,9 +356,14 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
       `entry ${lgpl.upstream}: class A LGPL entry with a port use; Dragon may only reference it`,
       `entry ${lgpl.upstream}: LGPL-headered upstream file with a port use; the 2026-09-30 decision does not allow porting it`,
     ]);
-    // A class B entry dropped from the clean-room list.
-    const b = KNOWN_LGPL_CLEAN_ROOM[0]!;
-    expect(audit(registry, sources, KNOWN_LGPL_CLEAN_ROOM.slice(1))).toEqual([
+    // A class B entry (planted: the real list is empty since T123) passes only while it is on the clean-room list.
+    const b = lgpl.upstream;
+    const plantedB: Registry = {
+      ...registry,
+      entries: registry.entries.map((e) => (e === lgpl ? { ...e, ruling: { ...e.ruling!, class: 'B' as const, task: CLEAN_ROOM_TASK }, dragon: e.dragon.map((d) => ({ ...d, use: 'port' as const })) } : e)),
+    };
+    expect(audit(plantedB, sources, [...KNOWN_LGPL_CLEAN_ROOM, b])).toEqual([]);
+    expect(audit(plantedB, sources, KNOWN_LGPL_CLEAN_ROOM.filter((p) => p !== b))).toEqual([
       `entry ${b}: class B LGPL entry not on KNOWN_LGPL_CLEAN_ROOM`,
       `entry ${b}: LGPL-headered upstream file with a port use; the 2026-09-30 decision does not allow porting it`,
     ]);

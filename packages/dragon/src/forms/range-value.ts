@@ -1,7 +1,9 @@
 // The value model of input[type=range], written from the HTML range state
 // (https://html.spec.whatwg.org/multipage/input.html#range-state-(type=range)) and checked against the Chrome 145 captures in
 // packages/dragon/test/forms/chrome-145/range-value.json and range-geometry.json. Arithmetic is Blink's Decimal (decimal.ts), so the
-// serialised strings match Chrome digit for digit. Number parsing follows html_parser_idioms.cc ParseToDecimalForNumberType.
+// serialised strings match Chrome digit for digit. Number parsing follows html_parser_idioms.cc ParseToDecimalForNumberType; the
+// defaults and the raised maximum follow range_input_type.cc CreateStepRange and EnsureMaximum. Clean-room (T123): nothing here
+// follows Blink's LGPL third_party/blink/renderer/core/html/forms/step_range.cc or step_range.h, which were not read.
 import { Decimal, dmax } from './decimal.ts';
 import { NO_FORM_FAULTS } from './faults.ts';
 import type { FormFaults } from './faults.ts';
