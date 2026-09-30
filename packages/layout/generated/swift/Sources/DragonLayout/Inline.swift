@@ -204,10 +204,10 @@ public func inline_leafFont(_ t: TextLeaf) throws -> TextFont {
 
 // ts: packages/layout/src/inline.ts:97
 public func inline_leafLineHeight(_ t: TextLeaf) throws -> any U_NormalValue_NumberValue_Px {
-  let lh: any U_LengthCalc_NormalValue_NumberValue_Percent_Px = t.lineHeight
+  let lh: any U_LineHeightCalc_NormalValue_NumberValue_Percent_Px = t.lineHeight
   // ts: packages/layout/src/inline.ts:99
-  if ((lh.kind == S.s_percent) || ((lh as! any U_LengthCalc_NormalValue_NumberValue_Px).kind == S.s_calc)) {
-    throw JsError(message: jsConcat(t.id, S.s19, (lh as! any U_LengthCalc_Percent).kind, S.s10))
+  if ((lh.kind == S.s_percent) || ((lh as! any U_LineHeightCalc_NormalValue_NumberValue_Px).kind == S.s_calc)) {
+    throw JsError(message: jsConcat(t.id, S.s19, (lh as! any U_LineHeightCalc_Percent).kind, S.s10))
   }
   return (lh as! any U_NormalValue_NumberValue_Px)
 }

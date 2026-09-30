@@ -167,10 +167,10 @@ fun inline_leafFont(t: TextLeaf): TextFont {
 
 // ts: packages/layout/src/inline.ts:97
 fun inline_leafLineHeight(t: TextLeaf): U_NormalValue_NumberValue_Px {
-  val lh: U_LengthCalc_NormalValue_NumberValue_Percent_Px = t.lineHeight
+  val lh: U_LineHeightCalc_NormalValue_NumberValue_Percent_Px = t.lineHeight
   // ts: packages/layout/src/inline.ts:99
-  if ((jsStrEq(lh.kind, "percent") || jsStrEq((lh as U_LengthCalc_NormalValue_NumberValue_Px).kind, "calc"))) {
-    throw JsError((t.id + ": a " + (lh as U_LengthCalc_Percent).kind + " line height reached layout; the environment pass resolves it"))
+  if ((jsStrEq(lh.kind, "percent") || jsStrEq((lh as U_LineHeightCalc_NormalValue_NumberValue_Px).kind, "calc"))) {
+    throw JsError((t.id + ": a " + (lh as U_LineHeightCalc_Percent).kind + " line height reached layout; the environment pass resolves it"))
   }
   return (lh as U_NormalValue_NumberValue_Px)
 }
