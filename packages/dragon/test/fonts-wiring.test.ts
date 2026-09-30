@@ -206,6 +206,16 @@ describe('the variable-font fence at style resolution (T028)', () => {
     const refused = at(true).diagnostics.filter((d) => d.code === 'DRAGON_FONT_VARIABLE_REFUSED');
     expect(refused.map((d) => [d.target, d.message])).toEqual([[null, 'font-family V at 16px on a:text0: InterVF wght 400, 700 is outside the validated range 400 to 400']]);
   });
+  it('text in a display: none subtree is never drawn, so it is not fenced; a var() font-family there is still checked', () => {
+    const nested = (r: Parameters<typeof div>[0]): TreeNode[] => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'Ab')])])];
+    const at = (rules: string) => {
+      const css = `@font-face { font-family: V; src: url(fonts/Inter-VF.ttf) } ${rules}`;
+      return compileWith({ ...inputFor(css, nested), snapshot: fontInput(css, { urls: ['fonts/Inter-VF.ttf'] }).snapshot }, undefined);
+    };
+    expect(codes(at('.a { font-family: V; font-size: 28px }'))).toEqual(['DRAGON_FONT_VARIABLE_REFUSED']);
+    expect(codes(at('.a { display: none; font-family: V; font-size: 28px }'))).toEqual([]);
+    expect(codes(at('.a { display: none } .b { --f: Nope; font-family: var(--f) }'))).toEqual(['DRAGON_FONT_UNMAPPED_FAMILY']);
+  });
   it('fences only the faces Chrome draws the text with: a later family counts for the characters the earlier ones lack', () => {
     const faces = '@font-face { font-family: S; src: url(fonts/Lato-Regular.ttf) } @font-face { font-family: V; src: url(fonts/Inter-VF.ttf) }';
     const at = (family: string, chars: string) => compileWith(fontInput(`${faces} .a { font-family: ${family}; font-size: 28px }`, { urls: ['fonts/Lato-Regular.ttf', 'fonts/Inter-VF.ttf'], text: chars }), undefined);

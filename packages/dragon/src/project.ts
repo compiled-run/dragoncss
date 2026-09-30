@@ -433,6 +433,8 @@ type TextFont = { readonly weight: number; readonly style: 'normal' | 'italic' }
  * Per case, on every text node: a font-family value that holds var() is checked after substitution like checkFamilies checks the
  * others, and the variable-font fence (T028) runs at style resolution on the faces Chrome draws the text with (renderedFaces).
  * No author longhand sets font-weight or font-style, so they are the UA's, inherited (userAgentTextFonts: h1 to h6 bold, address italic).
+ * Text in a display: none subtree is never drawn, so Chrome selects no face for it and the fence skips it, as checkFonts does; the
+ * substitution check is per declaration, like checkFamilies, and runs everywhere.
  */
 function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: CompilerFaults, ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>): void {
   const faces = [...fonts.declaredFaces, ...fonts.projected.pinned.flatMap((p) => (p.result.face === null ? [] : [p.result.face]))];
@@ -442,7 +444,9 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
     reported.add(id);
     return true;
   };
-  const walk = (el: ResolvedElement, inherited: TextFont): void => {
+  const walk = (el: ResolvedElement, inherited: TextFont, hiddenAbove: boolean): void => {
+    const display = (el.props.get('display') as ResolvedValue).value;
+    const hidden = hiddenAbove || (display.kind === 'keyword' && display.value === 'none');
     const tf = (ua.userAgentTextFonts as { readonly [tag: string]: { readonly [p: string]: string } | undefined })[el.element.tag] ?? {};
     const weight = tf['font-weight'] === undefined ? inherited.weight : Number(tf['font-weight']);
     const own: TextFont = { weight: Number.isFinite(weight) ? weight : inherited.weight, style: tf['font-style'] === undefined ? inherited.style : tf['font-style'] === 'italic' ? 'italic' : 'normal' };
@@ -456,9 +460,10 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
     }
     for (const c of el.children) {
       if (c.kind === 'element') {
-        walk(c, own);
+        walk(c, own, hidden);
         continue;
       }
+      if (hidden) continue;
       const family = c.props.get('font-family') as ResolvedValue;
       const text = familyListText(family.value);
       const support = text === null ? null : familySupport(text, fonts.keys.map, fonts.keys.declared);
@@ -475,7 +480,7 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
       }
     }
   };
-  walk(root, { weight: 400, style: 'normal' });
+  walk(root, { weight: 400, style: 'normal' }, false);
 }
 
 type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[] };
