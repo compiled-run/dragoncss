@@ -6,6 +6,7 @@ import type { Compiled, Diagnostic, FrontEndResult } from '../src/index.ts';
 import { createProject } from '../src/index.ts';
 import type { CompilerFaults, InternalOptions } from '../src/internal.ts';
 import { createProjectWith, NO_FAULTS, WEB_CSS_PATH } from '../src/internal.ts';
+import type { AtRuleContext } from '../src/css/at-rules.ts';
 import type { EnclosedRules } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf } from './helpers.ts';
@@ -85,6 +86,15 @@ describe('MQ-a: @media in the parse driver', () => {
     expect(rules).toEqual([]);
     expect(diagnostics.map((d) => d.message)).toEqual(['@supports in @media is not supported in milestone 1']);
     expect(enclosed[0]?.rules.map((r) => r.condition?.map((c) => c.text))).toEqual([['(min-width: 1px)']]);
+  });
+  it('@font-face inside @media stays refused (fonts are not resolved per band); a top-level one is still collected', () => {
+    const faces: AtRuleContext[] = [];
+    const diagnostics: Diagnostic[] = [];
+    const text = '@font-face { font-family: A; src: url(a.ttf) } @media (min-width: 1px) { @font-face { font-family: B; src: url(b.ttf) } .a { width: 2px; } }';
+    const rules = parseStylesheet(text, { source: SRC, start: 0, end: text.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics, [], faces);
+    expect(faces.map((f) => f.where)).toEqual(['the stylesheet']);
+    expect(diagnostics.map((d) => [d.code, d.message])).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@font-face in @media is not supported in milestone 1']]);
+    expect(rules.map((r) => r.condition?.map((c) => c.text))).toEqual([['(min-width: 1px)']]);
   });
   it('a rule Chrome drops for its selector list does not diagnose its declarations, inside @media too', () => {
     const { diagnostics } = parse('@media (min-width: 1px) { .a, .a::-moz-range-thumb { -webkit-appearance: none; display: grid; } }');

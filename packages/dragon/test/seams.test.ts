@@ -4,7 +4,8 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { beats, cascadeGroups, substituteVariables } from '../src/analysis/resolve.ts';
 import type { Candidate } from '../src/analysis/resolve.ts';
-import { AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
+import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
+import type { AtRuleContext } from '../src/css/at-rules.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../src/css/properties/grid.ts';
 import { LOGICAL_SHORTHANDS } from '../src/css/properties/logical.ts';
@@ -94,10 +95,27 @@ describe('E2 seams: every at-rule but @media is still refused', () => {
     return { text, diagnostics, enclosed, rules: rules.length };
   };
   const atRules = (ds: readonly Diagnostic[]): [string, string][] => ds.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE').map((d) => [d.code, d.message]);
-  it('every registered name but media is refused today', () => {
-    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'media' ? mediaAtRule : refuseAtRule);
+  it('every registered name but font-face and media is refused today', () => {
+    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : refuseAtRule);
     expect(atRuleHandler('MEDIA')).toBe(mediaAtRule);
     expect(atRuleHandler('no-such-rule')).toBe(refuseAtRule);
+    expect(atRuleHandler('Font-Face')).toBe(acceptFontFace);
+  });
+  it('a top-level @font-face with no prelude is accepted: collected in order, with no diagnostic, rule or enclosed rules (TXT1-C)', () => {
+    for (const name of ['font-face', 'Font-Face', 'FONT-FACE']) {
+      const text = `@${name} { font-family: A; src: url(a.ttf) } .a { width: 1px; } @${name}{font-family:B;src:url(b.ttf)}`;
+      const diagnostics: Diagnostic[] = [];
+      const enclosed: EnclosedRules[] = [];
+      const faces: AtRuleContext[] = [];
+      const rules = parseStylesheet(text, { source: SRC, start: 0, end: text.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics, enclosed, faces);
+      expect(diagnostics, name).toEqual([]);
+      expect(enclosed, name).toEqual([]);
+      expect(rules.length, name).toBe(1);
+      expect(faces.map((f) => [f.name, f.where, text.slice(f.span.start, f.span.end)]), name).toEqual([
+        [name, 'the stylesheet', `@${name} { font-family: A; src: url(a.ttf) }`],
+        [name, 'the stylesheet', `@${name}{font-family:B;src:url(b.ttf)}`],
+      ]);
+    }
   });
   it('@media is conditional only at the top level with a block: its rules carry the condition; blockless or in a rule block it is refused', () => {
     for (const n of ['media', 'MEDIA']) {

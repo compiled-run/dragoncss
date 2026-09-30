@@ -7,6 +7,10 @@ import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
+import { familyListText } from '../css/values.ts';
+import { parseFamilyList } from '../fonts/family-list.ts';
+import { outputFamilyName, rewriteFamilyList } from '../fonts/font-map.ts';
+import type { FontMap } from '../fonts/font-map.ts';
 import type { GeneratedFile } from '../types.ts';
 
 export type WebEmit = {
@@ -39,20 +43,12 @@ function cssNumber(n: number): string {
   return exp < 0 ? `${sign}0.${'0'.repeat(-exp - 1)}${digits}` : `${sign}${digits}${'0'.repeat(exp - frac.length)}`;
 }
 
-// css-fonts-4 §2.1: a family name that is a valid identifier sequence and not a generic keyword can be written bare.
-const GENERIC_FAMILIES = new Set(['serif', 'sans-serif', 'cursive', 'fantasy', 'monospace', 'system-ui', 'math', 'emoji', 'fangsong', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded', 'inherit', 'initial', 'unset', 'revert', 'revert-layer', 'default']);
-
-function familyName(name: string): string {
-  if (/^-?[_a-zA-Z][_a-zA-Z0-9-]*$/.test(name) && !GENERIC_FAMILIES.has(name.toLowerCase())) return name;
-  return serializeString(name);
-}
-
 function valueText(v: CssValue): string {
   switch (v.kind) {
     case 'keyword':
       return v.value;
     case 'family':
-      return familyName(v.value);
+      return outputFamilyName(v.value);
     case 'length':
       return `${cssNumber(v.value)}${v.unit}`;
     case 'percentage':
@@ -71,8 +67,6 @@ type WebCase = { readonly key: string; readonly root: ResolvedElement };
 /** One band after the first (MQ-a): its condition text and every case resolved in it. */
 export type WebBand = { readonly condition: string; readonly cases: readonly WebCase[] };
 
-const declLine = (el: ResolvedElement, p: (typeof LONGHANDS)[number]): string => `  ${p}: ${valueText((el.props.get(p) as ResolvedValue).value)};`;
-
 function byAddress(root: ResolvedElement): Map<string, ResolvedElement> {
   const out = new Map<string, ResolvedElement>();
   const visit = (el: ResolvedElement): void => {
@@ -84,11 +78,37 @@ function byAddress(root: ResolvedElement): Map<string, ResolvedElement> {
 }
 
 /**
- * One class per resolved variant: an element address gets a new class for each distinct resolved style across the cases.
- * Deterministic: classes are numbered in case order, then element preorder; declarations follow LONGHANDS order. cases are
- * resolved in the first band; each later band gets one @media block with the declarations that differ from it, per class.
+ * The project's fonts, for a web output that uses any: font-family values are rewritten through the font map (a pinned generic
+ * or family becomes its bundled family), and prelude gives the @font-face rules of the pinned families used and of every
+ * declared face. rewrite false and an empty prelude are the planted faults pinnedGenericNotRewritten and fontFaceNotEmitted.
  */
-export function emitWebCss(cases: readonly WebCase[], digest: string, bands: readonly WebBand[] = []): WebEmit {
+export type WebFontContext = {
+  readonly map: FontMap | null;
+  readonly declared: ReadonlySet<string>;
+  readonly rewrite: boolean;
+  readonly prelude: (usedPinned: ReadonlySet<string>) => string;
+};
+
+/**
+ * One class per resolved variant: an element address gets a new class for each distinct resolved style across the cases.
+ * Deterministic: classes are numbered in case order, then element preorder; declarations follow LONGHANDS order. fonts: null
+ * when the project declares and maps no font, which leaves the output as it was before fonts. cases are resolved in the first
+ * @media band; each later band (MQ-a) gets one @media block with the declarations that differ from it, per class.
+ */
+export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = []): WebEmit {
+  const usedPinned = new Set<string>();
+  const familyText = (v: CssValue): string => {
+    const text = familyListText(v);
+    const list = text === null || fonts === null ? null : parseFamilyList(text);
+    if (list === null || fonts === null) return valueText(v);
+    const rewritten = rewriteFamilyList(list, fonts.map ?? { generics: {} }, fonts.declared);
+    for (const r of rewritten.resolutions) if (r.kind === 'pinned') usedPinned.add(r.family);
+    return fonts.rewrite ? rewritten.value : valueText(v);
+  };
+  const declLine = (el: ResolvedElement, p: (typeof LONGHANDS)[number]): string => {
+    const v = (el.props.get(p) as ResolvedValue).value;
+    return `  ${p}: ${p === 'font-family' ? familyText(v) : valueText(v)};`;
+  };
   const classOf = new Map<string, Map<string, string>>();
   const variants = new Map<string, string>();
   const rules: string[] = [];
@@ -126,6 +146,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, bands: rea
     visit(c.root);
   }
   const blocks = bands.flatMap((b, k) => ((bandRules[k] as string[]).length === 0 ? [] : [`@media ${b.condition} {\n${(bandRules[k] as string[]).join('\n')}\n}`]));
-  const text = `/* Generated by Dragon from compilation ${digest}. Do not edit. */\n${[...rules, ...blocks].join('\n')}\n`;
+  const prelude = fonts === null ? '' : fonts.prelude(usedPinned);
+  const text = `/* Generated by Dragon from compilation ${digest}. Do not edit. */\n${prelude === '' ? '' : `${prelude}\n`}${[...rules, ...blocks].join('\n')}\n`;
   return { files: [{ path: WEB_CSS_PATH, text }], classOf };
 }

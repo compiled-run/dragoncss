@@ -1,6 +1,7 @@
-// The at-rule handler registry. @media is conditional (MQ-a); every other at-rule is refused: each registered name, and any name
-// not registered, gets the same DRAGON_UNSUPPORTED_AT_RULE diagnostic, and the parse driver (stylesheet.ts) then analyses the
-// rules inside the at-rule's block for diagnostics only (T005 rec 3). A package that supports an at-rule replaces its entry here.
+// The at-rule handler registry. @font-face is accepted (fonts/wire.ts) and @media is conditional (MQ-a); every other at-rule is
+// refused: each registered name, and any name not registered, gets the same DRAGON_UNSUPPORTED_AT_RULE diagnostic, and the parse
+// driver (stylesheet.ts) then analyses the rules inside the at-rule's block for diagnostics only (T005 rec 3).
+import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { MediaQueryList } from '../media/index.ts';
@@ -19,11 +20,13 @@ export type RuleCondition = { readonly list: MediaQueryList; readonly text: stri
 
 /**
  * What a handler decides. refuse: the diagnostic is reported, the at-rule produces no rules, and its block (if any) is parsed
- * for analysis only, reported with the at-rule (EnclosedRules). conditional: the rules in its block are real rules that apply
- * only where the condition holds (Rule.condition).
+ * for analysis only, reported with the at-rule (EnclosedRules). font-face: the rule is accepted and handed to the fonts module
+ * (fonts/wire.ts collectFontFaces), with no diagnostic and no enclosed rules. conditional: the rules in its block are real rules
+ * that apply only where the condition holds (Rule.condition).
  */
 export type AtRuleOutcome =
   | { readonly kind: 'refuse'; readonly diagnostic: Diagnostic }
+  | { readonly kind: 'font-face'; readonly context: AtRuleContext }
   | { readonly kind: 'conditional'; readonly condition: RuleCondition };
 
 export type AtRuleHandler = (at: AtRuleContext) => AtRuleOutcome;
@@ -36,6 +39,17 @@ export const refuseAtRule = (at: AtRuleContext): Extract<AtRuleOutcome, { kind: 
     message: `@${at.name} in ${at.where} is not supported in milestone 1`,
   }),
 });
+
+/**
+ * css-fonts-4 §4: @font-face at the top level of a stylesheet, with no prelude and a block, is accepted. Nested in a style rule
+ * Chrome ignores it; inside @media (whose rules apply per band) or @supports it is refused: fonts are not resolved per band.
+ */
+export const acceptFontFace: AtRuleHandler = (at) => {
+  const prelude = at.node['prelude'] as CssNode | null | undefined;
+  const block = at.node['block'] as CssNode | null | undefined;
+  const empty = prelude === null || prelude === undefined || generate(prelude).trim() === '';
+  return at.where === 'the stylesheet' && empty && block !== null && block !== undefined ? { kind: 'font-face', context: at } : refuseAtRule(at);
+};
 
 /**
  * MQ-a: @media whose features are all width and height is conditional. A feature that depends on the device or the user, a
@@ -73,7 +87,7 @@ export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
   'color-profile': refuseAtRule,
   container: refuseAtRule,
   'counter-style': refuseAtRule,
-  'font-face': refuseAtRule,
+  'font-face': acceptFontFace,
   'font-feature-values': refuseAtRule,
   'font-palette-values': refuseAtRule,
   import: refuseAtRule,
