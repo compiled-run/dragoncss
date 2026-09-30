@@ -2230,6 +2230,8 @@ tasks:
     stop_if:
       - See notes/T047-runtime-spec.md §3.3 stop_if (binding)
     receipt: null
+    constraints:
+      - 'Split: SELD-R1a (state runtime) is done on seld-r1 7b7e096, pending its device run and the targets.ts device-states entry after #42. SELD-R1b is T134.'
   - id: T064
     type: worker
     assignee: Worker
@@ -3628,6 +3630,14 @@ tasks:
     lane: engine
     objective: 'INL1a-tags: accept b, strong, em and i on web, and on native per R7 (notes/T044-inl-spec.md), with their UA values via resolve.ts and datasets.ts. After T058, before TXT1a. small and code
       are recorded as still refused.'
+    receipt: null
+  - id: T134
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'SELD-R1b (split from T063): rt-hit.ts with the Chrome 145 inline hit rule from T063J (notes/T047-runtime-spec.md amendment), pointer-events auto and none (inherited), tap dispatch, and the
+      device-states and device-hit lanes, on seld-r1. The pointer-events capture key needs the identity test. targets.ts entries after #42.'
     receipt: null
   - id: T999
     type: judge
