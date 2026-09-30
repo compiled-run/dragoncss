@@ -721,7 +721,8 @@ public final class DragonTree {
       let rr = dragonWholeDevicePx(Double(r.maxX) * s, "\(id) right")
       let b = dragonWholeDevicePx(Double(r.maxY) * s, "\(id) bottom")
       var lines: [DumpNodesLines] = []
-      if let tv = v as? DragonTextView, let m = textMetrics[id] {
+      if let tv = v as? DragonTextView, !tv.specs.isEmpty {
+        guard let m = textMetrics[id] else { fatalError("dragon: \(id): a text view with lines has no line metrics") }
         // Each line as Dragon placed it in the live view: the run from the view's live position, snapped with the one snap rule.
         for x in tv.specs {
           let top = t + x.top + m.halfLeading
@@ -1502,8 +1503,8 @@ class DragonTree(val context: Context) {
       val rr = l + view.width
       val b = t + view.height
       val lines = ArrayList<DumpNodesLines>()
-      val m = textMetrics[id]
-      if (v is DragonTextView && m != null) {
+      if (v is DragonTextView && v.specs.isNotEmpty()) {
+        val m = textMetrics[id] ?: throw IllegalStateException("dragon: " + id + ": a text view with lines has no line metrics")
         // Each line as Dragon placed it in the live view: the run from the view's live position, snapped with the one snap rule.
         for (x in v.specs) {
           val top = t + x.top + m[0]

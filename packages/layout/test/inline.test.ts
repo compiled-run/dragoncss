@@ -194,32 +194,65 @@ describe('placeLines: the one source of lines (INL1a, notes/T044-inl-spec.md R3)
 // line texts in Chrome at every DPR and direction the probe recorded, against placeLines over the zoomed width and font.
 describe('soft wrap opportunities equal Chrome\'s on INL-P family 3 (UAX #14 as Blink applies it, linebreak.ts)', () => {
   type ProbeCase = { readonly width: number; readonly style: string; readonly html: string; readonly results: Record<string, { readonly lines: readonly { readonly text: string }[] }> };
-  const probe = JSON.parse(readFileSync(new URL('../../../docs/research/inline-spike/probe/family3-breaks.json', import.meta.url), 'utf8')) as { readonly cases: Record<string, ProbeCase> };
-  const plain = Object.entries(probe.cases).filter(([, c]) => !c.html.includes('<') && c.style === '');
-  const linesOf = (value: string, width: number, dpr: number, faults: EngineFaults): string[] => {
-    const leaf = text('t', value, { font: ahemFont(10 * dpr) });
-    const got = placeLines({ measurer: ahemMeasurer, devicePixelRatio: dpr, faults }, block(width, [leaf]), [leaf], fromCssPx(width * dpr));
-    return got.map((l) => [...value].slice(l.pieces[0]?.start, l.pieces[0]?.end).join(''));
+  const raw: unknown = JSON.parse(readFileSync(new URL('../../../docs/research/inline-spike/probe/family3-breaks.json', import.meta.url), 'utf8'));
+  const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+  const checkCase = (id: string, c: unknown): ProbeCase => {
+    if (!isObj(c) || typeof c['width'] !== 'number' || !Number.isFinite(c['width']) || typeof c['style'] !== 'string' || typeof c['html'] !== 'string' || !isObj(c['results'])) throw new Error(`probe case ${id} is malformed`);
+    for (const [k, r] of Object.entries(c['results'])) {
+      if (!isObj(r) || !Array.isArray(r['lines']) || !r['lines'].every((l) => isObj(l) && typeof l['text'] === 'string')) throw new Error(`probe case ${id} result ${k} is malformed`);
+    }
+    return c as unknown as ProbeCase;
   };
+  if (!isObj(raw) || !isObj(raw['cases'])) throw new Error('family3-breaks.json has no cases object');
+  const cases = Object.entries(raw['cases']).map(([id, c]) => [id, checkCase(id, c)] as const);
+  const plain = cases.filter(([, c]) => !c.html.includes('<') && c.style === '');
+  // The probe HTML escapes only the double quote; any other entity would be compared undecoded.
+  const decode = (html: string): string => {
+    const value = html.replaceAll('&quot;', '"');
+    if (value.includes('&')) throw new Error(`probe text ${html} holds an HTML entity the test does not decode`);
+    return value;
+  };
+  const linesOf = (value: string, width: number, dpr: number, faults: EngineFaults, direction: 'ltr' | 'rtl' = 'ltr'): string[] => {
+    const leaf = text('t', value, { font: ahemFont(10 * dpr) });
+    const got = placeLines({ measurer: ahemMeasurer, devicePixelRatio: dpr, faults }, block(width, [leaf], { direction }), [leaf], fromCssPx(width * dpr));
+    return got.map((l) => {
+      if (l.pieces.length !== 1) throw new Error(`${value}: a line of one leaf has ${l.pieces.length} pieces`);
+      const p = l.pieces[0] as (typeof l.pieces)[number];
+      return [...value].slice(p.start, p.end).join('');
+    });
+  };
+  const chromeLines = (c: ProbeCase, key: string): string[] => {
+    const r = c.results[key];
+    if (r === undefined) throw new Error(`the probe has no ${key} result`);
+    return r.lines.map((l) => l.text);
+  };
+  const DPR_KEYS = ['dpr1', 'dpr2', 'dpr3', 'dpr2.625'] as const;
   it('covers every tag-free case, 61 of them', () => {
     expect(plain.length).toBe(61);
   });
   it.each(plain)('%s', (_, c) => {
-    const value = c.html.replace('&quot;', '"');
+    const value = decode(c.html);
     const dprs = Object.keys(c.results).filter((k) => k.endsWith('-ltr'));
     expect(dprs.length).toBe(4);
     for (const k of dprs) {
       const dpr = Number(k.slice(3, -4));
-      expect(linesOf(value, c.width, dpr, NO_ENGINE_FAULTS), k).toEqual(c.results[k]?.lines.map((l) => l.text));
+      expect(linesOf(value, c.width, dpr, NO_ENGINE_FAULTS), k).toEqual(chromeLines(c, k));
     }
   });
-  it('each planted break fault moves at least one case off Chrome', () => {
+  // Letters and spaces are strong or neutral-between-strong in rtl, so these cases lay out right to left as well (UAX #9).
+  const rtlSafe = plain.filter(([, c]) => /^[A-Za-z ]*$/.test(decode(c.html)));
+  it('the letters-and-spaces cases equal Chrome in rtl too, at every DPR', () => {
+    expect(rtlSafe.length).toBeGreaterThan(0);
+    for (const [id, c] of rtlSafe) {
+      for (const d of DPR_KEYS) expect(linesOf(decode(c.html), c.width, Number(d.slice(3)), NO_ENGINE_FAULTS, 'rtl'), `${id} ${d}-rtl`).toEqual(chromeLines(c, `${d}-rtl`));
+    }
+  });
+  it('each planted break fault moves at least one case off Chrome at every DPR', () => {
     for (const fault of ['spaceOnlyBreaks', 'breakAfterSolidus', 'noHyphenDigitBreak'] as const) {
-      const moved = plain.filter(([, c]) => {
-        const value = c.html.replace('&quot;', '"');
-        return JSON.stringify(linesOf(value, c.width, 1, { ...NO_ENGINE_FAULTS, [fault]: true })) !== JSON.stringify(c.results['dpr1-ltr']?.lines.map((l) => l.text));
-      });
-      expect(moved.length, fault).toBeGreaterThan(0);
+      for (const d of DPR_KEYS) {
+        const moved = plain.filter(([, c]) => JSON.stringify(linesOf(decode(c.html), c.width, Number(d.slice(3)), { ...NO_ENGINE_FAULTS, [fault]: true })) !== JSON.stringify(chromeLines(c, `${d}-ltr`)));
+        expect(moved.length, `${fault} ${d}`).toBeGreaterThan(0);
+      }
     }
   });
 });

@@ -12,7 +12,7 @@ import { FIXTURES } from '../src/fixtures.ts';
 import { runFixture } from '../src/pipeline.ts';
 import { hostPlatform, requireReferencePlatform } from '../src/platform.ts';
 
-let browser: Browser;
+let browser: Browser | undefined;
 
 beforeAll(async () => {
   requireReferencePlatform(hostPlatform());
@@ -21,12 +21,13 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await browser.close();
+  await browser?.close();
 });
 
 const run = async (id: string, engineFaults: EngineFaults) => {
   const spec = FIXTURES.find((f) => f.id === id);
   if (spec === undefined) throw new Error(`${id} is not registered`);
+  if (browser === undefined) throw new Error('Chrome did not launch');
   return runFixture(spec, browser, { authored: committedAuthored, faults: NO_FAULTS, engineFaults, profiles: 'enforce' });
 };
 
@@ -46,6 +47,8 @@ describe.sequential('INL1a planted engine faults', () => {
       expect(clean.status).toBe('pass');
       const faulty = await run(p.fixture, { ...NO_ENGINE_FAULTS, [p.fault]: true });
       expect(faulty.status).toBe('fail');
+      expect(clean.cases.length).toBeGreaterThan(0);
+      expect(faulty.cases.map((c) => c.id)).toEqual(clean.cases.map((c) => c.id));
       for (const c of faulty.cases) {
         expect(c.status, c.id).toBe('fail');
         expect(c.lanes['linux-dragon-layout'], c.id).toBe('fail');
