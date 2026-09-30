@@ -80,7 +80,6 @@ visual_board:
     command: node /Users/jacksm5pro/.claude-swap-backup/sessions/2-jackshelton30_gmail.com/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-2-proof
 active_task: T058
 dispatched:
-  - T108
   - T121
   - T122
   - T071
@@ -3212,10 +3211,16 @@ tasks:
   - id: T108
     type: pm
     assignee: PM
-    status: queued
+    status: done
     lane: integrator
     objective: Land WM-0 (wm0-horizontal-tb d920ef3a) as a PR stacked after the T099 stack (P5, casc, tree, v1), with the P5 device step for its 4 new cases.
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'WM-0 landed as PR #41 (merged 4a0c961e5): writing-mode accepted as horizontal-tb only, vertical values refused; caught up through #43 and #38; device lanes 460 cases per DPR equal to master
+        (iOS 135, Android 182 device-pixels, no writing-mode case); pnpm test 2904/2904; wpt:check web pass.'
+      evidence:
+        - https://github.com/compiled-run/dragoncss/pull/41
   - id: T109
     type: worker
     assignee: Worker
