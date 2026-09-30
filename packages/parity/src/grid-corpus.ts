@@ -42,14 +42,19 @@ const isRect = (r: unknown): r is Rect => Array.isArray(r) && r.length === 4 && 
 export function parseCorpusFamily(family: string, text: string): CorpusCase[] {
   const j = JSON.parse(text) as CorpusFile;
   if (!Array.isArray(j.envs) || j.envs.length === 0 || !j.envs.every((e) => typeof e === 'string' && ENV_NAME.test(e))) throw new Error(`${family}: bad envs`);
+  if (new Set(j.envs).size !== j.envs.length) throw new Error(`${family}: duplicate envs`);
+  const horizontal = new Set(HORIZONTAL_ENVS.map((e) => e.name));
+  const unknown = j.envs.filter((e) => e.endsWith('-horizontal-tb') && !horizontal.has(e));
+  if (unknown.length > 0) throw new Error(`${family}: horizontal-tb environments the test does not run: ${unknown.join(', ')}`);
   if (typeof j.cases !== 'object' || j.cases === null) throw new Error(`${family}: no cases`);
   return Object.entries(j.cases).map(([id, c]) => {
     if (typeof c.html !== 'string' || !Array.isArray(c.labels) || !c.labels.every((l) => typeof l === 'string') || !Array.isArray(c.env) || c.env.length !== j.envs.length || !Array.isArray(c.distinct)) throw new Error(`${family} ${id}: malformed case`);
-    if (!Array.isArray(c.cb) || c.cb.length !== 2 || !c.cb.every((n) => typeof n === 'number' && n > 0)) throw new Error(`${family} ${id}: bad wrapper size`);
+    if (!Array.isArray(c.cb) || c.cb.length !== 2 || !c.cb.every((n) => typeof n === 'number' && Number.isFinite(n) && n > 0)) throw new Error(`${family} ${id}: bad wrapper size`);
+    if (c.after !== undefined && typeof c.after !== 'string') throw new Error(`${family} ${id}: after is not a string`);
     const results = new Map<string, Result>();
     j.envs.forEach((name, e) => {
       const r = c.distinct[c.env[e] as number];
-      if (r === undefined || !isRect(r.c) || !Array.isArray(r.items) || r.items.length !== c.labels.length || !r.items.every(isRect)) throw new Error(`${family} ${id}: environment ${name} has no complete result`);
+      if (r === undefined || !isRect(r.c) || !Array.isArray(r.items) || r.items.length !== c.labels.length || !r.items.every(isRect) || typeof r.cols !== 'string' || typeof r.rows !== 'string') throw new Error(`${family} ${id}: environment ${name} has no complete result`);
       results.set(name, r);
     });
     return { family, id, note: c.note, cb: c.cb, html: c.html, labels: c.labels, after: c.after ?? null, results };
@@ -125,7 +130,7 @@ export function caseDocument(c: CorpusCase): { readonly html: string; readonly i
 export type EnvOutcome =
   | { readonly kind: 'match' }
   | { readonly kind: 'mismatch'; readonly detail: string }
-  | { readonly kind: 'refused'; readonly reason: string };
+  | { readonly kind: 'refused'; readonly reasons: readonly string[] };
 
 export type CaseOutcome = { readonly id: string; readonly family: string; readonly envs: ReadonlyMap<string, EnvOutcome> };
 
@@ -135,14 +140,14 @@ function referenceMeasurer() {
   return m.measurer;
 }
 
-/** The first diagnostic code and its message head, as a refusal reason. */
+/** A diagnostic code and its message head, as a refusal reason. */
 const refusal = (code: string, message: string): string => `${code}: ${message.replace(/ on [^ ]+$/, '').slice(0, 160)}`;
 
 /** Compiles one case per direction and compares the engine with Chrome in every horizontal-tb environment. */
 export function runGridCase(c: CorpusCase, gridFaults: GridFaults, envs: readonly CorpusEnv[] = HORIZONTAL_ENVS, engineFaults: EngineFaults = NO_ENGINE_FAULTS): CaseOutcome {
   const out = new Map<string, EnvOutcome>();
   if (c.after !== null) {
-    for (const e of envs) out.set(e.name, { kind: 'refused', reason: 'inline-level grid baseline beside text (G3)' });
+    for (const e of envs) out.set(e.name, { kind: 'refused', reasons: ['inline-level grid baseline beside text (G3)'] });
     return { id: c.id, family: c.family, envs: out };
   }
   const doc = caseDocument(c);
@@ -153,16 +158,16 @@ export function runGridCase(c: CorpusCase, gridFaults: GridFaults, envs: readonl
     const input = fixtureToInput(`grid-corpus-${c.id}`, doc.html);
     const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: 'ahem' });
     const compiled = project.compile(input);
-    const blocking = compiled.diagnostics.find((d) => d.severity === 'error');
+    const blocking = compiled.diagnostics.filter((d) => d.severity === 'error').map((d) => refusal(d.code, d.message));
     for (const e of own) {
-      if (blocking !== undefined) {
-        out.set(e.name, { kind: 'refused', reason: refusal(blocking.code, blocking.message) });
+      if (blocking.length > 0) {
+        out.set(e.name, { kind: 'refused', reasons: blocking });
         continue;
       }
       const env: Environment = { viewport: { width: 800, height: 600 }, devicePixelRatio: e.dpr, direction, rootFont: 'ahem' };
       const projection = iosLayoutProjection(compiled, env, []);
       if (projection.kind === 'blocked') {
-        out.set(e.name, { kind: 'refused', reason: `projection blocked: ${projection.reason}` });
+        out.set(e.name, { kind: 'refused', reasons: [`projection blocked: ${projection.reason}`] });
         continue;
       }
       const validated = validateLayoutInput(JSON.parse(JSON.stringify(projection.input)));
@@ -172,7 +177,7 @@ export function runGridCase(c: CorpusCase, gridFaults: GridFaults, envs: readonl
       }
       const r = layoutWithGridFaults(validated.input, measurer, engineFaults, gridFaults);
       if (r.kind === 'unsupported') {
-        out.set(e.name, { kind: 'refused', reason: `LayoutUnsupported ${r.unsupported.code}: ${r.unsupported.detail}` });
+        out.set(e.name, { kind: 'refused', reasons: [`LayoutUnsupported ${r.unsupported.code}: ${r.unsupported.detail}`] });
         continue;
       }
       out.set(e.name, compareCase(c, doc.ids, absoluteRects(r.boxes), e));
@@ -291,3 +296,23 @@ export const GRID_DEVIATIONS: readonly { readonly id: string; readonly spec: str
     cases: ['i-maximize-max-block'],
   },
 ];
+
+export type Classified = { readonly kind: 'match' } | { readonly kind: 'known' } | { readonly kind: 'refused'; readonly category: string } | { readonly kind: 'problem'; readonly detail: string };
+
+/**
+ * One environment's outcome judged against the pinned expectations: a match, a pinned mismatch with its exact detail, or a refusal
+ * whose every reason an out-of-scope package owns (counted under the first reason's category); anything else is a problem.
+ */
+export function classifyOutcome(key: string, r: EnvOutcome): Classified {
+  if (r.kind === 'match') return KNOWN_MISMATCHES.has(key) ? { kind: 'problem', detail: `${key}: a pinned mismatch now matches; remove it from KNOWN_MISMATCHES` } : { kind: 'match' };
+  if (r.kind === 'mismatch') {
+    const pinned = KNOWN_MISMATCHES.get(key);
+    if (pinned === undefined) return { kind: 'problem', detail: `${key}: ${r.detail}` };
+    return pinned === r.detail ? { kind: 'known' } : { kind: 'problem', detail: `${key}: the pinned mismatch changed to ${r.detail}` };
+  }
+  const categories = r.reasons.map((reason) => REFUSAL_CATEGORIES.find((k) => k.pattern.test(reason)));
+  const unowned = r.reasons.filter((_, i) => categories[i] === undefined);
+  const first = categories[0];
+  if (unowned.length > 0 || first === undefined) return { kind: 'problem', detail: `${key}: refused for a reason no out-of-scope package owns: ${(unowned.length > 0 ? unowned : r.reasons).join(' | ') || '(no reason)'}` };
+  return { kind: 'refused', category: first.id };
+}
