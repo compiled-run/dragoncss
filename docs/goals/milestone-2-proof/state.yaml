@@ -71,18 +71,19 @@ visual_board:
     status: live
     url: http://goalbuddy.localhost:41737/milestone-2-proof/
     command: node /Users/jacksm5pro/.claude-swap-backup/sessions/2-jackshelton30_gmail.com/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-2-proof
-active_task: T094
+active_task: T090
 dispatched:
-  - T007
-  - T009
-  - T048
-  - T049
-  - T054
-  - T061
-  - T069
-  - T070
-  - T081
-  - T082
+  # Cloud lanes from 2026-09-30 (session_01GgKpzMbtL6r2CWxyMSsRxi coordinates; HANDOFF.md order)
+  - T090 # PR #25 pr/v1a-engine-values: merge master, regenerate, review loop; then pr/v1b-compiler-values
+  - T038 # PR #29 txt1c-wiring: findings answered; then txt1c-wiring-parity
+  - CSS-ESC # PR #28 css-esc
+  - T037 # native-gallery
+  - TW-SWEEP # tw-sweep
+  - T057 # inl-bf
+  - T-grid-g1a # grid-g1a -> grid-g1a-engine -> grid-g1a-fixtures
+  - T108 # wm0-horizontal-tb (device step pending on the Mac)
+  - T030 # mq-a-wiring
+  - T072 # finish pnt1-shadow/pnt1-effects and p6a-promote-wip WIP (no PR until V1 and EMS land)
 device_lease: null
 tasks:
   - id: T001
@@ -252,7 +253,7 @@ tasks:
   - id: T022
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: integrator
     objective: 'Integrator: merge casc-logical (2e3d86e, T021) into master AFTER T007 (P5) lands, because it adds fixtures and must not stale P5''s per-fixture device data. Regenerate at merge (the profile:rows fixed point needs two runs). Then run the new fixtures'' device step on both leases (break vectors, Chrome breaks and pixels for new cases, parity:lanes --run-host --run-device).'
     allowed_files:
@@ -261,7 +262,12 @@ tasks:
       - As in T002
     stop_if:
       - As in T002
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #22 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #22
     constraints:
       - 'Gate: T007 merged to master.'
   - id: T003
@@ -421,7 +427,7 @@ tasks:
   - id: T029
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: text
     objective: 'On-device shim equality (T056 retarget): run TXT1-N''s transcript replay on the iOS simulator and the Android emulator; equality with WASM; the off-by-one plant is caught. After P5 and T081 merge; both leases.'
     allowed_files:
@@ -433,7 +439,12 @@ tasks:
       - Need files outside allowed_files.
       - The device lease is not held.
       - Verification fails twice.
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #26 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #26
   - id: T032
     type: worker
     assignee: Worker
@@ -1291,7 +1302,7 @@ tasks:
   - id: T043
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: integrator
     objective: 'Integrator after P5: merge ns-tree (2d812f1, T015), then run TREE''s device step (verify 18) on both leases.'
     allowed_files:
@@ -1300,7 +1311,12 @@ tasks:
       - As in the T025 note T015 verify, plus the device step
     stop_if:
       - As in T002
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #24 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #24
   - id: T041
     type: worker
     assignee: Worker
@@ -2130,7 +2146,7 @@ tasks:
   - id: T086
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: paint
     objective: 'SKIA-AA: exact port of Skia 2ab8add5 analytic AA (SkScan_AAAPath, the analytic edges, conic-to-quad) into the Dragon paint reference; rounded-rect arc pixels equal Chrome at channel delta 0; lifts the radius caveat. After T072.'
     allowed_files:
@@ -2142,7 +2158,12 @@ tasks:
     stop_if:
       - Need files outside allowed_files.
       - Verification fails twice.
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #20 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #20
   - id: T087
     type: worker
     assignee: Worker
@@ -2169,7 +2190,7 @@ tasks:
   - id: T088
     type: worker
     assignee: Worker
-    status: blocked
+    status: done
     lane: integrator
     objective: 'Fix the pre-existing red dist.test.ts on master: its f5 check rejects the README.md that prepack copies into the package, after the owner''s README PRs (22b69d3f, sponsors). Make the dist check accept the intended README, or keep it out of the package, whichever matches the package''s intent; keep the check''s purpose.'
     allowed_files:
@@ -2258,10 +2279,15 @@ tasks:
   - id: T094
     type: pm
     assignee: PM
-    status: active
+    status: done
     lane: integrator
     objective: 'Land P5 through a Macroscope-reviewed PR: branch from origin/master, merge t016-p5-device-lanes (ce19d19a), apply MF1 (commit the device-failures lists plus a count test), verify, push, PR, pr:review loop, merge.'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #10 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #10
   - id: T095
     type: worker
     assignee: Worker
@@ -2359,7 +2385,7 @@ tasks:
   - id: T100
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: integrator
     objective: 'PR prep for INL-U (T055): clean branch pr/inl-ua-phrasing from origin/master in /tmp/dragon-pr-inlua with only INL-U commits; ua:capture regenerated; verified; PR body at /tmp/pr-bodies/inl-ua.md.'
     allowed_files:
@@ -2372,11 +2398,16 @@ tasks:
     stop_if:
       - Any existing UA entry changes
       - Verification fails twice
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #13 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #13
   - id: T101
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: runtime
     objective: 'DTXT-0: rt-text-format.ts (templates, typed integer domains, enumeration, repertoire facts, local faults), exhaustive vectors equal to Markless formatTime, and an exhaustive Chrome width oracle (60k strings in Lato and Dragon Sans) matched by shapedMeasurer. New files only.'
     allowed_files:
@@ -2395,7 +2426,12 @@ tasks:
       - Chrome widths depend on DPR
       - A plant is not caught
       - Verification fails twice
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #15 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #15
   - id: T102
     type: worker
     assignee: Worker
@@ -2412,7 +2448,7 @@ tasks:
   - id: T103
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: breadth
     objective: 'G-IMP4: the WPT importer drops provably dead rules, Chrome-confirmed.'
     allowed_files:
@@ -2421,11 +2457,16 @@ tasks:
       - See notes/T098-grid-flt-wm-spec.md (binding)
     stop_if:
       - See notes/T098-grid-flt-wm-spec.md (binding)
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #14 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #14
   - id: T104
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: breadth
     objective: 'G-P: Chrome grid corpus plus Blink notes.'
     allowed_files:
@@ -2436,11 +2477,16 @@ tasks:
       - See notes/T098-grid-flt-wm-spec.md (binding)
     stop_if:
       - See notes/T098-grid-flt-wm-spec.md (binding)
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #16 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #16
   - id: T105
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: breadth
     objective: 'FLT-P: Chrome float corpus plus Blink notes.'
     allowed_files:
@@ -2450,11 +2496,16 @@ tasks:
       - See notes/T098-grid-flt-wm-spec.md (binding)
     stop_if:
       - See notes/T098-grid-flt-wm-spec.md (binding)
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #16 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #16
   - id: T106
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: breadth
     objective: 'WM-P: Chrome writing-mode corpus plus Blink notes and the native rotation plan.'
     allowed_files:
@@ -2464,7 +2515,12 @@ tasks:
       - See notes/T098-grid-flt-wm-spec.md (binding)
     stop_if:
       - See notes/T098-grid-flt-wm-spec.md (binding)
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #16 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #16
   - id: T107
     type: worker
     assignee: Worker
@@ -2558,7 +2614,7 @@ tasks:
   - id: T109
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: paint
     objective: 'SKIA-0: exact TS ports of Skia 2ab8add5 box-shadow blur (BlurRect cubic gaussianIntegral profile; SkMaskBlurFilter triple box PlanGauss/Scan; small_blur for sigma<2) and the 8x8 gradient dither stage, as new paint reference files, proven against a Chrome 145 pixel oracle at DPR 2, 3 and 2.625 (channel delta 0). New files only.'
     allowed_files:
@@ -2574,11 +2630,16 @@ tasks:
       - Any oracle pixel differs after re-reading Skia source (report; no tolerance)
       - An existing file must change beyond generated digest headers
       - Verification fails twice
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #19 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #19
   - id: T110
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: integrator
     objective: 'Fix the #11 Macroscope findings in images and forms (manifest.ts x3, jpeg.ts x2, decimal.ts) on fix/images-forms-review from origin/master.'
     allowed_files:
@@ -2594,11 +2655,16 @@ tasks:
       - Loosening
       - Need files outside allowed_files
       - Verification fails twice
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #17 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #17
   - id: T111
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: integrator
     objective: 'Fix the #11 Macroscope findings in text (transcript.ts, TranscriptReplay.swift, capture-inline-probe.ts) on fix/text-review from origin/master.'
     allowed_files:
@@ -2611,7 +2677,12 @@ tasks:
       - Loosening
       - Need files outside allowed_files
       - Verification fails twice
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #18 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #18
   - id: T112
     type: worker
     assignee: Worker
@@ -2630,7 +2701,7 @@ tasks:
   - id: T113
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: breadth
     objective: 'GRID G0: compiler support for display:grid and the grid-* properties (notes/T098 GRID table; gated as unsupported layout until G1a), stacked on pr/casc-logical.'
     allowed_files:
@@ -2646,7 +2717,12 @@ tasks:
     stop_if:
       - Existing outputs change
       - Verification fails twice
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed on master through PR #23 (reconciled from HANDOFF.md, 2026-09-30).'
+      evidence:
+        - PR #23
   - id: T999
     type: judge
     assignee: Judge
