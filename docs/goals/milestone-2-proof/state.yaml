@@ -1622,7 +1622,7 @@ tasks:
   - id: T058
     type: worker
     assignee: Worker
-    status: queued
+    status: active
     lane: engine
     objective: 'INL1a: inline formatting core; wires UAX #14; replaces P5''s buildRun/breakLines export; after T007, T009 B, T026, T057 and T055.'
     allowed_files:
@@ -1634,6 +1634,7 @@ tasks:
     receipt: null
     constraints:
       - INL-P (notes/T054, docs/research/inline-spike) is binding. Chrome does not break after '|' (only after '-' and '?' among Ahem letters, via FillAscii plus hyphen-before-digit), which corrects T044 §1.2. Line metrics come from inline boxes only; br takes its parent's metrics; half-leading is floored per device px; sub/super shifts are parent/5+1 and parent/3+1; paint goes line by line.
+      - 'Judge amendment 2026-09-30 (notes/T058-inl1a.md): allowed_files gains four named S16 hunks (capture.ts captureFixture inline line nodes, native-compare.ts nodeKinds, pixel-reference.ts cssFontSizes, compare.ts anonymousBoxes if needed); the INL1a-1 split is not used. Stack and state: notes/T058-inl1a.md. Landing waits on pr/v1b-compiler-values and v2a-value-model.'
   - id: T059
     type: worker
     assignee: Worker
