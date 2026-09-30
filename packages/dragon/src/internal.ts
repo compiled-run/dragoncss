@@ -36,6 +36,8 @@ export type { ColorLonghand, Longhand } from './css/properties.ts';
 export { COLOR_LONGHANDS, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE } from './css/properties.ts';
 export { BACKGROUND_RESET_LONGHANDS } from './css/properties/background.ts';
 export type { BackgroundResetLonghand } from './css/properties/background.ts';
+export { WRITING_MODE_RESET_LONGHANDS } from './css/properties/writing-mode.ts';
+export type { WritingModeResetLonghand } from './css/properties/writing-mode.ts';
 export type { Rgba8 } from './css/color.ts';
 export { parseComputedColor, serializeColor } from './css/color.ts';
 export { WEB_CSS_PATH } from './emit/web-css.ts';

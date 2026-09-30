@@ -80,7 +80,6 @@ visual_board:
     command: node /Users/jacksm5pro/.claude-swap-backup/sessions/2-jackshelton30_gmail.com/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-2-proof
 active_task: T058
 dispatched:
-  - T108
   - T121
   - T122
   - T071
@@ -93,6 +92,9 @@ dispatched:
   - T062
   - T118
   - T026
+  - T125
+  - T119
+  - T120
 device_lease: null
 tasks:
   - id: T001
@@ -2101,6 +2103,8 @@ tasks:
         §1.2. Line metrics come from inline boxes only; br takes its parent's metrics; half-leading is floored per device px; sub/super shifts are parent/5+1 and parent/3+1; paint goes line by line.
       - 'Judge amendment 2026-09-30 (notes/T058-inl1a.md): allowed_files gains four named S16 hunks (capture.ts captureFixture inline line nodes, native-compare.ts nodeKinds, pixel-reference.ts cssFontSizes,
         compare.ts anonymousBoxes if needed); the INL1a-1 split is not used. Stack and state: notes/T058-inl1a.md. Landing waits on pr/v1b-compiler-values and v2a-value-model.'
+      - 'Second Judge amendment 2026-09-30 (T058J2): resolve.ts collapseInlineContext, blockify.ts checkInlineLevel lift, three pin retargets, buildIfc+placeIfcLines deviation accepted, targets.ts engine-inline
+        entry only after T125 (T058L) merges; see notes/T058-inl1a.md.'
   - id: T059
     type: worker
     assignee: Worker
@@ -3207,10 +3211,16 @@ tasks:
   - id: T108
     type: pm
     assignee: PM
-    status: queued
+    status: done
     lane: integrator
     objective: Land WM-0 (wm0-horizontal-tb d920ef3a) as a PR stacked after the T099 stack (P5, casc, tree, v1), with the P5 device step for its 4 new cases.
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'WM-0 landed as PR #41 (merged 4a0c961e5): writing-mode accepted as horizontal-tb only, vertical values refused; caught up through #43 and #38; device lanes 460 cases per DPR equal to master
+        (iOS 135, Android 182 device-pixels, no writing-mode case); pnpm test 2904/2904; wpt:check web pass.'
+      evidence:
+        - https://github.com/compiled-run/dragoncss/pull/41
   - id: T109
     type: worker
     assignee: Worker
@@ -3522,6 +3532,81 @@ tasks:
       - pnpm test
     stop_if:
       - the check itself fails after the fix
+    receipt: null
+  - id: T125
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: device
+    objective: 'T058L: parseNativeOutput stops dropping suite lines. lanes.ts SUITE_LINE is a closed list, so judgeHost never sees an unknown suite and the host lane passes without counting it. Match any
+      suite-shaped line (keep the '' corpus'' strip) so ''is not a declared suite'' fires.'
+    allowed_files:
+      - packages/parity/src/lanes.ts
+      - packages/parity/test/lanes.test.ts
+    verify:
+      - pnpm test
+      - pnpm run parity:lanes -- --run-host with packages/parity/out/lanes.json byte-identical to master
+      - suites parsed from master swift and kotlin output are the same before and after
+    stop_if:
+      - any master output line newly matches
+      - lanes.json changes
+      - another file is needed
+    receipt: null
+  - id: T126
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: values
+    objective: 'Relative colour syntax (rgb(from ...), oklch(from ...) etc.): Chrome 145 parses it but the webref grammar refuses it as DRAGON_CSS_INVALID_VALUE (found by COL4). Accept it where Chrome does
+      and resolve it at compile time when the origin colour is static; proven against Chrome. After COL4.'
+    receipt: null
+  - id: T127
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'Translucent CSS Color 4 colours: COL4 refuses them because Chrome blends from unclipped float channels (2,040 of 4,000 differed from 8-bit blending). Research how to match on device (float
+      colour on the native layer, or blending in Dragon) and prove it with the pixel lanes. After COL4.'
+    receipt: null
+  - id: T128
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'Engine bug (found by CALC-2): in a column flex container, an item with min-height: auto cannot shrink below its own specified height. Chrome shrinks an empty 11px item to 0, the engine keeps
+      11px (flex.ts buildItem contentMain via layoutContents measures content with the item height applied). Same for px. Fix with a Chrome-backed fixture.'
+    receipt: null
+  - id: T129
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'Engine vs Chrome (found by CALC-2): rtl block child with margin-left: calc(-1e9px): Chrome x=1.98 (overflow artifact), engine 390. Investigate against Blink LayoutUnit saturation and either
+      port it or refuse the range with a typed code.'
+    receipt: null
+  - id: T130
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: values
+    objective: 'Non-integer order via calc(): Chrome rounds half toward +infinity then clamps to int (calc(-1.5) -> -1; css_math_function_value.cc 89-97, math_extras.h 133-139, BSD). Needs an engine-side
+      leaf in validate.ts/environment.ts (compiler may not round). After V2a lands. Unpin values-reject-order-fraction.'
+    receipt: null
+  - id: T131
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: values
+    objective: 'Percent inside a border-width calc(): Chrome treats it as invalid; Dragon refuses with a misleading percentage-gaps reason. Give it the right typed reason, matching Chrome validity.'
+    receipt: null
+  - id: T132
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: device
+    objective: 'Silent lane failure: under machine load, layout-vectors-host native:kotlin (and the Kotlin engine suite in pnpm test) intermittently reports p1/engine 0/20258 with no reason (seen on WM-0
+      and T123, 2026-09-30); rerun passes. Find the cause (JVM start or timeout, harness.jar I/O, killed process) and make the lane record the real error (exit code, signal, stderr tail) instead of 0/N,
+      with a test. Also: the dragon-320 emulator sometimes exits before it attaches (lane-speed run); record and surface the emulator log.'
     receipt: null
   - id: T999
     type: judge

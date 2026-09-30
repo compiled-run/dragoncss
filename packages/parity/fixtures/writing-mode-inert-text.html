@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.c { width: 120px; border: 1px solid #000; padding: 2px; margin-bottom: 3px; }
+.b { width: 70px; margin-bottom: 2px; }
+.mixed { text-orientation: mixed; }
+.upright { text-orientation: upright; }
+.sideways { text-orientation: sideways; }
+.none { text-combine-upright: none; }
+.all { text-combine-upright: all; }
+.both { writing-mode: lr-tb; text-orientation: upright; text-combine-upright: all; }
+.wide { text-orientation: inherit; text-combine-upright: unset; }
+.rtl { direction: rtl; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="c upright">
+<div data-dragon-id="a1" class="b mixed">XX XXX XX XX</div>
+<div data-dragon-id="a2" class="b">XX XXX XX XX</div>
+<div data-dragon-id="a3" class="b sideways">XXX XX X</div>
+<div data-dragon-id="a4" class="b none">XX XX XXXX</div>
+<div data-dragon-id="a5" class="b all">XX XXX XX X</div>
+<div data-dragon-id="a6" class="b both">X XX XXX</div>
+<div data-dragon-id="a7" class="b wide">XX XX</div>
+</div>
+<div data-dragon-id="c2" class="c all rtl">
+<div data-dragon-id="b1" class="b upright">XX XXX XX XX</div>
+<div data-dragon-id="b2" class="b">XXX XX X</div>
+</div>
+</body>
+</html>
