@@ -431,7 +431,8 @@
         {"case":"values-calc-em-fractional","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
         {"case":"values-calc-em-fractional-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
         {"case":"values-calc-flex-factors","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
-        {"case":"values-calc-flex-factors-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"}
+        {"case":"values-calc-flex-factors-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
+        {"case":"showcase-player-card","width":800,"height":600,"sha256":"ddbbe7ffbc9646f6b11762c1ab4dec8120c1f44f5079914911772b772775b062"}
       ]
     },
     {
@@ -862,7 +863,8 @@
         {"case":"values-calc-em-fractional","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
         {"case":"values-calc-em-fractional-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
         {"case":"values-calc-flex-factors","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
-        {"case":"values-calc-flex-factors-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"}
+        {"case":"values-calc-flex-factors-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
+        {"case":"showcase-player-card","width":1200,"height":900,"sha256":"abdf6a73112ba674b8afedb074bad35f3fe005939dd4348fe7fa8d2605302389"}
       ]
     },
     {
@@ -1293,7 +1295,8 @@
         {"case":"values-calc-em-fractional","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
         {"case":"values-calc-em-fractional-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
         {"case":"values-calc-flex-factors","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
-        {"case":"values-calc-flex-factors-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"}
+        {"case":"values-calc-flex-factors-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
+        {"case":"showcase-player-card","width":1050,"height":788,"sha256":"af0cef583fa54ea38943d4d9a6e60d8df0a48df7abbb020f978417fbf0b13002"}
       ]
     }
   ]
