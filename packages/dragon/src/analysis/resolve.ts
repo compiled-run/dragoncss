@@ -7,9 +7,11 @@ import { INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
+import { blockify } from './blockify.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { blockifyRoot, computeGridLengths, computeJustifyItems, computeLengths, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { uaTagOf } from './elements.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import type { CustomProperties } from './variables.ts';
@@ -96,7 +98,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     const here = [...chain, el];
     const { winners, matched, scope } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties));
     const props = new Map<Longhand, ResolvedValue>();
-    const tag = el.tag as CapturedTag;
+    const tag = uaTagOf(el.tag);
     const none = { declaration: null, declared: null, losing: [] } as const;
     const fromParent = (p: Longhand): ResolvedValue => {
       if (parent === null) return { value: parseValueText(p, environment.ua.computed.html[p] as string), origin: 'initial', span: null, ...none };
@@ -159,6 +161,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     }
     computeLengths(props, parentFontSize, rootFontSize);
     if (parent === null) props.set('display', blockifyRoot(props.get('display') as ResolvedValue));
+    blockify(props, parent === null ? null : parent.props, faults);
     computeOverflowPair(props);
     const ownFontSize = pxOf((props.get('font-size') as ResolvedValue).value);
     computeGridLengths(props, ownFontSize, rootFontSize ?? ownFontSize);

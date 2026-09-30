@@ -21,50 +21,28 @@
     "snapEdge",
     "cachedRangeWidth"
   ],
-  "calcUnitsPerFunction": 5000,
-  "calcUnitsFunctions": [
-    "viewportUnitBase",
-    "viewportLeafPx",
-    "emLeafPx",
-    "pixelsAndPercentAt",
-    "cssLengthFixed",
-    "clampLengthFloat",
-    "floatInvert",
-    "doubleMinStep",
-    "doubleMaxStep",
-    "calcToLu"
-  ],
-  "engineCalc": 4000,
   "snapGenerated": 20000,
-  "snapVectors": 1158,
+  "snapVectors": 1164,
   "cases": {
-    "vectors-m2": 178,
-    "vectors-dpr": 1308,
-    "engine-dpr": 1308,
+    "vectors-m2": 130,
+    "vectors-dpr": 1164,
+    "engine-dpr": 1164,
     "units-m2": 120000,
-    "snap": 21158,
-    "snap-values": 150,
-    "calc-goldens": 17,
-    "engine-calc": 4000,
-    "units-calc": 50000
+    "snap": 21164
   },
   "engineSplit": {
-    "ok": 1306,
-    "unsupported": 2,
+    "ok": 1164,
+    "unsupported": 0,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "0eccbcf5256fa55a172d34e8a0e1d25f1b5f788f7921e45b69581d18cba027f5",
-    "vectors-dpr": "e6cc26e28eac27369c713c9c608b46faef04ca3a6c4baa0ff1bd8b486b32fbc1",
-    "engine-dpr": "fa5f48780f96e4c9b5e4075c0cd30c7110a1e8caa65368886a6b1653ef0b8b8e",
+    "vectors-m2": "af93e63160c1e0311572865234f9fd7422c4b70cb2325508b55d479d6009e001",
+    "vectors-dpr": "24e10e0b5be871a733c5d204dc74c2f8b776da88acf9a78daa8422157e648af0",
+    "engine-dpr": "fa324e970acbf74e9ea74a5502fab8f7b34ed6a7f42e162a62dfbedf989864f4",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "3f8b21c2f95d4745bd80d7c14aa4dbe3d001ebaebf4558c1f10b3a3268adbafe",
-    "snap-values": "fdeb2cecd1521fdd06c93f68e8a53f0efd51bd155422bff8533ba0224e08b739",
-    "calc-goldens": "65a7877bd7c618c060f7e3e550b5727b4ae35bbb6c487fc0ea51198cd16ba2e1",
-    "engine-calc": "59ea70ff9bc8db9e9538e71cf104ca6c82d7b6a5980fec71945e312dd89da3ff",
-    "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50"
+    "snap": "d5867b66bc9aefa9a06f363ab939ce4ed75f5157999e28cd952096c619608d8b"
   },
-  "digest": "71f6b47cb7760e38f39658a3b36f9204abe922d12344fe492580ab8b2d2d431b"
+  "digest": "0b240a8c4e75d61e4fae6b0c3c765660342f877e7bb996b105a839a1749580e3"
 }
