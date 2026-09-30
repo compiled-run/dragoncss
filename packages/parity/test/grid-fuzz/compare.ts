@@ -8,6 +8,7 @@ import type { Longhand } from '../../../dragon/src/css/properties.ts';
 import { NO_FAULTS } from '../../../dragon/src/faults.ts';
 import { referenceDataset } from '../../../dragon/src/ua/datasets.ts';
 import { list } from '../../../dragon/src/css/ast.ts';
+import { canonicalizeEscapes, decodeName } from '../../../dragon/src/css/escapes.ts';
 import { GRID_VALUE_PROPERTIES, parseGridValue } from '../../../dragon/src/css/grid-values.ts';
 import { GRID_LONGHANDS } from '../../../dragon/src/css/properties/grid.ts';
 import { parseStylesheet } from '../../../dragon/src/css/stylesheet.ts';
@@ -43,7 +44,7 @@ export function dragonFull(p: string, v: string): DragonResult {
 /** The grid hook alone, as if the grammar had accepted the value; null for the gap aliases, which the hook does not parse. */
 export function dragonHook(p: string, v: string): DragonResult | null {
   // The driver resolves CSS-wide keywords before the hook, which never sees them.
-  if (!GRID_VALUE_PROPERTIES.has(p) || CSS_WIDE.has(v.replace(/\/\*.*?\*\//g, '').trim().toLowerCase())) return null;
+  if (!GRID_VALUE_PROPERTIES.has(p) || CSS_WIDE.has(decodeName(v.replace(/\/\*.*?\*\//g, '').trim()).toLowerCase())) return null;
   let failed = false;
   let node: ReturnType<typeof parse>;
   try {
@@ -53,6 +54,8 @@ export function dragonHook(p: string, v: string): DragonResult | null {
     return { kind: 'invalid' };
   }
   if (failed) return { kind: 'invalid' };
+  // The driver decodes escapes before the hook runs (escapes.ts).
+  canonicalizeEscapes(node);
   const tokens = list(node, 'children').filter((n) => n.type !== 'WhiteSpace');
   if (tokens.length === 0) return { kind: 'invalid' };
   const r = parseGridValue(p, tokens, { source: SOURCE, start: 0, end: v.length });
@@ -135,12 +138,9 @@ const NUMBER_TOKEN = /(^|[\s(,[])([-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?)(px|fr|
  */
 export const asChromeDisplays = (dragon: string): string => dragon.replace(NUMBER_TOKEN, (_m, pre: string, num: string, unit: string) => `${pre}${chromeDisplay(num, unit.toLowerCase())}${unit}`);
 
-/**
- * Values Chrome parses that Dragon reports invalid by design: anchor-center in justify-items is missing from the webref grammar,
- * and the webref lexer does not decode escapes (the CSS-ESC package).
- */
+/** Values Chrome parses that Dragon reports invalid by design: anchor-center in justify-items is missing from the webref grammar. */
 export function documentedGap(p: string, v: string): boolean {
-  return (p === 'justify-items' && /anchor-center/i.test(v)) || v.includes('\\');
+  return p === 'justify-items' && /anchor-center/i.test(v);
 }
 
 export type FuzzClass =
