@@ -1,0 +1,12 @@
+{
+  "case": "grid-nested-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a1b:text0","lines":[[0,3]]},
+    {"id":"a2b:text0","lines":[[0,2]]},
+    {"id":"t:text0","lines":[[0,5]]},
+    {"id":"t:text1","lines":[[0,3]]},
+    {"id":"f1a:text0","lines":[[0,3],[3,6]]},
+    {"id":"f2b:text0","lines":[[0,1]]}
+  ]
+}
