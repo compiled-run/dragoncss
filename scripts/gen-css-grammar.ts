@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
+import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 
 type WebrefEntry = {
   name: string;
@@ -35,6 +36,7 @@ const SUBSET = [
   'justify-content', 'align-items', 'align-self', 'align-content', 'gap', 'row-gap', 'column-gap',
   'font-size', 'font-family', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
   ...LOGICAL_SHORTHANDS,
+  ...TRANSFORM_LONGHANDS,
 ] as const;
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));

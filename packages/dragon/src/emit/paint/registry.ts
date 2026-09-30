@@ -99,7 +99,7 @@ export function soleHook(backend: NativeBackend, hook: 'roundedPath' | 'containe
 }
 
 /** The names of the paint modules' raster plants; a module adds its plant names here. */
-export type PaintPlantName = never;
+export type PaintPlantName = 'transform-origin-ignored' | 'translate-percent-of-parent';
 
 /** Every raster plant the paint modules declare, in registry order. */
 export function paintPlants(): readonly PaintPlant[] {

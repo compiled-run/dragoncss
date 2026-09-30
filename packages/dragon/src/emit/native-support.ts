@@ -585,13 +585,13 @@ public final class DragonTree {
     }
   }
 
-  /// The dump read back from the live tree: frames via convert(bounds, to: root), applied values from the live objects.
+  /// The dump read back from the live tree: frames via dragonLayoutRect (transforms ignored), applied values from the live objects.
   public func dump(_ c: DragonCase, scale: Double, device: DumpDevice, pixels: DumpPixels, timing: DumpTiming) -> Dump {
     let s = scale
     var nodes: [DumpNodes] = []
     for id in order {
       guard let v = views[id] else { continue }
-      let r = v.convert(v.bounds, to: root)
+      let r = dragonLayoutRect(v, in: root)
       let l = dragonWholeDevicePx(Double(r.minX) * s, "\(id) left")
       let t = dragonWholeDevicePx(Double(r.minY) * s, "\(id) top")
       let rr = dragonWholeDevicePx(Double(r.maxX) * s, "\(id) right")
@@ -612,6 +612,22 @@ public final class DragonTree {
     }
     return Dump(lane: "ios-sim", case: DumpCase(id: c.id, fixture: c.fixture, dpr: s, viewport: DumpCaseViewport(width: c.viewport.width, height: c.viewport.height), direction: c.direction, compilerDigest: c.compilerDigest, expectedDigest: c.expectedDigest(scale: s)), device: device, nodes: nodes, pixels: pixels, timing: timing)
   }
+}
+
+/// A view's layout rect in root's coordinates with every layer transform ignored (PNT2): the dump's frames are the engine's
+/// untransformed boxes, and a transform is paint, proven by the pixel lane and Chrome's content quads. Without transforms it equals
+/// convert(bounds, to: root).
+public func dragonLayoutRect(_ v: UIView, in root: UIView) -> CGRect {
+  var x = v.center.x - v.bounds.width * v.layer.anchorPoint.x
+  var y = v.center.y - v.bounds.height * v.layer.anchorPoint.y
+  var s = v.superview
+  while let sv = s, sv !== root {
+    x += sv.center.x - sv.bounds.width * sv.layer.anchorPoint.x - sv.bounds.origin.x
+    y += sv.center.y - sv.bounds.height * sv.layer.anchorPoint.y - sv.bounds.origin.y
+    s = sv.superview
+  }
+  if s !== root { fatalError("dragon: a dumped view is not inside the root") }
+  return CGRect(x: x - root.bounds.origin.x, y: y - root.bounds.origin.y, width: v.bounds.width, height: v.bounds.height)
 }
 
 /// The compositor capture: drawHierarchy(afterScreenUpdates: true) of the fixture root into a declared sRGB RGBA8 CGContext
@@ -1269,19 +1285,16 @@ class DragonTree(val context: Context) {
     }
   }
 
-  /** The dump read back from the live tree: frames from getLocationInWindow minus the root's, divided by density. */
+  /** The dump read back from the live tree: frames from the layout positions up to the root (dragonLayoutOffset), divided by density. */
   fun dump(c: DragonCase, scale: Double, device: DumpDevice, pixels: DumpPixels, timing: DumpTiming): Dump {
     val s = scale
-    val rootAt = IntArray(2)
-    root.getLocationInWindow(rootAt)
     val nodes = ArrayList<DumpNodes>()
     for (id in order) {
       val v = views[id] ?: continue
       val view = v as android.view.View
-      val at = IntArray(2)
-      view.getLocationInWindow(at)
-      val l = (at[0] - rootAt[0]).toDouble()
-      val t = (at[1] - rootAt[1]).toDouble()
+      val at = dragonLayoutOffset(view, root)
+      val l = at[0].toDouble()
+      val t = at[1].toDouble()
       val rr = l + view.width
       val b = t + view.height
       val lines = ArrayList<DumpNodesLines>()
@@ -1301,6 +1314,24 @@ class DragonTree(val context: Context) {
     }
     return Dump("android-emu", DumpCase(c.id, c.fixture, s, DumpCaseViewport(c.viewportWidth, c.viewportHeight), c.direction, c.compilerDigest, c.expectedDigest(s)), device, nodes, pixels, timing)
   }
+}
+
+/**
+ * A view's layout position in root's coordinates with every view transform ignored (PNT2): the dump's frames are the engine's
+ * untransformed boxes, and a transform is paint, proven by the pixel lane and Chrome's content quads. Without transforms it equals
+ * getLocationInWindow(view) minus getLocationInWindow(root).
+ */
+fun dragonLayoutOffset(v: android.view.View, root: android.view.View): IntArray {
+  var x = 0
+  var y = 0
+  var c = v
+  while (c !== root) {
+    val p = c.parent as? android.view.View ?: throw IllegalStateException("dragon: a dumped view is not inside the root")
+    x += c.left - p.scrollX
+    y += c.top - p.scrollY
+    c = p
+  }
+  return intArrayOf(x, y)
 }
 
 /** Sets a Dragon frame (left, top, right, bottom in device px) through the checked conversion. */

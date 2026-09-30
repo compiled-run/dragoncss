@@ -323,14 +323,19 @@ export function trustFailuresOf(rows: readonly TrustRow[], dpr: number, device: 
   return out;
 }
 
+/** The rules the glyph-offset-1 plant must fail: glyph and glyph-edge rules. */
+export const GLYPH_PLANT_RULES = /^(glyph:|edge:\S*:glyph-)/;
+/** The rules a paint module's plant must fail (PNT2's transform plants): any colour rule. */
+export const PAINT_PLANT_RULES = /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/;
+
 /**
- * The glyph-offset-1 plant verdict on the plant case: caught only when the host finished, device-pixels failed on a glyph or
+ * The glyph-offset-1 plant verdict on the plant case (a paint plant passes its own rules): caught only when the host finished, device-pixels failed on a glyph or
  * glyph-edge rule, and device-frames and device-lines have no failure (pixels see what (d) cannot).
  */
-export function plantVerdict(failures: readonly LaneFailure[], hostError: string | null): { readonly caught: boolean; readonly pixels: number; readonly inked: number; readonly frames: number; readonly lines: number } {
+export function plantVerdict(failures: readonly LaneFailure[], hostError: string | null, painted: RegExp = GLYPH_PLANT_RULES): { readonly caught: boolean; readonly pixels: number; readonly inked: number; readonly frames: number; readonly lines: number } {
   const of = (lane: DeviceCheckLane): LaneFailure[] => failures.filter((f) => f.lane === lane);
   const pixels = of('device-pixels');
-  const inked = pixels.filter((f) => f.kind === 'pixel' && /^(glyph:|edge:\S*:glyph-)/.test(f.node ?? '')).length;
+  const inked = pixels.filter((f) => f.kind === 'pixel' && painted.test(f.node ?? '')).length;
   const frames = of('device-frames').length;
   const lines = of('device-lines').length;
   return { caught: hostError === null && inked > 0 && frames === 0 && lines === 0, pixels: pixels.length, inked, frames, lines };

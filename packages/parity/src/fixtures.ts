@@ -8,6 +8,7 @@ import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
+import { TRANSFORMS } from './fixture-groups/transforms.ts';
 import { UNITS } from './fixture-groups/units.ts';
 import { VALUES } from './fixture-groups/values.ts';
 
@@ -71,6 +72,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'contexts', fixtures: CONTEXTS },
   { id: 'cascade-var', fixtures: CASCADE_VAR },
   { id: 'attributes', fixtures: ATTRIBUTES },
+  { id: 'transforms', fixtures: TRANSFORMS },
   { id: 'values', fixtures: VALUES },
 ];
 

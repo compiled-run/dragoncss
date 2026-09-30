@@ -30,6 +30,8 @@ describe('E2 seams: the property registry', () => {
       'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
       'justify-content', 'align-items', 'align-self', 'align-content', 'row-gap', 'column-gap',
       'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'background-color',
+      // PNT2: the transform family, appended in its registered family position.
+      'transform', 'transform-origin', 'will-change',
     ]);
   });
   it('SHORTHANDS keeps its order', () => {
@@ -46,7 +48,7 @@ describe('E2 seams: the property registry', () => {
     const byRole = (r: string): string[] => LONGHANDS.filter((p) => PROPERTY_ROLE[p] === r);
     expect(byRole('container')).toEqual(['direction', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap']);
     expect(byRole('text')).toEqual(['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode']);
-    expect(byRole('paint')).toEqual(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color']);
+    expect(byRole('paint')).toEqual(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color', 'transform', 'transform-origin', 'will-change']);
   });
   it('every shorthand has exactly one handler in shorthands/index.ts, and each sets only longhands', () => {
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());

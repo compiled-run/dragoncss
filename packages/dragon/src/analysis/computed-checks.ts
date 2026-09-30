@@ -14,6 +14,7 @@ import type { UaDataset } from '../ua/datasets.ts';
 import type { CapturedTag } from '../ua/datasets.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { environmentOf, valueToString } from './resolve.ts';
+import { checkTransformContexts } from './paint-values/transform.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
 
@@ -216,5 +217,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   };
   walk(root, false);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported);
+  // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
+  checkTransformContexts(root, targets, diagnostics, reported);
 }
 

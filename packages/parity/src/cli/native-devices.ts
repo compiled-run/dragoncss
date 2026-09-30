@@ -1,4 +1,4 @@
-// pnpm run native:devices [-- --target ios|android] [-- --plant glyph-offset-1] (notes/T015-p4-review-p5-plan.md section 4 items 1
+// pnpm run native:devices [-- --target ios|android] [-- --plant glyph-offset-1|transform-origin-ignored|translate-percent-of-parent] (notes/T015-p4-review-p5-plan.md section 4 items 1
 // and 5). Without --plant: provisions and verifies the device matrix, one device at a time: boots it headless (emulators by
 // serial), runs the app once, and prints the model, OS and build, the scale from the device profile and from the app, the window
 // and stage in device px, the root's window offset and the text scale; any disagreement, a root that does not fit, or a text scale
@@ -6,9 +6,9 @@
 // plant case on each target's plant device; device-pixels must fail on glyph or edge rules while device-frames and device-lines pass.
 import { SUPPORT_PLANTS } from 'dragon';
 import type { SupportPlant } from 'dragon';
-import { caseReference, dumpFile, evaluateCase, plantVerdict, readDump } from '../device-lanes.ts';
+import { caseReference, dumpFile, evaluateCase, GLYPH_PLANT_RULES, PAINT_PLANT_RULES, plantVerdict, readDump } from '../device-lanes.ts';
 import type { DeviceSpec } from '../device-run.ts';
-import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, matrixProblems, PLANT_CASE, PLANT_DEVICES, recordProblems, release, runApp } from '../device-run.ts';
+import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, matrixProblems, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, recordProblems, release, runApp } from '../device-run.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BACKEND_OF, buildAndroid, buildIos, nativeCases, nativeOut } from '../native-host.ts';
@@ -68,8 +68,9 @@ for (const target of targets) {
   const build = target === 'ios' ? buildIos({ reuse: true, plant }) : buildAndroid({ reuse: true, plant });
   const spec = DEVICE_MATRIX.find((d) => d.name === PLANT_DEVICES[target]);
   if (spec === undefined) throw new Error(`no plant device ${PLANT_DEVICES[target]}`);
-  const n = cases.find((c) => c.case.id === PLANT_CASE);
-  if (n === undefined) throw new Error(`no case ${PLANT_CASE}`);
+  const plantCase = PLANT_CASES[plant];
+  const n = cases.find((c) => c.case.id === plantCase);
+  if (n === undefined) throw new Error(`no case ${plantCase}`);
   const h = await boot(spec);
   try {
     const dpr = deviceProfile(h).profileScale;
@@ -81,8 +82,8 @@ for (const target of targets) {
     const raw = read.kind === 'ok' ? read.raw : read.kind === 'unparseable' ? { unparseable: read.detail } : null;
     const o = evaluateCase(target, n, dpr, raw, caseReference(target, n, dpr));
     for (const f of o.failures) log(`${target} ${spec.name} @${dpr} ${plant}: ${f.lane} ${f.kind} ${f.node ?? ''}: ${f.detail}`);
-    const v = plantVerdict(o.failures, r.error);
-    log(`${target} ${spec.name} @${dpr} ${plant} on ${PLANT_CASE}: device-pixels ${v.pixels} failures (${v.inked} on glyph or glyph-edge rules); device-frames ${v.frames}, device-lines ${v.lines} failures${r.error === null ? '' : '; the host did not finish'}: plant ${v.caught ? 'CAUGHT' : 'NOT CAUGHT'}`);
+    const v = plantVerdict(o.failures, r.error, plant === 'glyph-offset-1' ? GLYPH_PLANT_RULES : PAINT_PLANT_RULES);
+    log(`${target} ${spec.name} @${dpr} ${plant} on ${plantCase}: device-pixels ${v.pixels} failures (${v.inked} on ${plant === 'glyph-offset-1' ? 'glyph or glyph-edge' : 'colour'} rules); device-frames ${v.frames}, device-lines ${v.lines} failures${r.error === null ? '' : '; the host did not finish'}: plant ${v.caught ? 'CAUGHT' : 'NOT CAUGHT'}`);
     if (!v.caught) failures++;
   } finally {
     await release(h);
