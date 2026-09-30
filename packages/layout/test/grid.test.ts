@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GridContainerStyle, GridItemStyle, LayoutBox, LayoutInput, TrackSize } from '../src/index.ts';
 import { ahemMeasurer, layout, validateLayoutInput } from '../src/index.ts';
-import { box } from './helpers.ts';
+import { anon, box, text } from './helpers.ts';
 
 const fr = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'fr', value } });
 const px = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'px', value } });
@@ -67,6 +67,15 @@ describe('the validator\'s grid rules, each with a planted input', () => {
       a.style['gridItem'] = { ...autoItem, justifySelf: 'center' };
     });
     expect(codes(anonymous).some((c) => c.startsWith('grid-shape $.root.children[0].children[0].style.gridItem'))).toBe(true);
+  });
+  it('judges an anonymous item by its values, not by the order of its keys', () => {
+    const reordered = input(box('root', {}, [grid(gridStyle({}), [anon('g:anon0', {}, [text('g:text0', 'X')])])]));
+    const a = (reordered.root.children[0] as unknown as { children: { style: Record<string, unknown> }[] }).children[0] as { style: Record<string, unknown> };
+    a.style['gridItem'] = { justifySelf: 'auto', row: { span: 1, kind: 'auto' }, column: { span: 1, kind: 'auto' } };
+    a.style['marginTop'] = { value: 0, kind: 'px' };
+    expect(codes(reordered)).toEqual([]);
+    a.style['marginTop'] = { value: 1, kind: 'px' };
+    expect(codes(reordered)).toContain('anonymous-shape $.root.children[0].children[0]');
   });
 });
 
