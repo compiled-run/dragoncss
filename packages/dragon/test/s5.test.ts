@@ -234,7 +234,7 @@ describe('T005 rec 5: formatDiagnostics groups diagnostics that differ only in t
 describe('T005 rec 6: unsupported-value and unproven-context messages list the supported alternatives in context, from the profile rows', () => {
   it('display: grid in block flow lists block, flex and none', () => {
     const c = both().compile(inputFor('.g { display: grid; }', (r) => [div(r, 'g', ['g'])]));
-    for (const d of c.diagnostics) expect(d.message).toMatch(/^display: grid is unsupported \(support profile m1-s5\); in block\/ltr use block, flex or none$/);
+    for (const d of c.diagnostics) expect(d.message).toBe(`display: grid is unsupported (support profile ${COMMITTED_PROFILES.ios.revision}); in block/ltr use block, flex or none`);
   });
   it('margin-top: auto in block flow lists the margin-top values proven there', () => {
     const c = both().compile(inputFor(`${FONT} .a { margin-top: auto; }`, (r) => [div(r, 'a', ['a'])]));
