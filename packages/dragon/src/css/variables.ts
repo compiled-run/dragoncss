@@ -1,5 +1,6 @@
 // css-variables-1 §3: var() references in a declaration's source text. A value is split into literal text and var() parts; a
 // part's fallback is split the same way. Parsing is token-aware: var( inside a string, a comment or an unquoted url() is text.
+import { asciiLower, decodeName, escapeEnd } from './escapes.ts';
 import type { Longhand } from './properties.ts';
 
 /** One part of a value: literal source text, or a var() reference with its fallback (null when it has no comma). */
@@ -45,18 +46,12 @@ function stringEnd(text: string, i: number): { end: number; bad: boolean } {
   let j = i + 1;
   while (j < text.length) {
     const c = text[j] as string;
-    if (c === '\\') j += text.startsWith('\r\n', j + 1) ? 3 : 2;
+    if (c === '\\') j = escapeEnd(text, j);
     else if (c === quote) return { end: j + 1, bad: false };
     else if (NEWLINE.test(c)) return { end: j, bad: true };
     else j++;
   }
   return { end: text.length, bad: false };
-}
-
-/** css-syntax-3 §4.3.7: the end of an escape starting at i ("\\"): up to six hex digits and one white space, or one code point. */
-function escapeEnd(text: string, i: number): number {
-  const hex = /^[0-9A-Fa-f]{1,6}(\r\n|[ \t\n\r\f])?/.exec(text.slice(i + 1, i + 9));
-  return hex === null ? i + 2 : i + 1 + hex[0].length;
 }
 
 /** The end of a run of name code points and escapes starting at i. */
@@ -69,15 +64,6 @@ function nameEnd(text: string, i: number): number {
     else break;
   }
   return j;
-}
-
-/** css-syntax-3 §4.3.7: a name with its escapes decoded (so "v\\61 r" is "var"). */
-export function unescapeName(name: string): string {
-  return name.replace(/\\([0-9A-Fa-f]{1,6})(?:\r\n|[ \t\n\r\f])?|\\([\s\S])/g, (_, hex: string | undefined, ch: string | undefined) => {
-    if (hex === undefined) return ch as string;
-    const cp = parseInt(hex, 16);
-    return cp === 0 || (cp >= 0xd800 && cp <= 0xdfff) || cp > 0x10ffff ? '\ufffd' : String.fromCodePoint(cp);
-  });
 }
 
 /**
@@ -134,7 +120,7 @@ export function nestingDepth(text: string): number {
     const c = text[j] as string;
     if (c === '"' || c === "'") j = stringEnd(text, j).end;
     else if (text.startsWith('/*', j)) j = commentEnd(text, j);
-    else if (c === '\\') j += 2;
+    else if (c === '\\') j = escapeEnd(text, j);
     else {
       if (c === '(' || c === '[' || c === '{') max = Math.max(max, ++depth);
       else if (c === ')' || c === ']' || c === '}') depth--;
@@ -152,7 +138,7 @@ function blockEnd(text: string, i: number): number {
     const c = text[j] as string;
     if (c === '"' || c === "'") j = stringEnd(text, j).end;
     else if (text.startsWith('/*', j)) j = commentEnd(text, j);
-    else if (c === '\\') j += 2;
+    else if (c === '\\') j = escapeEnd(text, j);
     else if (c === '(' || c === '[' || c === '{') {
       stack.push(c === '(' ? ')' : c === '[' ? ']' : '}');
       j++;
@@ -208,7 +194,7 @@ export function parseVarParts(text: string): VarPart[] | null {
         continue;
       }
       const name = text.slice(i, e);
-      const fn = text[e] === '(' && isIdent(name) ? unescapeName(name).toLowerCase() : null;
+      const fn = text[e] === '(' && isIdent(name) ? asciiLower(decodeName(name)) : null;
       if (fn === 'var') {
         const close = blockEnd(text, e + 1);
         if (close < 0) return null;
@@ -246,7 +232,10 @@ export function parseVarParts(text: string): VarPart[] | null {
 function parseReference(inner: string): VarPart | null {
   const start = skipBlank(inner, 0);
   const end = nameEnd(inner, start);
-  const name = inner.slice(start, end);
+  const written = inner.slice(start, end);
+  // css-syntax-3 §4.3.7: the reference names the identifier's value, so var(--\61) reads --a.
+  const name = decodeName(written);
+  if (!isIdent(written)) return null;
   // "--" alone is reserved (css-variables-1 §2); Chrome 145 drops a declaration that references it.
   if (!name.startsWith('--') || name === '--') return null;
   const after = skipBlank(inner, end);
@@ -254,12 +243,4 @@ function parseReference(inner: string): VarPart | null {
   if (inner[after] !== ',') return null;
   const fallback = parseVarParts(inner.slice(after + 1));
   return fallback === null ? null : { kind: 'var', name, fallback };
-}
-
-/** Whether a custom property name holds an escape; Dragon compares names as written, so an escaped name is refused. */
-export const hasEscape = (name: string): boolean => name.includes('\\');
-
-/** Every custom property name the parts reference, at any depth (for escape refusal). */
-export function referencedNames(parts: readonly VarPart[]): string[] {
-  return parts.flatMap((p) => (p.kind === 'var' ? [p.name, ...referencedNames(p.fallback ?? [])] : []));
 }

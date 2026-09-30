@@ -13,6 +13,7 @@ declare module 'css-tree' {
   export type ParseOptions = {
     context?: string;
     positions?: boolean;
+    offset?: number;
     parseValue?: boolean;
     parseRulePrelude?: boolean;
     onParseError?: (error: { message: string; offset: number }) => void;

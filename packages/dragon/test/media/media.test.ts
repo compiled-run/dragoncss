@@ -102,4 +102,9 @@ describe('media module', () => {
     const dir = new URL('../../src/media/', import.meta.url);
     for (const f of readdirSync(dir)) expect(readFileSync(new URL(f, dir), 'utf8'), f).not.toMatch(/from 'node:/);
   });
+
+  it('folds names ASCII case-insensitively: U+212A KELVIN SIGN stays, as in Chrome 145 matchMedia().media (probed)', () => {
+    const cases = [['(prefers-color-scheme: dar\u212a)', '(prefers-color-scheme: dar\u212a)'], ['A\u212a', 'a\u212a'], ['A\u212a and (width > 1px)', 'a\u212a and (width > 1px)'], ['(prefers-color-scheme: DARK)', '(prefers-color-scheme: dark)'], ['SCREEN', 'screen']];
+    for (const [query, chrome] of cases) expect(serialiseMediaQueryList(parseMediaQueryList(query as string)), query).toBe(chrome);
+  });
 });
