@@ -3547,6 +3547,22 @@ tasks:
       - lanes.json changes
       - another file is needed
     receipt: null
+  - id: T126
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: values
+    objective: 'Relative colour syntax (rgb(from ...), oklch(from ...) etc.): Chrome 145 parses it but the webref grammar refuses it as DRAGON_CSS_INVALID_VALUE (found by COL4). Accept it where Chrome does
+      and resolve it at compile time when the origin colour is static; proven against Chrome. After COL4.'
+    receipt: null
+  - id: T127
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'Translucent CSS Color 4 colours: COL4 refuses them because Chrome blends from unclipped float channels (2,040 of 4,000 differed from 8-bit blending). Research how to match on device (float
+      colour on the native layer, or blending in Dragon) and prove it with the pixel lanes. After COL4.'
+    receipt: null
   - id: T999
     type: judge
     assignee: Judge
