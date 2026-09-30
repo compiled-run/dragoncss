@@ -1,7 +1,6 @@
 // Colour resolution for the milestone subset (css-color-4). This is the only file in the core that converts or rounds colours.
 // Chrome 145 keeps legacy sRGB colours (named, hex, rgb(), hsl()) as 8-bit channels; each rule below was measured against it.
 import type { CssNode, List } from 'css-tree';
-import { asciiLower } from './escapes.ts';
 
 /** 8-bit sRGB channels and alpha, each an integer in [0, 255], as Chrome stores legacy colours. */
 export type Rgba8 = { readonly r: number; readonly g: number; readonly b: number; readonly alpha: number };
@@ -74,8 +73,8 @@ function args(fn: CssNode): Arg[] | string {
     if (c.type === 'WhiteSpace') continue;
     if (c.type === 'Number') out.push({ t: 'number', v: Number(c['value']) });
     else if (c.type === 'Percentage') out.push({ t: 'percent', v: Number(c['value']) });
-    else if (c.type === 'Dimension') out.push({ t: 'angle', v: Number(c['value']), unit: asciiLower(String(c['unit'])) });
-    else if (c.type === 'Identifier' && asciiLower(String(c['name'])) === 'none') out.push({ t: 'none' });
+    else if (c.type === 'Dimension') out.push({ t: 'angle', v: Number(c['value']), unit: String(c['unit']).toLowerCase() });
+    else if (c.type === 'Identifier' && String(c['name']).toLowerCase() === 'none') out.push({ t: 'none' });
     else if (c.type === 'Operator' && c['value'] === ',') out.push({ t: 'comma' });
     else if (c.type === 'Operator' && c['value'] === '/') out.push({ t: 'slash' });
     else return `unsupported token ${c.type} in a colour function`;
@@ -151,7 +150,7 @@ function pctOrNumber(a: Arg): number | string {
 }
 
 function fromFunction(fn: CssNode): ColorParse {
-  const name = asciiLower(String(fn['name']));
+  const name = String(fn['name']).toLowerCase();
   if (name !== 'rgb' && name !== 'rgba' && name !== 'hsl' && name !== 'hsla') {
     return { ok: false, reason: `${name}() colours are not supported in milestone 1` };
   }
@@ -195,7 +194,7 @@ export function parseColorNode(node: CssNode): ColorParse {
   if (node.type === 'Hash') return fromHex(String(node['value']));
   if (node.type === 'Function') return fromFunction(node);
   if (node.type === 'Identifier') {
-    const name = asciiLower(String(node['name']));
+    const name = String(node['name']).toLowerCase();
     if (name === 'transparent' || name === 'currentcolor') return { ok: true, kind: 'keyword', keyword: name };
     const hex = NAMED[name];
     if (hex !== undefined) return { ok: true, kind: 'rgba', value: { r: (hex >> 16) & 255, g: (hex >> 8) & 255, b: hex & 255, alpha: 255 }, syntax: 'named-color' };

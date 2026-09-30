@@ -7,7 +7,6 @@ import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
 import { handleAtRule } from './at-rules.ts';
-import { asciiLower, canonicalizeEscapes, decodeName, preprocessInput, trimValue } from './escapes.ts';
 import { GRID_VALUE_PROPERTIES, parseGridValue } from './grid-values.ts';
 import { webrefLexer } from './lexer.ts';
 import type { Longhand, Shorthand } from './properties.ts';
@@ -18,8 +17,8 @@ import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
 import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, tokenValue, toValue } from './values.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
-import type { CustomValue, PendingSubstitution } from './variables.ts';
-import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
+import type { CustomValue, PendingSubstitution, VarPart } from './variables.ts';
+import { hasEscape, hasVar, MAX_NESTING, nestingDepth, parseVarParts, referencedNames, unescapeName } from './variables.ts';
 
 export type { CssValue } from './values.ts';
 export { featureOf } from './values.ts';
@@ -71,19 +70,9 @@ type ParseState = { order: number; readonly base: Span; readonly text: string; r
 /** Where a node that is not a style rule or declaration sits: top level (or inside a top-level at-rule), or in a rule block. */
 type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top' };
 
-export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = []): Rule[] {
-  const text = preprocessInput(authoredText);
-  // Chrome 145 reads a literal U+0000 as U+FFFD inside a name but not where it would start a hash or follow a leading "-" (probed),
-  // so Dragon reports it rather than guess which reading applies.
-  const nul = authoredText.indexOf('\u0000');
-  if (nul >= 0) {
-    const at = { source: base.source, start: base.start + nul, end: base.start + nul + 1 };
-    diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: 'the stylesheet holds a U+0000 code point, which Chrome 145 reads differently by position', manual: 'Remove the U+0000, or write the escape \\FFFD for U+FFFD.' }));
-  }
+export function parseStylesheet(text: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = []): Rule[] {
   const errors: { message: string; offset: number }[] = [];
   const ast = parse(text, { positions: true, parseValue: true, onParseError: (e) => errors.push({ message: e.message, offset: e.offset }) });
-  // Only a backslash spells an escape once the input is preprocessed.
-  if (text.includes('\\')) canonicalizeEscapes(ast);
   for (const e of errors) {
     const at = { source: base.source, start: base.start + e.offset, end: base.start + e.offset };
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error: ${e.message}` }));
@@ -173,17 +162,16 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
 }
 
 function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: number, diagnostics: Diagnostic[]): Declaration | null {
-  // css-syntax-3 §4.3.7: a property name is the identifier's value, so \63 olor is color and --\61 is --a.
-  const written = decodeName(String(d['property']));
+  const written = String(d['property']);
   // css-variables-1 §2: custom property names are case-sensitive.
-  const property = written.startsWith('--') ? written : asciiLower(written);
+  const property = written.startsWith('--') ? written : written.toLowerCase();
   const span = spanOf(d, base);
   const valueNode = d['value'] as CssNode;
   const valueSpan = spanOf(valueNode, base);
   const text = generate(valueNode);
   const priority = d['important'];
   // css-syntax-3 §5.4.6: "!important" (ASCII case-insensitive) is the only priority; any other "!name" drops the declaration.
-  if (priority !== false && priority !== true && asciiLower(decodeName(String(priority))) !== 'important') {
+  if (priority !== false && priority !== true && String(priority).toLowerCase() !== 'important') {
     diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', {
       origin: authored(span),
       message: `"!${String(priority)}" on ${property} is not a valid priority; only !important is (css-syntax-3 §5.4.6)`,
@@ -210,8 +198,8 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     return null;
   }
   const parts = mentionsVar ? parseVarParts(source) : null;
-  if (mentionsVar && parts === null) {
-    diagnostics.push(invalidVar(property, text, valueSpan));
+  if (mentionsVar && (parts === null || referencedNames(parts).some(hasEscape))) {
+    diagnostics.push(invalidVar(property, text, valueSpan, parts));
     return null;
   }
   if (parts !== null && hasVar(parts)) {
@@ -252,12 +240,20 @@ function directionSides(property: string): { ltr: Longhand[]; rtl: Longhand[] } 
   return { ltr: side('ltr'), rtl: side('rtl') };
 }
 
-/** A malformed var(). */
-const invalidVar = (property: string, text: string, valueSpan: Span): Diagnostic => diagnostic('DRAGON_CSS_INVALID_VALUE', {
-  origin: authored(valueSpan),
-  message: `"${text}" is not a valid value for ${property}: it holds a malformed var() (css-variables-1 §3: var( <custom-property-name> [, <fallback>]? )), an unmatched ")", "]" or "}", or a bad url()`,
-  manual: 'Write var(--name) or var(--name, fallback), and balance every bracket.',
-});
+/** A malformed var(), or one naming a custom property with an escape, which Dragon does not unescape. */
+function invalidVar(property: string, text: string, valueSpan: Span, parts: readonly VarPart[] | null): Diagnostic {
+  return parts === null
+    ? diagnostic('DRAGON_CSS_INVALID_VALUE', {
+      origin: authored(valueSpan),
+      message: `"${text}" is not a valid value for ${property}: it holds a malformed var() (css-variables-1 §3: var( <custom-property-name> [, <fallback>]? )), an unmatched ")", "]" or "}", or a bad url()`,
+      manual: 'Write var(--name) or var(--name, fallback), and balance every bracket.',
+    })
+    : diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+      origin: authored(valueSpan),
+      message: `${property}: "${text}" names a custom property with an escape, which is not supported`,
+      manual: 'Write the custom property name without escapes.',
+    });
+}
 
 const tooDeep = (property: string, valueSpan: Span): Diagnostic => diagnostic('DRAGON_UNSUPPORTED_VALUE', {
   origin: authored(valueSpan),
@@ -272,20 +268,22 @@ function parseCustomDeclaration(name: string, valueNode: CssNode, span: Span, va
     diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', { origin: authored(span), message: 'the property name "--" is reserved and is not a custom property (css-variables-1 §2)', manual: 'Give the custom property a name after "--".' }));
     return null;
   }
-  const written = String(valueNode.type === 'Raw' ? valueNode['value'] : generate(valueNode));
-  // css-syntax-3 §5.4.6: leading and trailing white space tokens are not part of the value.
-  const text = trimValue(written);
+  if (hasEscape(name)) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), message: `the custom property name ${name} holds an escape, which is not supported`, manual: 'Write the custom property name without escapes.' }));
+    return null;
+  }
+  // css-syntax-3 §5.4.6: leading and trailing white space is not part of the value.
+  const text = String(valueNode.type === 'Raw' ? valueNode['value'] : generate(valueNode)).replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '');
   // Comments are not tokens, so "inherit /**/" is still the keyword.
-  const bare = asciiLower(decodeName(text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '')));
+  const bare = unescapeName(text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '')).toLowerCase();
   const wide = CSS_WIDE.has(bare) ? bare : null;
   if (nestingDepth(text) > MAX_NESTING) {
     diagnostics.push(tooDeep(name, valueSpan));
     return null;
   }
-  // A newline ending a string is trimmed from the text but still makes it a bad string, so validity is judged on what was written.
-  const parts = wide === null && parseVarParts(written) !== null ? parseVarParts(text) : wide === null ? null : [];
-  if (parts === null) {
-    diagnostics.push(invalidVar(name, text, valueSpan));
+  const parts = wide === null ? parseVarParts(text) : [];
+  if (parts === null || referencedNames(parts).some(hasEscape)) {
+    diagnostics.push(invalidVar(name, text, valueSpan, parts));
     return null;
   }
   return { property: name, text, span, valueSpan, longhands: [], order, ...important, custom: { name, wide, parts } };
@@ -302,7 +300,7 @@ export type ParsedValue =
 
 /** Grammar validation, token conversion and shorthand expansion of one value; base locates a shorthand refusal in sheetText. */
 export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, tokens: readonly CssNode[], base: Span, sheetText: string): ParsedValue {
-  const wide = tokens.length === 1 && tokens[0]?.type === 'Identifier' && CSS_WIDE.has(asciiLower(String(tokens[0]['name'])));
+  const wide = tokens.length === 1 && tokens[0]?.type === 'Identifier' && CSS_WIDE.has(String(tokens[0]['name']).toLowerCase());
   if (!wide) {
     const match = webrefLexer().matchProperty(property, valueNode);
     if (match.error !== null) return { kind: 'invalid' };
@@ -343,7 +341,6 @@ export function parseSubstitutedValue(property: Longhand | Shorthand, text: stri
   let failed = false;
   const node = parse(text, { context: 'value', positions: true, onParseError: () => { failed = true; } });
   if (failed) return { kind: 'invalid' };
-  if (text.includes('\\')) canonicalizeEscapes(node);
   const tokens = list(node, 'children').filter((n) => n.type !== 'WhiteSpace');
   if (tokens.length === 0) return { kind: 'invalid' };
   return parseValue(property, node, tokens, base, text);

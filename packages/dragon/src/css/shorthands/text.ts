@@ -6,7 +6,6 @@ import type { CssValue } from '../values.ts';
 import { kw } from '../values.ts';
 import type { ShorthandHandler } from './shared.ts';
 import { explicit, implicit } from './shared.ts';
-import { asciiLower } from '../escapes.ts';
 
 const WHITE_SPACE_TRIM: ReadonlySet<string> = new Set(['none', 'discard-before', 'discard-after', 'discard-inner']);
 const WHITE_SPACE_COLLAPSE: ReadonlySet<string> = new Set(['collapse', 'discard', 'preserve', 'preserve-breaks', 'preserve-spaces', 'break-spaces']);
@@ -23,7 +22,7 @@ const whiteSpace: ShorthandHandler = {
   // white-space-trim is not a Dragon longhand and Chrome does not implement it, so a white-space value that sets it is refused
   // rather than dropped.
   refuse: (tokens, base) => {
-    const trim = tokens.find((t) => t.type === 'Identifier' && WHITE_SPACE_TRIM.has(asciiLower(String(t['name']))));
+    const trim = tokens.find((t) => t.type === 'Identifier' && WHITE_SPACE_TRIM.has(String(t['name']).toLowerCase()));
     if (trim === undefined) return null;
     return diagnostic('DRAGON_UNSUPPORTED_VALUE', {
       origin: authored(spanOf(trim, base)),

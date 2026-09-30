@@ -7,7 +7,6 @@ and ids, and the at-rule refusals as they were before it.
 | module | owns |
 |---|---|
 | `stylesheet.ts` | The parse driver: rules, declarations, `!important`, custom property declarations, declarations holding `var()` (kept pending until substitution), grammar validation (`parseValue`, shared with `parseSubstitutedValue`), and refusal of every node that is not a style rule or declaration (`refuseNode`, pinned by `s4a.test.ts`). It re-exports `CssValue`, `featureOf` and the selector types. |
-| `escapes.ts` | CSS escapes as Chrome 145 reads them: css-syntax-3 §4.3.7 decoding, CSSOM identifier serialization, the in-place input preprocessing (U+0000, an escape at the end of the input), and `canonicalizeEscapes`, which the driver runs on each parsed tree before any keyword or grammar matching. |
 | `variables.ts` | Token-aware splitting of a value into text and `var()` parts, with parse-time validation of `var()`. |
 | `selectors.ts` | Selector parsing into right-to-left compounds with Selectors-4 specificity: type, universal, class, `[ui-*]` attribute, sibling combinators and the structural pseudo-classes (`:nth-*`, `:is()`, `:where()`, `:not()`, `:has()`, `:root`, `:empty`). Matching on each case's fixed tree lives in `analysis/match.ts`. |
 | `at-rules.ts` | The at-rule handler registry. Every at-rule is refused today. |

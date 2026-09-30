@@ -3,7 +3,6 @@ import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import type { ColorSyntax, Rgba8 } from './color.ts';
 import { parseColorNode } from './color.ts';
-import { asciiLower, decodeName, serializeString } from './escapes.ts';
 import type { Longhand } from './properties.ts';
 import { CANONICAL_LENGTH_UNIT, lengthFeatureType, normalizeUnit } from './units.ts';
 
@@ -38,7 +37,7 @@ function isColorBearing(property: string): boolean {
 export function tokenValue(node: CssNode, property: string): CssValue | string {
   if (!isColorBearing(property)) return toValue(node, property);
   if (node.type === 'Identifier') {
-    const name = asciiLower(String(node['name']));
+    const name = String(node['name']).toLowerCase();
     if (!property.endsWith('color') && (LINE_STYLES.has(name) || LINE_WIDTH_KEYWORDS.has(name))) return toValue(node, property);
   } else if (node.type !== 'Hash' && node.type !== 'Function') {
     return toValue(node, property);
@@ -51,7 +50,7 @@ export function tokenValue(node: CssNode, property: string): CssValue | string {
 export function toValue(node: CssNode, property: string): CssValue {
   switch (node.type) {
     case 'Identifier':
-      return { kind: 'keyword', value: asciiLower(String(node['name'])) };
+      return { kind: 'keyword', value: String(node['name']).toLowerCase() };
     case 'Dimension':
       return { kind: 'length', value: Number(node['value']), unit: normalizeUnit(String(node['unit'])) };
     case 'Percentage':
@@ -66,7 +65,7 @@ export function toValue(node: CssNode, property: string): CssValue {
     case 'Hash':
       return { kind: 'other', type: 'color', text: generate(node) };
     case 'Function':
-      return { kind: 'other', type: `${asciiLower(String(node['name']))}()`, text: generate(node) };
+      return { kind: 'other', type: `${String(node['name']).toLowerCase()}()`, text: generate(node) };
     default:
       return { kind: 'other', type: node.type, text: generate(node) };
   }
@@ -77,17 +76,17 @@ export const BASELINE_PROPERTIES: ReadonlySet<string> = new Set<string>(['align-
 
 /** css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline. */
 export function baselinePosition(tokens: readonly CssNode[]): CssValue | null {
-  const names = tokens.map((t) => (t.type === 'Identifier' ? asciiLower(String(t['name'])) : ''));
+  const names = tokens.map((t) => (t.type === 'Identifier' ? String(t['name']).toLowerCase() : ''));
   if (names.length === 2 && (names[0] === 'first' || names[0] === 'last') && names[1] === 'baseline') return { kind: 'keyword', value: `${names[0]} baseline` };
   return null;
 }
 
 /** A font-family value: one family name, or the whole list kept as text. */
 export function familyValue(tokens: readonly CssNode[]): CssValue {
-  const text = tokens.map((t) => (t.type === 'String' ? serializeString(String(t['value'])) : generate(t))).join(' ');
+  const text = tokens.map((t) => (t.type === 'String' ? JSON.stringify(t['value']) : generate(t))).join(' ');
   if (tokens.length === 1 && (tokens[0]?.type === 'Identifier' || tokens[0]?.type === 'String')) {
     const t = tokens[0];
-    return { kind: 'family', value: t.type === 'Identifier' ? decodeName(String(t['name'])) : String(t['value']) };
+    return { kind: 'family', value: String(t.type === 'Identifier' ? t['name'] : t['value']) };
   }
   return { kind: 'other', type: 'family-list', text };
 }
