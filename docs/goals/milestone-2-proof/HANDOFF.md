@@ -86,16 +86,3 @@ In the board's order:
 9. T097 YUI-1 (motion fixtures, notes/T096-motion-research.md).
 
 T999 (audit of checkpoints 1 to 3 on both platforms) is the finish line.
-
-## Cloud containers: Chrome 145 for the parity tests
-
-The cloud image's `/opt/pw-browsers` only holds Playwright build 1194 (Chrome 141), and `cdn.playwright.dev` is blocked. The repo pins build 1208 (Chrome 145.0.7632.6). Chrome for Testing downloads from storage.googleapis.com work:
-
-```sh
-PW=$HOME/pw && mkdir -p $PW/chromium_headless_shell-1208 && cd $PW/chromium_headless_shell-1208 \
-  && curl -sSLO https://storage.googleapis.com/chrome-for-testing-public/145.0.7632.6/linux64/chrome-headless-shell-linux64.zip \
-  && unzip -q chrome-headless-shell-linux64.zip && rm chrome-headless-shell-linux64.zip
-export PLAYWRIGHT_BROWSERS_PATH=$PW
-```
-
-Leave `/opt/pw-browsers` alone. Captures are still macOS-reference data: never rewrite them from Linux.
