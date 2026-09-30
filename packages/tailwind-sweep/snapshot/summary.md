@@ -4,8 +4,8 @@
 
 | target | supported | refused | invalid | mismatch |
 |---|---:|---:|---:|---:|
-| web | 562 (2.4%) | 22723 (97.6%) | 1 | 0 |
-| ios | 562 (2.4%) | 22723 (97.6%) | 1 | 0 |
+| web | 563 (2.4%) | 22722 (97.6%) | 1 | 0 |
+| ios | 563 (2.4%) | 22722 (97.6%) | 1 | 0 |
 | android | 0 (0.0%) | 23285 (100.0%) | 1 | 0 |
 
 As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 and android 0 of 23286 utilities.
@@ -14,7 +14,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 
 | category | utilities | web | ios | android |
 |---|---:|---|---|---|
-| layout | 1551 | 43 / 1508 / 0 / 0 | 43 / 1508 / 0 / 0 | 0 / 1551 / 0 / 0 |
+| layout | 1551 | 44 / 1507 / 0 / 0 | 44 / 1507 / 0 / 0 | 0 / 1551 / 0 / 0 |
 | flexbox-grid | 513 | 127 / 385 / 1 / 0 | 127 / 385 / 1 / 0 | 0 / 512 / 1 / 0 |
 | spacing | 1308 | 97 / 1211 / 0 / 0 | 97 / 1211 / 0 / 0 | 0 / 1308 / 0 / 0 |
 | sizing | 1015 | 141 / 874 / 0 / 0 | 141 / 874 / 0 / 0 | 0 / 1015 / 0 / 0 |
