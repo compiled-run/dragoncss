@@ -1622,7 +1622,7 @@ tasks:
   - id: T058
     type: worker
     assignee: Worker
-    status: queued
+    status: active
     lane: engine
     objective: 'INL1a: inline formatting core; wires UAX #14; replaces P5''s buildRun/breakLines export; after T007, T009 B, T026, T057 and T055.'
     allowed_files:
@@ -1634,6 +1634,7 @@ tasks:
     receipt: null
     constraints:
       - INL-P (notes/T054, docs/research/inline-spike) is binding. Chrome does not break after '|' (only after '-' and '?' among Ahem letters, via FillAscii plus hyphen-before-digit), which corrects T044 §1.2. Line metrics come from inline boxes only; br takes its parent's metrics; half-leading is floored per device px; sub/super shifts are parent/5+1 and parent/3+1; paint goes line by line.
+      - 'Judge amendment 2026-09-30 (notes/T058-inl1a.md): allowed_files gains four named S16 hunks (capture.ts captureFixture inline line nodes, native-compare.ts nodeKinds, pixel-reference.ts cssFontSizes, compare.ts anonymousBoxes if needed); the INL1a-1 split is not used. Stack and state: notes/T058-inl1a.md. Landing waits on pr/v1b-compiler-values and v2a-value-model.'
   - id: T059
     type: worker
     assignee: Worker
@@ -2667,6 +2668,37 @@ tasks:
     status: queued
     lane: paint
     objective: 'Border join seam: where two same-colour mitred border sides meet, native paints the shared corner pixel at 75% coverage (iOS [63,50,50], Android [64,51,51] over #fcc) where Chrome paints it solid; found by SIZE-ar on sizing-ratio-abspos(-rtl) interior:c1 at DPR 2 and 3 (8 device-pixel failures). Check whether p6a-promote (e8bed1d2) already fixes it; otherwise fix it in the border paint path with a Chrome-backed test. After V1 and EMS.'
+    receipt: null
+  - id: T117
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: perf
+    objective: 'PERF-0, an on-device performance lane: fixed fixtures (the music-player north star, a long flex list, a grid screen, a long inline-text screen, a layout-transition screen) run on the iOS 15 simulator and an Android 12 emulator (the OS floor). Measure the on-device layout engine time per full layout and per incremental relayout, frame time during layout transitions and self-drawn paint (box-shadow, dashed borders, backdrop blur), and generated code size per fixture. Record a baseline first, propose the budgets from it, and wait for the owner to approve them before the lane becomes a gate that fails the build (numbers decide, the same as the correctness lanes). Runs under /tmp/device-lease.sh. Land before grid G1b and INL1a grow the engine further.'
+    constraints:
+      - Budgets are owner decisions; never set or loosen one without an owner ruling.
+      - Simulator and emulator timings are noisy; report the median and p95 over repeated runs, and state the run count.
+    receipt: null
+  - id: T118
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: port
+    objective: 'PORT-0, the Chrome port registry (docs/decisions.md "Porting Chrome''s algorithms"): one data file listing every place Dragon ports Chrome (upstream path, tag 145.0.7632.6, line range, licence header, the Dragon file and function), seeded from the existing citations (about 51 files in packages/layout/src and packages/dragon/src). A test fails when a source file cites a Blink, Skia or gfx file that is not in the registry, or when a registry entry names an LGPL-headered upstream file. The licence headers are read from a pinned Chromium checkout or recorded with their sha256.'
+    receipt: null
+  - id: T119
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: port
+    objective: 'COL4, CSS Color 4 colour spaces: oklch(), oklab(), lab(), lch(), color() with its predefined spaces, and their conversion to what each target paints (sRGB, or display-p3 where the platform supports it), ported from the spec''s sample code and Blink''s color conversion (BSD files only) under the PORT-0 rules. It is the largest single blocker in the Tailwind sweep (about 4,000 utilities blocked by oklch()). Proven by the colour and pixel lanes against Chrome, including out-of-gamut mapping; rerun tw:sweep and report the change. After V1b.'
+    receipt: null
+  - id: T120
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: port
+    objective: 'CALC-2: calc() in the contexts V1 still refuses (after V1b: unproven contexts, line-height, order, border-width and the sv/lv/dv units), porting the rules from Blink''s css_math_expression_node.cc and css_length_resolver.cc (BSD) under PORT-0. Proven against Chrome; rerun tw:sweep and report the change. After V1b.'
     receipt: null
   - id: T999
     type: judge
