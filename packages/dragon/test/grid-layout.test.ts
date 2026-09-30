@@ -79,6 +79,17 @@ describe('grid lowering', () => {
     expect(item(m, 'p9').row).toEqual({ kind: 'auto', span: 1 });
   });
 
+  it('resolves named lines near kGridMaxTracks among 100000 names without a quadratic walk (it took minutes)', () => {
+    const css = '.g { display: grid; grid-template-columns: repeat(100000, [a] 1px) repeat(9900000, 1px); } .p1 { grid-column: 10000000 a; } .p2 { grid-column: -10000000 a; }';
+    const start = performance.now();
+    const m = boxes(css, (r) => [div(r, 'g', ['g'], [div(r, 'p1', ['p1']), div(r, 'p2', ['p2'])])]);
+    // Past the 100000 named lines, every implicit line counts (css-grid-2 §8.3); p1 clamps to the last track.
+    expect(item(m, 'p1').column).toEqual({ kind: 'definite', start: 9999999, end: 10000000 });
+    expect(item(m, 'p2').column).toEqual({ kind: 'definite', start: -9900000, end: -9899999 });
+    // Under 1 s here, minutes with the old list scan; the bound leaves room for a loaded machine.
+    expect(performance.now() - start).toBeLessThan(20000);
+  }, 30000);
+
   it('wraps text directly in a grid container in an auto-placed anonymous grid item', () => {
     const m = boxes('.g { display: grid; grid-template-columns: 30px 30px; }', (r) => [div(r, 'g', ['g'], [text(r, 't', 'XX'), div(r, 'b', [])])]);
     expect(m.get('g:anon0')?.style.gridItem).toEqual({ column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' });
