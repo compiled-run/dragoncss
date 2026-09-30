@@ -107,17 +107,17 @@
   "contextProbe": {
    "rounds": 1,
    "blankedRules": 9,
-   "blankedDeclarations": 87,
+   "blankedDeclarations": 70,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 811,
-  "errors": 810,
+  "diagnostics": 864,
+  "errors": 863,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
-   "DRAGON_UNPROVEN_CONTEXT [ios]": 30,
-   "DRAGON_UNPROVEN_CONTEXT [web]": 32,
+   "DRAGON_UNPROVEN_CONTEXT [ios]": 33,
+   "DRAGON_UNPROVEN_CONTEXT [web]": 35,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
    "DRAGON_UNSUPPORTED_AT_RULE": 3,
    "DRAGON_UNSUPPORTED_ELEMENT": 10,
@@ -125,21 +125,21 @@
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
    "DRAGON_UNSUPPORTED_PROPERTY": 67,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
-   "DRAGON_UNSUPPORTED_VALUE": 20,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 537,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 13,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 11
+   "DRAGON_UNSUPPORTED_VALUE": 3,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 569,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 29,
+   "DRAGON_UNSUPPORTED_VALUE [web]": 27
   },
   "perTarget": {
    "web": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 32,
+     "DRAGON_UNPROVEN_CONTEXT": 35,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 10,
      "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 31
+     "DRAGON_UNSUPPORTED_VALUE": 30
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -147,14 +147,14 @@
    },
    "ios": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 30,
+     "DRAGON_UNPROVEN_CONTEXT": 33,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 10,
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 33
+     "DRAGON_UNSUPPORTED_VALUE": 32
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -168,7 +168,7 @@
      "DRAGON_UNSUPPORTED_FONT": 22,
      "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 557
+     "DRAGON_UNSUPPORTED_VALUE": 572
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -176,11 +176,11 @@
    }
   },
   "declarations": 291,
-  "supportedBothTargets": 159,
-  "supportedWeb": 159,
-  "supportedIos": 159,
+  "supportedBothTargets": 165,
+  "supportedWeb": 165,
+  "supportedIos": 165,
   "supportedAndroid": 20,
-  "supportPercent": 54.6,
+  "supportPercent": 56.7,
   "elements": 62,
   "supportedElements": 46,
   "tags": {
@@ -259,9 +259,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 380,
-   "B-unwrapped": 410,
-   "C-context": 450
+   "A-authored": 401,
+   "B-unwrapped": 431,
+   "C-context": 494
   }
  },
  "features": {
@@ -1327,8 +1327,8 @@
    "atRule": null,
    "property": "width",
    "value": "clamp(22.5rem, 24vw, 30rem)",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
     "DRAGON_UNSUPPORTED_VALUE"
@@ -1565,8 +1565,8 @@
    "atRule": null,
    "property": "width",
    "value": "clamp(16rem, 24vw, 24rem)",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
     "DRAGON_UNSUPPORTED_VALUE"
@@ -2253,8 +2253,8 @@
    "atRule": null,
    "property": "width",
    "value": "min(92vw, 44rem)",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
     "DRAGON_UNSUPPORTED_VALUE"
@@ -2407,8 +2407,8 @@
    "atRule": null,
    "property": "max-width",
    "value": "calc(100vw - 2rem)",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
     "DRAGON_UNSUPPORTED_VALUE"
@@ -2421,8 +2421,8 @@
    "atRule": null,
    "property": "width",
    "value": "min(100%, 44rem)",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
     "DRAGON_UNSUPPORTED_VALUE"
@@ -2908,8 +2908,8 @@
    "atRule": null,
    "property": "width",
    "value": "min(100%, 28rem)",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
     "DRAGON_UNSUPPORTED_VALUE"
@@ -4164,6 +4164,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
+    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_AT_RULE",
     "DRAGON_UNSUPPORTED_VALUE"
    ]
@@ -4179,6 +4180,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
+    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_AT_RULE",
     "DRAGON_UNSUPPORTED_VALUE"
    ]
@@ -4194,6 +4196,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
+    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_AT_RULE",
     "DRAGON_UNSUPPORTED_VALUE"
    ]
@@ -4737,10 +4740,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@627-632|min-height: 100vh is unsupported: viewport units resolve against the device viewport at run time, so they need the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); no min-height value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 627,
@@ -4749,7 +4752,47 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported: viewport units resolve against the device viewport at run time, so they need the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); no min-height value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 627,
+    "end": 632,
+    "line": 33,
+    "column": 14,
+    "text": "100vh"
+   },
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 627,
+    "end": 632,
+    "line": 33,
+    "column": 14,
+    "text": "100vh"
+   },
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4797,10 +4840,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@731-736|min-height: 100vh is unsupported: viewport units resolve against the device viewport at run time, so they need the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); no min-height value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 731,
@@ -4809,11 +4852,54 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported: viewport units resolve against the device viewport at run time, so they need the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); no min-height value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 731,
+    "end": 736,
+    "line": 47,
+    "column": 14,
+    "text": "100vh"
+   },
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 731,
+    "end": 736,
+    "line": 47,
+    "column": 14,
+    "text": "100vh"
+   },
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -4877,10 +4963,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@905-910|min-height: 100vh is unsupported: viewport units resolve against the device viewport at run time, so they need the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); no min-height value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 905,
@@ -4889,7 +4975,7 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported: viewport units resolve against the device viewport at run time, so they need the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); no min-height value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4897,19 +4983,199 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@924-946|padding: clamp(1rem,3vw,3rem) is unsupported: clamp() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "ios",
    "location": {
     "kind": "css",
-    "start": 924,
+    "start": 905,
+    "end": 910,
+    "line": 65,
+    "column": 14,
+    "text": "100vh"
+   },
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 905,
+    "end": 910,
+    "line": 65,
+    "column": 14,
+    "text": "100vh"
+   },
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@922-946|padding-bottom: 0px (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-bottom value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 922,
     "end": 946,
     "line": 66,
-    "column": 13,
-    "text": "clamp(1rem, 3vw, 3rem)"
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
    },
-   "message": "padding: clamp(1rem,3vw,3rem) is unsupported: clamp() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "padding-bottom: 0px (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-bottom value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-left value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-left value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-right value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-right value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@922-946|padding-top: 0px (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-top value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-top: 0px (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-top value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5077,10 +5343,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@1195-1199|min-height: 10vh is unsupported: viewport units resolve against the device viewport at run time, so they need the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); no min-height value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 1195,
@@ -5089,7 +5355,47 @@
     "column": 14,
     "text": "10vh"
    },
-   "message": "min-height: 10vh is unsupported: viewport units resolve against the device viewport at run time, so they need the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "min-height: 10vh is unsupported (support profile m1-s5); no min-height value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 1195,
+    "end": 1199,
+    "line": 80,
+    "column": 14,
+    "text": "10vh"
+   },
+   "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 1195,
+    "end": 1199,
+    "line": 80,
+    "column": 14,
+    "text": "10vh"
+   },
+   "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5417,10 +5723,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@1861-1886|min-height: clamp(24rem,56vh,36rem) is unsupported: clamp() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1861-1886|min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); no min-height value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 1861,
@@ -5429,7 +5735,47 @@
     "column": 14,
     "text": "clamp(24rem, 56vh, 36rem)"
    },
-   "message": "min-height: clamp(24rem,56vh,36rem) is unsupported: clamp() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); no min-height value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1861-1886|min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 1861,
+    "end": 1886,
+    "line": 112,
+    "column": 14,
+    "text": "clamp(24rem, 56vh, 36rem)"
+   },
+   "message": "min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1861-1886|min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 1861,
+    "end": 1886,
+    "line": 112,
+    "column": 14,
+    "text": "clamp(24rem, 56vh, 36rem)"
+   },
+   "message": "min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5679,10 +6025,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@2152-2179|width: clamp(22.5rem,24vw,30rem) is unsupported: clamp() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2152-2179|width: clamp(22.5rem,24vw,30rem) is unsupported (support profile m1-s5); no width value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 2152,
@@ -5691,11 +6037,12 @@
     "column": 9,
     "text": "clamp(22.5rem, 24vw, 30rem)"
    },
-   "message": "width: clamp(22.5rem,24vw,30rem) is unsupported: clamp() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "width: clamp(22.5rem,24vw,30rem) is unsupported (support profile m1-s5); no width value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -6271,10 +6618,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@2934-2959|width: clamp(16rem,24vw,24rem) is unsupported: clamp() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2934-2959|width: clamp(16rem,24vw,24rem) is unsupported (support profile m1-s5); no width value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 2934,
@@ -6283,11 +6630,12 @@
     "column": 9,
     "text": "clamp(16rem, 24vw, 24rem)"
    },
-   "message": "width: clamp(16rem,24vw,24rem) is unsupported: clamp() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "width: clamp(16rem,24vw,24rem) is unsupported (support profile m1-s5); no width value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -7714,10 +8062,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@4390-4406|max-width: min(92vw,44rem) is unsupported: min() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4390-4406|max-width: min(92vw,44rem) is unsupported (support profile m1-s5); no max-width value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 4390,
@@ -7726,11 +8074,54 @@
     "column": 13,
     "text": "min(92vw, 44rem)"
    },
-   "message": "max-width: min(92vw,44rem) is unsupported: min() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "max-width: min(92vw,44rem) is unsupported (support profile m1-s5); no max-width value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4390-4406|max-width: min(92vw,44rem) is unsupported (support profile m1-s5); supported max-width values: <calc()>, <length-em>, <length-in>, <length-px>, <length-rem>, <percentage> or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4390,
+    "end": 4406,
+    "line": 243,
+    "column": 13,
+    "text": "min(92vw, 44rem)"
+   },
+   "message": "max-width: min(92vw,44rem) is unsupported (support profile m1-s5); supported max-width values: <calc()>, <length-em>, <length-in>, <length-px>, <length-rem>, <percentage> or none",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4390-4406|max-width: min(92vw,44rem) is unsupported (support profile m1-s5); supported max-width values: <calc()>, <length-em>, <length-in>, <length-px>, <length-rem>, <percentage> or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4390,
+    "end": 4406,
+    "line": 243,
+    "column": 13,
+    "text": "min(92vw, 44rem)"
+   },
+   "message": "max-width: min(92vw,44rem) is unsupported (support profile m1-s5); supported max-width values: <calc()>, <length-em>, <length-in>, <length-px>, <length-rem>, <percentage> or none",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -7834,10 +8225,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@4470-4486|width: min(92vw,44rem) is unsupported: min() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4470-4486|width: min(92vw,44rem) is unsupported (support profile m1-s5); no width value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 4470,
@@ -7846,11 +8237,12 @@
     "column": 9,
     "text": "min(92vw, 44rem)"
    },
-   "message": "width: min(92vw,44rem) is unsupported: min() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "width: min(92vw,44rem) is unsupported (support profile m1-s5); no width value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -7954,10 +8346,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@4652-4656|min-height: 20vh is unsupported: viewport units resolve against the device viewport at run time, so they need the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); no min-height value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 4652,
@@ -7966,7 +8358,47 @@
     "column": 14,
     "text": "20vh"
    },
-   "message": "min-height: 20vh is unsupported: viewport units resolve against the device viewport at run time, so they need the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "min-height: 20vh is unsupported (support profile m1-s5); no min-height value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4652,
+    "end": 4656,
+    "line": 258,
+    "column": 14,
+    "text": "20vh"
+   },
+   "message": "min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4652,
+    "end": 4656,
+    "line": 258,
+    "column": 14,
+    "text": "20vh"
+   },
+   "message": "min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8054,10 +8486,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@4768-4786|max-width: calc(100vw - 2rem) is unsupported: calc() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4768-4786|max-width: calc(100vw - 2rem) is unsupported (support profile m1-s5); no max-width value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 4768,
@@ -8066,18 +8498,19 @@
     "column": 13,
     "text": "calc(100vw - 2rem)"
    },
-   "message": "max-width: calc(100vw - 2rem) is unsupported: calc() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "max-width: calc(100vw - 2rem) is unsupported (support profile m1-s5); no max-width value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@4796-4812|width: min(100%,44rem) is unsupported: min() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4796-4812|width: min(100%,44rem) is unsupported (support profile m1-s5); no width value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 4796,
@@ -8086,11 +8519,12 @@
     "column": 9,
     "text": "min(100%, 44rem)"
    },
-   "message": "width: min(100%,44rem) is unsupported: min() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "width: min(100%,44rem) is unsupported (support profile m1-s5); no width value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -8937,10 +9371,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@5759-5775|width: min(100%,28rem) is unsupported: min() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5759-5775|width: min(100%,28rem) is unsupported (support profile m1-s5); no width value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 5759,
@@ -8949,11 +9383,12 @@
     "column": 9,
     "text": "min(100%, 28rem)"
    },
-   "message": "width: min(100%,28rem) is unsupported: min() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "width: min(100%,28rem) is unsupported (support profile m1-s5); no width value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -12119,10 +12554,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@8586-8620|width: min(calc(100vw - 1.5rem),22.5rem) is unsupported: min() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@8586-8620|width: min(calc(100vw - 1.5rem),22.5rem) is unsupported (support profile m1-s5); no width value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 8586,
@@ -12131,17 +12566,17 @@
     "column": 10,
     "text": "min(calc(100vw - 1.5rem), 22.5rem)"
    },
-   "message": "width: min(calc(100vw - 1.5rem),22.5rem) is unsupported: min() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "width: min(calc(100vw - 1.5rem),22.5rem) is unsupported (support profile m1-s5); no width value is supported",
    "viaRelated": false,
    "passes": [
     "B-unwrapped"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@8646-8662|width: min(72vw,18rem) is unsupported: min() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@8646-8662|width: min(72vw,18rem) is unsupported (support profile m1-s5); no width value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 8646,
@@ -12150,17 +12585,17 @@
     "column": 10,
     "text": "min(72vw, 18rem)"
    },
-   "message": "width: min(72vw,18rem) is unsupported: min() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "width: min(72vw,18rem) is unsupported (support profile m1-s5); no width value is supported",
    "viaRelated": false,
    "passes": [
     "B-unwrapped"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@8694-8709|width: min(80%,18rem) is unsupported: min() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@8694-8709|width: min(80%,18rem) is unsupported (support profile m1-s5); no width value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 8694,
@@ -12169,7 +12604,7 @@
     "column": 10,
     "text": "min(80%, 18rem)"
    },
-   "message": "width: min(80%,18rem) is unsupported: min() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)",
+   "message": "width: min(80%,18rem) is unsupported (support profile m1-s5); no width value is supported",
    "viaRelated": false,
    "passes": [
     "B-unwrapped"
@@ -13071,6 +13506,63 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); no min-height value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 627,
+    "end": 632,
+    "line": 33,
+    "column": 14,
+    "text": "100vh"
+   },
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); no min-height value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 627,
+    "end": 632,
+    "line": 33,
+    "column": 14,
+    "text": "100vh"
+   },
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 627,
+    "end": 632,
+    "line": 33,
+    "column": 14,
+    "text": "100vh"
+   },
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@762-781|color: var(--text-primary) substitutes to rgb(237, 240, 245) on page/nav-call/nav-title; color:<hex-color> is unsupported (support profile m1-s5)",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -13179,6 +13671,215 @@
     "text": "hidden"
    },
    "message": "overflow-y computes to auto on page/app (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); no min-height value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 905,
+    "end": 910,
+    "line": 65,
+    "column": 14,
+    "text": "100vh"
+   },
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); no min-height value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 905,
+    "end": 910,
+    "line": 65,
+    "column": 14,
+    "text": "100vh"
+   },
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 905,
+    "end": 910,
+    "line": 65,
+    "column": 14,
+    "text": "100vh"
+   },
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@922-946|padding-bottom: 0px (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-bottom value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-bottom: 0px (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-bottom value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-left value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-left value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-right value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-right value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@922-946|padding-top: 0px (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-top value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-top: 0px (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); no padding-top value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage> or unset",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage> or unset",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage> or unset",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage> or unset",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 922,
+    "end": 946,
+    "line": 66,
+    "column": 11,
+    "text": "0 clamp(1rem, 3vw, 3rem)"
+   },
+   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -13331,6 +14032,63 @@
     "text": "var(--content-max-width)"
    },
    "message": "max-width: var(--content-max-width) substitutes to 58rem on page/nav-call/nav; max-width:<length-rem> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); no min-height value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1195,
+    "end": 1199,
+    "line": 80,
+    "column": 14,
+    "text": "10vh"
+   },
+   "message": "min-height: 10vh is unsupported (support profile m1-s5); no min-height value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 1195,
+    "end": 1199,
+    "line": 80,
+    "column": 14,
+    "text": "10vh"
+   },
+   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 1195,
+    "end": 1199,
+    "line": 80,
+    "column": 14,
+    "text": "10vh"
+   },
+   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -14015,6 +14773,63 @@
     "text": "center"
    },
    "message": "justify-content: center is unsupported (support profile m1-s5); no justify-content value is proven in flex-column-single-line/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1861-1886|min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); no min-height value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1861,
+    "end": 1886,
+    "line": 112,
+    "column": 14,
+    "text": "clamp(24rem, 56vh, 36rem)"
+   },
+   "message": "min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); no min-height value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1861-1886|min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 1861,
+    "end": 1886,
+    "line": 112,
+    "column": 14,
+    "text": "clamp(24rem, 56vh, 36rem)"
+   },
+   "message": "min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1861-1886|min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 1861,
+    "end": 1886,
+    "line": 112,
+    "column": 14,
+    "text": "clamp(24rem, 56vh, 36rem)"
+   },
+   "message": "min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -15934,6 +16749,63 @@
     "text": "space-between"
    },
    "message": "justify-content: space-between is unsupported (support profile m1-s5); no justify-content value is proven in flex-column-single-line/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); no min-height value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4652,
+    "end": 4656,
+    "line": 258,
+    "column": 14,
+    "text": "20vh"
+   },
+   "message": "min-height: 20vh is unsupported (support profile m1-s5); no min-height value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4652,
+    "end": 4656,
+    "line": 258,
+    "column": 14,
+    "text": "20vh"
+   },
+   "message": "min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4652,
+    "end": 4656,
+    "line": 258,
+    "column": 14,
+    "text": "20vh"
+   },
+   "message": "min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -18556,6 +19428,177 @@
     "text": "0.75rem"
    },
    "message": "top: 0.75rem is unsupported (support profile m1-s5); no top value is proven in flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8586-8620|width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8586,
+    "end": 8620,
+    "line": 506,
+    "column": 10,
+    "text": "min(calc(100vw - 1.5rem), 22.5rem)"
+   },
+   "message": "width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8586-8620|width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 8586,
+    "end": 8620,
+    "line": 506,
+    "column": 10,
+    "text": "min(calc(100vw - 1.5rem), 22.5rem)"
+   },
+   "message": "width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@8586-8620|width: min(calc(100vw - 1.5rem),22.5rem) is unsupported (support profile m1-s5); no width value is proven in flex-column/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8586,
+    "end": 8620,
+    "line": 506,
+    "column": 10,
+    "text": "min(calc(100vw - 1.5rem), 22.5rem)"
+   },
+   "message": "width: min(calc(100vw - 1.5rem),22.5rem) is unsupported (support profile m1-s5); no width value is proven in flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8646-8662|width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <length-px> or auto",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8646,
+    "end": 8662,
+    "line": 510,
+    "column": 10,
+    "text": "min(72vw, 18rem)"
+   },
+   "message": "width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <length-px> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8646-8662|width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <length-px> or auto",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 8646,
+    "end": 8662,
+    "line": 510,
+    "column": 10,
+    "text": "min(72vw, 18rem)"
+   },
+   "message": "width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <length-px> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@8646-8662|width: min(72vw,18rem) is unsupported (support profile m1-s5); no width value is proven in relative-in-flex-column/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8646,
+    "end": 8662,
+    "line": 510,
+    "column": 10,
+    "text": "min(72vw, 18rem)"
+   },
+   "message": "width: min(72vw,18rem) is unsupported (support profile m1-s5); no width value is proven in relative-in-flex-column/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8694-8709|width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8694,
+    "end": 8709,
+    "line": 514,
+    "column": 10,
+    "text": "min(80%, 18rem)"
+   },
+   "message": "width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8694-8709|width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 8694,
+    "end": 8709,
+    "line": 514,
+    "column": 10,
+    "text": "min(80%, 18rem)"
+   },
+   "message": "width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@8694-8709|width: min(80%,18rem) is unsupported (support profile m1-s5); no width value is proven in flex-column/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8694,
+    "end": 8709,
+    "line": 514,
+    "column": 10,
+    "text": "min(80%, 18rem)"
+   },
+   "message": "width: min(80%,18rem) is unsupported (support profile m1-s5); no width value is proven in flex-column/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"

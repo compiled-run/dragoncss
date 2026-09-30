@@ -109,13 +109,13 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
   // points (addendum F2). A change here changes what the device lanes compare; it needs a written reason.
   const DROPPED = {
     ios: {
-      2: { dropped: { edge: 1176, 'edge:glyph': 892, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1136 } },
-      3: { dropped: { edge: 1187, 'edge:glyph': 854, glyph: 25, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1159, border: 18 } },
+      2: { dropped: { edge: 1188, 'edge:glyph': 892, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1148 } },
+      3: { dropped: { edge: 1197, 'edge:glyph': 854, glyph: 25, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1169, border: 18 } },
     },
     android: {
-      2: { dropped: { edge: 1176, 'edge:glyph': 892, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1136 } },
-      3: { dropped: { edge: 1187, 'edge:glyph': 854, glyph: 25, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1159, border: 18 } },
-      2.625: { dropped: { edge: 1150, 'edge:glyph': 874, glyph: 33, outside: 6, clip: 13, border: 16, interior: 5 }, rescued: { edge: 1029 } },
+      2: { dropped: { edge: 1188, 'edge:glyph': 892, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1148 } },
+      3: { dropped: { edge: 1197, 'edge:glyph': 854, glyph: 25, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1169, border: 18 } },
+      2.625: { dropped: { edge: 1161, 'edge:glyph': 874, glyph: 33, outside: 6, clip: 13, border: 16, interior: 5 }, rescued: { edge: 1038 } },
     },
   } as const;
   const bottoms = JSON.parse(readFileSync(BOTTOM_SCANLINES_PATH(), 'utf8')) as BottomScanlines;

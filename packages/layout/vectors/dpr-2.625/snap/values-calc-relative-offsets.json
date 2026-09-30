@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 28560
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 28560
+  },
+  {
+   "id": "def",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 50400,
+   "height": 25200
+  },
+  {
+   "id": "a",
+   "parent": "def",
+   "x": -2184,
+   "y": 3360,
+   "width": 8400,
+   "height": 1680
+  },
+  {
+   "id": "b",
+   "parent": "def",
+   "x": -3360,
+   "y": 756,
+   "width": 8400,
+   "height": 1680
+  },
+  {
+   "id": "auto",
+   "parent": "body",
+   "x": 0,
+   "y": 25200,
+   "width": 67200,
+   "height": 3360
+  },
+  {
+   "id": "c",
+   "parent": "auto",
+   "x": 13608,
+   "y": 0,
+   "width": 8400,
+   "height": 1680
+  },
+  {
+   "id": "d",
+   "parent": "auto",
+   "x": -5040,
+   "y": 1680,
+   "width": 8400,
+   "height": 1680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 446,
+   "width": 1050,
+   "height": 446
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 446,
+   "width": 1050,
+   "height": 446
+  },
+  {
+   "id": "def",
+   "left": 0,
+   "top": 0,
+   "right": 788,
+   "bottom": 394,
+   "width": 788,
+   "height": 394
+  },
+  {
+   "id": "a",
+   "left": -34,
+   "top": 53,
+   "right": 97,
+   "bottom": 79,
+   "width": 131,
+   "height": 26
+  },
+  {
+   "id": "b",
+   "left": -52,
+   "top": 12,
+   "right": 79,
+   "bottom": 38,
+   "width": 131,
+   "height": 26
+  },
+  {
+   "id": "auto",
+   "left": 0,
+   "top": 394,
+   "right": 1050,
+   "bottom": 446,
+   "width": 1050,
+   "height": 52
+  },
+  {
+   "id": "c",
+   "left": 213,
+   "top": 394,
+   "right": 344,
+   "bottom": 420,
+   "width": 131,
+   "height": 26
+  },
+  {
+   "id": "d",
+   "left": -79,
+   "top": 420,
+   "right": 53,
+   "bottom": 446,
+   "width": 132,
+   "height": 26
+  }
+ ]
+}

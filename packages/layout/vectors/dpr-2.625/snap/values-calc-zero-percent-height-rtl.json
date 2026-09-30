@@ -1,0 +1,161 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 17304
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 17304
+  },
+  {
+   "id": "auto",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 504
+  },
+  {
+   "id": "z",
+   "parent": "auto",
+   "x": 63840,
+   "y": 0,
+   "width": 3360,
+   "height": 504
+  },
+  {
+   "id": "k",
+   "parent": "z",
+   "x": 2856,
+   "y": 0,
+   "width": 504,
+   "height": 504
+  },
+  {
+   "id": "zz",
+   "parent": "auto",
+   "x": 63840,
+   "y": 504,
+   "width": 3360,
+   "height": 0
+  },
+  {
+   "id": "def",
+   "parent": "body",
+   "x": 0,
+   "y": 504,
+   "width": 67200,
+   "height": 16800
+  },
+  {
+   "id": "z2",
+   "parent": "def",
+   "x": 63840,
+   "y": 0,
+   "width": 3360,
+   "height": 6720
+  },
+  {
+   "id": "zz2",
+   "parent": "def",
+   "x": 63840,
+   "y": 6720,
+   "width": 3360,
+   "height": 8400
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 270,
+   "width": 1050,
+   "height": 270
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 270,
+   "width": 1050,
+   "height": 270
+  },
+  {
+   "id": "auto",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 8,
+   "width": 1050,
+   "height": 8
+  },
+  {
+   "id": "z",
+   "left": 998,
+   "top": 0,
+   "right": 1050,
+   "bottom": 8,
+   "width": 52,
+   "height": 8
+  },
+  {
+   "id": "k",
+   "left": 1042,
+   "top": 0,
+   "right": 1050,
+   "bottom": 8,
+   "width": 8,
+   "height": 8
+  },
+  {
+   "id": "zz",
+   "left": 998,
+   "top": 8,
+   "right": 1050,
+   "bottom": 8,
+   "width": 52,
+   "height": 0
+  },
+  {
+   "id": "def",
+   "left": 0,
+   "top": 8,
+   "right": 1050,
+   "bottom": 270,
+   "width": 1050,
+   "height": 262
+  },
+  {
+   "id": "z2",
+   "left": 998,
+   "top": 8,
+   "right": 1050,
+   "bottom": 113,
+   "width": 52,
+   "height": 105
+  },
+  {
+   "id": "zz2",
+   "left": 998,
+   "top": 113,
+   "right": 1050,
+   "bottom": 244,
+   "width": 52,
+   "height": 131
+  }
+ ]
+}
