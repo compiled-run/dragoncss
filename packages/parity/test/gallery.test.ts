@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { decodePng } from '../src/pixel-reference.ts';
 import type { GalleryCaseRef, GalleryPage } from '../src/gallery.ts';
-import { cropImage, encodePng, featureLabels, galleryHtml, parseGalleryArgs, relativeUrl, selectGalleryCases } from '../src/gallery.ts';
+import { captureColumn, captureEach, captureInBatches, cropImage, encodePng, featureLabels, galleryExitCode, galleryHtml, newCapture, parseGalleryArgs, relativeUrl, selectGalleryCases } from '../src/gallery.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
 
 const ref = (id: string, fixture: string, group: string, isInitial: boolean, direction: 'ltr' | 'rtl' = 'ltr'): GalleryCaseRef => ({ id, fixture, group, isInitial, direction });
@@ -69,5 +69,78 @@ describe('native gallery', () => {
     expect(html).toMatch(/Text is set in Ahem/);
     expect(relativeUrl('img/ios/a b#1.png')).toBe('img/ios/a%20b%231.png');
     expect(() => galleryHtml({ ...page, rows: [{ ...page.rows[0]!, cells: [] }] })).toThrow(/0 cells, 2 columns/);
+  });
+
+  it('records a failed capture as a missing cell and a problem, and takes the rest', async () => {
+    const cap = newCapture();
+    await captureEach(cap, ['a', 'b', 'c'], 'Chrome', async (id) => {
+      if (id === 'b') throw new Error('Page.captureScreenshot failed');
+      return `img/chrome/${id}.png`;
+    });
+    expect([...cap.cells]).toEqual([
+      ['a', { kind: 'image', src: 'img/chrome/a.png' }],
+      ['b', { kind: 'missing', reason: 'Chrome: b: Page.captureScreenshot failed' }],
+      ['c', { kind: 'image', src: 'img/chrome/c.png' }],
+    ]);
+    expect(cap.problems).toEqual(['Chrome: b: Page.captureScreenshot failed']);
+  });
+
+  it('runs every batch when one fails, records batch problems, and cleans up after each batch', async () => {
+    const cap = newCapture();
+    const cleaned: number[] = [];
+    const taken: string[] = [];
+    await captureInBatches(cap, ['a', 'b', 'c', 'd', 'e'], 2, 'dev', async (_batch, index) => {
+      if (index === 0) throw new Error('app crashed');
+      return index === 1 ? 'the app ran at scale 2' : null;
+    }, async (id) => {
+      taken.push(id);
+      if (id === 'd') throw new Error('no screenshot');
+      return `img/ios/${id}.png`;
+    }, (index) => {
+      cleaned.push(index);
+      if (index === 2) throw new Error('rm failed');
+    });
+    expect(taken).toEqual(['c', 'd', 'e']);
+    expect(cleaned).toEqual([0, 1, 2]);
+    expect([...cap.cells].map(([id, c]) => [id, c.kind])).toEqual([['a', 'missing'], ['b', 'missing'], ['c', 'image'], ['d', 'missing'], ['e', 'image']]);
+    expect(cap.cells.get('a')).toEqual({ kind: 'missing', reason: 'dev: cases 1-2: app crashed' });
+    expect(cap.problems).toEqual([
+      'dev: 2 case(s) not taken (cases 1-2: app crashed)',
+      'dev: cases 3-4: the app ran at scale 2',
+      'dev: d: no screenshot',
+      'dev: cleanup after cases 5-5: rm failed',
+    ]);
+    await expect(captureInBatches(newCapture(), ['a'], 0, 'dev', async () => null, async () => '', () => undefined)).rejects.toThrow(/not a positive integer/);
+  });
+
+  it('fills a column that fails part way with missing cells, always closes it, and records a failed close', async () => {
+    let closed = 0;
+    const cap = await captureColumn(['a', 'b', 'c'], 'iPhone 17', async (c) => {
+      c.cells.set('a', { kind: 'image', src: 'img/ios/a.png' });
+      throw new Error('boot failed');
+    }, async () => {
+      closed++;
+      throw new Error('shutdown failed');
+    });
+    expect(closed).toBe(1);
+    expect([...cap.cells.values()].map((c) => c.kind)).toEqual(['image', 'missing', 'missing']);
+    expect(cap.cells.get('b')).toEqual({ kind: 'missing', reason: 'iPhone 17: boot failed' });
+    expect(cap.problems).toEqual(['iPhone 17: 2 case(s) not taken (boot failed)', 'iPhone 17: cleanup: shutdown failed']);
+
+    const quiet = await captureColumn(['a', 'b'], 'Chrome', async (c) => void c.cells.set('a', { kind: 'image', src: 'x' }), async () => undefined);
+    expect(quiet.cells.get('b')).toEqual({ kind: 'missing', reason: 'Chrome: no screenshot taken' });
+    expect(quiet.problems).toEqual(['Chrome: 1 case(s) not taken (no screenshot taken)']);
+
+    const clean = await captureColumn(['a'], 'Chrome', async (c) => void c.cells.set('a', { kind: 'image', src: 'x' }), async () => undefined);
+    expect(clean.problems).toEqual([]);
+  });
+
+  it('exits 0 only when every cell is an image and nothing went wrong', () => {
+    const image = { kind: 'image', src: 'x' } as const;
+    const row = (cells: GalleryPage['rows'][number]['cells']) => ({ id: 'r', features: [], cells });
+    expect(galleryExitCode([row([image, image])], [])).toBe(0);
+    expect(galleryExitCode([row([image, { kind: 'missing', reason: 'no' }])], [])).toBe(1);
+    expect(galleryExitCode([row([image])], ['dev: cleanup: failed'])).toBe(1);
+    expect(galleryExitCode([row([])], [])).toBe(1);
   });
 });

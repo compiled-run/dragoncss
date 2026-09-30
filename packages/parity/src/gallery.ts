@@ -158,3 +158,88 @@ ${rows}
 </html>
 `;
 }
+
+// ---------------------------------------------------------------- capture: every failure becomes a missing cell and a problem
+
+const reasonOf = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+/** The screenshots of one column so far, and every problem met taking them. */
+export type ColumnCapture = { readonly cells: Map<string, GalleryCell>; readonly problems: string[] };
+
+export const newCapture = (): ColumnCapture => ({ cells: new Map(), problems: [] });
+
+/** Marks every id without a cell as missing for reason, with one problem naming them. */
+export function markMissing(cap: ColumnCapture, ids: readonly string[], who: string, reason: string): void {
+  const left = ids.filter((id) => !cap.cells.has(id));
+  if (left.length === 0) return;
+  for (const id of left) cap.cells.set(id, { kind: 'missing', reason: `${who}: ${reason}` });
+  cap.problems.push(`${who}: ${left.length} case(s) not taken (${reason})`);
+}
+
+/** Takes each id in turn: capture returns the page-relative image path, and a failure marks only that id missing. */
+export async function captureEach(cap: ColumnCapture, ids: readonly string[], who: string, capture: (id: string) => Promise<string>): Promise<void> {
+  for (const id of ids) {
+    try {
+      cap.cells.set(id, { kind: 'image', src: await capture(id) });
+    } catch (e) {
+      const reason = `${who}: ${id}: ${reasonOf(e)}`;
+      cap.cells.set(id, { kind: 'missing', reason });
+      cap.problems.push(reason);
+    }
+  }
+}
+
+/**
+ * Runs ids in batches of size: runBatch shows a batch (and returns a problem to record, or null), then take captures each case
+ * of it. A batch that throws marks its cases missing and the next batch still runs; cleanup runs after every batch.
+ */
+export async function captureInBatches(
+  cap: ColumnCapture, ids: readonly string[], size: number, who: string,
+  runBatch: (batch: readonly string[], index: number) => Promise<string | null>,
+  take: (id: string, index: number) => Promise<string>,
+  cleanup: (index: number) => void,
+): Promise<void> {
+  if (!Number.isInteger(size) || size <= 0) throw new Error(`batch size ${size} is not a positive integer`);
+  for (let at = 0, index = 0; at < ids.length; at += size, index++) {
+    const batch = ids.slice(at, at + size);
+    try {
+      const problem = await runBatch(batch, index);
+      if (problem !== null) cap.problems.push(`${who}: cases ${at + 1}-${at + batch.length}: ${problem}`);
+      await captureEach(cap, batch, who, (id) => take(id, index));
+    } catch (e) {
+      markMissing(cap, batch, who, `cases ${at + 1}-${at + batch.length}: ${reasonOf(e)}`);
+    } finally {
+      try {
+        cleanup(index);
+      } catch (e) {
+        cap.problems.push(`${who}: cleanup after cases ${at + 1}-${at + batch.length}: ${reasonOf(e)}`);
+      }
+    }
+  }
+}
+
+/**
+ * Runs one whole column: fill takes the screenshots; any throw from it (launch, boot, a bug) marks the ids it did not take
+ * missing, and so does its finishing without a cell for an id. close always runs, and a failure there is a problem too.
+ */
+export async function captureColumn(ids: readonly string[], who: string, fill: (cap: ColumnCapture) => Promise<void>, close: () => Promise<void>): Promise<ColumnCapture> {
+  const cap = newCapture();
+  try {
+    await fill(cap);
+  } catch (e) {
+    markMissing(cap, ids, who, reasonOf(e));
+  } finally {
+    try {
+      await close();
+    } catch (e) {
+      cap.problems.push(`${who}: cleanup: ${reasonOf(e)}`);
+    }
+  }
+  markMissing(cap, ids, who, 'no screenshot taken');
+  return cap;
+}
+
+/** 0 only when every cell of every row is an image and nothing went wrong. */
+export function galleryExitCode(rows: readonly GalleryRow[], problems: readonly string[]): 0 | 1 {
+  return problems.length === 0 && rows.every((r) => r.cells.length > 0 && r.cells.every((c) => c.kind === 'image')) ? 0 : 1;
+}
