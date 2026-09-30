@@ -50,22 +50,38 @@ describe('digest.ts', () => {
     expect(sha256Hex(viaText)).toBe(sha256Hex(direct));
   });
 
-  it('a profile is frozen once its text is cached, so an edit throws instead of leaving the compiled digest stale', () => {
-    const copy = (): SupportProfiles => ({ web: { ...COMMITTED_PROFILES.web, rows: [...COMMITTED_PROFILES.web.rows] }, ios: COMMITTED_PROFILES.ios });
+  it('a project reads one deep-frozen copy of its profiles, so editing the caller profile changes neither its checks nor its digest', () => {
     const input = inputFor('.c { display: flex; }', (r) => [div(r, 'c', ['c'])]);
-    const digestWith = (supportProfiles: SupportProfiles): string => {
-      const out = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', supportProfiles }).compile(input).outputs.web;
-      return out.kind === 'blocked' ? '' : out.digest;
+    const project = (supportProfiles: SupportProfiles) => createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', supportProfiles });
+    const run = (p: ReturnType<typeof project>): { codes: string[]; digest: string } => {
+      const c = p.compile(input);
+      return { codes: c.diagnostics.map((d) => d.code), digest: c.digest };
     };
-    const profiles = copy();
-    const before = digestWith(profiles);
-    expect(before).not.toBe('');
-    const rows = profiles.web.rows as unknown[];
-    expect(() => rows.pop()).toThrow(TypeError);
-    expect(() => Object.assign(profiles.web, { revision: 'edited' })).toThrow(TypeError);
-    expect(digestWith(profiles)).toBe(before);
-    const edited = copy();
-    (edited.web as { revision: string }).revision = 'edited';
-    expect(digestWith(edited)).not.toBe(before);
+    // Frozen at the root only: its rows stay writable.
+    const web = Object.freeze(structuredClone(COMMITTED_PROFILES.web)) as unknown as { rows: { status: string }[] };
+    const profiles = { web, ios: COMMITTED_PROFILES.ios } as unknown as SupportProfiles;
+    const p = project(profiles);
+    const before = run(p);
+    expect(before.codes).toEqual([]);
+    for (const row of web.rows) row.status = 'unsupported';
+    expect(web.rows[0]?.status).toBe('unsupported');
+    expect(run(p)).toEqual(before);
+    // A new project copies the edited profile: flex is refused now, and the digest names the edit.
+    const after = run(project(profiles));
+    expect(after.codes).not.toEqual([]);
+    expect(after.digest).not.toBe(before.digest);
+  });
+
+  it('a replacement profile that is not plain data is refused, not copied in part', () => {
+    const odd = { ...COMMITTED_PROFILES.web, rows: [...COMMITTED_PROFILES.web.rows, new Map()] } as unknown as SupportProfiles['web'];
+    expect(() => createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', supportProfiles: { web: odd, ios: COMMITTED_PROFILES.ios } })).toThrow(/not plain data/);
+  });
+
+  it('the committed profiles are deep-frozen', () => {
+    const row = COMMITTED_PROFILES.web.rows[0] as { status: string };
+    expect(() => {
+      row.status = 'unsupported';
+    }).toThrow(TypeError);
+    expect(() => (COMMITTED_PROFILES.web.rows as unknown[]).pop()).toThrow(TypeError);
   });
 });
