@@ -74,7 +74,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "200px 148px",
+        "will-change": "auto"
       }
     },
     {
@@ -141,7 +144,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "200px 146px",
+        "will-change": "auto"
       }
     },
     {
@@ -208,7 +214,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "112px 35px",
+        "will-change": "auto"
       }
     },
     {
@@ -275,7 +284,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "100px 6px",
+        "will-change": "auto"
       }
     },
     {
@@ -342,7 +354,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgb(204, 0, 0)"
+        "background-color": "rgb(204, 0, 0)",
+        "transform": "none",
+        "transform-origin": "10px 5px",
+        "will-change": "auto"
       }
     },
     {
@@ -409,7 +424,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "25px 5px",
+        "will-change": "auto"
       }
     },
     {
@@ -496,7 +514,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "112px 35px",
+        "will-change": "auto"
       }
     },
     {
@@ -563,7 +584,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "100px 6px",
+        "will-change": "auto"
       }
     },
     {
@@ -630,7 +654,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgb(204, 0, 0)"
+        "background-color": "rgb(204, 0, 0)",
+        "transform": "none",
+        "transform-origin": "10px 5px",
+        "will-change": "auto"
       }
     },
     {
@@ -697,7 +724,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "25px 5px",
+        "will-change": "auto"
       }
     },
     {
@@ -784,7 +814,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "112px 35px",
+        "will-change": "auto"
       }
     },
     {
@@ -851,7 +884,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "100px 6px",
+        "will-change": "auto"
       }
     },
     {
@@ -918,7 +954,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgb(204, 0, 0)"
+        "background-color": "rgb(204, 0, 0)",
+        "transform": "none",
+        "transform-origin": "10px 5px",
+        "will-change": "auto"
       }
     },
     {
@@ -985,7 +1024,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "94px 15px",
+        "will-change": "auto"
       }
     },
     {
@@ -1092,7 +1134,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "112px 35px",
+        "will-change": "auto"
       }
     },
     {
@@ -1159,7 +1204,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "100px 6px",
+        "will-change": "auto"
       }
     },
     {
@@ -1226,7 +1274,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgb(204, 0, 0)"
+        "background-color": "rgb(204, 0, 0)",
+        "transform": "none",
+        "transform-origin": "10px 5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1293,7 +1344,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "92px 15px",
+        "will-change": "auto"
       }
     },
     {

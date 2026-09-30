@@ -3,7 +3,7 @@
 export const webrefVersion = "8.7.5";
 
 /** Longhands and shorthands the compiler reads, with their webref initial and inherited fields. */
-export const subset: readonly string[] = ["align-content","align-items","align-self","background","background-color","block-size","border","border-block","border-block-color","border-block-end","border-block-end-color","border-block-end-style","border-block-end-width","border-block-start","border-block-start-color","border-block-start-style","border-block-start-width","border-block-style","border-block-width","border-bottom","border-bottom-color","border-bottom-style","border-bottom-width","border-color","border-inline","border-inline-color","border-inline-end","border-inline-end-color","border-inline-end-style","border-inline-end-width","border-inline-start","border-inline-start-color","border-inline-start-style","border-inline-start-width","border-inline-style","border-inline-width","border-left","border-left-color","border-left-style","border-left-width","border-right","border-right-color","border-right-style","border-right-width","border-style","border-top","border-top-color","border-top-style","border-top-width","border-width","bottom","box-sizing","color","column-gap","direction","display","flex","flex-basis","flex-direction","flex-flow","flex-grow","flex-shrink","flex-wrap","font-family","font-size","gap","height","inline-size","inset","inset-block","inset-block-end","inset-block-start","inset-inline","inset-inline-end","inset-inline-start","justify-content","left","line-height","margin","margin-block","margin-block-end","margin-block-start","margin-bottom","margin-inline","margin-inline-end","margin-inline-start","margin-left","margin-right","margin-top","max-block-size","max-height","max-inline-size","max-width","min-block-size","min-height","min-inline-size","min-width","order","overflow","overflow-x","overflow-y","padding","padding-block","padding-block-end","padding-block-start","padding-bottom","padding-inline","padding-inline-end","padding-inline-start","padding-left","padding-right","padding-top","position","right","row-gap","text-align","text-wrap-mode","top","white-space","white-space-collapse","width"];
+export const subset: readonly string[] = ["align-content","align-items","align-self","background","background-color","block-size","border","border-block","border-block-color","border-block-end","border-block-end-color","border-block-end-style","border-block-end-width","border-block-start","border-block-start-color","border-block-start-style","border-block-start-width","border-block-style","border-block-width","border-bottom","border-bottom-color","border-bottom-style","border-bottom-width","border-color","border-inline","border-inline-color","border-inline-end","border-inline-end-color","border-inline-end-style","border-inline-end-width","border-inline-start","border-inline-start-color","border-inline-start-style","border-inline-start-width","border-inline-style","border-inline-width","border-left","border-left-color","border-left-style","border-left-width","border-right","border-right-color","border-right-style","border-right-width","border-style","border-top","border-top-color","border-top-style","border-top-width","border-width","bottom","box-sizing","color","column-gap","direction","display","flex","flex-basis","flex-direction","flex-flow","flex-grow","flex-shrink","flex-wrap","font-family","font-size","gap","height","inline-size","inset","inset-block","inset-block-end","inset-block-start","inset-inline","inset-inline-end","inset-inline-start","justify-content","left","line-height","margin","margin-block","margin-block-end","margin-block-start","margin-bottom","margin-inline","margin-inline-end","margin-inline-start","margin-left","margin-right","margin-top","max-block-size","max-height","max-inline-size","max-width","min-block-size","min-height","min-inline-size","min-width","order","overflow","overflow-x","overflow-y","padding","padding-block","padding-block-end","padding-block-start","padding-bottom","padding-inline","padding-inline-end","padding-inline-start","padding-left","padding-right","padding-top","position","right","row-gap","text-align","text-wrap-mode","top","transform","transform-origin","white-space","white-space-collapse","width","will-change"];
 
 export type PropertyGrammar = { readonly syntax: string; readonly initial: string; readonly inherited: string };
 
@@ -127,10 +127,13 @@ export const properties: { readonly [name: string]: PropertyGrammar } = {
   "text-align": { syntax: "start | end | left | right | center | <string> | justify | match-parent | justify-all", initial: "start", inherited: "yes" },
   "text-wrap-mode": { syntax: "wrap | nowrap", initial: "wrap", inherited: "yes" },
   "top": { syntax: "auto | <length-percentage> | <anchor()> | <anchor-size()>", initial: "auto", inherited: "no" },
+  "transform": { syntax: "none | <transform-list>", initial: "none", inherited: "no" },
+  "transform-origin": { syntax: "[ left | center | right | top | bottom | <length-percentage> ] | [ left | center | right | <length-percentage> ] [ top | center | bottom | <length-percentage> ] <length>? | [ [ center | left | right ] && [ center | top | bottom ] ] <length>?", initial: "50% 50%", inherited: "no" },
   "white-space": { syntax: "normal | pre | pre-wrap | pre-line | <'white-space-collapse'> || <'text-wrap-mode'> || <'white-space-trim'>", initial: "normal", inherited: "see individual properties" },
   "white-space-collapse": { syntax: "collapse | discard | preserve | preserve-breaks | preserve-spaces | break-spaces", initial: "collapse", inherited: "yes" },
   "white-space-trim": { syntax: "none | discard-before || discard-after || discard-inner", initial: "none", inherited: "no" },
   "width": { syntax: "auto | <box-size> | <anchor-size()>", initial: "auto", inherited: "no" },
+  "will-change": { syntax: "auto | <animateable-feature>#", initial: "auto", inherited: "no" },
 };
 
 export const types: { readonly [name: string]: string } = {
@@ -146,6 +149,7 @@ export const types: { readonly [name: string]: string } = {
   "angular-color-hint": "<angle-percentage> | <zero>",
   "angular-color-stop": "<color> <color-stop-angle>?",
   "angular-color-stop-list": "<angular-color-stop> , [ <angular-color-hint>? , <angular-color-stop> ]#?",
+  "animateable-feature": "scroll-position | contents | <custom-ident>",
   "attachment": "scroll | fixed | local",
   "baseline-position": "[ first | last ]? && baseline",
   "bg-clip": "<visual-box> | [ border-area || text ]",
@@ -230,6 +234,8 @@ export const types: { readonly [name: string]: string } = {
   "linear-color-stop": "<color> <color-stop-length>?",
   "linear-gradient()": "linear-gradient( [ <linear-gradient-syntax> ] )",
   "linear-gradient-syntax": "[ [ <angle> | <zero> | to <side-or-corner> ] || <color-interpolation-method> ]? , <color-stop-list>",
+  "matrix()": "matrix( <number>#{6} )",
+  "matrix3d()": "matrix3d( <number>#{16} )",
   "modern-device-cmyk-syntax": "device-cmyk( <cmyk-component>{4} [ / [ <alpha-value> | none ] ]? )",
   "modern-hsl-syntax": "hsl([from <color>]? [<hue> | none] [<percentage> | <number> | none] [<percentage> | <number> | none] [ / [<alpha-value> | none] ]? )",
   "modern-hsla-syntax": "hsla([from <color>]? [<hue> | none] [<percentage> | <number> | none] [<percentage> | <number> | none] [ / [<alpha-value> | none] ]? )",
@@ -239,6 +245,7 @@ export const types: { readonly [name: string]: string } = {
   "oklab()": "oklab([from <color>]? [<percentage> | <number> | none] [<percentage> | <number> | none] [<percentage> | <number> | none] [ / [<alpha-value> | none] ]? )",
   "oklch()": "oklch([from <color>]? [<percentage> | <number> | none] [<percentage> | <number> | none] [<hue> | none] [ / [<alpha-value> | none] ]? )",
   "overflow-position": "unsafe | safe",
+  "perspective()": "perspective( [ <length [0,∞]> | none ] )",
   "polar-color-space": "hsl | hwb | lch | oklch",
   "position": "<position-one> | <position-two> | <position-four>",
   "position-four": "[ [ [ left | right | x-start | x-end ] <length-percentage> ] && [ [ top | bottom | y-start | y-end ] <length-percentage> ] | [ [ block-start | block-end ] <length-percentage> ] && [ [ inline-start | inline-end ] <length-percentage> ] | [ [ start | end ] <length-percentage> ]{2} ]",
@@ -261,12 +268,32 @@ export const types: { readonly [name: string]: string } = {
   "repetition": "repeat | space | round | no-repeat",
   "rgb()": "[ <legacy-rgb-syntax> | <modern-rgb-syntax> ]",
   "rgba()": "[ <legacy-rgba-syntax> | <modern-rgba-syntax> ]",
+  "rotate()": "rotate( [ <angle> | <zero> ] )",
+  "rotate3d()": "rotate3d( <number> , <number> , <number> , [ <angle> | <zero> ] )",
+  "rotateX()": "rotateX( [ <angle> | <zero> ] )",
+  "rotateY()": "rotateY( [ <angle> | <zero> ] )",
+  "rotateZ()": "rotateZ( [ <angle> | <zero> ] )",
   "running()": "running( <custom-ident> )",
+  "scale()": "scale( <number> , <number>? )",
+  "scale3d()": "scale3d( [ <number> | <percentage> ]#{3} )",
+  "scaleX()": "scaleX( <number> )",
+  "scaleY()": "scaleY( <number> )",
+  "scaleZ()": "scaleZ( [ <number> | <percentage> ] )",
   "self-position": "center | start | end | self-start | self-end | flex-start | flex-end",
   "side-or-corner": "[left | right] || [top | bottom]",
+  "skew()": "skew( [ <angle> | <zero> ] , [ <angle> | <zero> ]? )",
+  "skewX()": "skewX( [ <angle> | <zero> ] )",
+  "skewY()": "skewY( [ <angle> | <zero> ] )",
   "stripes()": "stripes( <color-stripe># )",
   "system-color": "AccentColor | AccentColorText | ActiveText | ButtonBorder | ButtonFace | ButtonText | Canvas | CanvasText | Field | FieldText | GrayText | Highlight | HighlightText | LinkText | Mark | MarkText | SelectedItem | SelectedItemText | VisitedText | <deprecated-color>",
   "target-contrast": "<wcag2>",
+  "transform-function": "<scale3d()> | <scale()> | <scaleX()> | <scaleY()> | <scaleZ()> | <translate3d()> | <translate()> | <translateX()> | <translateY()> | <translateZ()> | <rotate3d()> | <rotate()> | <rotateX()> | <rotateY()> | <rotateZ()> | <skew()> | <skewX()> | <skewY()> | <matrix3d()> | <matrix()> | <perspective()>",
+  "transform-list": "<transform-function>+",
+  "translate()": "translate( <length-percentage> , <length-percentage>? )",
+  "translate3d()": "translate3d( <length-percentage> , <length-percentage> , <length> )",
+  "translateX()": "translateX( <length-percentage> )",
+  "translateY()": "translateY( <length-percentage> )",
+  "translateZ()": "translateZ( <length> )",
   "visual-box": "content-box | padding-box | border-box",
   "wcag2": "wcag2 | wcag2([<number> | [ aa | aaa ] && large? ])",
   "xyz-params": "<xyz-space> [ <number> | <percentage> | none ]{3}",

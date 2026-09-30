@@ -74,7 +74,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "200px 242.943px",
+        "will-change": "auto"
       }
     },
     {
@@ -141,7 +144,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "200px 242.943px",
+        "will-change": "auto"
       }
     },
     {
@@ -208,7 +214,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "57.6484px 32.849px",
+        "will-change": "auto"
       }
     },
     {
@@ -275,7 +284,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgb(255, 204, 204)"
+        "background-color": "rgb(255, 204, 204)",
+        "transform": "none",
+        "transform-origin": "55.6458px 15px",
+        "will-change": "auto"
       }
     },
     {
@@ -382,7 +394,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "57.6484px 32.849px",
+        "will-change": "auto"
       }
     },
     {
@@ -449,7 +464,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgb(255, 204, 204)"
+        "background-color": "rgb(255, 204, 204)",
+        "transform": "none",
+        "transform-origin": "52.6458px 20px",
+        "will-change": "auto"
       }
     },
     {
@@ -566,7 +584,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "57.6484px 32.849px",
+        "will-change": "auto"
       }
     },
     {
@@ -633,7 +654,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgb(255, 204, 204)"
+        "background-color": "rgb(255, 204, 204)",
+        "transform": "none",
+        "transform-origin": "60px 35px",
+        "will-change": "auto"
       }
     },
     {
@@ -700,7 +724,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "57.6484px 32.849px",
+        "will-change": "auto"
       }
     },
     {
@@ -767,7 +794,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgb(255, 204, 204)"
+        "background-color": "rgb(255, 204, 204)",
+        "transform": "none",
+        "transform-origin": "25px 5px",
+        "will-change": "auto"
       }
     },
     {
@@ -854,7 +884,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "57.6484px 32.849px",
+        "will-change": "auto"
       }
     },
     {
@@ -921,7 +954,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgb(255, 204, 204)"
+        "background-color": "rgb(255, 204, 204)",
+        "transform": "none",
+        "transform-origin": "52.6458px 15px",
+        "will-change": "auto"
       }
     },
     {
@@ -1028,7 +1064,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "153px 36.849px",
+        "will-change": "auto"
       }
     },
     {
@@ -1095,7 +1134,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "57.6484px 32.849px",
+        "will-change": "auto"
       }
     },
     {
@@ -1162,7 +1204,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgb(255, 204, 204)"
+        "background-color": "rgb(255, 204, 204)",
+        "transform": "none",
+        "transform-origin": "40px 5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1249,7 +1294,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "153px 36.849px",
+        "will-change": "auto"
       }
     },
     {
@@ -1316,7 +1364,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "transform": "none",
+        "transform-origin": "57.6484px 32.849px",
+        "will-change": "auto"
       }
     },
     {
@@ -1383,7 +1434,10 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgb(255, 204, 204)"
+        "background-color": "rgb(255, 204, 204)",
+        "transform": "none",
+        "transform-origin": "60.6458px 10px",
+        "will-change": "auto"
       }
     },
     {
