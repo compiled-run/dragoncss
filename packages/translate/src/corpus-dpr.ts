@@ -238,8 +238,9 @@ export const CALC_DIR = join(VECTORS_DIR, 'calc');
 
 /** The calc goldens (vectors/calc/<name>.json): an engine vector for each (verify) point of the value model, by file name. */
 export function calcGoldenCases(): VectorCase[] {
-  if (!existsSync(CALC_DIR)) return [];
-  return readdirSync(CALC_DIR).filter((f) => f.endsWith('.json')).sort().map((f) => vectorCase(CALC_DIR, f));
+  const files = existsSync(CALC_DIR) ? readdirSync(CALC_DIR).filter((f) => f.endsWith('.json')).sort() : [];
+  if (files.length === 0) throw new Error(`no calc goldens in ${CALC_DIR}; the calc-goldens suite would run no cases`);
+  return files.map((f) => vectorCase(CALC_DIR, f));
 }
 
 const CALC_LENGTHS = [0, 1, 10, 0.1, 7.5, 33.333, 100, 12.5, 0.015625, 250];
