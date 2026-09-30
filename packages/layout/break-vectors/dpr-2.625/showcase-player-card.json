@@ -1,0 +1,11 @@
+{
+  "case": "showcase-player-card",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"title:text0","lines":[[0,10]]},
+    {"id":"artist:text0","lines":[[0,11]]},
+    {"id":"badge:text0","lines":[[0,4]]},
+    {"id":"now:text0","lines":[[0,4]]},
+    {"id":"total:text0","lines":[[0,4]]}
+  ]
+}
