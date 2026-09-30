@@ -1,26 +1,20 @@
-// LANE-SPEED: two parity:lanes runs of different targets at once each re-read out/lanes.json under a lock and replace only their
-// own records; devices of a target run in their own processes and merge in matrix order; parity:devices fails when any step or the
-// merged file fails.
-import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+// LANE-SPEED: one parity:lanes process runs both targets at once under the device lease; it boots and stops every device itself,
+// admitted by one in-memory budget, while each device's work runs in its own process and the outcomes merge in matrix order.
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { deviceEvidence } from '../src/device-evidence.ts';
 import type { DeviceJob } from '../src/device-jobs.ts';
-import { deviceJobs, devicesArgs, devicesExit, isAncestor, judgedSteps, leased, leaseHolder, parentPid, parseDeviceJob, parseOutcome, pool } from '../src/device-jobs.ts';
-import { parseVmStat } from '../src/device-slots.ts';
+import { deviceJobs, lanesArgs, parseDeviceJob, parseHandle, parseOutcome, pool, prebuildApps } from '../src/device-jobs.ts';
 import type { DeviceOutcome, DeviceSet } from '../src/device-lanes.ts';
 import { mergeOutcomes } from '../src/device-lanes.ts';
-import { DEVICE_MATRIX } from '../src/device-run.ts';
-import { ownerState, withFileLock } from '../src/file-lock.ts';
-import type { DeviceRun, HostRun, LanesFile } from '../src/lanes.ts';
-import { lanesFile, ownFailures, readLanesFile, updateLanesFile, writeLanesFile } from '../src/lanes.ts';
+import type { AvdDeviceSpec, DeviceHandle, IosDeviceSpec } from '../src/device-run.ts';
+import { admitDevice, admits, DEVICE_MATRIX, DEVICE_MEMORY, DeviceLeftRunning, failBoot, heldBytes, isAncestor, leaseHolder, MEMORY_RESERVE, parentPid, parseVmStat, release, releaseDeviceMemory, requireDeviceLease, stopSpawned, withDeviceSlot } from '../src/device-run.ts';
+import type { LanesFile } from '../src/lanes.ts';
+import { readLanesFile } from '../src/lanes.ts';
 import { repoPath } from '../src/paths.ts';
-import type { NativeTarget } from '../src/targets.ts';
-import { nativeTargets } from '../src/targets.ts';
 
-const targets = nativeTargets();
 const committed = readLanesFile() as LanesFile;
 const dirs: string[] = [];
 const tmp = (): string => {
@@ -31,114 +25,7 @@ const tmp = (): string => {
 afterEach(() => {
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
 });
-
-const hostRun = (reason: string): HostRun => ({ state: 'fail', reason, toolchain: null, suites: [], digests: { p1: null, extended: null } });
-const deviceRunOf = (target: NativeTarget, marker: string): DeviceRun => {
-  const t = targets.find((x) => x.target === target);
-  const lane = committed.targets.find((x) => x.target === target)?.lanes.find((l) => l.lane === 'device-frames');
-  const base = lane?.device?.sets[0];
-  if (t === undefined || base === undefined) throw new Error(`no committed ${target} device set`);
-  const set = (dpr: number): DeviceSet => ({ dpr, device: { ...base.device, name: `${marker}@${dpr}` }, cases: base.cases, dumps: base.cases, compared: base.compared, dumpsSha256: marker, failures: [], faults: [] });
-  return { vectors: null, sets: t.dprs.map(set), trust: [], blocked: null, evidence: deviceEvidence(target) };
-};
-const hostReason = (f: LanesFile, target: NativeTarget): string | null => f.targets.find((t) => t.target === target)?.lanes.find((l) => l.lane === 'layout-vectors-host')?.reason ?? null;
-const deviceSha = (f: LanesFile, target: NativeTarget): string | null => f.targets.find((t) => t.target === target)?.lanes.find((l) => l.lane === 'device-frames')?.device?.sets[0]?.dumpsSha256 ?? null;
-
-describe('two parity:lanes writers of different targets', () => {
-  it('interleaved: each started from the same file; the later write keeps the records the earlier one replaced', () => {
-    const path = join(tmp(), 'lanes.json');
-    writeLanesFile(committed, path);
-    // Both runs start (and read) before either writes, as two --target runs at once do.
-    const startA = readLanesFile(path);
-    const startB = readLanesFile(path);
-    const ios = { host: new Map([['ios', hostRun('run A')]] as const), device: new Map([['ios', deviceRunOf('ios', 'A')]] as const) };
-    const android = { host: new Map([['android', hostRun('run B')]] as const), device: new Map([['android', deviceRunOf('android', 'B')]] as const) };
-    // The old write (the file read at the start, rewritten whole) puts back the other target's stale record.
-    writeLanesFile(lanesFile(targets, [], android.host, null, android.device, startB), path);
-    writeLanesFile(lanesFile(targets, [], ios.host, null, ios.device, startA), path);
-    expect(hostReason(readLanesFile(path) as LanesFile, 'android')).not.toBe('run B');
-    // The locked write re-reads the file as it stands and replaces only its own records.
-    writeLanesFile(committed, path);
-    updateLanesFile((onDisk) => lanesFile(targets, [], android.host, null, android.device, onDisk), path);
-    const f = updateLanesFile((onDisk) => lanesFile(targets, [], ios.host, null, ios.device, onDisk), path);
-    expect(readLanesFile(path)).toEqual(f);
-    for (const g of [f, updateLanesFile((onDisk) => lanesFile(targets, [], new Map(), null, new Map(), onDisk), path)]) {
-      expect(hostReason(g, 'ios')).toBe('run A');
-      expect(hostReason(g, 'android')).toBe('run B');
-      expect(deviceSha(g, 'ios')).toBe('A');
-      expect(deviceSha(g, 'android')).toBe('B');
-    }
-  });
-  it('in either order the merged file is the one sequential runs of the two targets make', () => {
-    const results = (['ios-first', 'android-first'] as const).map((order) => {
-      const path = join(tmp(), 'lanes.json');
-      writeLanesFile(committed, path);
-      const runs = (['ios', 'android'] as const).map((t) => (onDisk: LanesFile | null) => lanesFile(targets, [], new Map([[t, hostRun(`run ${t}`)]]), null, new Map([[t, deviceRunOf(t, t)]]), onDisk));
-      for (const r of order === 'ios-first' ? runs : [...runs].reverse()) updateLanesFile(r, path);
-      return readFileSync(path, 'utf8');
-    });
-    expect(results[0]).toBe(results[1]);
-  });
-  it('two processes updating one file under the lock lose no update', async () => {
-    const dir = tmp();
-    const path = join(dir, 'counter.json');
-    writeFileSync(path, '0');
-    const n = 25;
-    const child = `
-      import { readFileSync, writeFileSync } from 'node:fs';
-      import { withFileLock } from ${JSON.stringify(repoPath('packages/parity/src/file-lock.ts'))};
-      const wait = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-      for (let i = 0; i < ${n}; i++) withFileLock(${JSON.stringify(path)}, () => { const v = Number(readFileSync(${JSON.stringify(path)}, 'utf8')); wait(2); writeFileSync(${JSON.stringify(path)}, String(v + 1)); });
-    `;
-    const run = (): Promise<number | null> => new Promise((resolve) => spawn(process.execPath, ['--input-type=module', '-e', child], { stdio: 'inherit' }).once('close', resolve));
-    expect(await Promise.all([run(), run()])).toEqual([0, 0]);
-    expect(Number(readFileSync(path, 'utf8'))).toBe(2 * n);
-  });
-  it('a lock whose holder died is taken over; a live holder times out; a released or half-made lock is not dead', () => {
-    const dir = tmp();
-    const path = join(dir, 'lanes.json');
-    const dead = spawnSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], { encoding: 'utf8' }).stdout;
-    mkdirSync(`${path}.lock`);
-    writeFileSync(`${path}.lock/pid`, dead);
-    expect(ownerState(`${path}.lock`)).toBe('dead');
-    expect(withFileLock(path, () => 6)).toBe(6);
-    mkdirSync(`${path}.lock`);
-    writeFileSync(`${path}.lock/pid`, String(process.pid));
-    expect(() => withFileLock(path, () => 1, { timeoutMs: 300, pollMs: 50 })).toThrow(/timed out after 0.3 s waiting for the lock/);
-    writeFileSync(`${path}.lock/pid`, '');
-    expect(ownerState(`${path}.lock`)).toBe('alive');
-    rmSync(`${path}.lock`, { recursive: true });
-    expect(ownerState(`${path}.lock`)).toBe('gone');
-    expect(withFileLock(path, () => 7)).toBe(7);
-    expect(() => withFileLock(path, () => { throw new Error('inside'); })).toThrow('inside');
-    // The lock is released after a throw.
-    expect(withFileLock(path, () => 8)).toBe(8);
-    // A takeover lock left by a process that died while taking over is an error naming it.
-    mkdirSync(`${path}.lock`);
-    writeFileSync(`${path}.lock/pid`, dead);
-    mkdirSync(`${path}.lock.takeover`);
-    const old = new Date(Date.now() - 120_000);
-    utimesSync(`${path}.lock.takeover`, old, old);
-    expect(() => withFileLock(path, () => 1)).toThrow(/takeover lock .*lanes.json.lock.takeover is 1\d\d s old/);
-  });
-  it('three processes meeting a dead holder\'s lock at once: one takes it over, and no update is lost', async () => {
-    const dir = tmp();
-    const path = join(dir, 'counter.json');
-    writeFileSync(path, '0');
-    const dead = spawnSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], { encoding: 'utf8' }).stdout;
-    mkdirSync(`${path}.lock`);
-    writeFileSync(`${path}.lock/pid`, dead);
-    const n = 20;
-    const child = `
-      import { readFileSync, writeFileSync } from 'node:fs';
-      import { withFileLock } from ${JSON.stringify(repoPath('packages/parity/src/file-lock.ts'))};
-      for (let i = 0; i < ${n}; i++) withFileLock(${JSON.stringify(path)}, () => writeFileSync(${JSON.stringify(path)}, String(Number(readFileSync(${JSON.stringify(path)}, 'utf8')) + 1)));
-    `;
-    const run = (): Promise<number | null> => new Promise((resolve) => spawn(process.execPath, ['--input-type=module', '-e', child], { stdio: 'inherit' }).once('close', resolve));
-    expect(await Promise.all([run(), run(), run()])).toEqual([0, 0, 0]);
-    expect(Number(readFileSync(path, 'utf8'))).toBe(3 * n);
-  });
-});
+const GIB = 1024 ** 3;
 
 describe('devices of a target at once', () => {
   const set = committed.targets[0]?.lanes.find((l) => l.lane === 'device-frames')?.device?.sets[0];
@@ -203,7 +90,7 @@ describe('devices of a target at once', () => {
     await pool([0, 2, 4], 3, async (x) => { order.push(x); return f(x); }, (x) => x === 0);
     expect(order[order.length - 1]).toBe(0);
   });
-  it('the number of device processes at once is capped by the matrix and the request (memory is the slots\' job)', () => {
+  it('the number of device processes at once is capped by the matrix and the request (memory is the budget\'s job)', () => {
     const log = (): void => undefined;
     const android = DEVICE_MATRIX.filter((d) => d.target === 'android').length;
     expect(deviceJobs('android', null, log)).toBe(android);
@@ -211,37 +98,23 @@ describe('devices of a target at once', () => {
     expect(deviceJobs('android', 1, log)).toBe(1);
     expect(deviceJobs('ios', 2, log)).toBe(2);
   });
-  it('vm_stat free memory counts free, inactive and speculative pages; a missing count is null', () => {
-    const text = 'Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                                  100.\nPages active:  5.\nPages inactive:                               20.\nPages speculative:                             3.\n';
-    expect(parseVmStat(text)).toBe(123 * 16384);
-    expect(parseVmStat(text.replace('Pages inactive', 'Pages x'))).toBeNull();
+  it('a device process takes only its own matrix device from the parent, or the reason its boot failed', () => {
+    const ios = DEVICE_MATRIX.find((d) => d.target === 'ios') as IosDeviceSpec;
+    const avd = DEVICE_MATRIX.find((d) => d.target === 'android') as AvdDeviceSpec;
+    const h = { spec: ios, udid: 'U-1', startedHere: true };
+    expect(parseHandle(JSON.stringify({ handle: h }), ios)).toEqual(h);
+    expect(() => parseHandle(JSON.stringify({ blocked: 'the iPhone 17 simulator failed to boot twice' }), ios)).toThrow('failed to boot twice');
+    expect(() => parseHandle('', ios)).toThrow(/handed no device/);
+    expect(() => parseHandle(JSON.stringify({ handle: { ...h, udid: '' } }), ios)).toThrow(/malformed device handle/);
+    expect(() => parseHandle(JSON.stringify({ handle: { ...h, spec: avd } }), ios)).toThrow(/malformed device handle/);
+    const a = { spec: avd, serial: `emulator-${avd.port}`, startedHere: false, tools: { adb: '/x/adb' } };
+    expect(parseHandle(JSON.stringify({ handle: a }), avd)).toEqual(a);
+    expect(() => parseHandle(JSON.stringify({ handle: { ...a, serial: 'emulator-1' } }), avd)).toThrow(/malformed device handle/);
   });
-  it('parity:devices runs a device step under its platform lease, or directly without the script, and fails on any failed step', () => {
-    expect(leased('ios', 'node', ['a'], '/tmp/device-lease.sh')).toMatchObject({ cmd: '/tmp/device-lease.sh', args: ['node', 'a'], env: { DRAGON_LEASE: 'ios' } });
-    expect(leased('android', 'node', ['a'], null)).toMatchObject({ cmd: 'node', args: ['a'] });
-    expect(devicesExit([{ code: 0 }, { code: 0 }], 0)).toBe(0);
-    expect(devicesExit([{ code: 0 }, { code: 1 }], 0)).toBe(1);
-    expect(devicesExit([{ code: 0 }, { code: null }], 0)).toBe(1);
-    expect(devicesExit([{ code: 0 }], 1)).toBe(1);
-  });
-  // PR #42 finding 4147492252: the app build is a judged step.
-  it('parity:devices judges every target\'s build step too: a failed --prebuild fails the run', () => {
-    const ok: { code: number | null } = { code: 0 };
-    const runs = [{ counted: [ok, ok], prebuild: ok }, { counted: [ok, ok], prebuild: { code: 1 } }];
-    expect(judgedSteps(runs)).toHaveLength(6);
-    expect(devicesExit(judgedSteps(runs), 0)).toBe(1);
-    expect(devicesExit(judgedSteps([{ counted: [ok, ok], prebuild: { code: null } }]), 0)).toBe(1);
-    expect(devicesExit(judgedSteps([{ counted: [ok, ok], prebuild: ok }]), 0)).toBe(0);
-  });
-  it('parity:devices checks each argument in place: --device-jobs takes its own value, and a stray value is refused', () => {
-    expect(devicesArgs([])).toEqual({ requireAll: false, jobs: [] });
-    expect(devicesArgs(['--require-all', '--device-jobs', '3'])).toEqual({ requireAll: true, jobs: ['--device-jobs', '3'] });
-    expect(devicesArgs(['--device-jobs', '2', '2'])).toEqual({ error: 'unknown argument "2" (takes --require-all and --device-jobs N)' });
-    expect(devicesArgs(['--device-jobs'])).toMatchObject({ error: expect.stringMatching(/takes a whole number/) });
-    expect(devicesArgs(['--device-jobs', '0'])).toMatchObject({ error: expect.stringMatching(/takes a whole number/) });
-    expect(devicesArgs(['--device-jobs', '2', '--device-jobs', '3'])).toEqual({ error: '--device-jobs is given twice' });
-  });
-  it('parity:devices run inside the device lease sees the holder among its ancestors, so its steps do not wait on it', () => {
+});
+
+describe('the device lease', () => {
+  it('devices boot only under the lease: its holder must be this process or an ancestor', () => {
     const tree = new Map([[40, 30], [30, 20], [20, 1]]);
     const parentOf = (p: number): number | null => tree.get(p) ?? null;
     expect(isAncestor(20, 40, parentOf)).toBe(true);
@@ -249,6 +122,9 @@ describe('devices of a target at once', () => {
     expect(isAncestor(99, 40, parentOf)).toBe(false);
     expect(isAncestor(5, 6, (p) => p)).toBe(false);
     expect(isAncestor(process.ppid, process.pid, parentPid)).toBe(true);
+    expect(() => requireDeviceLease(20, 40, parentOf)).not.toThrow();
+    expect(() => requireDeviceLease(null, 40, parentOf)).toThrow(/no device lease is held .*device-lease.sh/);
+    expect(() => requireDeviceLease(99, 40, parentOf)).toThrow(/held by pid 99, not by this process or an ancestor: another device run/);
     const lock = tmp();
     expect(leaseHolder(lock)).toBeNull();
     writeFileSync(join(lock, 'pid'), 'x\n');
@@ -256,30 +132,146 @@ describe('devices of a target at once', () => {
     writeFileSync(join(lock, 'pid'), '1234\n');
     expect(leaseHolder(lock)).toBe(1234);
   });
-  it('--own-exit answers for the lanes the run produced: a host run does not fail on a device lane it carried, a device run does', () => {
-    const f = lanesFile(targets, [], new Map([['ios', hostRun('host broke')]]), null);
-    const failed = f.targets.map((t) => ({ ...t, lanes: t.lanes.map((l) => (l.where === 'device' ? { ...l, state: 'fail' as const } : { ...l, state: 'pass' as const })) }));
-    const file: LanesFile = { ...f, targets: failed };
-    expect(ownFailures(file, 'ios', new Set(['host']))).toEqual([]);
-    const device = ownFailures(file, 'ios', new Set(['device']));
-    expect(device.length).toBe(file.targets.find((t) => t.target === 'ios')?.lanes.filter((l) => l.where === 'device').length);
-    expect(device.length).toBeGreaterThan(0);
-    expect(ownFailures(f, 'ios', new Set(['host'])).map((l) => l.reason)).toContain('host broke');
-    expect(ownFailures(f, 'android', new Set(['host', 'device']))).toEqual([]);
+  it('a boot without the lease is refused before any memory is reserved', async () => {
+    await expect(admitDevice({ target: 'ios', name: 'iPhone 17' }, { lease: () => requireDeviceLease(null) })).rejects.toThrow(/no device lease is held/);
+    expect(heldBytes()).toBe(0);
   });
-  it('the CLIs refuse --own-exit without --target, a bad --device-jobs and an unknown parity:devices argument', () => {
-    const cli = (file: string, args: readonly string[]) => spawnSync(process.execPath, ['--conditions=dragon-internal', repoPath(`packages/parity/src/cli/${file}`), ...args], { encoding: 'utf8' });
-    expect(cli('lanes.ts', ['--own-exit']).stderr).toMatch(/--own-exit needs --target/);
-    for (const bad of ['0', 'x', '-1']) {
-      const r = cli('lanes.ts', ['--device-jobs', bad]);
-      expect(r.status, bad).toBe(2);
-      expect(r.stderr).toMatch(/--device-jobs takes a whole number/);
+});
+
+describe('the memory budget', () => {
+  const mem = { total: 48 * GIB, available: 20 * GIB };
+  const quiet = { lease: () => undefined, log: () => undefined, memory: () => mem };
+  afterEach(() => {
+    for (const d of DEVICE_MATRIX) releaseDeviceMemory(d.name);
+    for (const n of ['x', 'y']) releaseDeviceMemory(n);
+  });
+  it('admits while the held bytes plus the request fit the smaller of total and available memory, less the reserve', () => {
+    expect(admits(0, 4 * GIB, mem, 8 * GIB)).toBe(true);
+    expect(admits(8 * GIB, 4 * GIB, mem, 8 * GIB)).toBe(true);
+    expect(admits(11 * GIB, 3 * GIB, mem, 8 * GIB)).toBe(false);
+    expect(admits(4 * GIB, 4 * GIB, { total: 10 * GIB, available: 40 * GIB }, 4 * GIB)).toBe(false);
+  });
+  it('the first device always boots, so a run makes progress on a loaded machine', () => {
+    expect(admits(0, 4 * GIB, { total: 8 * GIB, available: 1 * GIB })).toBe(true);
+  });
+  it('both targets asking at once never pass the budget, whatever order they ask in', async () => {
+    const devices = DEVICE_MATRIX.map((d) => ({ target: d.target, name: d.name }));
+    for (let seed = 0; seed < 20; seed++) {
+      const order = devices.map((d, i) => ({ d, k: (i * 7919 + seed * 104729) % 97 })).sort((x, y) => x.k - y.k).map((x) => x.d);
+      const admitted = await Promise.all(order.map((d) => admitDevice(d, { ...quiet, waitMs: 0, pollMs: 1 }).then(() => d.name, () => null)));
+      const held = admitted.filter((n): n is string => n !== null);
+      const bytes = DEVICE_MATRIX.filter((d) => held.includes(d.name)).reduce((n, d) => n + DEVICE_MEMORY[d.target], 0);
+      expect(heldBytes()).toBe(bytes);
+      expect(held.length === 1 || bytes <= mem.available - MEMORY_RESERVE).toBe(true);
+      expect(held.length).toBeGreaterThan(1);
+      expect(held.length).toBeLessThan(devices.length);
+      for (const n of held) releaseDeviceMemory(n);
     }
-    const r = cli('devices.ts', ['--run-host']);
+  });
+  it('a device waits until memory is given back, and a wait that finds none in time names the holders', async () => {
+    await admitDevice({ target: 'android', name: 'x' }, { ...quiet, memory: () => ({ total: 48 * GIB, available: 14 * GIB }) });
+    const waiting = admitDevice({ target: 'android', name: 'y' }, { ...quiet, memory: () => ({ total: 48 * GIB, available: 14 * GIB }), pollMs: 5 });
+    setTimeout(() => releaseDeviceMemory('x'), 30);
+    await waiting;
+    expect(heldBytes()).toBe(4 * GIB);
+    await expect(admitDevice({ target: 'ios', name: 'iPhone 17' }, { ...quiet, memory: () => ({ total: 48 * GIB, available: 12 * GIB }), waitMs: 20, pollMs: 5 })).rejects.toThrow(/no device memory within 0.02 s .*held by y/);
+  });
+  it('a failed boot gives its memory back; one that left the device running keeps it', async () => {
+    const spec: IosDeviceSpec = { target: 'ios', name: 'iPhone 17' };
+    await expect(withDeviceSlot(spec, () => Promise.reject(new Error('boot failed')), quiet)).rejects.toThrow('boot failed');
+    expect(heldBytes()).toBe(0);
+    await expect(withDeviceSlot(spec, () => Promise.reject(new DeviceLeftRunning('boot failed; and it still runs')), quiet)).rejects.toThrow('still runs');
+    expect(heldBytes()).toBe(DEVICE_MEMORY.ios);
+  });
+  it('release gives memory back only once a device started here is confirmed stopped; a failed or thrown stop keeps it and is logged', async () => {
+    const spec: IosDeviceSpec = { target: 'ios', name: 'iPhone 17' };
+    const started = await withDeviceSlot(spec, () => Promise.resolve({ spec, udid: 'x', startedHere: true } satisfies DeviceHandle), quiet);
+    const lines: string[] = [];
+    expect(await release(started, (l) => lines.push(l), () => Promise.resolve('the iPhone 17 simulator is Booted after simctl shutdown'))).toMatch(/is Booted/);
+    expect(lines.join('\n')).toMatch(/memory stays reserved until this process exits/);
+    expect(heldBytes()).toBe(DEVICE_MEMORY.ios);
+    expect(await release(started, () => undefined, () => Promise.reject(new Error('simctl hung')))).toMatch(/could not be stopped: simctl hung/);
+    expect(heldBytes()).toBe(DEVICE_MEMORY.ios);
+    expect(await release(started, () => undefined, () => Promise.resolve(null))).toBeNull();
+    expect(heldBytes()).toBe(0);
+    // A device this runner did not start stays running, so it keeps its memory; booting it again reserves nothing more.
+    const found = await withDeviceSlot(spec, () => Promise.resolve({ spec, udid: 'x', startedHere: false } satisfies DeviceHandle), quiet);
+    expect(await release(found, () => undefined, () => Promise.resolve(null))).toBeNull();
+    expect(heldBytes()).toBe(DEVICE_MEMORY.ios);
+    await withDeviceSlot(spec, () => Promise.resolve(found), quiet);
+    expect(heldBytes()).toBe(DEVICE_MEMORY.ios);
+  });
+  // PR #42 findings 4149425883 and 4149425914: every cleanup stop of a failed boot runs, and a rejected one counts as not stopped.
+  it('a failed boot runs every cleanup stop; a stop that rejects or fails keeps the device counted as running', async () => {
+    const boom = new Error('bootstatus failed');
+    await expect(failBoot(boom, [() => Promise.resolve(null)])).rejects.toBe(boom);
+    await expect(failBoot(boom, [() => Promise.reject(new Error('simctl list crashed'))])).rejects.toSatisfy((e: unknown) => e instanceof DeviceLeftRunning && /bootstatus failed; and the stop failed: simctl list crashed/.test(e.message));
+    let spawnedStopped = false;
+    const stopSpawnedToo = async (): Promise<string | null> => {
+      spawnedStopped = true;
+      return null;
+    };
+    await expect(failBoot(boom, [() => Promise.resolve('emulator-5580 still runs after adb emu kill'), stopSpawnedToo])).rejects.toBeInstanceOf(DeviceLeftRunning);
+    expect(spawnedStopped).toBe(true);
+    let alive = true;
+    expect(await stopSpawned({ alive: () => alive, kill: () => void (alive = false) }, 'dragon-320')).toBeNull();
+    expect(await stopSpawned({ alive: () => true, kill: () => undefined }, 'dragon-480', 600)).toMatch(/dragon-480 emulator process still runs after SIGTERM/);
+  });
+  it('vm_stat free memory counts free, inactive and speculative pages; a missing count is null', () => {
+    const text = 'Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                                  100.\nPages active:  5.\nPages inactive:                               20.\nPages speculative:                             3.\n';
+    expect(parseVmStat(text)).toBe(123 * 16384);
+    expect(parseVmStat(text.replace('Pages inactive', 'Pages x'))).toBeNull();
+  });
+});
+
+describe('parity:lanes, the one device run process', () => {
+  it('checks each argument in place', () => {
+    expect(lanesArgs([])).toEqual({ runHost: false, runDevice: false, only: null, requireAll: false, plant: null, jobs: null, prebuild: null });
+    expect(lanesArgs(['--run-host', '--run-device', '--device-jobs', '3', '--target', 'ios', '--require-all'])).toMatchObject({ runHost: true, runDevice: true, jobs: 3, only: 'ios', requireAll: true });
+    expect(lanesArgs(['--device-jobs', '2', '2'])).toEqual({ error: 'unknown argument "2"' });
+    expect(lanesArgs(['--device-jobs'])).toEqual({ error: '--device-jobs needs a value' });
+    expect(lanesArgs(['--device-jobs', '--run-host'])).toEqual({ error: '--device-jobs needs a value' });
+    for (const bad of ['0', 'x', '-1', '100']) expect(lanesArgs(['--device-jobs', bad])).toMatchObject({ error: expect.stringMatching(/takes a whole number from 1 to 99/) });
+    expect(lanesArgs(['--device-jobs', '2', '--device-jobs', '3'])).toEqual({ error: '--device-jobs is given twice' });
+    expect(lanesArgs(['--target', 'web'])).toEqual({ error: '--target takes ios or android, not "web"' });
+    expect(lanesArgs(['--own-exit'])).toEqual({ error: 'unknown argument "--own-exit"' });
+  });
+  it('a failed app build is reported and fails the run, and its target runs no devices', async () => {
+    const lines: string[] = [];
+    const failed = await prebuildApps(['ios', 'android'], (l) => lines.push(l), (t) => ['-e', t === 'android' ? 'console.log("no kotlinc"); process.exit(3)' : 'console.log("built")']);
+    expect(failed).toEqual(['android']);
+    expect(lines).toContain('[ios build] built');
+    expect(lines.join('\n')).toMatch(/\[android build\] no kotlinc[\s\S]*\[android build\] FAILED \(exit 3\)/);
+    expect(await prebuildApps(['ios'], () => undefined, () => ['-e', 'process.kill(process.pid, "SIGKILL")'])).toEqual(['ios']);
+  });
+  it('the CLI refuses a bad argument, and --run-device outside the device lease, before any work', () => {
+    const cli = (args: readonly string[]) => spawnSync(process.execPath, ['--conditions=dragon-internal', repoPath('packages/parity/src/cli/lanes.ts'), ...args], { encoding: 'utf8' });
+    const r = cli(['--device-jobs', '0']);
     expect(r.status).toBe(2);
-    expect(r.stderr).toMatch(/unknown argument "--run-host"/);
-    const j = cli('devices.ts', ['--device-jobs']);
-    expect(j.status).toBe(2);
-    expect(j.stderr).toMatch(/--device-jobs takes a whole number/);
+    expect(r.stderr).toMatch(/--device-jobs takes a whole number/);
+    expect(cli(['--run-hots']).stderr).toMatch(/unknown argument "--run-hots"/);
+    if (leaseHolder() === null || !isAncestor(leaseHolder() as number, process.pid, parentPid)) {
+      const d = cli(['--run-device', '--target', 'ios']);
+      expect(d.status).toBe(2);
+      expect(d.stderr).toMatch(/--run-device: .*device lease/);
+    }
+  });
+});
+
+describe('every boot path is admitted', () => {
+  // A simulator or emulator started anywhere in the parity sources outside the budget (and so outside the lease check) would
+  // overcommit memory beside the run's devices.
+  const src = repoPath('packages/parity/src');
+  const files = (dir: string): string[] => readdirSync(dir).flatMap((f) => (statSync(join(dir, f)).isDirectory() ? files(join(dir, f)) : f.endsWith('.ts') ? [join(dir, f)] : []));
+  const boots = /'simctl', 'boot'|'-avd'/;
+  it('each source that boots a device is admitted by the budget before its first boot', () => {
+    const booting = files(src).filter((f) => boots.test(readFileSync(f, 'utf8')));
+    expect(booting.map((f) => f.slice(src.length + 1)).sort()).toEqual(['cli/native-smoke.ts', 'device-run.ts']);
+    for (const f of booting) {
+      const text = readFileSync(f, 'utf8');
+      const admitted = text.search(/admitDevice\(|withDeviceSlot\(/);
+      expect(admitted, f).toBeGreaterThanOrEqual(0);
+      expect(admitted, f).toBeLessThan(text.search(boots));
+    }
   });
 });

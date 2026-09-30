@@ -366,7 +366,8 @@ export type DeviceOutcome = {
 /**
  * Runs a target on every device of the matrix: build (reused when the sources are unchanged), then per device boot, one batch
  * launch of every case with its points, the checks, the held capture-trust launch, and on the vectors device the vectors lane.
- * With jobs above 1 the devices run at once, each in its own process (device-jobs.ts); the outcomes are merged in matrix order,
+ * With jobs above 1 the devices run at once, each device's work in its own process and its boot and stop here (device-jobs.ts),
+ * so every boot of the run is admitted by the one memory budget (device-run.ts); the outcomes are merged in matrix order,
  * so the run is the one a sequential run makes. A device that fails to boot twice, or cannot hold the root, is a tooling fault:
  * its DPR is recorded as not run, never as a pass.
  */
@@ -413,19 +414,23 @@ export function mergeOutcomes(outcomes: readonly DeviceOutcome[], evidence: Devi
   return { vectors, sets, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
 }
 
+/** Where a device comes from: booted and stopped by this process, or handed by the parent that boots and stops it (release null). */
+export type DeviceSource = { readonly boot: () => Promise<DeviceHandle>; readonly release: ((h: DeviceHandle) => Promise<unknown>) | null };
+
 /** One device of the matrix: boot, the batch launch and its checks, the capture-trust launch and, on the vectors device, the vectors lane. */
-export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: HostRun | null, artifact: string, casesOf: () => readonly NativeCase[], runVectors: boolean, log: RunLog): Promise<DeviceOutcome> {
+export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: HostRun | null, artifact: string, casesOf: () => readonly NativeCase[], runVectors: boolean, log: RunLog, source: DeviceSource = { boot: () => boot(spec), release: (h) => release(h, log) }): Promise<DeviceOutcome> {
   const backend = BACKEND_OF[t.target];
   const none = { device: spec.name, set: null, trust: null, vectors: null };
   let h: DeviceHandle;
   const b0 = Date.now();
   // The boot runs while the cases are computed (a device process computes them itself).
-  const booting = boot(spec);
+  const booting = source.boot();
   let cases: readonly NativeCase[];
   try {
     cases = casesOf();
   } catch (e) {
-    await booting.then(release, () => undefined);
+    const stop = source.release;
+    await booting.then((h) => (stop === null ? undefined : stop(h)), () => undefined);
     throw e;
   }
   try {
@@ -473,8 +478,10 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     }
     return { device: spec.name, set: trustFailures.length > 0 ? { ...set, failures: [...set.failures, ...trustFailures] } : set, trust: { device: spec.name, dpr, rows }, vectors, blocked: null };
   } finally {
-    const r0 = Date.now();
-    await release(h, log);
-    log(`${spec.name}: released in ${((Date.now() - r0) / 1000).toFixed(0)} s`);
+    if (source.release !== null) {
+      const r0 = Date.now();
+      await source.release(h);
+      log(`${spec.name}: released in ${((Date.now() - r0) / 1000).toFixed(0)} s`);
+    }
   }
 }

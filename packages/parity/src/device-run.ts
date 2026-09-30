@@ -2,17 +2,15 @@
 // simulators and Android AVDs, headless boots with emulators addressed by serial (an emulator this runner did not start is never
 // killed), batch launches of the host app with the run file, pulled dumps, the per-device record (model, OS and build, the scale
 // from the device profile and from the app, the window and stage in device px, the text scale), the root-fits-window check, and
-// the OS screenshots of the capture-trust probe. One device runs at a time.
+// the OS screenshots of the capture-trust probe. Devices boot only under the device lease, within one in-memory budget.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { freemem, homedir, totalmem } from 'node:os';
 import { join } from 'node:path';
 import type { SupportPlant } from 'dragon';
 import type { GlyphPosition } from './native-compare.ts';
 import type { AndroidTools } from './native-host.ts';
 import { androidTools, HOST_BUNDLE, run } from './native-host.ts';
-import type { SlotOptions } from './device-slots.ts';
-import { acquireDeviceSlot, releaseDeviceSlot } from './device-slots.ts';
 import type { NativeTarget } from './targets.ts';
 import { deviceDprs } from './targets.ts';
 
@@ -243,28 +241,160 @@ function adb(h: { serial: string; tools: AndroidTools }, args: readonly string[]
   return run(h.tools.adb, ['-s', h.serial, ...args], { timeoutMs });
 }
 
-/** The memory slot each booted device holds (device-slots.ts), by device name: taken before the boot, given back by release(). */
-const slots = new Map<string, string>();
+// ---------------------------------------------------------------- the device lease and the memory budget
 
 /**
- * A failed boot that could not stop the device it started: the device still runs and holds its memory, so its slot is kept until
- * this process exits (PR #42 round 2), and the error says so.
+ * Device runs are machine-exclusive: every boot runs under /tmp/device-lease.sh (one lock directory, its holder's pid inside). So
+ * the one process that boots devices owns the machine's device memory, and its budget can live in memory: no other run holds any.
+ */
+export const LEASE_LOCK = '/tmp/dragon-device.lock';
+export const LEASE_HELP = 'run it under the device lease: /tmp/device-lease.sh pnpm run parity:lanes -- --run-host --run-device';
+
+/** The pid holding the device lease (the lock directory's pid file), or null when it is free or unreadable. */
+export function leaseHolder(lockDir: string = LEASE_LOCK): number | null {
+  try {
+    const pid = Number(readFileSync(join(lockDir, 'pid'), 'utf8').trim());
+    return Number.isInteger(pid) && pid > 0 ? pid : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The parent of a process (ps), or null when it has none or cannot be read. */
+export function parentPid(pid: number): number | null {
+  const r = spawnSync('ps', ['-o', 'ppid=', '-p', String(pid)], { encoding: 'utf8' });
+  const p = Number(r.stdout.trim());
+  return r.status === 0 && Number.isInteger(p) && p > 0 ? p : null;
+}
+
+/** Whether ancestor is pid or one of its ancestors, walking parentOf up to the root (at most 64 steps). */
+export function isAncestor(ancestor: number, pid: number, parentOf: (pid: number) => number | null): boolean {
+  let p: number | null = pid;
+  for (let i = 0; i < 64 && p !== null && p > 1; i++) {
+    if (p === ancestor) return true;
+    p = parentOf(p);
+  }
+  return false;
+}
+
+/** Throws unless this process runs under the device lease (the lock's pid is this process or an ancestor), naming what to do. */
+export function requireDeviceLease(holder: number | null = leaseHolder(), pid: number = process.pid, parentOf: (pid: number) => number | null = parentPid): void {
+  if (holder === null) throw new Error(`no device lease is held (${LEASE_LOCK}): devices are booted only under the lease; ${LEASE_HELP}`);
+  if (!isAncestor(holder, pid, parentOf)) throw new Error(`the device lease is held by pid ${holder}, not by this process or an ancestor: another device run is in progress; ${LEASE_HELP}`);
+}
+
+const GIB = 1024 ** 3;
+/** Memory one booted device holds with its app (resident size measured with a full run: see notes/LANE-SPEED.md), rounded up. */
+export const DEVICE_MEMORY: { readonly [T in NativeTarget]: number } = { ios: 3 * GIB, android: 4 * GIB };
+/** Memory left to the rest of the machine (the host lanes, the checks, other agents) when devices are started. */
+export const MEMORY_RESERVE = 8 * GIB;
+export const ADMIT_WAIT_MS = 1_800_000;
+
+/** Memory free for new processes: free, inactive and speculative pages on macOS (vm_stat), else os.freemem() (lower, so it errs toward waiting). */
+export function availableMemory(): number {
+  if (process.platform !== 'darwin') return freemem();
+  const r = spawnSync('vm_stat', { encoding: 'utf8' });
+  return (r.status === 0 ? parseVmStat(r.stdout) : null) ?? freemem();
+}
+
+/** Free, inactive and speculative bytes from vm_stat output; null when a count or the page size is missing. */
+export function parseVmStat(text: string): number | null {
+  const page = Number(/page size of (\d+) bytes/.exec(text)?.[1]);
+  const count = (name: string): number => Number(new RegExp(`^Pages ${name}:\\s+(\\d+)\\.`, 'm').exec(text)?.[1]);
+  const pages = count('free') + count('inactive') + count('speculative');
+  return Number.isFinite(page) && page > 0 && Number.isFinite(pages) ? pages * page : null;
+}
+
+export type Memory = { readonly total: number; readonly available: number };
+
+/**
+ * Whether a device needing `need` bytes may boot, given the bytes this process's booted devices hold and one fresh memory reading:
+ * the held bytes plus the request must fit the smaller of total and available memory, less the reserve. A booted device's memory
+ * is already out of `available` and counts again as held, so it errs toward waiting. With nothing held the device always boots,
+ * so a run always makes progress (under the lease no other device run holds memory).
+ */
+export function admits(held: number, need: number, mem: Memory, reserve: number = MEMORY_RESERVE): boolean {
+  return held === 0 || held + need <= Math.min(mem.total, mem.available) - reserve;
+}
+
+/** The bytes each booted device of this process holds, by device name: reserved before its boot, given back once it is stopped. */
+const reserved = new Map<string, number>();
+export const heldBytes = (): number => [...reserved.values()].reduce((n, b) => n + b, 0);
+
+export type AdmitOptions = { readonly memory?: () => Memory; readonly lease?: () => void; readonly waitMs?: number; readonly pollMs?: number; readonly log?: (line: string) => void };
+const gib = (n: number): string => `${(n / GIB).toFixed(1)} GiB`;
+
+/**
+ * Waits until the budget admits the device, then reserves its memory; the admission and the reservation are one synchronous step,
+ * so two boots of this process cannot both pass on one reading. Throws without the device lease, and after waitMs naming the holders.
+ */
+export async function admitDevice(spec: { readonly target: NativeTarget; readonly name: string }, opts: AdmitOptions = {}): Promise<void> {
+  (opts.lease ?? requireDeviceLease)();
+  // A device left running by this run (not started here, or its stop failed) still holds its reservation.
+  if (reserved.has(spec.name)) return;
+  const need = DEVICE_MEMORY[spec.target];
+  const log = opts.log ?? ((l: string) => console.log(l));
+  const t0 = Date.now();
+  let waited = false;
+  for (;;) {
+    const mem = (opts.memory ?? (() => ({ total: totalmem(), available: availableMemory() })))();
+    const held = heldBytes();
+    const budget = Math.min(mem.total, mem.available) - MEMORY_RESERVE;
+    const holders = [...reserved.keys()].join(', ');
+    if (admits(held, need, mem)) {
+      reserved.set(spec.name, need);
+      if (waited || held + need > budget) log(`${spec.name}: device memory admitted after ${((Date.now() - t0) / 1000).toFixed(0)} s (${gib(held + need)} held of a ${gib(budget)} budget${held === 0 ? '; the only device, so it boots whatever the budget' : ''})`);
+      return;
+    }
+    if (!waited) log(`${spec.name}: waiting for device memory: ${gib(held)} held by ${holders}, ${gib(need)} more would pass the ${gib(budget)} budget`);
+    waited = true;
+    const waitMs = opts.waitMs ?? ADMIT_WAIT_MS;
+    if (Date.now() - t0 > waitMs) throw new Error(`${spec.name}: no device memory within ${waitMs / 1000} s (tooling fault): ${gib(held)} held by ${holders} of a ${gib(budget)} budget`);
+    await sleep(opts.pollMs ?? 2000);
+  }
+}
+
+/** Gives a device's memory back; only for a device that is stopped (or never booted). */
+export function releaseDeviceMemory(name: string): void {
+  reserved.delete(name);
+}
+
+/**
+ * A failed boot that could not stop the device it started: the device still runs and holds its memory, so its reservation is kept
+ * (until this process exits), and the error says so.
  */
 export class DeviceLeftRunning extends Error {}
 
-/** Runs a boot holding the device's memory slot until release(); a failed boot gives the slot back unless it left the device running. */
-export async function withDeviceSlot(spec: DeviceSpec, bootIt: () => Promise<DeviceHandle>, opts: SlotOptions = {}): Promise<DeviceHandle> {
-  const slot = await acquireDeviceSlot(spec.target, spec.name, opts);
-  slots.set(spec.name, slot);
+/** Runs a boot holding the device's memory until release(); a failed boot gives it back unless it left the device running. */
+export async function withDeviceSlot(spec: DeviceSpec, bootIt: () => Promise<DeviceHandle>, opts: AdmitOptions = {}): Promise<DeviceHandle> {
+  await admitDevice(spec, opts);
   try {
     return await bootIt();
   } catch (e) {
-    if (!(e instanceof DeviceLeftRunning)) {
-      slots.delete(spec.name);
-      releaseDeviceSlot(slot);
-    }
+    if (!(e instanceof DeviceLeftRunning)) releaseDeviceMemory(spec.name);
     throw e;
   }
+}
+
+/** Runs every stop given (a rejected one counts as not stopped); the problems of those that may have left the device running. */
+export async function stopAll(stops: readonly (() => Promise<string | null>)[]): Promise<string[]> {
+  const problems: string[] = [];
+  for (const stop of stops) {
+    try {
+      const p = await stop();
+      if (p !== null) problems.push(p);
+    } catch (x) {
+      problems.push(`the stop failed: ${x instanceof Error ? x.message : String(x)}`);
+    }
+  }
+  return problems;
+}
+
+/** The cleanup of a failed boot: when a stop leaves the device possibly running, the error becomes DeviceLeftRunning; else it is rethrown. */
+export async function failBoot(e: unknown, stops: readonly (() => Promise<string | null>)[]): Promise<never> {
+  const problems = await stopAll(stops);
+  if (problems.length === 0) throw e;
+  throw new DeviceLeftRunning(`${e instanceof Error ? e.message : String(e)}; and ${problems.join('; ')}`);
 }
 
 export async function bootIos(spec: IosDeviceSpec): Promise<DeviceHandle> {
@@ -278,10 +408,7 @@ async function bootIosHeld(spec: IosDeviceSpec): Promise<DeviceHandle> {
     return await bootIosFrom(spec, udid, was);
   } catch (e) {
     // A simulator this runner booted is shut down again; one already booted or booting elsewhere is left alone.
-    if (was === 'Shutdown') {
-      const problem = await stopDevice({ spec, udid, startedHere: true });
-      if (problem !== null) throw new DeviceLeftRunning(`${e instanceof Error ? e.message : String(e)}; and ${problem}`);
-    }
+    if (was === 'Shutdown') await failBoot(e, [() => stopDevice({ spec, udid, startedHere: true })]);
     throw e;
   }
 }
@@ -396,9 +523,10 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
     } catch (e) {
       // Only the emulator this attempt spawned is killed: if it exited (say, the port was taken), the serial is someone else's.
       if (!p.alive()) throw new Error(`the ${spec.name} emulator exited before it booted; ${serial} is left alone (tooling fault): ${e instanceof Error ? e.message : String(e)}`);
-      // An emulator that never attached is not reached by adb emu kill, so the process this attempt spawned is stopped as well.
-      const problem = (await stopDevice({ ...h, startedHere: true })) ?? (await stopSpawned(p, spec.name));
-      if (problem !== null) throw new DeviceLeftRunning(`the ${spec.name} emulator failed to boot (${e instanceof Error ? e.message : String(e)}); and ${problem}`);
+      // An emulator that never attached is not reached by adb emu kill, so the process this attempt spawned is stopped as well,
+      // whatever the kill gave; a stop that fails keeps the device's memory held (failBoot).
+      const problems = await stopAll([() => stopDevice({ ...h, startedHere: true }), () => stopSpawned(p, spec.name)]);
+      if (problems.length > 0) throw new DeviceLeftRunning(`the ${spec.name} emulator failed to boot (${e instanceof Error ? e.message : String(e)}); and ${problems.join('; ')}`);
       await sleep(5000);
       if (attempt === 2) throw new Error(`the ${spec.name} emulator failed to boot twice (tooling fault): ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -409,9 +537,7 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
     await prepareAvd(h);
   } catch (e) {
     // This runner started it, so it stops it rather than leave the port taken.
-    const problem = await stopDevice({ ...h, startedHere: true });
-    if (problem !== null) throw new DeviceLeftRunning(`${e instanceof Error ? e.message : String(e)}; and ${problem}`);
-    throw e;
+    return failBoot(e, [() => stopDevice({ ...h, startedHere: true })]);
   }
   return { ...h, startedHere: true };
 }
@@ -515,8 +641,8 @@ export async function boot(spec: DeviceSpec): Promise<DeviceHandle> {
 }
 
 /**
- * Shuts down only a device this runner started. Its memory slot is given back only once the device is stopped: a device this runner
- * did not start stays running, as does one whose stop failed, so their slots are kept until this process exits (PR #42 finding
+ * Shuts down only a device this runner started. Its memory is given back only once the device is stopped: a device this runner
+ * did not start stays running, as does one whose stop failed, so their reservations are kept until this process exits (PR #42 finding
  * 4147492203). A stop that failed is logged and returned, never dropped.
  */
 export async function release(h: DeviceHandle, log: (line: string) => void = (l) => console.error(l), stop: (h: DeviceHandle) => Promise<string | null> = stopDevice): Promise<string | null> {
@@ -527,10 +653,9 @@ export async function release(h: DeviceHandle, log: (line: string) => void = (l)
     problem = `${h.spec.name} could not be stopped: ${e instanceof Error ? e.message : String(e)}`;
   }
   if (h.startedHere && problem === null) {
-    releaseDeviceSlot(slots.get(h.spec.name) ?? null);
-    slots.delete(h.spec.name);
+    releaseDeviceMemory(h.spec.name);
   }
-  if (problem !== null) log(`${problem}; its device memory slot is kept until this process exits (tooling fault)`);
+  if (problem !== null) log(`${problem}; its device memory stays reserved until this process exits (tooling fault)`);
   return problem;
 }
 

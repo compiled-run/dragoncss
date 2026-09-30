@@ -3,10 +3,9 @@
 // native:swift and native:kotlin CLIs, the TS-engine-plus-snapRect reference proof, and out/lanes.json. Lane states are pass,
 // fail, blocked (owner tooling) when a tool lookup fails, and not run. Device lanes carry their run records (P5, device-lanes.ts):
 // the device and OS per DPR set, the counts compared per check, failures by kind, the run digests and the real-dump fault rows.
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { LayoutRect } from '@dragon/layout';
 import { layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
@@ -25,8 +24,6 @@ import type { Compared, DeviceSet, FaultRow, LaneFailure, TrustRow } from './dev
 import { DEVICE_CHECK_LANES, failuresByKind, laneFailures } from './device-lanes.ts';
 import type { DeviceEvidence } from './device-evidence.ts';
 import { deviceEvidence, evidenceProblems } from './device-evidence.ts';
-import type { LockOptions } from './file-lock.ts';
-import { withFileLock, writeFileAtomic } from './file-lock.ts';
 import type { DeviceRecord } from './device-run.ts';
 import { TRUST_CASES } from './device-run.ts';
 import type { CaseSet, LaneConfig, LaneId, NativeTarget, TargetConfig } from './targets.ts';
@@ -281,8 +278,18 @@ export async function runHostLane(t: TargetConfig, opts: HostOptions = {}): Prom
     env = { ...process.env, JAVA_HOME: tool.javaHome };
   }
   const script = t.hostCli === 'native:swift' ? 'swift' : 'kotlin';
-  const r = spawnSync(process.execPath, [repoPath('packages/translate/src/cli/native.ts'), script], { cwd: repoPath('.'), env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  return judgeHost(t, parseNativeOutput(`${r.stdout ?? ''}${r.stderr ?? ''}`));
+  // Awaited, not blocking, so parity:lanes runs the host lanes of both targets at once.
+  const out = await new Promise<string>((resolve) => {
+    const p = spawn(process.execPath, [repoPath('packages/translate/src/cli/native.ts'), script], { cwd: repoPath('.'), env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const out: Buffer[] = [];
+    const err: Buffer[] = [];
+    p.stdout.on('data', (c: Buffer) => out.push(c));
+    p.stderr.on('data', (c: Buffer) => err.push(c));
+    // A host that cannot start is judged from what it gave, as the blocking run judged it: no suites, so the lane fails.
+    p.once('error', (e) => resolve(`${Buffer.concat([...out, ...err]).toString('utf8')}${String(e)}`));
+    p.once('close', () => resolve(Buffer.concat([...out, ...err]).toString('utf8')));
+  });
+  return judgeHost(t, parseNativeOutput(out));
 }
 
 // ---------------------------------------------------------------- the reference proof
@@ -596,30 +603,13 @@ export function fileStatusProblems(f: LanesFile, problems: readonly string[]): s
 
 export const lanesJsonText = (f: LanesFile): string => `${JSON.stringify(f, null, 2)}\n`;
 
-export function writeLanesFile(f: LanesFile, path: string = repoPath(LANES_JSON)): void {
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileAtomic(path, lanesJsonText(f));
+export function writeLanesFile(f: LanesFile): void {
+  mkdirSync(repoPath('packages/parity/out'), { recursive: true });
+  writeFileSync(repoPath(LANES_JSON), lanesJsonText(f));
 }
 
-export function readLanesFile(path: string = repoPath(LANES_JSON)): LanesFile | null {
-  return existsSync(path) ? (JSON.parse(readFileSync(path, 'utf8')) as LanesFile) : null;
-}
-
-/**
- * Writes the lanes file of a run under a lock: the file is re-read as it stands on disk and handed to make, which replaces only the
- * records this run produced and carries the rest (lanesFile). So parity:lanes runs of different targets can run at once: neither
- * writes back a record the other replaced while it ran.
- */
-export function updateLanesFile(make: (onDisk: LanesFile | null) => LanesFile, path: string = repoPath(LANES_JSON), lock: LockOptions = {}): LanesFile {
-  return withFileLock(
-    path,
-    () => {
-      const f = make(readLanesFile(path));
-      writeLanesFile(f, path);
-      return f;
-    },
-    lock,
-  );
+export function readLanesFile(): LanesFile | null {
+  return existsSync(repoPath(LANES_JSON)) ? (JSON.parse(readFileSync(repoPath(LANES_JSON), 'utf8')) as LanesFile) : null;
 }
 
 /** Whether a staleLanes problem invalidates a lane: its own case list, its target (missing, other projection), or every lane (a constant). */
@@ -666,49 +656,6 @@ export function staleEvidence(f: LanesFile): string[] {
     }
   }
   return out;
-}
-
-/** The failed lanes of a target that a run of the given kinds produced: a host run answers for host lanes, not for device records it carried. */
-export function ownFailures(file: LanesFile, target: NativeTarget, where: ReadonlySet<LaneRecord['where']>): readonly LaneRecord[] {
-  return file.targets.find((t) => t.target === target)?.lanes.filter((l) => where.has(l.where) && l.state === 'fail') ?? [];
-}
-
-/**
- * The summary parity:lanes prints for a lanes file and its verdict: 1 when a lane failed, the file's parity fails (configuration,
- * recorded and run-record problems) or, with requireAll, a lane did not pass; else 0. parity:devices judges the merged file with it.
- */
-export function reportLanesFile(file: LanesFile, problems: readonly string[], requireAll: boolean, log: (line: string) => void): 0 | 1 {
-  let exit: 0 | 1 = 0;
-  for (const t of file.targets) {
-    log(`${t.target} (device DPRs ${t.dprs.join(', ')}; projection ${t.projection}):`);
-    for (const l of t.lanes) {
-      const sets = l.sets.map((s) => `${s.dpr}${s.extra === null ? '' : ` ${s.extra}`}: ${s.cases}`).join(', ');
-      const run = l.run === null ? '' : `; ${l.run.suites.map((s) => `${s.corpus}/${s.suite} ${s.pass ?? '-'}/${s.total ?? '-'} (declared ${s.declared})`).join(', ')}; digests ${l.run.digests.p1 ?? '-'} ${l.run.digests.extended ?? '-'}; ${l.run.toolchain ?? 'no toolchain'}`;
-      log(`  ${l.lane}: ${l.state}${l.reason === null ? '' : ` (${l.reason})`}; cases [${sets}] + corpora ${l.corpora.reduce((n, c) => n + c.cases, 0)} = ${l.totalCases}${run}`);
-      for (const s of l.device?.sets ?? []) log(`    DPR ${s.dpr} on ${s.device.name} (${s.device.os}, build ${s.device.build}; scale ${s.device.profileScale}/${s.device.appScale}): ${s.dumps}/${s.cases} dumps; compared a ${s.compared.a}, b ${s.compared.b}, c ${s.compared.c}, d ${s.compared.d}, breaks ${s.compared.breaks}; failures ${s.failures} ${JSON.stringify(s.failuresByKind)}`);
-      for (const tr of l.device?.trust ?? []) log(`    capture trust on ${tr.device} (DPR ${tr.dpr}): ${tr.points - tr.mismatches}/${tr.points} points over ${tr.cases} cases`);
-      if (l.state === 'fail') exit = 1;
-    }
-    for (const r of t.dumpFaults ?? []) log(`  dump faults at DPR ${r.dpr}: ${r.rows.map((x) => `${x.fault} ${x.caught}/${x.applicable}`).join(', ')}`);
-    for (const r of t.referenceProof ?? []) log(`  reference proof DPR ${r.dpr} (${r.role}): ${r.cases} cases, ${r.valid} valid dumps, (a) ${r.chrome}/${r.cases} (${r.chromeCompared} nodes and lines), (d) ${r.engine}/${r.cases} (${r.engineCompared} nodes and lines)`);
-  }
-  // The status is the file's parity (configuration problems plus run-record problems such as an uncaught dump fault), rechecked
-  // here for a committed file, not only the configuration problems this process found.
-  const status = fileStatusProblems(file, problems);
-  if (status.length > 0) {
-    log(`parity:lanes: parity FAILS:\n  ${status.join('\n  ')}`);
-    exit = 1;
-  } else {
-    log('parity:lanes: lanes, case lists, tolerances, sample rules, dump faults and the projection agree on ios and android');
-  }
-  if (requireAll) {
-    const missing = notPassed(file);
-    if (missing.length > 0) {
-      log(`parity:lanes --require-all: ${missing.length} lane(s) did not pass (not met):\n  ${missing.join('\n  ')}`);
-      exit = 1;
-    }
-  }
-  return exit;
 }
 
 /** Every lane that did not pass, named: --require-all fails on any. */

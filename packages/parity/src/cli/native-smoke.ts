@@ -12,8 +12,7 @@ import { checkAgainstEngine, checkApplied } from '../native-compare.ts';
 import type { NativeDump } from '../native-dump.ts';
 import { validateNativeDump } from '../native-dump.ts';
 import type { AvdDeviceSpec } from '../device-run.ts';
-import { bootAvd, DEVICE_MATRIX, installApk, release as releaseDevice } from '../device-run.ts';
-import { acquireDeviceSlot } from '../device-slots.ts';
+import { admitDevice, bootAvd, DEVICE_MATRIX, installApk, release as releaseDevice } from '../device-run.ts';
 import { BACKEND_OF, buildAndroid, buildIos, engineBoxes, expectedEngine, HOST_BUNDLE, nativeCases, nativeOut, run } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
 import type { NativeTarget } from '../targets.ts';
@@ -63,9 +62,9 @@ async function smokeIos(outDir: string): Promise<{ scale: number; files: string 
   const scale = Number(/"ArtworkDeviceScaleFactor" => (\d+(?:\.\d+)?)/.exec(caps)?.[1]);
   lastScale = scale;
   log(`${IOS_DEVICE} ${dev.udid}, runtime ${runtime.replace(/^.*SimRuntime\./, '')}, device type scale ${scale} (capabilities.plist ArtworkDeviceScaleFactor)`);
-  // The simulator takes a slot of the machine-wide device memory budget before it boots, like a matrix device (device-slots.ts);
-  // this run leaves it booted, so the slot is held until the process exits.
-  await acquireDeviceSlot('ios', IOS_DEVICE);
+  // Like every boot, only under the device lease and admitted by the memory budget (device-run.ts); this run leaves the simulator
+  // booted, so its memory stays reserved until the process exits.
+  await admitDevice({ target: 'ios', name: IOS_DEVICE });
   for (let attempt = 1; ; attempt++) {
     if (dev.state !== 'Booted') run('xcrun', ['simctl', 'boot', dev.udid]);
     const b = run('xcrun', ['simctl', 'bootstatus', dev.udid, '-b'], { timeoutMs: 180_000 });

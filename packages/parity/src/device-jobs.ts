@@ -1,13 +1,14 @@
-// Devices of one target at once (LANE-SPEED): each device runs in its own process (cli/device-one.ts, the same runOneDevice a
-// sequential run calls), so boots, launches and checks overlap; the parent merges the outcomes in matrix order. The number of processes
-// is capped by the devices of the target and --device-jobs; memory by the machine-wide slots each boot takes (device-slots.ts).
-import { spawn, spawnSync } from 'node:child_process';
+// Devices of one target at once (LANE-SPEED): each device's work (the launches and the checks) runs in its own process
+// (cli/device-one.ts, the same runOneDevice a sequential run calls), so launches and checks overlap; the parent merges the outcomes
+// in matrix order. The parent boots and stops every device itself, so all boots of a run, of both targets, are admitted by the one
+// in-memory budget of device-run.ts (under the device lease), and a device is stopped whatever its process did.
+import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { DeviceOutcome, RunLog } from './device-lanes.ts';
-import type { DeviceSpec } from './device-run.ts';
-import { DEVICE_MATRIX } from './device-run.ts';
+import type { DeviceHandle, DeviceSpec } from './device-run.ts';
+import { boot, DEVICE_MATRIX, release } from './device-run.ts';
 import type { HostRun } from './lanes.ts';
 import { nativeOut } from './native-host.ts';
 import { repoPath } from './paths.ts';
@@ -18,13 +19,13 @@ export const SOLO_DEVICES: readonly string[] = [];
 
 /**
  * How many device processes of a target are started at once: the requested number (default all), capped by the matrix. Memory is
- * not judged here: each device takes a slot of the machine-wide budget before it boots (device-slots.ts), so a process started
- * beyond what memory allows waits there, whichever run or target started it.
+ * not judged here: each device is admitted by the run's memory budget before it boots (device-run.ts), so a device process started
+ * beyond what memory allows waits for its device there, whichever target it belongs to.
  */
 export function deviceJobs(target: NativeTarget, requested: number | null, log: RunLog): number {
   const devices = DEVICE_MATRIX.filter((d) => d.target === target).length;
   const jobs = Math.max(1, Math.min(requested ?? devices, devices));
-  log(`${jobs} device process(es) at once (${devices} in the matrix${requested === null ? '' : `, --device-jobs ${requested}`}); each boots once the machine-wide memory budget has a slot for it`);
+  log(`${jobs} device process(es) at once (${devices} in the matrix${requested === null ? '' : `, --device-jobs ${requested}`}); each boots once the memory budget admits it`);
   return jobs;
 }
 
@@ -89,16 +90,49 @@ export function parseOutcome(text: string, device: string): DeviceOutcome {
 const jobDir = (target: NativeTarget): string => join(nativeOut(target), 'lanes', 'jobs');
 const slug = (device: string): string => device.replace(/[^A-Za-z0-9-]+/g, '_');
 
-/** Runs one device job in its own process, its log lines forwarded; the outcome, or an error naming the device and the exit. */
-export function runDeviceChild(job: DeviceJob, log: RunLog): Promise<DeviceOutcome> {
+/**
+ * A device handle read by a device process from its stdin, checked against the matrix device it runs: the parent's boot, or the
+ * reason the boot failed (thrown, so the device's outcome is blocked, as a failed boot of a sequential run is).
+ */
+export function parseHandle(text: string, spec: DeviceSpec): DeviceHandle {
+  let v: unknown;
+  try {
+    v = JSON.parse(text);
+  } catch {
+    throw new Error(`${spec.name}: the device process was handed no device (the run stopped before the boot finished)`);
+  }
+  if (isObj(v) && typeof v['blocked'] === 'string') throw new Error(v['blocked']);
+  const h = isObj(v) ? v['handle'] : undefined;
+  const ok =
+    isObj(h) &&
+    JSON.stringify(h['spec']) === JSON.stringify(spec) &&
+    typeof h['startedHere'] === 'boolean' &&
+    (spec.target === 'ios' ? typeof h['udid'] === 'string' && h['udid'] !== '' : h['serial'] === `emulator-${spec.port}` && isObj(h['tools']) && typeof h['tools']['adb'] === 'string');
+  if (!ok) throw new Error(`${spec.name}: the device process was handed a malformed device handle`);
+  return { ...(h as unknown as DeviceHandle), spec } as DeviceHandle;
+}
+
+/**
+ * Runs one device job in its own process, its log lines forwarded. The device is booted here, while the process computes its cases,
+ * handed to it on stdin, and stopped here once the process has exited, whatever it did: the outcome, or an error naming the device.
+ */
+export function runDeviceChild(job: DeviceJob, spec: DeviceSpec, log: RunLog): Promise<DeviceOutcome> {
   const dir = jobDir(job.target);
   mkdirSync(dir, { recursive: true });
   const jobFile = join(dir, `${slug(job.device)}.job.json`);
   const outFile = join(dir, `${slug(job.device)}.outcome.json`);
   rmSync(outFile, { force: true });
   writeFileSync(jobFile, JSON.stringify(job));
-  return new Promise((resolve, reject) => {
-    const p = spawn(process.execPath, ['--conditions=dragon-internal', repoPath('packages/parity/src/cli/device-one.ts'), jobFile, outFile], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const booting = boot(spec);
+  const handle = booting.catch(() => null);
+  const outcome = new Promise<DeviceOutcome>((resolve, reject) => {
+    const p = spawn(process.execPath, ['--conditions=dragon-internal', repoPath('packages/parity/src/cli/device-one.ts'), jobFile, outFile], { stdio: ['pipe', 'pipe', 'pipe'] });
+    // A process that has already exited cannot take its device; its exit is reported below, so the write error adds nothing.
+    p.stdin.on('error', () => undefined);
+    booting.then(
+      (h) => p.stdin.end(JSON.stringify({ handle: h })),
+      (e: unknown) => p.stdin.end(JSON.stringify({ blocked: e instanceof Error ? e.message : String(e) })),
+    );
     const tail: string[] = [];
     createInterface({ input: p.stdout }).on('line', (l) => log(l));
     createInterface({ input: p.stderr }).on('line', (l) => {
@@ -124,6 +158,24 @@ export function runDeviceChild(job: DeviceJob, log: RunLog): Promise<DeviceOutco
       }
     });
   });
+  // The device is stopped once its process is done, and before the outcome is given back.
+  const settle = async (): Promise<void> => {
+    const h = await handle;
+    if (h === null) return;
+    const r0 = Date.now();
+    await release(h, log);
+    log(`${spec.name}: released in ${((Date.now() - r0) / 1000).toFixed(0)} s`);
+  };
+  return outcome.then(
+    async (o) => {
+      await settle();
+      return o;
+    },
+    async (e: unknown) => {
+      await settle();
+      throw e;
+    },
+  );
 }
 
 /**
@@ -160,72 +212,66 @@ export async function pool<T, R>(items: readonly T[], jobs: number, f: (x: T) =>
 /** The devices of a target, jobs at a time, each in its own process; the outcomes in matrix order. */
 export function runDevicesInChildren(target: NativeTarget, specs: readonly DeviceSpec[], jobs: number, jobOf: (spec: DeviceSpec) => DeviceJob, log: RunLog): Promise<DeviceOutcome[]> {
   if (specs.some((s) => s.target !== target)) throw new Error(`a device of another target in the ${target} run`);
-  return pool(specs, jobs, (spec) => runDeviceChild(jobOf(spec), log), (spec) => SOLO_DEVICES.includes(spec.name));
+  return pool(specs, jobs, (spec) => runDeviceChild(jobOf(spec), spec, log), (spec) => SOLO_DEVICES.includes(spec.name));
 }
 
-/** The shared device lease (one per platform): a command runs under it when the script exists, else directly. */
-export const LEASE_SCRIPT = '/tmp/device-lease.sh';
 
-/** The command line that runs cmd under the target's lease: DRAGON_LEASE=<target> <script> cmd ...args, or cmd itself without one. */
-export function leased(target: NativeTarget, cmd: string, args: readonly string[], script: string | null): { readonly cmd: string; readonly args: readonly string[]; readonly env: NodeJS.ProcessEnv } {
-  if (script === null) return { cmd, args, env: process.env };
-  return { cmd: script, args: [cmd, ...args], env: { ...process.env, DRAGON_LEASE: target } };
-}
+export type LanesArgs = { readonly runHost: boolean; readonly runDevice: boolean; readonly only: NativeTarget | null; readonly requireAll: boolean; readonly plant: string | null; readonly jobs: number | null; readonly prebuild: NativeTarget | null };
 
-/** The pid holding the device lease (/tmp/dragon-device.lock/pid), or null when it is free or unreadable. */
-export function leaseHolder(lockDir: string = LEASE_LOCK): number | null {
-  try {
-    const pid = Number(readFileSync(join(lockDir, 'pid'), 'utf8').trim());
-    return Number.isInteger(pid) && pid > 0 ? pid : null;
-  } catch {
-    return null;
+/**
+ * The parity:lanes arguments, each checked in place: --run-host, --run-device, --require-all, --target ios|android, --device-jobs N
+ * (1 to 99), --plant <fault>, and the internal --prebuild ios|android. A missing or bad value, a repeated option or anything else is
+ * a usage error.
+ */
+export function lanesArgs(args: readonly string[]): LanesArgs | { readonly error: string } {
+  const flags = new Set<string>();
+  const values = new Map<string, string>();
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i] as string;
+    if (['--run-host', '--run-device', '--require-all'].includes(a)) flags.add(a);
+    else if (['--target', '--device-jobs', '--plant', '--prebuild'].includes(a)) {
+      const v = args[++i];
+      if (v === undefined || v.startsWith('--')) return { error: `${a} needs a value` };
+      if (values.has(a)) return { error: `${a} is given twice` };
+      values.set(a, v);
+    } else return { error: `unknown argument ${JSON.stringify(a)}` };
   }
-}
-export const LEASE_LOCK = '/tmp/dragon-device.lock';
-
-/** The parent of a process (ps), or null when it has none or cannot be read. */
-export function parentPid(pid: number): number | null {
-  const r = spawnSync('ps', ['-o', 'ppid=', '-p', String(pid)], { encoding: 'utf8' });
-  const p = Number(r.stdout.trim());
-  return r.status === 0 && Number.isInteger(p) && p > 0 ? p : null;
-}
-
-/** Whether ancestor is pid or one of its ancestors, walking parentOf up to the root (at most 64 steps). */
-export function isAncestor(ancestor: number, pid: number, parentOf: (pid: number) => number | null): boolean {
-  let p: number | null = pid;
-  for (let i = 0; i < 64 && p !== null && p > 1; i++) {
-    if (p === ancestor) return true;
-    p = parentOf(p);
-  }
-  return false;
+  const target = (name: string): NativeTarget | null | { readonly error: string } => {
+    const v = values.get(name);
+    return v === undefined ? null : v === 'ios' || v === 'android' ? v : { error: `${name} takes ios or android, not ${JSON.stringify(v)}` };
+  };
+  const only = target('--target');
+  const prebuild = target('--prebuild');
+  if (only !== null && typeof only === 'object') return only;
+  if (prebuild !== null && typeof prebuild === 'object') return prebuild;
+  const j = values.get('--device-jobs');
+  if (j !== undefined && !/^[1-9]\d?$/.test(j)) return { error: `--device-jobs takes a whole number from 1 to 99, not ${JSON.stringify(j)}` };
+  return { runHost: flags.has('--run-host'), runDevice: flags.has('--run-device'), only, requireAll: flags.has('--require-all'), plant: values.get('--plant') ?? null, jobs: j === undefined ? null : Number(j), prebuild };
 }
 
 /**
- * The steps parity:devices judges its exit by: every step of every target, the app build (--prebuild) included (PR #42 finding
- * 4147492252), so a failed build fails the run even when the device step went on with an app it built or reused itself.
+ * Builds the apps of the targets, each in its own process (parity:lanes --prebuild, reused when the sources are unchanged), all at
+ * once; their lines forwarded. Resolves to the targets whose build failed (a crash, a non-zero exit or a process that could not start).
  */
-export function judgedSteps<S>(runs: readonly { readonly counted: readonly S[]; readonly prebuild: S }[]): S[] {
-  return runs.flatMap((r) => [r.prebuild, ...r.counted]);
-}
-
-/** The parity:devices arguments checked: --require-all, --device-jobs N (1 to 99); anything else, or N missing, is a usage error. */
-export function devicesArgs(args: readonly string[]): { readonly requireAll: boolean; readonly jobs: readonly string[] } | { readonly error: string } {
-  let requireAll = false;
-  let jobs: string[] = [];
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i] as string;
-    if (a === '--require-all') requireAll = true;
-    else if (a === '--device-jobs') {
-      const n = args[++i];
-      if (n === undefined || !/^[1-9]\d?$/.test(n)) return { error: `--device-jobs takes a whole number from 1 to 99, not ${JSON.stringify(n ?? '')}` };
-      if (jobs.length > 0) return { error: '--device-jobs is given twice' };
-      jobs = ['--device-jobs', n];
-    } else return { error: `unknown argument ${JSON.stringify(a)} (takes --require-all and --device-jobs N)` };
-  }
-  return { requireAll, jobs };
-}
-
-/** parity:devices fails when any step it ran failed (a crash, a reference proof or a lane of its own target) or the merged file fails. */
-export function devicesExit(steps: readonly { readonly code: number | null }[], merged: 0 | 1): 0 | 1 {
-  return merged === 0 && steps.every((s) => s.code === 0) ? 0 : 1;
+export async function prebuildApps(targets: readonly NativeTarget[], log: RunLog, command: (t: NativeTarget) => readonly string[] = (t) => ['--conditions=dragon-internal', repoPath('packages/parity/src/cli/lanes.ts'), '--prebuild', t]): Promise<NativeTarget[]> {
+  const codes = await Promise.all(
+    targets.map(
+      (t) =>
+        new Promise<number | null>((resolve) => {
+          const t0 = Date.now();
+          const p = spawn(process.execPath, [...command(t)], { stdio: ['ignore', 'pipe', 'pipe'] });
+          createInterface({ input: p.stdout }).on('line', (l) => log(`[${t} build] ${l}`));
+          createInterface({ input: p.stderr }).on('line', (l) => log(`[${t} build] ${l}`));
+          p.once('error', (e) => {
+            log(`[${t} build] could not start: ${e.message}`);
+            resolve(null);
+          });
+          p.once('close', (code, signal) => {
+            log(`[${t} build] ${code === 0 ? 'done' : `FAILED (${signal ?? `exit ${code}`})`} in ${((Date.now() - t0) / 1000).toFixed(0)} s`);
+            resolve(code);
+          });
+        }),
+    ),
+  );
+  return targets.filter((_, i) => codes[i] !== 0);
 }
