@@ -185,6 +185,8 @@ function checkSubstitution(el: ResolvedElement, targets: readonly string[], diag
     }
     if (v.declared === null || profileOf === null) continue;
     const feature = featureOf(p, v.declared, fonts);
+    // project.ts checkCaseFonts reports an unmapped family once, as DRAGON_FONT_UNMAPPED_FAMILY (as checkValues leaves it to checkFamilies).
+    if (feature === 'font-family:<unmapped>') continue;
     for (const t of targets) {
       const profile = profileOf(t);
       if (provenContexts(profile, feature).length > 0) continue;

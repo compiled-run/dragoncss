@@ -104,6 +104,11 @@ describe('font-family resolution', () => {
     expect(c.targets).toEqual({ web: 'blocked', ios: 'blocked' });
   });
 
+  it('an enforced project reports an unmapped family reached through var() once, as DRAGON_FONT_UNMAPPED_FAMILY', () => {
+    const c = createProjectWith({ projectId: 'test', targets: { web: {} }, fonts: MAP }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' }).compile(fontInput('.a { --f: Nope, sans-serif; font-family: var(--f) }'));
+    expect(c.diagnostics.map((d) => d.code)).toEqual(['DRAGON_FONT_UNMAPPED_FAMILY']);
+  });
+
   it('a font-family holding var() is checked after substitution', () => {
     const c = compileWith(fontInput('.a { --f: Nope; font-family: var(--f) }'), MAP);
     expect(codes(c)).toContain('DRAGON_FONT_UNMAPPED_FAMILY');
