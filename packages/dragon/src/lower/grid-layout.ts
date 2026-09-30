@@ -2,10 +2,10 @@
 // and template areas are static, so the compiler resolves every item line here (Blink GridLineResolver, grid_line_resolver.cc at
 // Chrome 145.0.7632.6) and the engine sees only line numbers: css-grid-2 §8.3 placement, §7.3 implicit area names.
 import type { CssNode } from 'css-tree';
-import { ident as cssIdent, parse } from 'css-tree';
+import { parse } from 'css-tree';
 import type { GridContainerStyle, GridItemStyle, GridSelfAlign, GridSpan, TrackBreadth, TrackRepeater, TrackSize } from '@dragon/layout';
 import { list } from '../css/ast.ts';
-import { serializeIdentifier } from '../css/grid-values.ts';
+import { decodeName, serializeIdentifier } from '../css/escapes.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import { valueToString } from '../analysis/resolve.ts';
@@ -97,7 +97,7 @@ function addName(names: NamedLines, name: string, line: number, p: Longhand, cou
   else if (at[at.length - 1] !== line) at.push(line);
 }
 
-const namesIn = (n: CssNode): string[] => children(n).map((c) => serializeIdentifier(cssIdent.decode(String(c['name']))));
+const namesIn = (n: CssNode): string[] => children(n).map((c) => serializeIdentifier(decodeName(String(c['name']))));
 
 type TrackList = { readonly repeaters: TrackRepeater[]; readonly names: NamedLines; readonly trackCount: number };
 
@@ -312,7 +312,7 @@ function resolvePosition(axis: AxisLines, pos: Position, start: boolean): number
     return pos.n > 0 ? pos.n - 1 : axis.explicitCount - (-pos.n - 1);
   }
   if (pos.kind === 'area') {
-    const implicit = collectionOf(axis, serializeIdentifier(`${cssIdent.decode(pos.name)}${start ? '-start' : '-end'}`));
+    const implicit = collectionOf(axis, serializeIdentifier(`${decodeName(pos.name)}${start ? '-start' : '-end'}`));
     if (implicit.lines.length > 0) return implicit.lines[0] as number;
     const explicit = collectionOf(axis, pos.name);
     if (explicit.lines.length > 0) return explicit.lines[0] as number;

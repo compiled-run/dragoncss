@@ -1,11 +1,12 @@
 // css-grid-2 and css-align-3 values: the longhand values of the grid properties and justify-items / justify-self, the expansions of
 // the grid shorthands, and the checks Chrome 145's parser makes beyond the webref grammar (Blink css_parsing_utils.cc
 // ConsumeGridLine, ConsumeGridTrackList, ParseGridTemplateAreasRow; css_property_parser_helpers ConsumeSelfPositionOverflowPosition).
-import { generate, ident as cssIdent, parse } from 'css-tree';
+import { generate, parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
+import { asciiLower, decodeName, serializeIdentifier } from './escapes.ts';
 import type { Longhand } from './properties.ts';
 import type { LonghandValue, ParsedValue } from './stylesheet.ts';
 import type { FontBases } from './units.ts';
@@ -27,12 +28,12 @@ const explicit = (property: Longhand, value: CssValue): LonghandValue => ({ prop
 const implicit = (property: Longhand, value: CssValue): LonghandValue => ({ property, value, explicit: false });
 const other = (type: string, text: string): CssValue => ({ kind: 'other', type, text });
 
-/** An identifier as written: css-tree keeps its escapes, so this text is also its valid CSS serialization. */
+/** An identifier in its serialized form (escapes.ts canonicalizeEscapes rewrote it from the authored text). */
 const ident = (n: CssNode | undefined): string | null => (n !== undefined && n.type === 'Identifier' ? String(n['name']) : null);
 /** css-syntax-3 §4.3.11: keywords match on the identifier's value after escapes are decoded (\\61uto is auto), ASCII case-insensitively. */
 const lowerIdent = (n: CssNode | undefined): string | null => {
   const raw = ident(n);
-  return raw === null ? null : cssIdent.decode(raw).toLowerCase();
+  return raw === null ? null : asciiLower(decodeName(raw));
 };
 const isSlash = (n: CssNode): boolean => n.type === 'Operator' && n['value'] === '/';
 const children = (n: CssNode): CssNode[] => list(n, 'children').filter((c) => c.type !== 'WhiteSpace');
@@ -59,24 +60,8 @@ type DimensionText = (value: string, unit: string) => string;
 const cssNumber = (raw: string): string => String(Number(raw) + 0);
 const keepDimension: DimensionText = (value, unit) => `${cssNumber(value)}${unit}`;
 
-/** CSSOM "serialize an identifier" (css-cssom-1 §2.1), on the decoded identifier; Chrome serializes custom idents this way. */
-export function serializeIdentifier(decoded: string): string {
-  const points = Array.from(decoded);
-  let out = '';
-  points.forEach((c, i) => {
-    const cp = c.codePointAt(0) as number;
-    const hex = (): string => `\\${cp.toString(16)} `;
-    if (cp === 0) out += '\uFFFD';
-    else if ((cp >= 0x1 && cp <= 0x1f) || cp === 0x7f || (i === 0 && /[0-9]/.test(c)) || (i === 1 && /[0-9]/.test(c) && points[0] === '-')) out += hex();
-    else if (i === 0 && c === '-' && points.length === 1) out += '\\-';
-    else if (cp >= 0x80 || /[-_0-9A-Za-z]/.test(c)) out += c;
-    else out += `\\${c}`;
-  });
-  return out;
-}
-
 /** A custom identifier (a line name) in its serialized form. */
-const nameText = (n: CssNode): string => serializeIdentifier(cssIdent.decode(String(n['name'])));
+const nameText = (n: CssNode): string => serializeIdentifier(decodeName(String(n['name'])));
 
 /** A track-list token as CSS text in Chrome's computed form (the comment above). */
 function trackText(n: CssNode, dim: DimensionText): string {
@@ -94,7 +79,7 @@ function trackText(n: CssNode, dim: DimensionText): string {
       // Empty line names name nothing; Chrome omits them.
       return children(n).length === 0 ? '' : `[${children(n).map(nameText).join(' ')}]`;
     case 'Function': {
-      const name = String(n['name']).toLowerCase();
+      const name = asciiLower(String(n['name']));
       const parts: CssNode[][] = [[]];
       for (const c of children(n)) {
         if (c.type === 'Operator' && c['value'] === ',') parts.push([]);
@@ -144,40 +129,21 @@ const SUBGRID_REASON = 'subgrid needs the grid engine and its subgrid package';
 /** Where subgrid is the track-list keyword; elsewhere, and inside line-name brackets, it is a name like any other. */
 const SUBGRID_PROPERTIES: ReadonlySet<string> = new Set(['grid-template-columns', 'grid-template-rows', 'grid-template', 'grid']);
 
-const ESCAPE_REASON = 'Dragon does not decode CSS escapes in grid values yet, so an escaped function name, unit or keyword could be read as a different value';
-const ESCAPE_FIX = 'Write the function name, unit or keyword without backslash escapes.';
-/** The grid-line properties, where an identifier that is not a keyword is a custom line name. */
-const LINE_PROPERTIES: ReadonlySet<string> = new Set(['grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end', 'grid-row', 'grid-column', 'grid-area']);
-
 /**
- * Fails closed on escapes: an escaped function name, unit or keyword is refused. Custom line names (in brackets, or a grid line's
- * name) and area strings keep their escaped text, which Chrome 145 reads as the same name (T113 probe).
+ * The first token Dragon cannot express: a unit with no build-time conversion or a math function at any depth, or the top-level
+ * subgrid keyword of a track list.
  */
-function escaped(property: string, t: CssNode, inNames: boolean): boolean {
-  if (t.type === 'Function') return String(t['name']).includes('\\');
-  if (t.type === 'Dimension') return String(t['unit']).includes('\\');
-  if (t.type !== 'Identifier' || inNames) return false;
-  const raw = String(t['name']);
-  if (!raw.includes('\\')) return false;
-  return !LINE_PROPERTIES.has(property) || reservedName(t);
-}
-
-/**
- * The first token Dragon cannot express: an escaped function name, unit or keyword, a unit with no build-time conversion or a math
- * function at any depth, or the top-level subgrid keyword of a track list.
- */
-function refusal(property: string, tokens: readonly CssNode[], base: Span, top = true, inNames = false): ParsedValue | null {
+function refusal(property: string, tokens: readonly CssNode[], base: Span, top = true): ParsedValue | null {
   for (const t of tokens) {
     let found: { reason: string; fix: string } | null = null;
-    if (escaped(property, t, inNames)) found = { reason: ESCAPE_REASON, fix: ESCAPE_FIX };
-    else if (t.type === 'Dimension') found = unitRefusal(normalizeUnit(String(t['unit'])));
+    if (t.type === 'Dimension') found = unitRefusal(normalizeUnit(String(t['unit'])));
     else if (t.type === 'Function') found = mathFunctionRefusal(String(t['name']));
     else if (top && SUBGRID_PROPERTIES.has(property) && lowerIdent(t) === 'subgrid') found = { reason: SUBGRID_REASON, fix: 'Give the element its own track list.' };
     if (found !== null) {
       return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${found.reason}`, manual: found.fix }) };
     }
     if (t.type === 'Function' || t.type === 'Brackets') {
-      const inner = refusal(property, children(t), base, false, t.type === 'Brackets');
+      const inner = refusal(property, children(t), base, false);
       if (inner !== null) return inner;
     }
   }
@@ -269,7 +235,7 @@ const copied = (line: GridLine | 'auto'): GridLine | 'auto' => (line !== 'auto' 
 //   <fixed-repeat> = repeat( <integer [1,∞]> , [ <line-names>? <fixed-size> ]+ <line-names>? )
 
 const INTRINSIC = new Set(['min-content', 'max-content', 'auto']);
-const fnName = (n: CssNode): string | null => (n.type === 'Function' ? String(n['name']).toLowerCase() : null);
+const fnName = (n: CssNode): string | null => (n.type === 'Function' ? asciiLower(String(n['name'])) : null);
 const nonNegative = (n: CssNode): boolean => Number(n['value']) >= 0;
 
 /** <length-percentage [0,∞]>: a length in a length unit, a percentage, or a unitless zero; never negative. */

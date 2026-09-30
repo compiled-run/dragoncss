@@ -79,6 +79,17 @@ describe('grid lowering', () => {
     expect(item(m, 'p9').row).toEqual({ kind: 'auto', span: 1 });
   });
 
+  it('matches escaped line and area names by their decoded value (css-syntax-3 §4.3.7)', () => {
+    const css = '.g { display: grid; grid-template-columns: [x] 10px [\\61 b] 10px [\\31 st] 10px; grid-template-areas: ". \\61 r"; } .p1 { grid-column: ab; } .p2 { grid-column: \\31 st; } .p3 { grid-column: \\61r; }';
+    // The areas string is ". ar", two columns, so ar is the second column.
+    const m = boxes(css, (r) => [div(r, 'g', ['g'], ['p1', 'p2', 'p3'].map((id) => div(r, id, [id])))]);
+    expect(['p1', 'p2', 'p3'].map((id) => item(m, id).column)).toEqual([
+      { kind: 'definite', start: 1, end: 2 },
+      { kind: 'definite', start: 2, end: 3 },
+      { kind: 'definite', start: 1, end: 2 },
+    ]);
+  });
+
   it('resolves named lines near kGridMaxTracks among 100000 names without a quadratic walk (it took minutes)', () => {
     const css = '.g { display: grid; grid-template-columns: repeat(100000, [a] 1px) repeat(9900000, 1px); } .p1 { grid-column: 10000000 a; } .p2 { grid-column: -10000000 a; }';
     const start = performance.now();
