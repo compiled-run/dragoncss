@@ -273,6 +273,8 @@ function maybeSimplifySumOrProduct(root: MathOp): MathNode {
     const had = combined.get(c.node.unit);
     combined.set(c.node.unit, had === undefined ? v : isMultiply ? had * v : had + v);
   }
+  const litsOfUnit = new Map<string, number>();
+  for (const c of children) if (isLit(c.node)) litsOfUnit.set(c.node.unit, (litsOfUnit.get(c.node.unit) ?? 0) + 1);
   const used = new Set<string>();
   let final: MathNode | null = null;
   for (const child of children) {
@@ -285,8 +287,7 @@ function maybeSimplifySumOrProduct(root: MathOp): MathNode {
         value = Math.abs(value);
       }
       // An uncombined single inverse keeps its division (Blink copies the literal's value; the lowering only reads the flag).
-      const unit = node.unit;
-      const single = children.filter((c) => isLit(c.node) && c.node.unit === unit).length === 1;
+      const single = litsOfUnit.get(node.unit) === 1;
       node = lit(value, node.unit, single ? (node as MathLiteral).inverseOf : null);
     }
     if (isNumericWithDouble(node)) {
@@ -341,36 +342,49 @@ type Token =
   | { readonly k: 'open' | 'close' | 'comma' | 'ws' }
   | { readonly k: 'delim'; readonly ch: string };
 
-const NUMBER = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/;
-const IDENT = /^-?[a-zA-Z_][a-zA-Z0-9_-]*/;
+// Sticky, so each token is matched in place: tokenizing is linear in the text.
+const NUMBER = /[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/y;
+const IDENT = /-?[a-zA-Z_][a-zA-Z0-9_-]*/y;
+const UNIT = /[a-zA-Z]+/y;
+
+/**
+ * The most tokens a calculation may have. Chrome 145 sets no such limit; Dragon refuses a longer calculation with a reason, so
+ * no value can stall a build. The nesting limit (32) does not cap a flat sum, and a sum is a left-deep chain that finite(),
+ * resolvedUnit(), foldNumber() and the lowering walk recursively, so this bound also keeps their depth and work small.
+ */
+export const MAX_MATH_TOKENS = 1000;
+
+const execAt = (re: RegExp, text: string, i: number): RegExpExecArray | null => {
+  re.lastIndex = i;
+  return re.exec(text);
+};
 
 function tokenize(text: string): Token[] {
   const out: Token[] = [];
   let i = 0;
   while (i < text.length) {
-    const rest = text.slice(i);
+    if (out.length >= MAX_MATH_TOKENS) return refuse(`it has more than ${MAX_MATH_TOKENS} tokens, the most a calculation may have`, 'Write a shorter calculation.');
     const ch = text[i] as string;
     if (/\s/.test(ch)) {
       while (i < text.length && /\s/.test(text[i] as string)) i++;
       out.push({ k: 'ws' });
       continue;
     }
-    const num = NUMBER.exec(rest);
+    const num = execAt(NUMBER, text, i);
     const prevIsValue = out.length > 0 && ['num', 'close', 'ident'].includes((out[out.length - 1] as Token).k);
     if (num !== null && !((ch === '+' || ch === '-') && prevIsValue)) {
       i += num[0].length;
-      const after = text.slice(i);
-      if (after.startsWith('%')) {
+      if (text[i] === '%') {
         i++;
         out.push({ k: 'num', value: Number(num[0]), unit: '%' });
       } else {
-        const u = /^[a-zA-Z]+/.exec(after);
+        const u = execAt(UNIT, text, i);
         if (u !== null) i += u[0].length;
         out.push({ k: 'num', value: Number(num[0]), unit: u === null ? '' : u[0].toLowerCase() });
       }
       continue;
     }
-    const id = IDENT.exec(rest);
+    const id = execAt(IDENT, text, i);
     if (id !== null) {
       i += id[0].length;
       if (text[i] === '(') {
