@@ -11,6 +11,8 @@ import type { LayoutInput, LayoutRect } from '@dragon/layout';
 import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, resolveBorder, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
+import { emitStatePrograms } from 'dragon';
+import { stateEmits } from './state-cases.ts';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
 import { layoutCases } from './dpr.ts';
@@ -196,6 +198,8 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
     exit(0)
   }
   let id = run.ids[k]
+  // SELD-R1a: the case scripts are cases too, looked up beside the layout cases.
+  let dragonCaseTable = DragonHost.dragonCaseTable.merging(dragonStateCaseTable) { a, _ in a }
   guard let c = dragonCaseTable[id] else { fatalError("dragon host: no case \(id)") }
   let tree = DragonTree()
   c.build(tree)
@@ -357,6 +361,8 @@ class DragonActivity : Activity() {
       return
     }
     val id = run.ids[k]
+    // SELD-R1a: the case scripts are cases too, looked up beside the layout cases.
+    val dragonCaseTable = dev.dragon.cases.dragonCaseTable + dev.dragon.cases.dragonStateCaseTable
     val c = dragonCaseTable[id] ?: throw IllegalStateException("dragon host: no case " + id)
     val tree = DragonTree(this)
     c.build(tree)
@@ -485,6 +491,8 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
   const supportPlant = plant !== null && (SUPPORT_PLANTS as readonly string[]).includes(plant) ? (plant as SupportPlant) : null;
   files.push(...emitNativeSupport(backend, supportPlant));
   files.push(...(backend === 'uikit' ? emitUikitCases(cases) : emitAndroidViewsCases(cases)));
+  // SELD-R1a: the state programs and their case scripts.
+  files.push(...emitStatePrograms(backend, stateEmits(target)));
   if (plant !== null && supportPlant === null) files.push(PLANTED[plant as Exclude<BuildPlant, SupportPlant>]);
   return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
