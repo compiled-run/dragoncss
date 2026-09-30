@@ -43,3 +43,6 @@ Grid doesn't touch text.ts or inline.ts, so it runs alongside P5.
 - **Differential corpus:** 20k seeded track-sizing cases across TS, Swift and Kotlin.
 - **Frozen Chrome corpus:** about 2,000 random grids.
 - **Planted faults:** 27 (frLeftoverDropped, autoPlacementNotDense, spanGroupingFlat, sharePerTrackNotPerSet and others).
+
+## Chrome grid corpus (G-P, 2026-09-28)
+The frozen Chrome 145.0.7632.6 grid corpus is in [grid-spike/](grid-spike/README.md): 2,258 cases (258 hand-written, 2,000 seeded random) at DPR 1, 2, 3 and 2.625, ltr and rtl, and three writing modes, written by `scripts/capture-grid-probe.ts` (`--check` recaptures and compares; `--plants` checks the pins). [grid-spike/blink-notes.md](grid-spike/blink-notes.md) has GR1–GR18 at file:line, 28 plants with their catching cases, and the verdicts on the 4 suspected deviations. Three are confirmed (grid-maximize-no-max-redo in the block axis only, grid-max-content-auto-min, grid-default-self-overflow-unsafe). grid-flex-no-minmax-redo is refuted.

@@ -2,6 +2,7 @@
 // @webref/css grammar decides validity) and keeps its lowercased name, so its feature key is <length-<unit>> and the support
 // profiles decide whether it is supported. A registered unit either converts to px at computed-value time (analysis/computed.ts)
 // or is refused with its precise reason at parse time.
+import { asciiLower } from './escapes.ts';
 
 /**
  * How a registered length converts to px (css-values-4 §6):
@@ -68,7 +69,7 @@ const BY_NAME: ReadonlyMap<string, UnitEntry> = new Map(UNITS.map((u) => [u.unit
 
 /** css-values-4 §6: unit names are ASCII case-insensitive; the compiler keeps them lowercased. */
 export function normalizeUnit(raw: string): string {
-  return raw.toLowerCase();
+  return asciiLower(raw);
 }
 
 /** The registered entry of a lowercased unit, or null. */
@@ -124,7 +125,7 @@ const REFUSED_FUNCTIONS: ReadonlyMap<string, string> = new Map([
 ]);
 
 export function mathFunctionRefusal(name: string): { readonly reason: string; readonly fix: string } | null {
-  const reason = REFUSED_FUNCTIONS.get(name.toLowerCase());
+  const reason = REFUSED_FUNCTIONS.get(asciiLower(name));
   if (reason === undefined) return null;
   return { reason, fix: 'Write a length (px, em, rem, an absolute or viewport unit), a percentage, or calc(), min(), max() or clamp() of them.' };
 }

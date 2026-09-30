@@ -6,7 +6,7 @@ import type { CssNode } from 'css-tree';
 import { canonicalJson, sha256Hex } from '../../src/digest.ts';
 import {
   bestSegmentedFace, buildManifest, faceMetrics, manifestDigestInput, parseFamilyList, parseFontFace, readSfnt, rewriteFamilyList,
-  segmentedFaces, selectionRequest, validateFontMap, withFault,
+  foldFamily, segmentedFaces, selectionRequest, validateFontMap, withFault,
 } from '../../src/fonts/index.ts';
 import type { DeclaredFace, FontAssetResolver, FontFaceResult, FontMap } from '../../src/fonts/index.ts';
 import { atRules, capture, resolveFonts, vendorBytes } from './compare.ts';
@@ -175,6 +175,18 @@ describe('selection ties', () => {
       }
     }
     expect(decisive).toBeGreaterThan(0);
+  });
+});
+
+describe('family case folding', () => {
+  it('folds each UTF-16 code unit as Chrome 145 FontFaceCache does (probed; the full sweep is parity font-family-fold.test.ts)', () => {
+    const same = (a: string, b: string): boolean => foldFamily(a) === foldFamily(b);
+    const chrome: [string, string, boolean][] = [
+      ['Ka', 'ka', true], ['ſa', 'Sa', true], ['Σa', 'ςa', true], ['ẞa', 'ßa', true], ['ᾼa', 'ᾳa', true],
+      ['Ǆa', 'ǅa', true], ['Ꭰa', 'ꭰa', true], ['İa', 'ia', false], ['ıa', 'ia', false], ['Ia', 'ıa', false],
+      ['Straße', 'STRASSE', false], ['\u{10400}a', '\u{10428}a', false], ['\u{1E900}a', '\u{1E922}a', false], ['꟎a', '꟏a', false],
+    ];
+    for (const [a, b, folds] of chrome) expect(same(a, b), `${a} ${b}`).toBe(folds);
   });
 });
 
