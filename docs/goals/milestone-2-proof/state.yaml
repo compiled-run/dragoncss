@@ -2668,6 +2668,16 @@ tasks:
     lane: paint
     objective: 'Border join seam: where two same-colour mitred border sides meet, native paints the shared corner pixel at 75% coverage (iOS [63,50,50], Android [64,51,51] over #fcc) where Chrome paints it solid; found by SIZE-ar on sizing-ratio-abspos(-rtl) interior:c1 at DPR 2 and 3 (8 device-pixel failures). Check whether p6a-promote (e8bed1d2) already fixes it; otherwise fix it in the border paint path with a Chrome-backed test. After V1 and EMS.'
     receipt: null
+  - id: T117
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: perf
+    objective: 'PERF-0, an on-device performance lane: fixed fixtures (the music-player north star, a long flex list, a grid screen, a long inline-text screen, a layout-transition screen) run on the iOS 15 simulator and an Android 12 emulator (the OS floor). Measure the on-device layout engine time per full layout and per incremental relayout, frame time during layout transitions and self-drawn paint (box-shadow, dashed borders, backdrop blur), and generated code size per fixture. Record a baseline first, propose the budgets from it, and wait for the owner to approve them before the lane becomes a gate that fails the build (numbers decide, the same as the correctness lanes). Runs under /tmp/device-lease.sh. Land before grid G1b and INL1a grow the engine further.'
+    constraints:
+      - Budgets are owner decisions; never set or loosen one without an owner ruling.
+      - Simulator and emulator timings are noisy; report the median and p95 over repeated runs, and state the run count.
+    receipt: null
   - id: T999
     type: judge
     assignee: Judge
