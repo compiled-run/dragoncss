@@ -35,10 +35,14 @@ export type CompilerFaults = {
   readonly fontManifestOutOfDigest: boolean;
   /** A family that is neither declared nor mapped is accepted without a diagnostic. */
   readonly unmappedFamilyAccepted: boolean;
+  /** Flex and grid items and absolutely positioned boxes keep their inline-level display (css-display-3 §2.7). */
+  readonly blockifySkipped: boolean;
+  /** Blockification turns inline-flex into block instead of flex. */
+  readonly inlineFlexToBlock: boolean;
   /** MQ-a: every rule inside @media applies in every band, whatever its condition. */
   readonly mediaConditionIgnored: boolean;
   /** MQ-a: the native output takes the band holding the fold viewport one CSS px wider than it is. */
   readonly mediaBandOffByOne: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false, mediaConditionIgnored: false, mediaBandOffByOne: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false, blockifySkipped: false, inlineFlexToBlock: false, mediaConditionIgnored: false, mediaBandOffByOne: false };
