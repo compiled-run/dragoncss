@@ -114,7 +114,8 @@ function referenceMeasurer() {
 export function compileFixture(spec: FixtureSpec, faults: CompilerFaults = NO_FAULTS, profiles: 'enforce' | 'derive' = 'enforce', direction: Direction = 'ltr', transformInput: (input: FrontEndResult) => FrontEndResult = (i) => i): { input: FrontEndResult; compiled: Compiled<'ios' | 'web'> } {
   const input = transformInput(fixtureInput(spec));
   const rootFont = spec.kind === 'layout' ? spec.rootFont : 'ahem';
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} } }, { faults, profiles, direction, platform: REFERENCE_PLATFORM, rootFont });
+  // MQ-a: the native output is the @media band holding the fixed parity viewport, which is exact for every case here.
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} } }, { faults, profiles, direction, platform: REFERENCE_PLATFORM, rootFont, foldViewport: ENVIRONMENT.viewport });
   return { input, compiled: project.compile(input) };
 }
 

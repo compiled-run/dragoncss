@@ -27,6 +27,10 @@ export type CompilerFaults = {
   readonly attributeCaseAlwaysSensitive: boolean;
   /** A rule whose selector list Chrome drops (one selector it does not parse) keeps its other selectors. */
   readonly invalidSelectorListKept: boolean;
+  /** MQ-a: every rule inside @media applies in every band, whatever its condition. */
+  readonly mediaConditionIgnored: boolean;
+  /** MQ-a: the native output takes the band holding the fold viewport one CSS px wider than it is. */
+  readonly mediaBandOffByOne: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, mediaConditionIgnored: false, mediaBandOffByOne: false };

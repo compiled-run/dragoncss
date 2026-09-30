@@ -7,7 +7,7 @@ import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
 import type { Longhand } from './css/properties.ts';
 import { PROPERTY_ROLE } from './css/properties.ts';
-import type { Declaration, EnclosedRules, Rule } from './css/stylesheet.ts';
+import type { Declaration, EnclosedRules, Rule, RuleCondition } from './css/stylesheet.ts';
 import { featureOf, parseStylesheet } from './css/stylesheet.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
@@ -21,6 +21,8 @@ import { emitWebCss } from './emit/web-css.ts';
 import type { CompilerFaults } from './faults.ts';
 import { NO_FAULTS } from './faults.ts';
 import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
+import type { Band, BandPartition } from './media/index.ts';
+import { band, bandAt, evaluateInBand, featuresOfList } from './media/index.ts';
 import { androidProfile } from './profiles/android.ts';
 import { iosProfile } from './profiles/ios.ts';
 import type { SupportProfile } from './profiles/types.ts';
@@ -114,7 +116,9 @@ export function internalRecord(compiled: object): InternalRecord | undefined {
  * reference environment's direction (docs/api.md §7), which resolution gives the root; the public entry compiles for ltr.
  * platform: the reference platform whose Chrome UA dataset is read (REFERENCE_PLATFORM when absent); a platform with no dataset
  * is refused. rootFont: 'ahem' is the parity fixture environment, which sets the root font-family to Ahem (docs/api.md §10.1);
- * the public entry uses 'ua-default'. supportProfiles: test-only replacement profiles.
+ * the public entry uses 'ua-default'. supportProfiles: test-only replacement profiles. foldViewport: the fixed viewport (CSS px)
+ * the native output is resolved for when the stylesheet's @media rules split it into bands (MQ-a); absent in the public entry,
+ * where native refuses such a sheet until MQ-R.
  */
 export type InternalOptions = {
   readonly faults: CompilerFaults;
@@ -123,7 +127,10 @@ export type InternalOptions = {
   readonly platform?: string;
   readonly rootFont?: RootFont;
   readonly supportProfiles?: SupportProfiles;
+  readonly foldViewport?: Viewport;
 };
+
+type Viewport = { readonly width: number; readonly height: number };
 
 type Resolved = {
   readonly faults: CompilerFaults;
@@ -132,6 +139,7 @@ type Resolved = {
   readonly rootFont: RootFont;
   readonly ua: UaDataset;
   readonly supportProfiles: SupportProfiles;
+  readonly foldViewport: Viewport | null;
 };
 
 function deepFreeze<T>(v: T): T {
@@ -266,15 +274,17 @@ function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: 
 
 type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[] };
 
+/** What checkCases has reported, shared by every band's pass so a diagnostic is reported once. */
+type Reported = { readonly contextual: Set<string>; readonly refused: Set<string>; readonly fonts: Set<string> };
+const freshReported = (): Reported => ({ contextual: new Set(), refused: new Set(), fonts: new Set() });
+
 /**
  * Resolves and checks every case: computed-value refusals, fonts, then (when enforcing) the contextual check, where a feature
  * proven only in other contexts blocks with the proven contexts, the alternatives in its own context (T005 rec 6) and, for a
  * shorthand-filled longhand, the shorthand and what to write instead (T005 rec 2).
  */
-function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[]): CaseResult[] {
-  const reported = new Set<string>();
-  const refused = new Set<string>();
-  const fonts = new Set<string>();
+function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[], seen: Reported = freshReported()): CaseResult[] {
+  const { contextual: reported, refused, fonts } = seen;
   const out: CaseResult[] = [];
   for (const c of linked.cases) {
     const resolved = resolveTree(c.root, rules, options.faults, { direction: options.direction, rootFont: options.rootFont, ua: options.ua });
@@ -316,6 +326,34 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   return out;
 }
 
+/** The @media conditions of the sheet: each distinct at-rule once, in source order. */
+function conditionsOf(rules: readonly Rule[]): RuleCondition[] {
+  const out: RuleCondition[] = [];
+  for (const r of rules) for (const c of r.condition ?? []) if (!out.includes(c)) out.push(c);
+  return out;
+}
+
+type Bands = { readonly partition: Extract<BandPartition, { kind: 'bands' }>; readonly conditions: readonly RuleCondition[] };
+
+/** The rules that apply in a band: every rule outside @media, and each rule whose conditions all hold in the band. */
+function rulesIn(rules: readonly Rule[], bands: Bands | null, b: Band | null, faults: CompilerFaults): Rule[] {
+  if (bands === null || b === null || faults.mediaConditionIgnored) return [...rules];
+  return rules.filter((r) => (r.condition ?? []).every((c) => {
+    const result = evaluateInBand(c.list, bands.partition, b);
+    // The at-rule handler refuses every list with a refused feature, so a conditional rule's list always evaluates.
+    if (result.kind === 'refused') throw new Error(`@media ${c.text} reached the band fold with a refused feature`);
+    return result.matches;
+  }));
+}
+
+/** The band the native output is resolved in: the one holding the fold viewport, else the first. */
+function nativeBandIndex(bands: Bands | null, fold: Viewport | null, faults: CompilerFaults): number {
+  if (bands === null || fold === null) return 0;
+  const at = bandAt(bands.partition, faults.mediaBandOffByOne ? { width: fold.width + 1, height: fold.height } : fold);
+  if (at === null) throw new Error(`no band holds the fold viewport ${fold.width}x${fold.height}`);
+  return at.index;
+}
+
 const inside = (o: Origin, e: EnclosedRules): boolean =>
   o.kind === 'authored' && o.span.source.uri === e.span.source.uri && o.span.start >= e.span.start && o.span.end <= e.span.end;
 
@@ -344,7 +382,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
   const targets = Object.keys(config.targets).filter((k): k is KnownTarget => (KNOWN_TARGETS as readonly string[]).includes(k)).sort();
   const diagnostics: Diagnostic[] = [...configDiagnostics];
   const profiles = options.supportProfiles;
-  const digest = sha256Hex(canonicalJson({
+  const digestInput = {
     compiler: COMPILER_VERSION,
     webref: webrefVersion,
     chrome: options.ua.chromeVersion,
@@ -357,10 +395,14 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     direction: options.direction,
     config,
     input: canonicalInput(input),
-  }));
+  };
   const dependencies: Dependency[] = [];
   let linked: Linked | null = null;
   let cases: CaseResult[] = [];
+  // MQ-a: every band's cases, band 0 first (one entry for a sheet without @media), and the band the native output comes from.
+  let bandCases: { readonly band: Band | null; readonly cases: CaseResult[] }[] = [];
+  let bands: Bands | null = null;
+  let nativeBand = 0;
   const valid = configDiagnostics.length === 0 ? validateInput(input, config.projectId, diagnostics) : null;
   if (valid !== null) {
     const rules: Rule[] = [];
@@ -379,16 +421,50 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
       rules.push(...parsed);
     }
     for (const s of [...valid.sources.values()].sort((a, b) => (a.ref.uri < b.ref.uri ? -1 : a.ref.uri > b.ref.uri ? 1 : 0))) dependencies.push({ kind: 'source', uri: s.ref.uri, hash: s.ref.hash });
+    const conditions = conditionsOf(rules);
+    const partition = conditions.length === 0 ? null : band(conditions.map((c) => c.list));
+    if (partition !== null && partition.kind === 'refused') {
+      // The at-rule handler refuses the other band refusals per at-rule; only the band count is a property of the whole sheet.
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
+        origin: authored((conditions[0] as RuleCondition).span),
+        message: `the @media rules of this document split the viewport into ${partition.detail}, which is not supported until MQ-R`,
+      }));
+      rules.splice(0, rules.length, ...rules.filter((r) => r.condition === undefined));
+    } else if (partition !== null) {
+      bands = { partition, conditions };
+      nativeBand = nativeBandIndex(bands, options.foldViewport, options.faults);
+      if (partition.bands.length > 1 && options.foldViewport === null) {
+        // Without a fold viewport the native output has no band to be resolved in (MQ-R adds the runtime choice).
+        for (const t of NATIVE_TARGETS) {
+          if (!targets.includes(t)) continue;
+          for (const c of conditions) {
+            if (featuresOfList(c.list).length === 0) continue;
+            diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
+              origin: authored(c.span),
+              target: t,
+              message: `@media ${c.text} selects rules by the viewport width or height, which the ${t} output does not support until MQ-R`,
+            }));
+          }
+        }
+      }
+    }
     for (const c of valid.components.values()) checkTemplates(c.root, diagnostics);
     const valuesAt = diagnostics.length;
     linked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, diagnostics);
     // An unsupported at-rule blocks every output but does not stop the analysis (T005 rec 3): every diagnostic comes in one pass.
     const fatal = diagnostics.some((d) => d.severity === 'error' && d.target === null && d.code !== 'DRAGON_UNSUPPORTED_AT_RULE');
     if (linked !== null && !fatal) {
-      cases = checkCases(linked, rules, targets, options, diagnostics);
+      const seen = freshReported();
+      const found = linked;
+      // The native targets are checked only in the band their output is resolved in; web is checked in every band.
+      bandCases = (bands === null ? [null] : bands.partition.bands).map((b, k) => ({
+        band: b,
+        cases: checkCases(found, rulesIn(rules, bands, b, options.faults), k === nativeBand ? targets : targets.filter((t) => t === 'web'), options, diagnostics, seen),
+      }));
+      cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
       if (options.profiles === 'enforce') {
         const values: Diagnostic[] = [];
-        checkValues(rules, targets, profiles, cases.flatMap((c) => c.used), values);
+        checkValues(rules, targets, profiles, bandCases.flatMap((r) => r.cases.flatMap((c) => c.used)), values);
         diagnostics.splice(valuesAt, 0, ...values);
       }
       // T005 rec 3: the rules inside each unsupported at-rule are analysed with the block unwrapped, in a scratch pass whose
@@ -396,7 +472,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
       if (enclosed.length > 0) {
         const scratch: Diagnostic[] = [];
         const unwrapped = enclosed.flatMap((e) => e.rules);
-        const scratchCases = checkCases(linked, [...rules, ...unwrapped], targets, options, scratch);
+        // The unwrapped rules are analysed as if their own @media conditions held; the rest are the native band's.
+        const scratchCases = checkCases(linked, [...rulesIn(rules, bands, bands === null ? null : (bands.partition.bands[nativeBand] as Band), options.faults), ...unwrapped], targets, options, scratch);
         if (options.profiles === 'enforce') checkValues(unwrapped, targets, profiles, scratchCases.flatMap((c) => c.used), scratch);
         for (const e of enclosed) {
           const found = [...e.diagnostics, ...scratch.filter((d) => inside(d.origin, e))];
@@ -412,12 +489,19 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
         diagnostics.splice(valuesAt, 0, ...values);
       }
       cases = linked.cases.map((c) => ({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved: null, used: [] }));
+      bandCases = [{ band: null, cases }];
     } else if (options.profiles === 'enforce') {
       const values: Diagnostic[] = [];
       checkValues(rules, targets, profiles, [], values);
       diagnostics.splice(valuesAt, 0, ...values);
     }
   }
+  // A sheet with one band keeps its digest; with more, the bands and the fold viewport are compilation inputs (MQ-a).
+  const multiBand = bands !== null && bands.partition.bands.length > 1;
+  const digest = sha256Hex(canonicalJson(bands === null || !multiBand ? digestInput : {
+    ...digestInput,
+    media: { bands: bands.partition.bands.map((b) => b.condition), fold: options.foldViewport },
+  }));
   // One native lowering shared by every configured native target that is not already blocked; its refusals block each of them.
   const lowered = new Map<string, LayoutBox>();
   const lowerFor = NATIVE_TARGETS.filter((t) => targets.includes(t) && !diagnostics.some((d) => blocksTarget(d, t)));
@@ -448,7 +532,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     else if (t === 'ios') outputs[key] = { kind: 'analysis-only', digest, reason: 'The iOS output is analysis-only: its layout projection feeds the internal lanes, and the generated UIKit Swift is internal to the native lanes until an iOS native case passes.' };
     else if (t === 'android') outputs[key] = { kind: 'analysis-only', digest, reason: 'The Android output is analysis-only: its layout projection feeds the internal lanes, and the generated Android Views Kotlin is internal to the native lanes until an Android native case passes.' };
     else {
-      web = emitWebCss(cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement })), digest);
+      const [base, ...extra] = bandCases.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement })) }));
+      web = emitWebCss((base as { cases: { key: string; root: ResolvedElement }[] }).cases, digest, extra);
       outputs[key] = { kind: 'ready', digest, files: web.files };
     }
   }
@@ -573,6 +658,12 @@ function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>, chromeV
   return { kind: 'found', target: q.target, cases: out };
 }
 
+/** A fold viewport is a finite, non-negative size in CSS px. */
+function checkedViewport(v: Viewport): Viewport {
+  if (![v.width, v.height].every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0)) throw new Error(`foldViewport must be a finite, non-negative width and height, got ${JSON.stringify(v)}`);
+  return { width: v.width, height: v.height };
+}
+
 /** @internal */
 export function createProjectWith<const T extends Targets>(config: { projectId: string; targets: T }, options: InternalOptions): Project<Configured<T>> {
   type K = Configured<T>;
@@ -586,6 +677,7 @@ export function createProjectWith<const T extends Targets>(config: { projectId: 
     rootFont: options.rootFont === undefined ? 'ua-default' : options.rootFont,
     ua: choice.dataset,
     supportProfiles: options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles,
+    foldViewport: options.foldViewport === undefined ? null : checkedViewport(options.foldViewport),
   };
   const configDiagnostics = validateConfig(config);
   const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object };
