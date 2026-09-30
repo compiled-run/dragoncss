@@ -122,6 +122,12 @@ describe('grid engine cases pinned to the Chrome 145 corpus (docs/research/grid-
     const span = (n: number): GridItemStyle => ({ ...autoItem, column: { kind: 'auto', span: n } });
     const items = [span(3), span(2), autoItem, autoItem, span(3)].map((gi, k) => box(`i${k}`, { height: { kind: 'px', value: 5 }, gridItem: gi }));
     const m = boxesOf(grid(gridStyle({ templateColumns: [{ count: 4, sizes: [px(20)] }], explicitColumnCount: 4, autoRows: [px(10)], dense: true }), items));
-    expect(m.get('i2')?.y).toBe(m.get('g')?.y);
+    const g = m.get('g');
+    if (g === undefined) throw new Error('no grid box');
+    // Four 20px (1280 LU) columns, 10px (640 LU) rows: i1 wraps to row 2, dense packing puts i2 and i3 in the holes before it.
+    expect(['i0', 'i1', 'i2', 'i3', 'i4'].map((id) => {
+      const b = m.get(id);
+      return b === undefined ? null : [b.x - g.x, b.y - g.y, b.width, b.height];
+    })).toEqual([[0, 0, 3840, 320], [0, 640, 2560, 320], [3840, 0, 1280, 320], [2560, 640, 1280, 320], [0, 1280, 3840, 320]]);
   });
 });
