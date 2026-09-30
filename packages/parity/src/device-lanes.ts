@@ -323,14 +323,18 @@ export function trustFailuresOf(rows: readonly TrustRow[], dpr: number, device: 
   return out;
 }
 
+/** The sample rules a raster plant must fail on: glyph-offset-1 on glyph and glyph-edge rules, gradient-offset-1 (BG2) on gradient rules. */
+export const GLYPH_PLANT_RULES = /^(glyph:|edge:\S*:glyph-)/;
+export const PLANT_RULES: { readonly [plant: string]: RegExp } = { 'glyph-offset-1': GLYPH_PLANT_RULES, 'gradient-offset-1': /^gradient:/ };
+
 /**
- * The glyph-offset-1 plant verdict on the plant case: caught only when the host finished, device-pixels failed on a glyph or
- * glyph-edge rule, and device-frames and device-lines have no failure (pixels see what (d) cannot).
+ * A raster plant's verdict on its plant case: caught only when the host finished, device-pixels failed on one of the plant's
+ * rules (glyph and glyph-edge by default), and device-frames and device-lines have no failure (pixels see what (d) cannot).
  */
-export function plantVerdict(failures: readonly LaneFailure[], hostError: string | null): { readonly caught: boolean; readonly pixels: number; readonly inked: number; readonly frames: number; readonly lines: number } {
+export function plantVerdict(failures: readonly LaneFailure[], hostError: string | null, rules: RegExp = GLYPH_PLANT_RULES): { readonly caught: boolean; readonly pixels: number; readonly inked: number; readonly frames: number; readonly lines: number } {
   const of = (lane: DeviceCheckLane): LaneFailure[] => failures.filter((f) => f.lane === lane);
   const pixels = of('device-pixels');
-  const inked = pixels.filter((f) => f.kind === 'pixel' && /^(glyph:|edge:\S*:glyph-)/.test(f.node ?? '')).length;
+  const inked = pixels.filter((f) => f.kind === 'pixel' && rules.test(f.node ?? '')).length;
   const frames = of('device-frames').length;
   const lines = of('device-lines').length;
   return { caught: hostError === null && inked > 0 && frames === 0 && lines === 0, pixels: pixels.length, inked, frames, lines };

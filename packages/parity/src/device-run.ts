@@ -39,6 +39,8 @@ export const VECTOR_DEVICES: { readonly [T in NativeTarget]: string } = { ios: '
 export const TRUST_CASES: readonly string[] = ['color-border-sides', 'text-wrap-spaces', 'overflow-hidden-bfc'];
 /** The glyph-offset-1 plant case (section 4 item 5). */
 export const PLANT_CASE = 'text-wrap-spaces';
+/** The case each raster plant runs on: glyph-offset-1's, and gradient-offset-1's (BG2) with a gradient in every direction form. */
+export const PLANT_CASES: { readonly [plant: string]: string } = { 'glyph-offset-1': PLANT_CASE, 'gradient-offset-1': 'gradient-linear' };
 /** The devices of the glyph-offset-1 raster plant run (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
 
