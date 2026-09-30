@@ -70,7 +70,7 @@ describe('EMS: the paint registries', () => {
       expect(PAINT_LOWERINGS.find((m) => m.name === name)?.css, name).toEqual({});
     }
     expect(paintPlants()).toEqual([]);
-    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1']);
+    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1']);
   });
 });
 
@@ -147,6 +147,6 @@ describe('EMS: CSS families and paint values', () => {
     const props = new Map<Longhand, ResolvedValue>([['font-size', v(10, 'px')], ['width', v(2, 'em')]]);
     computeLengths(props, 16, 16);
     expect([...props.entries()].map(([k, x]) => [k, x.value])).toEqual([['font-size', { kind: 'length', value: 10, unit: 'px' }], ['width', { kind: 'length', value: 20, unit: 'px' }]]);
-    expect((LONGHANDS as readonly string[]).length).toBe(56);
+    expect((LONGHANDS as readonly string[]).length).toBe(68);
   });
 });
