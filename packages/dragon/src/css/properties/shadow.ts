@@ -137,7 +137,7 @@ export function shadowsOf(v: CssValue): readonly Shadow[] | null {
   if (v.kind === 'keyword' && v.value === 'none') return [];
   if (v.kind !== 'other' || v.type !== SHADOW_LIST) return null;
   const node = parse(v.text, { context: 'value' });
-  const r = readShadows(list(node, 'children').filter((n) => n.type !== 'WhiteSpace'), { source: { uri: 'dragon-internal:shadow', revision: '0', hash: 'sha256:0' }, start: 0, end: v.text.length });
+  const r = readShadows(list(node, 'children').filter((n) => n.type !== 'WhiteSpace'), { source: { uri: 'dragon-computed://box-shadow', revision: 'computed', hash: 'sha256:0' }, start: 0, end: v.text.length });
   if (!('ok' in r)) throw new Error(`box-shadow ${JSON.stringify(v.text)} does not read back as a shadow list`);
   return r.ok;
 }
