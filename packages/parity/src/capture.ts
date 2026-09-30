@@ -3,7 +3,7 @@
 // that are not whitespace-only) is its Range bounding rect, followed by one "<text>:line<j>" node per Range client rect: one
 // per line the text shows on, in order. A whitespace-only text node is "<element>:space<k>" and is recorded only when it has
 // client rects.
-import type { Browser } from 'playwright';
+import type { Browser, Page } from 'playwright';
 import type { Environment } from 'dragon';
 import { LONGHANDS } from 'dragon';
 import { CHROME_VERSION, openPage } from './chrome.ts';
@@ -35,10 +35,14 @@ export type WebCapture = {
   readonly nodes: readonly CapturedNode[];
 };
 
-/** extra: properties captured after LONGHANDS (a fixture's computedExtra); none for every fixture that predates them. */
-export async function captureFixture(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = []): Promise<WebCapture> {
+/**
+ * extra: properties captured after LONGHANDS (a fixture's computedExtra); none for every fixture that predates them. prepare: a
+ * fixture's stated-reference transform (font-reference.ts), run on the loaded page before the capture; none for every other fixture.
+ */
+export async function captureFixture(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = [], prepare?: (page: Page) => Promise<void>): Promise<WebCapture> {
   const page = await openPage(browser, html, env);
   try {
+    if (prepare !== undefined) await prepare(page);
     const nodes = await page.evaluate((props) => {
       const out: CapturedNode[] = [];
       const blank = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';

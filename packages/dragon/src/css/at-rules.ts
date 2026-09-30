@@ -1,6 +1,7 @@
-// The at-rule handler registry. Every at-rule is refused today: each registered name, and any name not registered, gets the
-// same DRAGON_UNSUPPORTED_AT_RULE diagnostic, and the parse driver (stylesheet.ts) then analyses the rules inside the at-rule's
+// The at-rule handler registry. Every at-rule but @font-face is refused: each registered name, and any name not registered, gets
+// the same DRAGON_UNSUPPORTED_AT_RULE diagnostic, and the parse driver (stylesheet.ts) then analyses the rules inside the at-rule's
 // block for diagnostics only (T005 rec 3). A package that supports an at-rule replaces its entry here with its own handler.
+import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
@@ -11,9 +12,10 @@ export type AtRuleContext = { readonly node: CssNode; readonly name: string; rea
 
 /**
  * What a handler decides. refuse: the diagnostic is reported, the at-rule produces no rules, and its block (if any) is parsed
- * for analysis only, reported with the at-rule (EnclosedRules). It is the only outcome today.
+ * for analysis only, reported with the at-rule (EnclosedRules). font-face: the rule is accepted and handed to the fonts module
+ * (fonts/wire.ts collectFontFaces), with no diagnostic and no enclosed rules.
  */
-export type AtRuleOutcome = { readonly kind: 'refuse'; readonly diagnostic: Diagnostic };
+export type AtRuleOutcome = { readonly kind: 'refuse'; readonly diagnostic: Diagnostic } | { readonly kind: 'font-face'; readonly context: AtRuleContext };
 
 export type AtRuleHandler = (at: AtRuleContext) => AtRuleOutcome;
 
@@ -27,6 +29,17 @@ export const refuseAtRule: AtRuleHandler = (at) => ({
 });
 
 /**
+ * css-fonts-4 §4: @font-face at the top level of a stylesheet, with no prelude and a block, is accepted. Nested in a style rule
+ * Chrome ignores it; inside a conditional rule (@media, @supports) it is refused with that rule until the rule is supported.
+ */
+export const acceptFontFace: AtRuleHandler = (at) => {
+  const prelude = at.node['prelude'] as CssNode | null | undefined;
+  const block = at.node['block'] as CssNode | null | undefined;
+  const empty = prelude === null || prelude === undefined || generate(prelude).trim() === '';
+  return at.where === 'the stylesheet' && empty && block !== null && block !== undefined ? { kind: 'font-face', context: at } : refuseAtRule(at);
+};
+
+/**
  * The known at-rules, keyed by lowercased name, one entry each so packages that support different at-rules edit different
  * lines. An at-rule not listed here falls back to refuseAtRule too.
  */
@@ -35,7 +48,7 @@ export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
   'color-profile': refuseAtRule,
   container: refuseAtRule,
   'counter-style': refuseAtRule,
-  'font-face': refuseAtRule,
+  'font-face': acceptFontFace,
   'font-feature-values': refuseAtRule,
   'font-palette-values': refuseAtRule,
   import: refuseAtRule,

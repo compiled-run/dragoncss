@@ -298,3 +298,15 @@ ng-native (launched 2026-09-29) is Angular on React Native Fabric with Yoga layo
 - **ANIM-S:** scroll-driven animation (`animation-timeline: scroll()`), after ANIM-b (T065) and OVFL (T078). It reuses the timing port, and is proven at sampled scroll offsets.
 - **Accessibility, Bold Text:** Dragon draws its own glyphs, so the OS Bold Text setting must be applied by Dragon: +300 `font-weight`, clamped at 900, the way iOS applies it. Live text-size changes are part of MQ-R. Both are proven with injected settings.
 - **Not adopted:** warn-and-still-build for unsupported CSS. Dragon keeps failing the build; an `explain` migration report gives the same adoption help.
+
+## Box-shadow device pixels: no allowance (PM ruling, 2026-09-30)
+
+PNT1 measured Dragon's device shadows against Chrome 145 at up to 2 channel levels over about 4.95M clear pixels (DPR 2, 3, 2.625). The cause is compositing: Chrome floors once per shadow, the device composites one layer. Raising `allowances/shadow.ts` from 0 would loosen a check, which AGENTS.md forbids. So it stays at 0, the shadow points fail device-pixels until the device composites each shadow the way Chrome does, and that fix is its own task (PNT1-S2). The measured value stays pinned in `pnt1-shadow.test.ts` as evidence.
+
+## Porting Chrome's algorithms (owner, 2026-09-30)
+
+- **Port, don't link.** Dragon reuses Chrome by porting its algorithms into Dragon's own TypeScript engine and compiler. It never links Blink or runs it on a device. A port takes Dragon's fully specified input, so it brings no hidden defaults.
+- **Source and licence.** Port only from files at the pinned Chrome 145.0.7632.6 tag (Blink, Skia, gfx) whose header is BSD-style ("The Chromium Authors", Skia, HarfBuzz MIT). Files that carry an LGPL header (WebKit and KHTML inherited code) are not ported; for those, Dragon implements from the spec text and matches Chrome's numbers by test. The spec's own sample code (for example, CSS Color 4 conversions) may be used.
+- **Every port names its source.** A port records the upstream file, the tag and the line range, so a Chrome update can be diffed and carried over. PORT-0 (T118) makes this a checked registry.
+- **A port counts only when Chrome agrees.** The same differential and device lanes judge it, with no new allowance.
+- **Order ports by real-world use,** starting with what the Tailwind sweep shows is blocking the most: colour spaces (T119), `calc()` in the remaining contexts (T120), then grid, borders, shadows and transforms through their existing tasks (G1a/G1b, T116, T114, PNT2).

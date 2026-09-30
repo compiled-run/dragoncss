@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
-import { SUPPORTED_TAGS } from '../src/analysis/elements.ts';
+import { SUPPORTED_TAGS, UNSTYLED_TAGS } from '../src/analysis/elements.ts';
 import { computed, userAgentContexts, userAgentDeclared, userAgentTextFonts } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { DOC, explainOne, inputFor, staticClass, text } from './helpers.ts';
 
@@ -18,8 +18,9 @@ function el(ref: SourceRef, id: string, tag: string, classes: string[] = [], chi
 const FONT = 'body { font-family: Ahem; }';
 
 describe('the element table', () => {
-  it('is exactly the captured tags other than the unstyled probe element', () => {
-    expect([...SUPPORTED_TAGS].sort()).toEqual(Object.keys(computed).filter((t) => t !== 'dragon-unstyled').sort());
+  it('is exactly the captured tags other than the unstyled probe element, plus the tags that resolve as it', () => {
+    expect([...SUPPORTED_TAGS].filter((t) => !UNSTYLED_TAGS.has(t)).sort()).toEqual(Object.keys(computed).filter((t) => t !== 'dragon-unstyled').sort());
+    expect([...UNSTYLED_TAGS].every((t) => SUPPORTED_TAGS.has(t) && !(t in computed))).toBe(true);
     expect(SUPPORTED_TAGS.has('pre')).toBe(false);
   });
   it('pins the declared UA values, the ancestor contexts and the unmodelled text fonts Chrome 145 has', () => {
