@@ -246,15 +246,23 @@ function adb(h: { serial: string; tools: AndroidTools }, args: readonly string[]
 /** The memory slot each booted device holds (device-slots.ts), by device name: taken before the boot, given back by release(). */
 const slots = new Map<string, string>();
 
-/** Runs a boot holding the device's memory slot until release(); a failed boot gives the slot back. */
+/**
+ * A failed boot that could not stop the device it started: the device still runs and holds its memory, so its slot is kept until
+ * this process exits (PR #42 round 2), and the error says so.
+ */
+export class DeviceLeftRunning extends Error {}
+
+/** Runs a boot holding the device's memory slot until release(); a failed boot gives the slot back unless it left the device running. */
 export async function withDeviceSlot(spec: DeviceSpec, bootIt: () => Promise<DeviceHandle>, opts: SlotOptions = {}): Promise<DeviceHandle> {
   const slot = await acquireDeviceSlot(spec.target, spec.name, opts);
   slots.set(spec.name, slot);
   try {
     return await bootIt();
   } catch (e) {
-    slots.delete(spec.name);
-    releaseDeviceSlot(slot);
+    if (!(e instanceof DeviceLeftRunning)) {
+      slots.delete(spec.name);
+      releaseDeviceSlot(slot);
+    }
     throw e;
   }
 }
@@ -270,7 +278,10 @@ async function bootIosHeld(spec: IosDeviceSpec): Promise<DeviceHandle> {
     return await bootIosFrom(spec, udid, was);
   } catch (e) {
     // A simulator this runner booted is shut down again; one already booted or booting elsewhere is left alone.
-    if (was === 'Shutdown') run('xcrun', ['simctl', 'shutdown', udid]);
+    if (was === 'Shutdown') {
+      const problem = await stopDevice({ spec, udid, startedHere: true });
+      if (problem !== null) throw new DeviceLeftRunning(`${e instanceof Error ? e.message : String(e)}; and ${problem}`);
+    }
     throw e;
   }
 }
@@ -297,7 +308,7 @@ function serialsRunning(tools: AndroidTools): string[] {
  * A detached child whose spawn error (a missing or unexecutable binary) is kept, not left unhandled: check() rethrows it, so the
  * caller's retry and tooling-fault handling sees it.
  */
-export function spawnDetached(cmd: string, args: readonly string[]): { readonly check: () => void; readonly alive: () => boolean } {
+export function spawnDetached(cmd: string, args: readonly string[]): { readonly check: () => void; readonly alive: () => boolean; readonly kill: () => void } {
   let failure: Error | null = null;
   const p = spawn(cmd, [...args], { detached: true, stdio: 'ignore' });
   p.once('error', (e) => {
@@ -309,7 +320,20 @@ export function spawnDetached(cmd: string, args: readonly string[]): { readonly 
       if (failure !== null) throw new Error(`${cmd} could not be started: ${(failure as Error).message}`);
     },
     alive: () => failure === null && p.exitCode === null && p.signalCode === null,
+    kill: () => void p.kill('SIGTERM'),
   };
+}
+
+/** Stops a spawned process that is still alive: null once it has exited, else why it may still run. */
+export async function stopSpawned(p: { readonly alive: () => boolean; readonly kill: () => void }, name: string, timeoutMs = 30_000): Promise<string | null> {
+  if (!p.alive()) return null;
+  p.kill();
+  try {
+    await poll(`the ${name} emulator process to exit`, timeoutMs, () => !p.alive());
+    return null;
+  } catch (e) {
+    return `the ${name} emulator process still runs after SIGTERM: ${e instanceof Error ? e.message : String(e)}`;
+  }
 }
 
 /** The API level of ANDROID_IMAGE (system-images;android-<N>;...). */
@@ -372,7 +396,9 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
     } catch (e) {
       // Only the emulator this attempt spawned is killed: if it exited (say, the port was taken), the serial is someone else's.
       if (!p.alive()) throw new Error(`the ${spec.name} emulator exited before it booted; ${serial} is left alone (tooling fault): ${e instanceof Error ? e.message : String(e)}`);
-      adb(h, ['emu', 'kill']);
+      // An emulator that never attached is not reached by adb emu kill, so the process this attempt spawned is stopped as well.
+      const problem = (await stopDevice({ ...h, startedHere: true })) ?? (await stopSpawned(p, spec.name));
+      if (problem !== null) throw new DeviceLeftRunning(`the ${spec.name} emulator failed to boot (${e instanceof Error ? e.message : String(e)}); and ${problem}`);
       await sleep(5000);
       if (attempt === 2) throw new Error(`the ${spec.name} emulator failed to boot twice (tooling fault): ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -383,7 +409,8 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
     await prepareAvd(h);
   } catch (e) {
     // This runner started it, so it stops it rather than leave the port taken.
-    await stopDevice({ ...h, startedHere: true });
+    const problem = await stopDevice({ ...h, startedHere: true });
+    if (problem !== null) throw new DeviceLeftRunning(`${e instanceof Error ? e.message : String(e)}; and ${problem}`);
     throw e;
   }
   return { ...h, startedHere: true };
@@ -487,22 +514,40 @@ export async function boot(spec: DeviceSpec): Promise<DeviceHandle> {
   return spec.target === 'ios' ? bootIos(spec) : bootAvd(spec);
 }
 
-/** Shuts down only a device this runner started, and gives back the device's memory slot in any case. */
-export async function release(h: DeviceHandle): Promise<void> {
+/**
+ * Shuts down only a device this runner started. Its memory slot is given back only once the device is stopped: a device this runner
+ * did not start stays running, as does one whose stop failed, so their slots are kept until this process exits (PR #42 finding
+ * 4147492203). A stop that failed is logged and returned, never dropped.
+ */
+export async function release(h: DeviceHandle, log: (line: string) => void = (l) => console.error(l), stop: (h: DeviceHandle) => Promise<string | null> = stopDevice): Promise<string | null> {
+  let problem: string | null;
   try {
-    await stopDevice(h);
-  } finally {
+    problem = await stop(h);
+  } catch (e) {
+    problem = `${h.spec.name} could not be stopped: ${e instanceof Error ? e.message : String(e)}`;
+  }
+  if (h.startedHere && problem === null) {
     releaseDeviceSlot(slots.get(h.spec.name) ?? null);
     slots.delete(h.spec.name);
   }
+  if (problem !== null) log(`${problem}; its device memory slot is kept until this process exits (tooling fault)`);
+  return problem;
 }
 
-async function stopDevice(h: DeviceHandle): Promise<void> {
-  if (!h.startedHere) return;
-  if ('udid' in h) run('xcrun', ['simctl', 'shutdown', h.udid]);
-  else {
-    adb(h, ['emu', 'kill']);
-    await poll(`${h.serial} to stop`, 60_000, () => !serialsRunning(h.tools).includes(h.serial)).catch(() => undefined);
+/** Stops a device this runner started; null once it is confirmed stopped (or was not started here), else why it may still run. */
+export async function stopDevice(h: DeviceHandle): Promise<string | null> {
+  if (!h.startedHere) return null;
+  if ('udid' in h) {
+    const r = run('xcrun', ['simctl', 'shutdown', h.udid]);
+    const state = simState(h.udid);
+    return state === 'Shutdown' || state === 'missing' ? null : `the ${h.spec.name} simulator is ${state} after simctl shutdown (exit ${r.status}): ${r.out.slice(-300)}`;
+  }
+  adb(h, ['emu', 'kill']);
+  try {
+    await poll(`${h.serial} to stop`, 60_000, () => !serialsRunning(h.tools).includes(h.serial));
+    return null;
+  } catch (e) {
+    return `${h.serial} (${h.spec.name}) still runs after adb emu kill: ${e instanceof Error ? e.message : String(e)}`;
   }
 }
 

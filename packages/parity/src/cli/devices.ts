@@ -7,7 +7,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createInterface } from 'node:readline';
-import { devicesExit, isAncestor, LEASE_SCRIPT, leased, leaseHolder, parentPid } from '../device-jobs.ts';
+import { devicesArgs, devicesExit, isAncestor, judgedSteps, LEASE_SCRIPT, leased, leaseHolder, parentPid } from '../device-jobs.ts';
 import { checkLaneParity, laneSources, readLanesFile, reportLanesFile } from '../lanes.ts';
 import { buildAndroid, buildIos } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
@@ -29,17 +29,12 @@ if (prebuildAt >= 0) {
   process.exit(0);
 }
 
-const requireAll = args.includes('--require-all');
-const jobsAt = args.indexOf('--device-jobs');
-const jobs = jobsAt < 0 ? [] : ['--device-jobs', args[jobsAt + 1] ?? ''];
-if (jobs[1] !== undefined && !/^[1-9]\d?$/.test(jobs[1])) {
-  console.error(`parity:devices: --device-jobs takes a whole number from 1 to 99, not ${JSON.stringify(jobs[1])}`);
+const parsed = devicesArgs(args);
+if ('error' in parsed) {
+  console.error(`parity:devices: ${parsed.error}`);
   process.exit(2);
 }
-for (const a of args) if (!['--require-all', '--device-jobs'].includes(a) && a !== jobs[1]) {
-  console.error(`parity:devices: unknown argument ${JSON.stringify(a)} (takes --require-all and --device-jobs N)`);
-  process.exit(2);
-}
+const { requireAll, jobs } = parsed;
 // Run under the lease itself (/tmp/device-lease.sh pnpm run parity:devices), a step taking it again would wait on its own ancestor.
 const holder = leaseHolder();
 const inside = holder !== null && isAncestor(holder, process.pid, parentPid);
@@ -90,9 +85,9 @@ const runs = await Promise.all(NATIVE_TARGETS.map(target));
 const file = readLanesFile();
 if (file === null) throw new Error('parity:devices: no out/lanes.json after the runs');
 const merged = reportLanesFile(file, checkLaneParity(nativeTargets(), laneSources()), requireAll, (l) => console.log(l));
-const steps = runs.flatMap((r) => r.counted);
+const steps = judgedSteps(runs);
 console.log('parity:devices: wall clock per step (first output after, for a leased step, the wait for the lease):');
-for (const s of [...runs.map((r) => r.prebuild), ...steps]) console.log(`  ${s.name}: ${s.seconds.toFixed(0)} s${s.firstLine === null ? '' : ` (first output after ${s.firstLine.toFixed(0)} s)`}; ${s.code === 0 ? 'ok' : `exit ${s.code ?? 'none'}`}`);
+for (const s of steps) console.log(`  ${s.name}: ${s.seconds.toFixed(0)} s${s.firstLine === null ? '' : ` (first output after ${s.firstLine.toFixed(0)} s)`}; ${s.code === 0 ? 'ok' : `exit ${s.code ?? 'none'}`}`);
 const exit = devicesExit(steps, merged);
 console.log(`parity:devices: ${exit === 0 ? 'pass' : 'FAIL'} in ${secs(Date.now() - T0)}`);
 process.exitCode = exit;

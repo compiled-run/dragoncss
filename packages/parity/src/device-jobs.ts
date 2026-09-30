@@ -200,6 +200,31 @@ export function isAncestor(ancestor: number, pid: number, parentOf: (pid: number
   return false;
 }
 
+/**
+ * The steps parity:devices judges its exit by: every step of every target, the app build (--prebuild) included (PR #42 finding
+ * 4147492252), so a failed build fails the run even when the device step went on with an app it built or reused itself.
+ */
+export function judgedSteps<S>(runs: readonly { readonly counted: readonly S[]; readonly prebuild: S }[]): S[] {
+  return runs.flatMap((r) => [r.prebuild, ...r.counted]);
+}
+
+/** The parity:devices arguments checked: --require-all, --device-jobs N (1 to 99); anything else, or N missing, is a usage error. */
+export function devicesArgs(args: readonly string[]): { readonly requireAll: boolean; readonly jobs: readonly string[] } | { readonly error: string } {
+  let requireAll = false;
+  let jobs: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i] as string;
+    if (a === '--require-all') requireAll = true;
+    else if (a === '--device-jobs') {
+      const n = args[++i];
+      if (n === undefined || !/^[1-9]\d?$/.test(n)) return { error: `--device-jobs takes a whole number from 1 to 99, not ${JSON.stringify(n ?? '')}` };
+      if (jobs.length > 0) return { error: '--device-jobs is given twice' };
+      jobs = ['--device-jobs', n];
+    } else return { error: `unknown argument ${JSON.stringify(a)} (takes --require-all and --device-jobs N)` };
+  }
+  return { requireAll, jobs };
+}
+
 /** parity:devices fails when any step it ran failed (a crash, a reference proof or a lane of its own target) or the merged file fails. */
 export function devicesExit(steps: readonly { readonly code: number | null }[], merged: 0 | 1): 0 | 1 {
   return merged === 0 && steps.every((s) => s.code === 0) ? 0 : 1;

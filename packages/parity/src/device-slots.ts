@@ -4,9 +4,9 @@
 // however they were sized. A slot is released with its device, on a failed boot, and at process exit; a holder whose process has
 // died (a crash, a kill after a timeout) is dropped by the next boot that reads it.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { freemem, totalmem } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { withFileLock, writeFileAtomic } from './file-lock.ts';
 import type { NativeTarget } from './targets.ts';
 
@@ -17,6 +17,21 @@ export const DEVICE_MEMORY: { readonly [T in NativeTarget]: number } = { ios: 3 
 export const MEMORY_RESERVE = 8 * GIB;
 /** Machine-wide: /tmp, not os.tmpdir(), which differs between sessions of the same user. DRAGON_DEVICE_SLOTS moves it (tests). */
 export const DEVICE_SLOTS_DIR = process.env['DRAGON_DEVICE_SLOTS'] ?? '/tmp/dragon-device-slots';
+
+/**
+ * The slots directory, made private to this user (0700) when absent, and checked before any use (PR #42 finding 4147492181): an
+ * absolute path to a real directory, not a symlink, owned by this user and writable by no one else. /tmp is shared, so a directory
+ * another user planted there, or a link to elsewhere, is an error naming it, never written into.
+ */
+export function privateSlotsDir(dir: string): string {
+  if (!isAbsolute(dir)) throw new Error(`the device slots directory ${JSON.stringify(dir)} is not an absolute path (DRAGON_DEVICE_SLOTS)`);
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const st = lstatSync(dir);
+  const uid = process.getuid?.();
+  const problem = st.isSymbolicLink() ? 'is a symlink' : !st.isDirectory() ? 'is not a directory' : uid !== undefined && st.uid !== uid ? `is owned by uid ${st.uid}, not this user (${uid})` : (st.mode & 0o022) !== 0 ? `is writable by others (mode ${(st.mode & 0o777).toString(8)})` : null;
+  if (problem !== null) throw new Error(`the device slots directory ${dir} ${problem}; remove it (no device run may be using it) and rerun`);
+  return dir;
+}
 export const SLOT_WAIT_MS = 1_800_000;
 const SLOT_POLL_MS = 2000;
 
@@ -62,7 +77,8 @@ export function parseHolder(text: string, file: string): SlotHolder {
     v = null;
   }
   const o = (typeof v === 'object' && v !== null && !Array.isArray(v) ? v : {}) as Record<string, unknown>;
-  const ok = Number.isInteger(o['pid']) && (o['pid'] as number) > 0 && typeof o['device'] === 'string' && typeof o['bytes'] === 'number' && (o['bytes'] as number) > 0 && typeof o['since'] === 'number';
+  const finite = (k: string): boolean => typeof o[k] === 'number' && Number.isFinite(o[k]);
+  const ok = Number.isInteger(o['pid']) && (o['pid'] as number) > 0 && typeof o['device'] === 'string' && o['device'] !== '' && finite('bytes') && (o['bytes'] as number) > 0 && finite('since');
   if (!ok) throw new Error(`the device slot ${file} is malformed; remove it once no run is booting devices`);
   return o as unknown as SlotHolder;
 }
@@ -87,8 +103,7 @@ export type SlotOptions = { readonly dir?: string; readonly memory?: () => Memor
 export function tryAcquireSlot(device: string, need: number, opts: SlotOptions = {}): ReturnType<typeof slotDecision> & { readonly file: string } {
   const dir = opts.dir ?? DEVICE_SLOTS_DIR;
   const pid = opts.pid ?? process.pid;
-  const file = holderFile(dir, pid, device);
-  mkdirSync(dir, { recursive: true });
+  const file = holderFile(privateSlotsDir(dir), pid, device);
   return withFileLock(join(dir, 'slots'), () => {
     const files = readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => join(dir, f)).filter((f) => f !== file);
     // A holder is given back without the lock (at exit, too), so one listed a moment ago may be gone: it no longer holds memory.

@@ -1,13 +1,14 @@
 // PR #42 finding 4143792481: every booted device, of either target and any run, holds a slot of one machine-wide memory budget.
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { DeviceHandle, IosDeviceSpec } from '../src/device-run.ts';
-import { release, withDeviceSlot } from '../src/device-run.ts';
+import { DeviceLeftRunning, release, stopSpawned, withDeviceSlot } from '../src/device-run.ts';
 import type { SlotHolder } from '../src/device-slots.ts';
-import { acquireDeviceSlot, DEVICE_MEMORY, MEMORY_RESERVE, parseHolder, releaseDeviceSlot, slotDecision, tryAcquireSlot } from '../src/device-slots.ts';
+import { acquireDeviceSlot, DEVICE_MEMORY, MEMORY_RESERVE, parseHolder, privateSlotsDir, releaseDeviceSlot, slotDecision, tryAcquireSlot } from '../src/device-slots.ts';
+import { writeFileAtomic } from '../src/file-lock.ts';
 import { repoPath } from '../src/paths.ts';
 
 const GIB = 1024 ** 3;
@@ -59,6 +60,8 @@ describe('the slot arithmetic', () => {
     expect(() => parseHolder('{"pid":1}', '/x/1-a.json')).toThrow(/\/x\/1-a.json is malformed/);
     expect(() => parseHolder('not json', '/x/2-a.json')).toThrow(/malformed/);
     expect(() => parseHolder('{"pid":-4,"device":"a","bytes":1,"since":0}', '/x/3-a.json')).toThrow(/malformed/);
+    expect(() => parseHolder('{"pid":4,"device":"","bytes":1,"since":0}', '/x/4-a.json')).toThrow(/malformed/);
+    expect(() => parseHolder('{"pid":4,"device":"a","bytes":1e999,"since":0}', '/x/5-a.json')).toThrow(/malformed/);
     expect(parseHolder('{"pid":4,"device":"a","bytes":1,"since":0}', 'f')).toEqual({ pid: 4, device: 'a', bytes: 1, since: 0 });
   });
 });
@@ -86,6 +89,35 @@ describe('the slot files', () => {
     releaseDeviceSlot(a.file);
     expect(tryAcquireSlot('c', 4 * GIB, { dir, memory, alive: () => true, pid: 2004 })).toMatchObject({ grant: true, held: 4 * GIB });
   });
+  // PR #42 finding 4147492181: /tmp is shared, so the slots directory and the files written into it are checked.
+  it('the slots directory must be a private real directory of this user: a symlink, one others can write, or a relative path is refused', () => {
+    const base = tmp();
+    const elsewhere = join(base, 'elsewhere');
+    mkdirSync(elsewhere);
+    const link = join(base, 'slots-link');
+    symlinkSync(elsewhere, link);
+    expect(() => tryAcquireSlot('a', GIB, { dir: link, memory: () => ({ total: 48 * GIB, available: 20 * GIB }) })).toThrow(/slots-link is a symlink/);
+    expect(readdirSync(elsewhere)).toEqual([]);
+    const open = join(base, 'open');
+    mkdirSync(open);
+    chmodSync(open, 0o777);
+    expect(() => privateSlotsDir(open)).toThrow(/open is writable by others \(mode 777\)/);
+    expect(() => privateSlotsDir('relative/slots')).toThrow(/not an absolute path/);
+    const fresh = join(base, 'fresh');
+    expect(privateSlotsDir(fresh)).toBe(fresh);
+    expect(statSync(fresh).mode & 0o777).toBe(0o700);
+  });
+  it('an atomic write never writes through a link planted at a temporary name', () => {
+    const dir = tmp();
+    const victim = join(dir, 'victim');
+    writeFileSync(victim, 'untouched');
+    const path = join(dir, '1-a.json');
+    // The name the temporary file had before the fix: predictable, so it could be planted.
+    symlinkSync(victim, `${path}.tmp-${process.pid}`);
+    writeFileAtomic(path, 'holder');
+    expect(readFileSync(victim, 'utf8')).toBe('untouched');
+    expect(readFileSync(path, 'utf8')).toBe('holder');
+  });
   it('a malformed holder stops the acquire with its name', () => {
     const dir = tmp();
     writeFileSync(join(dir, '7-x.json'), '{}');
@@ -102,11 +134,44 @@ describe('the slot files', () => {
     const spec: IosDeviceSpec = { target: 'ios', name: 'iPhone 17' };
     await expect(withDeviceSlot(spec, () => Promise.reject(new Error('boot failed')), { dir, log: () => undefined })).rejects.toThrow('boot failed');
     expect(holders(dir)).toEqual([]);
-    const h = await withDeviceSlot(spec, () => Promise.resolve({ spec, udid: 'x', startedHere: false } satisfies DeviceHandle), { dir, log: () => undefined });
+    const h = await withDeviceSlot(spec, () => Promise.resolve({ spec, udid: 'x', startedHere: true } satisfies DeviceHandle), { dir, log: () => undefined });
     expect(holders(dir)).toEqual([`${process.pid}-iPhone_17.json`]);
-    await release(h);
+    expect(await release(h, () => undefined, () => Promise.resolve(null))).toBeNull();
     expect(holders(dir)).toEqual([]);
     releaseDeviceSlot(join(dir, `${process.pid}-iPhone_17.json`));
+  });
+  // PR #42 finding 4147492203: a device left running still holds its memory, so it keeps its slot.
+  it('a device this runner did not start keeps its slot at release (it stays running), and is not stopped', async () => {
+    const dir = tmp();
+    const spec: IosDeviceSpec = { target: 'ios', name: 'iPhone 17' };
+    const h = await withDeviceSlot(spec, () => Promise.resolve({ spec, udid: 'x', startedHere: false } satisfies DeviceHandle), { dir, log: () => undefined });
+    expect(await release(h, () => undefined)).toBeNull();
+    expect(holders(dir)).toEqual([`${process.pid}-iPhone_17.json`]);
+    releaseDeviceSlot(join(dir, `${process.pid}-iPhone_17.json`));
+  });
+  it('a device whose stop failed keeps its slot, and the failure is logged and returned; a thrown stop is one too', async () => {
+    const dir = tmp();
+    const spec: IosDeviceSpec = { target: 'ios', name: 'iPad (A16)' };
+    const file = join(dir, `${process.pid}-iPad_A16_.json`);
+    const h = await withDeviceSlot(spec, () => Promise.resolve({ spec, udid: 'x', startedHere: true } satisfies DeviceHandle), { dir, log: () => undefined });
+    const lines: string[] = [];
+    expect(await release(h, (l) => lines.push(l), () => Promise.resolve('the iPad (A16) simulator is Booted after simctl shutdown'))).toMatch(/is Booted/);
+    expect(lines.join('\n')).toMatch(/is Booted.*slot is kept until this process exits/);
+    expect(holders(dir)).toEqual([`${process.pid}-iPad_A16_.json`]);
+    expect(await release(h, () => undefined, () => Promise.reject(new Error('simctl hung')))).toMatch(/could not be stopped: simctl hung/);
+    expect(holders(dir)).toEqual([`${process.pid}-iPad_A16_.json`]);
+    releaseDeviceSlot(file);
+  });
+  it('a failed boot that left its device running keeps the slot; stopSpawned stops a live spawned emulator or says it could not', async () => {
+    const dir = tmp();
+    const spec: IosDeviceSpec = { target: 'ios', name: 'iPhone 17' };
+    await expect(withDeviceSlot(spec, () => Promise.reject(new DeviceLeftRunning('boot failed; and it still runs')), { dir, log: () => undefined })).rejects.toThrow('still runs');
+    expect(holders(dir)).toEqual([`${process.pid}-iPhone_17.json`]);
+    releaseDeviceSlot(join(dir, `${process.pid}-iPhone_17.json`));
+    let alive = true;
+    expect(await stopSpawned({ alive: () => alive, kill: () => void (alive = false) }, 'dragon-320')).toBeNull();
+    expect(await stopSpawned({ alive: () => false, kill: () => { throw new Error('not called'); } }, 'dragon-320')).toBeNull();
+    expect(await stopSpawned({ alive: () => true, kill: () => undefined }, 'dragon-480', 600)).toMatch(/dragon-480 emulator process still runs after SIGTERM/);
   });
 
   // Real processes at once: two iOS and three Android devices ask together; each, once granted, sums the holders on disk.

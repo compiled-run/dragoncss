@@ -474,7 +474,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     return { device: spec.name, set: trustFailures.length > 0 ? { ...set, failures: [...set.failures, ...trustFailures] } : set, trust: { device: spec.name, dpr, rows }, vectors, blocked: null };
   } finally {
     const r0 = Date.now();
-    await release(h);
+    await release(h, log);
     log(`${spec.name}: released in ${((Date.now() - r0) / 1000).toFixed(0)} s`);
   }
 }

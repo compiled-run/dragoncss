@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { deviceEvidence } from '../src/device-evidence.ts';
 import type { DeviceJob } from '../src/device-jobs.ts';
-import { deviceJobs, devicesExit, isAncestor, leased, leaseHolder, parentPid, parseDeviceJob, parseOutcome, pool } from '../src/device-jobs.ts';
+import { deviceJobs, devicesArgs, devicesExit, isAncestor, judgedSteps, leased, leaseHolder, parentPid, parseDeviceJob, parseOutcome, pool } from '../src/device-jobs.ts';
 import { parseVmStat } from '../src/device-slots.ts';
 import type { DeviceOutcome, DeviceSet } from '../src/device-lanes.ts';
 import { mergeOutcomes } from '../src/device-lanes.ts';
@@ -223,6 +223,23 @@ describe('devices of a target at once', () => {
     expect(devicesExit([{ code: 0 }, { code: 1 }], 0)).toBe(1);
     expect(devicesExit([{ code: 0 }, { code: null }], 0)).toBe(1);
     expect(devicesExit([{ code: 0 }], 1)).toBe(1);
+  });
+  // PR #42 finding 4147492252: the app build is a judged step.
+  it('parity:devices judges every target\'s build step too: a failed --prebuild fails the run', () => {
+    const ok: { code: number | null } = { code: 0 };
+    const runs = [{ counted: [ok, ok], prebuild: ok }, { counted: [ok, ok], prebuild: { code: 1 } }];
+    expect(judgedSteps(runs)).toHaveLength(6);
+    expect(devicesExit(judgedSteps(runs), 0)).toBe(1);
+    expect(devicesExit(judgedSteps([{ counted: [ok, ok], prebuild: { code: null } }]), 0)).toBe(1);
+    expect(devicesExit(judgedSteps([{ counted: [ok, ok], prebuild: ok }]), 0)).toBe(0);
+  });
+  it('parity:devices checks each argument in place: --device-jobs takes its own value, and a stray value is refused', () => {
+    expect(devicesArgs([])).toEqual({ requireAll: false, jobs: [] });
+    expect(devicesArgs(['--require-all', '--device-jobs', '3'])).toEqual({ requireAll: true, jobs: ['--device-jobs', '3'] });
+    expect(devicesArgs(['--device-jobs', '2', '2'])).toEqual({ error: 'unknown argument "2" (takes --require-all and --device-jobs N)' });
+    expect(devicesArgs(['--device-jobs'])).toMatchObject({ error: expect.stringMatching(/takes a whole number/) });
+    expect(devicesArgs(['--device-jobs', '0'])).toMatchObject({ error: expect.stringMatching(/takes a whole number/) });
+    expect(devicesArgs(['--device-jobs', '2', '--device-jobs', '3'])).toEqual({ error: '--device-jobs is given twice' });
   });
   it('parity:devices run inside the device lease sees the holder among its ancestors, so its steps do not wait on it', () => {
     const tree = new Map([[40, 30], [30, 20], [20, 1]]);
