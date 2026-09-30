@@ -231,3 +231,29 @@ describe('committed out/lanes.json', () => {
     }
   });
 });
+
+describe('host suite lines (T125)', () => {
+  const suites = declaredSuites(lane(ios, 'layout-vectors-host') as NonNullable<ReturnType<typeof lane>>);
+  const label = (s: string): string => (s === 'engine' ? 'engine corpus' : s === 'library' ? 'library corpus' : s);
+  const text = (extra: readonly string[]): string => [
+    'native:swift: Swift version 6.4',
+    ...suites.filter((s) => s.corpus === 'p1').map((s) => `${label(s.suite)} ${s.cases}/${s.cases}`),
+    'extended corpus:',
+    ...suites.filter((s) => s.corpus === 'extended').map((s) => `${s.suite} ${s.cases}/${s.cases}`),
+    ...extra,
+    `native:swift: P1 corpus digest ${p1Manifest().digest}; extended corpus digest ${extendedManifest().digest}; status pass`,
+  ].join('\n');
+  it('a suite line the manifest does not declare is parsed and fails judgeHost, whatever its name', () => {
+    expect(judgeHost(ios, parseNativeOutput(text([])))).toMatchObject({ state: 'pass', reason: null });
+    for (const name of ['engine-inline', 'new suite 2', 'x']) {
+      const parsed = parseNativeOutput(text([`${name} 3000/3000`]));
+      expect(parsed?.suites.some((s) => s.corpus === 'extended' && s.suite === name), name).toBe(true);
+      expect(judgeHost(ios, parsed), name).toMatchObject({ state: 'fail', reason: expect.stringContaining(`extended/${name} is not a declared suite`) });
+    }
+  });
+  it('lines that are not suite counts are not parsed as suites', () => {
+    const parsed = parseNativeOutput(text(['corpus digest 0123abcd', 'build 16.9 s, run 23.5 s', 'status pass', 'native:swift: Swift version 6.4']));
+    expect(parsed?.suites.map((s) => `${s.corpus}/${s.suite}`)).toEqual(suites.map((s) => `${s.corpus}/${s.suite}`));
+    expect(judgeHost(ios, parsed)).toMatchObject({ state: 'pass', reason: null });
+  });
+});
