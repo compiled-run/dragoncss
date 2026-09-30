@@ -54,8 +54,9 @@ describe('the android output', () => {
     expect(c.outputs.android.kind).toBe('blocked');
   });
   it('font and lowering diagnostics are reported for every configured native target', () => {
+    // serif is mapped to the platform, so it is not an unmapped family (TXT1-C), and native still has no layout mapping for it.
     const css = 'body { font-family: serif; }';
-    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, (r) => [div(r, 'a', [], [text(r, 't', 'X')])]));
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: { generics: { serif: { mode: 'platform' } } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, (r) => [div(r, 'a', [], [text(r, 't', 'X')])]));
     const fonts = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_FONT');
     expect(fonts.map((d) => d.target)).toEqual(['ios', 'android']);
     expect(fonts[0]?.message).toBe(fonts[1]?.message);

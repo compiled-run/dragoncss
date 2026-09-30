@@ -5,11 +5,13 @@ import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import { featureOf } from '../css/values.ts';
+import type { FamilyKeyContext } from '../css/values.ts';
 import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
-import type { CapturedTag } from '../ua/datasets.ts';
+import { checkInlineLevel } from './blockify.ts';
+import { uaTagOf } from './elements.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { environmentOf, valueToString } from './resolve.ts';
 
@@ -115,11 +117,11 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
   };
   // Chrome's FontSize::GetComputedSizeFromSpecifiedSize: the clamp applies unless an authored px size is in the chain.
   const walk = (el: ResolvedElement, ancestors: readonly ResolvedElement[], parentAbsolute: boolean, fontTag: ResolvedElement | null, hidden: boolean): void => {
-    const tag = el.element.tag as CapturedTag;
+    const tag = el.element.tag;
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     const size = el.props.get('font-size') as ResolvedValue;
     const absolute = size.origin === 'author' && size.declared !== null && size.declared.kind === 'length' ? true : size.origin === 'inherited' || size.origin === 'user-agent' ? parentAbsolute : false;
-    const keyed = ua.userAgentContexts[tag];
+    const keyed = ua.userAgentContexts[uaTagOf(tag)];
     const ancestor = [...ancestors].reverse().find((a) => keyed.includes(a.element.tag));
     if (ancestor !== undefined) {
       once(`ua-context|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', {
@@ -144,9 +146,9 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
         perTarget(el, 'font-size', `font-size: ${valueToString(size.value)} on <${tag}> ${el.element.address} comes from Chrome's user-agent stylesheet and is below Chrome's minimum logical font size (${ua.minimumLogicalFontSize}px), which Chrome clamps depending on the device pixel ratio`, `Set a px font-size on <${tag}> ${el.element.address} or one of its ancestors.`);
       }
     }
-    const fonts = Object.keys(ua.userAgentTextFonts[tag]).length > 0 ? el : fontTag;
+    const fonts = Object.keys(ua.userAgentTextFonts[uaTagOf(tag)]).length > 0 ? el : fontTag;
     if (!here && fonts !== null) {
-      const row = ua.userAgentTextFonts[fonts.element.tag as CapturedTag];
+      const row = ua.userAgentTextFonts[uaTagOf(fonts.element.tag)];
       const set = Object.entries(row).map(([p, v]) => `${p}: ${v}`).join('; ');
       for (const c of el.children) {
         if (c.kind !== 'text') continue;
@@ -169,7 +171,7 @@ export type ProfileOf = ((target: string) => SupportProfile) | null;
 // css-variables-1 §3.1: a value that only exists after var() substitution was never seen by the declared-value check. A grammar-valid
 // result Dragon cannot express is refused for every target, and a result whose feature no row of the target's profile proves in any
 // context is refused for that target (the contextual check reports the proven-elsewhere case).
-function checkSubstitution(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf): void {
+function checkSubstitution(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext): void {
   for (const p of LONGHANDS) {
     const v = el.props.get(p) as ResolvedValue;
     const sub = v.substitution;
@@ -183,7 +185,9 @@ function checkSubstitution(el: ResolvedElement, targets: readonly string[], diag
       continue;
     }
     if (v.declared === null || profileOf === null) continue;
-    const feature = featureOf(p, v.declared);
+    const feature = featureOf(p, v.declared, fonts);
+    // project.ts checkCaseFonts reports an unmapped family once, as DRAGON_FONT_UNMAPPED_FAMILY (as checkValues leaves it to checkFamilies).
+    if (feature === 'font-family:<unmapped>') continue;
     for (const t of targets) {
       const profile = profileOf(t);
       if (provenContexts(profile, feature).length > 0) continue;
@@ -203,14 +207,15 @@ function checkSubstitution(el: ResolvedElement, targets: readonly string[], diag
 }
 
 /** Walks one resolved case and records the refusals above; reported deduplicates them across cases. Text in a display: none
- * subtree is never laid out (CSS2 §9.2.4), so only the overflow check reaches it. */
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf): void {
+ * subtree is never laid out (CSS2 §9.2.4), so only the overflow check reaches it. fonts keys a substituted font-family as usedKeys does. */
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext): void {
   const walk = (el: ResolvedElement, hidden: boolean): void => {
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     checkOverflow(el, targets, diagnostics, reported);
-    checkSubstitution(el, targets, diagnostics, reported, profileOf);
+    checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
+    if (!here) checkInlineLevel(el, targets, diagnostics, reported);
     for (const c of el.children) if (c.kind === 'element') walk(c, here);
   };
   walk(root, false);
