@@ -372,7 +372,7 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
     guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("no leaf \(id)") }
     let scalars = Array(leaves[li].text.description.unicodeScalars)
     func utf16(_ cp: Int) -> Int { return scalars[0..<cp].reduce(0) { $0 + $1.utf16.count } }
-    let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+    let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
     let run = try inline_buildRun(ctx, p, JsArray(leaves))
     let engineLines = try inline_breakLines(ctx, run, try contentWidth(pId)).items
     let chars = run.chars.items
@@ -452,7 +452,7 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
     val li = leaves.indexOfFirst { it.id == id }
     val leafText = leaves[li].text
     fun utf16(cp: Int): Int = leafText.offsetByCodePoints(0, cp)
-    val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+    val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
     val run = inline_buildRun(ctx, p, leaves)
     val engineLines = inline_breakLines(ctx, run, contentWidth(pId))
     val chars = run.chars
