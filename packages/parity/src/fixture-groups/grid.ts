@@ -1,14 +1,22 @@
-// Fixture group grid (GRID G0): the grid longhands and shorthands, justify-items and justify-self, compiled and computed like
-// Chrome while grid layout itself stays refused. Placement and template values sit on block and flex boxes, where Chrome ignores
-// them, so the layout lanes prove them inert; justify-self is proven only on flex items, where Chrome ignores it (block children
-// and absolutely positioned boxes align by it). The rejects are inline-grid, subgrid, masonry, values Chrome's parser drops beyond
-// the webref grammar, math functions inside track lists, and justify-* in the contexts where Chrome aligns by them.
+// Fixture group grid (GRID G0, G1a): the grid longhands and shorthands, justify-items and justify-self, compiled and computed like
+// Chrome. G0's inert fixtures put placement and template values on block and flex boxes, where Chrome ignores them, and prove
+// justify-self only on flex items (block children and absolutely positioned boxes align by it). G1a's fixtures lay out display:
+// grid: placement, named lines and areas, fr, intrinsic tracks, alignment, sizing and nesting. The rejects are inline-grid, subgrid,
+// masonry, values Chrome's parser drops beyond the webref grammar, math functions inside track lists, and justify-* where unproven.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject } from './define.ts';
 
 export const GRID: readonly FixtureSpec[] = [
   both('grid-inert-placement'),
   both('grid-inert-templates'),
+  // GRID G1a: grid layout in block flow and as a flex item, each exact against Chrome 145 in both directions.
+  both('grid-placement'),
+  both('grid-named-areas'),
+  both('grid-fr'),
+  both('grid-intrinsic'),
+  both('grid-alignment'),
+  both('grid-sizing'),
+  both('grid-nested'),
   reject('reject-grid-inline-grid', 'DRAGON_UNSUPPORTED_VALUE', 'inline-grid'),
   reject('reject-grid-subgrid', 'DRAGON_UNSUPPORTED_VALUE', 'subgrid', 'grid-template-columns: subgrid is unsupported: subgrid needs the grid engine'),
   reject('reject-grid-masonry', 'DRAGON_CSS_INVALID_VALUE', 'masonry'),
@@ -16,5 +24,6 @@ export const GRID: readonly FixtureSpec[] = [
   reject('reject-grid-auto-repeat-flex', 'DRAGON_CSS_INVALID_VALUE', 'repeat(auto-fill, 1fr)', '"repeat(auto-fill,1fr)" is not a valid value for grid-template-columns: line names may not be span, auto, default or a CSS-wide keyword, and an automatic repetition takes only fixed sizes'),
   reject('reject-grid-track-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 5%)', 'grid-template-columns: calc(10px + 5%) is unsupported: calc() is a css-values-4 math function'),
   reject('reject-grid-justify-self-block', 'DRAGON_UNPROVEN_CONTEXT', 'center', 'justify-self:center on cell is used in the block/ltr context, which is not proven'),
-  reject('reject-grid-justify-items', 'DRAGON_UNSUPPORTED_VALUE', 'center', 'justify-items: center is unsupported'),
+  // G1a proves justify-items: center in grid containers, so on a block container it is an unproven context.
+  reject('reject-grid-justify-items', 'DRAGON_UNPROVEN_CONTEXT', 'center', 'justify-items:center on box is used in the not-flex-container/ltr context, which is not proven'),
 ];
