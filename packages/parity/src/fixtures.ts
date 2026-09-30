@@ -74,8 +74,8 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'cascade-var', fixtures: CASCADE_VAR },
   { id: 'attributes', fixtures: ATTRIBUTES },
   { id: 'grid', fixtures: GRID },
-  { id: 'values', fixtures: VALUES },
   { id: 'showcase', fixtures: SHOWCASE },
+  { id: 'values', fixtures: VALUES },
 ];
 
 export const FIXTURES: readonly FixtureSpec[] = FIXTURE_GROUPS.flatMap((g) => g.fixtures);
