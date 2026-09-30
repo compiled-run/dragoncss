@@ -163,16 +163,16 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
     var glyphs: Double = 0.0
     // ts: packages/layout/src/text.ts:92
     do {
-      let _a38 = jsCodePoints(text)
-      var _i38 = 0
-      while _i38 < _a38.items.count {
-        let ch: JsString = _a38.items[_i38]
-        _i38 += 1
+      let _a62 = jsCodePoints(text)
+      var _i62 = 0
+      while _i62 < _a62.items.count {
+        let ch: JsString = _a62.items[_i62]
+        _i62 += 1
         let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:95
         if (advance < 0.0) {
-          return try MeasureResult_okFalse(false, jsConcat(S.s30, jsToUpperCase(jsToStringRadix16(cp)), S.s6))
+          return try MeasureResult_okFalse(false, jsConcat(S.s46, jsToUpperCase(jsToStringRadix16(cp)), S.s9))
         }
         glyphs += advance
       }
@@ -184,16 +184,16 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
     var through: Double = 0.0
     // ts: packages/layout/src/text.ts:105
     do {
-      let _a39 = jsCodePoints(text)
-      var _i39 = 0
-      while _i39 < _a39.items.count {
-        let ch: JsString = _a39.items[_i39]
-        _i39 += 1
+      let _a63 = jsCodePoints(text)
+      var _i63 = 0
+      while _i63 < _a63.items.count {
+        let ch: JsString = _a63.items[_i63]
+        _i63 += 1
         let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:108
         if (advance < 0.0) {
-          return try MeasureResult_okFalse(false, jsConcat(S.s30, jsToUpperCase(jsToStringRadix16(cp)), S.s6))
+          return try MeasureResult_okFalse(false, jsConcat(S.s46, jsToUpperCase(jsToStringRadix16(cp)), S.s9))
         }
         // ts: packages/layout/src/text.ts:109
         if (k < start) {

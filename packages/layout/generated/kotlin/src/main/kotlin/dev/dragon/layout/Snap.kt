@@ -27,11 +27,11 @@ fun snap_snapEdges(boxes: JsArray<LayoutRect>): JsArray<SnappedRect> {
   val out: JsArray<SnappedRect> = jsArrayOf<SnappedRect>()
   // ts: packages/layout/src/snap.ts:31
   run {
-    val _a37 = boxes
-    var _i37 = 0
-    while (_i37 < _a37.size) {
-      val b: LayoutRect = _a37[_i37]
-      _i37++
+    val _a61 = boxes
+    var _i61 = 0
+    while (_i61 < _a61.size) {
+      val b: LayoutRect = _a61[_i61]
+      _i61++
       val r: LayoutRect? = abs.get(b.id)
       // ts: packages/layout/src/snap.ts:33
       if ((r == null)) {
