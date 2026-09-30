@@ -37,49 +37,24 @@ export function parseNumber(s: string | null, fallback: Decimal): Decimal {
   return value.isZero() ? Decimal.int(0) : value;
 }
 
-/** StepRange::ParseStep with kRejectAny (the sanitisation path): NaN for "any". */
 function parseStep(s: string | null): Decimal {
-  if (s === null || s === '') return Decimal.int(1);
-  if (s.toLowerCase() === 'any') return Decimal.nan();
-  const step = parseNumber(s, Decimal.nan());
-  if (!step.isFinite() || step.le(Decimal.int(0))) return Decimal.int(1);
-  return step.mul(Decimal.int(1));
+  throw new Error('T123 clean-room: not implemented');
 }
 
 export function stepRange(attrs: RangeAttributes): StepRange {
-  let stepBase = parseNumber(attrs.min, Decimal.nan());
-  if (!stepBase.isFinite()) stepBase = parseNumber(attrs.value, Decimal.int(0));
-  const minimum = parseNumber(attrs.min, Decimal.int(0));
-  const proposedMax = parseNumber(attrs.max, Decimal.int(100));
-  const maximum = proposedMax.ge(minimum) ? proposedMax : minimum;
-  const step = parseStep(attrs.step);
-  return {
-    minimum,
-    maximum,
-    step: step.isFinite() ? step : Decimal.int(1),
-    stepBase: stepBase.isFinite() ? stepBase : Decimal.int(1),
-    hasStep: step.isFinite(),
-  };
+  throw new Error('T123 clean-room: not implemented');
 }
 
 function roundByStep(r: StepRange, value: Decimal, faults: FormFaults): Decimal {
-  const q = value.sub(r.stepBase).div(r.step);
-  let n = q.round();
-  if (faults.stepTieDown && !q.negative && n.sub(q).abs().eq(Decimal.fromString('0.5'))) n = n.sub(Decimal.int(1));
-  return r.stepBase.add(n.mul(r.step));
+  throw new Error('T123 clean-room: not implemented');
 }
 
 export function clampValue(r: StepRange, value: Decimal, faults: FormFaults = NO_FORM_FAULTS): Decimal {
-  const inRange = dmax(r.minimum, dmin(value, r.maximum));
-  if (!r.hasStep) return inRange;
-  const rounded = roundByStep(r, inRange, faults);
-  const clamped = rounded.gt(r.maximum) ? rounded.sub(r.step) : rounded.lt(r.minimum) ? rounded.add(r.step) : rounded;
-  if (clamped.lt(r.minimum) || clamped.gt(r.maximum)) return inRange;
-  return clamped;
+  throw new Error('T123 clean-room: not implemented');
 }
 
 export function defaultValue(r: StepRange, faults: FormFaults = NO_FORM_FAULTS): Decimal {
-  return clampValue(r, r.minimum.add(r.maximum).div(Decimal.int(2)), faults);
+  throw new Error('T123 clean-room: not implemented');
 }
 
 function serialise(d: Decimal): string {
@@ -93,10 +68,6 @@ export function rangeValue(attrs: RangeAttributes, faults: FormFaults = NO_FORM_
   return serialise(clampValue(r, parseNumber(attrs.value, defaultValue(r, faults)), faults));
 }
 
-/** HTMLInputElement::RatioValue: the thumb position in [0, 1] as the double layout multiplies by. */
 export function rangeRatio(attrs: RangeAttributes, faults: FormFaults = NO_FORM_FAULTS): number {
-  const r = stepRange(attrs);
-  const value = clampValue(r, parseNumber(rangeValue(attrs, faults), defaultValue(r, faults)), faults);
-  if (r.minimum.eq(r.maximum)) return 0;
-  return value.sub(r.minimum).div(r.maximum.sub(r.minimum)).toDouble();
+  throw new Error('T123 clean-room: not implemented');
 }

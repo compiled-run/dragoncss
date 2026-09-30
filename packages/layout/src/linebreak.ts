@@ -397,26 +397,8 @@ const FAST_NO = 0;
 const FAST_YES = 1;
 const FAST_UNKNOWN = 2;
 
-/** Blink's ShouldBreakFast: the pair (last, cur) with lastLast for the hyphen-digit rule; FAST_UNKNOWN defers to UAX #14. */
 function fastBreak(lastLast: number, last: number, cur: number, faults: LineBreakFaults): number {
-  if (last < 0x21 || cur < 0x21) return FAST_NO;
-  if (last === HYPHEN_MINUS) {
-    if (cur > 0x7f) return FAST_UNKNOWN;
-    if (isAsciiDigit(cur)) {
-      if (faults.noHyphenDigitBreak) return FAST_NO;
-      return isAsciiAlphanumeric(lastLast) ? FAST_YES : FAST_NO;
-    }
-  }
-  if (last <= 0xff && cur <= 0xff) {
-    if (last <= 0x7f && cur <= 0x7f) {
-      if (faults.breakAfterSolidus && last === SOLIDUS && isAsciiAlphanumeric(cur)) return FAST_YES;
-      return asciiPairBreaks(last, cur) ? FAST_YES : FAST_NO;
-    }
-    // LineBreakData::FillFromIcu: ICU's line iterator (locale en) on the two code points alone.
-    const pair = uax14BreakAllowed([last, cur], true);
-    return (pair[1] as boolean) ? FAST_YES : FAST_NO;
-  }
-  return FAST_UNKNOWN;
+  throw new Error('T123 clean-room: not implemented');
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
@@ -444,40 +426,12 @@ function refusal(text: readonly number[], style: LineBreakStyle): string | null 
   return null;
 }
 
-/** Blink's IsBreakableSpace, for collapsed text (tab and line feed are refused before this runs). */
 function isBreakableSpace(cp: number): boolean {
-  return cp === SPACE;
+  throw new Error('T123 clean-room: not implemented');
 }
 
-/** The break opportunities of one run of text (code points), in order, with a planted fault set. */
 export function lineBreakOpportunitiesWith(text: readonly number[], style: LineBreakStyle, faults: LineBreakFaults): LineBreakResult {
-  const refused = refusal(text, style);
-  if (refused !== null) return { ok: false, reason: refused };
-  const out: BreakOpportunity[] = [];
-  if (style.textWrapMode === 'nowrap') return { ok: true, opportunities: out };
-  let full: readonly boolean[] = [];
-  let haveFull = false;
-  for (let i = 1; i < text.length; i++) {
-    const cur = text[i] as number;
-    const last = text[i - 1] as number;
-    // BreakSpaceType::kAfterSpaceRun
-    if (isBreakableSpace(cur)) continue;
-    if (isBreakableSpace(last)) {
-      out.push({ position: i, kind: 'normal' });
-      continue;
-    }
-    const fast = fastBreak(i >= 2 ? (text[i - 2] as number) : 0, last, cur, faults);
-    let breaks = fast === FAST_YES;
-    if (fast === FAST_UNKNOWN) {
-      if (!haveFull) {
-        full = uax14BreakAllowed(text, true);
-        haveFull = true;
-      }
-      breaks = full[i] as boolean;
-    }
-    if (breaks) out.push({ position: i, kind: last === SOFT_HYPHEN ? 'soft-hyphen' : 'normal' });
-  }
-  return { ok: true, opportunities: out };
+  throw new Error('T123 clean-room: not implemented');
 }
 
 /** The break opportunities of one run of text (code points), in order. */
