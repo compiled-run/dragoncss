@@ -175,6 +175,11 @@ describe('@font-face rules', () => {
     expect(c.diagnostics.map((d) => [d.code, d.severity])).toEqual([['DRAGON_FONT_DESCRIPTOR_NOT_APPLIED', 'warning']]);
     expect(cssOf(c)).toMatch(/font-feature-settings:"liga" 0/);
   });
+  it('a comment between @font-face and its block, a preserved /*! */ one included, leaves the prelude empty', () => {
+    const face = (between: string): string => `@font-face${between}{ font-family: F; src: url(fonts/Inter-Regular.ttf) } .a { font-family: F }`;
+    for (const between of ['/*! license */ ', ' /* a */ /*! b */ ', '\n/*!x*/\n']) expect(faceCodes(face(between), ['fonts/Inter-Regular.ttf'])).toEqual([]);
+    expect(faceCodes(face(' /*! license */ x '), ['fonts/Inter-Regular.ttf'])).toEqual(['DRAGON_UNSUPPORTED_AT_RULE', 'DRAGON_FONT_UNMAPPED_FAMILY']);
+  });
   it('an @font-face nested in a rule or inside another at-rule keeps the milestone-1 refusal', () => {
     expect(faceCodes('.a { @font-face { font-family: F; src: url(x.ttf) } }')).toEqual(['DRAGON_UNSUPPORTED_AT_RULE']);
   });
