@@ -651,7 +651,7 @@ public final class DragonTree {
       let scalars = Array(leaves[li].text.description.unicodeScalars)
       func utf16(_ cp: Int) -> Int { return scalars[0..<cp].reduce(0) { $0 + $1.utf16.count } }
       // The engine's own line metrics and line breaks: inline.ts buildRun and breakLines, translated, over the zoomed context.
-      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
       let run = try inline_buildRun(ctx, p, JsArray(leaves))
       let engineLines = try inline_breakLines(ctx, run, try contentWidth(pId)).items
       let chars = run.chars.items
@@ -1261,6 +1261,7 @@ import dev.dragon.layout.TextMeasurer
 import dev.dragon.layout.block_NO_ENGINE_FAULTS
 import dev.dragon.layout.box_resolveBorder
 import dev.dragon.layout.box_resolvePadding
+import dev.dragon.layout.grid_NO_GRID_FAULTS
 import dev.dragon.layout.inline_breakLines
 import dev.dragon.layout.inline_buildRun
 import dev.dragon.layout.inline_width
@@ -1408,7 +1409,7 @@ class DragonTree(val context: Context) {
       val leafText = leaves[li].text
       fun utf16(cp: Int): Int = leafText.offsetByCodePoints(0, cp)
       // The engine's own line metrics and line breaks: inline.ts buildRun and breakLines, translated, over the zoomed context.
-      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
       val run = inline_buildRun(ctx, p, leaves)
       val engineLines = inline_breakLines(ctx, run, contentWidth(pId))
       val chars = run.chars
