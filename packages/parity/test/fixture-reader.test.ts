@@ -217,6 +217,12 @@ const REMOVED_AFTER_BASE: Readonly<Record<string, string>> = {
   'reject-background-important': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.swatch { width: 20px; height: 20px; background: red !important; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="swatch" class="swatch"></div>\n</body>\n</html>\n',
 };
 
+// BASE fixtures a later package retargeted on purpose, with their BASE text, so the reader is still checked on them.
+// reject-display-grid: GRID G1a proves display: grid in block flow, so the fixture now puts the grid in a column flex container.
+const RETARGETED_AFTER_BASE: Readonly<Record<string, string>> = {
+  'reject-display-grid': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.grid { display: grid; width: 100px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="grid" class="grid"><div data-dragon-id="cell"></div></div>\n</body>\n</html>\n',
+};
+
 describe('fixture reader identity', () => {
   it('every fixture present at BASE reads to the byte-identical FrontEndResult', () => {
     expect(Object.keys(BASE_DIGESTS)).toHaveLength(195);
@@ -230,6 +236,12 @@ describe('fixture reader identity', () => {
         continue;
       }
       if (spec === undefined) throw new Error(`BASE fixture ${id} is no longer registered`);
+      const retargeted = RETARGETED_AFTER_BASE[id];
+      if (retargeted !== undefined) {
+        expect(digest(readHtmlFixture(id).input), `${id} is listed as retargeted`).not.toBe(expected);
+        expect(digest(fixtureToInput(id, retargeted)), id).toBe(expected);
+        continue;
+      }
       const input = spec.format === 'html' ? readHtmlFixture(id).input : readTreeFixture(id);
       expect(digest(input), id).toBe(expected);
     }

@@ -78,8 +78,12 @@ describe('E2 seams: FIXTURES', () => {
     expect(fixtures.slice(0, MILESTONE_1_IDS.length).map((f) => f.id)).toEqual(MILESTONE_1_IDS);
     expect(new Set(fixtures.map((f) => f.id)).size).toBe(fixtures.length);
   });
-  it('the milestone-1 specs are byte-identical to 4c1331c', async () => {
-    expect(sha((await load()).slice(0, MILESTONE_1_IDS.length))).toBe('48d8a64b9fc390f1ebaed1047756416eba71054719f7bba3986a588986751b98');
+  // GRID G1a retargeted reject-display-grid (display: grid is proven in block flow); every other milestone-1 spec is unchanged.
+  // At 4c1331c all specs hashed to 48d8a64b9fc390f1ebaed1047756416eba71054719f7bba3986a588986751b98 and all but this one to 62e9bb0a.
+  it('the milestone-1 specs are byte-identical to 4c1331c, except the retargeted reject-display-grid', async () => {
+    const m1 = (await load()).slice(0, MILESTONE_1_IDS.length);
+    expect(sha(m1.filter((f) => f.id !== 'reject-display-grid'))).toBe('62e9bb0a45818f9d408ec9bdb7677b975c256653820197cb1a45fe46a62160d8');
+    expect(m1.find((f) => f.id === 'reject-display-grid')).toEqual({ id: 'reject-display-grid', format: 'html', kind: 'reject', expect: { code: 'DRAGON_UNPROVEN_CONTEXT', spanText: 'grid', messagePrefix: 'display:grid on grid is used in the flex-column/ltr context, which is not proven' } });
   });
 });
 
