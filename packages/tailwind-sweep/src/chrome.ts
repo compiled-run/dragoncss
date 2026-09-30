@@ -5,7 +5,7 @@
 //   parses: whether Chrome keeps a declaration or selector that Dragon reports invalid (CSS.supports).
 import type { Browser, Page } from 'playwright';
 import { harnessStyle, launchChrome } from '../../parity/src/chrome.ts';
-import { SWEEP_ENVIRONMENT } from './dragon.ts';
+import { ELEMENT_IDS, SWEEP_ENVIRONMENT } from './dragon.ts';
 
 export type DualCase = { readonly key: string; readonly authoredHtml: string; readonly compiledHtml: string };
 
@@ -17,15 +17,30 @@ const injected = (html: string): string => {
   return out;
 };
 
+const isNumbers = (v: unknown): v is number[] => Array.isArray(v) && v.every((x) => typeof x === 'number');
+const isPairs = (v: unknown): v is [string, string][] => Array.isArray(v) && v.every((x) => Array.isArray(x) && x.length === 2 && typeof x[0] === 'string' && typeof x[1] === 'string');
+
+/** What the page returned, checked: one entry per fixture element (ELEMENT_IDS, in order), each a four-number box and property pairs. */
+export function checkCaptured(raw: unknown): Captured[] {
+  if (!Array.isArray(raw)) throw new Error('the page capture is not a list');
+  const out = raw.map((n: unknown): Captured => {
+    const o = n as { id?: unknown; box?: unknown; computed?: unknown } | null;
+    if (typeof o !== 'object' || o === null || typeof o.id !== 'string' || !isNumbers(o.box) || o.box.length !== 4 || !isPairs(o.computed)) throw new Error(`a captured element is malformed: ${JSON.stringify(n)}`);
+    return { id: o.id, box: o.box, computed: o.computed };
+  });
+  if (out.map((n) => n.id).join(' ') !== ELEMENT_IDS.join(' ')) throw new Error(`captured elements ${out.map((n) => n.id).join(' ')}, expected ${ELEMENT_IDS.join(' ')}`);
+  return out;
+}
+
 async function capture(page: Page, html: string): Promise<Captured[]> {
   await page.setContent(injected(html));
-  return (await page.evaluate(`Array.from(document.querySelectorAll('[data-dragon-id]')).map((el) => {
+  return checkCaptured(await page.evaluate(`Array.from(document.querySelectorAll('[data-dragon-id]')).map((el) => {
     const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
     const computed = [];
     for (let i = 0; i < cs.length; i++) { const p = cs[i]; if (!p.startsWith('--')) computed.push([p, cs.getPropertyValue(p)]); }
     return { id: el.getAttribute('data-dragon-id'), box: [r.x, r.y, r.width, r.height], computed };
-  })`)) as Captured[];
+  })`));
 }
 
 /** Every difference between the two renderings; none means Chrome agrees with Dragon. */

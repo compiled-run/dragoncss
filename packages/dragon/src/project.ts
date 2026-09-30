@@ -340,12 +340,12 @@ function canonicalInput(input: FrontEndResult): unknown {
   };
 }
 
-/** Each support profile's canonical JSON, written once: profiles are megabytes, and a profile is never changed after it is built. */
+/** Each support profile's canonical JSON, written once: profiles are megabytes. Frozen first, so an edit throws instead of leaving a stale digest. */
 const profileTexts = new WeakMap<SupportProfile, CanonicalText>();
 function profileText(profile: SupportProfile): CanonicalText {
   let t = profileTexts.get(profile);
   if (t === undefined) {
-    t = new CanonicalText(canonicalJson(profile));
+    t = new CanonicalText(canonicalJson(deepFreeze(profile)));
     profileTexts.set(profile, t);
   }
   return t;

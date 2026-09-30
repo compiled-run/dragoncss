@@ -3,7 +3,9 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { CanonicalText, canonicalJson, sha256Hex, sha256HexBytes, utf8 } from '../src/digest.ts';
-import { COMMITTED_PROFILES } from '../src/project.ts';
+import { COMMITTED_PROFILES, createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import type { SupportProfiles } from '../src/internal.ts';
+import { div, inputFor } from './helpers.ts';
 
 const nodeSha = (b: Uint8Array): string => createHash('sha256').update(b).digest('hex');
 
@@ -46,5 +48,24 @@ describe('digest.ts', () => {
     const viaText = canonicalJson({ ...value, a: new CanonicalText(canonicalJson(COMMITTED_PROFILES.android)) });
     expect(viaText).toBe(direct);
     expect(sha256Hex(viaText)).toBe(sha256Hex(direct));
+  });
+
+  it('a profile is frozen once its text is cached, so an edit throws instead of leaving the compiled digest stale', () => {
+    const copy = (): SupportProfiles => ({ web: { ...COMMITTED_PROFILES.web, rows: [...COMMITTED_PROFILES.web.rows] }, ios: COMMITTED_PROFILES.ios });
+    const input = inputFor('.c { display: flex; }', (r) => [div(r, 'c', ['c'])]);
+    const digestWith = (supportProfiles: SupportProfiles): string => {
+      const out = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', supportProfiles }).compile(input).outputs.web;
+      return out.kind === 'blocked' ? '' : out.digest;
+    };
+    const profiles = copy();
+    const before = digestWith(profiles);
+    expect(before).not.toBe('');
+    const rows = profiles.web.rows as unknown[];
+    expect(() => rows.pop()).toThrow(TypeError);
+    expect(() => Object.assign(profiles.web, { revision: 'edited' })).toThrow(TypeError);
+    expect(digestWith(profiles)).toBe(before);
+    const edited = copy();
+    (edited.web as { revision: string }).revision = 'edited';
+    expect(digestWith(edited)).not.toBe(before);
   });
 });

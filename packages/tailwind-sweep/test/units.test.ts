@@ -2,7 +2,7 @@
 // refusal groups, the snapshot format and the dual comparison. The whole corpus runs in sweep.test.ts.
 import { describe, expect, it } from 'vitest';
 import { categoryOf } from '../src/categories.ts';
-import { compareCaptures } from '../src/chrome.ts';
+import { checkCaptured, compareCaptures } from '../src/chrome.ts';
 import type { Blocker } from '../src/dragon.ts';
 import { flatten } from '../src/flatten.ts';
 import type { DragonRow } from '../src/pool.ts';
@@ -129,6 +129,27 @@ describe('the snapshot', () => {
     ]);
     expect(outcomeDiffs(records, records)).toEqual([]);
   });
+  it('a malformed snapshot throws, naming the line', () => {
+    const text = serialize(records, { chrome: 'c' });
+    const bad = (from: string, to: string): (() => unknown) => {
+      expect(text).toContain(from);
+      return () => deserialize(text.replace(from, to));
+    };
+    expect(bad('"web":"supported"', '"web":"supportd"')).toThrow(/snapshot line 1: unknown outcome/);
+    expect(bad('"web":"supported"', '"web":"=ios"')).toThrow(/snapshot line 1: =ios before that target/);
+    expect(bad('"c":"layout"', '"c":"nowhere"')).toThrow(/snapshot line 1: unknown category nowhere/);
+    expect(bad('"u":"flex"', '"u":7')).toThrow(/snapshot line 1: a line needs u and r/);
+    expect(bad('"published":[]', '"published":{"web":[]}')).toThrow(/snapshot line 3: published must list codes/);
+    expect(bad('"with":["bg-linear-to-r","from-red-500"]', '"with":[]')).toThrow(/snapshot line 2: with must list companions/);
+    expect(bad('"chrome-parses"', '"chrome-parse"')).toThrow(/snapshot line 2: unknown outcome/);
+    expect(bad('["mismatch",["p1","p2"]]', '["mismatch","p1"]')).toThrow(/snapshot line 3: unknown outcome/);
+    expect(bad('"android":["refused","D","h","b",1]', '"android":["refused","D","h","b",9]')).toThrow(/snapshot line 3: fix index 9 out of range/);
+    expect(bad('"utilities":3', '"utilities":4')).toThrow(/lists 3 utilities, its meta says 4/);
+    expect(bad('"chrome":"c"', '"chrome":1')).toThrow(/meta needs tailwind, chrome and a utility count/);
+    expect(bad('"u":"m"', '"u":"flex"')).toThrow(/lists a utility twice/);
+    expect(() => deserialize('{"meta":{"schema":"dragon/tailwind-sweep@1"}}')).toThrow(/needs meta, fixes and utilities/);
+    expect(() => deserialize('[]')).toThrow(/needs meta, fixes and utilities/);
+  });
   it('summary counts', () => {
     const s = summarize(records);
     expect(s.byTarget.web).toEqual({ supported: 1, refused: 1, invalid: 0, mismatch: 1 });
@@ -151,6 +172,15 @@ describe('the dual comparison', () => {
     expect(compareCaptures(base, [node('u', [0, 0, 10, 10], [['display', 'flex']])])).toEqual(['u: 2 authored and 1 compiled computed properties', 'u: width authored "10px" compiled "(missing)"']);
     expect(compareCaptures(base, [node('v', [0, 0, 10, 10], [])])).toEqual(['the renderings have different elements']);
     expect(compareCaptures([], [])).toEqual(['the renderings have no elements']);
+  });
+  it('a page capture must list every fixture element in order, each with a four-number box and string pairs', () => {
+    const all = ['html', 'body', 'u', 'c1', 'c2'].map((id) => node(id, [0, 0, 1, 1], [['display', 'block']]));
+    expect(checkCaptured(all)).toEqual(all);
+    expect(() => checkCaptured({})).toThrow(/not a list/);
+    expect(() => checkCaptured(all.slice(0, 4))).toThrow(/captured elements html body u c1, expected html body u c1 c2/);
+    expect(() => checkCaptured([...all.slice(0, 4), node('c2', [0, 0, 1], [])])).toThrow(/malformed/);
+    expect(() => checkCaptured([...all.slice(0, 4), { id: null, box: [0, 0, 1, 1], computed: [] }])).toThrow(/malformed/);
+    expect(() => checkCaptured([...all.slice(0, 4), { id: 'c2', box: [0, 0, 1, 1], computed: [['display', 1]] }])).toThrow(/malformed/);
   });
 });
 

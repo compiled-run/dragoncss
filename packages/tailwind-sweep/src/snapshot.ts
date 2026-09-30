@@ -55,36 +55,60 @@ export function serialize(records: readonly UtilityRecord[], meta: { readonly ch
   return `{\n"meta": ${JSON.stringify(head)},\n"fixes": ${JSON.stringify(fixes)},\n"utilities": [\n${lines.join(',\n')}\n]\n}\n`;
 }
 
-export function deserialize(text: string): { meta: { schema: string; tailwind: string; chrome: string; utilities: number }; records: UtilityRecord[] } {
-  const raw = JSON.parse(text) as { meta: { schema: string; tailwind: string; chrome: string; utilities: number }; fixes: string[]; utilities: Line[] };
-  if (raw.meta.schema !== SNAPSHOT_SCHEMA) throw new Error(`snapshot schema ${raw.meta.schema}, expected ${SNAPSHOT_SCHEMA}`);
-  const decode = (e: Encoded, prior: Partial<Record<Target, Outcome>>): Outcome => {
+const isStrings = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string');
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+type Meta = { schema: string; tailwind: string; chrome: string; utilities: number };
+
+/** Reads a snapshot, checking every field: a malformed file throws, naming the line, instead of giving records with holes. */
+export function deserialize(text: string): { meta: Meta; records: UtilityRecord[] } {
+  const raw: unknown = JSON.parse(text);
+  if (!isRecord(raw) || !isRecord(raw['meta']) || !isStrings(raw['fixes']) || !Array.isArray(raw['utilities'])) throw new Error('the snapshot needs meta, fixes and utilities');
+  const m = raw['meta'];
+  if (m['schema'] !== SNAPSHOT_SCHEMA) throw new Error(`snapshot schema ${String(m['schema'])}, expected ${SNAPSHOT_SCHEMA}`);
+  if (typeof m['tailwind'] !== 'string' || typeof m['chrome'] !== 'string' || !Number.isInteger(m['utilities'])) throw new Error('the snapshot meta needs tailwind, chrome and a utility count');
+  const meta: Meta = { schema: m['schema'], tailwind: m['tailwind'], chrome: m['chrome'], utilities: m['utilities'] as number };
+  const fixes = raw['fixes'];
+  const decode = (e: unknown, prior: Partial<Record<Target, Outcome>>): Outcome => {
     if (e === 'supported') return { status: 'supported' };
     if (e === '=web' || e === '=ios') {
       const o = prior[e.slice(1) as Target];
       if (o === undefined) throw new Error(`${e} before that target`);
       return o;
     }
-    if (typeof e === 'string') throw new Error(`unknown outcome ${e}`);
-    const [kind, a, b, c, d, f] = e;
-    if (kind === 'refused') {
-      const fix = raw.fixes[d as number];
+    if (!Array.isArray(e)) throw new Error(`unknown outcome ${JSON.stringify(e)}`);
+    const [kind, a, b, c, d, f] = e as unknown[];
+    if (kind === 'refused' && typeof a === 'string' && typeof b === 'string' && typeof c === 'string' && Number.isInteger(d) && (e.length === 5 || (e.length === 6 && f === 'chrome-parses'))) {
+      const fix = fixes[d as number];
       if (fix === undefined) throw new Error(`fix index ${String(d)} out of range`);
-      const base = { status: 'refused', code: a as string, group: b as string, at: c as string, fix } as const;
+      const base = { status: 'refused', code: a, group: b, at: c, fix } as const;
       return f === 'chrome-parses' ? { ...base, chromeParses: true } : base;
     }
-    if (kind === 'invalid') return { status: 'invalid', why: a as string };
-    if (kind === 'mismatch') return { status: 'mismatch', problems: a as string[] };
-    throw new Error(`unknown outcome ${String(kind)}`);
+    if (kind === 'invalid' && typeof a === 'string' && e.length === 2) return { status: 'invalid', why: a };
+    if (kind === 'mismatch' && isStrings(a) && e.length === 2) return { status: 'mismatch', problems: a };
+    throw new Error(`unknown outcome ${JSON.stringify(e)}`);
   };
-  const records = raw.utilities.map((l): UtilityRecord => {
-    const prior: Partial<Record<Target, Outcome>> = {};
-    for (const t of TARGETS) prior[t] = decode(l[t], prior);
-    const published = Array.isArray(l.published) ? { web: l.published, ios: l.published, android: l.published } : (l.published as { [T in Target]: readonly string[] });
-    return { utility: l.u, root: l.r, category: l.c, with: l.with ?? null, outcomes: prior as { [T in Target]: Outcome }, published };
+  const records = raw['utilities'].map((l: unknown, i): UtilityRecord => {
+    try {
+      if (!isRecord(l) || typeof l['u'] !== 'string' || typeof l['r'] !== 'string') throw new Error('a line needs u and r');
+      const category = l['c'];
+      if (!(CATEGORIES as readonly unknown[]).includes(category)) throw new Error(`unknown category ${String(category)}`);
+      if (l['with'] !== undefined && (!isStrings(l['with']) || l['with'].length === 0)) throw new Error('with must list companions');
+      const prior: Partial<Record<Target, Outcome>> = {};
+      for (const t of TARGETS) prior[t] = decode(l[t], prior);
+      const p = l['published'];
+      let published: { [T in Target]: readonly string[] };
+      if (isStrings(p)) published = { web: p, ios: p, android: p };
+      else if (isRecord(p) && TARGETS.every((t) => isStrings(p[t]))) published = { web: p['web'] as string[], ios: p['ios'] as string[], android: p['android'] as string[] };
+      else throw new Error('published must list codes');
+      return { utility: l['u'], root: l['r'], category: category as Category, with: (l['with'] as string[] | undefined) ?? null, outcomes: prior as { [T in Target]: Outcome }, published };
+    } catch (err) {
+      throw new Error(`snapshot line ${i + 1}: ${err instanceof Error ? err.message : String(err)}`);
+    }
   });
-  if (records.length !== raw.meta.utilities) throw new Error(`snapshot lists ${records.length} utilities, its meta says ${raw.meta.utilities}`);
-  return { meta: raw.meta, records };
+  if (records.length !== meta.utilities) throw new Error(`snapshot lists ${records.length} utilities, its meta says ${meta.utilities}`);
+  if (new Set(records.map((r) => r.utility)).size !== records.length) throw new Error('the snapshot lists a utility twice');
+  return { meta, records };
 }
 
 export function readSnapshot(): ReturnType<typeof deserialize> {
