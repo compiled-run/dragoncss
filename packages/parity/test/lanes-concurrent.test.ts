@@ -2,7 +2,7 @@
 // own records; devices of a target run in their own processes and merge in matrix order; parity:devices fails when any step or the
 // merged file fails.
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -13,7 +13,7 @@ import { parseVmStat } from '../src/device-slots.ts';
 import type { DeviceOutcome, DeviceSet } from '../src/device-lanes.ts';
 import { mergeOutcomes } from '../src/device-lanes.ts';
 import { DEVICE_MATRIX } from '../src/device-run.ts';
-import { withFileLock } from '../src/file-lock.ts';
+import { ownerState, withFileLock } from '../src/file-lock.ts';
 import type { DeviceRun, HostRun, LanesFile } from '../src/lanes.ts';
 import { lanesFile, readLanesFile, updateLanesFile, writeLanesFile } from '../src/lanes.ts';
 import { repoPath } from '../src/paths.ts';
@@ -94,20 +94,49 @@ describe('two parity:lanes writers of different targets', () => {
     expect(await Promise.all([run(), run()])).toEqual([0, 0]);
     expect(Number(readFileSync(path, 'utf8'))).toBe(2 * n);
   });
-  it('a lock whose holder died is an error naming it, never taken over; a live holder times out', () => {
+  it('a lock whose holder died is taken over; a live holder times out; a released or half-made lock is not dead', () => {
     const dir = tmp();
     const path = join(dir, 'lanes.json');
     const dead = spawnSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], { encoding: 'utf8' }).stdout;
     mkdirSync(`${path}.lock`);
     writeFileSync(`${path}.lock/pid`, dead);
-    expect(() => withFileLock(path, () => 1)).toThrow(/is held by pid \d+, which is no longer running/);
+    expect(ownerState(`${path}.lock`)).toBe('dead');
+    expect(withFileLock(path, () => 6)).toBe(6);
+    mkdirSync(`${path}.lock`);
     writeFileSync(`${path}.lock/pid`, String(process.pid));
     expect(() => withFileLock(path, () => 1, { timeoutMs: 300, pollMs: 50 })).toThrow(/timed out after 0.3 s waiting for the lock/);
+    writeFileSync(`${path}.lock/pid`, '');
+    expect(ownerState(`${path}.lock`)).toBe('alive');
     rmSync(`${path}.lock`, { recursive: true });
+    expect(ownerState(`${path}.lock`)).toBe('gone');
     expect(withFileLock(path, () => 7)).toBe(7);
     expect(() => withFileLock(path, () => { throw new Error('inside'); })).toThrow('inside');
     // The lock is released after a throw.
     expect(withFileLock(path, () => 8)).toBe(8);
+    // A takeover lock left by a process that died while taking over is an error naming it.
+    mkdirSync(`${path}.lock`);
+    writeFileSync(`${path}.lock/pid`, dead);
+    mkdirSync(`${path}.lock.takeover`);
+    const old = new Date(Date.now() - 120_000);
+    utimesSync(`${path}.lock.takeover`, old, old);
+    expect(() => withFileLock(path, () => 1)).toThrow(/takeover lock .*lanes.json.lock.takeover is 1\d\d s old/);
+  });
+  it('three processes meeting a dead holder\'s lock at once: one takes it over, and no update is lost', async () => {
+    const dir = tmp();
+    const path = join(dir, 'counter.json');
+    writeFileSync(path, '0');
+    const dead = spawnSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], { encoding: 'utf8' }).stdout;
+    mkdirSync(`${path}.lock`);
+    writeFileSync(`${path}.lock/pid`, dead);
+    const n = 20;
+    const child = `
+      import { readFileSync, writeFileSync } from 'node:fs';
+      import { withFileLock } from ${JSON.stringify(repoPath('packages/parity/src/file-lock.ts'))};
+      for (let i = 0; i < ${n}; i++) withFileLock(${JSON.stringify(path)}, () => writeFileSync(${JSON.stringify(path)}, String(Number(readFileSync(${JSON.stringify(path)}, 'utf8')) + 1)));
+    `;
+    const run = (): Promise<number | null> => new Promise((resolve) => spawn(process.execPath, ['--input-type=module', '-e', child], { stdio: 'inherit' }).once('close', resolve));
+    expect(await Promise.all([run(), run(), run()])).toEqual([0, 0, 0]);
+    expect(Number(readFileSync(path, 'utf8'))).toBe(3 * n);
   });
 });
 

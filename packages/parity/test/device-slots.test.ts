@@ -77,6 +77,15 @@ describe('the slot files', () => {
     expect(d.stale.map((h) => h.pid)).toEqual([1001]);
     expect(holders(dir)).toEqual(['1002-b.json']);
   });
+  it('the atomic write\'s temp file is not a holder, and a holder given back is gone from the count', () => {
+    const dir = tmp();
+    const memory = () => ({ total: 48 * GIB, available: 20 * GIB });
+    const a = tryAcquireSlot('a', 4 * GIB, { dir, memory, alive: () => true, pid: 2001 });
+    writeFileSync(join(dir, '2002-half.json.tmp-1'), 'partial');
+    expect(tryAcquireSlot('b', 4 * GIB, { dir, memory, alive: () => true, pid: 2003 })).toMatchObject({ grant: true, held: 4 * GIB });
+    releaseDeviceSlot(a.file);
+    expect(tryAcquireSlot('c', 4 * GIB, { dir, memory, alive: () => true, pid: 2004 })).toMatchObject({ grant: true, held: 4 * GIB });
+  });
   it('a malformed holder stops the acquire with its name', () => {
     const dir = tmp();
     writeFileSync(join(dir, '7-x.json'), '{}');
@@ -106,24 +115,34 @@ describe('the slot files', () => {
       const src = `
         import { readdirSync, readFileSync, appendFileSync } from 'node:fs';
         import { acquireDeviceSlot, releaseDeviceSlot } from ${JSON.stringify(repoPath('packages/parity/src/device-slots.ts'))};
+        import { withFileLock } from ${JSON.stringify(repoPath('packages/parity/src/file-lock.ts'))};
         const dir = ${JSON.stringify(dir)};
         const f = await acquireDeviceSlot(${JSON.stringify(target)}, ${JSON.stringify(device)}, { dir, pollMs: 20, log: () => undefined, memory: () => ({ total: 48 * 2 ** 30, available: 20 * 2 ** 30 }) });
-        const held = readdirSync(dir).filter((x) => x.endsWith('.json')).map((x) => JSON.parse(readFileSync(dir + '/' + x, 'utf8')).bytes).reduce((a, b) => a + b, 0);
+        // A holder given back (without the lock) between the listing and the read holds nothing.
+        const bytesOf = (x) => { try { return JSON.parse(readFileSync(dir + '/' + x, 'utf8')).bytes; } catch (e) { if (e.code === 'ENOENT') return 0; throw e; } };
+        const held = withFileLock(dir + '/slots', () => readdirSync(dir).filter((x) => x.endsWith('.json')).map(bytesOf).reduce((a, b) => a + b, 0));
         appendFileSync(${JSON.stringify(out)}, held + '\\n');
         ${mode === 'throw' ? "throw new Error('the device run failed');" : mode === 'kill' ? "process.kill(process.pid, 'SIGKILL');" : 'await new Promise((r) => setTimeout(r, 300)); releaseDeviceSlot(f);'}
       `;
-      const p = spawn(process.execPath, ['--conditions=dragon-internal', '--input-type=module', '-e', src], { stdio: 'ignore' });
-      p.once('close', (code) => resolve(code));
+      const p = spawn(process.execPath, ['--conditions=dragon-internal', '--input-type=module', '-e', src], { stdio: ['ignore', 'ignore', 'pipe'] });
+      let err = '';
+      p.stderr.on('data', (d: Buffer) => void (err += d.toString('utf8')));
+      p.once('close', (code) => {
+        if (code !== 0 && mode === 'hold') console.error(`${device}: ${err}`);
+        resolve(code);
+      });
     });
 
   it('two targets in separate processes at once never hold more than the budget, and every device gets its slot', async () => {
     const dir = tmp();
     const out = join(dir, 'held.txt');
-    const devices = [['ios', 'iPhone 17'], ['ios', 'iPad (A16)'], ['android', 'dragon-320'], ['android', 'dragon-smoke'], ['android', 'dragon-480']] as const;
+    // Two runs' worth of devices (ten processes): holders are given back without the lock while others list them, so the race runs.
+    const matrix = [['ios', 'iPhone 17'], ['ios', 'iPad (A16)'], ['android', 'dragon-320'], ['android', 'dragon-smoke'], ['android', 'dragon-480']] as const;
+    const devices = [...matrix, ...matrix.map(([t, d]) => [t, `${d} 2`] as const)];
     const codes = await Promise.all(devices.map(([t, d]) => child(dir, t, d, out, 'hold')));
-    expect(codes).toEqual([0, 0, 0, 0, 0]);
+    expect(codes).toEqual(devices.map(() => 0));
     const held = readFileSync(out, 'utf8').trim().split('\n').map(Number);
-    expect(held).toHaveLength(5);
+    expect(held).toHaveLength(devices.length);
     for (const h of held) expect(h).toBeLessThanOrEqual(20 * GIB - MEMORY_RESERVE);
     expect(holders(dir)).toEqual([]);
   }, 60_000);

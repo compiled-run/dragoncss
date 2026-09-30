@@ -91,7 +91,11 @@ export function tryAcquireSlot(device: string, need: number, opts: SlotOptions =
   mkdirSync(dir, { recursive: true });
   return withFileLock(join(dir, 'slots'), () => {
     const files = readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => join(dir, f)).filter((f) => f !== file);
-    const holders = files.map((f) => ({ f, h: parseHolder(readFileSync(f, 'utf8'), f) }));
+    // A holder is given back without the lock (at exit, too), so one listed a moment ago may be gone: it no longer holds memory.
+    const holders = files.flatMap((f) => {
+      const text = readIfPresent(f);
+      return text === null ? [] : [{ f, h: parseHolder(text, f) }];
+    });
     const d = slotDecision(holders.map((x) => x.h), need, (opts.memory ?? (() => ({ total: totalmem(), available: availableMemory() })))(), opts.alive ?? pidAlive);
     for (const x of holders) if (d.stale.includes(x.h)) rmSync(x.f, { force: true });
     if (d.grant) {
@@ -100,6 +104,15 @@ export function tryAcquireSlot(device: string, need: number, opts: SlotOptions =
     }
     return { ...d, file };
   });
+}
+
+function readIfPresent(file: string): string | null {
+  try {
+    return readFileSync(file, 'utf8');
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw e;
+  }
 }
 
 function remember(file: string): void {
