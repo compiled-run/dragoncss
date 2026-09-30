@@ -7,6 +7,7 @@
 // describe the configuration. --target limits both runs to one target, so the two targets can run at once in two processes;
 // --own-exit (with --target, used by parity:devices) makes the exit status cover only this run's own target.
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { deviceEvidence } from '../device-evidence.ts';
 import { deviceJobs } from '../device-jobs.ts';
 import { failuresByKind, runTargetOnDevices } from '../device-lanes.ts';
 import type { DeviceRun, LaneFault, LanesFile } from '../lanes.ts';
@@ -91,6 +92,8 @@ if (runHost || runDevice) {
       for (const tr of d.trust) for (const row of tr.rows) for (const m of row.mismatches) console.log(`  CAPTURE TRUST FAIL ${tr.device} ${row.case}: ${m}`);
     }
   }
+  // The evidence stamps are computed before the lock is taken (they compile every case), so the lock is held for moments only.
+  for (const t of targets) deviceEvidence(t.target);
   // Re-read at write time: a run of the other target may have replaced its records since this run started.
   file = updateLanesFile((onDisk) => lanesFile(targets, problems, host, reference, device, onDisk));
 } else {
