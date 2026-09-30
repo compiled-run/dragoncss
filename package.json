@@ -46,7 +46,9 @@
     "parity:glyph-calibration": "node --conditions=dragon-internal packages/parity/src/cli/glyph-calibration.ts",
     "parity:glyph-b3": "node --conditions=dragon-internal packages/parity/src/cli/glyph-b3.ts",
     "native:devices": "node --conditions=dragon-internal packages/parity/src/cli/native-devices.ts",
-    "rt:oracle": "node --conditions=dragon-internal scripts/capture-rt-oracle.ts"
+    "native:gallery": "node --conditions=dragon-internal packages/parity/src/cli/gallery.ts",
+    "rt:oracle": "node --conditions=dragon-internal scripts/capture-rt-oracle.ts",
+    "tw:sweep": "node --conditions=dragon-internal packages/tailwind-sweep/src/cli/sweep.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",
