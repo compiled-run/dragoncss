@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/internal.ts';
 import { lengthToPx, mathFunctionRefusal, unitRefusal } from '../src/css/units.ts';
+import { MAX_MATH_TOKENS, parseMath } from '../src/css/math.ts';
 import { div, inputFor, text } from './helpers.ts';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
@@ -41,10 +42,17 @@ describe('unit registry conversions', () => {
     expect(lengthToPx(1, 'vw', none)).toBeNull();
   });
   it('viewport, font-metric, line-height and container units and math functions are refused with a reason', () => {
-    for (const u of ['vw', 'vh', 'vmin', 'vmax', 'svh', 'lvh', 'dvh', 'ex', 'ch', 'cap', 'ic', 'lh', 'rlh', 'cqw']) expect(unitRefusal(u), u).not.toBeNull();
+    for (const u of ['svh', 'lvh', 'dvh', 'svw', 'ex', 'ch', 'cap', 'ic', 'lh', 'rlh', 'cqw']) expect(unitRefusal(u), u).not.toBeNull();
     for (const u of ['px', 'cm', 'mm', 'q', 'in', 'pt', 'pc', 'em', 'rem', 'furlong']) expect(unitRefusal(u), u).toBeNull();
-    for (const f of ['calc', 'min', 'max', 'clamp', 'CALC']) expect(mathFunctionRefusal(f), f).not.toBeNull();
+    for (const f of ['round', 'mod', 'rem', 'abs', 'sign', 'env', 'ROUND']) expect(mathFunctionRefusal(f), f).not.toBeNull();
     expect(mathFunctionRefusal('rgb')).toBeNull();
+  });
+  it('V1 of the value model accepts vw, vh, vi, vb, vmin and vmax, and calc(), min(), max() and clamp(); the engine resolves them', () => {
+    for (const u of ['vw', 'vh', 'vi', 'vb', 'vmin', 'vmax']) {
+      expect(unitRefusal(u), u).toBeNull();
+      expect(lengthToPx(1, u, { em: 0, rem: 0 }), u).toBeNull();
+    }
+    for (const f of ['calc', 'min', 'max', 'clamp', 'CALC']) expect(mathFunctionRefusal(f), f).toBeNull();
   });
 });
 
@@ -69,8 +77,68 @@ describe('computed lengths', () => {
     expect(keys).toContain('height:<length-cm>@block/ltr');
   });
   it('a refused unit is DRAGON_UNSUPPORTED_VALUE at its token, with the reason', () => {
-    const c = project().compile(inputFor(`${FONT} .a { width: 50vw; }`, (r) => [div(r, 'a', ['a'])]));
+    const c = project().compile(inputFor(`${FONT} .a { width: 50svw; }`, (r) => [div(r, 'a', ['a'])]));
     const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
-    expect(d?.message).toMatch(/^width: 50vw is unsupported: viewport units resolve against the device viewport at run time/);
+    expect(d?.message).toMatch(/^width: 50svw is unsupported: small, large and dynamic viewport units need the viewport inputs of the value-model package V2/);
+  });
+  it('a viewport unit and a calculation reach the layout projection as engine calculations, with em as a leaf of the element font size', () => {
+    const tree = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'a', ['a'])];
+    const a = style('.a { width: 50vw; height: calc(10px + 2em); }', tree, 'a');
+    expect(a.style.width).toEqual({ kind: 'calc', expr: { kind: 'viewport', value: 50, axis: 'width' }, range: 'non-negative' });
+    expect(a.style.height).toEqual({ kind: 'calc', expr: { kind: 'sum', terms: [{ kind: 'px', value: 10 }, { kind: 'em', value: 2, fontSize: { kind: 'px', value: 10 } }] }, range: 'non-negative' });
+  });
+});
+
+describe('math function checks', () => {
+  const LENGTH = { type: 'length', percent: true } as const;
+  it('a division by zero is refused when the dividend is not a literal the parser folds (10vi, a sum with a percentage)', () => {
+    for (const t of ['calc(10vi / 0)', 'calc(10vb / (1 - 1))', 'calc((100% - 10px) / 0)', 'calc(10px / 0)', 'calc(1vi * (1 / 0))']) {
+      const r = parseMath(t, LENGTH);
+      expect(r.ok, t).toBe(false);
+      if (!r.ok) expect(r.reason, t).toContain('divides by zero');
+    }
+    expect(parseMath('calc(10vi / 4)', LENGTH).ok).toBe(true);
+  });
+  it('nested functions count toward the nesting limit, as nested parentheses do', () => {
+    const nest = (n: number, open: (inner: string) => string): string => {
+      let t = '1px';
+      for (let i = 0; i < n; i++) t = open(t);
+      return t;
+    };
+    expect(parseMath(`calc(${nest(30, (x) => `min(${x}, 2%)`)})`, LENGTH).ok).toBe(true);
+    expect(parseMath(`calc(${nest(40, (x) => `min(${x}, 2%)`)})`, LENGTH).ok).toBe(false);
+    expect(parseMath(`calc(${nest(40, (x) => `(${x})`)})`, LENGTH).ok).toBe(false);
+    // Far past the limit the parser refuses instead of overflowing the stack.
+    expect(parseMath(`calc(${nest(5000, (x) => `max(${x}, 1%)`)})`, LENGTH).ok).toBe(false);
+  });
+  it('a calculation longer than MAX_MATH_TOKENS is refused before it is simplified; one within the bound parses', () => {
+    const sum = (n: number, term: string): string => `calc(${Array.from({ length: n }, () => term).join(' + ')})`;
+    for (const t of [sum(100000, '1vi'), sum(100000, '1px'), `calc(${'('.repeat(100000)}1px${')'.repeat(100000)})`]) {
+      const r = parseMath(t, LENGTH);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.reason).toBe(`it has more than ${MAX_MATH_TOKENS} tokens, the most a calculation may have`);
+    }
+    // n terms are 4n - 1 tokens (calc(, then value, space, +, space per join, then )): 250 terms is 999, 251 is 1003.
+    expect(parseMath(sum(250, '1vi'), LENGTH).ok).toBe(true);
+    expect(parseMath(sum(251, '1vi'), LENGTH).ok).toBe(false);
+    const folded = parseMath(sum(250, '2px'), LENGTH);
+    expect(folded.ok && folded.node).toEqual({ t: 'lit', value: 500, unit: 'px', inverseOf: null, nested: false });
+  });
+  it('a declaration whose calculation is longer than MAX_MATH_TOKENS is refused with the reason, in a length and a number property', () => {
+    const long = (term: string): string => `calc(${Array.from({ length: 100000 }, () => term).join(' + ')})`;
+    for (const [property, value] of [['width', long('1vi')], ['flex-grow', long('1')]] as const) {
+      const c = project().compile(inputFor(`${FONT} .o { display: flex; } .a { ${property}: ${value}; }`, (r) => [div(r, 'o', ['o'], [div(r, 'a', ['a'])])]));
+      const refused = c.diagnostics.filter((x) => x.message.includes(`more than ${MAX_MATH_TOKENS} tokens`));
+      expect(refused.map((d) => d.message.split(':')[0]), property).toEqual([property]);
+    }
+  });
+  it('a negative flex-grow or flex-shrink calculation is clamped to 0 (css-values-4 §10.10), in the longhands and the flex shorthand', () => {
+    const tree = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'o', ['o'], [div(r, 'i', ['i'], [text(r, 't', 'X')])])];
+    const a = style('.o { display: flex; } .i { flex-grow: calc(-1); flex-shrink: calc(0 - 3); }', tree, 'i');
+    expect([a.style.flexGrow, a.style.flexShrink]).toEqual([0, 0]);
+    const b = style('.o { display: flex; } .i { flex: calc(-2) calc(2 - 5) 0px; }', tree, 'i');
+    expect([b.style.flexGrow, b.style.flexShrink]).toEqual([0, 0]);
+    const c = style('.o { display: flex; } .i { flex-grow: calc(1 + 1); flex-shrink: calc(3 / 2); }', tree, 'i');
+    expect([c.style.flexGrow, c.style.flexShrink]).toEqual([2, 1.5]);
   });
 });

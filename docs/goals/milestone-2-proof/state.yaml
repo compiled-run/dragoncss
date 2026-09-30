@@ -80,7 +80,6 @@ visual_board:
     command: node /Users/jacksm5pro/.claude-swap-backup/sessions/2-jackshelton30_gmail.com/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-2-proof
 active_task: T058
 dispatched:
-  - T090
   - T030
   - T108
   - T121
@@ -93,6 +92,8 @@ dispatched:
   - T075
   - T050
   - T062
+  - T118
+  - T026
 device_lease: null
 tasks:
   - id: T001
@@ -1127,18 +1128,36 @@ tasks:
   - id: T090
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: engine
     objective: 'V1 Phase B (notes/T006 plus the T009 receipt): merge master (after P5 merges) into v1-value-model (bdd474ab); T042''s sharded determinism test wins over V1''s time-budget change (drop it);
       regenerate; add break vectors, Chrome breaks and pixels for V1 cases only; parity:lanes --run-host --run-device on both leases, with no new pixel failures beyond master''s list. Then the integrator
       merges it.'
     allowed_files:
       - notes/T006 worker_package allowed_files (binding), Phase B lines included
+      - packages/dragon/src/css/math.ts
+      - packages/dragon/src/css/values.ts
+      - packages/dragon/test/units.test.ts
     verify:
       - notes/T006 verify (binding), Phase B lines included
     stop_if:
       - notes/T006 stop_if (binding)
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'V1 landed in two reviewed PRs: #25 (engine values) and #43 (compiler values, merged 59d9609cb after round fix 9860c7e1b: MAX_MATH_TOKENS=1000 refusal, linear tokenizer and simplifier; Macroscope
+        4146294404 answered). pnpm typecheck; pnpm test 127 files / 2764 tests pass.'
+      changed_files:
+        - packages/dragon/src/css/math.ts
+        - packages/dragon/src/css/values.ts
+        - packages/dragon/test/units.test.ts
+      commands:
+        - cmd: pnpm typecheck
+          status: pass
+        - cmd: pnpm test (127 files, 2764)
+          status: pass
+        - cmd: pnpm pr:review 43 --wait (exit 0)
+          status: pass
   - id: T010
     type: judge
     assignee: Judge
@@ -3417,7 +3436,7 @@ tasks:
     status: queued
     lane: port
     objective: 'CALC-2: calc() in the contexts V1 still refuses (after V1b: unproven contexts, line-height, order, border-width and the sv/lv/dv units), porting the rules from Blink''s css_math_expression_node.cc
-      and css_length_resolver.cc (BSD) under PORT-0. Proven against Chrome; rerun tw:sweep and report the change. After V1b.'
+      and css_length_resolver.cc (BSD) under PORT-0. Proven against Chrome; rerun tw:sweep and report the change. After V1b. Also add a Chrome golden that reaches CSS_LENGTH_MAX (33554429) (T118J).'
     receipt: null
   - id: T121
     type: worker
@@ -3434,6 +3453,38 @@ tasks:
     lane: device
     objective: 'LANE-SPEED (#42, notes/LANE-SPEED.md): device lanes run a target''s devices at once under a machine-wide memory budget; fix the cross-target memory overcommit finding; record device timings;
       land.'
+    receipt: null
+  - id: T123
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: port
+    objective: 'Clean-room rewrite of the class-B LGPL translations (notes/T118J-lgpl-ruling.md): range-value.ts parseStep, stepRange, roundByStep, clampValue, defaultValue, rangeRatio; linebreak.ts fastBreak,
+      isBreakableSpace, lineBreakOpportunitiesWith; from spec text (HTML Range state, css-text-3, UAX #14, BSD FillAscii) and Chrome captures only, by a worker that has not read the LGPL files or the old
+      bodies. After the PORT-0 amendment lands and the PM stub commit.'
+    allowed_files:
+      - packages/dragon/src/forms/range-value.ts
+      - packages/layout/src/linebreak.ts
+      - packages/dragon/test/forms/forms.test.ts
+      - packages/dragon/test/forms/chrome-145/range-value.json
+      - scripts/capture-form-data.ts
+      - packages/layout/test/linebreak.test.ts
+      - packages/layout/test/fixtures/linebreak/chrome145-rules.json
+      - packages/layout/test/fixtures/linebreak/capture/**
+      - docs/ports.json
+      - packages/parity/test/chrome-ports.test.ts
+    verify:
+      - pnpm typecheck
+      - npx vitest run packages/dragon/test/forms/forms.test.ts packages/layout/test/linebreak.test.ts packages/parity/test/chrome-ports.test.ts
+      - pnpm test
+      - no lgpl entry in docs/ports.json has a port use
+      - git diff --name-only <stub>...HEAD within allowed_files
+    stop_if:
+      - the stub commit is missing
+      - the work needs an LGPL upstream file or the old bodies (git show/log -p/blame at or before the stub)
+      - a Chrome capture row disagrees and spec text plus a new observation cannot settle it
+      - passing needs a changed assertion, fixture expectation, planted-fault meaning or new allowance
+      - a file outside allowed_files must change
     receipt: null
   - id: T999
     type: judge
