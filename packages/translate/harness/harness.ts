@@ -8,6 +8,7 @@ import type {
   BorderWidthValue,
   BoxSizing,
   BoxType,
+  CalcExpr,
   Direction,
   Display,
   FlexBasisValue,
@@ -19,6 +20,7 @@ import type {
   LayoutBox,
   LayoutInput,
   LayoutStyle,
+  LengthCalc,
   LineHeightValue,
   MarginValue,
   MaxSizeValue,
@@ -38,9 +40,16 @@ import { snapEdges } from '../../layout/src/snap.ts';
 import type { DistributedMode, FactorSum, LU } from '../../layout/src/units.ts';
 import {
   cachedRangeWidth,
+  calcToLu,
+  clampLengthFloat,
+  cssLengthFixed,
   cumulativeShareRounded,
   distributedOffset,
   divInt,
+  doubleMaxStep,
+  doubleMinStep,
+  emLeafPx,
+  floatInvert,
   fractionalFreeSpace,
   fromCssPx,
   fromDouble,
@@ -50,12 +59,15 @@ import {
   growShare,
   lineHeightFromNumber,
   percentOf,
+  pixelsAndPercentAt,
   platformFontSize,
   roundFontMetricToWholePx,
   shrinkShare,
   snapBorderWidth,
   snapEdge,
   textAdvance,
+  viewportLeafPx,
+  viewportUnitBase,
   zoomCssPx,
   zoomFontSize,
   zoomViewportPx,
@@ -318,8 +330,69 @@ function numField(o: JsonObj, k: string, path: string): number {
   return num(field(o, k, path), `${path}.${k}`);
 }
 
+function calcTerms(o: JsonObj, path: string): CalcExpr[] {
+  const out: CalcExpr[] = [];
+  arr(field(o, 'terms', path), `${path}.terms`).forEach((t, i) => {
+    out.push(calcExpr(t, `${path}.terms[${i}]`));
+  });
+  if (out.length === 0) fail(`${path}.terms: expected a non-empty array`);
+  return out;
+}
+
+function calcExpr(v: JsonValue, path: string): CalcExpr {
+  const k = kindOf(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'number') return { kind: 'number', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'viewport') {
+    const o = obj(v, ['kind', 'value', 'axis'], path);
+    const axis = lit(field(o, 'axis', path), ['width', 'height', 'min', 'max'], `${path}.axis`);
+    const value = numField(o, 'value', path);
+    if (axis === 'width') return { kind: 'viewport', value, axis: 'width' };
+    if (axis === 'height') return { kind: 'viewport', value, axis: 'height' };
+    if (axis === 'min') return { kind: 'viewport', value, axis: 'min' };
+    return { kind: 'viewport', value, axis: 'max' };
+  }
+  if (k === 'em') {
+    const o = obj(v, ['kind', 'value', 'fontSize'], path);
+    return { kind: 'em', value: numField(o, 'value', path), fontSize: calcExpr(field(o, 'fontSize', path), `${path}.fontSize`) };
+  }
+  if (k === 'sum') return { kind: 'sum', terms: calcTerms(obj(v, ['kind', 'terms'], path), path) };
+  if (k === 'product') return { kind: 'product', terms: calcTerms(obj(v, ['kind', 'terms'], path), path) };
+  if (k === 'min') return { kind: 'min', terms: calcTerms(obj(v, ['kind', 'terms'], path), path) };
+  if (k === 'max') return { kind: 'max', terms: calcTerms(obj(v, ['kind', 'terms'], path), path) };
+  if (k === 'invert') {
+    const o = obj(v, ['kind', 'term'], path);
+    return { kind: 'invert', term: calcExpr(field(o, 'term', path), `${path}.term`) };
+  }
+  if (k === 'clamp') {
+    const o = obj(v, ['kind', 'min', 'value', 'max'], path);
+    return { kind: 'clamp', min: calcExpr(field(o, 'min', path), `${path}.min`), value: calcExpr(field(o, 'value', path), `${path}.value`), max: calcExpr(field(o, 'max', path), `${path}.max`) };
+  }
+  if (k === 'pixels-and-percent') {
+    const o = obj(v, ['kind', 'pixels', 'percent', 'explicitPixels', 'explicitPercent'], path);
+    return {
+      kind: 'pixels-and-percent',
+      pixels: numField(o, 'pixels', path),
+      percent: numField(o, 'percent', path),
+      explicitPixels: bool(field(o, 'explicitPixels', path), `${path}.explicitPixels`),
+      explicitPercent: bool(field(o, 'explicitPercent', path), `${path}.explicitPercent`),
+    };
+  }
+  return fail(`${path}: unknown calculation kind ${k}`);
+}
+
+/** A LengthCalc {kind: calc, expr, range}. */
+function lengthCalc(v: JsonValue, path: string): LengthCalc {
+  const o = obj(v, ['kind', 'expr', 'range'], path);
+  const expr = calcExpr(field(o, 'expr', path), `${path}.expr`);
+  const range = lit(field(o, 'range', path), ['all', 'non-negative'], `${path}.range`);
+  return range === 'all' ? { kind: 'calc', expr, range: 'all' } : { kind: 'calc', expr, range: 'non-negative' };
+}
+
 function sizeValue(v: JsonValue, path: string): SizeValue {
   const k = kindOf(v, path);
+  if (k === 'calc') return lengthCalc(v, path);
   if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'auto') {
@@ -331,6 +404,7 @@ function sizeValue(v: JsonValue, path: string): SizeValue {
 
 function maxSizeValue(v: JsonValue, path: string): MaxSizeValue {
   const k = kindOf(v, path);
+  if (k === 'calc') return lengthCalc(v, path);
   if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'none') {
@@ -342,6 +416,7 @@ function maxSizeValue(v: JsonValue, path: string): MaxSizeValue {
 
 function paddingValue(v: JsonValue, path: string): PaddingValue {
   const k = kindOf(v, path);
+  if (k === 'calc') return lengthCalc(v, path);
   if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   return fail(`${path}: unknown kind ${k}`);
@@ -349,6 +424,7 @@ function paddingValue(v: JsonValue, path: string): PaddingValue {
 
 function borderValue(v: JsonValue, path: string): BorderWidthValue {
   const k = kindOf(v, path);
+  if (k === 'calc') return lengthCalc(v, path);
   if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'device-px') return { kind: 'device-px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   return fail(`${path}: unknown kind ${k}`);
@@ -356,6 +432,7 @@ function borderValue(v: JsonValue, path: string): BorderWidthValue {
 
 function gapValue(v: JsonValue, path: string): GapValue {
   const k = kindOf(v, path);
+  if (k === 'calc') return lengthCalc(v, path);
   if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'normal') {
@@ -367,6 +444,7 @@ function gapValue(v: JsonValue, path: string): GapValue {
 
 function flexBasisValue(v: JsonValue, path: string): FlexBasisValue {
   const k = kindOf(v, path);
+  if (k === 'calc') return lengthCalc(v, path);
   if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'auto') {
@@ -504,7 +582,8 @@ function decodeInput(v: JsonValue): LayoutInput {
 const FAULT_KEYS: readonly string[] = [
   'breakOffByOne', 'rtlAsLtr', 'ignoreOrder', 'baselineFromBorderTop', 'scrollMinAuto', 'absposInFlow', 'cbIgnoresPadding',
   'staticPosLtr', 'relativeShiftsFlow', 'metricHalfUp', 'untruncatedFontSize', 'halfLeadingSpec', 'minMaxEndMarginSpec',
-  'wrapReverseBaselineSpec', 'initialLineWidthZoomed',
+  'wrapReverseBaselineSpec', 'initialLineWidthZoomed', 'calcPercentPlainOrder', 'calcDoubleEval', 'calcNoNonNegClamp',
+  'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -526,6 +605,14 @@ function decodeFaults(v: JsonValue): EngineFaults {
     minMaxEndMarginSpec: b('minMaxEndMarginSpec'),
     wrapReverseBaselineSpec: b('wrapReverseBaselineSpec'),
     initialLineWidthZoomed: b('initialLineWidthZoomed'),
+    calcPercentPlainOrder: b('calcPercentPlainOrder'),
+    calcDoubleEval: b('calcDoubleEval'),
+    calcNoNonNegClamp: b('calcNoNonNegClamp'),
+    calcPercentIndefiniteAsLength: b('calcPercentIndefiniteAsLength'),
+    clampMaxWins: b('clampMaxWins'),
+    divideDirect: b('divideDirect'),
+    calcLeafUnzoomed: b('calcLeafUnzoomed'),
+    viewportUnitsUnceiled: b('viewportUnitsUnceiled'),
   };
 }
 
@@ -633,6 +720,27 @@ function unitsResult(name: string, a: readonly JsonValue[]): number {
       return snapEdge(arg(a, 1) as LU);
     case 'cachedRangeWidth':
       return cachedRangeWidth(arg(a, 1), arg(a, 2), arg(a, 3));
+    // Calc suite (units-calc): R6, the leaves of a calculation, float PixelsAndPercent, the stores and the double min and max steps.
+    case 'viewportUnitBase':
+      return viewportUnitBase(arg(a, 1), arg(a, 2));
+    case 'viewportLeafPx':
+      return viewportLeafPx(arg(a, 1), arg(a, 2), arg(a, 3));
+    case 'emLeafPx':
+      return emLeafPx(arg(a, 1), arg(a, 2), arg(a, 3));
+    case 'pixelsAndPercentAt':
+      return pixelsAndPercentAt(arg(a, 1), arg(a, 2), arg(a, 3));
+    case 'cssLengthFixed':
+      return cssLengthFixed(arg(a, 1));
+    case 'clampLengthFloat':
+      return clampLengthFloat(arg(a, 1));
+    case 'floatInvert':
+      return floatInvert(arg(a, 1));
+    case 'doubleMinStep':
+      return doubleMinStep(arg(a, 1), arg(a, 2));
+    case 'doubleMaxStep':
+      return doubleMaxStep(arg(a, 1), arg(a, 2));
+    case 'calcToLu':
+      return calcToLu(arg(a, 1), arg(a, 2) !== 0);
     case 'distributedOffset': {
       const v = a[1];
       if (v === undefined) return fail('missing mode');

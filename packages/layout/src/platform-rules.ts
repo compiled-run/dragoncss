@@ -45,3 +45,32 @@ export const platformRules: readonly PlatformRule[] = [
 
 /** The platform rules per capture platform. A platform with no entry has no rules, and its measurer is refused (platform.ts). */
 export const PLATFORM_RULES: ReadonlyMap<string, readonly PlatformRule[]> = new Map([['darwin-arm64', platformRules]]);
+
+/** A node whose exact zoomed-LU match with Chrome at dpr depends on a DPR platform rule. */
+export type DprPlatformRuleNode = { readonly fixture: string; readonly node: string; readonly dpr: number };
+
+/** A platform rule that only shows at a device pixel ratio other than 1, with the nodes that distinguish it at that ratio. */
+export type DprPlatformRule = {
+  readonly id: string;
+  readonly platform: 'darwin-arm64';
+  readonly rule: string;
+  readonly source: string;
+  readonly fault: 'viewportUnitsUnceiled';
+  readonly nodes: readonly DprPlatformRuleNode[];
+};
+
+/**
+ * R6 (V1 of the value model, notes/T006-value-model-spec.md): Blink sizes the viewport, and so the initial containing block (R1), in
+ * whole device px, and viewport units read that size over the zoom. At a ratio where w * z is not whole, vw and vh are not the CSS
+ * viewport over 100. The DPR-1 registry above cannot hold it: at DPR 1 both readings agree.
+ */
+export const dprPlatformRules: readonly DprPlatformRule[] = [
+  {
+    id: 'viewport-device-ceil',
+    platform: 'darwin-arm64',
+    rule: 'Viewport units read float(ceil(w * z) / z) CSS px (units.ts viewportUnitBase): at 2.625 a 300px viewport is 788 / 2.625 px for vh, not 300.',
+    source: 'third_party/blink/renderer/core/frame/local_frame_view.cc lines 893-907 at 145.0.7632.6 (SmallViewportSizeForViewportUnits: ViewWidth(kIncludeScrollbars), whole device px, over the float zoom, into a gfx::SizeF), core/layout/layout_view.cc lines 909-931 (SubtractUnconditionalScrollbarsFromViewportUnits, nothing to subtract with hidden scrollbars) and core/css/css_length_resolver.cc ZoomedComputedPixels (value * ViewportWidthPercent() * Zoom()). Measured on the Chrome 145 oracle (values-viewport-units at DPR 2.625).',
+    fault: 'viewportUnitsUnceiled',
+    nodes: ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((node): DprPlatformRuleNode => ({ fixture: 'values-viewport-units', node, dpr: 2.625 })),
+  },
+];
