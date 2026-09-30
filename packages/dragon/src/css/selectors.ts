@@ -5,7 +5,7 @@ import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
-import { decodeName } from './escapes.ts';
+import { asciiLower, decodeName } from './escapes.ts';
 import { PSEUDO_CLASS_VALID, PSEUDO_ELEMENT_VALID } from './selector-validity.generated.ts';
 import type { SheetUse } from './stylesheet.ts';
 
@@ -113,7 +113,6 @@ function pseudoElementOwner(name: string): string {
   return 'a later package';
 }
 
-const asciiLower = (s: string): string => s.replace(/[A-Z]/g, (c) => c.toLowerCase());
 
 /** css-syntax-3 An+B from css-tree's Nth node: AnPlusB, or the identifiers odd and even. */
 function anPlusB(nth: CssNode): { a: number; b: number } | null {
@@ -223,6 +222,7 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
   const fresh = (): Mutable => ({ tag: null, ids: [], classes: [], attributes: [], pseudos: [] });
   let current = fresh();
   let started = false;
+  let inCompound = false;
   let pending: Combinator | null = null;
   let anchor: Combinator | null = relative;
   let ok = true;
@@ -244,12 +244,19 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
       compounds.push({ compound: current, combinator: pending });
       pending = name as Combinator;
       current = fresh();
+      inCompound = false;
       continue;
     }
     started = true;
+    const follows = inCompound;
+    inCompound = true;
     if (part.type === 'TypeSelector') {
       const name = String(part['name']);
-      if (name.includes('|')) {
+      // Selectors-4 §3.1: a type or universal selector comes first in its compound, so Chrome 145 drops ".a*".
+      if (follows) {
+        ok = false;
+        chromeInvalid(part, `${generate(sel)}, whose type selector ${generate(part)} follows another simple selector,`, ctx, refuse);
+      } else if (name.includes('|')) {
         ok = false;
         refuse(part, `namespaced selector "${name}" is not supported`);
       } else if (name !== '*') current.tag = asciiLower(decodeName(name));

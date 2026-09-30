@@ -7,7 +7,7 @@ import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
 import { handleAtRule } from './at-rules.ts';
-import { canonicalizeEscapes, decodeName, preprocessInput } from './escapes.ts';
+import { asciiLower, canonicalizeEscapes, decodeName, preprocessInput, trimValue } from './escapes.ts';
 import { GRID_VALUE_PROPERTIES, parseGridValue } from './grid-values.ts';
 import { webrefLexer } from './lexer.ts';
 import type { Longhand, Shorthand } from './properties.ts';
@@ -176,14 +176,14 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   // css-syntax-3 §4.3.7: a property name is the identifier's value, so \63 olor is color and --\61 is --a.
   const written = decodeName(String(d['property']));
   // css-variables-1 §2: custom property names are case-sensitive.
-  const property = written.startsWith('--') ? written : written.toLowerCase();
+  const property = written.startsWith('--') ? written : asciiLower(written);
   const span = spanOf(d, base);
   const valueNode = d['value'] as CssNode;
   const valueSpan = spanOf(valueNode, base);
   const text = generate(valueNode);
   const priority = d['important'];
   // css-syntax-3 §5.4.6: "!important" (ASCII case-insensitive) is the only priority; any other "!name" drops the declaration.
-  if (priority !== false && priority !== true && decodeName(String(priority)).toLowerCase() !== 'important') {
+  if (priority !== false && priority !== true && asciiLower(decodeName(String(priority))) !== 'important') {
     diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', {
       origin: authored(span),
       message: `"!${String(priority)}" on ${property} is not a valid priority; only !important is (css-syntax-3 §5.4.6)`,
@@ -272,16 +272,18 @@ function parseCustomDeclaration(name: string, valueNode: CssNode, span: Span, va
     diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', { origin: authored(span), message: 'the property name "--" is reserved and is not a custom property (css-variables-1 §2)', manual: 'Give the custom property a name after "--".' }));
     return null;
   }
-  // css-syntax-3 §5.4.6: leading and trailing white space is not part of the value.
-  const text = String(valueNode.type === 'Raw' ? valueNode['value'] : generate(valueNode)).replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '');
+  const written = String(valueNode.type === 'Raw' ? valueNode['value'] : generate(valueNode));
+  // css-syntax-3 §5.4.6: leading and trailing white space tokens are not part of the value.
+  const text = trimValue(written);
   // Comments are not tokens, so "inherit /**/" is still the keyword.
-  const bare = decodeName(text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '')).toLowerCase();
+  const bare = asciiLower(decodeName(text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '')));
   const wide = CSS_WIDE.has(bare) ? bare : null;
   if (nestingDepth(text) > MAX_NESTING) {
     diagnostics.push(tooDeep(name, valueSpan));
     return null;
   }
-  const parts = wide === null ? parseVarParts(text) : [];
+  // A newline ending a string is trimmed from the text but still makes it a bad string, so validity is judged on what was written.
+  const parts = wide === null && parseVarParts(written) !== null ? parseVarParts(text) : wide === null ? null : [];
   if (parts === null) {
     diagnostics.push(invalidVar(name, text, valueSpan));
     return null;
@@ -300,7 +302,7 @@ export type ParsedValue =
 
 /** Grammar validation, token conversion and shorthand expansion of one value; base locates a shorthand refusal in sheetText. */
 export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, tokens: readonly CssNode[], base: Span, sheetText: string): ParsedValue {
-  const wide = tokens.length === 1 && tokens[0]?.type === 'Identifier' && CSS_WIDE.has(String(tokens[0]['name']).toLowerCase());
+  const wide = tokens.length === 1 && tokens[0]?.type === 'Identifier' && CSS_WIDE.has(asciiLower(String(tokens[0]['name'])));
   if (!wide) {
     const match = webrefLexer().matchProperty(property, valueNode);
     if (match.error !== null) return { kind: 'invalid' };

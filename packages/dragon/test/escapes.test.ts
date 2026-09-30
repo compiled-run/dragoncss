@@ -2,7 +2,7 @@
 // differential check against Chrome 145 is packages/parity/test/css-escapes.test.ts.
 import { parse } from 'css-tree';
 import { describe, expect, it } from 'vitest';
-import { canonicalizeEscapes, decodeName, preprocessInput, serializeIdentifier } from '../src/css/escapes.ts';
+import { asciiLower, canonicalizeEscapes, decodeName, escapeEnd, preprocessInput, serializeIdentifier, serializeString, trimValue } from '../src/css/escapes.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { Diagnostic } from '../src/types.ts';
 import { expectCatalogued } from './helpers.ts';
@@ -99,6 +99,33 @@ describe('CSS escapes', () => {
     expect(nul?.code).toBe('DRAGON_CSS_PARSE');
     expect(nul?.origin.kind === 'authored' ? [nul.origin.span.start, nul.origin.span.end] : null).toEqual([20, 21]);
     expectCatalogued(diagnostics);
+  });
+
+  it('PR #28 round 2: ASCII case folding, escape lengths in strings, value trimming and string serialization', () => {
+    expect(['BLOCK', 'bloc\u212A', '\u017Fpan', '\u0130nherit', '\u0131nline'].map(asciiLower)).toEqual(['block', 'bloc\u212A', '\u017Fpan', '\u0130nherit', '\u0131nline']);
+    expect([['\\61\r\nb', 5], ['\\000061b', 7], ['\\\r\n', 3], ['\\\n', 2], ['\\\u{1F600}', 3], ['\\', 1]].map(([t, n]) => [t, escapeEnd(t as string, 0)])).toEqual([['\\61\r\nb', 5], ['\\000061b', 7], ['\\\r\n', 3], ['\\\n', 2], ['\\\u{1F600}', 3], ['\\', 1]]);
+    // A hex escape's white space is part of the string, so the string stays open at the end and its final escape is dropped.
+    expect(preprocessInput('"\\000020\rb\\')).toBe('"\\000020\rb\\');
+    expect(trimValue('  a b  ')).toBe('a b');
+    expect(trimValue("'a/* ")).toBe("'a/* ");
+    expect(trimValue('a\\61 ')).toBe('a\\61 ');
+    expect(trimValue('x\\\f')).toBe('x\\\f');
+    expect(trimValue('"a\n ')).toBe('"a');
+    expect(trimValue('a /* c */ ')).toBe('a /* c */');
+    expect(serializeString('a"b\\c\n\u0000\u0006')).toBe('"a\\"b\\\\c\\a \uFFFD\\6 "');
+  });
+
+  it('a custom property keeps white space a string or escape holds, and a newline ending a string still makes it invalid', () => {
+    const custom = (css: string): string | null => sheet(css).rules[0]?.declarations[0]?.text ?? null;
+    expect(custom(".a{--x:'a/* ")).toBe("'a/* ");
+    expect(custom('.a{--x:a\\61 }')).toBe('a\\61 ');
+    expect(custom('.a{--x:b"\\\\02D\r}')).toBeNull();
+    expect(custom('.a{--x:"\\000020\rb}')).toBe('"\\000020\rb}');
+  });
+
+  it('a string in a font-family list is serialized as CSSOM does, not as JSON', () => {
+    const d = sheet('.a{font-family: x, "\\6"}').rules[0]?.declarations[0];
+    expect(d?.longhands[0]?.value).toEqual({ kind: 'other', type: 'family-list', text: 'x , "\\6 "' });
   });
 
   it('escaped property names, !important and CSS-wide keywords read decoded', () => {

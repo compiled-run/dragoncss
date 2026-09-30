@@ -1,6 +1,6 @@
 // css-variables-1 §3: var() references in a declaration's source text. A value is split into literal text and var() parts; a
 // part's fallback is split the same way. Parsing is token-aware: var( inside a string, a comment or an unquoted url() is text.
-import { decodeName } from './escapes.ts';
+import { asciiLower, decodeName, escapeEnd } from './escapes.ts';
 import type { Longhand } from './properties.ts';
 
 /** One part of a value: literal source text, or a var() reference with its fallback (null when it has no comma). */
@@ -46,18 +46,12 @@ function stringEnd(text: string, i: number): { end: number; bad: boolean } {
   let j = i + 1;
   while (j < text.length) {
     const c = text[j] as string;
-    if (c === '\\') j += text.startsWith('\r\n', j + 1) ? 3 : 2;
+    if (c === '\\') j = escapeEnd(text, j);
     else if (c === quote) return { end: j + 1, bad: false };
     else if (NEWLINE.test(c)) return { end: j, bad: true };
     else j++;
   }
   return { end: text.length, bad: false };
-}
-
-/** css-syntax-3 §4.3.7: the end of an escape starting at i ("\\"): up to six hex digits and one white space, or one code point. */
-function escapeEnd(text: string, i: number): number {
-  const hex = /^[0-9A-Fa-f]{1,6}(\r\n|[ \t\n\r\f])?/.exec(text.slice(i + 1, i + 9));
-  return hex === null ? i + 2 : i + 1 + hex[0].length;
 }
 
 /** The end of a run of name code points and escapes starting at i. */
@@ -126,7 +120,7 @@ export function nestingDepth(text: string): number {
     const c = text[j] as string;
     if (c === '"' || c === "'") j = stringEnd(text, j).end;
     else if (text.startsWith('/*', j)) j = commentEnd(text, j);
-    else if (c === '\\') j += 2;
+    else if (c === '\\') j = escapeEnd(text, j);
     else {
       if (c === '(' || c === '[' || c === '{') max = Math.max(max, ++depth);
       else if (c === ')' || c === ']' || c === '}') depth--;
@@ -144,7 +138,7 @@ function blockEnd(text: string, i: number): number {
     const c = text[j] as string;
     if (c === '"' || c === "'") j = stringEnd(text, j).end;
     else if (text.startsWith('/*', j)) j = commentEnd(text, j);
-    else if (c === '\\') j += 2;
+    else if (c === '\\') j = escapeEnd(text, j);
     else if (c === '(' || c === '[' || c === '{') {
       stack.push(c === '(' ? ')' : c === '[' ? ']' : '}');
       j++;
@@ -200,7 +194,7 @@ export function parseVarParts(text: string): VarPart[] | null {
         continue;
       }
       const name = text.slice(i, e);
-      const fn = text[e] === '(' && isIdent(name) ? decodeName(name).toLowerCase() : null;
+      const fn = text[e] === '(' && isIdent(name) ? asciiLower(decodeName(name)) : null;
       if (fn === 'var') {
         const close = blockEnd(text, e + 1);
         if (close < 0) return null;

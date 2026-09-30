@@ -95,6 +95,12 @@ describe('precise refusals', () => {
     ]);
   });
 
+  it('a type or universal selector after another simple selector drops the rule, as in Chrome 145 (.a*)', () => {
+    const { selectors, diagnostics } = parse('.b* { width: 1px; }');
+    expect(selectors.every((s) => s.dropped)).toBe(true);
+    expect(diagnostics.map((d) => d.code)).toEqual(['DRAGON_SELECTOR_DROPPED']);
+  });
+
   it('a component-scoped sheet needs a class on the subject compound; other compounds may be structural', () => {
     expect(parse('div { width: 1px; }', 'component').diagnostics.map((d) => d.message)).toEqual(['the subject compound of "div" needs a class in a component-scoped sheet, so it can only style the owner\'s elements']);
     expect(parse('.a > * { width: 1px; }', 'component').diagnostics).toHaveLength(1);

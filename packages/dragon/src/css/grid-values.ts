@@ -6,7 +6,7 @@ import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
-import { decodeName, serializeIdentifier } from './escapes.ts';
+import { asciiLower, decodeName, serializeIdentifier } from './escapes.ts';
 import type { Longhand } from './properties.ts';
 import type { LonghandValue, ParsedValue } from './stylesheet.ts';
 import type { FontBases } from './units.ts';
@@ -33,7 +33,7 @@ const ident = (n: CssNode | undefined): string | null => (n !== undefined && n.t
 /** css-syntax-3 §4.3.11: keywords match on the identifier's value after escapes are decoded (\\61uto is auto), ASCII case-insensitively. */
 const lowerIdent = (n: CssNode | undefined): string | null => {
   const raw = ident(n);
-  return raw === null ? null : decodeName(raw).toLowerCase();
+  return raw === null ? null : asciiLower(decodeName(raw));
 };
 const isSlash = (n: CssNode): boolean => n.type === 'Operator' && n['value'] === '/';
 const children = (n: CssNode): CssNode[] => list(n, 'children').filter((c) => c.type !== 'WhiteSpace');
@@ -79,7 +79,7 @@ function trackText(n: CssNode, dim: DimensionText): string {
       // Empty line names name nothing; Chrome omits them.
       return children(n).length === 0 ? '' : `[${children(n).map(nameText).join(' ')}]`;
     case 'Function': {
-      const name = String(n['name']).toLowerCase();
+      const name = asciiLower(String(n['name']));
       const parts: CssNode[][] = [[]];
       for (const c of children(n)) {
         if (c.type === 'Operator' && c['value'] === ',') parts.push([]);
@@ -235,7 +235,7 @@ const copied = (line: GridLine | 'auto'): GridLine | 'auto' => (line !== 'auto' 
 //   <fixed-repeat> = repeat( <integer [1,∞]> , [ <line-names>? <fixed-size> ]+ <line-names>? )
 
 const INTRINSIC = new Set(['min-content', 'max-content', 'auto']);
-const fnName = (n: CssNode): string | null => (n.type === 'Function' ? String(n['name']).toLowerCase() : null);
+const fnName = (n: CssNode): string | null => (n.type === 'Function' ? asciiLower(String(n['name'])) : null);
 const nonNegative = (n: CssNode): boolean => Number(n['value']) >= 0;
 
 /** <length-percentage [0,∞]>: a length in a length unit, a percentage, or a unitless zero; never negative. */

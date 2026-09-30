@@ -4,6 +4,9 @@
 import { parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
 
+/** CSS ASCII case-insensitive matching folds A-Z only (css-syntax-3 §2): the Kelvin sign is not k, U+0130 is not i. */
+export const asciiLower = (s: string): string => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
+
 const isHex = (c: string | undefined): boolean => c !== undefined && /^[0-9A-Fa-f]$/.test(c);
 const isWhite = (c: string | undefined): boolean => c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '\f';
 
@@ -84,6 +87,73 @@ function serializeUnit(decoded: string): string {
 }
 
 /**
+ * css-syntax-3 §4.3.7: the end of an escape whose backslash is at i: up to six hex digits and one white space (CRLF is one), or one
+ * code point (an escaped CRLF in a string is one newline); a backslash at the end of the input ends there.
+ */
+export function escapeEnd(text: string, i: number): number {
+  let j = i + 1;
+  if (j >= text.length) return j;
+  const start = j;
+  while (j - start < 6 && isHex(text[j])) j++;
+  if (j > start) return text.startsWith('\r\n', j) ? j + 2 : isWhite(text[j]) ? j + 1 : j;
+  if (text.startsWith('\r\n', j)) return j + 2;
+  return j + ((text.codePointAt(j) as number) > 0xffff ? 2 : 1);
+}
+
+/**
+ * css-syntax-3 §5.4.6: a declaration value without its leading and trailing white space tokens. White space inside a string (one left
+ * open at the end of the input too), taken by a hex escape, or after a backslash is part of a token and stays.
+ */
+export function trimValue(value: string): string {
+  let i = 0;
+  while (i < value.length && isWhite(value[i])) i++;
+  const start = i;
+  let end = i;
+  let quote: string | null = null;
+  while (i < value.length) {
+    const c = value[i] as string;
+    if (quote !== null) {
+      if (c === '\\') i = escapeEnd(value, i);
+      else if (c === quote) {
+        quote = null;
+        i++;
+      } else if (c === '\n' || c === '\r' || c === '\f') {
+        // A bad string ends at the newline, which is white space after it.
+        quote = null;
+        continue;
+      } else i++;
+      end = i;
+    } else if (value.startsWith('/*', i)) {
+      const close = value.indexOf('*/', i + 2);
+      i = close < 0 ? value.length : close + 2;
+      end = i;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+      end = ++i;
+    } else if (c === '\\') {
+      // Outside a string a backslash before a newline is a delim, and Chrome 145 keeps the newline after it (probed).
+      i = escapeEnd(value, i);
+      end = i;
+    } else if (isWhite(c)) i++;
+    else end = ++i;
+  }
+  return value.slice(start, end);
+}
+
+/** CSSOM "serialize a string" (css-cssom-1 §2.1): quoted, with ", \ and control code points escaped, and U+0000 as U+FFFD. */
+export function serializeString(value: string): string {
+  let out = '"';
+  for (const c of value) {
+    const cp = c.codePointAt(0) as number;
+    if (cp === 0) out += '\uFFFD';
+    else if ((cp >= 0x1 && cp <= 0x1f) || cp === 0x7f) out += hexEscape(cp);
+    else if (c === '"' || c === '\\') out += `\\${c}`;
+    else out += c;
+  }
+  return `${out}"`;
+}
+
+/**
  * The input as Chrome 145 tokenizes it, at the same length so every offset holds: css-syntax-3 §3.3 NUL is U+FFFD, and §4.3.7 an
  * escape at the end of the input is U+FFFD, which css-tree does not read, so a trailing backslash outside a string or comment becomes
  * U+FFFD. In a string that escape is dropped, as css-tree does already.
@@ -103,8 +173,8 @@ export function preprocessInput(input: string): string {
         i += 2;
       } else i++;
     } else if (quote !== null) {
-      // css-syntax-3 §3.3: CRLF is one newline, so an escaped CRLF is three code units.
-      if (c === '\\') i += text.startsWith('\r\n', i + 1) ? 3 : 2;
+      // A hex escape takes the white space after it, and an escaped CRLF is one newline, so neither ends the string.
+      if (c === '\\') i = escapeEnd(text, i);
       else {
         if (c === quote || c === '\n' || c === '\r' || c === '\f') quote = null;
         i++;
@@ -115,7 +185,7 @@ export function preprocessInput(input: string): string {
     } else if (c === '"' || c === "'") {
       quote = c;
       i++;
-    } else i += c === '\\' ? 2 : 1;
+    } else i = c === '\\' ? escapeEnd(text, i) : i + 1;
   }
   return i === last && !comment && quote === null ? `${text.slice(0, last)}\uFFFD` : text;
 }
@@ -135,7 +205,7 @@ function reparseArgument(n: Mutable, name: string): void {
   const args = n['children'] as { toArray(): CssNode[] } | null;
   const raw = args?.toArray();
   const only = raw?.[0];
-  if (raw === undefined || raw.length !== 1 || only === undefined || only.type !== 'Raw' || !PSEUDO_ARGUMENTS.has(name.toLowerCase())) return;
+  if (raw === undefined || raw.length !== 1 || only === undefined || only.type !== 'Raw' || !PSEUDO_ARGUMENTS.has(asciiLower(name))) return;
   const start = only.loc?.start.offset;
   if (start === undefined) return;
   const prefix = `:${name}(`;

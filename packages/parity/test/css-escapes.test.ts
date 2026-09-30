@@ -159,6 +159,8 @@ const EDGES: readonly Edge[] = [
   { decl: 'font-family: "A\\\r\nB\\', eof: true }, { decl: 'font-family: "A\\\nB\\', eof: true }, { decl: 'font-family: "A\\\rB\\', eof: true },
   { decl: 'font-family: "A\\\fB\\', eof: true }, { decl: 'font-family: "A\\\r\nB"', eof: false }, { decl: '--x: "A\\\r\nB\\', eof: true },
   { decl: 'font-family: A\\', eof: true }, { decl: 'font-family: "A\r\n', eof: true },
+  { decl: 'grid-column: \\17fpan 2' }, { decl: 'grid-column: \u017Fpan 2' }, { decl: 'grid-row-start: \\212a  2' }, { decl: 'display: bloc\\212a' },
+  { decl: 'display: bloc\u212A' }, { decl: 'grid-row-start: \u212A 2' }, { decl: 'grid-row-start: \\130 nherit' }, { decl: 'display: \\131 nline' }, { decl: 'grid-row-start: \\212a uto' },
   { decl: 'width: 1\\65 3' }, { decl: 'width: 1\\45 3' }, { decl: 'width: 1\\65 -3' }, { decl: 'width: 1\\25' }, { decl: 'width: 1\\31 px' },
   { decl: 'width: 1\\-px' }, { decl: 'width: \\31 0px' }, { decl: 'width: \\2d 1px' }, { decl: 'color: \\#f00' }, { decl: 'color: #\\0 00' },
   { decl: 'grid-template-columns: [\\31 foo \\-] 10px' }, { decl: 'grid-template-columns: [\\1F600 a\\ b] 10px' }, { decl: 'grid-template-columns: [\\0] 10px' },
@@ -393,6 +395,6 @@ describe('CSS escapes: Dragon decodes as Chrome 145 does', () => {
     expect(judgeEdges(edges, edgeSeen)).toEqual([]);
     expect(judgeSelectors(selectorSeen)).toEqual([]);
     for (const p of planted) expect(p.problems().length, p.name).toBeGreaterThan(0);
-    expect({ twins: twinSeen.length, edges: edges.length, selectors: selectorSeen.length }).toEqual({ twins: 13732, edges: 80, selectors: 59 });
+    expect({ twins: twinSeen.length, edges: edges.length, selectors: selectorSeen.length }).toEqual({ twins: 13732, edges: 89, selectors: 59 });
   }, 300_000);
 });
