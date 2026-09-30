@@ -14,6 +14,7 @@ import type {
   JustifyContent,
   LayoutBox,
   LayoutStyle,
+  LengthCalc,
   LineHeightValue,
   MarginValue,
   Overflow,
@@ -31,6 +32,8 @@ import type { CssValue } from '../css/stylesheet.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
 import type { CompilerFaults } from '../faults.ts';
+import type { MathFonts } from '../css/math.ts';
+import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath, V1_MATH_FUNCTIONS } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 
 export class LoweringError extends Error {
@@ -57,51 +60,73 @@ function keyword<T extends string>(id: string, get: Get, p: Longhand, allowed: r
   return fail(id, p, v, allowed.join(' | '));
 }
 
-function pxOrPercent(id: string, get: Get, p: Longhand): { readonly kind: 'px' | 'percent'; readonly value: number } | null {
+/** What the lowering of one element reads besides its values: its font sizes for em and rem, and the compiler faults. */
+type Lowering = { readonly em: number | null; readonly rem: number | null; readonly faults: CompilerFaults };
+
+const VIEWPORT_AXIS: { readonly [unit: string]: 'width' | 'height' | 'min' | 'max' } = { vw: 'width', vi: 'width', vh: 'height', vb: 'height', vmin: 'min', vmax: 'max' };
+
+/**
+ * A length for the engine (css-values-4 §5-§6, §10): px, a percentage, or a LengthCalc for a viewport unit or a math function,
+ * which the engine resolves in its environment (packages/layout/src/environment.ts). Null for any other value.
+ */
+function lengthPercentage(id: string, get: Get, p: Longhand, range: LengthCalc['range'], l: Lowering): Px | Percent | LengthCalc | null {
   const v = get(p);
   if (v.kind === 'length' && v.unit === 'px') return { kind: 'px', value: v.value };
   if (v.kind === 'percentage') return { kind: 'percent', value: v.value };
-  return null;
+  if (v.kind === 'length' && VIEWPORT_AXIS[v.unit] !== undefined) return { kind: 'calc', expr: { kind: 'viewport', value: v.value, axis: VIEWPORT_AXIS[v.unit] as 'width' }, range };
+  if (v.kind !== 'other' || !V1_MATH_FUNCTIONS.has(v.type.replace('()', ''))) return null;
+  const context = mathContextFor(p);
+  const parsed = 'refused' in context ? null : parseMath(v.text, context);
+  if (parsed === null || !parsed.ok) return fail(id, p, v, `a calculation V1 supports${parsed === null ? '' : ` (${parsed.reason})`}`);
+  const needs = fontUnitsIn(parsed.node);
+  if ((needs.em && l.em === null) || (needs.rem && l.rem === null)) return fail(id, p, v, 'em and rem in a calculation on an element whose font sizes are px');
+  const fonts: MathFonts = { em: l.em === null ? 0 : l.em, rem: l.rem === null ? 0 : l.rem };
+  return lowerLengthCalc(parsed.node, fonts, range, l.faults);
 }
 
-function size(id: string, get: Get, p: Longhand): SizeValue {
+type Px = { readonly kind: 'px'; readonly value: number };
+type Percent = { readonly kind: 'percent'; readonly value: number };
+
+function size(id: string, get: Get, p: Longhand, l: Lowering, range: LengthCalc['range'] = 'non-negative'): SizeValue {
   const v = get(p);
   if (v.kind === 'keyword' && v.value === 'auto') return { kind: 'auto' };
-  const lp = pxOrPercent(id, get, p);
-  return lp === null ? fail(id, p, v, 'px | % | auto') : lp;
+  const lp = lengthPercentage(id, get, p, range, l);
+  return lp === null ? fail(id, p, v, 'px | % | a viewport length | a calculation | auto') : lp;
 }
 
-function maxSize(id: string, get: Get, p: Longhand): MaxSizeValue {
+function maxSize(id: string, get: Get, p: Longhand, l: Lowering): MaxSizeValue {
   const v = get(p);
   if (v.kind === 'keyword' && v.value === 'none') return { kind: 'none' };
-  const lp = pxOrPercent(id, get, p);
-  return lp === null ? fail(id, p, v, 'px | % | none') : lp;
+  const lp = lengthPercentage(id, get, p, 'non-negative', l);
+  return lp === null ? fail(id, p, v, 'px | % | a viewport length | a calculation | none') : lp;
 }
 
-function padding(id: string, get: Get, p: Longhand): PaddingValue {
-  const lp = pxOrPercent(id, get, p);
-  return lp === null ? fail(id, p, get(p), 'px | %') : lp;
+function padding(id: string, get: Get, p: Longhand, l: Lowering): PaddingValue {
+  const lp = lengthPercentage(id, get, p, 'non-negative', l);
+  return lp === null ? fail(id, p, get(p), 'px | % | a viewport length | a calculation') : lp;
 }
 
-function margin(id: string, get: Get, p: Longhand): MarginValue {
-  return size(id, get, p);
+function margin(id: string, get: Get, p: Longhand, l: Lowering): MarginValue {
+  return size(id, get, p, l, 'all');
 }
 
 // CSS2 §9.3.2: box offsets are px, a percentage or auto.
-function inset(id: string, get: Get, p: Longhand): InsetValue {
-  return size(id, get, p);
+function inset(id: string, get: Get, p: Longhand, l: Lowering): InsetValue {
+  return size(id, get, p, l, 'all');
 }
 
 // css-backgrounds-3 §3.3: none/hidden computes to 0. Device-pixel snapping depends on the environment, so the engine applies it.
 // R5 (DPR Chrome deviation initial-line-width-unzoomed, D1): Blink stores the initial width 3 in zoomed px, unzoomed, so a width
 // that is initial by provenance (no width declared, or a shorthand that omits it) lowers to device px, with its value from the UA
 // dataset's medium keyword. An authored thin, medium, thick or px width stays CSS px.
-function borderWidth(id: string, get: Get, isInitial: IsInitial, side: 'top' | 'right' | 'bottom' | 'left', ua: UaDataset): BorderWidthValue {
+function borderWidth(id: string, get: Get, isInitial: IsInitial, side: 'top' | 'right' | 'bottom' | 'left', ua: UaDataset, l: Lowering): BorderWidthValue {
   const style = keyword(id, get, `border-${side}-style` as Longhand, ['none', 'hidden', 'solid', 'dotted', 'dashed', 'double', 'groove', 'ridge', 'inset', 'outset']);
   if (style === 'none' || style === 'hidden') return { kind: 'px', value: 0 };
   const p = `border-${side}-width` as Longhand;
   const v = get(p);
   let px: number;
+  const calc = v.kind === 'other' || (v.kind === 'length' && VIEWPORT_AXIS[v.unit] !== undefined) ? lengthPercentage(id, get, p, 'non-negative', l) : null;
+  if (calc !== null && calc.kind === 'calc') return calc;
   if (v.kind === 'length' && v.unit === 'px') px = v.value;
   else if (v.kind === 'keyword' && ua.borderWidthKeywords[v.value] !== undefined) px = Number.parseFloat(ua.borderWidthKeywords[v.value] as string);
   else return fail(id, p, v, 'px | thin | medium | thick');
@@ -118,29 +143,35 @@ function number(id: string, get: Get, p: Longhand): number {
   return fail(id, p, v, '<number>');
 }
 
-function flexBasis(id: string, get: Get): FlexBasisValue {
+function flexBasis(id: string, get: Get, l: Lowering): FlexBasisValue {
   const v = get('flex-basis');
   if (v.kind === 'keyword' && v.value === 'content') return { kind: 'content' };
-  return size(id, get, 'flex-basis');
+  return size(id, get, 'flex-basis', l);
 }
 
-function gap(id: string, get: Get, p: Longhand): GapValue {
+function gap(id: string, get: Get, p: Longhand, l: Lowering): GapValue {
   const v = get(p);
   if (v.kind === 'keyword' && v.value === 'normal') return { kind: 'normal' };
-  const lp = pxOrPercent(id, get, p);
-  return lp === null ? fail(id, p, v, 'px | % | normal') : lp;
+  const lp = lengthPercentage(id, get, p, 'non-negative', l);
+  return lp === null ? fail(id, p, v, 'px | % | a viewport length | a calculation | normal') : lp;
 }
 
 const ALIGN_ITEMS: readonly AlignItems[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
 
-export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset): LayoutStyle {
+/** The px value of a computed font-size, or null. */
+function fontPx(v: CssValue): number | null {
+  return v.kind === 'length' && v.unit === 'px' ? v.value : null;
+}
+
+export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null = null): LayoutStyle {
   const id = el.element.address;
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
+  const fonts = { em: fontPx(get('font-size')), rem: rootFontSize };
   // css-overflow-3 §3.3: overflow on html or body propagates to the viewport, which the engine does not model.
   if ((el.element.tag === 'html' || el.element.tag === 'body') && (keywordOf(get('overflow-x')) !== 'visible' || keywordOf(get('overflow-y')) !== 'visible')) {
     throw new LoweringError(id, 'overflow-x', `overflow on <${el.element.tag}> ${id} propagates to the viewport, which the layout engine does not model`);
   }
-  return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua);
+  return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts);
 }
 
 const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '');
@@ -152,43 +183,44 @@ function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allow
   return keyword(id, get, p, allowed);
 }
 
-function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset): LayoutStyle {
+function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: { readonly em: number | null; readonly rem: number | null }): LayoutStyle {
+  const l: Lowering = { em: fonts.em, rem: fonts.rem, faults };
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
     display: keyword<Display>(id, get, 'display', ['block', 'flex']),
     position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute']),
-    top: inset(id, get, 'top'),
-    right: inset(id, get, 'right'),
-    bottom: inset(id, get, 'bottom'),
-    left: inset(id, get, 'left'),
+    top: inset(id, get, 'top', l),
+    right: inset(id, get, 'right', l),
+    bottom: inset(id, get, 'bottom', l),
+    left: inset(id, get, 'left', l),
     overflowX: keyword<Overflow>(id, get, 'overflow-x', ['visible', 'hidden']),
     overflowY: keyword<Overflow>(id, get, 'overflow-y', ['visible', 'hidden']),
     direction: keyword(id, get, 'direction', ['ltr', 'rtl']),
     boxSizing,
-    width: size(id, get, 'width'),
-    height: size(id, get, 'height'),
-    minWidth: size(id, get, 'min-width'),
-    minHeight: size(id, get, 'min-height'),
-    maxWidth: maxSize(id, get, 'max-width'),
-    maxHeight: maxSize(id, get, 'max-height'),
-    marginTop: margin(id, get, 'margin-top'),
-    marginRight: margin(id, get, 'margin-right'),
-    marginBottom: margin(id, get, 'margin-bottom'),
-    marginLeft: margin(id, get, 'margin-left'),
-    paddingTop: padding(id, get, 'padding-top'),
-    paddingRight: padding(id, get, 'padding-right'),
-    paddingBottom: padding(id, get, 'padding-bottom'),
-    paddingLeft: padding(id, get, 'padding-left'),
-    borderTopWidth: borderWidth(id, get, isInitial, 'top', ua),
-    borderRightWidth: borderWidth(id, get, isInitial, 'right', ua),
-    borderBottomWidth: borderWidth(id, get, isInitial, 'bottom', ua),
-    borderLeftWidth: borderWidth(id, get, isInitial, 'left', ua),
+    width: size(id, get, 'width', l),
+    height: size(id, get, 'height', l),
+    minWidth: size(id, get, 'min-width', l),
+    minHeight: size(id, get, 'min-height', l),
+    maxWidth: maxSize(id, get, 'max-width', l),
+    maxHeight: maxSize(id, get, 'max-height', l),
+    marginTop: margin(id, get, 'margin-top', l),
+    marginRight: margin(id, get, 'margin-right', l),
+    marginBottom: margin(id, get, 'margin-bottom', l),
+    marginLeft: margin(id, get, 'margin-left', l),
+    paddingTop: padding(id, get, 'padding-top', l),
+    paddingRight: padding(id, get, 'padding-right', l),
+    paddingBottom: padding(id, get, 'padding-bottom', l),
+    paddingLeft: padding(id, get, 'padding-left', l),
+    borderTopWidth: borderWidth(id, get, isInitial, 'top', ua, l),
+    borderRightWidth: borderWidth(id, get, isInitial, 'right', ua, l),
+    borderBottomWidth: borderWidth(id, get, isInitial, 'bottom', ua, l),
+    borderLeftWidth: borderWidth(id, get, isInitial, 'left', ua, l),
     flexDirection: keyword<FlexDirection>(id, get, 'flex-direction', ['row', 'row-reverse', 'column', 'column-reverse']),
     flexWrap: keyword<FlexWrap>(id, get, 'flex-wrap', ['nowrap', 'wrap', 'wrap-reverse']),
     flexGrow: number(id, get, 'flex-grow'),
     flexShrink: number(id, get, 'flex-shrink'),
-    flexBasis: flexBasis(id, get),
+    flexBasis: flexBasis(id, get, l),
     order: number(id, get, 'order'),
     justifyContent: keyword<JustifyContent>(id, get, 'justify-content', [
       'normal', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly', 'stretch', 'start', 'end', 'left', 'right',
@@ -198,8 +230,8 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     alignContent: alignKeyword<AlignContent>(id, get, 'align-content', [
       'normal', 'stretch', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly', 'baseline', 'start', 'end',
     ]),
-    rowGap: gap(id, get, 'row-gap'),
-    columnGap: gap(id, get, 'column-gap'),
+    rowGap: gap(id, get, 'row-gap', l),
+    columnGap: gap(id, get, 'column-gap', l),
     textAlign: keyword<TextAlign>(id, get, 'text-align', ['start', 'end', 'left', 'right', 'center', 'justify']),
   };
 }
@@ -254,11 +286,12 @@ export function assertTextCarriesContainer(container: LayoutStyle, containerId: 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box inherits the inherited properties of its enclosing box and takes the
 // initial value of every other property; it is block-level (a block container, blockified as a flex item).
 function anonymousBox(parent: ResolvedElement, id: string, texts: readonly ResolvedText[], faults: CompilerFaults, ua: UaDataset): LayoutBox {
+  // Every length an anonymous box takes is an initial value, never a calculation, so it reads no font size.
   const values = new Map<Longhand, CssValue>();
   for (const p of LONGHANDS) values.set(p, INHERITED.has(p) ? (parent.props.get(p) as ResolvedValue).value : initialValue(p, ua));
   values.set('display', { kind: 'keyword', value: 'block' });
   // Every non-inherited property of an anonymous box is its initial value.
-  const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), faults, ua);
+  const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), faults, ua, { em: null, rem: null });
   for (const t of texts) assertTextCarriesContainer(style, id, t);
   return { kind: 'box', id, boxType: 'anonymous', style, children: texts.map(lowerText) };
 }
@@ -269,7 +302,7 @@ function anonymousBox(parent: ResolvedElement, id: string, texts: readonly Resol
  */
 export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset): LayoutBox {
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
-  return lowerBox(root, faults, ua);
+  return lowerBox(root, faults, ua, fontPx((root.props.get('font-size') as ResolvedValue).value));
 }
 
 /**
@@ -277,10 +310,10 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
  * wrapped in anonymous boxes "<element>:anon<k>", one per maximal text sequence; display: none children are omitted, so they never
  * split a text sequence. The engine never creates boxes.
  */
-function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset): LayoutBox {
+function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null): LayoutBox {
   const id = el.element.address;
   const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
-  const style = lowerStyle(el, faults, ua);
+  const style = lowerStyle(el, faults, ua, rootFontSize);
   const wrap = kids.some((c) => c.kind === 'text') && (displayOf(el) === 'flex' || kids.some((c) => c.kind === 'element'));
   const children: (LayoutBox | TextLeaf)[] = [];
   let run: ResolvedText[] = [];
@@ -292,7 +325,7 @@ function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset): L
   for (const c of kids) {
     if (c.kind === 'element') {
       flush();
-      children.push(lowerBox(c, faults, ua));
+      children.push(lowerBox(c, faults, ua, rootFontSize));
     } else if (wrap) run.push(c);
     else {
       assertTextCarriesContainer(style, id, c);

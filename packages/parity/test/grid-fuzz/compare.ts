@@ -12,7 +12,7 @@ import { canonicalizeEscapes, decodeName } from '../../../dragon/src/css/escapes
 import { GRID_VALUE_PROPERTIES, parseGridValue } from '../../../dragon/src/css/grid-values.ts';
 import { GRID_LONGHANDS } from '../../../dragon/src/css/properties/grid.ts';
 import { parseStylesheet } from '../../../dragon/src/css/stylesheet.ts';
-import { CSS_WIDE } from '../../../dragon/src/css/values.ts';
+import { CSS_WIDE, REFUSED_MATH_PREFIX } from '../../../dragon/src/css/values.ts';
 import type { Diagnostic } from '../../../dragon/src/types.ts';
 
 const SOURCE = { uri: 'dragon-source://test/grid-fuzz.css', revision: 'r1', hash: 'sha256:0' };
@@ -24,10 +24,10 @@ export type DragonResult = { readonly kind: 'ok'; readonly longhands: readonly (
 export type FuzzItem = { readonly p: string; readonly v: string; readonly full: DragonResult; readonly hook: DragonResult | null; readonly resolved: readonly string[] | null };
 
 /**
- * What Chrome did: whether it parsed the authored value, its computed values of the compared longhands, and for each of Dragon's
- * accepted results, the problems of rendering it.
+ * What Chrome did: whether it parsed the authored value, its computed values of the compared longhands, for each of Dragon's
+ * accepted results the problems of rendering it, and the page's viewport in CSS px (what vw and vh resolve against).
  */
-export type ChromeSeen = { readonly parsed: boolean; readonly authored: readonly string[]; readonly full: readonly string[]; readonly hook: readonly string[] };
+export type ChromeSeen = { readonly parsed: boolean; readonly authored: readonly string[]; readonly full: readonly string[]; readonly hook: readonly string[]; readonly viewport: readonly [number, number] };
 
 export const COMPARED_LONGHANDS: readonly string[] = [...GRID_LONGHANDS, 'row-gap', 'column-gap'];
 
@@ -38,6 +38,8 @@ export function dragonFull(p: string, v: string): DragonResult {
   const d = diagnostics[0];
   if (d !== undefined) return d.code === 'DRAGON_CSS_INVALID_VALUE' ? { kind: 'invalid' } : { kind: 'refused', code: d.code };
   const decl = rules[0]?.declarations[0];
+  // V1 keeps a calculation it refuses as a value that carries its reason; the profile check refuses it on every target.
+  if (decl?.longhands.some((l) => l.value.kind === 'other' && l.value.type.startsWith(REFUSED_MATH_PREFIX))) return { kind: 'refused', code: 'DRAGON_UNSUPPORTED_VALUE' };
   return { kind: 'ok', longhands: (decl?.longhands ?? []).map((l) => [l.property, valueToString(l.value)] as const) };
 }
 
@@ -130,13 +132,29 @@ function chromeDisplay(raw: string, unit: string): string {
   return formatG6(Math.fround(clamped));
 }
 
-const NUMBER_TOKEN = /(^|[\s(,[])([-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?)(px|fr|%|)(?=$|[\s),\]])/gi;
+/** The viewport dimension each viewport unit takes a hundredth of (horizontal-tb: vi is the width, vb the height). */
+const VIEWPORT_DIMENSION: Readonly<Record<string, (w: number, h: number) => number>> = {
+  vw: (w) => w, vi: (w) => w, vh: (_w, h) => h, vb: (_w, h) => h, vmin: (w, h) => Math.min(w, h), vmax: (w, h) => Math.max(w, h),
+};
+
+const NUMBER_TOKEN = /(^|[\s(,[])([-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?)(px|fr|%|vw|vh|vi|vb|vmin|vmax|)(?=$|[\s),\]])/gi;
 
 /**
  * Dragon's computed text as Chrome would display it: every number through chromeDisplay, everything else byte for byte. Dragon keeps
  * the full value because the emitted CSS must give Chrome the value it computed; only the 6-digit display and range clamps differ.
+ * A viewport length, which Dragon's web CSS keeps for the browser to resolve, is displayed as Chrome's computed px: value times a
+ * hundredth of the viewport dimension, in double as Blink's CSSToLengthConversionData does.
  */
-export const asChromeDisplays = (dragon: string): string => dragon.replace(NUMBER_TOKEN, (_m, pre: string, num: string, unit: string) => `${pre}${chromeDisplay(num, unit.toLowerCase())}${unit}`);
+export const asChromeDisplays = (dragon: string, viewport: readonly [number, number]): string => {
+  const [w, h] = viewport;
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) throw new Error(`the Chrome viewport ${String(w)}x${String(h)} is not a positive size`);
+  return dragon.replace(NUMBER_TOKEN, (_m, pre: string, num: string, rawUnit: string) => {
+    const unit = rawUnit.toLowerCase();
+    const dimension = VIEWPORT_DIMENSION[unit];
+    if (dimension !== undefined) return `${pre}${chromeDisplay(String(Number(num) * (dimension(w, h) / 100)), 'px')}px`;
+    return `${pre}${chromeDisplay(num, unit)}${rawUnit}`;
+  });
+};
 
 /** Values Chrome parses that Dragon reports invalid by design: anchor-center in justify-items is missing from the webref grammar. */
 export function documentedGap(p: string, v: string): boolean {
@@ -178,7 +196,7 @@ export function chromeExpression(items: readonly FuzzItem[]): string {
       L.forEach((l, i) => { if (cc.getPropertyValue(l) !== authored[i]) out.push(l + ' authored "' + authored[i] + '" Dragon "' + cc.getPropertyValue(l) + '"'); });
       return out;
     };
-    return { parsed, authored, full: check(it.full), hook: check(it.hook) };
+    return { parsed, authored, full: check(it.full), hook: check(it.hook), viewport: [document.documentElement.clientWidth, document.documentElement.clientHeight] };
   })`;
 }
 
@@ -186,7 +204,7 @@ export function chromeExpression(items: readonly FuzzItem[]): string {
 export function serializationProblems(it: FuzzItem, s: ChromeSeen): string[] {
   if (it.resolved === null || !s.parsed) return [];
   return COMPARED_LONGHANDS.flatMap((l, i) => {
-    const mine = asChromeDisplays(it.resolved?.[i] as string);
+    const mine = asChromeDisplays(it.resolved?.[i] as string, s.viewport);
     return mine === s.authored[i] ? [] : [`${l} Chrome "${s.authored[i] as string}" Dragon "${it.resolved?.[i] as string}" displayed "${mine}"`];
   });
 }
