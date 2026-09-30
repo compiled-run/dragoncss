@@ -283,11 +283,13 @@ const setBy = (d: Declaration, property: Longhand): string => (d.property === pr
  * message lists the property's supported values in each context the declaration applies in (T005 rec 6), from the used keys of
  * the resolved cases; with none known it lists the supported values in any context.
  */
-function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], profiles: SupportProfiles, used: readonly UsedKey[], diagnostics: Diagnostic[], fonts: FamilyKeyContext): void {
+function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], profiles: SupportProfiles, used: readonly UsedKey[] | ((t: KnownTarget) => readonly UsedKey[]), diagnostics: Diagnostic[], fonts: FamilyKeyContext, scope: RuleScope | null = null): void {
   const seen = new Set<Declaration>();
   for (const rule of rules) {
     // A rule Chrome drops never applies (css/selectors.ts), so its values need no support.
     if (rule.selectors.every((s) => s.dropped)) continue;
+    // MQ-a: a rule is checked only for the targets whose band it applies in.
+    const ruleTargets = scope === null ? targets : targets.filter((t) => scope(rule).includes(t));
     for (const d of rule.declarations) {
       if (seen.has(d)) continue;
       seen.add(d);
@@ -295,11 +297,11 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
         const feature = featureOf(lh.property, lh.value, fonts);
         // checkFamilies reports an unmapped family.
         if (feature === 'font-family:<unmapped>') continue;
-        for (const t of targets) {
+        for (const t of ruleTargets) {
           const profile = profileFor(profiles, t);
           if (provenContexts(profile, feature).length > 0) continue;
           const values = supportedValuesFor(profile, lh.property);
-          const contexts = [...new Set(used.filter((u) => u.declaration === d && u.property === lh.property).map((u) => u.context))].sort();
+          const contexts = [...new Set((typeof used === 'function' ? used(t) : used).filter((u) => u.declaration === d && u.property === lh.property).map((u) => u.context))].sort();
           const alternatives = contexts.length > 0
             ? contexts.map((ctx) => {
               const inCtx = supportedValuesIn(profile, lh.property, ctx);
@@ -433,10 +435,12 @@ function compileFonts(input: FrontEndResult, rawMap: unknown, contexts: readonly
  * @font-face or be in the font map (pinned or platform); an unmapped entry is DRAGON_FONT_UNMAPPED_FAMILY for every target.
  * A value holding var() is keyed after substitution (computed-checks.ts).
  */
-function checkFamilies(rules: readonly Rule[], fonts: FamilyKeyContext, faults: CompilerFaults, diagnostics: Diagnostic[]): void {
+function checkFamilies(rules: readonly Rule[], fonts: FamilyKeyContext, faults: CompilerFaults, out: Diagnostic[], scope: { readonly of: RuleScope; readonly targets: readonly KnownTarget[] } | null = null): void {
   const seen = new Set<Declaration>();
   for (const rule of rules) {
     if (rule.selectors.every((sel) => sel.dropped)) continue;
+    // MQ-a: a rule outside the native band blocks web only (scopedTo), one that applies in no configured output blocks nothing.
+    const diagnostics: Diagnostic[] = [];
     for (const d of rule.declarations) {
       if (seen.has(d)) continue;
       seen.add(d);
@@ -452,7 +456,36 @@ function checkFamilies(rules: readonly Rule[], fonts: FamilyKeyContext, faults: 
         if (!faults.unmappedFamilyAccepted) unmappedDiagnostics(support.resolutions, d.text, d.valueSpan, diagnostics);
       }
     }
+    out.push(...(scope === null ? diagnostics : scopedTo(diagnostics, scope.of(rule), scope.targets)));
   }
+}
+
+/** The targets a rule applies in (MQ-a): web where any band applies it, native where the native band does. */
+type RuleScope = (rule: Rule) => readonly KnownTarget[];
+
+/**
+ * Diagnostics raised for a subset of the configured targets: one for every target blocks every target (target null) as before;
+ * for a proper subset, each diagnostic without a target is reported once per target in it, and one for another target is dropped.
+ */
+function scopedTo(ds: readonly Diagnostic[], scope: readonly KnownTarget[], targets: readonly KnownTarget[]): Diagnostic[] {
+  if (targets.every((t) => scope.includes(t))) return [...ds];
+  return ds.flatMap((d) => (d.target === null ? scope.map((t) => ({ ...d, target: t })) : scope.includes(d.target as KnownTarget) ? [d] : []));
+}
+
+/** Diagnostics of several passes in order, each once; a per-target one is dropped when the same diagnostic blocks every target. */
+function mergePasses(passes: readonly (readonly Diagnostic[])[]): Diagnostic[] {
+  const all = passes.flat();
+  const keys = new Set(all.map((d) => JSON.stringify(d)));
+  const out: Diagnostic[] = [];
+  const emitted = new Set<string>();
+  for (const d of all) {
+    const key = JSON.stringify(d);
+    if (emitted.has(key)) continue;
+    if (d.target !== null && keys.has(JSON.stringify({ ...d, target: null }))) continue;
+    emitted.add(key);
+    out.push(d);
+  }
+  return out;
 }
 
 /** The unmapped-family diagnostics of one resolved font-family list, located at its value. */
@@ -723,26 +756,38 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       }
     }
     for (const c of valid.components.values()) checkTemplates(c.root, diagnostics);
+    // MQ-a: each band is checked for the targets resolved in it (native in its band only, web in every band); a rule-level check
+    // reports a rule for the targets of the bands it applies in, so nothing web-only blocks native and nothing native is lost.
+    const bandList = bands === null ? [null] : bands.partition.bands;
+    const passTargets = (k: number): readonly KnownTarget[] => (k === nativeBand ? targets : targets.filter((t) => t === 'web'));
+    const bandRules = bandList.map((b) => new Set(rulesIn(rules, bands, b, options.faults)));
+    const scopeOf: RuleScope = (r) => targets.filter((t) => bandRules.some((set, k) => passTargets(k).includes(t) && set.has(r)));
     fonts = compileFonts(input, config.fonts, fontFaces, diagnostics);
-    checkFamilies(rules, fonts.keys, options.faults, diagnostics);
+    checkFamilies(rules, fonts.keys, options.faults, diagnostics, { of: scopeOf, targets });
     const keys = fonts.keys;
     const valuesAt = diagnostics.length;
     linked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, diagnostics);
     // An unsupported at-rule blocks every output but does not stop the analysis (T005 rec 3): every diagnostic comes in one pass.
     const fatal = diagnostics.some((d) => d.severity === 'error' && d.target === null && d.code !== 'DRAGON_UNSUPPORTED_AT_RULE');
     if (linked !== null && !fatal) {
-      const seen = freshReported();
       const found = linked;
       const projectFonts = fonts;
-      // Native targets are checked only in their band (the first without a fold viewport, where MQ-R refuses them); web in every band.
-      bandCases = (bands === null ? [null] : bands.partition.bands).map((b, k) => ({
-        band: b,
-        cases: checkCases(found, rulesIn(rules, bands, b, options.faults), k === nativeBand ? targets : targets.filter((t) => t === 'web'), options, diagnostics, projectFonts, seen),
-      }));
+      // Native targets are checked only in their band (the first without a fold viewport, where MQ-R refuses them); web in every
+      // band. Each pass reports on its own, its diagnostics without a target scoped to the pass's targets, then all are merged.
+      const passes = bandList.map((b, k) => {
+        const own: Diagnostic[] = [];
+        const bandTargets = passTargets(k);
+        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported()) };
+        return { result, diagnostics: scopedTo(own, bandTargets, targets) };
+      });
+      bandCases = passes.map((p) => p.result);
+      diagnostics.push(...mergePasses(passes.map((p) => p.diagnostics)));
       cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
       if (options.profiles === 'enforce') {
         const values: Diagnostic[] = [];
-        checkValues(rules, targets, profiles, bandCases.flatMap((r) => r.cases.flatMap((c) => c.used)), values, keys);
+        // A target's messages list the contexts of the bands it is resolved in.
+        const usedOf = (t: KnownTarget): UsedKey[] => bandCases.filter((_, k) => passTargets(k).includes(t)).flatMap((r) => r.cases.flatMap((c) => c.used));
+        checkValues(rules, targets, profiles, usedOf, values, keys, scopeOf);
         diagnostics.splice(valuesAt, 0, ...values);
       }
       // T005 rec 3: the rules inside each unsupported at-rule are analysed with the block unwrapped, in a scratch pass whose
@@ -769,14 +814,14 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     } else if (linked !== null) {
       if (options.profiles === 'enforce') {
         const values: Diagnostic[] = [];
-        checkValues(rules, targets, profiles, [], values, keys);
+        checkValues(rules, targets, profiles, [], values, keys, scopeOf);
         diagnostics.splice(valuesAt, 0, ...values);
       }
       cases = linked.cases.map((c) => ({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved: null, used: [] }));
       bandCases = [{ band: null, cases }];
     } else if (options.profiles === 'enforce') {
       const values: Diagnostic[] = [];
-      checkValues(rules, targets, profiles, [], values, keys);
+      checkValues(rules, targets, profiles, [], values, keys, scopeOf);
       diagnostics.splice(valuesAt, 0, ...values);
     }
   }

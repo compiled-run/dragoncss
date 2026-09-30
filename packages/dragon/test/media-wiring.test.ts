@@ -9,7 +9,7 @@ import { createProjectWith, NO_FAULTS, WEB_CSS_PATH } from '../src/internal.ts';
 import type { AtRuleContext } from '../src/css/at-rules.ts';
 import type { EnclosedRules } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
-import { div, expectCatalogued, explainOne, inputFor, spanTextOf } from './helpers.ts';
+import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
 // android proves no block width yet, so the fold is checked on ios and web; the public-entry test adds android.
@@ -186,6 +186,50 @@ describe('MQ-a: the band fold', () => {
     for (const v of [{ width: Number.NaN, height: 300 }, { width: -1, height: 300 }, { width: 400, height: Number.POSITIVE_INFINITY }]) {
       expect(() => createProjectWith({ projectId: 'test', targets: TARGETS }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', foldViewport: v })).toThrow(/foldViewport must be a finite, non-negative width and height/);
     }
+  });
+});
+
+describe('MQ-a: every check blocks the targets of the bands it applies in (PR #38 finding 4147910145)', () => {
+  const FOLD = { foldViewport: { width: 400, height: 300 } } as const;
+  const codes = (c: Compiled<K>): (string | null)[][] => c.diagnostics.map((d) => [d.code, d.target]);
+  const kinds = (c: Compiled<K>): string[] => [c.outputs.ios.kind, c.outputs.web.kind];
+  it('an unmapped family only outside the native band blocks web, not ios; inside it, every target', () => {
+    const outside = compile('.a { width: 10px; } @media (min-width: 500px) { .a { font-family: NotAFont; } }', FOLD).c;
+    expect(codes(outside)).toEqual([['DRAGON_FONT_UNMAPPED_FAMILY', 'web']]);
+    expect(kinds(outside)).toEqual(['analysis-only', 'blocked']);
+    expect(width(outside)).toBe('10px');
+    const inside = compile('.a { width: 10px; } @media (max-width: 500px) { .a { font-family: NotAFont; } }', FOLD).c;
+    expect(codes(inside)).toEqual([['DRAGON_FONT_UNMAPPED_FAMILY', null]]);
+    expect(kinds(inside)).toEqual(['blocked', 'blocked']);
+    expectCatalogued(outside.diagnostics);
+  });
+  it('a value no context proves, only outside the native band, is refused for web and not for ios', () => {
+    const outside = compile('.a { width: 10px; } @media (min-width: 500px) { .a { display: grid; } }', FOLD).c;
+    expect(codes(outside).filter(([code]) => code === 'DRAGON_UNSUPPORTED_VALUE')).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'web']]);
+    expect(outside.outputs.ios.kind).toBe('analysis-only');
+    const inside = compile('.a { width: 10px; } @media (max-width: 500px) { .a { display: grid; } }', FOLD).c;
+    expect(codes(inside).filter(([code]) => code === 'DRAGON_UNSUPPORTED_VALUE').map(([, t]) => t)).toEqual(['ios', 'web']);
+  });
+  const rtl = (css: string, opts: Partial<InternalOptions>): Compiled<K> => {
+    const input = inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'], [text(r, 't', 'AB 12')])]);
+    return createProjectWith({ projectId: 'test', targets: TARGETS }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', ...opts }).compile(input);
+  };
+  it('a computed-value refusal without a target, raised only in a web band, blocks web and not ios', () => {
+    const c = rtl('.a { width: 10px; } @media (min-width: 500px) { .a { direction: rtl; } }', FOLD);
+    expect(codes(c)).toEqual([['DRAGON_UNSUPPORTED_BIDI', 'web']]);
+    expect(kinds(c)).toEqual(['analysis-only', 'blocked']);
+  });
+  it('one raised in the native band and in a web band is reported once, for every target, whichever band comes first', () => {
+    for (const css of ['.a { direction: rtl; } @media (max-width: 300px) { .a { width: 5px; } }', '.a { direction: rtl; } @media (min-width: 500px) { .a { width: 5px; } }']) {
+      const c = rtl(css, FOLD);
+      expect(codes(c), css).toEqual([['DRAGON_UNSUPPORTED_BIDI', null]]);
+      expect(kinds(c), css).toEqual(['blocked', 'blocked']);
+    }
+  });
+  it('a project without web reports nothing for a rule that applies only outside the native band', () => {
+    const input = inputFor(`${FONT} .a { width: 10px; } @media (min-width: 500px) { .a { font-family: NotAFont; display: grid; } }`, (r) => [div(r, 'a', ['a'])]);
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', ...FOLD }).compile(input);
+    expect(c.diagnostics).toEqual([]);
   });
 });
 
