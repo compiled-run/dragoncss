@@ -1,0 +1,10 @@
+{
+  "case": "phrasing-blockified-inline-block",
+  "dpr": 3,
+  "texts": [
+    {"id":"s1:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"a1:text0","lines":[[0,3]]},
+    {"id":"l1:text0","lines":[[0,2]]},
+    {"id":"s2:text0","lines":[[0,4],[4,6]]}
+  ]
+}
