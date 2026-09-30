@@ -116,7 +116,7 @@ public func position_blockInset(_ box: LayoutBox, _ v: any U_Auto_Percent_Px, _ 
   }
   // ts: packages/layout/src/position.ts:50
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s51, S.s108)
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s52, S.s115)
   }
   return nil
 }

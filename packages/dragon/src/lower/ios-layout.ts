@@ -32,6 +32,8 @@ import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/r
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { UaDataset } from '../ua/datasets.ts';
+import type { GridContainer } from './grid-layout.ts';
+import { ANONYMOUS_GRID_ITEM, GridLoweringError, lowerGridContainer, lowerGridItem } from './grid-layout.ts';
 
 export class LoweringError extends Error {
   readonly nodeId: string;
@@ -156,7 +158,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
-    display: keyword<Display>(id, get, 'display', ['block', 'flex']),
+    display: keyword<Display>(id, get, 'display', ['block', 'flex', 'grid']),
     position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute']),
     top: inset(id, get, 'top'),
     right: inset(id, get, 'right'),
@@ -201,7 +203,19 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     rowGap: gap(id, get, 'row-gap'),
     columnGap: gap(id, get, 'column-gap'),
     textAlign: keyword<TextAlign>(id, get, 'text-align', ['start', 'end', 'left', 'right', 'center', 'justify']),
+    grid: null,
+    gridItem: null,
   };
+}
+
+/** Runs a grid lowering step, reporting its refusal as a LoweringError on the element. */
+function gridStep<T>(id: string, step: () => T): T {
+  try {
+    return step();
+  } catch (e) {
+    if (e instanceof GridLoweringError) throw new LoweringError(id, e.property, `${e.message} (on ${id})`);
+    throw e;
+  }
 }
 
 const AHEM_EXPECTED = 'Ahem (the milestone-1 layout font)';
@@ -269,30 +283,39 @@ function anonymousBox(parent: ResolvedElement, id: string, texts: readonly Resol
  */
 export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset): LayoutBox {
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
-  return lowerBox(root, faults, ua);
+  return lowerBox(root, faults, ua, null);
 }
 
 /**
- * The layout tree of one resolved element that generates a box. Text beside element boxes, or directly in a flex container, is
+ * The layout tree of one resolved element that generates a box. Text beside element boxes, or directly in a flex or grid container, is
  * wrapped in anonymous boxes "<element>:anon<k>", one per maximal text sequence; display: none children are omitted, so they never
  * split a text sequence. The engine never creates boxes.
  */
-function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset): LayoutBox {
+function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, gridParent: GridContainer | null): LayoutBox {
   const id = el.element.address;
   const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
-  const style = lowerStyle(el, faults, ua);
-  const wrap = kids.some((c) => c.kind === 'text') && (displayOf(el) === 'flex' || kids.some((c) => c.kind === 'element'));
+  const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
+  const own = lowerStyle(el, faults, ua);
+  // css-grid-2 §7 and §8: a grid container carries its tracks; each in-flow child of one carries its placement.
+  const grid = own.display === 'grid' ? gridStep(id, () => lowerGridContainer(get)) : null;
+  const gridItem = gridParent !== null && own.position !== 'absolute' ? gridStep(id, () => lowerGridItem(gridParent, get)) : null;
+  const style: LayoutStyle = grid === null && gridItem === null ? own : { ...own, grid: grid === null ? null : grid.style, gridItem };
+  const container = displayOf(el) === 'flex' || displayOf(el) === 'grid';
+  const wrap = kids.some((c) => c.kind === 'text') && (container || kids.some((c) => c.kind === 'element'));
   const children: (LayoutBox | TextLeaf)[] = [];
   let run: ResolvedText[] = [];
   let anon = 0;
   const flush = (): void => {
-    if (run.length > 0) children.push(anonymousBox(el, `${id}:anon${anon++}`, run, faults, ua));
+    if (run.length > 0) {
+      const box = anonymousBox(el, `${id}:anon${anon++}`, run, faults, ua);
+      children.push(grid === null ? box : { ...box, style: { ...box.style, gridItem: ANONYMOUS_GRID_ITEM } });
+    }
     run = [];
   };
   for (const c of kids) {
     if (c.kind === 'element') {
       flush();
-      children.push(lowerBox(c, faults, ua));
+      children.push(lowerBox(c, faults, ua, grid));
     } else if (wrap) run.push(c);
     else {
       assertTextCarriesContainer(style, id, c);

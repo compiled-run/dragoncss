@@ -91,7 +91,7 @@ public func units_fromFloatRound(_ px: Double) throws -> Double {
 public func units_fromWholePx(_ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:85
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s139, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s146, jsNumberToString(n)))
   }
   return try units_saturate((n * units_LU_PER_PX))
 }
@@ -161,7 +161,7 @@ public func units_clampNegativeToZero(_ a: Double) throws -> Double {
 public func units_mulInt(_ a: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:139
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s79, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s85, jsNumberToString(n)))
   }
   return try units_saturate((a * n))
 }
@@ -170,7 +170,7 @@ public func units_mulInt(_ a: Double, _ n: Double) throws -> Double {
 public func units_divInt(_ a: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:145
   if ((!jsIsInteger(n)) || (n == 0.0)) {
-    throw JsError(message: jsConcat(S.s97, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s104, jsNumberToString(n)))
   }
   return try units_saturate(jsTrunc((a / n)))
 }
@@ -290,7 +290,7 @@ public func units_isFiniteFactorSum(_ total: Double) throws -> Bool {
 public func units_cumulativeShareRounded(_ total: Double, _ k: Double, _ parts: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:277
   if ((total < 0.0) || (parts <= 0.0)) {
-    throw JsError(message: S.s55)
+    throw JsError(message: S.s57)
   }
   return try units_saturate(jsFloor(((((2.0 * total) * k) + parts) / (2.0 * parts))))
 }
@@ -299,7 +299,7 @@ public func units_cumulativeShareRounded(_ total: Double, _ k: Double, _ parts: 
 public func units_cumulativeShareTruncated(_ total: Double, _ numerator: Double, _ denominator: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:283
   if ((total < 0.0) || (denominator <= 0.0)) {
-    throw JsError(message: S.s56)
+    throw JsError(message: S.s58)
   }
   return try units_saturate(jsTrunc(((total * numerator) / denominator)))
 }

@@ -22,6 +22,7 @@ import { layoutFlexContainer } from './flex.ts';
 import { layoutInline } from './inline.ts';
 import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffset } from './position.ts';
 import type { TextMeasurer } from './text.ts';
+import { unsupported } from './unsupported.ts';
 
 /** Seeded engine errors, so the parity harness can prove it fails (docs/api.md §7). The product runs with NO_ENGINE_FAULTS. */
 export type EngineFaults = {
@@ -165,6 +166,9 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
     const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
     return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
   }
+
+  // The grid engine (grid.ts) lands in the next GRID G1a package; the compiler has no profile row for display: grid until then.
+  if (s.display === 'grid') unsupported('grid-layout', box.id, 'css-grid-2 §12', 'grid layout (the grid engine is not in this build)');
 
   const canCollapseTop = !a.formattingContextRoot && bor.top === 0 && pad.top === 0;
   const r = layoutBlockFlow(ctx, box, {

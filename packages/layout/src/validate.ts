@@ -6,11 +6,20 @@ type StringRule = { readonly t: 'string' };
 type LiteralRule<V extends string> = { readonly t: 'literal'; readonly values: readonly V[] };
 type ObjectRule = { readonly t: 'object'; readonly fields: { readonly [k: string]: Rule } };
 type TaggedRule = { readonly t: 'tagged'; readonly variants: { readonly [kind: string]: { readonly [k: string]: Rule } } };
-type Rule = NumberRule | StringRule | LiteralRule<string> | ObjectRule | TaggedRule;
+type BooleanRule = { readonly t: 'boolean' };
+type ArrayRule = { readonly t: 'array'; readonly item: Rule; readonly minItems: number };
+type NullableRule = { readonly t: 'nullable'; readonly rule: Rule };
+type Rule = NumberRule | StringRule | LiteralRule<string> | ObjectRule | TaggedRule | BooleanRule | ArrayRule | NullableRule;
 
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
-type Infer<R> = R extends NumberRule
+type Infer<R> = R extends BooleanRule
+  ? boolean
+  : R extends { readonly t: 'array'; readonly item: infer I }
+    ? readonly Infer<I>[]
+    : R extends { readonly t: 'nullable'; readonly rule: infer N }
+      ? Infer<N> | null
+      : R extends NumberRule
   ? number
   : R extends StringRule
     ? string
@@ -27,6 +36,15 @@ const positive: NumberRule = { t: 'number', min: 0, exclusiveMin: true, integer:
 const anyNum: NumberRule = { t: 'number', min: -Infinity, exclusiveMin: false, integer: false };
 const int: NumberRule = { t: 'number', min: -Infinity, exclusiveMin: false, integer: true };
 const str: StringRule = { t: 'string' };
+const bool: BooleanRule = { t: 'boolean' };
+const count: NumberRule = { t: 'number', min: 1, exclusiveMin: false, integer: true };
+const count0: NumberRule = { t: 'number', min: 0, exclusiveMin: false, integer: true };
+function arr<const I extends Rule>(item: I, minItems: number): { readonly t: 'array'; readonly item: I; readonly minItems: number } {
+  return { t: 'array', item, minItems };
+}
+function nullable<const N extends Rule>(rule: N): { readonly t: 'nullable'; readonly rule: N } {
+  return { t: 'nullable', rule };
+}
 function lit<const V extends string>(...values: V[]): LiteralRule<V> {
   return { t: 'literal', values };
 }
@@ -60,8 +78,27 @@ const alignItemsValues = [
   'normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end',
 ] as const;
 
+// css-grid-2 §7: track sizes, repeaters, placements and the grid self-alignment keywords.
+const breadth = tagged({ ...px(0), ...percent(0), fr: { value: num(0) }, ...auto, 'min-content': {}, 'max-content': {} });
+const trackSize = tagged({ breadth: { breadth }, minmax: { min: breadth, max: breadth }, 'fit-content': { limit: tagged({ ...px(0), ...percent(0) }) } });
+const repeater = obj({ count, sizes: arr(trackSize, 1) });
+const gridSpan = tagged({ definite: { start: int, end: int }, auto: { span: count } });
+const gridSelfAlignValues = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right'] as const;
+const gridContainer = obj({
+  templateColumns: arr(repeater, 0),
+  templateRows: arr(repeater, 0),
+  autoColumns: arr(trackSize, 1),
+  autoRows: arr(trackSize, 1),
+  explicitColumnCount: count0,
+  explicitRowCount: count0,
+  autoFlow: lit('row', 'column'),
+  dense: bool,
+  justifyItems: lit(...gridSelfAlignValues),
+});
+const gridItem = obj({ column: gridSpan, row: gridSpan, justifySelf: lit('auto', ...gridSelfAlignValues) });
+
 export const styleSchema = obj({
-  display: lit('block', 'flex'),
+  display: lit('block', 'flex', 'grid'),
   position: lit('static', 'relative', 'absolute'),
   top: inset,
   right: inset,
@@ -105,6 +142,8 @@ export const styleSchema = obj({
   rowGap: gap,
   columnGap: gap,
   textAlign: lit('start', 'end', 'left', 'right', 'center', 'justify'),
+  grid: nullable(gridContainer),
+  gridItem: nullable(gridItem),
 });
 
 export const textLeafSchema = obj({
@@ -131,6 +170,7 @@ export type ValidationErrorCode =
   | 'duplicate-id'
   | 'mixed-children'
   | 'text-in-flex'
+  | 'grid-shape'
   | 'uncollapsed-text'
   | 'anonymous-shape';
 
@@ -179,6 +219,20 @@ function checkRule(value: unknown, rule: Rule, path: string, errors: ValidationE
       return;
     case 'string':
       if (typeof value !== 'string') errors.push({ path, code: 'wrong-type', message: 'expected a string' });
+      return;
+    case 'boolean':
+      if (typeof value !== 'boolean') errors.push({ path, code: 'wrong-type', message: 'expected a boolean' });
+      return;
+    case 'nullable':
+      if (value !== null) checkRule(value, rule.rule, path, errors);
+      return;
+    case 'array':
+      if (!Array.isArray(value)) {
+        errors.push({ path, code: 'wrong-type', message: 'expected an array' });
+        return;
+      }
+      if (value.length < rule.minItems) errors.push({ path, code: 'bad-value', message: `expected at least ${rule.minItems} items` });
+      value.forEach((v: unknown, i: number) => checkRule(v, rule.item, `${path}[${i}]`, errors));
       return;
     case 'literal':
       if (typeof value !== 'string' || !rule.values.includes(value)) {
@@ -250,10 +304,71 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be equal: css-overflow-3 §3.1 computes visible beside hidden to auto' });
   }
   if (value['boxType'] === 'anonymous') checkAnonymous(value, children, path, errors, parentId);
+  if (isRecord(style)) checkGrid(style, children, path, errors);
 }
 
+/** Blink kGridMaxTracks (core/style/grid_area.h): the most tracks a grid axis has, and the largest line magnitude. */
+const GRID_MAX_TRACKS = 10000000;
+
+// css-grid-2 §7 and §8: a grid style only on a grid container, a placement on each in-flow child of one and nowhere else, no
+// flexible minimum, definite lines in order and within Blink's track limit, and explicit counts that cover the template.
+function checkGrid(style: Record<string, unknown>, children: readonly unknown[], path: string, errors: ValidationError[]): void {
+  const bad = (at: string, message: string): void => {
+    errors.push({ path: at, code: 'grid-shape', message });
+  };
+  const isGrid = style['display'] === 'grid';
+  const grid = style['grid'];
+  if (isGrid !== (grid !== null && grid !== undefined)) bad(`${path}.style.grid`, 'a grid style is written for display: grid and only there');
+  if (isRecord(grid)) {
+    for (const axis of ['Columns', 'Rows'] as const) {
+      const template = grid[`template${axis}`];
+      let tracks = 0;
+      if (Array.isArray(template)) {
+        for (const r of template) {
+          if (isRecord(r) && typeof r['count'] === 'number' && Array.isArray(r['sizes'])) tracks += r['count'] * r['sizes'].length;
+          if (isRecord(r) && Array.isArray(r['sizes'])) r['sizes'].forEach((t: unknown) => checkTrackSize(t, `${path}.style.grid.template${axis}`, bad));
+        }
+      }
+      const auto = grid[`auto${axis}`];
+      if (Array.isArray(auto)) auto.forEach((t: unknown) => checkTrackSize(t, `${path}.style.grid.auto${axis}`, bad));
+      const explicit = grid[`explicit${axis === 'Columns' ? 'Column' : 'Row'}Count`];
+      if (tracks > GRID_MAX_TRACKS) bad(`${path}.style.grid.template${axis}`, `a track list holds at most ${GRID_MAX_TRACKS} tracks`);
+      if (typeof explicit === 'number' && (explicit < tracks || explicit > GRID_MAX_TRACKS)) bad(`${path}.style.grid`, `the explicit ${axis.toLowerCase()} count is at least the template's ${tracks} tracks and at most ${GRID_MAX_TRACKS}`);
+    }
+  }
+  children.forEach((child: unknown, i: number) => {
+    if (!isRecord(child) || child['kind'] !== 'box' || !isRecord(child['style'])) return;
+    const cs = child['style'];
+    const item = cs['gridItem'];
+    const inFlowItem = isGrid && cs['position'] !== 'absolute';
+    const at = `${path}.children[${i}].style.gridItem`;
+    if (inFlowItem !== (item !== null && item !== undefined)) bad(at, 'a grid placement is written for each in-flow child of a grid container and only there');
+    if (!isRecord(item)) return;
+    for (const axis of ['column', 'row'] as const) {
+      const span = item[axis];
+      if (!isRecord(span)) continue;
+      if (span['kind'] === 'definite') {
+        const start = span['start'];
+        const end = span['end'];
+        if (typeof start === 'number' && typeof end === 'number' && (start >= end || start < -GRID_MAX_TRACKS || end > GRID_MAX_TRACKS)) bad(`${at}.${axis}`, `definite lines need start < end within ±${GRID_MAX_TRACKS}`);
+      } else if (span['kind'] === 'auto' && typeof span['span'] === 'number' && span['span'] > GRID_MAX_TRACKS) {
+        bad(`${at}.${axis}`, `a span is at most ${GRID_MAX_TRACKS}`);
+      }
+    }
+    if (child['boxType'] === 'anonymous' && !sameValue(item, ANONYMOUS_GRID_ITEM)) bad(at, `an anonymous grid item is auto-placed with justify-self auto (${JSON.stringify(ANONYMOUS_GRID_ITEM)})`);
+  });
+}
+
+/** css-grid-2 §7.2.1: a flexible breadth is never a minimum; the compiler writes minmax(auto, <flex>) as the <flex>. */
+function checkTrackSize(t: unknown, at: string, bad: (at: string, message: string) => void): void {
+  if (isRecord(t) && t['kind'] === 'minmax' && isRecord(t['min']) && t['min']['kind'] === 'fr') bad(at, 'minmax() takes no flexible minimum');
+}
+
+/** The placement and justify-self of an anonymous grid item: every non-inherited property is its initial value. */
+const ANONYMOUS_GRID_ITEM = { column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' };
+
 /** CSS2 §9.2.1.1 and css-flexbox-1 §4: the initial value of every non-inherited LayoutStyle field an anonymous box must carry. */
-const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign'>]: LayoutStyle[K] } = {
+const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'gridItem'>]: LayoutStyle[K] } = {
   display: 'block',
   position: 'static',
   top: { kind: 'auto' },
@@ -293,6 +408,7 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
   alignContent: 'normal',
   rowGap: { kind: 'normal' },
   columnGap: { kind: 'normal' },
+  grid: null,
 };
 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box wraps a run of text only. It holds at least one text leaf and no box, its
@@ -307,8 +423,18 @@ function checkAnonymous(box: Record<string, unknown>, children: readonly unknown
   const style = box['style'];
   if (!isRecord(style)) return;
   for (const [key, initial] of Object.entries(ANONYMOUS_INITIAL)) {
-    if (JSON.stringify(style[key]) !== JSON.stringify(initial)) bad(`an anonymous box takes the initial ${key} (${JSON.stringify(initial)}), not ${JSON.stringify(style[key])}`);
+    if (!sameValue(style[key], initial)) bad(`an anonymous box takes the initial ${key} (${JSON.stringify(initial)}), not ${JSON.stringify(style[key])}`);
   }
+}
+
+/** Structural equality of JSON values, so key order never matters. */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) || Array.isArray(b)) return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => sameValue(v, b[i]));
+  if (isRecord(a) && isRecord(b)) {
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every((k) => Object.hasOwn(b, k) && sameValue(a[k], b[k]));
+  }
+  return a === b;
 }
 
 function escapeRegExp(s: string): string {
@@ -326,8 +452,8 @@ function checkInlineContent(box: Record<string, unknown>, children: readonly unk
     errors.push({ path: `${path}.children`, code: 'mixed-children', message: 'a box has either text children or box children; wrap the text in anonymous boxes' });
   }
   const style = box['style'];
-  if (isRecord(style) && style['display'] === 'flex') {
-    errors.push({ path: `${path}.children`, code: 'text-in-flex', message: 'text directly in a flex container must be wrapped in an anonymous flex item' });
+  if (isRecord(style) && (style['display'] === 'flex' || style['display'] === 'grid')) {
+    errors.push({ path: `${path}.children`, code: 'text-in-flex', message: 'text directly in a flex or grid container must be wrapped in an anonymous item' });
   }
   const strings = texts.map((t) => t['text']).filter((t): t is string => typeof t === 'string');
   if (strings.length !== texts.length || !texts.every((t) => t['whiteSpaceCollapse'] === 'collapse')) return;
@@ -351,6 +477,10 @@ export function validateLayoutInput(json: unknown): ValidationResult {
     const root = json['root'];
     if (isRecord(root) && root['kind'] !== 'box') {
       errors.push({ path: '$.root.kind', code: 'bad-value', message: 'the root must be a box' });
+    }
+    // css-grid-2 §8: the root has no grid container parent, so it carries no placement.
+    if (isRecord(root) && isRecord(root['style']) && root['style']['gridItem'] !== null && root['style']['gridItem'] !== undefined) {
+      errors.push({ path: '$.root.style.gridItem', code: 'grid-shape', message: 'the root box is not a grid item' });
     }
     // CSS2 §10.1: the root box is laid out in the initial containing block; the engine places it in flow.
     if (isRecord(root) && isRecord(root['style']) && root['style']['position'] === 'absolute') {

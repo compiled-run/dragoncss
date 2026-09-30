@@ -25,7 +25,7 @@ describe('validateLayoutInput', () => {
     const bad = clone(good) as unknown as { root: { style: Record<string, unknown> } };
     bad.root.style['float'] = 'left';
     bad.root.style['width'] = { kind: 'em', value: 2 };
-    bad.root.style['display'] = 'grid';
+    bad.root.style['display'] = 'inline-grid';
     const r = validateLayoutInput(bad);
     expect(r.ok).toBe(false);
     if (!r.ok) {

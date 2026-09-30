@@ -18,7 +18,7 @@ Every field is required and there are no defaults: the compiler writes every val
 
 - `viewport` `{ width, height }` in CSS px, the initial containing block. `devicePixelRatio`: border widths snap to whole device px.
 - `root`: a `LayoutBox` `{ kind: "box", id, boxType: "element" | "anonymous", style: LayoutStyle, children }`. Children are all boxes or all text leaves. The compiler wraps mixed text in anonymous boxes `<element>:anon<k>`; the engine never creates boxes.
-- `style` has all 41 `LayoutStyle` fields. Lengths are tagged `{ kind: "px", value }` (CSS px), `{ kind: "percent", value }` (100 is the whole basis), or keywords such as `{ kind: "auto" }`, `{ kind: "none" }`, `{ kind: "normal" }` and `{ kind: "content" }`, as each field allows. Enumerations are strings; flexGrow, flexShrink and order are numbers.
+- `style` has all 43 `LayoutStyle` fields. Lengths are tagged `{ kind: "px", value }` (CSS px), `{ kind: "percent", value }` (100 is the whole basis), or keywords such as `{ kind: "auto" }`, `{ kind: "none" }`, `{ kind: "normal" }` and `{ kind: "content" }`, as each field allows. Enumerations are strings; flexGrow, flexShrink and order are numbers. `grid` is the grid container's tracks, placement flow and justify-items (input.ts GridContainerStyle) on a `display: "grid"` box and `null` elsewhere; `gridItem` is the resolved placement and justify-self (GridItemStyle) on each in-flow child of a grid container and `null` elsewhere.
 - The four border widths also take `{ kind: "device-px", value }`: an initial line width (no width declared, or a border shorthand that omits it), which Chrome keeps in device px at every pixel ratio (rule R5 below).
 - A text leaf is `{ kind: "text", id: "<element>:text<k>", text, font: { family: "Ahem", size }, lineHeight, whiteSpaceCollapse: "collapse", textWrapMode }`. The text is already collapsed, and the leaf carries every inherited text property itself.
 - Ids are unique. Parents come before children, and children are in document order. `order` and the reverse flex directions are applied by the engine, never by reordering the input.
@@ -149,7 +149,9 @@ Input:
    "columnGap": {
     "kind": "normal"
    },
-   "textAlign": "start"
+   "textAlign": "start",
+   "grid": null,
+   "gridItem": null
   },
   "children": [
    {
@@ -260,7 +262,9 @@ Input:
      "columnGap": {
       "kind": "normal"
      },
-     "textAlign": "start"
+     "textAlign": "start",
+     "grid": null,
+     "gridItem": null
     },
     "children": [
      {
