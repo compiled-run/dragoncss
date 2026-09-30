@@ -35,7 +35,8 @@ Worktree /tmp/dragon-gallery, branch `native-gallery`, from origin/master 1211f4
 6. **Chrome shows the authored HTML**, the same rendering the pixel reference uses.
 7. **Failure handling:** a device that fails to build, boot or run fills its column with the reason. Each missing or bad
    screenshot is listed under "Problems in this run" on the page. The page is always written, and the command then exits 1.
-   Chrome failures abort, because Chrome is the reference.
+   Chrome failures are handled the same way, per case (PR #34 round 1, Macroscope 4140473637): an aborting Chrome
+   failure lost the page and every other case's result, so a missing Chrome cell is recorded as a problem instead.
 
 ## Audit (AGENTS.md step 3)
 

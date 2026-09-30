@@ -288,3 +288,34 @@ describe('TREE: ids, every attribute name, HTML case-insensitive attribute value
     expect(parse('[ns|x] { width: 1px; }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_SELECTOR']);
   });
 });
+
+describe('TW-SWEEP: class tokens that are not identifiers, and escaped class selectors', () => {
+  const tree = (r: SourceRef): TreeNode[] => [div(r, 'half', ['w-1/2']), div(r, 'dot', ['p-0.5']), div(r, 'at', ['@container']), div(r, 'a', ['a'])];
+  const width = (css: string, node: string): string => {
+    const c = project().compile(inputFor(`${css} { width: 7px; }`, tree));
+    expect(c.diagnostics).toEqual([]);
+    return explainOne(c, 'ios', node, 'width').value;
+  };
+
+  it.each([
+    ['.w-1\\/2', 'half'],
+    ['.p-0\\.5', 'dot'],
+    ['.\\@container', 'at'],
+    ['.\\61', 'a'],
+    ['.\\000061', 'a'],
+    [':where(.w-1\\/2)', 'half'],
+  ])('%s matches the class Chrome matches (css-syntax-3 §4.3.7 escapes)', (sel, node) => {
+    expect(width(sel, node)).toBe('7px');
+  });
+
+  it('an escape that spells another class does not match the written text', () => {
+    expect(width('.w-1\\/3', 'half')).toBe('auto');
+    expect(width('.\\62', 'a')).toBe('auto');
+  });
+
+  it('a class symbol name is one class token: any text without ASCII white space', () => {
+    const named = (name: string) => project().compile(inputFor('.x { width: 1px; }', (r) => [{ ...div(r, 'n', []), classes: [staticClass({ owner: DOC, sheet: 's', name }, { kind: 'authored', span: { source: r, start: 0, end: 0 } })] }]));
+    expect(named('w-1/2').diagnostics).toEqual([]);
+    for (const bad of ['', 'a b', 'a\tb', 'a\nb']) expect(named(bad).diagnostics.map((d) => d.code), JSON.stringify(bad)).toEqual(['DRAGON_INPUT_INVALID']);
+  });
+});
