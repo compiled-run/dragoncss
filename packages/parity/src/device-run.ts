@@ -310,11 +310,11 @@ export type Memory = { readonly total: number; readonly available: number };
 /**
  * Whether a device needing `need` bytes may boot, given the bytes this process's booted devices hold and one fresh memory reading:
  * the held bytes plus the request must fit the smaller of total and available memory, less the reserve. A booted device's memory
- * is already out of `available` and counts again as held, so it errs toward waiting. With nothing held the device always boots,
- * so a run always makes progress (under the lease no other device run holds memory).
+ * is already out of `available` and counts again as held, so it errs toward waiting. The first device waits too (PR #42 finding
+ * 4149425879): a run never boots a device the budget does not admit, and one that can never be admitted fails after the wait.
  */
 export function admits(held: number, need: number, mem: Memory, reserve: number = MEMORY_RESERVE): boolean {
-  return held === 0 || held + need <= Math.min(mem.total, mem.available) - reserve;
+  return held + need <= Math.min(mem.total, mem.available) - reserve;
 }
 
 /** The bytes each booted device of this process holds, by device name: reserved before its boot, given back once it is stopped. */
@@ -343,13 +343,14 @@ export async function admitDevice(spec: { readonly target: NativeTarget; readonl
     const holders = [...reserved.keys()].join(', ');
     if (admits(held, need, mem)) {
       reserved.set(spec.name, need);
-      if (waited || held + need > budget) log(`${spec.name}: device memory admitted after ${((Date.now() - t0) / 1000).toFixed(0)} s (${gib(held + need)} held of a ${gib(budget)} budget${held === 0 ? '; the only device, so it boots whatever the budget' : ''})`);
+      if (waited) log(`${spec.name}: device memory admitted after ${((Date.now() - t0) / 1000).toFixed(0)} s (${gib(held + need)} held of a ${gib(budget)} budget)`);
       return;
     }
-    if (!waited) log(`${spec.name}: waiting for device memory: ${gib(held)} held by ${holders}, ${gib(need)} more would pass the ${gib(budget)} budget`);
+    const state = `needs ${gib(need)}; ${gib(mem.available)} free of ${gib(mem.total)} read, less the ${gib(MEMORY_RESERVE)} reserve, is a ${gib(budget)} budget; ${held === 0 ? 'no device held' : `${gib(held)} held by ${holders}`}`;
+    if (!waited) log(`${spec.name}: waiting for device memory: ${state}`);
     waited = true;
     const waitMs = opts.waitMs ?? ADMIT_WAIT_MS;
-    if (Date.now() - t0 > waitMs) throw new Error(`${spec.name}: no device memory within ${waitMs / 1000} s (tooling fault): ${gib(held)} held by ${holders} of a ${gib(budget)} budget`);
+    if (Date.now() - t0 > waitMs) throw new Error(`${spec.name}: no device memory within ${waitMs / 1000} s (tooling fault): ${state}`);
     await sleep(opts.pollMs ?? 2000);
   }
 }

@@ -151,8 +151,20 @@ describe('the memory budget', () => {
     expect(admits(11 * GIB, 3 * GIB, mem, 8 * GIB)).toBe(false);
     expect(admits(4 * GIB, 4 * GIB, { total: 10 * GIB, available: 40 * GIB }, 4 * GIB)).toBe(false);
   });
-  it('the first device always boots, so a run makes progress on a loaded machine', () => {
-    expect(admits(0, 4 * GIB, { total: 8 * GIB, available: 1 * GIB })).toBe(true);
+  // PR #42 finding 4149425879: a run never boots a device the budget does not admit, the first one included.
+  it('the first device waits for the budget too, and one that can never be admitted fails naming the device, its need and the free memory', async () => {
+    expect(admits(0, 4 * GIB, { total: 8 * GIB, available: 1 * GIB })).toBe(false);
+    expect(admits(0, 4 * GIB, { total: 48 * GIB, available: 11 * GIB })).toBe(false);
+    expect(admits(0, 4 * GIB, { total: 48 * GIB, available: 12 * GIB })).toBe(true);
+    const starved = admitDevice({ target: 'android', name: 'dragon-480' }, { ...quiet, memory: () => ({ total: 48 * GIB, available: 3 * GIB }), waitMs: 20, pollMs: 5 });
+    await expect(starved).rejects.toThrow(/dragon-480: no device memory within 0.02 s \(tooling fault\): needs 4.0 GiB; 3.0 GiB free of 48.0 GiB read, less the 8.0 GiB reserve, is a -5.0 GiB budget; no device held/);
+    expect(heldBytes()).toBe(0);
+    // Memory freed while it waits admits it.
+    let available = 3 * GIB;
+    const waiting = admitDevice({ target: 'ios', name: 'iPhone 17' }, { ...quiet, memory: () => ({ total: 48 * GIB, available }), pollMs: 5 });
+    setTimeout(() => void (available = 20 * GIB), 30);
+    await waiting;
+    expect(heldBytes()).toBe(DEVICE_MEMORY.ios);
   });
   it('both targets asking at once never pass the budget, whatever order they ask in', async () => {
     const devices = DEVICE_MATRIX.map((d) => ({ target: d.target, name: d.name }));
@@ -162,7 +174,7 @@ describe('the memory budget', () => {
       const held = admitted.filter((n): n is string => n !== null);
       const bytes = DEVICE_MATRIX.filter((d) => held.includes(d.name)).reduce((n, d) => n + DEVICE_MEMORY[d.target], 0);
       expect(heldBytes()).toBe(bytes);
-      expect(held.length === 1 || bytes <= mem.available - MEMORY_RESERVE).toBe(true);
+      expect(bytes).toBeLessThanOrEqual(mem.available - MEMORY_RESERVE);
       expect(held.length).toBeGreaterThan(1);
       expect(held.length).toBeLessThan(devices.length);
       for (const n of held) releaseDeviceMemory(n);
