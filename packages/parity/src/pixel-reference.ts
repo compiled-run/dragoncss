@@ -18,8 +18,8 @@ import type { DumpSample } from './native-dump.ts';
 import { expectedEngine, referenceMeasurer } from './native-host.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
-import type { GlyphBox, GlyphLine, ImageSize, SampleBox, SamplePoint } from './samples.ts';
-import { generateGlyphSamples, generateSamples } from './samples.ts';
+import type { GlyphBox, GlyphLine, ImageSize, SampleBox, SamplePoint, SampleResult } from './samples.ts';
+import { SAMPLE_INSET_DEVICE_PX, sampleBoxes, sampleGlyphs } from './samples.ts';
 import { withPaintSamples } from './paint-samples/registry.ts';
 
 // ---------------------------------------------------------------- PNG
@@ -267,8 +267,17 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
 /**
  * The sample points of a program at a DPR: generateSamples over every element and anonymous box (snapped edges, the engine's
  * border widths in device px, no radius, the program's clip), then the glyph rule over every text line, then the paint modules' points.
+ * Every base point stays SAMPLE_INSET_DEVICE_PX clear of every glyph box edge (T093 ruling A); the glyph boxes come from engine data only.
  */
 export function casePoints(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): SamplePoint[] {
+  return caseSamples(p, viewport, dpr).points;
+}
+
+/**
+ * casePoints with the rules whose point no along-position could keep clear of the glyph boxes. clearance false gives the P5 points,
+ * before the glyph clearance and the vertical glyph-edge scanlines, to read failure lists of runs from before them.
+ */
+export function caseSamples(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number, clearance = true): SampleResult {
   const input = programInput(p, viewport, dpr);
   const engine = expectedEngine();
   const out = engine.layout(input, engine.measurer);
@@ -276,19 +285,34 @@ export function casePoints(p: NativeProgram, viewport: { readonly width: number;
   const snapped = snapEdges(out.boxes);
   const borders = borderDevicePx(engine, input);
   const nodes = new Map(p.nodes.map((n) => [n.id, n]));
-  const sampleBoxes: SampleBox[] = [];
+  const boxes: SampleBox[] = [];
   out.boxes.forEach((r, i) => {
     if (isLine(r)) return;
     const n = nodes.get(r.id);
     if (n === undefined || n.kind === 'text') return;
     const s = snapped[i] as { left: number; top: number; right: number; bottom: number };
     const b = borders.get(r.id) ?? [0, 0, 0, 0];
-    sampleBoxes.push({ id: r.id, left: s.left, top: s.top, right: s.right, bottom: s.bottom, border: { top: b[0], right: b[1], bottom: b[2], left: b[3] }, radius: 0, clips: n.clips });
+    boxes.push({ id: r.id, left: s.left, top: s.top, right: s.right, bottom: s.bottom, border: { top: b[0], right: b[1], bottom: b[2], left: b[3] }, radius: 0, clips: n.clips });
   });
   const size = rasterSize(viewport, dpr);
-  const base = [...generateSamples(sampleBoxes, size), ...generateGlyphSamples(glyphLines(p, viewport, dpr), size)];
+  const lines = glyphLines(p, viewport, dpr);
+  const box = sampleBoxes(boxes, size, clearance ? lines.flatMap((l) => l.glyphs) : []);
+  const glyph = sampleGlyphs(lines, size, SAMPLE_INSET_DEVICE_PX, clearance);
+  const base = [...box.points, ...glyph.points];
   // The paint modules' points follow the base points; a module may suppress base points its paint replaces (paint-samples/).
-  return withPaintSamples({ program: p, viewport, dpr, size, boxes: sampleBoxes, base });
+  const points = withPaintSamples({ program: p, viewport, dpr, size, boxes, base });
+  return { points, dropped: [...box.dropped, ...glyph.dropped], rescued: box.rescued };
+}
+
+/** Per target, device DPR and case: [lines with a glyph-bottom scanline, lines with glyphs] (T093 addendum F1), in corpus order. */
+export type BottomScanlines = { readonly [target: string]: { readonly [dpr: string]: { readonly [caseId: string]: readonly [number, number] } } };
+export const BOTTOM_SCANLINES_PATH = (): string => repoPath('packages/parity/expected-glyphs/bottom-scanlines.json');
+
+/** The bottom-scanline counts of one program at one DPR: [lines with a glyph-bottom scanline, lines with glyphs]. */
+export function bottomScanlines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): [number, number] {
+  const lines = glyphLines(p, viewport, dpr).filter((l) => l.glyphs.length > 0);
+  const rules = new Set(casePoints(p, viewport, dpr).map((q) => q.rule));
+  return [lines.filter((l) => rules.has(`edge:${l.id}:glyph-bottom`)).length, lines.length];
 }
 
 /** The run file the device app reads (native-support.ts dragonReadRun): the cases in order, their points, and the hold flag. */

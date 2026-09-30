@@ -13,12 +13,15 @@ declare module 'css-tree' {
   export type ParseOptions = {
     context?: string;
     positions?: boolean;
+    offset?: number;
     parseValue?: boolean;
     parseRulePrelude?: boolean;
     onParseError?: (error: { message: string; offset: number }) => void;
   };
   export function parse(text: string, options?: ParseOptions): CssNode;
   export function generate(node: CssNode): string;
+  /** Identifier escapes: decode gives the identifier's value with escapes resolved. */
+  export const ident: { decode(text: string): string; encode(text: string): string };
   export type MatchResult = { readonly error: { readonly name: string; readonly message: string } | null };
   export interface Lexer {
     matchProperty(property: string, value: CssNode | string): MatchResult;

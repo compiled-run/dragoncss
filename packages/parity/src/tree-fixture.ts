@@ -80,7 +80,14 @@ export function readTreeExpectation(id: string): TreeExpectation | null {
 export function readTreeFixture(id: string): FrontEndResult {
   const dir = `packages/parity/fixtures/${id}`;
   const spec = JSON.parse(readFileSync(repoPath(`${dir}/fixture.json`), 'utf8')) as TreeFixtureFile;
-  return treeFixtureInput(id, spec, (file) => ({ uri: `dragon-source://${PROJECT_ID}/fixtures/${id}/${file}`, displayPath: `${dir}/${file}`, text: readFileSync(repoPath(`${dir}/${file}`), 'utf8') }));
+  return treeFixtureInput(id, spec, (file) => ({ uri: `dragon-source://${PROJECT_ID}/fixtures/${id}/${file}`, displayPath: `${dir}/${file}`, text: readFileSync(repoPath(sourcePath(id, dir, file)), 'utf8') }));
+}
+
+/** The repo-relative path of a listed source; a backslash or a path leaving the repository is refused. */
+function sourcePath(id: string, dir: string, file: string): string {
+  const path = posix.normalize(`${dir}/${file}`);
+  if (file.includes('\\') || path === '..' || path.startsWith('../') || posix.isAbsolute(path)) throw new Error(`${id}: source ${file} is outside the repository or not a posix path`);
+  return path;
 }
 
 /** A tree fixture directory anywhere in the repository (repo-relative dir); its source paths may leave the directory ("../x.css"). */
@@ -99,7 +106,7 @@ export function readTreeFixtureDir(dir: string, id: string, options: TreeFixture
   const read = readTreeFixtureFile(dir);
   const spec = options.spec === undefined ? read : options.spec(read);
   return treeFixtureInput(id, spec, (file) => {
-    const path = posix.normalize(`${dir}/${file}`);
+    const path = sourcePath(id, dir, file);
     const text = readFileSync(repoPath(path), 'utf8');
     return { uri: `dragon-source://${PROJECT_ID}/${path}`, displayPath: path, text: options.text === undefined ? text : options.text(file, text) };
   });
@@ -107,8 +114,12 @@ export function readTreeFixtureDir(dir: string, id: string, options: TreeFixture
 
 function treeFixtureInput(id: string, spec: TreeFixtureFile, load: (file: string) => { uri: string; displayPath: string; text: string }): FrontEndResult {
   const sources = new Map<string, SourceFile>();
+  const uris = new Set<string>();
   for (const file of spec.sources) {
     const { uri, displayPath, text } = load(file);
+    // Two entries for one file would become two snapshot sources with one uri.
+    if (sources.has(file) || uris.has(uri)) throw new Error(`${id}: source ${file} is listed twice`);
+    uris.add(uri);
     const ref: SourceRef = { uri, revision: 'fixture', hash: `sha256:${createHash('sha256').update(text, 'utf8').digest('hex')}` };
     sources.set(file, { ref, text, displayPath });
   }
@@ -120,6 +131,7 @@ function treeFixtureInput(id: string, spec: TreeFixtureFile, load: (file: string
   const find = (file: string, at: At): Origin => {
     const s = source(file);
     const [text, nth] = typeof at === 'string' ? [at, 0] : at;
+    if (text === '' || !Number.isInteger(nth) || nth < 0) throw new Error(`${id}: bad origin ${JSON.stringify(at)} in ${file}`);
     let start = -1;
     for (let i = 0; i <= nth; i++) {
       start = s.text.indexOf(text, start + 1);

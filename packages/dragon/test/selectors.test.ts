@@ -86,6 +86,21 @@ describe('precise refusals', () => {
     }
   });
 
+  it('escaped ids, classes, attribute names, values and flags, type and pseudo-class names are read decoded (css-syntax-3 §4.3.7)', () => {
+    const { selectors, diagnostics } = parse('\\64 iv#\\31 a.\\61 b[data-\\41][data-x=\\41  \\69]:\\72oot, [a\\|b] { width: 1px; }');
+    expect(diagnostics).toEqual([]);
+    expect(selectors.map((s) => s.parts.map((p) => p.compound))).toEqual([
+      [{ tag: 'div', ids: ['1a'], classes: ['ab'], attributes: [{ name: 'data-a', value: null, matcher: null, caseInsensitive: false }, { name: 'data-x', value: 'A', matcher: '=', caseInsensitive: true }], pseudos: [{ kind: 'root' }] }],
+      [{ tag: null, ids: [], classes: [], attributes: [{ name: 'a|b', value: null, matcher: null, caseInsensitive: false }], pseudos: [] }],
+    ]);
+  });
+
+  it('a type or universal selector after another simple selector drops the rule, as in Chrome 145 (.a*)', () => {
+    const { selectors, diagnostics } = parse('.b* { width: 1px; }');
+    expect(selectors.every((s) => s.dropped)).toBe(true);
+    expect(diagnostics.map((d) => d.code)).toEqual(['DRAGON_SELECTOR_DROPPED']);
+  });
+
   it('a component-scoped sheet needs a class on the subject compound; other compounds may be structural', () => {
     expect(parse('div { width: 1px; }', 'component').diagnostics.map((d) => d.message)).toEqual(['the subject compound of "div" needs a class in a component-scoped sheet, so it can only style the owner\'s elements']);
     expect(parse('.a > * { width: 1px; }', 'component').diagnostics).toHaveLength(1);
@@ -260,6 +275,9 @@ describe('TREE: ids, every attribute name, HTML case-insensitive attribute value
     expect(hitsOf(css, { ...NO_FAULTS, invalidSelectorListKept: true })).toEqual(['a1', 'a2', 'a3']);
     // Chrome drops the rule, so a Dragon refusal elsewhere in the list is moot.
     expect(parse('.a:hover, .a:-moz-focusring { width: 1px; }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_SELECTOR_DROPPED']);
+    // Chrome never parses the block of a dropped rule, so unsupported declarations in it are not errors.
+    expect(parse('.a, .a::-moz-range-thumb { -webkit-appearance: none; display: grid; @media (width > 1px) {} }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_SELECTOR_DROPPED']);
+    expect(hitsOf('.a, .a::-moz-range-thumb { width: 7px; background: transparent; border: none; }')).toEqual([]);
   });
 
   it('Chrome-valid pseudo-elements stay refused and name their owner package; inside :is() an invalid one is refused', () => {

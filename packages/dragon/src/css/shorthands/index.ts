@@ -5,6 +5,7 @@ import { BACKGROUND_SHORTHANDS } from './background.ts';
 import { BORDER_SHORTHANDS } from './border.ts';
 import { BOX_SHORTHANDS } from './box.ts';
 import { FLEX_SHORTHANDS } from './flex.ts';
+import { GRID_SHORTHANDS } from './grid.ts';
 import { LOGICAL_SHORTHANDS } from './logical.ts';
 import { OVERFLOW_SHORTHANDS } from './overflow.ts';
 import { OUTLINE_SHORTHANDS } from './outline.ts';
@@ -22,6 +23,8 @@ export const SHORTHAND_HANDLERS: { readonly [S in Shorthand]: ShorthandHandler }
   ...TEXT_SHORTHANDS,
   ...LOGICAL_SHORTHANDS,
   ...BACKGROUND_SHORTHANDS,
+
+  ...GRID_SHORTHANDS,
   // Paint families (EMS seams): empty until their packages fill them.
   ...RADIUS_SHORTHANDS,
   ...OUTLINE_SHORTHANDS,

@@ -188,7 +188,8 @@ function main(): void {
       if (d.code === 'DRAGON_UNSUPPORTED_AT_RULE') {
         for (const r of d.related) {
           const m = /^(DRAGON_[A-Z_]+)(?: \[([a-z]+)\])?: ([\s\S]*)$/.exec(r.message);
-          if (m !== null) record(pass, locate(r.origin, input, css, elements), d.severity, true, m[3] as string, m[1] as string, m[2] ?? null);
+          if (m === null) throw new Error(`unreadable related entry of ${d.message}: ${r.message}`);
+          record(pass, locate(r.origin, input, css, elements), d.severity, true, m[3] as string, m[1] as string, m[2] ?? null);
         }
       }
     }
