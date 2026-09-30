@@ -70,9 +70,6 @@ describe('precise refusals', () => {
     ['.a:checked', ':checked depends on user interaction'],
     ['.a:lang(en)', ':lang(en) is not supported'],
     ['.a:not()', 'needs a selector list argument'],
-    ['#\\31 a', 'id selector "#\\31 a" holds an escape'],
-    ['[data-\\41]', 'holds an escape'],
-    ['[data-x=\\41]', 'holds an escape'],
   ])('%s', (sel, message) => {
     const { selectors, diagnostics } = parse(`${sel} { width: 1px; }`);
     expect(selectors).toEqual([]);
@@ -87,6 +84,21 @@ describe('precise refusals', () => {
       expect(diagnostics, sel).toEqual([]);
       expect((selectors[0] as Selector).specificity, sel).toEqual(sp);
     }
+  });
+
+  it('escaped ids, classes, attribute names, values and flags, type and pseudo-class names are read decoded (css-syntax-3 §4.3.7)', () => {
+    const { selectors, diagnostics } = parse('\\64 iv#\\31 a.\\61 b[data-\\41][data-x=\\41  \\69]:\\72oot, [a\\|b] { width: 1px; }');
+    expect(diagnostics).toEqual([]);
+    expect(selectors.map((s) => s.parts.map((p) => p.compound))).toEqual([
+      [{ tag: 'div', ids: ['1a'], classes: ['ab'], attributes: [{ name: 'data-a', value: null, matcher: null, caseInsensitive: false }, { name: 'data-x', value: 'A', matcher: '=', caseInsensitive: true }], pseudos: [{ kind: 'root' }] }],
+      [{ tag: null, ids: [], classes: [], attributes: [{ name: 'a|b', value: null, matcher: null, caseInsensitive: false }], pseudos: [] }],
+    ]);
+  });
+
+  it('a type or universal selector after another simple selector drops the rule, as in Chrome 145 (.a*)', () => {
+    const { selectors, diagnostics } = parse('.b* { width: 1px; }');
+    expect(selectors.every((s) => s.dropped)).toBe(true);
+    expect(diagnostics.map((d) => d.code)).toEqual(['DRAGON_SELECTOR_DROPPED']);
   });
 
   it('a component-scoped sheet needs a class on the subject compound; other compounds may be structural', () => {
