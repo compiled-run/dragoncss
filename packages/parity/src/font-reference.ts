@@ -5,6 +5,7 @@
 import { readFileSync } from 'node:fs';
 import type { Page } from 'playwright';
 import type { FontMap } from 'dragon';
+import { foldFamily } from '../../dragon/src/fonts/selection.ts';
 import { repoPath } from './paths.ts';
 
 /** A planted break of the in-page rewrite, which the reference captures must catch. */
@@ -48,11 +49,11 @@ const quoteCss = (s: string): string => `"${s.replace(/["\\]/g, (c) => `\\${c}`)
 
 /**
  * The unquoted generic keyword to pinned family pairs the in-page rewrite replaces. A named family entry must pin under its own
- * name: the CSSOM rewrite replaces only generics, so the reference could not express a renamed family.
+ * name (as Chrome's FontFaceCache folds it): the CSSOM rewrite replaces only generics, so the reference could not express a renamed family.
  */
 export function pinnedGenerics(map: FontMap): Record<string, string> {
   for (const [name, e] of Object.entries(map.families ?? {})) {
-    if (e.mode === 'pinned' && e.family !== name) throw new Error(`the stated reference cannot rename the family ${name} to ${e.family}`);
+    if (e.mode === 'pinned' && foldFamily(e.family) !== foldFamily(name)) throw new Error(`the stated reference cannot rename the family ${name} to ${e.family}`);
   }
   return Object.fromEntries(Object.entries(map.generics).flatMap(([k, e]) => (e !== undefined && e.mode === 'pinned' ? [[k, e.family]] : [])));
 }

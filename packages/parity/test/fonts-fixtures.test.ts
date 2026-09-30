@@ -12,8 +12,9 @@ import { launchChrome } from '../src/chrome.ts';
 import { FONT_FIXTURES, FONTS, fontMapOf } from '../src/fixture-groups/fonts.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { fontFaceUrls } from '../src/fixture-reader.ts';
-import { authoredFontHtml, committedFontAuthored, faceProblem, fontCases, fontEmittedDir, fontExpectedDir, fontExpectedPath, liveFontAuthored, runFontFixture } from '../src/fonts-run.ts';
-import { compileFixture, runFixture, webCssOf } from '../src/pipeline.ts';
+import { authoredFontHtml, committedFontAuthored, faceProblem, readFontCapture, fontCases, fontEmittedDir, fontExpectedDir, fontExpectedPath, liveFontAuthored, runFontFixture } from '../src/fonts-run.ts';
+import { pinnedGenerics } from '../src/font-reference.ts';
+import { compileFixture, inlineFontAssets, runFixture, webCssOf } from '../src/pipeline.ts';
 
 let browser: Browser;
 beforeAll(async () => {
@@ -66,6 +67,34 @@ describe('the fonts group', () => {
     const forms = "@font-face{src:url(../../../vendor/fonts/Inter/Inter-Bold.ttf)} @font-face{src:url('../../../vendor/fonts/Inter/Inter-Bold.ttf')} @font-face{src:url(missing.ttf)}";
     expect(authoredFontHtml(forms).match(/url\("data:font\/ttf;base64,/g)?.length).toBe(2);
     expect(authoredFontHtml(forms)).toMatch(/url\(missing\.ttf\)/);
+  });
+
+  it('pinnedGenerics: a named family pins under its own name as Chrome folds it, never under another', () => {
+    const faces = [{ src: 'vendor/fonts/Lato/Lato-Regular.ttf' }];
+    expect(pinnedGenerics({ generics: { monospace: { mode: 'pinned', family: 'Dragon Mono', faces } }, families: { lato: { mode: 'pinned', family: 'Lato', faces } } })).toEqual({ monospace: 'Dragon Mono' });
+    expect(() => pinnedGenerics({ generics: {}, families: { Lato: { mode: 'pinned', family: 'Other', faces } } })).toThrow(/cannot rename the family Lato to Other/);
+  });
+
+  it('inlineFontAssets inlines every named asset, and throws on a url naming no asset or an asset no url names', () => {
+    const a = { path: 'fonts/0123456789abcdef.ttf', bytes: new Uint8Array([1, 2, 3]) };
+    expect(inlineFontAssets('.x{color:red}', [])).toBe('.x{color:red}');
+    expect(inlineFontAssets(`@font-face{src:url("${a.path}")}`, [a])).toBe('@font-face{src:url("data:font/ttf;base64,AQID")}');
+    expect(() => inlineFontAssets('@font-face{src:url("fonts/other.woff2")}', [a])).toThrow(/names fonts\/other\.woff2, which is not a web output asset/);
+    expect(() => inlineFontAssets('.x{color:red}', [a])).toThrow(/never names: fonts\/0123456789abcdef\.ttf/);
+  });
+
+  it('a committed fonts capture is read checked: its case, direction, Chrome, nodes and canonical form', () => {
+    const f = fixture('fonts-platform');
+    const [ltr, rtl] = fontCases(f);
+    if (ltr === undefined || rtl === undefined) throw new Error('fonts-platform cases');
+    const text = readFileSync(fontExpectedPath(ltr.id), 'utf8');
+    expect(readFontCapture(ltr, text).fixture).toBe(ltr.id);
+    expect(() => readFontCapture(rtl, text)).toThrow(/not fonts-platform-rtl rtl/);
+    const cap = JSON.parse(text) as { nodes: Record<string, unknown>[] };
+    expect(() => readFontCapture(ltr, JSON.stringify(cap))).toThrow(/not in the form parity:capture writes/);
+    expect(() => readFontCapture(ltr, `${JSON.stringify({ ...cap, nodes: [{ ...cap.nodes[0], x: 'NaN' }] }, null, 2)}\n`)).toThrow(/node 0 is malformed/);
+    expect(() => readFontCapture(ltr, `${JSON.stringify({ ...cap, nodes: [] }, null, 2)}\n`)).toThrow(/no nodes/);
+    expect(() => readFontCapture(ltr, 'null')).toThrow(/not a capture/);
   });
 
   it('faceProblem accepts only the expected web font, or only platform faces', () => {

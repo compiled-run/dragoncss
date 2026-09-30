@@ -127,14 +127,23 @@ export const webCssOf = (compiled: Compiled<'ios' | 'web'>): string | null => {
   const webOut = compiled.outputs.web;
   if (webOut.kind !== 'ready') return null;
   const css = webOut.files.find((f) => f.path === WEB_CSS_PATH)?.text ?? null;
-  if (css === null || webOut.assets.length === 0) return css;
-  const byPath = new Map(webOut.assets.map((a) => [a.path, a]));
-  return css.replace(/url\("(fonts\/[0-9a-f]{16}\.(?:ttf|otf))"\)/g, (_m, path: string) => {
+  return css === null ? null : inlineFontAssets(css, webOut.assets);
+};
+
+/** css with every url("fonts/...") replaced by its asset's data: URL; a url naming no asset, or an asset no url names, throws. */
+export function inlineFontAssets(css: string, assets: readonly { readonly path: string; readonly bytes: Uint8Array }[]): string {
+  const byPath = new Map(assets.map((a) => [a.path, a]));
+  const used = new Set<string>();
+  const out = css.replace(/url\("(fonts\/[^"]*)"\)/g, (_m, path: string) => {
     const a = byPath.get(path);
     if (a === undefined) throw new Error(`dragon.css names ${path}, which is not a web output asset`);
+    used.add(path);
     return `url("${fontDataUrl(a.bytes)}")`;
   });
-};
+  const unused = assets.filter((a) => !used.has(a.path)).map((a) => a.path);
+  if (unused.length > 0) throw new Error(`web output assets that dragon.css never names: ${unused.join(', ')}`);
+  return out;
+}
 
 export async function runFixture(spec: FixtureSpec, browser: Browser, opts: RunOptions): Promise<FixtureOutcome> {
   const environments = environmentsOf(spec);
