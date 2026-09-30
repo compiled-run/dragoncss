@@ -2,7 +2,7 @@
 import type { LayoutBox, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, fromCssPx, max, min, sum, ZERO, mulInt } from './units.ts';
-import { borderBoxFromSpecified, hasPercent, resolveBorder, resolveLength, sumEdges } from './box.ts';
+import { borderBoxFromSpecified, hasPercent, resolveBorder, resolveLength, resolveMinLength, sumEdges } from './box.ts';
 import type { Ctx } from './block.ts';
 import { inlineIntrinsicSize } from './inline.ts';
 import { isOutOfFlow } from './position.ts';
@@ -34,12 +34,14 @@ export function inlineContribution(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind
   // A calculation evaluates against a basis of 0 (Blink MinimumValueForLength with no percentage resolution size): calc(10px + 5%) is 10px.
   const pad = (v: typeof s.paddingLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : v.kind === 'calc' ? resolveLength(v, ZERO, ctx.faults) : ZERO);
   const bp = sumEdges(bor.left, bor.right, pad(s.paddingLeft), pad(s.paddingRight));
+  // Blink ResolveInlineLengthInternal with an indefinite percentage basis: a width or max-width with a percentage is auto or none,
+  // a min-width with one resolves against 0, so min-width: calc(60px - 10%) contributes 60px (probed in Chrome 145).
   let size: LU;
-  if (s.width.kind === 'px') size = borderBoxFromSpecified(fromCssPx(s.width.value), bp, s.boxSizing);
+  if (s.width.kind !== 'auto' && !hasPercent(s.width)) size = borderBoxFromSpecified(resolveLength(s.width, ZERO, ctx.faults), bp, s.boxSizing);
   else if (hasAspectRatio(s)) size = ratioInlineContribution(ctx, box, kind);
   else size = add(intrinsicContentInlineSize(ctx, box, kind), bp);
-  if (s.maxWidth.kind === 'px') size = min(size, borderBoxFromSpecified(fromCssPx(s.maxWidth.value), bp, s.boxSizing));
-  if (s.minWidth.kind === 'px') size = max(size, borderBoxFromSpecified(fromCssPx(s.minWidth.value), bp, s.boxSizing));
+  if (s.maxWidth.kind !== 'none' && !hasPercent(s.maxWidth)) size = min(size, borderBoxFromSpecified(resolveLength(s.maxWidth, ZERO, ctx.faults), bp, s.boxSizing));
+  if (s.minWidth.kind !== 'auto') size = max(size, borderBoxFromSpecified(resolveMinLength(s.minWidth, null, ctx.faults), bp, s.boxSizing));
   size = max(size, bp);
   const margin = (v: typeof s.marginLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : v.kind === 'calc' ? resolveLength(v, ZERO, ctx.faults) : ZERO);
   return add(size, add(margin(s.marginLeft), margin(s.marginRight)));

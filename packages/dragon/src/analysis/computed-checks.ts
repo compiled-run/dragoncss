@@ -5,10 +5,8 @@ import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import { exactLayoutRatio, featureOf } from '../css/values.ts';
-import { iosProfile } from '../profiles/ios.ts';
 import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
-import { webProfile } from '../profiles/web.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import type { CapturedTag } from '../ua/datasets.ts';
@@ -197,12 +195,13 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
   walk(root, [], false, null, false);
 }
 
-const COMMITTED: { readonly [target: string]: SupportProfile } = { ios: iosProfile, web: webProfile };
+/** The support profile each target is checked against, or null when the profiles are not enforced. */
+export type ProfileOf = ((target: string) => SupportProfile) | null;
 
 // css-variables-1 §3.1: a value that only exists after var() substitution was never seen by the declared-value check. A grammar-valid
-// result Dragon cannot express is refused for every target, and a result whose feature no committed profile row proves in any
+// result Dragon cannot express is refused for every target, and a result whose feature no row of the target's profile proves in any
 // context is refused for that target (the contextual check reports the proven-elsewhere case).
-function checkSubstitution(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkSubstitution(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf): void {
   for (const p of LONGHANDS) {
     const v = el.props.get(p) as ResolvedValue;
     const sub = v.substitution;
@@ -215,11 +214,11 @@ function checkSubstitution(el: ResolvedElement, targets: readonly string[], diag
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), message: sub.refusal, manual: 'Give the custom properties it reads values Dragon supports for this property.', basis: 'computed-value' }));
       continue;
     }
-    if (v.declared === null) continue;
+    if (v.declared === null || profileOf === null) continue;
     const feature = featureOf(p, v.declared);
     for (const t of targets) {
-      const profile = COMMITTED[t];
-      if (profile === undefined || provenContexts(profile, feature).length > 0) continue;
+      const profile = profileOf(t);
+      if (provenContexts(profile, feature).length > 0) continue;
       const id = `${t}|substitution|${span.source.uri}|${span.start}|${feature}`;
       if (reported.has(id)) continue;
       reported.add(id);
@@ -237,11 +236,11 @@ function checkSubstitution(el: ResolvedElement, targets: readonly string[], diag
 
 /** Walks one resolved case and records the refusals above; reported deduplicates them across cases. Text in a display: none
  * subtree is never laid out (CSS2 §9.2.4), so only the overflow check reaches it. */
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf): void {
   const walk = (el: ResolvedElement, hidden: boolean): void => {
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     checkOverflow(el, targets, diagnostics, reported);
-    checkSubstitution(el, targets, diagnostics, reported);
+    checkSubstitution(el, targets, diagnostics, reported, profileOf);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);

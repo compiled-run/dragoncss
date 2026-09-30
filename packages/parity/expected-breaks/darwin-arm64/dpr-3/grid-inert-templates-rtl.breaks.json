@@ -1,0 +1,12 @@
+{
+  "case": "grid-inert-templates-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"t1:text0","data":"XX XXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"t2:text0","data":"X XX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"t3:text0","data":"XXX XX X","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"t5:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"t6:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}

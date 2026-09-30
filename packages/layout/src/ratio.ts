@@ -3,7 +3,7 @@
 // max sizes transfer through it. Sizes here are border-box LU; the layout ratio is two raw LayoutUnit values (input.ts).
 import type { LayoutBox, LayoutStyle } from './input.ts';
 import type { LU } from './units.ts';
-import { add, fromCssPx, max, min, mulDiv, sub, ZERO } from './units.ts';
+import { add, max, min, mulDiv, sub, ZERO } from './units.ts';
 import type { HeightBasis, MinMax } from './box.ts';
 import {
   blockMinMaxWith,
@@ -13,7 +13,9 @@ import {
   inlineMinMaxWith,
   isScrollContainer,
   resolveBorder,
+  resolveLength,
   resolveLengthOrNull,
+  resolveMinLength,
   resolvePaddingWith,
   sumEdges,
 } from './box.ts';
@@ -179,10 +181,10 @@ export function ratioInlineContribution(ctx: Ctx, box: LayoutBox, kind: 'min' | 
   const basis = noPercentBasis(box);
   const block = initialBlockSize(ctx, box, basis, e.vbp);
   const size = ratioContentInlineSize(ctx, box, kind, block, ZERO);
-  // As inlineContribution: only px min-width and max-width take part (percentages are cyclic, §5.2.1).
+  // As inlineContribution: a percentage max-width is none, and min-width resolves against no basis (§5.2.1).
   const own: MinMax = {
-    min: s.minWidth.kind === 'px' ? borderBoxFromSpecified(fromCssPx(s.minWidth.value), e.hbp, s.boxSizing) : e.hbp,
-    max: s.maxWidth.kind === 'px' ? borderBoxFromSpecified(fromCssPx(s.maxWidth.value), e.hbp, s.boxSizing) : null,
+    min: s.minWidth.kind !== 'auto' ? borderBoxFromSpecified(resolveMinLength(s.minWidth, null, ctx.faults), e.hbp, s.boxSizing) : e.hbp,
+    max: s.maxWidth.kind !== 'none' && !hasPercent(s.maxWidth) ? borderBoxFromSpecified(resolveLength(s.maxWidth, ZERO, ctx.faults), e.hbp, s.boxSizing) : null,
   };
   const autoMin = block !== null && !isScrollContainer(s) ? withAutoMinInline(ctx, box, own, e.hbp) : own;
   const mm = s.width.kind === 'auto' ? withTransferred(autoMin, transferredInlineMinMax(s, blockMinMaxWith(box, basis, e.vbp, ctx.faults), e.hbp, e.vbp)) : autoMin;

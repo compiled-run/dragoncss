@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.p { width: 200px; }
+.a { height: 10px; grid-column: 2 / 4; grid-row: span 2; }
+.b { width: 30px; height: 12px; grid-area: head; justify-self: auto; }
+.c { height: 8px; grid-row-start: -1; grid-row-end: span a; grid-column-start: a 2; grid-column-end: span 2 b; }
+.d { height: 5px; grid-area: 1 / 2 / 3 / 4; justify-self: normal; }
+.e { height: 4px; grid-row: a / b; grid-column: auto; }
+.h { height: 3px; grid-area: inherit; }
+.g { grid-column: SPAN 3 Name; grid-row: 2 span; grid-row-end: initial; }
+.f { display: flex; width: 200px; height: 30px; }
+.f1 { width: 20px; height: 10px; grid-column: 3; justify-self: center; }
+.f2 { width: 20px; height: 12px; grid-row: 2 / span 3; justify-self: end; }
+.f3 { width: 20px; height: 14px; grid-area: x / y; justify-self: safe center; }
+.f4 { width: 20px; height: 6px; justify-self: stretch; }
+.f5 { width: 20px; height: 8px; justify-self: left; }
+.f6 { width: 20px; height: 9px; justify-self: first baseline; }
+.f7 { width: 20px; height: 7px; justify-self: unsafe self-end; }
+.f8 { width: 20px; height: 5px; justify-self: flex-start; }
+.col { display: flex; flex-direction: column; width: 100px; }
+.k1 { width: 20px; height: 10px; justify-self: right; grid-row: 1; }
+.k2 { height: 10px; justify-self: last baseline; grid-column: 1 / -1; }
+.k3 { width: 30px; height: 5px; justify-self: anchor-center; }
+.r { position: relative; width: 100px; height: 40px; }
+.ab { position: absolute; top: 5px; left: 5px; width: 10px; height: 10px; grid-area: 2 / 3; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="p" class="p">
+<div data-dragon-id="a" class="a"></div>
+<div data-dragon-id="b" class="b"></div>
+<div data-dragon-id="c" class="c">XX XXX</div>
+<div data-dragon-id="d" class="d"></div>
+<div data-dragon-id="e" class="e"></div>
+<div data-dragon-id="h" class="h"></div>
+<div data-dragon-id="g" class="g">X XX</div>
+</div>
+<div data-dragon-id="f" class="f"><div data-dragon-id="f1" class="f1"></div><div data-dragon-id="f2" class="f2"></div><div data-dragon-id="f3" class="f3"></div><div data-dragon-id="f4" class="f4"></div><div data-dragon-id="f5" class="f5"></div><div data-dragon-id="f6" class="f6"></div><div data-dragon-id="f7" class="f7"></div><div data-dragon-id="f8" class="f8"></div></div>
+<div data-dragon-id="col" class="col"><div data-dragon-id="k1" class="k1"></div><div data-dragon-id="k2" class="k2">XX</div><div data-dragon-id="k3" class="k3"></div></div>
+<div data-dragon-id="r" class="r"><div data-dragon-id="ab" class="ab"></div></div>
+</body>
+</html>

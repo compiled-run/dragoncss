@@ -8,6 +8,7 @@ import type { ProgramNode, ProgramWrite } from '../lower/native-program.ts';
 import { PROGRAM_VERSIONS } from '../lower/native-program.ts';
 import type { EmitCase } from './native-support.ts';
 import { chunks, doubleLit, inputFunctions, stringLit, supportDigest } from './native-support.ts';
+import { isPaintKind, paintWriteLines } from './paint/registry.ts';
 
 export const UIKIT_EMITTER_VERSION = 'dragon.uikit-emitter/1';
 const CASES_PER_FILE = 10;
@@ -17,17 +18,8 @@ const q = (s: string): string => stringLit('swift', s);
 const rgba = (c: { r: number; g: number; b: number; alpha: number }): string => `DragonRGBA8(${c.r}, ${c.g}, ${c.b}, ${c.alpha})`;
 
 function writeLines(v: string, n: ProgramNode, w: ProgramWrite): string[] {
+  if (isPaintKind(w.kind)) return paintWriteLines('uikit', v, n, w);
   switch (w.kind) {
-    case 'background-color':
-      return [`  ${v}.backgroundColor = dragonUIColor(${rgba(w.color)})`];
-    case 'border-widths':
-      return [`  // ${w.key}: from the translated engine at the device scale (DragonTree.apply)`];
-    case 'border-styles':
-      return [`  ${v}.dragonBorderStyles = [${w.styles.map(q).join(', ')}]`];
-    case 'border-colors':
-      return [`  ${v}.dragonBorderColors = [${w.colors.map(rgba).join(', ')}]`];
-    case 'padding-box-clip':
-      return [`  ${v}.dragonEnableClip()`];
     case 'font': {
       const color = n.writes.find((x) => x.kind === 'text-color');
       if (color === undefined || color.kind !== 'text-color') throw new Error(`${n.id}: a text run without a colour`);
@@ -36,6 +28,7 @@ function writeLines(v: string, n: ProgramNode, w: ProgramWrite): string[] {
     case 'text-color':
       return [`  // ${w.key}: set with the text run above`];
   }
+  throw new Error(`${n.id}: write kind ${w.kind} has no UIKit lines`);
 }
 
 function caseSource(c: EmitCase, k: number): string {
@@ -43,7 +36,8 @@ function caseSource(c: EmitCase, k: number): string {
   const nodes = c.program.nodes.map((n, i) => {
     const v = `v${i}`;
     const parent = n.parent === null ? 'nil' : q(n.parent);
-    return [`  let ${v} = t.${n.kind === 'text' ? 'textNode' : 'boxNode'}(${q(n.id)}, parent: ${parent}, kind: ${q(n.kind)})`, ...n.writes.flatMap((w) => writeLines(v, n, w))];
+    const host = n.host === n.parent || n.host === null ? [] : [`  t.host(${q(n.id)}, ${q(n.host)})`];
+    return [`  let ${v} = t.${n.kind === 'text' ? 'textNode' : 'boxNode'}(${q(n.id)}, parent: ${parent}, kind: ${q(n.kind)})`, ...host, ...n.writes.flatMap((w) => writeLines(v, n, w))];
   });
   const parts = chunks(nodes, NODES_PER_FUNCTION);
   const digests = c.expectedDigests.map((d) => `${doubleLit(d.dpr)}: ${q(d.sha256)}`).join(', ');

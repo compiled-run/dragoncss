@@ -75,7 +75,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -143,7 +155,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -211,7 +235,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -279,7 +315,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -367,7 +415,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -455,7 +515,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -543,7 +615,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -611,7 +695,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -699,7 +795,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -767,7 +875,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -855,7 +975,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -943,7 +1075,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -1011,7 +1155,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -1099,7 +1255,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -1167,7 +1335,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -1255,7 +1435,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -1323,7 +1515,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -1421,7 +1625,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -1509,7 +1725,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -1577,7 +1805,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -1665,7 +1905,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {
@@ -1753,7 +2005,19 @@
         "white-space-collapse": "collapse",
         "text-wrap-mode": "wrap",
         "color": "rgb(0, 0, 0)",
-        "background-color": "rgba(0, 0, 0, 0)"
+        "background-color": "rgba(0, 0, 0, 0)",
+        "grid-template-columns": "none",
+        "grid-template-rows": "none",
+        "grid-template-areas": "none",
+        "grid-auto-columns": "auto",
+        "grid-auto-rows": "auto",
+        "grid-auto-flow": "row",
+        "grid-row-start": "auto",
+        "grid-row-end": "auto",
+        "grid-column-start": "auto",
+        "grid-column-end": "auto",
+        "justify-items": "normal",
+        "justify-self": "auto"
       }
     },
     {

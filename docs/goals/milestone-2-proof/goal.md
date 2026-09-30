@@ -84,10 +84,20 @@ Any spec line that says "goes to the owner" or "needs an owner ruling" means a r
 
 Some things still need the owner, because they leave the repo or cost money: pushes, remotes, publishing, installs outside /tmp, and spending.
 
+## Landing Rule (AGENTS.md "Landing work", 2026-09-28)
+
+- **Code reaches master only through a Macroscope-reviewed PR.** Integrator tasks prepare PR branches from `origin/master` (catch up, then verify). They never merge into local master.
+- **The PM lands each PR:** push, `gh pr create`, `pnpm pr:review <n> --wait`, answer every finding, then `gh pr merge --merge --delete-branch --match-head-commit <sha>`, then `git pull --ff-only`.
+- **PRs are thoughtful, not spam (owner).** Group each by a coherent theme a reviewer can follow, not one PR per task. Each body says what changed, exactly what passed, and why every changed check was changed.
+- **Reviews never block work (owner).** Dependent packages stack on the PR branch under review and run their verification and device steps there. They catch up when the PR below merges. Keep every lane that has independent work busy while reviews run.
+- **Board-only changes** (`docs/goals/**`) push straight to master after `git pull --rebase origin master`.
+- **Re-read AGENTS.md** whenever it changes.
+
 ## Throughput Rules (PM, 2026-09-28)
 
 - **Device leases are per platform.** The `ios` lease covers simulators and the `android` lease covers emulators. One task may hold both.
 - **Pinned tests.** A Worker may retarget an existing test that pins the behaviour its package is meant to change, with no stop. The test must keep its intent, for example a reject fixture moved to a value that is still refused. The Worker lists every retarget in its receipt. Loosening a check is still a stop.
+- **Remotes.** The owner added an `origin` remote (compiled-run/dragoncss). Verify steps that require `git remote -v` to be empty now mean: never push, fetch or pull. The remote may exist.
 - **Test timeouts under load are not verify failures.** A test that times out while the machine is saturated, then passes on rerun, does not count toward "verification fails twice". The receipt records the timeouts.
 - **Notes are never committed on branches.** They are written only in the main checkout.
 

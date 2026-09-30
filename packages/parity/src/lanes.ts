@@ -22,6 +22,8 @@ import { compileFixture } from './pipeline.ts';
 import { SAMPLE_RULES } from './samples.ts';
 import type { Compared, DeviceSet, FaultRow, LaneFailure, TrustRow } from './device-lanes.ts';
 import { DEVICE_CHECK_LANES, failuresByKind, laneFailures } from './device-lanes.ts';
+import type { DeviceEvidence } from './device-evidence.ts';
+import { deviceEvidence, evidenceProblems } from './device-evidence.ts';
 import type { DeviceRecord } from './device-run.ts';
 import { TRUST_CASES } from './device-run.ts';
 import type { CaseSet, LaneConfig, LaneId, NativeTarget, TargetConfig } from './targets.ts';
@@ -37,6 +39,9 @@ export const LANE_FILES: readonly string[] = [
   'packages/parity/src/native-dump.ts',
   'packages/parity/src/samples.ts',
   'packages/parity/src/cli/lanes.ts',
+  // The measured allowances (EMS, notes/T046-paint-spec.md §2): a channel delta there is an imported constant too.
+  'packages/parity/src/allowances/shadow.ts',
+  'packages/parity/src/allowances/gradient.ts',
 ];
 
 export type SourceFile = { readonly path: string; readonly text: string };
@@ -373,6 +378,8 @@ export type LaneRecord = {
   readonly run: { readonly toolchain: string | null; readonly suites: readonly SuiteCount[]; readonly digests: HostRun['digests'] } | null;
   /** A device lane's run: per DPR set the device and its record, the counts compared per check and the failures by kind. */
   readonly device: DeviceLaneRun | null;
+  /** A device lane's evidence stamp, written by the device run (device-evidence.ts); null for host lanes and lanes not run. */
+  readonly evidence: DeviceEvidence | null;
 };
 
 /** One DPR set of a device lane run. */
@@ -403,6 +410,8 @@ export type DeviceRun = {
   readonly trust: readonly { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] }[];
   /** A tooling fault that stopped the run (a device that failed to boot twice, a device that cannot hold the root). */
   readonly blocked: string | null;
+  /** The evidence stamp of the code, reference data and app the run was made and judged with. */
+  readonly evidence: DeviceEvidence;
 };
 
 /** The real-dump fault rows of a target, per DPR. */
@@ -430,7 +439,7 @@ export type LanesFile = {
 
 export const DEVICE_NOT_RUN = 'run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked';
 
-function laneRecord(l: LaneConfig, state: LaneState, reason: string | null, run: LaneRecord['run'], device: DeviceLaneRun | null = null): LaneRecord {
+function laneRecord(l: LaneConfig, state: LaneState, reason: string | null, run: LaneRecord['run'], device: DeviceLaneRun | null = null, evidence: DeviceEvidence | null = null): LaneRecord {
   const ids = l.sets.map((s) => ({ dpr: s.dpr, ids: s.ids }));
   return {
     lane: l.lane,
@@ -443,6 +452,7 @@ function laneRecord(l: LaneConfig, state: LaneState, reason: string | null, run:
     totalCases: caseCount(l) + l.corpora.reduce((n, c) => n + c.cases, 0),
     run,
     device,
+    evidence,
   };
 }
 
@@ -463,10 +473,12 @@ function deviceLaneRecord(l: LaneConfig, r: DeviceRun): LaneRecord {
   const failures = laneFailures(r.sets, lane);
   const problems: string[] = [];
   for (const s of l.sets) {
-    const got = r.sets.find((x) => x.dpr === s.dpr);
-    if (got === undefined) problems.push(`DPR ${s.dpr} was not run`);
-    else if (got.dumps !== s.ids.length) problems.push(`DPR ${s.dpr}: ${got.dumps}/${s.ids.length} dumps`);
+    const got = r.sets.filter((x) => x.dpr === s.dpr);
+    if (got.length === 0) problems.push(`DPR ${s.dpr} was not run`);
+    else if (got.length > 1) problems.push(`DPR ${s.dpr} was run ${got.length} times (${got.map((x) => x.device.name).join(', ')})`);
+    else if ((got[0] as DeviceSet).dumps !== s.ids.length) problems.push(`DPR ${s.dpr}: ${(got[0] as DeviceSet).dumps}/${s.ids.length} dumps`);
   }
+  for (const x of r.sets) if (!l.sets.some((s) => s.dpr === x.dpr)) problems.push(`DPR ${x.dpr} (${x.device.name}) is not a declared DPR of the lane`);
   const trust = lane === 'device-pixels' ? r.trust.map((t) => ({ device: t.device, dpr: t.dpr, cases: t.rows.length, points: t.rows.reduce((n, x) => n + x.points, 0), mismatches: t.rows.reduce((n, x) => n + x.mismatches.length, 0) })) : null;
   if (trust !== null) {
     for (const t of trust) if (t.mismatches > 0 || t.points === 0) problems.push(`capture trust on ${t.device}: ${t.mismatches} mismatches in ${t.points} points`);
@@ -479,7 +491,7 @@ function deviceLaneRecord(l: LaneConfig, r: DeviceRun): LaneRecord {
     const mine = s.failures.filter((f) => f.lane === lane);
     return { dpr: s.dpr, device: s.device, cases: s.cases, dumps: s.dumps, compared: s.compared, dumpsSha256: s.dumpsSha256, failures: mine.length, failuresByKind: failuresByKind(mine) };
   });
-  return laneRecord(l, state, problems.length === 0 ? null : problems.join('; '), null, { sets, failuresByKind: failuresByKind(failures), firstFailures: failures.slice(0, FIRST_FAILURES), trust });
+  return laneRecord(l, state, problems.length === 0 ? null : problems.join('; '), null, { sets, failuresByKind: failuresByKind(failures), firstFailures: failures.slice(0, FIRST_FAILURES), trust }, r.evidence);
 }
 
 /**
@@ -510,19 +522,20 @@ function lanesFileOf(targets: readonly TargetConfig[], problems: readonly string
       projection: t.projection.name,
       lanes: t.lanes.map((l) => {
         const kept = carried?.targets.find((x) => x.target === t.target)?.lanes.find((x) => x.lane === l.lane);
-        const keep = kept !== undefined && kept.state !== 'not run' && !stale.some((p) => p.includes(`${t.target} ${l.lane} `));
+        const keep = kept !== undefined && kept.state !== 'not run' && !stale.some((p) => staleCovers(p, t.target, l.lane));
         if (l.where === 'host') {
           const h = host.get(t.target);
-          if (h === undefined && keep) return { ...kept, device: kept.device ?? null };
+          if (h === undefined && keep) return { ...kept, device: kept.device ?? null, evidence: null };
           return h === undefined ? laneRecord(l, 'not run', 'run pnpm run parity:lanes -- --run-host', null) : laneRecord(l, h.state, h.reason, { toolchain: h.toolchain, suites: h.suites, digests: h.digests });
         }
         const d = device.get(t.target);
         if (d !== undefined) {
           if (l.lane !== 'layout-vectors-device') return deviceLaneRecord(l, d);
           if (d.vectors === null) return laneRecord(l, d.blocked === null ? 'not run' : 'blocked (owner tooling)', d.blocked ?? DEVICE_NOT_RUN, null);
-          return laneRecord(l, d.vectors.state, d.vectors.reason, { toolchain: d.vectors.toolchain, suites: d.vectors.suites, digests: d.vectors.digests });
+          return laneRecord(l, d.vectors.state, d.vectors.reason, { toolchain: d.vectors.toolchain, suites: d.vectors.suites, digests: d.vectors.digests }, null, d.evidence);
         }
-        if (keep) return { ...kept, device: kept.device ?? null };
+        // A device lane is carried only with the current evidence stamp: same lane code, reference data and app source.
+        if (keep && evidenceProblems(kept.evidence, deviceEvidence(t.target)).length === 0) return { ...kept, device: kept.device ?? null };
         return laneRecord(l, 'not run', DEVICE_NOT_RUN, null);
       }),
       referenceProof: reference?.find((r) => r.target === t.target)?.rows.map(({ failures: _f, ...row }) => row) ?? carried?.targets.find((x) => x.target === t.target)?.referenceProof ?? null,
@@ -545,19 +558,25 @@ export function runRecordProblems(f: LanesFile): string[] {
   const [a, b] = f.targets;
   if (a !== undefined && b !== undefined) {
     if (JSON.stringify(a.lanes.map((l) => l.lane)) !== JSON.stringify(b.lanes.map((l) => l.lane))) out.push(`run records: ${a.target} and ${b.target} list different lanes`);
-    for (const la of a.lanes) {
-      const lb = b.lanes.find((l) => l.lane === la.lane);
-      if (la.device === null || la.device === undefined || lb === undefined || lb.device === null || lb.device === undefined) continue;
-      for (const s of la.device.sets) {
-        if (!f.sharedDprs.includes(s.dpr)) continue;
-        const t = lb.device.sets.find((x) => x.dpr === s.dpr);
-        if (t === undefined) out.push(`run records: ${la.lane} at DPR ${s.dpr} ran on ${a.target} but not on ${b.target}`);
-        else if (t.cases !== s.cases) out.push(`run records: ${la.lane} at DPR ${s.dpr}: ${a.target} ${s.cases} cases, ${b.target} ${t.cases}`);
-        else if (JSON.stringify(Object.keys(t.compared)) !== JSON.stringify(Object.keys(s.compared))) out.push(`run records: ${la.lane} at DPR ${s.dpr}: the targets compare different checks`);
+    // Both directions, so a shared DPR one target ran and the other did not is found whichever target ran it.
+    for (const [x, y] of [[a, b], [b, a]] as const) {
+      for (const lx of x.lanes) {
+        const ly = y.lanes.find((l) => l.lane === lx.lane);
+        if (lx.device === null || lx.device === undefined || ly === undefined || ly.device === null || ly.device === undefined) continue;
+        for (const s of lx.device.sets) {
+          if (!f.sharedDprs.includes(s.dpr)) continue;
+          const t = ly.device.sets.find((z) => z.dpr === s.dpr);
+          if (t === undefined) out.push(`run records: ${lx.lane} at DPR ${s.dpr} ran on ${x.target} but not on ${y.target}`);
+          else if (t.cases !== s.cases) out.push(`run records: ${lx.lane} at DPR ${s.dpr}: ${x.target} ${s.cases} cases, ${y.target} ${t.cases}`);
+          else if (JSON.stringify(Object.keys(t.compared)) !== JSON.stringify(Object.keys(s.compared))) out.push(`run records: ${lx.lane} at DPR ${s.dpr}: the targets compare different checks`);
+        }
       }
     }
   }
   for (const t of f.targets) {
+    // Every DPR set a device check lane ran must have its real-dump fault rows.
+    const ran = new Set(t.lanes.flatMap((l) => (l.lane === 'layout-vectors-device' ? [] : (l.device?.sets ?? []).map((s) => s.dpr))));
+    for (const dpr of ran) if (!(t.dumpFaults ?? []).some((r) => r.dpr === dpr)) out.push(`run records: ${t.target} DPR ${dpr} ran device lanes but has no dump fault rows`);
     for (const r of t.dumpFaults ?? []) {
       if (JSON.stringify(r.rows.map((x) => x.fault)) !== JSON.stringify(DUMP_FAULTS)) out.push(`run records: ${t.target} DPR ${r.dpr} fault rows are not DUMP_FAULTS`);
       for (const x of r.rows) {
@@ -568,6 +587,11 @@ export function runRecordProblems(f: LanesFile): string[] {
   }
   if (JSON.stringify(f.sampleRules) !== JSON.stringify(SAMPLE_RULES)) out.push('run records: the sample rules are not SAMPLE_RULES');
   return out;
+}
+
+/** The problems that fail parity:lanes for a lanes file: this run's configuration problems, the file's recorded parity problems and its run-record problems, rechecked. */
+export function fileStatusProblems(f: LanesFile, problems: readonly string[]): string[] {
+  return [...new Set([...problems, ...(f.parity.pass ? [] : f.parity.problems), ...runRecordProblems(f)])];
 }
 
 export const lanesJsonText = (f: LanesFile): string => `${JSON.stringify(f, null, 2)}\n`;
@@ -581,18 +605,47 @@ export function readLanesFile(): LanesFile | null {
   return existsSync(repoPath(LANES_JSON)) ? (JSON.parse(readFileSync(repoPath(LANES_JSON), 'utf8')) as LanesFile) : null;
 }
 
+/** Whether a staleLanes problem invalidates a lane: its own case list, its target (missing, other projection), or every lane (a constant). */
+export function staleCovers(problem: string, target: NativeTarget, lane: LaneId): boolean {
+  const lanePrefix = /^\S+: (ios|android) (\S+) does not match/.exec(problem);
+  if (lanePrefix !== null) return lanePrefix[1] === target && lanePrefix[2] === lane;
+  const targetLevel = /^\S+(?: has no target |: )(ios|android)(?: projection |$)/.exec(problem);
+  if (targetLevel !== null) return targetLevel[1] === target;
+  return true;
+}
+
 /** Problems when a committed lanes file does not describe the current configuration (a stale file proves nothing). */
 export function staleLanes(f: LanesFile, targets: readonly TargetConfig[]): string[] {
   const out: string[] = [];
+  // The constants every lane is judged by: a file written under others describes another configuration.
+  const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
+  if (f.schema !== 'dragon.lanes/2') out.push(`${LANES_JSON}: schema ${String(f.schema)}, not dragon.lanes/2`);
+  if (!same(f.tolerances, { gateDevicePx: GATE_DEVICE_PX, channelDelta: GATE_CHANNEL_DELTA })) out.push(`${LANES_JSON}: tolerances ${JSON.stringify(f.tolerances)} are not the current gates`);
+  if (!same(f.sampleRules, SAMPLE_RULES)) out.push(`${LANES_JSON}: sample rules ${JSON.stringify(f.sampleRules)} are not SAMPLE_RULES`);
+  if (!same(f.dumpFaults, DUMP_FAULTS)) out.push(`${LANES_JSON}: dump faults ${JSON.stringify(f.dumpFaults)} are not DUMP_FAULTS`);
+  if (!same(f.sharedDprs, SHARED_DPRS) || !same(f.extras, EXTRA_DPRS)) out.push(`${LANES_JSON}: the DPR sets are not SHARED_DPRS and EXTRA_DPRS`);
   for (const t of targets) {
     const ft = f.targets.find((x) => x.target === t.target);
     if (ft === undefined) {
       out.push(`${LANES_JSON} has no target ${t.target}`);
       continue;
     }
+    if (ft.projection !== t.projection.name) out.push(`${LANES_JSON}: ${t.target} projection ${ft.projection}, configured ${t.projection.name}`);
     for (const l of t.lanes) {
       const fl = ft.lanes.find((x) => x.lane === l.lane);
       if (fl === undefined || fl.caseListSha256 !== laneRecord(l, 'not run', null, null).caseListSha256) out.push(`${LANES_JSON}: ${t.target} ${l.lane} does not match the configured case list`);
+    }
+  }
+  return out;
+}
+
+/** Device lanes of a file whose evidence stamp is not the current one (missing stamps included); lanes not run are skipped. */
+export function staleEvidence(f: LanesFile): string[] {
+  const out: string[] = [];
+  for (const t of f.targets) {
+    for (const l of t.lanes) {
+      if (l.where !== 'device' || l.state === 'not run') continue;
+      for (const p of evidenceProblems(l.evidence, deviceEvidence(t.target))) out.push(`${LANES_JSON}: ${t.target} ${l.lane} evidence is stale: ${p}`);
     }
   }
   return out;

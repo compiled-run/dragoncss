@@ -36,35 +36,35 @@
   ],
   "engineCalc": 4000,
   "snapGenerated": 20000,
-  "snapVectors": 1143,
+  "snapVectors": 1128,
   "cases": {
-    "vectors-m2": 173,
-    "vectors-dpr": 1293,
-    "engine-dpr": 1293,
+    "vectors-m2": 168,
+    "vectors-dpr": 1278,
+    "engine-dpr": 1278,
     "units-m2": 120000,
-    "snap": 21143,
+    "snap": 21128,
     "snap-values": 150,
     "calc-goldens": 17,
     "engine-calc": 4000,
     "units-calc": 50000
   },
   "engineSplit": {
-    "ok": 1293,
-    "unsupported": 0,
+    "ok": 1276,
+    "unsupported": 2,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "306e5ec11b679ebbbd6315270b55d30e6beb07b1ecba8a0449f08a01831af699",
-    "vectors-dpr": "62c0ece690ca4cf4394a68908f9889024c32cc8e04527190f5340ced9eaaa35c",
-    "engine-dpr": "ec1f23d29892ed8004783eac3f0f733829432528dab0c8fb68f017ec9a612cf6",
+    "vectors-m2": "386e21ad591094588cdd50cd737c69af691470a55005b2e03195089a51fd815c",
+    "vectors-dpr": "6b35e05fe103c5381911531c058dc51fcc370ed883967d30ca1b62a28d9ac8a9",
+    "engine-dpr": "b3c8b8aa31306bcc885e772e68f082250f226ab8ca8f50e5b6ba058d6f34550d",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "d2ace2aa1977c19397e3210c6d4ee5b1f462a34a91ed14383d2893ea814f801e",
+    "snap": "c387657af10f7b62d1ecb6e3432fe3e5474f4fe863aa70a7b2212ec4824bebf0",
     "snap-values": "fdeb2cecd1521fdd06c93f68e8a53f0efd51bd155422bff8533ba0224e08b739",
-    "calc-goldens": "65a7877bd7c618c060f7e3e550b5727b4ae35bbb6c487fc0ea51198cd16ba2e1",
-    "engine-calc": "daa46f204cb72c77455c61ce4d540f22a2b402cb245b531f4f9d318e99d71712",
+    "calc-goldens": "7baa7493a35bde492ef150e5118941d10d45ad11d1b852b88e841cd73f777283",
+    "engine-calc": "ef4078f0f4161f4c2206efa22ff80553f0cf6380bb106908a5384cc9d6aab35b",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50"
   },
-  "digest": "3d47d41345de9b5aa5c74bf3bc0462739ac96845c45c37d3c6a6769cb877d336"
+  "digest": "cdb262e3573d8e14ead738319c7f5ca1e2033cd92de4b023415a22490b6b70b7"
 }
