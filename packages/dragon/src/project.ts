@@ -456,7 +456,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     if (linked !== null && !fatal) {
       const seen = freshReported();
       const found = linked;
-      // The native targets are checked only in the band their output is resolved in; web is checked in every band.
+      // Native targets are checked only in their band (the first without a fold viewport, where MQ-R refuses them); web in every band.
       bandCases = (bands === null ? [null] : bands.partition.bands).map((b, k) => ({
         band: b,
         cases: checkCases(found, rulesIn(rules, bands, b, options.faults), k === nativeBand ? targets : targets.filter((t) => t === 'web'), options, diagnostics, seen),
