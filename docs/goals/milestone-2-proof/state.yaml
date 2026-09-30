@@ -93,6 +93,9 @@ dispatched:
   - T062
   - T118
   - T026
+  - T125
+  - T119
+  - T120
 device_lease: null
 tasks:
   - id: T001
@@ -2101,6 +2104,8 @@ tasks:
         §1.2. Line metrics come from inline boxes only; br takes its parent's metrics; half-leading is floored per device px; sub/super shifts are parent/5+1 and parent/3+1; paint goes line by line.
       - 'Judge amendment 2026-09-30 (notes/T058-inl1a.md): allowed_files gains four named S16 hunks (capture.ts captureFixture inline line nodes, native-compare.ts nodeKinds, pixel-reference.ts cssFontSizes,
         compare.ts anonymousBoxes if needed); the INL1a-1 split is not used. Stack and state: notes/T058-inl1a.md. Landing waits on pr/v1b-compiler-values and v2a-value-model.'
+      - 'Second Judge amendment 2026-09-30 (T058J2): resolve.ts collapseInlineContext, blockify.ts checkInlineLevel lift, three pin retargets, buildIfc+placeIfcLines deviation accepted, targets.ts engine-inline
+        entry only after T125 (T058L) merges; see notes/T058-inl1a.md.'
   - id: T059
     type: worker
     assignee: Worker
@@ -3522,6 +3527,25 @@ tasks:
       - pnpm test
     stop_if:
       - the check itself fails after the fix
+    receipt: null
+  - id: T125
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: device
+    objective: 'T058L: parseNativeOutput stops dropping suite lines. lanes.ts SUITE_LINE is a closed list, so judgeHost never sees an unknown suite and the host lane passes without counting it. Match any
+      suite-shaped line (keep the '' corpus'' strip) so ''is not a declared suite'' fires.'
+    allowed_files:
+      - packages/parity/src/lanes.ts
+      - packages/parity/test/lanes.test.ts
+    verify:
+      - pnpm test
+      - pnpm run parity:lanes -- --run-host with packages/parity/out/lanes.json byte-identical to master
+      - suites parsed from master swift and kotlin output are the same before and after
+    stop_if:
+      - any master output line newly matches
+      - lanes.json changes
+      - another file is needed
     receipt: null
   - id: T999
     type: judge
