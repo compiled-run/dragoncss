@@ -714,7 +714,6 @@ function h(x: number): string {
 }
 
 /** One engine case: {"platform", "faults", "input"} in, the layout result with every LU as bits out. */
-/** One engine case: {platform, faults, input} in, the layout (and its absolute rects) out. */
 export function runEngineCase(line: string): string {
   try {
     const o = obj(parseJson(line), ['platform', 'faults', 'input'], '$');

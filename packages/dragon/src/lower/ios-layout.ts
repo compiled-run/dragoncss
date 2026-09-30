@@ -312,7 +312,8 @@ function anonymousBox(parent: ResolvedElement, id: string, texts: readonly Resol
  */
 export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset): LayoutBox {
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
-  return lowerBox(root, faults, ua, fontPx((root.props.get('font-size') as ResolvedValue).value));
+  // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
+  return lowerBox(root, faults, ua, rootFontSizeOf(root));
 }
 
 /**
