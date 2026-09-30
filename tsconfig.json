@@ -9,6 +9,7 @@
     { "path": "packages/translate" },
     { "path": "packages/translate/test" },
     { "path": "examples/music-player" },
-    { "path": "packages/wpt" }
+    { "path": "packages/wpt" },
+    { "path": "packages/tailwind-sweep" }
   ]
 }
