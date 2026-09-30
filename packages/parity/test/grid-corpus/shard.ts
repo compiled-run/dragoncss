@@ -3,7 +3,7 @@
 // package owns. The shards run as separate test files so vitest runs them in parallel.
 import { NO_GRID_FAULTS } from '@dragon/layout';
 import type { CorpusCase } from '../../src/grid-corpus.ts';
-import { KNOWN_MISMATCHES, readGridCorpus, REFUSAL_CATEGORIES, runGridCase } from '../../src/grid-corpus.ts';
+import { classifyOutcome, readGridCorpus, runGridCase } from '../../src/grid-corpus.ts';
 
 export type ShardResult = {
   readonly cases: number;
@@ -30,19 +30,11 @@ export function runShard(families: readonly string[]): ShardResult {
   for (const c of cases) {
     for (const [env, r] of runGridCase(c, NO_GRID_FAULTS).envs) {
       const key = `${c.family}/${c.id} ${env}`;
-      if (r.kind === 'match') {
-        matched++;
-        if (KNOWN_MISMATCHES.has(key)) problems.push(`${key}: a pinned mismatch now matches; remove it from KNOWN_MISMATCHES`);
-      } else if (r.kind === 'mismatch') {
-        const pinned = KNOWN_MISMATCHES.get(key);
-        if (pinned === undefined) problems.push(`${key}: ${r.detail}`);
-        else if (pinned !== r.detail) problems.push(`${key}: the pinned mismatch changed to ${r.detail}`);
-        else known.push(key);
-      } else {
-        const category = REFUSAL_CATEGORIES.find((k) => k.pattern.test(r.reason));
-        if (category === undefined) problems.push(`${key}: refused for a reason no out-of-scope package owns: ${r.reason}`);
-        else refused[category.id] = (refused[category.id] ?? 0) + 1;
-      }
+      const k = classifyOutcome(key, r);
+      if (k.kind === 'match') matched++;
+      else if (k.kind === 'known') known.push(key);
+      else if (k.kind === 'refused') refused[k.category] = (refused[k.category] ?? 0) + 1;
+      else problems.push(k.detail);
     }
   }
   return { cases: cases.length, matched, knownMismatches: known.sort(), refused, problems };

@@ -5,7 +5,7 @@ import type { GridContainerStyle, GridItemStyle, LayoutBox, LayoutInput, TrackSi
 import { absoluteRects, ahemMeasurer, layout, validateLayoutInput } from '../src/index.ts';
 import type { LU } from '../src/units.ts';
 import { equalShare, frLeftover, frShareToLu, intDiv, intMod, rawOverFloat, setFlexFactor } from '../src/units.ts';
-import { box } from './helpers.ts';
+import { anon, box, text } from './helpers.ts';
 
 const fr = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'fr', value } });
 const px = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'px', value } });
@@ -107,6 +107,15 @@ describe('the validator\'s grid rules, each with a planted input', () => {
     });
     expect(codes(anonymous).some((c) => c.startsWith('grid-shape $.root.children[0].children[0].style.gridItem'))).toBe(true);
   });
+  it('judges an anonymous item by its values, not by the order of its keys', () => {
+    const reordered = input(box('root', {}, [grid(gridStyle({}), [anon('g:anon0', {}, [text('g:text0', 'X')])])]));
+    const a = (reordered.root.children[0] as unknown as { children: { style: Record<string, unknown> }[] }).children[0] as { style: Record<string, unknown> };
+    a.style['gridItem'] = { justifySelf: 'auto', row: { span: 1, kind: 'auto' }, column: { span: 1, kind: 'auto' } };
+    a.style['marginTop'] = { value: 0, kind: 'px' };
+    expect(codes(reordered)).toEqual([]);
+    a.style['marginTop'] = { value: 1, kind: 'px' };
+    expect(codes(reordered)).toContain('anonymous-shape $.root.children[0].children[0]');
+  });
 });
 
 describe('grid engine cases pinned to the Chrome 145 corpus (docs/research/grid-spike/probe, DPR 1, ltr)', () => {
@@ -122,6 +131,12 @@ describe('grid engine cases pinned to the Chrome 145 corpus (docs/research/grid-
     const span = (n: number): GridItemStyle => ({ ...autoItem, column: { kind: 'auto', span: n } });
     const items = [span(3), span(2), autoItem, autoItem, span(3)].map((gi, k) => box(`i${k}`, { height: { kind: 'px', value: 5 }, gridItem: gi }));
     const m = boxesOf(grid(gridStyle({ templateColumns: [{ count: 4, sizes: [px(20)] }], explicitColumnCount: 4, autoRows: [px(10)], dense: true }), items));
-    expect(m.get('i2')?.y).toBe(m.get('g')?.y);
+    const g = m.get('g');
+    if (g === undefined) throw new Error('no grid box');
+    // Four 20px (1280 LU) columns, 10px (640 LU) rows: i1 wraps to row 2, dense packing puts i2 and i3 in the holes before it.
+    expect(['i0', 'i1', 'i2', 'i3', 'i4'].map((id) => {
+      const b = m.get(id);
+      return b === undefined ? null : [b.x - g.x, b.y - g.y, b.width, b.height];
+    })).toEqual([[0, 0, 3840, 320], [0, 640, 2560, 320], [3840, 0, 1280, 320], [2560, 640, 1280, 320], [0, 1280, 3840, 320]]);
   });
 });
