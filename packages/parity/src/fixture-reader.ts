@@ -80,7 +80,9 @@ export function parseFixtureHtml(html: string): { root: RawElement; style: { sta
         const close = new RegExp(`^</${el.tag}\\s*>`).exec(html.slice(i));
         el.end = close === null ? el.openEnd : i + close[0].length;
         i = el.end;
-        if (el.tag === 'link' && attrs.get('rel') === 'stylesheet') {
+        const rels = (attrs.get('rel') ?? '').toLowerCase().split(/[ \t\n\f\r]+/).filter((r) => r !== '');
+        if (el.tag === 'link' && rels.includes('stylesheet')) {
+          if (rels.length !== 1) throw new Error(`<link rel="${attrs.get('rel')}"> at ${el.start}: only rel="stylesheet" is read`);
           const href = attrs.get('href');
           if (href === undefined) throw new Error(`<link rel="stylesheet"> at ${el.start} has no href`);
           links.push({ href, start: el.start, end: el.openEnd });
@@ -169,6 +171,7 @@ export function fixtureToInput(id: string, html: string, options: FixtureReadOpt
   else {
     if (link === undefined || options.resolveStylesheet === undefined) throw new Error('a <link rel="stylesheet"> fixture needs a stylesheet resolver');
     const css = options.resolveStylesheet(link.href);
+    if (css.uri === ref.uri) throw new Error(`the stylesheet ${link.href} resolves to the fixture's own uri ${ref.uri}`);
     const cssRef: SourceRef = { uri: css.uri, revision: 'fixture', hash: `sha256:${createHash('sha256').update(css.text, 'utf8').digest('hex')}` };
     sources.push({ ref: cssRef, text: css.text, displayPath: css.displayPath });
     sheet = { source: cssRef, start: 0, end: css.text.length };

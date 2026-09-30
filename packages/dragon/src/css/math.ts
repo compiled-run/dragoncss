@@ -414,7 +414,8 @@ class Parser {
   private invalid(): never {
     return refuse('it does not parse as a css-values-4 calculation');
   }
-  function(name: string): MathNode {
+  /** depth counts the enclosing parentheses and functions, so nested min() is bounded like nested calc(). */
+  function(name: string, depth: number): MathNode {
     if (!V1_MATH_FUNCTIONS.has(name)) {
       const r = mathFunctionRefusal(name);
       if (r !== null) return refuse(r.reason, r.fix);
@@ -423,7 +424,7 @@ class Parser {
     const args: MathNode[] = [];
     this.skipWs();
     for (;;) {
-      args.push(this.expression(0));
+      args.push(this.expression(depth));
       this.skipWs();
       const t = this.peek();
       if (t?.k === 'comma') {
@@ -457,7 +458,7 @@ class Parser {
       if (this.peek()?.k !== 'close') this.invalid();
       this.i++;
       node.nested = true;
-    } else if (t.k === 'func') node = this.function(t.name);
+    } else if (t.k === 'func') node = this.function(t.name, depth + 1);
     else if (t.k === 'num') node = this.value(t.value, t.unit);
     else if (t.k === 'ident') {
       return refuse(['e', 'pi', 'infinity', '-infinity', 'nan'].includes(t.name) ? `the calculation constant ${t.name} is not supported in V1 of the value model` : `${t.name} is not a value in a calculation`);
@@ -527,8 +528,11 @@ export function mathContextFor(property: string): MathContext | { readonly refus
 
 export type ParsedMath = { readonly ok: true; readonly node: MathNode } | { readonly ok: false; readonly reason: string; readonly fix: string };
 
+/** Every literal is finite, and so is every number operation, which holds only numbers and so folds now: 10vi / 0 keeps 1 / 0 as an op. */
 function finite(n: MathNode): boolean {
-  return isLit(n) ? Number.isFinite(n.value) && (n.inverseOf === null || Number.isFinite(n.inverseOf)) : n.args.every(finite);
+  if (isLit(n)) return Number.isFinite(n.value) && (n.inverseOf === null || Number.isFinite(n.inverseOf));
+  if (n.category === 'number' && !Number.isFinite(foldNumber(n))) return false;
+  return n.args.every(finite);
 }
 
 /** Parses one math function's text (as css-tree generates it) for a property context. */
@@ -538,7 +542,7 @@ export function parseMath(text: string, context: MathContext): ParsedMath {
     const head = toks[0];
     if (head === undefined || head.k !== 'func') return refuse('it does not parse as a css-values-4 calculation');
     const p = new Parser(toks.slice(1), context.type === 'length' && context.percent);
-    const node = p.function(head.name);
+    const node = p.function(head.name, 0);
     if (!p.atEnd()) return refuse('it does not parse as a css-values-4 calculation');
     const c = category(node);
     if (context.type === 'number' && c !== 'number') return refuse(`it resolves to a ${c}, not a number`);

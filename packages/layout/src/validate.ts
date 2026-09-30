@@ -221,11 +221,70 @@ function checkCalc(value: unknown, path: string, errors: ValidationError[]): voi
   }
 }
 
+type CalcCategory = 'number' | 'length' | 'percent' | 'length-percent';
+
+/** Joins the categories of a sum or comparison's operands; null when a number meets a length or percentage. */
+function joinCategories(cs: readonly CalcCategory[]): CalcCategory | null {
+  const first = cs[0] as CalcCategory;
+  let out: CalcCategory = first;
+  for (const c of cs) {
+    if ((c === 'number') !== (first === 'number')) return null;
+    if (c !== out) out = 'length-percent';
+  }
+  return out;
+}
+
+// css-values-4 §10.9 type checking of a well-formed tree: sums and comparisons do not mix numbers with lengths, a product has at
+// most one factor that is not a number, only a number is inverted, and an em leaf's font size is a length without a percentage.
+function calcCategory(e: CalcExpr, path: string, errors: ValidationError[]): CalcCategory | null {
+  const bad = (message: string): null => {
+    errors.push({ path, code: 'bad-value', message });
+    return null;
+  };
+  switch (e.kind) {
+    case 'px':
+    case 'viewport':
+      return 'length';
+    case 'percent':
+      return 'percent';
+    case 'number':
+      return 'number';
+    case 'pixels-and-percent':
+      return e.explicitPercent ? (e.explicitPixels ? 'length-percent' : 'percent') : 'length';
+    case 'em':
+      return calcCategory(e.fontSize, `${path}.fontSize`, errors) === 'length' ? 'length' : bad('an em font size must be a length without a percentage');
+    case 'invert':
+      return calcCategory(e.term, `${path}.term`, errors) === 'number' ? 'number' : bad('only a number can be inverted');
+    case 'product': {
+      const cs = e.terms.map((t, i) => calcCategory(t, `${path}.terms[${i}]`, errors));
+      if (cs.includes(null)) return null;
+      const dims = cs.filter((c) => c !== 'number') as CalcCategory[];
+      if (dims.length > 1) return bad('a product may have only one factor that is not a number');
+      return dims.length === 0 ? 'number' : (dims[0] as CalcCategory);
+    }
+    case 'sum':
+    case 'min':
+    case 'max':
+    case 'clamp': {
+      const operands = e.kind === 'clamp' ? [e.min, e.value, e.max] : e.terms;
+      const cs = operands.map((t, i) => calcCategory(t, `${path}.${e.kind === 'clamp' ? ['min', 'value', 'max'][i] : `terms[${i}]`}`, errors));
+      if (cs.includes(null)) return null;
+      const joined = joinCategories(cs as CalcCategory[]);
+      return joined === null ? bad(`a ${e.kind} may not mix numbers with lengths or percentages`) : joined;
+    }
+  }
+}
+
 function checkRule(value: unknown, rule: Rule, path: string, errors: ValidationError[]): void {
   switch (rule.t) {
-    case 'calc':
+    case 'calc': {
+      const before = errors.length;
       checkCalc(value, path, errors);
+      if (errors.length === before && calcCategory(value as CalcExpr, path, errors) === 'number') {
+        errors.push({ path, code: 'bad-value', message: 'a length calculation must not resolve to a number' });
+      }
       return;
+    }
     case 'number':
       if (typeof value !== 'number' || !Number.isFinite(value)) {
         errors.push({ path, code: 'wrong-type', message: 'expected a finite number' });

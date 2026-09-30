@@ -45,4 +45,7 @@ pnpm run replay:swift -- --plant off-by-one   # one expected integer changed: mu
 ```
 
 `scripts/replay-device.ts --platform ios|android` runs the same replay on the iOS simulator (`device/ios`) or the
-Android emulator (`device/android`). T029 owns those runs; `--build-only` builds them without starting a device.
+Android emulator (`device/android`); `--build-only` builds them without starting a device. It passes only on the exact
+expected output: every call replayed with 0 mismatches, or with `--plant <name>` exactly the planted failure. An unplanted
+pass writes `transcripts/device/<platform>.txt`, which `test/replay-device.test.ts` ties to the current transcript. Run it
+under the device lease, with `--device <udid|serial>` when more than one simulator or emulator is up.

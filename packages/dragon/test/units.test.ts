@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/internal.ts';
 import { lengthToPx, mathFunctionRefusal, unitRefusal } from '../src/css/units.ts';
+import { parseMath } from '../src/css/math.ts';
 import { div, inputFor, text } from './helpers.ts';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
@@ -85,5 +86,38 @@ describe('computed lengths', () => {
     const a = style('.a { width: 50vw; height: calc(10px + 2em); }', tree, 'a');
     expect(a.style.width).toEqual({ kind: 'calc', expr: { kind: 'viewport', value: 50, axis: 'width' }, range: 'non-negative' });
     expect(a.style.height).toEqual({ kind: 'calc', expr: { kind: 'sum', terms: [{ kind: 'px', value: 10 }, { kind: 'em', value: 2, fontSize: { kind: 'px', value: 10 } }] }, range: 'non-negative' });
+  });
+});
+
+describe('math function checks', () => {
+  const LENGTH = { type: 'length', percent: true } as const;
+  it('a division by zero is refused when the dividend is not a literal the parser folds (10vi, a sum with a percentage)', () => {
+    for (const t of ['calc(10vi / 0)', 'calc(10vb / (1 - 1))', 'calc((100% - 10px) / 0)', 'calc(10px / 0)', 'calc(1vi * (1 / 0))']) {
+      const r = parseMath(t, LENGTH);
+      expect(r.ok, t).toBe(false);
+      if (!r.ok) expect(r.reason, t).toContain('divides by zero');
+    }
+    expect(parseMath('calc(10vi / 4)', LENGTH).ok).toBe(true);
+  });
+  it('nested functions count toward the nesting limit, as nested parentheses do', () => {
+    const nest = (n: number, open: (inner: string) => string): string => {
+      let t = '1px';
+      for (let i = 0; i < n; i++) t = open(t);
+      return t;
+    };
+    expect(parseMath(`calc(${nest(30, (x) => `min(${x}, 2%)`)})`, LENGTH).ok).toBe(true);
+    expect(parseMath(`calc(${nest(40, (x) => `min(${x}, 2%)`)})`, LENGTH).ok).toBe(false);
+    expect(parseMath(`calc(${nest(40, (x) => `(${x})`)})`, LENGTH).ok).toBe(false);
+    // Far past the limit the parser refuses instead of overflowing the stack.
+    expect(parseMath(`calc(${nest(5000, (x) => `max(${x}, 1%)`)})`, LENGTH).ok).toBe(false);
+  });
+  it('a negative flex-grow or flex-shrink calculation is clamped to 0 (css-values-4 §10.10), in the longhands and the flex shorthand', () => {
+    const tree = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'o', ['o'], [div(r, 'i', ['i'], [text(r, 't', 'X')])])];
+    const a = style('.o { display: flex; } .i { flex-grow: calc(-1); flex-shrink: calc(0 - 3); }', tree, 'i');
+    expect([a.style.flexGrow, a.style.flexShrink]).toEqual([0, 0]);
+    const b = style('.o { display: flex; } .i { flex: calc(-2) calc(2 - 5) 0px; }', tree, 'i');
+    expect([b.style.flexGrow, b.style.flexShrink]).toEqual([0, 0]);
+    const c = style('.o { display: flex; } .i { flex-grow: calc(1 + 1); flex-shrink: calc(3 / 2); }', tree, 'i');
+    expect([c.style.flexGrow, c.style.flexShrink]).toEqual([2, 1.5]);
   });
 });
