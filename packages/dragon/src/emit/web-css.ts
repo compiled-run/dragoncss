@@ -4,6 +4,7 @@
 // rule sets them on a supported tag (ua.test.ts), so leaving them out gives the same computed values.
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
+import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import { familyListText } from '../css/values.ts';
@@ -47,7 +48,7 @@ const GENERIC_FAMILIES = new Set(['serif', 'sans-serif', 'cursive', 'fantasy', '
 
 function familyName(name: string): string {
   if (/^-?[_a-zA-Z][_a-zA-Z0-9-]*$/.test(name) && !GENERIC_FAMILIES.has(name.toLowerCase())) return name;
-  return `"${name.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  return serializeString(name);
 }
 
 function valueText(v: CssValue): string {

@@ -113,6 +113,8 @@ describe('dependency boundaries', () => {
     expect(imports).toEqual([
       "import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';",
       "import { serializeColor } from '../css/color.ts';",
+      // CSSOM string serialization for family names (PR #28 round 2); no parsing or matching.
+      "import { serializeString } from '../css/escapes.ts';",
       "import { LONGHANDS } from '../css/properties.ts';",
       "import type { CssValue } from '../css/stylesheet.ts';",
       // TXT1-C: the font-family rewrite through the font map, from the resolved value alone.
