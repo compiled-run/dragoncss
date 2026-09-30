@@ -27,13 +27,13 @@
   "contextProbe": {
    "rounds": 1,
    "blankedRules": 9,
-   "blankedDeclarations": 71,
+   "blankedDeclarations": 58,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 838,
-  "errors": 837,
+  "diagnostics": 881,
+  "errors": 880,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 30,
@@ -43,10 +43,10 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 21,
    "DRAGON_UNSUPPORTED_FONT [android]": 22,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 68,
+   "DRAGON_UNSUPPORTED_PROPERTY": 55,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 531,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 587,
    "DRAGON_UNSUPPORTED_VALUE [ios]": 32,
    "DRAGON_UNSUPPORTED_VALUE [web]": 32
   },
@@ -57,7 +57,7 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 21,
-     "DRAGON_UNSUPPORTED_PROPERTY": 68,
+     "DRAGON_UNSUPPORTED_PROPERTY": 55,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 35
     },
@@ -72,7 +72,7 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 21,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 68,
+     "DRAGON_UNSUPPORTED_PROPERTY": 55,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 35
     },
@@ -86,9 +86,9 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 21,
      "DRAGON_UNSUPPORTED_FONT": 22,
-     "DRAGON_UNSUPPORTED_PROPERTY": 68,
+     "DRAGON_UNSUPPORTED_PROPERTY": 55,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 534
+     "DRAGON_UNSUPPORTED_VALUE": 590
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -96,11 +96,11 @@
    }
   },
   "declarations": 291,
-  "supportedBothTargets": 165,
-  "supportedWeb": 165,
-  "supportedIos": 165,
-  "supportedAndroid": 34,
-  "supportPercent": 56.7,
+  "supportedBothTargets": 177,
+  "supportedWeb": 177,
+  "supportedIos": 177,
+  "supportedAndroid": 37,
+  "supportPercent": 60.8,
   "elements": 62,
   "supportedElements": 33,
   "tags": {
@@ -179,9 +179,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 429,
-   "B-unwrapped": 461,
-   "C-context": 463
+   "A-authored": 446,
+   "B-unwrapped": 478,
+   "C-context": 493
   }
  },
  "features": {
@@ -1146,11 +1146,11 @@
    "atRule": null,
    "property": "border-radius",
    "value": "0.5rem",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1160,12 +1160,10 @@
    "atRule": null,
    "property": "box-shadow",
    "value": "0 16px 40px var(--shadow-strong)",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 64,
@@ -1384,11 +1382,11 @@
    "atRule": null,
    "property": "border-radius",
    "value": "50%",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1398,12 +1396,10 @@
    "atRule": null,
    "property": "box-shadow",
    "value": "0 28px 70px var(--shadow-strong),\n\t\tinset 0 0 0 0.7rem rgba(255, 255, 255, 0.02),\n\t\tinset 0 0 2.5rem rgba(255, 255, 255, 0.05)",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 81,
@@ -1539,11 +1535,11 @@
    "atRule": null,
    "property": "border-radius",
    "value": "50%",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1553,11 +1549,11 @@
    "atRule": null,
    "property": "box-shadow",
    "value": "0 0 0 0.35rem rgba(255, 255, 255, 0.05),\n\t\tinset 0 0 1.25rem rgba(0, 0, 0, 0.45)",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1805,11 +1801,11 @@
    "atRule": null,
    "property": "border-radius",
    "value": "999px",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -2016,11 +2012,11 @@
    "atRule": null,
    "property": "border-radius",
    "value": "50%",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -2030,11 +2026,11 @@
    "atRule": null,
    "property": "box-shadow",
    "value": "0 0 0 0.2rem rgba(255, 255, 255, 0.18),\n\t\t0 0.3rem 1rem rgba(0, 0, 0, 0.5)",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -2432,11 +2428,11 @@
    "atRule": null,
    "property": "border-radius",
    "value": "1rem",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -3070,12 +3066,10 @@
    "atRule": null,
    "property": "box-shadow",
    "value": "-24px 0 70px var(--shadow-strong)",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 201,
@@ -3418,11 +3412,11 @@
    "atRule": null,
    "property": "border-radius",
    "value": "0.35rem",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -3961,7 +3955,6 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -5751,19 +5744,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2012-2033|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2027-2033|border-bottom-left-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-bottom-left-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 2012,
+    "start": 2027,
     "end": 2033,
     "line": 120,
-    "column": 2,
-    "text": "border-radius: 0.5rem"
+    "column": 17,
+    "text": "0.5rem"
    },
-   "message": "border-radius is not supported in milestone 1",
+   "message": "border-bottom-left-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-bottom-left-radius value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5771,19 +5764,59 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2036-2080|box-shadow is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2027-2033|border-bottom-right-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-bottom-right-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 2036,
-    "end": 2080,
-    "line": 121,
-    "column": 2,
-    "text": "box-shadow: 0 16px 40px var(--shadow-strong)"
+    "start": 2027,
+    "end": 2033,
+    "line": 120,
+    "column": 17,
+    "text": "0.5rem"
    },
-   "message": "box-shadow is not supported in milestone 1",
+   "message": "border-bottom-right-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-bottom-right-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2027-2033|border-top-left-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-top-left-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2027,
+    "end": 2033,
+    "line": 120,
+    "column": 17,
+    "text": "0.5rem"
+   },
+   "message": "border-top-left-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-top-left-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2027-2033|border-top-right-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-top-right-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2027,
+    "end": 2033,
+    "line": 120,
+    "column": 17,
+    "text": "0.5rem"
+   },
+   "message": "border-top-right-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-top-right-radius value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6386,19 +6419,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2681-2699|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2696-2699|border-bottom-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-left-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 2681,
+    "start": 2696,
     "end": 2699,
     "line": 151,
-    "column": 2,
-    "text": "border-radius: 50%"
+    "column": 17,
+    "text": "50%"
    },
-   "message": "border-radius is not supported in milestone 1",
+   "message": "border-bottom-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-left-radius value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6406,19 +6439,59 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2702-2842|box-shadow is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2696-2699|border-bottom-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-right-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 2702,
-    "end": 2842,
-    "line": 152,
-    "column": 2,
-    "text": "box-shadow:\n\t\t0 28px 70px var(--shadow-strong),\n\t\tinset 0 0 0 0.7rem rgba(255, 255, 255, 0.02),\n\t\tinset 0 0 2.5rem rgba(255, 255, 255, 0.05)"
+    "start": 2696,
+    "end": 2699,
+    "line": 151,
+    "column": 17,
+    "text": "50%"
    },
-   "message": "box-shadow is not supported in milestone 1",
+   "message": "border-bottom-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-right-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2696-2699|border-top-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-left-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2696,
+    "end": 2699,
+    "line": 151,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-top-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-left-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2696-2699|border-top-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-right-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2696,
+    "end": 2699,
+    "line": 151,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-top-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-right-radius value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6847,19 +6920,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3106-3124|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3121-3124|border-bottom-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-left-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 3106,
+    "start": 3121,
     "end": 3124,
     "line": 171,
-    "column": 2,
-    "text": "border-radius: 50%"
+    "column": 17,
+    "text": "50%"
    },
-   "message": "border-radius is not supported in milestone 1",
+   "message": "border-bottom-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-left-radius value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6867,19 +6940,79 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3127-3221|box-shadow is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3121-3124|border-bottom-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-right-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 3127,
-    "end": 3221,
-    "line": 172,
-    "column": 2,
-    "text": "box-shadow:\n\t\t0 0 0 0.35rem rgba(255, 255, 255, 0.05),\n\t\tinset 0 0 1.25rem rgba(0, 0, 0, 0.45)"
+    "start": 3121,
+    "end": 3124,
+    "line": 171,
+    "column": 17,
+    "text": "50%"
    },
-   "message": "box-shadow is not supported in milestone 1",
+   "message": "border-bottom-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-right-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3121-3124|border-top-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-left-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3121,
+    "end": 3124,
+    "line": 171,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-top-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-left-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3121-3124|border-top-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-right-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3121,
+    "end": 3124,
+    "line": 171,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-top-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-right-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3141-3221|box-shadow: rgba(255, 255, 255, 0.05) 0px 0px 0px 0.35rem, rgba(0, 0, 0, 0.45) 0px 0px 1.25rem 0px inset is unsupported (support profile m1-s5); no box-shadow value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3141,
+    "end": 3221,
+    "line": 173,
+    "column": 3,
+    "text": "0 0 0 0.35rem rgba(255, 255, 255, 0.05),\n\t\tinset 0 0 1.25rem rgba(0, 0, 0, 0.45)"
+   },
+   "message": "box-shadow: rgba(255, 255, 255, 0.05) 0px 0px 0px 0.35rem, rgba(0, 0, 0, 0.45) 0px 0px 1.25rem 0px inset is unsupported (support profile m1-s5); no box-shadow value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -7310,19 +7443,79 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3756-3776|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3771-3776|border-bottom-left-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-bottom-left-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 3756,
+    "start": 3771,
     "end": 3776,
     "line": 207,
-    "column": 2,
-    "text": "border-radius: 999px"
+    "column": 17,
+    "text": "999px"
    },
-   "message": "border-radius is not supported in milestone 1",
+   "message": "border-bottom-left-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-bottom-left-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3771-3776|border-bottom-right-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-bottom-right-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3771,
+    "end": 3776,
+    "line": 207,
+    "column": 17,
+    "text": "999px"
+   },
+   "message": "border-bottom-right-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-bottom-right-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3771-3776|border-top-left-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-top-left-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3771,
+    "end": 3776,
+    "line": 207,
+    "column": 17,
+    "text": "999px"
+   },
+   "message": "border-top-left-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-top-left-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3771-3776|border-top-right-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-top-right-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3771,
+    "end": 3776,
+    "line": 207,
+    "column": 17,
+    "text": "999px"
+   },
+   "message": "border-top-right-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-top-right-radius value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -7830,19 +8023,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4151-4169|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4166-4169|border-bottom-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-left-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 4151,
+    "start": 4166,
     "end": 4169,
     "line": 231,
-    "column": 2,
-    "text": "border-radius: 50%"
+    "column": 17,
+    "text": "50%"
    },
-   "message": "border-radius is not supported in milestone 1",
+   "message": "border-bottom-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-left-radius value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -7850,19 +8043,79 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4172-4260|box-shadow is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4166-4169|border-bottom-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-right-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 4172,
-    "end": 4260,
-    "line": 232,
-    "column": 2,
-    "text": "box-shadow:\n\t\t0 0 0 0.2rem rgba(255, 255, 255, 0.18),\n\t\t0 0.3rem 1rem rgba(0, 0, 0, 0.5)"
+    "start": 4166,
+    "end": 4169,
+    "line": 231,
+    "column": 17,
+    "text": "50%"
    },
-   "message": "box-shadow is not supported in milestone 1",
+   "message": "border-bottom-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-right-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4166-4169|border-top-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-left-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4166,
+    "end": 4169,
+    "line": 231,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-top-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-left-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4166-4169|border-top-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-right-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4166,
+    "end": 4169,
+    "line": 231,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-top-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-right-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4186-4260|box-shadow: rgba(255, 255, 255, 0.18) 0px 0px 0px 0.2rem, rgba(0, 0, 0, 0.5) 0px 0.3rem 1rem 0px is unsupported (support profile m1-s5); no box-shadow value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4186,
+    "end": 4260,
+    "line": 233,
+    "column": 3,
+    "text": "0 0 0 0.2rem rgba(255, 255, 255, 0.18),\n\t\t0 0.3rem 1rem rgba(0, 0, 0, 0.5)"
+   },
+   "message": "box-shadow: rgba(255, 255, 255, 0.18) 0px 0px 0px 0.2rem, rgba(0, 0, 0, 0.5) 0px 0.3rem 1rem 0px is unsupported (support profile m1-s5); no box-shadow value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8618,19 +8871,79 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5063-5082|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5078-5082|border-bottom-left-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-bottom-left-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 5063,
+    "start": 5078,
     "end": 5082,
     "line": 284,
-    "column": 2,
-    "text": "border-radius: 1rem"
+    "column": 17,
+    "text": "1rem"
    },
-   "message": "border-radius is not supported in milestone 1",
+   "message": "border-bottom-left-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-bottom-left-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5078-5082|border-bottom-right-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-bottom-right-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5078,
+    "end": 5082,
+    "line": 284,
+    "column": 17,
+    "text": "1rem"
+   },
+   "message": "border-bottom-right-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-bottom-right-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5078-5082|border-top-left-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-top-left-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5078,
+    "end": 5082,
+    "line": 284,
+    "column": 17,
+    "text": "1rem"
+   },
+   "message": "border-top-left-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-top-left-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5078-5082|border-top-right-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-top-right-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5078,
+    "end": 5082,
+    "line": 284,
+    "column": 17,
+    "text": "1rem"
+   },
+   "message": "border-top-right-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-top-right-radius value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -10214,26 +10527,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6370-6415|box-shadow is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 6370,
-    "end": 6415,
-    "line": 365,
-    "column": 2,
-    "text": "box-shadow: -24px 0 70px var(--shadow-strong)"
-   },
-   "message": "box-shadow is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6426-6430|height: 100% is unsupported (support profile m1-s5); no height value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -11195,23 +11488,87 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6969-6991|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6984-6991|border-bottom-left-radius: 0.35rem (set by border-radius: 0.35rem) is unsupported (support profile m1-s5); no border-bottom-left-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 6969,
+    "start": 6984,
     "end": 6991,
     "line": 404,
-    "column": 2,
-    "text": "border-radius: 0.35rem"
+    "column": 17,
+    "text": "0.35rem"
    },
-   "message": "border-radius is not supported in milestone 1",
+   "message": "border-bottom-left-radius: 0.35rem (set by border-radius: 0.35rem) is unsupported (support profile m1-s5); no border-bottom-left-radius value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6984-6991|border-bottom-right-radius: 0.35rem (set by border-radius: 0.35rem) is unsupported (support profile m1-s5); no border-bottom-right-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 6984,
+    "end": 6991,
+    "line": 404,
+    "column": 17,
+    "text": "0.35rem"
+   },
+   "message": "border-bottom-right-radius: 0.35rem (set by border-radius: 0.35rem) is unsupported (support profile m1-s5); no border-bottom-right-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6984-6991|border-top-left-radius: 0.35rem (set by border-radius: 0.35rem) is unsupported (support profile m1-s5); no border-top-left-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 6984,
+    "end": 6991,
+    "line": 404,
+    "column": 17,
+    "text": "0.35rem"
+   },
+   "message": "border-top-left-radius: 0.35rem (set by border-radius: 0.35rem) is unsupported (support profile m1-s5); no border-top-left-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6984-6991|border-top-right-radius: 0.35rem (set by border-radius: 0.35rem) is unsupported (support profile m1-s5); no border-top-right-radius value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 6984,
+    "end": 6991,
+    "line": 404,
+    "column": 17,
+    "text": "0.35rem"
+   },
+   "message": "border-top-right-radius: 0.35rem (set by border-radius: 0.35rem) is unsupported (support profile m1-s5); no border-top-right-radius value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -12076,26 +12433,6 @@
     "text": "::-webkit-scrollbar-thumb"
    },
    "message": "pseudo-element ::-webkit-scrollbar-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (the scrollbar package OVFL-s)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@8310-8329|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 8310,
-    "end": 8329,
-    "line": 485,
-    "column": 2,
-    "text": "border-radius: 20px"
-   },
-   "message": "border-radius is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -13699,7 +14036,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@484-490|overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@484-490|overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -13711,14 +14048,14 @@
     "column": 14,
     "text": "hidden"
    },
-   "message": "overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
+   "message": "overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@484-490|overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@484-490|overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -13730,7 +14067,7 @@
     "column": 14,
     "text": "hidden"
    },
-   "message": "overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
+   "message": "overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -14991,6 +15328,82 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2027-2033|border-bottom-left-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-bottom-left-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2027,
+    "end": 2033,
+    "line": 120,
+    "column": 17,
+    "text": "0.5rem"
+   },
+   "message": "border-bottom-left-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-bottom-left-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2027-2033|border-bottom-right-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-bottom-right-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2027,
+    "end": 2033,
+    "line": 120,
+    "column": 17,
+    "text": "0.5rem"
+   },
+   "message": "border-bottom-right-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-bottom-right-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2027-2033|border-top-left-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-top-left-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2027,
+    "end": 2033,
+    "line": 120,
+    "column": 17,
+    "text": "0.5rem"
+   },
+   "message": "border-top-left-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-top-left-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2027-2033|border-top-right-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-top-right-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2027,
+    "end": 2033,
+    "line": 120,
+    "column": 17,
+    "text": "0.5rem"
+   },
+   "message": "border-top-right-radius: 0.5rem (set by border-radius: 0.5rem) is unsupported (support profile m1-s5); no border-top-right-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2106-2112|overflow-x: hidden (set by overflow: hidden) is unsupported (support profile m1-s5); no overflow-x value is proven in flex-column/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -15156,6 +15569,82 @@
     "text": "center"
    },
    "message": "align-items: center is unsupported (support profile m1-s5); no align-items value is proven in flex-row-single-line/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2696-2699|border-bottom-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-left-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2696,
+    "end": 2699,
+    "line": 151,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-bottom-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-left-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2696-2699|border-bottom-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-right-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2696,
+    "end": 2699,
+    "line": 151,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-bottom-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-right-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2696-2699|border-top-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-left-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2696,
+    "end": 2699,
+    "line": 151,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-top-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-left-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2696-2699|border-top-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-right-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2696,
+    "end": 2699,
+    "line": 151,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-top-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-right-radius value is proven in paint/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -15656,6 +16145,101 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3121-3124|border-bottom-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-left-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3121,
+    "end": 3124,
+    "line": 171,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-bottom-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-left-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3121-3124|border-bottom-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-right-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3121,
+    "end": 3124,
+    "line": 171,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-bottom-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-right-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3121-3124|border-top-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-left-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3121,
+    "end": 3124,
+    "line": 171,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-top-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-left-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3121-3124|border-top-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-right-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3121,
+    "end": 3124,
+    "line": 171,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-top-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-right-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3141-3221|box-shadow: rgba(255, 255, 255, 0.05) 0px 0px 0px 0.35rem, rgba(0, 0, 0, 0.45) 0px 0px 1.25rem 0px inset is unsupported (support profile m1-s5); no box-shadow value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3141,
+    "end": 3221,
+    "line": 173,
+    "column": 3,
+    "text": "0 0 0 0.35rem rgba(255, 255, 255, 0.05),\n\t\tinset 0 0 1.25rem rgba(0, 0, 0, 0.45)"
+   },
+   "message": "box-shadow: rgba(255, 255, 255, 0.05) 0px 0px 0px 0.35rem, rgba(0, 0, 0, 0.45) 0px 0px 1.25rem 0px inset is unsupported (support profile m1-s5); no box-shadow value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3230-3233|left: 50% is unsupported (support profile m1-s5); no left value is proven in absolute-in-flex-row/ltr/cb-ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -15878,6 +16462,82 @@
     "text": "rgba(255, 255, 255, 0.2)"
    },
    "message": "background-color: rgba(255, 255, 255, 0.2) (set by background: rgba(255,255,255,0.2)) is unsupported (support profile m1-s5); no background-color value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3771-3776|border-bottom-left-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-bottom-left-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3771,
+    "end": 3776,
+    "line": 207,
+    "column": 17,
+    "text": "999px"
+   },
+   "message": "border-bottom-left-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-bottom-left-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3771-3776|border-bottom-right-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-bottom-right-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3771,
+    "end": 3776,
+    "line": 207,
+    "column": 17,
+    "text": "999px"
+   },
+   "message": "border-bottom-right-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-bottom-right-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3771-3776|border-top-left-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-top-left-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3771,
+    "end": 3776,
+    "line": 207,
+    "column": 17,
+    "text": "999px"
+   },
+   "message": "border-top-left-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-top-left-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3771-3776|border-top-right-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-top-right-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3771,
+    "end": 3776,
+    "line": 207,
+    "column": 17,
+    "text": "999px"
+   },
+   "message": "border-top-right-radius: 999px (set by border-radius: 999px) is unsupported (support profile m1-s5); no border-top-right-radius value is proven in paint/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -16397,6 +17057,101 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4166-4169|border-bottom-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-left-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4166,
+    "end": 4169,
+    "line": 231,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-bottom-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-left-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4166-4169|border-bottom-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-right-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4166,
+    "end": 4169,
+    "line": 231,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-bottom-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-bottom-right-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4166-4169|border-top-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-left-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4166,
+    "end": 4169,
+    "line": 231,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-top-left-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-left-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4166-4169|border-top-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-right-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4166,
+    "end": 4169,
+    "line": 231,
+    "column": 17,
+    "text": "50%"
+   },
+   "message": "border-top-right-radius: 50% (set by border-radius: 50%) is unsupported (support profile m1-s5); no border-top-right-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4186-4260|box-shadow: rgba(255, 255, 255, 0.18) 0px 0px 0px 0.2rem, rgba(0, 0, 0, 0.5) 0px 0.3rem 1rem 0px is unsupported (support profile m1-s5); no box-shadow value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4186,
+    "end": 4260,
+    "line": 233,
+    "column": 3,
+    "text": "0 0 0 0.2rem rgba(255, 255, 255, 0.18),\n\t\t0 0.3rem 1rem rgba(0, 0, 0, 0.5)"
+   },
+   "message": "box-shadow: rgba(255, 255, 255, 0.18) 0px 0px 0px 0.2rem, rgba(0, 0, 0, 0.5) 0px 0.3rem 1rem 0px is unsupported (support profile m1-s5); no box-shadow value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4269-4272|left: 50% is unsupported (support profile m1-s5); no left value is proven in absolute-in-flex-row/ltr/cb-ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -16847,6 +17602,82 @@
     "text": "1rem 0"
    },
    "message": "padding-top: 1rem (set by padding: 1rem 0) is unsupported (support profile m1-s5); no padding-top value is proven in flex-row/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5078-5082|border-bottom-left-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-bottom-left-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5078,
+    "end": 5082,
+    "line": 284,
+    "column": 17,
+    "text": "1rem"
+   },
+   "message": "border-bottom-left-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-bottom-left-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5078-5082|border-bottom-right-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-bottom-right-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5078,
+    "end": 5082,
+    "line": 284,
+    "column": 17,
+    "text": "1rem"
+   },
+   "message": "border-bottom-right-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-bottom-right-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5078-5082|border-top-left-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-top-left-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5078,
+    "end": 5082,
+    "line": 284,
+    "column": 17,
+    "text": "1rem"
+   },
+   "message": "border-top-left-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-top-left-radius value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5078-5082|border-top-right-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-top-right-radius value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5078,
+    "end": 5082,
+    "line": 284,
+    "column": 17,
+    "text": "1rem"
+   },
+   "message": "border-top-right-radius: 1rem (set by border-radius: 1rem) is unsupported (support profile m1-s5); no border-top-right-radius value is proven in paint/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
