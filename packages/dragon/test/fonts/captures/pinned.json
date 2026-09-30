@@ -87,6 +87,20 @@
       "src": "fonts/Roboto/Roboto-Regular.ttf"
      }
     ]
+   },
+   "Lato": {
+    "mode": "pinned",
+    "family": "Lato",
+    "faces": [
+     {
+      "src": "fonts/Lato/Lato-Regular.ttf",
+      "weight": "400"
+     },
+     {
+      "src": "fonts/Lato/Lato-Bold.ttf",
+      "weight": "700"
+     }
+    ]
    }
   }
  },
@@ -320,6 +334,95 @@
     "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Italic.ttf\");font-weight:400;font-style:italic}",
     "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Bold.ttf\");font-weight:700}",
     "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-BoldItalic.ttf\");font-weight:700;font-style:italic}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Noto Sans Mono",
+     "postScriptName": "NotoSansMono-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  },
+  {
+   "family": "'Lato', sans-serif",
+   "weight": 400,
+   "stretch": 100,
+   "style": "normal",
+   "text": "AaBb",
+   "rewritten": "\"Lato\", \"Dragon Sans\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Lato\";src:url(\"fonts/Lato/Lato-Regular.ttf\");font-weight:400}",
+    "@font-face{font-family:\"Lato\";src:url(\"fonts/Lato/Lato-Bold.ttf\");font-weight:700}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Light.ttf\");font-weight:300}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Regular.ttf\");font-weight:400}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Italic.ttf\");font-weight:400;font-style:italic}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Bold.ttf\");font-weight:700}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-BoldItalic.ttf\");font-weight:700;font-style:italic}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Lato",
+     "postScriptName": "Lato-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  },
+  {
+   "family": "'Lato', sans-serif",
+   "weight": 700,
+   "stretch": 100,
+   "style": "normal",
+   "text": "AaBb",
+   "rewritten": "\"Lato\", \"Dragon Sans\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Lato\";src:url(\"fonts/Lato/Lato-Regular.ttf\");font-weight:400}",
+    "@font-face{font-family:\"Lato\";src:url(\"fonts/Lato/Lato-Bold.ttf\");font-weight:700}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Light.ttf\");font-weight:300}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Regular.ttf\");font-weight:400}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Italic.ttf\");font-weight:400;font-style:italic}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-Bold.ttf\");font-weight:700}",
+    "@font-face{font-family:\"Dragon Sans\";src:url(\"fonts/Inter/Inter-BoldItalic.ttf\");font-weight:700;font-style:italic}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Lato",
+     "postScriptName": "Lato-Bold",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  },
+  {
+   "family": "Lato",
+   "weight": 400,
+   "stretch": 100,
+   "style": "italic",
+   "text": "AaBb",
+   "rewritten": "\"Lato\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Lato\";src:url(\"fonts/Lato/Lato-Regular.ttf\");font-weight:400}",
+    "@font-face{font-family:\"Lato\";src:url(\"fonts/Lato/Lato-Bold.ttf\");font-weight:700}"
+   ],
+   "chrome": [
+    {
+     "familyName": "Lato",
+     "postScriptName": "Lato-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ]
+  },
+  {
+   "family": "\"sans-serif\", monospace",
+   "weight": 400,
+   "stretch": 100,
+   "style": "normal",
+   "text": "AaBb",
+   "rewritten": "\"sans-serif\", \"Dragon Mono\"",
+   "fontFaceRules": [
+    "@font-face{font-family:\"Dragon Mono\";src:url(\"fonts/NotoSansMono/NotoSansMono-Regular.ttf\")}"
    ],
    "chrome": [
     {

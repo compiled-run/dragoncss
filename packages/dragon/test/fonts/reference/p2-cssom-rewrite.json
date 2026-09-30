@@ -579,6 +579,125 @@
    ],
    "expect": "Inter-Regular",
    "ok": true
+  },
+  {
+   "id": "quoted-monospace",
+   "css": ".c{font-family:\"monospace\"}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "\"monospace\"",
+     "after": "\"monospace\""
+    }
+   ],
+   "computed": "\"monospace\"",
+   "chrome": [
+    {
+     "familyName": "Times",
+     "postScriptName": "Times-Roman",
+     "isCustomFont": false,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "platform",
+   "ok": true
+  },
+  {
+   "id": "escaped-generic",
+   "css": ".c{font-family:s\\61ns-serif}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "authored": "s\\61ns-serif",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "sans-serif",
+     "after": "\"Dragon Sans\""
+    }
+   ],
+   "computed": "\"Dragon Sans\"",
+   "chrome": [
+    {
+     "familyName": "Inter",
+     "postScriptName": "Inter-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "Inter-Regular",
+   "ok": true
+  },
+  {
+   "id": "quoted-escaped-generic",
+   "css": ".c{font-family:\"s\\61ns-serif\"}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "authored": "\"s\\61ns-serif\"",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "\"sans-serif\"",
+     "after": "\"sans-serif\""
+    }
+   ],
+   "computed": "\"sans-serif\"",
+   "chrome": [
+    {
+     "familyName": "Times",
+     "postScriptName": "Times-Roman",
+     "isCustomFont": false,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "platform",
+   "ok": true
+  },
+  {
+   "id": "quoted-upper-then-mono",
+   "css": ".c{font-family:\"SANS-SERIF\", monospace}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "authored": "\"SANS-SERIF\", monospace",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "SANS-SERIF, monospace",
+     "after": "SANS-SERIF, \"Dragon Mono\""
+    }
+   ],
+   "computed": "SANS-SERIF, \"Dragon Mono\"",
+   "chrome": [
+    {
+     "familyName": "Noto Sans Mono",
+     "postScriptName": "NotoSansMono-Regular",
+     "isCustomFont": true,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "NotoSansMono-Regular",
+   "ok": true
+  },
+  {
+   "id": "quoted-ui-serif",
+   "css": ".c{font-family:\"ui-serif\"}",
+   "body": "<div class=\"c\">AaBb</div>",
+   "authored": "\"ui-serif\"",
+   "visits": [
+    {
+     "where": ".c",
+     "before": "ui-serif",
+     "after": "ui-serif"
+    }
+   ],
+   "computed": "ui-serif",
+   "chrome": [
+    {
+     "familyName": "Times",
+     "postScriptName": "Times-Roman",
+     "isCustomFont": false,
+     "glyphCount": 4
+    }
+   ],
+   "expect": "platform",
+   "ok": true
   }
  ]
 }

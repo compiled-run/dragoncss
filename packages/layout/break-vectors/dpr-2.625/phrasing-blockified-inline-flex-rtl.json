@@ -1,0 +1,11 @@
+{
+  "case": "phrasing-blockified-inline-flex-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"s1a:text0","lines":[[0,2]]},
+    {"id":"s1c:text0","lines":[[0,1]]},
+    {"id":"d1:text0","lines":[[0,2]]},
+    {"id":"s2b:text0","lines":[[0,3]]},
+    {"id":"s3a:text0","lines":[[0,1]]}
+  ]
+}
