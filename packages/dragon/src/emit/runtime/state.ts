@@ -141,7 +141,10 @@ public final class DragonStateMachine {
       guard let n = nodes[id] else { fatalError("dragon: the state runtime orders \(id), which it does not hold") }
       if n.kind == "text" {
         let v = t.textNode(n.id, parent: n.parent, kind: n.kind)
-        for w in n.writes { if case let .text(s, family, size, color) = w { v.dragonSetText(s, family: family, cssSize: size, color: color) } }
+        for w in n.writes {
+          guard case let .text(s, family, size, color) = w else { fatalError("dragon: text \(n.id) holds a box write") }
+          v.dragonSetText(s, family: family, cssSize: size, color: color)
+        }
         continue
       }
       let v = t.boxNode(n.id, parent: n.parent, kind: n.kind)
@@ -282,7 +285,10 @@ class DragonStateMachine(
       val n = nodes[id] ?: throw IllegalStateException("dragon: the state runtime orders " + id + ", which it does not hold")
       if (n.kind == "text") {
         val v = t.textNode(n.id, n.parent, n.kind)
-        for (w in n.writes) if (w is DragonStateWrite.Text) v.dragonSetText(w.text, w.family, w.cssSize, w.color)
+        for (w in n.writes) {
+          if (w !is DragonStateWrite.Text) throw IllegalStateException("dragon: text " + n.id + " holds a box write")
+          v.dragonSetText(w.text, w.family, w.cssSize, w.color)
+        }
         continue
       }
       val v = t.boxNode(n.id, n.parent, n.kind)
