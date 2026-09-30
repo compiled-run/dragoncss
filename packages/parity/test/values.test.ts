@@ -13,7 +13,7 @@ import type { ParityCase } from '../src/cases.ts';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { expectedPath } from '../src/committed.ts';
 import { exactInZoomedLu } from '../src/compare.ts';
-import { committedDprCapture, runDprCase } from '../src/dpr.ts';
+import { atDpr, committedDprCapture, runDprCase } from '../src/dpr.ts';
 import { FIXTURE_GROUPS, FIXTURES } from '../src/fixtures.ts';
 import type { FixtureSpec } from '../src/fixtures.ts';
 import { compileFixture } from '../src/pipeline.ts';
@@ -138,8 +138,19 @@ describe('the calc goldens agree with Chrome where a values fixture holds the sa
   }
 });
 
-/** Blink's number serialization: six significant digits, without trailing zeros. */
-const blinkNumber = (x: number): string => String(Number(x.toPrecision(6)));
+/** Blink's number serialization, printf %g: six significant digits without trailing zeros, exponent form below 1e-4 and from 1e6. */
+const blinkNumber = (x: number): string => {
+  const [mantissa, e] = x.toExponential(5).split('e') as [string, string];
+  const exp = Number(e);
+  if (exp >= -4 && exp < 6) return String(Number(x.toPrecision(6)));
+  return `${String(Number(mantissa))}e${exp < 0 ? '-' : '+'}${String(Math.abs(exp)).padStart(2, '0')}`;
+};
+
+describe('blinkNumber', () => {
+  it('writes Chrome 145 computed-value numbers (captured in values-calc-length-max and values-calc-* fixtures)', () => {
+    expect([33554429, 11184809.333, 12782639, 16777214, 1e9, 999999.5, 123456, 0.5, 0.0001, 0.00001234, -33554430].map(blinkNumber)).toEqual(['3.35544e+07', '1.11848e+07', '1.27826e+07', '1.67772e+07', '1e+09', '1e+06', '123456', '0.5', '0.0001', '1.234e-05', '-3.35544e+07']);
+  });
+});
 
 const COMPUTED_PROPERTIES = [['minWidth', 'min-width'], ['maxWidth', 'max-width'], ['minHeight', 'min-height'], ['maxHeight', 'max-height'], ['flexBasis', 'flex-basis']] as const;
 
@@ -202,4 +213,37 @@ describe('DPR platform rules (platform-rules.ts dprPlatformRules): R6', () => {
       }
     });
   }
+});
+
+describe('CSS_LENGTH_MAX golden (T118J): values-calc-length-max reaches the Blink CSS length range, INT_MAX / 64 - 2 and INT_MIN / 64 + 2', () => {
+  const f = spec('values-calc-length-max');
+  it('the environment pass resolves calc(1e9px) to CSS_LENGTH_MAX 33554429 and calc(-1e9px) to CSS_LENGTH_MIN -33554430, at every DPR', () => {
+    for (const c of casesOf(f, fixtureInput(f))) {
+      const compiled = compileFixture(f, NO_FAULTS, 'enforce', c.environment.direction).compiled;
+      for (const dpr of DPRS) {
+        const p = iosLayoutProjection(compiled, atDpr(c.environment, dpr), c.assignment);
+        if (p.kind !== 'ready') throw new Error(p.reason);
+        const resolved = boxes(zoomInput(p.input as LayoutInput, NO_ENGINE_FAULTS).root);
+        const at = (id: string) => (resolved.get(id) as LayoutBox).style;
+        expect([at('a1').marginBottom, at('b1').marginTop, at('a2').marginBottom, at('b3').marginTop, at('c').maxWidth], `${c.id} @${dpr}`).toEqual([
+          { kind: 'px', value: 33554429 },
+          { kind: 'px', value: -33554430 },
+          { kind: 'px', value: 33554429 },
+          { kind: 'px', value: -33554430 },
+          { kind: 'px', value: 33554429 },
+        ]);
+      }
+    }
+  });
+  it('Chrome collapses float(CSS_LENGTH_MAX) = 33554428 with CSS_LENGTH_MIN to -2 device px at every DPR, which only the clamp gives', () => {
+    for (const c of casesOf(f, fixtureInput(f))) {
+      for (const dpr of DPRS) {
+        const cap = committed(c, dpr);
+        const node = (id: string) => cap.nodes.find((n) => n.id === id) as { y: number; height: number };
+        const gap = (a: string, b: string) => Math.round((node(b).y - (node(a).y + node(a).height)) * dpr * 64);
+        // Unclamped, calc(1e9px) and calc(-1e9px) would cancel to 0; without the float store of Length::Fixed, a2 and b2 would give +1 px.
+        expect([gap('a1', 'b1'), gap('a2', 'b2'), gap('a3', 'b3')], `${c.id} @${dpr}`).toEqual([-128, dpr === 1 ? 0 : -128, -128]);
+      }
+    }
+  });
 });
