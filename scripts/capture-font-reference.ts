@@ -97,6 +97,9 @@ async function settle(page: Page): Promise<void> {
   });
 }
 
+/** Blink's generic family keywords (css_parsing_utils.cc ConsumeGenericFamily), matched ASCII case-insensitively. */
+const PARSER_GENERICS = ['serif', 'sans-serif', 'cursive', 'fantasy', 'monospace', 'system-ui', '-webkit-body', 'math'];
+
 /** What the in-page rewrite did to each font-family declaration it met: Chrome's serialization before and after. */
 type Visit = { readonly where: string; readonly before: string; readonly after: string };
 
@@ -107,7 +110,7 @@ type Visit = { readonly where: string; readonly before: string; readonly after: 
  * spells an inferred generic ("sans-serif"), so the quoted name is not replaced.
  */
 async function applyReference(page: Page, plant: Plant | null): Promise<Visit[]> {
-  const visits = await page.evaluate(({ faceCss, pinned, plant: p }) => {
+  const visits = await page.evaluate(({ faceCss, pinned, plant: p, generics }) => {
     const style = document.createElement('style');
     style.setAttribute('data-dragon-reference', '');
     style.textContent = faceCss;
@@ -137,6 +140,8 @@ async function applyReference(page: Page, plant: Plant | null): Promise<Visit[]>
     const rewrite = (text: string): string => split(text).map((e) => {
       if (!e.startsWith('"') && Object.hasOwn(pinned, e) && p !== 'generic-not-rewritten') return quote(pinned[e] as string);
       if (e.startsWith('"') && p === 'quoted-generic-rewritten' && Object.hasOwn(pinned, unquote(e))) return quote(pinned[unquote(e)] as string);
+      // Chrome writes a family named like a generic in other case ("SANS-SERIF") bare, and bare it re-parses as the generic.
+      if (!e.startsWith('"') && e !== e.toLowerCase() && generics.includes(e.replace(/[A-Z]/g, (c) => c.toLowerCase()))) return quote(e);
       return e;
     }).join(', ');
     const out: { where: string; before: string; after: string }[] = [];
@@ -156,7 +161,7 @@ async function applyReference(page: Page, plant: Plant | null): Promise<Visit[]>
     for (const sheet of [...document.styleSheets]) walk(sheet.cssRules);
     for (const el of [...document.querySelectorAll('[style]')]) visit((el as HTMLElement).style, `#${el.id}[style]`);
     return out;
-  }, { faceCss: embed(PINNED_FACE_CSS), pinned: PINNED, plant });
+  }, { faceCss: embed(PINNED_FACE_CSS), pinned: PINNED, plant, generics: PARSER_GENERICS });
   await settle(page);
   return visits;
 }
@@ -191,7 +196,8 @@ async function probeSetFontFamilies(browser: Browser): Promise<unknown> {
 }
 
 // ---------------------------------------------------------------------------------------------------------------- P2
-type P2Case = { readonly id: string; readonly css: string; readonly body: string; readonly expect: string };
+/** authored: the font-family list as written, when Chrome's serialization of it is lossy or decodes escapes (Dragon reads the source). */
+type P2Case = { readonly id: string; readonly css: string; readonly body: string; readonly expect: string; readonly authored?: string };
 const T = 'AaBb';
 const P2_CASES: readonly P2Case[] = [
   { id: 'unquoted', css: '.c{font-family:sans-serif}', body: `<div class="c">${T}</div>`, expect: 'Inter-Regular' },
@@ -216,6 +222,11 @@ const P2_CASES: readonly P2Case[] = [
   { id: 'inside-media', css: '@media (min-width:1px){.c{font-family:sans-serif;font-style:italic}}', body: `<div class="c">${T}</div>`, expect: 'Inter-Italic' },
   { id: 'important-beats-attribute', css: '.c{font-family:sans-serif !important}', body: `<div class="c" style="font-family:serif">${T}</div>`, expect: 'Inter-Regular' },
   { id: 'inherited', css: '.p{font-family:sans-serif}', body: `<div class="p"><span class="c">${T}</span></div>`, expect: 'Inter-Regular' },
+  { id: 'quoted-monospace', css: '.c{font-family:"monospace"}', body: `<div class="c">${T}</div>`, expect: 'platform' },
+  { id: 'escaped-generic', css: '.c{font-family:s\\61ns-serif}', body: `<div class="c">${T}</div>`, expect: 'Inter-Regular', authored: 's\\61ns-serif' },
+  { id: 'quoted-escaped-generic', css: '.c{font-family:"s\\61ns-serif"}', body: `<div class="c">${T}</div>`, expect: 'platform', authored: '"s\\61ns-serif"' },
+  { id: 'quoted-upper-then-mono', css: '.c{font-family:"SANS-SERIF", monospace}', body: `<div class="c">${T}</div>`, expect: 'NotoSansMono-Regular', authored: '"SANS-SERIF", monospace' },
+  { id: 'quoted-ui-serif', css: '.c{font-family:"ui-serif"}', body: `<div class="c">${T}</div>`, expect: 'platform', authored: '"ui-serif"' },
 ];
 
 async function probeRewrite(browser: Browser, plant: Plant | null): Promise<unknown> {
@@ -230,7 +241,7 @@ async function probeRewrite(browser: Browser, plant: Plant | null): Promise<unkn
     const ok = c.expect === 'platform'
       ? chrome.length > 0 && chrome.every((f) => !f.isCustomFont)
       : chrome.length === 1 && chrome[0]?.isCustomFont === true && chrome[0]?.postScriptName === c.expect;
-    rows.push({ id: c.id, css: c.css, body: c.body, visits, computed, chrome, expect: c.expect, ok });
+    rows.push({ id: c.id, css: c.css, body: c.body, ...(c.authored === undefined ? {} : { authored: c.authored }), visits, computed, chrome, expect: c.expect, ok });
   }
   return { ...header(), probe: 'P2', map: REFERENCE_MAP, fontFaceRules: PINNED_FACE_CSS, cases: rows };
 }

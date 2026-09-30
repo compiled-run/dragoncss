@@ -374,21 +374,87 @@ async function prepareAvd(h: { readonly serial: string; readonly tools: AndroidT
   adb(h, ['shell', 'svc', 'power', 'stayon', 'true']);
   adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_WAKEUP']);
   adb(h, ['shell', 'wm', 'dismiss-keyguard']);
-  const focus = (): string => adb(h, ['shell', 'dumpsys', 'window', '|', 'grep', 'mCurrentFocus'], 20_000).out;
-  // A freshly booted image brings up its launcher some seconds after sys.boot_completed; an app launched before that is sent to
-  // the back and its window detached. So the run starts only once the home screen has held the focus for 3 s, with no dialog.
-  let settled = 0;
-  await poll(`${h.serial} to settle on the home screen`, 300_000, () => {
-    const f = focus();
-    if (/Not Responding|has stopped|isn't responding/i.test(f)) {
-      adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_BACK']);
-      settled = 0;
-      return false;
+  await waitForSettledFocus(h);
+}
+
+/** The focus read from `dumpsys window`: the focused window (mCurrentFocus) and the focused activity (mFocusedApp). */
+export type WindowFocus = { readonly currentFocus: string; readonly focusedApp: string };
+
+/**
+ * The focus in `dumpsys window` output, or null when it cannot be read: either line missing, empty, or given twice with different
+ * values (the runner uses one display, so two focuses is not a state it can judge).
+ */
+export function parseWindowFocus(text: string): WindowFocus | null {
+  const one = (key: string): string | null => {
+    const values = new Set([...text.matchAll(new RegExp(`^\\s*${key}=(.*)$`, 'gm'))].map((m) => (m[1] ?? '').trim()));
+    const [v] = values;
+    return values.size === 1 && v !== undefined && v !== '' ? v : null;
+  };
+  const currentFocus = one('mCurrentFocus');
+  const focusedApp = one('mFocusedApp');
+  return currentFocus === null || focusedApp === null ? null : { currentFocus, focusedApp };
+}
+
+/** The home screen holds the focus when this many consecutive samples, SETTLE_INTERVAL_MS apart, read the same launcher focus. */
+export const SETTLE_SAMPLES = 6;
+export const SETTLE_INTERVAL_MS = 500;
+export const SETTLE_TIMEOUT_MS = 300_000;
+
+/** The focus wait so far: the last sample (null when unparseable), its raw text, how many samples in a row read it, and totals. */
+export type SettleState = { readonly last: WindowFocus | null; readonly raw: string; readonly stable: number; readonly samples: number; readonly changes: number; readonly unparseable: number };
+export const SETTLE_START: SettleState = { last: null, raw: '', stable: 0, samples: 0, changes: 0, unparseable: 0 };
+
+const DIALOG = /Not Responding|has stopped|isn't responding/i;
+const LAUNCHER = /[Ll]auncher/;
+
+/**
+ * One focus sample judged: 'back' closes an error dialog, 'home' asks for the home screen when something else has the focus,
+ * 'wait' samples again, and 'done' when the launcher has held both the focused window and the focused activity, unchanged (the
+ * same window object), for `need` samples in a row. Unparseable output never counts toward the run.
+ */
+export function settleStep(state: SettleState, raw: string, need = SETTLE_SAMPLES): { readonly state: SettleState; readonly action: 'done' | 'wait' | 'home' | 'back' } {
+  const f = parseWindowFocus(raw);
+  const samples = state.samples + 1;
+  const changed = f !== null && state.last !== null && (f.currentFocus !== state.last.currentFocus || f.focusedApp !== state.last.focusedApp);
+  const base = { last: f, raw, samples, changes: state.changes + (changed ? 1 : 0), unparseable: state.unparseable + (f === null ? 1 : 0) };
+  if (f === null) return { state: { ...base, stable: 0 }, action: 'wait' };
+  if (DIALOG.test(f.currentFocus)) return { state: { ...base, stable: 0 }, action: 'back' };
+  if (!LAUNCHER.test(f.currentFocus) || !LAUNCHER.test(f.focusedApp)) return { state: { ...base, stable: 0 }, action: 'home' };
+  const stable = !changed && state.last !== null && state.stable > 0 ? state.stable + 1 : 1;
+  return { state: { ...base, stable }, action: stable >= need ? 'done' : 'wait' };
+}
+
+/** Why the focus wait gave up, naming the last state read. */
+export function settleTimeoutMessage(serial: string, timeoutMs: number, s: SettleState, need = SETTLE_SAMPLES): string {
+  const last =
+    s.samples === 0
+      ? 'no sample was read'
+      : s.last === null
+        ? `the last dumpsys window output had no single mCurrentFocus and mFocusedApp: ${JSON.stringify(s.raw.trim().slice(-400))}`
+        : `the last focus was mCurrentFocus=${s.last.currentFocus} mFocusedApp=${s.last.focusedApp}, held for ${s.stable} of ${need} samples`;
+  return `${serial} did not settle on the home screen within ${timeoutMs / 1000} s (tooling fault): ${last}; ${s.samples} samples, ${s.changes} focus changes, ${s.unparseable} unparseable`;
+}
+
+/**
+ * A freshly booted image brings up its launcher some seconds after sys.boot_completed; an app launched before that is sent to the
+ * back and its window detached. So the run starts only once the launcher has held the focus for SETTLE_SAMPLES samples in a row.
+ */
+async function waitForSettledFocus(h: { readonly serial: string; readonly tools: AndroidTools }): Promise<void> {
+  const t0 = Date.now();
+  let state = SETTLE_START;
+  for (;;) {
+    const r = adb(h, ['shell', 'dumpsys', 'window', '|', 'grep', '-E', "'mCurrentFocus=|mFocusedApp='"], 20_000);
+    const step = settleStep(state, r.status === 0 ? r.out : `adb exited ${r.status}: ${r.out}`);
+    state = step.state;
+    if (step.action === 'done') {
+      console.log(`${h.serial}: the home screen held the focus after ${((Date.now() - t0) / 1000).toFixed(1)} s (${state.samples} samples, ${state.changes} focus changes, ${state.unparseable} unparseable)`);
+      return;
     }
-    settled = /[Ll]auncher/.test(f) ? settled + 1 : 0;
-    if (settled === 0) adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_HOME']);
-    return settled >= 6;
-  });
+    if (step.action === 'back') adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_BACK']);
+    if (step.action === 'home') adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_HOME']);
+    if (Date.now() - t0 > SETTLE_TIMEOUT_MS) throw new Error(settleTimeoutMessage(h.serial, SETTLE_TIMEOUT_MS, state));
+    await sleep(SETTLE_INTERVAL_MS);
+  }
 }
 
 export async function boot(spec: DeviceSpec): Promise<DeviceHandle> {

@@ -1,5 +1,6 @@
 // A CSS Syntax 3 tokenizer for descriptor and font-family values. Blink's descriptor parsers work on tokens, so the fonts module
 // ports them over tokens too; unicode-range tokens are produced only when asked for, as Blink's EnableUnicodeRanges does.
+import { asciiLower } from '../css/escapes.ts';
 
 export type Token =
   | { readonly type: 'ident'; readonly value: string }
@@ -258,8 +259,8 @@ export class TokenStream {
   }
 }
 
-/** ASCII lowercase: CSS keywords compare ASCII case-insensitively, so non-ASCII letters keep their case. */
-export const asciiLower = (s: string): string => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
+/** ASCII lowercase, the stylesheet parser's own (css/escapes.ts): non-ASCII letters keep their case. */
+export { asciiLower };
 
 /** ASCII case-insensitive identifier comparison, as CSS keywords compare. */
 export const identIs = (t: Token | undefined, ...names: string[]): boolean => t?.type === 'ident' && names.includes(asciiLower(t.value));
