@@ -19432,7 +19432,7 @@
     "css/css-grid/grid-lanes/gap/row-percentage-gap-001.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-grid/grid-lanes/gap/row-percentage-gap-002.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-grid/grid-lanes/grid-lanes-columns-item-containing-block-is-grid-content-width.html": {"missing":"kind:reftest","status":"not-runnable"},
-    "css/css-grid/grid-lanes/grid-lanes-container-minimum-size-single-axis-scroll-container.html": {"missing":"DRAGON_UNSUPPORTED_PROPERTY:grid-template-rows: auto","status":"not-runnable"},
+    "css/css-grid/grid-lanes/grid-lanes-container-minimum-size-single-axis-scroll-container.html": {"missing":"DRAGON_UNSUPPORTED_VALUE:display:grid-lanes","status":"not-runnable"},
     "css/css-grid/grid-lanes/grid-lanes-fieldset-crash.html": {"missing":"kind:crashtest","status":"not-runnable"},
     "css/css-grid/grid-lanes/grid-lanes-grid-template-columns-computed-withcontent.html": {"missing":"kind:testharness-other","status":"not-runnable"},
     "css/css-grid/grid-lanes/grid-lanes-not-inhibited-001.html": {"missing":"kind:reftest","status":"not-runnable"},
