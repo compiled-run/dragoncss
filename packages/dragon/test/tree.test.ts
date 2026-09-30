@@ -254,7 +254,7 @@ describe('finite states: instances, aliases and branches', () => {
     ].join(' '));
     expect(new Set(arms)).toEqual(new Set(['found not-found', 'not-found found']));
     // A structural error in the arm the initial state does not show still blocks every output.
-    const bad = web().compile(input([], 'span'));
+    const bad = web().compile(input([], 'pre'));
     expect(bad.diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_ELEMENT']);
     expect(bad.outputs.web.kind).toBe('blocked');
     expect(bad.outputs.ios.kind).toBe('blocked');

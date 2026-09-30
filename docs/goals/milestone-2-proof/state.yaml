@@ -2661,6 +2661,13 @@ tasks:
     lane: paint
     objective: 'PNT1 effects half: opacity, z-index and stacking, outline, color-scheme (notes/T046-paint-spec.md §5.2); pnt1-effects holds no work of its own. After V1 and EMS land.'
     receipt: null
+  - id: T116
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'Border join seam: where two same-colour mitred border sides meet, native paints the shared corner pixel at 75% coverage (iOS [63,50,50], Android [64,51,51] over #fcc) where Chrome paints it solid; found by SIZE-ar on sizing-ratio-abspos(-rtl) interior:c1 at DPR 2 and 3 (8 device-pixel failures). Check whether p6a-promote (e8bed1d2) already fixes it; otherwise fix it in the border paint path with a Chrome-backed test. After V1 and EMS.'
+    receipt: null
   - id: T999
     type: judge
     assignee: Judge

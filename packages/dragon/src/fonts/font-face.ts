@@ -3,6 +3,7 @@
 // resolved to bundled bytes or refused with a typed error.
 import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
+import { decodeName } from '../css/escapes.ts';
 import { asciiLower, tokenize, TokenStream } from './css-tokens.ts';
 import type { Token } from './css-tokens.ts';
 import { NO_FONT_FAULTS } from './faults.ts';
@@ -105,7 +106,7 @@ export function parseFontFace(node: CssNode, order: number, resolve: FontAssetRe
       issues.push({ kind: 'unexpected-content', nodeType: decl.type });
       continue;
     }
-    const name = asciiLower(String(decl['property']));
+    const name = asciiLower(decodeName(String(decl['property'])));
     const text = generate(decl['value'] as CssNode);
     if (!(DESCRIPTOR_NAMES as readonly string[]).includes(name)) {
       issues.push({ kind: 'unknown-descriptor', descriptor: name });

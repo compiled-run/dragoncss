@@ -81,7 +81,7 @@ function resolved(q: Extract<SupportQuery<string>, { kind: 'resolved' }>): Suppo
     if (!q.assignment.every((e) => c.assignment.some((x) => x.state.instance === e.state.instance && x.state.state === e.state.state && x.value === e.value))) continue;
     if (c.resolved === null || findResolved(c.resolved, address) === null) continue;
     // An element-level longhand is keyed at the element; a text longhand at the first of its text nodes the value reaches.
-    const keys = usedKeys(c.resolved);
+    const keys = usedKeys(c.resolved, record.fonts);
     const hit: UsedKey | undefined = PROPERTY_ROLE[q.property] === 'text'
       ? keys.find((u) => u.property === q.property && u.address.startsWith(`${address}:`))
       : keys.find((u) => u.property === q.property && u.address === address);

@@ -19,8 +19,9 @@
 //                  screen. It is a probe: rules keyed on the projected tags (button, a, img, input, span) no longer match.
 // Output (deterministic, no timestamps): examples/music-player/dragon/north-star-check.json, with per-target counts. Prints the
 // diagnostic count and the support percentage.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import type { Diagnostic, FrontEndResult, Origin, TreeNode } from '../../../packages/dragon/src/index.ts';
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import type { Diagnostic, FontMap, FrontEndResult, Origin, TreeNode } from '../../../packages/dragon/src/index.ts';
 import { createProject } from '../../../packages/dragon/src/index.ts';
 import { SUPPORTED_TAGS } from '../../../packages/dragon/src/analysis/elements.ts';
 import { attributeRefusal } from '../../../packages/dragon/src/attributes.ts';
@@ -38,6 +39,26 @@ const TREE_DIR = 'examples/music-player/tree';
 const STYLES_SOURCE = '../styles.css';
 const TARGETS = { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
 const TARGET_IDS = ['web', 'ios', 'android'] as const;
+/**
+ * The north star's font map (T033, T036): 'Lato' is the vendored Lato 2.015 Regular and Bold, and sans-serif is pinned to
+ * "Dragon Sans", the five static Inter 4.1 faces. The files enter the snapshot as assets named by their repository path.
+ */
+const FONT_FILES = ['Lato/Lato-Regular.ttf', 'Lato/Lato-Bold.ttf', 'Inter/Inter-Light.ttf', 'Inter/Inter-Regular.ttf', 'Inter/Inter-Italic.ttf', 'Inter/Inter-Bold.ttf', 'Inter/Inter-BoldItalic.ttf'] as const;
+const asset = (file: string): string => `vendor/fonts/${file}`;
+export const FONTS: FontMap = {
+  generics: {
+    'sans-serif': { mode: 'pinned', family: 'Dragon Sans', faces: [
+      { src: asset('Inter/Inter-Light.ttf'), weight: '300' }, { src: asset('Inter/Inter-Regular.ttf'), weight: '400' },
+      { src: asset('Inter/Inter-Italic.ttf'), weight: '400', style: 'italic' }, { src: asset('Inter/Inter-Bold.ttf'), weight: '700' },
+      { src: asset('Inter/Inter-BoldItalic.ttf'), weight: '700', style: 'italic' },
+    ] },
+  },
+  families: { Lato: { mode: 'pinned', family: 'Lato', faces: [{ src: asset('Lato/Lato-Regular.ttf'), weight: '400' }, { src: asset('Lato/Lato-Bold.ttf'), weight: '700' }] } },
+};
+const FONT_ASSETS = FONT_FILES.map((file) => {
+  const bytes = new Uint8Array(readFileSync(new URL(`../../../${asset(file)}`, import.meta.url)));
+  return { id: asset(file), hash: `sha256:${createHash('sha256').update(bytes).digest('hex')}`, bytes };
+});
 type TargetId = (typeof TARGET_IDS)[number];
 
 type Pass = 'A-authored' | 'B-unwrapped' | 'C-context';
@@ -115,8 +136,9 @@ export function projectTree(spec: TreeFixtureFile): TreeFixtureFile {
 }
 
 function compile(id: string, css: string, projected: boolean): { input: FrontEndResult; diagnostics: readonly Diagnostic[]; targets: Record<string, string> } {
-  const input = readTreeFixtureDir(TREE_DIR, id, { text: (file, text) => (file === STYLES_SOURCE ? css : text), ...(projected ? { spec: projectTree } : {}) });
-  const compiled = createProject({ projectId: PROJECT_ID, targets: TARGETS }).compile(input);
+  const read = readTreeFixtureDir(TREE_DIR, id, { text: (file, text) => (file === STYLES_SOURCE ? css : text), ...(projected ? { spec: projectTree } : {}) });
+  const input: FrontEndResult = { ...read, snapshot: { ...read.snapshot, assets: [...read.snapshot.assets, ...FONT_ASSETS] } };
+  const compiled = createProject({ projectId: PROJECT_ID, targets: TARGETS, fonts: FONTS }).compile(input);
   return { input, diagnostics: compiled.diagnostics, targets: { ...compiled.targets } };
 }
 
@@ -287,7 +309,7 @@ function main(): void {
   const report = {
     schema: 'dragon-north-star-check/2',
     source: 'examples/music-player/tree (the Markless demos/music-player-ssr components as a dragon/tree@0 fixture) + styles.css',
-    compiler: { entry: 'createProject (public)', targets: TARGETS },
+    compiler: { entry: 'createProject (public)', targets: TARGETS, fonts: { map: FONTS, assets: FONT_ASSETS.map((a) => ({ id: a.id, hash: a.hash })) } },
     method: {
       passes: {
         'A-authored': 'the tree and stylesheet as written, all cases in one compile',

@@ -1,0 +1,14 @@
+{
+  "case": "phrasing-blockified-flex-row-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"s1:text0","lines":[[0,2]]},
+    {"id":"a1:text0","lines":[[0,6]]},
+    {"id":"l1:text0","lines":[[0,3],[3,5]]},
+    {"id":"l2:text0","lines":[[0,1]]},
+    {"id":"a2:text0","lines":[[0,5],[5,9]]},
+    {"id":"c3:text0","lines":[[0,2]]},
+    {"id":"s3:text0","lines":[[0,1]]},
+    {"id":"c3:text1","lines":[[0,3]]}
+  ]
+}
