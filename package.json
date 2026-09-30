@@ -22,6 +22,7 @@
     "pr:review": "node scripts/pr-review.ts",
     "layout:subset": "node packages/translate/src/cli/subset.ts",
     "linebreak:gen": "node scripts/gen-linebreak-data.ts",
+    "notices:gen": "node scripts/gen-third-party-notices.ts",
     "linebreak:conformance": "node scripts/gen-linebreak-data.ts --conformance",
     "native:gen": "node packages/translate/src/cli/gen.ts",
     "native:swift": "node packages/translate/src/cli/native.ts swift",

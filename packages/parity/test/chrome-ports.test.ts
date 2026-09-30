@@ -3,14 +3,17 @@
 // 145.0.7632.6 tag, never LGPL ones, and record the upstream file, tag and line range of each port. This test works offline from
 // the recorded data. It fails when:
 //   - a source file cites a .cc/.cpp/.h file (in a comment or a string) that no registry entry names for that file;
-//   - a registry entry names an LGPL-headered upstream file that is not on the named pending-ruling list below;
-//   - a registry entry points at a Dragon file or declaration that no longer exists, or that no longer cites it.
+//   - an LGPL-headered entry has no ruling, or has a 'port' use without being on the named clean-room list below (T118J ruling);
+//   - a ruling names a proof test file that does not exist;
+//   - a registry entry points at a Dragon file or declaration that no longer exists, or that no longer cites it;
+//   - THIRD_PARTY_NOTICES.md differs from what scripts/gen-third-party-notices.ts writes from the registry.
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
+import { currentNotices, NOTICES_PATH, thirdPartyNotices } from '../../../scripts/gen-third-party-notices.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SELF = relative(ROOT, fileURLToPath(import.meta.url));
@@ -32,39 +35,31 @@ const PHRASE: Record<string, RegExp> = {
   lgpl: /^GNU (Library|Lesser) General Public License$/,
 };
 
-// Existing citations of LGPL-headered files found when PORT-0 seeded the registry (T118). The code was not changed; each waits on a
-// PM ruling. A new LGPL entry fails until it is ruled on and named here.
-const KNOWN_LGPL_PENDING_RULING: readonly string[] = [
-  'third_party/blink/renderer/core/css/css_markup.cc',
-  'third_party/blink/renderer/core/css/css_primitive_value.cc',
-  'third_party/blink/renderer/core/css/css_primitive_value.h',
-  'third_party/blink/renderer/core/css/selector_checker.cc',
-  'third_party/blink/renderer/core/frame/local_frame_view.cc',
-  'third_party/blink/renderer/core/html/forms/html_button_element.cc',
+// The T118J ruling (docs/goals/milestone-2-proof/notes/T118J-lgpl-ruling.md, accepted by the PM on 2026-09-30) put every
+// LGPL-headered entry in class A (Dragon follows the spec or a Chrome observation; its uses are references) or class B (Dragon's code
+// follows the LGPL code closely). These are the class B files. Board task T123 rewrites their Dragon code clean-room; until then
+// they are the only LGPL entries allowed a 'port' use.
+const KNOWN_LGPL_CLEAN_ROOM: readonly string[] = [
   'third_party/blink/renderer/core/html/forms/step_range.cc',
   'third_party/blink/renderer/core/html/forms/step_range.h',
-  'third_party/blink/renderer/core/html/html_document.cc',
-  'third_party/blink/renderer/core/layout/layout_text.cc',
-  'third_party/blink/renderer/core/layout/layout_theme.cc',
-  'third_party/blink/renderer/core/layout/layout_view.cc',
-  'third_party/blink/renderer/core/style/computed_style.cc',
-  'third_party/blink/renderer/core/style/computed_style.h',
-  'third_party/blink/renderer/platform/geometry/length_functions.cc',
-  'third_party/blink/renderer/platform/image-decoders/image_decoder.cc',
   'third_party/blink/renderer/platform/text/text_break_iterator.cc',
-  'third_party/blink/renderer/platform/wtf/hash_table.h',
 ];
+const CLEAN_ROOM_TASK = 'T123';
 
 // Upstream roots inside the Chromium tree at the tag (third_party/skia is resolved at the DEPS-pinned Skia revision).
 const UPSTREAM_ROOTS = ['third_party/blink/', 'third_party/skia/', 'ui/gfx/', 'cc/', 'third_party/rapidhash/', 'third_party/harfbuzz-ng/'];
 
+interface Ruling { class: 'A' | 'B' | 'C'; basis: string; proof: string[]; task?: string; note?: string }
 interface Range { lines: string; symbol: string | null; source: 'cited' | 'located' | 'whole-file' }
 interface DragonRef { file: string; symbol: string | null; use: 'port' | 'reference' }
 interface Entry {
   upstream: string;
   citedAs?: string[];
   licence: string;
-  ruling?: string;
+  ruling?: Ruling;
+  note?: string;
+  attribution?: string;
+  noticeText?: string;
   licencePhrase: string;
   copyright: string;
   fileSha256: string;
@@ -73,7 +68,40 @@ interface Entry {
   dragon: DragonRef[];
 }
 interface NotChrome { cited: string; source: string; files: string[] }
-export interface Registry { about: string; tag: string; skiaRevision: string; sources: Record<string, string>; entries: Entry[]; notChrome: NotChrome[] }
+export interface Registry {
+  about: string;
+  tag: string;
+  skiaRevision: string;
+  sources: Record<string, string>;
+  entries: Entry[];
+  notChrome: NotChrome[];
+  licenceTexts: Record<string, string>;
+}
+
+/** The licence text id prefix each permissive kind uses in licenceTexts (THIRD_PARTY_NOTICES.md). */
+const NOTICE_PREFIX: Record<string, RegExp> = {
+  'bsd-chromium': /^chromium-bsd$/,
+  'bsd-skia': /^skia-bsd$/,
+  'bsd-google': /^header-bsd-\d+$/,
+  'bsd-apple': /^header-bsd-\d+$/,
+  'bsd-other': /^(?!chromium-bsd$|skia-bsd$|header-bsd-)[a-z0-9-]+$/,
+  'mit-harfbuzz': /^harfbuzz-mit$/,
+};
+
+/** A repository file as text, or undefined when it does not exist. */
+export type RepoReader = (path: string) => string | undefined;
+const readRepo: RepoReader = (path) => (existsSync(join(ROOT, path)) ? readFileSync(join(ROOT, path), 'utf8') : undefined);
+
+/** A proof reference: a repository path, optionally with :n or :a-b (lines that must exist) or #text (text the file must contain). */
+function proofProblem(proof: string, read: RepoReader): string | null {
+  const m = /^([^:#]+)(?::(?:\d+-)?(\d+)|#(.+))?$/.exec(proof);
+  if (!m) return `proof ${proof} is not path, path:n, path:a-b or path#text`;
+  const text = read(m[1]!);
+  if (text === undefined) return `proof file ${m[1]} does not exist`;
+  if (m[2] !== undefined && text.split('\n').length < Number(m[2])) return `proof ${proof}: ${m[1]} has fewer than ${m[2]} lines`;
+  if (m[3] !== undefined && !text.includes(m[3])) return `proof ${proof}: ${m[1]} does not contain "${m[3]}"`;
+  return null;
+}
 
 // Source files scanned for citations: every TypeScript, Swift, Kotlin or Java file under packages/, scripts/ and examples/ that git
 // tracks or would track (.gitignore'd output is skipped). Generated native output is regenerated from the TypeScript, so it is covered
@@ -163,7 +191,7 @@ export function resolve(registry: Registry, path: string): Entry[] {
 }
 
 /** Every problem with a registry against the given sources: an empty list means the registry is complete and consistent. */
-export function audit(registry: Registry, sources: ReadonlyMap<string, string>, knownLgpl: readonly string[]): string[] {
+export function audit(registry: Registry, sources: ReadonlyMap<string, string>, cleanRoom: readonly string[], read: RepoReader = readRepo): string[] {
   const problems: string[] = [];
   if (registry.tag !== TAG) problems.push(`registry tag ${registry.tag} is not the pinned ${TAG}`);
   if (registry.skiaRevision !== SKIA_REVISION) problems.push(`registry skiaRevision ${registry.skiaRevision} is not ${SKIA_REVISION}`);
@@ -180,10 +208,35 @@ export function audit(registry: Registry, sources: ReadonlyMap<string, string>, 
     else if (!PHRASE[e.licence]!.test(e.licencePhrase)) problems.push(`${at}: licence phrase "${e.licencePhrase}" does not match licence ${e.licence}`);
     if (/General Public License/.test(e.licencePhrase) && e.licence !== 'lgpl') problems.push(`${at}: GPL-family phrase recorded as ${e.licence}`);
     if (e.licence === 'bsd-skia' !== e.upstream.startsWith('third_party/skia/')) problems.push(`${at}: bsd-skia is for third_party/skia files only`);
+    const ported = e.dragon.some((d) => d.use === 'port');
     if (e.licence === 'lgpl') {
-      if (!knownLgpl.includes(e.upstream)) problems.push(`${at}: LGPL-headered upstream file; the 2026-09-30 decision does not allow porting it`);
-      if (!e.ruling) problems.push(`${at}: LGPL entry without a ruling note`);
-    } else if (e.ruling) problems.push(`${at}: ruling note on a non-LGPL entry`);
+      if (!e.ruling) problems.push(`${at}: LGPL-headered upstream file without a ruling; the 2026-09-30 decision does not allow porting it`);
+      else if (e.ruling.class === 'A' && ported) problems.push(`${at}: class A LGPL entry with a port use; Dragon may only reference it`);
+      else if (e.ruling.class === 'B' && !cleanRoom.includes(e.upstream)) problems.push(`${at}: class B LGPL entry not on KNOWN_LGPL_CLEAN_ROOM`);
+      else if (e.ruling.class === 'C') problems.push(`${at}: class C is for BSD files, not LGPL ones`);
+      if (ported && !cleanRoom.includes(e.upstream)) problems.push(`${at}: LGPL-headered upstream file with a port use; the 2026-09-30 decision does not allow porting it`);
+      if (e.noticeText !== undefined) problems.push(`${at}: an LGPL entry has no notice text (nothing is ported from it)`);
+    } else {
+      if (e.ruling && e.ruling.class !== 'C') problems.push(`${at}: a ruling on a permissive entry is class C, not ${e.ruling.class}`);
+      if (e.noticeText === undefined || !(e.noticeText in registry.licenceTexts)) problems.push(`${at}: noticeText ${e.noticeText} is not in licenceTexts`);
+      else if (!NOTICE_PREFIX[e.licence]?.test(e.noticeText)) problems.push(`${at}: noticeText ${e.noticeText} does not fit licence ${e.licence}`);
+    }
+    if (e.ruling) {
+      if (!['A', 'B', 'C'].includes(e.ruling.class)) problems.push(`${at}: ruling class ${e.ruling.class}`);
+      if (!e.ruling.basis) problems.push(`${at}: ruling without a basis`);
+      if (e.ruling.proof.length === 0 && !e.ruling.note) problems.push(`${at}: a ruling with no proof test says why in a note`);
+      for (const p of e.ruling.proof) {
+        const bad = proofProblem(p, read);
+        if (bad) problems.push(`${at}: ${bad}`);
+      }
+      if (e.ruling.class === 'B' && e.ruling.task !== CLEAN_ROOM_TASK) problems.push(`${at}: class B ruling not tied to ${CLEAN_ROOM_TASK}`);
+    }
+    // A permissive notice other than Chromium's or Skia's LICENSE file stays in each Dragon file that ports from the entry.
+    if (e.licence === 'bsd-other') {
+      for (const f of new Set(e.dragon.filter((d) => d.use === 'port').map((d) => d.file))) {
+        if (!(sources.get(f) ?? '').includes(e.copyright)) problems.push(`${at}: ${f} ports it without its notice (${e.copyright})`);
+      }
+    }
     if (!/^Copyright/.test(e.copyright)) problems.push(`${at}: no copyright line recorded`);
     for (const k of ['fileSha256', 'headerSha256'] as const) if (!/^[0-9a-f]{64}$/.test(e[k])) problems.push(`${at}: ${k} is not a sha256`);
     if (e.ranges.length === 0) problems.push(`${at}: no line range`);
@@ -199,10 +252,12 @@ export function audit(registry: Registry, sources: ReadonlyMap<string, string>, 
       if (alias.includes('/') || alias === baseName(e.upstream)) problems.push(`${at}: citedAs ${alias} is not an old file name`);
     }
   }
-  for (const p of knownLgpl) {
+  for (const p of cleanRoom) {
     const e = registry.entries.find((x) => x.upstream === p);
-    if (!e || e.licence !== 'lgpl') problems.push(`known LGPL exception ${p} is not an LGPL registry entry (drop it from KNOWN_LGPL_PENDING_RULING)`);
+    if (!e || e.licence !== 'lgpl' || e.ruling?.class !== 'B') problems.push(`clean-room file ${p} is not a class B LGPL registry entry (drop it from KNOWN_LGPL_CLEAN_ROOM)`);
   }
+  const usedTexts = new Set(registry.entries.map((e) => e.noticeText));
+  for (const id of Object.keys(registry.licenceTexts)) if (!usedTexts.has(id)) problems.push(`licence text ${id} is used by no entry`);
 
   // Every citation resolves to exactly one entry that lists the citing file.
   const citedPairs = new Set<string>(); // `${file}\0${upstream}`
@@ -268,45 +323,89 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
   const sources = loadSources();
 
   it('lists every cited Chrome file with a permissive licence, and every Dragon reference exists', () => {
-    expect(audit(registry, sources, KNOWN_LGPL_PENDING_RULING)).toEqual([]);
+    expect(audit(registry, sources, KNOWN_LGPL_CLEAN_ROOM)).toEqual([]);
   });
 
-  it('records the header kinds found at the tag, the LGPL ones only as named pending findings', () => {
-    const counts: Record<string, number> = {};
-    for (const e of registry.entries) counts[e.licence] = (counts[e.licence] ?? 0) + 1;
-    expect(registry.entries.length).toBe(Object.values(counts).reduce((a, b) => a + b, 0));
-    expect(registry.entries.filter((e) => e.licence === 'lgpl').map((e) => e.upstream).sort()).toEqual([...KNOWN_LGPL_PENDING_RULING].sort());
+  it('records a ruling for every LGPL entry: class A ones only referenced, class B ones on the clean-room list for T123', () => {
+    const lgpl = registry.entries.filter((e) => e.licence === 'lgpl');
+    expect(lgpl.length).toBe(18);
+    expect(lgpl.filter((e) => e.ruling?.class === 'B').map((e) => e.upstream).sort()).toEqual([...KNOWN_LGPL_CLEAN_ROOM].sort());
+    for (const e of lgpl.filter((x) => x.ruling?.class === 'A')) expect(e.dragon.map((d) => d.use), e.upstream).not.toContain('port');
   });
 
   it('fails on a citation the registry does not list', () => {
     const planted = new Map(sources);
     planted.set('packages/layout/src/planted.ts', '// Blink third_party/blink/renderer/core/layout/planted_algorithm.cc Planted()\nexport const planted = 1;\n');
-    expect(audit(registry, planted, KNOWN_LGPL_PENDING_RULING)).toEqual([
+    expect(audit(registry, planted, KNOWN_LGPL_CLEAN_ROOM)).toEqual([
       'packages/layout/src/planted.ts:1 cites third_party/blink/renderer/core/layout/planted_algorithm.cc: no registry entry (add it to docs/ports.json with its tag 145.0.7632.6 file, licence, sha256 and line range)',
     ]);
     // A known entry cited from a file the entry does not list fails too.
     planted.set('packages/layout/src/planted.ts', '// SkBlurMask.cpp\nexport const planted = 1;\n');
-    expect(audit(registry, planted, KNOWN_LGPL_PENDING_RULING)).toEqual([
+    expect(audit(registry, planted, KNOWN_LGPL_CLEAN_ROOM)).toEqual([
       'packages/layout/src/planted.ts:1 cites SkBlurMask.cpp: entry third_party/skia/src/core/SkBlurMask.cpp does not list packages/layout/src/planted.ts',
     ]);
   });
 
-  it('fails on an LGPL entry that is not a named pending finding', () => {
-    const entry = registry.entries.find((e) => e.licence === 'lgpl')!;
-    const without = KNOWN_LGPL_PENDING_RULING.filter((p) => p !== entry.upstream);
-    expect(audit(registry, sources, without)).toEqual([`entry ${entry.upstream}: LGPL-headered upstream file; the 2026-09-30 decision does not allow porting it`]);
+  it('fails on an LGPL entry used as a port, off the clean-room list or without a ruling', () => {
+    const withEntry = (e: Entry): Registry => ({ ...registry, entries: [...registry.entries, e] });
+    const lgpl = registry.entries.find((e) => e.licence === 'lgpl' && e.ruling?.class === 'A')!;
+    const cited = { ...lgpl, upstream: 'third_party/blink/renderer/core/layout/layout_block.cc', dragon: [] as DragonRef[] };
+    const { ruling: _ruling, ...unruled } = cited;
+    expect(audit(withEntry(unruled), sources, KNOWN_LGPL_CLEAN_ROOM)).toContain(
+      'entry third_party/blink/renderer/core/layout/layout_block.cc: LGPL-headered upstream file without a ruling; the 2026-09-30 decision does not allow porting it',
+    );
+    // A class A entry that Dragon ports from.
+    const portedA: Registry = { ...registry, entries: registry.entries.map((e) => (e === lgpl ? { ...e, dragon: e.dragon.map((d) => ({ ...d, use: 'port' as const })) } : e)) };
+    expect(audit(portedA, sources, KNOWN_LGPL_CLEAN_ROOM)).toEqual([
+      `entry ${lgpl.upstream}: class A LGPL entry with a port use; Dragon may only reference it`,
+      `entry ${lgpl.upstream}: LGPL-headered upstream file with a port use; the 2026-09-30 decision does not allow porting it`,
+    ]);
+    // A class B entry dropped from the clean-room list.
+    const b = KNOWN_LGPL_CLEAN_ROOM[0]!;
+    expect(audit(registry, sources, KNOWN_LGPL_CLEAN_ROOM.slice(1))).toEqual([
+      `entry ${b}: class B LGPL entry not on KNOWN_LGPL_CLEAN_ROOM`,
+      `entry ${b}: LGPL-headered upstream file with a port use; the 2026-09-30 decision does not allow porting it`,
+    ]);
     // Recording an LGPL header as BSD is caught by the phrase.
-    const relabelled: Registry = { ...registry, entries: registry.entries.map((e) => (e === entry ? (({ ruling: _ruling, ...rest }) => ({ ...rest, licence: 'bsd-chromium' }))(e) : e)) };
-    expect(audit(relabelled, sources, without)).toContain(`entry ${entry.upstream}: GPL-family phrase recorded as bsd-chromium`);
+    const relabelled: Registry = { ...registry, entries: registry.entries.map((e) => (e === lgpl ? (({ ruling: _r, ...rest }) => ({ ...rest, licence: 'bsd-chromium', noticeText: 'chromium-bsd' }))(e) : e)) };
+    expect(audit(relabelled, sources, KNOWN_LGPL_CLEAN_ROOM)).toContain(`entry ${lgpl.upstream}: GPL-family phrase recorded as bsd-chromium`);
+  });
+
+  it('fails when a ruling names a proof test that does not exist', () => {
+    const e = registry.entries.find((x) => x.ruling && x.ruling.proof.length > 0)!;
+    const missing: Registry = { ...registry, entries: registry.entries.map((x) => (x === e ? { ...x, ruling: { ...x.ruling!, proof: [...x.ruling!.proof, 'packages/layout/test/no-such.test.ts'] } } : x)) };
+    expect(audit(missing, sources, KNOWN_LGPL_CLEAN_ROOM)).toEqual([`entry ${e.upstream}: proof file packages/layout/test/no-such.test.ts does not exist`]);
+    expect(proofProblem('packages/dragon/test/units.test.ts:1-999999', readRepo)).toBe('proof packages/dragon/test/units.test.ts:1-999999: packages/dragon/test/units.test.ts has fewer than 999999 lines');
+    expect(proofProblem('packages/dragon/test/fonts/units.test.ts#no such describe', readRepo)).toBe('proof packages/dragon/test/fonts/units.test.ts#no such describe: packages/dragon/test/fonts/units.test.ts does not contain "no such describe"');
+  });
+
+  it('keeps the rapidhash notice in the file that ports it', () => {
+    const e = registry.entries.find((x) => x.licence === 'bsd-other')!;
+    const stripped = new Map(sources);
+    const port = e.dragon.find((d) => d.use === 'port')!;
+    stripped.set(port.file, sources.get(port.file)!.replace(e.copyright, 'Copyright (C) someone else'));
+    expect(audit(registry, stripped, KNOWN_LGPL_CLEAN_ROOM)).toEqual([`entry ${e.upstream}: ${port.file} ports it without its notice (${e.copyright})`]);
+  });
+
+  it('THIRD_PARTY_NOTICES.md is what scripts/gen-third-party-notices.ts writes from docs/ports.json (pnpm notices:gen)', () => {
+    expect(readFileSync(join(ROOT, NOTICES_PATH), 'utf8')).toBe(currentNotices(ROOT));
+    // Every permissive entry's copyright line is in it, and no LGPL entry is.
+    const notices = currentNotices(ROOT);
+    for (const e of registry.entries) {
+      if (e.licence === 'lgpl') expect(notices, e.upstream).not.toContain(`\`${e.upstream}\``);
+      else expect(notices, e.upstream).toContain(`- \`${e.upstream}\`: ${e.copyright}`);
+    }
+    const changed = thirdPartyNotices({ ...registry, entries: registry.entries.map((e, i) => (i === 0 ? { ...e, copyright: 'Copyright 1999 Planted' } : e)) }, readFileSync(join(ROOT, 'vendor', 'harfbuzz', 'COPYING'), 'utf8'));
+    expect(changed).not.toBe(notices);
   });
 
   it('fails when a Dragon file or declaration is gone', () => {
     const e = registry.entries.find((x) => x.dragon.some((d) => d.symbol !== null))!;
     const ref = e.dragon.find((d) => d.symbol !== null)!;
     const renamed: Registry = { ...registry, entries: registry.entries.map((x) => (x === e ? { ...x, dragon: x.dragon.map((d) => (d === ref ? { ...d, symbol: 'noSuchDeclaration' } : d)) } : x)) };
-    expect(audit(renamed, sources, KNOWN_LGPL_PENDING_RULING)).toEqual([`entry ${e.upstream} -> ${ref.file} noSuchDeclaration: noSuchDeclaration is no longer declared in ${ref.file}`]);
+    expect(audit(renamed, sources, KNOWN_LGPL_CLEAN_ROOM)).toEqual([`entry ${e.upstream} -> ${ref.file} noSuchDeclaration: noSuchDeclaration is no longer declared in ${ref.file}`]);
     const moved: Registry = { ...registry, entries: registry.entries.map((x) => (x === e ? { ...x, dragon: [...x.dragon, { file: 'packages/layout/src/gone.ts', symbol: null, use: 'port' as const }] } : x)) };
-    expect(audit(moved, sources, KNOWN_LGPL_PENDING_RULING)).toEqual([`entry ${e.upstream} -> packages/layout/src/gone.ts: the Dragon file no longer exists`]);
+    expect(audit(moved, sources, KNOWN_LGPL_CLEAN_ROOM)).toEqual([`entry ${e.upstream} -> packages/layout/src/gone.ts: the Dragon file no longer exists`]);
   });
 
   it('reads citations from comments and strings, never from code', () => {
