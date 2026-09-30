@@ -13,7 +13,7 @@ import { casesOf, fixtureInput } from './cases.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
 import { compareDual } from './dual.ts';
 import type { FontFixture } from './fixture-groups/fonts.ts';
-import { fontFaceUrls } from './fixture-reader.ts';
+import { fontFaceUrls, parseFixtureHtml } from './fixture-reader.ts';
 import type { PlatformFont } from './font-reference.ts';
 import { applyFontReference, fontDataUrl, pinnedFaceCss, pinnedGenerics, platformFonts, VENDOR_FONTS, vendorFontBytes } from './font-reference.ts';
 import type { CaseOutcome } from './pipeline.ts';
@@ -21,13 +21,16 @@ import { repoPath } from './paths.ts';
 import { compileFixture, webCssOf } from './pipeline.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 
-/** The authored document as Chrome loads it: each @font-face url() that names a vendored font inlined as a data: URL. */
+/** The authored document as Chrome loads it: each @font-face url() that names a vendored font (fontFaceUrls) inlined as a data: URL. */
 export function authoredFontHtml(html: string): string {
-  const ids = new Map(fontFaceUrls(html).map((u) => [u.specifier, u.id]));
-  return html.replace(/@font-face\s*\{[^}]*\}/gi, (rule) => rule.replace(/url\(\s*(?:"([^"\\]*)"|'([^'\\]*)'|([^)"'\s\\]*))\s*\)/gi, (m, a?: string, b?: string, c?: string) => {
-    const id = ids.get(a ?? b ?? c ?? '');
-    return id === undefined ? m : `url("${fontDataUrl(vendorFontBytes(id.slice(VENDOR_FONTS.length)))}")`;
-  }));
+  const { style } = parseFixtureHtml(html);
+  if (style === null) return html;
+  const edits = fontFaceUrls(html.slice(style.start, style.end))
+    .flatMap((u) => u.spans.map((sp) => ({ start: style.start + sp.start, end: style.start + sp.end, text: `url("${fontDataUrl(vendorFontBytes(u.id.slice(VENDOR_FONTS.length)))}")` })))
+    .sort((a, b) => b.start - a.start);
+  let out = html;
+  for (const e of edits) out = out.slice(0, e.start) + e.text + out.slice(e.end);
+  return out;
 }
 
 /** The stated-reference transform of a fixture with a font map; a fixture without one renders as authored. */

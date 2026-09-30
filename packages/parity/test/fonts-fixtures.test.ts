@@ -6,12 +6,12 @@ import { NO_ENGINE_FAULTS } from '@dragon/layout';
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { CompilerFaults } from 'dragon';
-import { NO_FAULTS } from 'dragon';
+import { createProjectWith, NO_FAULTS } from 'dragon';
 import { captureJson } from '../src/capture.ts';
 import { launchChrome } from '../src/chrome.ts';
 import { FONT_FIXTURES, FONTS, fontMapOf } from '../src/fixture-groups/fonts.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
-import { fontFaceUrls } from '../src/fixture-reader.ts';
+import { fixtureToInput, fontFaceUrls, PROJECT_ID, vendoredFontId } from '../src/fixture-reader.ts';
 import { authoredFontHtml, committedFontAuthored, faceProblem, readFontCapture, fontCases, fontEmittedDir, fontExpectedDir, fontExpectedPath, liveFontAuthored, runFontFixture } from '../src/fonts-run.ts';
 import { pinnedGenerics } from '../src/font-reference.ts';
 import { compileFixture, inlineFontAssets, runFixture, webCssOf } from '../src/pipeline.ts';
@@ -52,9 +52,47 @@ describe('the fonts group', () => {
     const { input } = compileFixture({ id: 'block-ua-divs', format: 'html', kind: 'layout', gate: 'default', environments: ['ltr'], source: 'hand-written', rootFont: 'ua-default' });
     expect(input.snapshot.assets).toEqual([]);
     expect(input.snapshot.resolutions).toEqual([]);
-    expect(fontFaceUrls('@font-face{src:url("../../../vendor/fonts/Inter/Inter-Bold.ttf")} @font-face{src:url(../../../package.json)} @font-face{src:url("https://x/y.ttf")}')).toEqual([
-      { specifier: '../../../vendor/fonts/Inter/Inter-Bold.ttf', id: 'vendor/fonts/Inter/Inter-Bold.ttf' },
+    expect(fontFaceUrls('@font-face{font-family:A;src:url("../../../vendor/fonts/Inter/Inter-Bold.ttf")} @font-face{font-family:B;src:url(../../../package.json)} @font-face{font-family:C;src:url("https://x/y.ttf")}')).toEqual([
+      { specifier: '../../../vendor/fonts/Inter/Inter-Bold.ttf', id: 'vendor/fonts/Inter/Inter-Bold.ttf', spans: [{ start: 29, end: 78 }] },
     ]);
+  });
+
+  it('fontFaceUrls reads @font-face rules as the compiler does: comments, case, escapes and nesting', () => {
+    const bold = '../../../vendor/fonts/Inter/Inter-Bold.ttf';
+    const ids = (css: string) => fontFaceUrls(css).map((u) => u.id);
+    expect(ids(`@font-face/* c */{font-family:A;src:url("${bold}")}`)).toEqual(['vendor/fonts/Inter/Inter-Bold.ttf']);
+    expect(ids(`@FONT-FACE{font-family:A;src:url(${bold})}`)).toEqual(['vendor/fonts/Inter/Inter-Bold.ttf']);
+    expect(ids(`@font-f\\61 ce{font-family:A;src:url('${bold}')}`)).toEqual(['vendor/fonts/Inter/Inter-Bold.ttf']);
+    // Refused by the compiler (inside a style rule or @media), so not resolved either.
+    expect(ids(`@media (min-width:1px){@font-face{font-family:A;src:url("${bold}")}}`)).toEqual([]);
+    // A url() outside src is not a face source.
+    expect(ids(`@font-face{font-family:A;src:local(Inter)} .x{background-image:url("${bold}")}`)).toEqual([]);
+    const css = `@font-face /**/ {font-family:A;src:url("${bold}") format("truetype")}`;
+    const [u] = fontFaceUrls(css);
+    expect(u === undefined ? null : css.slice(u.spans[0]?.start, u.spans[0]?.end)).toBe(`url("${bold}")`);
+  });
+
+  it('vendoredFontId: regular files under vendor/fonts only; a directory, an escape or a missing file stays unresolved', () => {
+    expect(vendoredFontId('../../../vendor/fonts/Inter/Inter-Bold.ttf')).toBe('vendor/fonts/Inter/Inter-Bold.ttf');
+    expect(vendoredFontId('../../../vendor/fonts/Inter')).toBeNull();
+    expect(vendoredFontId('../../../vendor/fonts')).toBeNull();
+    expect(vendoredFontId('../../../vendor/fonts/../../package.json')).toBeNull();
+    expect(vendoredFontId('../../../../vendor/fonts/Inter/Inter-Bold.ttf')).toBeNull();
+    expect(vendoredFontId('../../../vendor/fonts/Inter/missing.ttf')).toBeNull();
+    expect(vendoredFontId('/vendor/fonts/Inter/Inter-Bold.ttf')).toBeNull();
+  });
+
+  it('a @font-face src naming a vendored directory is the compiler\'s unresolved-asset error, not a host error', () => {
+    const html = '<!DOCTYPE html><html data-dragon-id="html"><head><style>@font-face{font-family:D;src:url("../../../vendor/fonts/Inter")} div{font-family:D}</style></head><body data-dragon-id="body"><div data-dragon-id="t">x</div></body></html>';
+    const input = fixtureToInput('font-dir', html);
+    expect(input.snapshot.assets).toEqual([]);
+    const compiled = createProjectWith({ projectId: PROJECT_ID, targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', rootFont: 'ua-default' }).compile(input);
+    expect(compiled.diagnostics.map((d) => d.code)).toContain('DRAGON_FONT_UNRESOLVED_ASSET');
+  });
+
+  it('authoredFontHtml inlines a vendored url() the compiler reads, with a comment before the block too', () => {
+    const html = '<!DOCTYPE html><html data-dragon-id="html"><head><style>@font-face/**/{font-family:A;src:url("../../../vendor/fonts/Inter/Inter-Bold.ttf")}</style></head><body data-dragon-id="body"></body></html>';
+    expect(authoredFontHtml(html)).toMatch(/@font-face\/\*\*\/\{font-family:A;src:url\("data:font\/ttf;base64,[A-Za-z0-9+/=]+"\)\}/);
   });
 
   it('the compiled CSS inlines every font asset, and the authored document every vendored @font-face url()', () => {
@@ -64,7 +102,7 @@ describe('the fonts group', () => {
     expect(css).not.toMatch(/url\("fonts\//);
     const html = readFileSync(new URL('../fixtures/fonts-declared.html', import.meta.url), 'utf8');
     expect(authoredFontHtml(html)).not.toMatch(/vendor\/fonts/);
-    const forms = "@font-face{src:url(../../../vendor/fonts/Inter/Inter-Bold.ttf)} @font-face{src:url('../../../vendor/fonts/Inter/Inter-Bold.ttf')} @font-face{src:url(missing.ttf)}";
+    const forms = `<!DOCTYPE html><html data-dragon-id="html"><head><style>${"@font-face{font-family:A;src:url(../../../vendor/fonts/Inter/Inter-Bold.ttf)} @font-face{font-family:B;src:url('../../../vendor/fonts/Inter/Inter-Bold.ttf')} @font-face{font-family:C;src:url(missing.ttf)}"}</style></head><body data-dragon-id="body"></body></html>`;
     expect(authoredFontHtml(forms).match(/url\("data:font\/ttf;base64,/g)?.length).toBe(2);
     expect(authoredFontHtml(forms)).toMatch(/url\(missing\.ttf\)/);
   });
