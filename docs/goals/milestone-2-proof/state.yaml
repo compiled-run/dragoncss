@@ -80,7 +80,6 @@ visual_board:
     command: node /Users/jacksm5pro/.claude-swap-backup/sessions/2-jackshelton30_gmail.com/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-2-proof
 active_task: T058
 dispatched:
-  - T030
   - T108
   - T121
   - T122
@@ -1393,13 +1392,34 @@ tasks:
   - id: T030
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: north-star
     objective: 'MQ-a Phase B wiring (notes/T025 T016B, binding): @media accepted through at-rules and stylesheet, a per-band project loop, band blocks in web CSS, native refused until MQ-R. After T016,
       T022 and T015 are on master. Not concurrent with T011. Device step after P5.'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'MQ-a Phase B landed as PR #38 (merged 7df9e9210) after 2 Macroscope rounds: 9f4ab98b4 samples width x height (4142696777), 3c1cd8c91 checks unsupported at-rule contents in every band, 2d8dd114a
+        scopes band diagnostics by target (4147910145). media-two-axis fixture added; device run 456 cases, all lanes but device-pixels pass, device-pixels ios 135 / android 182 as master, failures files
+        byte-identical. pnpm test 2851/2851.'
+      changed_files:
+        - packages/dragon/src/project.ts
+        - packages/dragon/test/media-wiring.test.ts
+        - packages/parity/src/media-sweep.ts
+      commands:
+        - cmd: pnpm typecheck
+          status: pass
+        - cmd: pnpm test (2851)
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:lanes -- --run-host --run-device
+          status: pass
+        - cmd: pnpm pr:review 38 (exit 0)
+          status: pass
     allowed_files:
       - See notes/T025-tree-mq-elb2-spec.md worker_packages T016B.allowed_files (binding)
+      - packages/dragon/src/project.ts
+      - packages/dragon/test/media-wiring.test.ts
+      - packages/parity/src/media-sweep.ts
     verify:
       - See notes/T025-tree-mq-elb2-spec.md T016B.verify (binding)
     stop_if:
