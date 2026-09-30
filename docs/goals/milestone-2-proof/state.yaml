@@ -3563,6 +3563,37 @@ tasks:
     objective: 'Translucent CSS Color 4 colours: COL4 refuses them because Chrome blends from unclipped float channels (2,040 of 4,000 differed from 8-bit blending). Research how to match on device (float
       colour on the native layer, or blending in Dragon) and prove it with the pixel lanes. After COL4.'
     receipt: null
+  - id: T128
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'Engine bug (found by CALC-2): in a column flex container, an item with min-height: auto cannot shrink below its own specified height. Chrome shrinks an empty 11px item to 0, the engine keeps
+      11px (flex.ts buildItem contentMain via layoutContents measures content with the item height applied). Same for px. Fix with a Chrome-backed fixture.'
+    receipt: null
+  - id: T129
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'Engine vs Chrome (found by CALC-2): rtl block child with margin-left: calc(-1e9px): Chrome x=1.98 (overflow artifact), engine 390. Investigate against Blink LayoutUnit saturation and either
+      port it or refuse the range with a typed code.'
+    receipt: null
+  - id: T130
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: values
+    objective: 'Non-integer order via calc(): Chrome rounds half toward +infinity then clamps to int (calc(-1.5) -> -1; css_math_function_value.cc 89-97, math_extras.h 133-139, BSD). Needs an engine-side
+      leaf in validate.ts/environment.ts (compiler may not round). After V2a lands. Unpin values-reject-order-fraction.'
+    receipt: null
+  - id: T131
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: values
+    objective: 'Percent inside a border-width calc(): Chrome treats it as invalid; Dragon refuses with a misleading percentage-gaps reason. Give it the right typed reason, matching Chrome validity.'
+    receipt: null
   - id: T999
     type: judge
     assignee: Judge
