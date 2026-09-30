@@ -108,22 +108,20 @@ function axisSamples(intervals: readonly Band['width'][number][]): number[] {
 }
 
 /**
- * The sweep's viewports: every width sample at the fixture height, and every height sample at the fixture width (an axis
- * without atoms has none), each with the band it lies in. Every band must hold at least one sample.
+ * The sweep's viewports: the cross product of the width samples and the height samples, so a band that needs both axes, and every
+ * corner where a width and a height boundary meet, is sampled. An axis without atoms takes the fixture's value only. Each viewport
+ * carries the band it lies in; every band must hold at least one (the caller fails a band that none reaches).
  */
 export function sampleViewports(partition: Partition, base: Viewport): { readonly samples: readonly (Viewport & { readonly band: number })[]; readonly unsampled: readonly number[] } {
-  const on = (axis: 'width' | 'height'): number[] => (partition.atoms.some((a) => a.axis === axis) ? axisSamples(partition.bands.flatMap((b) => b[axis])) : []);
-  const viewports = [...on('width').map((width) => ({ width, height: base.height })), ...on('height').map((height) => ({ width: base.width, height }))];
-  const seen = new Set<string>();
+  const on = (axis: 'width' | 'height'): number[] => (partition.atoms.some((a) => a.axis === axis) ? axisSamples(partition.bands.flatMap((b) => b[axis])) : [base[axis]]);
+  const heights = on('height');
   const samples: (Viewport & { band: number })[] = [];
-  // A sheet whose @media rules have no width or height atom has one band, sampled at the fixture viewport.
-  for (const v of viewports.length === 0 ? [base] : viewports) {
-    const key = `${v.width}x${v.height}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const at = bandAt(partition, v);
-    if (at === null) throw new Error(`no band holds ${key}`);
-    samples.push({ ...v, band: at.index });
+  for (const width of on('width')) {
+    for (const height of heights) {
+      const at = bandAt(partition, { width, height });
+      if (at === null) throw new Error(`no band holds ${width}x${height}`);
+      samples.push({ width, height, band: at.index });
+    }
   }
   const unsampled = partition.bands.filter((b) => !samples.some((s) => s.band === b.index)).map((b) => b.index);
   return { samples, unsampled };

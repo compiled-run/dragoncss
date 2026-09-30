@@ -47,6 +47,15 @@ describe('media sweep samples', () => {
     const { samples } = sampleViewports(partition('(min-height: 200px)'), ENVIRONMENT.viewport);
     expect(samples.map((s) => [s.width, s.height, s.band])).toEqual([[400, 100, 0], [400, 199, 0], [400, 200, 1], [400, 201, 1], [400, 300, 1]]);
   });
+  it('a band that needs both axes is sampled: widths and heights are crossed, corners included (PR #38 finding 4142696777)', () => {
+    const p = partition('(min-width: 500px) and (min-height: 500px)');
+    const { samples, unsampled } = sampleViewports(p, ENVIRONMENT.viewport);
+    expect(unsampled).toEqual([]);
+    expect(new Set(samples.map((s) => s.band)).size).toBe(p.bands.length);
+    // Each side of both boundaries meets at the corner.
+    for (const width of [499, 500]) for (const height of [499, 500]) expect(samples.some((s) => s.width === width && s.height === height), `${width}x${height}`).toBe(true);
+    expect(new Set(samples.map((s) => `${s.width}x${s.height}`)).size).toBe(samples.length);
+  });
   it('a sheet whose @media rules have no width or height atom is sampled once, at the fixture viewport', () => {
     expect(sampleViewports(partition('print', 'screen'), ENVIRONMENT.viewport)).toEqual({ samples: [{ width: 400, height: 300, band: 0 }], unsampled: [] });
   });
@@ -62,6 +71,10 @@ describe('media sweep records', () => {
     expect(checkRecords([record])).toEqual(expect.arrayContaining([expect.stringMatching(/media-not-a-fixture\.json is not committed$/)]));
     const changed: SweepRecord = { fixture: 'media-max-width', direction: 'ltr', chrome: CHROME_VERSION, bands: [], samples: [], problem: null };
     expect(checkRecords([changed])).toEqual(expect.arrayContaining([expect.stringMatching(/media-max-width\.json differs from the sweep$/)]));
+  });
+  it('a record naming a band no whole-px viewport reaches fails, whatever its samples', () => {
+    const sample = { width: 400, height: 300, band: 0, pass: true, boxesCompared: 1, valuesCompared: 1, channelsCompared: 1, problems: [] };
+    expect(recordPass({ fixture: 'x', direction: 'ltr', chrome: CHROME_VERSION, bands: [], samples: [sample], problem: 'no whole-px viewport in 1-2000 lies in band 1' })).toBe(false);
   });
   it('a record without samples does not pass', () => {
     expect(recordPass({ fixture: 'x', direction: 'ltr', chrome: CHROME_VERSION, bands: [], samples: [], problem: null })).toBe(false);
