@@ -48,7 +48,8 @@ export const PLANT_CASE = 'text-wrap-spaces';
 export const PLANT_PROBES: { readonly [P in SupportPlant]: { readonly case: string; readonly lane: 'device-pixels' | 'device-applied'; readonly nodes: RegExp } } = {
   'glyph-offset-1': { case: PLANT_CASE, lane: 'device-pixels', nodes: /^(glyph:|edge:\S*:glyph-)/ },
   'radius-square': { case: 'radius-basic', lane: 'device-pixels', nodes: /^radius:/ },
-  'shadow-offset-1': { case: 'shadow-basic', lane: 'device-pixels', nodes: /^shadow:/ },
+  // The small blurs of calib-shadow-blur move by more than the measured shadow difference (2) under a 1 device px shift.
+  'shadow-offset-1': { case: 'calib-shadow-blur', lane: 'device-pixels', nodes: /^shadow:/ },
 };
 /** The devices of the glyph-offset-1 raster plant run (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
