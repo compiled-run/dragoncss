@@ -26856,7 +26856,7 @@
     "css/css-sizing/aspect-ratio/abspos-020.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/aspect-ratio/abspos-021.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/aspect-ratio/abspos-aspect-ratio-border.html": {"missing":"kind:testharness-other","status":"not-runnable"},
-    "css/css-sizing/aspect-ratio/aspect-ratio-minimum-size-single-axis-scroll-container.html": {"missing":"DRAGON_UNSUPPORTED_VALUE:display:inline-block","status":"not-runnable"},
+    "css/css-sizing/aspect-ratio/aspect-ratio-minimum-size-single-axis-scroll-container.html": {"missing":"DRAGON_UNSUPPORTED_VALUE:overflow-y:clip","status":"not-runnable"},
     "css/css-sizing/aspect-ratio/auto-margins-001.html": {"interop":["interop-2021-aspect-ratio"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/aspect-ratio/block-aspect-ratio-001.html": {"interop":["interop-2021-aspect-ratio"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/aspect-ratio/block-aspect-ratio-002.html": {"interop":["interop-2021-aspect-ratio"],"missing":"kind:reftest","status":"not-runnable"},
