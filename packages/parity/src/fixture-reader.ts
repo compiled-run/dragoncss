@@ -2,9 +2,11 @@
 // <head> is not part of the element tree: it generates no boxes. Text node ids are "<parent id>:text<k>".
 // The stylesheet is one <style>, or one <link rel="stylesheet" href> resolved by the caller into a snapshot source.
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import type { ElementNode, FrontEndResult, Origin, SourceFile, SourceRef, TreeNode } from 'dragon';
-import { TREE_SCHEMA_REVISION } from 'dragon';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
+import { isAbsolute, posix, relative } from 'node:path';
+import type { CssNode } from 'css-tree';
+import type { AtRuleContext, ElementNode, FrontEndResult, Origin, SourceFile, SourceRef, TreeNode } from 'dragon';
+import { collectFontFaces, parseStylesheet, preprocessInput, TREE_SCHEMA_REVISION } from 'dragon';
 import { repoPath } from './paths.ts';
 
 export const PROJECT_ID = 'dragon-parity';
@@ -148,6 +150,68 @@ export function compiledFixtureHtml(html: string, css: string, classOf: Readonly
 
 const isBlankText = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
 
+/** A src url() of an accepted @font-face rule that names a vendored font: the specifier, its asset id, and where it is written. */
+export type FontFaceUrl = { readonly specifier: string; readonly id: string; readonly spans: readonly { readonly start: number; readonly end: number }[] };
+
+const FIXTURE_DIR = 'packages/parity/fixtures';
+const VENDOR_FONT_ROOT = 'vendor/fonts';
+
+/**
+ * The asset id (repository path) of a relative src specifier, read from packages/parity/fixtures: a regular file under vendor/fonts,
+ * whose real path is under it too. Null for anything else, which the compiler then reports as an unresolved asset.
+ */
+export function vendoredFontId(specifier: string): string | null {
+  const id = posix.normalize(posix.join(FIXTURE_DIR, specifier));
+  if (id.startsWith('../') || id.startsWith('/') || !id.startsWith(`${VENDOR_FONT_ROOT}/`)) return null;
+  try {
+    const real = realpathSync(repoPath(id));
+    const root = realpathSync(repoPath(VENDOR_FONT_ROOT));
+    const rel = relative(root, real);
+    if (rel === '' || rel.startsWith('..') || isAbsolute(rel) || !statSync(real).isFile()) return null;
+  } catch {
+    return null;
+  }
+  return id;
+}
+
+/** Every css-tree node below node, depth first. */
+function* descendants(node: CssNode): Generator<CssNode> {
+  for (const v of Object.values(node as unknown as Record<string, unknown>)) {
+    const kids = v !== null && typeof v === 'object' && typeof (v as { toArray?: unknown }).toArray === 'function' ? (v as { toArray(): CssNode[] }).toArray() : v !== null && typeof v === 'object' && typeof (v as { type?: unknown }).type === 'string' ? [v as CssNode] : [];
+    for (const k of kids) {
+      yield k;
+      yield* descendants(k);
+    }
+  }
+}
+
+/**
+ * The relative src url()s of the @font-face rules the compiler accepts in a fixture stylesheet, read by the compiler's own path
+ * (parseStylesheet, then collectFontFaces, so comments, escapes, case and nesting are read as Dragon reads them), that resolve to a
+ * vendored font (vendoredFontId), in order and once each. spans: each url() token that spells the specifier, in css offsets.
+ */
+export function fontFaceUrls(css: string): FontFaceUrl[] {
+  const ref: SourceRef = { uri: 'dragon-source://dragon-parity/font-scan.css', revision: 'fixture', hash: 'sha256:0' };
+  const contexts: AtRuleContext[] = [];
+  parseStylesheet(css, { source: ref, start: 0, end: css.length }, { id: 'font-scan', owner: DOCUMENT_ID, scope: 'document' }, 0, [], [], contexts);
+  const specifiers: string[] = [];
+  collectFontFaces(contexts, (specifier) => {
+    if (!specifiers.includes(specifier)) specifiers.push(specifier);
+    return null;
+  });
+  const urlNodes = contexts.flatMap((c) => [...descendants(c.node)].filter((n) => n.type === 'Url'));
+  const out: FontFaceUrl[] = [];
+  for (const specifier of specifiers) {
+    const id = vendoredFontId(specifier);
+    if (id === null) continue;
+    const spans = urlNodes.flatMap((n) => (n.type === 'Url' && n.value === specifier && n.loc !== undefined && n.loc !== null ? [{ start: n.loc.start.offset, end: n.loc.end.offset }] : []));
+    if (spans.length === 0) throw new Error(`the compiler reads the @font-face src ${specifier}, but no url() token spells it`);
+    if (preprocessInput(css) !== css) throw new Error('a fixture stylesheet with @font-face must have no CR, FF or U+0000, so its offsets are the parsed ones');
+    out.push({ specifier, id, spans });
+  }
+  return out;
+}
+
 export function readHtmlFixture(id: string): { html: string; input: FrontEndResult } {
   const html = readFileSync(repoPath(`packages/parity/fixtures/${id}.html`), 'utf8');
   return { html, input: fixtureToInput(id, html) };
@@ -176,6 +240,14 @@ export function fixtureToInput(id: string, html: string, options: FixtureReadOpt
     sources.push({ ref: cssRef, text: css.text, displayPath: css.displayPath });
     sheet = { source: cssRef, start: 0, end: css.text.length };
   }
+  // TXT1-C: @font-face url()s that name vendored fonts become snapshot assets, resolved from the stylesheet's source.
+  const sheetSource = sources.find((f) => f.ref.uri === sheet.source.uri) as SourceFile;
+  const fontUrls = fontFaceUrls(sheetSource.text.slice(sheet.start, sheet.end));
+  const fontAssets = [...new Map(fontUrls.map((u) => {
+    const bytes = new Uint8Array(readFileSync(repoPath(u.id)));
+    return [u.id, { id: u.id, hash: `sha256:${createHash('sha256').update(bytes).digest('hex')}`, bytes }] as const;
+  })).values()];
+  const fontResolutions = fontUrls.map((u) => ({ from: sheet.source, specifier: u.specifier, kind: 'asset' as const, to: u.id }));
   if (root.tag !== 'html') throw new Error('root must be <html>');
   const always = { kind: 'true' } as const;
   const convert = (el: RawElement): ElementNode => {
@@ -213,8 +285,8 @@ export function fixtureToInput(id: string, html: string, options: FixtureReadOpt
       projectId: PROJECT_ID,
       revision: 'fixture',
       sources,
-      assets: [],
-      resolutions: [],
+      assets: fontAssets,
+      resolutions: fontResolutions,
     },
     diagnostics: [],
     tree: {

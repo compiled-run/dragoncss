@@ -9,6 +9,8 @@ import { NO_FAULTS } from '../packages/dragon/src/faults.ts';
 import { launchChrome } from '../packages/parity/src/chrome.ts';
 import { committedAuthored } from '../packages/parity/src/committed.ts';
 import { FIXTURES } from '../packages/parity/src/fixtures.ts';
+import { FONT_FIXTURES } from '../packages/parity/src/fixture-groups/fonts.ts';
+import { committedFontAuthored, runFontFixture } from '../packages/parity/src/fonts-run.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
 import type { ProfileRow } from '../packages/dragon/src/profiles/types.ts';
 import type { CaseOutcome } from '../packages/parity/src/pipeline.ts';
@@ -23,6 +25,12 @@ try {
     const outcome = await runFixture(spec, browser, { authored: committedAuthored, faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'derive' });
     cases.push(...outcome.cases);
     for (const c of outcome.cases) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
+  }
+  // TXT1-C: the web-only fonts fixtures prove web rows through chrome-dual alone; their ios features are empty.
+  for (const f of FONT_FIXTURES) {
+    const outcomes = await runFontFixture(f, browser, { authored: committedFontAuthored, faults: NO_FAULTS, profiles: 'derive' });
+    cases.push(...outcomes);
+    for (const c of outcomes) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
   }
 } finally {
   await browser.close();
