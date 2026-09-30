@@ -213,18 +213,47 @@ export function selectionRequest(weight: number, stretchPercent: number, style: 
 const sameCaps = (a: FontSelectionCapabilities, b: FontSelectionCapabilities): boolean =>
   (['width', 'slope', 'weight'] as const).every((k) => a[k].minimum.raw === b[k].minimum.raw && a[k].maximum.raw === b[k].maximum.raw);
 
+let foldTable: Uint16Array | null = null;
+
+/** BMP case pairs new in Unicode 17: Chrome 145's ICU is on Unicode 16 and leaves them unfolded (font-family-fold parity test). */
+const UNICODE_17_CASE_PAIRS: ReadonlySet<number> = new Set([0xa7ce, 0xa7cf, 0xa7d2, 0xa7d3, 0xa7d4, 0xa7d5]);
+
+/** Each BMP code unit's ICU simple default case-folding class (CaseFolding.txt C+S, as /iu matches), keyed by its smallest member. */
+function simpleFoldTable(): Uint16Array {
+  if (foldTable !== null) return foldTable;
+  const root = new Uint16Array(0x10000).map((_, i) => i);
+  const find = (c: number): number => {
+    let r = c;
+    while (root[r] !== r) r = root[r] as number;
+    return r;
+  };
+  for (let c = 0; c < 0x10000; c++) {
+    if ((c >= 0xd800 && c <= 0xdfff) || UNICODE_17_CASE_PAIRS.has(c)) continue;
+    const ch = String.fromCharCode(c);
+    const lower = ch.toLowerCase();
+    const upper = ch.toUpperCase();
+    if (lower === ch && upper === ch) continue;
+    const same = new RegExp(`^\\u${c.toString(16).padStart(4, '0')}$`, 'iu');
+    for (const m of [lower, upper, upper.toLowerCase(), lower.toUpperCase()]) {
+      if (m.length !== 1 || m === ch || !same.test(m)) continue;
+      const a = find(c);
+      const b = find(m.charCodeAt(0));
+      if (a !== b) root[Math.max(a, b)] = Math.min(a, b);
+    }
+  }
+  for (let c = 0; c < 0x10000; c++) root[c] = find(c);
+  foldTable = root;
+  return root;
+}
+
 /**
  * FontFaceCache keys families with CaseFoldingHashTraits (font_face_cache.h), compared by DeprecatedEqualIgnoringCaseAndNullity:
- * each code point is simply case-folded, here as upper then lower case when both map one code point to one.
+ * each UTF-16 code unit is simply case-folded (u_foldCase), so U+0131 stays and astral letters never fold (Chrome 145, probed).
  */
 export function foldFamily(name: string): string {
+  const table = simpleFoldTable();
   let out = '';
-  for (const ch of name) {
-    const up = ch.toUpperCase();
-    const one = [...up].length === 1 ? up : ch;
-    const low = one.toLowerCase();
-    out += [...low].length === 1 ? low : one;
-  }
+  for (let i = 0; i < name.length; i++) out += String.fromCharCode(table[name.charCodeAt(i)] as number);
   return out;
 }
 
