@@ -7,6 +7,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import type { SupportPlant } from 'dragon';
+import type { GlyphPosition } from './native-compare.ts';
 import type { AndroidTools } from './native-host.ts';
 import { androidTools, HOST_BUNDLE, run } from './native-host.ts';
 import type { NativeTarget } from './targets.ts';
@@ -37,10 +39,54 @@ export const DEVICE_MATRIX: readonly DeviceSpec[] = [
 export const VECTOR_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
 /** The capture-trust cases (the three native:smoke cases), held on screen for the OS screenshot on every device. */
 export const TRUST_CASES: readonly string[] = ['color-border-sides', 'text-wrap-spaces', 'overflow-hidden-bfc'];
-/** The glyph-offset-1 plant case (section 4 item 5). */
-export const PLANT_CASE = 'text-wrap-spaces';
-/** The devices of the glyph-offset-1 raster plant run (section 4 item 5). */
+/**
+ * The raster plant case: every line has an x centre pair and a glyph-bottom scanline at every device DPR (T093 addendum F1).
+ * text-wrap-spaces, the P5 case, stacks Ahem lines at line-height 1, so most of its line bottoms are seams.
+ */
+export const PLANT_CASE = 'tree-projected-text#1';
+/** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
+/** The axis each raster plant moves every glyph along, by PLANT_SHIFT_DEVICE_PX. */
+export const PLANT_AXIS: { readonly [P in SupportPlant]: 'x' | 'y' } = { 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' };
+/** T093 ruling A: a plant's glyph positions (x centre, or bottom edge), against the clean run on the same device, move by this much... */
+export const PLANT_SHIFT_DEVICE_PX = 1;
+/** ...within this... */
+export const PLANT_SHIFT_SPREAD_DEVICE_PX = 0.05;
+/** ...and each fails the position check by at least this much beyond GATE_GLYPH_POSITION_DEVICE_PX. */
+export const PLANT_MARGIN_DEVICE_PX = 0.2;
+
+/** One line's glyph position on the plant axis in the clean and the planted run, against Chrome's. */
+export type PlantLine = { readonly line: string; readonly chrome: number; readonly clean: number; readonly planted: number };
+export type PlantVerdict = { readonly caught: boolean; readonly lines: readonly PlantLine[]; readonly problems: readonly string[] };
+
+/**
+ * A raster plant judged against the clean run (T093 ruling A): both hosts finished; device-frames and device-lines have no failure
+ * in either run; the clean run has no device-pixels failure; the plant has lines on its axis, the same lines as the clean run; every
+ * one fails the position check with at least PLANT_MARGIN_DEVICE_PX to spare; and every one moved by PLANT_SHIFT_DEVICE_PX within
+ * PLANT_SHIFT_SPREAD_DEVICE_PX from the clean run.
+ */
+export function judgeGlyphPlant(plant: SupportPlant, clean: { readonly failures: number; readonly centres: readonly GlyphPosition[] }, planted: readonly GlyphPosition[], gate: number, runs: { readonly hostErrors: readonly string[]; readonly frames: number; readonly lines: number }): PlantVerdict {
+  const axis = PLANT_AXIS[plant];
+  const problems: string[] = [...runs.hostErrors];
+  if (runs.frames > 0) problems.push(`device-frames has ${runs.frames} failure(s) across the two runs`);
+  if (runs.lines > 0) problems.push(`device-lines has ${runs.lines} failure(s) across the two runs`);
+  if (clean.failures > 0) problems.push(`the clean run has ${clean.failures} device-pixels failure(s)`);
+  const cleanAt = new Map(clean.centres.filter((c) => c.axis === axis).map((c) => [c.line, c]));
+  const plantedOn = planted.filter((c) => c.axis === axis);
+  if (plantedOn.length === 0) problems.push(`no ${axis} glyph position line was measured`);
+  if (plantedOn.length !== cleanAt.size || plantedOn.some((c) => !cleanAt.has(c.line))) problems.push(`the planted run measured ${plantedOn.length} ${axis} position lines, the clean run ${cleanAt.size}, not the same lines`);
+  const lines: PlantLine[] = [];
+  for (const c of plantedOn) {
+    const base = cleanAt.get(c.line);
+    if (base === undefined) continue;
+    lines.push({ line: c.line, chrome: c.chrome, clean: base.native, planted: c.native });
+    const shift = c.native - base.native;
+    const margin = Math.abs(c.native - c.chrome) - gate;
+    if (Math.abs(shift - PLANT_SHIFT_DEVICE_PX) > PLANT_SHIFT_SPREAD_DEVICE_PX) problems.push(`${c.line}: the glyph ${axis === 'x' ? 'centre' : 'bottom edge'} moved ${shift.toFixed(3)} device px from the clean run, not ${PLANT_SHIFT_DEVICE_PX} within ${PLANT_SHIFT_SPREAD_DEVICE_PX}`);
+    if (!(margin >= PLANT_MARGIN_DEVICE_PX)) problems.push(`${c.line}: the position check fails by ${margin.toFixed(3)} device px beyond the gate, less than ${PLANT_MARGIN_DEVICE_PX}`);
+  }
+  return { caught: problems.length === 0, lines, problems };
+}
 
 export const avdScale = (d: AvdDeviceSpec): number => d.density / 160;
 

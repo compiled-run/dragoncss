@@ -9,6 +9,7 @@ import { BACKGROUND_RESET_LONGHANDS } from '../properties/background.ts';
 import { COLOR_FIX, kw, tokenValue } from '../values.ts';
 import type { ShorthandHandler } from './shared.ts';
 import { explicit, implicit } from './shared.ts';
+import { asciiLower } from '../escapes.ts';
 
 export type BackgroundLayer =
   /** color: the <'background-color'> token of the final layer, or null when the value omits it (the initial transparent). */
@@ -28,7 +29,7 @@ const SIZE_KEYWORDS = new Set(['auto', 'cover', 'contain']);
 const VERTICAL = new Set(['top', 'bottom']);
 const HORIZONTAL = new Set(['left', 'right']);
 
-const ident = (n: CssNode): string | null => (n.type === 'Identifier' ? String(n['name']).toLowerCase() : null);
+const ident = (n: CssNode): string | null => (n.type === 'Identifier' ? asciiLower(String(n['name'])) : null);
 const isOperator = (n: CssNode, v: string): boolean => n.type === 'Operator' && n['value'] === v;
 const isLengthPercentage = (n: CssNode): boolean => n.type === 'Percentage' || n.type === 'Dimension' || n.type === 'Number';
 const isZeroPercent = (n: CssNode): boolean => n.type === 'Percentage' && Number(n['value']) === 0;
@@ -91,7 +92,7 @@ export function backgroundLayer(tokens: readonly CssNode[]): BackgroundLayer {
       continue;
     }
     inSize = false;
-    if (k === 'none' || t.type === 'Url' || (t.type === 'Function' && IMAGE_FUNCTIONS.has(String(t['name']).toLowerCase()))) image.push(t);
+    if (k === 'none' || t.type === 'Url' || (t.type === 'Function' && IMAGE_FUNCTIONS.has(asciiLower(String(t['name']))))) image.push(t);
     else if (isLengthPercentage(t) || (k !== null && POSITION_KEYWORDS.has(k))) position.push(t);
     else if (k !== null && REPEAT_KEYWORDS.has(k)) repeat.push(t);
     else if (k !== null && ATTACHMENT_KEYWORDS.has(k)) attachment.push(t);

@@ -1,0 +1,12 @@
+{
+  "case": "showcase-player-card",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"title:text0","data":"XXXXX XXXX","lines":1,"units":[0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"artist:text0","data":"XXX XXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"badge:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"now:text0","data":"X XX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"total:text0","data":"X XX","lines":1,"units":[0,0,0,0],"blank":[]}
+  ]
+}
