@@ -116,30 +116,30 @@
   "errors": 810,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
-   "DRAGON_UNPROVEN_CONTEXT [ios]": 27,
-   "DRAGON_UNPROVEN_CONTEXT [web]": 27,
+   "DRAGON_UNPROVEN_CONTEXT [ios]": 30,
+   "DRAGON_UNPROVEN_CONTEXT [web]": 30,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
    "DRAGON_UNSUPPORTED_AT_RULE": 3,
-   "DRAGON_UNSUPPORTED_ELEMENT": 21,
+   "DRAGON_UNSUPPORTED_ELEMENT": 10,
    "DRAGON_UNSUPPORTED_FONT [android]": 22,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
    "DRAGON_UNSUPPORTED_PROPERTY": 67,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
    "DRAGON_UNSUPPORTED_VALUE": 20,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 526,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 16,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 16
+   "DRAGON_UNSUPPORTED_VALUE [android]": 537,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 13,
+   "DRAGON_UNSUPPORTED_VALUE [web]": 13
   },
   "perTarget": {
    "web": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 27,
+     "DRAGON_UNPROVEN_CONTEXT": 30,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
-     "DRAGON_UNSUPPORTED_ELEMENT": 21,
+     "DRAGON_UNSUPPORTED_ELEMENT": 10,
      "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 36
+     "DRAGON_UNSUPPORTED_VALUE": 33
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -147,14 +147,14 @@
    },
    "ios": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 27,
+     "DRAGON_UNPROVEN_CONTEXT": 30,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
-     "DRAGON_UNSUPPORTED_ELEMENT": 21,
+     "DRAGON_UNSUPPORTED_ELEMENT": 10,
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 36
+     "DRAGON_UNSUPPORTED_VALUE": 33
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -164,11 +164,11 @@
     "errors": {
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
-     "DRAGON_UNSUPPORTED_ELEMENT": 21,
+     "DRAGON_UNSUPPORTED_ELEMENT": 10,
      "DRAGON_UNSUPPORTED_FONT": 22,
      "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 546
+     "DRAGON_UNSUPPORTED_VALUE": 557
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -176,13 +176,13 @@
    }
   },
   "declarations": 291,
-  "supportedBothTargets": 160,
-  "supportedWeb": 160,
-  "supportedIos": 160,
-  "supportedAndroid": 21,
-  "supportPercent": 55,
+  "supportedBothTargets": 159,
+  "supportedWeb": 159,
+  "supportedIos": 159,
+  "supportedAndroid": 20,
+  "supportPercent": 54.6,
   "elements": 62,
-  "supportedElements": 33,
+  "supportedElements": 46,
   "tags": {
    "html": {
     "count": 1,
@@ -210,7 +210,7 @@
    },
    "span": {
     "count": 11,
-    "supported": false
+    "supported": true
    },
    "img": {
     "count": 5,
@@ -238,7 +238,7 @@
    },
    "a": {
     "count": 2,
-    "supported": false
+    "supported": true
    }
   },
   "targetsPerPass": {
@@ -259,9 +259,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 394,
-   "B-unwrapped": 426,
-   "C-context": 446
+   "A-authored": 381,
+   "B-unwrapped": 411,
+   "C-context": 449
   }
  },
  "features": {
@@ -3092,6 +3092,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
+    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
@@ -3883,10 +3884,11 @@
    "atRule": null,
    "property": "flex",
    "value": "1 1 100%",
-   "web": "supported",
-   "ios": "supported",
+   "web": "blocked",
+   "ios": "blocked",
    "android": "blocked",
    "codes": [
+    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
@@ -3927,8 +3929,10 @@
    "value": "var(--text-muted)",
    "web": "supported",
    "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 255,
@@ -4449,6 +4453,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
+    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_AT_RULE",
     "DRAGON_UNSUPPORTED_VALUE"
    ]
@@ -9492,46 +9497,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6185-6196|display: inline-flex is unsupported (support profile m1-s5); supported display values: block, flex or none",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 6185,
-    "end": 6196,
-    "line": 353,
-    "column": 11,
-    "text": "inline-flex"
-   },
-   "message": "display: inline-flex is unsupported (support profile m1-s5); supported display values: block, flex or none",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6185-6196|display: inline-flex is unsupported (support profile m1-s5); supported display values: block, flex or none",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 6185,
-    "end": 6196,
-    "line": 353,
-    "column": 11,
-    "text": "inline-flex"
-   },
-   "message": "display: inline-flex is unsupported (support profile m1-s5); supported display values: block, flex or none",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6210-6217|min-width: 2.25rem is unsupported (support profile m1-s5); no min-width value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -11213,8 +11178,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ]
   },
   {
@@ -11234,8 +11198,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ]
   },
   {
@@ -11255,8 +11218,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ]
   },
   {
@@ -11276,8 +11238,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ]
   },
   {
@@ -11912,58 +11873,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@App/disclosure-text|<span> disclosure-text is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "App/disclosure-text",
-    "tag": "span"
-   },
-   "message": "<span> disclosure-text is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@App/privacy-link|<a> privacy-link is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "App/privacy-link",
-    "tag": "a"
-   },
-   "message": "<a> privacy-link is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@App/terms-link|<a> terms-link is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "App/terms-link",
-    "tag": "a"
-   },
-   "message": "<a> terms-link is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@App/youtube-sync-paused|<button> youtube-sync-paused is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@App/youtube-sync-paused|<button> youtube-sync-paused is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -11972,7 +11882,7 @@
     "id": "App/youtube-sync-paused",
     "tag": "button"
    },
-   "message": "<button> youtube-sync-paused is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "message": "<button> youtube-sync-paused is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -11980,7 +11890,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@App/youtube-sync-playing|<button> youtube-sync-playing is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@App/youtube-sync-playing|<button> youtube-sync-playing is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -11989,7 +11899,7 @@
     "id": "App/youtube-sync-playing",
     "tag": "button"
    },
-   "message": "<button> youtube-sync-playing is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "message": "<button> youtube-sync-playing is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -11997,7 +11907,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@LibrarySong/cover|<img> cover is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@LibrarySong/cover|<img> cover is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12006,7 +11916,7 @@
     "id": "LibrarySong/cover",
     "tag": "img"
    },
-   "message": "<img> cover is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "message": "<img> cover is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12014,7 +11924,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@LibrarySong/library-song|<button> library-song is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@LibrarySong/library-song|<button> library-song is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12023,7 +11933,7 @@
     "id": "LibrarySong/library-song",
     "tag": "button"
    },
-   "message": "<button> library-song is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "message": "<button> library-song is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12031,24 +11941,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@LibrarySong/song-description|<span> song-description is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "LibrarySong/song-description",
-    "tag": "span"
-   },
-   "message": "<span> song-description is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Nav/library-button|<button> library-button is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Nav/library-button|<button> library-button is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12057,7 +11950,7 @@
     "id": "Nav/library-button",
     "tag": "button"
    },
-   "message": "<button> library-button is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "message": "<button> library-button is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12065,41 +11958,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/pause-icon|<span> pause-icon is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Player/pause-icon",
-    "tag": "span"
-   },
-   "message": "<span> pause-icon is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/play-icon|<span> play-icon is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Player/play-icon",
-    "tag": "span"
-   },
-   "message": "<span> play-icon is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/play|<button> play is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/play|<button> play is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12108,7 +11967,7 @@
     "id": "Player/play",
     "tag": "button"
    },
-   "message": "<button> play is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "message": "<button> play is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12116,7 +11975,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/progress-input|<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/progress-input|<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12125,7 +11984,7 @@
     "id": "Player/progress-input",
     "tag": "input"
    },
-   "message": "<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "message": "<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12133,7 +11992,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/skip-back|<button> skip-back is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/skip-back|<button> skip-back is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12142,7 +12001,7 @@
     "id": "Player/skip-back",
     "tag": "button"
    },
-   "message": "<button> skip-back is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "message": "<button> skip-back is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12150,7 +12009,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/skip-forward|<button> skip-forward is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/skip-forward|<button> skip-forward is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12159,7 +12018,7 @@
     "id": "Player/skip-forward",
     "tag": "button"
    },
-   "message": "<button> skip-forward is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "message": "<button> skip-forward is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12167,24 +12026,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Song/record-center|<span> record-center is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Song/record-center",
-    "tag": "span"
-   },
-   "message": "<span> record-center is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Song/record-cover|<img> record-cover is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Song/record-cover|<img> record-cover is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -12193,75 +12035,7 @@
     "id": "Song/record-cover",
     "tag": "img"
    },
-   "message": "<img> record-cover is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Song/record-label|<span> record-label is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Song/record-label",
-    "tag": "span"
-   },
-   "message": "<span> record-label is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Song/record-marker-one|<span> record-marker-one is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Song/record-marker-one",
-    "tag": "span"
-   },
-   "message": "<span> record-marker-one is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Song/record-marker-two|<span> record-marker-two is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Song/record-marker-two",
-    "tag": "span"
-   },
-   "message": "<span> record-marker-two is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Song/record-shine|<span> record-shine is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Song/record-shine",
-    "tag": "span"
-   },
-   "message": "<span> record-shine is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd)",
+   "message": "<img> record-cover is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12742,8 +12516,7 @@
    "message": "display: block is unsupported (support profile m1-s5); no display value is supported",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ]
   },
   {
@@ -12781,48 +12554,7 @@
    "message": "display: inline-block is unsupported (support profile m1-s5); no display value is supported",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@9267-9279|display: inline-block is unsupported (support profile m1-s5); supported display values: block, flex or none",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 9267,
-    "end": 9279,
-    "line": 554,
-    "column": 12,
-    "text": "inline-block"
-   },
-   "message": "display: inline-block is unsupported (support profile m1-s5); supported display values: block, flex or none",
-   "viaRelated": false,
-   "passes": [
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@9267-9279|display: inline-block is unsupported (support profile m1-s5); supported display values: block, flex or none",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 9267,
-    "end": 9279,
-    "line": 554,
-    "column": 12,
-    "text": "inline-block"
-   },
-   "message": "display: inline-block is unsupported (support profile m1-s5); supported display values: block, flex or none",
-   "viaRelated": false,
-   "passes": [
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ]
   },
   {
@@ -12841,8 +12573,7 @@
    "message": "margin-bottom: 0px (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); no margin-bottom value is supported",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ]
   },
   {
@@ -12861,8 +12592,7 @@
    "message": "margin-left: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); no margin-left value is supported",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ]
   },
   {
@@ -12881,8 +12611,7 @@
    "message": "margin-right: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); no margin-right value is supported",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ]
   },
   {
@@ -12901,8 +12630,7 @@
    "message": "margin-top: 0.55rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); no margin-top value is supported",
    "viaRelated": false,
    "passes": [
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ]
   },
   {
@@ -17048,6 +16776,44 @@
    ]
   },
   {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@6185-6196|display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 6185,
+    "end": 6196,
+    "line": 353,
+    "column": 11,
+    "text": "inline-flex"
+   },
+   "message": "display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@6185-6196|display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 6185,
+    "end": 6196,
+    "line": 353,
+    "column": 11,
+    "text": "inline-flex"
+   },
+   "message": "display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6185-6196|display: inline-flex is unsupported (support profile m1-s5); no display value is proven in block/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -17061,44 +16827,6 @@
     "text": "inline-flex"
    },
    "message": "display: inline-flex is unsupported (support profile m1-s5); no display value is proven in block/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6185-6196|display: inline-flex is unsupported (support profile m1-s5); in block/ltr use block, flex or none",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 6185,
-    "end": 6196,
-    "line": 353,
-    "column": 11,
-    "text": "inline-flex"
-   },
-   "message": "display: inline-flex is unsupported (support profile m1-s5); in block/ltr use block, flex or none",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6185-6196|display: inline-flex is unsupported (support profile m1-s5); in block/ltr use block, flex or none",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 6185,
-    "end": 6196,
-    "line": 353,
-    "column": 11,
-    "text": "inline-flex"
-   },
-   "message": "display: inline-flex is unsupported (support profile m1-s5); in block/ltr use block, flex or none",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -18568,6 +18296,139 @@
    ]
   },
   {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@7771-7779|flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 7771,
+    "end": 7779,
+    "line": 454,
+    "column": 8,
+    "text": "1 1 100%"
+   },
+   "message": "flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@7771-7779|flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 7771,
+    "end": 7779,
+    "line": 454,
+    "column": 8,
+    "text": "1 1 100%"
+   },
+   "message": "flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7771-7779|flex-basis: 100% (set by flex: 1 1 100%) is unsupported (support profile m1-s5); no flex-basis value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 7771,
+    "end": 7779,
+    "line": 454,
+    "column": 8,
+    "text": "1 1 100%"
+   },
+   "message": "flex-basis: 100% (set by flex: 1 1 100%) is unsupported (support profile m1-s5); no flex-basis value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7771-7779|flex-grow: 1 (set by flex: 1 1 100%) is unsupported (support profile m1-s5); no flex-grow value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 7771,
+    "end": 7779,
+    "line": 454,
+    "column": 8,
+    "text": "1 1 100%"
+   },
+   "message": "flex-grow: 1 (set by flex: 1 1 100%) is unsupported (support profile m1-s5); no flex-grow value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7771-7779|flex-shrink: 1 (set by flex: 1 1 100%) is unsupported (support profile m1-s5); no flex-shrink value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 7771,
+    "end": 7779,
+    "line": 454,
+    "column": 8,
+    "text": "1 1 100%"
+   },
+   "message": "flex-shrink: 1 (set by flex: 1 1 100%) is unsupported (support profile m1-s5); no flex-shrink value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7793-7797|max-width: 100% is unsupported (support profile m1-s5); no max-width value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 7793,
+    "end": 7797,
+    "line": 455,
+    "column": 13,
+    "text": "100%"
+   },
+   "message": "max-width: 100% is unsupported (support profile m1-s5); no max-width value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7862-7879|color: var(--text-muted) substitutes to rgb(167, 175, 189) on page/terms-link; color:<hex-color> is unsupported (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 7862,
+    "end": 7879,
+    "line": 460,
+    "column": 9,
+    "text": "var(--text-muted)"
+   },
+   "message": "color: var(--text-muted) substitutes to rgb(167, 175, 189) on page/terms-link; color:<hex-color> is unsupported (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@8516-8517|margin-right: 0px is unsupported (support profile m1-s5); no margin-right value is proven in block/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -19132,6 +18993,158 @@
     "text": "20rem"
    },
    "message": "max-width: 20rem is unsupported (support profile m1-s5); no max-width value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@9193-9198|display: block is unsupported (support profile m1-s5); no display value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 9193,
+    "end": 9198,
+    "line": 549,
+    "column": 12,
+    "text": "block"
+   },
+   "message": "display: block is unsupported (support profile m1-s5); no display value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@9267-9279|display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 9267,
+    "end": 9279,
+    "line": 554,
+    "column": 12,
+    "text": "inline-block"
+   },
+   "message": "display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@9267-9279|display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 9267,
+    "end": 9279,
+    "line": 554,
+    "column": 12,
+    "text": "inline-block"
+   },
+   "message": "display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@9267-9279|display: inline-block is unsupported (support profile m1-s5); no display value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 9267,
+    "end": 9279,
+    "line": 554,
+    "column": 12,
+    "text": "inline-block"
+   },
+   "message": "display: inline-block is unsupported (support profile m1-s5); no display value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@9291-9308|margin-bottom: 0px (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); no margin-bottom value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 9291,
+    "end": 9308,
+    "line": 555,
+    "column": 11,
+    "text": "0.55rem 0.35rem 0"
+   },
+   "message": "margin-bottom: 0px (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); no margin-bottom value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@9291-9308|margin-left: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); no margin-left value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 9291,
+    "end": 9308,
+    "line": 555,
+    "column": 11,
+    "text": "0.55rem 0.35rem 0"
+   },
+   "message": "margin-left: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); no margin-left value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@9291-9308|margin-right: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); no margin-right value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 9291,
+    "end": 9308,
+    "line": 555,
+    "column": 11,
+    "text": "0.55rem 0.35rem 0"
+   },
+   "message": "margin-right: 0.35rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); no margin-right value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@9291-9308|margin-top: 0.55rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); no margin-top value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 9291,
+    "end": 9308,
+    "line": 555,
+    "column": 11,
+    "text": "0.55rem 0.35rem 0"
+   },
+   "message": "margin-top: 0.55rem (set by margin: 0.55rem 0.35rem 0) is unsupported (support profile m1-s5); no margin-top value is proven in block/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"

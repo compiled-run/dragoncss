@@ -1,0 +1,12 @@
+{
+  "case": "phrasing-blockified-flex-column-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"s1:text0","lines":[[0,5]]},
+    {"id":"a1:text0","lines":[[0,3]]},
+    {"id":"l1:text0","lines":[[0,3],[3,5]]},
+    {"id":"s2:text0","lines":[[0,2]]},
+    {"id":"a2:text0","lines":[[0,3]]},
+    {"id":"l2:text0","lines":[[0,4]]}
+  ]
+}
