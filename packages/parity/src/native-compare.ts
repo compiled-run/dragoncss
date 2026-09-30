@@ -1,14 +1,15 @@
 // The four native dump checks (docs/research/native-strategy.md 3.1): (a) frames and lines against Chrome at the same DPR within
 // GATE_DEVICE_PX, (b) applied against expected exactly, (c) pixel samples against Chrome's pixels (channel delta GATE_CHANNEL_DELTA,
-// edge positions within GATE_DEVICE_PX), (d) frames against snapRect of the TS engine frames exactly. Tolerances are imported only.
+// edge positions within GATE_DEVICE_PX, each line's glyph x centre and bottom edge within GATE_GLYPH_POSITION_DEVICE_PX), (d) frames against snapRect of
+// the TS engine frames exactly. Tolerances are imported only.
 import type { LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
 import { absoluteRects, LU_PER_PX, snapEdges } from '@dragon/layout';
 import type { WebCapture } from './capture.ts';
-import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
+import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX, GATE_GLYPH_POSITION_DEVICE_PX } from './compare.ts';
 import type { DumpEdges, DumpFrame, DumpLine, DumpNode, DumpSample, JsonValue, NativeDump } from './native-dump.ts';
 import { frameOf, REFERENCE_LANE } from './native-dump.ts';
 import type { SamplePoint } from './samples.ts';
-import { ruleKind } from './samples.ts';
+import { GLYPH_EDGE_RULE, isScanlineRule } from './samples.ts';
 
 export type CheckResult = { readonly pass: boolean; readonly compared: number; readonly problems: readonly string[] };
 
@@ -134,14 +135,90 @@ export function readSamples(img: RgbaImage, points: readonly SamplePoint[]): Dum
  * Distance in device px from the first (outside) sample of a scanline to the edge: the sum of (1 - coverage), coverage being
  * (c - outside) / (inside - outside) on the channel the reference shows the most contrast in. Null when that channel has none.
  */
-function edgeDistance(colors: readonly (readonly number[])[], channel: number): number | null {
+export function edgeDistance(colors: readonly (readonly number[])[], channel: number): number | null {
   const bg = (colors[0] as readonly number[])[channel] as number;
   const fg = (colors[colors.length - 1] as readonly number[])[channel] as number;
   if (fg === bg) return null;
   return colors.reduce((s, c) => s + (1 - Math.min(1, Math.max(0, ((c[channel] as number) - bg) / (fg - bg)))), 0);
 }
 
-/** The generated points must be the dump's samples in order; colours equal within GATE_CHANNEL_DELTA; edges within GATE_DEVICE_PX. */
+/** The channel a reference scanline shows the most contrast in, first to last. */
+export function contrastChannel(colors: readonly (readonly number[])[]): number {
+  const first = colors[0] as readonly number[];
+  const last = colors[colors.length - 1] as readonly number[];
+  return [0, 1, 2, 3].reduce((best, k) => (Math.abs((last[k] as number) - (first[k] as number)) > Math.abs((last[best] as number) - (first[best] as number)) ? k : best), 0);
+}
+
+/**
+ * The edge position along a scanline in device px from its pixels and the distance edgeDistance gives: a scanline that runs toward
+ * higher coordinates (a left or top edge) puts the edge at first + distance, one that runs toward lower coordinates at first + 1 - distance.
+ */
+export function edgePosition(pixels: readonly { readonly x: number; readonly y: number }[], distance: number): number {
+  const a = pixels[0] as { x: number; y: number };
+  const b = pixels[pixels.length - 1] as { x: number; y: number };
+  const horizontal = a.y === b.y;
+  const first = horizontal ? a.x : a.y;
+  const last = horizontal ? b.x : b.y;
+  return last > first ? first + distance : first + 1 - distance;
+}
+
+/**
+ * One line's glyph position on one axis: x is the midpoint of its glyph-left and glyph-right edges; y is its glyph-bottom edge alone,
+ * since Chrome's darwin fringe grows glyph tops and not bottoms (T093 addendum F1).
+ */
+export type GlyphPosition = { readonly line: string; readonly axis: 'x' | 'y'; readonly native: number; readonly chrome: number };
+
+type ScanlineEdge = { readonly rule: string; readonly native: number | null; readonly chrome: number | null };
+
+function scanlineEdges(samples: readonly DumpSample[], chrome: RgbaImage): ScanlineEdge[] {
+  const out: ScanlineEdge[] = [];
+  for (let i = 0; i < samples.length;) {
+    const s = samples[i] as DumpSample;
+    let j = i + 1;
+    if (isScanlineRule(s.rule)) while (j < samples.length && (samples[j] as DumpSample).rule === s.rule) j++;
+    if (isScanlineRule(s.rule)) {
+      const line = samples.slice(i, j);
+      const chromeColors = line.map((x) => pixelAt(chrome, x.x, x.y));
+      const channel = contrastChannel(chromeColors);
+      const want = edgeDistance(chromeColors, channel);
+      const got = edgeDistance(line.map((x) => x.rgba), channel);
+      out.push({ rule: s.rule, native: got === null ? null : edgePosition(line, got), chrome: want === null ? null : edgePosition(line, want) });
+    }
+    i = j;
+  }
+  return out;
+}
+
+/**
+ * The glyph positions of a dump's samples (the generated points, in order): per line, the x centre of left and right and the bottom
+ * edge, where the scanlines show an edge in Chrome and in the capture. Check (c) holds each within GATE_GLYPH_POSITION_DEVICE_PX.
+ */
+export function glyphPositions(samples: readonly DumpSample[], chrome: RgbaImage): GlyphPosition[] {
+  const edges = new Map<string, { native: number; chrome: number }>();
+  const order: string[] = [];
+  for (const e of scanlineEdges(samples, chrome)) {
+    const m = GLYPH_EDGE_RULE.exec(e.rule);
+    if (m === null || e.native === null || e.chrome === null) continue;
+    const line = m[1] as string;
+    if (!order.includes(line)) order.push(line);
+    edges.set(`${line}\t${m[2]}`, { native: e.native, chrome: e.chrome });
+  }
+  const out: GlyphPosition[] = [];
+  for (const line of order) {
+    const a = edges.get(`${line}\tleft`);
+    const b = edges.get(`${line}\tright`);
+    if (a !== undefined && b !== undefined) out.push({ line, axis: 'x', native: (a.native + b.native) / 2, chrome: (a.chrome + b.chrome) / 2 });
+    const bottom = edges.get(`${line}\tbottom`);
+    if (bottom !== undefined) out.push({ line, axis: 'y', ...bottom });
+  }
+  return out;
+}
+
+/**
+ * The generated points must be the dump's samples in order; colours equal within GATE_CHANNEL_DELTA; edges within GATE_DEVICE_PX;
+ * each line's glyph x centre and bottom edge within GATE_GLYPH_POSITION_DEVICE_PX. A glyph-edge scanline across which Chrome shows no contrast is
+ * compared by colour at its two ends only: the pixels between are within SAMPLE_INSET_DEVICE_PX of the glyph edge (T093 ruling A).
+ */
 export function checkPixels(samples: readonly DumpSample[], points: readonly SamplePoint[], chrome: RgbaImage): CheckResult {
   const problems: string[] = [];
   if (samples.length !== points.length) problems.push(`the dump has ${samples.length} samples, the generator ${points.length}`);
@@ -158,7 +235,7 @@ export function checkPixels(samples: readonly DumpSample[], points: readonly Sam
   };
   for (let i = 0; i < samples.length;) {
     const s = samples[i] as DumpSample;
-    if (ruleKind(s.rule) !== 'edge') {
+    if (!isScanlineRule(s.rule)) {
       colourCheck(s);
       i++;
       continue;
@@ -167,13 +244,11 @@ export function checkPixels(samples: readonly DumpSample[], points: readonly Sam
     while (j < samples.length && (samples[j] as DumpSample).rule === s.rule) j++;
     const line = samples.slice(i, j);
     const chromeColors = line.map((x) => pixelAt(chrome, x.x, x.y));
-    const first = chromeColors[0] as readonly number[];
-    const last = chromeColors[chromeColors.length - 1] as readonly number[];
-    const channel = [0, 1, 2, 3].reduce((best, k) => (Math.abs((last[k] as number) - (first[k] as number)) > Math.abs((last[best] as number) - (first[best] as number)) ? k : best), 0);
+    const channel = contrastChannel(chromeColors);
     const want = edgeDistance(chromeColors, channel);
     if (want === null) {
-      // No contrast across the edge in Chrome: every point is a colour sample.
-      for (const x of line) colourCheck(x);
+      // No contrast across the edge in Chrome: every point is a colour sample, only the clear ends of a glyph-edge scanline.
+      for (const x of GLYPH_EDGE_RULE.test(s.rule) ? [line[0] as DumpSample, line[line.length - 1] as DumpSample] : line) colourCheck(x);
     } else {
       compared++;
       const got = edgeDistance(line.map((x) => x.rgba), channel);
@@ -181,6 +256,11 @@ export function checkPixels(samples: readonly DumpSample[], points: readonly Sam
       else if (Math.abs(got - want) > GATE_DEVICE_PX) problems.push(`${s.rule}: edge at ${got.toFixed(3)} device px, Chrome ${want.toFixed(3)}; exceeds ${GATE_DEVICE_PX} device px`);
     }
     i = j;
+  }
+  for (const c of glyphPositions(samples, chrome)) {
+    compared++;
+    const what = c.axis === 'x' ? ['centre', 'glyph centre'] : ['bottom', 'glyph bottom edge'];
+    if (Math.abs(c.native - c.chrome) > GATE_GLYPH_POSITION_DEVICE_PX) problems.push(`${what[0]}:${c.line}:${c.axis}: ${what[1]} at ${c.native.toFixed(3)} device px, Chrome ${c.chrome.toFixed(3)}; differs by more than ${GATE_GLYPH_POSITION_DEVICE_PX} device px`);
   }
   return result(compared, problems);
 }
@@ -305,5 +385,98 @@ export function referenceDump(c: ReferenceCase, faults: ReferenceFaults = NO_REF
 // ---------------------------------------------------------------- planted dump faults
 
 /** The dump faults the checks must catch, the same on every native target (native-strategy.md 3.1, 3.3; T009 P3 item 6). */
-export const DUMP_FAULTS = ['edge-plus-2-device-px', 'edge-plus-1-device-px', 'applied-changed', 'applied-missing', 'channel-delta-1', 'missing-node', 'snap-disabled'] as const;
+export const DUMP_FAULTS = ['edge-plus-2-device-px', 'edge-plus-1-device-px', 'applied-changed', 'applied-missing', 'channel-delta-1', 'missing-node', 'snap-disabled', 'break-shifted'] as const;
 export type DumpFault = (typeof DUMP_FAULTS)[number];
+
+// ---------------------------------------------------------------- dump faults on real device dumps (P5)
+
+/** The check each fault targets: (a) Chrome, (b) applied, (c) pixels, (d) engine, or the line-break check. */
+export type NamedCheck = 'a' | 'b' | 'c' | 'd' | 'breaks';
+export const FAULT_CHECK: { readonly [F in DumpFault]: NamedCheck } = {
+  'edge-plus-2-device-px': 'a',
+  'edge-plus-1-device-px': 'd',
+  'applied-changed': 'b',
+  'applied-missing': 'b',
+  'channel-delta-1': 'c',
+  'missing-node': 'a',
+  'snap-disabled': 'd',
+  'break-shifted': 'breaks',
+};
+
+/** What a fault may need besides the dump: the engine's absolute rects (snap-disabled) and the sample indices check (c) passes. */
+export type FaultContext = { readonly engine: readonly LayoutRect[]; readonly passingSamples: readonly number[] };
+
+const withEdges = (e: DumpEdges, scale: number): { frame: DumpFrame; deviceEdges: DumpEdges } => ({ frame: frameOf(e, scale), deviceEdges: e });
+
+function changedValue(v: JsonValue): JsonValue {
+  if (typeof v === 'number') return v + 1;
+  if (typeof v === 'string') return `${v}x`;
+  if (typeof v === 'boolean') return !v;
+  if (v === null) return 0;
+  if (Array.isArray(v)) return [...v, 0];
+  return { ...(v as { readonly [k: string]: JsonValue }), dragonPlanted: 1 };
+}
+
+/**
+ * A real dump with one planted fault, or null when the dump has nothing the fault applies to. The node is the first that qualifies
+ * in dump order: an element for the edge faults, a node with applied values, a leaf node for missing-node, a text node with two
+ * lines for break-shifted (the first line ends one code unit early and the second starts there); channel-delta-1 moves the red
+ * channel of the first sample check (c) passes by one; snap-disabled writes the unsnapped engine frames with truncated edges.
+ */
+export function plantDumpFault(fault: DumpFault, dump: NativeDump, ctx: FaultContext): NativeDump | null {
+  const scale = dump.device.scale;
+  switch (fault) {
+    case 'edge-plus-2-device-px':
+    case 'edge-plus-1-device-px': {
+      const px = fault === 'edge-plus-2-device-px' ? 2 : 1;
+      const i = dump.nodes.findIndex((n) => n.kind === 'element');
+      if (i < 0) return null;
+      return { ...dump, nodes: dump.nodes.map((n, k) => (k === i ? { ...n, ...withEdges({ ...n.deviceEdges, right: n.deviceEdges.right + px }, scale) } : n)) };
+    }
+    case 'applied-changed':
+    case 'applied-missing': {
+      const i = dump.nodes.findIndex((n) => Object.keys(n.applied).length > 0);
+      if (i < 0) return null;
+      const n = dump.nodes[i] as DumpNode;
+      const k = Object.keys(n.applied).sort()[0] as string;
+      const applied: { [key: string]: JsonValue } = { ...n.applied };
+      if (fault === 'applied-missing') delete applied[k];
+      else applied[k] = changedValue(n.applied[k] as JsonValue);
+      return { ...dump, nodes: dump.nodes.map((x, j) => (j === i ? { ...x, applied } : x)) };
+    }
+    case 'channel-delta-1': {
+      const i = ctx.passingSamples[0];
+      if (dump.pixels === null || i === undefined) return null;
+      const samples = dump.pixels.samples.map((x, j) => (j === i ? { ...x, rgba: x.rgba.map((v, c) => (c === 0 ? (v === 255 ? 254 : v + 1) : v)) } : x));
+      return { ...dump, pixels: { ...dump.pixels, samples } };
+    }
+    case 'missing-node': {
+      const parents = new Set(dump.nodes.map((n) => n.parent));
+      const i = dump.nodes.findIndex((n) => n.parent !== null && n.kind !== 'anonymous' && !parents.has(n.id));
+      if (i < 0) return null;
+      return { ...dump, nodes: dump.nodes.filter((_, j) => j !== i) };
+    }
+    case 'snap-disabled': {
+      const abs = absoluteRects(ctx.engine);
+      const unsnapped = (id: string, fallback: { frame: DumpFrame; deviceEdges: DumpEdges }): { frame: DumpFrame; deviceEdges: DumpEdges } => {
+        const a = abs.get(id);
+        if (a === undefined) return fallback;
+        const s = LU_PER_PX * scale;
+        return {
+          frame: { x: a.x / s, y: a.y / s, width: a.width / s, height: a.height / s },
+          deviceEdges: { left: Math.trunc(a.x / LU_PER_PX), top: Math.trunc(a.y / LU_PER_PX), right: Math.trunc((a.x + a.width) / LU_PER_PX), bottom: Math.trunc((a.y + a.height) / LU_PER_PX) },
+        };
+      };
+      const nodes = dump.nodes.map((n) => ({ ...n, ...unsnapped(n.id, n), lines: n.lines.map((l, j) => ({ ...l, ...unsnapped(`${n.id}:line${j}`, l) })) }));
+      const planted = { ...dump, nodes };
+      return JSON.stringify(planted.nodes) === JSON.stringify(dump.nodes) ? null : planted;
+    }
+    case 'break-shifted': {
+      const i = dump.nodes.findIndex((n) => n.lines.length >= 2 && n.lines[0]?.end !== null && n.lines[1]?.start !== null && (n.lines[0]?.end ?? 0) > (n.lines[0]?.start ?? 0) + 1);
+      if (i < 0) return null;
+      const n = dump.nodes[i] as DumpNode;
+      const lines = n.lines.map((l, j) => (j === 0 ? { ...l, end: (l.end as number) - 1 } : j === 1 ? { ...l, start: (l.start as number) - 1 } : l));
+      return { ...dump, nodes: dump.nodes.map((x, j) => (j === i ? { ...x, lines } : x)) };
+    }
+  }
+}

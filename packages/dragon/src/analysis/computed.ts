@@ -1,8 +1,9 @@
 // Value computation: parsing captured and initial values, initial and user-agent values, the computed-value fixups, the var()
-// substitution hook, and value serialization.
+// substitution hook (its work is in variables.ts), and value serialization.
 import { parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { parseColorNode, serializeColor } from '../css/color.ts';
+import { absolutizeGridText, GRID_TRACK_LONGHANDS } from '../css/grid-values.ts';
 import { properties as grammar } from '../css/grammar.generated.ts';
 import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
@@ -10,7 +11,10 @@ import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
 import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
 import type { Span } from '../types.ts';
+import type { Candidate } from './cascade.ts';
 import type { LinkedElement } from './link.ts';
+import type { Substitution, VarScope } from './variables.ts';
+import { substituteWinner } from './variables.ts';
 
 /** environment: the root's direction and font, seeded from the reference environment (docs/api.md §7), never from an author declaration. */
 export type Origin = 'author' | 'inherited' | 'user-agent' | 'initial' | 'environment';
@@ -33,6 +37,8 @@ export type ResolvedValue = {
   readonly declared: CssValue | null;
   /** Author declarations that matched this element for this longhand and lost the cascade. */
   readonly losing: readonly Declaration[];
+  /** Present when the winning declaration held var(); declaration is then as substituted (analysis/variables.ts). */
+  readonly substitution?: Substitution;
 };
 
 const valueCache = new Map<string, CssValue>();
@@ -113,13 +119,13 @@ export function defaultOrigin(tag: CapturedTag, property: Longhand, isRoot: bool
 }
 
 /**
- * The var() substitution hook (css-variables-2 §3): the value a winning declared value computes from once var() references are
- * substituted with the element's custom properties. It runs on each author winner before CSS-wide keywords are applied.
- * Empty today: there are no custom properties, so it returns the declared value itself.
+ * The var() substitution hook (css-variables-1 §3): the winner a winning candidate computes from once var() references are
+ * substituted with the element's custom properties (analysis/variables.ts). It runs on each author winner before CSS-wide keywords
+ * are applied; a winner without var() is returned as is.
  */
-export type SubstitutionHook = (declared: CssValue, property: Longhand, el: LinkedElement) => CssValue;
+export type SubstitutionHook = (winner: Candidate, property: Longhand, el: LinkedElement, scope: VarScope) => Candidate;
 
-export const substituteVariables: SubstitutionHook = (declared) => declared;
+export const substituteVariables: SubstitutionHook = (winner, property, _el, scope) => substituteWinner(winner, property, scope);
 
 // css-overflow-3 §3.1: when one axis is neither visible nor clip, visible computes to auto and clip to hidden on the other axis.
 export function computeOverflowPair(props: Map<Longhand, ResolvedValue>): void {
@@ -164,6 +170,28 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
   toPx('font-size', parentFontSize, rootFontSize ?? parentFontSize);
   const own = pxOf((props.get('font-size') as ResolvedValue).value);
   for (const p of props.keys()) if (p !== 'font-size') toPx(p, own, rootFontSize ?? own);
+}
+
+/** css-values-4 §6: the lengths inside track-list values compute to px, as computeLengths does for single lengths. */
+export function computeGridLengths(props: Map<Longhand, ResolvedValue>, em: number | null, rem: number | null): void {
+  if (em === null || rem === null) return;
+  for (const p of GRID_TRACK_LONGHANDS) {
+    const v = props.get(p) as ResolvedValue;
+    if (v.value.kind !== 'other') continue;
+    props.set(p, { ...v, value: { ...v.value, text: absolutizeGridText(v.value.text, { em, rem }) } });
+  }
+}
+
+/**
+ * css-align-3 §6.2: justify-items legacy (alone) computes to the parent's value when that is legacy with a position, and to
+ * normal otherwise.
+ */
+export function computeJustifyItems(props: Map<Longhand, ResolvedValue>, parent: ReadonlyMap<Longhand, ResolvedValue> | null): void {
+  const v = props.get('justify-items') as ResolvedValue;
+  if (v.value.kind !== 'keyword' || v.value.value !== 'legacy') return;
+  const inherited = parent === null ? null : (parent.get('justify-items') as ResolvedValue).value;
+  const legacy = inherited !== null && inherited.kind === 'keyword' && inherited.value.startsWith('legacy ');
+  props.set('justify-items', { ...v, value: legacy ? inherited : { kind: 'keyword', value: 'normal' } });
 }
 
 // css-display-3 §2.7: the root element's display is blockified (Chrome reports block for html even under display: initial).

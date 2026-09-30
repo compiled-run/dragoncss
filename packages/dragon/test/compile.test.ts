@@ -154,11 +154,11 @@ describe('createProject().compile() and check()', () => {
     expect(p.check(inputFor('', () => [])).diagnostics.map((d) => d.code)).toEqual(['DRAGON_CONFIG_INVALID']);
   });
 
-  it('rejects unsupported elements, attributes, selectors and !important', () => {
-    const css = '#x { width: 1px; } .a { height: 1px !important; }';
+  it('rejects unsupported elements, attributes and selectors, and accepts !important (css-cascade-5 §6.4)', () => {
+    const css = '.a:hover { width: 1px; } .a { height: 1px !important; }';
     const c = ios().compile(inputFor(css, (r) => [{ ...div(r, 'a', ['a']), tag: 'span', attributes: [{ name: 'style', value: [{ when: { kind: 'true' }, value: 'width:1px' }], origin: { kind: 'unlocated', reason: 'test' } }] }]));
     expect(c.diagnostics.map((d) => d.code).sort()).toEqual([
-      'DRAGON_UNSUPPORTED_ATTRIBUTE', 'DRAGON_UNSUPPORTED_ELEMENT', 'DRAGON_UNSUPPORTED_IMPORTANT', 'DRAGON_UNSUPPORTED_SELECTOR',
+      'DRAGON_UNSUPPORTED_ATTRIBUTE', 'DRAGON_UNSUPPORTED_ELEMENT', 'DRAGON_UNSUPPORTED_SELECTOR',
     ]);
   });
 

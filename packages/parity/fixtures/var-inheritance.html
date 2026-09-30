@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+html { --gap: 4px; --accent: #0366d6; --pad: 3px; --w: 120px; --size: 10px; }
+body { margin: var(--gap); color: var(--accent); font-size: var(--size); line-height: 12px; }
+.card { --pad: 6px; width: var(--w); padding: var(--pad); margin-bottom: var(--gap); background-color: var(--surface, #eeeeee); border: 1px solid var(--accent); }
+.card.alt { --accent: tomato; --w: 90px; --size: 20px; }
+.title { height: 10px; background-color: var(--accent); margin-bottom: var(--pad); }
+.nested { --surface: rgb(10, 20, 30); padding-left: var(--pad); }
+.leaf { height: 8px; width: var(--w); background-color: var(--surface); border-left: var(--pad) solid var(--accent); }
+.text { font-size: var(--size); color: var(--accent); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="card"><div data-dragon-id="c1t" class="title"></div><div data-dragon-id="c1n" class="nested"><div data-dragon-id="c1l" class="leaf"></div></div><div data-dragon-id="c1x" class="text">XX X</div></div>
+<div data-dragon-id="c2" class="card alt"><div data-dragon-id="c2t" class="title"></div><div data-dragon-id="c2n" class="nested"><div data-dragon-id="c2l" class="leaf"></div></div><div data-dragon-id="c2x" class="text">XX X</div></div>
+</body>
+</html>

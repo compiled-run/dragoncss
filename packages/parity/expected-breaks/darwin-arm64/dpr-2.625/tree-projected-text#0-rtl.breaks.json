@@ -1,0 +1,11 @@
+{
+  "case": "tree-projected-text#0-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"card/head:text0","data":"XX XX XX","lines":2,"units":[0,0,0,0,0,0,1,1],"blank":[5]},
+    {"id":"card/head:text1","data":" YY","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"card/content:text0","data":"ZZ ZZ ZZ","lines":2,"units":[0,0,0,0,0,0,1,1],"blank":[5]},
+    {"id":"note:text0","data":"NN NN","lines":2,"units":[0,0,0,1,1],"blank":[2]}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "case": "position-absolute-static-direction",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"t1:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"t2:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"t3:text0","data":"XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2],"blank":[17,35]},
+    {"id":"t4:text0","data":"XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2],"blank":[17,35]}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "case": "units-absolute",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"t:text0","data":"XX XXX X XXXX XX XXX XXXXX","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1],"blank":[16]},
+    {"id":"t2:text0","data":"XX XXX X XXXX","lines":2,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1],"blank":[8]},
+    {"id":"t3:text0","data":"X XX XXX XXXX","lines":4,"units":[0,0,1,1,1,2,2,2,2,3,3,3,3],"blank":[1,4,8]}
+  ]
+}

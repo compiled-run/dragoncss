@@ -6,6 +6,7 @@ import { beats, cascadeGroups, substituteVariables } from '../src/analysis/resol
 import type { Candidate } from '../src/analysis/resolve.ts';
 import { AT_RULE_HANDLERS, atRuleHandler, refuseAtRule } from '../src/css/at-rules.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
+import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../src/css/properties/grid.ts';
 import { LOGICAL_SHORTHANDS } from '../src/css/properties/logical.ts';
 import { SHORTHAND_HANDLERS } from '../src/css/shorthands/index.ts';
 import type { Declaration, EnclosedRules } from '../src/css/stylesheet.ts';
@@ -30,6 +31,8 @@ describe('E2 seams: the property registry', () => {
       'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
       'justify-content', 'align-items', 'align-self', 'align-content', 'row-gap', 'column-gap',
       'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'background-color',
+      // GRID G0 appends its family (test/grid.test.ts pins GRID_LONGHANDS).
+      ...GRID_LONGHANDS,
     ]);
   });
   it('SHORTHANDS keeps its order', () => {
@@ -39,13 +42,15 @@ describe('E2 seams: the property registry', () => {
       'background',
       ...LOGICAL_SHORTHANDS,
       'writing-mode', 'text-orientation', 'text-combine-upright',
+      ...GRID_SHORTHANDS,
     ]);
   });
   it('PROPERTY_ASPECTS keys follow LONGHANDS, and INHERITED and PROPERTY_ROLE are unchanged', () => {
     expect(Object.keys(PROPERTY_ASPECTS)).toEqual([...LONGHANDS]);
     expect([...INHERITED]).toEqual(['direction', 'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color']);
     const byRole = (r: string): string[] => LONGHANDS.filter((p) => PROPERTY_ROLE[p] === r);
-    expect(byRole('container')).toEqual(['direction', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap']);
+    expect(byRole('container')).toEqual(['direction', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap',
+      'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow', 'justify-items']);
     expect(byRole('text')).toEqual(['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode']);
     expect(byRole('paint')).toEqual(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color']);
   });
@@ -110,11 +115,11 @@ describe('E2 seams: every at-rule is still refused', () => {
       const { diagnostics, enclosed } = run(text);
       return { text, diagnostics, enclosed };
     }));
-    // The selectors package added Compound.pseudos and Selector.anchor: every selector here must carry the defaults ([] and
-    // null), and without them the runs are byte-identical to the 4c1331c pin.
+    // The selectors package added Compound.pseudos and Selector.anchor, and TREE added Compound.ids and Selector.dropped: every
+    // selector here must carry the defaults ([], null, [] and false), and without them the runs are byte-identical to the 4c1331c pin.
     const added: unknown[] = [];
     const strip = (v: unknown): unknown => JSON.parse(JSON.stringify(v, (k, x: unknown) => {
-      if (k === 'pseudos' || k === 'anchor') {
+      if (k === 'pseudos' || k === 'anchor' || k === 'ids' || k === 'dropped') {
         added.push(x);
         return undefined;
       }
@@ -122,7 +127,7 @@ describe('E2 seams: every at-rule is still refused', () => {
     }));
     expect(sha(strip(runs))).toBe('4cfb6ef08f1acac7d6a9a22586a28031d40a74e0a60059bb7612cc16726f68e8');
     expect(added.length).toBeGreaterThan(0);
-    for (const x of added) expect([[], null]).toContainEqual(x);
+    for (const x of added) expect([[], null, false]).toContainEqual(x);
   });
 });
 
@@ -135,9 +140,9 @@ describe('E2 seams: the empty extension hooks', () => {
     const winners = new Map([['width', b]] as const);
     expect(cascadeGroups(winners, [['width', a], ['width', b]], {} as never)).toBe(winners);
   });
-  it('the var() substitution hook returns the declared value itself', () => {
-    const v = { kind: 'length', value: 3, unit: 'px' } as const;
-    expect(substituteVariables(v, 'width', {} as never)).toBe(v);
+  it('the var() substitution hook returns a winner whose declaration holds no var() itself', () => {
+    const w: Candidate = { declaration: decl(1), value: { kind: 'length', value: 3, unit: 'px' }, specificity: [0, 1, 0] };
+    expect(substituteVariables(w, 'width', {} as never, { customs: new Map(), memo: new Map() })).toBe(w);
   });
 });
 

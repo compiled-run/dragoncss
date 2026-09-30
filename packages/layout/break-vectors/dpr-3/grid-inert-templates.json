@@ -1,0 +1,11 @@
+{
+  "case": "grid-inert-templates",
+  "dpr": 3,
+  "texts": [
+    {"id":"t1:text0","lines":[[0,6]]},
+    {"id":"t2:text0","lines":[[0,4]]},
+    {"id":"t3:text0","lines":[[0,8]]},
+    {"id":"t5:text0","lines":[[0,2]]},
+    {"id":"t6:text0","lines":[[0,1]]}
+  ]
+}

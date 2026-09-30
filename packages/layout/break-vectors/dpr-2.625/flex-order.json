@@ -1,0 +1,9 @@
+{
+  "case": "flex-order",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a1:text0","lines":[[0,2]]},
+    {"id":"a1:text1","lines":[[0,3],[3,5]]},
+    {"id":"a1:text2","lines":[[0,2]]}
+  ]
+}

@@ -1,0 +1,160 @@
+{
+ "about": "rt-text-format.ts formatText on {m}:{s:02} (m 0-999, s 0-59) for edge inputs; \"NaN\", \"Infinity\", \"-Infinity\" and \"-0\" stand for those numbers. Written by node --conditions=dragon-internal scripts/capture-dtxt-widths.ts; do not edit.",
+ "template": "{m}:{s:02}",
+ "inputs": [
+  {
+   "id": "m",
+   "min": 0,
+   "max": 999
+  },
+  {
+   "id": "s",
+   "min": 0,
+   "max": 59
+  }
+ ],
+ "records": [
+  {
+   "values": ["NaN",5],
+   "field": "m",
+   "reason": "m: NaN is not an integer"
+  },
+  {
+   "values": [5,"NaN"],
+   "field": "s",
+   "reason": "s: NaN is not an integer"
+  },
+  {
+   "values": ["Infinity",5],
+   "field": "m",
+   "reason": "m: Infinity is not finite"
+  },
+  {
+   "values": [5,"Infinity"],
+   "field": "s",
+   "reason": "s: Infinity is not finite"
+  },
+  {
+   "values": ["-Infinity",5],
+   "field": "m",
+   "reason": "m: -Infinity is not finite"
+  },
+  {
+   "values": [5,"-Infinity"],
+   "field": "s",
+   "reason": "s: -Infinity is not finite"
+  },
+  {
+   "values": [-1,5],
+   "field": "m",
+   "reason": "m: -1 is outside [0, 999]"
+  },
+  {
+   "values": [5,-1],
+   "field": "s",
+   "reason": "s: -1 is outside [0, 59]"
+  },
+  {
+   "values": ["-0",5],
+   "text": "0:05"
+  },
+  {
+   "values": [5,"-0"],
+   "text": "5:00"
+  },
+  {
+   "values": [0,5],
+   "text": "0:05"
+  },
+  {
+   "values": [5,0],
+   "text": "5:00"
+  },
+  {
+   "values": [0.5,5],
+   "field": "m",
+   "reason": "m: 0.5 is not an integer"
+  },
+  {
+   "values": [5,0.5],
+   "field": "s",
+   "reason": "s: 0.5 is not an integer"
+  },
+  {
+   "values": [1e-9,5],
+   "field": "m",
+   "reason": "m: 1e-9 is not an integer"
+  },
+  {
+   "values": [5,1e-9],
+   "field": "s",
+   "reason": "s: 1e-9 is not an integer"
+  },
+  {
+   "values": [59,5],
+   "text": "59:05"
+  },
+  {
+   "values": [5,59],
+   "text": "5:59"
+  },
+  {
+   "values": [59.000001,5],
+   "field": "m",
+   "reason": "m: 59.000001 is not an integer"
+  },
+  {
+   "values": [5,59.000001],
+   "field": "s",
+   "reason": "s: 59.000001 is not an integer"
+  },
+  {
+   "values": [60,5],
+   "text": "60:05"
+  },
+  {
+   "values": [5,60],
+   "field": "s",
+   "reason": "s: 60 is outside [0, 59]"
+  },
+  {
+   "values": [999,5],
+   "text": "999:05"
+  },
+  {
+   "values": [5,999],
+   "field": "s",
+   "reason": "s: 999 is outside [0, 59]"
+  },
+  {
+   "values": [1000,5],
+   "field": "m",
+   "reason": "m: 1000 is outside [0, 999]"
+  },
+  {
+   "values": [5,1000],
+   "field": "s",
+   "reason": "s: 1000 is outside [0, 59]"
+  },
+  {
+   "values": [1e+21,5],
+   "field": "m",
+   "reason": "m: 1e+21 is outside [0, 999]"
+  },
+  {
+   "values": [5,1e+21],
+   "field": "s",
+   "reason": "s: 1e+21 is outside [0, 59]"
+  },
+  {
+   "values": [9007199254740992,5],
+   "field": "m",
+   "reason": "m: 9007199254740992 is outside [0, 999]"
+  },
+  {
+   "values": [5,9007199254740992],
+   "field": "s",
+   "reason": "s: 9007199254740992 is outside [0, 59]"
+  }
+ ]
+}

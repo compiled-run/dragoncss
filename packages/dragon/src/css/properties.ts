@@ -6,6 +6,7 @@ import { BACKGROUND_ASPECTS, BACKGROUND_CONTAINER, BACKGROUND_INHERITED, BACKGRO
 import { BORDER_ASPECTS, BORDER_CONTAINER, BORDER_INHERITED, BORDER_LONGHANDS, BORDER_SHORTHANDS, BORDER_TEXT_ROLE } from './properties/border.ts';
 import { BOX_ASPECTS, BOX_CONTAINER, BOX_INHERITED, BOX_LONGHANDS, BOX_SHORTHANDS, BOX_TEXT_ROLE } from './properties/box.ts';
 import { FLEX_ASPECTS, FLEX_CONTAINER, FLEX_INHERITED, FLEX_LONGHANDS, FLEX_SHORTHANDS, FLEX_TEXT_ROLE } from './properties/flex.ts';
+import { GRID_ASPECTS, GRID_CONTAINER, GRID_INHERITED, GRID_LONGHANDS, GRID_SHORTHANDS, GRID_TEXT_ROLE } from './properties/grid.ts';
 import { LOGICAL_ASPECTS, LOGICAL_CONTAINER, LOGICAL_INHERITED, LOGICAL_LONGHANDS, LOGICAL_SHORTHANDS, LOGICAL_TEXT_ROLE } from './properties/logical.ts';
 import { OVERFLOW_ASPECTS, OVERFLOW_CONTAINER, OVERFLOW_INHERITED, OVERFLOW_LONGHANDS, OVERFLOW_SHORTHANDS, OVERFLOW_TEXT_ROLE } from './properties/overflow.ts';
 import { POSITION_ASPECTS, POSITION_CONTAINER, POSITION_INHERITED, POSITION_LONGHANDS, POSITION_SHORTHANDS, POSITION_TEXT_ROLE } from './properties/position.ts';
@@ -25,6 +26,9 @@ export const LONGHANDS = [
   ...BACKGROUND_LONGHANDS,
   ...LOGICAL_LONGHANDS,
   ...WRITING_MODE_LONGHANDS,
+
+  // Grid (css-grid-2) goes after the writing-mode family in every table below.
+  ...GRID_LONGHANDS,
 ] as const;
 
 export type Longhand = (typeof LONGHANDS)[number];
@@ -39,6 +43,8 @@ export const SHORTHANDS = [
   ...BACKGROUND_SHORTHANDS,
   ...LOGICAL_SHORTHANDS,
   ...WRITING_MODE_SHORTHANDS,
+
+  ...GRID_SHORTHANDS,
 ] as const;
 
 export type Shorthand = (typeof SHORTHANDS)[number];
@@ -53,6 +59,8 @@ export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([
   ...BACKGROUND_INHERITED,
   ...LOGICAL_INHERITED,
   ...WRITING_MODE_INHERITED,
+
+  ...GRID_INHERITED,
 ]);
 
 /**
@@ -93,6 +101,8 @@ export const PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {
   ...BACKGROUND_ASPECTS,
   ...LOGICAL_ASPECTS,
   ...WRITING_MODE_ASPECTS,
+
+  ...GRID_ASPECTS,
 };
 
 /** The role of a longhand in its row key (M2): which formatting context, if any, the row names. */
@@ -108,6 +118,8 @@ const CONTAINER_LONGHANDS: readonly Longhand[] = [
   ...BACKGROUND_CONTAINER,
   ...LOGICAL_CONTAINER,
   ...WRITING_MODE_CONTAINER,
+
+  ...GRID_CONTAINER,
 ];
 const TEXT_ROLE_LONGHANDS: readonly Longhand[] = [
   ...POSITION_TEXT_ROLE,
@@ -119,6 +131,8 @@ const TEXT_ROLE_LONGHANDS: readonly Longhand[] = [
   ...BACKGROUND_TEXT_ROLE,
   ...LOGICAL_TEXT_ROLE,
   ...WRITING_MODE_TEXT_ROLE,
+
+  ...GRID_TEXT_ROLE,
 ];
 
 /**

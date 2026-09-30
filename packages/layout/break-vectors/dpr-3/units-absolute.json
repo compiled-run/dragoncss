@@ -1,0 +1,9 @@
+{
+  "case": "units-absolute",
+  "dpr": 3,
+  "texts": [
+    {"id":"t:text0","lines":[[0,17],[17,26]]},
+    {"id":"t2:text0","lines":[[0,9],[9,13]]},
+    {"id":"t3:text0","lines":[[0,2],[2,5],[5,9],[9,13]]}
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "case": "position-absolute-out-of-flow",
+  "dpr": 3,
+  "texts": [
+    {"id":"b1a:text0","lines":[[0,1]]},
+    {"id":"b1c:text0","lines":[[0,1]]}
+  ]
+}

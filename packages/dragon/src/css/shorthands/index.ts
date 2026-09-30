@@ -5,6 +5,7 @@ import { BACKGROUND_SHORTHANDS } from './background.ts';
 import { BORDER_SHORTHANDS } from './border.ts';
 import { BOX_SHORTHANDS } from './box.ts';
 import { FLEX_SHORTHANDS } from './flex.ts';
+import { GRID_SHORTHANDS } from './grid.ts';
 import { LOGICAL_SHORTHANDS } from './logical.ts';
 import { OVERFLOW_SHORTHANDS } from './overflow.ts';
 import type { ShorthandHandler } from './shared.ts';
@@ -22,6 +23,8 @@ export const SHORTHAND_HANDLERS: { readonly [S in Shorthand]: ShorthandHandler }
   ...LOGICAL_SHORTHANDS,
   ...BACKGROUND_SHORTHANDS,
   ...WRITING_MODE_SHORTHANDS,
+
+  ...GRID_SHORTHANDS,
 };
 
 export function shorthandHandler(property: Shorthand): ShorthandHandler {

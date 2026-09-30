@@ -1,0 +1,280 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 14336
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 512,
+   "y": 512,
+   "width": 50176,
+   "height": 13312
+  },
+  {
+   "id": "c1",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 17152,
+   "height": 6400
+  },
+  {
+   "id": "c1t",
+   "parent": "c1",
+   "x": 896,
+   "y": 896,
+   "width": 15360,
+   "height": 1280
+  },
+  {
+   "id": "c1n",
+   "parent": "c1",
+   "x": 896,
+   "y": 2944,
+   "width": 15360,
+   "height": 1024
+  },
+  {
+   "id": "c1l",
+   "parent": "c1n",
+   "x": 768,
+   "y": 0,
+   "width": 16128,
+   "height": 1024
+  },
+  {
+   "id": "c1x",
+   "parent": "c1",
+   "x": 896,
+   "y": 3968,
+   "width": 15360,
+   "height": 1536
+  },
+  {
+   "id": "c1x:text0",
+   "parent": "c1x",
+   "x": 0,
+   "y": 128,
+   "width": 5120,
+   "height": 1280
+  },
+  {
+   "id": "c1x:text0:line0",
+   "parent": "c1x:text0",
+   "x": 0,
+   "y": 0,
+   "width": 5120,
+   "height": 1280
+  },
+  {
+   "id": "c2",
+   "parent": "body",
+   "x": 0,
+   "y": 6912,
+   "width": 13312,
+   "height": 6400
+  },
+  {
+   "id": "c2t",
+   "parent": "c2",
+   "x": 896,
+   "y": 896,
+   "width": 11520,
+   "height": 1280
+  },
+  {
+   "id": "c2n",
+   "parent": "c2",
+   "x": 896,
+   "y": 2944,
+   "width": 11520,
+   "height": 1024
+  },
+  {
+   "id": "c2l",
+   "parent": "c2n",
+   "x": 768,
+   "y": 0,
+   "width": 12288,
+   "height": 1024
+  },
+  {
+   "id": "c2x",
+   "parent": "c2",
+   "x": 896,
+   "y": 3968,
+   "width": 11520,
+   "height": 1536
+  },
+  {
+   "id": "c2x:text0",
+   "parent": "c2x",
+   "x": 0,
+   "y": -512,
+   "width": 10240,
+   "height": 2560
+  },
+  {
+   "id": "c2x:text0:line0",
+   "parent": "c2x:text0",
+   "x": 0,
+   "y": 0,
+   "width": 10240,
+   "height": 2560
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 224,
+   "width": 800,
+   "height": 224
+  },
+  {
+   "id": "body",
+   "left": 8,
+   "top": 8,
+   "right": 792,
+   "bottom": 216,
+   "width": 784,
+   "height": 208
+  },
+  {
+   "id": "c1",
+   "left": 8,
+   "top": 8,
+   "right": 276,
+   "bottom": 108,
+   "width": 268,
+   "height": 100
+  },
+  {
+   "id": "c1t",
+   "left": 22,
+   "top": 22,
+   "right": 262,
+   "bottom": 42,
+   "width": 240,
+   "height": 20
+  },
+  {
+   "id": "c1n",
+   "left": 22,
+   "top": 54,
+   "right": 262,
+   "bottom": 70,
+   "width": 240,
+   "height": 16
+  },
+  {
+   "id": "c1l",
+   "left": 34,
+   "top": 54,
+   "right": 286,
+   "bottom": 70,
+   "width": 252,
+   "height": 16
+  },
+  {
+   "id": "c1x",
+   "left": 22,
+   "top": 70,
+   "right": 262,
+   "bottom": 94,
+   "width": 240,
+   "height": 24
+  },
+  {
+   "id": "c1x:text0",
+   "left": 22,
+   "top": 72,
+   "right": 102,
+   "bottom": 92,
+   "width": 80,
+   "height": 20
+  },
+  {
+   "id": "c1x:text0:line0",
+   "left": 22,
+   "top": 72,
+   "right": 102,
+   "bottom": 92,
+   "width": 80,
+   "height": 20
+  },
+  {
+   "id": "c2",
+   "left": 8,
+   "top": 116,
+   "right": 216,
+   "bottom": 216,
+   "width": 208,
+   "height": 100
+  },
+  {
+   "id": "c2t",
+   "left": 22,
+   "top": 130,
+   "right": 202,
+   "bottom": 150,
+   "width": 180,
+   "height": 20
+  },
+  {
+   "id": "c2n",
+   "left": 22,
+   "top": 162,
+   "right": 202,
+   "bottom": 178,
+   "width": 180,
+   "height": 16
+  },
+  {
+   "id": "c2l",
+   "left": 34,
+   "top": 162,
+   "right": 226,
+   "bottom": 178,
+   "width": 192,
+   "height": 16
+  },
+  {
+   "id": "c2x",
+   "left": 22,
+   "top": 178,
+   "right": 202,
+   "bottom": 202,
+   "width": 180,
+   "height": 24
+  },
+  {
+   "id": "c2x:text0",
+   "left": 22,
+   "top": 170,
+   "right": 182,
+   "bottom": 210,
+   "width": 160,
+   "height": 40
+  },
+  {
+   "id": "c2x:text0:line0",
+   "left": 22,
+   "top": 170,
+   "right": 182,
+   "bottom": 210,
+   "width": 160,
+   "height": 40
+  }
+ ]
+}

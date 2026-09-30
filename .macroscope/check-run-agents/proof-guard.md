@@ -2,7 +2,7 @@
 title: Proof guard
 input: full_diff
 conclusion: failure
-include: ["packages/**", "scripts/**", "README.md", "docs/*.md", "docs/research/**"]
+include: ["packages/**", "scripts/**", "README.md", "docs/*.md"]
 maxRuns: 10
 maxBudgetPerPR: 5.00
 ---

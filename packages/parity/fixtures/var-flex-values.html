@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; --dir: row; --wrap: wrap; --justify: space-between; --align: center; --grow: 2; --shrink: 1; --basis: 30px; --gap: 4px; }
+.flex { display: flex; width: 240px; height: 50px; flex-direction: var(--dir); flex-wrap: var(--wrap); justify-content: var(--justify); align-items: var(--align); column-gap: var(--gap); row-gap: var(--gap); background-color: #eee; }
+.flex.col { --dir: column; --wrap: nowrap; --justify: flex-end; --align: flex-start; height: 80px; }
+.item { height: 10px; flex-grow: var(--grow); flex-shrink: var(--shrink); flex-basis: var(--basis); background-color: #357; }
+.item.one { --grow: 1; --basis: 20px; }
+.item.fixed { flex: var(--fixed, 0 0 40px); }
+.item.shorthand { --fx: 3 1 10px; flex: var(--fx); }
+.item.flow { order: var(--order, -1); }
+.flowbox { display: flex; --ff: row-reverse wrap; flex-flow: var(--ff); gap: var(--gap) var(--gap); width: 120px; }
+.flowbox .item { width: 50px; flex: var(--none, none); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="f1" class="flex">
+<div data-dragon-id="f1a" class="item"></div>
+<div data-dragon-id="f1b" class="item one"></div>
+<div data-dragon-id="f1c" class="item fixed"></div>
+<div data-dragon-id="f1d" class="item shorthand flow"></div>
+</div>
+<div data-dragon-id="f2" class="flex col">
+<div data-dragon-id="f2a" class="item"></div>
+<div data-dragon-id="f2b" class="item one"></div>
+</div>
+<div data-dragon-id="f3" class="flowbox">
+<div data-dragon-id="f3a" class="item"></div>
+<div data-dragon-id="f3b" class="item"></div>
+<div data-dragon-id="f3c" class="item"></div>
+</div>
+</body>
+</html>

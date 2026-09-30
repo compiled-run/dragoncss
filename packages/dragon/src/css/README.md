@@ -6,7 +6,8 @@ and ids, and the at-rule refusals as they were before it.
 
 | module | owns |
 |---|---|
-| `stylesheet.ts` | The parse driver: rules, declarations, `!important`, grammar validation, and refusal of every node that is not a style rule or declaration (`refuseNode`, pinned by `s4a.test.ts`). It re-exports `CssValue`, `featureOf` and the selector types. |
+| `stylesheet.ts` | The parse driver: rules, declarations, `!important`, custom property declarations, declarations holding `var()` (kept pending until substitution), grammar validation (`parseValue`, shared with `parseSubstitutedValue`), and refusal of every node that is not a style rule or declaration (`refuseNode`, pinned by `s4a.test.ts`). It re-exports `CssValue`, `featureOf` and the selector types. |
+| `variables.ts` | Token-aware splitting of a value into text and `var()` parts, with parse-time validation of `var()`. |
 | `selectors.ts` | Selector parsing into right-to-left compounds with Selectors-4 specificity: type, universal, class, `[ui-*]` attribute, sibling combinators and the structural pseudo-classes (`:nth-*`, `:is()`, `:where()`, `:not()`, `:has()`, `:root`, `:empty`). Matching on each case's fixed tree lives in `analysis/match.ts`. |
 | `at-rules.ts` | The at-rule handler registry. Every at-rule is refused today. |
 | `shorthands/index.ts` | The shorthand registry: one handler per shorthand, gathered from `box.ts`, `border.ts`, `flex.ts`, `overflow.ts`, `text.ts` and `logical.ts`. `shared.ts` holds the handler type and helpers. |
@@ -34,13 +35,18 @@ and ids, and the at-rule refusals as they were before it.
   the handler's outcome. An outcome other than `refuse` is a new `AtRuleOutcome` kind, which the driver handles.
 - **A selector.** Parse the new part in `selectors.ts` and extend `Compound`, then match it in `analysis/match.ts`.
   Specificity is computed in `selectors.ts`.
-- **Cascade or `var()`.** `var()` substitution goes in the `substituteVariables` hook in `analysis/computed.ts`, which does
-  nothing today. The `cascadeGroups` hook in `analysis/cascade.ts` also does nothing: logical property groups are applied
-  before the per-longhand cascade (below).
+- **Cascade or `var()`.** The `cascadeGroups` hook in `analysis/cascade.ts` does nothing: logical property groups are applied before
+  the per-longhand cascade (below). The cascade orders by importance, specificity and order, and also picks each element's custom property winners.
+  `var()` substitution runs through the `substituteVariables` hook in `analysis/computed.ts`; the work is in
+  `analysis/variables.ts` (custom property computation with cycle detection, substitution, invalid at computed-value time).
+  `@property` and `@layer` are still refused (`at-rules.ts`).
 - **A flow-relative property.** It is a shorthand of `properties/logical.ts` with a handler in `shorthands/logical.ts`: in
   horizontal-tb it expands to the physical longhands it maps to, an inline mapping once per direction with that direction on
   the `LonghandValue`. `analysis/logical.ts` computes each element's own direction and narrows every declaration to it
   before the cascade, so a flow-relative declaration and a physical one of the same group compete by specificity and order,
-  as in Chrome. `writing-mode` is refused, so nothing maps by writing mode.
+  as in Chrome. The order per element is Chrome's: custom properties, then `direction` (with `var()` substituted), then the
+  mappings. A declaration holding `var()` records its physical longhands per direction (`PendingSubstitution.sides`), is
+  narrowed to one side like any other, and is substituted as that direction's mapping. `writing-mode` is refused, so nothing
+  maps by writing mode.
 - **A parity fixture.** Add a new `packages/parity/src/fixture-groups/<group>.ts` and append one entry to `FIXTURE_GROUPS` in
   `packages/parity/src/fixtures.ts`. Never edit `milestone-1.ts`.

@@ -1,0 +1,16 @@
+{
+  "case": "text-ahem-single-line",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"t1:text0","lines":[[0,4]]},
+    {"id":"t2:text0","lines":[[0,5]]},
+    {"id":"t3:text0","lines":[[0,3]]},
+    {"id":"t4:text0","lines":[[0,6]]},
+    {"id":"t5:text0","lines":[[0,3]]},
+    {"id":"fi1:text0","lines":[[0,2]]},
+    {"id":"fi2:text0","lines":[[0,5]]},
+    {"id":"fi3:text0","lines":[[0,5]]},
+    {"id":"sh1:text0","lines":[[0,4]]},
+    {"id":"sh2:text0","lines":[[0,4]]}
+  ]
+}

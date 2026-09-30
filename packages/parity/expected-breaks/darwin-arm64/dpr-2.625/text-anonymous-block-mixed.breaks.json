@@ -1,0 +1,15 @@
+{
+  "case": "text-anonymous-block-mixed",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"m1:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"m1:text1","data":"YY YY YY","lines":2,"units":[0,0,0,0,0,0,1,1],"blank":[5]},
+    {"id":"m2:text0","data":"\n  Lead text XX\n  ","lines":3,"units":[0,0,0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2],"blank":[0,1,2,7,12,15,16,17]},
+    {"id":"m2:text1","data":"\n  tail\n","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[0,1,2,7]},
+    {"id":"b2:text0","data":"XX XXX","lines":2,"units":[0,0,0,1,1,1],"blank":[2]},
+    {"id":"m3:text0","data":"XX XX XX","lines":3,"units":[0,0,0,1,1,1,2,2],"blank":[2,5]},
+    {"id":"m4:text0","data":"XX XX","lines":2,"units":[0,0,0,1,1],"blank":[2]},
+    {"id":"m4:text1","data":"YY X","lines":2,"units":[0,0,0,1],"blank":[2]}
+  ]
+}

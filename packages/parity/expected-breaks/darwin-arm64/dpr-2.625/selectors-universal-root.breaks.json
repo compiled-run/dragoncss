@@ -1,0 +1,9 @@
+{
+  "case": "selectors-universal-root",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"b:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"c2:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}

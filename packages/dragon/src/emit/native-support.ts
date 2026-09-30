@@ -305,6 +305,28 @@ public struct DragonLineSpec {
   public let end: Int
 }
 
+/// Device px added to every glyph x; 0 except in the glyph-offset-1 raster plant build (P5), which proves the pixel lane sees ink.
+public let dragonGlyphPlantDevicePx: Double = 0
+/// Device px added to every glyph baseline (down); 0 except in the glyph-offset-y-1 raster plant build (T093).
+public let dragonGlyphPlantYDevicePx: Double = 0
+
+/// The layer a text view's glyphs are drawn in. A UIView's own backing store holds only its bounds, so ink outside the node
+/// frame (a rounded ascent, overflowing text) would be lost; this layer's frame is the bounds grown to the lines' ink.
+public final class DragonGlyphLayer: CALayer {
+  weak var owner: DragonTextView?
+  public override init() {
+    super.init()
+    needsDisplayOnBoundsChange = true
+    actions = ["bounds": NSNull(), "position": NSNull(), "frame": NSNull(), "contents": NSNull()]
+  }
+  public override init(layer: Any) { super.init(layer: layer) }
+  required init?(coder: NSCoder) { fatalError("DragonGlyphLayer is built in code") }
+  public override func draw(in ctx: CGContext) {
+    ctx.translateBy(x: -frame.minX, y: -frame.minY)
+    owner?.dragonDrawGlyphs(in: ctx)
+  }
+}
+
 /// A text node: Dragon owns the line breaks and places every glyph at the engine's advances (PM ruling, option ii); Core Text
 /// only rasterises (CTFontDrawGlyphs). The text is exposed to accessibility through accessibilityLabel.
 public final class DragonTextView: UIView, DragonNodeView {
@@ -319,6 +341,7 @@ public final class DragonTextView: UIView, DragonNodeView {
   public private(set) var dragonFont: UIFont? = nil
   public private(set) var specs: [DragonLineSpec] = []
   private var scale: Double = 1
+  private let glyphLayer = DragonGlyphLayer()
   public init(dragonId: String, kind: String, parent: String?) {
     self.dragonId = dragonId
     self.dragonKind = kind
@@ -327,9 +350,11 @@ public final class DragonTextView: UIView, DragonNodeView {
     isOpaque = false
     backgroundColor = nil
     clipsToBounds = false
-    contentMode = .redraw
     isAccessibilityElement = true
     accessibilityTraits = .staticText
+    glyphLayer.owner = self
+    glyphLayer.isOpaque = false
+    layer.addSublayer(glyphLayer)
   }
   required init?(coder: NSCoder) { fatalError("DragonTextView is built in code") }
 
@@ -348,19 +373,53 @@ public final class DragonTextView: UIView, DragonNodeView {
     dragonFont = font
     specs = lines
     self.scale = scale
-    setNeedsDisplay()
+    glyphLayer.contentsScale = CGFloat(scale)
+    setNeedsLayout()
+    glyphLayer.setNeedsDisplay()
   }
 
-  public override func draw(_ rect: CGRect) {
-    guard let ctx = UIGraphicsGetCurrentContext(), let font = dragonFont, let color = dragonTextColor else { return }
+  public override func layoutSubviews() {
+    super.layoutSubviews()
+    glyphLayer.frame = dragonInkFrame()
+    glyphLayer.setNeedsDisplay()
+  }
+
+  /// The bounds grown to every line's ink (the font's bounding box at each glyph origin) plus 2 device px of antialiasing, with
+  /// edges on whole device px so the glyph origins keep their fractional positions.
+  func dragonInkFrame() -> CGRect {
+    var r = bounds
+    if let font = dragonFont {
+      let box = CTFontGetBoundingBox(font as CTFont)
+      for l in specs where !l.glyphs.isEmpty {
+        guard let lo = l.xs.min(), let hi = l.xs.max() else { continue }
+        let y = CGFloat((l.baseline + dragonGlyphPlantYDevicePx) / scale)
+        let x0 = CGFloat((lo + dragonGlyphPlantDevicePx) / scale) + box.minX
+        let x1 = CGFloat((hi + dragonGlyphPlantDevicePx) / scale) + box.maxX
+        r = r.union(CGRect(x: x0, y: y - box.maxY, width: x1 - x0, height: box.height))
+      }
+    }
+    let s = CGFloat(scale)
+    let pad: CGFloat = 2
+    let left = (floor(r.minX * s) - pad) / s
+    let top = (floor(r.minY * s) - pad) / s
+    return CGRect(x: left, y: top, width: (ceil(r.maxX * s) + pad) / s - left, height: (ceil(r.maxY * s) + pad) / s - top)
+  }
+
+  /// Draws the lines in view coordinates (the glyph layer translates its context to them).
+  func dragonDrawGlyphs(in ctx: CGContext) {
+    guard let font = dragonFont, let color = dragonTextColor else { return }
     let ct = font as CTFont
+    // Glyphs at the engine's fractional x: Core Graphics otherwise floors each glyph origin to a whole device px (T093 addendum F3).
+    ctx.setAllowsFontSubpixelPositioning(true)
+    ctx.setShouldSubpixelPositionFonts(true)
+    ctx.setShouldSubpixelQuantizeFonts(false)
     ctx.setFillColor(color.cgColor)
     for l in specs where !l.glyphs.isEmpty {
       ctx.saveGState()
       ctx.textMatrix = .identity
-      ctx.translateBy(x: 0, y: CGFloat(l.baseline / scale))
+      ctx.translateBy(x: 0, y: CGFloat((l.baseline + dragonGlyphPlantYDevicePx) / scale))
       ctx.scaleBy(x: 1, y: -1)
-      let positions = l.xs.map { CGPoint(x: CGFloat($0 / scale), y: 0) }
+      let positions = l.xs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
       CTFontDrawGlyphs(ct, l.glyphs, positions, l.glyphs.count, ctx)
       ctx.restoreGState()
     }
@@ -677,10 +736,34 @@ public func dragonCapture(_ view: UIView, scale: Double, points: [(x: Int, y: In
   }
   let sha = SHA256.hash(data: Data(buf)).map { String(format: "%02x", $0) }.joined()
   let samples = points.map { p -> DumpPixelsSamples in
+    if p.x < 0 || p.y < 0 || p.x >= w || p.y >= h { fatalError("dragon: sample point \(p.x),\(p.y) (\(p.rule)) is outside the \(w)x\(h) capture") }
     let i = (p.y * w + p.x) * 4
     return DumpPixelsSamples(x: Double(p.x), y: Double(p.y), rgba: [Double(buf[i]), Double(buf[i + 1]), Double(buf[i + 2]), Double(buf[i + 3])], rule: p.rule)
   }
   return DumpPixels(capture: "drawHierarchy", width: Double(w), height: Double(h), sha256: sha, samples: samples)
+}
+
+/// The host's run file (the P5 points protocol), tab separated: "case <id>" lines name the cases in order, "point <id> <x> <y>
+/// <rule>" lines are a case's generated sample points in device px, and "hold 1" makes the app wait after each case until the host
+/// has taken its OS screenshot (the host then writes release-<id> into DRAGON_OUT).
+public struct DragonRun {
+  public var ids: [String] = []
+  public var points: [String: [(x: Int, y: Int, rule: String)]] = [:]
+  public var hold = false
+  public init() {}
+}
+
+public func dragonReadRun(_ path: String) -> DragonRun? {
+  guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
+  var r = DragonRun()
+  for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
+    let f = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+    if f[0] == "case" && f.count == 2 { r.ids.append(f[1]); continue }
+    if f[0] == "hold" && f.count == 2 { r.hold = f[1] == "1"; continue }
+    guard f[0] == "point", f.count == 5, let x = Int(f[2]), let y = Int(f[3]) else { fatalError("dragon: bad run file line: \(line)") }
+    r.points[f[1], default: []].append((x: x, y: y, rule: f[4]))
+  }
+  return r
 }
 `;
 
@@ -985,6 +1068,11 @@ fun dragonDrawBorders(canvas: Canvas, w: Float, h: Float, widths: IntArray, styl
  */
 class DragonLineSpec(val text: String, val glyphs: IntArray, val xs: DoubleArray, val xLU: Double, val widthLU: Double, val top: Int, val baseline: Int, val start: Int, val end: Int)
 
+/** Device px added to every glyph x; 0 except in the glyph-offset-1 raster plant build (P5), which proves the pixel lane sees ink. */
+const val DRAGON_GLYPH_PLANT_DEVICE_PX = 0.0
+/** Device px added to every glyph baseline (down); 0 except in the glyph-offset-y-1 raster plant build (T093). */
+const val DRAGON_GLYPH_PLANT_Y_DEVICE_PX = 0.0
+
 /**
  * A text node: Dragon owns the line breaks and places every glyph at the engine's advances (PM ruling, option ii); the platform only
  * rasterises, with Canvas.drawGlyphs (API 31, the Android floor). The text is exposed to accessibility through contentDescription.
@@ -1027,10 +1115,10 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     val f = font ?: return
     for (l in specs) {
       if (l.glyphs.isEmpty()) continue
-      val y = l.baseline.toFloat()
+      val y = (l.baseline + DRAGON_GLYPH_PLANT_Y_DEVICE_PX).toFloat()
       val positions = FloatArray(2 * l.glyphs.size)
       for (k in l.glyphs.indices) {
-        positions[2 * k] = l.xs[k].toFloat()
+        positions[2 * k] = (l.xs[k] + DRAGON_GLYPH_PLANT_DEVICE_PX).toFloat()
         positions[2 * k + 1] = y
       }
       canvas.drawGlyphs(l.glyphs, 0, positions, 0, l.glyphs.size, f, paint)
@@ -1161,6 +1249,7 @@ import dev.dragon.dump.DumpNodesLines
 import dev.dragon.dump.DumpNodesLinesDeviceEdges
 import dev.dragon.dump.DumpNodesLinesFrame
 import dev.dragon.dump.DumpPixels
+import dev.dragon.dump.DumpPixelsSamples
 import dev.dragon.dump.DumpTiming
 import dev.dragon.layout.Ctx
 import dev.dragon.layout.LayoutBox
@@ -1400,14 +1489,69 @@ class DragonTree(val context: Context) {
 fun dragonBackground(v: DragonBoxView, c: DragonRGBA8) {
   v.background = ColorDrawable(dragonArgb(c))
 }
+
+/** One generated sample point of a case, in device px of the capture. */
+class DragonPoint(val x: Int, val y: Int, val rule: String)
+
+/**
+ * The host's run file (the P5 points protocol), tab separated: "case <id>" lines name the cases in order, "point <id> <x> <y> <rule>"
+ * lines are a case's generated sample points in device px, and "hold 1" makes the app wait after each case until the host has
+ * taken its OS screenshot (the host then writes release-<id> into the files dir).
+ */
+class DragonRun(val ids: List<String>, val points: Map<String, List<DragonPoint>>, val hold: Boolean)
+
+fun dragonReadRun(f: java.io.File): DragonRun? {
+  if (!f.exists()) return null
+  val ids = ArrayList<String>()
+  val points = HashMap<String, ArrayList<DragonPoint>>()
+  var hold = false
+  for (line in f.readText().split("\n")) {
+    if (line.isEmpty()) continue
+    val p = line.split("\t")
+    if (p[0] == "case" && p.size == 2) ids.add(p[1])
+    else if (p[0] == "hold" && p.size == 2) hold = p[1] == "1"
+    else if (p[0] == "point" && p.size == 5) points.getOrPut(p[1]) { ArrayList() }.add(DragonPoint(p[2].toInt(), p[3].toInt(), p[4]))
+    else throw IllegalStateException("dragon: bad run file line: " + line)
+  }
+  return DragonRun(ids, points, hold)
+}
+
+/** The capture's RGBA8 pixels at the generated points (a point outside the capture fails loudly). */
+fun dragonSamples(rgba: ByteArray, w: Int, h: Int, points: List<DragonPoint>): List<DumpPixelsSamples> = points.map { p ->
+  if (p.x < 0 || p.y < 0 || p.x >= w || p.y >= h) throw IllegalStateException("dragon: sample point " + p.x + "," + p.y + " (" + p.rule + ") is outside the " + w + "x" + h + " capture")
+  val i = (p.y * w + p.x) * 4
+  DumpPixelsSamples(p.x.toDouble(), p.y.toDouble(), listOf(rgba[i], rgba[i + 1], rgba[i + 2], rgba[i + 3]).map { (it.toInt() and 0xff).toDouble() }, p.rule)
+}
 `;
 
 export type SupportFile = { readonly path: string; readonly text: string };
 
 const header = (comment: string, what: string): string => `${comment} GENERATED by dragon emit/native-support.ts (${NATIVE_SUPPORT_VERSION}): ${what}. Do not edit.\n`;
 
-/** The support files of a backend, relative to the generated source root. */
-export function emitNativeSupport(backend: NativeBackend): GeneratedFile[] {
+/**
+ * Raster plants of the support code: glyph-offset-1 draws every glyph 1 device px right of the engine's position (P5), and
+ * glyph-offset-y-1 1 device px below it (T093).
+ */
+export type SupportPlant = 'glyph-offset-1' | 'glyph-offset-y-1';
+export const SUPPORT_PLANTS: readonly SupportPlant[] = ['glyph-offset-1', 'glyph-offset-y-1'];
+
+const PLANT_CONSTANT: { readonly [P in SupportPlant]: { readonly [B in NativeBackend]: string } } = {
+  'glyph-offset-1': { uikit: 'public let dragonGlyphPlantDevicePx: Double = ', 'android-views': 'const val DRAGON_GLYPH_PLANT_DEVICE_PX = ' },
+  'glyph-offset-y-1': { uikit: 'public let dragonGlyphPlantYDevicePx: Double = ', 'android-views': 'const val DRAGON_GLYPH_PLANT_Y_DEVICE_PX = ' },
+};
+
+/** The support files of a backend, relative to the generated source root; a plant changes only its glyph offset constant. */
+export function emitNativeSupport(backend: NativeBackend, plant: SupportPlant | null = null): GeneratedFile[] {
+  const files = supportFiles(backend);
+  if (plant === null) return files;
+  const constant = PLANT_CONSTANT[plant][backend];
+  const [from, to] = backend === 'uikit' ? [`${constant}0\n`, `${constant}1\n`] : [`${constant}0.0\n`, `${constant}1.0\n`];
+  const planted = files.map((f) => (f.text.includes(from) ? { ...f, text: f.text.replace(from, to) } : f));
+  if (planted.every((f, i) => f.text === (files[i] as GeneratedFile).text)) throw new Error(`the ${plant} plant found no glyph offset constant in the ${backend} support`);
+  return planted;
+}
+
+function supportFiles(backend: NativeBackend): GeneratedFile[] {
   if (backend === 'uikit') {
     return [
       { path: 'Support/DragonChecked.swift', text: header('//', 'checked conversions') + SWIFT_CHECKED },
