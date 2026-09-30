@@ -1,4 +1,5 @@
 // Media query lengths: px, em and rem, and calc() over them. em and rem use the initial font size, never the root's.
+import { asciiLower } from '../css/escapes.ts';
 import { exactNumber } from './number.ts';
 import type { NumberFormat } from './number.ts';
 import type { ComponentValue, Token } from './tokens.ts';
@@ -56,7 +57,7 @@ export function serialiseLength(length: MediaLength, fmt: NumberFormat = exactNu
 type Calc = { readonly kind: 'number'; readonly n: number } | { readonly kind: 'length'; readonly terms: Partial<Record<LengthUnit, number>> };
 
 function dimension(token: Token & { type: 'dimension' }): Calc {
-  const unit = token.unit.toLowerCase();
+  const unit = asciiLower(token.unit);
   if (unit === 'px' || unit === 'em' || unit === 'rem') return { kind: 'length', terms: { [unit]: token.value } };
   if (OTHER_LENGTH_UNITS.has(unit)) throw new RefusedValue(unit);
   throw new InvalidValue(unit);
@@ -128,7 +129,7 @@ function calcValue(cv: ComponentValue): Calc {
     if (cv.open !== '(') throw new InvalidValue('block');
     return calcSum(cv.children);
   }
-  const name = cv.name.toLowerCase();
+  const name = asciiLower(cv.name);
   if (name === 'calc') return calcSum(cv.children);
   if (MATH_FUNCTIONS.has(name)) throw new RefusedValue(name);
   throw new InvalidValue(name);
@@ -150,7 +151,7 @@ export function parseLength(cv: ComponentValue): MediaLength {
     throw new InvalidValue(cv.token.type);
   }
   if (cv.kind === 'function') {
-    const name = cv.name.toLowerCase();
+    const name = asciiLower(cv.name);
     if (name !== 'calc') {
       if (MATH_FUNCTIONS.has(name)) throw new RefusedValue(name);
       throw new InvalidValue(name);
