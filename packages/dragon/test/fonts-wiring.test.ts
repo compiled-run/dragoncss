@@ -124,6 +124,9 @@ describe('font-family resolution', () => {
     const at = '@text-in-block/ltr';
     const key = (css: string): readonly string[] => webFeatures(compileWith(fontInput(`@font-face { font-family: Mine; src: url(fonts/Inter-Regular.ttf) } ${css}`, { urls: ['fonts/Inter-Regular.ttf'] }), MAP));
     expect(key('.a { font-family: sans-serif }')).toEqual([`font-family:<pinned>${at}`]);
+    expect(key('.a { font-family: s\\61ns-serif }')).toEqual([`font-family:<pinned>${at}`]);
+    expect(key('.a { font-family: SANS-SERIF }')).toEqual([`font-family:<pinned>${at}`]);
+    expect(key('.a { font-family: M\\69ne }')).toEqual([`font-family:<declared>${at}`]);
     expect(key(".a { font-family: 'Lato', sans-serif }")).toEqual([`font-family:<pinned>${at}`]);
     expect(key('.a { font-family: Mine, monospace }')).toEqual([`font-family:<declared>${at}`]);
     expect(key('.a { font-family: system-ui }')).toEqual([`font-family:<platform>${at}`]);
@@ -179,6 +182,15 @@ describe('@font-face rules', () => {
     const face = (between: string): string => `@font-face${between}{ font-family: F; src: url(fonts/Inter-Regular.ttf) } .a { font-family: F }`;
     for (const between of ['/*! license */ ', ' /* a */ /*! b */ ', '\n/*!x*/\n']) expect(faceCodes(face(between), ['fonts/Inter-Regular.ttf'])).toEqual([]);
     expect(faceCodes(face(' /*! license */ x '), ['fonts/Inter-Regular.ttf'])).toEqual(['DRAGON_UNSUPPORTED_AT_RULE', 'DRAGON_FONT_UNMAPPED_FAMILY']);
+  });
+  it('escaped and upper-case at-rule, descriptor and keyword names read as their decoded, ASCII-folded names (css-syntax-3 §4.3.7)', () => {
+    const face = (rule: string): string[] => faceCodes(`${rule} .a { font-family: F }`, ['fonts/Inter-Regular.ttf']);
+    expect(face('@f\\6fnt-face { font-family: F; src: url(fonts/Inter-Regular.ttf) }')).toEqual([]);
+    expect(face('@FONT-FACE { FONT-FAMILY: F; SRC: url(fonts/Inter-Regular.ttf) }')).toEqual([]);
+    expect(face('@font-face { f\\6fnt-family: F; s\\72 c: url(fonts/Inter-Regular.ttf) format(tr\\75 etype); font-we\\ight: b\\6fld }')).toEqual([]);
+    expect(face('@font-face { font-family: F; src: url(fonts/Inter-Regular.ttf); font-displ\\61y: sw\\61p }')).toEqual(['DRAGON_FONT_DESCRIPTOR_NOT_APPLIED']);
+    // Only A-Z fold: U+0130 is not i, so this is not font-display.
+    expect(face('@font-face { font-family: F; src: url(fonts/Inter-Regular.ttf); font-d\u0130splay: swap }')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
   });
   it('an @font-face nested in a rule or inside another at-rule keeps the milestone-1 refusal', () => {
     expect(faceCodes('.a { @font-face { font-family: F; src: url(x.ttf) } }')).toEqual(['DRAGON_UNSUPPORTED_AT_RULE']);
