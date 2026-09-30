@@ -5,9 +5,9 @@ import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
+import { asciiLower, decodeName } from './escapes.ts';
 import { PSEUDO_CLASS_VALID, PSEUDO_ELEMENT_VALID } from './selector-validity.generated.ts';
 import type { SheetUse } from './stylesheet.ts';
-import { unescapeName } from './variables.ts';
 
 /** Selectors-4 §6 attribute operators; null tests presence only. */
 export type AttributeMatcher = '=' | '~=' | '|=' | '^=' | '$=' | '*=';
@@ -113,7 +113,6 @@ function pseudoElementOwner(name: string): string {
   return 'a later package';
 }
 
-const asciiLower = (s: string): string => s.replace(/[A-Z]/g, (c) => c.toLowerCase());
 
 /** css-syntax-3 An+B from css-tree's Nth node: AnPlusB, or the identifiers odd and even. */
 function anPlusB(nth: CssNode): { a: number; b: number } | null {
@@ -223,6 +222,7 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
   const fresh = (): Mutable => ({ tag: null, ids: [], classes: [], attributes: [], pseudos: [] });
   let current = fresh();
   let started = false;
+  let inCompound = false;
   let pending: Combinator | null = null;
   let anchor: Combinator | null = relative;
   let ok = true;
@@ -244,24 +244,27 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
       compounds.push({ compound: current, combinator: pending });
       pending = name as Combinator;
       current = fresh();
+      inCompound = false;
       continue;
     }
     started = true;
+    const follows = inCompound;
+    inCompound = true;
     if (part.type === 'TypeSelector') {
       const name = String(part['name']);
-      if (name.includes('|')) {
+      // Selectors-4 §3.1: a type or universal selector comes first in its compound, so Chrome 145 drops ".a*".
+      if (follows) {
+        ok = false;
+        chromeInvalid(part, `${generate(sel)}, whose type selector ${generate(part)} follows another simple selector,`, ctx, refuse);
+      } else if (name.includes('|')) {
         ok = false;
         refuse(part, `namespaced selector "${name}" is not supported`);
-      } else if (name !== '*') current.tag = asciiLower(name);
+      } else if (name !== '*') current.tag = asciiLower(decodeName(name));
     } else if (part.type === 'ClassSelector') {
-      // css-syntax-3 §4.3.7: css-tree keeps the name as written, so .w-1\/2 names the class w-1/2.
-      current.classes.push(unescapeName(String(part['name'])));
+      // css-syntax-3 §4.3.7: class and id selectors match the name's value, so .\61 b matches class ab.
+      current.classes.push(decodeName(String(part['name'])));
     } else if (part.type === 'IdSelector') {
-      const id = String(part['name']);
-      if (id.includes('\\')) {
-        ok = false;
-        refuse(part, `id selector "${generate(part)}" holds an escape, which Dragon does not unescape`, 'Write the id without escapes.');
-      } else current.ids.push(id);
+      current.ids.push(decodeName(String(part['name'])));
     } else if (part.type === 'AttributeSelector') {
       const test = parseAttribute(part, refuse);
       if (test === null) ok = false;
@@ -293,15 +296,12 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
 function parseAttribute(part: CssNode, refuse: Refuse): AttributeTest | null {
   const nameNode = part['name'] as CssNode;
   const raw = String(nameNode['name']);
-  const name = asciiLower(raw);
+  const name = asciiLower(decodeName(raw));
   const matcher = part['matcher'] as AttributeMatcher | null;
   const valueNode = part['value'] as CssNode | null;
-  const flags = part['flags'] === null ? null : asciiLower(String(part['flags']));
-  if (raw.includes('\\') || (valueNode !== null && valueNode.type !== 'String' && String(valueNode['name']).includes('\\'))) {
-    refuse(part, `attribute selector "${generate(part)}" holds an escape, which Dragon does not unescape`, 'Write the attribute name without escapes, and the value as a quoted string.');
-    return null;
-  }
-  if (raw.includes('|')) {
+  const flags = part['flags'] === null ? null : asciiLower(decodeName(String(part['flags'])));
+  // An escaped "|" (\|) is part of the name, not a namespace separator.
+  if (raw.replace(/\\[\s\S]/g, '').includes('|')) {
     refuse(part, `attribute selector "${generate(part)}" is not supported: namespaced attribute names are not`);
     return null;
   }
@@ -313,7 +313,7 @@ function parseAttribute(part: CssNode, refuse: Refuse): AttributeTest | null {
     refuse(part, `attribute selector "${generate(part)}" has an unknown flag`);
     return null;
   }
-  const value = valueNode === null ? null : valueNode.type === 'String' ? String(valueNode['value']) : String(valueNode['name']);
+  const value = valueNode === null ? null : valueNode.type === 'String' ? String(valueNode['value']) : decodeName(String(valueNode['name']));
   return { name, value, matcher, caseInsensitive: flags === 'i' };
 }
 

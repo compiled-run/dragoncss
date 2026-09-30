@@ -2,6 +2,7 @@
 // @webref/css grammar decides validity) and keeps its lowercased name, so its feature key is <length-<unit>> and the support
 // profiles decide whether it is supported. A registered unit either converts to px at computed-value time (analysis/computed.ts)
 // or is refused with its precise reason at parse time.
+import { asciiLower } from './escapes.ts';
 
 /**
  * How a registered length converts to px (css-values-4 §6):
@@ -60,7 +61,7 @@ const BY_NAME: ReadonlyMap<string, UnitEntry> = new Map(UNITS.map((u) => [u.unit
 
 /** css-values-4 §6: unit names are ASCII case-insensitive; the compiler keeps them lowercased. */
 export function normalizeUnit(raw: string): string {
-  return raw.toLowerCase();
+  return asciiLower(raw);
 }
 
 /** The registered entry of a lowercased unit, or null. */
@@ -108,9 +109,9 @@ const MATH_FUNCTIONS: ReadonlySet<string> = new Set(['calc', 'min', 'max', 'clam
  * belong to the engine value-model package; a build-time fold of constant calculations is not proven against Chrome yet.
  */
 export function mathFunctionRefusal(name: string): { readonly reason: string; readonly fix: string } | null {
-  if (!MATH_FUNCTIONS.has(name.toLowerCase())) return null;
+  if (!MATH_FUNCTIONS.has(asciiLower(name))) return null;
   return {
-    reason: `${name.toLowerCase()}() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)`,
+    reason: `${asciiLower(name)}() is a css-values-4 math function, which needs the engine value-model package (docs/research/coverage-roadmap.md, wave 2)`,
     fix: 'Write the resolved length (px, em, rem, cm, mm, Q, in, pt or pc) or a percentage instead.',
   };
 }
