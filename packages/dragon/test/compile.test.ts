@@ -172,7 +172,7 @@ describe('createProject().compile() and check()', () => {
     if (p.kind !== 'ready') throw new Error(p.reason);
     const a = p.input.root.children[0]?.kind === 'box' ? p.input.root.children[0].children[0] : undefined;
     const text = a?.kind === 'box' ? a.children[0] : undefined;
-    expect(text).toEqual({ kind: 'text', id: 'a:text0', text: 'XX X', font: { family: 'Ahem', size: 20 }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' });
+    expect(text).toEqual({ kind: 'text', id: 'a:text0', text: 'XX X', font: { family: 'Ahem', size: 20, specifiedSize: { kind: 'px', value: 20 }, absoluteSize: true }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' });
   });
 
   it('the public entry exposes only the public API', () => {

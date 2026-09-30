@@ -572,10 +572,10 @@ function lowerLeaf(n: MathLiteral, fonts: MathFonts): CalcExpr {
   if (n.unit === '%') return { kind: 'percent', value: n.value };
   if (n.unit === 'em') return { kind: 'em', value: n.value, fontSize: { kind: 'px', value: fonts.em } };
   if (n.unit === 'rem') return { kind: 'em', value: n.value, fontSize: { kind: 'px', value: fonts.rem } };
-  if (n.unit === 'vw' || n.unit === 'vi') return { kind: 'viewport', value: n.value, axis: 'width' };
-  if (n.unit === 'vh' || n.unit === 'vb') return { kind: 'viewport', value: n.value, axis: 'height' };
-  if (n.unit === 'vmin') return { kind: 'viewport', value: n.value, axis: 'min' };
-  if (n.unit === 'vmax') return { kind: 'viewport', value: n.value, axis: 'max' };
+  if (n.unit === 'vw' || n.unit === 'vi') return { kind: 'viewport', value: n.value, axis: 'width', size: 'large' };
+  if (n.unit === 'vh' || n.unit === 'vb') return { kind: 'viewport', value: n.value, axis: 'height', size: 'large' };
+  if (n.unit === 'vmin') return { kind: 'viewport', value: n.value, axis: 'min', size: 'large' };
+  if (n.unit === 'vmax') return { kind: 'viewport', value: n.value, axis: 'max', size: 'large' };
   // An absolute unit: ZoomedComputedPixels multiplies by its px ratio, then by the zoom.
   return { kind: 'px', value: n.value * (pxPer(n.unit) as number) };
 }
@@ -760,6 +760,12 @@ export function computedMathNode(e: CalcExpr): MathNode {
       return createComparison([computedMathNode(e.min), computedMathNode(e.value), computedMathNode(e.max)], 'clamp');
     case 'viewport':
     case 'em':
+    case 'rem':
+    case 'font-metric':
+    case 'lh':
+    case 'env':
+    case 'font-percent':
+    case 'font-calc':
       return refuse(`a ${e.kind} leaf has no computed form`);
   }
 }

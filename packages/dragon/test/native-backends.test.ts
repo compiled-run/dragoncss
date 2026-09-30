@@ -53,7 +53,7 @@ describe('the lowered programs', () => {
       expect(b?.writes.map((w) => w.kind)).toContain('padding-box-clip');
       expect(b?.writes.find((w) => w.kind === 'border-styles')).toMatchObject({ styles: ['dotted', 'solid', 'double', 'none'] });
       expect(prog.nodes.find((n) => n.id === 'a')?.writes.find((w) => w.kind === 'border-styles')).toMatchObject({ styles: ['dashed', 'dashed', 'dashed', 'dashed'] });
-      expect(prog.nodes.find((n) => n.id === 'a:text0')?.writes).toMatchObject([{ kind: 'font', family: 'Ahem', size: 10 }, { kind: 'text-color', color: { r: 0, g: 0, b: 128, alpha: 255 } }]);
+      expect(prog.nodes.find((n) => n.id === 'a:text0')?.writes).toMatchObject([{ kind: 'font', font: { family: 'Ahem', size: 10 } }, { kind: 'text-color', color: { r: 0, g: 0, b: 128, alpha: 255 } }]);
     }
   });
   it('programs need both native targets checked; a web-only or ios-only result has none', () => {

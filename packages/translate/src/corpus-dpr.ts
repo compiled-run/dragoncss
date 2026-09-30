@@ -249,7 +249,7 @@ function calcLeaf(r: Rng, percent: boolean): Json {
   const k = r.next();
   if (percent && k < 0.3) return { kind: 'percent', value: r.pick(CALC_PERCENTS) };
   if (k < 0.55) return { kind: 'px', value: r.chance(0.8) ? r.pick(CALC_LENGTHS) : Math.round(r.next() * 4000) / 64 };
-  if (k < 0.8) return { kind: 'viewport', value: r.pick([1, 5, 10, 33.333, 50, 100, 2.5]), axis: r.pick(['width', 'height', 'min', 'max']) };
+  if (k < 0.8) return { kind: 'viewport', value: r.pick([1, 5, 10, 33.333, 50, 100, 2.5]), axis: r.pick(['width', 'height', 'min', 'max']), size: 'large' };
   return { kind: 'em', value: r.pick([0.2, 1, 1.5, 2, 0.333]), fontSize: { kind: 'px', value: r.pick([10, 16, 10.625, 12.5, 13.33]) } };
 }
 

@@ -9,10 +9,16 @@
 // Calculations: a calculation with no percentage is evaluated in double and stored as a float px (Length::Fixed); one whose only
 // dimension is a percentage becomes a percentage; any other becomes Blink PixelsAndPercent when its sums and products allow it, and
 // otherwise a CalculationExpression tree with pixels-and-percent leaves, both evaluated in float at layout (calc.ts).
+//
+// Fonts (V2): a text run's specified font size is an expression at zoom 1 (StyleResolverState::FontSizeConversionData), its
+// computed size is specified * zoom with Chrome's minimum logical size, and font-relative leaves read the environment's root font
+// size, the font's metrics from the measurer, and the line height, each unzoomed by the font's zoom and zoomed by the conversion
+// zoom as CSSToLengthConversionData does. Every environment input is explicit in the LayoutInput.
 import type {
   BorderWidthValue,
   CalcExpr,
   FlexBasisValue,
+  FontSpec,
   GapValue,
   InsetValue,
   LayoutBox,
@@ -27,15 +33,20 @@ import type {
   Percent,
   PixelsAndPercent,
   Px,
+  SafeAreaInsets,
   SizeValue,
   TextLeaf,
   ViewportLength,
 } from './input.ts';
 import type { EngineFaults } from './block.ts';
-import { calcHasPercent, evaluateCalc } from './calc.ts';
+import { calcHasPercent, evaluateCalc, resolveCalc } from './calc.ts';
+import type { FontLengths, TextMeasurer } from './text.ts';
+import { AHEM_FONT_DATA, ahemMeasurerWith } from './text.ts';
 import {
   clampLengthFloat,
   clampNonNegativeDouble,
+  calcEvaluateFloat,
+  computedFontSize,
   cssLengthFixed,
   doubleAdd,
   doubleDiv,
@@ -50,37 +61,86 @@ import {
   floatMax,
   floatMin,
   floatMul,
+  fontPercentSize,
+  lineHeightNumberPx,
+  lineHeightPercentPx,
+  metricLeafPx,
+  specifiedFontSize,
+  fontMetricPx,
+  platformFontSize,
+  fromCssPx,
+  toFloat,
+  toPx,
+  add,
+  unzoomMetric,
   viewportLeafPx,
   viewportUnitBase,
   zoomCssPx,
-  zoomFontSize,
   zoomViewportPx,
 } from './units.ts';
 
-/** What a length resolves against: the zoom, the viewport sizes viewport units read (R6), and the planted engine faults. */
-type Env = { readonly zoom: number; readonly viewportWidth: number; readonly viewportHeight: number; readonly faults: EngineFaults };
+/** The viewport size viewport units of one kind read, in CSS px after R6. */
+type ViewportBase = { readonly width: number; readonly height: number };
 
-/** The input resolved for its environment, with devicePixelRatio 1 once zoomed; the input itself when it holds nothing to resolve at DPR 1. */
-export function applyEnvironment(input: LayoutInput, faults: EngineFaults): LayoutInput {
-  const z = input.devicePixelRatio;
-  if (z === 1 && !boxNeedsEnvironment(input.root)) return input;
-  // R6, planted fault viewportUnitsUnceiled: viewport units read the CSS viewport instead of the whole device px window over z.
-  const env: Env = {
-    zoom: z,
-    viewportWidth: faults.viewportUnitsUnceiled ? input.viewport.width : viewportUnitBase(input.viewport.width, z),
-    viewportHeight: faults.viewportUnitsUnceiled ? input.viewport.height : viewportUnitBase(input.viewport.height, z),
-    faults,
-  };
-  if (z === 1) return { viewport: input.viewport, devicePixelRatio: 1, root: resolveBox(input.root, env) };
-  return {
-    viewport: { width: zoomViewportPx(input.viewport.width, z), height: zoomViewportPx(input.viewport.height, z) },
-    devicePixelRatio: 1,
-    root: resolveBox(input.root, env),
-  };
+/**
+ * What a length resolves against: the conversion zoom (1 inside font-size), the element's zoom that font metrics are unzoomed by,
+ * the viewport sizes viewport units read (R6), the safe-area insets, the root font size, the measurer and the planted faults.
+ */
+type Env = {
+  readonly zoom: number;
+  readonly fontZoom: number;
+  readonly small: ViewportBase;
+  readonly large: ViewportBase;
+  readonly dynamic: ViewportBase;
+  readonly safeArea: SafeAreaInsets;
+  readonly rootFontSize: number;
+  readonly measurer: TextMeasurer;
+  readonly faults: EngineFaults;
+};
+
+/** Blink's initial font size (medium), which planted fault rootFontSizeIgnored reads for rem. */
+const INITIAL_FONT_SIZE = 16;
+
+/** R6, planted fault viewportUnitsUnceiled: viewport units read the CSS viewport instead of the whole device px window over z. */
+function viewportBase(width: number, height: number, z: number, faults: EngineFaults): ViewportBase {
+  if (faults.viewportUnitsUnceiled) return { width, height };
+  return { width: viewportUnitBase(width, z), height: viewportUnitBase(height, z) };
 }
 
-/** Whether any length of the box or its descendants is a calculation, which needs the pass even at DPR 1. */
-function boxNeedsEnvironment(b: LayoutBox): boolean {
+/**
+ * The input resolved for its environment with the reference Ahem measurer and the planted font rules (layout.ts zoomInput): the
+ * engine lays out only Ahem, and a device's bridge measurer is self-checked equal to the Ahem constants.
+ */
+export function applyEnvironment(input: LayoutInput, faults: EngineFaults): LayoutInput {
+  return resolveEnvironment(input, faults, ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }));
+}
+
+/** The input resolved for its environment with the measurer's font metrics, in zoomed px with devicePixelRatio 1. */
+export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, measurer: TextMeasurer): LayoutInput {
+  const z = input.devicePixelRatio;
+  if (z === 1 && !boxNeedsEnvironment(input.root, faults)) return input;
+  const u = input.viewportUnits;
+  const large = viewportBase(u.large.width, u.large.height, z, faults);
+  const env: Env = {
+    zoom: z,
+    fontZoom: z,
+    small: faults.viewportSizeKindIgnored ? large : viewportBase(u.small.width, u.small.height, z, faults),
+    large,
+    dynamic: faults.viewportSizeKindIgnored ? large : viewportBase(u.dynamic.width, u.dynamic.height, z, faults),
+    safeArea: input.safeArea,
+    rootFontSize: faults.rootFontSizeIgnored ? INITIAL_FONT_SIZE : input.rootFontSize,
+    measurer,
+    faults,
+  };
+  const viewport = z === 1 ? input.viewport : { width: zoomViewportPx(input.viewport.width, z), height: zoomViewportPx(input.viewport.height, z) };
+  return { viewport, devicePixelRatio: 1, viewportUnits: input.viewportUnits, safeArea: input.safeArea, rootFontSize: input.rootFontSize, root: resolveBox(input.root, env) };
+}
+
+/**
+ * Whether a box or its descendants hold anything to resolve at DPR 1: a calculation, or a text run whose font size or line
+ * height is not already its computed px value; the pass returns such an input itself.
+ */
+function boxNeedsEnvironment(b: LayoutBox, faults: EngineFaults): boolean {
   const s = b.style;
   const kinds = [
     s.top.kind, s.right.kind, s.bottom.kind, s.left.kind, s.width.kind, s.height.kind, s.minWidth.kind, s.minHeight.kind, s.maxWidth.kind,
@@ -89,18 +149,32 @@ function boxNeedsEnvironment(b: LayoutBox): boolean {
     s.borderLeftWidth.kind, s.flexBasis.kind, s.rowGap.kind, s.columnGap.kind,
   ];
   for (const k of kinds) if (k === 'calc') return true;
-  for (const c of b.children) if (c.kind === 'box' && boxNeedsEnvironment(c)) return true;
+  for (const c of b.children) {
+    if (c.kind === 'box') {
+      if (boxNeedsEnvironment(c, faults)) return true;
+      continue;
+    }
+    const f = c.font;
+    if (f.specifiedSize.kind !== 'px' || f.specifiedSize.value !== f.size) return true;
+    if (computedFontSize(f.size, f.absoluteSize, 1, faults.minimumFontSizeIgnored) !== f.size) return true;
+    if (c.lineHeight.kind === 'percent' || c.lineHeight.kind === 'calc') return true;
+  }
   return false;
 }
 
 function resolveBox(b: LayoutBox, env: Env): LayoutBox {
-  const children = b.children.map((c): LayoutBox | TextLeaf => (c.kind === 'box' ? resolveBox(c, env) : zoomText(c, env.zoom)));
+  const children = b.children.map((c): LayoutBox | TextLeaf => (c.kind === 'box' ? resolveBox(c, env) : resolveText(c, env)));
   return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), children };
 }
 
-function zoomText(t: TextLeaf, z: number): TextLeaf {
-  if (z === 1) return t;
-  return { ...t, font: { family: t.font.family, size: zoomFontSize(t.font.size, z) }, lineHeight: zoomLineHeight(t.lineHeight, z) };
+/**
+ * A text run at its computed font size, which the pass writes back as an absolute px size so a resolved input resolves to itself,
+ * with a percentage or calculated line height as px at the zoom (Blink ConvertLineHeight).
+ */
+function resolveText(t: TextLeaf, env: Env): TextLeaf {
+  const size = computedSize(t.font, env);
+  const font: FontSpec = { family: t.font.family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true };
+  return { kind: 'text', id: t.id, text: t.text, font, lineHeight: resolveLineHeightValue(t.lineHeight, size, env), whiteSpaceCollapse: t.whiteSpaceCollapse, textWrapMode: t.textWrapMode };
 }
 
 function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
@@ -189,9 +263,91 @@ function resolveGap(v: GapValue, env: Env): GapValue {
   return v;
 }
 
-/** Numbers multiply the zoomed font size, so only px line heights are zoomed. */
-function zoomLineHeight(v: LineHeightValue, z: number): LineHeightValue {
-  return v.kind === 'px' ? zoomPx(v, z) : v;
+// ---------------------------------------------------------------- fonts and line heights
+
+/** The environment at another conversion zoom (1 inside font-size, the element's zoom for line-height); the font zoom is kept. */
+function atZoom(env: Env, zoom: number): Env {
+  return zoom === env.zoom ? env : { ...env, zoom };
+}
+
+/**
+ * A specified font size in CSS px at zoom 1 (StyleBuilderConverter::ConvertFontSize over FontSizeConversionData): a percentage of
+ * the parent's, a math function with a percentage evaluated against the parent's, or a length computed in double and stored as
+ * a float, a math function clamped to its non-negative range first.
+ */
+function specifiedSize(e: CalcExpr, env: Env): number {
+  const fenv = atZoom(env, 1);
+  if (e.kind === 'font-percent') return fontPercentSize(e.value, specifiedSize(e.parent, env));
+  if (e.kind === 'font-calc') {
+    const v = evaluateCalc(calcValue({ kind: 'calc', expr: e.expr, range: 'non-negative' }, fenv).expr, specifiedSize(e.parent, env), env.faults);
+    return specifiedFontSize(calcEvaluateFloat(v, !env.faults.calcNoNonNegClamp));
+  }
+  return specifiedFontSize(clampLengthFloat(clampNonNegativeDouble(computeDouble(e, fenv))));
+}
+
+/** A font's computed size in zoomed px (FontBuilder::GetComputedSizeFromSpecifiedSize at the element's zoom). */
+function computedSize(font: FontSpec, env: Env): number {
+  return computedFontSize(specifiedSize(font.specifiedSize, env), font.absoluteSize, env.fontZoom, env.faults.minimumFontSizeIgnored);
+}
+
+/** The float metrics of a font at its computed size; planted fault exUntruncatedFontSize reads the untruncated size. */
+function fontLengths(font: FontSpec, env: Env): FontLengths {
+  const size = computedSize(font, env);
+  const m = env.faults.exUntruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: env.faults.metricHalfUp, untruncatedFontSize: true }) : env.measurer;
+  return m.lengths({ family: font.family, size });
+}
+
+/** ex, ch or cap in zoomed px at the conversion zoom (CSSToLengthConversionData::FontSizes); no x-height is em / 2, unzoomed. */
+function fontMetricPxAt(metric: 'ex' | 'ch' | 'cap', font: FontSpec, env: Env, zoom: number): number {
+  const lengths = fontLengths(font, env);
+  if (metric === 'ex' && !(lengths.xHeight > 0)) return floatDiv(specifiedSize(font.specifiedSize, env), 2);
+  const m = metric === 'ex' ? lengths.xHeight : metric === 'ch' ? lengths.zeroWidth : lengths.capHeight;
+  return unzoomMetric(m, env.fontZoom, zoom);
+}
+
+/**
+ * ComputedStyle::ComputedLineHeight in zoomed px: normal is the font's rounded line spacing (planted fault lhNormalUnrounded sums
+ * the float metrics); a number is a percent of LayoutUnit(computed size); a percentage, px or calculation is its stored float
+ * (StyleBuilderConverter::ConvertLineHeight at the element's zoom).
+ */
+function computedLineHeightPx(lh: LineHeightValue, font: FontSpec, env: Env): number {
+  const size = computedSize(font, env);
+  switch (lh.kind) {
+    case 'normal': {
+      if (env.faults.lhNormalUnrounded) {
+        const i = platformFontSize(size);
+        const d = AHEM_FONT_DATA;
+        return floatAdd(floatAdd(fontMetricPx(i, d.unitsPerEm, d.ascent), fontMetricPx(i, d.unitsPerEm, d.descent)), fontMetricPx(i, d.unitsPerEm, d.lineGap));
+      }
+      const m = env.measurer.metrics({ family: font.family, size });
+      return toPx(add(add(m.ascent, m.descent), m.lineGap));
+    }
+    case 'number':
+      return lineHeightNumberPx(size, lh.value, env.faults.lhUnsnapped);
+    case 'percent':
+      return lineHeightPercentPx(size, lh.value);
+    case 'px':
+      return cssLengthFixed(zoomCssPx(lh.value, env.fontZoom));
+    case 'calc':
+      return lineHeightCalcPx(lh, size, atZoom(env, env.fontZoom));
+  }
+}
+
+/**
+ * A calculated line height at the element's zoom: without a percentage, Length::Fixed of its double value; with one,
+ * ValueForLength of its CalculationValue against LayoutUnit(computed size), which truncates to LU.
+ */
+function lineHeightCalcPx(c: LengthCalc, computedFontSize: number, env: Env): number {
+  if (!calcHasPercent(c.expr)) return cssLengthFixed(lengthDouble(c, env));
+  return toFloat(resolveCalc(calcValue(c, env), fromCssPx(computedFontSize), env.faults));
+}
+
+/** A text run's line height at the zoom: normal and numbers stay, as layout resolves them (R3); the rest become zoomed px. */
+function resolveLineHeightValue(v: LineHeightValue, computedFontSize: number, env: Env): LineHeightValue {
+  if (v.kind === 'px') return zoomPx(v, env.fontZoom);
+  if (v.kind === 'percent') return { kind: 'px', value: lineHeightPercentPx(computedFontSize, v.value) };
+  if (v.kind === 'calc') return { kind: 'px', value: lineHeightCalcPx(v, computedFontSize, atZoom(env, env.fontZoom)) };
+  return v;
 }
 
 // ---------------------------------------------------------------- leaves (CSSLengthResolver::ZoomedComputedPixels)
@@ -201,19 +357,47 @@ function leafZoom(env: Env): number {
   return env.faults.calcLeafUnzoomed ? 1 : env.zoom;
 }
 
-function viewportBase(v: ViewportLength, env: Env): number {
-  if (v.axis === 'width') return env.viewportWidth;
-  if (v.axis === 'height') return env.viewportHeight;
-  if (v.axis === 'min') return floatMin(env.viewportWidth, env.viewportHeight);
-  return floatMax(env.viewportWidth, env.viewportHeight);
+function viewportAxisBase(v: ViewportLength, env: Env): number {
+  const b = v.size === 'small' ? env.small : v.size === 'dynamic' ? env.dynamic : env.large;
+  if (v.axis === 'width') return b.width;
+  if (v.axis === 'height') return b.height;
+  if (v.axis === 'min') return floatMin(b.width, b.height);
+  return floatMax(b.width, b.height);
 }
 
-/** A length leaf in zoomed px, in double; null for a percentage or a number. em font sizes are CSS px at zoom 1. */
+/** The inset env(safe-area-inset-<side>) substitutes; planted fault safeAreaIgnored reads 0. */
+function safeAreaInset(side: 'top' | 'right' | 'bottom' | 'left', env: Env): number {
+  if (env.faults.safeAreaIgnored) return 0;
+  if (side === 'top') return env.safeArea.top;
+  if (side === 'right') return env.safeArea.right;
+  if (side === 'bottom') return env.safeArea.bottom;
+  return env.safeArea.left;
+}
+
+/** A length leaf in zoomed px, in double; null for a percentage or a number. em and rem read specified font sizes at zoom 1. */
 function leafPx(e: CalcExpr, env: Env): number | null {
-  if (e.kind === 'px') return zoomCssPx(e.value, leafZoom(env));
-  if (e.kind === 'viewport') return viewportLeafPx(e.value, viewportBase(e, env), leafZoom(env));
-  if (e.kind === 'em') return emLeafPx(e.value, computeDouble(e.fontSize, { ...env, zoom: 1 }), leafZoom(env));
-  return null;
+  const z = leafZoom(env);
+  switch (e.kind) {
+    case 'px':
+      return zoomCssPx(e.value, z);
+    case 'viewport':
+      return viewportLeafPx(e.value, viewportAxisBase(e, env), z);
+    case 'em':
+      return emLeafPx(e.value, specifiedSize(e.fontSize, env), z);
+    case 'rem':
+      return emLeafPx(e.value, specifiedFontSize(env.rootFontSize), z);
+    case 'font-metric':
+      return metricLeafPx(e.value, fontMetricPxAt(e.metric, e.font, env, z));
+    case 'lh':
+      return metricLeafPx(e.value, unzoomMetric(computedLineHeightPx(e.lineHeight, e.font, env), env.fontZoom, z));
+    case 'env':
+      return zoomCssPx(e.value * safeAreaInset(e.side, env), z);
+    case 'font-percent':
+    case 'font-calc':
+      throw new Error(`a ${e.kind} node is a font size; it resolves only as a specified font size`);
+    default:
+      return null;
+  }
 }
 
 // ---------------------------------------------------------------- the compute-time double path
@@ -235,6 +419,12 @@ function computeDouble(e: CalcExpr, env: Env): number {
     case 'px':
     case 'viewport':
     case 'em':
+    case 'rem':
+    case 'font-metric':
+    case 'lh':
+    case 'env':
+    case 'font-percent':
+    case 'font-calc':
       return leafPx(e, env) as number;
     case 'percent':
     case 'number':
@@ -291,6 +481,12 @@ function hasLength(e: CalcExpr): boolean {
     case 'px':
     case 'viewport':
     case 'em':
+    case 'rem':
+    case 'font-metric':
+    case 'lh':
+    case 'env':
+    case 'font-percent':
+    case 'font-calc':
       return true;
     case 'pixels-and-percent':
       return e.explicitPixels;
@@ -342,6 +538,12 @@ function toPixelsAndPercent(e: CalcExpr, env: Env): PixelsAndPercent | null {
     case 'px':
     case 'viewport':
     case 'em':
+    case 'rem':
+    case 'font-metric':
+    case 'lh':
+    case 'env':
+    case 'font-percent':
+    case 'font-calc':
       return pp(float32(leafPx(e, env) as number), 0, true, false);
     case 'percent':
       return pp(0, float32(e.value), false, true);
@@ -396,6 +598,12 @@ function toCalcExpression(e: CalcExpr, env: Env): CalcExpr {
     case 'px':
     case 'viewport':
     case 'em':
+    case 'rem':
+    case 'font-metric':
+    case 'lh':
+    case 'env':
+    case 'font-percent':
+    case 'font-calc':
     case 'percent':
     case 'pixels-and-percent':
       return toPixelsAndPercent(e, env) as PixelsAndPercent;
@@ -475,6 +683,14 @@ function borderCalcPx(c: LengthCalc, env: Env): number {
 export function resolveLengthCalc(c: LengthCalc, env: Env): Px | Percent | LengthCalc {
   if (!calcHasPercent(c.expr)) return { kind: 'px', value: cssLengthFixed(lengthDouble(c, env)) };
   if (!hasLength(c.expr)) return { kind: 'percent', value: clampLengthFloat(lengthDouble(c, env)) };
+  return calcValue(c, env);
+}
+
+/**
+ * CSSMathFunctionValue::ToCalcValue: the calculation as a CalculationValue, in PixelsAndPercent form when its sums and products
+ * allow it and otherwise a CalculationExpression tree; a value that is NaN or infinite becomes that value clamped.
+ */
+function calcValue(c: LengthCalc, env: Env): LengthCalc {
   const direct = toPixelsAndPercent(c.expr, env);
   if (direct !== null) {
     if (Number.isNaN(floatAdd(direct.pixels, direct.percent))) return { kind: 'calc', expr: pp(0, 0, true, true), range: c.range };
@@ -488,4 +704,112 @@ export function resolveLengthCalc(c: LengthCalc, env: Env): Px | Percent | Lengt
     return { kind: 'calc', expr: pp(clamped, clamped, true, true), range: c.range };
   }
   return { kind: 'calc', expr, range: c.range };
+}
+
+// ---------------------------------------------------------------- dependencies
+
+/** Which environment inputs a layout input reads besides its viewport and ratio, so a host re-lays out only when one changes. */
+export type EnvironmentDependencies = {
+  readonly smallViewport: boolean;
+  readonly largeViewport: boolean;
+  readonly dynamicViewport: boolean;
+  readonly safeArea: boolean;
+  readonly rootFontSize: boolean;
+};
+
+type DependencyFlags = { small: boolean; large: boolean; dynamic: boolean; safeArea: boolean; rootFontSize: boolean };
+
+function calcDependencies(e: CalcExpr, out: DependencyFlags): void {
+  switch (e.kind) {
+    case 'viewport':
+      if (e.size === 'small') out.small = true;
+      else if (e.size === 'dynamic') out.dynamic = true;
+      else out.large = true;
+      return;
+    case 'rem':
+      out.rootFontSize = true;
+      return;
+    case 'env':
+      out.safeArea = true;
+      return;
+    case 'em':
+      calcDependencies(e.fontSize, out);
+      return;
+    case 'font-metric':
+      calcDependencies(e.font.specifiedSize, out);
+      return;
+    case 'lh':
+      calcDependencies(e.font.specifiedSize, out);
+      if (e.lineHeight.kind === 'calc') calcDependencies(e.lineHeight.expr, out);
+      return;
+    case 'font-percent':
+      calcDependencies(e.parent, out);
+      return;
+    case 'font-calc':
+      calcDependencies(e.expr, out);
+      calcDependencies(e.parent, out);
+      return;
+    case 'invert':
+      calcDependencies(e.term, out);
+      return;
+    case 'clamp':
+      calcDependencies(e.min, out);
+      calcDependencies(e.value, out);
+      calcDependencies(e.max, out);
+      return;
+    case 'sum':
+    case 'product':
+    case 'min':
+    case 'max':
+      for (const t of e.terms) calcDependencies(t, out);
+      return;
+    case 'px':
+    case 'percent':
+    case 'number':
+    case 'pixels-and-percent':
+      return;
+  }
+}
+
+function boxDependencies(b: LayoutBox, out: DependencyFlags): void {
+  const s = b.style;
+  if (s.top.kind === 'calc') calcDependencies(s.top.expr, out);
+  if (s.right.kind === 'calc') calcDependencies(s.right.expr, out);
+  if (s.bottom.kind === 'calc') calcDependencies(s.bottom.expr, out);
+  if (s.left.kind === 'calc') calcDependencies(s.left.expr, out);
+  if (s.width.kind === 'calc') calcDependencies(s.width.expr, out);
+  if (s.height.kind === 'calc') calcDependencies(s.height.expr, out);
+  if (s.minWidth.kind === 'calc') calcDependencies(s.minWidth.expr, out);
+  if (s.minHeight.kind === 'calc') calcDependencies(s.minHeight.expr, out);
+  if (s.maxWidth.kind === 'calc') calcDependencies(s.maxWidth.expr, out);
+  if (s.maxHeight.kind === 'calc') calcDependencies(s.maxHeight.expr, out);
+  if (s.marginTop.kind === 'calc') calcDependencies(s.marginTop.expr, out);
+  if (s.marginRight.kind === 'calc') calcDependencies(s.marginRight.expr, out);
+  if (s.marginBottom.kind === 'calc') calcDependencies(s.marginBottom.expr, out);
+  if (s.marginLeft.kind === 'calc') calcDependencies(s.marginLeft.expr, out);
+  if (s.paddingTop.kind === 'calc') calcDependencies(s.paddingTop.expr, out);
+  if (s.paddingRight.kind === 'calc') calcDependencies(s.paddingRight.expr, out);
+  if (s.paddingBottom.kind === 'calc') calcDependencies(s.paddingBottom.expr, out);
+  if (s.paddingLeft.kind === 'calc') calcDependencies(s.paddingLeft.expr, out);
+  if (s.borderTopWidth.kind === 'calc') calcDependencies(s.borderTopWidth.expr, out);
+  if (s.borderRightWidth.kind === 'calc') calcDependencies(s.borderRightWidth.expr, out);
+  if (s.borderBottomWidth.kind === 'calc') calcDependencies(s.borderBottomWidth.expr, out);
+  if (s.borderLeftWidth.kind === 'calc') calcDependencies(s.borderLeftWidth.expr, out);
+  if (s.flexBasis.kind === 'calc') calcDependencies(s.flexBasis.expr, out);
+  if (s.rowGap.kind === 'calc') calcDependencies(s.rowGap.expr, out);
+  if (s.columnGap.kind === 'calc') calcDependencies(s.columnGap.expr, out);
+  for (const c of b.children) {
+    if (c.kind === 'box') boxDependencies(c, out);
+    else {
+      calcDependencies(c.font.specifiedSize, out);
+      if (c.lineHeight.kind === 'calc') calcDependencies(c.lineHeight.expr, out);
+    }
+  }
+}
+
+/** The environment inputs the input's tree reads (translated, so the native hosts ask the engine rather than re-walk the tree). */
+export function environmentDependencies(input: LayoutInput): EnvironmentDependencies {
+  const out: DependencyFlags = { small: false, large: false, dynamic: false, safeArea: false, rootFontSize: false };
+  boxDependencies(input.root, out);
+  return { smallViewport: out.small, largeViewport: out.large, dynamicViewport: out.dynamic, safeArea: out.safeArea, rootFontSize: out.rootFontSize };
 }

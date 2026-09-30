@@ -9,6 +9,7 @@ import type { TextLonghand } from './css/properties.ts';
 import { TEXT_LONGHANDS } from './css/properties.ts';
 import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
 import { colorChannels, lowerNativePrograms, ProgramError, usedColors } from './lower/native-program.ts';
+import { rootFontSizeOf } from './lower/ios-layout.ts';
 import type { InternalCase } from './project.ts';
 import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
@@ -98,11 +99,18 @@ export function nativeLayoutProjection(compiled: object, environment: Environmen
   if (record.direction !== environment.direction) return { kind: 'blocked', reason: `the result was resolved for direction ${record.direction}, not ${environment.direction}` };
   if (record.rootFont !== environment.rootFont) return { kind: 'blocked', reason: `the result was resolved for root font ${record.rootFont}, not ${environment.rootFont}` };
   if (c.nativeLowered === null) return { kind: 'blocked', reason: 'the ios output is blocked or not configured' };
+  if (c.resolved === null) return { kind: 'blocked', reason: 'the case did not resolve' };
+  const viewport = { width: environment.viewport.width, height: environment.viewport.height };
+  // The environment inputs are explicit literals of the reference environment: every viewport unit reads the viewport, no safe
+  // area, and the compiler's root font size at text scale 1 (hosts read the real environment; notes/T012-v2-spec.md V2b).
   return {
     kind: 'ready',
     input: {
-      viewport: { width: environment.viewport.width, height: environment.viewport.height },
+      viewport,
       devicePixelRatio: environment.devicePixelRatio,
+      viewportUnits: { small: viewport, large: viewport, dynamic: viewport },
+      safeArea: { top: 0, right: 0, bottom: 0, left: 0 },
+      rootFontSize: rootFontSizeOf(c.resolved),
       root: c.nativeLowered,
     },
   };
