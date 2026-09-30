@@ -5,18 +5,18 @@ import type { LayoutRect } from '@dragon/layout';
 import { layout, measurerFor } from '@dragon/layout';
 import { NO_FAULTS } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
-import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from '../src/compare.ts';
+import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX, GATE_GLYPH_POSITION_DEVICE_PX } from '../src/compare.ts';
 import { atDpr, committedDprCapture, layoutCases } from '../src/dpr.ts';
 import { declaredLayoutCaseCount } from '../src/case-count.ts';
 import { referenceProof } from '../src/lanes.ts';
 import type { ExpectedApplied, ReferenceFaults, RgbaImage } from '../src/native-compare.ts';
-import { checkAgainstChrome, checkAgainstEngine, checkApplied, checkPixels, DUMP_FAULTS, NO_REFERENCE_FAULTS, readSamples, referenceDump } from '../src/native-compare.ts';
+import { checkAgainstChrome, checkAgainstEngine, checkApplied, checkPixels, DUMP_FAULTS, glyphPositions, NO_REFERENCE_FAULTS, readSamples, referenceDump } from '../src/native-compare.ts';
 import type { DumpNode, NativeDump } from '../src/native-dump.ts';
 import { frameOf, validateNativeDump } from '../src/native-dump.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
 import { compileFixture } from '../src/pipeline.ts';
-import type { SampleBox } from '../src/samples.ts';
-import { generateSamples } from '../src/samples.ts';
+import type { GlyphBox, SampleBox } from '../src/samples.ts';
+import { generateGlyphSamples, generateSamples } from '../src/samples.ts';
 import type { NativeTarget } from '../src/targets.ts';
 import { layoutCaseIds, nativeTargets } from '../src/targets.ts';
 
@@ -142,6 +142,7 @@ describe('negative checks', () => {
   it('the gates are the imported constants', () => {
     expect(GATE_DEVICE_PX).toBe(1);
     expect(GATE_CHANNEL_DELTA).toBe(0);
+    expect(GATE_GLYPH_POSITION_DEVICE_PX).toBe(0.5);
   });
 });
 
@@ -193,6 +194,85 @@ describe('(c) pixel samples against synthetic images', () => {
     const s = readSamples(image(), points);
     expect(checkPixels(s.slice(1), points, chrome).pass).toBe(false);
     expect(checkPixels(s.map((x, i) => (i === 0 ? { ...x, x: x.x + 1 } : x)), points, chrome).problems[0]).toMatch(/^sample 0 is /);
+  });
+});
+
+describe('(c) glyph positions per line: the x centre and the bottom edge (T093 ruling A, addendum F1)', () => {
+  const W = 120;
+  const H = 60;
+  const glyphs: GlyphBox[] = [
+    { left: 20.25, top: 15.5, right: 50.25, bottom: 45.5 },
+    { left: 50.25, top: 15.5, right: 80.25, bottom: 45.5 },
+  ];
+  const lines = [{ id: 't:text0:line0', glyphs }];
+  const points = generateGlyphSamples(lines, { width: W, height: H });
+  const overlap = (a0: number, a1: number, b0: number, b1: number): number => Math.max(0, Math.min(a1, b1) - Math.max(a0, b0));
+  /** Black glyph boxes on white by exact area coverage, moved by dx, dy, grown by grow on each side and top more at the top; plus solid rects. */
+  function image(dx = 0, dy = 0, grow = 0, solid: readonly GlyphBox[] = [], top = 0): RgbaImage {
+    const data = new Uint8Array(W * H * 4);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        let cov = 0;
+        for (const g of glyphs) cov += overlap(x, x + 1, g.left + dx - grow, g.right + dx + grow) * overlap(y, y + 1, g.top + dy - grow - top, g.bottom + dy + grow);
+        if (solid.some((r) => x >= r.left && x + 1 <= r.right && y >= r.top && y + 1 <= r.bottom)) cov = 1;
+        const v = Math.round(255 * (1 - Math.min(1, cov)));
+        data.set([v, v, v, 255], (y * W + x) * 4);
+      }
+    }
+    return { width: W, height: H, data };
+  }
+  const chrome = image();
+
+  it('the x centre pairs the line\'s glyph-left with glyph-right; y is the glyph-bottom edge alone; the same pixels give no error', () => {
+    expect([...new Set(points.filter((p) => p.rule.startsWith('edge:')).map((p) => p.rule))]).toEqual(['edge:t:text0:line0:glyph-left', 'edge:t:text0:line0:glyph-right', 'edge:t:text0:line0:glyph-top', 'edge:t:text0:line0:glyph-bottom']);
+    const c = glyphPositions(readSamples(chrome, points), chrome);
+    expect(c.map((x) => [x.line, x.axis])).toEqual([['t:text0:line0', 'x'], ['t:text0:line0', 'y']]);
+    for (const x of c) expect(x.native).toBe(x.chrome);
+    // 8-bit coverage puts the measured edges within 1/255 device px of the geometry.
+    expect(c[0]?.chrome).toBeCloseTo(50.25, 2);
+    expect(c[1]?.chrome).toBeCloseTo(45.5, 2);
+    const r = checkPixels(readSamples(chrome, points), points, chrome);
+    expect(r).toMatchObject({ pass: true });
+    expect(r.compared).toBe(points.filter((p) => !p.rule.startsWith('edge:')).length + 4 + 2);
+  });
+  it('a 1 device px glyph shift passes every ink edge but fails the x centre or the bottom edge, right, down, left or up', () => {
+    const right = checkPixels(readSamples(image(1, 0), points), points, chrome);
+    expect(right.problems.filter((p) => p.startsWith('edge:'))).toEqual([]);
+    expect(right.problems).toEqual([expect.stringMatching(/^centre:t:text0:line0:x: glyph centre at 51\.25\d device px, Chrome 50\.25\d; differs by more than 0\.5 device px$/)]);
+    const down = checkPixels(readSamples(image(0, 1), points), points, chrome);
+    expect(down.problems).toEqual([expect.stringMatching(/^bottom:t:text0:line0:y: glyph bottom edge at 46\.(49|50)\d device px, Chrome 45\.(49|50)\d; differs by more than 0\.5 device px$/)]);
+    expect(checkPixels(readSamples(image(-1, -1), points), points, chrome).problems.map((p) => p.slice(0, 22))).toEqual(['centre:t:text0:line0:x', 'bottom:t:text0:line0:y']);
+  });
+  it('a shift of 0.3 device px, a Chrome fringe of 0.4 device px on every side and 0.6 more on top pass; the top moves no position', () => {
+    expect(checkPixels(readSamples(image(0.3, 0.3), points), points, chrome).pass).toBe(true);
+    const fringe = image(0, 0, 0.4, [], 0.6);
+    expect(checkPixels(readSamples(chrome, points), points, fringe).pass).toBe(true);
+    const [x, y] = glyphPositions(readSamples(chrome, points), fringe);
+    expect(Math.abs((x?.native ?? 0) - (x?.chrome ?? 1))).toBeLessThan(0.01);
+    expect((y?.chrome ?? 0) - (y?.native ?? 0)).toBeCloseTo(0.4, 2);
+  });
+  it('a "<rule>:clear" point is a colour point: a scanline rule kind, never read as a scanline', () => {
+    const pts = [{ x: 5, y: 5, rule: 'edge:q:bottom:clear' }, { x: 6, y: 5, rule: 'edge:q:bottom:clear' }];
+    const r = checkPixels(readSamples(chrome, pts), pts, chrome);
+    expect(r).toMatchObject({ pass: true, compared: 2 });
+    const off = image(0, 0, 0, [{ left: 5, top: 5, right: 6, bottom: 6 }]);
+    expect(checkPixels(readSamples(off, pts), pts, chrome).problems).toEqual([expect.stringMatching(/^edge:q:bottom:clear at 5,5: native \[0,0,0,255\], Chrome \[255,255,255,255\]/)]);
+  });
+  it('a glyph-edge scanline with no contrast in Chrome is compared at its two clear ends only', () => {
+    // Solid ink right of the line's last glyph: the right scanline runs from ink to ink.
+    const bar: GlyphBox = { left: 80, top: 0, right: 120, bottom: 60 };
+    const ref = image(0, 0, 0, [bar]);
+    const native = image(0, 0, 0, [bar]);
+    const seam = points.filter((p) => p.rule === 'edge:t:text0:line0:glyph-right');
+    const mid = seam[Math.floor(seam.length / 2)];
+    if (mid === undefined) throw new Error('no glyph-right scanline');
+    native.data.set([90, 90, 90, 255], (mid.y * W + mid.x) * 4);
+    const r = checkPixels(readSamples(native, points), points, ref);
+    expect(r.pass).toBe(true);
+    const end = seam[0];
+    if (end === undefined) throw new Error('no glyph-right scanline');
+    native.data.set([90, 90, 90, 255], (end.y * W + end.x) * 4);
+    expect(checkPixels(readSamples(native, points), points, ref).problems).toEqual([expect.stringMatching(new RegExp(`^edge:t:text0:line0:glyph-right at ${end.x},${end.y}: native \\[90,90,90,255\\]`))]);
   });
 });
 
