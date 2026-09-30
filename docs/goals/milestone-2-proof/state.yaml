@@ -3594,6 +3594,15 @@ tasks:
     lane: values
     objective: 'Percent inside a border-width calc(): Chrome treats it as invalid; Dragon refuses with a misleading percentage-gaps reason. Give it the right typed reason, matching Chrome validity.'
     receipt: null
+  - id: T132
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: device
+    objective: 'Silent lane failure: under machine load, layout-vectors-host native:kotlin (and the Kotlin engine suite in pnpm test) intermittently reports p1/engine 0/20258 with no reason (seen on WM-0
+      and T123, 2026-09-30); rerun passes. Find the cause (JVM start or timeout, harness.jar I/O, killed process) and make the lane record the real error (exit code, signal, stderr tail) instead of 0/N,
+      with a test. Also: the dragon-320 emulator sometimes exits before it attaches (lane-speed run); record and surface the emulator log.'
+    receipt: null
   - id: T999
     type: judge
     assignee: Judge
