@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { DeviceOutcome, RunLog } from './device-lanes.ts';
+import { afterRelease } from './device-lanes.ts';
 import type { DeviceHandle, DeviceSpec } from './device-run.ts';
 import { boot, DEVICE_MATRIX, release } from './device-run.ts';
 import type { HostRun } from './lanes.ts';
@@ -158,19 +159,17 @@ export function runDeviceChild(job: DeviceJob, spec: DeviceSpec, log: RunLog): P
       }
     });
   });
-  // The device is stopped once its process is done, and before the outcome is given back.
-  const settle = async (): Promise<void> => {
+  // The device is stopped once its process is done, and before the outcome is given back; one that could not be stopped blocks it.
+  const settle = async (): Promise<string | null> => {
     const h = await handle;
-    if (h === null) return;
+    if (h === null) return null;
     const r0 = Date.now();
-    await release(h, log);
+    const problem = await release(h, log);
     log(`${spec.name}: released in ${((Date.now() - r0) / 1000).toFixed(0)} s`);
+    return problem;
   };
   return outcome.then(
-    async (o) => {
-      await settle();
-      return o;
-    },
+    async (o) => afterRelease(o, await settle()),
     async (e: unknown) => {
       await settle();
       throw e;

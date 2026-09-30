@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { DeviceJob } from '../src/device-jobs.ts';
 import { deviceJobs, lanesArgs, parseDeviceJob, parseHandle, parseOutcome, pool, prebuildApps } from '../src/device-jobs.ts';
 import type { DeviceOutcome, DeviceSet } from '../src/device-lanes.ts';
-import { mergeOutcomes } from '../src/device-lanes.ts';
+import { afterRelease, mergeOutcomes } from '../src/device-lanes.ts';
 import type { AvdDeviceSpec, DeviceHandle, IosDeviceSpec } from '../src/device-run.ts';
 import { admitDevice, admits, DEVICE_MATRIX, DEVICE_MEMORY, DeviceLeftRunning, failBoot, heldBytes, isAncestor, leaseHolder, MEMORY_RESERVE, parentPid, parseVmStat, release, releaseDeviceMemory, requireDeviceLease, stopSpawned, withDeviceSlot } from '../src/device-run.ts';
 import type { LanesFile } from '../src/lanes.ts';
@@ -98,6 +98,18 @@ describe('devices of a target at once', () => {
     expect(deviceJobs('android', 1, log)).toBe(1);
     expect(deviceJobs('ios', 2, log)).toBe(2);
   });
+  // PR #42 finding 4149997382: a device that could not be stopped is a tooling fault, never a pass.
+  it('a device whose stop failed gives a blocked outcome naming the problem; a stopped one keeps its outcome', () => {
+    const o = outcome('dragon-480');
+    expect(afterRelease(o, null)).toBe(o);
+    const b = afterRelease(o, 'emulator-5582 (dragon-480) still runs after adb emu kill');
+    expect(b).toEqual({ device: 'dragon-480', set: null, trust: null, vectors: null, blocked: 'dragon-480: the device could not be stopped after its run (tooling fault), so its results are not used: emulator-5582 (dragon-480) still runs after adb emu kill' });
+    expect(parseOutcome(JSON.stringify(b), 'dragon-480')).toEqual(b);
+    expect(afterRelease({ ...o, set: null, trust: null, blocked: 'no fit' }, 'x').blocked).toMatch(/results are not used: x; no fit$/);
+    const run = mergeOutcomes([outcome('a'), b], { laneCode: '', referenceData: '', app: '' });
+    expect(run.sets.map((s) => s.device.name)).toEqual(['a']);
+    expect(run.blocked).toMatch(/dragon-480: the device could not be stopped/);
+  });
   it('a device process takes only its own matrix device from the parent, or the reason its boot failed', () => {
     const ios = DEVICE_MATRIX.find((d) => d.target === 'ios') as IosDeviceSpec;
     const avd = DEVICE_MATRIX.find((d) => d.target === 'android') as AvdDeviceSpec;
@@ -121,6 +133,11 @@ describe('the device lease', () => {
     expect(isAncestor(40, 40, parentOf)).toBe(true);
     expect(isAncestor(99, 40, parentOf)).toBe(false);
     expect(isAncestor(5, 6, (p) => p)).toBe(false);
+    // PR #42 finding 4149997421: a lease held by pid 1 (a container's entrypoint) covers its descendants.
+    const container = new Map([[40, 30], [30, 1]]);
+    expect(isAncestor(1, 40, (p) => container.get(p) ?? null)).toBe(true);
+    expect(() => requireDeviceLease(1, 40, (p) => container.get(p) ?? null)).not.toThrow();
+    expect(isAncestor(1, 40, (p) => (p === 1 ? 0 : (container.get(p) ?? null)))).toBe(true);
     expect(isAncestor(process.ppid, process.pid, parentPid)).toBe(true);
     expect(() => requireDeviceLease(20, 40, parentOf)).not.toThrow();
     expect(() => requireDeviceLease(null, 40, parentOf)).toThrow(/no device lease is held .*device-lease.sh/);

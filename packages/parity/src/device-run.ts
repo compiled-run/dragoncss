@@ -270,7 +270,8 @@ export function parentPid(pid: number): number | null {
 /** Whether ancestor is pid or one of its ancestors, walking parentOf up to the root (at most 64 steps). */
 export function isAncestor(ancestor: number, pid: number, parentOf: (pid: number) => number | null): boolean {
   let p: number | null = pid;
-  for (let i = 0; i < 64 && p !== null && p > 1; i++) {
+  // pid 1 is an ancestor like any other (a lease held by a container's entrypoint, finding 4149997421); the walk ends above it.
+  for (let i = 0; i < 64 && p !== null && p >= 1; i++) {
     if (p === ancestor) return true;
     p = parentOf(p);
   }
@@ -421,7 +422,9 @@ async function bootIosFrom(spec: IosDeviceSpec, udid: string, was: string): Prom
     const b = await runAsync('xcrun', ['simctl', 'bootstatus', udid, '-b'], 300_000);
     if (b.status === 0) break;
     if (attempt === 2 || was !== 'Shutdown') throw new Error(`the ${spec.name} simulator failed to boot${was === 'Shutdown' ? ' twice' : ` (it was ${was} before this run, so it is left alone)`} (tooling fault): ${b.out.slice(-500)}`);
-    run('xcrun', ['simctl', 'shutdown', udid]);
+    // The retry starts from a stopped simulator, or the boot fails (and its cleanup stops it, or keeps its memory reserved).
+    const stopped = await stopDevice({ spec, udid, startedHere: true });
+    if (stopped !== null) throw new Error(`the ${spec.name} simulator failed to boot, and before the retry ${stopped} (tooling fault): ${b.out.slice(-500)}`);
   }
   const ui = run('xcrun', ['simctl', 'ui', udid, 'content_size', 'large']);
   if (ui.status !== 0) throw new Error(`simctl ui content_size large failed on ${spec.name}: ${ui.out}`);
@@ -548,12 +551,17 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
  * image under load may raise an ANR dialog for System UI, which takes the focus from the app (Settings.Global.HIDE_ERROR_DIALOGS).
  */
 async function prepareAvd(h: { readonly serial: string; readonly tools: AndroidTools }): Promise<void> {
-  adb(h, ['shell', 'settings', 'put', 'global', 'hide_error_dialogs', '1']);
-  for (const k of ['window_animation_scale', 'transition_animation_scale', 'animator_duration_scale']) adb(h, ['shell', 'settings', 'put', 'global', k, '0']);
-  adb(h, ['shell', 'settings', 'put', 'system', 'font_scale', TEXT_SCALE.android]);
-  adb(h, ['shell', 'svc', 'power', 'stayon', 'true']);
-  adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_WAKEUP']);
-  adb(h, ['shell', 'wm', 'dismiss-keyguard']);
+  // Each step must succeed: a device left with animations, another text scale or a locked screen is not the matrix device.
+  const step = (args: readonly string[]): void => {
+    const r = adb(h, ['shell', ...args]);
+    if (r.status !== 0) throw new Error(`${h.serial}: adb shell ${args.join(' ')} failed (exit ${r.status}; tooling fault): ${r.out.slice(-300)}`);
+  };
+  step(['settings', 'put', 'global', 'hide_error_dialogs', '1']);
+  for (const k of ['window_animation_scale', 'transition_animation_scale', 'animator_duration_scale']) step(['settings', 'put', 'global', k, '0']);
+  step(['settings', 'put', 'system', 'font_scale', TEXT_SCALE.android]);
+  step(['svc', 'power', 'stayon', 'true']);
+  step(['input', 'keyevent', 'KEYCODE_WAKEUP']);
+  step(['wm', 'dismiss-keyguard']);
   await waitForSettledFocus(h);
 }
 

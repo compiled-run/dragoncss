@@ -415,7 +415,16 @@ export function mergeOutcomes(outcomes: readonly DeviceOutcome[], evidence: Devi
 }
 
 /** Where a device comes from: booted and stopped by this process, or handed by the parent that boots and stops it (release null). */
-export type DeviceSource = { readonly boot: () => Promise<DeviceHandle>; readonly release: ((h: DeviceHandle) => Promise<unknown>) | null };
+export type DeviceSource = { readonly boot: () => Promise<DeviceHandle>; readonly release: ((h: DeviceHandle) => Promise<string | null>) | null };
+
+/**
+ * A device's outcome given what its stop reported (PR #42 finding 4149997382): a device that may still be running is a tooling fault,
+ * so its results are not used: the outcome is blocked, naming the problem, never a pass.
+ */
+export function afterRelease(o: DeviceOutcome, problem: string | null): DeviceOutcome {
+  if (problem === null) return o;
+  return { device: o.device, set: null, trust: null, vectors: null, blocked: `${o.device}: the device could not be stopped after its run (tooling fault), so its results are not used: ${problem}${o.blocked === null ? '' : `; ${o.blocked}`}` };
+}
 
 /** One device of the matrix: boot, the batch launch and its checks, the capture-trust launch and, on the vectors device, the vectors lane. */
 export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: HostRun | null, artifact: string, casesOf: () => readonly NativeCase[], runVectors: boolean, log: RunLog, source: DeviceSource = { boot: () => boot(spec), release: (h) => release(h, log) }): Promise<DeviceOutcome> {
@@ -441,7 +450,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     return { ...none, blocked };
   }
   log(`${spec.name}: booted (the cases computed meanwhile) in ${((Date.now() - b0) / 1000).toFixed(0)} s`);
-  try {
+  const work = async (): Promise<DeviceOutcome> => {
     const prof = deviceProfile(h);
     const dpr = prof.profileScale;
     if (!t.dprs.includes(dpr)) throw new Error(`${spec.name}: profile scale ${dpr} is not a ${t.target} device DPR`);
@@ -477,11 +486,19 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
       log(`${spec.name}: layout-vectors-device ${vectors.state}${vectors.reason === null ? '' : ` (${vectors.reason})`}; ${vectors.suites.map((s) => `${s.corpus}/${s.suite} ${s.pass ?? '-'}/${s.total ?? '-'}`).join(', ')}; digests ${vectors.digests.p1} ${vectors.digests.extended}; ${((Date.now() - v0) / 1000).toFixed(0)} s`);
     }
     return { device: spec.name, set: trustFailures.length > 0 ? { ...set, failures: [...set.failures, ...trustFailures] } : set, trust: { device: spec.name, dpr, rows }, vectors, blocked: null };
-  } finally {
-    if (source.release !== null) {
-      const r0 = Date.now();
-      await source.release(h);
-      log(`${spec.name}: released in ${((Date.now() - r0) / 1000).toFixed(0)} s`);
-    }
+  };
+  const stop = source.release;
+  if (stop === null) return work();
+  let outcome: DeviceOutcome;
+  try {
+    outcome = await work();
+  } catch (e) {
+    // The run fails with its own error; a stop that also failed is logged by release and keeps the device's memory reserved.
+    await stop(h);
+    throw e;
   }
+  const r0 = Date.now();
+  const problem = await stop(h);
+  log(`${spec.name}: released in ${((Date.now() - r0) / 1000).toFixed(0)} s`);
+  return afterRelease(outcome, problem);
 }
