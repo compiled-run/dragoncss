@@ -355,7 +355,7 @@ function checkGrid(style: Record<string, unknown>, children: readonly unknown[],
         bad(`${at}.${axis}`, `a span is at most ${GRID_MAX_TRACKS}`);
       }
     }
-    if (child['boxType'] === 'anonymous' && JSON.stringify(item) !== JSON.stringify(ANONYMOUS_GRID_ITEM)) bad(at, `an anonymous grid item is auto-placed with justify-self auto (${JSON.stringify(ANONYMOUS_GRID_ITEM)})`);
+    if (child['boxType'] === 'anonymous' && !sameValue(item, ANONYMOUS_GRID_ITEM)) bad(at, `an anonymous grid item is auto-placed with justify-self auto (${JSON.stringify(ANONYMOUS_GRID_ITEM)})`);
   });
 }
 
@@ -423,8 +423,18 @@ function checkAnonymous(box: Record<string, unknown>, children: readonly unknown
   const style = box['style'];
   if (!isRecord(style)) return;
   for (const [key, initial] of Object.entries(ANONYMOUS_INITIAL)) {
-    if (JSON.stringify(style[key]) !== JSON.stringify(initial)) bad(`an anonymous box takes the initial ${key} (${JSON.stringify(initial)}), not ${JSON.stringify(style[key])}`);
+    if (!sameValue(style[key], initial)) bad(`an anonymous box takes the initial ${key} (${JSON.stringify(initial)}), not ${JSON.stringify(style[key])}`);
   }
+}
+
+/** Structural equality of JSON values, so key order never matters. */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) || Array.isArray(b)) return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => sameValue(v, b[i]));
+  if (isRecord(a) && isRecord(b)) {
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every((k) => Object.hasOwn(b, k) && sameValue(a[k], b[k]));
+  }
+  return a === b;
 }
 
 function escapeRegExp(s: string): string {

@@ -157,7 +157,19 @@
       "grid-inert-placement": [3,3],
       "grid-inert-placement-rtl": [3,3],
       "grid-inert-templates": [5,5],
-      "grid-inert-templates-rtl": [5,5]
+      "grid-inert-templates-rtl": [5,5],
+      "grid-named-areas": [1,1],
+      "grid-named-areas-rtl": [1,1],
+      "grid-fr": [8,8],
+      "grid-fr-rtl": [8,8],
+      "grid-intrinsic": [20,22],
+      "grid-intrinsic-rtl": [20,22],
+      "grid-alignment": [3,4],
+      "grid-alignment-rtl": [3,4],
+      "grid-sizing": [2,2],
+      "grid-sizing-rtl": [2,2],
+      "grid-nested": [6,7],
+      "grid-nested-rtl": [6,7]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -316,7 +328,19 @@
       "grid-inert-placement": [3,3],
       "grid-inert-placement-rtl": [3,3],
       "grid-inert-templates": [5,5],
-      "grid-inert-templates-rtl": [5,5]
+      "grid-inert-templates-rtl": [5,5],
+      "grid-named-areas": [1,1],
+      "grid-named-areas-rtl": [1,1],
+      "grid-fr": [8,8],
+      "grid-fr-rtl": [8,8],
+      "grid-intrinsic": [20,22],
+      "grid-intrinsic-rtl": [20,22],
+      "grid-alignment": [3,4],
+      "grid-alignment-rtl": [3,4],
+      "grid-sizing": [2,2],
+      "grid-sizing-rtl": [2,2],
+      "grid-nested": [6,7],
+      "grid-nested-rtl": [6,7]
     }
   },
   "android": {
@@ -477,7 +501,19 @@
       "grid-inert-placement": [3,3],
       "grid-inert-placement-rtl": [3,3],
       "grid-inert-templates": [5,5],
-      "grid-inert-templates-rtl": [5,5]
+      "grid-inert-templates-rtl": [5,5],
+      "grid-named-areas": [1,1],
+      "grid-named-areas-rtl": [1,1],
+      "grid-fr": [8,8],
+      "grid-fr-rtl": [8,8],
+      "grid-intrinsic": [20,22],
+      "grid-intrinsic-rtl": [20,22],
+      "grid-alignment": [3,4],
+      "grid-alignment-rtl": [3,4],
+      "grid-sizing": [2,2],
+      "grid-sizing-rtl": [2,2],
+      "grid-nested": [6,7],
+      "grid-nested-rtl": [6,7]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -636,7 +672,19 @@
       "grid-inert-placement": [3,3],
       "grid-inert-placement-rtl": [3,3],
       "grid-inert-templates": [5,5],
-      "grid-inert-templates-rtl": [5,5]
+      "grid-inert-templates-rtl": [5,5],
+      "grid-named-areas": [1,1],
+      "grid-named-areas-rtl": [1,1],
+      "grid-fr": [8,8],
+      "grid-fr-rtl": [8,8],
+      "grid-intrinsic": [20,22],
+      "grid-intrinsic-rtl": [20,22],
+      "grid-alignment": [3,4],
+      "grid-alignment-rtl": [3,4],
+      "grid-sizing": [2,2],
+      "grid-sizing-rtl": [2,2],
+      "grid-nested": [6,7],
+      "grid-nested-rtl": [6,7]
     },
     "2.625": {
       "text-ahem-single-line": [10,10],
@@ -795,7 +843,19 @@
       "grid-inert-placement": [3,3],
       "grid-inert-placement-rtl": [3,3],
       "grid-inert-templates": [5,5],
-      "grid-inert-templates-rtl": [5,5]
+      "grid-inert-templates-rtl": [5,5],
+      "grid-named-areas": [1,1],
+      "grid-named-areas-rtl": [1,1],
+      "grid-fr": [8,8],
+      "grid-fr-rtl": [8,8],
+      "grid-intrinsic": [20,22],
+      "grid-intrinsic-rtl": [20,22],
+      "grid-alignment": [3,4],
+      "grid-alignment-rtl": [3,4],
+      "grid-sizing": [2,2],
+      "grid-sizing-rtl": [2,2],
+      "grid-nested": [6,7],
+      "grid-nested-rtl": [6,7]
     }
   }
 }
