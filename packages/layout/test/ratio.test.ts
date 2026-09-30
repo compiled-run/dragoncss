@@ -162,6 +162,14 @@ describe('intrinsic contributions', () => {
     const f = run([box('f', { display: 'flex', position: 'absolute' }, [box('a', { height: px(20), aspectRatio: r(3, 1) })])]);
     expect([at(f, 'f'), at(f, 'a')]).toEqual([[0, 0, 60, 20], [0, 0, 60, 20]]);
   });
+  it('min-width and max-width resolve as inlineContribution does: a calculation against no basis, a percentage max-width as none', () => {
+    const pp = (pixels: number, percent: number) => ({ kind: 'calc', expr: { kind: 'pixels-and-percent', pixels, percent, explicitPixels: true, explicitPercent: percent !== 0 }, range: 'non-negative' } as const);
+    const width = (s: Partial<LayoutStyle>, content: string): number => at(run([box('p', { position: 'absolute' }, [box('a', { aspectRatio: r(3, 1), ...s }, [t('a', content)])])]), 'p')[2] as number;
+    expect(width({ minWidth: pp(60, -10) }, 'XX')).toBe(60);
+    expect(width({ minWidth: pp(60, -10) }, 'XX')).toBe(width({ minWidth: px(60) }, 'XX'));
+    expect(width({ maxWidth: pp(30, 0) }, 'XXXXXXXX')).toBe(30);
+    expect(width({ maxWidth: pct(10) }, 'XXXXXXXX')).toBe(80);
+  });
 });
 
 describe('the validator', () => {

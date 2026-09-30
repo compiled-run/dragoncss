@@ -7,7 +7,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { checkedConversionSource } from '../src/emit/native-support.ts';
+import { readFileSync } from 'node:fs';
+import { checkedConversionSource, STYLE_FIELDS } from '../src/emit/native-support.ts';
 import type { EmitCase, NativeProgram } from '../src/internal.ts';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, nativeLayoutProjection, nativePrograms, NO_FAULTS, VOCABULARY, WRITE_CSS } from '../src/internal.ts';
 import { div, inputFor, text } from './helpers.ts';
@@ -84,6 +85,29 @@ describe('the emitted Swift and Kotlin', () => {
       for (const rule of CSS.split('}').map((r) => r.trim()).filter((r) => r.length > 0)) expect(src).not.toContain(rule);
     }
     for (const src of [swift, kotlin]) for (const cls of ['a', 'b', 'c']) expect(src).not.toMatch(new RegExp(`\\.${cls}(?![\\w-])`));
+  });
+});
+
+describe('the LayoutStyle constructor arguments', () => {
+  it('STYLE_FIELDS names every LayoutStyle field of input.ts, in declaration order (the translated constructor order)', () => {
+    const src = readFileSync(join(root, 'packages/layout/src/input.ts'), 'utf8');
+    const body = /export type LayoutStyle = \{\n([\s\S]*?)\n\};/.exec(src)?.[1] ?? '';
+    const fields = [...body.matchAll(/^ {2}readonly (\w+):/gm)].map((m) => m[1]);
+    expect(fields.length).toBeGreaterThan(40);
+    expect([...STYLE_FIELDS]).toEqual(fields);
+  });
+  it('an aspect ratio is its typed constructor on both backends: ratio, auto-ratio, and auto for a box without one', () => {
+    const css = 'body { margin: 0; } .a { width: 64px; aspect-ratio: 16 / 9; } .b { width: 64px; aspect-ratio: auto 2 / 1; }';
+    const ratioInput = inputFor(css, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])]);
+    const p = nativePrograms(createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(ratioInput), []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const swift = emitUikitCases([emitCase(p.programs.uikit)]).map((f) => f.text).join('\n');
+    const kotlin = emitAndroidViewsCases([emitCase(p.programs['android-views'])]).map((f) => f.text).join('\n');
+    expect(swift).toContain('AspectRatioValue_ratio(JsString("ratio"), 1024.0, 576.0))');
+    expect(swift).toContain('AspectRatioValue_autoRatio(JsString("auto-ratio"), 128.0, 64.0))');
+    expect(swift).toContain('JsString("start"), Auto(JsString("auto")))');
+    expect(kotlin).toContain('AspectRatioValue_ratio("ratio", 1024.0, 576.0))');
+    expect(kotlin).toContain('AspectRatioValue_autoRatio("auto-ratio", 128.0, 64.0))');
   });
 });
 

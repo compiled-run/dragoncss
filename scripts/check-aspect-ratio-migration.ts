@@ -1,6 +1,6 @@
-// Proves a migration of committed outputs is additive only (docs/decisions.md, "Adding engine fields and CSS longhands"): every
-// file that existed at the base commit either is unchanged or differs only by the new keys, each at its neutral value, and every
-// file added since the base belongs to a fixture added since the base.
+// Proves the SIZE-ar (T050) aspect-ratio migration of committed outputs is additive only (docs/decisions.md, "Adding engine
+// fields and CSS longhands"): every file that existed at the base commit either is unchanged or differs only by the new keys,
+// each at its neutral value, and every file added since the base belongs to a fixture added since the base.
 // - Layout vectors (packages/layout/vectors/**, break-vectors/**): each LayoutStyle object gains aspectRatio { kind: "auto" };
 //   with those keys removed the file is byte-identical to the base, so inputs, outputs and formatting are unchanged.
 // - Chrome captures (packages/parity/expected/**, expected-dpr/**): the computed values of every element node gain
@@ -10,7 +10,7 @@
 // - The calc goldens (packages/layout/vectors/calc) have no generator (T009 kept them by hand), so `--migrate-calc-goldens`
 //   inserts the neutral key after textAlign in each of their LayoutStyle objects; the check then proves the result additive.
 // `--plant <name>` alters one file in memory before the check, which must then fail (PLANTS below).
-// Run with: node scripts/check-additive-migration.ts <base-commit> [--migrate-calc-goldens] [--plant <name>]
+// Run with: node scripts/check-aspect-ratio-migration.ts <base-commit> [--migrate-calc-goldens] [--plant <name>]
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join, relative } from 'node:path';
@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const base = process.argv[2];
 if (base === undefined || base.startsWith('--')) {
-  console.error('usage: node scripts/check-additive-migration.ts <base-commit> [--migrate-calc-goldens] [--plant <name>]');
+  console.error('usage: node scripts/check-aspect-ratio-migration.ts <base-commit> [--migrate-calc-goldens] [--plant <name>]');
   process.exit(2);
 }
 
@@ -225,6 +225,6 @@ for (const [index, m] of MIGRATIONS.entries()) {
 }
 if (plant !== null && !planted) throw new Error(`plant ${plantName as string} found no file to alter`);
 if (failures > 0) {
-  console.error(`check-additive-migration: ${failures} failures`);
+  console.error(`check-aspect-ratio-migration: ${failures} failures`);
   process.exit(1);
 }
