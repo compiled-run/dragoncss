@@ -1,16 +1,20 @@
 // Runtime validator for LayoutInput. The schema's inferred type must equal the declared input types exactly.
-import type { LayoutBox, LayoutInput, LayoutStyle, TextLeaf } from './input.ts';
+import type { CalcExpr, LayoutBox, LayoutInput, LayoutStyle, TextLeaf } from './input.ts';
 
 type NumberRule = { readonly t: 'number'; readonly min: number; readonly exclusiveMin: boolean; readonly integer: boolean };
 type StringRule = { readonly t: 'string' };
 type LiteralRule<V extends string> = { readonly t: 'literal'; readonly values: readonly V[] };
 type ObjectRule = { readonly t: 'object'; readonly fields: { readonly [k: string]: Rule } };
 type TaggedRule = { readonly t: 'tagged'; readonly variants: { readonly [kind: string]: { readonly [k: string]: Rule } } };
-type Rule = NumberRule | StringRule | LiteralRule<string> | ObjectRule | TaggedRule;
+/** The recursive CalcExpr tree, which Infer cannot derive: it is checked by hand (checkCalc). */
+type CalcRule = { readonly t: 'calc' };
+type Rule = NumberRule | StringRule | LiteralRule<string> | ObjectRule | TaggedRule | CalcRule;
 
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
-type Infer<R> = R extends NumberRule
+type Infer<R> = R extends CalcRule
+  ? CalcExpr
+  : R extends NumberRule
   ? number
   : R extends StringRule
     ? string
@@ -43,14 +47,17 @@ const px = (minimum: number) => ({ px: { value: num(minimum) } }) as const;
 const percent = (minimum: number) => ({ percent: { value: num(minimum) } }) as const;
 const auto = { auto: {} } as const;
 
-const size = tagged({ ...px(0), ...percent(0), ...auto });
-const maxSize = tagged({ ...px(0), ...percent(0), none: {} });
-const margin = tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...auto });
-const inset = tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...auto });
-const padding = tagged({ ...px(0), ...percent(0) });
+const calcExpr: CalcRule = { t: 'calc' };
+const calc = { calc: { expr: calcExpr, range: lit('all', 'non-negative') } } as const;
+
+const size = tagged({ ...px(0), ...percent(0), ...auto, ...calc });
+const maxSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc });
+const margin = tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...auto, ...calc });
+const inset = tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...auto, ...calc });
+const padding = tagged({ ...px(0), ...percent(0), ...calc });
 // R5: an initial line width is typed in device px by the compiler (Chrome stores it unzoomed); only the four border widths take it.
-const border = tagged({ ...px(0), 'device-px': { value: num(0) } });
-const gap = tagged({ ...px(0), ...percent(0), normal: {} });
+const border = tagged({ ...px(0), 'device-px': { value: num(0) }, ...calc });
+const gap = tagged({ ...px(0), ...percent(0), normal: {}, ...calc });
 
 const justify = lit(
   'normal', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly',
@@ -93,7 +100,7 @@ export const styleSchema = obj({
   flexWrap: lit('nowrap', 'wrap', 'wrap-reverse'),
   flexGrow: num(0),
   flexShrink: num(0),
-  flexBasis: tagged({ ...px(0), ...percent(0), ...auto, content: {} }),
+  flexBasis: tagged({ ...px(0), ...percent(0), ...auto, content: {}, ...calc }),
   order: int,
   justifyContent: justify,
   alignItems: lit(...alignItemsValues),
@@ -166,8 +173,118 @@ function checkFields(
   }
 }
 
+const CALC_FIELDS: { readonly [kind: string]: readonly string[] } = {
+  px: ['value'],
+  percent: ['value'],
+  number: ['value'],
+  viewport: ['value', 'axis'],
+  em: ['value', 'fontSize'],
+  sum: ['terms'],
+  product: ['terms'],
+  invert: ['term'],
+  min: ['terms'],
+  max: ['terms'],
+  clamp: ['min', 'value', 'max'],
+  'pixels-and-percent': ['pixels', 'percent', 'explicitPixels', 'explicitPercent'],
+};
+
+// css-values-4 §10: a calculation tree. Every number is finite, operator lists are non-empty, and every key is present.
+function checkCalc(value: unknown, path: string, errors: ValidationError[]): void {
+  if (!isRecord(value)) {
+    errors.push({ path, code: 'wrong-type', message: 'expected a calculation node' });
+    return;
+  }
+  const kind = value['kind'];
+  const fields = typeof kind === 'string' && Object.prototype.hasOwnProperty.call(CALC_FIELDS, kind) ? CALC_FIELDS[kind] : undefined;
+  if (fields === undefined) {
+    errors.push({ path: `${path}.kind`, code: 'unknown-tag', message: `expected kind ${Object.keys(CALC_FIELDS).join(' | ')}` });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (key !== 'kind' && !fields.includes(key)) errors.push({ path: `${path}.${key}`, code: 'extra-key', message: `unexpected key "${key}"` });
+  }
+  for (const key of fields) {
+    const at = `${path}.${key}`;
+    if (!Object.prototype.hasOwnProperty.call(value, key)) {
+      errors.push({ path: at, code: 'missing-key', message: `missing required key "${key}"` });
+      continue;
+    }
+    const v = value[key];
+    if (key === 'axis') checkRule(v, lit('width', 'height', 'min', 'max'), at, errors);
+    else if (key === 'explicitPixels' || key === 'explicitPercent') {
+      if (typeof v !== 'boolean') errors.push({ path: at, code: 'wrong-type', message: 'expected a boolean' });
+    } else if (key === 'terms') {
+      if (!Array.isArray(v) || v.length === 0) errors.push({ path: at, code: 'wrong-type', message: 'expected a non-empty array of calculation nodes' });
+      else v.forEach((t: unknown, i: number) => checkCalc(t, `${at}[${i}]`, errors));
+    } else if (key === 'fontSize' || key === 'term' || key === 'min' || key === 'max' || (key === 'value' && kind === 'clamp')) checkCalc(v, at, errors);
+    else checkRule(v, anyNum, at, errors);
+  }
+}
+
+type CalcCategory = 'number' | 'length' | 'percent' | 'length-percent';
+
+/** Joins the categories of a sum or comparison's operands; null when a number meets a length or percentage. */
+function joinCategories(cs: readonly CalcCategory[]): CalcCategory | null {
+  const first = cs[0] as CalcCategory;
+  let out: CalcCategory = first;
+  for (const c of cs) {
+    if ((c === 'number') !== (first === 'number')) return null;
+    if (c !== out) out = 'length-percent';
+  }
+  return out;
+}
+
+// css-values-4 §10.9 type checking of a well-formed tree: sums and comparisons do not mix numbers with lengths, a product has at
+// most one factor that is not a number, only a number is inverted, and an em leaf's font size is a length without a percentage.
+function calcCategory(e: CalcExpr, path: string, errors: ValidationError[]): CalcCategory | null {
+  const bad = (message: string): null => {
+    errors.push({ path, code: 'bad-value', message });
+    return null;
+  };
+  switch (e.kind) {
+    case 'px':
+    case 'viewport':
+      return 'length';
+    case 'percent':
+      return 'percent';
+    case 'number':
+      return 'number';
+    case 'pixels-and-percent':
+      return e.explicitPercent ? (e.explicitPixels ? 'length-percent' : 'percent') : 'length';
+    case 'em':
+      return calcCategory(e.fontSize, `${path}.fontSize`, errors) === 'length' ? 'length' : bad('an em font size must be a length without a percentage');
+    case 'invert':
+      return calcCategory(e.term, `${path}.term`, errors) === 'number' ? 'number' : bad('only a number can be inverted');
+    case 'product': {
+      const cs = e.terms.map((t, i) => calcCategory(t, `${path}.terms[${i}]`, errors));
+      if (cs.includes(null)) return null;
+      const dims = cs.filter((c) => c !== 'number') as CalcCategory[];
+      if (dims.length > 1) return bad('a product may have only one factor that is not a number');
+      return dims.length === 0 ? 'number' : (dims[0] as CalcCategory);
+    }
+    case 'sum':
+    case 'min':
+    case 'max':
+    case 'clamp': {
+      const operands = e.kind === 'clamp' ? [e.min, e.value, e.max] : e.terms;
+      const cs = operands.map((t, i) => calcCategory(t, `${path}.${e.kind === 'clamp' ? ['min', 'value', 'max'][i] : `terms[${i}]`}`, errors));
+      if (cs.includes(null)) return null;
+      const joined = joinCategories(cs as CalcCategory[]);
+      return joined === null ? bad(`a ${e.kind} may not mix numbers with lengths or percentages`) : joined;
+    }
+  }
+}
+
 function checkRule(value: unknown, rule: Rule, path: string, errors: ValidationError[]): void {
   switch (rule.t) {
+    case 'calc': {
+      const before = errors.length;
+      checkCalc(value, path, errors);
+      if (errors.length === before && calcCategory(value as CalcExpr, path, errors) === 'number') {
+        errors.push({ path, code: 'bad-value', message: 'a length calculation must not resolve to a number' });
+      }
+      return;
+    }
     case 'number':
       if (typeof value !== 'number' || !Number.isFinite(value)) {
         errors.push({ path, code: 'wrong-type', message: 'expected a finite number' });

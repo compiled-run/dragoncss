@@ -37,7 +37,8 @@ export function deriveRows(target: 'ios' | 'web', cases: readonly CaseOutcome[])
       if (dual.length === 0) continue;
       if (aspects.layout) proofs.push(proof('layout', 'chrome-dual', dual));
       proofs.push(proof('computed-value', 'chrome-dual', dual));
-      rows.push({ feature, context, status: 'exact', proofs });
+      // A family left to the platform in the font map is caveat (fonts/font-map.ts supportOf): its face is the host's.
+      rows.push({ feature, context, status: feature === 'font-family:<platform>' ? 'caveat' : 'exact', proofs });
     }
   }
   return rows;

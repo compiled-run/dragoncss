@@ -2,21 +2,24 @@
 // placed in their containing block once it is laid out. Measured against Chrome 145 in notes/T037-slice-4b.md.
 import type { Direction, InsetValue, LayoutBox } from './input.ts';
 import type { LU } from './units.ts';
-import { add, divInt, fromCssPx, max, min, percentOf, sub, ZERO } from './units.ts';
+import { add, divInt, max, min, sub, ZERO } from './units.ts';
 import type { Frag, HeightBasis, MarginResolved, StaticAxis, StaticEdge } from './box.ts';
 import {
-  blockMinMax,
+  blockMinMaxWith,
   borderBoxFromSpecified,
   constrain,
-  inlineMinMax,
+  hasPercent,
+  inlineMinMaxWith,
   resolveBorder,
-  resolveInlineLength,
-  resolveMargin,
-  resolvePadding,
+  resolveInlineLengthWith,
+  resolveLength,
+  resolveLengthOrNull,
+  resolveMarginWith,
+  resolvePaddingWith,
   sumEdges,
 } from './box.ts';
-import type { Ctx } from './block.ts';
-import { layoutContents } from './block.ts';
+import type { Ctx, EngineFaults } from './block.ts';
+import { layoutContents, NO_ENGINE_FAULTS } from './block.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { unsupported } from './unsupported.ts';
 
@@ -37,18 +40,18 @@ export function checkOutOfFlowSiblings(ctx: Ctx, box: LayoutBox): void {
   }
 }
 
-function inset(v: InsetValue, basis: LU): LU | null {
+function inset(v: InsetValue, basis: LU, faults: EngineFaults): LU | null {
   if (v.kind === 'auto') return null;
-  if (v.kind === 'px') return fromCssPx(v.value);
-  return percentOf(basis, v.value);
+  return resolveLength(v, basis, faults);
 }
 
 // CSS2 §9.4.3 and §10.5: a vertical percentage offset against a containing block whose height is not definite behaves as auto.
-function blockInset(box: LayoutBox, v: InsetValue, basis: HeightBasis): LU | null {
-  if (v.kind !== 'percent') return inset(v, ZERO);
-  if (basis.kind === 'definite') return percentOf(basis.value, v.value);
+function blockInset(box: LayoutBox, v: InsetValue, basis: HeightBasis, faults: EngineFaults): LU | null {
+  if (v.kind === 'auto') return null;
+  if (!hasPercent(v)) return resolveLength(v, ZERO, faults);
+  if (basis.kind === 'definite') return resolveLength(v, basis.value, faults);
   if (basis.kind === 'flex-dependent') unsupported('percent-height-flex', box.id, 'css-flexbox-1 §9.8', 'percentage top or bottom against a flexed or stretched size that is not definite');
-  return null;
+  return resolveLengthOrNull(v, null, faults);
 }
 
 /** A relative offset in LU. */
@@ -59,12 +62,17 @@ export type RelativeOffset = { readonly dx: LU; readonly dy: LU };
  * when the containing block is ltr and right wins when it is rtl; one auto side is minus the other; both auto is zero.
  */
 export function relativeOffset(box: LayoutBox, cbInline: LU, cbBlock: HeightBasis, cbDirection: Direction): RelativeOffset {
+  return relativeOffsetWith(box, cbInline, cbBlock, cbDirection, NO_ENGINE_FAULTS);
+}
+
+/** relativeOffset with the planted engine faults the layout runs with. */
+export function relativeOffsetWith(box: LayoutBox, cbInline: LU, cbBlock: HeightBasis, cbDirection: Direction, faults: EngineFaults): RelativeOffset {
   if (box.style.position !== 'relative') return { dx: ZERO, dy: ZERO };
   const s = box.style;
-  const left = inset(s.left, cbInline);
-  const right = inset(s.right, cbInline);
-  const top = blockInset(box, s.top, cbBlock);
-  const bottom = blockInset(box, s.bottom, cbBlock);
+  const left = inset(s.left, cbInline, faults);
+  const right = inset(s.right, cbInline, faults);
+  const top = blockInset(box, s.top, cbBlock, faults);
+  const bottom = blockInset(box, s.bottom, cbBlock, faults);
   let dx = ZERO;
   if (left !== null && (right === null || cbDirection === 'ltr')) dx = left;
   else if (right !== null) dx = sub(ZERO, right);
@@ -151,16 +159,16 @@ export type AbsoluteResult = { readonly x: LU; readonly y: LU; readonly frag: Fr
 export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, staticX: StaticAxis, staticY: StaticAxis): AbsoluteResult {
   const s = box.style;
   const rtl = cb.direction === 'rtl';
-  const pad = resolvePadding(s, cb.width);
+  const pad = resolvePaddingWith(s, cb.width, ctx.faults);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
   const vbp = sumEdges(bor.top, bor.bottom, pad.top, pad.bottom);
-  const ml = resolveMargin(s.marginLeft, cb.width);
-  const mr = resolveMargin(s.marginRight, cb.width);
-  const mt = resolveMargin(s.marginTop, cb.width);
-  const mb = resolveMargin(s.marginBottom, cb.width);
-  const left = inset(s.left, cb.width);
-  const right = inset(s.right, cb.width);
+  const ml = resolveMarginWith(s.marginLeft, cb.width, ctx.faults);
+  const mr = resolveMarginWith(s.marginRight, cb.width, ctx.faults);
+  const mt = resolveMarginWith(s.marginTop, cb.width, ctx.faults);
+  const mb = resolveMarginWith(s.marginBottom, cb.width, ctx.faults);
+  const left = inset(s.left, cb.width, ctx.faults);
+  const right = inset(s.right, cb.width, ctx.faults);
   const inlineAxis: AxisIn = {
     size: cb.width,
     insetStart: rtl ? right : left,
@@ -173,8 +181,8 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
   };
   const blockAxis: AxisIn = {
     size: cb.height,
-    insetStart: inset(s.top, cb.height),
-    insetEnd: inset(s.bottom, cb.height),
+    insetStart: inset(s.top, cb.height, ctx.faults),
+    insetEnd: inset(s.bottom, cb.height, ctx.faults),
     marginStart: mt,
     marginEnd: mb,
     staticOffset: sub(staticY.offset, cb.y),
@@ -184,7 +192,7 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
 
   // Width: specified, stretched between two insets, or shrink-to-fit (min(max(min-content, available), max-content)); then min/max.
   const margins = add(inlineAxis.marginStart.value, inlineAxis.marginEnd.value);
-  const specified = resolveInlineLength(s.width, cb.width);
+  const specified = resolveInlineLengthWith(s.width, cb.width, ctx.faults);
   let width: LU;
   if (specified !== null) width = borderBoxFromSpecified(specified, hbp, s.boxSizing);
   else if (inlineAxis.insetStart !== null && inlineAxis.insetEnd !== null) width = sub(axisAvailable(inlineAxis), margins);
@@ -193,13 +201,13 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
     const maxContent = add(intrinsicContentInlineSize(ctx, box, 'max'), hbp);
     width = min(maxContent, max(minContent, sub(axisAvailable(inlineAxis), margins)));
   }
-  width = max(constrain(width, inlineMinMax(s, cb.width, hbp)), hbp);
+  width = max(constrain(width, inlineMinMaxWith(s, cb.width, hbp, ctx.faults)), hbp);
 
   // Height: auto with both insets set stretches; otherwise the contents decide (layoutContents applies height and min/max).
   const heightBasis: HeightBasis = { kind: 'definite', value: cb.height };
   let forced: LU | null = null;
   if (s.height.kind === 'auto' && blockAxis.insetStart !== null && blockAxis.insetEnd !== null) {
-    forced = max(constrain(sub(axisAvailable(blockAxis), add(mt.value, mb.value)), blockMinMax(box, heightBasis, vbp)), vbp);
+    forced = max(constrain(sub(axisAvailable(blockAxis), add(mt.value, mb.value)), blockMinMaxWith(box, heightBasis, vbp, ctx.faults)), vbp);
   }
   const r = layoutContents(ctx, box, {
     cbInline: cb.width,
