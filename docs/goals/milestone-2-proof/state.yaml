@@ -2679,6 +2679,27 @@ tasks:
       - Budgets are owner decisions; never set or loosen one without an owner ruling.
       - Simulator and emulator timings are noisy; report the median and p95 over repeated runs, and state the run count.
     receipt: null
+  - id: T118
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: port
+    objective: 'PORT-0, the Chrome port registry (docs/decisions.md "Porting Chrome''s algorithms"): one data file listing every place Dragon ports Chrome (upstream path, tag 145.0.7632.6, line range, licence header, the Dragon file and function), seeded from the existing citations (about 51 files in packages/layout/src and packages/dragon/src). A test fails when a source file cites a Blink, Skia or gfx file that is not in the registry, or when a registry entry names an LGPL-headered upstream file. The licence headers are read from a pinned Chromium checkout or recorded with their sha256.'
+    receipt: null
+  - id: T119
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: port
+    objective: 'COL4, CSS Color 4 colour spaces: oklch(), oklab(), lab(), lch(), color() with its predefined spaces, and their conversion to what each target paints (sRGB, or display-p3 where the platform supports it), ported from the spec''s sample code and Blink''s color conversion (BSD files only) under the PORT-0 rules. It is the largest single blocker in the Tailwind sweep (about 4,000 utilities blocked by oklch()). Proven by the colour and pixel lanes against Chrome, including out-of-gamut mapping; rerun tw:sweep and report the change. After V1b.'
+    receipt: null
+  - id: T120
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: port
+    objective: 'CALC-2: calc() in the contexts V1 still refuses (after V1b: unproven contexts, line-height, order, border-width and the sv/lv/dv units), porting the rules from Blink''s css_math_expression_node.cc and css_length_resolver.cc (BSD) under PORT-0. Proven against Chrome; rerun tw:sweep and report the change. After V1b.'
+    receipt: null
   - id: T999
     type: judge
     assignee: Judge
