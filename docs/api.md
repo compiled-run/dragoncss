@@ -38,6 +38,7 @@ type Configured<T> = Extract<keyof T, keyof Targets>;
 export function createProject<const T extends Targets>(config: {
   projectId: string;
   targets: T;
+  fonts?: FontMap;                // §2.3
 }): Project<Configured<T>>;
 
 interface Project<K extends string> {
@@ -107,9 +108,10 @@ type Compiled<K extends string> = CheckReport<K> & {
   explain(query: ExplainQuery<K>): ExplainResult<K>;
 };
 type ArtifactState =
-  | { kind: 'ready'; digest: string; files: readonly GeneratedFile[] }
+  | { kind: 'ready'; digest: string; files: readonly GeneratedFile[]; assets: readonly GeneratedAsset[] }
   | { kind: 'analysis-only'; digest: string; reason: string }
   | { kind: 'blocked'; diagnostics: readonly Diagnostic[] };
+type GeneratedAsset = { path: string; hash: string; bytes: Uint8Array };  // a bundled font; empty when there are none
 ```
 
 `ready` means production artifacts passed compilation checks, not that this app has run every parity lane. `ok` means no compile errors across configured targets; it does not turn `analysis-only` into a shipping artifact. Milestone 1's iOS result is analysis-only even when Linux layout tests pass. The android result is analysis-only too. Its profile is all `unsupported` until a native android case passes, so a compile that declares any feature blocks android with `DRAGON_UNSUPPORTED_VALUE`: that is the fail-closed state. An android compile that declares nothing is `analysis-only`. Neither native output becomes `ready` before that target's native cases pass. Its lowered data is available to the internal harness, not through a public `properties()` reader. Failed lowering exposes no test-ready property list. Partial analyzer information may still support diagnostics and `explain`.
@@ -119,6 +121,36 @@ Front-end or shared semantic errors block all dependent outputs. A target-only e
 The mapped output object replaces the ineffective `this` restrictions. For a literal web/iOS config, `outputs.android`, `outputs.macos` and `outputs.email` must be TypeScript errors; `outputs.android` exists only when `android` is configured, and `android: {}` is a type error. There is no unrestricted index signature. A configuration annotated as the wide `Targets` type loses the exact keys that are present and relies on runtime validation for target access and queries; preserve literal keys for static checks. Consumer tests include a negative case for each absent key and each removed reader; JavaScript callers receive a located configuration error for an unconfigured target request at the adapter boundary. Dynamically loaded configs are validated before creating the project.
 
 A future development preview is a separate experimental value with `validity: 'current' | 'last-successful' | 'unavailable'`, current revision/digest and, if rendered, rendered digest. After milestone 1, when a native target is configured, the development preview defaults to that target's projection. Invalid edits never relabel old output as current. A preview is not an `ArtifactState` and cannot be supplied to the production artifact writer.
+
+### 2.3 Fonts
+
+Dragon never silently uses a font installed on the machine. Every family a `font-family` list names is one of:
+
+- **declared** with an `@font-face` rule at the top level of a stylesheet, whose first `src` is a `url()` the front end resolved to a snapshot asset, or a `data:` URL;
+- **pinned** in the font map to bundled faces (`exact`);
+- left to the **platform** in the font map (`caveat`: the host's font, with no pass claim beyond the dual comparison).
+
+Anything else is `DRAGON_FONT_UNMAPPED_FAMILY`, an error for every target. There is no built-in default map, so an unmapped generic such as `sans-serif` is an error with a fix, not a guess.
+
+```ts
+type GenericKey = 'serif' | 'sans-serif' | 'monospace' | 'cursive' | 'fantasy' | 'system-ui' | 'ui-serif' | 'ui-sans-serif'
+  | 'ui-monospace' | 'ui-rounded' | 'math' | 'emoji' | 'fangsong';
+type PinnedFace = { src: string; weight?: string; style?: string; stretch?: string; unicodeRange?: string };
+type FontMapEntry = { mode: 'pinned'; family: string; faces: readonly PinnedFace[] } | { mode: 'platform' };
+type FontMap = { generics: { [K in GenericKey]?: FontMapEntry }; families?: { [name: string]: FontMapEntry } };
+```
+
+A pinned face's `src` is a snapshot asset id or a `data:` URL; its descriptors are `@font-face` descriptor text. Only an unquoted generic keyword is a generic: `"sans-serif"` in quotes names a family, as in Chrome.
+
+**Recommended map.** Pin `sans-serif` to **"Dragon Sans"**, the five vendored static Inter 4.1 faces (Light 300, Regular 400, Italic 400 italic, Bold 700, Bold Italic 700 italic), and `monospace` to **"Dragon Mono"**, Noto Sans Mono Regular (`vendor/fonts/README.md` has their SHA-256 values). A named family such as the north star's `'Lato'` is mapped under `families` to its bundled files.
+
+**Web output.** Each pinned generic or family is written as its pinned family (`sans-serif` becomes `"Dragon Sans"`), and `dragon.css` starts, after its header, with the `@font-face` rules of the pinned faces used and of every accepted authored face, each with `src: url("fonts/<sha256-hex-16>.<ttf|otf>")`. The bytes are the ready output's `assets`, sorted by path. A project with no `@font-face` rule and no font map produces exactly the output it did before fonts.
+
+**Digest.** A manifest of every bundled face (family, descriptors, asset, hash, table facts), in an order independent of rule order, enters the digest when the project has fonts.
+
+**Support keys.** A `font-family` value is keyed by how it resolves: `font-family:<pinned>`, `<declared>`, `<platform>` or `<unmapped>`, never by an author's family name. The single family Ahem keeps `font-family:Ahem`.
+
+**Codes.** `DRAGON_FONT_MAP_INVALID` (the map, or an `@font-face` family that a map entry also pins), `DRAGON_FONT_UNMAPPED_FAMILY`, `DRAGON_FONT_REMOTE_URL`, `DRAGON_FONT_LOCAL`, `DRAGON_FONT_UNRESOLVED_ASSET`, `DRAGON_FONT_UNREADABLE`, `DRAGON_FONT_UNSUPPORTED_DESCRIPTOR` (math functions in descriptors), `DRAGON_FONT_VARIABLE_REFUSED` (a variable font or instance outside the validated set, decisions.md "Variable fonts are fenced") and the warning `DRAGON_FONT_DESCRIPTOR_NOT_APPLIED` (`font-feature-settings`, `font-variation-settings` and `font-display` stay in the web output, but native text does not apply them). An invalid or unknown descriptor, or a rule without a family or `src`, is `DRAGON_CSS_INVALID_VALUE`, because Chrome drops it. Native targets still lay out only Ahem text (`DRAGON_UNSUPPORTED_FONT`) until the text engine (TXT1a) proves real fonts.
 
 ## 3. Element graph and finite states
 
@@ -562,6 +594,8 @@ Reports distinguish complete required coverage, a requested subset, mismatches a
 For unchanged CSS semantics, authored and compiled output must match directly. Milestone 1 keeps that strict comparison and uses fixed viewport/Ahem fixtures; it does not silently add phone normalization to the reference.
 
 The owner-approved visible-screen meaning of `100vh`, safe-area root and keyboard defaults belong to the later native milestone. For each normalization, a versioned reference policy must state the intended behavior independently of lowering and test it against explicit reference markup/CSS and numeric expectations. For visible height this includes browser-chrome changes, the chosen viewport box and keyboard behavior. Authored output is still captured and any intentional difference is attributed to that policy, not suppressed as a generic mismatch.
+
+A pinned generic is such an approved change (decisions.md, "Pinned generic fonts"). Its stated reference is Chrome rendering the authored document with the pinned faces injected as `@font-face` rules and every unquoted pinned generic rewritten to its pinned family inside Chrome's own CSSOM, independently of Dragon's rewrite.
 
 Font metric overrides and text-size scaling can change authored geometry and cannot inherit an authored-equality claim. Shared font metrics remain an owner choice. Text scaling is already recorded in [owner decision 5](decisions.md): `rem` follows the phone's text-size setting, `px` stays fixed, every component is tested at the largest text size, and clipping in a fixed-height box produces a warning. Its reference mapping and fixtures still need implementation. Tests must separately cover unchanged declarations and any approved transformed reference, with the same tolerances. Policies are generated defaults, not settings developers must remember. Text environment types and universal parity claims cannot be frozen before the remaining font decision and these fixtures.
 
