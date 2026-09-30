@@ -307,6 +307,25 @@ public struct DragonLineSpec {
 
 /// Device px added to every glyph x; 0 except in the glyph-offset-1 raster plant build (P5), which proves the pixel lane sees ink.
 public let dragonGlyphPlantDevicePx: Double = 0
+/// Device px added to every glyph baseline (down); 0 except in the glyph-offset-y-1 raster plant build (T093).
+public let dragonGlyphPlantYDevicePx: Double = 0
+
+/// The layer a text view's glyphs are drawn in. A UIView's own backing store holds only its bounds, so ink outside the node
+/// frame (a rounded ascent, overflowing text) would be lost; this layer's frame is the bounds grown to the lines' ink.
+public final class DragonGlyphLayer: CALayer {
+  weak var owner: DragonTextView?
+  public override init() {
+    super.init()
+    needsDisplayOnBoundsChange = true
+    actions = ["bounds": NSNull(), "position": NSNull(), "frame": NSNull(), "contents": NSNull()]
+  }
+  public override init(layer: Any) { super.init(layer: layer) }
+  required init?(coder: NSCoder) { fatalError("DragonGlyphLayer is built in code") }
+  public override func draw(in ctx: CGContext) {
+    ctx.translateBy(x: -frame.minX, y: -frame.minY)
+    owner?.dragonDrawGlyphs(in: ctx)
+  }
+}
 
 /// A text node: Dragon owns the line breaks and places every glyph at the engine's advances (PM ruling, option ii); Core Text
 /// only rasterises (CTFontDrawGlyphs). The text is exposed to accessibility through accessibilityLabel.
@@ -322,6 +341,7 @@ public final class DragonTextView: UIView, DragonNodeView {
   public private(set) var dragonFont: UIFont? = nil
   public private(set) var specs: [DragonLineSpec] = []
   private var scale: Double = 1
+  private let glyphLayer = DragonGlyphLayer()
   public init(dragonId: String, kind: String, parent: String?) {
     self.dragonId = dragonId
     self.dragonKind = kind
@@ -330,9 +350,11 @@ public final class DragonTextView: UIView, DragonNodeView {
     isOpaque = false
     backgroundColor = nil
     clipsToBounds = false
-    contentMode = .redraw
     isAccessibilityElement = true
     accessibilityTraits = .staticText
+    glyphLayer.owner = self
+    glyphLayer.isOpaque = false
+    layer.addSublayer(glyphLayer)
   }
   required init?(coder: NSCoder) { fatalError("DragonTextView is built in code") }
 
@@ -351,17 +373,51 @@ public final class DragonTextView: UIView, DragonNodeView {
     dragonFont = font
     specs = lines
     self.scale = scale
-    setNeedsDisplay()
+    glyphLayer.contentsScale = CGFloat(scale)
+    setNeedsLayout()
+    glyphLayer.setNeedsDisplay()
   }
 
-  public override func draw(_ rect: CGRect) {
-    guard let ctx = UIGraphicsGetCurrentContext(), let font = dragonFont, let color = dragonTextColor else { return }
+  public override func layoutSubviews() {
+    super.layoutSubviews()
+    glyphLayer.frame = dragonInkFrame()
+    glyphLayer.setNeedsDisplay()
+  }
+
+  /// The bounds grown to every line's ink (the font's bounding box at each glyph origin) plus 2 device px of antialiasing, with
+  /// edges on whole device px so the glyph origins keep their fractional positions.
+  func dragonInkFrame() -> CGRect {
+    var r = bounds
+    if let font = dragonFont {
+      let box = CTFontGetBoundingBox(font as CTFont)
+      for l in specs where !l.glyphs.isEmpty {
+        guard let lo = l.xs.min(), let hi = l.xs.max() else { continue }
+        let y = CGFloat((l.baseline + dragonGlyphPlantYDevicePx) / scale)
+        let x0 = CGFloat((lo + dragonGlyphPlantDevicePx) / scale) + box.minX
+        let x1 = CGFloat((hi + dragonGlyphPlantDevicePx) / scale) + box.maxX
+        r = r.union(CGRect(x: x0, y: y - box.maxY, width: x1 - x0, height: box.height))
+      }
+    }
+    let s = CGFloat(scale)
+    let pad: CGFloat = 2
+    let left = (floor(r.minX * s) - pad) / s
+    let top = (floor(r.minY * s) - pad) / s
+    return CGRect(x: left, y: top, width: (ceil(r.maxX * s) + pad) / s - left, height: (ceil(r.maxY * s) + pad) / s - top)
+  }
+
+  /// Draws the lines in view coordinates (the glyph layer translates its context to them).
+  func dragonDrawGlyphs(in ctx: CGContext) {
+    guard let font = dragonFont, let color = dragonTextColor else { return }
     let ct = font as CTFont
+    // Glyphs at the engine's fractional x: Core Graphics otherwise floors each glyph origin to a whole device px (T093 addendum F3).
+    ctx.setAllowsFontSubpixelPositioning(true)
+    ctx.setShouldSubpixelPositionFonts(true)
+    ctx.setShouldSubpixelQuantizeFonts(false)
     ctx.setFillColor(color.cgColor)
     for l in specs where !l.glyphs.isEmpty {
       ctx.saveGState()
       ctx.textMatrix = .identity
-      ctx.translateBy(x: 0, y: CGFloat(l.baseline / scale))
+      ctx.translateBy(x: 0, y: CGFloat((l.baseline + dragonGlyphPlantYDevicePx) / scale))
       ctx.scaleBy(x: 1, y: -1)
       let positions = l.xs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
       CTFontDrawGlyphs(ct, l.glyphs, positions, l.glyphs.count, ctx)
@@ -1014,6 +1070,8 @@ class DragonLineSpec(val text: String, val glyphs: IntArray, val xs: DoubleArray
 
 /** Device px added to every glyph x; 0 except in the glyph-offset-1 raster plant build (P5), which proves the pixel lane sees ink. */
 const val DRAGON_GLYPH_PLANT_DEVICE_PX = 0.0
+/** Device px added to every glyph baseline (down); 0 except in the glyph-offset-y-1 raster plant build (T093). */
+const val DRAGON_GLYPH_PLANT_Y_DEVICE_PX = 0.0
 
 /**
  * A text node: Dragon owns the line breaks and places every glyph at the engine's advances (PM ruling, option ii); the platform only
@@ -1057,7 +1115,7 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     val f = font ?: return
     for (l in specs) {
       if (l.glyphs.isEmpty()) continue
-      val y = l.baseline.toFloat()
+      val y = (l.baseline + DRAGON_GLYPH_PLANT_Y_DEVICE_PX).toFloat()
       val positions = FloatArray(2 * l.glyphs.size)
       for (k in l.glyphs.indices) {
         positions[2 * k] = (l.xs[k] + DRAGON_GLYPH_PLANT_DEVICE_PX).toFloat()
@@ -1470,15 +1528,24 @@ export type SupportFile = { readonly path: string; readonly text: string };
 
 const header = (comment: string, what: string): string => `${comment} GENERATED by dragon emit/native-support.ts (${NATIVE_SUPPORT_VERSION}): ${what}. Do not edit.\n`;
 
-/** Raster plants of the support code (P5): glyph-offset-1 draws every glyph 1 device px right of the engine's position. */
-export type SupportPlant = 'glyph-offset-1';
-export const SUPPORT_PLANTS: readonly SupportPlant[] = ['glyph-offset-1'];
+/**
+ * Raster plants of the support code: glyph-offset-1 draws every glyph 1 device px right of the engine's position (P5), and
+ * glyph-offset-y-1 1 device px below it (T093).
+ */
+export type SupportPlant = 'glyph-offset-1' | 'glyph-offset-y-1';
+export const SUPPORT_PLANTS: readonly SupportPlant[] = ['glyph-offset-1', 'glyph-offset-y-1'];
 
-/** The support files of a backend, relative to the generated source root; a plant changes only the glyph offset constant. */
+const PLANT_CONSTANT: { readonly [P in SupportPlant]: { readonly [B in NativeBackend]: string } } = {
+  'glyph-offset-1': { uikit: 'public let dragonGlyphPlantDevicePx: Double = ', 'android-views': 'const val DRAGON_GLYPH_PLANT_DEVICE_PX = ' },
+  'glyph-offset-y-1': { uikit: 'public let dragonGlyphPlantYDevicePx: Double = ', 'android-views': 'const val DRAGON_GLYPH_PLANT_Y_DEVICE_PX = ' },
+};
+
+/** The support files of a backend, relative to the generated source root; a plant changes only its glyph offset constant. */
 export function emitNativeSupport(backend: NativeBackend, plant: SupportPlant | null = null): GeneratedFile[] {
   const files = supportFiles(backend);
   if (plant === null) return files;
-  const [from, to] = backend === 'uikit' ? ['public let dragonGlyphPlantDevicePx: Double = 0\n', 'public let dragonGlyphPlantDevicePx: Double = 1\n'] : ['const val DRAGON_GLYPH_PLANT_DEVICE_PX = 0.0\n', 'const val DRAGON_GLYPH_PLANT_DEVICE_PX = 1.0\n'];
+  const constant = PLANT_CONSTANT[plant][backend];
+  const [from, to] = backend === 'uikit' ? [`${constant}0\n`, `${constant}1\n`] : [`${constant}0.0\n`, `${constant}1.0\n`];
   const planted = files.map((f) => (f.text.includes(from) ? { ...f, text: f.text.replace(from, to) } : f));
   if (planted.every((f, i) => f.text === (files[i] as GeneratedFile).text)) throw new Error(`the ${plant} plant found no glyph offset constant in the ${backend} support`);
   return planted;
