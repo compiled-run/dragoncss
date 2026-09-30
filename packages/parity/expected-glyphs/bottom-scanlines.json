@@ -168,8 +168,8 @@
       "grid-alignment-rtl": [3,4],
       "grid-sizing": [2,2],
       "grid-sizing-rtl": [2,2],
-      "grid-nested": [6,7],
-      "grid-nested-rtl": [6,7]
+      "grid-nested": [5,8],
+      "grid-nested-rtl": [5,8]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -339,8 +339,8 @@
       "grid-alignment-rtl": [3,4],
       "grid-sizing": [2,2],
       "grid-sizing-rtl": [2,2],
-      "grid-nested": [6,7],
-      "grid-nested-rtl": [6,7]
+      "grid-nested": [5,8],
+      "grid-nested-rtl": [5,8]
     }
   },
   "android": {
@@ -512,8 +512,8 @@
       "grid-alignment-rtl": [3,4],
       "grid-sizing": [2,2],
       "grid-sizing-rtl": [2,2],
-      "grid-nested": [6,7],
-      "grid-nested-rtl": [6,7]
+      "grid-nested": [5,8],
+      "grid-nested-rtl": [5,8]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -683,8 +683,8 @@
       "grid-alignment-rtl": [3,4],
       "grid-sizing": [2,2],
       "grid-sizing-rtl": [2,2],
-      "grid-nested": [6,7],
-      "grid-nested-rtl": [6,7]
+      "grid-nested": [5,8],
+      "grid-nested-rtl": [5,8]
     },
     "2.625": {
       "text-ahem-single-line": [10,10],
@@ -854,8 +854,8 @@
       "grid-alignment-rtl": [3,4],
       "grid-sizing": [2,2],
       "grid-sizing-rtl": [2,2],
-      "grid-nested": [6,7],
-      "grid-nested-rtl": [6,7]
+      "grid-nested": [5,8],
+      "grid-nested-rtl": [5,8]
     }
   }
 }

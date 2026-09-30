@@ -17,7 +17,7 @@
       "x": 0,
       "y": 0,
       "width": 400,
-      "height": 48,
+      "height": 58,
       "computed": {
         "display": "block",
         "position": "static",
@@ -30,7 +30,7 @@
         "direction": "ltr",
         "box-sizing": "content-box",
         "width": "400px",
-        "height": "48px",
+        "height": "58px",
         "min-width": "0px",
         "min-height": "0px",
         "max-width": "none",
@@ -96,7 +96,7 @@
       "x": 0,
       "y": 0,
       "width": 400,
-      "height": 44,
+      "height": 54,
       "computed": {
         "display": "block",
         "position": "static",
@@ -109,7 +109,7 @@
         "direction": "ltr",
         "box-sizing": "content-box",
         "width": "400px",
-        "height": "44px",
+        "height": "54px",
         "min-width": "0px",
         "min-height": "0px",
         "max-width": "none",
@@ -847,7 +847,7 @@
       "x": 0,
       "y": 14,
       "width": 120,
-      "height": 20,
+      "height": 30,
       "computed": {
         "display": "grid",
         "position": "static",
@@ -860,7 +860,7 @@
         "direction": "ltr",
         "box-sizing": "content-box",
         "width": "120px",
-        "height": "20px",
+        "height": "30px",
         "min-width": "0px",
         "min-height": "0px",
         "max-width": "none",
@@ -906,7 +906,7 @@
         "color": "rgb(0, 0, 0)",
         "background-color": "rgba(0, 0, 0, 0)",
         "grid-template-columns": "50px 70px",
-        "grid-template-rows": "10px 10px",
+        "grid-template-rows": "20px 10px",
         "grid-template-areas": "none",
         "grid-auto-columns": "auto",
         "grid-auto-rows": "auto",
@@ -925,8 +925,8 @@
       "hasBox": true,
       "x": 0,
       "y": 14,
-      "width": 50,
-      "height": 10,
+      "width": 30,
+      "height": 20,
       "computed": null
     },
     {
@@ -935,7 +935,17 @@
       "hasBox": true,
       "x": 0,
       "y": 14,
-      "width": 50,
+      "width": 20,
+      "height": 10,
+      "computed": null
+    },
+    {
+      "id": "t:text0:line1",
+      "kind": "line",
+      "hasBox": true,
+      "x": 0,
+      "y": 24,
+      "width": 30,
       "height": 10,
       "computed": null
     },
@@ -944,7 +954,7 @@
       "kind": "text",
       "hasBox": true,
       "x": 0,
-      "y": 24,
+      "y": 34,
       "width": 30,
       "height": 10,
       "computed": null
@@ -954,7 +964,7 @@
       "kind": "line",
       "hasBox": true,
       "x": 0,
-      "y": 24,
+      "y": 34,
       "width": 30,
       "height": 10,
       "computed": null
@@ -1043,7 +1053,7 @@
       "kind": "element",
       "hasBox": true,
       "x": 0,
-      "y": 34,
+      "y": 44,
       "width": 220,
       "height": 10,
       "computed": {
@@ -1122,7 +1132,7 @@
       "kind": "element",
       "hasBox": true,
       "x": 0,
-      "y": 34,
+      "y": 44,
       "width": 50,
       "height": 10,
       "computed": {
@@ -1201,7 +1211,7 @@
       "kind": "element",
       "hasBox": true,
       "x": 0,
-      "y": 34,
+      "y": 44,
       "width": 30,
       "height": 6,
       "computed": {
@@ -1280,7 +1290,7 @@
       "kind": "text",
       "hasBox": true,
       "x": 0,
-      "y": 34,
+      "y": 44,
       "width": 30,
       "height": 20,
       "computed": null
@@ -1290,7 +1300,7 @@
       "kind": "line",
       "hasBox": true,
       "x": 0,
-      "y": 34,
+      "y": 44,
       "width": 20,
       "height": 10,
       "computed": null
@@ -1300,7 +1310,7 @@
       "kind": "line",
       "hasBox": true,
       "x": 0,
-      "y": 44,
+      "y": 54,
       "width": 30,
       "height": 10,
       "computed": null
@@ -1310,7 +1320,7 @@
       "kind": "element",
       "hasBox": true,
       "x": 30,
-      "y": 34,
+      "y": 44,
       "width": 12,
       "height": 4,
       "computed": {
@@ -1389,7 +1399,7 @@
       "kind": "element",
       "hasBox": true,
       "x": 50,
-      "y": 34,
+      "y": 44,
       "width": 170,
       "height": 10,
       "computed": {
@@ -1468,7 +1478,7 @@
       "kind": "element",
       "hasBox": true,
       "x": 50,
-      "y": 34,
+      "y": 44,
       "width": 12,
       "height": 4,
       "computed": {
@@ -1547,7 +1557,7 @@
       "kind": "element",
       "hasBox": true,
       "x": 135,
-      "y": 34,
+      "y": 44,
       "width": 85,
       "height": 10,
       "computed": {
@@ -1626,7 +1636,7 @@
       "kind": "text",
       "hasBox": true,
       "x": 135,
-      "y": 34,
+      "y": 44,
       "width": 10,
       "height": 10,
       "computed": null
@@ -1636,7 +1646,7 @@
       "kind": "line",
       "hasBox": true,
       "x": 135,
-      "y": 34,
+      "y": 44,
       "width": 10,
       "height": 10,
       "computed": null

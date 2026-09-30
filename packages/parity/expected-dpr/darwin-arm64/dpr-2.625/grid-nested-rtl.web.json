@@ -17,7 +17,7 @@
       "x": 0,
       "y": 0,
       "width": 400,
-      "height": 47.71428680419922,
+      "height": 57.619049072265625,
       "computed": {
         "display": "block",
         "position": "static",
@@ -30,7 +30,7 @@
         "direction": "rtl",
         "box-sizing": "content-box",
         "width": "400px",
-        "height": "47.7143px",
+        "height": "57.619px",
         "min-width": "0px",
         "min-height": "0px",
         "max-width": "none",
@@ -96,7 +96,7 @@
       "x": 0,
       "y": 0,
       "width": 400,
-      "height": 43.71428680419922,
+      "height": 53.619049072265625,
       "computed": {
         "display": "block",
         "position": "static",
@@ -109,7 +109,7 @@
         "direction": "rtl",
         "box-sizing": "content-box",
         "width": "400px",
-        "height": "43.7143px",
+        "height": "53.619px",
         "min-width": "0px",
         "min-height": "0px",
         "max-width": "none",
@@ -847,7 +847,7 @@
       "x": 280,
       "y": 14,
       "width": 120,
-      "height": 19.809524536132812,
+      "height": 29.71428680419922,
       "computed": {
         "display": "grid",
         "position": "static",
@@ -860,7 +860,7 @@
         "direction": "rtl",
         "box-sizing": "content-box",
         "width": "120px",
-        "height": "19.8095px",
+        "height": "29.7143px",
         "min-width": "0px",
         "min-height": "0px",
         "max-width": "none",
@@ -906,7 +906,7 @@
         "color": "rgb(0, 0, 0)",
         "background-color": "rgba(0, 0, 0, 0)",
         "grid-template-columns": "50px 70px",
-        "grid-template-rows": "9.90476px 9.90476px",
+        "grid-template-rows": "19.8095px 9.90476px",
         "grid-template-areas": "none",
         "grid-auto-columns": "auto",
         "grid-auto-rows": "auto",
@@ -923,19 +923,29 @@
       "id": "t:text0",
       "kind": "text",
       "hasBox": true,
-      "x": 350,
+      "x": 370,
       "y": 14,
-      "width": 50,
-      "height": 9.904762268066406,
+      "width": 30,
+      "height": 19.809524536132812,
       "computed": null
     },
     {
       "id": "t:text0:line0",
       "kind": "line",
       "hasBox": true,
-      "x": 350,
+      "x": 380,
       "y": 14,
-      "width": 50,
+      "width": 20,
+      "height": 9.904762268066406,
+      "computed": null
+    },
+    {
+      "id": "t:text0:line1",
+      "kind": "line",
+      "hasBox": true,
+      "x": 370,
+      "y": 23.904762268066406,
+      "width": 30,
       "height": 9.904762268066406,
       "computed": null
     },
@@ -944,7 +954,7 @@
       "kind": "text",
       "hasBox": true,
       "x": 370,
-      "y": 23.904762268066406,
+      "y": 33.80952453613281,
       "width": 30,
       "height": 9.904762268066406,
       "computed": null
@@ -954,7 +964,7 @@
       "kind": "line",
       "hasBox": true,
       "x": 370,
-      "y": 23.904762268066406,
+      "y": 33.80952453613281,
       "width": 30,
       "height": 9.904762268066406,
       "computed": null
@@ -1043,7 +1053,7 @@
       "kind": "element",
       "hasBox": true,
       "x": 180,
-      "y": 33.80952453613281,
+      "y": 43.71428680419922,
       "width": 220,
       "height": 9.904762268066406,
       "computed": {
@@ -1122,7 +1132,7 @@
       "kind": "element",
       "hasBox": true,
       "x": 350,
-      "y": 33.80952453613281,
+      "y": 43.71428680419922,
       "width": 50,
       "height": 9.904762268066406,
       "computed": {
@@ -1201,7 +1211,7 @@
       "kind": "element",
       "hasBox": true,
       "x": 370,
-      "y": 33.80952453613281,
+      "y": 43.71428680419922,
       "width": 30,
       "height": 6,
       "computed": {
@@ -1280,7 +1290,7 @@
       "kind": "text",
       "hasBox": true,
       "x": 370,
-      "y": 33.80952453613281,
+      "y": 43.71428680419922,
       "width": 30,
       "height": 19.809524536132812,
       "computed": null
@@ -1290,7 +1300,7 @@
       "kind": "line",
       "hasBox": true,
       "x": 380,
-      "y": 33.80952453613281,
+      "y": 43.71428680419922,
       "width": 20,
       "height": 9.904762268066406,
       "computed": null
@@ -1300,7 +1310,7 @@
       "kind": "line",
       "hasBox": true,
       "x": 370,
-      "y": 43.71428680419922,
+      "y": 53.619049072265625,
       "width": 30,
       "height": 9.904762268066406,
       "computed": null
@@ -1310,7 +1320,7 @@
       "kind": "element",
       "hasBox": true,
       "x": 358,
-      "y": 33.80952453613281,
+      "y": 43.71428680419922,
       "width": 12,
       "height": 4,
       "computed": {
@@ -1389,7 +1399,7 @@
       "kind": "element",
       "hasBox": true,
       "x": 180,
-      "y": 33.80952453613281,
+      "y": 43.71428680419922,
       "width": 170,
       "height": 9.904762268066406,
       "computed": {
@@ -1468,7 +1478,7 @@
       "kind": "element",
       "hasBox": true,
       "x": 338,
-      "y": 33.80952453613281,
+      "y": 43.71428680419922,
       "width": 12,
       "height": 4,
       "computed": {
@@ -1547,7 +1557,7 @@
       "kind": "element",
       "hasBox": true,
       "x": 180,
-      "y": 33.80952453613281,
+      "y": 43.71428680419922,
       "width": 85,
       "height": 9.904762268066406,
       "computed": {
@@ -1626,7 +1636,7 @@
       "kind": "text",
       "hasBox": true,
       "x": 255,
-      "y": 33.80952453613281,
+      "y": 43.71428680419922,
       "width": 10,
       "height": 9.904762268066406,
       "computed": null
@@ -1636,7 +1646,7 @@
       "kind": "line",
       "hasBox": true,
       "x": 255,
-      "y": 33.80952453613281,
+      "y": 43.71428680419922,
       "width": 10,
       "height": 9.904762268066406,
       "computed": null
