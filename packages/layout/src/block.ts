@@ -4,23 +4,23 @@ import type { LU } from './units.ts';
 import { add, divInt, max, min, sub, ZERO } from './units.ts';
 import type { Edges, Frag, HeightBasis, OutOfFlow, Placed, Point } from './box.ts';
 import {
-  blockMinMax,
+  blockMinMaxWith,
   borderBoxFromSpecified,
   constrain,
   contentBox,
-  inlineMinMax,
+  inlineMinMaxWith,
   INDEFINITE,
   isScrollContainer,
   resolveBorder,
-  resolveInlineLength,
-  resolveMargin,
-  resolvePadding,
-  specifiedBlockSize,
+  resolveInlineLengthWith,
+  resolveMarginWith,
+  resolvePaddingWith,
+  specifiedBlockSizeWith,
   sumEdges,
 } from './box.ts';
 import { layoutFlexContainer } from './flex.ts';
 import { layoutInline } from './inline.ts';
-import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffset } from './position.ts';
+import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './position.ts';
 import type { TextMeasurer } from './text.ts';
 
 /** Seeded engine errors, so the parity harness can prove it fails (docs/api.md §7). The product runs with NO_ENGINE_FAULTS. */
@@ -55,6 +55,22 @@ export type EngineFaults = {
   readonly wrapReverseBaselineSpec: boolean;
   /** Spec reading of DPR Chrome deviation initial-line-width-unzoomed: an initial line width (device-px) is zoomed like CSS px (css-backgrounds-3 §3.3). */
   readonly initialLineWidthZoomed: boolean;
+  /** A calculation's pixels and percent evaluate in the plain-percent order, pixels + float(basis * percent / 100). */
+  readonly calcPercentPlainOrder: boolean;
+  /** Layout-time calculations evaluate in double instead of float. */
+  readonly calcDoubleEval: boolean;
+  /** A negative result of a calculation in a non-negative property is kept instead of clamped to 0. */
+  readonly calcNoNonNegClamp: boolean;
+  /** A calculation with a percentage against an indefinite basis resolves against 0 instead of behaving as auto, 0 or none. */
+  readonly calcPercentIndefiniteAsLength: boolean;
+  /** clamp(MIN, VAL, MAX) is min(max(MIN, VAL), MAX), so MAX wins when MIN > MAX. */
+  readonly clampMaxWins: boolean;
+  /** A division by a number divides directly instead of multiplying by the float inverse Blink stores. */
+  readonly divideDirect: boolean;
+  /** The leaves of a calculation are not multiplied by the device zoom. */
+  readonly calcLeafUnzoomed: boolean;
+  /** Viewport units read the CSS viewport instead of the whole device-px window over the zoom (R6 off). */
+  readonly viewportUnitsUnceiled: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -73,6 +89,14 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   minMaxEndMarginSpec: false,
   wrapReverseBaselineSpec: false,
   initialLineWidthZoomed: false,
+  calcPercentPlainOrder: false,
+  calcDoubleEval: false,
+  calcNoNonNegClamp: false,
+  calcPercentIndefiniteAsLength: false,
+  clampMaxWins: false,
+  divideDirect: false,
+  calcLeafUnzoomed: false,
+  viewportUnitsUnceiled: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
@@ -134,13 +158,13 @@ function clampScrollBaseline(box: LayoutBox, baseline: LU | null, height: LU): L
 export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): ContentsResult {
   const s = box.style;
   checkOutOfFlowSiblings(ctx, box);
-  const pad = resolvePadding(s, a.cbInline);
+  const pad = resolvePaddingWith(s, a.cbInline, ctx.faults);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
   const vbp = sumEdges(bor.top, bor.bottom, pad.top, pad.bottom);
   const contentWidth = contentBox(a.borderBoxWidth, hbp);
-  const minMax = blockMinMax(box, a.heightBasis, vbp);
-  const specified = a.forcedBorderBoxHeight === null ? specifiedBlockSize(box, a.heightBasis, vbp) : null;
+  const minMax = blockMinMaxWith(box, a.heightBasis, vbp, ctx.faults);
+  const specified = a.forcedBorderBoxHeight === null ? specifiedBlockSizeWith(box, a.heightBasis, vbp, ctx.faults) : null;
   const fixedBorderBox = a.forcedBorderBoxHeight !== null
     ? a.forcedBorderBoxHeight
     : specified === null ? null : constrain(specified, minMax);
@@ -204,17 +228,17 @@ export type BlockLevelInline = { readonly borderBoxWidth: LU; readonly marginLef
 // which margin is the start margin; when over-constrained the end margin is ignored (margin-left in rtl).
 export function blockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU, cbDirection: Direction): BlockLevelInline {
   const s = box.style;
-  const pad = resolvePadding(s, cbInline);
+  const pad = resolvePaddingWith(s, cbInline, ctx.faults);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
-  const ml = resolveMargin(s.marginLeft, cbInline);
-  const mr = resolveMargin(s.marginRight, cbInline);
-  const mt = resolveMargin(s.marginTop, cbInline);
-  const mb = resolveMargin(s.marginBottom, cbInline);
-  const specified = resolveInlineLength(s.width, cbInline);
+  const ml = resolveMarginWith(s.marginLeft, cbInline, ctx.faults);
+  const mr = resolveMarginWith(s.marginRight, cbInline, ctx.faults);
+  const mt = resolveMarginWith(s.marginTop, cbInline, ctx.faults);
+  const mb = resolveMarginWith(s.marginBottom, cbInline, ctx.faults);
+  const specified = resolveInlineLengthWith(s.width, cbInline, ctx.faults);
   const stretched = sub(sub(cbInline, ml.value), mr.value);
   const raw = specified === null ? stretched : borderBoxFromSpecified(specified, hbp, s.boxSizing);
-  const width = max(constrain(raw, inlineMinMax(s, cbInline, hbp)), hbp);
+  const width = max(constrain(raw, inlineMinMaxWith(s, cbInline, hbp, ctx.faults)), hbp);
   // Blink ResolveInlineAutoMargins (ng_length_utils.cc), in the containing block's inline direction: both auto centre with
   // LayoutUnit / 2 on the start side, clamped at zero; a lone auto start margin takes the free space.
   const rtl = cbDirection === 'rtl';
@@ -310,7 +334,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     const at: Placed = { frag: c.frag, x: add(a.origin.x, inline.marginLeft), y: add(a.origin.y, y) };
     if (baseline === null && c.frag.baseline !== null) baseline = add(at.y, c.frag.baseline);
     // CSS2 §9.4.3: a relative offset moves the box after layout; the flow, margins and baselines keep its in-flow position.
-    const offset = relativeOffset(kid, a.contentWidth, a.childBasis, direction);
+    const offset = relativeOffsetWith(kid, a.contentWidth, a.childBasis, direction, ctx.faults);
     placed.push({ frag: at.frag, x: add(at.x, offset.dx), y: add(at.y, offset.dy) });
     if (ctx.faults.relativeShiftsFlow && !c.collapseThrough) cursor = add(cursor, offset.dy);
   }

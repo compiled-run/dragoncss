@@ -17,6 +17,8 @@ import { compareDual } from './dual.ts';
 import { PROJECT_ID } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { ENVIRONMENT, environmentsOf } from './fixtures.ts';
+import { fontMapOf, withFontMapAssets } from './fixture-groups/fonts.ts';
+import { fontDataUrl } from './font-reference.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import { authoredModel } from './render.ts';
 import type { TreeExpectation } from './tree-fixture.ts';
@@ -112,17 +114,37 @@ function referenceMeasurer() {
 }
 
 export function compileFixture(spec: FixtureSpec, faults: CompilerFaults = NO_FAULTS, profiles: 'enforce' | 'derive' = 'enforce', direction: Direction = 'ltr', transformInput: (input: FrontEndResult) => FrontEndResult = (i) => i): { input: FrontEndResult; compiled: Compiled<'ios' | 'web'> } {
-  const input = transformInput(fixtureInput(spec));
+  // TXT1-C: a fonts fixture's font map, with its pinned faces' vendored files as snapshot assets.
+  const fonts = fontMapOf(spec.id);
+  const input = transformInput(fonts === undefined ? fixtureInput(spec) : withFontMapAssets(fixtureInput(spec), fonts));
   const rootFont = spec.kind === 'layout' ? spec.rootFont : 'ahem';
   // MQ-a: the native output is the @media band holding the fixed parity viewport, which is exact for every case here.
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} } }, { faults, profiles, direction, platform: REFERENCE_PLATFORM, rootFont, foldViewport: ENVIRONMENT.viewport });
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} }, ...(fonts === undefined ? {} : { fonts }) }, { faults, profiles, direction, platform: REFERENCE_PLATFORM, rootFont, foldViewport: ENVIRONMENT.viewport });
   return { input, compiled: project.compile(input) };
 }
 
-const webCssOf = (compiled: Compiled<'ios' | 'web'>): string | null => {
+/** The web CSS the chrome-dual lane renders: dragon.css with each font asset's url("fonts/...") inlined as a data: URL. */
+export const webCssOf = (compiled: Compiled<'ios' | 'web'>): string | null => {
   const webOut = compiled.outputs.web;
-  return webOut.kind === 'ready' ? (webOut.files.find((f) => f.path === WEB_CSS_PATH)?.text ?? null) : null;
+  if (webOut.kind !== 'ready') return null;
+  const css = webOut.files.find((f) => f.path === WEB_CSS_PATH)?.text ?? null;
+  return css === null ? null : inlineFontAssets(css, webOut.assets);
 };
+
+/** css with every url("fonts/...") replaced by its asset's data: URL; a url naming no asset, or an asset no url names, throws. */
+export function inlineFontAssets(css: string, assets: readonly { readonly path: string; readonly bytes: Uint8Array }[]): string {
+  const byPath = new Map(assets.map((a) => [a.path, a]));
+  const used = new Set<string>();
+  const out = css.replace(/url\("(fonts\/[^"]*)"\)/g, (_m, path: string) => {
+    const a = byPath.get(path);
+    if (a === undefined) throw new Error(`dragon.css names ${path}, which is not a web output asset`);
+    used.add(path);
+    return `url("${fontDataUrl(a.bytes)}")`;
+  });
+  const unused = assets.filter((a) => !used.has(a.path)).map((a) => a.path);
+  if (unused.length > 0) throw new Error(`web output assets that dragon.css never names: ${unused.join(', ')}`);
+  return out;
+}
 
 export async function runFixture(spec: FixtureSpec, browser: Browser, opts: RunOptions): Promise<FixtureOutcome> {
   const environments = environmentsOf(spec);

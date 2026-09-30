@@ -322,3 +322,136 @@ export function roundCoreTextMetricToWholePx(units: number, unitsPerEm: number, 
   const coreText = ((Math.round((units * 65536) / unitsPerEm) * unitsPerEm) / 65536) * (sizePx / unitsPerEm);
   return fromWholePx(Math.floor(Math.fround(Math.fround(coreText) + 0.5)));
 }
+
+// Calculations (css-values-4 §10). Blink evaluates a calculation twice over: in double when it has no percentage
+// (CSSMathExpressionOperation::EvaluateOperator, then a float Length::Fixed), and in float at layout when it has one
+// (CalculationExpressionNode::Evaluate). calc.ts and environment.ts compose these primitives and do no arithmetic of their own.
+
+const FLOAT_MAX = 3.4028234663852886e38;
+/** Blink kMaxValueForCssLength and kMinValueForCssLength (css_primitive_value.cc): INT_MAX / 64 - 2 and INT_MIN / 64 + 2. */
+const CSS_LENGTH_MAX = 33554429;
+const CSS_LENGTH_MIN = -33554430;
+
+/** A double stored in a float field (static_cast<float>). */
+export function float32(x: number): number {
+  return Math.fround(x);
+}
+
+export function floatMul(a: number, b: number): number {
+  return Math.fround(a * b);
+}
+
+/** Planted fault divideDirect: a / b in float instead of a times the float inverse. */
+export function floatDiv(a: number, b: number): number {
+  return Math.fround(a / b);
+}
+
+/** Blink CalculationOperator::kInvert: 1.0 / denominator in double, returned as float. */
+export function floatInvert(d: number): number {
+  return Math.fround(1 / d);
+}
+
+/** std::min(a, b): b < a ? b : a, so NaN in a stays. */
+export function floatMin(a: number, b: number): number {
+  return b < a ? b : a;
+}
+
+/** std::max(a, b): a < b ? b : a. */
+export function floatMax(a: number, b: number): number {
+  return a < b ? b : a;
+}
+
+/** Blink CalculationExpressionPixelsAndPercentNode::Evaluate: pixels + percent / 100 * max_value, all float. */
+export function pixelsAndPercentAt(pixels: number, percent: number, maxValue: number): number {
+  return Math.fround(pixels + Math.fround(Math.fround(percent / 100) * maxValue));
+}
+
+/** Planted fault calcPercentPlainOrder: the plain-percent order of length_functions.cc, float(max * percent / 100.0f). */
+export function pixelsAndPercentPlainOrder(pixels: number, percent: number, maxValue: number): number {
+  return Math.fround(pixels + Math.fround(Math.fround(maxValue * Math.fround(percent)) / 100));
+}
+
+/** Planted fault calcDoubleEval: pixels + percent / 100 * max in double. */
+export function pixelsAndPercentDouble(pixels: number, percent: number, maxValue: number): number {
+  return pixels + (percent / 100) * maxValue;
+}
+
+/**
+ * Blink CalculationValue::Evaluate then Length::NonNanCalculatedValue and LayoutUnit(float): a negative result of a non-negative
+ * calculation is 0, NaN is 0, and the float truncates to LU.
+ */
+export function calcToLu(value: number, nonNegative: boolean): LU {
+  if (Number.isNaN(value)) return ZERO;
+  if (nonNegative && value < 0) return ZERO;
+  return fromCssPx(value);
+}
+
+/** CSSValueClampingUtils::ClampLength(float): NaN is 0, and the value is clamped to the float range. */
+export function clampLengthFloat(v: number): number {
+  if (Number.isNaN(v)) return 0;
+  if (v >= FLOAT_MAX) return FLOAT_MAX;
+  if (v <= -FLOAT_MAX) return -FLOAT_MAX;
+  return Math.fround(v);
+}
+
+/** CSSPrimitiveValue::ClampToCSSLengthRange: NaN is 0, then the CSS length range, as float (Length::Fixed). */
+export function cssLengthFixed(v: number): number {
+  if (Number.isNaN(v)) return 0;
+  if (v >= CSS_LENGTH_MAX) return CSS_LENGTH_MAX;
+  if (v <= CSS_LENGTH_MIN) return CSS_LENGTH_MIN;
+  return Math.fround(v);
+}
+
+export function doubleAdd(a: number, b: number): number {
+  return a + b;
+}
+
+export function doubleMul(a: number, b: number): number {
+  return a * b;
+}
+
+/** Planted fault divideDirect in the double path: a / b. */
+export function doubleDiv(a: number, b: number): number {
+  return a / b;
+}
+
+/** Blink kInvert in double: 1.0 / operand. */
+export function doubleInvert(d: number): number {
+  return 1 / d;
+}
+
+function isNegativeZero(x: number): boolean {
+  return x === 0 && 1 / x < 0;
+}
+
+/** One step of Blink EvaluateOperator kMin: std::min, except that min(0, -0) is -0. */
+export function doubleMinStep(minimum: number, operand: number): number {
+  if (minimum === 0 && operand === 0 && isNegativeZero(minimum) !== isNegativeZero(operand)) return -0;
+  return operand < minimum ? operand : minimum;
+}
+
+/** One step of Blink EvaluateOperator kMax: std::max, except that max(-0, 0) is 0. */
+export function doubleMaxStep(maximum: number, operand: number): number {
+  if (maximum === 0 && operand === 0 && isNegativeZero(maximum) !== isNegativeZero(operand)) return 0;
+  return maximum < operand ? operand : maximum;
+}
+
+/** The non-negative range at compute time (CSSMathFunctionValue::ClampToPermittedRange): std::max(value, 0.0). */
+export function clampNonNegativeDouble(v: number): number {
+  return v < 0 ? 0 : v;
+}
+
+/** R6 (platform-rules.ts viewport-device-ceil): the viewport size viewport units read, float(ceil(w * z) / z) in CSS px. */
+export function viewportUnitBase(cssPx: number, zoom: number): number {
+  return Math.fround(Math.ceil(cssPx * zoom) / Math.fround(zoom));
+}
+
+/** Blink ZoomedComputedPixels for vw, vh, vmin and vmax: value * (base / 100) * zoom in double. */
+export function viewportLeafPx(value: number, basePx: number, zoom: number): number {
+  return value * (basePx / 100) * Math.fround(zoom);
+}
+
+/** Blink ZoomedComputedPixels for em and rem: value * float(fontSize * zoom). */
+export function emLeafPx(value: number, fontSizePx: number, zoom: number): number {
+  return value * Math.fround(Math.fround(fontSizePx) * Math.fround(zoom));
+}
