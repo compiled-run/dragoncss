@@ -21,28 +21,50 @@
     "snapEdge",
     "cachedRangeWidth"
   ],
+  "calcUnitsPerFunction": 5000,
+  "calcUnitsFunctions": [
+    "viewportUnitBase",
+    "viewportLeafPx",
+    "emLeafPx",
+    "pixelsAndPercentAt",
+    "cssLengthFixed",
+    "clampLengthFloat",
+    "floatInvert",
+    "doubleMinStep",
+    "doubleMaxStep",
+    "calcToLu"
+  ],
+  "engineCalc": 4000,
   "snapGenerated": 20000,
-  "snapVectors": 1218,
+  "snapVectors": 1164,
   "cases": {
-    "vectors-m2": 148,
-    "vectors-dpr": 1218,
-    "engine-dpr": 1218,
+    "vectors-m2": 180,
+    "vectors-dpr": 1314,
+    "engine-dpr": 1314,
     "units-m2": 120000,
-    "snap": 21218
+    "snap": 21164,
+    "snap-values": 150,
+    "calc-goldens": 17,
+    "engine-calc": 4000,
+    "units-calc": 50000
   },
   "engineSplit": {
-    "ok": 1218,
+    "ok": 1314,
     "unsupported": 0,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "a8592c754d796e7b8751c3aa7c982ce5e8ad39995900a566a3d7e0b9ffccfe16",
-    "vectors-dpr": "ed2a60b9c52682a380e21028f084d37f66dbeb1399b75ec77df3a4dbbfc89764",
-    "engine-dpr": "a863d7dfa417b7ddf766dde8f73af169491daec29568879e82464138390db757",
+    "vectors-m2": "787c8db8683a01bc227fa18cd18a3a05879b68e5a6e6a78210e863bc7d4bf7d3",
+    "vectors-dpr": "d8b892fd9955b04767913fe9d9a806377a90493b5ad038b9ee5c1e13c39a407c",
+    "engine-dpr": "5d8adf5bc8048d3cfa3282e45c222be2c33f14509d73c8c1b029946f978676cf",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "999f610e28c35c3ad271a669e55df46b9cbdf032a56bd68febc140fa05351859"
+    "snap": "d5867b66bc9aefa9a06f363ab939ce4ed75f5157999e28cd952096c619608d8b",
+    "snap-values": "fdeb2cecd1521fdd06c93f68e8a53f0efd51bd155422bff8533ba0224e08b739",
+    "calc-goldens": "7baa7493a35bde492ef150e5118941d10d45ad11d1b852b88e841cd73f777283",
+    "engine-calc": "ad17214666c5fb0bcc2fdc271bfc01b9854a2fee56bb82f973ab332b6680faf7",
+    "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50"
   },
-  "digest": "703fb801fcd09e20c19a1cc2532474883f7c30f842cb4f16cd95338f4328a21f"
+  "digest": "4f84821ae130fa61c0ba4e787dfa7c3d1efffd6172f2b0805b3e96fe6ea72b8c"
 }

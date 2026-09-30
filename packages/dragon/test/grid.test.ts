@@ -134,6 +134,15 @@ describe('grid family: parse and expand', () => {
       ['grid-template-columns', 'minmax(calc(10px + 5%), 1fr)', 'calc(10px + 5%)'],
       ['grid-auto-rows', 'repeat(2, 10vw)', null],
       ['grid-template-rows', 'repeat(2, 10vw)', '10vw'],
+      // V1 resolves viewport units in box lengths only; every one is refused inside a grid value, at any depth and in any case.
+      ['grid-template-columns', 'minmax(3vw, auto) 1fr', '3vw'],
+      ['grid-auto-columns', 'fit-content(100VW)', '100VW'],
+      ['grid-auto-rows', '1fr 10vh', '10vh'],
+      ['grid-template-columns', '[a] 2vi', '2vi'],
+      ['grid-template-rows', '2vb', '2vb'],
+      ['grid', 'auto-flow / 1vmin', '1vmin'],
+      ['grid-template', '10px / 1Vmax', '1Vmax'],
+      ['grid-template-columns', '10svw', '10svw'],
     ] as const) {
       const { declaration, diagnostics, span } = declare(p, v);
       expect(declaration, `${p}: ${v}`).toBeNull();

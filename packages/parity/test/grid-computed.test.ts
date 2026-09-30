@@ -6,6 +6,7 @@ import { valueToString } from '../../dragon/src/analysis/resolve.ts';
 import { GRID_LONGHANDS } from '../../dragon/src/css/properties/grid.ts';
 import type { Declaration } from '../../dragon/src/css/stylesheet.ts';
 import { parseStylesheet } from '../../dragon/src/css/stylesheet.ts';
+import { REFUSED_MATH_PREFIX } from '../../dragon/src/css/values.ts';
 
 const SOURCE = { uri: 'dragon-source://test/grid.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -32,7 +33,9 @@ describe('grid family: Chrome 145 computed values', () => {
   const edges = (read('grid-edge-declarations.json') as { declarations: [string, string][] }).declarations;
   const item = ([p, v]: readonly [string, string]): Item => {
     const { declaration, diagnostics } = declare(p, v);
-    return { p, v, code: diagnostics[0]?.code ?? null, longhands: (declaration?.longhands ?? []).map((l) => [l.property, valueToString(l.value)] as const) };
+    // V1 keeps a calculation it refuses as a value that carries its reason; the profile check refuses it on every target.
+    const refusedMath = declaration?.longhands.some((l) => l.value.kind === 'other' && l.value.type.startsWith(REFUSED_MATH_PREFIX)) ?? false;
+    return { p, v, code: diagnostics[0]?.code ?? (refusedMath ? 'DRAGON_UNSUPPORTED_VALUE' : null), longhands: (declaration?.longhands ?? []).map((l) => [l.property, valueToString(l.value)] as const) };
   };
   const COMPARED = [...GRID_LONGHANDS, 'row-gap', 'column-gap'];
   /** Values Chrome parses that Dragon reports invalid, a refusal and never a wrong acceptance: anchor-center is missing from the webref grammar. */

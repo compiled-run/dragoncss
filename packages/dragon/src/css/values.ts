@@ -5,6 +5,7 @@ import type { ColorSyntax, Rgba8 } from './color.ts';
 import { parseColorNode } from './color.ts';
 import { asciiLower, decodeName, serializeString } from './escapes.ts';
 import type { Longhand } from './properties.ts';
+import { foldNumber, mathContextFor, parseMath, V1_MATH_FUNCTIONS } from './math.ts';
 import { CANONICAL_LENGTH_UNIT, lengthFeatureType, normalizeUnit } from './units.ts';
 import { GENERIC_FAMILY_KEYWORDS } from '../fonts/font-face.ts';
 import type { FontMap } from '../fonts/font-map.ts';
@@ -40,6 +41,10 @@ function isColorBearing(property: string): boolean {
  */
 export function tokenValue(node: CssNode, property: string): CssValue | string {
   if (!isColorBearing(property)) return toValue(node, property);
+  // The border shorthands assign a token that is neither a length nor a keyword to the colour, so a calculation there is refused.
+  if (node.type === 'Function' && V1_MATH_FUNCTIONS.has(asciiLower(String(node['name']))) && !property.endsWith('color')) {
+    return `a calculation in the ${property} shorthand is not supported; set it with ${property === 'border' ? 'border-width' : `${property}-width`}`;
+  }
   if (node.type === 'Identifier') {
     const name = asciiLower(String(node['name']));
     if (!property.endsWith('color') && (LINE_STYLES.has(name) || LINE_WIDTH_KEYWORDS.has(name))) return toValue(node, property);
@@ -68,11 +73,44 @@ export function toValue(node: CssNode, property: string): CssValue {
       return { kind: 'family', value: String(node['value']) };
     case 'Hash':
       return { kind: 'other', type: 'color', text: generate(node) };
-    case 'Function':
-      return { kind: 'other', type: `${asciiLower(String(node['name']))}()`, text: generate(node) };
+    case 'Function': {
+      const name = asciiLower(String(node['name']));
+      if (V1_MATH_FUNCTIONS.has(name)) return mathValue(node, name, property);
+      return { kind: 'other', type: `${name}()`, text: generate(node) };
+    }
     default:
       return { kind: 'other', type: node.type, text: generate(node) };
   }
+}
+
+/**
+ * A css-values-4 §10 math function (css/math.ts). A number calculation (flex-grow, flex-shrink, order, or a number in the flex
+ * shorthand) is folded to its number now; a length calculation keeps its text, with feature key <calc()>, <min()>, <max()> or
+ * <clamp()>, and is lowered per element (lower/ios-layout.ts). A calculation V1 refuses keeps its text with the reason as a
+ * comment and the feature type "refused <name>()", which no profile row supports, so the declaration is refused with the reason.
+ */
+export const REFUSED_MATH_PREFIX = 'refused ';
+
+function mathValue(node: CssNode, name: string, property: string): CssValue {
+  const text = generate(node);
+  const refused = (reason: string): CssValue => ({ kind: 'other', type: `${REFUSED_MATH_PREFIX}${name}()`, text: `${text} /* ${reason} */` });
+  // css-values-4 §10.10: a top-level result is clamped to the property's range; flex-grow and flex-shrink take [0,∞].
+  const nonNegative = (v: number): number => (v < 0 ? 0 : v);
+  if (property === 'flex') {
+    const n = parseMath(text, { type: 'number' });
+    if (n.ok) return { kind: 'number', value: nonNegative(foldNumber(n.node)) };
+  }
+  const context = mathContextFor(property);
+  if ('refused' in context) return refused(context.refused);
+  const parsed = parseMath(text, context);
+  if (!parsed.ok) return refused(parsed.reason);
+  if (context.type === 'number') {
+    const folded = foldNumber(parsed.node);
+    const value = property === 'flex-grow' || property === 'flex-shrink' ? nonNegative(folded) : folded;
+    if (property === 'order' && !Number.isInteger(value)) return refused('order takes an integer, and this calculation is not a whole number');
+    return { kind: 'number', value };
+  }
+  return { kind: 'other', type: `${name}()`, text };
 }
 
 /** The properties whose value may be a two-keyword <baseline-position>. */

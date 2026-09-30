@@ -43,6 +43,10 @@ export type CompilerFaults = {
   readonly mediaConditionIgnored: boolean;
   /** MQ-a: the native output takes the band holding the fold viewport one CSS px wider than it is. */
   readonly mediaBandOffByOne: boolean;
+  /** The ios lowering reverses the terms of every calculation sum, so float sums accumulate in the wrong order (css/math.ts). */
+  readonly sumOrderSwapped: boolean;
+  /** The ios lowering drops explicit 0% terms of calculations, so a calculation with only a 0% percentage loses its percentage. */
+  readonly dropExplicitZeroPercent: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false, blockifySkipped: false, inlineFlexToBlock: false, mediaConditionIgnored: false, mediaBandOffByOne: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false, blockifySkipped: false, inlineFlexToBlock: false, sumOrderSwapped: false, dropExplicitZeroPercent: false, mediaConditionIgnored: false, mediaBandOffByOne: false };

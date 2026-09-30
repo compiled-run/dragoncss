@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { GRID_FUZZ_COUNT, GRID_FUZZ_SEED, generateGridDeclarations } from './grid-fuzz/generate.ts';
 import type { ChromeSeen, FuzzItem } from './grid-fuzz/compare.ts';
-import { chromeExpression, documentedGap, fuzzItem, report, serializationProblems } from './grid-fuzz/compare.ts';
+import { asChromeDisplays, chromeExpression, documentedGap, dragonFull, fuzzItem, report, serializationProblems } from './grid-fuzz/compare.ts';
 
 type Browser = { newPage(): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown> }>; close(): Promise<void> };
 const load = async <T>(file: string): Promise<T> => (await import(new URL(`../src/${file}`, import.meta.url).href)) as T;
@@ -22,6 +22,21 @@ const openChrome = async (): Promise<{ run: (set: readonly FuzzItem[]) => Promis
   await page.setContent('<!DOCTYPE html><div id="a" style="font-size:10px"></div><div id="c" style="font-size:10px"></div>');
   return { run: async (set) => (await page.evaluate(chromeExpression(set))) as ChromeSeen[], close: () => browser.close() };
 };
+
+describe('grid fuzzer comparison, without Chrome', () => {
+  it('a viewport length displays as the px Chrome computes against the page viewport; a bad viewport throws', () => {
+    const vp = [1280, 720] as const;
+    expect(['12.5vw', '3vw', '10vh', '3vh', '2vi', '2vb', '10vmin', '10vmax', '99999999vh', '3VW'].map((t) => asChromeDisplays(t, vp)))
+      .toEqual(['160px', '38.4px', '72px', '21.6px', '25.6px', '14.4px', '72px', '128px', '3.35544e+07px', '38.4px']);
+    expect(asChromeDisplays('minmax(3vw, auto) 10px 1.5fr', vp)).toBe('minmax(38.4px, auto) 10px 1.5fr');
+    for (const bad of [[0, 720], [1280, Number.NaN], [-1, 720], [Number.POSITIVE_INFINITY, 720]] as const) expect(() => asChromeDisplays('1vw', bad)).toThrow(/not a positive size/);
+  });
+  it('a calculation V1 refuses is a refusal, as the profile check makes it on every target; one it takes is accepted', () => {
+    expect(dragonFull('column-gap', 'calc(5% + 2px)')).toEqual({ kind: 'refused', code: 'DRAGON_UNSUPPORTED_VALUE' });
+    expect(dragonFull('column-gap', 'calc(5px + 2px)').kind).toBe('ok');
+    expect(dragonFull('grid-row-gap', '12.5vw')).toEqual({ kind: 'ok', longhands: [['row-gap', '12.5vw']] });
+  });
+});
 
 describe('grid differential fuzzer against Chrome 145', () => {
   it('the G-P corpus and edge declarations pass the hook-alone and byte-exact computed-text comparisons too', async () => {
@@ -60,7 +75,8 @@ describe('grid differential fuzzer against Chrome 145', () => {
     }
     const r = report(items, seen[0] as ChromeSeen[]);
     expect(r.bugs).toEqual([]);
-    expect(r.full).toEqual({ 'agree-accept': 883, 'agree-drop': 1898, 'refused-chrome-drops': 27, 'documented-refusal': 191, 'documented-gap': 1 });
+    // V1: the 7 gap declarations with vw or vh (grid-row-gap, grid-column-gap, grid-gap) are accepted and agree; grid tracks still refuse them.
+    expect(r.full).toEqual({ 'agree-accept': 890, 'agree-drop': 1898, 'refused-chrome-drops': 27, 'documented-refusal': 184, 'documented-gap': 1 });
     expect(r.hook).toEqual({ 'agree-accept': 817, 'agree-drop': 1160, 'refused-chrome-drops': 738, 'documented-refusal': 163 });
     expect(r.serialization).toBe(0);
     // Plant unitlessZero (PR #23 round 5): Dragon's computed text keeping a unitless zero is caught by the byte-exact comparison.
