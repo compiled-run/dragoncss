@@ -26,7 +26,7 @@ let failed = 0;
 for (const r of records) {
   const bad = r.samples.filter((s) => !s.pass);
   if (!recordPass(r)) failed++;
-  console.log(`${recordPass(r) ? 'pass' : 'FAIL'} ${r.fixture} ${r.direction}: ${r.bands.length} bands, ${r.samples.length} samples (${r.samples.map((s) => s.width).join(' ')})${r.problem === null ? '' : `; ${r.problem}`}`);
+  console.log(`${recordPass(r) ? 'pass' : 'FAIL'} ${r.fixture} ${r.direction}: ${r.bands.length} bands, ${r.samples.length} samples (${r.samples.map((s) => `${s.width}x${s.height}`).join(' ')})${r.problem === null ? '' : `; ${r.problem}`}`);
   for (const s of bad) console.log(`  ${s.width}x${s.height} band ${s.band}: ${s.problems.join('; ')}`);
 }
 if (check) {
