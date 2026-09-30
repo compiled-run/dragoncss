@@ -5,12 +5,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { isAbsolute, posix, relative } from 'node:path';
 import type { CssNode } from 'css-tree';
-import type { ElementNode, FrontEndResult, Origin, SourceFile, SourceRef, TreeNode } from 'dragon';
-import { TREE_SCHEMA_REVISION } from 'dragon';
-import type { AtRuleContext } from '../../dragon/src/css/at-rules.ts';
-import { preprocessInput } from '../../dragon/src/css/escapes.ts';
-import { parseStylesheet } from '../../dragon/src/css/stylesheet.ts';
-import { collectFontFaces } from '../../dragon/src/fonts/wire.ts';
+import type { AtRuleContext, ElementNode, FrontEndResult, Origin, SourceFile, SourceRef, TreeNode } from 'dragon';
+import { collectFontFaces, parseStylesheet, preprocessInput, TREE_SCHEMA_REVISION } from 'dragon';
 import { repoPath } from './paths.ts';
 
 export const PROJECT_ID = 'dragon-parity';
