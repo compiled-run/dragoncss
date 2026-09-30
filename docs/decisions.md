@@ -298,3 +298,7 @@ ng-native (launched 2026-09-29) is Angular on React Native Fabric with Yoga layo
 - **ANIM-S:** scroll-driven animation (`animation-timeline: scroll()`), after ANIM-b (T065) and OVFL (T078). It reuses the timing port, and is proven at sampled scroll offsets.
 - **Accessibility, Bold Text:** Dragon draws its own glyphs, so the OS Bold Text setting must be applied by Dragon: +300 `font-weight`, clamped at 900, the way iOS applies it. Live text-size changes are part of MQ-R. Both are proven with injected settings.
 - **Not adopted:** warn-and-still-build for unsupported CSS. Dragon keeps failing the build; an `explain` migration report gives the same adoption help.
+
+## Box-shadow device pixels: no allowance (PM ruling, 2026-09-30)
+
+PNT1 measured Dragon's device shadows against Chrome 145 at up to 2 channel levels over about 4.95M clear pixels (DPR 2, 3, 2.625). The cause is compositing: Chrome floors once per shadow, the device composites one layer. Raising `allowances/shadow.ts` from 0 would loosen a check, which AGENTS.md forbids. So it stays at 0, the shadow points fail device-pixels until the device composites each shadow the way Chrome does, and that fix is its own task (PNT1-S2). The measured value stays pinned in `pnt1-shadow.test.ts` as evidence.
