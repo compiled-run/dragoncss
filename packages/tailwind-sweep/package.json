@@ -1,0 +1,17 @@
+{
+  "name": "@dragon/tailwind-sweep",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TW-SWEEP: every Tailwind CSS v4 utility, taken from the pinned tailwindcss package, compiled by Dragon for web, ios and android and classified as supported, refused or invalid.",
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "@dragon/parity": "workspace:*",
+    "css-tree": "3.2.1",
+    "dragon": "workspace:*",
+    "playwright": "1.58.2"
+  },
+  "devDependencies": {
+    "tailwindcss": "4.3.3"
+  }
+}
