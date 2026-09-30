@@ -9,6 +9,12 @@ import { createProject, querySupport } from '../src/index.ts';
 import type { CompilerFaults } from '../src/internal.ts';
 import { compiledFeatures, createProjectWith, iosProfile, NO_FAULTS, WEB_CSS_PATH, webProfile } from '../src/internal.ts';
 import { featureOf } from '../src/css/values.ts';
+import { parse } from 'css-tree';
+import type { CssNode } from 'css-tree';
+import { parseFontFace } from '../src/fonts/font-face.ts';
+import type { DeclaredFace } from '../src/fonts/font-face.ts';
+import { selectionRequest } from '../src/fonts/selection.ts';
+import { renderedFaces } from '../src/fonts/wire.ts';
 import { div, DOC, inputFor, text } from './helpers.ts';
 
 const vendor = (file: string): Uint8Array => new Uint8Array(readFileSync(new URL(`../../../vendor/fonts/${file}`, import.meta.url)));
@@ -31,8 +37,8 @@ const MAP: FontMap = {
 };
 
 /** A one-text-node document whose snapshot carries the font files as assets; each src specifier resolves from the stylesheet. */
-function fontInput(css: string, opts: { files?: Record<string, Uint8Array>; urls?: readonly string[]; body?: TreeNode[] } = {}): FrontEndResult {
-  const base = inputFor(css, (r) => opts.body ?? [div(r, 'a', ['a'], [text(r, 't', 'Ab')])]);
+function fontInput(css: string, opts: { files?: Record<string, Uint8Array>; urls?: readonly string[]; body?: TreeNode[]; text?: string } = {}): FrontEndResult {
+  const base = inputFor(css, (r) => opts.body ?? [div(r, 'a', ['a'], [text(r, 't', opts.text ?? 'Ab')])]);
   const files = opts.files ?? FILES;
   const ref = base.snapshot.sources[0]?.ref;
   if (ref === undefined) throw new Error('no source');
@@ -194,6 +200,30 @@ describe('the variable-font fence at style resolution (T028)', () => {
     expect(codes(at(false))).toEqual([]);
     const refused = at(true).diagnostics.filter((d) => d.code === 'DRAGON_FONT_VARIABLE_REFUSED');
     expect(refused.map((d) => [d.target, d.message])).toEqual([[null, 'font-family V at 16px on a:text0: InterVF wght 400, 700 is outside the validated range 400 to 400']]);
+  });
+  it('fences only the faces Chrome draws the text with: a later family counts for the characters the earlier ones lack', () => {
+    const faces = '@font-face { font-family: S; src: url(fonts/Lato-Regular.ttf) } @font-face { font-family: V; src: url(fonts/Inter-VF.ttf) }';
+    const at = (family: string, chars: string) => compileWith(fontInput(`${faces} .a { font-family: ${family}; font-size: 28px }`, { urls: ['fonts/Lato-Regular.ttf', 'fonts/Inter-VF.ttf'], text: chars }), undefined);
+    expect(codes(at('S, V', 'Ab'))).toEqual([]);
+    // Lato has no U+2713, so Chrome draws it with V.
+    expect(at('S, V', 'A\u2713').diagnostics.map((d) => d.message)).toEqual(['font-family V at 28px on a:text0: InterVF opsz 14, 28 is outside the validated range 14 to 24']);
+    expect(codes(at('V, S', 'Ab'))).toEqual(['DRAGON_FONT_VARIABLE_REFUSED']);
+  });
+  it('a tab or segment break counts as a space: a later face whose cmap maps U+000A is not drawn for it', () => {
+    const face = (family: string, file: string): DeclaredFace => {
+      const node = (parse(`@font-face { font-family: ${family}; src: url(${file}) }`) as CssNode & { children: { first: CssNode | null } }).children.first;
+      const f = node === null ? null : parseFontFace(node, 0, (u) => ({ id: u, bytes: FILES[u] as Uint8Array })).face;
+      if (f === null || f === undefined || f.source === null) throw new Error(`no face for ${file}`);
+      return f;
+    };
+    const s = face('S', 'fonts/Lato-Regular.ttf');
+    const v0 = face('V', 'fonts/Inter-VF.ttf');
+    const src = v0.source as NonNullable<DeclaredFace['source']>;
+    // Some fonts map control characters; this V maps U+000A, U+0009 and U+000D, which Lato does not.
+    const v = { ...v0, source: { ...src, font: { ...src.font, glyphForCodePoint: (cp: number) => ([9, 10, 13].includes(cp) ? 1 : src.font.glyphForCodePoint(cp)) } } };
+    const drawn = (t: string) => renderedFaces([s, v], [{ kind: 'declared', family: 'S' }, { kind: 'declared', family: 'V' }], t, selectionRequest(400, 100, { kind: 'normal' })).map((x) => x.family);
+    expect(drawn('A\n\tb\r')).toEqual(['S']);
+    expect(drawn('A\u2713')).toEqual(['S', 'V']);
   });
 });
 

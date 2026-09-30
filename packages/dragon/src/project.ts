@@ -25,10 +25,10 @@ import { familyListText } from './css/values.ts';
 import type { DeclaredFace, FontFaceIssue } from './fonts/font-face.ts';
 import { GENERIC_KEYS, validateFontMap } from './fonts/font-map.ts';
 import type { EntryResolution, FontMapError } from './fonts/font-map.ts';
-import { bestSegmentedFace, segmentedFaces, selectionRequest } from './fonts/selection.ts';
+import { selectionRequest } from './fonts/selection.ts';
 import { fenceVariableInstance } from './fonts/variable-fence.ts';
 import type { VariableFontRefusal } from './fonts/variable-fence.ts';
-import { collectFontFaces, familySupport, pinnedFacesOf, projectFonts, webFontOutput } from './fonts/wire.ts';
+import { collectFontFaces, familySupport, pinnedFacesOf, projectFonts, renderedFaces, webFontOutput } from './fonts/wire.ts';
 import type { FontWireProblem, ProjectedFonts } from './fonts/wire.ts';
 import type { CompilerFaults } from './faults.ts';
 import { NO_FAULTS } from './faults.ts';
@@ -431,9 +431,8 @@ type TextFont = { readonly weight: number; readonly style: 'normal' | 'italic' }
 
 /**
  * Per case, on every text node: a font-family value that holds var() is checked after substitution like checkFamilies checks the
- * others, and the variable-font fence (T028) runs at style resolution on the faces Chrome selects (the best capability group of
- * each declared or pinned family the list names). No author longhand sets font-weight or font-style, so they are the UA's,
- * inherited (userAgentTextFonts: h1 to h6 bold, address italic).
+ * others, and the variable-font fence (T028) runs at style resolution on the faces Chrome draws the text with (renderedFaces).
+ * No author longhand sets font-weight or font-style, so they are the UA's, inherited (userAgentTextFonts: h1 to h6 bold, address italic).
  */
 function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: CompilerFaults, ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>): void {
   const faces = [...fonts.declaredFaces, ...fonts.projected.pinned.flatMap((p) => (p.result.face === null ? [] : [p.result.face]))];
@@ -466,16 +465,13 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
       if (support === null) continue;
       const size = (c.props.get('font-size') as ResolvedValue).value;
       if (!fence || support.kind !== 'resolved' || size.kind !== 'length' || size.unit !== 'px') continue;
-      for (const r of support.resolutions) {
-        if (r.kind !== 'declared' && r.kind !== 'pinned') continue;
-        const group = bestSegmentedFace(segmentedFaces(faces, r.family), selectionRequest(own.weight, 100, { kind: own.style }));
-        for (const face of group?.faces ?? []) {
-          const refused = fenceVariableInstance(face, { weight: own.weight, stretch: 100, style: { kind: own.style }, specifiedSize: size.value, opticalSizing: 'auto' });
-          if (refused === null) continue;
-          const origin = family.declaration === null ? c.node.node.origin : authored(family.declaration.valueSpan);
-          const message = `font-family ${r.family} at ${size.value}px on ${c.node.address}: ${variableMessage(refused)}`;
-          if (once(`${message}|${JSON.stringify(origin)}`)) diagnostics.push(diagnostic('DRAGON_FONT_VARIABLE_REFUSED', { origin, message }));
-        }
+      const request = selectionRequest(own.weight, 100, { kind: own.style });
+      for (const { family: name, face } of renderedFaces(faces, support.resolutions, c.text, request)) {
+        const refused = fenceVariableInstance(face, { weight: own.weight, stretch: 100, style: { kind: own.style }, specifiedSize: size.value, opticalSizing: 'auto' });
+        if (refused === null) continue;
+        const origin = family.declaration === null ? c.node.node.origin : authored(family.declaration.valueSpan);
+        const message = `font-family ${name} at ${size.value}px on ${c.node.address}: ${variableMessage(refused)}`;
+        if (once(`${message}|${JSON.stringify(origin)}`)) diagnostics.push(diagnostic('DRAGON_FONT_VARIABLE_REFUSED', { origin, message }));
       }
     }
   };
