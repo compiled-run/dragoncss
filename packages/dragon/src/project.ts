@@ -751,8 +751,13 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         const scratch: Diagnostic[] = [];
         const unwrapped = enclosed.flatMap((e) => e.rules);
         checkFamilies(unwrapped, keys, options.faults, scratch);
-        // The unwrapped rules are analysed as if their own @media conditions held; the rest are the native band's.
-        const scratchCases = checkCases(linked, [...rulesIn(rules, bands, bands === null ? null : (bands.partition.bands[nativeBand] as Band), options.faults), ...unwrapped], targets, options, scratch, fonts);
+        // The unwrapped rules are analysed as if their own @media conditions held, against the rules of every band, with the
+        // targets the main pass checks there (native in its band only), so a diagnostic that only another band's cascade raises is kept.
+        const scratchSeen = freshReported();
+        const scratchLinked = linked;
+        const scratchCases = (bands === null ? [null] : bands.partition.bands).flatMap((b, k) =>
+          checkCases(scratchLinked, [...rulesIn(rules, bands, b, options.faults), ...unwrapped], k === nativeBand ? targets : targets.filter((t) => t === 'web'), options, scratch, fonts, scratchSeen),
+        );
         if (options.profiles === 'enforce') checkValues(unwrapped, targets, profiles, scratchCases.flatMap((c) => c.used), scratch, keys);
         for (const e of enclosed) {
           const found = [...e.diagnostics, ...scratch.filter((d) => inside(d.origin, e))];
