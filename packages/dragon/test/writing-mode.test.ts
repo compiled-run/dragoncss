@@ -49,7 +49,7 @@ describe('writing-mode family: registry', () => {
 });
 
 describe('writing-mode family: parse', () => {
-  for (const v of [...HORIZONTAL_WRITING_MODES, 'LR-TB', 'Horizontal-TB']) {
+  for (const v of [...HORIZONTAL_WRITING_MODES, 'LR-TB', 'Horizontal-TB', '\\68 orizontal-tb', 'l\\r']) {
     it(`writing-mode: ${v} is accepted and sets nothing`, () => {
       const { declaration, diagnostics } = declare('writing-mode', v);
       expect(diagnostics).toEqual([]);
@@ -57,13 +57,15 @@ describe('writing-mode family: parse', () => {
       expect(declaration?.longhands).toEqual([]);
     });
   }
-  for (const v of [...VERTICAL, 'Vertical-RL']) {
+  // An escaped keyword is matched, and named in the message, by its decoded value (css-syntax-3 §4.3.7).
+  const DECODED: Readonly<Record<string, string>> = { '\\76 ertical-rl': 'vertical-rl', '\\74 b-rl': 'tb-rl' };
+  for (const v of [...VERTICAL, 'Vertical-RL', ...Object.keys(DECODED)]) {
     it(`writing-mode: ${v} is DRAGON_UNSUPPORTED_VALUE on the value`, () => {
       const { declaration, diagnostics, span } = declare('writing-mode', v);
       expect(declaration).toBeNull();
       expect(diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
       expect(span).toBe(v);
-      expect((diagnostics[0] as Diagnostic).message).toBe(`writing-mode: ${v} is unsupported: Dragon lays out horizontal-tb only`);
+      expect((diagnostics[0] as Diagnostic).message).toBe(`writing-mode: ${DECODED[v] ?? v} is unsupported: Dragon lays out horizontal-tb only`);
       expectCatalogued(diagnostics);
     });
   }

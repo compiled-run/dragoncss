@@ -6,6 +6,7 @@ import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../../types.ts';
 import { spanOf } from '../ast.ts';
+import { asciiLower } from '../escapes.ts';
 import { HORIZONTAL_WRITING_MODES } from '../properties/writing-mode.ts';
 import type { ShorthandHandler } from './shared.ts';
 
@@ -20,7 +21,7 @@ const inert = (refuse?: (tokens: readonly CssNode[], base: Span) => Diagnostic |
 
 const writingMode = inert((tokens, base) => {
   const t = tokens[0] as CssNode;
-  if (t.type === 'Identifier' && HORIZONTAL.has(String(t['name']).toLowerCase())) return null;
+  if (t.type === 'Identifier' && HORIZONTAL.has(asciiLower(String(t['name'])))) return null;
   return diagnostic('DRAGON_UNSUPPORTED_VALUE', {
     origin: authored(spanOf(t, base)),
     message: `writing-mode: ${generate(t)} is unsupported: Dragon lays out horizontal-tb only`,
@@ -29,7 +30,7 @@ const writingMode = inert((tokens, base) => {
 });
 
 const textCombineUpright = inert((tokens, base) => {
-  const digits = tokens.find((t) => t.type === 'Identifier' && String(t['name']).toLowerCase() === 'digits');
+  const digits = tokens.find((t) => t.type === 'Identifier' && asciiLower(String(t['name'])) === 'digits');
   if (digits === undefined) return null;
   return diagnostic('DRAGON_UNSUPPORTED_VALUE', {
     origin: authored(spanOf(digits, base)),
