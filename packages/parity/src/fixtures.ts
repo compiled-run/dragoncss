@@ -14,6 +14,7 @@ import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { UNITS } from './fixture-groups/units.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
+import { VALUES } from './fixture-groups/values.ts';
 
 /**
  * The reference environment of every case in this lane (docs/api.md §7, §10.1): an input to the projection, the engine and Chrome.
@@ -81,6 +82,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'showcase', fixtures: SHOWCASE },
   { id: 'phrasing-blockified', fixtures: PHRASING_BLOCKIFIED },
   { id: 'fonts', fixtures: FONTS },
+  { id: 'values', fixtures: VALUES },
 ];
 
 export const FIXTURES: readonly FixtureSpec[] = FIXTURE_GROUPS.flatMap((g) => g.fixtures);

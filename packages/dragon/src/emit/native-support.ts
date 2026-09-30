@@ -1623,11 +1623,46 @@ export const STYLE_FIELDS = [
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = { px: 'Px', percent: 'Percent', auto: 'Auto', none: 'NoneValue', content: 'ContentValue', normal: 'NormalValue', number: 'NumberValue', 'device-px': 'DevicePx' };
 
+/** The translated union of CalcExpr (V1 of the value model): the element type of a calculation's operand list. */
+const CALC_UNION = 'U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_NumberValue_Percent_PixelsAndPercent_Px_ViewportLength';
+
+const CALC_LISTS: Readonly<Record<string, string>> = { sum: 'CalcSum', product: 'CalcProduct', min: 'CalcMin', max: 'CalcMax' };
+
+/** A LengthCalc or a CalcExpr node that is not a plain value, as a constructor call; null for any other value. */
+function calcValue(lang: Lang, o: Record<string, unknown>): string | null {
+  const str = (s: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, s)})` : stringLit(lang, s));
+  const kind = o['kind'] as string;
+  const e = (x: unknown): string => engineValue(lang, x);
+  const list = CALC_LISTS[kind];
+  if (list !== undefined) {
+    const terms = (o['terms'] as unknown[]).map(e);
+    return `${list}(${str(kind)}, ${lang === 'swift' ? `JsArray<any ${CALC_UNION}>([${terms.join(', ')}])` : `jsArrayOf<${CALC_UNION}>(${terms.join(', ')})`})`;
+  }
+  switch (kind) {
+    case 'calc':
+      return `LengthCalc(${str(kind)}, ${e(o['expr'])}, ${str(o['range'] as string)})`;
+    case 'viewport':
+      return `ViewportLength(${str(kind)}, ${doubleLit(o['value'] as number)}, ${str(o['axis'] as string)})`;
+    case 'em':
+      return `EmLength(${str(kind)}, ${doubleLit(o['value'] as number)}, ${e(o['fontSize'])})`;
+    case 'invert':
+      return `CalcInvert(${str(kind)}, ${e(o['term'])})`;
+    case 'clamp':
+      return `CalcClamp(${str(kind)}, ${e(o['min'])}, ${e(o['value'])}, ${e(o['max'])})`;
+    case 'pixels-and-percent':
+      return `PixelsAndPercent(${str(kind)}, ${doubleLit(o['pixels'] as number)}, ${doubleLit(o['percent'] as number)}, ${String(o['explicitPixels'])}, ${String(o['explicitPercent'])})`;
+    default:
+      return null;
+  }
+}
+
 /** A typed engine value as a constructor call of the translated engine. */
 function engineValue(lang: Lang, v: unknown): string {
   const str = (s: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, s)})` : stringLit(lang, s));
   if (typeof v === 'string') return str(v);
   if (typeof v === 'number') return doubleLit(v);
+  const calc = calcValue(lang, v as Record<string, unknown>);
+  if (calc !== null) return calc;
   const o = v as { kind: string; value?: number };
   const cls = VALUE_CLASSES[o.kind];
   if (cls === undefined) throw new Error(`no engine class for value kind ${o.kind}`);
