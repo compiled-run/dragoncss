@@ -30,8 +30,11 @@ const KEYWORDS = (grammar['writing-mode']?.syntax ?? '').split('|').map((s) => s
 const VERTICAL = KEYWORDS.filter((k) => !(HORIZONTAL_WRITING_MODES as readonly string[]).includes(k));
 
 describe('writing-mode family: registry', () => {
-  it('the three properties are surrogate shorthands that set no longhand, appended after every other family', () => {
-    expect(SHORTHANDS.slice(-3)).toEqual(['writing-mode', 'text-orientation', 'text-combine-upright']);
+  it('the three properties are surrogate shorthands that set no longhand, appended after background and logical, before grid', () => {
+    const at = SHORTHANDS.indexOf('writing-mode');
+    expect(SHORTHANDS.slice(at, at + 3)).toEqual(['writing-mode', 'text-orientation', 'text-combine-upright']);
+    expect(SHORTHANDS.indexOf('background')).toBeLessThan(at);
+    expect(SHORTHANDS.indexOf('grid-template')).toBeGreaterThan(at);
     for (const p of ['writing-mode', 'text-orientation', 'text-combine-upright'] as const) {
       expect((LONGHANDS as readonly string[]).includes(p), p).toBe(false);
       expect(SHORTHAND_HANDLERS[p].longhands).toEqual([]);
@@ -124,6 +127,27 @@ describe('writing-mode family: compile', () => {
     const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE') as Diagnostic;
     expect(spanTextOf(input, d)).toBe('vertical-rl');
     expectCatalogued(c.diagnostics);
+  });
+  // Substitution runs per longhand winner and writing-mode sets none, so a var() value could never be checked: it is refused.
+  for (const [css, value] of [
+    ['.a { --wm: vertical-rl; writing-mode: var(--wm); width: 20px; }', 'var(--wm)'],
+    ['.a { writing-mode: var(--none, vertical-lr); width: 20px; }', 'var(--none, vertical-lr)'],
+    ['.a { --wm: horizontal-tb; writing-mode: var(--wm); width: 20px; }', 'var(--wm)'],
+    ['.a { --t: all; text-combine-upright: var(--t); width: 20px; }', 'var(--t)'],
+  ] as const) {
+    it(`${css} blocks both targets with DRAGON_UNSUPPORTED_VALUE on the var() value`, () => {
+      const input = inputFor(css, tree);
+      const c = project().compile(input);
+      expect(c.outputs.web.kind).toBe('blocked');
+      expect(c.outputs.ios.kind).toBe('blocked');
+      const refused = c.diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
+      expect(refused.map((d) => spanTextOf(input, d))).toEqual([value]);
+      expectCatalogued(c.diagnostics);
+    });
+  }
+  it('text-orientation, which refuses no value, stays inert through var()', () => {
+    expect(outputs('.a { --o: upright; width: 50px; text-orientation: var(--o); font-family: Ahem; font-size: 10px; }'))
+      .toEqual(outputs('.a { --o: upright; width: 50px; font-family: Ahem; font-size: 10px; }'));
   });
 });
 

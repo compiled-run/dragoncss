@@ -11,8 +11,12 @@ import type { ShorthandHandler } from './shared.ts';
 
 const HORIZONTAL: ReadonlySet<string> = new Set(HORIZONTAL_WRITING_MODES);
 
-/** A surrogate that sets nothing: a grammar-valid value is accepted or refused, and a CSS-wide keyword sets nothing either. */
-const inert = (refuse: (tokens: readonly CssNode[], base: Span) => Diagnostic | null): ShorthandHandler => ({ longhands: [], expand: () => [], expandWide: () => [], refuse });
+/**
+ * A surrogate that sets nothing: a grammar-valid value is accepted or refused, and a CSS-wide keyword sets nothing either. One
+ * with a refuse check also refuses a var() value (css/stylesheet.ts), which it could not check after substitution.
+ */
+const inert = (refuse?: (tokens: readonly CssNode[], base: Span) => Diagnostic | null): ShorthandHandler =>
+  refuse === undefined ? { longhands: [], expand: () => [], expandWide: () => [] } : { longhands: [], expand: () => [], expandWide: () => [], refuse };
 
 const writingMode = inert((tokens, base) => {
   const t = tokens[0] as CssNode;
@@ -36,6 +40,6 @@ const textCombineUpright = inert((tokens, base) => {
 
 export const WRITING_MODE_SHORTHANDS = {
   'writing-mode': writingMode,
-  'text-orientation': inert(() => null),
+  'text-orientation': inert(),
   'text-combine-upright': textCombineUpright,
 } as const satisfies { readonly [s: string]: ShorthandHandler };

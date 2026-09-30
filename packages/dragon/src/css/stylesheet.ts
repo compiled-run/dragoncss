@@ -204,6 +204,15 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   }
   if (parts !== null && hasVar(parts)) {
     const longhands: readonly Longhand[] = isLonghand(property) ? [property] : shorthandHandler(property).longhands;
+    // Substitution runs per longhand winner, so a refusing shorthand with no longhands (writing-mode) could never check its value.
+    if (longhands.length === 0 && !isLonghand(property) && shorthandHandler(property).refuse !== undefined) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: authored(valueSpan),
+        message: `${property}: ${source.trim()} is unsupported: Dragon checks ${property} values it can read at parse time, and a var() value only exists after substitution`,
+        manual: `Write the ${property} value without var().`,
+      }));
+      return null;
+    }
     const sides = directionSides(property);
     // The source text, since serializing the parsed value would add white space between adjacent var() references.
     return { property, text: source.trim(), span, valueSpan, longhands: [], order, ...important, pending: { parts, longhands, ...(sides === null ? {} : { sides }) } };
