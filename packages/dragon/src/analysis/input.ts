@@ -500,8 +500,8 @@ export function validateInput(input: FrontEndResult, projectId: string, diagnost
         if (!checkOrigin(b.origin, `class of ${c.id}/${el.id}`)) ok = false;
         const good = checkChoice(b.value, bWhere, (v) => {
           if (v === null) return true;
-          if (!exactKeys(v, ['owner', 'sheet', 'name']) || !isString(v['owner']) || !isString(v['sheet']) || !isString(v['name']) || !/^-?[_a-zA-Z][_a-zA-Z0-9-]*$/.test(v['name'])) {
-            invalid(`${c.id}/${el.id}: a class symbol needs exactly owner, sheet and an identifier name`, bWhere);
+          if (!exactKeys(v, ['owner', 'sheet', 'name']) || !isString(v['owner']) || !isString(v['sheet']) || !isString(v['name']) || !/^[^\t\n\f\r ]+$/.test(v['name'])) {
+            invalid(`${c.id}/${el.id}: a class symbol needs exactly owner, sheet and a name that is one class token (no ASCII white space)`, bWhere);
             return false;
           }
           const owner = styleOwner.get(v['sheet']);
