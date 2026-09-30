@@ -668,6 +668,11 @@ export function staleEvidence(f: LanesFile): string[] {
   return out;
 }
 
+/** The failed lanes of a target that a run of the given kinds produced: a host run answers for host lanes, not for device records it carried. */
+export function ownFailures(file: LanesFile, target: NativeTarget, where: ReadonlySet<LaneRecord['where']>): readonly LaneRecord[] {
+  return file.targets.find((t) => t.target === target)?.lanes.filter((l) => where.has(l.where) && l.state === 'fail') ?? [];
+}
+
 /**
  * The summary parity:lanes prints for a lanes file and its verdict: 1 when a lane failed, the file's parity fails (configuration,
  * recorded and run-record problems) or, with requireAll, a lane did not pass; else 0. parity:devices judges the merged file with it.

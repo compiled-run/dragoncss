@@ -5,13 +5,14 @@
 // at once (device-lanes.ts), every failure printed and written to out/device-failures-<target>.json. Either rewrites out/lanes.json
 // under a lock, re-read at write time, replacing only the records this run produced and keeping the others while they still
 // describe the configuration. --target limits both runs to one target, so the two targets can run at once in two processes;
-// --own-exit (with --target, used by parity:devices) makes the exit status cover only this run's own target.
+// --own-exit (with --target, used by parity:devices) makes the exit status cover only the lanes this run produced (its target's host
+// lanes for --run-host, its device lanes for --run-device), not records it carried.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { deviceEvidence } from '../device-evidence.ts';
 import { deviceJobs } from '../device-jobs.ts';
 import { failuresByKind, runTargetOnDevices } from '../device-lanes.ts';
 import type { DeviceRun, LaneFault, LanesFile } from '../lanes.ts';
-import { checkLaneParity, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, plantLaneFault, readLanesFile, referenceProof, reportLanesFile, runHostLane, staleCovers, staleEvidence, staleLanes, updateLanesFile } from '../lanes.ts';
+import { checkLaneParity, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, ownFailures, plantLaneFault, readLanesFile, referenceProof, reportLanesFile, runHostLane, staleCovers, staleEvidence, staleLanes, updateLanesFile } from '../lanes.ts';
 import { repoPath } from '../paths.ts';
 import type { NativeTarget } from '../targets.ts';
 import { nativeTargets } from '../targets.ts';
@@ -110,8 +111,8 @@ if (runHost || runDevice) {
 }
 
 if (ownExit) {
-  // parity:devices judges the merged file once both targets have written theirs; this run answers for its own target only.
-  const own = file.targets.find((t) => t.target === only)?.lanes.filter((l) => l.state === 'fail') ?? [];
+  // parity:devices judges the merged file once both targets have written theirs; this run answers for the lanes it produced only.
+  const own = ownFailures(file, only as NativeTarget, new Set([...(runHost ? ['host' as const] : []), ...(runDevice ? ['device' as const] : [])]));
   for (const l of own) console.log(`parity:lanes --own-exit: ${only} ${l.lane} failed${l.reason === null ? '' : ` (${l.reason})`}`);
   if (own.length > 0) exit = 1;
   console.log(`parity:lanes --own-exit ${only}: ${exit === 0 ? 'pass' : 'FAIL'}`);

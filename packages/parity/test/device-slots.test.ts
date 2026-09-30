@@ -1,6 +1,6 @@
 // PR #42 finding 4143792481: every booted device, of either target and any run, holds a slot of one machine-wide memory budget.
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -159,4 +159,22 @@ describe('the slot files', () => {
     expect(holders(dir)).toEqual([`${process.pid}-dragon-smoke.json`]);
     releaseDeviceSlot(d.file);
   }, 60_000);
+});
+
+describe('every boot path takes a slot', () => {
+  // A simulator or emulator started anywhere in the parity sources outside the budget would overcommit memory beside the matrix runs.
+  const src = repoPath('packages/parity/src');
+  const files = (dir: string): string[] => readdirSync(dir).flatMap((f) => (statSync(join(dir, f)).isDirectory() ? files(join(dir, f)) : f.endsWith('.ts') ? [join(dir, f)] : []));
+  const boots = /simctl', \['boot'|'simctl', 'boot'|'-avd'/;
+  it('each source that boots a device takes a device memory slot before it', () => {
+    const booting = files(src).filter((f) => boots.test(readFileSync(f, 'utf8')));
+    expect(booting.map((f) => f.slice(src.length + 1)).sort()).toEqual(['cli/native-smoke.ts', 'device-run.ts']);
+    for (const f of booting) {
+      const text = readFileSync(f, 'utf8');
+      const firstBoot = text.search(boots);
+      const slot = text.search(/acquireDeviceSlot\(|withDeviceSlot\(/);
+      expect(slot, f).toBeGreaterThanOrEqual(0);
+      expect(slot, f).toBeLessThan(firstBoot);
+    }
+  });
 });

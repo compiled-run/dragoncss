@@ -15,7 +15,7 @@ import { mergeOutcomes } from '../src/device-lanes.ts';
 import { DEVICE_MATRIX } from '../src/device-run.ts';
 import { ownerState, withFileLock } from '../src/file-lock.ts';
 import type { DeviceRun, HostRun, LanesFile } from '../src/lanes.ts';
-import { lanesFile, readLanesFile, updateLanesFile, writeLanesFile } from '../src/lanes.ts';
+import { lanesFile, ownFailures, readLanesFile, updateLanesFile, writeLanesFile } from '../src/lanes.ts';
 import { repoPath } from '../src/paths.ts';
 import type { NativeTarget } from '../src/targets.ts';
 import { nativeTargets } from '../src/targets.ts';
@@ -238,6 +238,17 @@ describe('devices of a target at once', () => {
     expect(leaseHolder(lock)).toBeNull();
     writeFileSync(join(lock, 'pid'), '1234\n');
     expect(leaseHolder(lock)).toBe(1234);
+  });
+  it('--own-exit answers for the lanes the run produced: a host run does not fail on a device lane it carried, a device run does', () => {
+    const f = lanesFile(targets, [], new Map([['ios', hostRun('host broke')]]), null);
+    const failed = f.targets.map((t) => ({ ...t, lanes: t.lanes.map((l) => (l.where === 'device' ? { ...l, state: 'fail' as const } : { ...l, state: 'pass' as const })) }));
+    const file: LanesFile = { ...f, targets: failed };
+    expect(ownFailures(file, 'ios', new Set(['host']))).toEqual([]);
+    const device = ownFailures(file, 'ios', new Set(['device']));
+    expect(device.length).toBe(file.targets.find((t) => t.target === 'ios')?.lanes.filter((l) => l.where === 'device').length);
+    expect(device.length).toBeGreaterThan(0);
+    expect(ownFailures(f, 'ios', new Set(['host'])).map((l) => l.reason)).toContain('host broke');
+    expect(ownFailures(f, 'android', new Set(['host', 'device']))).toEqual([]);
   });
   it('the CLIs refuse --own-exit without --target, a bad --device-jobs and an unknown parity:devices argument', () => {
     const cli = (file: string, args: readonly string[]) => spawnSync(process.execPath, ['--conditions=dragon-internal', repoPath(`packages/parity/src/cli/${file}`), ...args], { encoding: 'utf8' });
