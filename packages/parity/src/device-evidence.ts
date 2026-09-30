@@ -19,6 +19,7 @@ export const EVIDENCE_CODE: readonly string[] = [
   'packages/parity/src/device-jobs.ts',
   'packages/parity/src/device-lanes.ts',
   'packages/parity/src/device-run.ts',
+  'packages/parity/src/device-slots.ts',
   'packages/parity/src/device-vectors.ts',
   'packages/parity/src/dpr.ts',
   'packages/parity/src/lanes.ts',

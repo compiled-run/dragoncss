@@ -1,9 +1,8 @@
 // Devices of one target at once (LANE-SPEED): each device runs in its own process (cli/device-one.ts, the same runOneDevice a
-// sequential run calls), so boots, launches and checks overlap; the parent merges the outcomes in matrix order. The number at once is
-// capped by the devices of the target, the memory free now (a simulator or emulator needs DEVICE_MEMORY of it) and --device-jobs.
+// sequential run calls), so boots, launches and checks overlap; the parent merges the outcomes in matrix order. The number of processes
+// is capped by the devices of the target and --device-jobs; memory by the machine-wide slots each boot takes (device-slots.ts).
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { freemem } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { DeviceOutcome, RunLog } from './device-lanes.ts';
@@ -14,36 +13,18 @@ import { nativeOut } from './native-host.ts';
 import { repoPath } from './paths.ts';
 import type { NativeTarget } from './targets.ts';
 
-const GIB = 1024 ** 3;
-/** Memory one booted device holds with its app (resident size measured with a full run: see notes/LANE-SPEED.md), rounded up. */
-export const DEVICE_MEMORY: { readonly [T in NativeTarget]: number } = { ios: 3 * GIB, android: 4 * GIB };
-/** Memory left to the rest of the machine (the host lanes, the checks, other agents) when devices are started. */
-export const MEMORY_RESERVE = 8 * GIB;
 /** Devices that always run alone, after the others (a device found flaky under load; none so far). */
 export const SOLO_DEVICES: readonly string[] = [];
 
-/** Memory free for new processes: free, inactive and speculative pages on macOS (vm_stat), else os.freemem(). */
-export function availableMemory(): number {
-  if (process.platform !== 'darwin') return freemem();
-  const r = spawnSync('vm_stat', { encoding: 'utf8' });
-  const parsed = r.status === 0 ? parseVmStat(r.stdout) : null;
-  return parsed ?? freemem();
-}
-
-/** Free, inactive and speculative bytes from vm_stat output; null when a count or the page size is missing. */
-export function parseVmStat(text: string): number | null {
-  const page = Number(/page size of (\d+) bytes/.exec(text)?.[1]);
-  const count = (name: string): number => Number(new RegExp(`^Pages ${name}:\\s+(\\d+)\\.`, 'm').exec(text)?.[1]);
-  const pages = count('free') + count('inactive') + count('speculative');
-  return Number.isFinite(page) && page > 0 && Number.isFinite(pages) ? pages * page : null;
-}
-
-/** How many devices of a target run at once: the requested number (default all), capped by the matrix and by memory; at least 1. */
-export function deviceJobs(target: NativeTarget, requested: number | null, log: RunLog, available: number = availableMemory()): number {
+/**
+ * How many device processes of a target are started at once: the requested number (default all), capped by the matrix. Memory is
+ * not judged here: each device takes a slot of the machine-wide budget before it boots (device-slots.ts), so a process started
+ * beyond what memory allows waits there, whichever run or target started it.
+ */
+export function deviceJobs(target: NativeTarget, requested: number | null, log: RunLog): number {
   const devices = DEVICE_MATRIX.filter((d) => d.target === target).length;
-  const byMemory = Math.max(1, Math.floor((available - MEMORY_RESERVE) / DEVICE_MEMORY[target]));
-  const jobs = Math.max(1, Math.min(requested ?? devices, devices, byMemory));
-  log(`${jobs} device(s) at once (${devices} in the matrix${requested === null ? '' : `, --device-jobs ${requested}`}; ${(available / GIB).toFixed(1)} GiB free allows ${byMemory})`);
+  const jobs = Math.max(1, Math.min(requested ?? devices, devices));
+  log(`${jobs} device process(es) at once (${devices} in the matrix${requested === null ? '' : `, --device-jobs ${requested}`}); each boots once the machine-wide memory budget has a slot for it`);
   return jobs;
 }
 
@@ -189,6 +170,34 @@ export const LEASE_SCRIPT = '/tmp/device-lease.sh';
 export function leased(target: NativeTarget, cmd: string, args: readonly string[], script: string | null): { readonly cmd: string; readonly args: readonly string[]; readonly env: NodeJS.ProcessEnv } {
   if (script === null) return { cmd, args, env: process.env };
   return { cmd: script, args: [cmd, ...args], env: { ...process.env, DRAGON_LEASE: target } };
+}
+
+/** The pid holding the device lease (/tmp/dragon-device.lock/pid), or null when it is free or unreadable. */
+export function leaseHolder(lockDir: string = LEASE_LOCK): number | null {
+  try {
+    const pid = Number(readFileSync(join(lockDir, 'pid'), 'utf8').trim());
+    return Number.isInteger(pid) && pid > 0 ? pid : null;
+  } catch {
+    return null;
+  }
+}
+export const LEASE_LOCK = '/tmp/dragon-device.lock';
+
+/** The parent of a process (ps), or null when it has none or cannot be read. */
+export function parentPid(pid: number): number | null {
+  const r = spawnSync('ps', ['-o', 'ppid=', '-p', String(pid)], { encoding: 'utf8' });
+  const p = Number(r.stdout.trim());
+  return r.status === 0 && Number.isInteger(p) && p > 0 ? p : null;
+}
+
+/** Whether ancestor is pid or one of its ancestors, walking parentOf up to the root (at most 64 steps). */
+export function isAncestor(ancestor: number, pid: number, parentOf: (pid: number) => number | null): boolean {
+  let p: number | null = pid;
+  for (let i = 0; i < 64 && p !== null && p > 1; i++) {
+    if (p === ancestor) return true;
+    p = parentOf(p);
+  }
+  return false;
 }
 
 /** parity:devices fails when any step it ran failed (a crash, a reference proof or a lane of its own target) or the merged file fails. */

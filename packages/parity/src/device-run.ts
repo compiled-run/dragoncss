@@ -11,6 +11,8 @@ import type { SupportPlant } from 'dragon';
 import type { GlyphPosition } from './native-compare.ts';
 import type { AndroidTools } from './native-host.ts';
 import { androidTools, HOST_BUNDLE, run } from './native-host.ts';
+import type { SlotOptions } from './device-slots.ts';
+import { acquireDeviceSlot, releaseDeviceSlot } from './device-slots.ts';
 import type { NativeTarget } from './targets.ts';
 import { deviceDprs } from './targets.ts';
 
@@ -241,7 +243,27 @@ function adb(h: { serial: string; tools: AndroidTools }, args: readonly string[]
   return run(h.tools.adb, ['-s', h.serial, ...args], { timeoutMs });
 }
 
+/** The memory slot each booted device holds (device-slots.ts), by device name: taken before the boot, given back by release(). */
+const slots = new Map<string, string>();
+
+/** Runs a boot holding the device's memory slot until release(); a failed boot gives the slot back. */
+export async function withDeviceSlot(spec: DeviceSpec, bootIt: () => Promise<DeviceHandle>, opts: SlotOptions = {}): Promise<DeviceHandle> {
+  const slot = await acquireDeviceSlot(spec.target, spec.name, opts);
+  slots.set(spec.name, slot);
+  try {
+    return await bootIt();
+  } catch (e) {
+    slots.delete(spec.name);
+    releaseDeviceSlot(slot);
+    throw e;
+  }
+}
+
 export async function bootIos(spec: IosDeviceSpec): Promise<DeviceHandle> {
+  return withDeviceSlot(spec, () => bootIosHeld(spec));
+}
+
+async function bootIosHeld(spec: IosDeviceSpec): Promise<DeviceHandle> {
   const { udid } = provisionIos(spec.name);
   const was = simState(udid);
   try {
@@ -322,6 +344,10 @@ export function liveProblems(spec: AvdDeviceSpec, live: LiveAvd, expectSdk: numb
 
 /** Boots an AVD headless on its own console port; provision pins the matrix keys first (the floor probe AVD is not in the matrix). */
 export async function bootAvd(spec: AvdDeviceSpec, provision = true): Promise<DeviceHandle> {
+  return withDeviceSlot(spec, () => bootAvdHeld(spec, provision));
+}
+
+async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<DeviceHandle> {
   const tools = androidTools();
   if (provision) provisionAvd(spec, tools);
   else if (!existsSync(join(avdDir(spec.name), 'config.ini'))) throw new Error(`no AVD ${spec.name} (tooling fault)`);
@@ -357,7 +383,7 @@ export async function bootAvd(spec: AvdDeviceSpec, provision = true): Promise<De
     await prepareAvd(h);
   } catch (e) {
     // This runner started it, so it stops it rather than leave the port taken.
-    await release({ ...h, startedHere: true });
+    await stopDevice({ ...h, startedHere: true });
     throw e;
   }
   return { ...h, startedHere: true };
@@ -461,8 +487,17 @@ export async function boot(spec: DeviceSpec): Promise<DeviceHandle> {
   return spec.target === 'ios' ? bootIos(spec) : bootAvd(spec);
 }
 
-/** Shuts down only a device this runner started. */
+/** Shuts down only a device this runner started, and gives back the device's memory slot in any case. */
 export async function release(h: DeviceHandle): Promise<void> {
+  try {
+    await stopDevice(h);
+  } finally {
+    releaseDeviceSlot(slots.get(h.spec.name) ?? null);
+    slots.delete(h.spec.name);
+  }
+}
+
+async function stopDevice(h: DeviceHandle): Promise<void> {
   if (!h.startedHere) return;
   if ('udid' in h) run('xcrun', ['simctl', 'shutdown', h.udid]);
   else {

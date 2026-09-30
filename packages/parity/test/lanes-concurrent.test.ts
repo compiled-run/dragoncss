@@ -8,7 +8,8 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { deviceEvidence } from '../src/device-evidence.ts';
 import type { DeviceJob } from '../src/device-jobs.ts';
-import { DEVICE_MEMORY, deviceJobs, devicesExit, leased, MEMORY_RESERVE, parseDeviceJob, parseOutcome, parseVmStat, pool } from '../src/device-jobs.ts';
+import { deviceJobs, devicesExit, isAncestor, leased, leaseHolder, parentPid, parseDeviceJob, parseOutcome, pool } from '../src/device-jobs.ts';
+import { parseVmStat } from '../src/device-slots.ts';
 import type { DeviceOutcome, DeviceSet } from '../src/device-lanes.ts';
 import { mergeOutcomes } from '../src/device-lanes.ts';
 import { DEVICE_MATRIX } from '../src/device-run.ts';
@@ -173,15 +174,13 @@ describe('devices of a target at once', () => {
     await pool([0, 2, 4], 3, async (x) => { order.push(x); return f(x); }, (x) => x === 0);
     expect(order[order.length - 1]).toBe(0);
   });
-  it('the number of devices at once is capped by the matrix, the request and the memory free', () => {
+  it('the number of device processes at once is capped by the matrix and the request (memory is the slots\' job)', () => {
     const log = (): void => undefined;
-    const lots = 64 * 1024 ** 3;
     const android = DEVICE_MATRIX.filter((d) => d.target === 'android').length;
-    expect(deviceJobs('android', null, log, lots)).toBe(android);
-    expect(deviceJobs('android', 99, log, lots)).toBe(android);
-    expect(deviceJobs('android', 1, log, lots)).toBe(1);
-    expect(deviceJobs('android', null, log, MEMORY_RESERVE + 2 * DEVICE_MEMORY.android)).toBe(2);
-    expect(deviceJobs('ios', null, log, 0)).toBe(1);
+    expect(deviceJobs('android', null, log)).toBe(android);
+    expect(deviceJobs('android', 99, log)).toBe(android);
+    expect(deviceJobs('android', 1, log)).toBe(1);
+    expect(deviceJobs('ios', 2, log)).toBe(2);
   });
   it('vm_stat free memory counts free, inactive and speculative pages; a missing count is null', () => {
     const text = 'Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                                  100.\nPages active:  5.\nPages inactive:                               20.\nPages speculative:                             3.\n';
@@ -195,6 +194,21 @@ describe('devices of a target at once', () => {
     expect(devicesExit([{ code: 0 }, { code: 1 }], 0)).toBe(1);
     expect(devicesExit([{ code: 0 }, { code: null }], 0)).toBe(1);
     expect(devicesExit([{ code: 0 }], 1)).toBe(1);
+  });
+  it('parity:devices run inside the device lease sees the holder among its ancestors, so its steps do not wait on it', () => {
+    const tree = new Map([[40, 30], [30, 20], [20, 1]]);
+    const parentOf = (p: number): number | null => tree.get(p) ?? null;
+    expect(isAncestor(20, 40, parentOf)).toBe(true);
+    expect(isAncestor(40, 40, parentOf)).toBe(true);
+    expect(isAncestor(99, 40, parentOf)).toBe(false);
+    expect(isAncestor(5, 6, (p) => p)).toBe(false);
+    expect(isAncestor(process.ppid, process.pid, parentPid)).toBe(true);
+    const lock = tmp();
+    expect(leaseHolder(lock)).toBeNull();
+    writeFileSync(join(lock, 'pid'), 'x\n');
+    expect(leaseHolder(lock)).toBeNull();
+    writeFileSync(join(lock, 'pid'), '1234\n');
+    expect(leaseHolder(lock)).toBe(1234);
   });
   it('the CLIs refuse --own-exit without --target, a bad --device-jobs and an unknown parity:devices argument', () => {
     const cli = (file: string, args: readonly string[]) => spawnSync(process.execPath, ['--conditions=dragon-internal', repoPath(`packages/parity/src/cli/${file}`), ...args], { encoding: 'utf8' });

@@ -7,7 +7,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createInterface } from 'node:readline';
-import { devicesExit, LEASE_SCRIPT, leased } from '../device-jobs.ts';
+import { devicesExit, isAncestor, LEASE_SCRIPT, leased, leaseHolder, parentPid } from '../device-jobs.ts';
 import { checkLaneParity, laneSources, readLanesFile, reportLanesFile } from '../lanes.ts';
 import { buildAndroid, buildIos } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
@@ -40,8 +40,12 @@ for (const a of args) if (!['--require-all', '--device-jobs'].includes(a) && a !
   console.error(`parity:devices: unknown argument ${JSON.stringify(a)} (takes --require-all and --device-jobs N)`);
   process.exit(2);
 }
-const script = existsSync(LEASE_SCRIPT) ? LEASE_SCRIPT : null;
-if (script === null) console.log(`parity:devices: ${LEASE_SCRIPT} is absent, so the device runs take no lease`);
+// Run under the lease itself (/tmp/device-lease.sh pnpm run parity:devices), a step taking it again would wait on its own ancestor.
+const holder = leaseHolder();
+const inside = holder !== null && isAncestor(holder, process.pid, parentPid);
+const script = existsSync(LEASE_SCRIPT) && !inside ? LEASE_SCRIPT : null;
+if (inside) console.log(`parity:devices: runs inside the device lease (held by ancestor pid ${holder}), so its device steps do not take it again`);
+else if (script === null) console.log(`parity:devices: ${LEASE_SCRIPT} is absent, so the device runs take no lease`);
 
 type Step = { readonly name: string; readonly code: number | null; readonly seconds: number; readonly firstLine: number | null };
 const T0 = Date.now();
