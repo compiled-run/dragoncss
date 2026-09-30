@@ -125,8 +125,8 @@ export const styleSchema = obj({
 /** css-fonts-4 §2: a font with its specified size expression (input.ts FontSpec). */
 export const fontSpecSchema = obj({ family: lit('Ahem'), size: num(0), specifiedSize: fontSizeExpr, absoluteSize: bool });
 
-/** CSS2 §10.8.1: line-height; a percentage is of the font size, and a calculation may hold one. */
-export const lineHeightSchema = tagged({ normal: {}, number: { value: num(0) }, px: { value: num(0) }, percent: { value: num(0) }, ...calc });
+/** CSS2 §10.8.1: line-height is non-negative; a percentage is of the font size, and a calculation, clamped to 0, may hold one. */
+export const lineHeightSchema = tagged({ normal: {}, number: { value: num(0) }, px: { value: num(0) }, percent: { value: num(0) }, calc: { expr: calcExpr, range: lit('non-negative') } });
 
 export const textLeafSchema = obj({
   kind: lit('text'),
@@ -248,7 +248,8 @@ function checkCalc(value: unknown, path: string, errors: ValidationError[], font
       else v.forEach((t: unknown, i: number) => checkCalc(t, `${at}[${i}]`, errors, false));
     } else if (key === 'fontSize' || key === 'parent') checkCalc(v, at, errors, true);
     else if (key === 'term' || key === 'min' || key === 'max' || key === 'expr' || (key === 'value' && kind === 'clamp')) checkCalc(v, at, errors, false);
-    else checkRule(v, anyNum, at, errors);
+    // css-fonts-4 §2.5: a negative font-size percentage is invalid.
+    else checkRule(v, kind === 'font-percent' ? num(0) : anyNum, at, errors);
   }
 }
 

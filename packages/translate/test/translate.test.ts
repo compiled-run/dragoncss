@@ -170,3 +170,24 @@ describe('differential corpus (native-strategy.md 1.7)', () => {
     });
   });
 });
+
+describe('the harness decodes a calculated line height only with the non-negative range (CSS2 §10.8.1)', () => {
+  it('lays out range non-negative and reports a harness error for range all', async () => {
+    const { runEngineCase } = await import('../harness/harness.ts');
+    const { NO_ENGINE_FAULTS } = await import('../../layout/src/block.ts');
+    const v = JSON.parse(readFileSync(join(import.meta.dirname, '../../layout/vectors/phrasing-blockified-abspos.json'), 'utf8')) as { platform: string; input: unknown };
+    const withLineHeight = (range: string): string => {
+      const input = JSON.parse(JSON.stringify(v.input)) as unknown;
+      let set = 0;
+      const walk = (n: { kind: string; lineHeight?: unknown; children?: unknown[] }): void => {
+        if (n.kind === 'text') { n.lineHeight = { kind: 'calc', expr: { kind: 'px', value: 12 }, range }; set++; }
+        for (const c of n.children ?? []) walk(c as never);
+      };
+      walk((input as { root: never }).root);
+      expect(set).toBeGreaterThan(0);
+      return JSON.stringify({ platform: v.platform, faults: NO_ENGINE_FAULTS, input });
+    };
+    expect(runEngineCase(withLineHeight('non-negative'))).toMatch(/^\["ok",/);
+    expect(runEngineCase(withLineHeight('all'))).toMatch(/^\["harness-error",".*range/);
+  });
+});

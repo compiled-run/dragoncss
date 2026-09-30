@@ -103,8 +103,10 @@ export type FlexBasisValue = Px | Percent | Auto | ContentValue | LengthCalc;
 export type GapValue = Px | Percent | NormalValue | LengthCalc;
 /** CSS2 §9.3.2 box offsets (css-position-3 inset properties). */
 export type InsetValue = Px | Percent | Auto | LengthCalc;
+/** A calculated line height: line-height is non-negative (CSS2 §10.8.1), so its calculation is clamped to 0. */
+export type LineHeightCalc = { readonly kind: 'calc'; readonly expr: CalcExpr; readonly range: 'non-negative' };
 /** line-height (CSS2 §10.8.1): a percentage is of the element's computed font size, truncated to a whole percent (Blink ConvertLineHeight). */
-export type LineHeightValue = NormalValue | NumberValue | Px | Percent | LengthCalc;
+export type LineHeightValue = NormalValue | NumberValue | Px | Percent | LineHeightCalc;
 
 /** display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. */
 export type Display = 'block' | 'flex';

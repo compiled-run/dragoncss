@@ -25,6 +25,7 @@ import type {
   LayoutInput,
   LayoutStyle,
   LengthCalc,
+  LineHeightCalc,
   LineHeightValue,
   MarginValue,
   MaxSizeValue,
@@ -337,7 +338,8 @@ function computedLineHeightPx(lh: LineHeightValue, font: FontSpec, env: Env): nu
  * A calculated line height at the element's zoom: without a percentage, Length::Fixed of its double value; with one,
  * ValueForLength of its CalculationValue against LayoutUnit(computed size), which truncates to LU.
  */
-function lineHeightCalcPx(c: LengthCalc, computedFontSize: number, env: Env): number {
+function lineHeightCalcPx(lh: LineHeightCalc, computedFontSize: number, env: Env): number {
+  const c: LengthCalc = { kind: 'calc', expr: lh.expr, range: 'non-negative' };
   if (!calcHasPercent(c.expr)) return cssLengthFixed(lengthDouble(c, env));
   return toFloat(resolveCalc(calcValue(c, env), fromCssPx(computedFontSize), env.faults));
 }

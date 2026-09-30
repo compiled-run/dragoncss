@@ -1684,7 +1684,7 @@ function calcValue(lang: Lang, o: Record<string, unknown>): string | null {
     case 'font-metric':
       return `FontMetricLength(${str(kind)}, ${doubleLit(o['value'] as number)}, ${str(o['metric'] as string)}, ${fontSpecValue(lang, o['font'] as FontSpec)})`;
     case 'lh':
-      return `LineHeightLength(${str(kind)}, ${doubleLit(o['value'] as number)}, ${fontSpecValue(lang, o['font'] as FontSpec)}, ${e(o['lineHeight'])})`;
+      return `LineHeightLength(${str(kind)}, ${doubleLit(o['value'] as number)}, ${fontSpecValue(lang, o['font'] as FontSpec)}, ${lineHeightValue(lang, o['lineHeight'])})`;
     case 'env':
       return `EnvLength(${str(kind)}, ${doubleLit(o['value'] as number)}, ${str(o['side'] as string)})`;
     case 'font-percent':
@@ -1715,6 +1715,14 @@ function engineValue(lang: Lang, v: unknown): string {
   return o.value === undefined ? `${cls}(${str(o.kind)})` : `${cls}(${str(o.kind)}, ${doubleLit(o.value)})`;
 }
 
+/** A line height as a constructor call: a calculated one is the engine's LineHeightCalc, whose range is non-negative. */
+function lineHeightValue(lang: Lang, v: unknown): string {
+  const o = v as { kind: string; expr?: unknown };
+  if (o.kind !== 'calc') return engineValue(lang, v);
+  const str = (x: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, x)})` : stringLit(lang, x));
+  return `LineHeightCalc(${str('calc')}, ${engineValue(lang, o.expr)}, ${str('non-negative')})`;
+}
+
 /** A text run's font as a constructor call: family, the reference computed size, the specified size expression, absolute or not. */
 function fontSpecValue(lang: Lang, f: FontSpec): string {
   const str = (x: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, x)})` : stringLit(lang, x));
@@ -1742,7 +1750,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
     const name = `${prefix}Box${n++}`;
     const kids = b.children.map((c) => (c.kind === 'box'
       ? `${visit(c)}()`
-      : `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${engineValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)})`));
+      : `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)})`));
     const style = `LayoutStyle(${STYLE_FIELDS.map((f) => engineValue(lang, (b.style as unknown as Record<string, unknown>)[f])).join(', ')})`;
     const arr = lang === 'swift' ? `JsArray<any U_LayoutBox_TextLeaf>([${kids.join(', ')}])` : `jsArrayOf<U_LayoutBox_TextLeaf>(${kids.join(', ')})`;
     const body = `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${style}, ${arr})`;

@@ -22,6 +22,7 @@ import type {
   LayoutInput,
   LayoutStyle,
   LengthCalc,
+  LineHeightCalc,
   LineHeightValue,
   MarginValue,
   MaxSizeValue,
@@ -446,6 +447,14 @@ function lengthCalc(v: JsonValue, path: string): LengthCalc {
   return range === 'all' ? { kind: 'calc', expr, range: 'all' } : { kind: 'calc', expr, range: 'non-negative' };
 }
 
+/** A LineHeightCalc {kind: calc, expr, range: non-negative}: line-height is non-negative. */
+function lineHeightCalc(v: JsonValue, path: string): LineHeightCalc {
+  const o = obj(v, ['kind', 'expr', 'range'], path);
+  const expr = calcExpr(field(o, 'expr', path), `${path}.expr`);
+  lit(field(o, 'range', path), ['non-negative'], `${path}.range`);
+  return { kind: 'calc', expr, range: 'non-negative' };
+}
+
 function sizeValue(v: JsonValue, path: string): SizeValue {
   const k = kindOf(v, path);
   if (k === 'calc') return lengthCalc(v, path);
@@ -516,7 +525,7 @@ function flexBasisValue(v: JsonValue, path: string): FlexBasisValue {
 
 function lineHeightValue(v: JsonValue, path: string): LineHeightValue {
   const k = kindOf(v, path);
-  if (k === 'calc') return lengthCalc(v, path);
+  if (k === 'calc') return lineHeightCalc(v, path);
   if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'number') return { kind: 'number', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
