@@ -376,7 +376,7 @@ const ASCII_PAIR_OPS: readonly (readonly number[])[] = [
   [0x7f, 0x7f, 0x21, 0x7f, 0], // after DEL
 ];
 
-function asciiPairBreaks(a: number, b: number): boolean {
+export function asciiPairBreaks(a: number, b: number): boolean {
   for (let k = ASCII_PAIR_OPS.length - 1; k >= 0; k--) {
     const op = ASCII_PAIR_OPS[k] as readonly number[];
     if (a >= (op[0] as number) && a <= (op[1] as number) && b >= (op[2] as number) && b <= (op[3] as number)) return (op[4] as number) === 1;

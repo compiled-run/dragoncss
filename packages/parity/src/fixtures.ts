@@ -6,6 +6,7 @@ import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { GRID } from './fixture-groups/grid.ts';
+import { INLINE } from './fixture-groups/inline.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
@@ -77,6 +78,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'grid', fixtures: GRID },
   { id: 'showcase', fixtures: SHOWCASE },
   { id: 'phrasing-blockified', fixtures: PHRASING_BLOCKIFIED },
+  { id: 'inline', fixtures: INLINE },
   { id: 'values', fixtures: VALUES },
 ];
 
