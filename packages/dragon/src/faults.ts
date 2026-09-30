@@ -31,6 +31,14 @@ export type CompilerFaults = {
   readonly sumOrderSwapped: boolean;
   /** The ios lowering drops explicit 0% terms of calculations, so a calculation with only a 0% percentage loses its percentage. */
   readonly dropExplicitZeroPercent: boolean;
+  /** The web output writes a pinned generic as authored instead of its pinned family. */
+  readonly pinnedGenericNotRewritten: boolean;
+  /** The web output omits the @font-face rules of the pinned and declared faces. */
+  readonly fontFaceNotEmitted: boolean;
+  /** The compilation digest leaves out the font manifest. */
+  readonly fontManifestOutOfDigest: boolean;
+  /** A family that is neither declared nor mapped is accepted without a diagnostic. */
+  readonly unmappedFamilyAccepted: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, sumOrderSwapped: false, dropExplicitZeroPercent: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false, sumOrderSwapped: false, dropExplicitZeroPercent: false };

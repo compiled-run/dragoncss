@@ -7,6 +7,9 @@ import { asciiLower, decodeName, serializeString } from './escapes.ts';
 import type { Longhand } from './properties.ts';
 import { foldNumber, mathContextFor, parseMath, V1_MATH_FUNCTIONS } from './math.ts';
 import { CANONICAL_LENGTH_UNIT, lengthFeatureType, normalizeUnit } from './units.ts';
+import { GENERIC_FAMILY_KEYWORDS } from '../fonts/font-face.ts';
+import type { FontMap } from '../fonts/font-map.ts';
+import { familySupport } from '../fonts/wire.ts';
 
 export type CssValue =
   | { readonly kind: 'keyword'; readonly value: string }
@@ -122,10 +125,14 @@ export function baselinePosition(tokens: readonly CssNode[]): CssValue | null {
   return null;
 }
 
-/** A font-family value: one family name, or the whole list kept as text. */
+/**
+ * A font-family value: one family name, or the whole list kept as text. A lone unquoted generic keyword (sans-serif) stays a list,
+ * so it is never written back as the quoted family name "sans-serif", which Chrome reads as a different family.
+ */
 export function familyValue(tokens: readonly CssNode[]): CssValue {
   const text = tokens.map((t) => (t.type === 'String' ? serializeString(String(t['value'])) : generate(t))).join(' ');
-  if (tokens.length === 1 && (tokens[0]?.type === 'Identifier' || tokens[0]?.type === 'String')) {
+  const genericKeyword = tokens[0]?.type === 'Identifier' && (GENERIC_FAMILY_KEYWORDS as readonly string[]).includes(asciiLower(decodeName(String(tokens[0]['name']))));
+  if (tokens.length === 1 && !genericKeyword && (tokens[0]?.type === 'Identifier' || tokens[0]?.type === 'String')) {
     const t = tokens[0];
     return { kind: 'family', value: t.type === 'Identifier' ? decodeName(String(t['name'])) : String(t['value']) };
   }
@@ -174,8 +181,26 @@ export function exactLayoutRatio(width: number, height: number): { readonly widt
   return null;
 }
 
-/** Feature key for the support profile: a keyword, or the value type with its unit. */
-export function featureOf(property: Longhand, v: CssValue): string {
+/** What a font-family feature key is resolved against: the project's font map and the families its @font-face rules declare. */
+export type FamilyKeyContext = { readonly map: FontMap | null; readonly declared: ReadonlySet<string> };
+
+/** The font-family list text of a family or family-list value; null for any other value. */
+export function familyListText(v: CssValue): string | null {
+  if (v.kind === 'family') return serializeString(v.value);
+  return v.kind === 'other' && v.type === 'family-list' ? v.text : null;
+}
+
+/**
+ * Feature key for the support profile: a keyword, or the value type with its unit. With a font context, a font-family value is
+ * keyed by how it resolves (fonts/wire.ts familySupport: pinned, declared, platform or unmapped); the single family Ahem keeps
+ * font-family:Ahem.
+ */
+export function featureOf(property: Longhand, v: CssValue, fonts?: FamilyKeyContext): string {
+  const list = property === 'font-family' && fonts !== undefined ? familyListText(v) : null;
+  if (list !== null && fonts !== undefined) {
+    const support = familySupport(list, fonts.map, fonts.declared);
+    if (support !== null && support.kind === 'resolved') return support.key;
+  }
   switch (v.kind) {
     case 'keyword':
       return `${property}:${v.value}`;
