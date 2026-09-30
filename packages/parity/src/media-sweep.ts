@@ -52,6 +52,7 @@ export function mediaFixtures(): FixtureSpec[] {
   const group = FIXTURE_GROUPS.find((g) => g.id === MEDIA_GROUP);
   if (group === undefined) throw new Error(`fixture group ${MEDIA_GROUP} is not registered`);
   const layout = group.fixtures.filter((f) => f.kind === 'layout');
+  if (layout.length === 0) throw new Error(`fixture group ${MEDIA_GROUP} has no layout fixture to sweep`);
   for (const f of layout) if (f.format !== 'html') throw new Error(`${f.id}: the media sweep reads HTML fixtures only`);
   return layout;
 }
@@ -201,11 +202,13 @@ export function checkRecords(records: readonly SweepRecord[]): string[] {
   const problems: string[] = [];
   const dir = repoPath(EXPECTED_MEDIA_DIR);
   const names = new Set(records.map((r) => recordPath(r)));
+  const missing = (e: unknown): boolean => (e as { code?: unknown }).code === 'ENOENT';
   const committed = (() => {
     try {
       return readdirSync(dir);
-    } catch {
-      return [];
+    } catch (e) {
+      if (missing(e)) return [];
+      throw e;
     }
   })();
   for (const f of committed) if (!names.has(`${dir}/${f}`)) problems.push(`${EXPECTED_MEDIA_DIR}/${f} is committed but no fixture of the media group produced it`);
@@ -213,8 +216,8 @@ export function checkRecords(records: readonly SweepRecord[]): string[] {
     let text: string | null = null;
     try {
       text = readFileSync(recordPath(r), 'utf8');
-    } catch {
-      text = null;
+    } catch (e) {
+      if (!missing(e)) throw e;
     }
     if (text === null) problems.push(`${recordPath(r)} is not committed`);
     else if (text !== recordJson(r)) problems.push(`${recordPath(r)} differs from the sweep`);

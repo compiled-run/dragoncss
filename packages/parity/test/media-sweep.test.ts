@@ -56,6 +56,18 @@ describe('media sweep samples', () => {
   });
 });
 
+describe('media sweep records', () => {
+  it('a record with no committed file, or one that differs from it, is reported', () => {
+    const record: SweepRecord = { fixture: 'media-not-a-fixture', direction: 'ltr', chrome: CHROME_VERSION, bands: [], samples: [], problem: null };
+    expect(checkRecords([record])).toEqual(expect.arrayContaining([expect.stringMatching(/media-not-a-fixture\.json is not committed$/)]));
+    const changed: SweepRecord = { fixture: 'media-max-width', direction: 'ltr', chrome: CHROME_VERSION, bands: [], samples: [], problem: null };
+    expect(checkRecords([changed])).toEqual(expect.arrayContaining([expect.stringMatching(/media-max-width\.json differs from the sweep$/)]));
+  });
+  it('a record without samples does not pass', () => {
+    expect(recordPass({ fixture: 'x', direction: 'ltr', chrome: CHROME_VERSION, bands: [], samples: [], problem: null })).toBe(false);
+  });
+});
+
 describe.sequential('the web band sweep in Chrome', () => {
   let records: SweepRecord[] = [];
   it('every media fixture is equal in Chrome, authored and compiled, at every sample in both directions, and matches the committed records', async () => {
