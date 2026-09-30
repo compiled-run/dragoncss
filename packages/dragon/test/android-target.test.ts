@@ -1,6 +1,6 @@
 // P4 item 8 (notes/T013-p3-review-p4-plan.md section 2): the public android target. minSdk is an integer API level from 31 to 36 (owner decision: Android 12);
-// its output stays analysis-only; with the all-unsupported android profile a declared feature blocks it (fail closed); a config
-// without android keeps every diagnostic, output and digest of the same config before P4.
+// its output stays analysis-only; its profile is derived like iOS's (P6a promotion rule), so a feature without an android row still
+// blocks it (fail closed); a config without android keeps every diagnostic, output and digest of the same config before P4.
 import { describe, expect, it } from 'vitest';
 import { createProject, querySupport } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS, nativeLayoutProjection } from '../src/internal.ts';
@@ -41,17 +41,22 @@ describe('the android output', () => {
     if (c.outputs.android.kind === 'analysis-only') expect(c.outputs.android.reason).toMatch(/Android output is analysis-only/);
     expect(nativeLayoutProjection(c, ENV, []).kind).toBe('ready');
   });
-  it('.a { width: 50px } on android is blocked with DRAGON_UNSUPPORTED_VALUE (the all-unsupported profile fails closed)', () => {
+  it('.a { width: 50px } on android compiles analysis-only: its row is derived from the parity lanes like the iOS row (P6a)', () => {
     const c = createProject({ projectId: 'test', targets: { android: { minSdk: 31 } } }).compile(inputFor('.a { width: 50px }', (r) => [div(r, 'a', ['a'])]));
+    expect(c.targets.android).toBe('checked');
+    expect(c.outputs.android.kind).toBe('analysis-only');
+  });
+  it('a value without an android row blocks android with DRAGON_UNSUPPORTED_VALUE (fail closed)', () => {
+    const c = createProject({ projectId: 'test', targets: { android: { minSdk: 31 } } }).compile(inputFor('.a { border-top-style: groove }', (r) => [div(r, 'a', ['a'])]));
     expect(c.targets.android).toBe('blocked');
     if (c.outputs.android.kind !== 'blocked') throw new Error(c.outputs.android.kind);
     expect(c.outputs.android.diagnostics.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android']]);
-    expect(c.outputs.android.diagnostics[0]?.profile).toMatchObject({ target: 'android', feature: 'width:<length-px>', status: 'unsupported' });
+    expect(c.outputs.android.diagnostics[0]?.profile).toMatchObject({ target: 'android', feature: 'border-top-style:groove', status: 'unsupported' });
   });
-  it('with ios and android the same declaration is proven on ios and blocks only android', () => {
+  it('with ios and android the same proven declaration leaves both outputs analysis-only', () => {
     const c = createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }).compile(inputFor('.a { width: 50px }', (r) => [div(r, 'a', ['a'])]));
     expect(c.outputs.ios.kind).toBe('analysis-only');
-    expect(c.outputs.android.kind).toBe('blocked');
+    expect(c.outputs.android.kind).toBe('analysis-only');
   });
   it('font and lowering diagnostics are reported for every configured native target', () => {
     const css = 'body { font-family: serif; }';
@@ -72,14 +77,15 @@ describe('the android output', () => {
 });
 
 describe('querySupport with the android normalized target', () => {
-  it('possibilities accept { kind: "android", minSdk } and answer from the all-unsupported profile', () => {
-    expect(querySupport({ kind: 'possibilities', target: { kind: 'android', minSdk: 31 }, css: 'width: 1px' })).toMatchObject({ kind: 'unsupported', declaration: 'width: 1px' });
+  it('possibilities accept { kind: "android", minSdk } and answer from the derived android profile', () => {
+    expect(querySupport({ kind: 'possibilities', target: { kind: 'android', minSdk: 31 }, css: 'width: 1px' })).toMatchObject({ kind: 'needs-context', declaration: 'width: 1px' });
+    expect(querySupport({ kind: 'possibilities', target: { kind: 'android', minSdk: 31 }, css: 'border-top-style: groove' })).toMatchObject({ kind: 'unsupported', declaration: 'border-top-style: groove' });
     for (const bad of [{ kind: 'android' }, { kind: 'android', minSdk: 28 }, { kind: 'android', minSdk: 31.5 }, { kind: 'android', minSdk: 31, x: 1 }]) {
       expect(querySupport({ kind: 'possibilities', target: bad as never, css: 'width: 1px' }).kind).toBe('invalid-query');
     }
   });
   it('a resolved query on a compiled android result reads the android profile', () => {
     const c = createProjectWith({ projectId: 'test', targets: { android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor('.a { width: 50px }', (r) => [div(r, 'a', ['a'])]));
-    expect(querySupport({ kind: 'resolved', result: c, target: 'android', node: 'a', instance: 'doc', assignment: [], property: 'width' })).toMatchObject({ kind: 'decided', cases: [{ decision: null }] });
+    expect(querySupport({ kind: 'resolved', result: c, target: 'android', node: 'a', instance: 'doc', assignment: [], property: 'width' })).toMatchObject({ kind: 'decided', cases: [{ decision: { feature: 'width:<length-px>', context: 'block/ltr' } }] });
   });
 });

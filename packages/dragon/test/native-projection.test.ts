@@ -1,5 +1,5 @@
 // P3 (notes/T009-p2b-review-p3-plan.md items 8 and 9): one native layout projection shared by every native target, and the
-// android support profile, which holds the iOS row keys, every row unsupported with no proofs, and is not a configured target.
+// android support profile, which holds the iOS row keys and proofs, its statuses derived from the android device lanes (P6a).
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,10 +19,10 @@ describe('android support profile', () => {
     expect(androidProfile.rows.map(key)).toEqual(iosProfile.rows.map(key));
     expect(new Set(androidProfile.rows.map(key)).size).toBe(androidProfile.rows.length);
   });
-  it('has 0 rows with a status other than unsupported, and every row has proofs []', () => {
+  it('has the iOS row proofs, and every row is exact or caveat by the android device lanes (P6a promotion rule)', () => {
     expect(androidProfile.rows.length).toBeGreaterThan(0);
-    expect(androidProfile.rows.filter((r) => r.status !== 'unsupported')).toEqual([]);
-    expect(androidProfile.rows.filter((r) => r.proofs.length > 0)).toEqual([]);
+    expect(androidProfile.rows.map((r) => r.proofs)).toEqual(iosProfile.rows.map((r) => r.proofs));
+    expect(androidProfile.rows.filter((r) => r.status !== 'exact' && r.status !== 'caveat')).toEqual([]);
   });
   it('is a configured target with androidProfile: COMMITTED_PROFILES holds web, ios and android, and android.ts is generated', () => {
     expect(Object.keys(COMMITTED_PROFILES).sort()).toEqual(['android', 'ios', 'web']);
