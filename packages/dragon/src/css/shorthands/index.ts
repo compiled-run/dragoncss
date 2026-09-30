@@ -10,6 +10,7 @@ import { LOGICAL_SHORTHANDS } from './logical.ts';
 import { OVERFLOW_SHORTHANDS } from './overflow.ts';
 import type { ShorthandHandler } from './shared.ts';
 import { TEXT_SHORTHANDS } from './text.ts';
+import { WRITING_MODE_SHORTHANDS } from './writing-mode.ts';
 
 export type { ShorthandHandler } from './shared.ts';
 
@@ -21,6 +22,7 @@ export const SHORTHAND_HANDLERS: { readonly [S in Shorthand]: ShorthandHandler }
   ...TEXT_SHORTHANDS,
   ...LOGICAL_SHORTHANDS,
   ...BACKGROUND_SHORTHANDS,
+  ...WRITING_MODE_SHORTHANDS,
 
   ...GRID_SHORTHANDS,
 };
