@@ -9,6 +9,7 @@ import { FONTS } from './fixture-groups/fonts.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
+import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
@@ -79,6 +80,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'showcase', fixtures: SHOWCASE },
   { id: 'phrasing-blockified', fixtures: PHRASING_BLOCKIFIED },
   { id: 'fonts', fixtures: FONTS },
+  { id: 'media', fixtures: MEDIA },
   { id: 'values', fixtures: VALUES },
 ];
 

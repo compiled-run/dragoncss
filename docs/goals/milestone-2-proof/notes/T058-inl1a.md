@@ -49,3 +49,22 @@ Added stop_if conditions:
   - The translated harness does not call validateLayoutInput. validate.ts is TS-only, and every corpus line is validated when it is generated.
   - The flex-strut double error: both errors are true.
   - corpus.ts's random corpus has no inline items. The engine-inline suite in corpus-dpr.ts covers inline boxes, `<br>`s and plants.
+
+## Second Judge amendment (T058J2, 2026-09-30), PM accepted
+
+The first compiler WIP stopped on stop_if. It needed resolve.ts, blockify.ts and blockify.test.ts, and the engine-inline corpus needed S16 targets.ts and lanes.ts. The Judge approved them, limited as follows:
+
+- (A) resolve.ts: only the new collapseInlineContext and isInlineBox, and resolveTree's pendingInline, gather and place changes. With no inline box and no `<br>`, collapseInlineContext must equal collapseInlineRun (tested over every existing text run plus a generated set).
+- (B) blockify.ts: only checkInlineLevel's lift for display: inline, with its doc comment and message.
+- (C) Retarget blockify.test.ts. The refusal pin proves atomic inlines are still refused and a span in a block container is accepted. The blockifySkipped pin fails through lowered input, not a displayOf difference.
+- (D) phrasing-blockified.test.ts: the blockifySkipped pin still fails both cases in both directions, now on a named lane or node.
+- (E) 8f21790db's dropInheritedText retarget is accepted with added asserts: the reason names the w1 text leaf and leaf-font, chrome-dual passes if it ran, and the unfaulted run passes.
+- (F) Deviation 58b7f005c is accepted: callers use buildIfc then placeIfcLines. placeLines stays exactly placeIfcLines(buildIfc(...)), and a test proves them equal on the engine-inline and break-vector inputs.
+- (G) targets.ts: one appended engine-inline extendedSuites entry, plus its ExtendedManifest field, only after T058L merges.
+- (H) Delete scratch-cap.ts and scratch-inline.ts.
+- An inline box whose white-space-collapse is not collapse is refused with a typed code.
+- Stop if any existing fixture's resolved text, capture, vector output or emitted body changes, or if the lift lets through a tag or context INL1a does not support.
+
+T058L (board T125) is a separate PR from master that lands first. lanes.ts SUITE_LINE is a closed list, so judgeHost drops an unknown suite without counting it. The fix matches any suite-shaped line, and master's lanes.json must stay byte-identical.
+
+The full worker_package (allowed_files, verify, stop_if) is in the T058J2 receipt, which is copied into T058's constraints on the board.
