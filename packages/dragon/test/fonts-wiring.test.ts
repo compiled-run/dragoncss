@@ -220,8 +220,38 @@ describe('@font-face rules', () => {
     // Only A-Z fold: U+0130 is not i, so this is not font-display.
     expect(face('@font-face { font-family: F; src: url(fonts/Inter-Regular.ttf); font-d\u0130splay: swap }')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
   });
+  it('a family inside an unsupported at-rule is checked in the scratch pass: an unmapped one is a related entry of the at-rule error', () => {
+    const c = compileWith(fontInput('@media (min-width: 1px) { .a { font-family: Nope } }'), MAP);
+    expect(codes(c)).toEqual(['DRAGON_UNSUPPORTED_AT_RULE']);
+    expect(c.diagnostics[0]?.related.map((r) => r.message.split(':')[0])).toEqual(['DRAGON_FONT_UNMAPPED_FAMILY']);
+  });
   it('an @font-face nested in a rule or inside another at-rule keeps the milestone-1 refusal', () => {
     expect(faceCodes('.a { @font-face { font-family: F; src: url(x.ttf) } }')).toEqual(['DRAGON_UNSUPPORTED_AT_RULE']);
+  });
+});
+
+describe('Ahem, the milestone font, is never shadowed', () => {
+  const ALL = { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 31 } };
+  const face = (family: string): string => `@font-face { font-family: ${family}; src: url(fonts/Inter-Regular.ttf) }`;
+  const at = (css: string, fonts: FontMap | undefined = MAP) => compileWith(fontInput(css, { urls: ['fonts/Inter-Regular.ttf'] }), fonts, {}, ALL);
+  const states = (c: Compiled<Web>) => c.targets as Record<string, string>;
+  it('the built-in Ahem compiles on web, ios and android', () => {
+    expect(states(at('.a { font-family: Ahem }'))).toEqual({ web: 'checked', ios: 'checked', android: 'checked' });
+  });
+  it('text in an authored @font-face family named Ahem (in any case) keeps web and blocks ios and android, which draw the bundled Ahem', () => {
+    for (const name of ['Ahem', '"AHEM"']) {
+      const c = at(`${face(name)} .a { font-family: Ahem }`);
+      expect(states(c), name).toEqual({ web: 'checked', ios: 'blocked', android: 'blocked' });
+      expect(c.diagnostics.map((d) => [d.code, d.target]), name).toEqual([['DRAGON_UNSUPPORTED_FONT', 'ios'], ['DRAGON_UNSUPPORTED_FONT', 'android']]);
+      expect(webFeatures(c), name).toEqual(['font-family:<declared>@text-in-block/ltr']);
+    }
+  });
+  it('a font map entry cannot map or pin a family named Ahem', () => {
+    const fam = (families: NonNullable<FontMap['families']>) => at('.a { font-family: Ahem }', { ...MAP, families });
+    const pinned = { mode: 'pinned' as const, family: 'X', faces: [{ src: 'fonts/Inter-Regular.ttf' }] };
+    expect(codes(fam({ ahem: pinned }))).toEqual(['DRAGON_FONT_MAP_INVALID']);
+    expect(codes(fam({ Ahem: { mode: 'platform' } }))).toEqual(['DRAGON_FONT_MAP_INVALID']);
+    expect(codes(fam({ Lato: { ...pinned, family: 'AHEM' } }))).toEqual(['DRAGON_FONT_MAP_INVALID']);
   });
 });
 

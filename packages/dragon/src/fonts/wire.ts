@@ -162,7 +162,9 @@ export function familySupport(listText: string, map: FontMap | null, declared: R
   const list = parseFamilyList(listText);
   if (list === null) return { kind: 'invalid' };
   const only = list[0];
-  if (list.length === 1 && only?.kind === 'family' && foldFamily(only.name) === foldFamily('Ahem')) return null;
+  // The bundled milestone font keeps font-family:Ahem, unless an @font-face declares Ahem, which then names the authored face.
+  const ahemDeclared = [...declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
+  if (list.length === 1 && only?.kind === 'family' && foldFamily(only.name) === foldFamily('Ahem') && !ahemDeclared) return null;
   const { resolutions } = rewriteFamilyList(list, map ?? { generics: {} }, declared);
   const worst = KEY_RANK.find((k) => resolutions.some((r) => r.kind === k)) ?? 'unmapped-family';
   return { kind: 'resolved', list, resolutions, key: KEY_OF[worst] };

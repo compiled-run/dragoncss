@@ -63,6 +63,11 @@ export function validateFontMap(raw: unknown): { readonly ok: true; readonly map
       errors.push({ kind: 'invalid-entry', key, reason: 'a pinned entry needs at least one face' });
       return;
     }
+    // Ahem is the milestone font, bundled on every target (decisions.md): no entry may pin another face under its name.
+    if (foldFamily(family) === foldFamily('Ahem')) {
+      errors.push({ kind: 'invalid-entry', key, reason: 'the family Ahem is the bundled milestone font; pin another family name' });
+      return;
+    }
     pinnedBy.set(family, [...(pinnedBy.get(family) ?? []), key]);
     for (const f of faces) {
       if (!isObj(f) || typeof f['src'] !== 'string' || Object.keys(f).some((k) => !['src', 'weight', 'style', 'stretch', 'unicodeRange'].includes(k))) {
@@ -80,7 +85,10 @@ export function validateFontMap(raw: unknown): { readonly ok: true; readonly map
     if (!(GENERIC_KEYS as readonly string[]).includes(key)) errors.push({ kind: 'unknown-generic', key });
     else check(key, e);
   }
-  for (const [key, e] of Object.entries((raw['families'] ?? {}) as Record<string, unknown>)) check(key, e);
+  for (const [key, e] of Object.entries((raw['families'] ?? {}) as Record<string, unknown>)) {
+    if (foldFamily(key) === foldFamily('Ahem')) errors.push({ kind: 'invalid-entry', key, reason: 'Ahem is the bundled milestone font and is never mapped' });
+    else check(key, e);
+  }
   // Two keys may share a pinned family only if they pin the same faces; otherwise the rewritten web CSS would be ambiguous.
   for (const [family, keys] of pinnedBy) {
     if (keys.length < 2) continue;

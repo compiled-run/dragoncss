@@ -25,7 +25,7 @@ import { familyListText } from './css/values.ts';
 import type { DeclaredFace, FontFaceIssue } from './fonts/font-face.ts';
 import { GENERIC_KEYS, validateFontMap } from './fonts/font-map.ts';
 import type { EntryResolution, FontMapError } from './fonts/font-map.ts';
-import { selectionRequest } from './fonts/selection.ts';
+import { foldFamily, selectionRequest } from './fonts/selection.ts';
 import { fenceVariableInstance } from './fonts/variable-fence.ts';
 import type { VariableFontRefusal } from './fonts/variable-fence.ts';
 import { collectFontFaces, familySupport, pinnedFacesOf, projectFonts, renderedFaces, webFontOutput } from './fonts/wire.ts';
@@ -312,7 +312,7 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
 }
 
 /** The lowering's font refusal, reported for every laid-out text node of every case, whether or not another error blocks ios. */
-function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>, target: 'ios' | 'android'): void {
+function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>, target: 'ios' | 'android', ahemDeclared: boolean): void {
   const walk = (el: ResolvedElement): void => {
     const display = (el.props.get('display') as ResolvedValue).value;
     if (display.kind === 'keyword' && display.value === 'none') return;
@@ -321,7 +321,8 @@ function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: 
         walk(c);
         continue;
       }
-      const message = textFontProblem(c);
+      // Native draws its bundled Ahem, so an @font-face that declares Ahem for web would make the targets disagree: it blocks native.
+      const message = textFontProblem(c) ?? (ahemDeclared ? `font-family Ahem on ${c.node.address} names the family an @font-face rule declares, while ${target} draws the bundled Ahem` : null);
       if (message === null) continue;
       const id = `${target}|${c.node.address}|font-family|${message}`;
       if (reported.has(id)) continue;
@@ -531,7 +532,8 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   for (const c of linked.cases) {
     const resolved = resolveTree(c.root, rules, options.faults, { direction: options.direction, rootFont: options.rootFont, ua: options.ua });
     checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys);
-    for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t);
+    const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
+    for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);
     const used = usedKeys(resolved, keys);
     out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used });
@@ -672,6 +674,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (enclosed.length > 0) {
         const scratch: Diagnostic[] = [];
         const unwrapped = enclosed.flatMap((e) => e.rules);
+        checkFamilies(unwrapped, keys, options.faults, scratch);
         const scratchCases = checkCases(linked, [...rules, ...unwrapped], targets, options, scratch, fonts);
         if (options.profiles === 'enforce') checkValues(unwrapped, targets, profiles, scratchCases.flatMap((c) => c.used), scratch, keys);
         for (const e of enclosed) {
