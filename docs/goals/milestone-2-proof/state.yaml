@@ -2105,6 +2105,7 @@ tasks:
         compare.ts anonymousBoxes if needed); the INL1a-1 split is not used. Stack and state: notes/T058-inl1a.md. Landing waits on pr/v1b-compiler-values and v2a-value-model.'
       - 'Second Judge amendment 2026-09-30 (T058J2): resolve.ts collapseInlineContext, blockify.ts checkInlineLevel lift, three pin retargets, buildIfc+placeIfcLines deviation accepted, targets.ts engine-inline
         entry only after T125 (T058L) merges; see notes/T058-inl1a.md.'
+      - 'Third Judge amendment (T058J3): rulings A-G in notes/T058-inl1a.md. Element dump lines are 0/0 on device. F (singleRunBaseline plant) and G (targets.ts) come after #42.'
   - id: T059
     type: worker
     assignee: Worker
@@ -3536,7 +3537,7 @@ tasks:
   - id: T125
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: device
     objective: 'T058L: parseNativeOutput stops dropping suite lines. lanes.ts SUITE_LINE is a closed list, so judgeHost never sees an unknown suite and the host lane passes without counting it. Match any
       suite-shaped line (keep the '' corpus'' strip) so ''is not a declared suite'' fires.'
@@ -3551,7 +3552,19 @@ tasks:
       - any master output line newly matches
       - lanes.json changes
       - another file is needed
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'lanes-suite-line 94bd2b293: SUITE_LINE matches any suite-shaped line, so judgeHost fails an undeclared suite. Master output parses to the same 13 suites before and after; +2 tests; lanes.json
+        laneCode stamp only. Ships inside PR #42.'
+      changed_files:
+        - packages/parity/src/lanes.ts
+        - packages/parity/test/lanes.test.ts
+      commands:
+        - cmd: pnpm test (lanes, lanes-records, device-failures 34/34 after device commit)
+          status: pass
+        - cmd: parity:lanes --run-host (same suites as master)
+          status: pass
   - id: T126
     type: worker
     assignee: Worker
@@ -3607,6 +3620,14 @@ tasks:
     objective: 'Silent lane failure: under machine load, layout-vectors-host native:kotlin (and the Kotlin engine suite in pnpm test) intermittently reports p1/engine 0/20258 with no reason (seen on WM-0
       and T123, 2026-09-30); rerun passes. Find the cause (JVM start or timeout, harness.jar I/O, killed process) and make the lane record the real error (exit code, signal, stderr tail) instead of 0/N,
       with a test. Also: the dragon-320 emulator sometimes exits before it attaches (lane-speed run); record and surface the emulator log.'
+    receipt: null
+  - id: T133
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL1a-tags: accept b, strong, em and i on web, and on native per R7 (notes/T044-inl-spec.md), with their UA values via resolve.ts and datasets.ts. After T058, before TXT1a. small and code
+      are recorded as still refused.'
     receipt: null
   - id: T999
     type: judge
