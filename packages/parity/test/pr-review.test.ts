@@ -3,6 +3,10 @@ import {
   type CheckRun,
   correctnessSucceeded,
   type Earlier,
+  outcome,
+  settled,
+  verdictOf,
+  type Vouch,
   parseCheckRunPages,
   parsePatchId,
   parsePrCommits,
@@ -113,5 +117,45 @@ describe('pr-review input checks', () => {
     expect(parseReviewCommentPages([[comment]])).toEqual([comment]);
     expect(() => parseReviewCommentPages([[{ ...comment, id: '1' }]])).toThrow();
     expect(() => parseReviewCommentPages([[{ ...comment, in_reply_to_id: 'x' }]])).toThrow();
+  });
+});
+
+describe('pr-review wait loop and verdict', () => {
+  const ci = (conclusion: string | null): CheckRun => run(conclusion, null, 'checks');
+  const vouches = (v: Vouch): Map<string, Vouch> => new Map([[skipped.html_url, v]]);
+  const ok = vouches({ ok: true, sha: sha('b'), patchId: PATCH });
+  const no = vouches({ ok: false, reason: 'no earlier commit of this PR has a successful correctness check' });
+
+  it('keeps waiting on a vouched skip while CI is pending', () => {
+    const runs = [ci(null), skipped];
+    expect(verdictOf(skipped, ok)).toBe('passed');
+    expect(settled(runs, ok)).toBe(false);
+    expect(outcome(runs, ok)).toEqual({ pending: ['checks'], failed: [] });
+  });
+
+  it('passes a vouched skip once CI is green', () => {
+    const runs = [ci('success'), skipped];
+    expect(settled(runs, ok)).toBe(true);
+    expect(outcome(runs, ok)).toEqual({ pending: [], failed: [] });
+  });
+
+  it('fails an unvouched skip, and a skip nobody judged', () => {
+    for (const v of [no, new Map<string, Vouch>()]) {
+      expect(verdictOf(skipped, v)).toBe('failed');
+      expect(settled([ci(null), skipped], v)).toBe(true);
+      expect(outcome([ci('success'), skipped], v)).toEqual({ pending: [], failed: [skipped.name] });
+    }
+  });
+
+  it('ends the wait on a genuine failure', () => {
+    const runs = [ci('failure'), run(null, null)];
+    expect(settled(runs, ok)).toBe(true);
+    expect(outcome(runs, ok)).toEqual({ pending: [run(null, null).name], failed: ['checks'] });
+  });
+
+  it('keeps waiting until the correctness check exists, and reports it as not started', () => {
+    expect(settled([ci('success')], ok)).toBe(false);
+    expect(settled([], ok)).toBe(false);
+    expect(outcome([ci('success')], ok)).toEqual({ pending: ['Macroscope - Correctness Check'], failed: [] });
   });
 });

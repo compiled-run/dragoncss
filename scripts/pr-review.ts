@@ -8,11 +8,13 @@ import {
   correctnessSucceeded,
   type Earlier,
   isDiffUnchangedSkip,
+  outcome,
   parseCheckRunPages,
   parsePatchId,
   parsePrCommits,
   parseReviewCommentPages,
   type PatchId,
+  settled,
   type Vouch,
   vouchForDiffUnchanged,
 } from './pr-review-vouch.ts';
@@ -29,11 +31,6 @@ const gh = (args: string[], attempt = 1): string => {
 };
 const ghJson = (path: string): unknown => JSON.parse(gh(['api', '--paginate', '--slurp', path]));
 const isMacroscope = (login: string): boolean => login.toLowerCase().includes('macroscope');
-// A skipped correctness review (for example over the per-review cost limit) is no review, so it never counts as passed,
-// except a "Diff unchanged" skip that vouchForDiffUnchanged ties to an earlier reviewed commit with the same patch id.
-const vouched = new Set<CheckRun>();
-const passed = (run: CheckRun): boolean =>
-  run.name === CORRECTNESS ? run.conclusion === 'success' || vouched.has(run) : ['success', 'neutral', 'skipped'].includes(run.conclusion ?? '');
 
 const args = process.argv.slice(2);
 const wait = args.includes('--wait');
@@ -89,27 +86,33 @@ const vouchFor = (run: CheckRun, head: string): Vouch => {
   return vouchForDiffUnchanged(run, patchIdOf(head, baseRef), earlier);
 };
 
-// Macroscope's correctness review starts only after CI passes, so a green CI alone is not "done"; a failed check ends the wait.
-const settled = (rs: CheckRun[]): boolean =>
-  rs.some((r) => r.status === 'completed' && !passed(r)) ||
-  (rs.length > 0 && rs.every((r) => r.status === 'completed') && rs.some((r) => r.name === CORRECTNESS));
+// A skipped correctness review (for example over the per-review cost limit) is no review, so it never counts as passed,
+// except a "Diff unchanged" skip that vouchForDiffUnchanged ties to an earlier reviewed commit with the same patch id.
+// Vouches are judged on every poll, before settled(), so the wait loop and the final verdict read the same verdictOf.
+const vouches = new Map<string, Vouch>();
+const judge = (rs: CheckRun[]): Map<string, Vouch> => {
+  for (const run of rs.filter(isDiffUnchangedSkip)) {
+    const key = run.html_url;
+    if (!vouches.has(key)) vouches.set(key, vouchFor(run, sha));
+  }
+  return vouches;
+};
 
 let runs = checkRuns();
 const deadline = Date.now() + 45 * 60_000;
-while (wait && !settled(runs) && Date.now() < deadline) {
+while (wait && !settled(runs, judge(runs)) && Date.now() < deadline) {
   await new Promise((resolve) => setTimeout(resolve, 30_000));
   runs = checkRuns();
 }
+judge(runs);
 
 console.log(`PR #${pr} at ${sha}\n\nChecks:`);
 for (const run of runs) console.log(`  ${run.status === 'completed' ? run.conclusion : run.status}\t${run.name}\t${run.html_url}${run.output?.title ? `\t(${run.output.title})` : ''}`);
 
 for (const run of runs.filter(isDiffUnchangedSkip)) {
-  const vouch = vouchFor(run, sha);
-  if (vouch.ok) {
-    vouched.add(run);
-    console.log(`\n${CORRECTNESS} skipped as diff unchanged: earlier commit ${vouch.sha} passed it with the same patch id ${vouch.patchId}`);
-  } else console.log(`\n${CORRECTNESS} skipped as diff unchanged, not vouched for: ${vouch.reason}`);
+  const vouch = vouches.get(run.html_url);
+  if (vouch?.ok) console.log(`\n${CORRECTNESS} skipped as diff unchanged: earlier commit ${vouch.sha} passed it with the same patch id ${vouch.patchId}`);
+  else console.log(`\n${CORRECTNESS} skipped as diff unchanged, not vouched for: ${vouch?.reason ?? 'not judged'}`);
 }
 
 // Macroscope reports findings as inline review comments; a finding is answered once anyone else replies in its thread.
@@ -120,9 +123,7 @@ const open = comments.filter((c) => c.in_reply_to_id === undefined && isMacrosco
 console.log(`\nUnanswered Macroscope findings: ${open.length}`);
 for (const c of open) console.log(`\n--- ${c.path}:${c.line ?? '?'} (comment ${c.id})\n${c.html_url}\n${c.body.trim()}`);
 
-const pending = runs.filter((r) => r.status !== 'completed');
-if (!runs.some((r) => r.name === CORRECTNESS)) pending.push({ name: CORRECTNESS, status: 'not started', conclusion: null, html_url: '' });
-const failed = runs.filter((r) => r.status === 'completed' && !passed(r));
-if (pending.length > 0) console.log(`\nStill running: ${pending.map((r) => r.name).join(', ')}`);
-if (failed.length > 0) console.log(`\nFailed: ${failed.map((r) => r.name).join(', ')}`);
+const { pending, failed } = outcome(runs, vouches);
+if (pending.length > 0) console.log(`\nStill running: ${pending.join(', ')}`);
+if (failed.length > 0) console.log(`\nFailed: ${failed.join(', ')}`);
 process.exit(pending.length + failed.length + open.length > 0 ? 1 : 0);

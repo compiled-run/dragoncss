@@ -118,3 +118,22 @@ export const vouchForDiffUnchanged = (run: CheckRun, head: PatchId, earlier: Ear
   }
   return { ok: false, reason: `head patch id ${head.id} matches no reviewed earlier commit (${seen.join(', ')})` };
 };
+
+// The one verdict every path of pr-review.ts uses. `vouches` maps a "Diff unchanged" run's html_url to its vouch.
+export type Verdict = 'pending' | 'passed' | 'failed';
+export const verdictOf = (run: CheckRun, vouches: ReadonlyMap<string, Vouch>): Verdict => {
+  if (run.status !== 'completed') return 'pending';
+  if (run.name === CORRECTNESS) return run.conclusion === 'success' || vouches.get(run.html_url)?.ok === true ? 'passed' : 'failed';
+  return ['success', 'neutral', 'skipped'].includes(run.conclusion ?? '') ? 'passed' : 'failed';
+};
+
+// Macroscope's correctness review starts only after CI passes, so a green CI alone is not "done"; a failed check ends the wait.
+export const settled = (runs: CheckRun[], vouches: ReadonlyMap<string, Vouch>): boolean =>
+  runs.some((r) => verdictOf(r, vouches) === 'failed') ||
+  (runs.length > 0 && runs.every((r) => verdictOf(r, vouches) !== 'pending') && runs.some((r) => r.name === CORRECTNESS));
+
+export const outcome = (runs: CheckRun[], vouches: ReadonlyMap<string, Vouch>): { pending: string[]; failed: string[] } => {
+  const pending = runs.filter((r) => verdictOf(r, vouches) === 'pending').map((r) => r.name);
+  if (!runs.some((r) => r.name === CORRECTNESS)) pending.push(CORRECTNESS);
+  return { pending, failed: runs.filter((r) => verdictOf(r, vouches) === 'failed').map((r) => r.name) };
+};
