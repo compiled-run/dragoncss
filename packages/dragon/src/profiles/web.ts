@@ -4,7 +4,7 @@ import type { SupportProfile } from './types.ts';
 
 export const webProfile: SupportProfile = {
   target: "web",
-  revision: "m1-s5",
+  revision: "m2-p6a",
   rows: [
     { feature: "align-content:center", context: "flex-column-multi-line/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "chrome-dual", valueSubset: "center", context: "flex-column-multi-line/ltr", cases: ["flex-wrap-reverse"] }, { aspect: "computed-value", lane: "chrome-dual", valueSubset: "center", context: "flex-column-multi-line/ltr", cases: ["flex-wrap-reverse"] }] },
     { feature: "align-content:center", context: "flex-row-multi-line/ltr", status: "exact", proofs: [{ aspect: "layout", lane: "chrome-dual", valueSubset: "center", context: "flex-row-multi-line/ltr", cases: ["flex-wrap-gap-align-content", "flex-align-content-odd", "flex-distribution-grid", "flex-wrap-reverse", "flex-abspos-wrap-reverse"] }, { aspect: "computed-value", lane: "chrome-dual", valueSubset: "center", context: "flex-row-multi-line/ltr", cases: ["flex-wrap-gap-align-content", "flex-align-content-odd", "flex-distribution-grid", "flex-wrap-reverse", "flex-abspos-wrap-reverse"] }] },
