@@ -168,21 +168,21 @@ const geometry = (o: Partial<LayerGeometry>): LayerGeometry => ({ sizeKind: 'len
 
 describe('background tile geometry (background_image_geometry.cc)', () => {
   it('draws an auto-sized layer as one tile the size of the snapped positioning area', () => {
-    const p = layerPlacement(box({ x: 20480, y: 1331, width: 12857, height: 5158 }), geometry({}), 2);
+    const p = layerPlacement(box({ x: 20480, y: 1331, width: 12857, height: 5158 }), geometry({}), 2, true);
     expect([p.tileWidth, p.tileHeight, p.destX, p.destY, p.destWidth, p.destHeight, p.srcX, p.srcY, p.singleTile]).toEqual([12864, 5120, 20480, 1344, 12864, 5120, 0, 0, true]);
   });
   it('tiles a repeating layer whose clip box is larger than its origin box', () => {
     const b = box({ borders: [384, 384, 384, 384] });
-    expect(layerPlacement(b, geometry({}), 2).singleTile).toBe(false);
-    expect(layerPlacement(b, geometry({ clip: 'padding-box' }), 2).singleTile).toBe(true);
-    expect(layerPlacement(b, geometry({ origin: 'border-box' }), 2).singleTile).toBe(true);
+    expect(layerPlacement(b, geometry({}), 2, true).singleTile).toBe(false);
+    expect(layerPlacement(b, geometry({ clip: 'padding-box' }), 2, true).singleTile).toBe(true);
+    expect(layerPlacement(b, geometry({ origin: 'border-box' }), 2, true).singleTile).toBe(true);
   });
   it('tiles a repeating layer smaller than its area or shifted by a position, and never a no-repeat layer', () => {
     const small = geometry({ sizeX: { unit: 'px', value: 40 } });
-    expect(layerPlacement(box({}), small, 2).singleTile).toBe(false);
-    expect(layerPlacement(box({}), { ...small, repeatX: 'no-repeat' }, 2).singleTile).toBe(true);
-    expect(layerPlacement(box({ width: 12857 }), geometry({ positionX: { unit: 'percent', value: 50 } }), 2).singleTile).toBe(false);
-    const p = layerPlacement(box({}), geometry({ repeatX: 'no-repeat', repeatY: 'no-repeat', positionX: { unit: 'px', value: 20 }, positionY: { unit: 'percent', value: 100 }, sizeX: { unit: 'percent', value: 60 }, sizeY: { unit: 'px', value: 25 } }), 2);
+    expect(layerPlacement(box({}), small, 2, true).singleTile).toBe(false);
+    expect(layerPlacement(box({}), { ...small, repeatX: 'no-repeat' }, 2, true).singleTile).toBe(true);
+    expect(layerPlacement(box({ width: 12857 }), geometry({ positionX: { unit: 'percent', value: 50 } }), 2, true).singleTile).toBe(false);
+    const p = layerPlacement(box({}), geometry({ repeatX: 'no-repeat', repeatY: 'no-repeat', positionX: { unit: 'px', value: 20 }, positionY: { unit: 'percent', value: 100 }, sizeX: { unit: 'percent', value: 60 }, sizeY: { unit: 'px', value: 25 } }), 2, true);
     expect([p.destX, p.destY, p.destWidth, p.destHeight, p.singleTile]).toEqual([2560, 0, 3840, 3200, true]);
   });
 });

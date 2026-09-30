@@ -844,7 +844,7 @@ function gradNumbers(v: JsonValue, n: number, path: string): number[] {
 }
 
 function gradPaint(v: JsonValue, path: string): BackgroundPaint {
-  const o = obj(v, ['box', 'color', 'layers', 'zoom', 'tileSize'], path);
+  const o = obj(v, ['box', 'color', 'colorClip', 'layers', 'lastIsBottom', 'zoom', 'tileSize'], path);
   const b = obj(field(o, 'box', path), ['x', 'y', 'width', 'height', 'borders', 'padding', 'obscures'], `${path}.box`);
   const obscures: boolean[] = [];
   arr(field(b, 'obscures', path), `${path}.box.obscures`).forEach((x, i) => {
@@ -859,7 +859,9 @@ function gradPaint(v: JsonValue, path: string): BackgroundPaint {
   return {
     box: { x: numField(b, 'x', path), y: numField(b, 'y', path), width: numField(b, 'width', path), height: numField(b, 'height', path), borders: gradNumbers(field(b, 'borders', path), 4, `${path}.box.borders`), padding: gradNumbers(field(b, 'padding', path), 4, `${path}.box.padding`), obscures },
     color: gradColor(field(o, 'color', path), `${path}.color`),
+    colorClip: lit(field(o, 'colorClip', path), BOXES, `${path}.colorClip`) as BoxKeyword,
     layers,
+    lastIsBottom: bool(field(o, 'lastIsBottom', path), `${path}.lastIsBottom`),
     zoom: numField(o, 'zoom', path),
     tileSize: numField(o, 'tileSize', path),
   };

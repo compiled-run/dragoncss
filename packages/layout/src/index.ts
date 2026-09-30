@@ -37,3 +37,5 @@ export { dprPlatformRules } from './platform-rules.ts';
 export type { CalcClamp, CalcExpr, CalcInvert, CalcMax, CalcMin, CalcProduct, CalcSum, EmLength, LengthCalc, PixelsAndPercent, ViewportLength } from './input.ts';
 export { applyEnvironment } from './environment.ts';
 export type { BoxShape } from './paint.ts';
+export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';
+export { backgroundPixelExact, backgroundRow, gradientFaults, NO_GRADIENT_FAULTS, planBackground, referenceTileSize } from './paint-gradient.ts';

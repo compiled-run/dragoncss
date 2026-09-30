@@ -679,6 +679,10 @@ export type GradientShader = {
   readonly stages: readonly StopStage[];
   readonly ts: readonly number[];
   readonly opaque: boolean;
+  /** SkConicalGradient's concentric case (a radial gradient whose start radius is not 0): t = mad(radius, scale, bias). */
+  readonly concentric: boolean;
+  readonly conicalScale: number;
+  readonly conicalBias: number;
   /** Skia draws nothing (a degenerate or empty shader) or something this port does not model. */
   readonly drawable: boolean;
 };
@@ -725,6 +729,9 @@ export function gradientShader(d: GradientDesc, local: Mat, faults: GradientFaul
   // pts_to_unit and the local matrix (Blink RadialGradient pre-scales an ellipse about its centre).
   let ptsToUnit = IDENTITY;
   let lm = local;
+  let concentric = false;
+  let conicalScale = 1;
+  let conicalBias = 0;
   if (!d.radial) {
     const vx = f32(d.p1x - d.p0x);
     const vy = f32(d.p1y - d.p0y);
@@ -740,11 +747,19 @@ export function gradientShader(d: GradientDesc, local: Mat, faults: GradientFaul
     if (d.aspect !== 1) lm = matConcat(local, matScalePivot(1, f32(1 / d.aspect), d.p0x, d.p0y));
     const r0 = maxNum(d.r0, 0);
     const r1 = maxNum(d.r1, 0);
-    // Skia TwoPointConicalGradient with equal centres: equal radii are degenerate; a non-zero start radius is
-    // SkConicalGradient's concentric variant; neither is modelled here. Otherwise it is SkRadialGradient.
+    // Skia TwoPointConicalGradient with equal centres: equal radii are degenerate (not modelled); a start radius of 0 is
+    // SkRadialGradient; any other is SkConicalGradient's concentric case, scaled by 1 / max(r0, r1), then
+    // t = mad(radius, max(r0, r1) / (r1 - r0), -r0 / (r1 - r0)) (SkConicalGradient::appendGradientStages).
     if (absNum(f32(r0 - r1)) <= DEGENERATE) drawable = false;
-    if (absNum(r0) > DEGENERATE) drawable = false;
-    const inv = r1 !== 0 ? f32(1 / r1) : 0;
+    if (absNum(r0) > DEGENERATE) {
+      concentric = true;
+      if (maxNum(r0, r1) <= 2.44140625e-4 || absNum(f32(r1 - r0)) <= 2.44140625e-4) drawable = false;
+      const dr = f32(r1 - r0);
+      conicalScale = f32(maxNum(r0, r1) / dr);
+      conicalBias = f32(-r0 / dr);
+    }
+    const big = concentric ? maxNum(r0, r1) : r1;
+    const inv = big !== 0 ? f32(1 / big) : 0;
     ptsToUnit = matConcat(matScale(inv, inv), mat(1, 0, -d.p0x, 0, 1, -d.p0y));
   }
   // SkGradientBaseShader: pin positions, detect uniform spacing (SkScalarNearlyEqual, 1/4096), dedupe repeated stops.
@@ -766,7 +781,7 @@ export function gradientShader(d: GradientDesc, local: Mat, faults: GradientFaul
     if (pm.length === 2) {
       const l = pm[0] as Color4;
       const r = pm[1] as Color4;
-      return { radial: d.radial, repeat: d.repeat, ptsToUnit, local: lm, kind: 'two', clampT: !d.repeat, stages: [{ factor: sub4(r, l), bias: l }], ts: [], opaque, drawable };
+      return { radial: d.radial, repeat: d.repeat, ptsToUnit, local: lm, kind: 'two', clampT: !d.repeat, stages: [{ factor: sub4(r, l), bias: l }], ts: [], opaque, concentric, conicalScale, conicalBias, drawable };
     }
     const gapCount = pm.length - 1;
     const stages: StopStage[] = [];
@@ -777,7 +792,7 @@ export function gradientShader(d: GradientDesc, local: Mat, faults: GradientFaul
       stages.push({ factor, bias: sub4(l, scale4(factor, t)) });
     }
     stages.push({ factor: ZERO4, bias: pm[gapCount] as Color4 });
-    return { radial: d.radial, repeat: d.repeat, ptsToUnit, local: lm, kind: 'even', clampT: !d.repeat, stages, ts: [], opaque, drawable };
+    return { radial: d.radial, repeat: d.repeat, ptsToUnit, local: lm, kind: 'even', clampT: !d.repeat, stages, ts: [], opaque, concentric, conicalScale, conicalBias, drawable };
   }
   // Dedupe: of a run of equal positions keep the leftmost and, if repeated, the rightmost; a repeating shader drops a
   // leftmost duplicate at 0 and a rightmost at 1.
@@ -828,7 +843,7 @@ export function gradientShader(d: GradientDesc, local: Mat, faults: GradientFaul
   }
   ts.push(tL);
   stages.push({ factor: ZERO4, bias: cL });
-  return { radial: d.radial, repeat: d.repeat, ptsToUnit, local: lm, kind: 'stops', clampT: false, stages, ts, opaque, drawable };
+  return { radial: d.radial, repeat: d.repeat, ptsToUnit, local: lm, kind: 'stops', clampT: false, stages, ts, opaque, concentric, conicalScale, conicalBias, drawable };
 }
 
 /**
@@ -864,6 +879,7 @@ export function shadePixel(s: GradientShader, m: Mat, x: number, y: number, tile
   }
   let t = r;
   if (s.radial) t = sqrtF32(f32(f32(r * r) + f32(g * g)));
+  if (s.concentric) t = fma32(t, s.conicalScale, s.conicalBias);
   if (s.repeat) t = minNum(maxNum(0, f32(t - floorOf(t))), 1);
   else if (s.clampT) t = minNum(maxNum(0, t), 1);
   let idx = 0;
@@ -964,7 +980,13 @@ export type LayerPlacement = {
   readonly tileHeight: number;
   readonly srcX: number;
   readonly srcY: number;
+  /** One tile covers the snapped dest: Chrome's result is one copy of the tile (directly drawn or through the picture shader). */
   readonly singleTile: boolean;
+  /**
+   * Chrome draws the layer directly (the gradient shader on the page's cc raster tile); otherwise it draws the tile through
+   * the picture shader, whose tile image has its own origin (the dither and the shader matrix start at the tile).
+   */
+  readonly direct: boolean;
 };
 
 const LU_MAX = 2147483647;
@@ -1047,8 +1069,16 @@ function outsetsOf(k: BoxKeyword, box: BackgroundBox): readonly number[] {
   return [b[0] as number, b[1] as number, b[2] as number, b[3] as number];
 }
 
-/** The placement of one layer in a box at a zoom (the device scale factor). */
-export function layerPlacement(box: BackgroundBox, g: LayerGeometry, zoom: number): LayerPlacement {
+/** Whether one tile at the dest offset plus the (non-positive) phase holds a dest of size w x h (PhysicalRect::Contains). */
+function tileHolds(phaseX: number, phaseY: number, tileW: number, tileH: number, w: number, h: number): boolean {
+  return phaseX <= 0 && phaseY <= 0 && phaseX + tileW >= w && phaseY + tileH >= h;
+}
+
+/**
+ * The placement of one layer in a box at a zoom (the device scale factor). bottom: the layer is the bottom layer of the box's
+ * list (Blink's fast path draws a bottom border-box layer against the snapped dest).
+ */
+export function layerPlacement(box: BackgroundBox, g: LayerGeometry, zoom: number, bottom: boolean): LayerPlacement {
   const b = box.borders;
   const p = box.padding;
   const snappedBox = snapLtrb(box.x, box.y, box.width, box.height);
@@ -1089,14 +1119,17 @@ export function layerPlacement(box: BackgroundBox, g: LayerGeometry, zoom: numbe
   }
   const ax = placeAxis(g.repeatX, g.positionX, tileW, areaW, snappedAreaW, (ou[3] as number) - (du[3] as number), (os[3] as number) - (ds[3] as number), box.x + (du[3] as number), maxNum(0, box.width - (du[3] as number) - (du[1] as number)), (sd[0] as number) * 64, maxNum(0, ((sd[2] as number) - (sd[0] as number)) * 64), zoom);
   const ay = placeAxis(g.repeatY, g.positionY, tileH, areaH, snappedAreaH, (ou[0] as number) - (du[0] as number), (os[0] as number) - (ds[0] as number), box.y + (du[0] as number), maxNum(0, box.height - (du[0] as number) - (du[2] as number)), (sd[1] as number) * 64, maxNum(0, ((sd[3] as number) - (sd[1] as number)) * 64), zoom);
-  // ComputePhase, then OptimizeToSingleTileDraw: one tile at the snapped dest offset plus the phase must hold the dest.
-  // Measured (T074): Chrome 145 draws a repeating gradient whose unsnapped dest exceeds the tile by under a device px
-  // directly, not through the tiled picture shader, so the dest is taken at its snapped size here.
+  // ComputePhase, then OptimizeToSingleTileDraw: one tile at the snapped dest offset plus the phase must hold the dest at its
+  // unsnapped size (DrawTiledBackground), or at its snapped size for a bottom border-box layer that fits the tile
+  // (PaintFastBottomLayer). A dest that one tile holds at its snapped size only is drawn through the picture shader: the
+  // result is still one tile, rastered in the tile's own space.
   const phaseX = tileW !== 0 ? luMod(-(ax[0] as number), tileW) : 0;
   const phaseY = tileH !== 0 ? luMod(-(ay[0] as number), tileH) : 0;
   const sdx = ax[2] as number;
   const sdy = ay[2] as number;
-  const single = phaseX <= 0 && phaseY <= 0 && sdx + phaseX + tileW >= sdx + (ax[3] as number) && sdy + phaseY + tileH >= sdy + (ay[3] as number);
+  const single = tileHolds(phaseX, phaseY, tileW, tileH, ax[3] as number, ay[3] as number);
+  const fast = bottom && g.clip === 'border-box' && tileW >= (ax[3] as number) && tileH >= (ay[3] as number);
+  const direct = fast ? single : tileHolds(phaseX, phaseY, tileW, tileH, ax[1] as number, ay[1] as number);
   // The clip of a padding-box or content-box layer: the border box contracted by borders (and padding), snapped.
   let clip = snappedBox;
   if (g.clip !== 'border-box') {
@@ -1117,6 +1150,7 @@ export function layerPlacement(box: BackgroundBox, g: LayerGeometry, zoom: numbe
     srcX: 0 - phaseX,
     srcY: 0 - phaseY,
     singleTile: single,
+    direct,
   };
 }
 
@@ -1133,13 +1167,20 @@ export type BackgroundLayer = { readonly geometry: LayerGeometry; readonly image
 export type BackgroundPaint = {
   readonly box: BackgroundBox;
   readonly color: StopColor;
+  /** The bottom layer's background-clip, which clips the colour (a bottom layer without an image is not in layers). */
+  readonly colorClip: BoxKeyword;
   readonly layers: readonly BackgroundLayer[];
+  /** Whether the last of layers is the box's bottom layer (false when the bottom layer's image is none). */
+  readonly lastIsBottom: boolean;
   readonly zoom: number;
   readonly tileSize: number;
 };
 
-/** One planned layer: where it draws and its shader. */
-export type PlannedLayer = { readonly placement: LayerPlacement; readonly shader: GradientShader };
+/**
+ * One planned layer: where it draws and its shader. A layer Chrome draws through the picture shader (placement.direct false)
+ * has its shader in the tile's own space (local matrix identity), and its tile starts at device px (tileX, tileY).
+ */
+export type PlannedLayer = { readonly placement: LayerPlacement; readonly shader: GradientShader; readonly tileX: number; readonly tileY: number };
 
 /**
  * The raster plan of a background: the snapped border box (whole device px), the colour's area, the layers bottom first,
@@ -1168,7 +1209,7 @@ export function planBackground(bg: BackgroundPaint, faults: GradientFaults): Bac
   let modelled = true;
   for (let i = bg.layers.length - 1; i >= 0; i--) {
     const layer = bg.layers[i] as BackgroundLayer;
-    const pl = layerPlacement(box, layer.geometry, bg.zoom);
+    const pl = layerPlacement(box, layer.geometry, bg.zoom, bg.lastIsBottom && i === bg.layers.length - 1);
     if (!pl.singleTile) modelled = false;
     const w = luFloat(pl.tileWidth);
     const h = luFloat(pl.tileHeight);
@@ -1181,16 +1222,20 @@ export function planBackground(bg: BackgroundPaint, faults: GradientFaults): Bac
     const dt = luFloat(pl.destY);
     const lm = matRectToRect(sl, st, f32(sl + luFloat(pl.destWidth)), f32(st + luFloat(pl.destHeight)), dl, dt, f32(dl + luFloat(pl.destWidth)), f32(dt + luFloat(pl.destHeight)));
     if (lm === null) continue;
-    const shader = gradientShader(desc, lm, faults);
+    // The picture shader's tile image: GeneratedImage::DrawTile draws the gradient over the image's own bounds (local matrix
+    // identity); DrawPattern places it at the snapped dest offset plus the phase, a whole device px for a single tile.
+    const tileX = pl.destX - pl.srcX;
+    const tileY = pl.destY - pl.srcY;
+    if (!pl.direct && (tileX - floorOf(tileX / 64) * 64 !== 0 || tileY - floorOf(tileY / 64) * 64 !== 0)) modelled = false;
+    const shader = gradientShader(desc, pl.direct ? lm : IDENTITY, faults);
     if (!shader.drawable) modelled = false;
-    layers.push({ placement: pl, shader });
+    layers.push({ placement: pl, shader, tileX: floorOf(tileX / 64), tileY: floorOf(tileY / 64) });
   }
-  const bottom = bg.layers.length === 0 ? null : (bg.layers[bg.layers.length - 1] as BackgroundLayer);
   let colorArea = snapped;
-  if (bottom !== null && bottom.geometry.clip !== 'border-box') {
+  if (bg.colorClip !== 'border-box') {
     const b = box.borders;
     const p = box.padding;
-    const o = bottom.geometry.clip === 'content-box' ? [(b[0] as number) + (p[0] as number), (b[1] as number) + (p[1] as number), (b[2] as number) + (p[2] as number), (b[3] as number) + (p[3] as number)] : [b[0] as number, b[1] as number, b[2] as number, b[3] as number];
+    const o = bg.colorClip === 'content-box' ? [(b[0] as number) + (p[0] as number), (b[1] as number) + (p[1] as number), (b[2] as number) + (p[2] as number), (b[3] as number) + (p[3] as number)] : [b[0] as number, b[1] as number, b[2] as number, b[3] as number];
     colorArea = snapLtrb(box.x + (o[3] as number), box.y + (o[0] as number), box.width - (o[3] as number) - (o[1] as number), box.height - (o[0] as number) - (o[2] as number));
   }
   const c = premul(stopColor4(bg.color));
@@ -1269,7 +1314,15 @@ export function backgroundRow(plan: BackgroundPlan, y: number, faults: GradientF
     if (x >= plan.colorLeft && x < plan.colorRight && y >= plan.colorTop && y < plan.colorBottom) dst = plan.color;
     for (let i = 0; i < plan.layers.length; i++) {
       const l = plan.layers[i] as PlannedLayer;
-      if (!(valid[i] as boolean) || !inLayer(l.placement, x, y)) continue;
+      if (!inLayer(l.placement, x, y)) continue;
+      if (!l.placement.direct) {
+        // The tile image pixel (over transparent, dithered from the tile's origin), then the image shader over dst.
+        const m = tileMatrix(l.shader, 0, 0);
+        if (m === null) continue;
+        dst = imageSrcOver(shadePixel(l.shader, m, x - l.tileX, y - l.tileY, 0, 0, CLEAR, faults), dst);
+        continue;
+      }
+      if (!(valid[i] as boolean)) continue;
       dst = shadePixel(l.shader, mats[i] as Mat, x, y, tileX, tileY, dst, faults);
     }
     out.push(dst[0] as number);
@@ -1278,6 +1331,22 @@ export function backgroundRow(plan: BackgroundPlan, y: number, faults: GradientF
     out.push(dst[3] as number);
   }
   return out;
+}
+
+const CLEAR: readonly number[] = [0, 0, 0, 0];
+
+/**
+ * An 8-bit premultiplied image pixel drawn over dst by the raster pipeline without dither: from_byte (v * (1/255) in float),
+ * srcover (mad(d, 1 - a, s)) and store_8888.
+ */
+function imageSrcOver(src: readonly number[], dst: readonly number[]): readonly number[] {
+  const a = f32((src[3] as number) * INV_255);
+  const inv = f32(1 - a);
+  const r = fma32(f32((dst[0] as number) * INV_255), inv, f32((src[0] as number) * INV_255));
+  const g = fma32(f32((dst[1] as number) * INV_255), inv, f32((src[1] as number) * INV_255));
+  const b = fma32(f32((dst[2] as number) * INV_255), inv, f32((src[2] as number) * INV_255));
+  const al = fma32(f32((dst[3] as number) * INV_255), inv, a);
+  return [toUnorm(r), toUnorm(g), toUnorm(b), toUnorm(al)];
 }
 
 /** The cc raster tile size Chrome 145 uses on the capture host (macOS, device scale factor 2 or more): ccTileSize. */
