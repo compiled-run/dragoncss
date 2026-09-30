@@ -13,8 +13,13 @@ import { readSamples } from '../src/native-compare.ts';
 import { nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
 import type { PixelManifest } from '../src/pixel-reference.ts';
-import { ahemGlyphBoxes, casePoints, checkCasePixels, committedPixels, decodePng, expectedPixelsDir, expectedPixelsPath, glyphLines, PIXEL_MANIFEST, rasterSize, RASTER_RULE, runFileText } from '../src/pixel-reference.ts';
-import { generateGlyphSamples, ruleKind, SAMPLE_INSET_DEVICE_PX } from '../src/samples.ts';
+import type { BottomScanlines } from '../src/pixel-reference.ts';
+import { PLANT_CASE } from '../src/device-run.ts';
+import { ahemGlyphBoxes, BOTTOM_SCANLINES_PATH, casePoints, caseSamples, checkCasePixels, committedPixels, decodePng, expectedPixelsDir, expectedPixelsPath, glyphLines, PIXEL_MANIFEST, rasterSize, RASTER_RULE, runFileText } from '../src/pixel-reference.ts';
+import { BACKEND_OF } from '../src/native-host.ts';
+import { deviceDprs } from '../src/targets.ts';
+import type { SamplePoint } from '../src/samples.ts';
+import { generateGlyphSamples, GLYPH_EDGE_RULE, glyphClearance, ruleKind, SAMPLE_INSET_DEVICE_PX } from '../src/samples.ts';
 
 const cases = nativeCases();
 const I = SAMPLE_INSET_DEVICE_PX;
@@ -96,6 +101,71 @@ describe('the glyph rule', () => {
     const other = JSON.parse(JSON.stringify(n.programs.uikit).replaceAll('"family":"Ahem"', '"family":"Inter"')) as NativeProgram;
     expect(() => glyphLines(other, n.case.environment.viewport, 3)).toThrow(/refuses the font family Inter/);
   });
+});
+
+describe('the glyph clearance over the corpus (T093 ruling A)', () => {
+  // Per target and device DPR, the rules whose point no along-position keeps clear of the engine's glyph boxes, by rule kind
+  // (edge:glyph is a glyph-edge scanline), and of those the edge and border rules that kept clear pixels as "<rule>:clear" colour
+  // points (addendum F2). A change here changes what the device lanes compare; it needs a written reason.
+  const DROPPED = {
+    ios: {
+      2: { dropped: { edge: 1064, 'edge:glyph': 857, glyph: 26, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1028 } },
+      3: { dropped: { edge: 1089, 'edge:glyph': 819, glyph: 20, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1064, border: 18 } },
+    },
+    android: {
+      2: { dropped: { edge: 1064, 'edge:glyph': 857, glyph: 26, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1028 } },
+      3: { dropped: { edge: 1089, 'edge:glyph': 819, glyph: 20, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1064, border: 18 } },
+      2.625: { dropped: { edge: 1052, 'edge:glyph': 839, glyph: 28, outside: 6, clip: 13, border: 16, interior: 5 }, rescued: { edge: 938 } },
+    },
+  } as const;
+  const bottoms = JSON.parse(readFileSync(BOTTOM_SCANLINES_PATH(), 'utf8')) as BottomScanlines;
+  for (const target of ['ios', 'android'] as const) {
+    it(`${target}: dropped and rescued rules and per-case glyph-bottom scanlines are pinned; every point is clear of every glyph box edge but a glyph-edge scanline's own`, () => {
+      const got: Record<string, { dropped: Record<string, number>; rescued: Record<string, number> }> = {};
+      const gotBottoms: Record<string, Record<string, [number, number]>> = {};
+      for (const dpr of deviceDprs(target)) {
+        const dropped: Record<string, number> = {};
+        const rescued: Record<string, number> = {};
+        const perCase: Record<string, [number, number]> = {};
+        for (const n of cases) {
+          const p = n.programs[BACKEND_OF[target]];
+          const r = caseSamples(p, n.case.environment.viewport, dpr);
+          for (const d of r.dropped) {
+            const k = `${ruleKind(d)}${GLYPH_EDGE_RULE.test(d) ? ':glyph' : ''}`;
+            dropped[k] = (dropped[k] ?? 0) + 1;
+          }
+          for (const d of r.rescued) rescued[ruleKind(d)] = (rescued[ruleKind(d)] ?? 0) + 1;
+          const lines = glyphLines(p, n.case.environment.viewport, dpr);
+          const glyphs = lines.flatMap((l) => l.glyphs);
+          const rules = new Set(r.points.map((q) => q.rule));
+          const inked = lines.filter((l) => l.glyphs.length > 0);
+          if (inked.length > 0) perCase[n.case.id] = [inked.filter((l) => rules.has(`edge:${l.id}:glyph-bottom`)).length, inked.length];
+          const unclear = (q: SamplePoint) => glyphs.filter((g) => glyphClearance(q.x, q.y, g) < I).length;
+          const scanlines = new Map<string, SamplePoint[]>();
+          for (const q of r.points) {
+            if (GLYPH_EDGE_RULE.test(q.rule)) scanlines.set(q.rule, [...(scanlines.get(q.rule) ?? []), q]);
+            else if (unclear(q) > 0) throw new Error(`${target} ${n.case.id}@${dpr}: ${q.rule} at ${q.x},${q.y} is within ${I} device px of a glyph box edge`);
+          }
+          for (const [rule, line] of scanlines) {
+            const ends = [line[0], line[line.length - 1]] as SamplePoint[];
+            if (ends.some((q) => unclear(q) > 0) || line.some((q) => unclear(q) > 1)) throw new Error(`${target} ${n.case.id}@${dpr}: ${rule} is not clear of the other glyph boxes`);
+          }
+        }
+        got[String(dpr)] = { dropped, rescued };
+        gotBottoms[String(dpr)] = perCase;
+        // The plant case has a glyph-bottom scanline and an x centre pair on every line (addendum F1).
+        const plant = cases.find((c) => c.case.id === PLANT_CASE);
+        if (plant === undefined) throw new Error(`no plant case ${PLANT_CASE}`);
+        const plantLines = glyphLines(plant.programs[BACKEND_OF[target]], plant.case.environment.viewport, dpr).filter((l) => l.glyphs.length > 0);
+        const plantRules = new Set(casePoints(plant.programs[BACKEND_OF[target]], plant.case.environment.viewport, dpr).map((q) => q.rule));
+        expect(plantLines.length).toBeGreaterThan(0);
+        for (const l of plantLines) for (const side of ['bottom', 'left', 'right']) expect(plantRules.has(`edge:${l.id}:glyph-${side}`), `${PLANT_CASE}@${dpr} ${l.id} glyph-${side}`).toBe(true);
+      }
+      expect(got).toEqual(JSON.parse(JSON.stringify(DROPPED[target])));
+      // Regenerate with pnpm run parity:glyph-b3 -- --write-bottom-pins, and give a written reason for every change.
+      expect(gotBottoms).toEqual(bottoms[target]);
+    });
+  }
 });
 
 describe('the points protocol and check (c)', () => {
