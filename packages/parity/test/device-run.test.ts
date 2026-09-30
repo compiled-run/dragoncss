@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vitest';
 import { repoPath } from '../src/paths.ts';
 import { trustCoverageProblems } from '../src/lanes.ts';
 import type { DeviceRecord, DeviceSpec } from '../src/device-run.ts';
-import { ANDROID_IMAGE_API, avdKeys, avdScale, DEVICE_MATRIX, judgeGlyphPlant, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_AXIS, PLANT_DEVICES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
+import type { SettleState } from '../src/device-run.ts';
+import { ANDROID_IMAGE_API, avdKeys, parseWindowFocus, SETTLE_SAMPLES, SETTLE_START, settleStep, settleTimeoutMessage, avdScale, DEVICE_MATRIX, judgeGlyphPlant, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_AXIS, PLANT_DEVICES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
 import { emitNativeSupport, SUPPORT_PLANTS } from 'dragon';
 import { GATE_GLYPH_POSITION_DEVICE_PX } from '../src/compare.ts';
 import type { GlyphPosition } from '../src/native-compare.ts';
@@ -170,5 +171,64 @@ describe('raster plants judged against the clean run (T093 ruling A)', () => {
     expect(judgeGlyphPlant('glyph-offset-1', clean, planted, G, { ...ok, hostErrors: ['the planted host did not finish: timed out'] })).toMatchObject({ caught: false, problems: ['the planted host did not finish: timed out'] });
     expect(judgeGlyphPlant('glyph-offset-1', clean, planted, G, { ...ok, frames: 1 })).toMatchObject({ caught: false, problems: ['device-frames has 1 failure(s) across the two runs'] });
     expect(judgeGlyphPlant('glyph-offset-1', clean, planted, G, { ...ok, lines: 2 })).toMatchObject({ caught: false, problems: ['device-lines has 2 failure(s) across the two runs'] });
+  });
+});
+
+describe('an AVD settles on the home screen before the app starts (T112)', () => {
+  // As `dumpsys window | grep -E 'mCurrentFocus=|mFocusedApp='` prints them on the API 36 image.
+  const home = (w = 'd83b36a'): string => `  mCurrentFocus=Window{${w} u0 com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher}\n  mFocusedApp=ActivityRecord{143482133 u0 com.android.launcher3/.uioverrides.QuickstepLauncher t12}\n`;
+  const anr = '  mCurrentFocus=Window{1a2b u0 Application Not Responding: com.android.systemui}\n  mFocusedApp=ActivityRecord{9 u0 com.android.launcher3/.uioverrides.QuickstepLauncher t12}\n';
+  const booting = '  mCurrentFocus=null\n  mFocusedApp=null\n';
+  const feed = (samples: readonly string[], need = SETTLE_SAMPLES): { readonly state: SettleState; readonly actions: string[] } => {
+    let state = SETTLE_START;
+    const actions: string[] = [];
+    for (const s of samples) {
+      const step = settleStep(state, s, need);
+      state = step.state;
+      actions.push(step.action);
+    }
+    return { state, actions };
+  };
+
+  it('reads both focus lines, and nothing from output without both, with an empty value or with two different values', () => {
+    expect(parseWindowFocus(home())).toEqual({ currentFocus: 'Window{d83b36a u0 com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher}', focusedApp: 'ActivityRecord{143482133 u0 com.android.launcher3/.uioverrides.QuickstepLauncher t12}' });
+    expect(parseWindowFocus(home() + home())).not.toBeNull();
+    expect(parseWindowFocus('')).toBeNull();
+    expect(parseWindowFocus('adb exited 1: error: device offline')).toBeNull();
+    expect(parseWindowFocus('  mCurrentFocus=Window{d83b36a u0 com.android.launcher3/x.Launcher}\n')).toBeNull();
+    expect(parseWindowFocus('  mCurrentFocus=\n  mFocusedApp=ActivityRecord{1 u0 a/.Launcher t1}\n')).toBeNull();
+    expect(parseWindowFocus(home('aaa') + home('bbb'))).toBeNull();
+  });
+  it('a stable launcher focus is done after exactly SETTLE_SAMPLES samples in a row', () => {
+    const { actions, state } = feed(Array.from({ length: SETTLE_SAMPLES }, () => home()));
+    expect(actions).toEqual([...Array.from({ length: SETTLE_SAMPLES - 1 }, () => 'wait'), 'done']);
+    expect(state.stable).toBe(SETTLE_SAMPLES);
+    expect(SETTLE_SAMPLES).toBeGreaterThanOrEqual(2);
+  });
+  it('before the launcher: HOME while something else has the focus, BACK on an error dialog, and the run counts from the launcher', () => {
+    const { actions } = feed([booting, anr, booting, ...Array.from({ length: 3 }, () => home())], 3);
+    expect(actions).toEqual(['home', 'back', 'home', 'wait', 'wait', 'done']);
+  });
+  it('a flapping focus (the launcher window recreated, or leaving and returning) restarts the run and never settles', () => {
+    const flap = feed(Array.from({ length: 40 }, (_, i) => home(i % 2 === 0 ? 'aaa' : 'bbb')), 3);
+    expect(flap.actions).not.toContain('done');
+    expect(flap.state.stable).toBe(1);
+    expect(flap.state.changes).toBe(39);
+    const away = feed([home(), home(), booting, home(), home()], 3);
+    expect(away.actions).toEqual(['wait', 'wait', 'home', 'wait', 'wait']);
+    const app = feed([home(), home(), home().replace(/t12/, 't13'), home().replace(/t12/, 't13')], 3);
+    expect(app.actions).toEqual(['wait', 'wait', 'wait', 'wait']);
+  });
+  it('unparseable output never counts toward the run and breaks it', () => {
+    const { actions, state } = feed([home(), home(), 'adb exited 1: ', home(), home(), home()], 3);
+    expect(actions).toEqual(['wait', 'wait', 'wait', 'wait', 'wait', 'done']);
+    expect(state.unparseable).toBe(1);
+  });
+  it('the timeout names the state it last read: the focus and its run, or the unparseable output', () => {
+    const flap = feed([home('aaa'), home('bbb')], 3).state;
+    expect(settleTimeoutMessage('emulator-5582', 300_000, flap, 3)).toBe('emulator-5582 did not settle on the home screen within 300 s (tooling fault): the last focus was mCurrentFocus=Window{bbb u0 com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher} mFocusedApp=ActivityRecord{143482133 u0 com.android.launcher3/.uioverrides.QuickstepLauncher t12}, held for 1 of 3 samples; 2 samples, 1 focus changes, 0 unparseable');
+    const bad = feed(['adb exited 1: error: device offline'], 3).state;
+    expect(settleTimeoutMessage('emulator-5582', 300_000, bad, 3)).toBe('emulator-5582 did not settle on the home screen within 300 s (tooling fault): the last dumpsys window output had no single mCurrentFocus and mFocusedApp: "adb exited 1: error: device offline"; 1 samples, 0 focus changes, 1 unparseable');
+    expect(settleTimeoutMessage('emulator-5582', 300_000, SETTLE_START)).toMatch(/no sample was read/);
   });
 });

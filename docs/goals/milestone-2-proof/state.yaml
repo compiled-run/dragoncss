@@ -2647,6 +2647,20 @@ tasks:
       - Existing outputs change
       - Verification fails twice
     receipt: null
+  - id: T114
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'PNT1-S2: composite each box-shadow on device the way Chrome 145 does (one floor per shadow), so the shadow device-pixels points pass with allowance 0 (decisions.md, box-shadow device pixels). On pnt1-shadow (32ab282a) after V1 and EMS land.'
+    receipt: null
+  - id: T115
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'PNT1 effects half: opacity, z-index and stacking, outline, color-scheme (notes/T046-paint-spec.md §5.2); pnt1-effects holds no work of its own. After V1 and EMS land.'
+    receipt: null
   - id: T999
     type: judge
     assignee: Judge
