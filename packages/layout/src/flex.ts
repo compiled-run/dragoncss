@@ -2,7 +2,7 @@
 // alignment (§8.3, §9.4 step 8). Chrome 145 computes every offset in flow coordinates, from the writing-mode start edge of each
 // axis: a reverse direction reverses the items and swaps flex-start and flex-end, and wrap-reverse does the same for the lines and
 // the cross axis (measured, notes/T035-slice-4a.md). Flow offsets are then mapped to physical ones.
-import type { AlignItems, JustifyContent, LayoutBox, LayoutStyle, Percent, Px } from './input.ts';
+import type { AlignItems, JustifyContent, LayoutBox, LayoutStyle } from './input.ts';
 import type { DistributedMode, FactorSum, LU } from './units.ts';
 import {
   add,
@@ -15,34 +15,36 @@ import {
   factorSubClampZero,
   factorValue,
   fractionalFreeSpace,
-  fromCssPx,
   growShare,
   isFiniteFactorSum,
   max,
   min,
   mulInt,
-  percentOf,
   shrinkShare,
   shrinkWeight,
   sub,
   sum,
   ZERO,
 } from './units.ts';
-import type { Edges, Frag, HeightBasis, MinMax, OutOfFlow, Placed, StaticAxis } from './box.ts';
+import type { Edges, Frag, HeightBasis, LengthPercent, MinMax, OutOfFlow, Placed, StaticAxis } from './box.ts';
 import {
   borderBoxFromSpecified,
   constrain,
   contentBox,
+  hasPercent,
   isScrollContainer,
   resolveBorder,
-  resolveMargin,
-  resolvePadding,
+  resolveLength,
+  resolveLengthOrNull,
+  resolveMarginWith,
+  resolveMinLength,
+  resolvePaddingWith,
   sumEdges,
 } from './box.ts';
-import type { Ctx } from './block.ts';
+import type { Ctx, EngineFaults } from './block.ts';
 import { directionOf, layoutContents } from './block.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
-import { isOutOfFlow, relativeOffset } from './position.ts';
+import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { unsupported } from './unsupported.ts';
 
 export type FlexArgs = {
@@ -138,8 +140,8 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
   }
   // css-flexbox-1 §5.4: order-modified document order, stable for equal values (planted fault ignoreOrder keeps document order).
   const ordered = ctx.faults.ignoreOrder ? boxes : [...boxes].sort((x, y) => x.style.order - y.style.order);
-  const mainGap = gapValue(box, isRow ? s.columnGap : s.rowGap);
-  const crossGap = gapValue(box, isRow ? s.rowGap : s.columnGap);
+  const mainGap = gapValue(box, isRow ? s.columnGap : s.rowGap, ctx.faults);
+  const crossGap = gapValue(box, isRow ? s.rowGap : s.columnGap, ctx.faults);
   const crossInner: LU | null = isRow ? a.definiteInnerHeight : a.contentWidth;
   const singleLine = s.flexWrap === 'nowrap';
   const itemHeightBasis: HeightBasis = a.definiteInnerHeight === null
@@ -256,7 +258,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
       const mainFlow = add(mainOffset, item.mainStart);
       const mainPos = axes.mainStartIsPhysical ? mainFlow : sub(sub(mainInner as LU, mainFlow), mainBorderBox);
       const stretched = item.align === 'stretch' && stretchesCross(item, isRow);
-      const crossSize = stretched ? stretchedCrossSize(item, line.cross, isRow, crossPercentBasis) : crossOf(item);
+      const crossSize = stretched ? stretchedCrossSize(item, line.cross, isRow, crossPercentBasis, ctx.faults) : crossOf(item);
       let crossInLine: LU;
       if (participates(item)) {
         crossInLine = sub(groupBaseline, baselineOf(item).offset);
@@ -284,7 +286,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
         else if (k === 0) containerBaseline = add(at.y, sub(ownBaseline(r.frag), baselineFault(ctx, item)));
       }
       // CSS2 §9.4.3 against the container's content box: a relative offset moves the item after alignment, never the baselines.
-      const offset = relativeOffset(item.box, a.contentWidth, itemHeightBasis, directionOf(ctx, box));
+      const offset = relativeOffsetWith(item.box, a.contentWidth, itemHeightBasis, directionOf(ctx, box), ctx.faults);
       placed.push({ frag: at.frag, x: add(at.x, offset.dx), y: add(at.y, offset.dy) });
       cursor = add(cursor, add(mainBorderBox, item.mainMargins));
       if (item.autoMainEnd) cursor = add(cursor, autoShare());
@@ -350,9 +352,10 @@ function itemBaseline(ctx: Ctx, item: Item, axes: Axes, frag: Frag | null, cross
   return crossStartIsLeft ? { toStart: fromLeft, toEnd: toRight, offset: ZERO } : { toStart: toRight, toEnd: fromLeft, offset: ZERO };
 }
 
-function gapValue(box: LayoutBox, v: LayoutStyle['rowGap']): LU {
-  if (v.kind === 'percent') unsupported('percent-gap', box.id, 'css-align-3 §8.1', 'percentage gap (not yet supported)');
-  return v.kind === 'px' ? fromCssPx(v.value) : ZERO;
+function gapValue(box: LayoutBox, v: LayoutStyle['rowGap'], faults: EngineFaults): LU {
+  if (v.kind === 'normal') return ZERO;
+  if (hasPercent(v)) unsupported('percent-gap', box.id, 'css-align-3 §8.1', 'percentage gap (not yet supported)');
+  return resolveLength(v, ZERO, faults);
 }
 
 function gapsFor(n: number, gap: LU): LU {
@@ -411,12 +414,12 @@ function buildItem(
   const s = box.style;
   const isRow = axes.isRow;
   const cbInline = a.contentWidth;
-  const pad = resolvePadding(s, cbInline);
+  const pad = resolvePaddingWith(s, cbInline, ctx.faults);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
-  const ml = resolveMargin(s.marginLeft, cbInline);
-  const mr = resolveMargin(s.marginRight, cbInline);
-  const mt = resolveMargin(s.marginTop, cbInline);
-  const mb = resolveMargin(s.marginBottom, cbInline);
+  const ml = resolveMarginWith(s.marginLeft, cbInline, ctx.faults);
+  const mr = resolveMarginWith(s.marginRight, cbInline, ctx.faults);
+  const mt = resolveMarginWith(s.marginTop, cbInline, ctx.faults);
+  const mb = resolveMarginWith(s.marginBottom, cbInline, ctx.faults);
   const margin: Edges = { top: mt.value, right: mr.value, bottom: mb.value, left: ml.value };
   // Flow sides: the inline start is the left in ltr and the right in rtl; the block start is the top.
   const inlineStart = axes.ltr ? ml : mr;
@@ -434,12 +437,12 @@ function buildItem(
   // Column items need their width before their height: definite stretch (§9.8 rule 1), a specified width, or fit-content.
   let columnCross = ZERO;
   if (!isRow) {
-    const crossMin = s.minWidth.kind === 'auto' ? hbp : borderBoxFromSpecified(lengthAgainst(s.minWidth, cbInline), hbp, s.boxSizing);
-    const crossMax = s.maxWidth.kind === 'none' ? null : borderBoxFromSpecified(lengthAgainst(s.maxWidth, cbInline), hbp, s.boxSizing);
+    const crossMin = s.minWidth.kind === 'auto' ? hbp : borderBoxFromSpecified(resolveLength(s.minWidth, cbInline, ctx.faults), hbp, s.boxSizing);
+    const crossMax = s.maxWidth.kind === 'none' ? null : borderBoxFromSpecified(resolveLength(s.maxWidth, cbInline, ctx.faults), hbp, s.boxSizing);
     const mm: MinMax = { min: crossMin, max: crossMax };
     const avail = sub(cbInline, add(ml.value, mr.value));
     let w: LU;
-    if (s.width.kind !== 'auto') w = borderBoxFromSpecified(lengthAgainst(s.width, cbInline), hbp, s.boxSizing);
+    if (s.width.kind !== 'auto') w = borderBoxFromSpecified(resolveLength(s.width, cbInline, ctx.faults), hbp, s.boxSizing);
     else if (align === 'stretch' && singleLine && crossInner !== null && !ml.auto && !mr.auto) w = avail;
     else {
       const minC = add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
@@ -450,7 +453,7 @@ function buildItem(
   }
 
   const mainSizeProp = isRow ? s.width : s.height;
-  const specifiedMain = mainSizeContent(box, mainSizeProp, isRow, mainInner, mainBp, heightBasis);
+  const specifiedMain = mainSizeContent(box, mainSizeProp, isRow, mainInner, mainBp, heightBasis, ctx.faults);
   let contentSized: LU | null = null;
   const contentMain = (): LU => {
     if (contentSized !== null) return contentSized;
@@ -473,11 +476,10 @@ function buildItem(
   const basis = s.flexBasis;
   if (basis.kind === 'content') {
     return unsupported('flex-basis-content', box.id, 'css-flexbox-1 §7.2.3', 'flex-basis: content (not yet supported)');
-  } else if (basis.kind === 'px') {
-    base = contentBox(borderBoxFromSpecified(fromCssPx(basis.value), mainBp, s.boxSizing), mainBp);
-  } else if (basis.kind === 'percent') {
-    if (mainInner === null) return unsupported('flex-basis-content', box.id, 'css-flexbox-1 §7.2.3', 'percentage flex-basis against an indefinite main size is treated as content (not yet supported)');
-    base = contentBox(borderBoxFromSpecified(percentOf(mainInner, basis.value), mainBp, s.boxSizing), mainBp);
+  } else if (basis.kind !== 'auto') {
+    const resolved = resolveLengthOrNull(basis, mainInner, ctx.faults);
+    if (resolved === null) return unsupported('flex-basis-content', box.id, 'css-flexbox-1 §7.2.3', 'percentage flex-basis against an indefinite main size is treated as content (not yet supported)');
+    base = contentBox(borderBoxFromSpecified(resolved, mainBp, s.boxSizing), mainBp);
   } else {
     base = specifiedMain !== null ? specifiedMain : contentMain();
   }
@@ -487,16 +489,15 @@ function buildItem(
   const minProp = isRow ? s.minWidth : s.minHeight;
   const maxProp = isRow ? s.maxWidth : s.maxHeight;
   let maxMain: LU | null = null;
-  if (maxProp.kind === 'px') maxMain = contentBox(borderBoxFromSpecified(fromCssPx(maxProp.value), mainBp, s.boxSizing), mainBp);
-  else if (maxProp.kind === 'percent') {
-    const basisLu = isRow ? cbInline : percentMainHeight(box, heightBasis, 'max-height');
-    if (basisLu !== null) maxMain = contentBox(borderBoxFromSpecified(percentOf(basisLu, maxProp.value), mainBp, s.boxSizing), mainBp);
+  if (maxProp.kind !== 'none') {
+    const basisLu = !hasPercent(maxProp) ? ZERO : isRow ? cbInline : percentMainHeight(box, heightBasis, 'max-height');
+    const resolved = resolveLengthOrNull(maxProp, basisLu, ctx.faults);
+    if (resolved !== null) maxMain = contentBox(borderBoxFromSpecified(resolved, mainBp, s.boxSizing), mainBp);
   }
   let minMain: LU;
-  if (minProp.kind === 'px') minMain = contentBox(borderBoxFromSpecified(fromCssPx(minProp.value), mainBp, s.boxSizing), mainBp);
-  else if (minProp.kind === 'percent') {
-    const basisLu = isRow ? cbInline : percentMainHeight(box, heightBasis, 'min-height');
-    minMain = basisLu === null ? ZERO : contentBox(borderBoxFromSpecified(percentOf(basisLu, minProp.value), mainBp, s.boxSizing), mainBp);
+  if (minProp.kind !== 'auto') {
+    const basisLu = !hasPercent(minProp) ? ZERO : isRow ? cbInline : percentMainHeight(box, heightBasis, 'min-height');
+    minMain = contentBox(borderBoxFromSpecified(resolveMinLength(minProp, basisLu, ctx.faults), mainBp, s.boxSizing), mainBp);
   } else if (isScrollContainer(s) && !ctx.faults.scrollMinAuto) {
     minMain = ZERO;
   } else {
@@ -534,10 +535,6 @@ function buildItem(
   };
 }
 
-function lengthAgainst(v: Px | Percent, basis: LU): LU {
-  return v.kind === 'px' ? fromCssPx(v.value) : percentOf(basis, v.value);
-}
-
 // CSS2 §10.5 and css-flexbox-1 §9.8: a percentage block size resolves against a definite basis; indefinite behaves as auto (null).
 function percentMainHeight(box: LayoutBox, basis: HeightBasis, prop: string): LU | null {
   if (basis.kind === 'indefinite') return null;
@@ -553,15 +550,12 @@ function mainSizeContent(
   mainInner: LU | null,
   mainBp: LU,
   heightBasis: HeightBasis,
+  faults: EngineFaults,
 ): LU | null {
   if (v.kind === 'auto') return null;
-  if (v.kind === 'px') return contentBox(borderBoxFromSpecified(fromCssPx(v.value), mainBp, box.style.boxSizing), mainBp);
-  if (isRow) {
-    if (mainInner === null) return null;
-    return contentBox(borderBoxFromSpecified(percentOf(mainInner, v.value), mainBp, box.style.boxSizing), mainBp);
-  }
-  const basis = percentMainHeight(box, heightBasis, 'height');
-  return basis === null ? null : contentBox(borderBoxFromSpecified(percentOf(basis, v.value), mainBp, box.style.boxSizing), mainBp);
+  const basis = !hasPercent(v) ? ZERO : isRow ? mainInner : percentMainHeight(box, heightBasis, 'height');
+  const resolved = resolveLengthOrNull(v, basis, faults);
+  return resolved === null ? null : contentBox(borderBoxFromSpecified(resolved, mainBp, box.style.boxSizing), mainBp);
 }
 
 function outerHypothetical(i: Item): LU {
@@ -674,16 +668,15 @@ function abs(v: LU): LU {
 }
 
 // css-flexbox-1 §9.4 step 11: a stretched item's cross size is the line's, minus margins, clamped by min/max (percentages too).
-function stretchedCrossSize(item: Item, lineCross: LU, isRow: boolean, percentBasis: HeightBasis): LU {
+function stretchedCrossSize(item: Item, lineCross: LU, isRow: boolean, percentBasis: HeightBasis, faults: EngineFaults): LU {
   const s = item.box.style;
   const minProp = isRow ? s.minHeight : s.minWidth;
   const maxProp = isRow ? s.maxHeight : s.maxWidth;
-  const resolve = (v: Px | Percent, prop: string): LU | null => {
-    if (v.kind === 'px') return fromCssPx(v.value);
-    const basis = percentMainHeight(item.box, percentBasis, prop);
-    return basis === null ? null : percentOf(basis, v.value);
+  const resolve = (v: LengthPercent, prop: string): LU | null => {
+    if (!hasPercent(v)) return resolveLength(v, ZERO, faults);
+    return resolveLengthOrNull(v, percentMainHeight(item.box, percentBasis, prop), faults);
   };
-  const lo = minProp.kind === 'auto' ? null : resolve(minProp, isRow ? 'min-height' : 'min-width');
+  const lo = minProp.kind === 'auto' ? null : hasPercent(minProp) ? resolveMinLength(minProp, percentMainHeight(item.box, percentBasis, isRow ? 'min-height' : 'min-width'), faults) : resolveLength(minProp, ZERO, faults);
   const hi = maxProp.kind === 'none' ? null : resolve(maxProp, isRow ? 'max-height' : 'max-width');
   const mm: MinMax = {
     min: lo === null ? item.crossBp : borderBoxFromSpecified(lo, item.crossBp, s.boxSizing),

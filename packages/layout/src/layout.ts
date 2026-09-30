@@ -1,14 +1,15 @@
 // Entry point: lays out a validated LayoutInput and returns boxes relative to the parent border box, in LU: the in-flow boxes in
 // preorder, then each absolutely positioned box (after its parent and containing block) with its subtree.
-import type { Auto, BorderWidthValue, ContentValue, LayoutBox, LayoutInput, LayoutStyle, LineHeightValue, NoneValue, NormalValue, NumberValue, Percent, Px, TextLeaf } from './input.ts';
+import type { LayoutBox, LayoutInput } from './input.ts';
 import type { LU } from './units.ts';
-import { add, fromCssPx, sub, zoomCssPx, zoomFontSize, zoomViewportPx, ZERO } from './units.ts';
+import { add, fromCssPx, sub, ZERO } from './units.ts';
 import type { Frag, OutOfFlow, StaticAxis } from './box.ts';
 import { resolveBorder } from './box.ts';
+import { applyEnvironment } from './environment.ts';
 import type { Ctx, EngineFaults } from './block.ts';
 import { blockLevelInlineSize, directionOf, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
 import type { ContainingBlock } from './position.ts';
-import { layoutAbsolute, relativeOffset } from './position.ts';
+import { layoutAbsolute, relativeOffsetWith } from './position.ts';
 import type { TextMeasurer } from './text.ts';
 import { ahemMeasurerWith } from './text.ts';
 import type { LayoutUnsupported } from './unsupported.ts';
@@ -55,7 +56,7 @@ export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, fau
       heightBasis: { kind: 'definite', value: icbHeight },
       formattingContextRoot: true,
     });
-    const offset = relativeOffset(root, icbWidth, { kind: 'definite', value: icbHeight }, icbDirection);
+    const offset = relativeOffsetWith(root, icbWidth, { kind: 'definite', value: icbHeight }, icbDirection, ctx.faults);
     const out: Placement = { boxes: [], absolute: new Map(), pending: [] };
     flatten(r.frag, null, add(inline.marginLeft, offset.dx), add(inline.marginTop, offset.dy), ZERO, ZERO, out);
     placeOutOfFlow(ctx, input, out, { x: ZERO, y: ZERO, width: icbWidth, height: icbHeight, direction: icbDirection });
@@ -126,96 +127,10 @@ function placeOutOfFlow(ctx: Ctx, input: LayoutInput, out: Placement, icb: Conta
   }
 }
 
-// Device zoom (vectors/README.md, Device pixel ratios): at DPR N every CSS length and font size is multiplied by N on entry, the
-// font rules apply to the zoomed size, and the engine lays out in zoomed px, where borders snap to whole px. Output LU are 1/64
-// device px; CSS px = LU / (64 * N). An initial line width (device-px, R5) is already in device px and is not multiplied. At DPR 1
-// the input is returned as given.
-
-/** The input in zoomed px, with devicePixelRatio 1 (a zoomed px is a device px); the input itself at DPR 1. */
+/** The input in zoomed px, with devicePixelRatio 1 (a zoomed px is a device px), and every length resolved for its environment
+ * (environment.ts); the input itself at DPR 1 when it holds nothing to resolve. */
 export function zoomInput(input: LayoutInput, faults: EngineFaults): LayoutInput {
-  const z = input.devicePixelRatio;
-  if (z === 1) return input;
-  return {
-    viewport: { width: zoomViewportPx(input.viewport.width, z), height: zoomViewportPx(input.viewport.height, z) },
-    devicePixelRatio: 1,
-    root: zoomBox(input.root, z, faults),
-  };
-}
-
-function zoomBox(b: LayoutBox, z: number, faults: EngineFaults): LayoutBox {
-  const children = b.children.map((c): LayoutBox | TextLeaf => (c.kind === 'box' ? zoomBox(c, z, faults) : zoomText(c, z)));
-  return { kind: 'box', id: b.id, boxType: b.boxType, style: zoomStyle(b.style, z, faults), children };
-}
-
-function zoomText(t: TextLeaf, z: number): TextLeaf {
-  return { ...t, font: { family: t.font.family, size: zoomFontSize(t.font.size, z) }, lineHeight: zoomLineHeight(t.lineHeight, z) };
-}
-
-function zoomStyle(s: LayoutStyle, z: number, faults: EngineFaults): LayoutStyle {
-  return {
-    ...s,
-    top: zoomLength(s.top, z),
-    right: zoomLength(s.right, z),
-    bottom: zoomLength(s.bottom, z),
-    left: zoomLength(s.left, z),
-    width: zoomLength(s.width, z),
-    height: zoomLength(s.height, z),
-    minWidth: zoomLength(s.minWidth, z),
-    minHeight: zoomLength(s.minHeight, z),
-    maxWidth: zoomMax(s.maxWidth, z),
-    maxHeight: zoomMax(s.maxHeight, z),
-    marginTop: zoomLength(s.marginTop, z),
-    marginRight: zoomLength(s.marginRight, z),
-    marginBottom: zoomLength(s.marginBottom, z),
-    marginLeft: zoomLength(s.marginLeft, z),
-    paddingTop: zoomPadding(s.paddingTop, z),
-    paddingRight: zoomPadding(s.paddingRight, z),
-    paddingBottom: zoomPadding(s.paddingBottom, z),
-    paddingLeft: zoomPadding(s.paddingLeft, z),
-    borderTopWidth: zoomBorder(s.borderTopWidth, z, faults),
-    borderRightWidth: zoomBorder(s.borderRightWidth, z, faults),
-    borderBottomWidth: zoomBorder(s.borderBottomWidth, z, faults),
-    borderLeftWidth: zoomBorder(s.borderLeftWidth, z, faults),
-    flexBasis: zoomBasis(s.flexBasis, z),
-    rowGap: zoomGap(s.rowGap, z),
-    columnGap: zoomGap(s.columnGap, z),
-  };
-}
-
-function zoomPx(v: Px, z: number): Px {
-  return { kind: 'px', value: zoomCssPx(v.value, z) };
-}
-
-/** R5: a device-px initial line width keeps its value at every zoom; the planted spec reading zooms it like CSS px. */
-function zoomBorder(v: BorderWidthValue, z: number, faults: EngineFaults): BorderWidthValue {
-  if (v.kind === 'px') return zoomPx(v, z);
-  if (faults.initialLineWidthZoomed) return { kind: 'device-px', value: zoomCssPx(v.value, z) };
-  return v;
-}
-
-function zoomLength(v: Px | Percent | Auto, z: number): Px | Percent | Auto {
-  return v.kind === 'px' ? zoomPx(v, z) : v;
-}
-
-function zoomMax(v: Px | Percent | NoneValue, z: number): Px | Percent | NoneValue {
-  return v.kind === 'px' ? zoomPx(v, z) : v;
-}
-
-function zoomPadding(v: Px | Percent, z: number): Px | Percent {
-  return v.kind === 'px' ? zoomPx(v, z) : v;
-}
-
-function zoomBasis(v: Px | Percent | Auto | ContentValue, z: number): Px | Percent | Auto | ContentValue {
-  return v.kind === 'px' ? zoomPx(v, z) : v;
-}
-
-function zoomGap(v: Px | Percent | NormalValue, z: number): Px | Percent | NormalValue {
-  return v.kind === 'px' ? zoomPx(v, z) : v;
-}
-
-/** Numbers multiply the zoomed font size, so only px line heights are zoomed. */
-function zoomLineHeight(v: NormalValue | NumberValue | Px, z: number): LineHeightValue {
-  return v.kind === 'px' ? zoomPx(v, z) : v;
+  return applyEnvironment(input, faults);
 }
 
 /** Absolute border-box edges in LU: parent offsets are summed in integers before any conversion. */
