@@ -1,0 +1,3 @@
+transcript: packages/text-shaper/transcripts/gate.json sha256 d15bf5baa963ee5292d7eeb7a7c6010e328151f3ed586ca48794cb54b9e1d668, recorded by dragon_hb.wasm sha256 1ad2e4849b5a5f9e90cb0d5b1602799a3abb20a259dcb2e7c623fad243fdf092
+device: iPhone 17, iOS 26.5 simulator, arm64
+replay swift (ios simulator, arm64): 4820 calls (1100 shape, 45544 glyphs), 0 mismatches
