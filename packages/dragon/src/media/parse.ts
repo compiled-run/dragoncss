@@ -1,6 +1,7 @@
 // Media Queries 4 parser and serialiser. An invalid query becomes `not all`, and an unparseable ( ... ) or function is
 // <general-enclosed>, kept as authored text, as Chrome 145 does.
 import { generate } from 'css-tree';
+import { asciiLower } from '../css/escapes.ts';
 import type { CssNode } from 'css-tree';
 import { isEnvironmentFeature, RANGE_FEATURES, splitFeatureName } from './features.ts';
 import type { MediaFaults } from './faults.ts';
@@ -58,7 +59,7 @@ const RESERVED_TYPES = new Set(['only', 'not', 'and', 'or', 'layer']);
 type Item = ComponentValue | { readonly kind: 'op'; readonly op: Comparison };
 
 const identOf = (cv: ComponentValue | undefined): string | null =>
-  cv !== undefined && cv.kind === 'token' && cv.token.type === 'ident' ? cv.token.value.toLowerCase() : null;
+  cv !== undefined && cv.kind === 'token' && cv.token.type === 'ident' ? asciiLower(cv.token.value) : null;
 
 const trimmed = (cvs: readonly ComponentValue[]): ComponentValue[] => cvs.filter((cv) => !isWhitespace(cv));
 
@@ -299,12 +300,12 @@ function rawValue(base: string, items: readonly Item[]): MediaValue {
 function rawCv(cv: ComponentValue, fmt: NumberFormat): string {
   const inner = (cvs: readonly ComponentValue[]): string => cvs.filter((c) => !isWhitespace(c)).map((c) => rawCv(c, fmt)).join(' ');
   if (cv.kind === 'block') return `(${inner(cv.children)})`;
-  if (cv.kind === 'function') return `${cv.name.toLowerCase()}(${inner(cv.children)})`;
+  if (cv.kind === 'function') return `${asciiLower(cv.name)}(${inner(cv.children)})`;
   const t = cv.token;
   if (t.type === 'number') return fmt(t.value);
-  if (t.type === 'dimension') return `${fmt(t.value)}${t.unit.toLowerCase()}`;
+  if (t.type === 'dimension') return `${fmt(t.value)}${asciiLower(t.unit)}`;
   if (t.type === 'percentage') return `${fmt(t.value)}%`;
-  if (t.type === 'ident') return t.value.toLowerCase();
+  if (t.type === 'ident') return asciiLower(t.value);
   if (t.type === 'delim') return t.value;
   return '';
 }
