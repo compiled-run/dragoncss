@@ -268,14 +268,15 @@ function positionOf(p: Longhand, v: CssValue): Position {
   return { kind: 'area', name };
 }
 
-type LineCollection = { readonly lines: readonly number[]; readonly last: number };
+type LineCollection = { readonly lines: readonly number[]; readonly set: ReadonlySet<number>; readonly last: number };
 
 function collectionOf(axis: AxisLines, name: string): LineCollection {
   const all = [...(axis.explicitNames.get(name) ?? []), ...(axis.implicitNames.get(name) ?? [])].sort((a, b) => a - b);
-  return { lines: all, last: axis.explicitCount };
+  return { lines: all, set: new Set(all), last: axis.explicitCount };
 }
 
-const contains = (c: LineCollection, line: number): boolean => line <= c.last && c.lines.includes(line);
+// A Set: the look-ahead and look-back walks visit up to kGridMaxTracks lines.
+const contains = (c: LineCollection, line: number): boolean => line <= c.last && c.set.has(line);
 
 /** Blink LookAheadForNamedGridLine. */
 function lookAhead(start: number, count: number, c: LineCollection): number {
