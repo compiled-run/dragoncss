@@ -553,6 +553,22 @@
  },
  {
   "lane": "device-pixels",
+  "case": "sizing-ratio-abspos",
+  "dpr": 2,
+  "node": "interior:c1",
+  "kind": "pixel",
+  "detail": "interior:c1 at 202,102: native [64,51,51,255], Chrome [0,0,0,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "sizing-ratio-abspos-rtl",
+  "dpr": 2,
+  "node": "interior:c1",
+  "kind": "pixel",
+  "detail": "interior:c1 at 598,102: native [64,51,51,255], Chrome [0,0,0,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
   "case": "color-border-sides",
   "dpr": 2.625,
   "node": "border:one:right",
@@ -1454,5 +1470,21 @@
   "node": "border:p:left",
   "kind": "pixel",
   "detail": "border:p:left at 17,120: native [0,170,0,255], Chrome [254,220,186,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "sizing-ratio-abspos",
+  "dpr": 3,
+  "node": "interior:c1",
+  "kind": "pixel",
+  "detail": "interior:c1 at 303,153: native [64,51,51,255], Chrome [0,0,0,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "sizing-ratio-abspos-rtl",
+  "dpr": 3,
+  "node": "interior:c1",
+  "kind": "pixel",
+  "detail": "interior:c1 at 897,153: native [64,51,51,255], Chrome [0,0,0,255] (channel delta limit 0)"
  }
 ]
