@@ -6,6 +6,7 @@ import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { MediaQueryList } from '../media/index.ts';
 import { mediaAtoms, parseMediaPrelude, parseMediaQueryList, refusalsOf, serialiseMediaQueryList } from '../media/index.ts';
 import type { Diagnostic, Span } from '../types.ts';
+import { asciiLower } from './escapes.ts';
 
 /**
  * One at-rule as the driver meets it: its node, its name as written, where it sits ('the stylesheet', 'a rule block',
@@ -91,7 +92,7 @@ export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
 
 /** The handler for an at-rule name: its registered entry (names are ASCII case-insensitive), else refuseAtRule. */
 export function atRuleHandler(name: string): AtRuleHandler {
-  const key = name.toLowerCase();
+  const key = asciiLower(name);
   return Object.hasOwn(AT_RULE_HANDLERS, key) ? (AT_RULE_HANDLERS[key] as AtRuleHandler) : refuseAtRule;
 }
 

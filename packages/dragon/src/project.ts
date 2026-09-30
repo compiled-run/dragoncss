@@ -2,7 +2,7 @@
 // Every reachable assignment is resolved, checked and lowered as its own case; nothing is deduplicated (docs/api.md §7).
 import type { LayoutBox } from '@dragon/layout';
 import { attributeRefusal } from './attributes.ts';
-import { canonicalJson, sha256Hex } from './digest.ts';
+import { CanonicalText, canonicalJson, sha256Hex } from './digest.ts';
 import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
 import type { Longhand } from './css/properties.ts';
@@ -62,12 +62,42 @@ export const ANDROID_MIN_SDK = { min: 31, max: 36 } as const;
 /** @internal Test-only replacement profiles may omit android, which then reads the committed android profile. */
 export type SupportProfiles = { readonly web: SupportProfile; readonly ios: SupportProfile; readonly android?: SupportProfile };
 
-/** @internal The committed support profiles. */
-export const COMMITTED_PROFILES: Required<SupportProfiles> = { web: webProfile, ios: iosProfile, android: androidProfile };
+/** Profiles copied and deep-frozen by snapshotProfile: the only profiles a project reads, for its checks and its digest alike. */
+const profileSnapshots = new WeakSet<SupportProfile>();
+
+/** A copy of plain data (objects, arrays, strings, numbers, booleans, null); anything else throws. */
+function copyPlain(v: unknown): unknown {
+  if (v === null || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v;
+  if (Array.isArray(v)) return v.map(copyPlain);
+  if (typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, copyPlain(x)]));
+  throw new Error(`a support profile holds ${typeof v}, not plain data`);
+}
+
+/** A deep-frozen copy of a profile (the profile itself when it is already one), so no caller can change it after a project reads it. */
+function snapshotProfile(profile: SupportProfile): SupportProfile {
+  if (profileSnapshots.has(profile)) return profile;
+  const copy = deepFreeze(copyPlain(profile) as SupportProfile);
+  profileSnapshots.add(copy);
+  return copy;
+}
+
+/** The generated profiles are this module's own data: frozen in place, so they are their own snapshots. */
+function ownSnapshot(profile: SupportProfile): SupportProfile {
+  if (Object.isFrozen(profile)) throw new Error(`the ${profile.target} profile is already frozen, so it cannot be frozen whole here`);
+  profileSnapshots.add(deepFreeze(profile));
+  return profile;
+}
+
+/** @internal The committed support profiles, deep-frozen. */
+export const COMMITTED_PROFILES: Required<SupportProfiles> = Object.freeze({ web: ownSnapshot(webProfile), ios: ownSnapshot(iosProfile), android: ownSnapshot(androidProfile) });
 
 /** @internal The profile of one target. */
 export function profileFor(profiles: SupportProfiles, t: KnownTarget): SupportProfile {
-  return t === 'android' ? (profiles.android === undefined ? androidProfile : profiles.android) : profiles[t];
+  return t === 'android' ? (profiles.android === undefined ? COMMITTED_PROFILES.android : profiles.android) : profiles[t];
+}
+
+function snapshotProfiles(profiles: SupportProfiles): Required<SupportProfiles> {
+  return Object.freeze({ web: snapshotProfile(profiles.web), ios: snapshotProfile(profiles.ios), android: snapshotProfile(profileFor(profiles, 'android')) });
 }
 
 /**
@@ -138,7 +168,8 @@ type Resolved = {
   readonly direction: 'ltr' | 'rtl';
   readonly rootFont: RootFont;
   readonly ua: UaDataset;
-  readonly supportProfiles: SupportProfiles;
+  /** Snapshots (snapshotProfile): the support checks and the digest read these same objects. */
+  readonly supportProfiles: Required<SupportProfiles>;
   readonly foldViewport: Viewport | null;
 };
 
@@ -378,6 +409,18 @@ function canonicalInput(input: FrontEndResult): unknown {
   };
 }
 
+/** Each profile snapshot's canonical JSON, written once: profiles are megabytes, and a snapshot never changes. */
+const profileTexts = new WeakMap<SupportProfile, CanonicalText>();
+function profileText(profile: SupportProfile): CanonicalText {
+  if (!profileSnapshots.has(profile)) throw new Error('profileText reads only profile snapshots');
+  let t = profileTexts.get(profile);
+  if (t === undefined) {
+    t = new CanonicalText(canonicalJson(profile));
+    profileTexts.set(profile, t);
+  }
+  return t;
+}
+
 function analyze<K extends string>(config: { projectId: string; targets: object }, configDiagnostics: readonly Diagnostic[], options: Resolved, input: FrontEndResult): Analysis<K> {
   const targets = Object.keys(config.targets).filter((k): k is KnownTarget => (KNOWN_TARGETS as readonly string[]).includes(k)).sort();
   const diagnostics: Diagnostic[] = [...configDiagnostics];
@@ -389,7 +432,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object 
     // The reference platform of the UA dataset and the environment's root font are compilation inputs (docs/api.md §10.1).
     platform: options.ua.platform,
     rootFont: options.rootFont,
-    profiles: targets.map((t) => profileFor(profiles, t)),
+    profiles: targets.map((t) => profileText(profileFor(profiles, t))),
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
     direction: options.direction,
@@ -676,7 +719,7 @@ export function createProjectWith<const T extends Targets>(config: { projectId: 
     direction: options.direction,
     rootFont: options.rootFont === undefined ? 'ua-default' : options.rootFont,
     ua: choice.dataset,
-    supportProfiles: options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles,
+    supportProfiles: snapshotProfiles(options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles),
     foldViewport: options.foldViewport === undefined ? null : checkedViewport(options.foldViewport),
   };
   const configDiagnostics = validateConfig(config);

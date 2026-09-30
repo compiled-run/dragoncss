@@ -52,6 +52,7 @@ packages/parity/expected-dpr/**
 packages/parity/emitted/**
 packages/wpt/snapshots/**
 packages/wpt/expectations/**
+packages/tailwind-sweep/snapshot/**
 examples/*/chrome/**
 **/*.generated.ts
 packages/layout/src/script-data.ts

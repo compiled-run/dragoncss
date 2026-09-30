@@ -35,24 +35,8 @@ describe('grid family: Chrome 145 computed values', () => {
     return { p, v, code: diagnostics[0]?.code ?? null, longhands: (declaration?.longhands ?? []).map((l) => [l.property, valueToString(l.value)] as const) };
   };
   const COMPARED = [...GRID_LONGHANDS, 'row-gap', 'column-gap'];
-  /**
-   * Values Chrome parses that Dragon reports invalid, a refusal and never a wrong acceptance: anchor-center is missing from the webref
-   * grammar, and the webref lexer matches keywords without decoding escapes (css-syntax-3 §4.3.11), for every property.
-   */
-  const GRAMMAR_GAPS = [
-    'justify-items: anchor-center',
-    'grid: \\61uto-flow / 10px',
-    'grid: 10px / \\61uto-flow \\64 ense',
-    'grid-template-columns: repeat(\\61uto-fill, 10px)',
-    'grid-template-columns: \\6d in-content 10px',
-    'grid-template-columns: \\73ubgrid',
-    'grid-template-rows: \\6eone',
-    'grid-auto-columns: \\61uto',
-    'grid-auto-flow: \\64 ense',
-    'justify-self: \\63 enter',
-    'justify-items: \\6c egacy \\6c eft',
-    'justify-self: \\66irst baseline',
-  ];
+  /** Values Chrome parses that Dragon reports invalid, a refusal and never a wrong acceptance: anchor-center is missing from the webref grammar. */
+  const GRAMMAR_GAPS = ['justify-items: anchor-center'];
 
   const judge = (items: readonly Item[], seen: readonly Seen[]): string[] => items.flatMap((it, i) => {
     const s = seen[i] as Seen;
@@ -102,7 +86,7 @@ describe('grid family: Chrome 145 computed values', () => {
     const [realSeen, ...plantSeen] = seen;
     expect(judge(real, realSeen as Seen[])).toEqual([]);
     const accepted = (items: readonly Item[]): number => items.filter((it) => it.code === null).length;
-    expect({ corpus: corpus.length, accepted: accepted(real.slice(0, corpus.length)), edges: edges.length, edgesAccepted: accepted(real.slice(corpus.length)) }).toEqual({ corpus: 2515, accepted: 2510, edges: 250, edgesAccepted: 162 });
+    expect({ corpus: corpus.length, accepted: accepted(real.slice(0, corpus.length)), edges: edges.length, edgesAccepted: accepted(real.slice(corpus.length)) }).toEqual({ corpus: 2515, accepted: 2510, edges: 250, edgesAccepted: 176 });
     expect(real.filter((it) => it.code !== null && it.code !== 'DRAGON_CSS_INVALID_VALUE').map((it) => `${it.code as string} ${it.p}: ${it.v}`)).toEqual([
       'DRAGON_UNSUPPORTED_VALUE column-gap: calc(5% + 2px)',
       'DRAGON_UNSUPPORTED_VALUE grid-template-columns: calc(20% + 3.3px) 1fr',
@@ -113,15 +97,10 @@ describe('grid family: Chrome 145 computed values', () => {
       'DRAGON_UNSUPPORTED_VALUE grid-template-columns: subgrid [a] repeat(2, [b])',
       'DRAGON_UNSUPPORTED_VALUE grid-template-columns: calc(10px + 5%)',
       'DRAGON_UNSUPPORTED_VALUE grid-template: subgrid / 10px',
-      // Escaped keywords fail closed (grid-values.ts escaped()); escaped custom line names are kept.
-      'DRAGON_UNSUPPORTED_VALUE grid-row-start: \\73 pan 2',
-      'DRAGON_UNSUPPORTED_VALUE grid-row-start: \\61uto',
       'DRAGON_UNSUPPORTED_VALUE grid: subgrid / auto-flow 10px',
       'DRAGON_UNSUPPORTED_VALUE grid: auto-flow / subgrid',
-      'DRAGON_UNSUPPORTED_VALUE grid-row-start: \\69nherit',
-      'DRAGON_UNSUPPORTED_VALUE grid-row-start: \\64 efault',
-      'DRAGON_UNSUPPORTED_VALUE grid-row-start: span \\61uto',
-      'DRAGON_UNSUPPORTED_VALUE grid-row: \\61uto / 2',
+      // CSS-ESC: decoded, \\73ubgrid is subgrid.
+      'DRAGON_UNSUPPORTED_VALUE grid-template-columns: \\73ubgrid',
     ]);
     planted.forEach((p, i) => {
       expect(p.items.length, p.name).toBeGreaterThan(0);
