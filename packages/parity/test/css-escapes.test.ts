@@ -395,6 +395,6 @@ describe('CSS escapes: Dragon decodes as Chrome 145 does', () => {
     expect(judgeEdges(edges, edgeSeen)).toEqual([]);
     expect(judgeSelectors(selectorSeen)).toEqual([]);
     for (const p of planted) expect(p.problems().length, p.name).toBeGreaterThan(0);
-    expect({ twins: twinSeen.length, edges: edges.length, selectors: selectorSeen.length }).toEqual({ twins: 13732, edges: 89, selectors: 59 });
+    expect({ twins: twinSeen.length, edges: edges.length, selectors: selectorSeen.length }).toEqual({ twins: 13778, edges: 89, selectors: 59 });
   }, 300_000);
 });
