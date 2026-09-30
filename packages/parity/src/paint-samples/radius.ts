@@ -2,7 +2,8 @@
 // runs translated), gets one point clear inside and one clear outside each rounded corner's arc along the corner diagonal (rule
 // radius); an overflow: hidden rounded box gets the same pair at its padding-edge arcs (rule clip). A base colour point within
 // SAMPLE_INSET_DEVICE_PX of any rounded arc is suppressed, since arc pixels are antialiased (edge samples, decisions.md Paint);
-// edge scanlines stay, since they sit at mid-side where an arc meets its side tangentially.
+// edge scanlines stay, since they sit at mid-side where their own box's arc meets its side tangentially, unless they come near
+// another box's arc, whose antialiasing then decides their colours (the whole scanline is dropped).
 import { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import type { SampleBox, SamplePoint } from '../samples.ts';
@@ -165,9 +166,40 @@ function inBorderBand(rb: Rounded, x: number, y: number): boolean {
 
 const inImage = (ctx: PaintSampleContext, x: number, y: number): boolean => x >= 0 && y >= 0 && x < ctx.size.width && y < ctx.size.height;
 
+/** Whether a pixel is near a rounded arc of a box other than id (as nearAnyArc). */
+export function nearOtherArc(ctx: PaintSampleContext, id: string, x: number, y: number): boolean {
+  for (const rb of roundedBoxes(ctx)) {
+    if (rb.box.id === id) continue;
+    if (rb.outer.some((a) => nearArc(a, x, y))) return true;
+    const b = rb.box;
+    const bordered = b.border.top + b.border.right + b.border.bottom + b.border.left > 0;
+    if ((bordered || b.clips) && rb.inner.some((a) => nearArc(a, x, y))) return true;
+  }
+  return false;
+}
+
+const crossed = new WeakMap<PaintSampleContext, ReadonlySet<string>>();
+
+/**
+ * The edge scanlines of a case that come near another box's rounded arc: that arc's antialiasing, not the scanline's own edge,
+ * decides its colours there, so the whole scanline is dropped (edge rules are judged per scanline).
+ */
+function edgesCrossingArcs(ctx: PaintSampleContext): ReadonlySet<string> {
+  const hit = crossed.get(ctx);
+  if (hit !== undefined) return hit;
+  const out = new Set<string>();
+  for (const p of ctx.base) {
+    if (ruleKind(p.rule) !== 'edge' || out.has(p.rule)) continue;
+    const id = p.rule.split(':')[1] as string;
+    if (nearOtherArc(ctx, id, p.x, p.y)) out.add(p.rule);
+  }
+  crossed.set(ctx, out);
+  return out;
+}
+
 export const RADIUS_SAMPLES: PaintSamples = {
   name: 'radius',
-  keep: (p: SamplePoint, ctx: PaintSampleContext) => ruleKind(p.rule) === 'edge' || !nearAnyArc(ctx, p.x, p.y),
+  keep: (p: SamplePoint, ctx: PaintSampleContext) => (ruleKind(p.rule) === 'edge' ? !edgesCrossingArcs(ctx).has(p.rule) : !nearAnyArc(ctx, p.x, p.y)),
   points: (ctx: PaintSampleContext) => {
     const out: SamplePoint[] = [];
     const push = (pair: readonly SamplePoint[] | null, rule: string): void => {
