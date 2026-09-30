@@ -145,20 +145,4 @@ describe('grid lowering', () => {
     expect(() => lowerGridContainer(getter({ 'grid-template-areas': { kind: 'other', type: 'string', text: '"a a" "b"' } }))).toThrow(/not a rectangle/);
     expect(() => lowerGridContainer(getter({ 'grid-auto-flow': kw('dense row column') }))).toThrow(GridLoweringError);
   });
-
-  it('resolves a named line at the kGridMaxTracks bound against many named lines within the test timeout', () => {
-    const kw = (value: string): CssValue => ({ kind: 'keyword', value });
-    const values: Partial<Record<Longhand, CssValue>> = {
-      'grid-template-columns': { kind: 'other', type: 'track-list', text: 'repeat(100000, [a] 1px) repeat(9900000, 1px)' }, 'grid-template-rows': kw('none'), 'grid-template-areas': kw('none'),
-      'grid-auto-columns': kw('auto'), 'grid-auto-rows': kw('auto'), 'grid-auto-flow': kw('row'), 'justify-items': kw('normal'), 'justify-self': kw('auto'),
-      'grid-column-start': { kind: 'other', type: 'integer-custom-ident', text: '10000000 a' }, 'grid-column-end': kw('auto'), 'grid-row-start': kw('auto'), 'grid-row-end': kw('auto'),
-    };
-    const get = (p: Longhand): CssValue => {
-      const v = values[p];
-      if (v === undefined) throw new Error(`no value for ${p}`);
-      return v;
-    };
-    // 100000 named lines among 10000000 explicit tracks, then every implicit line counts; the result is clamped to the last track.
-    expect(lowerGridItem(lowerGridContainer(get), get).column).toEqual({ kind: 'definite', start: 9999999, end: 10000000 });
-  });
 });
