@@ -1,0 +1,16 @@
+{
+  "case": "writing-mode-horizontal-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"a1:text0","lines":[[0,7],[7,12]]},
+    {"id":"a2:text0","lines":[[0,7],[7,12]]},
+    {"id":"a3:text0","lines":[[0,7],[7,8]]},
+    {"id":"a4:text0","lines":[[0,6],[6,10]]},
+    {"id":"a5:text0","lines":[[0,6]]},
+    {"id":"a6:text0","lines":[[0,6],[6,12]]},
+    {"id":"a7:text0","lines":[[0,4]]},
+    {"id":"a8:text0","lines":[[0,5]]},
+    {"id":"b1:text0","lines":[[0,7],[7,12]]},
+    {"id":"b2:text0","lines":[[0,7],[7,8]]}
+  ]
+}

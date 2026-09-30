@@ -1,0 +1,17 @@
+{
+  "case": "writing-mode-horizontal",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"a1:text0","data":"XX XXX XX XX","lines":2,"units":[0,0,0,0,0,0,0,1,1,1,1,1],"blank":[6]},
+    {"id":"a2:text0","data":"XX XXX XX XX","lines":2,"units":[0,0,0,0,0,0,0,1,1,1,1,1],"blank":[6]},
+    {"id":"a3:text0","data":"XXX XX X","lines":2,"units":[0,0,0,0,0,0,0,1],"blank":[6]},
+    {"id":"a4:text0","data":"XX XX XXXX","lines":2,"units":[0,0,0,0,0,0,1,1,1,1],"blank":[5]},
+    {"id":"a5:text0","data":"XX XXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"a6:text0","data":"XX XX XX XXX","lines":2,"units":[0,0,0,0,0,0,1,1,1,1,1,1],"blank":[5]},
+    {"id":"a7:text0","data":"X XX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"a8:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"b1:text0","data":"XX XXX XX XX","lines":2,"units":[0,0,0,0,0,0,0,1,1,1,1,1],"blank":[6]},
+    {"id":"b2:text0","data":"XXX XX X","lines":2,"units":[0,0,0,0,0,0,0,1],"blank":[6]}
+  ]
+}
