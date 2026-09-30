@@ -33646,7 +33646,7 @@
     "css/css-values/viewport-units-scrollbars-crash.html": {"missing":"kind:crashtest","status":"not-runnable"},
     "css/css-values/viewport-units-scrollbars-custom-001.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-values/viewport-units-scrollbars-dynamic-001.html": {"missing":"kind:reftest","status":"not-runnable"},
-    "css/css-values/viewport-units-scrollbars-mq-001.html": {"missing":"DRAGON_CSS_PARSE:","status":"not-runnable"},
+    "css/css-values/viewport-units-scrollbars-mq-001.html": {"missing":"DRAGON_UNSUPPORTED_AT_RULE:@media (width = 100vw) { #square { height: 100px; } }","status":"not-runnable"},
     "css/css-values/viewport-units-scrollbars-root-properties-001.html": {"missing":"kind:testharness-other","status":"not-runnable"},
     "css/css-values/viewport-units-scrollbars-scroll-vhw-001.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-values/viewport-units-scrollbars-scroll-vw-001.html": {"missing":"kind:reftest","status":"not-runnable"},
