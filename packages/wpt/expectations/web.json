@@ -1,5 +1,5 @@
 {
-  "profileRevision": "m1-s5",
+  "profileRevision": "m2-p6a",
   "target": "web",
   "tests": {
     "css/CSS1/list-marker-inside-whitespace-001.xml": {"missing":"kind:other","status":"not-runnable"},
