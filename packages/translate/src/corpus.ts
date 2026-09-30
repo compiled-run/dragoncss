@@ -480,6 +480,12 @@ type RtValueJson = { readonly kind: string; readonly number: number; readonly le
 type RtCaseJson = { readonly from: RtValueJson; readonly to: RtValueJson; readonly effectEasing: RtEasingJson; readonly keyframeEasing: RtEasingJson };
 
 const rtRead = <T>(name: string): T => JSON.parse(readFileSync(join(RT_VECTORS_DIR, name), 'utf8')) as T;
+/** The input a record's index names; an index outside the file's inputs is a corrupt vector file, never a skipped record. */
+function rtAt<T>(list: readonly T[], i: number, file: string): T {
+  const v = Number.isInteger(i) ? list[i] : undefined;
+  if (v === undefined) throw new Error(`rt vectors ${file}: record index ${String(i)} is outside its ${list.length} inputs`);
+  return v;
+}
 const rtEasingLine = (e: RtEasingJson): unknown[] => [e.kind, bitsHex(e.x1), bitsHex(e.y1), bitsHex(e.x2), bitsHex(e.y2), bitsHex(e.steps), e.position];
 const rtComboLine = (c: RtComboJson): unknown[] => [
   bitsHex(c.delayMs), bitsHex(c.endDelayMs), bitsHex(c.durationMs), bitsHex(c.iterations === 'Infinity' ? Number.POSITIVE_INFINITY : c.iterations), bitsHex(c.iterationStart), c.direction, c.fill, rtEasingLine(c.easing),
@@ -495,17 +501,17 @@ const rtValueLine = (v: RtValueJson): unknown[] => [
  * Every number is its bit pattern. The expected results are the translated harness in TypeScript; rt-vectors.test.ts in this
  * package proves they are the vectors' records.
  */
-export function rtCases(): string[] {
+export function rtCases(read: <T>(name: string) => T = rtRead): string[] {
   const out: string[] = [];
-  const timing = rtRead<{ combos: RtComboJson[]; records: [number, number, string | null, string | null][] }>('timing.json');
-  for (const [i, t] of timing.records) out.push(JSON.stringify(['rt-timing', rtComboLine(timing.combos[i] as RtComboJson), bitsHex(t)]));
-  const easing = rtRead<{ easings: { spec: RtEasingJson }[]; records: [number, number, string | null][] }>('easing.json');
-  for (const [i, t] of easing.records) out.push(JSON.stringify(['rt-easing', rtEasingLine((easing.easings[i] as { spec: RtEasingJson }).spec), bitsHex(t)]));
-  const hold = rtRead<{ elapsedSeconds: number; combos: RtComboJson[]; records: [number, number, string | null, string | null][] }>('hold.json');
-  for (const [i, t] of hold.records) out.push(JSON.stringify(['rt-hold', rtComboLine(hold.combos[i] as RtComboJson), bitsHex(t), bitsHex(hold.elapsedSeconds)]));
-  const interp = rtRead<{ box: { width: number; height: number }; cases: RtCaseJson[]; records: [number, number, string | null, string][] }>('interp.json');
+  const timing = read<{ combos: RtComboJson[]; records: [number, number, string | null, string | null][] }>('timing.json');
+  for (const [i, t] of timing.records) out.push(JSON.stringify(['rt-timing', rtComboLine(rtAt(timing.combos, i, 'timing.json')), bitsHex(t)]));
+  const easing = read<{ easings: { spec: RtEasingJson }[]; records: [number, number, string | null][] }>('easing.json');
+  for (const [i, t] of easing.records) out.push(JSON.stringify(['rt-easing', rtEasingLine(rtAt(easing.easings, i, 'easing.json').spec), bitsHex(t)]));
+  const hold = read<{ elapsedSeconds: number; combos: RtComboJson[]; records: [number, number, string | null, string | null][] }>('hold.json');
+  for (const [i, t] of hold.records) out.push(JSON.stringify(['rt-hold', rtComboLine(rtAt(hold.combos, i, 'hold.json')), bitsHex(t), bitsHex(hold.elapsedSeconds)]));
+  const interp = read<{ box: { width: number; height: number }; cases: RtCaseJson[]; records: [number, number, string | null, string][] }>('interp.json');
   for (const [i, t] of interp.records) {
-    const c = interp.cases[i] as RtCaseJson;
+    const c = rtAt(interp.cases, i, 'interp.json');
     out.push(JSON.stringify(['rt-interp', rtValueLine(c.from), rtValueLine(c.to), rtEasingLine(c.effectEasing), rtEasingLine(c.keyframeEasing), bitsHex(t), bitsHex(interp.box.width), bitsHex(interp.box.height)]));
   }
   return out;

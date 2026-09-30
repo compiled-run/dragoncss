@@ -90,6 +90,36 @@ describe('rt suite (ANIM-a2)', () => {
     expect(runLibraryCase(JSON.stringify(['rt-interp', rot(0), rot(2e8), lin, lin, b(500), b(250.5), b(97.25)]))).toMatch(/^\["harness-error","rt trig argument/);
   });
 
+  it('the harness fails an rt case of the wrong shape rather than read part of it', () => {
+    const b = (x: number): string => Buffer.from(new Float64Array([x]).buffer).reverse().toString('hex');
+    const lin = ['linear', b(0), b(0), b(0), b(0), b(0), 'end'];
+    const steps = ['steps', b(0), b(0), b(0), b(0), b(4), 'end'];
+    const timing = [b(0), b(0), b(1000), b(1), b(0), 'normal', 'both', lin];
+    const len = ['px', b(0), b(0)];
+    const num = (n: number): unknown[] => ['opacity', b(n), len, [b(0), b(0), b(0), b(0)], []];
+    expect(runLibraryCase(JSON.stringify(['rt-timing', timing, b(500)]))).toMatch(/^\["ok",/);
+    expect(runLibraryCase(JSON.stringify(['rt-timing', timing, b(500), b(1)]))).toMatch(/^\["harness-error","rt-timing: expected/);
+    expect(runLibraryCase(JSON.stringify(['rt-hold', timing, b(500), b(1)]))).toMatch(/^\["ok",/);
+    expect(runLibraryCase(JSON.stringify(['rt-hold', timing, b(500)]))).toMatch(/^\["harness-error",/);
+    expect(runLibraryCase(JSON.stringify(['rt-hold', timing, b(500), b(1), b(2)]))).toMatch(/^\["harness-error","rt-hold: expected/);
+    expect(runLibraryCase(JSON.stringify(['rt-easing', lin, b(500)]))).toMatch(/^\["ok",/);
+    expect(runLibraryCase(JSON.stringify(['rt-easing', lin, b(500), b(0)]))).toMatch(/^\["harness-error","rt-easing: expected/);
+    const interp = (k: unknown[]): string => JSON.stringify(['rt-interp', num(0), num(1), lin, k, b(500), b(100), b(100)]);
+    expect(runLibraryCase(interp(lin))).toMatch(/^\["ok",/);
+    // The rt vectors use only linear and cubic-bezier keyframe easings; a steps one would otherwise be read as linear.
+    expect(runLibraryCase(interp(steps))).toMatch(/^\["harness-error","rt-interp: a steps keyframe easing/);
+  });
+
+  it('a vector record whose index names no input is a corrupt file, not a skipped line', () => {
+    const real = <T>(name: string): T => JSON.parse(readFileSync(join(RT_VECTORS_DIR, name), 'utf8')) as T;
+    expect(rtCases(real).length).toBe(rt?.lines.length);
+    const broken = <T>(name: string): T => {
+      const v = real<{ records: unknown[][] }>(name);
+      return (name === 'hold.json' ? { ...v, records: [[999999, 0, null, null], ...v.records] } : v) as T;
+    };
+    expect(() => rtCases(broken)).toThrow('rt vectors hold.json: record index 999999 is outside its');
+  });
+
   it('the rt reference files are translated engine roots, and the lock records the rt suite', () => {
     const roots = engineRoots(engineFiles());
     for (const [file, fn] of [['rt-easing.ts', 'easingFromSpec'], ['rt-easing.ts', 'solveBezier'], ['rt-timing.ts', 'computeTiming'], ['rt-timing.ts', 'currentTimeAt'], ['rt-timing.ts', 'seekPaused'], ['rt-interpolate.ts', 'interpolateValue'], ['rt-interpolate.ts', 'serializeValue']] as const) {

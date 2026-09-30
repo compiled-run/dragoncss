@@ -889,10 +889,13 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
     }
     // rt suite (ANIM-a2, T047 section 3.2): the rt timing, easing, hold and interpolation reference on the rt vector inputs.
     case 'rt-timing':
+      if (a.length !== 3) return fail('rt-timing: expected [op, timing, timeMs]');
       return rtTimingResult(rtTimingSpec(item(a, 1, '$'), '$[1]'), arg(a, 2), 0);
     case 'rt-hold':
+      if (a.length !== 4) return fail('rt-hold: expected [op, timing, timeMs, elapsedSeconds]');
       return rtTimingResult(rtTimingSpec(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
     case 'rt-easing':
+      if (a.length !== 3) return fail('rt-easing: expected [op, easing, timeMs]');
       return rtTimingResult(rtOneIteration(rtEasing(item(a, 1, '$'), '$[1]')), arg(a, 2), 0);
     case 'rt-interp':
       return rtInterpResult(a);
@@ -1122,6 +1125,7 @@ function rtInterpResult(a: readonly JsonValue[]): string {
   const to = rtValue(item(a, 2, '$'), '$[2]');
   const effect = rtEasing(item(a, 3, '$'), '$[3]');
   const keyframe = rtEasing(item(a, 4, '$'), '$[4]');
+  if (keyframe.kind === 'steps') return fail('rt-interp: a steps keyframe easing is outside the rt vectors (linear or cubic-bezier only)');
   const t = computeTiming(rtOneIteration(effect), currentTimeAt(seekPaused(arg(a, 5), 0, 1), 0, RT_NO_FAULTS), RT_NO_FAULTS);
   const p = t.progress === null ? 0 : t.progress;
   const local = keyframe.kind === 'cubic-bezier' ? solveBezier(cubicBezier(keyframe.x1, keyframe.y1, keyframe.x2, keyframe.y2), p, RT_NO_FAULTS) : p;
