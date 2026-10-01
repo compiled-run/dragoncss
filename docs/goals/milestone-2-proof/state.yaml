@@ -93,6 +93,8 @@ dispatched:
   - T026
   - T119
   - T120
+  - T137
+  - T138
 device_lease: null
 tasks:
   - id: T001
@@ -3758,6 +3760,21 @@ tasks:
           status: pass
         - cmd: targeted 38 tests
           status: pass
+  - id: T137
+    type: scout
+    assignee: Scout
+    status: queued
+    lane: android
+    objective: 'Scout: why the north star supports 20 declarations on Android against 165 on iOS (572 vs 32 unsupported values), and which Worker packages close the gap (the charter misfire: one platform
+      becomes later).'
+    receipt: null
+  - id: T138
+    type: scout
+    assignee: Scout
+    status: queued
+    lane: device
+    objective: 'Scout: sort the device-pixels failures (iOS 135, Android 182) by cause and map each cause to a fixing task, existing or new, so checkpoint 2 can close.'
+    receipt: null
   - id: T999
     type: judge
     assignee: Judge
