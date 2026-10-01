@@ -7,6 +7,27 @@
    "height": 300
   },
   "devicePixelRatio": 2.625,
+  "viewportUnits": {
+   "small": {
+    "width": 400,
+    "height": 300
+   },
+   "large": {
+    "width": 400,
+    "height": 300
+   },
+   "dynamic": {
+    "width": 400,
+    "height": 300
+   }
+  },
+  "safeArea": {
+   "top": 0,
+   "right": 0,
+   "bottom": 0,
+   "left": 0
+  },
+  "rootFontSize": 17.6,
   "root": {
    "kind": "box",
    "id": "html",
@@ -457,7 +478,12 @@
          "text": "XX XXX X XXXX",
          "font": {
           "family": "Ahem",
-          "size": 22.880000000000003
+          "size": 22.880000000000003,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 22.880000000000003
+          },
+          "absoluteSize": true
          },
          "lineHeight": {
           "kind": "px",
@@ -585,7 +611,12 @@
          "text": "XX X",
          "font": {
           "family": "Ahem",
-          "size": 15.840000000000002
+          "size": 15.840000000000002,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 15.840000000000002
+          },
+          "absoluteSize": true
          },
          "lineHeight": {
           "kind": "normal"

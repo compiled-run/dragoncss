@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { absoluteRects, ahemMeasurer, layout, layoutWithFaults, NO_ENGINE_FAULTS, validateLayoutInput } from '../src/index.ts';
 import type { LayoutBox, LayoutRect, LayoutResult, TextLeaf } from '../src/index.ts';
-import { anon, box, px, text } from './helpers.ts';
+import { anon, box, px, text, neutralEnvironment, ahemFont } from './helpers.ts';
 
 // 10px Ahem: every glyph advances 640 LU, the glyph box is 640 LU high, line-height normal is 640 LU. Expected values are raw
 // LayoutUnits, measured in Chrome 145 on the fixtures named in each test.
 const G = 640;
 
 function run(root: LayoutBox): LayoutResult {
-  return layout({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root }, ahemMeasurer);
+  return layout({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, ahemMeasurer);
 }
 
 function rects(r: LayoutResult): Map<string, LayoutRect> {
@@ -117,7 +117,7 @@ describe('intrinsic sizes of text (css-sizing-3 §5.1)', () => {
 describe('planted engine fault breakOffByOne', () => {
   it('lets a line take one glyph more than fits', () => {
     const root = block(45, [text('t', 'XX XX')]);
-    const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root };
+    const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
     expect(lines(layout(input, ahemMeasurer), 't').length).toBe(2);
     expect(lines(layoutWithFaults(input, ahemMeasurer, { ...NO_ENGINE_FAULTS, breakOffByOne: true }), 't').length).toBe(1);
   });
@@ -125,7 +125,7 @@ describe('planted engine fault breakOffByOne', () => {
 
 describe('the validator rejects text the compiler did not prepare', () => {
   const codes = (root: LayoutBox): string[] => {
-    const v = validateLayoutInput(JSON.parse(JSON.stringify({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root })));
+    const v = validateLayoutInput(JSON.parse(JSON.stringify({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root })));
     return v.ok ? [] : v.errors.map((e) => e.code);
   };
   it('accepts collapsed text, including a single space leaf between runs', () => {
@@ -155,7 +155,7 @@ describe('the validator rejects text the compiler did not prepare', () => {
 
 describe('engine refusals for text', () => {
   it('different fonts in one formatting context return mixed-inline-font', () => {
-    const r = run(block(30, [text('t0', 'XX'), text('t1', 'YY', { font: { family: 'Ahem', size: 12 } })]));
+    const r = run(block(30, [text('t0', 'XX'), text('t1', 'YY', { font: ahemFont(12) })]));
     expect(r.kind === 'unsupported' && r.unsupported.code).toBe('mixed-inline-font');
   });
   it('text-align: justify returns text-align until a fixture proves it', () => {

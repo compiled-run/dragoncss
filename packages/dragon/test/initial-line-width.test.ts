@@ -74,7 +74,7 @@ describe('R5: initial line widths lower to device px', () => {
   it('at DPR 1 a device px is a CSS px: the engine lays out device-px and px widths identically', () => {
     const a = lowered('.a { border-style: solid; width: 50px; height: 10px; }');
     const b: LayoutBox = { ...a, style: { ...a.style, borderTopWidth: { kind: 'px', value: 3 }, borderRightWidth: { kind: 'px', value: 3 }, borderBottomWidth: { kind: 'px', value: 3 }, borderLeftWidth: { kind: 'px', value: 3 } } };
-    const run = (x: LayoutBox) => layout({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root: { ...(lowered('.x{}') as LayoutBox), id: 'html', children: [x] } }, ahemMeasurer);
+    const run = (x: LayoutBox) => layout({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, viewportUnits: { small: { width: 400, height: 300 }, large: { width: 400, height: 300 }, dynamic: { width: 400, height: 300 } }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16, root: { ...(lowered('.x{}') as LayoutBox), id: 'html', children: [x] } }, ahemMeasurer);
     expect(run(a)).toEqual(run(b));
   });
 

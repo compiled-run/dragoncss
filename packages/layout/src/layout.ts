@@ -5,7 +5,8 @@ import type { LU } from './units.ts';
 import { add, fromCssPx, sub, ZERO } from './units.ts';
 import type { Frag, OutOfFlow, StaticAxis } from './box.ts';
 import { resolveBorder } from './box.ts';
-import { applyEnvironment } from './environment.ts';
+import type { EnvironmentDependencies } from './environment.ts';
+import { applyEnvironment, environmentDependencies } from './environment.ts';
 import type { Ctx, EngineFaults } from './block.ts';
 import { blockLevelInlineSize, directionOf, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
 import type { ContainingBlock } from './position.ts';
@@ -18,8 +19,9 @@ import { UnsupportedSignal } from './unsupported.ts';
 /** A box, text leaf or line fragment (<leaf>:line<j>), relative to its parent's border box; parent is null for the root. */
 export type LayoutRect = { readonly id: string; readonly parent: string | null; readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
 
+/** dependencies: the environment inputs the input reads (environment.ts), so a host re-lays out only when one of them changes. */
 export type LayoutResult =
-  | { readonly kind: 'ok'; readonly boxes: readonly LayoutRect[] }
+  | { readonly kind: 'ok'; readonly boxes: readonly LayoutRect[]; readonly dependencies: EnvironmentDependencies }
   | { readonly kind: 'unsupported'; readonly unsupported: LayoutUnsupported };
 
 // CSS2 §10.1 and §10.3.3: the root box is block-level in the initial containing block (the viewport), whose direction is the
@@ -38,13 +40,13 @@ type Placement = { readonly boxes: LayoutRect[]; readonly absolute: Map<string, 
 
 /** layout with seeded engine errors; only the parity harness's planted tests pass anything but NO_ENGINE_FAULTS. */
 export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults): LayoutResult {
+  // Planted platform-rule faults replace the Ahem measurer's two macOS rules (platform-rules.ts).
+  const m = faults.metricHalfUp || faults.untruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }) : measurer;
   const input = zoomInput(given, faults);
   const root = input.root;
   const icbWidth = fromCssPx(input.viewport.width);
   const icbHeight = fromCssPx(input.viewport.height);
   try {
-    // Planted platform-rule faults replace the Ahem measurer's two macOS rules (platform-rules.ts).
-    const m = faults.metricHalfUp || faults.untruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }) : measurer;
     const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults };
     const icbDirection = directionOf(ctx, root);
     const inline = blockLevelInlineSize(ctx, root, icbWidth, icbDirection);
@@ -60,7 +62,7 @@ export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, fau
     const out: Placement = { boxes: [], absolute: new Map(), pending: [] };
     flatten(r.frag, null, add(inline.marginLeft, offset.dx), add(inline.marginTop, offset.dy), ZERO, ZERO, out);
     placeOutOfFlow(ctx, input, out, { x: ZERO, y: ZERO, width: icbWidth, height: icbHeight, direction: icbDirection });
-    return { kind: 'ok', boxes: out.boxes };
+    return { kind: 'ok', boxes: out.boxes, dependencies: environmentDependencies(given) };
   } catch (e) {
     if (e instanceof UnsupportedSignal) return { kind: 'unsupported', unsupported: e.unsupported };
     throw e;
@@ -127,8 +129,11 @@ function placeOutOfFlow(ctx: Ctx, input: LayoutInput, out: Placement, icb: Conta
   }
 }
 
-/** The input in zoomed px, with devicePixelRatio 1 (a zoomed px is a device px), and every length resolved for its environment
- * (environment.ts); the input itself at DPR 1 when it holds nothing to resolve. */
+/**
+ * The input in zoomed px, with devicePixelRatio 1 (a zoomed px is a device px), and every length and font resolved for its
+ * environment with the Ahem font data and the planted font rules (environment.ts applyEnvironment): the engine lays out only
+ * Ahem, and a device's bridge measurer is self-checked equal to it.
+ */
 export function zoomInput(input: LayoutInput, faults: EngineFaults): LayoutInput {
   return applyEnvironment(input, faults);
 }
