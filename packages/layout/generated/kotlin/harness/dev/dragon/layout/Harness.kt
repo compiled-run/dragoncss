@@ -161,8 +161,8 @@ fun harness_parseString(c: Cursor): String {
   val out: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/translate/harness/harness.ts:155
   run {
-    loop4@ while (true) {
-      loop4_body@ do {
+    loop5@ while (true) {
+      loop5_body@ do {
         val ch: Double = harness_peek(c)
         // ts: packages/translate/harness/harness.ts:157
         if ((ch == -1.0)) {
@@ -180,7 +180,7 @@ fun harness_parseString(c: Cursor): String {
         // ts: packages/translate/harness/harness.ts:161
         if ((ch != 92.0)) {
           jsPush(out, ch)
-          break@loop4_body
+          break@loop5_body
         }
         val e: Double = harness_peek(c)
         c.pos += 1.0
@@ -280,14 +280,14 @@ fun harness_parseArray(c: Cursor): U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_J
   }
   // ts: packages/translate/harness/harness.ts:220
   run {
-    loop3@ while (true) {
-      loop3_body@ do {
+    loop4@ while (true) {
+      loop4_body@ do {
         jsPush(items, harness_parseValue(c))
         harness_skipWs(c)
         // ts: packages/translate/harness/harness.ts:223
         if ((harness_peek(c) == 44.0)) {
           c.pos += 1.0
-          break@loop3_body
+          break@loop4_body
         }
         harness_expect(c, 93.0)
         return JsonArr("arr", items)
@@ -309,8 +309,8 @@ fun harness_parseObject(c: Cursor): U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_
   }
   // ts: packages/translate/harness/harness.ts:241
   run {
-    loop2@ while (true) {
-      loop2_body@ do {
+    loop3@ while (true) {
+      loop3_body@ do {
         harness_skipWs(c)
         val key: String = harness_parseString(c)
         harness_skipWs(c)
@@ -326,7 +326,7 @@ fun harness_parseObject(c: Cursor): U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_
         // ts: packages/translate/harness/harness.ts:251
         if ((harness_peek(c) == 44.0)) {
           c.pos += 1.0
-          break@loop2_body
+          break@loop3_body
         }
         harness_expect(c, 125.0)
         return JsonObj("obj", keys, values)
