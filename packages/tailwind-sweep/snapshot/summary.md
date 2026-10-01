@@ -6,7 +6,7 @@
 |---|---:|---:|---:|---:|
 | web | 4121 (17.7%) | 19164 (82.3%) | 1 | 0 |
 | ios | 4121 (17.7%) | 19164 (82.3%) | 1 | 0 |
-| android | 0 (0.0%) | 23285 (100.0%) | 1 | 0 |
+| android | 4121 (17.7%) | 19164 (82.3%) | 1 | 0 |
 
 As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 and android 0 of 23286 utilities.
 
@@ -14,14 +14,14 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 
 | category | utilities | web | ios | android |
 |---|---:|---|---|---|
-| layout | 1551 | 1397 / 154 / 0 / 0 | 1397 / 154 / 0 / 0 | 0 / 1551 / 0 / 0 |
-| flexbox-grid | 513 | 357 / 155 / 1 / 0 | 357 / 155 / 1 / 0 | 0 / 512 / 1 / 0 |
-| spacing | 1308 | 1302 / 6 / 0 / 0 | 1302 / 6 / 0 / 0 | 0 / 1308 / 0 / 0 |
-| sizing | 1015 | 899 / 116 / 0 / 0 | 899 / 116 / 0 / 0 | 0 / 1015 / 0 / 0 |
-| typography | 261 | 21 / 240 / 0 / 0 | 21 / 240 / 0 / 0 | 0 / 261 / 0 / 0 |
-| colours | 14842 | 70 / 14772 / 0 / 0 | 70 / 14772 / 0 / 0 | 0 / 14842 / 0 / 0 |
+| layout | 1551 | 1397 / 154 / 0 / 0 | 1397 / 154 / 0 / 0 | 1397 / 154 / 0 / 0 |
+| flexbox-grid | 513 | 357 / 155 / 1 / 0 | 357 / 155 / 1 / 0 | 357 / 155 / 1 / 0 |
+| spacing | 1308 | 1302 / 6 / 0 / 0 | 1302 / 6 / 0 / 0 | 1302 / 6 / 0 / 0 |
+| sizing | 1015 | 899 / 116 / 0 / 0 | 899 / 116 / 0 / 0 | 899 / 116 / 0 / 0 |
+| typography | 261 | 21 / 240 / 0 / 0 | 21 / 240 / 0 / 0 | 21 / 240 / 0 / 0 |
+| colours | 14842 | 70 / 14772 / 0 / 0 | 70 / 14772 / 0 / 0 | 70 / 14772 / 0 / 0 |
 | backgrounds | 151 | 0 / 151 / 0 / 0 | 0 / 151 / 0 / 0 | 0 / 151 / 0 / 0 |
-| borders | 250 | 75 / 175 / 0 / 0 | 75 / 175 / 0 / 0 | 0 / 250 / 0 / 0 |
+| borders | 250 | 75 / 175 / 0 / 0 | 75 / 175 / 0 / 0 | 75 / 175 / 0 / 0 |
 | effects | 1178 | 0 / 1178 / 0 / 0 | 0 / 1178 / 0 / 0 | 0 / 1178 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 | 0 / 134 / 0 / 0 | 0 / 134 / 0 / 0 |
 | tables | 111 | 0 / 111 / 0 / 0 | 0 / 111 / 0 / 0 | 0 / 111 / 0 / 0 |
@@ -67,7 +67,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | `property scroll-margin-top` | 70 | 70 | 70 | 4 |
 | `property text-indent` | 70 | 70 | 70 | 4 |
 | `value calc()` | 52 | 52 | 52 | 4 |
-| `profile line-height:<refused calc()>` | 40 | 40 | 32 | 2 |
+| `profile line-height:<refused calc()>` | 40 | 40 | 40 | 2 |
 | `property cursor` | 36 | 36 | 36 | 36 |
 | `property scroll-padding` | 35 | 35 | 35 | 2 |
 | `property scroll-padding-block` | 35 | 35 | 35 | 2 |
