@@ -1,6 +1,8 @@
 // The north-star device lane's Chrome reference (examples/music-player; notes/T010-north-star-plan.md, WP2 NS-REF), checked
 // without Chrome: the case list is the manifest derivation, every capture file is present with its sha256, every PNG has the
-// raster size, and the PNG cover stand-ins regenerate byte-identically from their dependency-free generator.
+// raster size, the PNG cover stand-ins regenerate byte-identically from their dependency-free generator, the fonts are the
+// north star's pinned map (T034: Lato and Dragon Sans from the vendored bytes), and the video slot is the iframe with its
+// labelled no-network embed stand-in.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -8,6 +10,7 @@ import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { CHROME_VERSION, chromeArgsAt, PLAYWRIGHT_VERSION } from '../src/chrome.ts';
 import { ZOOM_GUARD } from '../src/dpr.ts';
+import { parseFixtureHtml } from '../src/fixture-reader.ts';
 import { repoPath } from '../src/paths.ts';
 
 // The example is its own TypeScript project, which this one does not reference; its modules are loaded at run time.
@@ -34,14 +37,32 @@ type Manifest = {
   sha256(bytes: Uint8Array | string): string;
   fontKey(fonts: readonly Font[]): string;
 };
-type Covers = { COVER_IDS: readonly string[]; COVER_WIDTH: number; COVER_HEIGHT: number; coverFile(id: string): string; coverPng(id: string): Uint8Array; coverPixels(id: string): Uint8Array };
-type Snapshot = { FREE_STATES: readonly FreeState[]; readSnapshot(): { html: string; css: string } };
+type Covers = {
+  COVER_IDS: readonly string[];
+  COVER_WIDTH: number;
+  COVER_HEIGHT: number;
+  MARKER_CENTRES: readonly (readonly [number, number])[];
+  MARKER_REACH: number;
+  MARKER_SUPPORT_SOURCE_PX: number;
+  coverFile(id: string): string;
+  coverPng(id: string): Uint8Array;
+  coverPixels(id: string): Uint8Array;
+};
+type Snapshot = {
+  FREE_STATES: readonly FreeState[];
+  readSnapshot(): { html: string; css: string };
+  VIDEO_EMBED_SRC: string;
+  withVideoIframe(html: string): string;
+  EMBED_STAND_IN: { readonly contentType: string; readonly body: string; readonly label: string };
+};
+type FontMapModule = { FONTS: unknown; pinnedFaceSrcs(map: unknown): readonly string[] };
 
 const exampleDir = repoPath('examples/music-player');
 const load = async <T,>(file: string): Promise<T> => (await import(pathToFileURL(join(exampleDir, file)).href)) as T;
 const lane = await load<Manifest>('tools/lane-manifest.ts');
 const covers = await load<Covers>('tools/cover-png.ts');
 const snapshot = await load<Snapshot>('tools/snapshot.ts');
+const fontMap = await load<FontMapModule>('tools/font-map.ts');
 const { css } = snapshot.readSnapshot();
 const read = (file: string): Buffer => readFileSync(join(exampleDir, file));
 
@@ -56,6 +77,8 @@ type PixelManifest = {
   fontKey: string;
   fonts: readonly Font[];
   covers: readonly { videoId: string; file: string; sha256: string; bytes: number; width: number; height: number }[];
+  fontReference: { map: unknown; faces: readonly { src: string; sha256: string; bytes: number }[]; rewrites: readonly { where: string; before: string; after: string }[] };
+  embeds: readonly { src: string; standIn: string; contentType: string; sha256: string; bytes: number }[];
   counts: Record<string, number>;
   files: readonly PixelFile[];
 };
@@ -72,7 +95,7 @@ type Dump = {
   forced: { target: string } | null;
   properties: readonly string[];
   fonts: Record<string, readonly Font[]>;
-  elements: readonly { id: string; values: readonly string[] }[];
+  elements: readonly { id: string; tag: string; hasBox: boolean; rect: readonly number[]; values: readonly string[] }[];
   texts: readonly { id: string; data: string; lines: readonly { start: number; end: number }[] }[];
 };
 
@@ -179,7 +202,109 @@ describe('north-star Chrome reference', () => {
   });
 });
 
+describe('north-star fonts and video slot', () => {
+  it('fonts: the pinned map of tools/font-map.ts, from the vendored bytes, with sans-serif rewritten to Dragon Sans', () => {
+    expect(pixels.fontReference.map).toEqual(fontMap.FONTS);
+    expect(pixels.fontReference.faces.map((f) => f.src)).toEqual([...fontMap.pinnedFaceSrcs(fontMap.FONTS)]);
+    for (const f of pixels.fontReference.faces) {
+      const bytes = readFileSync(repoPath(f.src));
+      expect([lane.sha256(bytes), bytes.length], f.src).toEqual([f.sha256, f.bytes]);
+    }
+    expect(pixels.fontReference.rewrites).toContainEqual({ where: 'body', before: 'Lato, sans-serif', after: 'Lato, "Dragon Sans"' });
+  });
+
+  it('the font key holds Lato Regular and Bold as web fonts; text renders in the pinned faces, except ❚ (in neither face)', () => {
+    const custom = pixels.fonts.filter((f) => f.isCustomFont).map((f) => f.postScriptName);
+    expect(custom).toEqual(expect.arrayContaining(['Lato-Regular', 'Lato-Bold']));
+    expect(pixels.fonts.some((f) => /helvetica|lucida/i.test(f.postScriptName))).toBe(false);
+    for (const c of captures) {
+      const d = JSON.parse(read(c.dump).toString('utf8')) as Dump;
+      for (const [id, fonts] of Object.entries(d.fonts)) {
+        for (const f of fonts) {
+          // ▶ and ♪ are not in Lato and fall back to Dragon Sans (Inter); ❚ U+275A is in neither, so Chrome takes a host face (TXT1d).
+          if (f.isCustomFont) expect(['Lato', 'Inter'], `${c.dump} ${id}`).toContain(f.familyName);
+          else expect([id, d.texts.filter((t) => t.id.startsWith(`${id}:`)).map((t) => t.data).join('')], c.dump).toEqual(['play-icon', '❚❚']);
+        }
+      }
+    }
+  });
+
+  it('withVideoIframe swaps exactly the placeholder element: same parent, no stray text, the src decoded, everything else equal', () => {
+    type Node = ReturnType<typeof parseFixtureHtml>['root'] | { text: string };
+    const find = (n: Node, id: string): ReturnType<typeof parseFixtureHtml>['root'] | null => {
+      if (!('tag' in n)) return null;
+      if (n.attrs.get('data-dragon-id') === id) return n;
+      for (const c of n.children) {
+        const hit = find(c, id);
+        if (hit !== null) return hit;
+      }
+      return null;
+    };
+    const { html } = snapshot.readSnapshot();
+    const before = parseFixtureHtml(html).root;
+    const after = parseFixtureHtml(snapshot.withVideoIframe(html)).root;
+    const host = find(after, 'youtube-frame-host');
+    expect(host?.children.map((c) => ('tag' in c ? [c.tag, c.attrs.get('data-dragon-id'), c.children.length] : ['text', c.text]))).toEqual([['iframe', 'video-placeholder', 0]]);
+    const slot = find(after, 'video-placeholder');
+    expect([...(slot?.attrs ?? new Map()).entries()]).toEqual([['class', 'youtube-player-target'], ['src', snapshot.VIDEO_EMBED_SRC], ['data-dragon-id', 'video-placeholder']]);
+    // Every other element and text is unchanged: the placeholder div back in place of the iframe gives the original tree.
+    const restore = snapshot.withVideoIframe(html).replace(/<iframe class="youtube-player-target" src="[^"]*" data-dragon-id="video-placeholder"><\/iframe/, '<div class="youtube-player-target" data-dragon-id="video-placeholder"></div');
+    expect(restore).toBe(html);
+    expect(find(before, 'video-placeholder')?.tag).toBe('div');
+    // No capture records a text node in the video shell, the player, the frame host or the slot.
+    for (const c of captures) {
+      const d = JSON.parse(read(c.dump).toString('utf8')) as Dump;
+      expect(d.texts.filter((t) => /^(mini-video-shell|youtube-player|youtube-frame-host|video-placeholder):/.test(t.id)).map((t) => t.id), c.dump).toEqual([]);
+    }
+  });
+
+  it('the video slot is the iframe with the embed src, served the labelled no-network stand-in, at the placeholder box', () => {
+    expect(pixels.embeds).toEqual([{ src: snapshot.VIDEO_EMBED_SRC, standIn: snapshot.EMBED_STAND_IN.label, contentType: snapshot.EMBED_STAND_IN.contentType, sha256: lane.sha256(snapshot.EMBED_STAND_IN.body), bytes: Buffer.byteLength(snapshot.EMBED_STAND_IN.body) }]);
+    expect(snapshot.EMBED_STAND_IN.label).toMatch(/^stand-in: .*no network/);
+    for (const c of captures) {
+      const d = JSON.parse(read(c.dump).toString('utf8')) as Dump;
+      const slot = d.elements.filter((e) => e.id === 'video-placeholder');
+      expect(slot.map((e) => [e.tag, e.hasBox]), c.dump).toEqual([['iframe', true]]);
+      const shell = d.elements.find((e) => e.id === 'youtube-player');
+      expect(slot[0]?.rect, c.dump).toEqual(shell?.rect);
+    }
+  });
+});
+
 describe('north-star cover stand-ins', () => {
+  it('carry flat marker patches 16 source px beyond the largest filter support, clear of each other and the image edge', () => {
+    expect(covers.MARKER_REACH).toBe(covers.MARKER_SUPPORT_SOURCE_PX + 16);
+    // The smallest drawn scale over every img box of the reference (contain: the smaller ratio, cover: the larger), in device px.
+    const scales = captures.flatMap((c) => {
+      const d = JSON.parse(read(c.dump).toString('utf8')) as Dump;
+      const fit = d.properties.indexOf('object-fit');
+      return d.elements.filter((e) => e.tag === 'img' && e.hasBox).map((e) => {
+        const [w, h] = [(e.rect[2] as number) * c.dpr / covers.COVER_WIDTH, (e.rect[3] as number) * c.dpr / covers.COVER_HEIGHT];
+        const f = e.values[fit];
+        if (f !== 'contain' && f !== 'cover') throw new Error(`${c.dump} ${e.id}: object-fit ${f}`);
+        return f === 'contain' ? Math.min(w, h) : Math.max(w, h);
+      });
+    });
+    expect(scales.length).toBeGreaterThan(0);
+    expect(Math.ceil(1 / Math.min(...scales)) + 2).toBeLessThanOrEqual(covers.MARKER_SUPPORT_SOURCE_PX);
+    const r = covers.MARKER_REACH;
+    for (const id of covers.COVER_IDS) {
+      const px = covers.coverPixels(id);
+      for (const [cx, cy] of covers.MARKER_CENTRES) {
+        expect(cx - r >= 0 && cy - r >= 0 && cx + r < covers.COVER_WIDTH && cy + r < covers.COVER_HEIGHT).toBe(true);
+        const first = px.subarray((cy * covers.COVER_WIDTH + cx) * 3, (cy * covers.COVER_WIDTH + cx) * 3 + 3);
+        let flat = true;
+        for (let y = cy - r; y <= cy + r && flat; y++) {
+          for (let x = cx - r; x <= cx + r && flat; x++) for (let k = 0; k < 3; k++) if (px[(y * covers.COVER_WIDTH + x) * 3 + k] !== first[k]) flat = false;
+        }
+        expect(flat, `${id} marker at ${cx},${cy}`).toBe(true);
+      }
+    }
+    covers.MARKER_CENTRES.forEach(([ax, ay], i) => covers.MARKER_CENTRES.forEach(([bx, by], j) => {
+      if (i < j) expect(Math.max(Math.abs(ax - bx), Math.abs(ay - by)), `${i} ${j}`).toBeGreaterThan(2 * r);
+    }));
+  });
+
   it('regenerate byte-identically and match the pixel manifest', () => {
     expect(pixels.covers.map((c) => c.videoId)).toEqual([...covers.COVER_IDS]);
     expect(filesUnder(join(exampleDir, 'covers')).sort()).toEqual(covers.COVER_IDS.map((id) => covers.coverFile(id)).sort());
