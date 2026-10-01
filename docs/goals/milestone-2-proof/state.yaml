@@ -81,7 +81,6 @@ visual_board:
 active_task: T058
 dispatched:
   - T121
-  - T122
   - T071
   - T074
   - T072
@@ -92,7 +91,6 @@ dispatched:
   - T062
   - T118
   - T026
-  - T125
   - T119
   - T120
 device_lease: null
@@ -3482,11 +3480,39 @@ tasks:
   - id: T122
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: device
     objective: 'LANE-SPEED (#42, notes/LANE-SPEED.md): device lanes run a target''s devices at once under a machine-wide memory budget; fix the cross-target memory overcommit finding; record device timings;
       land.'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed in PR #42 (merged 9b60a9e35) after 6 Macroscope rounds. Device runs are machine-exclusive under the device lease. One parity:lanes process runs both targets at once within an in-memory
+        memory budget, and even the first device waits for it. Every child process in the device code goes through device-exec.ts, which throws on failure unless a reason is given, enforced by a scan test.
+        T124 (north-star:check --conditions) and T125 (SUITE_LINE) are included. Device run of 460 cases equals master; pnpm test 2935/2935.'
+      changed_files:
+        - packages/parity/src/device-exec.ts
+        - packages/parity/src/device-run.ts
+        - packages/parity/src/device-jobs.ts
+        - packages/parity/src/device-lanes.ts
+        - packages/parity/src/cli/lanes.ts
+        - packages/parity/src/lanes.ts
+        - package.json
+      commands:
+        - cmd: pnpm pr:review 42 (exit 0)
+          status: pass
+        - cmd: pnpm test 2935/2935
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices
+          status: pass
+    allowed_files:
+      - packages/parity/src/device-exec.ts
+      - packages/parity/src/device-run.ts
+      - packages/parity/src/device-jobs.ts
+      - packages/parity/src/device-lanes.ts
+      - packages/parity/src/cli/lanes.ts
+      - packages/parity/src/lanes.ts
+      - package.json
   - id: T123
     type: worker
     assignee: Worker
@@ -3522,20 +3548,46 @@ tasks:
   - id: T124
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: tooling
     objective: 'pnpm run north-star:check fails on master (SyntaxError: ''dragon'' does not provide collectFontFaces): the package.json script lacks --conditions=dragon-internal, which every sibling script
       has and regen commits worked around. Fix the script, and add a test that every package.json script running a repo .ts file that imports dragon-internal exports uses the condition.'
     allowed_files:
       - package.json
       - packages/parity/test/**
+      - packages/parity/src/device-exec.ts
+      - packages/parity/src/device-run.ts
+      - packages/parity/src/device-jobs.ts
+      - packages/parity/src/device-lanes.ts
+      - packages/parity/src/cli/lanes.ts
+      - packages/parity/src/lanes.ts
     verify:
       - pnpm run north-star:check
       - pnpm typecheck
       - pnpm test
     stop_if:
       - the check itself fails after the fix
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed in PR #42 (merged 9b60a9e35) after 6 Macroscope rounds. Device runs are machine-exclusive under the device lease. One parity:lanes process runs both targets at once within an in-memory
+        memory budget, and even the first device waits for it. Every child process in the device code goes through device-exec.ts, which throws on failure unless a reason is given, enforced by a scan test.
+        T124 (north-star:check --conditions) and T125 (SUITE_LINE) are included. Device run of 460 cases equals master; pnpm test 2935/2935.'
+      changed_files:
+        - packages/parity/src/device-exec.ts
+        - packages/parity/src/device-run.ts
+        - packages/parity/src/device-jobs.ts
+        - packages/parity/src/device-lanes.ts
+        - packages/parity/src/cli/lanes.ts
+        - packages/parity/src/lanes.ts
+        - package.json
+      commands:
+        - cmd: pnpm pr:review 42 (exit 0)
+          status: pass
+        - cmd: pnpm test 2935/2935
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices
+          status: pass
   - id: T125
     type: worker
     assignee: Worker
