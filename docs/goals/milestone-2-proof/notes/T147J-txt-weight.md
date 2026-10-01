@@ -145,3 +145,19 @@ Blink and Skia cites are at 145.0.7632.6 and Skia 2ab8add5, from the GitHub mirr
 **PM rulings:**
 - **Accepted, outside allowed_files:** the extra files (the gen-css-grammar SUBSET, the stylesheet.ts two-token hook, the text-latin-run.ts lookup) and the pin retargets.
 - **Next:** TXT-W2 (the font shorthand and font-synthesis) is dispatched on txt-w2. It also clears the FORM-a demo buttons' `font: inherit` font errors.
+
+## TXT-W2 host-done (2026-10-01): txt-w2 657673bb2 on txt-w1
+
+**Result.**
+- The font shorthand and font-synthesis expand as Chrome 145 does. Grammar tables: 51 font values, 15 font-synthesis values and 6 longhand values. The resets of all 14 unmodelled longhands are verified.
+- With `font-synthesis: none`, native can lay out text that Chrome draws unsynthesized.
+- All three plants are caught.
+
+**North star.**
+- `font: inherit` is supported on web and iOS. Support goes from 57.4% to 57.7%.
+- On this stack the 24 FORM-a A3 font errors are gone.
+- The demo buttons still need `<button>` and its `type` attribute, which FORM-a supplies when both stacks land.
+
+**Known gap.** `-webkit-small-control` is refused as invalid; Chrome parses it. This is a refusal, never a wrong acceptance.
+
+**PM ruling: accepted.** The extra files (the same kinds as W1) and the pin retargets are accepted.
