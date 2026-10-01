@@ -60,6 +60,13 @@ describe('math functions Chrome rejects are invalid CSS (T131)', () => {
     for (const p of MATH_VALIDITY_PROPERTIES) for (const v of MATH_VALIDITY_UNDETERMINED) expect(mathInvalidity(v, mathGrammarFor(p)), `${p}: ${v}`).toBeNull();
   });
 
+  it('a code point the check does not tokenize (an escape, a string, non-ASCII white space) leaves it undecided rather than reported invalid', () => {
+    for (const v of ['calc(1px +\u00a02px)', 'calc(1px\u00a0+ 2px)', 'calc(1px + \\32 px)', 'calc(1px + "a")', 'calc(1px + 2px /* open', 'calc(1px +\u2003 2px)']) expect(mathInvalidity(v, 'length'), JSON.stringify(v)).toBeNull();
+    // CSS white space other than a space still separates + and -.
+    for (const ws of ['\t', '\n', '\r', '\f']) expect(mathInvalidity(`calc(1px${ws}+${ws}2px)`, 'length')).toBeNull();
+    expect(mathInvalidity('calc(1px +\t2px + 3)', 'length')).toBe('it adds a length and a number, which have no common type (css-values-4 §10.9)');
+  });
+
   it('parseMath refuses with the same reason the stylesheet drops a declaration for: one predicate decides both', () => {
     for (const [p, v] of CAPTURE.rows) {
       const context = mathContextFor(p);

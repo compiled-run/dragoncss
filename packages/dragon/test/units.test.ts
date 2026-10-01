@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/internal.ts';
 import { lengthToPx, mathFunctionRefusal, unitRefusal } from '../src/css/units.ts';
-import { mathContextFor, MAX_MATH_TOKENS, parseMath } from '../src/css/math.ts';
+import { mathContextFor, mathInvalidity, MAX_MATH_TOKENS, parseMath } from '../src/css/math.ts';
 import { div, inputFor, text } from './helpers.ts';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
@@ -113,14 +113,15 @@ describe('math function checks', () => {
   });
   it('a calculation longer than MAX_MATH_TOKENS is refused before it is simplified; one within the bound parses', () => {
     const sum = (n: number, term: string): string => `calc(${Array.from({ length: n }, () => term).join(' + ')})`;
-    for (const t of [sum(100000, '1vi'), sum(100000, '1px')]) {
+    for (const t of [sum(100000, '1vi'), sum(100000, '1px'), `calc(${'('.repeat(100000)}1px${')'.repeat(100000)})`]) {
       const r = parseMath(t, LENGTH);
       expect(r.ok).toBe(false);
       if (!r.ok) expect(r.reason).toBe(`it has more than ${MAX_MATH_TOKENS} tokens, the most a calculation may have`);
+      // The Chrome validity check is bounded too: past MAX_MATH_TOKENS it decides nothing, even where Chrome would reject the nesting.
+      for (const grammar of ['length', 'length-percentage', 'number', 'number-or-length-percentage'] as const) expect(mathInvalidity(t, grammar)).toBeNull();
     }
-    // 100000 nested parentheses are past Blink's kMaxExpressionDepth (100), so Chrome rejects them before any limit of Dragon's.
-    const deep = parseMath(`calc(${'('.repeat(100000)}1px${')'.repeat(100000)})`, LENGTH);
-    expect(deep.ok || deep.reason).toBe('it nests calculations deeper than 100, the most Chrome parses, so Chrome drops the declaration');
+    // Within the bound, nesting past Blink's kMaxExpressionDepth (100) is invalid, as Chrome has it.
+    expect(mathInvalidity(`calc(${'('.repeat(100)}1px${')'.repeat(100)})`, 'length')).toBe('it nests calculations deeper than 100, the most Chrome parses');
     // n terms are 4n - 1 tokens (calc(, then value, space, +, space per join, then )): 250 terms is 999, 251 is 1003.
     expect(parseMath(sum(250, '1vi'), LENGTH).ok).toBe(true);
     expect(parseMath(sum(251, '1vi'), LENGTH).ok).toBe(false);

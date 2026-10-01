@@ -346,6 +346,9 @@ type Token =
 const NUMBER = /[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/y;
 const IDENT = /-?[a-zA-Z_][a-zA-Z0-9_-]*/y;
 const UNIT = /[a-zA-Z]+/y;
+/** The code points the validity check tokenizes: css-syntax-3 §4.2 white space, ASCII letters and digits, and - _ + * / ( ) . , %. */
+const CSS_WHITE_SPACE = /[ \t\n\r\f]/;
+const VALIDITY_CHARACTERS = /^[A-Za-z0-9_\-+*/().,% \t\n\r\f]$/;
 
 /**
  * The most tokens a calculation may have. Chrome 145 sets no such limit; Dragon refuses a longer calculation with a reason, so
@@ -359,14 +362,15 @@ const execAt = (re: RegExp, text: string, i: number): RegExpExecArray | null => 
   return re.exec(text);
 };
 
-/** The tokens of a calculation; for the validity check (unbounded) comments are dropped as css-syntax-3 §4.3 does, and an unclosed one gives null. */
+/** The tokens of a calculation, at most MAX_MATH_TOKENS; for the validity check comments are dropped as css-syntax-3 §4.3 does, and an unclosed one or a longer calculation gives null. */
 function tokenize(text: string): Token[];
 function tokenize(text: string, validity: true): Token[] | null;
 function tokenize(text: string, validity = false): Token[] | null {
   const out: Token[] = [];
   let i = 0;
   while (i < text.length) {
-    if (!validity && out.length >= MAX_MATH_TOKENS) return refuse(`it has more than ${MAX_MATH_TOKENS} tokens, the most a calculation may have`, 'Write a shorter calculation.');
+    // The bound holds on both paths: past it the validity check is undetermined (null), and parseMath then refuses with the reason.
+    if (out.length >= MAX_MATH_TOKENS) return validity ? null : refuse(`it has more than ${MAX_MATH_TOKENS} tokens, the most a calculation may have`, 'Write a shorter calculation.');
     const ch = text[i] as string;
     if (validity && ch === '/' && text[i + 1] === '*') {
       const end = text.indexOf('*/', i + 2);
@@ -374,8 +378,11 @@ function tokenize(text: string, validity = false): Token[] | null {
       i = end + 2;
       continue;
     }
-    if (/\s/.test(ch)) {
-      while (i < text.length && /\s/.test(text[i] as string)) i++;
+    // Escapes, strings, non-ASCII and other code points the math tokenizer does not model; and css-syntax-3 white space only.
+    if (validity && !VALIDITY_CHARACTERS.test(ch)) return null;
+    const space = validity ? CSS_WHITE_SPACE : /\s/;
+    if (space.test(ch)) {
+      while (i < text.length && space.test(text[i] as string)) i++;
       out.push({ k: 'ws' });
       continue;
     }
@@ -1026,8 +1033,7 @@ const GRAMMAR_NAMES: { readonly [g in MathGrammar]: string } = {
  */
 export function mathInvalidity(text: string, grammar: MathGrammar): string | null {
   const source = text.trim();
-  // Escapes, strings and other tokens the math tokenizer does not model; an unclosed block, which Chrome closes at the end.
-  if (!/^[A-Za-z0-9_\-+*/().,%\s]*$/.test(source.replace(/\/\*[\s\S]*?\*\//g, ''))) return null;
+  // null: a code point the tokenizer does not model, more than MAX_MATH_TOKENS tokens, or an unclosed comment or block (which Chrome closes at the end).
   const toks = tokenize(source, true);
   if (toks === null || toks.filter((t) => t.k === 'open' || t.k === 'func').length !== toks.filter((t) => t.k === 'close').length) return null;
   const head = toks[0];
