@@ -88,6 +88,18 @@ describe('EMS: the paint registries', () => {
   });
 });
 
+describe('P6a: border styles the side painter cannot draw', () => {
+  it('never reach a native program: groove, ridge, inset and outset beside a dashed side block the native case', () => {
+    for (const k of ['groove', 'ridge', 'inset', 'outset']) {
+      const css = `body { margin: 0; } .a { width: 20px; height: 20px; border: 3px dashed red; border-right-style: ${k}; }`;
+      const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, (r) => [div(r, 'a', ['a'], [])]));
+      const p = nativePrograms(c, []);
+      expect(p.kind, k).toBe('blocked');
+      expect(p.kind === 'blocked' ? p.reason : '', k).toBe(`a: border-right-style ${k} has no native paint technique`);
+    }
+  });
+});
+
 describe('EMS: programs', () => {
   it('host every node under its DOM parent and carry an empty facts record, with writes in registry order', () => {
     const p = programs();
