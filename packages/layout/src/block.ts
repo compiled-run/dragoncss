@@ -85,6 +85,10 @@ export type EngineFaults = {
   readonly viewportSizeKindIgnored: boolean;
   /** A font size that is not absolute ignores Chrome's minimum logical font size (6px). */
   readonly minimumFontSizeIgnored: boolean;
+  /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
+  readonly orderHalfEven: boolean;
+  /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
+  readonly orderUnclamped: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -118,6 +122,8 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   lhNormalUnrounded: false,
   viewportSizeKindIgnored: false,
   minimumFontSizeIgnored: false,
+  orderHalfEven: false,
+  orderUnclamped: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };

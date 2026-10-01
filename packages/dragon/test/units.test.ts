@@ -2,7 +2,7 @@
 // refusals, and that computed px values reach the layout projection while the declared unit keeps its own feature key.
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
-import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/internal.ts';
+import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, WEB_CSS_PATH } from '../src/internal.ts';
 import { lengthToPx, mathFunctionRefusal, unitRefusal } from '../src/css/units.ts';
 import { mathContextFor, mathInvalidity, MAX_MATH_TOKENS, parseMath } from '../src/css/math.ts';
 import { div, inputFor, text } from './helpers.ts';
@@ -175,5 +175,17 @@ describe('math function checks', () => {
     expect([b.style.flexGrow, b.style.flexShrink]).toEqual([0, 0]);
     const c = style('.o { display: flex; } .i { flex-grow: calc(1 + 1); flex-shrink: calc(3 / 2); }', tree, 'i');
     expect([c.style.flexGrow, c.style.flexShrink]).toEqual([2, 1.5]);
+  });
+  it('T130: an order calculation that is not a whole number reaches the engine unrounded, and web CSS keeps it a calculation', () => {
+    const tree = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'o', ['o'], [div(r, 'i', ['i'], [text(r, 't', 'X')])])];
+    const cases = [['calc(1.5)', 1.5, 'calc(1.5)'], ['calc(-1.5)', -1.5, 'calc(-1.5)'], ['min(2.5, 7)', 2.5, 'calc(2.5)'], ['calc(3000000000)', 3000000000, '3000000000'], ['calc(4 / 2)', 2, '2']] as const;
+    for (const [value, sent, web] of cases) {
+      expect(style(`.o { display: flex; } .i { order: ${value}; }`, tree, 'i').style.order, value).toBe(sent);
+      const out = project().compile(inputFor(`${FONT} .o { display: flex; } .i { order: ${value}; }`, tree)).outputs.web;
+      const css = out.kind === 'ready' ? out.files.find((f) => f.path === WEB_CSS_PATH)?.text ?? '' : '';
+      expect(css.split('\n').filter((l) => l.startsWith('  order:') && l !== '  order: 0;'), value).toEqual([`  order: ${web};`]);
+    }
+    const literal = project().compile(inputFor(`${FONT} .o { display: flex; } .i { order: 1.5; }`, tree));
+    expect(literal.diagnostics.map((d) => d.code)).toContain('DRAGON_CSS_INVALID_VALUE');
   });
 });

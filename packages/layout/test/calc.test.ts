@@ -11,7 +11,7 @@ import { hasPercent, resolveLength, resolveLengthOrNull, resolveMinLength } from
 import { evaluateCalc } from '../src/calc.ts';
 import { box, text, neutralEnvironment } from './helpers.ts';
 import type { LU } from '../src/units.ts';
-import { calcToLu, doubleMaxStep, doubleMinStep, floatDiv, floatInvert, floatMul, fromCssPx, pixelsAndPercentAt, pixelsAndPercentPlainOrder, toFloat, viewportUnitBase } from '../src/units.ts';
+import { calcToLu, doubleMaxStep, doubleMinStep, floatDiv, floatInvert, floatMul, fromCssPx, orderInteger, pixelsAndPercentAt, pixelsAndPercentPlainOrder, toFloat, viewportUnitBase } from '../src/units.ts';
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'vectors', 'calc');
 const files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
@@ -225,5 +225,51 @@ describe('intrinsic contributions of calculations with a percentage (css-sizing-
     const r = layoutWithFaults({ viewport: { width: 800, height: 600 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 800, height: 600 }), root: box('html', {}, [box('w', { position: 'relative' }, [box('p', { position: 'absolute' }, [child({ width: calc({ kind: 'sum', terms: [px(20), px(5)] }) })])])]) }, ahemMeasurer, NO_ENGINE_FAULTS);
     if (r.kind !== 'ok') throw new Error(JSON.stringify(r.unsupported));
     expect(absoluteRects(r.boxes).get('p')?.width).toBe(25 * 64);
+  });
+});
+
+// T130: Blink CSSMathFunctionValue::ComputeInteger (css_math_function_value.cc 89-97) over RoundHalfTowardsPositiveInfinity
+// (math_extras.h 133-139): floor(v + 0.5) in double, then ClampToWithNaNTo0<int>. Each row was read from Chrome 145's getComputedStyle.
+describe('order from a math function: rounded half toward +infinity, then clamped to int', () => {
+  const ROWS: readonly (readonly [number, number])[] = [
+    [1.5, 2], [-1.5, -1], [0.5, 1], [-0.5, 0], [2.5, 3], [-2.5, -2], [1.49, 1], [-1.51, -2], [0.49999999999999994, 1],
+    [-0.49999999999999994, 0], [3e9, 2147483647], [-3e9, -2147483648], [1e20, 2147483647], [-1e20, -2147483648], [1e300, 2147483647],
+    [2147483647.5, 2147483647], [2147483646.5, 2147483647], [-2147483648.5, -2147483648], [-2147483647.5, -2147483647], [7, 7], [-0, 0],
+  ];
+  it('orderInteger matches Chrome on every row; the planted faults differ on a tie and beyond the int range', () => {
+    for (const [v, want] of ROWS) expect(orderInteger(v, false, false), String(v)).toBe(want);
+    expect([-1.5, 0.5, 2.5, 2147483646.5].map((v) => orderInteger(v, true, false))).toEqual([-2, 0, 2, 2147483646]);
+    expect([3e9, -3e9, 2147483647.5].map((v) => orderInteger(v, false, true))).toEqual([3e9, -3e9, 2147483648]);
+  });
+  const flex = (orders: readonly number[], dpr: number): LayoutInput => ({
+    viewport: { width: 400, height: 300 },
+    devicePixelRatio: dpr,
+    ...neutralEnvironment({ width: 400, height: 300 }),
+    root: box('html', {}, [box('f', { display: 'flex', width: { kind: 'px', value: 300 }, height: { kind: 'px', value: 8 } }, orders.map((o, i) => box(`i${i}`, { width: { kind: 'px', value: 10 * (i + 1) }, order: o })))]),
+  });
+  it('the validator takes a non-integer order, and the environment pass resolves it at DPR 1 and 2 (an integer input is returned as is)', () => {
+    for (const dpr of [1, 2]) {
+      const input = flex([2, 1.5, 2, 3e9, 2147483647], dpr);
+      const v = validateLayoutInput(input);
+      if (!v.ok) throw new Error(JSON.stringify(v.errors));
+      const kids = (zoomInput(v.input, NO_ENGINE_FAULTS).root.children[0] as LayoutBox).children as LayoutBox[];
+      expect(kids.map((k) => k.style.order), `@${dpr}`).toEqual([2, 2, 2, 2147483647, 2147483647]);
+    }
+    const whole = flex([2, -1, 2147483647], 1);
+    expect(zoomInput(whole, NO_ENGINE_FAULTS)).toBe(whole);
+    expect(validateLayoutInput({ ...flex([1], 1), root: { ...flex([1], 1).root, style: { ...flex([1], 1).root.style, order: Number.NaN } } }).ok).toBe(false);
+  });
+  it('items with a tied rounded order keep document order; each planted fault moves them', () => {
+    const lefts = (orders: readonly number[], faults: EngineFaults): number[] => {
+      const r = layoutWithFaults(flex(orders, 1), ahemMeasurer, faults);
+      if (r.kind !== 'ok') throw new Error(JSON.stringify(r.unsupported));
+      const a = absoluteRects(r.boxes);
+      return orders.map((_, i) => (a.get(`i${i}`)?.x ?? -1) / 64);
+    };
+    expect(lefts([2, 1.5, 2], NO_ENGINE_FAULTS)).toEqual([0, 10, 30]);
+    expect(lefts([-1, -1.5, -1], NO_ENGINE_FAULTS)).toEqual([0, 10, 30]);
+    expect(lefts([-1, -1.5, -1], { ...NO_ENGINE_FAULTS, orderHalfEven: true })).toEqual([20, 0, 30]);
+    expect(lefts([2147483647, 3e9, 2147483647], NO_ENGINE_FAULTS)).toEqual([0, 10, 30]);
+    expect(lefts([2147483647, 3e9, 2147483647], { ...NO_ENGINE_FAULTS, orderUnclamped: true })).toEqual([0, 40, 10]);
   });
 });
