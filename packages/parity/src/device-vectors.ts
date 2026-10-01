@@ -3,14 +3,15 @@
 // the Kotlin harness dexed with d8 --min-api 31 and run under ART with app_process, through a small launcher that gives the harness
 // thread the stack the JVM run gets from -Xss. Stdin and stdout carry the same corpus lines as the host lane, compared byte for byte
 // by the host lane's own runSuites; the lane passes only if every suite count and both corpus digests equal the host run's.
-import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { DeviceHandle } from './device-run.ts';
 import type { HostRun, LaneState, SuiteCount } from './lanes.ts';
-import { androidTools, IOS_TARGET, NATIVE_CONFIG, nativeOut, run } from './native-host.ts';
+import type { ExecResult } from './device-exec.ts';
+import { exec as run } from './device-exec.ts';
+import { androidTools, IOS_TARGET, NATIVE_CONFIG, nativeOut } from './native-host.ts';
 import { repoPath } from './paths.ts';
 import type { TargetConfig } from './targets.ts';
 import { declaredSuites, extendedManifest, p1Manifest } from './targets.ts';
@@ -46,10 +47,13 @@ const key = (files: Files, extra: readonly string[]): string => {
   return h.digest('hex').slice(0, 20);
 };
 
-function must(r: { status: number; out: string }, what: string): string {
-  if (r.status !== 0) throw new Error(`${what} failed (exit ${r.status}):\n${r.out.slice(-4000)}`);
-  return r.out;
-}
+/** A command's output (stdout then stderr, as the toolchain lines are read); the command itself throws on failure (device-exec.ts). */
+const must = (r: ExecResult, _what: string): string => r.out;
+
+/** A suite run's cause from its exec result, the shape the host lane's suiteCause reads (a timeout, a start error, a signal, an exit). */
+const causeOf = (r: ExecResult): { readonly status: number | null; readonly signal: NodeJS.Signals | null; readonly error?: Error } =>
+  r.error === null ? { status: r.status, signal: r.signal } : { status: r.status, signal: r.signal, error: Object.assign(new Error(r.error), { code: r.errorCode ?? undefined }) };
+const SUITE_FAILS = 'a suite that crashes or times out is judged: its cause is that suite\'s result in the lane';
 
 /** The Swift harness for the iOS simulator: the committed generated tree, one module, the host lane's flags, the simulator target. */
 export async function buildIosHarness(): Promise<string> {
@@ -124,13 +128,13 @@ export async function runDeviceVectors(h: DeviceHandle, target: TargetConfig, ho
   if ('udid' in h) {
     const binary = await buildIosHarness();
     exec = (mode, input, output) => {
-      const r = spawnSync('xcrun', ['simctl', 'spawn', h.udid, binary, mode, input, output], { stdio: ['ignore', 'ignore', 'pipe'], timeout: t.SUITE_TIMEOUT_MS, killSignal: 'SIGKILL', encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-      return t.suiteCause(r, t.SUITE_TIMEOUT_MS);
+      const r = run('xcrun', ['simctl', 'spawn', h.udid, binary, mode, input, output], { timeoutMs: t.SUITE_TIMEOUT_MS, allowFailure: SUITE_FAILS });
+      return t.suiteCause(causeOf(r), t.SUITE_TIMEOUT_MS);
     };
     toolchain = `${must(run('xcrun', ['swiftc', '--version']), 'swiftc --version').split('\n').find((l) => l.includes('Swift version'))?.trim() ?? 'swiftc'}; ${IOS_TARGET}; simctl spawn on ${h.spec.name}`;
   } else {
     const dexJar = await buildAndroidHarness();
-    const adb = (args: readonly string[], timeoutMs = 600_000) => run(h.tools.adb, ['-s', h.serial, ...args], { timeoutMs });
+    const adb = (args: readonly string[], timeoutMs = 600_000, allowFailure?: string): ExecResult => run(h.tools.adb, ['-s', h.serial, ...args], allowFailure === undefined ? { timeoutMs } : { timeoutMs, allowFailure });
     must(adb(['shell', 'rm', '-rf', DEVICE_DIR]), 'adb shell rm');
     must(adb(['shell', 'mkdir', '-p', DEVICE_DIR]), 'adb shell mkdir');
     must(adb(['push', dexJar, `${DEVICE_DIR}/harness.jar`]), 'adb push harness');
@@ -158,11 +162,12 @@ export async function runDeviceVectors(h: DeviceHandle, target: TargetConfig, ho
         must(adb(['push', `${local}.in`, remoteIn]), 'adb push corpus chunk');
         rmSync(`${local}.in`, { force: true });
         adb(['shell', 'rm', '-f', remoteOut]);
-        const r = spawnSync(h.tools.adb, ['-s', h.serial, 'shell', `CLASSPATH=${DEVICE_DIR}/harness.jar app_process /system/bin dev.dragon.p5.LauncherKt ${mode} ${remoteIn} ${remoteOut}; echo "exit=$?"`], { encoding: 'utf8', timeout: t.SUITE_TIMEOUT_MS, killSignal: 'SIGKILL', maxBuffer: 64 * 1024 * 1024 });
-        const code = /exit=(\d+)/.exec(`${r.stdout ?? ''}`)?.[1];
-        adb(['pull', remoteOut, local]);
+        const r = run(h.tools.adb, ['-s', h.serial, 'shell', `CLASSPATH=${DEVICE_DIR}/harness.jar app_process /system/bin dev.dragon.p5.LauncherKt ${mode} ${remoteIn} ${remoteOut}; echo "exit=$?"`], { timeoutMs: t.SUITE_TIMEOUT_MS, allowFailure: SUITE_FAILS });
+        const code = /exit=(\d+)/.exec(r.stdout)?.[1];
+        // A chunk that wrote no output is a crash judged below, so its missing output file is an answer too.
+        adb(['pull', remoteOut, local], 600_000, 'a chunk that crashed may have written no output; the crash is its cause and the missing lines fail the suite');
         adb(['shell', 'rm', '-f', remoteIn, remoteOut]);
-        const cause = r.error !== undefined || r.signal !== null ? t.suiteCause(r, t.SUITE_TIMEOUT_MS) : code === '0' ? null : `crash: exit status ${code ?? 'unknown'} in chunk ${i} ${`${r.stdout ?? ''}${r.stderr ?? ''}`.slice(-600)}`;
+        const cause = r.error !== null || r.signal !== null ? t.suiteCause(causeOf(r), t.SUITE_TIMEOUT_MS) : code === '0' ? null : `crash: exit status ${code ?? 'unknown'} in chunk ${i} ${r.out.slice(-600)}`;
         outs.push(existsSync(local) ? readFileSync(local, 'utf8') : '');
         rmSync(local, { force: true });
         if (cause !== null) {
@@ -173,7 +178,7 @@ export async function runDeviceVectors(h: DeviceHandle, target: TargetConfig, ho
       writeFileSync(output, outs.join(''));
       return null;
     };
-    const rel = run(h.tools.adb, ['-s', h.serial, 'shell', 'getprop', 'ro.build.version.release']).out.trim();
+    const rel = adb(['shell', 'getprop', 'ro.build.version.release']).stdout.trim();
     toolchain = `${t.kotlinTool()?.version ?? 'kotlinc'}; d8 --min-api ${NATIVE_CONFIG.android.minSdk}; ART app_process on ${h.spec.name} (Android ${rel})`;
   }
   const tag = `device-${target.target}`;

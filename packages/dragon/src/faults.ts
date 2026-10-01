@@ -47,6 +47,10 @@ export type CompilerFaults = {
   readonly sumOrderSwapped: boolean;
   /** The ios lowering drops explicit 0% terms of calculations, so a calculation with only a 0% percentage loses its percentage. */
   readonly dropExplicitZeroPercent: boolean;
+  /** The state program loses the last changed node record of every assignment's delta (SELD-R1a, lower/state-program.ts). */
+  readonly stateDeltaDropped: boolean;
+  /** The generated state setters never lay out again, even when the engine input changes (SELD-R1a). */
+  readonly setterSkipsRelayout: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false, blockifySkipped: false, inlineFlexToBlock: false, sumOrderSwapped: false, dropExplicitZeroPercent: false, mediaConditionIgnored: false, mediaBandOffByOne: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false, blockifySkipped: false, inlineFlexToBlock: false, sumOrderSwapped: false, dropExplicitZeroPercent: false, mediaConditionIgnored: false, mediaBandOffByOne: false, stateDeltaDropped: false, setterSkipsRelayout: false };

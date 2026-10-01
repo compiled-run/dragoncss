@@ -95,6 +95,12 @@ function publish(work: string, dir: string): void {
   }
 }
 
+/** A failed build removes its work directory, then throws the compiler's output. */
+function failBuild(work: string, message: string): never {
+  rmSync(work, { recursive: true, force: true });
+  throw new Error(message);
+}
+
 /** Compiles the Swift harness; returns the binary. Cached on sources, flags and compiler version. */
 export function buildSwift(tool: SwiftTool, files: Files): { binary: string; seconds: number; cached: boolean } {
   const key = filesKey(files, [...SWIFT_FLAGS, tool.version]);
@@ -109,9 +115,9 @@ export function buildSwift(tool: SwiftTool, files: Files): { binary: string; sec
   // The engine module must compile on its own (no Foundation, nothing from the harness), as it does in the SwiftPM package.
   const engine = srcs.filter((f) => f.includes('/Sources/DragonLayout/'));
   const alone = run(tool.swiftc, ['-typecheck', '-parse-as-library', '-module-name', 'DragonLayout', ...engine]);
-  if (!alone.ok) throw new Error(`swiftc -typecheck of the engine module failed:\n${alone.out.slice(0, 4000)}`);
+  if (!alone.ok) failBuild(work, `swiftc -typecheck of the engine module failed:\n${alone.out.slice(0, 4000)}`);
   const r = run(tool.swiftc, [...SWIFT_FLAGS, ...srcs, '-o', join(work, 'harness')]);
-  if (!r.ok) throw new Error(`swiftc failed:\n${r.out.slice(0, 4000)}`);
+  if (!r.ok) failBuild(work, `swiftc failed:\n${r.out.slice(0, 4000)}`);
   publish(work, dir);
   return { binary, seconds: (Date.now() - t) / 1000, cached: false };
 }
@@ -129,7 +135,7 @@ export function buildKotlin(tool: KotlinTool, files: Files): { jar: string; seco
   const t = Date.now();
   const env = { ...process.env, JAVA_HOME: tool.javaHome, PATH: `${join(tool.javaHome, 'bin')}:${process.env['PATH'] ?? ''}` };
   const r = run(tool.kotlinc, [...KOTLIN_FLAGS, ...srcs, '-d', join(work, 'harness.jar')], env);
-  if (!r.ok) throw new Error(`kotlinc failed:\n${r.out.slice(0, 4000)}`);
+  if (!r.ok) failBuild(work, `kotlinc failed:\n${r.out.slice(0, 4000)}`);
   publish(work, dir);
   return { jar, seconds: (Date.now() - t) / 1000, cached: false };
 }
@@ -164,28 +170,34 @@ export function runSuites(c: Corpus, exec: Exec, tag: string, untilFailure = fal
   for (const s of order) {
     out.push(runSuite(c, s, exec, inputs, dir));
     const last = out[out.length - 1] as SuiteResult;
-    if (untilFailure && last.pass < last.total) break;
+    if (untilFailure && (last.pass < last.total || last.cause !== null)) break;
   }
   return out;
 }
 
 function runSuite(c: Corpus, s: Suite, exec: Exec, inputs: Map<string, string>, dir: string): SuiteResult {
-  {
-    const outPath = join(dir, `${s.name}.jsonl`);
-    rmSync(outPath, { force: true });
-    const cause = exec(s.mode, inputs.get(s.name) as string, outPath);
-    const got = existsSync(outPath) ? readFileSync(outPath, 'utf8').split('\n') : [];
-    if (got[got.length - 1] === '') got.pop();
-    let pass = 0;
-    const mismatches: Mismatch[] = [];
-    for (let i = 0; i < s.expected.length; i++) {
-      const g = got[i] ?? '<missing>';
-      if (g === s.expected[i]) pass++;
-      else if (mismatches.length < 5) mismatches.push({ index: i, input: s.lines[i] as string, expected: s.expected[i] as string, got: g });
-    }
-    if (got.length !== s.expected.length && mismatches.length < 5) mismatches.push({ index: -1, input: '', expected: `${s.expected.length} lines`, got: `${got.length} lines` });
-    return { name: s.name, total: s.expected.length, pass: got.length === s.expected.length ? pass : Math.min(pass, got.length), mismatches, split: split(got), cause };
+  const outPath = join(dir, `${s.name}.jsonl`);
+  rmSync(outPath, { force: true });
+  const ended = exec(s.mode, inputs.get(s.name) as string, outPath);
+  const written = existsSync(outPath);
+  const got = written ? readFileSync(outPath, 'utf8').split('\n') : [];
+  if (got[got.length - 1] === '') got.pop();
+  let pass = 0;
+  const mismatches: Mismatch[] = [];
+  for (let i = 0; i < s.expected.length; i++) {
+    const g = got[i] ?? '<missing>';
+    if (g === s.expected[i]) pass++;
+    else if (mismatches.length < 5) mismatches.push({ index: i, input: s.lines[i] as string, expected: s.expected[i] as string, got: g });
   }
+  if (got.length !== s.expected.length && mismatches.length < 5) mismatches.push({ index: -1, input: '', expected: `${s.expected.length} lines`, got: `${got.length} lines` });
+  return { name: s.name, total: s.expected.length, pass: got.length === s.expected.length ? pass : Math.min(pass, got.length), mismatches, split: split(got), cause: ended ?? outputCause(written, got.length, s.expected.length) };
+}
+
+/** A process that exited 0 must still account for every case: no result file, or fewer or more lines than cases, is a cause. */
+export function outputCause(written: boolean, lines: number, cases: number): SuiteCause {
+  if (!written) return `no output: exit 0 but no result file was written (${cases} cases)`;
+  if (lines !== cases) return `${lines < cases ? 'short' : 'long'} output: exit 0 but ${lines} result lines for ${cases} cases`;
+  return null;
 }
 
 /** A suite that crashes, traps or runs past the limit leaves its missing lines as failing cases (a planted map fault can loop). */
@@ -197,26 +209,38 @@ export function execSuite(cmd: string, args: readonly string[], timeoutMs: numbe
   return suiteCause(r, timeoutMs);
 }
 
-/** The cause of a suite process ending: timeout, crash (a signal), a non-zero exit, or a spawn error; null for exit 0. */
-export function suiteCause(r: { readonly status: number | null; readonly signal: NodeJS.Signals | null; readonly error?: Error | undefined }, timeoutMs: number): SuiteCause {
+/** The last 600 characters of a process's stderr on one line (the cause is one report line), or '' when it printed nothing. */
+export function stderrTail(stderr: string | null | undefined): string {
+  // Every line terminator, \r and U+2028/U+2029 too, so the cause stays on its suite line for the lane parser.
+  const t = (stderr ?? '').trim().replace(/\s*[\n\r\u2028\u2029]\s*/g, ' | ');
+  return t.length > 600 ? `...${t.slice(-600)}` : t;
+}
+
+/** The cause of a suite process ending: timeout, crash (a signal), a non-zero exit, or a spawn error, with its stderr tail; null for exit 0. */
+export function suiteCause(r: { readonly status: number | null; readonly signal: NodeJS.Signals | null; readonly error?: Error | undefined; readonly stderr?: string | null }, timeoutMs: number): SuiteCause {
   const code = r.error === undefined ? '' : (r.error as NodeJS.ErrnoException).code ?? '';
-  if (code === 'ETIMEDOUT') return `timeout: killed after ${timeoutMs / 1000} s`;
-  if (r.error !== undefined) return `could not run: ${r.error.message}`;
-  if (r.signal !== null) return `crash: signal ${r.signal}`;
-  if (r.status !== 0) return `crash: exit status ${r.status}`;
-  return null;
+  const tail = stderrTail(r.stderr);
+  const why = code === 'ETIMEDOUT' ? `timeout: killed after ${timeoutMs / 1000} s` : r.error !== undefined ? `could not run: ${r.error.message}` : r.signal !== null ? `crash: signal ${r.signal}` : r.status !== 0 ? `crash: exit status ${r.status}` : null;
+  return why === null ? null : tail === '' ? why : `${why}; stderr tail: ${tail}`;
 }
 
 export function swiftExec(binary: string): Exec {
   return (mode, input, output) => execSuite(binary, [mode, input, output]);
 }
 
+/**
+ * The Kotlin harness heap cap. With the JVM default (a quarter of RAM) the engine suite grows to 4.3 GB resident, the likely reason
+ * it ran past SUITE_TIMEOUT_MS under machine-wide memory pressure; it needs 512-768 MB and runs as fast at 2 GB (1.6 GB resident).
+ */
+export const KOTLIN_HEAP = '-Xmx2g';
+
 export function kotlinExec(tool: KotlinTool, jar: string): Exec {
-  return (mode, input, output) => execSuite(join(tool.javaHome, 'bin/java'), ['-Xss64m', '-jar', jar, mode, input, output]);
+  return (mode, input, output) => execSuite(join(tool.javaHome, 'bin/java'), ['-Xss64m', KOTLIN_HEAP, '-jar', jar, mode, input, output]);
 }
 
+/** Every case matched and every process accounted for its cases: a suite with a cause (say, extra lines) does not pass. */
 export function allPass(suites: readonly SuiteResult[]): boolean {
-  return suites.every((s) => s.pass === s.total);
+  return suites.every((s) => s.pass === s.total && s.cause === null);
 }
 
 export function failures(suites: readonly SuiteResult[]): number {

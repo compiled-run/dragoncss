@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ahemMeasurer, layout } from '../src/index.ts';
 import type { LayoutBox, LayoutResult } from '../src/index.ts';
-import { box, pct, px } from './helpers.ts';
+import { box, pct, px, neutralEnvironment } from './helpers.ts';
 
 function run(root: LayoutBox, width = 400, height = 300): LayoutResult {
-  return layout({ viewport: { width, height }, devicePixelRatio: 1, root }, ahemMeasurer);
+  return layout({ viewport: { width, height }, devicePixelRatio: 1, ...neutralEnvironment({ width, height }), root }, ahemMeasurer);
 }
 
 function widths(r: LayoutResult, ids: string[]): number[] {

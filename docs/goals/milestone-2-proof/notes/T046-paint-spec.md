@@ -603,3 +603,21 @@ for every RT-13 file touched.
    decisions.md; if a paint plant is not caught on either platform; if `device-a11y` is missing or failing on either
    platform; if `outputs.<target>` is `ready` without that target's passing lanes.
 7. Start the two-week report-only clock per device lane when P6a merges, and record the date.
+
+## Amendment T075J (Judge, 2026-10-01), PM accepted: promotion versus #49
+
+This supersedes §5.5 item 2: profile-rows.ts does not take lanes.json as a status input.
+
+**The cycle is real.** Profile text, statuses included, enters the compile digest (project.ts digestInput.profiles). The digest is embedded in every generated case file, and those files make up the app stamp. So a status promoted from device lanes moves the stamp and makes the same lanes stale. p6a's history shows it: bdf590be2, then ada25d3cd, then host-only fallbacks.
+
+**Ruling.**
+- Profile statuses follow #49's iOS rule on both targets (layout from linux-dragon-layout, paint capped at caveat), and PROFILE_REVISION stays m1-s5.
+- Device gating lives only in profiles/native-lanes.ts (NATIVE_LANES). It feeds outputs.ready and is never in the digest or the host sources.
+- A ready output requires every lane to pass, so every row in a ready output is device-proven. That is oracle clause 4 with no churn.
+- compile.test.ts stays as on master (width exact on iOS).
+- New pins:
+  - deriveRows does not read lanes;
+  - native-lanes.ts equals nativeLanesSource over the committed lanes (staleLanes plus staleEvidence);
+  - ready implies device-proven for every row.
+- Split order: p6a-dash is rebuilt on master first (~103 KB, no profile, project or native-lanes changes), then p6a-promote is stacked on it (~52 KB: the outputs gate, the native digest and api.md).
+- Cycle proof under the lease: run the device lanes, then profile:rows; the profiles must be unchanged and staleEvidence must stay empty.

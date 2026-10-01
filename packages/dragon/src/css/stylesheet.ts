@@ -18,6 +18,7 @@ import { parseSelectorList } from './selectors.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
 import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, tokenValue, toValue } from './values.ts';
+import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
@@ -256,6 +257,15 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   }
   if (parts !== null && hasVar(parts)) {
     const longhands: readonly Longhand[] = isLonghand(property) ? [property] : shorthandHandler(property).longhands;
+    // Substitution runs per longhand winner, so a refusing shorthand with no longhands (writing-mode) could never check its value.
+    if (longhands.length === 0 && !isLonghand(property) && shorthandHandler(property).refuse !== undefined) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: authored(valueSpan),
+        message: `${property}: ${source.trim()} is unsupported: Dragon checks ${property} values it can read at parse time, and a var() value only exists after substitution`,
+        manual: `Write the ${property} value without var().`,
+      }));
+      return null;
+    }
     const sides = directionSides(property);
     // The source text, since serializing the parsed value would add white space between adjacent var() references.
     return { property, text: source.trim(), span, valueSpan, longhands: [], order, ...important, pending: { parts, longhands, ...(sides === null ? {} : { sides }) } };
@@ -340,12 +350,27 @@ export type ParsedValue =
   | { readonly kind: 'refused'; readonly diagnostic: Diagnostic }
   | { readonly kind: 'multi' };
 
+/** The reason Chrome drops a top-level math function of the value, from its source text in sheetText; null when none is rejected. */
+function invalidMath(property: string, tokens: readonly CssNode[], base: Span, sheetText: string): string | null {
+  for (const t of tokens) {
+    if (t.type !== 'Function' || !BLINK_MATH_FUNCTIONS.has(asciiLower(String(t['name'])))) continue;
+    const span = spanOf(t, base);
+    const text = sheetText.slice(span.start - base.start, span.end - base.start);
+    const reason = mathInvalidity(text, mathGrammarFor(property));
+    if (reason !== null) return `${text.trim()}: ${reason}, so Chrome drops the declaration`;
+  }
+  return null;
+}
+
 /** Grammar validation, token conversion and shorthand expansion of one value; base locates a shorthand refusal in sheetText. */
 export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, tokens: readonly CssNode[], base: Span, sheetText: string): ParsedValue {
   const wide = tokens.length === 1 && tokens[0]?.type === 'Identifier' && CSS_WIDE.has(asciiLower(String(tokens[0]['name'])));
   if (!wide) {
     const match = webrefLexer().matchProperty(property, valueNode);
     if (match.error !== null) return { kind: 'invalid' };
+    // css-tree types a math function loosely; Chrome drops one its math parser rejects (css/math.ts mathInvalidity).
+    const mathInvalid = GRID_VALUE_PROPERTIES.has(property) ? null : invalidMath(property, tokens, base, sheetText);
+    if (mathInvalid !== null) return { kind: 'invalid', reason: mathInvalid };
   }
   // css-grid-2 and justify-*: multi-token values, with the checks Chrome makes beyond the grammar (grid-values.ts).
   if (!wide && GRID_VALUE_PROPERTIES.has(property)) return parseGridValue(property, tokens, base);

@@ -5,7 +5,7 @@
 // with its parent element's computed color in both renderings. A fixture's computedExtra background longhands must equal, in both
 // renderings, the initial value Dragon holds them at. There is no tolerance anywhere in this lane.
 import type { ElementColors, Rgba8 } from 'dragon';
-import { BACKGROUND_RESET_LONGHANDS, COLOR_LONGHANDS, LONGHANDS, parseComputedColor, serializeColor } from 'dragon';
+import { BACKGROUND_RESET_LONGHANDS, COLOR_LONGHANDS, LONGHANDS, parseComputedColor, serializeColor, WRITING_MODE_RESET_LONGHANDS } from 'dragon';
 import type { WebCapture } from './capture.ts';
 
 export type DualNode = {
@@ -71,7 +71,7 @@ export function compareDual(authored: WebCapture, compiled: WebCapture, colors: 
         }
         for (const p of extra) {
           valuesCompared++;
-          const mine = (BACKGROUND_RESET_LONGHANDS as { readonly [k: string]: string | undefined })[p];
+          const mine = ({ ...BACKGROUND_RESET_LONGHANDS, ...WRITING_MODE_RESET_LONGHANDS } as { readonly [k: string]: string | undefined })[p];
           if (mine !== undefined && ac[p] === mine && cc[p] === mine) valuesEqual++;
           else problems.push(`${a.id}: ${p} authored "${String(ac[p])}" compiled "${String(cc[p])}" Dragon "${mine === undefined ? 'none' : mine}"`);
         }

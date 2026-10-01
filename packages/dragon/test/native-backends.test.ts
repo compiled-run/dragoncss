@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { checkedConversionSource } from '../src/emit/native-support.ts';
+import { checkedConversionSource, inputFunctions } from '../src/emit/native-support.ts';
 import type { EmitCase, NativeProgram } from '../src/internal.ts';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, nativeLayoutProjection, nativePrograms, NO_FAULTS, VOCABULARY, WRITE_CSS } from '../src/internal.ts';
 import { div, inputFor, text } from './helpers.ts';
@@ -53,7 +53,7 @@ describe('the lowered programs', () => {
       expect(b?.writes.map((w) => w.kind)).toContain('padding-box-clip');
       expect(b?.writes.find((w) => w.kind === 'border-styles')).toMatchObject({ styles: ['dotted', 'solid', 'double', 'none'] });
       expect(prog.nodes.find((n) => n.id === 'a')?.writes.find((w) => w.kind === 'border-styles')).toMatchObject({ styles: ['dashed', 'dashed', 'dashed', 'dashed'] });
-      expect(prog.nodes.find((n) => n.id === 'a:text0')?.writes).toMatchObject([{ kind: 'font', family: 'Ahem', size: 10 }, { kind: 'text-color', color: { r: 0, g: 0, b: 128, alpha: 255 } }]);
+      expect(prog.nodes.find((n) => n.id === 'a:text0')?.writes).toMatchObject([{ kind: 'font', font: { family: 'Ahem', size: 10 } }, { kind: 'text-color', color: { r: 0, g: 0, b: 128, alpha: 255 } }]);
     }
   });
   it('programs need both native targets checked; a web-only or ios-only result has none', () => {
@@ -89,6 +89,9 @@ describe('the emitted Swift and Kotlin', () => {
 
 type Tool = { readonly ok: boolean; readonly why: string };
 
+// Linux Swift's runtime backtracer symbolicates every trap before exiting, which ate the CI time budget.
+const NO_BACKTRACE = { ...process.env, SWIFT_BACKTRACE: 'enable=no' };
+
 function trapRun(lang: 'swift' | 'kotlin', dir: string): { tool: Tool; outcomes: { arg: string; status: number; out: string }[] } {
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
@@ -98,7 +101,7 @@ function trapRun(lang: 'swift' | 'kotlin', dir: string): { tool: Tool; outcomes:
     writeFileSync(join(dir, 'main.swift'), 'import Foundation\nlet v = Double(CommandLine.arguments[1])!\nprint(dragonCheckedInt(v, "test"))\n');
     const c = spawnSync('swiftc', ['-O', '-o', join(dir, 'checked'), join(dir, 'Checked.swift'), join(dir, 'main.swift')], { encoding: 'utf8' });
     if (c.status !== 0) return { tool: { ok: false, why: `swiftc: ${c.stderr ?? c.error}` }, outcomes: [] };
-    return { tool: { ok: true, why: '' }, outcomes: args.map((arg) => { const r = spawnSync(join(dir, 'checked'), [arg], { encoding: 'utf8' }); return { arg, status: r.status ?? -1, out: `${r.stdout}${r.stderr}` }; }) };
+    return { tool: { ok: true, why: '' }, outcomes: args.map((arg) => { const r = spawnSync(join(dir, 'checked'), [arg], { encoding: 'utf8', env: NO_BACKTRACE }); return { arg, status: r.status ?? -1, out: `${r.stdout}${r.stderr}` }; }) };
   }
   const javaHome = process.env['JAVA_HOME'];
   const which = spawnSync('which', ['kotlinc'], { encoding: 'utf8' });
@@ -133,4 +136,28 @@ describe('the checked int conversion (View.layout ints)', () => {
       }
     }, 120_000);
   }
+});
+
+describe('a calculated line height is built as the engine\'s LineHeightCalc (non-negative range), never LengthCalc', () => {
+  const px = (value: number) => ({ kind: 'px', value }) as const;
+  const font = { family: 'Ahem', size: 10, specifiedSize: px(10), absoluteSize: true } as const;
+  const lhCalc = { kind: 'calc', expr: px(12), range: 'non-negative' } as const;
+  const style = (width: unknown) => ({ ...(nativeRoot().style as object), width }) as never;
+  function nativeRoot() {
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor('body { margin: 0; font-family: Ahem; font-size: 10px; }', (r) => [div(r, 'a', [], [text(r, 't', 'XX')])]));
+    const p = nativeLayoutProjection(c, { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, rootFont: 'ua-default', direction: 'ltr' }, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    return p.input.root;
+  }
+  it('on a text leaf and inside an lh leaf, in Swift and Kotlin', () => {
+    const leaf = { kind: 'text', id: 'p:t', text: 'XX', font, lineHeight: lhCalc, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' } as const;
+    const width = { kind: 'calc', range: 'non-negative', expr: { kind: 'lh', value: 2, font, lineHeight: lhCalc } } as const;
+    const root = { kind: 'box', id: 'p', boxType: 'element', style: style(width), children: [leaf] } as const;
+    for (const lang of ['swift', 'kotlin'] as const) {
+      const src = inputFunctions(lang, root as never, 't').decls.join('\n');
+      const q = lang === 'swift' ? (s: string) => `JsString("${s}")` : (s: string) => `"${s}"`;
+      expect(src.split(`LineHeightCalc(${q('calc')}, Px(${q('px')}, 12.0), ${q('non-negative')})`).length - 1, lang).toBe(2);
+      expect(src, lang).not.toContain(`LengthCalc(${q('calc')}, Px(${q('px')}, 12.0)`);
+    }
+  });
 });
