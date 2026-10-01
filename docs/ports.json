@@ -394,6 +394,7 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/grid-values.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/css/math.ts", "symbol": "MathGrammar", "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "isInvalidFontFamily", "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "parseFamilyList", "use": "port" },
