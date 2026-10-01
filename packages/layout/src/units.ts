@@ -455,3 +455,80 @@ export function viewportLeafPx(value: number, basePx: number, zoom: number): num
 export function emLeafPx(value: number, fontSizePx: number, zoom: number): number {
   return value * Math.fround(Math.fround(fontSizePx) * Math.fround(zoom));
 }
+
+// Font-relative values (V2 of the value model, css-values-4 §6.1.1 and css-fonts-4 §2.5). Blink's font sizes are floats: the
+// specified size at zoom 1 (FontDescription::SpecifiedSize) and the computed size at the zoom (ComputedSize).
+
+/** Blink kMaximumAllowedFontSize (computed_style_constants.h): specified and computed font sizes are capped at 10000px. */
+const MAX_FONT_SIZE = 10000;
+/** Chrome's default minimum logical font size (WebPreferences minimum_logical_font_size, measured 6px on the oracle). */
+const MINIMUM_LOGICAL_FONT_SIZE = 6;
+/** std::numeric_limits<float>::epsilon(). */
+const FLOAT_EPSILON = 1.1920928955078125e-7;
+
+/** FontBuilder::SetSize: a specified font size is stored as a float, capped at the maximum. */
+export function specifiedFontSize(px: number): number {
+  const f = Math.fround(px);
+  return f < MAX_FONT_SIZE ? f : MAX_FONT_SIZE;
+}
+
+/** font-size: <percentage> (StyleBuilderConverterBase::ConvertFontSize): percent * parent / 100.0f in double, stored as float. */
+export function fontPercentSize(percent: number, parentSpecified: number): number {
+  return specifiedFontSize((percent * Math.fround(parentSpecified)) / 100);
+}
+
+/**
+ * FontSizeFunctions::GetComputedSizeFromSpecifiedSize: 0 for a size below float epsilon; the minimum logical font size for a
+ * size that is not absolute (planted fault minimumFontSizeIgnored drops it); then specified * zoom in float, capped.
+ */
+export function computedFontSize(specified: number, absoluteSize: boolean, zoom: number, minimumIgnored: boolean): number {
+  const s = Math.fround(specified);
+  if (s < FLOAT_EPSILON && s > -FLOAT_EPSILON) return 0;
+  const sized = !absoluteSize && !minimumIgnored && s < MINIMUM_LOGICAL_FONT_SIZE ? MINIMUM_LOGICAL_FONT_SIZE : s;
+  const zoomed = Math.fround(sized * Math.fround(zoom));
+  return zoomed < MAX_FONT_SIZE ? zoomed : MAX_FONT_SIZE;
+}
+
+/** SimpleFontData x-height on macOS: the bounds of glyph x, the font instance size times float(units / unitsPerEm) in float. */
+export function glyphBoundsMetricPx(instanceSizePx: number, unitsPerEm: number, units: number): number {
+  return Math.fround(Math.fround(instanceSizePx) * Math.fround(units / unitsPerEm));
+}
+
+/** A font metric length at a conversion zoom: metric / fontZoom * zoom in float (CSSToLengthConversionData::FontSizes::Ex). */
+export function unzoomMetric(metricPx: number, fontZoom: number, zoom: number): number {
+  return Math.fround(Math.fround(Math.fround(metricPx) / Math.fround(fontZoom)) * Math.fround(zoom));
+}
+
+/** A font-relative leaf in px, value * float metric, in double (ZoomedComputedPixels kExs, kChs, kCaps, kLhs). */
+export function metricLeafPx(value: number, metricPx: number): number {
+  return value * Math.fround(metricPx);
+}
+
+/** base::saturated_cast<int>(double): NaN is 0, and the value truncates toward zero into the int range. */
+function saturatedInt(v: number): number {
+  if (Number.isNaN(v)) return 0;
+  if (v >= INT_MAX) return INT_MAX;
+  if (v <= INT_MIN) return INT_MIN;
+  return Math.trunc(v);
+}
+
+/** line-height: <percentage> (StyleBuilderConverter::ConvertLineHeight): float(computed * int(percent)) / 100.0, stored as float. */
+export function lineHeightPercentPx(computedFontSize: number, percent: number): number {
+  return Math.fround(Math.fround(Math.fround(computedFontSize) * saturatedInt(percent)) / 100);
+}
+
+/**
+ * ComputedStyle::ComputedLineHeight for a number line height: MinimumValueForLength of the percent against LayoutUnit(computed
+ * size), which truncates, unlike layout's FromFloatRound (R3); planted fault lhUnsnapped keeps both in float.
+ */
+export function lineHeightNumberPx(computedFontSize: number, factor: number, unsnapped: boolean): number {
+  const percent = Math.fround(factor * 100);
+  if (unsnapped) return Math.fround(Math.fround(Math.fround(computedFontSize) * percent) / 100);
+  return toFloat(percentOf(fromCssPx(computedFontSize), percent));
+}
+
+/** CalculationValue::Evaluate after the expression: ClampTo<float> (NaN stays) and the non-negative clamp to 0. */
+export function calcEvaluateFloat(value: number, nonNegative: boolean): number {
+  const clamped = value >= FLOAT_MAX ? FLOAT_MAX : value <= -FLOAT_MAX ? -FLOAT_MAX : Math.fround(value);
+  return nonNegative && clamped < 0 ? 0 : clamped;
+}
