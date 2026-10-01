@@ -102,3 +102,13 @@ verify:
 - **A2 alongside A1.** A2's files are disjoint from A1's, so it may run alongside A1 in its own worktree on repl-a-phase-b, and is merged under A3.
 - **PRs.** One PR per part. Reviews never block.
 - **A1 merge.** A1 may merge once REPL-a has landed and its identity check passes.
+
+## PM amendment A2-1 (2026-10-01)
+
+The A2 worker stopped on two files outside allowed_files. Both are allowed, narrowly:
+- **packages/dragon/src/css/shorthands/box.ts:** the '-webkit-appearance' alias handler only, as grid-gap maps to gap. Two pins move:
+  - the seams SHORTHANDS order;
+  - the css-escapes twin count, 13823 to 13858.
+- **scripts/capture-ua-defaults.ts:** the drop-unmodelled plant is retargeted from button appearance to cursor, because appearance is now modelled. A guard makes the plant fail loudly when its target is not an unmodelled row.
+
+Finding: Chrome 145 drops `appearance: base`, although webref's grammar allows it, so gen-css-grammar.ts narrows the grammar to what Chrome parses.
