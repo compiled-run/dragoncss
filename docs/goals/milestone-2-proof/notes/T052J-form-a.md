@@ -130,3 +130,19 @@ Finding: Chrome 145 drops `appearance: base`, although webref's grammar allows i
 - **Amendment A3/A4-1: block.ts.** Blink sizes block-level form controls to their content (block_layout_algorithm.cc:3341-3352). A3 and A4 may add a block.ts hunk that does this for control boxes only. Their fixtures must confirm it against Chrome first, and the vectors must stay byte-identical.
 
 **Next:** A3 stacks on A1 with A2 merged in, once A2 is host-done.
+
+## A2 host-done (2026-10-01): form-a2 08fe1aa43
+
+- **Migration checker.** check-appearance-migration passes:
+  - captures change only by appearance:none (34050 keys);
+  - emitted bodies change only by 7929 declarations;
+  - the UA data changes in 114 entries;
+  - engine inputs, line breaks and the pixel manifest are byte-identical;
+  - all 12 plants are caught.
+- **North star.** `-webkit-appearance: none` moves from UNSUPPORTED_PROPERTY to UNSUPPORTED_VALUE, per target, until A3 proves a value.
+- **PM ruling A2-2: one more file is accepted.** The scripts/capture-ua-defaults.ts forced-value reference leaves out the declared appearance. Chrome (LayoutTheme::AdjustStyle) makes a non-none appearance inline-block or block, so without this the controls would lose their forced display:inline-block rows. With it, the forced rows stay byte-identical. The ua.test and ua-elb2.test pin retargets are also accepted.
+- **Amendment A3-1.** A3 adds Chrome's appearance display adjustment in computed.ts before it proves appearance anywhere:
+  - inline, inline-table, table-row and table-cell become inline-block;
+  - table and list-item become block.
+
+  It needs Chrome fixtures.
