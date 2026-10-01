@@ -84,7 +84,7 @@ describe('computed lengths', () => {
   it('a viewport unit and a calculation reach the layout projection as engine calculations, with em as a leaf of the element font size', () => {
     const tree = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'a', ['a'])];
     const a = style('.a { width: 50vw; height: calc(10px + 2em); }', tree, 'a');
-    expect(a.style.width).toEqual({ kind: 'calc', expr: { kind: 'viewport', value: 50, axis: 'width' }, range: 'non-negative' });
+    expect(a.style.width).toEqual({ kind: 'calc', expr: { kind: 'viewport', value: 50, axis: 'width', size: 'large' }, range: 'non-negative' });
     expect(a.style.height).toEqual({ kind: 'calc', expr: { kind: 'sum', terms: [{ kind: 'px', value: 10 }, { kind: 'em', value: 2, fontSize: { kind: 'px', value: 10 } }] }, range: 'non-negative' });
   });
 });

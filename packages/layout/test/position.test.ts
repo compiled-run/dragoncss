@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { absoluteRects, ahemMeasurer, layoutWithFaults, NO_ENGINE_FAULTS } from '../src/index.ts';
 import type { AlignItems, EngineFaults, FlexDirection, FlexWrap, JustifyContent, LayoutBox, LayoutRect, LayoutResult, LayoutStyle } from '../src/index.ts';
-import { anon, box, pct, px, text } from './helpers.ts';
+import { anon, box, pct, px, text, neutralEnvironment, ahemFont } from './helpers.ts';
 
 // S4b positioning, pinned in raw LayoutUnits measured in Chrome 145.0.7632.6: probes /tmp/t037/p1-p10 (quoted in
 // notes/T037-slice-4b.md) and the committed captures of the named fixtures. Trees mirror the probe markup.
@@ -19,7 +19,7 @@ const padding = (t: number, r: number, b: number, l: number): Partial<LayoutStyl
 
 function run(body: LayoutBox[], over: { html?: Partial<LayoutStyle>; body?: Partial<LayoutStyle>; faults?: EngineFaults } = {}): Map<string, LayoutRect> {
   const root = box('html', over.html ?? {}, [box('body', over.body ?? {}, body)]);
-  const r: LayoutResult = layoutWithFaults({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root }, ahemMeasurer, over.faults ?? NO_ENGINE_FAULTS);
+  const r: LayoutResult = layoutWithFaults({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, ahemMeasurer, over.faults ?? NO_ENGINE_FAULTS);
   if (r.kind !== 'ok') throw new Error(JSON.stringify(r.unsupported));
   return absoluteRects(r.boxes);
 }
@@ -61,7 +61,7 @@ describe('relative offsets (CSS2 §9.4.3, probe p1)', () => {
   it('a relative flex item moves after alignment and never moves a baseline (probe p10)', () => {
     const f = box('g', { display: 'flex', alignItems: 'baseline' }, [
       box('g1', {}, [text('g1:t', 'A')]),
-      box('g2', { display: 'flex' }, [box('g2a', { ...rel, top: px(7) }, [text('g2a:t', 'B', { font: { family: 'Ahem', size: 20 } })]), box('g2b', {}, [text('g2b:t', 'C')])]),
+      box('g2', { display: 'flex' }, [box('g2a', { ...rel, top: px(7) }, [text('g2a:t', 'B', { font: ahemFont(20) })]), box('g2b', {}, [text('g2b:t', 'C')])]),
     ]);
     const mm = run([f]);
     expect([at(mm, 'g1').slice(0, 2), at(mm, 'g2').slice(0, 2), at(mm, 'g2a').slice(0, 2)]).toEqual([[0, 512], [640, 0], [640, 448]]);
@@ -252,7 +252,7 @@ describe('absolutely positioned boxes leave the in-flow layout (fixtures positio
     expect(at(m, 'c1')[3]).toBe(768);
   });
   it('an absolutely positioned child beside text is refused (abspos-in-inline)', () => {
-    const r = layoutWithFaults({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root: box('html', {}, [box('p', {}, [anon('p:anon0', {}, [text('t', 'XX')]), box('a', absolute)])]) }, ahemMeasurer, NO_ENGINE_FAULTS);
+    const r = layoutWithFaults({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root: box('html', {}, [box('p', {}, [anon('p:anon0', {}, [text('t', 'XX')]), box('a', absolute)])]) }, ahemMeasurer, NO_ENGINE_FAULTS);
     expect(r.kind === 'unsupported' && r.unsupported).toMatchObject({ code: 'abspos-in-inline', nodeId: 'a' });
   });
 });

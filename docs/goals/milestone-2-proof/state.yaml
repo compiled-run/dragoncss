@@ -80,19 +80,13 @@ visual_board:
     command: node /Users/jacksm5pro/.claude-swap-backup/sessions/2-jackshelton30_gmail.com/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-2-proof
 active_task: T058
 dispatched:
-  - T121
-  - T071
-  - T074
-  - T072
-  - T073
-  - T114
-  - T075
-  - T050
-  - T062
-  - T118
-  - T026
-  - T119
-  - T120
+  - T134 # SELD-R1a landing (slot 1)
+  - T118 # PORT-0 landing (slot 2)
+  - T071 # paint stack rebuild: ems-a, ems-b, p6a-dash-v2, p6a-promote-v2, t116-border-join-v2
+  - T064 # SELD-R2a
+  - T052 # FORM-a A1 engine (T052J) on form-a; A2 appearance longhand on form-a2
+  - T147 # TXT-W1 on inl1a-tags 36e84c1e1
+  - T059 # INL2a (T059J) on inl2, base txt1a-2 e4266eb0e
 device_lease: null
 tasks:
   - id: T001
@@ -1097,17 +1091,42 @@ tasks:
   - id: T026
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: engine
     objective: 'V2a engine value model (notes/T012-v2-spec.md §4, binding; APPROVED by the owner 2026-09-28): env(), sv/lv/dv, em and rem as engine values, rootFontSize, calc in font-size and line-height,
       ex/ch/cap/lh/rlh with Ahem metrics. Worktree /tmp/dragon-v2, branch v2a-value-model, from master after P5 (T007) and V1 Phase B (T009). PM rulings 5, 7 and 8 taken as recommended.'
     allowed_files:
       - See notes/T012-v2-spec.md §4 allowed_files (binding)
+      - packages/layout/src/input.ts
+      - packages/layout/src/validate.ts
+      - packages/layout/src/environment.ts
+      - packages/dragon/src/lower/ios-layout.ts
+      - packages/dragon/src/emit/native-support.ts
+      - packages/translate/harness/harness.ts
     verify:
       - See notes/T012-v2-spec.md §4 verify (binding)
     stop_if:
       - See notes/T012-v2-spec.md §4 stop_if (binding)
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'V2a landed as PR #45 (merged 9668e02d8) after 2 Macroscope rounds, plus the gate fix #47 for the already-reviewed skip. It adds environment inputs (viewportUnits, safeArea, rootFontSize),
+        rem/env/ex/ch/cap/lh leaves, font-size resolution and LineHeightCalc (non-negative). A root font-size that does not compute to px is refused. Device run 460 cases equals master; pnpm test 2980/2980.
+        v2a-migration-check (scripts/check-additive-migration.ts) is still to land as a small follow-up PR.'
+      changed_files:
+        - packages/layout/src/input.ts
+        - packages/layout/src/validate.ts
+        - packages/layout/src/environment.ts
+        - packages/dragon/src/lower/ios-layout.ts
+        - packages/dragon/src/emit/native-support.ts
+        - packages/translate/harness/harness.ts
+      commands:
+        - cmd: pnpm test 2980/2980
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices
+          status: pass
+        - cmd: pnpm pr:review 45 exit 0
+          status: pass
     constraints:
       - Never concurrent with T011 Phase B; runs before it by default.
   - id: T027
@@ -1490,18 +1509,45 @@ tasks:
   - id: T034
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: north-star
     objective: 'NS-REF recapture: re-capture the north-star Chrome reference and refresh the font key after T011 Phase B and the Lato ruling.'
     allowed_files:
       - examples/music-player/chrome/**
       - examples/music-player/lane/**
+      - examples/music-player/tools/font-map.ts
+      - examples/music-player/tools/capture-chrome.ts
+      - examples/music-player/tools/snapshot.ts
+      - examples/music-player/tools/cover-png.ts
+      - examples/music-player/tree/fixture.json
+      - packages/parity/test/north-star-reference.test.ts
     verify:
       - north-star:capture twice, byte-identical; north-star-reference test
     stop_if:
       - Need files outside allowed_files.
       - Verification fails twice.
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #51 merged a0bcb89a0. The north-star Chrome reference is re-captured with the pinned font map (Lato 2.015, Dragon Sans = Inter 4.1); font key f2115f3b -> f159ba87. The video placeholder
+        is now the iframe slot in the tree, with a labelled no-network embed stand-in, plus cover marker patches for the REPL-a flat-image samples. Three captures byte-identical; 27.8 MB. The Macroscope
+        finding was answered as not applicable, with a pinning test. pnpm test 3029/3029.'
+      changed_files:
+        - examples/music-player/tools/font-map.ts
+        - examples/music-player/tools/capture-chrome.ts
+        - examples/music-player/tools/snapshot.ts
+        - examples/music-player/tools/cover-png.ts
+        - examples/music-player/tree/fixture.json
+        - packages/parity/test/north-star-reference.test.ts
+      commands:
+        - cmd: north-star:capture x3 byte-identical
+          status: pass
+        - cmd: pnpm test 3029/3029
+          status: pass
+        - cmd: pnpm pr:review 51 exit 0
+          status: pass
+    constraints:
+      - 'Dispatched 2026-10-01 (branch ns-ref-recapture): also owns the north-star iframe export, embed-URL capture route and cover markers that REPL-a deferred.'
   - id: T035
     type: scout
     assignee: Scout
@@ -1953,8 +1999,14 @@ tasks:
     stop_if:
       - See notes/T045-repl-form-spec.md §3 P4 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T051J amendment (2026-10-01), see notes/T051-repl-a.md: route 2a longhands with a migration checker; a replaced leaf kind; Phase A lowers native layout only and lands together with Phase B; stacked
+        on size-ar.'
+      - '2026-10-01 host-done Phase A and B, pending device runs: repl-a-engine 0f100ae37, repl-a a04f7aaa8, repl-a-phase-b e009c15f8 (on size-ar). Sizing matches Chrome on 264/264 cases; native image paint
+        and WKWebView/WebView slots; north star img 5/5 (8 img errors cleared on web and iOS). The iframe export, embed route and cover markers wait for T034 (dispatched).'
   - id: T052
     type: worker
+    pm_note: 'T052J (2026-10-01), notes/T052J-form-a.md: control node kind; split into A1 engine, A2 appearance longhand, A3 button, A4 range; Phase B after A4. First worker stopped blocked at form-a 7350315f8 (controls.ts Blink ports; out-of-scope wiring list), resolved by T052J.'
     assignee: Worker
     status: queued
     lane: north-star
@@ -1966,6 +2018,8 @@ tasks:
     stop_if:
       - See notes/T045-repl-form-spec.md §3 P5 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T051J: FORM-a Phase A stacks on T051 Phase A, not on master.'
   - id: T053
     type: worker
     assignee: Worker
@@ -2104,8 +2158,10 @@ tasks:
       - 'Second Judge amendment 2026-09-30 (T058J2): resolve.ts collapseInlineContext, blockify.ts checkInlineLevel lift, three pin retargets, buildIfc+placeIfcLines deviation accepted, targets.ts engine-inline
         entry only after T125 (T058L) merges; see notes/T058-inl1a.md.'
       - 'Third Judge amendment (T058J3): rulings A-G in notes/T058-inl1a.md. Element dump lines are 0/0 on device. F (singleRunBaseline plant) and G (targets.ts) come after #42.'
+      - '2026-10-01: native:encoders fails 464/477 at inl1a-compiler b0c8fd13e (inline lines out-of-range), found by T083. It must be fixed before INL1a lands.'
   - id: T059
     type: worker
+    pm_note: 'T059J (2026-10-01), notes/T059J-inl2.md: split into INL2a (now; atomic inline-block/inline-flex, base txt1a-2 e4266eb0e, merge-conflict test replaces the SIZE-ar stop), INL2b (vertical-align longhand, sub/sup; serial after INL2a) and INL2c (deferred: atomics in inline boxes or beside real-font text). The decisions.md record of the replaced stop and the grammar override rule goes in the INL2a PR.'
     assignee: Worker
     status: queued
     lane: engine
@@ -2205,16 +2261,39 @@ tasks:
   - id: T062
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: runtime
     objective: 'ANIM-a2: rt-* translated to Swift and Kotlin; after T061 and T009 B.'
     allowed_files:
       - See notes/T047-runtime-spec.md §3.2 (binding)
+      - packages/translate/harness/harness.ts
+      - packages/translate/src/generate.ts
+      - packages/parity/src/targets.ts
+      - packages/translate/test/rt-harness.test.ts
     verify:
       - See notes/T047-runtime-spec.md §3.2 verify (binding)
     stop_if:
       - See notes/T047-runtime-spec.md §3.2 stop_if (binding)
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #50 merged d3de32eb0 after 2 rounds. The rt timing, easing and interpolation reference became translated engine roots; P1 rt suite of 54,588 lines is bit-exact in Swift and Kotlin and
+        on device (layout-vectors-device). The round 1 fix refuses non-finite rt harness inputs. pnpm test 3024/3024; device-failures byte-identical to master.'
+      changed_files:
+        - packages/translate/harness/harness.ts
+        - packages/translate/src/generate.ts
+        - packages/parity/src/targets.ts
+        - packages/translate/test/rt-harness.test.ts
+      commands:
+        - cmd: pnpm test 3024/3024
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices (p1/rt 54588/54588)
+          status: pass
+        - cmd: pnpm pr:review 50 exit 0
+          status: pass
+    constraints:
+      - '2026-10-01 host-done, pending device runs; 4 stacked PRs on master 77c641eca: ANIM-a2 (anim-a2-translate 00ccd53c8, ~35 KB), SELD-R1a (seld-r1a 7340df522, ~92 KB), SELD-R1b (seld-r1, ~138 KB after
+        split), lane wiring (seld-lanes, ~25 KB). parity:hit-report 0 mismatches over 703,666 Chrome points; p1/hit 1872/1872 Swift and Kotlin; north star Android equals iOS.'
   - id: T063
     type: worker
     assignee: Worker
@@ -2230,6 +2309,8 @@ tasks:
     receipt: null
     constraints:
       - 'Split: SELD-R1a (state runtime) is done on seld-r1 7b7e096, pending its device run and the targets.ts device-states entry after #42. SELD-R1b is T134.'
+      - '2026-10-01 host-done, pending device runs; 4 stacked PRs on master 77c641eca: ANIM-a2 (anim-a2-translate 00ccd53c8, ~35 KB), SELD-R1a (seld-r1a 7340df522, ~92 KB), SELD-R1b (seld-r1, ~138 KB after
+        split), lane wiring (seld-lanes, ~25 KB). parity:hit-report 0 mismatches over 703,666 Chrome points; p1/hit 1872/1872 Swift and Kotlin; north star Android equals iOS.'
   - id: T064
     type: worker
     assignee: Worker
@@ -2243,6 +2324,9 @@ tasks:
     stop_if:
       - See notes/T047-runtime-spec.md §3.4 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T064J (2026-10-01), notes/T047-runtime-spec.md: split into SELD-R2a (now, on seld-lanes) and SELD-R2b (T146, after PNT1 and PNT2); generated web state conditions; cursor identity test; the Chrome
+        trace decides touch semantics.'
   - id: T065
     type: worker
     assignee: Worker
@@ -2259,6 +2343,7 @@ tasks:
     constraints:
       - 'Owner request (T096): ANIM-b adds clean-room technique fixtures and the motion proof method in notes/T096-motion-research.md (derived sample times, bits/strings/frames/pixels, 12 motion plants
         each moving at least 1 device px, 60 and 120 Hz grids). Do not adopt PocketJS numerics or frame-rounded delays.'
+      - 'T064J: ANIM-b depends on SELD-R2a, and on SELD-R2b only for transformed hover.'
   - id: T066
     type: worker
     assignee: Worker
@@ -2433,6 +2518,10 @@ tasks:
         always dithered and premultiplied; focus ring outline_painter.cc:37-890. Skia ports are pending T085; allowances only if T085 recommends one.'
       - 'T085: port Skia blur (BlurRect cubic profile plus the triple-box PlanGauss/small_blur) and the 8x8 dither exactly (notes/T085); a SystemInfo software-raster precondition in lanes (P6a); arc AA
         under the edge rule until SKIA-AA, radius rows caveat.'
+      - '2026-09-30: T138 and T143 show that native dashed/dotted paint (dragonDrawBorders) causes css-wide-keywords, color-border-sides dotted and possibly logical-border device-pixel failures. p6a-promote
+        (with T116 on top) moves up the landing queue, and must add a host check comparing the dash layout with Chrome pixels.'
+      - 'T075J (2026-10-01), notes/T046-paint-spec.md: profiles keep the #49 iOS rule; device gating lives only in NATIVE_LANES and outputs.ready (outside the digest); split into p6a-dash then p6a-promote;
+        cycle proof under the lease.'
   - id: T076
     type: worker
     assignee: Worker
@@ -2472,6 +2561,9 @@ tasks:
     stop_if:
       - See notes/T046-paint-spec.md §5.8 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T078J amendment (2026-10-01), see notes/T078-ovfl.md: design A (the compiler resolves viewport propagation; propagationFromBody is a compiler fault); harness, computed-checks and native-program
+        hunks; 4 reject fixtures retargeted or removed into positives; branch ovfl-a on inl1a-compiler; Phase A lands with Phase B.'
   - id: T079
     type: worker
     assignee: Worker
@@ -2583,6 +2675,12 @@ tasks:
     constraints:
       - 'T082 finding: today''s ahemMeasurer is 1 LU too wide on 40 of 1,680 Chrome Ahem runs (7.77, 9.99, 11.1111, 17.3, 23.3, 33.33 px); the HarfBuzz path matches all of them. TXT1a-1 adds Ahem fixtures
         at these sizes to prove the fix; R2 (existing outputs byte-identical) still holds for existing fixtures. The script check must use Script_Extensions (U+30FC, U+0964 get their own runs).'
+      - 'T140 (2026-09-30): every visible north-star text node uses Lato 400/700, which native refuses (Ahem only) until TXT1a. This is on the checkpoint-3 critical path.'
+      - 'T083J amendment (2026-09-30), see notes/T083-txt1a-1.md: a TEXT_LATIN_FIXTURES registry outside FIXTURES (no FixtureSpec flag); Phase A (Ahem through HarfBuzz, byte-identical) then Phase B (real
+        fonts); device coverage pinned unchanged.'
+      - '2026-10-01 host-done, pending its device run: txt1a-1a 77e6079e1 (Phase A, byte-identical), txt1a-1b 14b911f62 (engine), txt1a-1 b2ce02641 (compiler and parity). 7 text-latin cases are exact against
+        Chrome at 4 DPRs; the ShapeLine and LineBreaker ports; all plants caught. Findings: native:encoders 464/477 fails at the INL1a base (fix dispatched to the INL1a worker); 4 NotoSansJP gate cases
+        (TXT2); no reshape after a space at a break when a background is present.'
   - id: T084
     type: worker
     assignee: Worker
@@ -2596,6 +2694,11 @@ tasks:
     stop_if:
       - See notes/T056-txt1a-spec.md §3 TXT1a-2 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T140 (2026-09-30): every visible north-star text node uses Lato 400/700, which native refuses (Ahem only) until TXT1a. This is on the checkpoint-3 critical path.'
+      - 'T083J: absorb TEXT_LATIN_FIXTURES into FIXTURES (device-lane counts rise by the pinned registry count); add the Ahem fractional-size fixtures; switch native-host, lanes and line-breaks to the shaped
+        measurer; add the text-latin replay to the declared lanes; stop if the registry is non-empty at the end.'
+      - 'T084J (2026-10-01), notes/T084-txt1a-2.md: phases C, F and R. Phase R waits for p6a-promote, seld-lanes and seld-r1a in BASE; the device step waits for the INL1a encoders fix. No Android-only code.'
   - id: T085
     type: scout
     assignee: Scout
@@ -3421,6 +3524,10 @@ tasks:
     lane: paint
     objective: 'PNT1 effects half: opacity, z-index and stacking, outline, color-scheme (notes/T046-paint-spec.md §5.2); pnt1-effects holds no work of its own. After V1 and EMS land.'
     receipt: null
+    constraints:
+      - 'Host-done 2026-10-01, pending its device run: 4 stacked branches on pnt1-shadow-v1b: pnt1-effects-v1b b9bb7aea4, pnt1-stacking-v1b 052c9d484, pnt1-outline-v1b c4386f471, pnt1-foreground-v1b b440ea037.
+        Covers color-scheme, outline (solid and double native), opacity, z-index and Appendix E stacking with background-then-foreground phases. The T138 paint-order acceptance cases match Chrome on the
+        host at every DPR. Known native gaps are recorded. tw web 2334->2394; north star web 187, ios 184.'
   - id: T116
     type: worker
     assignee: Worker
@@ -3658,6 +3765,9 @@ tasks:
     objective: 'Engine vs Chrome (found by CALC-2): rtl block child with margin-left: calc(-1e9px): Chrome x=1.98 (overflow artifact), engine 390. Investigate against Blink LayoutUnit saturation and either
       port it or refuse the range with a typed code.'
     receipt: null
+    constraints:
+      - Done on rtl-huge-margin 2bcc33dd6, pending its device run. It ports Blink's saturating LayoutUnit placement order (block_layout_algorithm.cc and others, BSD) and clamps px lengths after zoom. The
+        rtl margin-left -33554430px case gives x=1.984375 as in Chrome, exact to 1 LU at every DPR. New fixture values-length-saturation; no existing vector moved.
   - id: T130
     type: worker
     assignee: Worker
@@ -3696,12 +3806,36 @@ tasks:
   - id: T132
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: device
     objective: 'Silent lane failure: under machine load, layout-vectors-host native:kotlin (and the Kotlin engine suite in pnpm test) intermittently reports p1/engine 0/20258 with no reason (seen on WM-0
       and T123, 2026-09-30); rerun passes. Find the cause (JVM start or timeout, harness.jar I/O, killed process) and make the lane record the real error (exit code, signal, stderr tail) instead of 0/N,
       with a test. Also: the dragon-320 emulator sometimes exits before it attaches (lane-speed run); record and surface the emulator log.'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #48 merged b3e372dc7 after 4 rounds. Root cause: the Kotlin engine suite was killed at the 180 s timeout under load; the harness writes only at the end, so the record read 0/20258 and
+        the cause was dropped. Likely slowdown: the JVM default heap (4.3 GB resident). Now: the cause plus a stderr tail reach the lane record; Kotlin runs with -Xmx2g (same speed, byte-identical); emulator
+        logs are kept and an early exit fails fast; parity:lanes accepts a leading --; allPass needs no cause. Test cleanup goes through test/scratch.ts. pnpm test 3008/3008; device run equals master.'
+      changed_files:
+        - packages/translate/src/native.ts
+        - packages/parity/src/lanes.ts
+        - packages/parity/src/device-run.ts
+        - packages/parity/src/device-jobs.ts
+        - packages/parity/test/scratch.ts
+      commands:
+        - cmd: pnpm test 3008/3008
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices
+          status: pass
+        - cmd: pnpm pr:review 48 exit 0
+          status: pass
+    allowed_files:
+      - packages/translate/src/native.ts
+      - packages/parity/src/lanes.ts
+      - packages/parity/src/device-run.ts
+      - packages/parity/src/device-jobs.ts
+      - packages/parity/test/scratch.ts
   - id: T133
     type: worker
     assignee: Worker
@@ -3710,6 +3844,8 @@ tasks:
     objective: 'INL1a-tags: accept b, strong, em and i on web, and on native per R7 (notes/T044-inl-spec.md), with their UA values via resolve.ts and datasets.ts. After T058, before TXT1a. small and code
       are recorded as still refused.'
     receipt: null
+    constraints:
+      - 'T083J: R7 tag acceptance (b, strong, em, i) is owned here and runs after T083.'
   - id: T134
     type: worker
     assignee: Worker
@@ -3718,6 +3854,9 @@ tasks:
     objective: 'SELD-R1b (split from T063): rt-hit.ts with the Chrome 145 inline hit rule from T063J (notes/T047-runtime-spec.md amendment), pointer-events auto and none (inherited), tap dispatch, and the
       device-states and device-hit lanes, on seld-r1. The pointer-events capture key needs the identity test. targets.ts entries after #42.'
     receipt: null
+    constraints:
+      - '2026-10-01 host-done, pending device runs; 4 stacked PRs on master 77c641eca: ANIM-a2 (anim-a2-translate 00ccd53c8, ~35 KB), SELD-R1a (seld-r1a 7340df522, ~92 KB), SELD-R1b (seld-r1, ~138 KB after
+        split), lane wiring (seld-lanes, ~25 KB). parity:hit-report 0 mismatches over 703,666 Chrome points; p1/hit 1872/1872 Swift and Kotlin; north star Android equals iOS.'
   - id: T136
     type: worker
     assignee: Worker
@@ -3758,6 +3897,224 @@ tasks:
           status: pass
         - cmd: targeted 38 tests
           status: pass
+  - id: T137
+    type: scout
+    assignee: Scout
+    status: done
+    lane: android
+    objective: 'Scout: why the north star supports 20 declarations on Android against 165 on iOS (572 vs 32 unsupported values), and which Worker packages close the gap (the charter misfire: one platform
+      becomes later).'
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'The cause is a hard-coded generator rule. scripts/gen-profile-rows.ts:39-65 writes all 1884 Android rows unsupported, per native-strategy.md item 13, whose condition is already met: Android
+        non-pixel device lanes pass 460 cases at 3 DPRs on the shared nativeLayoutProjection. deriveRows only takes ios and web. 540 of the 569 Android value errors come from this. Expected effect of the
+        fix: north-star supportedAndroid goes from 20 to about 165. PM ruling: Android rows follow the iOS rule, and generation does not read live lanes.json, because the lanes tests already enforce device
+        truth. Spawned T139 (dispatched), T140 (font map, 22 vs 34) and T141 (report).'
+      evidence:
+        - scripts/gen-profile-rows.ts:39-65
+        - packages/parity/src/profile-rows.ts:12
+        - docs/research/native-strategy.md:271
+        - packages/parity/out/lanes.json
+  - id: T138
+    type: scout
+    assignee: Scout
+    status: done
+    lane: device
+    objective: 'Scout: sort the device-pixels failures (iOS 135, Android 182) by cause and map each cause to a fixing task, existing or new, so checkpoint 2 can close.'
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'All 317 device-pixels failures (iOS 135, Android 182) fall into two causes. (A) Painting order across siblings, 57 iOS / 86 Android: position-relative-block, position-absolute-static-block,
+        position-absolute-scroll-container (each with -rtl) and selectors-universal-root. Native draws the positioned box under its sibling; T115 (z-index and stacking) owns it. (B) Borders, 78 iOS / 96
+        Android: dotted placement (T075 p6a-promote, not on master), the solid 1px one box (maybe T116), whole logical sides missing (T142), css-wide-keywords border colour (T143, likely a cascade bug)
+        and 1px borders on fractional device pixels at DPR 3 (T144). No shadow, radius, gradient, image or glyph failures. pnt1-shadow-v1b fixes none of them.'
+      evidence:
+        - packages/parity/out/device-failures-ios.json
+        - packages/parity/out/device-failures-android.json
+        - state.yaml T008 B2 note
+  - id: T139
+    type: worker
+    assignee: Worker
+    status: done
+    lane: android
+    objective: (T137a) Android rows derived by the iOS rule; rows the Android emitter refuses stay refused; native-strategy item 13 updated; regenerate profiles, the north star and the Tailwind sweep.
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #49 merged d927e912c (clean on first review). Android rows follow the iOS rule, and the UA bold/italic refusal is reported on every native target. North star: supportedAndroid 20 -> 165
+        = iOS; DRAGON_UNSUPPORTED_FONT 34 = iOS; Tailwind Android 0 -> 2214 = iOS. pnpm test 3014/3014; device run equals master.'
+      changed_files:
+        - packages/parity/src/profile-rows.ts
+        - scripts/gen-profile-rows.ts
+        - packages/dragon/src/analysis/computed-checks.ts
+      commands:
+        - cmd: pnpm test 3014/3014
+          status: pass
+        - cmd: pnpm pr:review 49 exit 0
+          status: pass
+    allowed_files:
+      - packages/parity/src/profile-rows.ts
+      - scripts/gen-profile-rows.ts
+      - packages/dragon/src/analysis/computed-checks.ts
+  - id: T140
+    type: worker
+    assignee: Worker
+    status: blocked
+    lane: android
+    objective: (T137b) Android font map parity (north-star DRAGON_UNSUPPORTED_FONT android 22 vs ios 34). After T137a.
+    receipt:
+      result: blocked
+      harness: claude-code
+      blocked_reason: Folded into T139; native Lato waits for TXT1a (T083, T084).
+      summary: 'Explained all 56 north-star font diagnostics. 22 are shared: native lowering (ios-layout.ts textFontProblem) accepts only Ahem. Lato is already pinned in the font map, but TXT1-C (T004 §4,
+        T038 ruling 10) keeps native refused until TXT1a proves device-lines with real fonts. 12 are iOS-only: computed-checks.ts checkUserAgentDefaults hard-codes target ios for UA bold (h1-h4), so Android
+        is missing true diagnostics. That fix is folded into T139. Native Lato (every visible north-star text node) is the TXT1a path, T083 then T084.'
+      changed_files: []
+      commands:
+        - cmd: north-star-check.json analysis
+          status: pass
+  - id: T141
+    type: scout
+    assignee: Scout
+    status: done
+    lane: android
+    objective: '(T137c) After T137a: report the per-property iOS vs Android differences in the north star and the Tailwind sweep; a non-zero gap goes to a Judge. (After #49: the north star shows 165/165
+      on iOS and Android, with equal error counts.)'
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "Gap 0: north star 291/291 declarations equal on iOS and Android (165 supported each; per-target error counts equal, FONT 34/34, VALUE 32/32); Tailwind sweep 23,286 utilities equal in outcome/code/label/value (2214 supported each); 377 differ only in fix-hint wording naming the target (computed-checks.ts:205, by design). No Judge needed. notes/TW-SWEEP.md result tables are stale (pre-#49)."
+      evidence:
+        - examples/music-player/dragon/north-star-check.json
+        - packages/tailwind-sweep/snapshot/summary.md
+        - "packages/dragon/src/analysis/computed-checks.ts:205"
+  - id: T142
+    type: worker
+    assignee: Worker
+    status: blocked
+    lane: paint
+    objective: 'LOGB-PAINT: logical-border(-rtl) a7/a8/b6: native leaves out whole px sides in boxes that mix device-px and px widths (device-pixels iOS 38, Android 48). Find whether the cause is the compiler
+      logical-to-physical mapping or the paint path, then fix it, proven against Chrome.'
+    receipt:
+      result: blocked
+      harness: claude-code
+      blocked_reason: Already fixed on p6a-promote (T075); lands with it.
+      summary: 'Every missing logical-border side is dashed or dotted (a7 right and b6 left are 6px dotted; a8 top and bottom are 3px dashed; a10 has a dotted top and a double bottom). Master''s dragonDrawBorders
+        lays dashes and dots out unlike Chrome. The compiler mapping and widths are correct. p6a-promote 000a3f0ad and 0768b09df (Blink dash port, kept by t116-border-join) fix it: its device run shows
+        0 logical-border failures, p6a-dash-oracle.test.ts covers both cases at DPR 2, 3 and 2.625, and a probe of 8 failing points matched Chrome exactly.'
+      changed_files: []
+      commands:
+        - cmd: p6a-dash-oracle probe on t116-border-join
+          status: pass
+  - id: T143
+    type: worker
+    assignee: Worker
+    status: blocked
+    lane: values
+    objective: 'CWK-BORDER: css-wide-keywords p border colour (native [0,170,0], Chrome [254,220,186]) and two missing 3-device-px edges on box a (device-pixels iOS 6, Android 10). Likely a cascade or colour-resolution
+      bug for inherit/initial/unset on border-color; prove against Chrome getComputedStyle.'
+    receipt:
+      result: blocked
+      harness: claude-code
+      blocked_reason: 'Duplicate of T075 B1: not a cascade bug.'
+      summary: 'Values match Chrome at every stage (computed, emitted CSS, generated Swift/Kotlin): p is 2px dashed rgb(0,170,0) and a is 1px solid red. The cause is the native dashed-border painter: dragonDrawBorders
+        (native-support.ts) draws dashes and gaps of 3x width from a corner instead of Chrome dash layout (styled_stroke_data.cc, box_border_painter.cc), the T075 B1 port on p6a-promote. Host gap: no host
+        lane compares Dragon border paint pixels with Chrome; this is closed inside T075.'
+      changed_files: []
+      commands:
+        - cmd: probe of native programs for css-wide-keywords
+          status: pass
+  - id: T144
+    type: worker
+    assignee: Worker
+    status: blocked
+    lane: paint
+    objective: 'SNAP-1PX: position-absolute-out-of-flow(-rtl) i2 bottom 1px border at DPR 3: native paints 64 coverage where Chrome is solid (iOS 4, Android 4). Snap border edges as Blink does.'
+    receipt:
+      result: blocked
+      harness: claude-code
+      blocked_reason: "Duplicate of T116: closes when t116-border-join-v2 lands (no snapping change needed or justified)."
+      summary: "i2 snaps to whole device px at DPR 3; native 64 at (69,102) is the same-colour miter seam (two half-coverage AA fills, 255*0.25=64) that T116's no-miter side painter removes. p6a-dash-oracle.test.ts on t116-border-join-v2 already compares those pixels at DPR 2, 2.625, 3 and passes. Predicted device delta at T116 landing: border:i2:bottom:clear and edge:i2:bottom:clear at DPR 3 for position-absolute-out-of-flow (69,102) and -rtl (1131,102) leave device-failures-ios.json and -android.json (4 entries each)."
+  - id: T145
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'OVFL-c: single-axis overflow: clip natively (clip beside visible on one axis), refused by T078 Phase A as DRAGON_UNSUPPORTED_VALUE naming OVFL-c. Proven against Chrome. After T078.'
+    receipt: null
+  - id: T146
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'SELD-R2b: hit testing through transforms and stacking (PNT1/PNT2 paint facts), the transformed device-hit fixtures, the hitIgnoresTransform plant, and lifting the paint-dependent hover refusals.
+      After PNT1, PNT2 and SELD-R2a land.'
+    receipt: null
+  - id: T147
+    type: worker
+    pm_note: 'T147J (2026-10-01), notes/T147J-txt-weight.md: three parts. TXT-W1 (longhands, bolder/lighter, oblique, UA rows as specified values, non-synthesized native) on inl1a-tags once T133 is host-done; TXT-W2 font shorthand + font-synthesis; TXT-W3 native synthetic bold/oblique (needs T147-3J, after T084 Phase R). Synthesis is paint-only in Blink/Skia (advances unchanged).'
+    assignee: Worker
+    status: queued
+    lane: text
+    objective: 'TXT-W: font-weight and font-style (and the font shorthand) on web, iOS and Android, proven against Chrome with real faces: #14 and #46 by Chrome usage, and no TXT1a branch adds them (usage scout 2026-10-01). Needs a Judge spec after TXT1a-2 (synthetic bold/italic vs bundled faces, per the TXT1a font map).'
+    receipt: null
+  - id: T148
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: text
+    objective: 'TDEC: text-decoration (line, style, colour, thickness, offset), #29 by usage (82.6%). Judge spec first; after TXT1a.'
+    receipt: null
+  - id: T149
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: text
+    objective: 'TXT2 breadth: white-space beyond normal/nowrap, letter-spacing, text-transform, text-overflow, word-break (all in the top 100 by usage). Judge spec first; after TXT1a and INL2a.'
+    receipt: null
+  - id: T150
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'visibility (hidden, collapse on non-table) natively, #48-ish by usage (79.1%); PNT1 branches do not add it. Small; after the PNT1 chain lands.'
+    receipt: null
+  - id: T151
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'GEN: content on ::before/::after and list-style (list markers), both in the top 100 by usage. Judge spec first (generated boxes in the compiler; markers per Blink).'
+    receipt: null
+  - id: T152
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'FLT: float and clear, in the top 100 by usage; the FLT-P corpus (#16) exists. Judge spec first (notes/T098-grid-flt-wm-spec.md).'
+    receipt: null
+  - id: T153
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'filter (blur, brightness, etc.) and backdrop-filter, in the top 100 by usage. Judge spec first (Skia references, notes/T109-skia0.md).'
+    receipt: null
+  - id: T154
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'user-select (Dragon-built selection per the owner ruling), in the top 100 by usage; after P6c (T077).'
+    receipt: null
+  - id: T155
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL1a fragments (found by T133): a nested inline box with its own text next to a child in another face gets one engine fragment spanning both, where Chrome reports two client rects on one line (<div style="width:240px">Mixed <b>bold <em>bold italic</em></b> ends</div>, Inter: engine right edge 164.8 vs Chrome 88.4). Port Blink''s inline box fragmentation for this shape, Chrome-captured, after the INL1a stack; T133 fixtures avoid the shape meanwhile.'
+    receipt: null
   - id: T999
     type: judge
     assignee: Judge
