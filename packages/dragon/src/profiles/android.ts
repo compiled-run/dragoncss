@@ -1471,6 +1471,8 @@ export const androidProfile: SupportProfile = {
     { feature: "object-fit:contain", context: "paint/rtl", status: "unsupported", proofs: [] },
     { feature: "object-fit:cover", context: "paint/ltr", status: "unsupported", proofs: [] },
     { feature: "object-fit:cover", context: "paint/rtl", status: "unsupported", proofs: [] },
+    { feature: "object-fit:fill", context: "paint/ltr", status: "unsupported", proofs: [] },
+    { feature: "object-fit:fill", context: "paint/rtl", status: "unsupported", proofs: [] },
     { feature: "object-fit:none", context: "paint/ltr", status: "unsupported", proofs: [] },
     { feature: "object-fit:none", context: "paint/rtl", status: "unsupported", proofs: [] },
     { feature: "object-fit:scale-down", context: "paint/ltr", status: "unsupported", proofs: [] },

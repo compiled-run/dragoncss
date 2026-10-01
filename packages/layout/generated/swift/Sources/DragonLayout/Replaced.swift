@@ -77,6 +77,54 @@ public final class FlexItemSpace {
   }
 }
 
+// ts: packages/layout/src/replaced.ts:355
+public final class ObjectRect {
+  public let x: Double
+  public let y: Double
+  public let width: Double
+  public let height: Double
+  public init(_ x: Double, _ y: Double, _ width: Double, _ height: Double) {
+    self.x = x
+    self.y = y
+    self.width = width
+    self.height = height
+  }
+}
+
+// ts: packages/layout/src/replaced.ts:358
+public final class ObjectPosition {
+  public let x: any U_LengthCalc_Percent_Px
+  public let y: any U_LengthCalc_Percent_Px
+  public init(_ x: any U_LengthCalc_Percent_Px, _ y: any U_LengthCalc_Percent_Px) {
+    self.x = x
+    self.y = y
+  }
+}
+
+// ts: packages/layout/src/replaced.ts:361
+public final class ObjectSize {
+  public let width: Double
+  public let height: Double
+  public init(_ width: Double, _ height: Double) {
+    self.width = width
+    self.height = height
+  }
+}
+
+// ts: packages/layout/src/replaced.ts:403
+public final class PixelRect {
+  public let x: Double
+  public let y: Double
+  public let width: Double
+  public let height: Double
+  public init(_ x: Double, _ y: Double, _ width: Double, _ height: Double) {
+    self.x = x
+    self.y = y
+    self.width = width
+    self.height = height
+  }
+}
+
 // ts: packages/layout/src/replaced.ts:53
 public func replaced_replacedAspectRatio(_ s: LayoutStyle, _ natural: NaturalSizing) throws -> LayoutRatio? {
   let r: any U_AspectRatioValue_autoRatio_AspectRatioValue_ratio_Auto = s.aspectRatio
@@ -335,7 +383,7 @@ public func replaced_replacedBlockBasis(_ leaf: ReplacedLeaf, _ basis: any U_Hei
   }
   // ts: packages/layout/src/replaced.ts:258
   if try (((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) && replaced_blockLengthsHavePercent(leaf.style)) {
-    try unsupported_unsupported(S.s_percent_height_flex, leaf.id, S.s62, S.s127)
+    try unsupported_unsupported(S.s_percent_height_flex, leaf.id, S.s64, S.s129)
   }
   return nil
 }
@@ -387,4 +435,86 @@ public func replaced_replacedContribution(_ ctx: Ctx, _ leaf: ReplacedLeaf, _ ki
     return bp.inline
   }
   return try box_borderBoxFromSpecified(box_resolveLength((s.minWidth as! any U_LengthCalc_Percent_Px), units_ZERO, ctx.faults), bp.inline, s.boxSizing)
+}
+
+// ts: packages/layout/src/replaced.ts:364
+public func replaced_fitToRatio(_ width: Double, _ height: Double, _ ratio: LayoutRatio, _ grow: Bool) throws -> ObjectSize {
+  let constrainedHeight: Double = try units_mulDiv(width, ratio.height, ratio.width)
+  // ts: packages/layout/src/replaced.ts:366
+  if ((grow && (constrainedHeight < height)) || ((!grow) && (constrainedHeight > height))) {
+    return try ObjectSize(units_mulDiv(height, ratio.width, ratio.height), height)
+  }
+  return ObjectSize(width, constrainedHeight)
+}
+
+// ts: packages/layout/src/replaced.ts:374
+public func replaced_objectFitRect(_ content: ObjectRect, _ natural: NaturalSizing, _ fit: JsString, _ position: ObjectPosition, _ faults: EngineFaults) throws -> ObjectRect {
+  let hasSize: Bool = try ((((natural.width != nil) && (natural.height != nil)) && (jsUnwrap(natural.width) > 0.0)) && (jsUnwrap(natural.height) > 0.0))
+  // ts: packages/layout/src/replaced.ts:376
+  if ((!hasSize) && (natural.ratio == nil)) {
+    return content
+  }
+  var w: Double = content.width
+  var h: Double = content.height
+  let nw: Double = try ((natural.width == nil) ? units_ZERO : jsUnwrap(natural.width))
+  let nh: Double = try ((natural.height == nil) ? units_ZERO : jsUnwrap(natural.height))
+  // ts: packages/layout/src/replaced.ts:381
+  if (((fit == S.s_contain) || (fit == S.s_cover)) || (fit == S.s_scale_down)) {
+    // ts: packages/layout/src/replaced.ts:382
+    if (natural.ratio != nil) {
+      let f: ObjectSize = try replaced_fitToRatio(w, h, jsUnwrap(natural.ratio), (fit == S.s_cover))
+      w = f.width
+      h = f.height
+    }
+    // ts: packages/layout/src/replaced.ts:388
+    if (((fit == S.s_scale_down) && (w > nw)) && hasSize) {
+      w = nw
+      h = nh
+    }
+  } else if ((fit == S.s_none) && hasSize) {
+    w = nw
+    h = nh
+  }
+  let x: Double = try box_resolveLength(position.x, units_sub(content.width, w), faults)
+  let y: Double = try box_resolveLength(position.y, units_sub(content.height, h), faults)
+  return try ObjectRect(units_add(content.x, x), units_add(content.y, y), w, h)
+}
+
+// ts: packages/layout/src/replaced.ts:406
+public func replaced_snapSize(_ size: Double, _ location: Double) throws -> Double {
+  let result: Double = try (units_snapEdge(units_add(location, size)) - units_snapEdge(location))
+  // ts: packages/layout/src/replaced.ts:408
+  if ((result == 0.0) && ((size > 4.0) || (size < -4.0))) {
+    return ((size > 0.0) ? 1.0 : -1.0)
+  }
+  return result
+}
+
+// ts: packages/layout/src/replaced.ts:413
+public func replaced_pixelSnappedRect(_ r: ObjectRect) throws -> PixelRect {
+  return try PixelRect(units_snapEdge(r.x), units_snapEdge(r.y), replaced_snapSize(r.width, r.x), replaced_snapSize(r.height, r.y))
+}
+
+// ts: packages/layout/src/replaced.ts:421
+public func replaced_drawnObjectRect(_ dest: ObjectRect, _ content: ObjectRect) throws -> PixelRect? {
+  let d: PixelRect = try replaced_pixelSnappedRect(dest)
+  // ts: packages/layout/src/replaced.ts:423
+  if ((d.width <= 0.0) || (d.height <= 0.0)) {
+    return nil
+  }
+  let inside: Bool = try ((((dest.x >= content.x) && (dest.y >= content.y)) && (units_add(dest.x, dest.width) <= units_add(content.x, content.width))) && (units_add(dest.y, dest.height) <= units_add(content.y, content.height)))
+  // ts: packages/layout/src/replaced.ts:425
+  if inside {
+    return d
+  }
+  let c: PixelRect = try replaced_pixelSnappedRect(content)
+  let x0: Double = ((c.x > d.x) ? c.x : d.x)
+  let y0: Double = ((c.y > d.y) ? c.y : d.y)
+  let x1: Double = (((c.x + c.width) < (d.x + d.width)) ? (c.x + c.width) : (d.x + d.width))
+  let y1: Double = (((c.y + c.height) < (d.y + d.height)) ? (c.y + c.height) : (d.y + d.height))
+  // ts: packages/layout/src/replaced.ts:431
+  if ((x1 <= x0) || (y1 <= y0)) {
+    return nil
+  }
+  return PixelRect(x0, y0, (x1 - x0), (y1 - y0))
 }
