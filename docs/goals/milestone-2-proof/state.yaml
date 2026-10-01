@@ -87,7 +87,6 @@ dispatched:
   - T052 # FORM-a
   - T058 # INL1a encoders check, then T133 on txt1a-2
   - T059 # INL2 on txt1a-2
-  - T141 # Scout
 device_lease: null
 tasks:
   - id: T001
