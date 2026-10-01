@@ -610,11 +610,16 @@
       "ranges": [
         { "lines": "1311-1316", "symbol": null, "source": "cited" },
         { "lines": "1365-1375", "symbol": null, "source": "cited" },
-        { "lines": "3936-3945", "symbol": "AdjustSliderThumbInlineOffset", "source": "located" }
+        { "lines": "3936-3945", "symbol": "AdjustSliderThumbInlineOffset", "source": "located" },
+        { "lines": "3283-3304", "symbol": null, "source": "cited" },
+        { "lines": "2799-2804", "symbol": null, "source": "cited" },
+        { "lines": "2054-2169", "symbol": null, "source": "cited" },
+        { "lines": "197-213", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/range-geometry.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" }
+        { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" },
+        { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" }
       ]
     },
     {
@@ -651,6 +656,21 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/units.ts", "symbol": "FACTOR_ZERO", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/geometry/writing_mode_converter.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "abb678e72678a1b0050d33e80a261b406dc84ca53bbca5d05d76a0fbee6f25f8",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "71-79", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" }
       ]
     },
     {
