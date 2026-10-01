@@ -249,8 +249,8 @@ export { CLOCK_RUNTIME_VERSION, ClockError, VirtualClock } from './emit/runtime/
 export { RUNTIME_MODULES } from './emit/runtime/index.ts';
 
 // SELD-R1b (notes/T047-runtime-spec.md RT-9): the hit table and each element's hit facts.
-export type { HitEngine, HitFact, HitNode, HitTable, HitTableFaults } from './emit/runtime/hit.ts';
-export { HIT_TABLE_VERSION, hitTable, HitTableError, NO_HIT_TABLE_FAULTS } from './emit/runtime/hit.ts';
+export type { HitFact } from './emit/runtime/hit.ts';
+export { HIT_FACTS_VERSION } from './emit/runtime/hit.ts';
 
 /** The tags whose elements carry an activation handler (RT-9 tap dispatch): button, and a with an href (HTML §4.6.1). */
 export const ACTIVATION_TAGS: readonly string[] = ['a', 'button'];
