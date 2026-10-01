@@ -1,0 +1,178 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 47744
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 1344,
+   "width": 67200,
+   "height": 46400
+  },
+  {
+   "id": "fit1",
+   "parent": "body",
+   "x": 1344,
+   "y": 0,
+   "width": 48304,
+   "height": 4288
+  },
+  {
+   "id": "fit2",
+   "parent": "body",
+   "x": 1344,
+   "y": 5632,
+   "width": 9664,
+   "height": 4288
+  },
+  {
+   "id": "gap1",
+   "parent": "body",
+   "x": 1344,
+   "y": 11264,
+   "width": 41920,
+   "height": 4288
+  },
+  {
+   "id": "gap2",
+   "parent": "body",
+   "x": 1344,
+   "y": 16896,
+   "width": 39232,
+   "height": 4288
+  },
+  {
+   "id": "gap3",
+   "parent": "body",
+   "x": 1344,
+   "y": 22528,
+   "width": 49312,
+   "height": 4288
+  },
+  {
+   "id": "fit3",
+   "parent": "body",
+   "x": 1344,
+   "y": 28160,
+   "width": 49280,
+   "height": 4928
+  },
+  {
+   "id": "fit5",
+   "parent": "body",
+   "x": 1344,
+   "y": 34432,
+   "width": 21824,
+   "height": 5696
+  },
+  {
+   "id": "mix",
+   "parent": "body",
+   "x": 1344,
+   "y": 41472,
+   "width": 34496,
+   "height": 4928
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 746,
+   "width": 1050,
+   "height": 746
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 21,
+   "right": 1050,
+   "bottom": 746,
+   "width": 1050,
+   "height": 725
+  },
+  {
+   "id": "fit1",
+   "left": 21,
+   "top": 21,
+   "right": 776,
+   "bottom": 88,
+   "width": 755,
+   "height": 67
+  },
+  {
+   "id": "fit2",
+   "left": 21,
+   "top": 109,
+   "right": 172,
+   "bottom": 176,
+   "width": 151,
+   "height": 67
+  },
+  {
+   "id": "gap1",
+   "left": 21,
+   "top": 197,
+   "right": 676,
+   "bottom": 264,
+   "width": 655,
+   "height": 67
+  },
+  {
+   "id": "gap2",
+   "left": 21,
+   "top": 285,
+   "right": 634,
+   "bottom": 352,
+   "width": 613,
+   "height": 67
+  },
+  {
+   "id": "gap3",
+   "left": 21,
+   "top": 373,
+   "right": 792,
+   "bottom": 440,
+   "width": 771,
+   "height": 67
+  },
+  {
+   "id": "fit3",
+   "left": 21,
+   "top": 461,
+   "right": 791,
+   "bottom": 538,
+   "width": 770,
+   "height": 77
+  },
+  {
+   "id": "fit5",
+   "left": 21,
+   "top": 559,
+   "right": 362,
+   "bottom": 648,
+   "width": 341,
+   "height": 89
+  },
+  {
+   "id": "mix",
+   "left": 21,
+   "top": 669,
+   "right": 560,
+   "bottom": 746,
+   "width": 539,
+   "height": 77
+  }
+ ]
+}

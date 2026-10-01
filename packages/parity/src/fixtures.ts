@@ -3,6 +3,7 @@ import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeR
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
+import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
@@ -85,6 +86,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'phrasing-blockified', fixtures: PHRASING_BLOCKIFIED },
   { id: 'fonts', fixtures: FONTS },
   { id: 'media', fixtures: MEDIA },
+  { id: 'border-paint', fixtures: BORDER_PAINT },
   { id: 'sizing-ratio', fixtures: SIZING },
   // values stays last: the extended corpus keys its vectors on the values- prefix (values.test.ts).
   { id: 'values', fixtures: VALUES },
