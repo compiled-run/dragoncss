@@ -133,6 +133,7 @@ const PLANTS: { readonly [name: string]: readonly [number, string, (t: string) =
   'emitted-value': [2, 'emitted/margin-collapse-body.css', (t) => t.replace('  width: auto;', '  width: 10px;')],
   'emitted-ratio': [2, 'emitted/margin-collapse-body.css', (t) => t.replace(DECLARATION, '  aspect-ratio: 1 / 1;')],
   'emitted-extra': [2, 'emitted/margin-collapse-body.css', (t) => t.replace(DECLARATION, `${DECLARATION}\n${DECLARATION}`)],
+  'emitted-media': [2, 'emitted/media-max-width.css', (t) => t.replace(/(@media [^\n]*\n\.dg\d+ \{\n)/, `$1${DECLARATION}\n`)],
   'stray-file': [1, '', (t) => t],
 };
 
