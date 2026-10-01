@@ -22,7 +22,9 @@
     "radius",
     "clip",
     "edge",
-    "glyph"
+    "glyph",
+    "shadow",
+    "gradient"
   ],
   "dumpFaults": [
     "edge-plus-2-device-px",
@@ -446,9 +448,9 @@
           },
           "device": null,
           "evidence": {
-            "laneCode": "870c2c88e147e5afb4ad372d1131e3aea275961b6c474277d02c71770cb5a62c",
+            "laneCode": "84da7acf790ffd66475e47accd56254a0b8018d28a77343f8e3590b9a7affa11",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "4edc954cc7ab455ed55ba2ffa27eb678ac460130cba6bc7eb8de75b62ba9d25e"
+            "app": "437b6e213cd0948501ff722ba747fd921f6a07a3958165c9b161c0b6bd84370d"
           }
         },
         {
@@ -556,9 +558,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "870c2c88e147e5afb4ad372d1131e3aea275961b6c474277d02c71770cb5a62c",
+            "laneCode": "84da7acf790ffd66475e47accd56254a0b8018d28a77343f8e3590b9a7affa11",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "4edc954cc7ab455ed55ba2ffa27eb678ac460130cba6bc7eb8de75b62ba9d25e"
+            "app": "437b6e213cd0948501ff722ba747fd921f6a07a3958165c9b161c0b6bd84370d"
           }
         },
         {
@@ -666,9 +668,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "870c2c88e147e5afb4ad372d1131e3aea275961b6c474277d02c71770cb5a62c",
+            "laneCode": "84da7acf790ffd66475e47accd56254a0b8018d28a77343f8e3590b9a7affa11",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "4edc954cc7ab455ed55ba2ffa27eb678ac460130cba6bc7eb8de75b62ba9d25e"
+            "app": "437b6e213cd0948501ff722ba747fd921f6a07a3958165c9b161c0b6bd84370d"
           }
         },
         {
@@ -776,9 +778,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "870c2c88e147e5afb4ad372d1131e3aea275961b6c474277d02c71770cb5a62c",
+            "laneCode": "84da7acf790ffd66475e47accd56254a0b8018d28a77343f8e3590b9a7affa11",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "4edc954cc7ab455ed55ba2ffa27eb678ac460130cba6bc7eb8de75b62ba9d25e"
+            "app": "437b6e213cd0948501ff722ba747fd921f6a07a3958165c9b161c0b6bd84370d"
           }
         },
         {
@@ -1068,9 +1070,9 @@
             ]
           },
           "evidence": {
-            "laneCode": "870c2c88e147e5afb4ad372d1131e3aea275961b6c474277d02c71770cb5a62c",
+            "laneCode": "84da7acf790ffd66475e47accd56254a0b8018d28a77343f8e3590b9a7affa11",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "4edc954cc7ab455ed55ba2ffa27eb678ac460130cba6bc7eb8de75b62ba9d25e"
+            "app": "437b6e213cd0948501ff722ba747fd921f6a07a3958165c9b161c0b6bd84370d"
           }
         }
       ],
@@ -1629,9 +1631,9 @@
           },
           "device": null,
           "evidence": {
-            "laneCode": "870c2c88e147e5afb4ad372d1131e3aea275961b6c474277d02c71770cb5a62c",
+            "laneCode": "84da7acf790ffd66475e47accd56254a0b8018d28a77343f8e3590b9a7affa11",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "d5f935cea149010f3be93f5ffe6072c97b3d072d29f54a54c54dbcc244bc897d"
+            "app": "1dc4a4eee17fe42657a6c6b41575568da4b02b5894a765fc15ed3dc4fe6e1a31"
           }
         },
         {
@@ -1782,9 +1784,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "870c2c88e147e5afb4ad372d1131e3aea275961b6c474277d02c71770cb5a62c",
+            "laneCode": "84da7acf790ffd66475e47accd56254a0b8018d28a77343f8e3590b9a7affa11",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "d5f935cea149010f3be93f5ffe6072c97b3d072d29f54a54c54dbcc244bc897d"
+            "app": "1dc4a4eee17fe42657a6c6b41575568da4b02b5894a765fc15ed3dc4fe6e1a31"
           }
         },
         {
@@ -1935,9 +1937,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "870c2c88e147e5afb4ad372d1131e3aea275961b6c474277d02c71770cb5a62c",
+            "laneCode": "84da7acf790ffd66475e47accd56254a0b8018d28a77343f8e3590b9a7affa11",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "d5f935cea149010f3be93f5ffe6072c97b3d072d29f54a54c54dbcc244bc897d"
+            "app": "1dc4a4eee17fe42657a6c6b41575568da4b02b5894a765fc15ed3dc4fe6e1a31"
           }
         },
         {
@@ -2088,9 +2090,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "870c2c88e147e5afb4ad372d1131e3aea275961b6c474277d02c71770cb5a62c",
+            "laneCode": "84da7acf790ffd66475e47accd56254a0b8018d28a77343f8e3590b9a7affa11",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "d5f935cea149010f3be93f5ffe6072c97b3d072d29f54a54c54dbcc244bc897d"
+            "app": "1dc4a4eee17fe42657a6c6b41575568da4b02b5894a765fc15ed3dc4fe6e1a31"
           }
         },
         {
@@ -2432,9 +2434,9 @@
             ]
           },
           "evidence": {
-            "laneCode": "870c2c88e147e5afb4ad372d1131e3aea275961b6c474277d02c71770cb5a62c",
+            "laneCode": "84da7acf790ffd66475e47accd56254a0b8018d28a77343f8e3590b9a7affa11",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "d5f935cea149010f3be93f5ffe6072c97b3d072d29f54a54c54dbcc244bc897d"
+            "app": "1dc4a4eee17fe42657a6c6b41575568da4b02b5894a765fc15ed3dc4fe6e1a31"
           }
         }
       ],
