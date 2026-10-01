@@ -8,22 +8,30 @@ import type { BoxShape } from '../src/index.ts';
 
 const layout = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FEATURES = ['radius', 'shadow', 'gradient', 'transform', 'dash', 'scrollbar'];
+/** The seams a package has filled: dash by P6a (paint-dash.ts, its index.ts line and its vectors). */
+const FILLED = ['dash'];
+const STUBS = FEATURES.filter((f) => !FILLED.includes(f));
 
 describe('EMS: engine paint seams', () => {
-  it('paint.ts and the six paint-<feature>.ts stubs exist and export no function yet', () => {
-    for (const f of ['paint.ts', ...FEATURES.map((x) => `paint-${x}.ts`)]) {
+  it('paint.ts and the paint-<feature>.ts stubs no package has filled exist and export no function yet', () => {
+    for (const f of FEATURES) readFileSync(join(layout, 'src', `paint-${f}.ts`), 'utf8');
+    for (const f of ['paint.ts', ...STUBS.map((x) => `paint-${x}.ts`)]) {
       const text = readFileSync(join(layout, 'src', f), 'utf8');
       expect(text, f).not.toMatch(/export (async )?function/);
     }
     const shape: BoxShape = { left: 0, top: 0, right: 10, bottom: 10, borders: [0, 0, 0, 0], radii: [0, 0, 0, 0, 0, 0, 0, 0] };
     expect(shape.radii).toHaveLength(8);
   });
-  it('index.ts exports the paint seam with one line', () => {
+  it('index.ts exports the paint seam with one line, and each filled seam with its own lines', () => {
     const lines = readFileSync(join(layout, 'src/index.ts'), 'utf8').split('\n').filter((l) => l.includes("'./paint"));
-    expect(lines).toEqual(["export type { BoxShape } from './paint.ts';"]);
+    expect(lines).toEqual([
+      "export type { BoxShape } from './paint.ts';",
+      "export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';",
+      "export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from './paint-dash.ts';",
+    ]);
   });
-  it('every feature has an empty paint-vectors suite', () => {
-    for (const f of FEATURES) {
+  it('every feature no package has filled has an empty paint-vectors suite', () => {
+    for (const f of STUBS) {
       const v = JSON.parse(readFileSync(join(layout, 'paint-vectors', f, 'vectors.json'), 'utf8')) as { feature: string; cases: number; lines: unknown[]; expected: unknown[] };
       expect(v, f).toMatchObject({ feature: f, cases: 0, lines: [], expected: [] });
     }

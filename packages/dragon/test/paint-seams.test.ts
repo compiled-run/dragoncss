@@ -69,8 +69,9 @@ describe('EMS: the paint registries', () => {
       for (const b of ['uikit', 'android-views'] as const) expect(e?.native[b], name).toEqual({ boxMembers: '', file: null, stages: {}, afterLayout: null, applied: null, roundedPath: null, container: null });
       expect(PAINT_LOWERINGS.find((m) => m.name === name)?.css, name).toEqual({});
     }
-    expect(paintPlants()).toEqual([]);
-    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1']);
+    // The border module (P6a) declares the two dash plants; every stub declares none.
+    expect(paintPlants().map((p) => p.name)).toEqual(['dash-phase-1', 'dash-gap-unfitted']);
+    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted']);
   });
 });
 
