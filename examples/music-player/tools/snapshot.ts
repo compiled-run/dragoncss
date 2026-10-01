@@ -76,6 +76,43 @@ export function freeStateHtml(html: string, state: FreeStateId): string {
   return spec.parts.reduce((out, part) => stateHtml(out, part), html);
 }
 
+/** The video the snapshot cues: track one's id, as .youtube-frame-host's data-video-id carries it. */
+export const VIDEO_ID = 'DwTzcZxyUUg';
+
+/**
+ * The embed URL of the video slot: youtube-controller.ts's playerVars in source order (controls, modestbranding, playsinline,
+ * rel) and the IFrame API's enablejsapi=1. The host-dependent origin and widgetid parameters are left out, so the URL is the
+ * same on every host. Captures never load it: Chrome is served EMBED_STAND_IN, and native lane builds load about:blank.
+ */
+export const VIDEO_EMBED_SRC = `https://www.youtube.com/embed/${VIDEO_ID}?controls=1&modestbranding=1&playsinline=1&rel=0&enablejsapi=1`;
+
+/**
+ * The deterministic local stand-in Chrome is served for the YouTube embed URL: an empty HTML document, no network. It declares
+ * the slot's own color-scheme (dark, inherited from styles.css), so its canvas is transparent (css-color-adjust-1 §2.2) whether
+ * or not its out-of-process frame has painted when the screenshot is taken; with a mismatched scheme the canvas is opaque white
+ * only once that frame paints, which differs from run to run.
+ */
+export const EMBED_STAND_IN = {
+  colorScheme: 'dark',
+  contentType: 'text/html; charset=utf-8',
+  body: '<!DOCTYPE html><meta name="color-scheme" content="dark">',
+  label: 'stand-in: an empty HTML document (color-scheme dark) in place of the YouTube embed (no network)',
+} as const;
+
+const PLACEHOLDER = '<div class="youtube-player-target" data-dragon-id="video-placeholder"></div';
+
+/**
+ * The DOM after the IFrame API has run (notes/T045 R9, the web-view slot): the video placeholder replaced by
+ * <iframe class="youtube-player-target" src="VIDEO_EMBED_SRC" data-dragon-id="video-placeholder">, keeping the class and id. The
+ * attributes the API also writes (width and height 100%, frameborder, allow, title) are left out: the shared
+ * .youtube-player-target / .youtube-player iframe rule gives the same box. The edit must hit exactly once.
+ */
+export function withVideoIframe(html: string): string {
+  const n = html.split(PLACEHOLDER).length - 1;
+  if (n !== 1) throw new Error(`video placeholder matches ${n} times, expected 1`);
+  return html.replace(PLACEHOLDER, `<iframe class="youtube-player-target" src="${VIDEO_EMBED_SRC.replace(/&/g, '&amp;')}" data-dragon-id="video-placeholder"></iframe`);
+}
+
 /** HTML void elements the snapshot uses (and the head-only ones the conversion drops with the head). */
 export const VOID_ELEMENTS = ['img', 'input'] as const;
 
