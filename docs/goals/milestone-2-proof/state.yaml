@@ -84,7 +84,7 @@ dispatched:
   - T118 # PORT-0 landing (slot 2)
   - T071 # paint stack rebuild: ems-a, ems-b, p6a-dash-v2, p6a-promote-v2, t116-border-join-v2
   - T064 # SELD-R2a
-  - T052 # FORM-a
+  - T052 # FORM-a A1 engine (T052J) on form-a; A2 appearance longhand on form-a2
   - T058 # INL1a encoders check, then T133 on txt1a-2
   - T059 # INL2 on txt1a-2
 device_lease: null
@@ -2006,6 +2006,7 @@ tasks:
         and WKWebView/WebView slots; north star img 5/5 (8 img errors cleared on web and iOS). The iframe export, embed route and cover markers wait for T034 (dispatched).'
   - id: T052
     type: worker
+    pm_note: 'T052J (2026-10-01), notes/T052J-form-a.md: control node kind; split into A1 engine, A2 appearance longhand, A3 button, A4 range; Phase B after A4. First worker stopped blocked at form-a 7350315f8 (controls.ts Blink ports; out-of-scope wiring list), resolved by T052J.'
     assignee: Worker
     status: queued
     lane: north-star
