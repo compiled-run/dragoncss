@@ -21,11 +21,13 @@ const box = (id: string, width: number, children: LayoutBox['children'] = []): L
 const node = (id: string, parent: string | null, color: number): ProgramNode => ({
   id,
   parent,
+  host: parent,
   kind: 'element',
   native: 'DragonBoxView',
   clips: false,
   text: null,
   writes: [{ kind: 'background-color', color: { r: color, g: 0, b: 0, alpha: 255 }, key: 'backgroundColor', technique: 'native-property', detail: 'test', css: ['background-color'] }],
+  facts: {},
 });
 
 const program = (root: LayoutBox, nodes: readonly ProgramNode[]): NativeProgram => ({ version: 'dragon.uikit-program/1', backend: 'uikit', root, rootFontSize: 16, nodes });
