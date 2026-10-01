@@ -112,8 +112,8 @@
   }
  },
  "summary": {
-  "diagnostics": 359,
-  "errors": 358,
+  "diagnostics": 371,
+  "errors": 370,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [android]": 33,
@@ -124,7 +124,7 @@
    "DRAGON_UNSUPPORTED_AT_RULE [android]": 2,
    "DRAGON_UNSUPPORTED_AT_RULE [ios]": 2,
    "DRAGON_UNSUPPORTED_ELEMENT": 10,
-   "DRAGON_UNSUPPORTED_FONT [android]": 22,
+   "DRAGON_UNSUPPORTED_FONT [android]": 34,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
    "DRAGON_UNSUPPORTED_PROPERTY": 67,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
@@ -169,7 +169,7 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 10,
-     "DRAGON_UNSUPPORTED_FONT": 22,
+     "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 32
@@ -265,7 +265,7 @@
   "rawDiagnosticsPerPass": {
    "A-authored": 156,
    "B-unwrapped": 153,
-   "C-context": 208
+   "C-context": 220
   }
  },
  "features": {
@@ -9999,6 +9999,22 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Library.tsrx:Library|text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/components/Library.tsrx",
+    "text": "Library"
+   },
+   "message": "text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: \"Lato\" , sans-serif on page/library-call/song-1/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -10057,6 +10073,70 @@
     "text": "{song.artist} - YouTube"
    },
    "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-4/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|text page/library-call/song-1/song-artist:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> page/library-call/song-1/song-artist; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
+    "text": "{song.artist} - YouTube"
+   },
+   "message": "text page/library-call/song-1/song-artist:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> page/library-call/song-1/song-artist; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|text page/library-call/song-2/song-artist:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> page/library-call/song-2/song-artist; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
+    "text": "{song.artist} - YouTube"
+   },
+   "message": "text page/library-call/song-2/song-artist:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> page/library-call/song-2/song-artist; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|text page/library-call/song-3/song-artist:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> page/library-call/song-3/song-artist; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
+    "text": "{song.artist} - YouTube"
+   },
+   "message": "text page/library-call/song-3/song-artist:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> page/library-call/song-3/song-artist; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|text page/library-call/song-4/song-artist:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> page/library-call/song-4/song-artist; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
+    "text": "{song.artist} - YouTube"
+   },
+   "message": "text page/library-call/song-4/song-artist:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h4> page/library-call/song-4/song-artist; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -10127,6 +10207,70 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|text page/library-call/song-1/song-name:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> page/library-call/song-1/song-name; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
+    "text": "{song.name}"
+   },
+   "message": "text page/library-call/song-1/song-name:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> page/library-call/song-1/song-name; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|text page/library-call/song-2/song-name:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> page/library-call/song-2/song-name; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
+    "text": "{song.name}"
+   },
+   "message": "text page/library-call/song-2/song-name:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> page/library-call/song-2/song-name; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|text page/library-call/song-3/song-name:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> page/library-call/song-3/song-name; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
+    "text": "{song.name}"
+   },
+   "message": "text page/library-call/song-3/song-name:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> page/library-call/song-3/song-name; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|text page/library-call/song-4/song-name:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> page/library-call/song-4/song-name; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
+    "text": "{song.name}"
+   },
+   "message": "text page/library-call/song-4/song-name:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> page/library-call/song-4/song-name; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Nav.tsrx:Library ♪|font-family: \"Lato\" , sans-serif on page/nav-call/library-button:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -10153,6 +10297,22 @@
     "text": "Waves"
    },
    "message": "font-family: \"Lato\" , sans-serif on page/nav-call/nav-title:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Nav.tsrx:Waves|text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/components/Nav.tsrx",
+    "text": "Waves"
+   },
+   "message": "text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -10271,6 +10431,22 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Song.tsrx:{currentSong.artist}|text page/song-call/song-artist:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> page/song-call/song-artist; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/components/Song.tsrx",
+    "text": "{currentSong.artist}"
+   },
+   "message": "text page/song-call/song-artist:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h3> page/song-call/song-artist; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Song.tsrx:{currentSong.name}|font-family: \"Lato\" , sans-serif on page/song-call/song-title:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -10281,6 +10457,22 @@
     "text": "{currentSong.name}"
    },
    "message": "font-family: \"Lato\" , sans-serif on page/song-call/song-title:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Song.tsrx:{currentSong.name}|text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/components/Song.tsrx",
+    "text": "{currentSong.name}"
+   },
+   "message": "text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
