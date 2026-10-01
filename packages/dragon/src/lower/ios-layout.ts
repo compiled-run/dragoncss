@@ -229,7 +229,7 @@ const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '')
 function displayOfStyle(id: string, get: Get): Display {
   const v = get('display');
   if (v.kind === 'keyword' && v.value === 'list-item') return 'block';
-  return keyword<Display>(id, get, 'display', ['block', 'flex', 'grid', 'inline']);
+  return keyword<Display>(id, get, 'display', ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex']);
 }
 
 /**
@@ -431,9 +431,12 @@ export function assertTextCarriesContainer(container: LayoutStyle, containerId: 
   }
 }
 
-/** CSS2 §9.2.2: inline-level content: text, and an element whose box is an inline box (display: inline, <br> included). */
-// A replaced element (REPL-a) is laid out as its own leaf beside the inline content, never inside a line (atomic inlines are INL2).
-const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || (displayOf(c) === 'inline' && !isReplacedTag(c.element.tag));
+/** CSS2 §9.2.4: an atomic inline, an inline-block or inline-flex box among inline content (INL2a). */
+const isAtomic = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'element' && (displayOf(c) === 'inline-block' || displayOf(c) === 'inline-flex');
+
+/** CSS2 §9.2.2: inline-level content: text, an element whose box is an inline box (display: inline, <br> included), or an atomic inline. */
+// A replaced element (REPL-a) is laid out as its own leaf beside the inline content, never inside a line.
+const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || (displayOf(c) === 'inline' && !isReplacedTag(c.element.tag)) || isAtomic(c);
 
 /** propagated is the element whose overflow the viewport took (viewportOverflow), which uses visible. */
 type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null };
@@ -453,11 +456,17 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
   }
   const kids = c.children.filter((k) => k.kind === 'text' || displayOf(k) !== 'none');
-  const block = kids.find((k) => !isInlineLevel(k));
+  const block = kids.find((k) => !isInlineLevel(k) || isAtomic(k));
   if (block !== undefined && block.kind === 'element') {
+    if (isAtomic(block)) throw new LoweringError(block.element.address, 'display', `atomic inline <${block.element.tag}> ${block.element.address} inside inline box ${id} is not laid out (INL2c)`);
     throw new LoweringError(block.element.address, 'display', `block-level <${block.element.tag}> ${block.element.address} inside inline box ${id} (CSS2 §9.2.1.1 block-in-inline) is not laid out`);
   }
   return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, l)) };
+}
+
+/** A block container's inline-level child: an atomic inline is a box among its inline content (INL2a), the rest lowerInline. */
+function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | InlineChild {
+  return isAtomic(c) ? lowerBox(c as ResolvedElement, l, null) : lowerInline(c, l);
 }
 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box inherits the inherited properties of its enclosing box and takes the
@@ -471,7 +480,7 @@ function anonymousBox(parent: ResolvedElement, id: string, items: readonly (Reso
   // Every non-inherited property of an anonymous box is its initial value.
   const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), l.faults, l.ua, { em: null, rem: null });
   for (const t of items) if (t.kind === 'text') assertTextCarriesContainer(style, id, t);
-  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), children: items.map((c) => lowerInline(c, l)) };
+  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), children: items.map((c) => lowerInlineLevel(c, l)) };
 }
 
 /**
@@ -546,7 +555,7 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   const grid = own.display === 'grid' ? gridStep(id, () => lowerGridContainer(get)) : null;
   const gridItem = gridParent === null ? null : gridStep(id, () => (own.position === 'absolute' ? lowerOutOfFlowGridItem(gridParent, get) : lowerGridItem(gridParent, get)));
   const style: LayoutStyle = grid === null && gridItem === null ? own : { ...own, grid: grid === null ? null : grid.style, gridItem };
-  const container = displayOf(el) === 'flex' || displayOf(el) === 'grid';
+  const container = displayOf(el) === 'flex' || displayOf(el) === 'inline-flex' || displayOf(el) === 'grid';
   const inline = kids.filter(isInlineLevel);
   const wrap = inline.length > 0 && (container || inline.length !== kids.length);
   const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
@@ -570,10 +579,12 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
     }
     else {
       if (c.kind === 'text') assertTextCarriesContainer(style, id, c);
-      children.push(lowerInline(c, l));
+      children.push(lowerInlineLevel(c, l));
     }
   }
   flush();
-  // A line strut only when the box holds inline content: a replaced leaf is a box of its own, not a line (REPL-a with INL1a).
-  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, children.some((c) => c.kind !== 'box' && c.kind !== 'replaced'), l.mode), children };
+  // A line strut only when the box holds inline content: a replaced leaf is a box of its own, not a line (REPL-a with INL1a); an
+  // atomic inline is on a line (INL2a).
+  const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex')));
+  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), children };
 }

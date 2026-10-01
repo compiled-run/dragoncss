@@ -13,5 +13,5 @@ export const PHRASING_BLOCKIFIED: readonly FixtureSpec[] = [
   // INL1a lays out a span in a block container (an inline box); one holding a block is block-in-inline, still refused (T058J3 A).
   reject('reject-phrasing-inline-span', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="b">YY</div>', '<div> b is block-level inside the inline box <span> s'),
   reject('reject-phrasing-a-href', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<a data-dragon-id="a" href="https://example.com/">', 'attribute href on a is not supported'),
-  reject('reject-phrasing-inline-block', 'DRAGON_UNPROVEN_CONTEXT', 'inline-block', null),
+  reject('reject-phrasing-inline-block', 'DRAGON_UNSUPPORTED_VALUE', 'inline-grid', null),
 ];
