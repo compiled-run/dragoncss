@@ -219,3 +219,16 @@ const MILESTONE_1_IDS: readonly string[] = [
   'reject-overflow-single-axis', 'reject-overflow-body', 'reject-overflow-scroll', 'reject-last-baseline',
   'reject-bidi-neutral', 'reject-position-fixed', 'reject-position-sticky', 'reject-abspos-in-inline',
 ];
+
+describe('EMS seams: the paint families (notes/T046-paint-spec.md §3 item 4)', () => {
+  it('are spread into every aggregate after the grid family, empty, so the registry orders above hold', async () => {
+    const text = (await import('node:fs')).readFileSync(new URL('../src/css/properties.ts', import.meta.url), 'utf8');
+    for (const block of ['LONGHANDS = [', 'SHORTHANDS = [', 'INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([', 'PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {', 'CONTAINER_LONGHANDS: readonly Longhand[] = [', 'TEXT_ROLE_LONGHANDS: readonly Longhand[] = [']) {
+      const start = text.indexOf(block);
+      const body = text.slice(start, Math.min(...['\n]', '\n}'].map((e) => text.indexOf(e, start)).filter((i) => i > 0)));
+      const fams = [...body.matchAll(/\.\.\.([A-Z_]+?)_(?:LONGHANDS|SHORTHANDS|INHERITED|ASPECTS|CONTAINER|TEXT_ROLE),/g)].map((m) => m[1]);
+      expect(fams.slice(-8), block).toEqual(['GRID', 'RADIUS', 'SHADOW', 'EFFECTS', 'OUTLINE', 'TRANSFORM', 'BACKGROUND_LAYERS', 'SCROLLBAR']);
+    }
+    expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());
+  });
+});

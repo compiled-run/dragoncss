@@ -16,6 +16,7 @@ import type { Candidate } from './cascade.ts';
 import type { LinkedElement } from './link.ts';
 import type { Substitution, VarScope } from './variables.ts';
 import { substituteWinner } from './variables.ts';
+import { computePaintValues } from './paint-values/index.ts';
 
 /** environment: the root's direction and font, seeded from the reference environment (docs/api.md §7), never from an author declaration. */
 export type Origin = 'author' | 'inherited' | 'user-agent' | 'initial' | 'environment';
@@ -173,6 +174,7 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
   toPx('font-size', parentFontSize, rootFontSize ?? parentFontSize);
   const own = pxOf((props.get('font-size') as ResolvedValue).value);
   for (const p of props.keys()) if (p !== 'font-size') toPx(p, own, rootFontSize ?? own);
+  computePaintValues(props, { em: own, rem: rootFontSize ?? own });
 }
 
 /** css-values-4 §6: the lengths inside track-list values compute to px, as computeLengths does for single lengths. */
