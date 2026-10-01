@@ -976,13 +976,13 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
     // rt suite (ANIM-a2, T047 section 3.2): the rt timing, easing, hold and interpolation reference on the rt vector inputs.
     case 'rt-timing':
       if (a.length !== 3) return fail('rt-timing: expected [op, timing, timeMs]');
-      return rtTimingResult(rtTimingSpec(item(a, 1, '$'), '$[1]'), arg(a, 2), 0);
+      return rtTimingResult(rtTimingSpec(item(a, 1, '$'), '$[1]'), rtFinite(a, 2, '$'), 0);
     case 'rt-hold':
       if (a.length !== 4) return fail('rt-hold: expected [op, timing, timeMs, elapsedSeconds]');
-      return rtTimingResult(rtTimingSpec(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
+      return rtTimingResult(rtTimingSpec(item(a, 1, '$'), '$[1]'), rtFinite(a, 2, '$'), rtFinite(a, 3, '$'));
     case 'rt-easing':
       if (a.length !== 3) return fail('rt-easing: expected [op, easing, timeMs]');
-      return rtTimingResult(rtOneIteration(rtEasing(item(a, 1, '$'), '$[1]')), arg(a, 2), 0);
+      return rtTimingResult(rtOneIteration(rtEasing(item(a, 1, '$'), '$[1]')), rtFinite(a, 2, '$'), 0);
     case 'rt-interp':
       return rtInterpResult(a);
     default:
@@ -1021,6 +1021,23 @@ const RT_NO_FAULTS: RtFaults = {
   holdTimeLost: false,
 };
 
+/**
+ * A finite rt number argument: the rt reference loops (fmod's doubling, the timing phases) assume finite inputs, so NaN or an
+ * infinity is a harness error, never a computation (Macroscope 4153809247).
+ */
+function rtFinite(a: readonly JsonValue[], i: number, path: string): number {
+  const v = arg(a, i);
+  if (!Number.isFinite(v)) return fail(`${path}[${i}]: ${bitsHex(v)} is not a finite number`);
+  return v;
+}
+
+/** An iteration count: finite and not negative, or +Infinity (the only infinity Web Animations allows); NaN is refused. */
+function rtIterations(a: readonly JsonValue[], i: number, path: string): number {
+  const v = arg(a, i);
+  if (Number.isNaN(v) || v < 0) return fail(`${path}[${i}]: iterations ${bitsHex(v)} is not a non-negative number or +Infinity`);
+  return v;
+}
+
 function rtStepPosition(v: JsonValue, path: string): StepPosition {
   const p = lit(v, ['jump-start', 'jump-end', 'jump-none', 'jump-both', 'start', 'end'], path);
   if (p === 'jump-start') return 'jump-start';
@@ -1036,11 +1053,11 @@ function rtEasing(v: JsonValue, path: string): EasingSpec {
   const a = arr(v, path);
   if (a.length !== 7) return fail(`${path}: expected [kind, x1, y1, x2, y2, steps, position]`);
   const k = lit(item(a, 0, path), ['linear', 'cubic-bezier', 'steps'], path);
-  const x1 = arg(a, 1);
-  const y1 = arg(a, 2);
-  const x2 = arg(a, 3);
-  const y2 = arg(a, 4);
-  const steps = arg(a, 5);
+  const x1 = rtFinite(a, 1, path);
+  const y1 = rtFinite(a, 2, path);
+  const x2 = rtFinite(a, 3, path);
+  const y2 = rtFinite(a, 4, path);
+  const steps = rtFinite(a, 5, path);
   const position = rtStepPosition(item(a, 6, path), path);
   if (k === 'linear') return { kind: 'linear', x1, y1, x2, y2, steps, position };
   if (k === 'steps') return { kind: 'steps', x1, y1, x2, y2, steps, position };
@@ -1069,11 +1086,11 @@ function rtTimingSpec(v: JsonValue, path: string): EffectTimingSpec {
   const a = arr(v, path);
   if (a.length !== 8) return fail(`${path}: expected [delay, endDelay, duration, iterations, iterationStart, direction, fill, easing]`);
   return {
-    delayMs: arg(a, 0),
-    endDelayMs: arg(a, 1),
-    durationMs: arg(a, 2),
-    iterations: arg(a, 3),
-    iterationStart: arg(a, 4),
+    delayMs: rtFinite(a, 0, path),
+    endDelayMs: rtFinite(a, 1, path),
+    durationMs: rtFinite(a, 2, path),
+    iterations: rtIterations(a, 3, path),
+    iterationStart: rtFinite(a, 4, path),
     direction: rtDirection(item(a, 5, path), `${path}[5]`),
     fill: rtFill(item(a, 6, path), `${path}[6]`),
     easing: easingFromSpec(rtEasing(item(a, 7, path), `${path}[7]`)),
@@ -1100,8 +1117,8 @@ function rtLength(v: JsonValue, path: string): LengthValue {
   const a = arr(v, path);
   if (a.length !== 3) return fail(`${path}: expected [kind, px, percent]`);
   const k = lit(item(a, 0, path), ['px', 'percent', 'calc'], path);
-  const px = arg(a, 1);
-  const percent = arg(a, 2);
+  const px = rtFinite(a, 1, path);
+  const percent = rtFinite(a, 2, path);
   if (k === 'px') return { kind: 'px', px, percent };
   if (k === 'percent') return { kind: 'percent', px, percent };
   return { kind: 'calc', px, percent };
@@ -1110,7 +1127,7 @@ function rtLength(v: JsonValue, path: string): LengthValue {
 function rtColor(v: JsonValue, path: string): LegacyColor {
   const a = arr(v, path);
   if (a.length !== 4) return fail(`${path}: expected [r, g, b, alpha]`);
-  return { r: arg(a, 0), g: arg(a, 1), b: arg(a, 2), alpha: arg(a, 3) };
+  return { r: rtFinite(a, 0, path), g: rtFinite(a, 1, path), b: rtFinite(a, 2, path), alpha: rtFinite(a, 3, path) };
 }
 
 function rtTransformFn(v: JsonValue, path: string): TransformFn {
@@ -1128,7 +1145,7 @@ function rtTransformFn(v: JsonValue, path: string): TransformFn {
 function rtOp(v: JsonValue, path: string): TransformOp {
   const a = arr(v, path);
   if (a.length !== 6) return fail(`${path}: expected [fn, x, y, angle, sx, sy]`);
-  return { fn: rtTransformFn(item(a, 0, path), path), x: rtLength(item(a, 1, path), `${path}[1]`), y: rtLength(item(a, 2, path), `${path}[2]`), angle: arg(a, 3), sx: arg(a, 4), sy: arg(a, 5) };
+  return { fn: rtTransformFn(item(a, 0, path), path), x: rtLength(item(a, 1, path), `${path}[1]`), y: rtLength(item(a, 2, path), `${path}[2]`), angle: rtFinite(a, 3, path), sx: rtFinite(a, 4, path), sy: rtFinite(a, 5, path) };
 }
 
 /** An animated value [kind, number, length, color, ops]. */
@@ -1136,7 +1153,7 @@ function rtValue(v: JsonValue, path: string): AnimatedValue {
   const a = arr(v, path);
   if (a.length !== 5) return fail(`${path}: expected [kind, number, length, color, ops]`);
   const k = lit(item(a, 0, path), ['opacity', 'length', 'angle', 'color', 'transform'], path);
-  const n = arg(a, 1);
+  const n = rtFinite(a, 1, path);
   const length = rtLength(item(a, 2, path), `${path}[2]`);
   const color = rtColor(item(a, 3, path), `${path}[3]`);
   const ops: TransformOp[] = [];
@@ -1212,9 +1229,9 @@ function rtInterpResult(a: readonly JsonValue[]): string {
   const effect = rtEasing(item(a, 3, '$'), '$[3]');
   const keyframe = rtEasing(item(a, 4, '$'), '$[4]');
   if (keyframe.kind === 'steps') return fail('rt-interp: a steps keyframe easing is outside the rt vectors (linear or cubic-bezier only)');
-  const t = computeTiming(rtOneIteration(effect), currentTimeAt(seekPaused(arg(a, 5), 0, 1), 0, RT_NO_FAULTS), RT_NO_FAULTS);
+  const t = computeTiming(rtOneIteration(effect), currentTimeAt(seekPaused(rtFinite(a, 5, '$'), 0, 1), 0, RT_NO_FAULTS), RT_NO_FAULTS);
   const p = t.progress === null ? 0 : t.progress;
   const local = keyframe.kind === 'cubic-bezier' ? solveBezier(cubicBezier(keyframe.x1, keyframe.y1, keyframe.x2, keyframe.y2), p, RT_NO_FAULTS) : p;
   const v = interpolateValue(from, to, local, RT_NO_FAULTS);
-  return `[${rtBits(t.progress)},${q(v.refused ? 'refused' : serializeValue(v.value, arg(a, 6), arg(a, 7), RT_TRIG))}]`;
+  return `[${rtBits(t.progress)},${q(v.refused ? 'refused' : serializeValue(v.value, rtFinite(a, 6, '$'), rtFinite(a, 7, '$'), RT_TRIG))}]`;
 }
