@@ -93,8 +93,8 @@ dispatched:
   - T026
   - T119
   - T120
-  - T137
   - T138
+  - T137a
 device_lease: null
 tasks:
   - id: T001
@@ -3763,17 +3763,49 @@ tasks:
   - id: T137
     type: scout
     assignee: Scout
-    status: queued
+    status: done
     lane: android
     objective: 'Scout: why the north star supports 20 declarations on Android against 165 on iOS (572 vs 32 unsupported values), and which Worker packages close the gap (the charter misfire: one platform
       becomes later).'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'The cause is a hard-coded generator rule. scripts/gen-profile-rows.ts:39-65 writes all 1884 Android rows unsupported, per native-strategy.md item 13, whose condition is already met: Android
+        non-pixel device lanes pass 460 cases at 3 DPRs on the shared nativeLayoutProjection. deriveRows only takes ios and web. 540 of the 569 Android value errors come from this. Expected effect of the
+        fix: north-star supportedAndroid goes from 20 to about 165. PM ruling: Android rows follow the iOS rule, and generation does not read live lanes.json, because the lanes tests already enforce device
+        truth. Spawned T137a (dispatched), T137b (font map, 22 vs 34) and T137c (report).'
+      evidence:
+        - scripts/gen-profile-rows.ts:39-65
+        - packages/parity/src/profile-rows.ts:12
+        - docs/research/native-strategy.md:271
+        - packages/parity/out/lanes.json
   - id: T138
     type: scout
     assignee: Scout
     status: queued
     lane: device
     objective: 'Scout: sort the device-pixels failures (iOS 135, Android 182) by cause and map each cause to a fixing task, existing or new, so checkpoint 2 can close.'
+    receipt: null
+  - id: T137a
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: android
+    objective: Android rows derived by the iOS rule; rows the Android emitter refuses stay refused; native-strategy item 13 updated; regenerate profiles, the north star and the Tailwind sweep.
+    receipt: null
+  - id: T137b
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: android
+    objective: Android font map parity (north-star DRAGON_UNSUPPORTED_FONT android 22 vs ios 34). After T137a.
+    receipt: null
+  - id: T137c
+    type: scout
+    assignee: Scout
+    status: queued
+    lane: android
+    objective: 'After T137a: report the per-property iOS vs Android differences in the north star and the Tailwind sweep; a non-zero gap goes to a Judge.'
     receipt: null
   - id: T999
     type: judge
