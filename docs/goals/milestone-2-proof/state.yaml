@@ -3821,11 +3821,21 @@ tasks:
   - id: T142
     type: worker
     assignee: Worker
-    status: queued
+    status: blocked
     lane: paint
     objective: 'LOGB-PAINT: logical-border(-rtl) a7/a8/b6: native leaves out whole px sides in boxes that mix device-px and px widths (device-pixels iOS 38, Android 48). Find whether the cause is the compiler
       logical-to-physical mapping or the paint path, then fix it, proven against Chrome.'
-    receipt: null
+    receipt:
+      result: blocked
+      harness: claude-code
+      blocked_reason: Already fixed on p6a-promote (T075); lands with it.
+      summary: 'Every missing logical-border side is dashed or dotted (a7 right and b6 left are 6px dotted; a8 top and bottom are 3px dashed; a10 has a dotted top and a double bottom). Master''s dragonDrawBorders
+        lays dashes and dots out unlike Chrome. The compiler mapping and widths are correct. p6a-promote 000a3f0ad and 0768b09df (Blink dash port, kept by t116-border-join) fix it: its device run shows
+        0 logical-border failures, p6a-dash-oracle.test.ts covers both cases at DPR 2, 3 and 2.625, and a probe of 8 failing points matched Chrome exactly.'
+      changed_files: []
+      commands:
+        - cmd: p6a-dash-oracle probe on t116-border-join
+          status: pass
   - id: T143
     type: worker
     assignee: Worker
