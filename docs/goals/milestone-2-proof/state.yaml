@@ -2610,6 +2610,7 @@ tasks:
     constraints:
       - 'T082 finding: today''s ahemMeasurer is 1 LU too wide on 40 of 1,680 Chrome Ahem runs (7.77, 9.99, 11.1111, 17.3, 23.3, 33.33 px); the HarfBuzz path matches all of them. TXT1a-1 adds Ahem fixtures
         at these sizes to prove the fix; R2 (existing outputs byte-identical) still holds for existing fixtures. The script check must use Script_Extensions (U+30FC, U+0964 get their own runs).'
+      - 'T140 (2026-09-30): every visible north-star text node uses Lato 400/700, which native refuses (Ahem only) until TXT1a. This is on the checkpoint-3 critical path.'
   - id: T084
     type: worker
     assignee: Worker
@@ -2623,6 +2624,8 @@ tasks:
     stop_if:
       - See notes/T056-txt1a-spec.md §3 TXT1a-2 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T140 (2026-09-30): every visible north-star text node uses Lato 400/700, which native refuses (Ahem only) until TXT1a. This is on the checkpoint-3 critical path.'
   - id: T085
     type: scout
     assignee: Scout
@@ -3834,10 +3837,20 @@ tasks:
   - id: T140
     type: worker
     assignee: Worker
-    status: queued
+    status: blocked
     lane: android
     objective: (T137b) Android font map parity (north-star DRAGON_UNSUPPORTED_FONT android 22 vs ios 34). After T137a.
-    receipt: null
+    receipt:
+      result: blocked
+      harness: claude-code
+      blocked_reason: Folded into T139; native Lato waits for TXT1a (T083, T084).
+      summary: 'Explained all 56 north-star font diagnostics. 22 are shared: native lowering (ios-layout.ts textFontProblem) accepts only Ahem. Lato is already pinned in the font map, but TXT1-C (T004 §4,
+        T038 ruling 10) keeps native refused until TXT1a proves device-lines with real fonts. 12 are iOS-only: computed-checks.ts checkUserAgentDefaults hard-codes target ios for UA bold (h1-h4), so Android
+        is missing true diagnostics. That fix is folded into T139. Native Lato (every visible north-star text node) is the TXT1a path, T083 then T084.'
+      changed_files: []
+      commands:
+        - cmd: north-star-check.json analysis
+          status: pass
   - id: T141
     type: scout
     assignee: Scout
