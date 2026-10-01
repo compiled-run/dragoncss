@@ -245,3 +245,25 @@ export type { ScriptCase, ScriptStep, StateEmit, WebClassTable, WebStateProgram 
 export { emitStatePrograms, STATE_RUNTIME_VERSION, StateEmitError, typedSetters, valueKey, webStateModule, webStateProgram } from './emit/runtime/state.ts';
 export { CLOCK_RUNTIME_VERSION, ClockError, VirtualClock } from './emit/runtime/clock.ts';
 export { RUNTIME_MODULES } from './emit/runtime/index.ts';
+
+// SELD-R1b (notes/T047-runtime-spec.md RT-9): the hit table and each element's hit facts.
+export type { HitEngine, HitFact, HitNode, HitTable, HitTableFaults } from './emit/runtime/hit.ts';
+export { HIT_TABLE_VERSION, hitTable, HitTableError, NO_HIT_TABLE_FAULTS } from './emit/runtime/hit.ts';
+
+/** The tags whose elements carry an activation handler (RT-9 tap dispatch). */
+export const ACTIVATION_TAGS: readonly string[] = ['a', 'button'];
+
+/** Every element's hit facts in one case: computed pointer-events, whether it was inherited, and whether it has a handler. */
+export function hitFacts(compiled: object, assignment: Assignment): ReadonlyMap<string, import('./emit/runtime/hit.ts').HitFact> | null {
+  const c = caseOf(compiled, assignment);
+  if (typeof c === 'string' || c.resolved === null) return null;
+  const out = new Map<string, import('./emit/runtime/hit.ts').HitFact>();
+  const walk = (el: ResolvedElement): void => {
+    const v = el.props.get('pointer-events');
+    if (v === undefined || v.value.kind !== 'keyword' || (v.value.value !== 'auto' && v.value.value !== 'none')) throw new Error(`${el.element.address}: pointer-events did not resolve to auto or none`);
+    out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: ACTIVATION_TAGS.includes(el.element.tag) });
+    for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+  };
+  walk(c.resolved);
+  return out;
+}

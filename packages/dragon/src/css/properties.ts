@@ -15,6 +15,10 @@ import { TEXT_FAMILY_ASPECTS, TEXT_FAMILY_CONTAINER, TEXT_FAMILY_INHERITED, TEXT
 /** What a longhand affects: layout (box geometry) and paint (pixels). */
 export type PropertyAspect = { readonly layout: boolean; readonly paint: boolean };
 
+// SELD-R1b (notes/T047-runtime-spec.md RT-9): pointer-events, inherited, read only by Dragon's hit test; auto and none only.
+export const POINTER_LONGHANDS = ['pointer-events'] as const;
+const POINTER_ASPECTS: { readonly [P in (typeof POINTER_LONGHANDS)[number]]: PropertyAspect } = { 'pointer-events': { layout: false, paint: false } };
+
 export const LONGHANDS = [
   ...POSITION_LONGHANDS,
   ...OVERFLOW_LONGHANDS,
@@ -27,6 +31,9 @@ export const LONGHANDS = [
 
   // Grid (css-grid-2) goes after the writing-mode family in every table below.
   ...GRID_LONGHANDS,
+
+  // SELD-R1b appends pointer-events after grid.
+  ...POINTER_LONGHANDS,
 ] as const;
 
 export type Longhand = (typeof LONGHANDS)[number];
@@ -57,6 +64,8 @@ export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([
   ...LOGICAL_INHERITED,
 
   ...GRID_INHERITED,
+
+  ...POINTER_LONGHANDS,
 ]);
 
 /**
@@ -98,6 +107,8 @@ export const PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {
   ...LOGICAL_ASPECTS,
 
   ...GRID_ASPECTS,
+
+  ...POINTER_ASPECTS,
 };
 
 /** The role of a longhand in its row key (M2): which formatting context, if any, the row names. */
