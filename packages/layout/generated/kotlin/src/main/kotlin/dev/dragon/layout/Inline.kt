@@ -47,7 +47,7 @@ class InlineResult(
 )
 
 // ts: packages/layout/src/inline.ts:215
-class Piece(
+class Inline_Piece(
   val x: Double,
   val y: Double,
   val width: Double,
@@ -343,8 +343,8 @@ fun inline_alignOffset(ctx: Block_Ctx, box: LayoutBox, free: Double): Double {
 fun inline_layoutInline(ctx: Block_Ctx, box: LayoutBox, leaves: JsArray<TextLeaf>, available: Double, origin: Point): InlineResult {
   val run: Run = inline_buildRun(ctx, box, leaves)
   val lines: JsArray<Inline_Line> = (if ((jsLength(run.chars) == 0.0)) jsArrayOf<Inline_Line>() else inline_breakLines(ctx, run, available))
-  val pieces: JsArray<JsArray<Piece>> = jsMap(leaves, fun(_unused0: TextLeaf): JsArray<Piece> {
-    return jsArrayOf<Piece>()
+  val pieces: JsArray<JsArray<Inline_Piece>> = jsMap(leaves, fun(_unused0: TextLeaf): JsArray<Inline_Piece> {
+    return jsArrayOf<Inline_Piece>()
 })
   val glyphHeight: Double = units_add(run.ascent, run.descent)
   jsForEachI(lines, fun(line: Inline_Line, k: Double): Unit {
@@ -359,13 +359,13 @@ fun inline_layoutInline(ctx: Block_Ctx, box: LayoutBox, leaves: JsArray<TextLeaf
       while (((i < line.visibleEnd) && (jsUnwrap(jsAt(run.chars, i)).leaf == leaf))) {
         i += 1.0
       }
-      jsPush(jsUnwrap(jsAt(pieces, leaf)), Piece(units_add(offset, inline_width(ctx, run, line.start, from)), y, inline_width(ctx, run, from, i), glyphHeight))
+      jsPush(jsUnwrap(jsAt(pieces, leaf)), Inline_Piece(units_add(offset, inline_width(ctx, run, line.start, from)), y, inline_width(ctx, run, from, i), glyphHeight))
     }
 })
   val placed: JsArray<Placed> = jsArrayOf<Placed>()
   jsForEachI(leaves, fun(t: TextLeaf, leaf: Double): Unit {
-    val own: JsArray<Piece> = jsUnwrap(jsAt(pieces, leaf))
-    val firstPiece: Piece? = jsAt(own, 0.0)
+    val own: JsArray<Inline_Piece> = jsUnwrap(jsAt(pieces, leaf))
+    val firstPiece: Inline_Piece? = jsAt(own, 0.0)
     // ts: packages/layout/src/inline.ts:239
     if ((firstPiece == null)) {
       return
@@ -379,7 +379,7 @@ fun inline_layoutInline(ctx: Block_Ctx, box: LayoutBox, leaves: JsArray<TextLeaf
       val _a29 = own
       var _i29 = 0
       while (_i29 < _a29.size) {
-        val p: Piece = _a29[_i29]
+        val p: Inline_Piece = _a29[_i29]
         _i29++
         left = units_min(left, p.x)
         top = units_min(top, p.y)
@@ -387,7 +387,7 @@ fun inline_layoutInline(ctx: Block_Ctx, box: LayoutBox, leaves: JsArray<TextLeaf
         bottom = units_max(bottom, units_add(p.y, p.height))
       }
     }
-    val children: JsArray<Placed> = jsMapI(own, fun(p: Piece, j: Double): Placed {
+    val children: JsArray<Placed> = jsMapI(own, fun(p: Inline_Piece, j: Double): Placed {
     return Placed(Frag((t.id + ":line" + jsNumberToString(j)), p.width, p.height, null, jsArrayOf<Placed>(), jsArrayOf<OutOfFlow>()), units_sub(p.x, left), units_sub(p.y, top))
 })
     val frag: Frag = Frag(t.id, units_sub(right, left), units_sub(bottom, top), null, children, jsArrayOf<OutOfFlow>())

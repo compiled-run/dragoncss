@@ -13,7 +13,7 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Block_Ctx, _ box: Layout
   if (jsLength(texts) > 0.0) {
     // ts: packages/layout/src/intrinsic.ts:20
     if (jsLength(texts) != jsLength(kids)) {
-      throw JsError(message: jsConcat(box.id, S.s15))
+      throw JsError(message: jsConcat(box.id, S.s18))
     }
     return try inline_inlineIntrinsicSize(ctx, box, texts, kind)
   }
@@ -78,7 +78,7 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Block_Ctx, _ box: LayoutBox, _
   let isRow: Bool = ((s.flexDirection == S.s_row) || (s.flexDirection == S.s_row_reverse))
   // ts: packages/layout/src/intrinsic.ts:55
   if ((!isRow) && (s.flexWrap != S.s_nowrap)) {
-    try unsupported_unsupported(S.s_flex_intrinsic_wrap_column, box.id, S.s98, S.s140)
+    try unsupported_unsupported(S.s_flex_intrinsic_wrap_column, box.id, S.s110, S.s153)
   }
   // ts: packages/layout/src/intrinsic.ts:56
   if ((!isRow) || ((kind == S.s_min) && (s.flexWrap != S.s_nowrap))) {
@@ -98,7 +98,7 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Block_Ctx, _ box: LayoutBox, _
   let gap: any U_LengthCalc_NormalValue_Percent_Px = s.columnGap
   // ts: packages/layout/src/intrinsic.ts:62
   if try ((gap.kind != S.s_normal) && box_hasPercent((gap as! any U_LengthCalc_Percent_Px))) {
-    try unsupported_unsupported(S.s_percent_gap, box.id, S.s93, S.s180)
+    try unsupported_unsupported(S.s_percent_gap, box.id, S.s105, S.s196)
   }
   let gapLu: Double = try ((gap.kind == S.s_normal) ? units_ZERO : box_resolveLength((gap as! any U_LengthCalc_Percent_Px), units_ZERO, ctx.faults))
   let gaps: Double = try ((jsLength(items) > 1.0) ? units_mulInt(gapLu, (jsLength(items) - 1.0)) : units_ZERO)
