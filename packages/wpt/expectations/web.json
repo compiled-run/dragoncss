@@ -20227,7 +20227,7 @@
     "css/css-grid/grid-model/grid-areas-overflowing-grid-container-008.html": {"interop":["interop-2021-grid"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-grid/grid-model/grid-areas-overflowing-grid-container-009.html": {"interop":["interop-2023-grid"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-grid/grid-model/grid-box-sizing-001.html": {"interop":["interop-2021-grid"],"missing":"DRAGON_UNSUPPORTED_VALUE:display:grid","status":"not-runnable"},
-    "css/css-grid/grid-model/grid-button-001.html": {"interop":["interop-2021-grid"],"missing":"DRAGON_UNSUPPORTED_ELEMENT:<button data-dragon-id=\"n11\" class=\"grid\"><span data-dragon-id=\"n12\" class=\"item","status":"not-runnable"},
+    "css/css-grid/grid-model/grid-button-001.html": {"interop":["interop-2021-grid"],"missing":"DRAGON_UNSUPPORTED_VALUE:display:grid","status":"not-runnable"},
     "css/css-grid/grid-model/grid-computed-value-display-floated-items-001.html": {"interop":["interop-2021-grid"],"missing":"kind:testharness-other","status":"not-runnable"},
     "css/css-grid/grid-model/grid-container-ignores-first-letter-001.html": {"interop":["interop-2021-grid"],"missing":"DRAGON_UNSUPPORTED_SELECTOR:::first-letter","status":"not-runnable"},
     "css/css-grid/grid-model/grid-container-ignores-first-letter-002.html": {"interop":["interop-2021-grid"],"missing":"kind:reftest","status":"not-runnable"},
