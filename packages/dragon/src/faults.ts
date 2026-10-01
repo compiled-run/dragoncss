@@ -27,10 +27,6 @@ export type CompilerFaults = {
   readonly attributeCaseAlwaysSensitive: boolean;
   /** A rule whose selector list Chrome drops (one selector it does not parse) keeps its other selectors. */
   readonly invalidSelectorListKept: boolean;
-  /** The ios lowering reverses the terms of every calculation sum, so float sums accumulate in the wrong order (css/math.ts). */
-  readonly sumOrderSwapped: boolean;
-  /** The ios lowering drops explicit 0% terms of calculations, so a calculation with only a 0% percentage loses its percentage. */
-  readonly dropExplicitZeroPercent: boolean;
   /** The web output writes a pinned generic as authored instead of its pinned family. */
   readonly pinnedGenericNotRewritten: boolean;
   /** The web output omits the @font-face rules of the pinned and declared faces. */
@@ -43,6 +39,14 @@ export type CompilerFaults = {
   readonly blockifySkipped: boolean;
   /** Blockification turns inline-flex into block instead of flex. */
   readonly inlineFlexToBlock: boolean;
+  /** MQ-a: every rule inside @media applies in every band, whatever its condition. */
+  readonly mediaConditionIgnored: boolean;
+  /** MQ-a: the native output takes the band holding the fold viewport one CSS px wider than it is. */
+  readonly mediaBandOffByOne: boolean;
+  /** The ios lowering reverses the terms of every calculation sum, so float sums accumulate in the wrong order (css/math.ts). */
+  readonly sumOrderSwapped: boolean;
+  /** The ios lowering drops explicit 0% terms of calculations, so a calculation with only a 0% percentage loses its percentage. */
+  readonly dropExplicitZeroPercent: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, sumOrderSwapped: false, dropExplicitZeroPercent: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false, blockifySkipped: false, inlineFlexToBlock: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false, blockifySkipped: false, inlineFlexToBlock: false, sumOrderSwapped: false, dropExplicitZeroPercent: false, mediaConditionIgnored: false, mediaBandOffByOne: false };

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/internal.ts';
 import { lengthToPx, mathFunctionRefusal, unitRefusal } from '../src/css/units.ts';
-import { parseMath } from '../src/css/math.ts';
+import { MAX_MATH_TOKENS, parseMath } from '../src/css/math.ts';
 import { div, inputFor, text } from './helpers.ts';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
@@ -110,6 +110,27 @@ describe('math function checks', () => {
     expect(parseMath(`calc(${nest(40, (x) => `(${x})`)})`, LENGTH).ok).toBe(false);
     // Far past the limit the parser refuses instead of overflowing the stack.
     expect(parseMath(`calc(${nest(5000, (x) => `max(${x}, 1%)`)})`, LENGTH).ok).toBe(false);
+  });
+  it('a calculation longer than MAX_MATH_TOKENS is refused before it is simplified; one within the bound parses', () => {
+    const sum = (n: number, term: string): string => `calc(${Array.from({ length: n }, () => term).join(' + ')})`;
+    for (const t of [sum(100000, '1vi'), sum(100000, '1px'), `calc(${'('.repeat(100000)}1px${')'.repeat(100000)})`]) {
+      const r = parseMath(t, LENGTH);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.reason).toBe(`it has more than ${MAX_MATH_TOKENS} tokens, the most a calculation may have`);
+    }
+    // n terms are 4n - 1 tokens (calc(, then value, space, +, space per join, then )): 250 terms is 999, 251 is 1003.
+    expect(parseMath(sum(250, '1vi'), LENGTH).ok).toBe(true);
+    expect(parseMath(sum(251, '1vi'), LENGTH).ok).toBe(false);
+    const folded = parseMath(sum(250, '2px'), LENGTH);
+    expect(folded.ok && folded.node).toEqual({ t: 'lit', value: 500, unit: 'px', inverseOf: null, nested: false });
+  });
+  it('a declaration whose calculation is longer than MAX_MATH_TOKENS is refused with the reason, in a length and a number property', () => {
+    const long = (term: string): string => `calc(${Array.from({ length: 100000 }, () => term).join(' + ')})`;
+    for (const [property, value] of [['width', long('1vi')], ['flex-grow', long('1')]] as const) {
+      const c = project().compile(inputFor(`${FONT} .o { display: flex; } .a { ${property}: ${value}; }`, (r) => [div(r, 'o', ['o'], [div(r, 'a', ['a'])])]));
+      const refused = c.diagnostics.filter((x) => x.message.includes(`more than ${MAX_MATH_TOKENS} tokens`));
+      expect(refused.map((d) => d.message.split(':')[0]), property).toEqual([property]);
+    }
   });
   it('a negative flex-grow or flex-shrink calculation is clamped to 0 (css-values-4 §10.10), in the longhands and the flex shorthand', () => {
     const tree = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'o', ['o'], [div(r, 'i', ['i'], [text(r, 't', 'X')])])];

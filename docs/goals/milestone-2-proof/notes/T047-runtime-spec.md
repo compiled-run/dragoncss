@@ -821,3 +821,21 @@ T010 §3's integrity rule.
    - that the owner's "progress bar width" is a `translateX(%)` transform.
 6. **T019:** keep MQ-R2 (environment media features), ANIM-m (matrix interpolation), `linear()` easing, the compositor offload,
    and keyboard focus (P6) on the board. None is needed for checkpoint 3.
+
+## Amendment T063J (Judge, 2026-09-30), PM accepted: Chrome 145's inline hit rule
+
+This replaces the open question about Chrome disagreeing with CSS for text overflowing a fixed-height block. The rule is derived from Blink source; it is not a deviation. HitTestLineBoxFragment always calls HitTestClippedOutByBorder (box_fragment_painter.cc:2538-2541). That places the containing block's border-box size at the line's offset (2986-2995), pixel-snaps it and tests it inclusively (contoured_border_geometry.cc:178-185, contoured_rect.cc:88-91, float_rounded_rect.cc:276-278, ui/gfx quad_f.cc:166-177).
+
+Formula:
+- P = floor64(point).
+- Line L = (lx, ly, lw, lh): lw is the line's inline size after text-align, lh is the line height.
+- The block's border-box size is (bw, bh).
+- A line hits, and returns the block, when both of these hold:
+  - P.x+1 > lx, P.x < lx+lw, P.y+1 > ly and P.y < ly+lh;
+  - with C = snap(lx, ly, bw, bh), where snap(o, s) = [round(o), round(o+s)] and round(v) = floor(v+0.5): C.x0 <= P.x+1, P.x <= C.x1, C.y0 <= P.y+1 and P.y <= C.y1.
+- Text is tested exclusively against the snapped text rect.
+- The block itself is tested exclusively against its unsnapped border box.
+
+hit_test_location.cc is LGPL: its point semantics come from probes, not its text. ui/gfx quad_f.cc (Chromium BSD) is covered by the porting rule (Blink, Skia, gfx).
+
+PM capture ruling: pointer-events may add its one computed key to every existing capture and emitted file only with hit-capture-identity.test.ts, which proves every other byte identical. The device-states and device-hit entries are appended to targets.ts after PR #42 merges. Full worker package: the T063J receipt, copied to board task T134.
