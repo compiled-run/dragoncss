@@ -52,6 +52,7 @@ describe('compare.ts: an anonymous box holding only atomic inlines', () => {
     const c = compareLayout(capture(['r', 'a', 'b']), absolute(['a', 'b']), input([atomic('a'), atomic('b')]), ENVIRONMENT);
     expect(c.problems).toEqual([]);
     expect(c.pass).toBe(true);
+    expect(c.anonymous).toEqual([{ id: 'r:anon0', lines: ['a', 'b'] }]);
   });
   it('fails when an atomic inline it holds is uncompared', () => {
     const c = compareLayout(capture(['r', 'a']), absolute(['a', 'b']), input([atomic('a'), atomic('b')]), ENVIRONMENT);

@@ -25,7 +25,7 @@ export type NodeComparison = {
   readonly exactLu: boolean;
 };
 
-/** An anonymous box only Dragon has, and the Chrome-compared line fragments of the text inside it. */
+/** An anonymous box only Dragon has, and the Chrome-compared line fragments of the text and the atomic inlines inside it. */
 export type AnonymousBox = { readonly id: string; readonly lines: readonly string[] };
 
 export type Comparison = {
@@ -109,7 +109,7 @@ function anonymousComparison(absolute: ReadonlyMap<string, LayoutRect>, input: L
     // An anonymous box passes when it holds a compared text line or atomic inline and nothing it holds is uncompared.
     const uncompared = [...lines, ...held.atomics].filter((l) => !seen.has(l));
     if (lines.length + held.atomics.length === 0 || uncompared.length > 0) problems.push(`${id}: anonymous box whose text lines are not all compared with Chrome (${uncompared.join(', ') || 'no lines'})`);
-    anonymous.push({ id, lines });
+    anonymous.push({ id, lines: [...lines, ...held.atomics] });
   }
   return anonymous;
 }
