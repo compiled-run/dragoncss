@@ -112,3 +112,54 @@ The A2 worker stopped on two files outside allowed_files. Both are allowed, narr
 - **scripts/capture-ua-defaults.ts:** the drop-unmodelled plant is retargeted from button appearance to cursor, because appearance is now modelled. A guard makes the plant fail loudly when its target is not an unmodelled row.
 
 Finding: Chrome 145 drops `appearance: base`, although webref's grammar allows it, so gen-css-grammar.ts narrows the grammar to what Chrome parses.
+
+## A1 host-done (2026-10-01)
+
+**Branch:** form-a, head c69f2f1d9.
+
+**Checks:**
+- layout() matches every FORM-0 Chrome box at 0 LU: 348/348 range cases and 1296/1296 button cases.
+- Both plants are caught: dropping the rtl mirror gives 145 misses, dropping the safe clamp gives 200.
+- No committed output changes outside packages/layout/generated. The engine digests are unchanged.
+- The north-star counts are unchanged.
+
+**PM rulings:**
+- **text.test.ts accepted.** The one-line `find()` type narrowing in cce7e5e40 sits outside A1's allowed_files. It is accepted as the pinned-test retarget REPL-a also made.
+- **The range carries `defaultInlineSize`.** Zoom is lost before layout, so the compiler writes 129×zoom. A4 takes the number from FORM-0's data.
+- **Out-of-flow controls stay refused.** Absolutely positioned controls, and absolutely positioned boxes inside them, are refused with the code control-out-of-flow.
+- **Amendment A3/A4-1: block.ts.** Blink sizes block-level form controls to their content (block_layout_algorithm.cc:3341-3352). A3 and A4 may add a block.ts hunk that does this for control boxes only. Their fixtures must confirm it against Chrome first, and the vectors must stay byte-identical.
+
+**Next:** A3 stacks on A1 with A2 merged in, once A2 is host-done.
+
+## A2 host-done (2026-10-01): form-a2 08fe1aa43
+
+- **Migration checker.** check-appearance-migration passes:
+  - captures change only by appearance:none (34050 keys);
+  - emitted bodies change only by 7929 declarations;
+  - the UA data changes in 114 entries;
+  - engine inputs, line breaks and the pixel manifest are byte-identical;
+  - all 12 plants are caught.
+- **North star.** `-webkit-appearance: none` moves from UNSUPPORTED_PROPERTY to UNSUPPORTED_VALUE, per target, until A3 proves a value.
+- **PM ruling A2-2: one more file is accepted.** The scripts/capture-ua-defaults.ts forced-value reference leaves out the declared appearance. Chrome (LayoutTheme::AdjustStyle) makes a non-none appearance inline-block or block, so without this the controls would lose their forced display:inline-block rows. With it, the forced rows stay byte-identical. The ua.test and ua-elb2.test pin retargets are also accepted.
+- **Amendment A3-1.** A3 adds Chrome's appearance display adjustment in computed.ts before it proves appearance anywhere:
+  - inline, inline-table, table-row and table-cell become inline-block;
+  - table and list-item become block.
+
+  It needs Chrome fixtures.
+
+## A3 host-done (2026-10-01): form-a3 022fcc762
+
+**North star:**
+- button element errors go from 7 to 0, and type errors on buttons from 7 to 0;
+- supported elements go from 51 to 61.
+
+**The demo still has 24 DRAGON_UNSUPPORTED_FONT errors (8 per target).** The demo's `font: inherit` shorthand is unsupported, so its buttons keep Chrome's UA control font, which R13 refuses. They clear with TXT-W2 (T147 part 2: the font shorthand), not with FORM-a.
+
+**Chrome finding:** the appearance display adjustment also maps math and every table-internal display to inline-block.
+
+**PM rulings:**
+- **Accepted:** the pin retargets in block-elements.test.ts and pixel-reference.test.ts.
+- **Rejected:** the hand edit to wpt/expectations/web.json. It must be regenerated.
+- **Stays refused:** an auto-width flex button in block flow. A flex-button control kind may come with A4 or a later card.
+
+**Next:** A4 dispatched on form-a4.

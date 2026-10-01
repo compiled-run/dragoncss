@@ -7,6 +7,7 @@ import type { Edges, EngineFaults, LayoutBox, LayoutInput, LayoutRect, LayoutRes
 import { canonicalJson, sha256Hex } from '../digest.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { NativeBackend, NativeProgram, ProgramNode, ProgramWrite } from '../lower/native-program.ts';
+import { isPaintKind, paintAppliedValue } from './paint/registry.ts';
 
 export type JsonValue = null | boolean | number | string | readonly JsonValue[] | { readonly [k: string]: JsonValue };
 
@@ -55,29 +56,18 @@ export function textInstanceSize(engine: ExpectedEngine, cssSize: number, dpr: n
 
 /** One write's applied value at a device scale, in the backend's units (Android Paint.textSize is a float); the device computes the same. */
 export function appliedValue(engine: ExpectedEngine, backend: NativeBackend, w: ProgramWrite, dpr: number, g: NodeGeometry): JsonValue {
+  if (isPaintKind(w.kind)) return paintAppliedValue(engine, backend, w, dpr, g);
   const ios = backend === 'uikit';
-  const [bt, br, bb, bl] = g.border;
   switch (w.kind) {
-    case 'background-color':
     case 'text-color':
       return rgba(w.color);
-    case 'border-widths':
-      return ios ? [bt / dpr, br / dpr, bb / dpr, bl / dpr] : [bt, br, bb, bl];
-    case 'border-styles':
-      return [...w.styles];
-    case 'border-colors':
-      return w.colors.map(rgba);
-    case 'padding-box-clip': {
-      const width = g.box.right - g.box.left;
-      const height = g.box.bottom - g.box.top;
-      return ios ? [bl / dpr, bt / dpr, (width - bl - br) / dpr, (height - bt - bb) / dpr] : [bl, bt, width - br, height - bb];
-    }
     case 'font': {
       if (g.fontSize === null) throw new Error(`a font write on a node without a resolved font size`);
       const size = engine.platformFontSize(g.fontSize);
       return ios ? { name: w.font.family, pointSize: size / dpr } : { typeface: `dragon:${w.font.family}`, textSize: engine.float32(size) };
     }
   }
+  throw new Error(`write kind ${w.kind} has no applied value`);
 }
 
 /**
