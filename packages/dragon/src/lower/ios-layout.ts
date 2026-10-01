@@ -15,6 +15,9 @@ import type {
   JustifyContent,
   LayoutBox,
   LayoutStyle,
+  ObjectFit,
+  ObjectPositionValue,
+  ReplacedLeaf,
   LengthCalc,
   LineHeightValue,
   MarginValue,
@@ -37,6 +40,8 @@ import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath, V1_MATH_FUNCTIONS } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
+import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
+import type { ImageNaturals } from '../images/compile.ts';
 
 export class LoweringError extends Error {
   readonly nodeId: string;
@@ -314,9 +319,48 @@ function anonymousBox(parent: ResolvedElement, id: string, texts: readonly Resol
  * The layout tree of a document. display: none subtrees generate no boxes (CSS2 §9.2.4), so they are omitted wherever they occur
  * (C4) and a display: none root has no layout tree.
  */
-export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset): LayoutBox {
+export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset, images: ImageNaturals): LayoutBox {
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
-  return lowerBox(root, faults, ua, fontPx((root.props.get('font-size') as ResolvedValue).value));
+  if (isReplacedTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a replaced element`);
+  return lowerBox(root, faults, ua, fontPx((root.props.get('font-size') as ResolvedValue).value), images);
+}
+
+const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', 'scale-down'];
+
+/**
+ * A replaced element (REPL-a) as a leaf: its box style, natural size, default object size, object-fit and object-position. Its
+ * overflow clip (the UA's img and iframe rule) clips only its own content, so the engine takes it as visible; its children are
+ * fallback content, which a replaced element never renders.
+ */
+function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null, images: ImageNaturals): ReplacedLeaf {
+  const id = el.element.address;
+  const raw: Get = (p) => (el.props.get(p) as ResolvedValue).value;
+  const get: Get = (p) => {
+    const v = raw(p);
+    return (p === 'overflow-x' || p === 'overflow-y') && v.kind === 'keyword' && v.value === 'clip' ? { kind: 'keyword', value: 'visible' } : v;
+  };
+  const style = lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, { em: fontPx(raw('font-size')), rem: rootFontSize });
+  let natural: ReplacedLeaf['natural'] = { kind: 'none' };
+  if (el.element.tag === 'img') {
+    const src = el.element.attributes.get('src');
+    const size = src === undefined ? undefined : images.get(src);
+    if (size === undefined) throw new LoweringError(id, 'src', `<img> ${id} has no image the build read`);
+    natural = { kind: 'image', width: size.width, height: size.height };
+  }
+  const position = raw('object-position');
+  if (position.kind !== 'position') return fail(id, 'object-position', position, '<position>');
+  const axis = (o: { readonly unit: 'px' | '%'; readonly value: number }): ObjectPositionValue => (o.unit === 'px' ? { kind: 'px', value: o.value } : { kind: 'percent', value: o.value });
+  return {
+    kind: 'replaced',
+    id,
+    style,
+    natural,
+    defaultWidth: DEFAULT_OBJECT_SIZE.width,
+    defaultHeight: DEFAULT_OBJECT_SIZE.height,
+    objectFit: keyword<ObjectFit>(id, raw, 'object-fit', OBJECT_FITS),
+    objectPositionX: axis(position.x),
+    objectPositionY: axis(position.y),
+  };
 }
 
 /**
@@ -324,12 +368,12 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
  * wrapped in anonymous boxes "<element>:anon<k>", one per maximal text sequence; display: none children are omitted, so they never
  * split a text sequence. The engine never creates boxes.
  */
-function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null): LayoutBox {
+function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null, images: ImageNaturals): LayoutBox {
   const id = el.element.address;
   const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
   const style = lowerStyle(el, faults, ua, rootFontSize);
   const wrap = kids.some((c) => c.kind === 'text') && (displayOf(el) === 'flex' || kids.some((c) => c.kind === 'element'));
-  const children: (LayoutBox | TextLeaf)[] = [];
+  const children: (LayoutBox | TextLeaf | ReplacedLeaf)[] = [];
   let run: ResolvedText[] = [];
   let anon = 0;
   const flush = (): void => {
@@ -339,7 +383,7 @@ function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, ro
   for (const c of kids) {
     if (c.kind === 'element') {
       flush();
-      children.push(lowerBox(c, faults, ua, rootFontSize));
+      children.push(isReplacedTag(c.element.tag) ? lowerReplaced(c, faults, ua, rootFontSize, images) : lowerBox(c, faults, ua, rootFontSize, images));
     } else if (wrap) run.push(c);
     else {
       assertTextCarriesContainer(style, id, c);

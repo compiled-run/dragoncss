@@ -17,7 +17,7 @@ import type { Selector } from './selectors.ts';
 import { parseSelectorList } from './selectors.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
-import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, ratioValue, tokenValue, toValue } from './values.ts';
+import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, positionValue, ratioValue, tokenValue, toValue } from './values.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
@@ -325,6 +325,15 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   }
   // css-grid-2 and justify-*: multi-token values, with the checks Chrome makes beyond the grammar (grid-values.ts).
   if (!wide && GRID_VALUE_PROPERTIES.has(property)) return parseGridValue(property, tokens, base);
+  // css-images-3 §5.6: object-position is one <position> of up to four tokens (values.ts positionValue).
+  if (!wide && property === 'object-position') {
+    const position = positionValue(tokens);
+    if (position === 'invalid') return { kind: 'invalid' };
+    if ('token' in position) {
+      return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(position.token, base)), message: `${property}: ${generate(position.token)} is unsupported: ${position.reason}`, manual: 'Write object-position with keywords, px or percentages, measured from the left and top edges.' }) };
+    }
+    return { kind: 'ok', longhands: [{ property, value: position, explicit: true }] };
+  }
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
   const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
   const values: CssValue[] = baseline === null ? [] : [baseline];

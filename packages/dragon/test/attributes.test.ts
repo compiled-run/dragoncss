@@ -63,12 +63,17 @@ describe('the rendering-neutral attribute table', () => {
 describe('refused attributes name the package that owns their effect', () => {
   it.each([
     ['input', 'type', 'FORM-a'], ['input', 'min', 'FORM-a'], ['input', 'max', 'FORM-a'], ['input', 'value', 'FORM-a'],
-    ['img', 'src', 'REPL'], ['img', 'alt', 'REPL'], ['img', 'width', 'REPL'], ['img', 'height', 'REPL'],
+    ['div', 'src', 'REPL'], ['div', 'alt', 'REPL'], ['div', 'width', 'REPL'], ['div', 'height', 'REPL'], ['iframe', 'alt', 'REPL'],
     ['a', 'href', 'INL1'], ['a', 'rel', 'INL1'], ['a', 'target', 'INL1'], ['html', 'lang', 'TXT1-C'], ['div', 'dir', 'bidi'],
     ['div', 'hidden', 'display'], ['div', 'style', 'SOV'], ['div', 'tabindex', 'not proven neutral'],
     ['div', 'constructor', 'not proven neutral'], ['div', 'toString', 'not proven neutral'],
   ])('<%s %s> names %s', (tag, name, owner) => {
     expect(attributeRefusal(tag, name)).toContain(owner);
+  });
+
+  it('REPL-a handles src, alt, width and height on img, and src, width and height on iframe', () => {
+    for (const name of ['src', 'alt', 'width', 'height']) expect(attributeRefusal('img', name), name).toBeNull();
+    for (const name of ['src', 'width', 'height']) expect(attributeRefusal('iframe', name), name).toBeNull();
   });
 
   it('compiles neutral attributes silently and refuses the others with the owner in the message', () => {

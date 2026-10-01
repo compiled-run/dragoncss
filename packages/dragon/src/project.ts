@@ -2,6 +2,9 @@
 // Every reachable assignment is resolved, checked and lowered as its own case; nothing is deduplicated (docs/api.md §7).
 import type { LayoutBox } from '@dragon/layout';
 import { attributeRefusal } from './attributes.ts';
+import { compileImages, imageMapProblem } from './images/compile.ts';
+import type { CompiledImages } from './images/compile.ts';
+import type { ImageAssetMap } from './images/manifest.ts';
 import { CanonicalText, canonicalJson, sha256Hex } from './digest.ts';
 import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
@@ -204,13 +207,17 @@ function fontMapMessage(e: FontMapError): string {
   }
 }
 
-function validateConfig(config: { projectId: unknown; targets: unknown; fonts?: unknown }): Diagnostic[] {
+function validateConfig(config: { projectId: unknown; targets: unknown; fonts?: unknown; images?: unknown }): Diagnostic[] {
   const out: Diagnostic[] = [];
   const bad = (message: string, manual: string): void => {
     out.push(diagnostic('DRAGON_CONFIG_INVALID', { origin: unlocated('configuration'), message, manual }));
   };
   if (typeof config.projectId !== 'string' || config.projectId.length === 0) bad('projectId must be a non-empty string', 'Set projectId.');
-  for (const k of Object.keys(config)) if (k !== 'projectId' && k !== 'targets' && k !== 'fonts') bad(`unknown configuration key "${k}"`, `Remove ${k}.`);
+  for (const k of Object.keys(config)) if (k !== 'projectId' && k !== 'targets' && k !== 'fonts' && k !== 'images') bad(`unknown configuration key "${k}"`, `Remove ${k}.`);
+  if (config.images !== undefined) {
+    const problem = imageMapProblem(config.images);
+    if (problem !== null) bad(problem, 'Set images to { "<src>": "<snapshot asset id>" }.');
+  }
   if (config.fonts !== undefined) {
     const v = validateFontMap(config.fonts);
     if (!v.ok) for (const e of v.errors) out.push(diagnostic('DRAGON_FONT_MAP_INVALID', { origin: unlocated('configuration fonts'), message: fontMapMessage(e) }));
@@ -627,7 +634,7 @@ function profileText(profile: SupportProfile): CanonicalText {
   return t;
 }
 
-function analyze<K extends string>(config: { projectId: string; targets: object; fonts?: unknown }, configDiagnostics: readonly Diagnostic[], options: Resolved, input: FrontEndResult): Analysis<K> {
+function analyze<K extends string>(config: { projectId: string; targets: object; fonts?: unknown; images?: ImageAssetMap }, configDiagnostics: readonly Diagnostic[], options: Resolved, input: FrontEndResult): Analysis<K> {
   const targets = Object.keys(config.targets).filter((k): k is KnownTarget => (KNOWN_TARGETS as readonly string[]).includes(k)).sort();
   const diagnostics: Diagnostic[] = [...configDiagnostics];
   const profiles = options.supportProfiles;
@@ -635,6 +642,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   let linked: Linked | null = null;
   let cases: CaseResult[] = [];
   let fonts: ProjectFonts | null = null;
+  let images: CompiledImages | null = null;
   const valid = configDiagnostics.length === 0 ? validateInput(input, config.projectId, diagnostics) : null;
   if (valid !== null) {
     const rules: Rule[] = [];
@@ -664,6 +672,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const fatal = diagnostics.some((d) => d.severity === 'error' && d.target === null && d.code !== 'DRAGON_UNSUPPORTED_AT_RULE');
     if (linked !== null && !fatal) {
       cases = checkCases(linked, rules, targets, options, diagnostics, fonts);
+      const assetBytes = new Map(input.snapshot.assets.map((a) => [a.id, a.bytes] as const));
+      images = compileImages(cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])), config.images, assetBytes, diagnostics);
       if (options.profiles === 'enforce') {
         const values: Diagnostic[] = [];
         checkValues(rules, targets, profiles, cases.flatMap((c) => c.used), values, keys);
@@ -713,6 +723,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     config,
     input: canonicalInput(input),
     ...(fontsDigest === null ? {} : { fonts: fontsDigest }),
+    // The image manifest enters the digest only when the project has images or an image map, as fonts do.
+    ...(images === null || images.digestInput === null ? {} : { images: images.digestInput }),
   }));
   // One native lowering shared by every configured native target that is not already blocked; its refusals block each of them.
   const lowered = new Map<string, LayoutBox>();
@@ -722,7 +734,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     for (const c of cases) {
       if (c.resolved === null) continue;
       try {
-        lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua));
+        lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals));
       } catch (e) {
         if (!(e instanceof LoweringError)) throw e;
         const id = `${e.nodeId}|${e.property}|${e.message}`;
@@ -820,6 +832,10 @@ function valueOrigin(root: ResolvedElement, address: string, p: Longhand, chrome
   if (v.declaration !== null) return authored(v.declaration.span);
   if (v.origin === 'inherited' && hit.parent !== null) return { kind: 'inherited', element: hit.parent.element.address, from: valueOrigin(root, hit.parent.element.address, p, chromeVersion) };
   if (v.origin === 'user-agent') return { kind: 'builtin', dataset: `chrome-${chromeVersion} computed`, entry: `${hit.el.element.tag} ${p}` };
+  if (v.origin === 'presentational-hint') {
+    const attribute = hit.el.element.node.attributes.find((a) => a.name === (p === 'aspect-ratio' ? 'width' : p));
+    return attribute === undefined ? hit.el.element.node.origin : attribute.origin;
+  }
   if (v.origin === 'environment') return { kind: 'builtin', dataset: 'reference environment', entry: `${p} ${valueToString(v.value)}` };
   return { kind: 'builtin', dataset: `@webref/css ${webrefVersion} initial`, entry: p };
 }
@@ -861,7 +877,8 @@ function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>, chromeV
       assignment: c.assignment,
       property: q.property,
       value: valueToString(v.value),
-      cascade: v.origin,
+      // A presentational hint is author-level in the cascade (css-cascade-5 §6.1); its origin names the attribute.
+      cascade: v.origin === 'presentational-hint' ? 'author' : v.origin,
       origin: valueOrigin(c.resolved, address, p, chromeVersion),
       losing: v.losing.map((d) => ({ origin: authored(d.span), reason: 'lower specificity or earlier in the style order' })),
       support: used === null || used === undefined ? null : { feature: used.feature, context: used.context, status: statusOf(profile, used.feature, used.context) },
@@ -886,7 +903,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     supportProfiles: snapshotProfiles(options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles),
   };
   const configDiagnostics = validateConfig(config);
-  const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object; fonts?: unknown };
+  const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object; fonts?: unknown; images?: ImageAssetMap };
   return deepFreeze({
     compile(input: FrontEndResult): Compiled<K> {
       const a = analyze<K>(snapshotConfig, configDiagnostics, resolved, input);

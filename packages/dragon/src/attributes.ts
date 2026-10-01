@@ -25,6 +25,16 @@ export const NEUTRAL_ATTRIBUTES: readonly NeutralAttribute[] = [
   { name: 'target', exceptOn: ['a', 'area', 'link'], html: 'target is defined only on a, area and form (HTML §4.6.5); HTML §15 styles only hyperlinks, so elsewhere it has no rendering.', proof: 'attr-neutral-target' },
 ];
 
+/**
+ * Attributes a replaced element renders, which REPL-a handles (HTML §4.8.3, §4.8.5, §15.4.5): src gives the image bytes or the
+ * web view's document, width and height are presentational hints (analysis/elements/replaced.ts), and alt renders nothing for an
+ * image that decodes, which every accepted image does.
+ */
+export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } = {
+  img: ['src', 'alt', 'width', 'height'],
+  iframe: ['src', 'width', 'height'],
+};
+
 /** The package that owns the rendering effect of a refused attribute. */
 const OWNERS: Readonly<Record<string, string>> = {
   type: 'the form-control package FORM-a',
@@ -54,6 +64,7 @@ export function neutralAttribute(tag: string, name: string): NeutralAttribute | 
 /** null when the attribute is rendering-neutral on the tag; otherwise why it is refused, naming the package that owns its effect. */
 export function attributeRefusal(tag: string, name: string): string | null {
   if (neutralAttribute(tag, name) !== undefined) return null;
+  if (Object.hasOwn(HANDLED_ATTRIBUTES, tag) && (HANDLED_ATTRIBUTES[tag] as readonly string[]).includes(name)) return null;
   const owner = (Object.hasOwn(OWNERS, name) ? OWNERS[name] : undefined) ?? ((name === 'rel' || name === 'target') ? 'the inline and link package INL1 (on a hyperlink it changes link behaviour)' : null);
   return owner === null
     ? 'its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)'
