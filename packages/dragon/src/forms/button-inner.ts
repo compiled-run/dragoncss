@@ -1,7 +1,7 @@
-// How Chrome 145 lays out a button's contents (the Blink rule FORM-a moves into the engine):
-// - html_button_element.cc CreateLayoutObject: a button whose display is flex, inline-flex, grid, inline-grid (or grid-lanes,
-//   layout custom) is an ordinary container of that kind; every other button is a LayoutBlockFlow. There is no anonymous inner
-//   box in Chrome 145 (LayoutButton and its UpdateAnonymousChildStyle are gone).
+// How Chrome 145 lays out a button's contents (the Blink rule FORM-a moves into the engine), as HTML's button rendering section
+// describes it and forms.test.ts checks against Chrome:
+// - a button whose display is flex, inline-flex, grid or inline-grid is an ordinary container of that kind; every other button
+//   lays out as a block with no anonymous inner box (Chrome makes this choice in html_button_element.cc).
 // - html.css `button { -internal-align-content-block: center }`, applied by block_layout_algorithm_utils.cc AlignBlockContent:
 //   the block button's in-flow contents move down by free space / 2, free space clamped at 0 for buttons (safe centring),
 //   whatever the author's align-content.

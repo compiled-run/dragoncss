@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { absoluteRects, ahemMeasurer, layout, layoutWithFaults, NO_ENGINE_FAULTS, validateLayoutInput } from '../src/index.ts';
 import type { EngineFaults, LayoutBox, LayoutRect, LayoutResult, LayoutStyle, TextLeaf } from '../src/index.ts';
 import * as u from '../src/units.ts';
-import { anon, box, px, text } from './helpers.ts';
+import { anon, box, px, text, neutralEnvironment, ahemFont } from './helpers.ts';
 
 // S4a engine features, pinned in raw LayoutUnits measured in Chrome 145 (probes and fixtures named per test, notes/T035-slice-4a.md).
 const G = 640;
 
 function run(root: LayoutBox, faults: EngineFaults = NO_ENGINE_FAULTS): LayoutResult {
-  return layoutWithFaults({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root }, ahemMeasurer, faults);
+  return layoutWithFaults({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, ahemMeasurer, faults);
 }
 
 function abs(r: LayoutResult): Map<string, LayoutRect> {
@@ -148,7 +148,7 @@ describe('wrap-reverse (css-flexbox-1 §5.2, probe p7 and fixture flex-wrap-reve
 describe('baseline alignment (css-flexbox-1 §8.3, §9.4 step 8, css-align-3 §9)', () => {
   const row = (id: string, s: Partial<LayoutStyle>, kids: LayoutBox[]) => box('root', {}, [box(id, { display: 'flex', alignItems: 'baseline', width: px(390), ...border, ...s }, kids)]);
   const item = (id: string, s: Partial<LayoutStyle>, kids: (LayoutBox | TextLeaf)[] = []) => box(id, { flexShrink: 0, ...s }, kids);
-  const size = (n: number) => ({ font: { family: 'Ahem' as const, size: n } });
+  const size = (n: number) => ({ font: ahemFont(n) });
   it('first baselines from line boxes: font size, border and padding, line-height and margins (probe p8)', () => {
     const r = run(row('c', { height: px(100) }, [
       item('ra', {}, [t('ra:t', 'XX')]),
@@ -232,7 +232,7 @@ describe('scroll containers (css-overflow-3, css-flexbox-1 §4.5, fixture overfl
 
 describe('the validator (C4, C6)', () => {
   const codes = (root: LayoutBox): string[] => {
-    const v = validateLayoutInput(JSON.parse(JSON.stringify({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root })));
+    const v = validateLayoutInput(JSON.parse(JSON.stringify({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root })));
     return v.ok ? [] : v.errors.map((e) => e.code);
   };
   it('rejects display none: the compiler omits display: none subtrees', () => {
@@ -280,7 +280,7 @@ describe('Ahem metrics at fractional sizes (fixture text-fractional-font-size)',
   it('advances ceil per piece: 12.51px is raw 801 per glyph', () => {
     const w = ahemMeasurer.measure('X', { family: 'Ahem', size: 12.51 });
     expect(w.ok && w.measure.width).toBe(801);
-    expect(layout({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root: box('root', {}, [box('a', {}, [t('a:t', 'X', { font: { family: 'Ahem', size: 12.51 } })])]) }, ahemMeasurer).kind).toBe('ok');
+    expect(layout({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root: box('root', {}, [box('a', {}, [t('a:t', 'X', { font: ahemFont(12.51) })])]) }, ahemMeasurer).kind).toBe('ok');
     void G;
   });
 });

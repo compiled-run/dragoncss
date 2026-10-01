@@ -7,7 +7,8 @@ import type { GeneratedFile } from '../types.ts';
 import type { ProgramNode, ProgramWrite } from '../lower/native-program.ts';
 import { PROGRAM_VERSIONS } from '../lower/native-program.ts';
 import type { EmitCase } from './native-support.ts';
-import { chunks, doubleLit, inputFunctions, stringLit, supportDigest } from './native-support.ts';
+import { chunks, doubleLit, environmentArgs, inputFunctions, stringLit, supportDigest } from './native-support.ts';
+import { isPaintKind, paintWriteLines } from './paint/registry.ts';
 
 export const ANDROID_VIEWS_EMITTER_VERSION = 'dragon.android-views-emitter/1';
 export const KOTLIN_CASES_PACKAGE = 'dev.dragon.cases';
@@ -18,25 +19,17 @@ const q = (s: string): string => stringLit('kotlin', s);
 const rgba = (c: { r: number; g: number; b: number; alpha: number }): string => `DragonRGBA8(${c.r}, ${c.g}, ${c.b}, ${c.alpha})`;
 
 function writeLines(v: string, n: ProgramNode, w: ProgramWrite): string[] {
+  if (isPaintKind(w.kind)) return paintWriteLines('android-views', v, n, w);
   switch (w.kind) {
-    case 'background-color':
-      return [`  dragonBackground(${v}, ${rgba(w.color)})`];
-    case 'border-widths':
-      return [`  // ${w.key}: from the translated engine at the device scale (DragonTree.apply)`];
-    case 'border-styles':
-      return [`  ${v}.dragonBorderStyles = arrayOf(${w.styles.map(q).join(', ')})`];
-    case 'border-colors':
-      return [`  ${v}.dragonBorderColors = arrayOf(${w.colors.map(rgba).join(', ')})`];
-    case 'padding-box-clip':
-      return [`  ${v}.dragonEnableClip()`];
     case 'font': {
       const color = n.writes.find((x) => x.kind === 'text-color');
       if (color === undefined || color.kind !== 'text-color') throw new Error(`${n.id}: a text run without a colour`);
-      return [`  ${v}.dragonSetText(${q(n.text ?? '')}, ${q(w.family)}, ${doubleLit(w.size)}, ${rgba(color.color)})`];
+      return [`  ${v}.dragonSetText(${q(n.text ?? '')}, ${q(w.font.family)}, ${rgba(color.color)})`];
     }
     case 'text-color':
       return [`  // ${w.key}: set with the text run above`];
   }
+  throw new Error(`${n.id}: write kind ${w.kind} has no Android Views lines`);
 }
 
 function caseSource(c: EmitCase, k: number): string {
@@ -44,7 +37,8 @@ function caseSource(c: EmitCase, k: number): string {
   const nodes = c.program.nodes.map((n, i) => {
     const v = `v${i}`;
     const parent = n.parent === null ? 'null' : q(n.parent);
-    return [`  val ${v} = t.${n.kind === 'text' ? 'textNode' : 'boxNode'}(${q(n.id)}, ${parent}, ${q(n.kind)})`, ...n.writes.flatMap((w) => writeLines(v, n, w))];
+    const host = n.host === n.parent || n.host === null ? [] : [`  t.host(${q(n.id)}, ${q(n.host)})`];
+    return [`  val ${v} = t.${n.kind === 'text' ? 'textNode' : 'boxNode'}(${q(n.id)}, ${parent}, ${q(n.kind)})`, ...host, ...n.writes.flatMap((w) => writeLines(v, n, w))];
   });
   const parts = chunks(nodes, NODES_PER_FUNCTION);
   const digests = c.expectedDigests.map((d) => `${doubleLit(d.dpr)} to ${q(d.sha256)}`).join(', ');
@@ -56,7 +50,7 @@ function caseSource(c: EmitCase, k: number): string {
     `private fun case${k}Build(t: DragonTree) {`,
     ...parts.map((_, j) => `  case${k}Build${j}(t)`),
     '}',
-    `private fun case${k}Input(dpr: Double): LayoutInput = LayoutInput(Viewport(${doubleLit(c.viewport.width)}, ${doubleLit(c.viewport.height)}), dpr, ${input.root})`,
+    `private fun case${k}Input(dpr: Double): LayoutInput = LayoutInput(Viewport(${doubleLit(c.viewport.width)}, ${doubleLit(c.viewport.height)}), dpr, ${environmentArgs(c.viewport, c.program.rootFontSize)}, ${input.root})`,
     `val dragonCase${k} = DragonCase(${q(c.id)}, ${q(c.fixture)}, ${q(c.direction)}, ${q(c.compilerDigest)}, ${doubleLit(c.viewport.width)}, ${doubleLit(c.viewport.height)}, mapOf(${digests}), ::case${k}Input, ::case${k}Build)`,
   ].join('\n');
 }

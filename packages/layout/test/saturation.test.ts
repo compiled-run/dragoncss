@@ -3,19 +3,19 @@
 import { describe, expect, it } from 'vitest';
 import { absoluteRects, ahemMeasurer, layout } from '../src/index.ts';
 import type { LayoutBox, LayoutRect, LayoutStyle } from '../src/index.ts';
-import { box, px } from './helpers.ts';
+import { box, neutralEnvironment, px } from './helpers.ts';
 
 const INT_MAX = 2147483647;
 const auto = { kind: 'auto' } as const;
 
 function absX(root: LayoutBox, id: string, devicePixelRatio = 1): number {
-  const r = layout({ viewport: { width: 400, height: 300 }, devicePixelRatio, root }, ahemMeasurer);
+  const r = layout({ viewport: { width: 400, height: 300 }, devicePixelRatio, ...neutralEnvironment({ width: 400, height: 300 }), root }, ahemMeasurer);
   if (r.kind !== 'ok') throw new Error(JSON.stringify(r.unsupported));
   return (absoluteRects(r.boxes).get(id) as LayoutRect).x;
 }
 
 function rect(root: LayoutBox, id: string, devicePixelRatio = 1): LayoutRect {
-  const r = layout({ viewport: { width: 400, height: 300 }, devicePixelRatio, root }, ahemMeasurer);
+  const r = layout({ viewport: { width: 400, height: 300 }, devicePixelRatio, ...neutralEnvironment({ width: 400, height: 300 }), root }, ahemMeasurer);
   if (r.kind !== 'ok') throw new Error(JSON.stringify(r.unsupported));
   return r.boxes.find((b) => b.id === id) as LayoutRect;
 }
