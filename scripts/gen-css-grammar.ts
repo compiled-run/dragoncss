@@ -24,7 +24,7 @@ const css = JSON.parse(readFileSync(join(webrefDir, 'css.json'), 'utf8')) as Web
 /** Longhands and shorthands the milestone-1 compiler reads. Support status lives in the profiles, not here. */
 const SUBSET = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'overflow', 'overflow-x', 'overflow-y', 'direction', 'box-sizing',
-  'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'aspect-ratio', 'object-fit', 'object-position',
+  'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'aspect-ratio', 'object-fit', 'object-position', 'appearance',
   'margin', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
   'padding', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
   'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
@@ -40,6 +40,22 @@ const SUBSET = [
   // Grid (css-grid-2), after the writing-mode family.
   ...GRID_LONGHANDS, ...GRID_SHORTHANDS,
 ] as const;
+
+/**
+ * Where Chrome 145 parses fewer values than webref's grammar, the grammar Chrome parses. appearance: Chrome drops base (probed
+ * 2026-10-01: declared empty, computed none), and keeps base-select and every <compat-auto> and <compat-special> keyword.
+ */
+const CHROME_SYNTAX: { readonly [property: string]: { readonly webref: string; readonly chrome: string } } = {
+  appearance: { webref: 'none | auto | base | base-select | <compat-auto> | <compat-special>', chrome: 'none | auto | base-select | <compat-auto> | <compat-special>' },
+  '-webkit-appearance': { webref: 'none | auto | base | base-select | <compat-auto> | <compat-special>', chrome: 'none | auto | base-select | <compat-auto> | <compat-special>' },
+};
+for (const p of css.properties) {
+  const o = CHROME_SYNTAX[p.name];
+  if (o === undefined) continue;
+  if (p.syntax !== o.webref) throw new Error(`webref's ${p.name} grammar is ${JSON.stringify(p.syntax)}, not the one CHROME_SYNTAX narrows`);
+  p.syntax = o.chrome;
+}
+for (const name of Object.keys(CHROME_SYNTAX)) if (!css.properties.some((p) => p.name === name)) throw new Error(`webref has no property ${name} for CHROME_SYNTAX`);
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));
 const typesByName = new Map(css.types.map((t) => [t.name, t]));

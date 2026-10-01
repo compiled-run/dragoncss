@@ -26,7 +26,7 @@ describe('E2 seams: the property registry', () => {
       'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'aspect-ratio',
       'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
       'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
-      'object-fit', 'object-position',
+      'object-fit', 'object-position', 'appearance',
       'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
       'border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style',
       'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
@@ -53,7 +53,7 @@ describe('E2 seams: the property registry', () => {
     expect(byRole('container')).toEqual(['direction', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap',
       'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow', 'justify-items']);
     expect(byRole('text')).toEqual(['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode']);
-    expect(byRole('paint')).toEqual(['object-fit', 'object-position', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color']);
+    expect(byRole('paint')).toEqual(['object-fit', 'object-position', 'appearance', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color']);
   });
   it('every shorthand has exactly one handler in shorthands/index.ts, and each sets only longhands', () => {
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());

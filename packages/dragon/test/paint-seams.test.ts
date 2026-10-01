@@ -150,6 +150,6 @@ describe('EMS: CSS families and paint values', () => {
     const props = new Map<Longhand, ResolvedValue>([['font-size', v(10, 'px')], ['width', v(2, 'em')]]);
     computeLengths(props, 16, 16);
     expect([...props.entries()].map(([k, x]) => [k, x.value])).toEqual([['font-size', { kind: 'length', value: 10, unit: 'px' }], ['width', { kind: 'length', value: 20, unit: 'px' }]]);
-    expect((LONGHANDS as readonly string[]).length).toBe(71);
+    expect((LONGHANDS as readonly string[]).length).toBe(72);
   });
 });
