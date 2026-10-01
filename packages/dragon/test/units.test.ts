@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/internal.ts';
 import { lengthToPx, mathFunctionRefusal, unitRefusal } from '../src/css/units.ts';
-import { MAX_MATH_TOKENS, parseMath } from '../src/css/math.ts';
+import { mathContextFor, MAX_MATH_TOKENS, parseMath } from '../src/css/math.ts';
 import { div, inputFor, text } from './helpers.ts';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
@@ -123,6 +123,31 @@ describe('math function checks', () => {
     expect(parseMath(sum(251, '1vi'), LENGTH).ok).toBe(false);
     const folded = parseMath(sum(250, '2px'), LENGTH);
     expect(folded.ok && folded.node).toEqual({ t: 'lit', value: 500, unit: 'px', inverseOf: null, nested: false });
+  });
+  it('a percentage in a calculation is refused with the reason for its property: invalid in a line width or a number, unsupported in a gap (T131)', () => {
+    // Chrome 145.0.7632.6: CSS.supports is false for every line-width and number case below and true for the gaps.
+    const refusal = (property: string, value: string): string => {
+      const context = mathContextFor(property);
+      if ('refused' in context) throw new Error(property);
+      const r = parseMath(value, context);
+      return r.ok ? 'ok' : r.reason;
+    };
+    const lineWidth = 'a border, outline or column-rule width is a <line-width>, which takes no percentage (css-backgrounds-3 §3.3), so the calculation is invalid and Chrome drops the declaration';
+    for (const p of ['border-left-width', 'border-width', 'border-block-start-width', 'border-inline-width', 'border-block-width', 'border', 'border-top', 'outline-width', 'outline', 'column-rule-width']) {
+      expect(refusal(p, 'calc(1px + 5%)'), p).toBe(lineWidth);
+      expect(refusal(p, 'min(1px, 5%)'), p).toBe(lineWidth);
+      expect(refusal(p, 'calc(1px + 2px)'), p).toBe('ok');
+    }
+    const number = 'this property takes a number, and a percentage is not a number (css-values-4 §10.9), so the calculation is invalid and Chrome drops the declaration';
+    for (const [p, v] of [['flex-grow', 'calc(5%)'], ['flex-grow', 'calc(1 + 5%)'], ['order', 'calc(5% * 2)'], ['flex-shrink', 'min(1, 5%)']] as const) expect(refusal(p, v), `${p}: ${v}`).toBe(number);
+    for (const p of ['gap', 'row-gap', 'column-gap']) expect(refusal(p, 'calc(10px + 5%)'), p).toBe('a percentage in this property needs percentage gaps, which are not supported yet');
+    for (const p of ['width', 'padding-left', 'margin-top', 'flex-basis', 'left']) expect(refusal(p, 'calc(10px + 5%)'), p).toBe('ok');
+  });
+  it('a border-width declaration with a percentage calculation names the invalid <line-width>, not percentage gaps', () => {
+    const c = project().compile(inputFor(`${FONT} .a { border-left-style: solid; border-left-width: calc(1px + 5%); }`, (r) => [div(r, 'a', ['a'])]));
+    const messages = c.diagnostics.map((d) => d.message);
+    expect(messages).toEqual([expect.stringContaining('is a <line-width>, which takes no percentage')]);
+    expect(messages.join()).not.toContain('percentage gaps');
   });
   it('a declaration whose calculation is longer than MAX_MATH_TOKENS is refused with the reason, in a length and a number property', () => {
     const long = (term: string): string => `calc(${Array.from({ length: 100000 }, () => term).join(' + ')})`;

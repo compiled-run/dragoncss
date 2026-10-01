@@ -405,10 +405,11 @@ function tokenize(text: string): Token[] {
 class Parser {
   private i = 0;
   private readonly toks: Token[];
-  private readonly percentAllowed: boolean;
-  constructor(toks: Token[], percentAllowed: boolean) {
+  /** The refusal a percentage meets, or null where the property takes one. */
+  private readonly percentRefusal: PercentRefusal | null;
+  constructor(toks: Token[], percentRefusal: PercentRefusal | null) {
     this.toks = toks;
-    this.percentAllowed = percentAllowed;
+    this.percentRefusal = percentRefusal;
   }
   private peek(): Token | undefined {
     return this.toks[this.i];
@@ -482,7 +483,7 @@ class Parser {
   private value(value: number, unit: string): MathNode {
     if (unit === '' || V1_RELATIVE.has(unit) || pxPer(unit) !== null) return lit(value, unit);
     if (unit === '%') {
-      if (!this.percentAllowed) return refuse('a percentage in this property needs percentage gaps, which are not supported yet', 'Use a length without a percentage.');
+      if (this.percentRefusal !== null) return refuse(this.percentRefusal.reason, this.percentRefusal.fix);
       return lit(value, unit);
     }
     if (FONT_METRIC.has(unit)) return refuse(`${unit} is measured from the primary font at its rendered size, which needs the value-model package V2`, 'Use em, rem or px.');
@@ -524,21 +525,39 @@ class Parser {
   }
 }
 
-/** What a property takes: a length (with or without a percentage) or a number (css-values-4 §10.9 type checking). */
-export type MathContext = { readonly type: 'length'; readonly percent: boolean } | { readonly type: 'number' };
+/** Why a percentage in a calculation is refused: the reason names the cause, which differs by property. */
+export type PercentRefusal = { readonly reason: string; readonly fix: string };
+
+/** What a property takes: a length (with a percentage, or with the refusal a percentage meets) or a number (css-values-4 §10.9 type checking). */
+export type MathContext = { readonly type: 'length'; readonly percent: true | PercentRefusal } | { readonly type: 'number' };
 
 const NUMBER_PROPERTIES: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order']);
 const TEXT_PROPERTIES: ReadonlySet<string> = new Set(['font-size', 'line-height', 'font']);
-/** Border widths take no percentage (css-backgrounds-3 §3.3); V1 refuses a percentage in gaps, as it does outside calc(). */
-const NO_PERCENT = /^(border(-(top|right|bottom|left|block|inline)(-(start|end))?)?(-width)?|gap|row-gap|column-gap|outline(-width)?)$/;
+/**
+ * Border, outline and column-rule widths are a <line-width>, which has no percentage (css-backgrounds-3 §3.3, css-ui-4 §3.2,
+ * css-multicol-1 §4.2), so a calculation with one is invalid and Chrome drops the declaration: Chrome 145.0.7632.6 gives
+ * CSS.supports('border-left-width', 'calc(1px + 5%)') false and keeps the earlier border-left-width (T131).
+ */
+const LINE_WIDTH = /^(border(-(top|right|bottom|left|block|inline)(-(start|end))?)?(-width)?|outline(-width)?|column-rule(-width)?)$/;
+/** Gaps take a percentage (css-align-3 §8.1) and Chrome accepts calc(10px + 5%) there, but the layout engine has no percentage gaps yet. */
+const GAP = /^(gap|row-gap|column-gap)$/;
+
+const LINE_WIDTH_PERCENT: PercentRefusal = {
+  reason: 'a border, outline or column-rule width is a <line-width>, which takes no percentage (css-backgrounds-3 §3.3), so the calculation is invalid and Chrome drops the declaration',
+  fix: 'Use a length without a percentage.',
+};
+/** flex-grow, flex-shrink and order take a <number> (or an <integer>), which a percentage is not; Chrome drops the declaration. */
+const NUMBER_PERCENT: PercentRefusal = { reason: 'this property takes a number, and a percentage is not a number (css-values-4 §10.9), so the calculation is invalid and Chrome drops the declaration', fix: 'Write the calculation with numbers only.' };
+const GAP_PERCENT: PercentRefusal = { reason: 'a percentage in this property needs percentage gaps, which are not supported yet', fix: 'Use a length without a percentage.' };
 
 /** The calculation a property takes, or the reason V1 refuses every calculation in it. */
 export function mathContextFor(property: string): MathContext | { readonly refused: string } {
   if (NUMBER_PROPERTIES.has(property)) return { type: 'number' };
   if (TEXT_PROPERTIES.has(property)) return { refused: `a calculation in ${property} reaches the font and line metrics, which needs the value-model package V2` };
-  return { type: 'length', percent: !NO_PERCENT.test(property) };
+  if (LINE_WIDTH.test(property)) return { type: 'length', percent: LINE_WIDTH_PERCENT };
+  if (GAP.test(property)) return { type: 'length', percent: GAP_PERCENT };
+  return { type: 'length', percent: true };
 }
-
 
 export type ParsedMath = { readonly ok: true; readonly node: MathNode } | { readonly ok: false; readonly reason: string; readonly fix: string };
 
@@ -555,7 +574,7 @@ export function parseMath(text: string, context: MathContext): ParsedMath {
     const toks = tokenize(text.trim());
     const head = toks[0];
     if (head === undefined || head.k !== 'func') return refuse('it does not parse as a css-values-4 calculation');
-    const p = new Parser(toks.slice(1), context.type === 'length' && context.percent);
+    const p = new Parser(toks.slice(1), context.type === 'number' ? NUMBER_PERCENT : context.percent === true ? null : context.percent);
     const node = p.function(head.name, 0);
     if (!p.atEnd()) return refuse('it does not parse as a css-values-4 calculation');
     const c = category(node);
