@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { currentNotices, NOTICES_PATH, thirdPartyNotices } from '../../../scripts/gen-third-party-notices.ts';
+import { parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SELF = relative(ROOT, fileURLToPath(import.meta.url));
@@ -385,6 +386,12 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
     const port = e.dragon.find((d) => d.use === 'port')!;
     stripped.set(port.file, sources.get(port.file)!.replace(e.copyright, 'Copyright (C) someone else'));
     expect(audit(registry, stripped, KNOWN_LGPL_CLEAN_ROOM)).toEqual([`entry ${e.upstream}: ${port.file} ports it without its notice (${e.copyright})`]);
+  });
+
+  it('review skips the generated THIRD_PARTY_NOTICES.md but reads the registry, its generator and this test', () => {
+    const ignore = parseIgnoreFile(readFileSync(join(ROOT, '.macroscope', 'ignore.md'), 'utf8'));
+    expect(ignore.matches(NOTICES_PATH)).toBe(true);
+    for (const f of ['docs/ports.json', 'scripts/gen-third-party-notices.ts', SELF]) expect(ignore.matches(f), f).toBe(false);
   });
 
   it('THIRD_PARTY_NOTICES.md is what scripts/gen-third-party-notices.ts writes from docs/ports.json (pnpm notices:gen)', () => {
