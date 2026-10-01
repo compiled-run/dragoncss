@@ -8,7 +8,7 @@ import type { LayoutRect } from '@dragon/layout';
 import type { NativeBackend, NativeProgram, ScriptStep, StateEmit, StateFaults, StateProgram, WebClassTable } from 'dragon';
 import { deriveStateProgram, expectedDigest, expectedDump, NO_STATE_FAULTS, programAt, StateRuntime, VirtualClock, webClassMap } from 'dragon';
 import type { NativeCase } from './native-host.ts';
-import { BACKEND_OF, engineBoxes, expectedEngine, nativeCases } from './native-host.ts';
+import { BACKEND_OF, emitCases, engineBoxes, expectedEngine, nativeCases } from './native-host.ts';
 import { compileFixture } from './pipeline.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { directionSuffix } from './fixtures.ts';
@@ -95,9 +95,16 @@ export function deriveScripts(g: StateGroup, sp: StateProgram): Script[] {
 
 // ---------------------------------------------------------------- the host run
 
-/** A script's dumps on the runtime reference: the live program and the assignment at every dump step. */
+/**
+ * A script's dumps on the runtime reference, mounted as the device mounts it (DragonStateMount): the program rendered at the start
+ * and again after every committed setter, the assignment, and the taps since the previous dump (hit on the rendered program).
+ */
 export function runScript(sp: StateProgram, steps: readonly ScriptStep[], faults: StateFaults = NO_STATE_FAULTS, tap: ((program: NativeProgram, assignment: number, x: number, y: number) => string | null) | null = null): { readonly assignment: number; readonly program: NativeProgram; readonly taps: readonly (string | null)[] }[] {
   const rt = new StateRuntime(sp, faults);
+  let rendered = rt.program();
+  rt.onChange = () => {
+    rendered = rt.program();
+  };
   const clock = new VirtualClock();
   const out: { assignment: number; program: NativeProgram; taps: (string | null)[] }[] = [];
   let taps: (string | null)[] = [];
@@ -110,12 +117,12 @@ export function runScript(sp: StateProgram, steps: readonly ScriptStep[], faults
         clock.advance(s.ms);
         break;
       case 'tap':
-        // RT-9 tap dispatch on the live program: the activation target the hit test reaches, recorded with the next dump.
+        // RT-9 tap dispatch on the rendered program: the activation target the hit test reaches, recorded with the next dump.
         if (tap === null) throw new Error(`tap(${s.x}, ${s.y}) needs a tap handler (the hit table of the live program)`);
-        taps.push(tap(rt.program(), rt.assignment, s.x, s.y));
+        taps.push(tap(rendered, rt.assignment, s.x, s.y));
         break;
       case 'dump':
-        out.push({ assignment: rt.assignment, program: rt.program(), taps });
+        out.push({ assignment: rt.assignment, program: rendered, taps });
         taps = [];
         break;
     }
@@ -206,6 +213,16 @@ export function canonicalJsonText(v: unknown): string {
 
 const emits = new Map<NativeTarget, StateEmit[]>();
 
+/**
+ * The host apps look a case id up in the layout case table and the script case table together, and a shared id would silently run
+ * one of the two (the Swift merge keeps the layout case, the Kotlin one the script), so no script may share a layout case's id.
+ */
+export function assertDistinctCaseIds(states: readonly StateEmit[], layoutIds: readonly string[]): void {
+  const layout = new Set(layoutIds);
+  const shared = states.flatMap((e) => e.scripts.map((s) => s.id)).filter((id) => layout.has(id));
+  if (shared.length > 0) throw new Error(`case scripts share ids with layout cases: ${shared.join(', ')}`);
+}
+
 /** Every state program of a target with its script cases and their expected digests at the target's device DPRs (computed once). */
 export function stateEmits(target: NativeTarget): StateEmit[] {
   const cached = emits.get(target);
@@ -230,6 +247,7 @@ export function stateEmits(target: NativeTarget): StateEmit[] {
       })),
     };
   });
+  assertDistinctCaseIds(out, emitCases(target).map((c) => c.id));
   emits.set(target, out);
   return out;
 }

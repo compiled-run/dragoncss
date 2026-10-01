@@ -4,10 +4,10 @@
 // plants each fail the check; the web attribute program lands on each assignment's classes; the host apps carry every script.
 import { describe, expect, it } from 'vitest';
 import type { NativeCase } from '../src/native-host.ts';
-import { hostSources } from '../src/native-host.ts';
+import { emitCases, hostSources } from '../src/native-host.ts';
 import { hitFacts, NO_FAULTS, webStateModule, webStateProgram } from 'dragon';
 import { programHitTable, tapTarget } from '../src/hit-capture.ts';
-import { checkStates, deriveScripts, runScript, SCRIPT_FRAME_MS, stateEmits, stateGroups, stateProgramOf, webClassTables } from '../src/state-cases.ts';
+import { assertDistinctCaseIds, checkStates, deriveScripts, runScript, SCRIPT_FRAME_MS, stateEmits, stateGroups, stateProgramOf, webClassTables } from '../src/state-cases.ts';
 import { deviceDprs } from '../src/targets.ts';
 
 describe('the state programs of every tree fixture with states', () => {
@@ -123,7 +123,10 @@ describe('the host apps carry the case scripts', () => {
         }
       }
       const main = files.find((f) => f.path === (target === 'ios' ? 'Host/main.swift' : 'kotlin/dev/dragon/host/DragonActivity.kt'))?.text ?? '';
-      expect(main).toContain(target === 'ios' ? 'DragonHost.dragonCaseTable.merging(dragonStateCaseTable)' : 'dev.dragon.cases.dragonCaseTable + dev.dragon.cases.dragonStateCaseTable');
+      // A script runs on a state mount (every setter re-renders the stage), and an id in both tables fails (Macroscope 4157246848).
+      expect(main).toContain(target === 'ios' ? 'let mount = DragonStateMount(machine: script.make(), stage: stage, measurer: bridge.measurer, scale: scale, bridge: bridge)\n    script.run(mount.machine)\n    tree = mount.tree' : 'val mount = DragonStateMount(script.make(), frame, bridge.measurer, scale, bridge)\n      script.run(mount.machine)\n      tree = mount.tree');
+      expect(main).toContain('is both a layout case and a case script');
+      expect(main).not.toContain('merging(dragonStateCaseTable)');
       expect(emits.reduce((n, e) => n + e.scripts.length, 0)).toBe(126);
     }
   });
@@ -132,5 +135,15 @@ describe('the host apps carry the case scripts', () => {
     const ids = new Set(stateEmits('ios').flatMap((e) => e.scripts.map((s) => s.id)));
     const cases: readonly NativeCase[] = stateGroups().flatMap((g) => g.cases);
     expect(cases.some((c) => ids.has(c.case.id))).toBe(false);
+  });
+
+  it('refuses a script id that a layout case of the host app also has (the merged host lookup would silently keep one)', () => {
+    for (const target of ['ios', 'android'] as const) {
+      const emits = stateEmits(target);
+      const layoutIds = emitCases(target).map((c) => c.id);
+      expect(() => assertDistinctCaseIds(emits, layoutIds)).not.toThrow();
+      const planted = emits[0]?.scripts[0]?.id as string;
+      expect(() => assertDistinctCaseIds(emits, [...layoutIds, planted])).toThrow(`case scripts share ids with layout cases: ${planted}`);
+    }
   });
 });

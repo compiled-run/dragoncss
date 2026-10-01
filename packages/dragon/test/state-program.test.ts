@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import type { Assignment, NativeProgram, ProgramNode, ScriptCase, StateCase, StateEmit, StateProgram } from 'dragon';
-import { applyDelta, ClockError, deriveStateProgram, emitStatePrograms, MAX_STATE_TABLE_ASSIGNMENTS, NO_FAULTS, programAt, StateProgramError, StateRuntime, StateValueError, typedSetters, VirtualClock, webStateModule, webStateProgram } from 'dragon';
+import { applyDelta, ClockError, deriveStateProgram, emitNativeSupport, emitStatePrograms, MAX_STATE_TABLE_ASSIGNMENTS, NO_FAULTS, programAt, stateKey, StateProgramError, StateRuntime, StateValueError, typedSetters, VirtualClock, webStateModule, webStateProgram } from 'dragon';
 
 const px = (value: number) => ({ kind: 'px', value });
 const auto = { kind: 'auto' };
@@ -21,11 +21,13 @@ const box = (id: string, width: number, children: LayoutBox['children'] = []): L
 const node = (id: string, parent: string | null, color: number): ProgramNode => ({
   id,
   parent,
+  host: parent,
   kind: 'element',
   native: 'DragonBoxView',
   clips: false,
   text: null,
   writes: [{ kind: 'background-color', color: { r: color, g: 0, b: 0, alpha: 255 }, key: 'backgroundColor', technique: 'native-property', detail: 'test', css: ['background-color'] }],
+  facts: {},
 });
 
 const program = (root: LayoutBox, nodes: readonly ProgramNode[]): NativeProgram => ({ version: 'dragon.uikit-program/1', backend: 'uikit', root, rootFontSize: 16, nodes });
@@ -65,6 +67,19 @@ describe('deriveStateProgram', () => {
     expect(deriveStateProgram('uikit', many.slice(0, MAX_STATE_TABLE_ASSIGNMENTS)).assignments).toHaveLength(64);
   });
 
+  it('keys two free states apart even when their parts concatenate to the same text (Macroscope 4157246873)', () => {
+    expect(stateKey('doc/a', 'b#c')).not.toBe(stateKey('doc/a#b', 'c'));
+    expect(stateKey('a\\', '#b')).not.toBe(stateKey('a\\#', 'b'));
+    expect(stateKey('doc', 'open')).toBe('doc#open');
+    const two = (x: boolean, y: boolean): Assignment => [{ state: { instance: 'doc/a', state: 'b#c' }, value: x }, { state: { instance: 'doc/a#b', state: 'c' }, value: y }];
+    const r = (w: number) => program(box('r', w), [node('r', null, w)]);
+    const p = deriveStateProgram('uikit', [{ assignment: two(false, false), isInitial: true, program: r(1) }, { assignment: two(true, false), isInitial: false, program: r(2) }, { assignment: two(false, true), isInitial: false, program: r(3) }]);
+    expect(p.states.map((x) => x.key)).toEqual(['doc/a#b\\#c', 'doc/a\\#b#c']);
+    const rt = new StateRuntime(p);
+    rt.set('doc/a\\#b#c', true);
+    expect(rt.program()).toEqual(r(3));
+  });
+
   it('plants stateDeltaDropped: the last changed node record of a delta is lost', () => {
     const planted = deriveStateProgram('uikit', CASES, { ...NO_FAULTS, stateDeltaDropped: true });
     expect(programAt(planted, 1)).not.toEqual(CASES[1]?.program);
@@ -101,6 +116,16 @@ describe('StateRuntime', () => {
     expect(p.assignment).toBe(1);
   });
 
+  it('calls onChange once after each committed setter and never after a refused one (Macroscope 4157246848)', () => {
+    const rt = new StateRuntime(sp);
+    const seen: number[] = [];
+    rt.onChange = () => seen.push(rt.assignment);
+    rt.set('doc#open', true);
+    expect(() => rt.set('doc#open', 'yes')).toThrow(StateValueError);
+    rt.set('doc#side', 'end');
+    expect(seen).toEqual([1, 3]);
+  });
+
   it('plants setterSkipsRelayout: the engine input stays the one first laid out', () => {
     const rt = new StateRuntime(sp, { ...NO_FAULTS, setterSkipsRelayout: true });
     rt.set('doc#side', 'end');
@@ -117,6 +142,31 @@ describe('the generated runtime', () => {
     expect(typedSetters(sp)).toEqual([{ name: 'set_doc_open', boolean: true, cases: ['v_false', 'v_true'] }, { name: 'set_doc_side', boolean: false, cases: ['v_start', 'v_end'] }]);
   });
 
+  it('gives a state a Bool setter only when both true and false are reachable', () => {
+    const one = deriveStateProgram('uikit', [{ ...(CASES[0] as StateCase), assignment: [{ state: { instance: 'doc', state: 'on' }, value: true }] }]);
+    expect(typedSetters(one)).toEqual([{ name: 'set_doc_on', boolean: false, cases: ['v_true'] }]);
+    const swift = emitStatePrograms('uikit', [{ ...emit, program: one, scripts: [] }]).map((f) => f.text).join('\n');
+    expect(swift).toContain('public enum DragonStates0_doc_on: Int { case v_true = 0 }');
+    expect(swift).not.toContain('v ? 0 : -1');
+  });
+
+  it('refuses a node write it has no state-node form for and a text node without its run; keeps keys inside their doc comments', () => {
+    const odd = { ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), writes: [{ kind: 'shadow' } as unknown as ProgramNode['writes'][number]] }]) };
+    expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [odd]), scripts: [] }])).toThrow(/r: no state-node write for \{"kind":"shadow"\}/);
+    const bare = { ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), kind: 'text', writes: [] }]) };
+    expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [bare]), scripts: [] }])).toThrow(/r: a text node without a text run/);
+    const weird = deriveStateProgram('uikit', [{ ...(CASES[0] as StateCase), assignment: [{ state: { instance: 'a*/b\nc', state: 'on' }, value: 'x' }] }]);
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const text = emitStatePrograms(backend, [{ ...emit, id: 'demo*/\nx', program: { ...weird, backend }, scripts: [] }]).map((f) => f.text).join('\n');
+      // Every comment line holds its whole text and closes only where the emitter closes it; the key stays verbatim in its string literal.
+      const comments = text.split('\n').filter((l) => /^\s*(\/\/|\/\*\*)/.test(l));
+      expect(comments.filter((l) => l.includes('a* /b c#on'))).toHaveLength(1);
+      expect(comments.filter((l) => l.includes('demo* / x'))).toHaveLength(3);
+      for (const l of comments) expect(l.replace(/\*\/$/, '')).not.toContain('*/');
+      expect(text.split('\n').some((l) => /^x\b/.test(l))).toBe(false);
+    }
+  });
+
   it('emits typed setters, the tables, the layout variants and the script case in Swift and Kotlin', () => {
     const swift = emitStatePrograms('uikit', [emit]).map((f) => f.text).join('\n');
     expect(swift).toContain('public func set_doc_open(_ v: Bool) { machine.set(0, v ? 1 : 0) }');
@@ -124,7 +174,7 @@ describe('the generated runtime', () => {
     expect(swift).toContain('private func dragonStates0Input2(_ dpr: Double) -> LayoutInput');
     expect(swift).toContain('steps: [.set(0, 1), .set(1, 1), .advance(16.0), .dump])');
     expect(swift).toContain('skipRelayout: false');
-    expect(swift).toContain('public let dragonStateCaseList: [DragonCase] = [dragonStates0Script0]');
+    expect(swift).toContain('public let dragonStateCaseList: [DragonStateScript] = [dragonStates0Script0]');
     const kotlin = emitStatePrograms('android-views', [{ ...emit, program: deriveStateProgram('android-views', CASES.map((c) => ({ ...c, program: { ...c.program, backend: 'android-views', version: 'dragon.android-views-program/1' } }))) }]).map((f) => f.text).join('\n');
     expect(kotlin).toContain('fun set_doc_open(v: Boolean) = machine.set(0, if (v) 1 else 0)');
     expect(kotlin).toContain('enum class DragonStates0_doc_side { v_start, v_end }');
@@ -159,6 +209,49 @@ describe('the generated runtime', () => {
     expect(() => states.set('doc#nope', true)).toThrow(/no state/);
     expect(states.assignment).toBe(3);
     expect(() => webStateProgram(sp, tables.slice(1))).toThrow(/3 class tables for 4 assignments/);
+    // A missing element fails before any attribute is written: r sorts before x, so a write-as-you-go apply would change r first.
+    let missing = 'x';
+    const lookup = (address: string) => (address === missing ? null : el(address));
+    attrs.clear();
+    writes.length = 0;
+    expect(() => mod.createDragonStates(lookup)).toThrow(/no element x/);
+    expect(writes).toEqual([]);
+    missing = '';
+    const again = mod.createDragonStates(lookup);
+    again.set('doc#side', 'end');
+    expect(again.assignment).toBe(2);
+    missing = 'x';
+    writes.length = 0;
+    expect(() => again.set('doc#open', true)).toThrow(/no element x/);
+    expect(writes).toEqual([]);
+    expect(Object.fromEntries(attrs)).toEqual({ r: 'a', x: 'c' });
+    expect(again.assignment).toBe(2);
+  });
+});
+
+describe('the generated state mount (Macroscope 4157246848)', () => {
+  // The views on screen follow the setters: the machine reports every committed set, and a DragonStateMount rebuilds the views from
+  // the live records, lays them out with the input the machine last laid out and swaps them in. The case scripts run on a mount.
+  const support = (backend: 'uikit' | 'android-views'): string => emitNativeSupport(backend, null).map((f) => f.text).join('\n');
+
+  it('Swift: set ends by calling onChange; the mount re-renders from it; a script runs only on a mount', () => {
+    const t = support('uikit');
+    expect(t).toMatch(/current = to\n {4}onChange\?\(\)\n {2}\}/);
+    expect(t).toContain('machine.onChange = { [weak self] in self?.render() }');
+    expect(t).toMatch(/let t = DragonTree\(\)\n {4}machine\.build\(t\)\n {4}stage\.addSubview\(t\.root\)\n {4}do \{\n {6}try t\.apply\(machine\.input\(scale\)/);
+    expect(t).toMatch(/tree\.root\.removeFromSuperview\(\)\n {4}tree = t\n {4}renders \+= 1/);
+    expect(t).toContain('case .set(let a, let b): m.set(a, b)');
+    expect(t).toContain('runs on a state mount, not as a layout case');
+  });
+
+  it('Kotlin: set ends by calling onChange; the mount re-renders from it; a script runs only on a mount', () => {
+    const t = support('android-views');
+    expect(t).toMatch(/current = to\n {4}onChange\?\.invoke\(\)\n {2}\}/);
+    expect(t).toContain('machine.onChange = { render() }');
+    expect(t).toMatch(/val t = DragonTree\(stage\.context\)\n {4}machine\.build\(t\)\n {4}t\.apply\(machine\.input\(scale\), measurer, scale, bridge\)\n {4}stage\.addView\(t\.root/);
+    expect(t).toMatch(/stage\.removeView\(tree\.root\)\n {4}tree = t\n {4}renders\+\+/);
+    expect(t).toContain('is DragonScriptStep.Set -> m.set(s.s, s.v)');
+    expect(t).toContain('runs on a state mount, not as a layout case');
   });
 });
 

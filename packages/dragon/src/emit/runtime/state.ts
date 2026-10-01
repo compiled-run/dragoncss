@@ -1,8 +1,9 @@
 // The generated state runtime (notes/T047-runtime-spec.md RT-1, SELD-R1a): the support machine every state program runs on, one
 // source file per state program with its base nodes, deltas, layout variants and typed setters, the case-script cases the device
 // lanes run, and the web attribute program. A setter moves the node records the old and new deltas touch and lays out again only
-// when the engine input variant changes; the device rebuilds the Dragon views from the live records, since DragonTree (a support
-// file other packages share) builds and lays out in one pass. Nothing here parses CSS or matches selectors.
+// when the engine input variant changes. On screen, a DragonStateMount rebuilds the Dragon views from the live records after every
+// committed setter and lays them out, since DragonTree (a support file other packages share) builds and lays out in one pass; the
+// case scripts run through a mount, so the device lanes judge exactly that path. Nothing here parses CSS or matches selectors.
 import type { Rgba8 } from '../../css/color.ts';
 import type { NativeBackend, ProgramNode } from '../../lower/native-program.ts';
 import { PROGRAM_VERSIONS } from '../../lower/native-program.ts';
@@ -92,6 +93,8 @@ public final class DragonStateMachine {
   public let clock = DragonVirtualClock()
   public private(set) var current: Int
   public private(set) var laidOut: Int
+  /// Called after every committed setter; a DragonStateMount uses it to rebuild and lay out the views on screen.
+  public var onChange: (() -> Void)?
   private var nodes: [String: DragonStateNode] = [:]
   private var order: [String] = []
 
@@ -126,6 +129,7 @@ public final class DragonStateMachine {
     order = d.order ?? base.map { $0.id }.filter { nodes[$0] != nil }
     if !skipRelayout && d.variant != laidOut { laidOut = d.variant }
     current = to
+    onChange?()
   }
 
   /// Sets a state by key to a domain value by key (the case scripts' untyped path); an unknown key fails.
@@ -164,16 +168,47 @@ public final class DragonStateMachine {
   public func input(_ dpr: Double) -> LayoutInput { return variants[laidOut](dpr) }
 }
 
-final class DragonStateScriptBox { var machine: DragonStateMachine? }
+/// A state machine on screen: the Dragon views of its live records, laid out with the engine input it last laid out, in a stage.
+/// Every committed setter rebuilds the views from the records, lays them out and swaps them in for the previous ones, so a typed
+/// setter call changes what is on screen.
+public final class DragonStateMount {
+  public let machine: DragonStateMachine
+  public private(set) var tree = DragonTree()
+  public private(set) var renders = 0
+  private let stage: UIView
+  private let measurer: TextMeasurer
+  private let scale: Double
+  private let bridge: DragonBridge
 
-/// A case script as a device case: build runs the steps on a fresh machine and builds its views; input is the input it laid out.
-public func dragonStateScriptCase(id: String, fixture: String, direction: String, compilerDigest: String, viewport: (width: Double, height: Double), expectedDigests: [Double: String], make: @escaping () -> DragonStateMachine, steps: [DragonScriptStep]) -> DragonCase {
-  let box = DragonStateScriptBox()
-  return DragonCase(id: id, fixture: fixture, direction: direction, compilerDigest: compilerDigest, viewport: viewport, expectedDigests: expectedDigests, input: { dpr in
-    guard let m = box.machine else { fatalError("dragon: script \(id) was not built before its input") }
-    return m.input(dpr)
-  }, build: { t in
-    let m = make()
+  public init(machine: DragonStateMachine, stage: UIView, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) {
+    self.machine = machine; self.stage = stage; self.measurer = measurer; self.scale = scale; self.bridge = bridge
+    render()
+    machine.onChange = { [weak self] in self?.render() }
+  }
+
+  private func render() {
+    let t = DragonTree()
+    machine.build(t)
+    stage.addSubview(t.root)
+    do {
+      try t.apply(machine.input(scale), measurer: measurer, scale: scale, bridge: bridge)
+    } catch {
+      fatalError("dragon: the state mount could not lay out assignment \(machine.current): \(error)")
+    }
+    tree.root.removeFromSuperview()
+    tree = t
+    renders += 1
+  }
+}
+
+/// A case script: its case (identity and expected digests) and its steps, which run on a DragonStateMount through the setters.
+public struct DragonStateScript {
+  public let dragonCase: DragonCase
+  public let make: () -> DragonStateMachine
+  public let steps: [DragonScriptStep]
+
+  /// Runs the steps on a mounted machine; each set goes through the setter, so the mount re-renders after it.
+  public func run(_ m: DragonStateMachine) {
     for s in steps {
       switch s {
       case .set(let a, let b): m.set(a, b)
@@ -181,9 +216,17 @@ public func dragonStateScriptCase(id: String, fixture: String, direction: String
       case .dump: break
       }
     }
-    box.machine = m
-    m.build(t)
+  }
+}
+
+/// A case script as a device case. Its views come only from a DragonStateMount, so its case builds nothing by itself.
+public func dragonStateScriptCase(id: String, fixture: String, direction: String, compilerDigest: String, viewport: (width: Double, height: Double), expectedDigests: [Double: String], make: @escaping () -> DragonStateMachine, steps: [DragonScriptStep]) -> DragonStateScript {
+  let c = DragonCase(id: id, fixture: fixture, direction: direction, compilerDigest: compilerDigest, viewport: viewport, expectedDigests: expectedDigests, input: { _ in
+    fatalError("dragon: script \(id) runs on a state mount, not as a layout case")
+  }, build: { _ in
+    fatalError("dragon: script \(id) runs on a state mount, not as a layout case")
   })
+  return DragonStateScript(dragonCase: c, make: make, steps: steps)
 }
 `;
 }
@@ -192,7 +235,9 @@ public func dragonStateScriptCase(id: String, fixture: String, direction: String
 function kotlinSupportText(): string {
   return String.raw`package dev.dragon.views
 
+import android.view.ViewGroup
 import dev.dragon.layout.LayoutInput
+import dev.dragon.layout.TextMeasurer
 
 /** One write of a state node in Android vocabulary: exactly what the android-views case emitter writes for the program write. */
 sealed class DragonStateWrite {
@@ -233,6 +278,8 @@ class DragonStateMachine(
     private set
   var laidOut: Int = deltas[initial].variant
     private set
+  /** Called after every committed setter; a DragonStateMount uses it to rebuild and lay out the views on screen. */
+  var onChange: (() -> Unit)? = null
   private val nodes = HashMap<String, DragonStateNode>()
   private var order: List<String> = emptyList()
 
@@ -268,6 +315,7 @@ class DragonStateMachine(
     order = d.order ?: base.map { it.id }.filter { nodes.containsKey(it) }
     if (!skipRelayout && d.variant != laidOut) laidOut = d.variant
     current = to
+    onChange?.invoke()
   }
 
   /** Sets a state by key to a domain value by key (the case scripts' untyped path); an unknown key fails. */
@@ -308,14 +356,37 @@ class DragonStateMachine(
   fun input(dpr: Double): LayoutInput = variants[laidOut](dpr)
 }
 
-/** A case script as a device case: build runs the steps on a fresh machine and builds its views; input is the input it laid out. */
-fun dragonStateScriptCase(id: String, fixture: String, direction: String, compilerDigest: String, width: Double, height: Double, expectedDigests: Map<Double, String>, make: () -> DragonStateMachine, steps: List<DragonScriptStep>): DragonCase {
-  var machine: DragonStateMachine? = null
-  return DragonCase(id, fixture, direction, compilerDigest, width, height, expectedDigests, { dpr ->
-    val m = machine ?: throw IllegalStateException("dragon: script " + id + " was not built before its input")
-    m.input(dpr)
-  }, { t ->
-    val m = make()
+/**
+ * A state machine on screen: the Dragon views of its live records, laid out with the engine input it last laid out, in a stage.
+ * Every committed setter rebuilds the views from the records, lays them out and swaps them in for the previous ones, so a typed
+ * setter call changes what is on screen.
+ */
+class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewGroup, private val measurer: TextMeasurer, private val scale: Double, private val bridge: DragonBridge) {
+  var tree: DragonTree = DragonTree(stage.context)
+    private set
+  var renders = 0
+    private set
+
+  init {
+    render()
+    machine.onChange = { render() }
+  }
+
+  private fun render() {
+    val t = DragonTree(stage.context)
+    machine.build(t)
+    t.apply(machine.input(scale), measurer, scale, bridge)
+    stage.addView(t.root, ViewGroup.LayoutParams(t.root.dragonFrame[2], t.root.dragonFrame[3]))
+    stage.removeView(tree.root)
+    tree = t
+    renders++
+  }
+}
+
+/** A case script: its case (identity and expected digests) and its steps, which run on a DragonStateMount through the setters. */
+class DragonStateScript(val dragonCase: DragonCase, val make: () -> DragonStateMachine, val steps: List<DragonScriptStep>) {
+  /** Runs the steps on a mounted machine; each set goes through the setter, so the mount re-renders after it. */
+  fun run(m: DragonStateMachine) {
     for (s in steps) {
       when (s) {
         is DragonScriptStep.Set -> m.set(s.s, s.v)
@@ -323,9 +394,17 @@ fun dragonStateScriptCase(id: String, fixture: String, direction: String, compil
         is DragonScriptStep.Dump -> {}
       }
     }
-    machine = m
-    m.build(t)
+  }
+}
+
+/** A case script as a device case. Its views come only from a DragonStateMount, so its case builds nothing by itself. */
+fun dragonStateScriptCase(id: String, fixture: String, direction: String, compilerDigest: String, width: Double, height: Double, expectedDigests: Map<Double, String>, make: () -> DragonStateMachine, steps: List<DragonScriptStep>): DragonStateScript {
+  val c = DragonCase(id, fixture, direction, compilerDigest, width, height, expectedDigests, { _ ->
+    throw IllegalStateException("dragon: script " + id + " runs on a state mount, not as a layout case")
+  }, { _ ->
+    throw IllegalStateException("dragon: script " + id + " runs on a state mount, not as a layout case")
   })
+  return DragonStateScript(c, make, steps)
 }
 `;
 }
@@ -369,8 +448,14 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'border-widths':
       case 'text-color':
         break;
+      default: {
+        // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
+        const unknown: never = w;
+        throw new StateEmitError(`${n.id}: no state-node write for ${JSON.stringify(unknown)}`);
+      }
     }
   }
+  if (n.kind === 'text' && !writes.some((x) => x.startsWith(lang === 'swift' ? '.text(' : 'DragonStateWrite.Text('))) throw new StateEmitError(`${n.id}: a text node without a text run`);
   const parent = n.parent === null ? (lang === 'swift' ? 'nil' : 'null') : q(n.parent);
   return lang === 'swift' ? `DragonStateNode(${q(n.id)}, ${parent}, ${q(n.kind)}, [${writes.join(', ')}])` : `DragonStateNode(${q(n.id)}, ${parent}, ${q(n.kind)}, listOf(${writes.join(', ')}))`;
 }
@@ -385,6 +470,9 @@ function deltaLit(lang: Lang, d: StateDelta): string {
   return `DragonStateDelta(${removed}, ${changed}, ${order}, ${d.variant})`;
 }
 
+/** A state key as doc-comment text: one line, and never the end of a block comment. */
+const commentText = (s: string): string => s.replace(/[\r\n\u2028\u2029]/g, ' ').replace(/\*\//g, '* /');
+
 /** An identifier from any text: letters, digits and _, never a keyword (every name carries a prefix). */
 const ident = (s: string): string => s.replace(/[^A-Za-z0-9]/g, '_');
 
@@ -395,7 +483,8 @@ export function typedSetters(sp: StateProgram): { readonly name: string; readonl
     let name = `set_${ident(s.instance)}_${ident(s.state)}`;
     while (names.has(name)) name += '_';
     names.add(name);
-    const boolean = s.domain.every((v) => typeof v === 'boolean');
+    // A Bool setter needs both values reachable: with only one, the other argument would name no domain value.
+    const boolean = s.domain.length === 2 && s.domain.includes(true) && s.domain.includes(false);
     const seen = new Set<string>();
     const cases = s.domain.map((v) => {
       let c = `v_${ident(v === null ? 'null' : String(v))}`;
@@ -431,7 +520,7 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   const q = (s: string): string => stringLit(lang, s);
   const sp = e.program;
   const p = `dragonStates${k}`;
-  const out: string[] = [`// state program ${e.id} (${sp.assignments.length} assignments, ${sp.variants.length} layout variants)`];
+  const out: string[] = [`// state program ${commentText(e.id)} (${sp.assignments.length} assignments, ${sp.variants.length} layout variants)`];
   const variantFns: string[] = [];
   sp.variants.forEach((variant, j) => {
     const input = inputFunctions(lang, variant.root, `${p}V${j}`);
@@ -454,10 +543,10 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   out.push(decl(`${p}Next`, kt ? 'List<List<List<Int>>>' : '[[[Int]]]', list(lang, sp.next.map((a) => list(lang, a.map((st) => list(lang, st.map(String))))))));
   const skip = faults.setterSkipsRelayout ? 'true' : 'false';
   if (lang === 'swift') {
-    out.push(`/// A fresh runtime of state program ${e.id} at its initial assignment.`);
+    out.push(`/// A fresh runtime of state program ${commentText(e.id)} at its initial assignment.`);
     out.push(`public func ${p}Machine() -> DragonStateMachine {\n  return DragonStateMachine(states: ${p}States, domains: ${p}Domains, base: ${p}Base, deltas: ${p}Deltas, next: ${p}Next, initial: ${sp.initial}, variants: ${list(lang, variantFns)}, skipRelayout: ${skip})\n}`);
   } else {
-    out.push(`/** A fresh runtime of state program ${e.id} at its initial assignment. */`);
+    out.push(`/** A fresh runtime of state program ${commentText(e.id)} at its initial assignment. */`);
     out.push(`fun ${p}Machine(): DragonStateMachine =\n  DragonStateMachine(${p}States, ${p}Domains, ${p}Base, ${p}Deltas, ${p}Next, ${sp.initial}, ${list(lang, variantFns)}, ${skip})`);
   }
   // The typed setters (decision 17): booleans for boolean domains, an enum per other domain.
@@ -470,21 +559,21 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
       const t = state.domain.findIndex((v) => v === true);
       const f = state.domain.findIndex((v) => v === false);
       body.push(lang === 'swift'
-        ? `  /// ${state.key}\n  public func ${s.name}(_ v: Bool) { machine.set(${i}, v ? ${t} : ${f}) }`
-        : `  /** ${state.key} */\n  fun ${s.name}(v: Boolean) = machine.set(${i}, if (v) ${t} else ${f})`);
+        ? `  /// ${commentText(state.key)}\n  public func ${s.name}(_ v: Bool) { machine.set(${i}, v ? ${t} : ${f}) }`
+        : `  /** ${commentText(state.key)} */\n  fun ${s.name}(v: Boolean) = machine.set(${i}, if (v) ${t} else ${f})`);
       return;
     }
     const en = `${cls}_${s.name.slice(4)}`;
     body.push(lang === 'swift'
-      ? `  /// ${state.key}\n  public func ${s.name}(_ v: ${en}) { machine.set(${i}, v.rawValue) }`
-      : `  /** ${state.key} */\n  fun ${s.name}(v: ${en}) = machine.set(${i}, v.ordinal)`);
+      ? `  /// ${commentText(state.key)}\n  public func ${s.name}(_ v: ${en}) { machine.set(${i}, v.rawValue) }`
+      : `  /** ${commentText(state.key)} */\n  fun ${s.name}(v: ${en}) = machine.set(${i}, v.ordinal)`);
     out.push(lang === 'swift'
       ? `public enum ${en}: Int { ${s.cases.map((c, j) => `case ${c} = ${j}`).join('; ')} }`
       : `enum class ${en} { ${s.cases.join(', ')} }`);
   });
   out.push(lang === 'swift'
-    ? `/// The typed state API of ${e.id}.\npublic final class ${cls} {\n  public let machine = ${p}Machine()\n  public init() {}\n${body.join('\n')}\n}`
-    : `/** The typed state API of ${e.id}. */\nclass ${cls} {\n  val machine = ${p}Machine()\n${body.join('\n')}\n}`);
+    ? `/// The typed state API of ${commentText(e.id)}.\npublic final class ${cls} {\n  public let machine = ${p}Machine()\n  public init() {}\n${body.join('\n')}\n}`
+    : `/** The typed state API of ${commentText(e.id)}. */\nclass ${cls} {\n  val machine = ${p}Machine()\n${body.join('\n')}\n}`);
   e.scripts.forEach((sc, j) => {
     const steps = list(lang, sc.steps.map((st) => stepLit(lang, sp, sc.id, st)));
     if (lang === 'swift') {
@@ -513,8 +602,8 @@ export function emitStatePrograms(backend: NativeBackend, emits: readonly StateE
     : { path: `kotlin/dev/dragon/cases/DragonStates${String(k).padStart(3, '0')}.kt`, text: `${header}${machineSource(lang, e, k, faults)}\n` }));
   const scripts = emits.flatMap((e, k) => e.scripts.map((_, j) => `dragonStates${k}Script${j}`));
   files.push(lang === 'swift'
-    ? { path: 'Cases/DragonStateCaseTable.swift', text: `${header}/// Every case script, in state program order.\npublic let dragonStateCaseList: [DragonCase] = [${scripts.join(', ')}]\n\npublic let dragonStateCaseTable: [String: DragonCase] = Dictionary(uniqueKeysWithValues: dragonStateCaseList.map { ($0.id, $0) })\n` }
-    : { path: 'kotlin/dev/dragon/cases/DragonStateCaseTable.kt', text: `${header}/** Every case script, in state program order. */\nval dragonStateCaseList: List<DragonCase> by lazy { listOf(${scripts.join(', ')}) }\n\nval dragonStateCaseTable: Map<String, DragonCase> by lazy { dragonStateCaseList.associateBy { it.id } }\n` });
+    ? { path: 'Cases/DragonStateCaseTable.swift', text: `${header}/// Every case script, in state program order.\npublic let dragonStateCaseList: [DragonStateScript] = [${scripts.join(', ')}]\n\npublic let dragonStateCaseTable: [String: DragonStateScript] = Dictionary(uniqueKeysWithValues: dragonStateCaseList.map { ($0.dragonCase.id, $0) })\n` }
+    : { path: 'kotlin/dev/dragon/cases/DragonStateCaseTable.kt', text: `${header}/** Every case script, in state program order. */\nval dragonStateCaseList: List<DragonStateScript> by lazy { listOf(${scripts.join(', ')}) }\n\nval dragonStateCaseTable: Map<String, DragonStateScript> by lazy { dragonStateCaseList.associateBy { it.dragonCase.id } }\n` });
   return files;
 }
 
@@ -549,21 +638,25 @@ export function webStateProgram(sp: StateProgram, tables: readonly WebClassTable
 
 /**
  * The web runtime as an ES module: createDragonStates(elementOf) applies the initial assignment's class attributes and returns
- * set(state, value), which validates before any mutation and rewrites only the class attributes that change.
+ * set(state, value), which validates before any mutation (every element it writes included) and rewrites only the class attributes
+ * that change.
  */
 export function webStateModule(w: WebStateProgram): string {
   return `// GENERATED by dragon emit/runtime/state.ts (${STATE_RUNTIME_VERSION}). Do not edit.
 const P = ${JSON.stringify(w)};
 export function createDragonStates(elementOf) {
   let current = P.initial;
+  // Every element is looked up before any attribute is written, so a missing element fails with nothing changed.
   const apply = (from, to) => {
+    const writes = [];
     P.elements.forEach((address, i) => {
       const c = P.classes[to][i];
       if (from !== null && P.classes[from][i] === c) return;
       const el = elementOf(address);
       if (el === null || el === undefined) throw new Error('dragon: no element ' + address);
-      if (c === null) el.removeAttribute('class'); else el.setAttribute('class', c);
+      writes.push([el, c]);
     });
+    for (const [el, c] of writes) if (c === null) el.removeAttribute('class'); else el.setAttribute('class', c);
   };
   apply(null, current);
   return {
