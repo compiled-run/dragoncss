@@ -10,8 +10,11 @@ import { compiledCases, iosLayoutProjection, WEB_CSS_PATH } from 'dragon';
 import { internalRecord } from '../../dragon/src/project.ts';
 import type { ResolvedElement, ResolvedValue } from '../../dragon/src/analysis/resolve.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
-import { appearanceDisplay } from '../../dragon/src/analysis/computed.ts';
-import { isControlTag } from '../../dragon/src/analysis/elements/controls.ts';
+import { appearanceDisplay, parseValueText } from '../../dragon/src/analysis/computed.ts';
+import { referenceDataset, uaRows } from '../../dragon/src/ua/datasets.ts';
+import type { UaDataset } from '../../dragon/src/ua/datasets.ts';
+import { buttonAppearance, isControlTag } from '../../dragon/src/analysis/elements/controls.ts';
+import type { Longhand } from '../../dragon/src/css/properties.ts';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { emittedPath } from '../src/committed.ts';
 import { CONTROLS } from '../src/fixture-groups/controls.ts';
@@ -102,5 +105,46 @@ describe('FORM-a A3 identity: every case that predates the button package is unc
     const own = (name: string): boolean => !CONTROLS.some((f) => name.startsWith(`${f.id}.`) || name.startsWith(`${f.id}-rtl.`));
     expect(vectors).toBe(readdirSync(repoPath('packages/layout/vectors')).filter((f) => f.endsWith('.json') && own(f)).length);
     expect(bodies).toBe(readdirSync(repoPath('packages/parity/emitted')).filter((f) => f.endsWith('.css') && own(f)).length);
+  });
+});
+
+// The A3 helpers the fixtures exercise end to end, checked on their edges.
+describe('FORM-a A3 helpers', () => {
+  const v = (property: 'display' | 'appearance', text: string): ResolvedValue => ({ value: parseValueText(property, text), origin: 'author', span: null, declaration: null, declared: null, losing: [] });
+  it('the appearance display adjustment follows the Chrome 145 probe, and appearance: none leaves every display alone', () => {
+    const probe: readonly (readonly [string, string])[] = [
+      ['inline', 'inline-block'], ['inline-block', 'inline-block'], ['block', 'block'], ['flex', 'flex'], ['inline-flex', 'inline-flex'],
+      ['inline-table', 'inline-block'], ['table', 'block'], ['table-row', 'inline-block'], ['table-cell', 'inline-block'],
+      ['list-item', 'block'], ['flow-root', 'flow-root'], ['contents', 'contents'], ['none', 'none'], ['inline list-item', 'inline list-item'],
+    ];
+    for (const [from, to] of probe) {
+      expect(valueToString(appearanceDisplay(v('display', from), v('appearance', 'auto')).value), from).toBe(to);
+      expect(valueToString(appearanceDisplay(v('display', from), v('appearance', 'button')).value), from).toBe(to);
+      expect(appearanceDisplay(v('display', from), v('appearance', 'none')).value, from).toEqual(v('display', from).value);
+    }
+  });
+
+  it("the button key reads html.css's display: inline-block as a declared UA value, and refuses any other forced row", () => {
+    const ua = referenceDataset();
+    const rows = uaRows(ua, 'button');
+    expect(rows.forced).toEqual({ ltr: {}, rtl: {} });
+    expect(rows.declared.ltr['display']).toBe('inline-block');
+    expect(rows.longhands).toContain('display');
+    const extra: UaDataset = { ...ua, userAgentForced: { ...ua.userAgentForced, button: { ltr: { display: 'inline-block', 'overflow-x': 'clip' }, rtl: { display: 'inline-block' } } } };
+    expect(() => uaRows(extra, 'button')).toThrow("the button key's forced rows");
+    const missing: UaDataset = { ...ua, userAgentForced: {} };
+    expect(() => uaRows(missing, 'button')).toThrow('no forced rows for the button key');
+  });
+
+  it('a button paints as CSS only under appearance: none, or auto with an author background or border (R11)', () => {
+    const props = (appearance: string, extra: readonly (readonly [Longhand, ResolvedValue])[] = []): Map<Longhand, ResolvedValue> => new Map<Longhand, ResolvedValue>([['appearance', v('appearance', appearance)], ...extra]);
+    const authored = (p: Longhand, text: string): readonly [Longhand, ResolvedValue] => [p, { value: parseValueText(p, text), origin: 'author', span: null, declaration: null, declared: null, losing: [] }];
+    const inherited = (p: Longhand, text: string): readonly [Longhand, ResolvedValue] => [p, { value: parseValueText(p, text), origin: 'inherited', span: null, declaration: null, declared: null, losing: [] }];
+    expect(buttonAppearance(props('none'))).toBe('css');
+    expect(buttonAppearance(props('auto'))).toBe('theme');
+    expect(buttonAppearance(props('auto', [authored('background-color', 'transparent')]))).toBe('css');
+    expect(buttonAppearance(props('auto', [authored('border-top-width', '0px')]))).toBe('css');
+    expect(buttonAppearance(props('auto', [inherited('background-color', 'red')]))).toBe('theme');
+    expect(buttonAppearance(props('button', [authored('background-color', 'red')]))).toBe('theme');
   });
 });
