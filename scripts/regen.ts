@@ -33,6 +33,17 @@ const pnpm = (...a: string[]): string[] => ['pnpm', '-s', 'run', ...a];
 // with no parity problem.
 const LANES_AGREE = 'parity:lanes: lanes, case lists, tolerances, sample rules, dump faults and the projection agree on ios and android';
 
+/**
+ * lanes-host's exit 1 is a recorded verdict only when parity:lanes finished with no parity problem, every failing lane is a
+ * device lane (carried from the device runner, not run here) and the host lanes it ran all pass.
+ */
+export function lanesVerdict(code: number, log: string): boolean {
+  if (code !== 1 || !log.includes(`\n${LANES_AGREE}\n`)) return false;
+  const lanes = [...log.matchAll(/^ {2}([a-z0-9-]+): ([a-z-]+)/gm)].map((m) => ({ lane: m[1]!, state: m[2]! }));
+  const device = (lane: string): boolean => lane.startsWith('device-') || lane.endsWith('-device');
+  return lanes.some((l) => l.state === 'fail') && lanes.some((l) => !device(l.lane)) && lanes.every((l) => (device(l.lane) ? true : l.state === 'pass'));
+}
+
 export const STEPS: readonly Step[] = [
   { name: 'grammar', argv: pnpm('grammar:gen'), outputs: ['packages/dragon/src/css/grammar.generated.ts'] },
   { name: 'notices', argv: pnpm('notices:gen'), outputs: ['THIRD_PARTY_NOTICES.md'] },
@@ -52,7 +63,7 @@ export const STEPS: readonly Step[] = [
   { name: 'tw-sweep', argv: pnpm('tw:sweep'), outputs: ['packages/tailwind-sweep/snapshot/**'] },
   { name: 'glyph-b3', argv: pnpm('parity:glyph-b3', '--write-bottom-pins'), outputs: ['packages/parity/expected-glyphs/bottom-scanlines.json'] },
   { name: 'media-sweep', argv: node('packages/parity/src/cli/media-sweep.ts'), outputs: ['packages/parity/expected-media/**'] },
-  { name: 'lanes-host', argv: pnpm('parity:lanes', '--run-host'), outputs: ['packages/parity/out/lanes.json'], env: ['JAVA_HOME', 'ANDROID_HOME'], verdict: (code, log) => code === 1 && log.includes(`\n${LANES_AGREE}\n`) },
+  { name: 'lanes-host', argv: pnpm('parity:lanes', '--run-host'), outputs: ['packages/parity/out/lanes.json'], env: ['JAVA_HOME', 'ANDROID_HOME'], verdict: lanesVerdict },
 ];
 
 /** Regen outputs a merge must not keep from one side: wpt fail entries carry a hand-written reason, deviation and issue. */

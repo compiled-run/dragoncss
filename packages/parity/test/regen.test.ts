@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { compilePattern, matchSegments, parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
-import { type Cache, MANUAL, MERGE_BY_HAND, parseCache, regen, STEPS, type Step, stepDigests, type Tree } from '../../../scripts/regen.ts';
+import { type Cache, lanesVerdict, MANUAL, MERGE_BY_HAND, parseCache, regen, STEPS, type Step, stepDigests, type Tree } from '../../../scripts/regen.ts';
 import { repoPath } from '../src/paths.ts';
 
 const matches = (glob: string, path: string): boolean => matchSegments(compilePattern(glob), path.split('/'));
@@ -153,6 +153,30 @@ describe('pnpm regen chain', () => {
     expect(parseCache('{"version":2,"steps":{}}')).toEqual({ cache: {}, problem: 'not a version 1 cache' });
     expect(parseCache('{"version":1,"steps":{"a":{"inputs":"x"}}}')).toEqual({ cache: {}, problem: 'step a has no digests' });
     expect(parseCache('{"version":1,"steps":{"a":{"inputs":"x","outputs":"y"}}}')).toEqual({ cache: { a: { inputs: 'x', outputs: 'y' } }, problem: null });
+  });
+});
+
+describe('lanes-host verdict', () => {
+  const agree = 'parity:lanes: lanes, case lists, tolerances, sample rules, dump faults and the projection agree on ios and android';
+  const log = (...lanes: string[]) => `ios:\n${lanes.map((l) => `  ${l}; cases [2: 460]`).join('\n')}\n${agree}\n`;
+
+  it('accepts exit 1 only for failing device lanes with every host lane passing', () => {
+    expect(lanesVerdict(1, log('layout-vectors-host: pass', 'layout-vectors-device: pass', 'device-pixels: fail (135 failures)'))).toBe(true);
+    expect(lanesVerdict(1, log('layout-vectors-host: fail (3 suites)', 'device-pixels: fail (135 failures)'))).toBe(false);
+    expect(lanesVerdict(1, log('layout-vectors-host: pending', 'device-pixels: fail (135 failures)'))).toBe(false);
+    expect(lanesVerdict(1, log('layout-vectors-host: pass', 'device-pixels: pass'))).toBe(false);
+    expect(lanesVerdict(1, log('device-pixels: fail (135 failures)'))).toBe(false);
+    expect(lanesVerdict(1, log('layout-vectors-host: pass', 'device-pixels: fail (1)').replace(agree, 'parity:lanes: parity FAILS:'))).toBe(false);
+    expect(lanesVerdict(2, log('layout-vectors-host: pass', 'device-pixels: fail (1)'))).toBe(false);
+  });
+});
+
+describe('catch-up procedure (AGENTS.md step 2)', () => {
+  it('sets up the merge driver before the merge, so generated outputs never stop it', () => {
+    const step = readFileSync(repoPath('AGENTS.md'), 'utf8').split('\n').find((l) => l.startsWith('2. **Catch up'))!;
+    expect(step.indexOf('pnpm setup:git')).toBeGreaterThan(-1);
+    expect(step.indexOf('pnpm setup:git')).toBeLessThan(step.indexOf('git merge origin/master'));
+    expect(step.indexOf('git merge origin/master')).toBeLessThan(step.indexOf('pnpm regen'));
   });
 });
 
