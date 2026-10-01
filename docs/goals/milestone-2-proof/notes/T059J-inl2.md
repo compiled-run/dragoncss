@@ -159,3 +159,15 @@ The objective, allowed_files, verify and stop_if are in the T059J receipt, copie
 - **inl1a-tags overlap:** accepted as append-only. The landing order is TXT1a, then T133, then INL2a.
 
 **Expected north-star result with the amendment:** UNPROVEN_CONTEXT falls from 33 to 31 on ios and web.
+
+## INL2a host-done (2026-10-01)
+
+**Branches:** inl2a-engine at 93cee282e, and inl2 at 08df24673 on top of it. They are about 94 KB and 86 KB.
+
+**North star:** UNPROVEN_CONTEXT goes from 33 to 31 on ios and web, with nothing new on play-icon, terms-link or privacy-link.
+
+**Tailwind:** 2216 supported, 0 mismatches. inline-block and inline-flex go from refused to supported.
+
+**Merge conflicts with inl1a-tags:** five append collisions (fonts.ts MAPS was added). They are accepted under T059J-1 (4) and resolved by keeping both sides at catch-up.
+
+**Order:** TXT2-a is dispatched on inl2 08df24673. INL2b restacks on TXT2-a afterwards.
