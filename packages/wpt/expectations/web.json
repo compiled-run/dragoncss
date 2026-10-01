@@ -18476,7 +18476,7 @@
     "css/css-grid/alignment/grid-align-baseline-multicol-001.html": {"interop":["interop-2023-grid"],"missing":"DRAGON_UNSUPPORTED_PROPERTY:columns: 3","status":"not-runnable"},
     "css/css-grid/alignment/grid-align-baseline-multicol-002.html": {"interop":["interop-2023-grid"],"missing":"DRAGON_UNSUPPORTED_PROPERTY:writing-mode: vertical-rl","status":"not-runnable"},
     "css/css-grid/alignment/grid-align-baseline-multicol-003.html": {"interop":["interop-2023-grid"],"missing":"DRAGON_UNSUPPORTED_PROPERTY:writing-mode: vertical-lr","status":"not-runnable"},
-    "css/css-grid/alignment/grid-align-baseline-nested-intrinsic-sizing-001.html": {"missing":"DRAGON_UNSUPPORTED_ELEMENT:<input data-dragon-id=\"n25\" class=\"item\"></input>","status":"not-runnable"},
+    "css/css-grid/alignment/grid-align-baseline-nested-intrinsic-sizing-001.html": {"missing":"DRAGON_UNSUPPORTED_VALUE:display:grid","status":"not-runnable"},
     "css/css-grid/alignment/grid-align-baseline-overflow-001.html": {"interop":["interop-2023-grid"],"missing":"DRAGON_UNSUPPORTED_PROPERTY:outline: solid cyan 3px","status":"not-runnable"},
     "css/css-grid/alignment/grid-align-baseline-overflow-002.html": {"interop":["interop-2023-grid"],"missing":"DRAGON_UNSUPPORTED_PROPERTY:writing-mode: vertical-rl","status":"not-runnable"},
     "css/css-grid/alignment/grid-align-baseline-overflow-003.html": {"interop":["interop-2023-grid"],"missing":"DRAGON_UNSUPPORTED_PROPERTY:writing-mode: vertical-lr","status":"not-runnable"},

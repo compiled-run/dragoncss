@@ -187,6 +187,8 @@
       "controls-button-type-rtl": [6,6],
       "controls-appearance-display": [3,4],
       "controls-appearance-display-rtl": [3,4],
+      "controls-range-flex": [2,2],
+      "controls-range-flex-rtl": [2,2],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -377,6 +379,8 @@
       "controls-button-type-rtl": [6,6],
       "controls-appearance-display": [3,4],
       "controls-appearance-display-rtl": [3,4],
+      "controls-range-flex": [2,2],
+      "controls-range-flex-rtl": [2,2],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     }
@@ -569,6 +573,8 @@
       "controls-button-type-rtl": [6,6],
       "controls-appearance-display": [3,4],
       "controls-appearance-display-rtl": [3,4],
+      "controls-range-flex": [2,2],
+      "controls-range-flex-rtl": [2,2],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -759,6 +765,8 @@
       "controls-button-type-rtl": [6,6],
       "controls-appearance-display": [3,4],
       "controls-appearance-display-rtl": [3,4],
+      "controls-range-flex": [2,2],
+      "controls-range-flex-rtl": [2,2],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -949,6 +957,8 @@
       "controls-button-type-rtl": [6,6],
       "controls-appearance-display": [3,4],
       "controls-appearance-display-rtl": [3,4],
+      "controls-range-flex": [2,2],
+      "controls-range-flex-rtl": [2,2],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     }

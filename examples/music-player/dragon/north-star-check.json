@@ -132,42 +132,40 @@
   ],
   "contextProbe": {
    "rounds": 1,
-   "blankedRules": 9,
+   "blankedRules": 8,
    "blankedDeclarations": 61,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 873,
-  "errors": 872,
+  "diagnostics": 879,
+  "errors": 878,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 19,
    "DRAGON_UNPROVEN_CONTEXT [web]": 21,
-   "DRAGON_UNSUPPORTED_ATTRIBUTE": 11,
+   "DRAGON_UNSUPPORTED_ATTRIBUTE": 7,
    "DRAGON_UNSUPPORTED_AT_RULE": 3,
-   "DRAGON_UNSUPPORTED_ELEMENT": 1,
    "DRAGON_UNSUPPORTED_FONT [android]": 30,
    "DRAGON_UNSUPPORTED_FONT [ios]": 42,
    "DRAGON_UNSUPPORTED_FONT [web]": 8,
    "DRAGON_UNSUPPORTED_PROPERTY": 58,
-   "DRAGON_UNSUPPORTED_SELECTOR": 9,
+   "DRAGON_UNSUPPORTED_SELECTOR": 8,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 611,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 29,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 27
+   "DRAGON_UNSUPPORTED_VALUE [android]": 621,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 30,
+   "DRAGON_UNSUPPORTED_VALUE [web]": 28
   },
   "perTarget": {
    "web": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 21,
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 11,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 7,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
-     "DRAGON_UNSUPPORTED_ELEMENT": 1,
      "DRAGON_UNSUPPORTED_FONT": 8,
      "DRAGON_UNSUPPORTED_PROPERTY": 58,
-     "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 30
+     "DRAGON_UNSUPPORTED_SELECTOR": 8,
+     "DRAGON_UNSUPPORTED_VALUE": 31
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -176,13 +174,12 @@
    "ios": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 19,
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 11,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 7,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
-     "DRAGON_UNSUPPORTED_ELEMENT": 1,
      "DRAGON_UNSUPPORTED_FONT": 42,
      "DRAGON_UNSUPPORTED_PROPERTY": 58,
-     "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 32
+     "DRAGON_UNSUPPORTED_SELECTOR": 8,
+     "DRAGON_UNSUPPORTED_VALUE": 33
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -190,13 +187,12 @@
    },
    "android": {
     "errors": {
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 11,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 7,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
-     "DRAGON_UNSUPPORTED_ELEMENT": 1,
      "DRAGON_UNSUPPORTED_FONT": 30,
      "DRAGON_UNSUPPORTED_PROPERTY": 58,
-     "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 614
+     "DRAGON_UNSUPPORTED_SELECTOR": 8,
+     "DRAGON_UNSUPPORTED_VALUE": 624
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -204,13 +200,13 @@
    }
   },
   "declarations": 291,
-  "supportedBothTargets": 177,
-  "supportedWeb": 177,
-  "supportedIos": 177,
+  "supportedBothTargets": 180,
+  "supportedWeb": 180,
+  "supportedIos": 180,
   "supportedAndroid": 19,
-  "supportPercent": 60.8,
+  "supportPercent": 61.9,
   "elements": 62,
-  "supportedElements": 61,
+  "supportedElements": 62,
   "tags": {
    "html": {
     "count": 1,
@@ -258,7 +254,7 @@
    },
    "input": {
     "count": 1,
-    "supported": false
+    "supported": true
    },
    "h4": {
     "count": 4,
@@ -287,9 +283,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 380,
-   "B-unwrapped": 410,
-   "C-context": 499
+   "A-authored": 377,
+   "B-unwrapped": 407,
+   "C-context": 505
   }
  },
  "features": {
@@ -2797,11 +2793,11 @@
    "atRule": null,
    "property": "-webkit-appearance",
    "value": "none",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -2811,11 +2807,11 @@
    "atRule": null,
    "property": "height",
    "value": "16px",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -2825,11 +2821,11 @@
    "atRule": null,
    "property": "width",
    "value": "16px",
-   "web": "blocked",
-   "ios": "blocked",
+   "web": "supported",
+   "ios": "supported",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_SELECTOR"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -8565,8 +8561,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ]
   },
   {
@@ -8586,8 +8581,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ]
   },
   {
@@ -8627,8 +8621,7 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped",
-    "C-context"
+    "B-unwrapped"
    ]
   },
   {
@@ -9192,19 +9185,59 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@5453-5475|pseudo-element ::-webkit-slider-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (the form-control package FORM-a)",
-   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5499-5503|appearance: none (set by -webkit-appearance: none) is unsupported (support profile m1-s5); no appearance value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 5453,
-    "end": 5475,
-    "line": 309,
-    "column": 20,
-    "text": "::-webkit-slider-thumb"
+    "start": 5499,
+    "end": 5503,
+    "line": 310,
+    "column": 22,
+    "text": "none"
    },
-   "message": "pseudo-element ::-webkit-slider-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (the form-control package FORM-a)",
+   "message": "appearance: none (set by -webkit-appearance: none) is unsupported (support profile m1-s5); no appearance value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5514-5518|height: 16px is unsupported (support profile m1-s5); no height value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5514,
+    "end": 5518,
+    "line": 311,
+    "column": 10,
+    "text": "16px"
+   },
+   "message": "height: 16px is unsupported (support profile m1-s5); no height value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5528-5532|width: 16px is unsupported (support profile m1-s5); no width value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5528,
+    "end": 5532,
+    "line": 312,
+    "column": 9,
+    "text": "16px"
+   },
+   "message": "width: 16px is unsupported (support profile m1-s5); no width value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -12006,91 +12039,6 @@
     "tag": "html"
    },
    "message": "attribute lang on html is not supported: its rendering effect belongs to the text package TXT1-C (lang feeds locale font fallback)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@Player/progress-input|attribute max on progress-input is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Player/progress-input",
-    "tag": "input"
-   },
-   "message": "attribute max on progress-input is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@Player/progress-input|attribute min on progress-input is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Player/progress-input",
-    "tag": "input"
-   },
-   "message": "attribute min on progress-input is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@Player/progress-input|attribute type on progress-input is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Player/progress-input",
-    "tag": "input"
-   },
-   "message": "attribute type on progress-input is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@Player/progress-input|attribute value on progress-input is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Player/progress-input",
-    "tag": "input"
-   },
-   "message": "attribute value on progress-input is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/progress-input|<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe, button)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Player/progress-input",
-    "tag": "input"
-   },
-   "message": "<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe, button)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -16204,6 +16152,63 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4860-4864|appearance: none (set by -webkit-appearance: none) is unsupported (support profile m1-s5); no appearance value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4860,
+    "end": 4864,
+    "line": 271,
+    "column": 22,
+    "text": "none"
+   },
+   "message": "appearance: none (set by -webkit-appearance: none) is unsupported (support profile m1-s5); no appearance value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4879-4890|background-color: transparent (set by background: transparent) is unsupported (support profile m1-s5); no background-color value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4879,
+    "end": 4890,
+    "line": 272,
+    "column": 14,
+    "text": "transparent"
+   },
+   "message": "background-color: transparent (set by background: transparent) is unsupported (support profile m1-s5); no background-color value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4918-4922|width: 100% is unsupported (support profile m1-s5); no width value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4918,
+    "end": 4922,
+    "line": 274,
+    "column": 9,
+    "text": "100%"
+   },
+   "message": "width: 100% is unsupported (support profile m1-s5); no width value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4953-4972|color: var(--text-primary) substitutes to rgb(237, 240, 245) on page/player-call/time-current; color:<hex-color> is unsupported (support profile m1-s5)",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -16787,6 +16792,63 @@
     "text": "100%"
    },
    "message": "width: 100% is unsupported (support profile m1-s5); no width value is proven in absolute-in-block/ltr/cb-ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5499-5503|appearance: none (set by -webkit-appearance: none) is unsupported (support profile m1-s5); no appearance value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5499,
+    "end": 5503,
+    "line": 310,
+    "column": 22,
+    "text": "none"
+   },
+   "message": "appearance: none (set by -webkit-appearance: none) is unsupported (support profile m1-s5); no appearance value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5514-5518|height: 16px is unsupported (support profile m1-s5); no height value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5514,
+    "end": 5518,
+    "line": 311,
+    "column": 10,
+    "text": "16px"
+   },
+   "message": "height: 16px is unsupported (support profile m1-s5); no height value is proven in block/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5528-5532|width: 16px is unsupported (support profile m1-s5); no width value is proven in block/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5528,
+    "end": 5532,
+    "line": 312,
+    "column": 9,
+    "text": "16px"
+   },
+   "message": "width: 16px is unsupported (support profile m1-s5); no width value is proven in block/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -18674,7 +18736,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@7554-7561|column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@7554-7561|column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr, flex-row-single-line/rtl); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -18686,14 +18748,14 @@
     "column": 7,
     "text": "0.65rem"
    },
-   "message": "column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
+   "message": "column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr, flex-row-single-line/rtl); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@7554-7561|row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@7554-7561|row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr, flex-row-single-line/rtl); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -18705,14 +18767,14 @@
     "column": 7,
     "text": "0.65rem"
    },
-   "message": "row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
+   "message": "row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr, flex-row-single-line/rtl); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@7554-7561|column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@7554-7561|column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr, flex-row-single-line/rtl); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -18724,14 +18786,14 @@
     "column": 7,
     "text": "0.65rem"
    },
-   "message": "column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
+   "message": "column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr, flex-row-single-line/rtl); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@7554-7561|row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@7554-7561|row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr, flex-row-single-line/rtl); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -18743,7 +18805,7 @@
     "column": 7,
     "text": "0.65rem"
    },
-   "message": "row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
+   "message": "row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-column-single-line/rtl, flex-row-single-line/ltr, flex-row-single-line/rtl); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -21221,6 +21283,54 @@
     "tag": "button"
    },
    "message": "<button> page/player-call/skip-forward uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|el@Player/progress-input|display: inline-block on <input> page/player-call/progress-input makes it an inline-level control, which waits for the RF-INL package (atomic inlines)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "element",
+    "id": "Player/progress-input",
+    "tag": "input"
+   },
+   "message": "display: inline-block on <input> page/player-call/progress-input makes it an inline-level control, which waits for the RF-INL package (atomic inlines)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|el@Player/progress-input|display: inline-block on <input> page/player-call/progress-input makes it an inline-level control, which waits for the RF-INL package (atomic inlines)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "Player/progress-input",
+    "tag": "input"
+   },
+   "message": "display: inline-block on <input> page/player-call/progress-input makes it an inline-level control, which waits for the RF-INL package (atomic inlines)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|el@Player/progress-input|display: inline-block on <input> page/player-call/progress-input makes it an inline-level control, which waits for the RF-INL package (atomic inlines)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "element",
+    "id": "Player/progress-input",
+    "tag": "input"
+   },
+   "message": "display: inline-block on <input> page/player-call/progress-input makes it an inline-level control, which waits for the RF-INL package (atomic inlines)",
    "viaRelated": false,
    "passes": [
     "C-context"
