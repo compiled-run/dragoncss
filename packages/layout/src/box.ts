@@ -243,8 +243,12 @@ export function contentBox(borderBox: LU, borderPadding: LU): LU {
   return clampNegativeToZero(sub(borderBox, borderPadding));
 }
 
-/** css-overflow-3 §3: overflow hidden (on both axes, as the validator requires) makes the box a scroll container. */
+/**
+ * css-overflow-3 §3: hidden, auto and scroll make the box a scroll container; the validator's computed pair puts both axes in that
+ * set or neither. clip is not one: it keeps margin collapsing and the automatic minimum size.
+ */
 export function isScrollContainer(style: LayoutStyle): boolean {
-  return style.overflowX === 'hidden';
+  const x = style.overflowX;
+  return x === 'hidden' || x === 'auto' || x === 'scroll';
 }
 

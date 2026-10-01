@@ -53,6 +53,9 @@ import type {
 import type { LayoutRect } from '../../layout/src/layout.ts';
 import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
 import { measurerFor } from '../../layout/src/platform.ts';
+import type { TextMeasurer } from '../../layout/src/text.ts';
+import type { ScrollMetrics } from '../../layout/src/overflow.ts';
+import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
@@ -603,8 +606,8 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     right: sizeValue(f('right'), p('right')) as InsetValue,
     bottom: sizeValue(f('bottom'), p('bottom')) as InsetValue,
     left: sizeValue(f('left'), p('left')) as InsetValue,
-    overflowX: lit(f('overflowX'), ['visible', 'hidden'], p('overflowX')) as Overflow,
-    overflowY: lit(f('overflowY'), ['visible', 'hidden'], p('overflowY')) as Overflow,
+    overflowX: lit(f('overflowX'), ['visible', 'hidden', 'clip', 'auto', 'scroll'], p('overflowX')) as Overflow,
+    overflowY: lit(f('overflowY'), ['visible', 'hidden', 'clip', 'auto', 'scroll'], p('overflowY')) as Overflow,
     direction: lit(f('direction'), ['ltr', 'rtl'], p('direction')) as Direction,
     boxSizing: lit(f('boxSizing'), ['content-box', 'border-box'], p('boxSizing')) as BoxSizing,
     width: sizeValue(f('width'), p('width')),
@@ -785,6 +788,7 @@ const FAULT_KEYS: readonly string[] = [
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
   'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak', 'lineHeightIgnoresInlineBoxes',
   'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
+  'gutterReserved', 'overflowIgnoresPadding',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -830,6 +834,8 @@ function decodeFaults(v: JsonValue): EngineFaults {
     brIgnored: b('brIgnored'),
     breakAtBoxBoundary: b('breakAtBoxBoundary'),
     fragmentFromLineTop: b('fragmentFromLineTop'),
+    gutterReserved: b('gutterReserved'),
+    overflowIgnoresPadding: b('overflowIgnoresPadding'),
   };
 }
 
@@ -853,10 +859,33 @@ function h(x: number): string {
   return `"${bitsHex(x)}"`;
 }
 
+/** A scroll metrics record: the id, the client size and the scroll rect (overflow.ts). */
+function scrollRecord(s: ScrollMetrics): string {
+  return `[${q(s.id)},${h(s.clientWidth)},${h(s.clientHeight)},${h(s.scrollRect.x)},${h(s.scrollRect.y)},${h(s.scrollRect.width)},${h(s.scrollRect.height)}]`;
+}
+
+/**
+ * A line with a viewportDirection key (the engine-overflow suite) also runs scrollMetrics and appends its result; every other line
+ * keeps its output byte for byte.
+ */
+function scrollSuffix(input: LayoutInput, measurer: TextMeasurer, direction: string, faults: EngineFaults): string {
+  const r = scrollMetricsWithFaults(input, measurer, direction === 'rtl' ? 'rtl' : 'ltr', faults);
+  if (r.kind === 'refused') return `,["refused",${q(r.nodeId)},${q(r.detail)}]`;
+  let out = `,["ok",${scrollRecord(r.viewport)},[`;
+  r.containers.forEach((c, i) => {
+    if (i > 0) out += ',';
+    out += scrollRecord(c);
+  });
+  return `${out}]]`;
+}
+
 /** One engine case: {"platform", "faults", "input"} in, the layout result with every LU as bits out. */
 export function runEngineCase(line: string): string {
   try {
-    const o = obj(parseJson(line), ['platform', 'faults', 'input'], '$');
+    const parsed = parseJson(line);
+    const scroll = parsed.kind === 'obj' && parsed.values.has('viewportDirection');
+    const o = obj(parsed, scroll ? ['platform', 'faults', 'input', 'viewportDirection'] : ['platform', 'faults', 'input'], '$');
+    const direction = scroll ? lit(field(o, 'viewportDirection', '$'), ['ltr', 'rtl'], '$.viewportDirection') : 'ltr';
     const platform = str(field(o, 'platform', '$'), '$.platform');
     const faults = decodeFaults(field(o, 'faults', '$'));
     const input = decodeInput(field(o, 'input', '$'));
@@ -879,7 +908,7 @@ export function runEngineCase(line: string): string {
       first = false;
       out += `[${q(id)},${h(rect.x)},${h(rect.y)},${h(rect.width)},${h(rect.height)}]`;
     }
-    return `${out}]]`;
+    return `${out}]${scroll ? scrollSuffix(input, m.measurer, direction, faults) : ''}]`;
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
