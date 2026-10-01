@@ -211,7 +211,8 @@ export type LanesArgs = { readonly runHost: boolean; readonly runDevice: boolean
 export function lanesArgs(args: readonly string[]): LanesArgs | { readonly error: string } {
   const flags = new Set<string>();
   const values = new Map<string, string>();
-  for (let i = 0; i < args.length; i++) {
+  // pnpm run parity:lanes -- --run-host passes its separator through: one leading -- is skipped, any other is unknown.
+  for (let i = args[0] === '--' ? 1 : 0; i < args.length; i++) {
     const a = args[i] as string;
     if (['--run-host', '--run-device', '--require-all'].includes(a)) flags.add(a);
     else if (['--target', '--device-jobs', '--plant', '--prebuild'].includes(a)) {
