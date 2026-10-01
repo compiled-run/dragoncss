@@ -4132,6 +4132,13 @@ tasks:
     lane: engine
     objective: 'INL1a fragments (found by T133): a nested inline box with its own text next to a child in another face gets one engine fragment spanning both, where Chrome reports two client rects on one line (<div style="width:240px">Mixed <b>bold <em>bold italic</em></b> ends</div>, Inter: engine right edge 164.8 vs Chrome 88.4). Port Blink''s inline box fragmentation for this shape, Chrome-captured, after the INL1a stack; T133 fixtures avoid the shape meanwhile.'
     receipt: null
+  - id: T156
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: north-star
+    objective: 'FORM-a follow-up: a flex-button control kind, so an auto-width flex button in block flow sizes to its content as in Chrome (refused by FORM-a A3 because a flex button lowers to a plain flex box that stretches). Chrome fixtures first; vectors byte-identical; after FORM-a lands.'
+    receipt: null
   - id: T999
     type: judge
     assignee: Judge
