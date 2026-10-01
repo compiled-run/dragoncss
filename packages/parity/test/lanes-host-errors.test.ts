@@ -1,23 +1,25 @@
 // T132: a host lane whose suite process timed out, crashed or wrote a short result records that cause, and a host CLI that crashes
 // or exits against its printed status records its exit, signal and stderr tail, never a bare count.
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { HostRun } from '../src/lanes.ts';
 import { hostEnd, judgeHost, lanesFile, parseNativeOutput, runHostLane } from '../src/lanes.ts';
 import { repoPath } from '../src/paths.ts';
 import type { NativeTarget, TargetConfig } from '../src/targets.ts';
 import { nativeTargets } from '../src/targets.ts';
+import { scratch } from './scratch.ts';
 
 const targets = nativeTargets();
 const android = targets.find((t) => t.target === 'android') as TargetConfig;
 const kotlinOut = readFileSync(join(import.meta.dirname, 'native-output', 'kotlin.txt'), 'utf8');
 const ENGINE_LINE = /^engine corpus 20258\/20258 .*$/m;
 const FINAL = /status pass$/m;
-const tmp = mkdtempSync(join(tmpdir(), 'dragon-t132-'));
-afterAll(() => rmSync(tmp, { recursive: true, force: true }));
+// Temp folders and the fake harness's translate output are removed after each test, pass or fail.
+const scr = scratch();
+// runHostLane looks up the JDK and kotlinc (several JVM starts) before the command runs, which can take long on a loaded host.
+const HOST_TEST_MS = 180_000;
 
 type TranslateCauses = {
   readonly suiteCause: (r: { status: number | null; signal: NodeJS.Signals | null; error?: Error; stderr?: string }, timeoutMs: number) => string | null;
@@ -56,12 +58,13 @@ describe('T132: suite causes reach the host lane verdict', () => {
       t.outputCause(true, 1, 4),
       t.outputCause(true, 5, 4),
     ];
+    expect(causes).toHaveLength(7);
     for (const c of causes) {
       expect(c).not.toBeNull();
       const parsed = parseNativeOutput(`snap 1/4 (${c})\nnative:kotlin: P1 corpus digest 00; extended corpus digest 00; status fail`);
       expect(parsed?.suites[0]?.cause, c ?? '').toBe(c);
     }
-  });
+  }, HOST_TEST_MS);
 
   it('a host CLI that crashes before its final line records its signal and stderr tail; an exit against the printed status is a problem', async () => {
     const t = await translate();
@@ -69,18 +72,20 @@ describe('T132: suite causes reach the host lane verdict', () => {
     if (t.kotlinTool() === null) return expect((await runHostLane(android, { command: ['-e', 'process.exit(9)'] })).state).toBe('blocked (owner tooling)');
     const crashed = await runHostLane(android, { command: ['-e', "console.log('native:kotlin: kotlinc');console.error('Error: boom');process.kill(process.pid,'SIGKILL')"] });
     expect(crashed).toMatchObject({ state: 'fail', reason: 'native:kotlin output could not be parsed; exit -, signal SIGKILL; stderr tail: Error: boom' });
-    const file = join(tmp, 'pass.txt');
+    const file = join(scr.dir(), 'pass.txt');
     writeFileSync(file, kotlinOut);
     const lying = await runHostLane(android, { command: ['-e', `process.stdout.write(require('fs').readFileSync(${JSON.stringify(file)},'utf8'));process.exitCode=3`] });
     expect(lying.state).toBe('fail');
     expect(lying.reason).toContain('native:kotlin printed status pass but ended with exit 3, signal -; stderr (empty)');
-  });
+  }, HOST_TEST_MS);
 
   it('a host lane with a killed Kotlin suite (fake harness) records the cause in its lanes.json reason', async () => {
     const t = await translate();
     // Without a JDK and kotlinc the lane is blocked before any command runs, which is its own tested path (lanes.test.ts).
     if (t.kotlinTool() === null) return expect((await runHostLane(android, { command: ['-e', 'process.exit(9)'] })).state).toBe('blocked (owner tooling)');
-    const dir = tmp;
+    const dir = scr.dir();
+    scr.remove(repoPath('packages/translate/out/results/test-t132-host-lane'));
+    scr.remove(repoPath('packages/translate/out/corpus/t132-fake-host-l'));
     const committed = join(dir, 'kotlin.txt');
     writeFileSync(committed, kotlinOut);
     // The fake host CLI runs the engine suite through the translate runner with a harness that kills itself, then prints the
@@ -106,7 +111,7 @@ process.exitCode = 1;
     const host = f.targets.find((x) => x.target === 'android')?.lanes.find((l) => l.lane === 'layout-vectors-host');
     expect(host?.state).toBe('fail');
     expect(host?.reason).toContain('p1/engine: crash: signal SIGKILL; stderr tail: Killed: 9');
-  });
+  }, HOST_TEST_MS);
 
   // PR #48 finding 4151492056: a cause holding a carriage return (or U+2028/U+2029) is still read whole.
   it('a cause with a carriage return or a Unicode line separator in it is still parsed whole', () => {
