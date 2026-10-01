@@ -225,7 +225,7 @@ export type HostRun = { readonly state: LaneState; readonly reason: string | nul
 const SUITE_LINE = /^(.+?) (\d+)\/(\d+)/;
 // The cause packages/translate native.ts describe() appends to a suite line whose process did not account for every case (a
 // timeout, a crash by signal or exit, a start error, or a missing, short or long result), from its first " (<kind>: " to the end.
-const SUITE_CAUSE = / \(((?:timeout|crash|could not run|no output|short output|long output): .*)\)$/;
+const SUITE_CAUSE = / \(((?:timeout|crash|could not run|no output|short output|long output): [\s\S]*)\)$/;
 const FINAL_LINE = /^native:(swift|kotlin): P1 corpus digest ([0-9a-f]+); extended corpus digest ([0-9a-f]+); status (pass|fail|blocked \(owner tooling\))$/m;
 
 /** Parses the native CLI's output into the P1 and extended suite counts, digests and status; null when it cannot. */
@@ -269,6 +269,13 @@ export function judgeHost(t: TargetConfig, parsed: ReturnType<typeof parseNative
   if (parsed.status !== 'pass') problems.push(`${t.hostCli} status ${parsed.status}`);
   for (const s of suites) if (s.total !== s.declared || s.pass !== s.declared) problems.push(`${s.corpus}/${s.suite} ${s.pass ?? '-'}/${s.total ?? '-'}, declared ${s.declared}`);
   for (const s of parsed.suites) if (s.cause !== null) problems.push(`${s.corpus}/${s.suite}: ${s.cause}`);
+  // A suite printed twice is judged on neither copy: the first could hide a failing second.
+  const seen = new Set<string>();
+  for (const s of parsed.suites) {
+    const k = `${s.corpus}/${s.suite}`;
+    if (seen.has(k)) problems.push(`${k} is printed more than once`);
+    seen.add(k);
+  }
   for (const s of parsed.suites) if (!declared.some((d) => d.corpus === s.corpus && d.suite === s.suite)) problems.push(`${s.corpus}/${s.suite} is not a declared suite`);
   if (parsed.p1 !== want.p1) problems.push(`P1 corpus digest ${parsed.p1}, manifest ${want.p1}`);
   if (parsed.extended !== want.extended) problems.push(`extended corpus digest ${parsed.extended}, manifest ${want.extended}`);
@@ -286,7 +293,7 @@ export type HostEnd = Pick<ExecResult, 'status' | 'signal' | 'error' | 'stderr'>
 
 /** One line naming a host run's end: exit, signal, start error, and the last 600 characters of its stderr. */
 export function hostEnd(e: HostEnd): string {
-  const tail = e.stderr.trim().replace(/\s*\n\s*/g, ' | ');
+  const tail = e.stderr.trim().replace(/\s*[\n\r\u2028\u2029]\s*/g, ' | ');
   return `exit ${e.status ?? '-'}, signal ${e.signal ?? '-'}${e.error === null ? '' : `, ${e.error}`}; stderr ${tail === '' ? '(empty)' : `tail: ${tail.length > 600 ? `...${tail.slice(-600)}` : tail}`}`;
 }
 

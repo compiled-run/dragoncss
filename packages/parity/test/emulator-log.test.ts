@@ -1,5 +1,5 @@
 // T132: an emulator that exits before it attaches names how it ended and the tail of its own log (device-run.ts spawnDetached).
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { closeSync, mkdtempSync, openSync, rmSync, truncateSync, writeFileSync, writeSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -45,5 +45,29 @@ describe('T132: the emulator log is kept and surfaced', () => {
     expect(t.length).toBe(103);
     expect(t.endsWith('a | last')).toBe(true);
     expect(emulatorLog('dragon-320')).toBe(join(tmpdir(), 'dragon-emulator-logs', 'dragon-320.log'));
+  });
+
+  // PR #48 finding 4151492076: only the end of the log is read, so a log of any size (here 3 GiB, past readFileSync's limit) works.
+  it('a log larger than a whole-file read allows gives its tail, read from the end only', () => {
+    const big = join(dir, 'big.log');
+    writeFileSync(big, '');
+    truncateSync(big, 3 * 1024 ** 3);
+    const fd = openSync(big, 'r+');
+    const end = Buffer.from('\nemulator: FATAL: out of memory\n');
+    writeSync(fd, end, 0, end.length, 3 * 1024 ** 3);
+    closeSync(fd);
+    try {
+      expect(logTailOf(big, 40)).toMatch(/ \| emulator: FATAL: out of memory$/);
+    } finally {
+      rmSync(big, { force: true });
+    }
+  });
+
+  it('a tail that starts inside a UTF-8 sequence drops the broken bytes; carriage returns are separators', () => {
+    const utf = join(dir, 'utf.log');
+    writeFileSync(utf, `${'é'.repeat(5000)}\rlast`);
+    const t = logTailOf(utf, 10);
+    expect(t).not.toContain('\uFFFD');
+    expect(t).toBe('...ééé | last');
   });
 });

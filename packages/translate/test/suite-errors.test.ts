@@ -2,7 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Corpus } from '../src/corpus.ts';
 import type { Exec, RunResult } from '../src/native.ts';
-import { describe as describeRun, execSuite, outputCause, runSuites, stderrTail, suiteCause } from '../src/native.ts';
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { allPass, buildKotlin, buildSwift, describe as describeRun, OUT, execSuite, outputCause, runSuites, stderrTail, suiteCause } from '../src/native.ts';
 
 const lines = ['["a"]', '["b"]', '["c"]', '["d"]'];
 const corpus: Corpus = {
@@ -77,5 +79,37 @@ describe('T132: a harness that does not account for every case is a named error'
     const s = run(fake('', 1), 'describe');
     const r: RunResult = { target: 'kotlin', status: 'fail', toolchain: 't', reason: null, buildSeconds: 0, runSeconds: 0, suites: [s] };
     expect(describeRun(r, corpus)).toMatch(/^engine corpus 1\/4 .*\(short output: exit 0 but 1 result lines for 4 cases\)$/m);
+  });
+
+  // PR #48 finding 4151492050: a suite whose every expected line matched still fails when its process did not account for its cases.
+  it('a suite with a cause never passes, even when its count is whole (extra lines, or an empty suite with no output)', () => {
+    const long = run(fake(`require('fs').appendFileSync(process.argv[2],'["e"]\\n')`), 'allpass-long');
+    expect([long.pass, long.total]).toEqual([4, 4]);
+    expect(allPass([long])).toBe(false);
+    const empty: Corpus = { ...corpus, digest: 't132-fake-harness-empty-000000000', suites: [{ name: 'engine', mode: 'engine', lines: [], expected: [] }] };
+    const [none] = runSuites(empty, () => execSuite(process.execPath, ['-e', '']), 'test-t132-allpass-empty');
+    expect(none).toMatchObject({ pass: 0, total: 0, cause: 'no output: exit 0 but no result file was written (0 cases)' });
+    expect(allPass(none === undefined ? [] : [none])).toBe(false);
+    expect(allPass([run(fake(''), 'allpass-ok')])).toBe(true);
+  });
+
+  it('untilFailure stops after a suite with a cause, as after one with failing cases', () => {
+    const two: Corpus = { ...corpus, digest: 't132-fake-harness-two-00000000000', suites: [{ name: 'vectors', mode: 'engine', lines, expected: lines }, { name: 'engine', mode: 'engine', lines, expected: lines }] };
+    const extra = fake(`require('fs').appendFileSync(process.argv[2],'["e"]\\n')`);
+    expect(runSuites(two, extra, 'test-t132-until', true).map((s) => s.name)).toEqual(['vectors']);
+  });
+
+  it('every line terminator in stderr (\\r, U+2028, U+2029) becomes a separator, so the cause stays on one report line', () => {
+    expect(stderrTail('a\rb\r\nc\u2028d\u2029e')).toBe('a | b | c | d | e');
+    expect(suiteCause({ status: 1, signal: null, stderr: 'x\ry' }, 1000)).toBe('crash: exit status 1; stderr tail: x | y');
+  });
+
+  it('a failed build removes its work directory and throws the compiler output', () => {
+    const files = new Map([['harness/Main.kt', 'fun main() {}'], ['Sources/DragonLayout/A.swift', 'let a = 1']]);
+    const leftovers = (lang: string): string[] => (existsSync(join(OUT, lang)) ? readdirSync(join(OUT, lang)).filter((d) => d.endsWith(`.build-${process.pid}`)) : []);
+    expect(() => buildKotlin({ kotlinc: process.execPath, javaHome: '/nonexistent', version: 't132-failed-build' }, files)).toThrow(/^kotlinc failed:/);
+    expect(leftovers('kotlin')).toEqual([]);
+    expect(() => buildSwift({ swiftc: process.execPath, version: 't132-failed-build' }, files)).toThrow(/^swiftc -typecheck of the engine module failed:/);
+    expect(leftovers('swift')).toEqual([]);
   });
 });

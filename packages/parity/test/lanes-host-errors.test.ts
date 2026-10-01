@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { HostRun } from '../src/lanes.ts';
-import { judgeHost, lanesFile, parseNativeOutput, runHostLane } from '../src/lanes.ts';
+import { hostEnd, judgeHost, lanesFile, parseNativeOutput, runHostLane } from '../src/lanes.ts';
 import { repoPath } from '../src/paths.ts';
 import type { NativeTarget, TargetConfig } from '../src/targets.ts';
 import { nativeTargets } from '../src/targets.ts';
@@ -104,5 +104,22 @@ process.exitCode = 1;
     const host = f.targets.find((x) => x.target === 'android')?.lanes.find((l) => l.lane === 'layout-vectors-host');
     expect(host?.state).toBe('fail');
     expect(host?.reason).toContain('p1/engine: crash: signal SIGKILL; stderr tail: Killed: 9');
+  });
+
+  // PR #48 finding 4151492056: a cause holding a carriage return (or U+2028/U+2029) is still read whole.
+  it('a cause with a carriage return or a Unicode line separator in it is still parsed whole', () => {
+    for (const c of ['crash: exit status 1; stderr tail: a\rb', 'timeout: killed after 180 s; stderr tail: x\u2028y\u2029z']) {
+      const parsed = parseNativeOutput(`snap 1/4 (${c})\nnative:kotlin: P1 corpus digest 00; extended corpus digest 00; status fail`);
+      expect(parsed?.suites[0]?.cause, JSON.stringify(c)).toBe(c);
+    }
+    expect(hostEnd({ status: 1, signal: null, error: null, stderr: 'a\rb\u2028c' })).toBe('exit 1, signal -; stderr tail: a | b | c');
+  });
+
+  it('a suite printed twice fails the lane, so a failing second copy is not hidden by a passing first', () => {
+    const out = kotlinOut.replace(ENGINE_LINE, (l) => `${l}\nengine corpus 0/20258 (crash: signal SIGKILL)`);
+    const parsed = parseNativeOutput(out);
+    expect(parsed?.suites.filter((s) => s.suite === 'engine')).toHaveLength(2);
+    expect(judgeHost(android, parsed).reason).toContain('p1/engine is printed more than once');
+    expect(judgeHost(android, parseNativeOutput(kotlinOut)).reason ?? '').not.toContain('printed more than once');
   });
 });

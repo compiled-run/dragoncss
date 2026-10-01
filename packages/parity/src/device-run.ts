@@ -3,7 +3,7 @@
 // killed), batch launches of the host app with the run file, pulled dumps, the per-device record (model, OS and build, the scale
 // from the device profile and from the app, the window and stage in device px, the text scale), the root-fits-window check, and
 // the OS screenshots of the capture-trust probe. Devices boot only under the device lease, within one in-memory budget.
-import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, rmSync, writeFileSync } from 'node:fs';
 import { freemem, homedir, tmpdir, totalmem } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { SupportPlant } from 'dragon';
@@ -459,10 +459,25 @@ export function spawnDetached(cmd: string, args: readonly string[], logPath: str
   };
 }
 
-/** The last 1500 characters of a log file on one line, or why it cannot be read. */
+/**
+ * The last 1500 characters of a log file on one line, or why it cannot be read. Only the file's last 4 bytes per character (and
+ * a margin for line terminators) are read, so a log of any size costs the same.
+ */
 export function logTailOf(path: string, chars = 1500): string {
   if (!existsSync(path)) return `(no log at ${path})`;
-  const t = readFileSync(path, 'utf8').trim().replace(/\s*\n\s*/g, ' | ');
+  const fd = openSync(path, 'r');
+  let text: string;
+  try {
+    const size = fstatSync(fd).size;
+    const want = Math.min(size, chars * 4 + 1024);
+    const buf = Buffer.alloc(want);
+    const got = readSync(fd, buf, 0, want, size - want);
+    // A read that starts inside a UTF-8 sequence decodes its first bytes to U+FFFD; they are dropped.
+    text = buf.subarray(0, got).toString('utf8').replace(want < size ? /^\uFFFD+/ : /^$/, '');
+  } finally {
+    closeSync(fd);
+  }
+  const t = text.trim().replace(/\s*[\n\r\u2028\u2029]\s*/g, ' | ');
   if (t === '') return `(${path} is empty)`;
   return t.length > chars ? `...${t.slice(-chars)}` : t;
 }
@@ -540,7 +555,10 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
         if (!p.alive()) throw new Error(`the emulator process ended (${p.exited() ?? 'unknown'}) before ${serial} attached`);
         return serialsRunning(tools).includes(serial);
       });
-      await poll(`${serial} sys.boot_completed`, 420_000, () => adb(h, ['shell', 'getprop', 'sys.boot_completed'], 10_000, 'adb does not answer while the emulator boots; the poll asks again until its timeout').stdout.trim() === '1');
+      await poll(`${serial} sys.boot_completed`, 420_000, () => {
+        if (!p.alive()) throw new Error(`the emulator process ended (${p.exited() ?? 'unknown'}) before ${serial} finished booting`);
+        return adb(h, ['shell', 'getprop', 'sys.boot_completed'], 10_000, 'adb does not answer while the emulator boots; the poll asks again until its timeout').stdout.trim() === '1';
+      });
       break;
     } catch (e) {
       // Only the emulator this attempt spawned is killed: if it exited (say, the port was taken), the serial is someone else's.

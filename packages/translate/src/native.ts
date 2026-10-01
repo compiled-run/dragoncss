@@ -95,6 +95,12 @@ function publish(work: string, dir: string): void {
   }
 }
 
+/** A failed build removes its work directory, then throws the compiler's output. */
+function failBuild(work: string, message: string): never {
+  rmSync(work, { recursive: true, force: true });
+  throw new Error(message);
+}
+
 /** Compiles the Swift harness; returns the binary. Cached on sources, flags and compiler version. */
 export function buildSwift(tool: SwiftTool, files: Files): { binary: string; seconds: number; cached: boolean } {
   const key = filesKey(files, [...SWIFT_FLAGS, tool.version]);
@@ -109,9 +115,9 @@ export function buildSwift(tool: SwiftTool, files: Files): { binary: string; sec
   // The engine module must compile on its own (no Foundation, nothing from the harness), as it does in the SwiftPM package.
   const engine = srcs.filter((f) => f.includes('/Sources/DragonLayout/'));
   const alone = run(tool.swiftc, ['-typecheck', '-parse-as-library', '-module-name', 'DragonLayout', ...engine]);
-  if (!alone.ok) throw new Error(`swiftc -typecheck of the engine module failed:\n${alone.out.slice(0, 4000)}`);
+  if (!alone.ok) failBuild(work, `swiftc -typecheck of the engine module failed:\n${alone.out.slice(0, 4000)}`);
   const r = run(tool.swiftc, [...SWIFT_FLAGS, ...srcs, '-o', join(work, 'harness')]);
-  if (!r.ok) throw new Error(`swiftc failed:\n${r.out.slice(0, 4000)}`);
+  if (!r.ok) failBuild(work, `swiftc failed:\n${r.out.slice(0, 4000)}`);
   publish(work, dir);
   return { binary, seconds: (Date.now() - t) / 1000, cached: false };
 }
@@ -129,7 +135,7 @@ export function buildKotlin(tool: KotlinTool, files: Files): { jar: string; seco
   const t = Date.now();
   const env = { ...process.env, JAVA_HOME: tool.javaHome, PATH: `${join(tool.javaHome, 'bin')}:${process.env['PATH'] ?? ''}` };
   const r = run(tool.kotlinc, [...KOTLIN_FLAGS, ...srcs, '-d', join(work, 'harness.jar')], env);
-  if (!r.ok) throw new Error(`kotlinc failed:\n${r.out.slice(0, 4000)}`);
+  if (!r.ok) failBuild(work, `kotlinc failed:\n${r.out.slice(0, 4000)}`);
   publish(work, dir);
   return { jar, seconds: (Date.now() - t) / 1000, cached: false };
 }
@@ -164,7 +170,7 @@ export function runSuites(c: Corpus, exec: Exec, tag: string, untilFailure = fal
   for (const s of order) {
     out.push(runSuite(c, s, exec, inputs, dir));
     const last = out[out.length - 1] as SuiteResult;
-    if (untilFailure && last.pass < last.total) break;
+    if (untilFailure && (last.pass < last.total || last.cause !== null)) break;
   }
   return out;
 }
@@ -205,7 +211,8 @@ export function execSuite(cmd: string, args: readonly string[], timeoutMs: numbe
 
 /** The last 600 characters of a process's stderr on one line (the cause is one report line), or '' when it printed nothing. */
 export function stderrTail(stderr: string | null | undefined): string {
-  const t = (stderr ?? '').trim().replace(/\s*\n\s*/g, ' | ');
+  // Every line terminator, \r and U+2028/U+2029 too, so the cause stays on its suite line for the lane parser.
+  const t = (stderr ?? '').trim().replace(/\s*[\n\r\u2028\u2029]\s*/g, ' | ');
   return t.length > 600 ? `...${t.slice(-600)}` : t;
 }
 
@@ -231,8 +238,9 @@ export function kotlinExec(tool: KotlinTool, jar: string): Exec {
   return (mode, input, output) => execSuite(join(tool.javaHome, 'bin/java'), ['-Xss64m', KOTLIN_HEAP, '-jar', jar, mode, input, output]);
 }
 
+/** Every case matched and every process accounted for its cases: a suite with a cause (say, extra lines) does not pass. */
 export function allPass(suites: readonly SuiteResult[]): boolean {
-  return suites.every((s) => s.pass === s.total);
+  return suites.every((s) => s.pass === s.total && s.cause === null);
 }
 
 export function failures(suites: readonly SuiteResult[]): number {
