@@ -281,3 +281,27 @@ export const patchIdOver = (git: Git, commit: string, baseRef: string, scope: Di
     return { error: `${commit}: ${errorText(error)}` };
   }
 };
+
+// Every path that differs between two commits, with the same pinned diff options patchIdOver uses.
+export const rawDiff = (git: Git, from: string, to: string): RawEntry[] => parseRawDiff(text(git([...RAW, from, to])));
+
+// A merge-train regen commit: exactly one parent, and every path it changes is one `ignore` leaves out of review, never
+// .macroscope/ignore.md itself. Binary files count too, since patchIdOver leaves them out. Returns one line per problem.
+export const regenOnlyProblems = (git: Git, commit: string, ignore: Ignore): string[] => {
+  try {
+    const [self, ...parents] = text(git(['rev-list', '--parents', '-n', '1', commit])).trim().split(' ');
+    checkSha(self, `rev-list of ${commit}`);
+    if (parents.length !== 1) return [`${commit} has ${parents.length} parents; a regen commit has exactly one`];
+    const problems: string[] = [];
+    const own = ignoreAt(git, commit);
+    if ('error' in own) problems.push(own.error);
+    else if (own.blob !== ignore.blob) problems.push(`${IGNORE_FILE} at ${commit} differs from the one given (${own.blob} vs ${ignore.blob})`);
+    for (const e of rawDiff(git, checkSha(parents[0], `parent of ${commit}`), commit)) {
+      if (e.path === IGNORE_FILE) problems.push(`${e.path}: a regen commit may not edit ${IGNORE_FILE}`);
+      else if (!ignore.file.matches(e.path)) problems.push(`${e.path}: not covered by ${IGNORE_FILE}, so a regen commit may not change it`);
+    }
+    return problems;
+  } catch (error) {
+    return [`${commit}: ${errorText(error)}`];
+  }
+};

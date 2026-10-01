@@ -9,6 +9,7 @@ import type { FontSpec } from '@dragon/layout';
 import type { NativeBackend, NativeProgram } from '../lower/native-program.ts';
 import type { PaintPlantName } from './paint/registry.ts';
 import { nativePaints, PAINT_STAGES, paintPlants, soleHook, stagePainters } from './paint/registry.ts';
+import { runtimeSupportFiles } from './runtime/index.ts';
 
 export const NATIVE_SUPPORT_VERSION = 'dragon.native-support/1';
 
@@ -1471,9 +1472,14 @@ export function emitNativeSupport(backend: NativeBackend, plant: SupportPlant | 
   const def = PLANT_REPLACEMENTS.find((p) => p.name === plant);
   if (def === undefined) throw new Error(`no support plant ${plant}`);
   const [from, to] = def.replace[backend];
-  const planted = files.map((f) => (f.text.includes(from) ? { ...f, text: f.text.replace(from, to) } : f));
-  if (planted.every((f, i) => f.text === (files[i] as GeneratedFile).text)) throw new Error(`the ${plant} plant found no ${plant.startsWith('glyph-offset') ? 'glyph offset constant' : 'replacement'} in the ${backend} support`);
-  return planted;
+  return applyPlant(files, from, to, `the ${plant} plant in the ${backend} support`);
+}
+
+/** Replaces a plant's one source text; throws unless it occurs exactly once across the files, so a plant changes one place. */
+export function applyPlant(files: readonly GeneratedFile[], from: string, to: string, what: string): GeneratedFile[] {
+  const count = files.reduce((n, f) => n + f.text.split(from).length - 1, 0);
+  if (count !== 1) throw new Error(`${what}: ${JSON.stringify(from)} occurs ${count} times, not once`);
+  return files.map((f) => (f.text.includes(from) ? { ...f, text: f.text.replace(from, to) } : f));
 }
 
 /** The members every paint module adds to the DragonBoxView class body, in registry order. */
@@ -1568,6 +1574,7 @@ function supportFiles(backend: NativeBackend): GeneratedFile[] {
       { path: 'Support/DragonTree.swift', text: header('//', 'the native tree, engine application and dump readback') + SWIFT_TREE },
       { path: 'Support/DragonPaintStages.swift', text: header('//', 'the paint registration points') + paintStagesSource(backend) },
       ...paint.map((m) => ({ path: `Support/Paint/${m.stem}.swift`, text: header('//', `the ${m.name} paint module`) + m.text })),
+      ...runtimeSupportFiles(backend, (what) => header('//', what)),
     ];
   }
   return [
@@ -1579,6 +1586,7 @@ function supportFiles(backend: NativeBackend): GeneratedFile[] {
     { path: 'kotlin/dev/dragon/views/DragonPaintStages.kt', text: header('//', 'the paint registration points') + paintStagesSource(backend) },
     // Paint module files sit under views/paint and keep package dev.dragon.views, so the case code needs no new import.
     ...paint.map((m) => ({ path: `kotlin/dev/dragon/views/paint/${m.stem}.kt`, text: header('//', `the ${m.name} paint module`) + m.text })),
+    ...runtimeSupportFiles(backend, (what) => header('//', what)),
   ];
 }
 
