@@ -1170,6 +1170,8 @@ function rtValue(v: JsonValue, path: string): AnimatedValue {
 // fdlibm's __kernel_sin and __kernel_cos (k_sin.c, k_cos.c; V8 base/ieee754.cc) with a zero tail (x * y dropped), which are sin and cos for
 // |x| <= pi/4. gfx::SinCosDegrees reduces every angle below 9e7 degrees to [0, 45] degrees first, so the rt suite needs no other
 // argument; outside that range the harness fails the case rather than guess. The subset has no platform trigonometry (RT-4).
+// fdlibm's notice: Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved. Developed at SunSoft, a Sun Microsystems, Inc.
+// business. Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved.
 const RT_S1 = -1.66666666666666324348e-1;
 const RT_S2 = 8.33333333332248946124e-3;
 const RT_S3 = -1.98412698298579493134e-4;

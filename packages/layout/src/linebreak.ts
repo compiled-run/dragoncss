@@ -336,7 +336,8 @@ export function uax14BreakAllowed(text: readonly number[], cjIsIdeographic: bool
 // Blink's fast pair table (U+0021..U+00FF)
 
 /**
- * LineBreakData::FillAscii, in order: [firstMin, firstMax, secondMin, secondMax, breaks]. A later entry overrides an earlier one,
+ * LineBreakData::FillAscii (third_party/blink/renderer/platform/text/character_property_data_generator.cc 433-470 at
+ * 145.0.7632.6, BSD), in order: [firstMin, firstMax, secondMin, secondMax, breaks]. A later entry overrides an earlier one,
  * so the lookup scans from the end.
  */
 const ASCII_PAIR_OPS: readonly (readonly number[])[] = [

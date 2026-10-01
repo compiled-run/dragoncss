@@ -84,6 +84,8 @@ docs/research/inline-spike/probe/**
 docs/research/skia-aa-oracle/**
 docs/research/skia-oracle/**
 docs/research/dtxt/widths.json
+# Written by scripts/gen-third-party-notices.ts (pnpm notices:gen) from docs/ports.json; chrome-ports.test.ts checks it is current
+THIRD_PARTY_NOTICES.md
 # General shapes, so a new capture directory is skipped without an edit here
 **/captures/**
 **/reftest-captures/**
