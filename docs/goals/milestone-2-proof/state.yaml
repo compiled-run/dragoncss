@@ -2649,6 +2649,7 @@ tasks:
       - 'T140 (2026-09-30): every visible north-star text node uses Lato 400/700, which native refuses (Ahem only) until TXT1a. This is on the checkpoint-3 critical path.'
       - 'T083J: absorb TEXT_LATIN_FIXTURES into FIXTURES (device-lane counts rise by the pinned registry count); add the Ahem fractional-size fixtures; switch native-host, lanes and line-breaks to the shaped
         measurer; add the text-latin replay to the declared lanes; stop if the registry is non-empty at the end.'
+      - 'T084J (2026-10-01), notes/T084-txt1a-2.md: phases C, F and R. Phase R waits for p6a-promote, seld-lanes and seld-r1a in BASE; the device step waits for the INL1a encoders fix. No Android-only code.'
   - id: T085
     type: scout
     assignee: Scout
