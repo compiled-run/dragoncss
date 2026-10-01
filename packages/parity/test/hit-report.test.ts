@@ -2,9 +2,11 @@
 // in packages/parity/expected-hit for every layout case at every point of its derived grid, must equal the TypeScript hit test
 // (packages/layout/src/rt-hit.ts) over the engine's boxes at every point; each hit plant must fail it; a tap activates the
 // nearest ancestor of Chrome's element that has an activation handler.
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
-import { capturedIds, caseHitTable, committedHits, compareHits, gridSha256, hitCases, hitGrid, tapTarget } from '../src/hit-capture.ts';
+import { capturedIds, caseHitTable, committedHits, compareHits, gridSha256, HIT_FACTS_PATH, hitCases, hitFactsJson, hitGrid, tapTarget } from '../src/hit-capture.ts';
+import { repoPath } from '../src/paths.ts';
 
 const cases = hitCases();
 
@@ -17,6 +19,11 @@ describe('the host hit lane', () => {
       const grid = hitGrid(caseHitTable(n), n.case.environment.viewport);
       expect([n.case.id, c.points, c.gridSha256]).toEqual([n.case.id, grid.length, gridSha256(grid)]);
     }
+  });
+
+  it('pairs the layout vectors with the hit facts every case compiles to now', () => {
+    // packages/layout/rt-vectors/hit/facts.json feeds the P1 hit suite on the devices; a stale file would test old facts there.
+    expect(readFileSync(repoPath(HIT_FACTS_PATH), 'utf8'), 'run pnpm run parity:hit-capture -- --vectors').toBe(hitFactsJson(cases));
   });
 
   it('names Chrome\'s element at every point of every case', () => {

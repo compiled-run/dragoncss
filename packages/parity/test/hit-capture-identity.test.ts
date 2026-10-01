@@ -7,7 +7,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { IdentityManifest } from '../src/hit-capture.ts';
-import { IDENTITY_MANIFEST, IDENTITY_NEW, IDENTITY_ROOTS, withoutPointerEvents } from '../src/hit-capture.ts';
+import { IDENTITY_MANIFEST, IDENTITY_NEW, IDENTITY_ROOTS, parseHitCaptureArgs, withoutPointerEvents } from '../src/hit-capture.ts';
 import { repoPath } from '../src/paths.ts';
 
 const manifest = JSON.parse(readFileSync(repoPath(IDENTITY_MANIFEST), 'utf8')) as IdentityManifest;
@@ -42,10 +42,21 @@ describe('pointer-events changes the captures and emitted files only by its own 
   });
 
   it('adds the key to every captured element and emitted rule', () => {
-    const capture = readFileSync(repoPath('packages/parity/expected/darwin-arm64/attr-drop-invalid.web.json'), 'utf8');
-    expect(capture.match(/"pointer-events": "auto"/g)?.length).toBe(capture.match(/"computed": \{/g)?.length);
-    const css = readFileSync(repoPath('packages/parity/emitted/attr-drop-invalid.css'), 'utf8');
-    expect(css.match(/pointer-events: auto;/g)?.length).toBe(css.match(/\{\n/g)?.length);
+    // Every file under the roots, not one sample: the identity hash alone passes a file that never gained the key. Rules inside
+    // @media blocks carry only the declarations their query changes, so a CSS file is counted up to its first @media.
+    const short: string[] = [];
+    let files = 0;
+    for (const p of IDENTITY_ROOTS.flatMap(walk)) {
+      if (!p.endsWith('.json') && !p.endsWith('.css')) continue;
+      files++;
+      const text = readFileSync(repoPath(p), 'utf8');
+      const own = p.endsWith('.json') ? text : (text.split(/^@media /m)[0] as string);
+      const keys = p.endsWith('.json') ? own.match(/"pointer-events": "(auto|none)"/g) : own.match(/^ {2}pointer-events: (auto|none);\n/gm);
+      const units = p.endsWith('.json') ? own.match(/"computed": \{/g) : own.match(/\{\n/g);
+      if (units === null || keys?.length !== units.length) short.push(`${p}: ${keys?.length ?? 0} pointer-events of ${units?.length ?? 0}`);
+    }
+    expect(short).toEqual([]);
+    expect(files).toBeGreaterThan(Object.keys(manifest.files).length);
   });
 
   it('holds only SELD-R1b fixtures\' files beyond the base', () => {
@@ -59,5 +70,18 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(withoutPointerEvents('a.css', '/* compilation ' + 'a'.repeat(64) + ' */\n.d {\n  pointer-events: none;\n  color: red;\n}\n')).toBe('/* compilation <digest> */\n.d {\n  color: red;\n}\n');
     expect(withoutPointerEvents('a.css', '.d {\n  pointer-events: none;\n  color: blue;\n}\n')).not.toBe(withoutPointerEvents('a.css', '.d {\n  color: red;\n}\n'));
     expect(() => withoutPointerEvents('a.png', '')).toThrow(/only .json captures and .css outputs/);
+  });
+
+  it('parity:hit-capture takes --vectors, --identity-base <rev> or nothing, and refuses anything else', () => {
+    expect(parseHitCaptureArgs([])).toEqual({ mode: 'capture' });
+    expect(parseHitCaptureArgs(['--'])).toEqual({ mode: 'capture' });
+    expect(parseHitCaptureArgs(['--vectors'])).toEqual({ mode: 'vectors' });
+    expect(parseHitCaptureArgs(['--', '--identity-base', 'abc123'])).toEqual({ mode: 'identity-base', rev: 'abc123' });
+    expect(() => parseHitCaptureArgs(['--identity-base'])).toThrow(/needs a revision/);
+    expect(() => parseHitCaptureArgs(['--identity-base', '--vectors'])).toThrow(/needs a revision/);
+    // A typo would otherwise rewrite every capture from Chrome; two modes would otherwise run only the first.
+    expect(() => parseHitCaptureArgs(['--vector'])).toThrow(/unknown argument "--vector"/);
+    expect(() => parseHitCaptureArgs(['--vectors', '--identity-base', 'abc123'])).toThrow(/one of/);
+    expect(() => parseHitCaptureArgs(['--vectors', '--vectors'])).toThrow(/one of/);
   });
 });

@@ -121,6 +121,43 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
 /** Every layout case the hit lane covers: all of them. */
 export const hitCases = (): readonly NativeCase[] => nativeCases();
 
+/** The hit facts of every layout case, which the P1 hit suite pairs with the layout vectors (parity:hit-capture -- --vectors). */
+export const HIT_FACTS_PATH = 'packages/layout/rt-vectors/hit/facts.json';
+
+/** The text of HIT_FACTS_PATH for these cases: each case's facts as [id, pointerEvents, inherited, activation], sorted by id. */
+export function hitFactsJson(cases: readonly NativeCase[]): string {
+  const rows = cases.map((n) => {
+    const facts = hitFacts(n.compiled, n.case.assignment);
+    if (facts === null) throw new Error(`${n.case.id}: no hit facts`);
+    const v = [...facts].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([id, f]) => [id, f.pointerEvents, f.inherited, f.activation]);
+    return `    ${JSON.stringify(n.case.id)}: ${JSON.stringify(v)}`;
+  });
+  return `{\n  "cases": {\n${rows.join(',\n')}\n  }\n}\n`;
+}
+
+export type HitCaptureArgs = { readonly mode: 'capture' } | { readonly mode: 'vectors' } | { readonly mode: 'identity-base'; readonly rev: string };
+
+/** parity:hit-capture's arguments: nothing (the Chrome captures), --vectors, or --identity-base <rev>; anything else is refused. */
+export function parseHitCaptureArgs(argv: readonly string[]): HitCaptureArgs {
+  let out: HitCaptureArgs = { mode: 'capture' };
+  const usage = 'usage: parity:hit-capture [-- --vectors | --identity-base <rev>]';
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--') continue;
+    if (a !== '--vectors' && a !== '--identity-base') throw new Error(`unknown argument ${JSON.stringify(a)}; ${usage}`);
+    if (out.mode !== 'capture') throw new Error(`give one of --vectors and --identity-base, once; ${usage}`);
+    if (a === '--vectors') {
+      out = { mode: 'vectors' };
+      continue;
+    }
+    const rev = argv[i + 1];
+    if (rev === undefined || rev.startsWith('--')) throw new Error('--identity-base needs a revision');
+    out = { mode: 'identity-base', rev };
+    i++;
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- the pointer-events identity (PM capture ruling, T063J)
 
 /** The committed outputs that pointer-events may change only by its own key: the Chrome captures and the emitted CSS. */

@@ -50,8 +50,14 @@ describe('the state programs of every tree fixture with states', () => {
     expect(() => runScript(sp, [{ kind: 'tap', x: 1, y: 1 }])).toThrow(/needs a tap handler/);
     // A tap dispatches through the hit table of the live program (the host half of RT-9 tap dispatch).
     const n = g.cases[sp.initial] as NativeCase;
-    const handler = (p: Parameters<NonNullable<Parameters<typeof runScript>[3]>>[0], _a: number, x: number, y: number): string | null => tapTarget(programHitTable(p, hitFacts(n.compiled, n.case.assignment) ?? new Map(), n.case.environment.viewport, 1), x, y);
-    expect(runScript(sp, [{ kind: 'tap', x: 64, y: 64 }, { kind: 'dump' }], NO_FAULTS, handler)[0]?.taps).toEqual([null]);
+    const facts = hitFacts(n.compiled, n.case.assignment);
+    if (facts === null) throw new Error(`${n.case.id}: no hit facts`);
+    const handler = (p: Parameters<NonNullable<Parameters<typeof runScript>[3]>>[0], _a: number, x: number, y: number): string | null => tapTarget(programHitTable(p, facts, n.case.environment.viewport, 1), x, y);
+    // Every dump, not only the first: a tap is recorded with the next dump and adds no dump of its own.
+    expect(runScript(sp, [{ kind: 'tap', x: 64, y: 64 }, { kind: 'dump' }], NO_FAULTS, handler).map((d) => d.taps)).toEqual([[null]]);
+    expect(runScript(sp, [{ kind: 'tap', x: 64, y: 64 }, { kind: 'tap', x: 64, y: 64 }, { kind: 'dump' }, { kind: 'dump' }], NO_FAULTS, handler).map((d) => d.taps)).toEqual([[null, null], []]);
+    // A tap after the last dump would be recorded nowhere; the run refuses it.
+    expect(() => runScript(sp, [{ kind: 'dump' }, { kind: 'tap', x: 64, y: 64 }], NO_FAULTS, handler)).toThrow(/after the last dump/);
   });
 });
 

@@ -113,12 +113,14 @@ export function runScript(sp: StateProgram, steps: readonly ScriptStep[], faults
         // RT-9 tap dispatch on the live program: the activation target the hit test reaches, recorded with the next dump.
         if (tap === null) throw new Error(`tap(${s.x}, ${s.y}) needs a tap handler (the hit table of the live program)`);
         taps.push(tap(rt.program(), rt.assignment, s.x, s.y));
+        break;
       case 'dump':
         out.push({ assignment: rt.assignment, program: rt.program(), taps });
         taps = [];
         break;
     }
   }
+  if (taps.length > 0) throw new Error(`${taps.length} tap(s) after the last dump would be recorded nowhere`);
   return out;
 }
 

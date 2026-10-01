@@ -553,6 +553,15 @@ export function hitCases(): string[] {
   return out;
 }
 
+/** The hit suite's expected results; a line the TypeScript reference threw on or refused fails the build, not the natives. */
+export function hitExpected(lines: readonly string[]): string[] {
+  return lines.map((line, i) => {
+    const r = runLibraryCase(line);
+    if (!r.startsWith('["ok",')) throw new Error(`hit case ${i}: the TypeScript reference answered ${r.slice(0, 200)}, not a result`);
+    return r;
+  });
+}
+
 export function buildCorpus(): Corpus {
   const vectors = vectorCases();
   const vLines = vectors.map((v) => v.line);
@@ -569,7 +578,7 @@ export function buildCorpus(): Corpus {
     // ANIM-a2: the rt vectors (timing, easing, hold and interpolation), after the P1 suites.
     { name: 'rt', mode: 'library', lines: rt, expected: rt.map(runLibraryCase) },
     // SELD-R1b: the hit table, grid and answers of every layout vector, after rt.
-    { name: 'hit', mode: 'library', lines: hit, expected: hit.map(runLibraryCase) },
+    { name: 'hit', mode: 'library', lines: hit, expected: hitExpected(hit) },
   ];
   const d = digestsOf(suites);
   return { suites, vectors, engineSplit: split(suites[2]?.expected ?? []), digest: d.digest, digests: d.digests };
