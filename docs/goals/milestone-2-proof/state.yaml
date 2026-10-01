@@ -3460,6 +3460,10 @@ tasks:
     lane: paint
     objective: 'PNT1 effects half: opacity, z-index and stacking, outline, color-scheme (notes/T046-paint-spec.md §5.2); pnt1-effects holds no work of its own. After V1 and EMS land.'
     receipt: null
+    constraints:
+      - 'Host-done 2026-10-01, pending its device run: 4 stacked branches on pnt1-shadow-v1b: pnt1-effects-v1b b9bb7aea4, pnt1-stacking-v1b 052c9d484, pnt1-outline-v1b c4386f471, pnt1-foreground-v1b b440ea037.
+        Covers color-scheme, outline (solid and double native), opacity, z-index and Appendix E stacking with background-then-foreground phases. The T138 paint-order acceptance cases match Chrome on the
+        host at every DPR. Known native gaps are recorded. tw web 2334->2394; north star web 187, ios 184.'
   - id: T116
     type: worker
     assignee: Worker
