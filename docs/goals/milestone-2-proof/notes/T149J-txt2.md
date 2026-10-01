@@ -211,3 +211,15 @@ TXT2-e touches no layout file. It goes in any slot after TXT2-a, and may run bes
 - With the flags off, every existing output is byte-identical, and the HarfBuzz gate still passes 620/620.
 - A shaped-path plant must be caught by the Lato fixtures.
 - Stop if the hunk grows past about 80 lines, or touches text.ts or layout.ts.
+
+## PM amendment T149J-2 (2026-10-01): TextLeaf migration edits
+
+The TextLeaf migration (overflowWrap, wordBreak) needs three small edits outside allowed_files. All three are allowed:
+
+1. **environment.ts resolveText:** one line copies the two new fields.
+2. **compile.test.ts:175 and text.test.ts:99:** these derived pins gain the two keys at 'normal'.
+3. **layout/test/helpers.ts text():** its default literal gains the same two keys at 'normal'.
+
+**Migration checker:** it now also covers the environment-pass output, with a plant that drops the fields.
+
+**Progress:** GraphemeBreakTest passes 1093/1093, and Chrome Intl.Segmenter agrees 1109/1109.
