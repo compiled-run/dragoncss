@@ -200,3 +200,14 @@ TXT2-e touches no layout file. It goes in any slot after TXT2-a, and may run bes
 - A plant is not caught, or a tolerance, gate, case, DPR or direction would be loosened.
 - The diff, excluding generated outputs, goes over about 150 KB. Split into txt2a-engine and txt2a (compiler and fixtures), as INL2a did.
 - Verification fails twice (test timeouts under load that pass on rerun excepted).
+
+## PM amendment T149J-1 (2026-10-01): a shaping.ts retry hunk
+
+**What is allowed.** About 40 lines that port Blink HandleOverflow and RetryAfterOverflow (line_breaker.cc:4182-4186, :1635) into shaping.ts breakItemLines. This is the anywhere-if-overflow path for real-font text, such as the north-star h2 in Lato.
+
+**Why it is needed.** inline.ts cannot emulate the path. Grapheme opportunities added up front would let the previous line take part of the overflowing word, which Blink does not do.
+
+**Conditions.**
+- With the flags off, every existing output is byte-identical, and the HarfBuzz gate still passes 620/620.
+- A shaped-path plant must be caught by the Lato fixtures.
+- Stop if the hunk grows past about 80 lines, or touches text.ts or layout.ts.
