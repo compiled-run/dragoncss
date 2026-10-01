@@ -223,3 +223,11 @@ The TextLeaf migration (overflowWrap, wordBreak) needs three small edits outside
 **Migration checker:** it now also covers the environment-pass output, with a plant that drops the fields.
 
 **Progress:** GraphemeBreakTest passes 1093/1093, and Chrome Intl.Segmenter agrees 1109/1109.
+
+## PM amendment T149J-3 (2026-10-01): regenerate the UA tables
+
+**What is allowed.** A ua:capture regeneration that adds overflow-wrap, word-break and letter-spacing ("normal") to every tag table, light and dark. It is an append-only diff, proven in the receipt. ua:capture --check passes, and its plants still fail.
+
+**Why it is needed.** resolve.ts reads root inherited values from the UA capture, so every compile fails without these entries.
+
+**Rejected alternative.** A computed.ts fallback to initial values, because it would hide a missing capture.
