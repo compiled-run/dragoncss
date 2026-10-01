@@ -3,14 +3,15 @@
 // killed), batch launches of the host app with the run file, pulled dumps, the per-device record (model, OS and build, the scale
 // from the device profile and from the app, the window and stage in device px, the text scale), the root-fits-window check, and
 // the OS screenshots of the capture-trust probe. Devices boot only under the device lease, within one in-memory budget.
-import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { freemem, homedir, totalmem } from 'node:os';
 import { join } from 'node:path';
 import type { SupportPlant } from 'dragon';
 import type { GlyphPosition } from './native-compare.ts';
 import type { AndroidTools } from './native-host.ts';
-import { androidTools, HOST_BUNDLE, run } from './native-host.ts';
+import { androidTools, HOST_BUNDLE } from './native-host.ts';
+import type { ExecResult } from './device-exec.ts';
+import { exec, execAsync, execBytes, spawnChild } from './device-exec.ts';
 import type { NativeTarget } from './targets.ts';
 import { deviceDprs } from './targets.ts';
 
@@ -109,17 +110,6 @@ export function matrixProblems(scaleOf: (d: DeviceSpec) => number, matrix: reado
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
-/** run() without blocking the event loop: the exit status (1 on a timeout or spawn error) and the output. */
-export function runAsync(cmd: string, args: readonly string[], timeoutMs: number): Promise<{ readonly status: number; readonly out: string }> {
-  return new Promise((resolve) => {
-    const p = spawn(cmd, [...args], { stdio: ['ignore', 'pipe', 'pipe'], timeout: timeoutMs, killSignal: 'SIGKILL' });
-    let out = '';
-    p.stdout.on('data', (d: Buffer) => void (out += d.toString('utf8')));
-    p.stderr.on('data', (d: Buffer) => void (out += d.toString('utf8')));
-    p.once('error', (e) => resolve({ status: 127, out: `${out}${String(e)}` }));
-    p.once('close', (code, signal) => resolve({ status: code ?? 1, out: signal === null ? out : `${out} (killed by ${signal})` }));
-  });
-}
 async function poll(what: string, timeoutMs: number, done: () => boolean | Promise<boolean>): Promise<void> {
   const t0 = Date.now();
   while (!(await done())) {
@@ -133,9 +123,7 @@ async function poll(what: string, timeoutMs: number, done: () => boolean | Promi
 type SimDevice = { readonly name: string; readonly udid: string; readonly state: string };
 
 function simctlJson<T>(args: readonly string[]): T {
-  const r = run('xcrun', ['simctl', 'list', ...args, '-j']);
-  if (r.status !== 0) throw new Error(`simctl list ${args.join(' ')} failed (tooling fault): ${r.out.slice(-400)}`);
-  return JSON.parse(r.out) as T;
+  return JSON.parse(exec('xcrun', ['simctl', 'list', ...args, '-j']).stdout) as T;
 }
 
 /** The newest iOS runtime: its identifier, version and build. */
@@ -152,7 +140,7 @@ export function iosProfileScale(name: string): number {
   const types = simctlJson<{ devicetypes: { name: string; bundlePath: string; identifier: string }[] }>(['devicetypes']).devicetypes;
   const type = types.find((t) => t.name === name);
   if (type === undefined) throw new Error(`no simulator device type ${name} (tooling fault)`);
-  const caps = run('plutil', ['-p', join(type.bundlePath, 'Contents', 'Resources', 'capabilities.plist')]).out;
+  const caps = exec('plutil', ['-p', join(type.bundlePath, 'Contents', 'Resources', 'capabilities.plist')]).stdout;
   const scale = Number(/"ArtworkDeviceScaleFactor" => (\d+(?:\.\d+)?)/.exec(caps)?.[1]);
   if (!Number.isFinite(scale)) throw new Error(`${name}: capabilities.plist has no ArtworkDeviceScaleFactor`);
   return scale;
@@ -167,9 +155,7 @@ export function provisionIos(name: string): { readonly udid: string; readonly cr
   const types = simctlJson<{ devicetypes: { name: string; identifier: string }[] }>(['devicetypes']).devicetypes;
   const type = types.find((t) => t.name === name);
   if (type === undefined) throw new Error(`no simulator device type ${name} (tooling fault)`);
-  const r = run('xcrun', ['simctl', 'create', name, type.identifier, rt.identifier]);
-  if (r.status !== 0) throw new Error(`simctl create ${name} failed (tooling fault): ${r.out}`);
-  return { udid: r.out.trim(), created: true };
+  return { udid: exec('xcrun', ['simctl', 'create', name, type.identifier, rt.identifier]).stdout.trim(), created: true };
 }
 
 function simState(udid: string): string {
@@ -209,8 +195,7 @@ export function provisionAvd(d: AvdDeviceSpec, tools: AndroidTools): { readonly 
   if (!existsSync(join(avdDir(d.name), 'config.ini'))) {
     const avdmanager = join(tools.home, 'cmdline-tools', 'latest', 'bin', 'avdmanager');
     const tool = existsSync(avdmanager) ? avdmanager : 'avdmanager';
-    const r = run('sh', ['-c', `echo no | "${tool}" create avd -n ${d.name} -k "${ANDROID_IMAGE}" -d pixel_7`], { env: { ...process.env, JAVA_HOME: tools.javaHome } });
-    if (r.status !== 0) throw new Error(`avdmanager create avd ${d.name} failed (tooling fault): ${r.out.slice(-800)}`);
+    exec('sh', ['-c', `echo no | "${tool}" create avd -n ${d.name} -k "${ANDROID_IMAGE}" -d pixel_7`], { env: { ...process.env, JAVA_HOME: tools.javaHome } });
     created = true;
   }
   const path = join(avdDir(d.name), 'config.ini');
@@ -237,8 +222,9 @@ export type DeviceHandle =
 
 export type DeviceProfile = { readonly name: string; readonly target: NativeTarget; readonly os: string; readonly build: string; readonly profileScale: number };
 
-function adb(h: { serial: string; tools: AndroidTools }, args: readonly string[], timeoutMs = 120_000) {
-  return run(h.tools.adb, ['-s', h.serial, ...args], { timeoutMs });
+/** adb against one device; throws on failure unless the call names why its failure is an answer (allowFailure). */
+function adb(h: { serial: string; tools: AndroidTools }, args: readonly string[], timeoutMs = 120_000, allowFailure?: string): ExecResult {
+  return exec(h.tools.adb, ['-s', h.serial, ...args], allowFailure === undefined ? { timeoutMs } : { timeoutMs, allowFailure });
 }
 
 // ---------------------------------------------------------------- the device lease and the memory budget
@@ -262,9 +248,9 @@ export function leaseHolder(lockDir: string = LEASE_LOCK): number | null {
 
 /** The parent of a process (ps), or null when it has none or cannot be read. */
 export function parentPid(pid: number): number | null {
-  const r = spawnSync('ps', ['-o', 'ppid=', '-p', String(pid)], { encoding: 'utf8' });
+  const r = exec('ps', ['-o', 'ppid=', '-p', String(pid)], { allowFailure: 'ps exits 1 for a pid that no longer runs, which ends the walk' });
   const p = Number(r.stdout.trim());
-  return r.status === 0 && Number.isInteger(p) && p > 0 ? p : null;
+  return r.ok && Number.isInteger(p) && p > 0 ? p : null;
 }
 
 /** Whether ancestor is pid or one of its ancestors, walking parentOf up to the root (at most 64 steps). */
@@ -291,11 +277,12 @@ export const DEVICE_MEMORY: { readonly [T in NativeTarget]: number } = { ios: 3 
 export const MEMORY_RESERVE = 8 * GIB;
 export const ADMIT_WAIT_MS = 1_800_000;
 
-/** Memory free for new processes: free, inactive and speculative pages on macOS (vm_stat), else os.freemem() (lower, so it errs toward waiting). */
+/** Memory free for new processes: free, inactive and speculative pages on macOS (vm_stat; a failed or unreadable read throws), else os.freemem(). */
 export function availableMemory(): number {
   if (process.platform !== 'darwin') return freemem();
-  const r = spawnSync('vm_stat', { encoding: 'utf8' });
-  return (r.status === 0 ? parseVmStat(r.stdout) : null) ?? freemem();
+  const v = parseVmStat(exec('vm_stat', []).stdout);
+  if (v === null) throw new Error('vm_stat gave no free, inactive and speculative page counts (tooling fault)');
+  return v;
 }
 
 /** Free, inactive and speculative bytes from vm_stat output; null when a count or the page size is missing. */
@@ -417,22 +404,22 @@ async function bootIosHeld(spec: IosDeviceSpec): Promise<DeviceHandle> {
 
 async function bootIosFrom(spec: IosDeviceSpec, udid: string, was: string): Promise<DeviceHandle> {
   for (let attempt = 1; ; attempt++) {
-    if (simState(udid) !== 'Booted') run('xcrun', ['simctl', 'boot', udid]);
-    // Awaited, not blocking, so a device process can compute its cases while the simulator boots.
-    const b = await runAsync('xcrun', ['simctl', 'bootstatus', udid, '-b'], 300_000);
-    if (b.status === 0) break;
+    if (simState(udid) !== 'Booted') exec('xcrun', ['simctl', 'boot', udid], { allowFailure: 'a simulator that started booting meanwhile refuses a second boot; bootstatus below judges the boot' });
+    // Awaited, not blocking, so the cases are computed while the simulator boots.
+    const b = await execAsync('xcrun', ['simctl', 'bootstatus', udid, '-b'], { timeoutMs: 300_000, allowFailure: 'a failed boot is retried once from a stopped simulator, then fails naming this output' });
+    if (b.ok) break;
     if (attempt === 2 || was !== 'Shutdown') throw new Error(`the ${spec.name} simulator failed to boot${was === 'Shutdown' ? ' twice' : ` (it was ${was} before this run, so it is left alone)`} (tooling fault): ${b.out.slice(-500)}`);
     // The retry starts from a stopped simulator, or the boot fails (and its cleanup stops it, or keeps its memory reserved).
     const stopped = await stopDevice({ spec, udid, startedHere: true });
     if (stopped !== null) throw new Error(`the ${spec.name} simulator failed to boot, and before the retry ${stopped} (tooling fault): ${b.out.slice(-500)}`);
   }
-  const ui = run('xcrun', ['simctl', 'ui', udid, 'content_size', 'large']);
-  if (ui.status !== 0) throw new Error(`simctl ui content_size large failed on ${spec.name}: ${ui.out}`);
+  exec('xcrun', ['simctl', 'ui', udid, 'content_size', 'large']);
   return { spec, udid, startedHere: was === 'Shutdown' };
 }
 
 function serialsRunning(tools: AndroidTools): string[] {
-  return run(tools.adb, ['devices']).out.split('\n').map((l) => /^(emulator-\d+)\s+device/.exec(l)?.[1]).filter((s): s is string => s !== undefined);
+  // A failed read throws (PR #42 finding 4150454065): it is not an empty list, which would say every emulator has stopped.
+  return exec(tools.adb, ['devices']).stdout.split('\n').map((l) => /^(emulator-\d+)\s+device/.exec(l)?.[1]).filter((s): s is string => s !== undefined);
 }
 
 /**
@@ -441,7 +428,8 @@ function serialsRunning(tools: AndroidTools): string[] {
  */
 export function spawnDetached(cmd: string, args: readonly string[]): { readonly check: () => void; readonly alive: () => boolean; readonly kill: () => void } {
   let failure: Error | null = null;
-  const p = spawn(cmd, [...args], { detached: true, stdio: 'ignore' });
+  const { child: p, done } = spawnChild(cmd, args, { detached: true, stdio: 'ignore', allowFailure: 'an emulator runs until it is killed; whether it booted is judged by the attach and boot polls through check() and alive()' });
+  done.catch(() => undefined);
   p.once('error', (e) => {
     failure = e;
   });
@@ -522,7 +510,7 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
         p.check();
         return serialsRunning(tools).includes(serial);
       });
-      await poll(`${serial} sys.boot_completed`, 420_000, () => adb(h, ['shell', 'getprop', 'sys.boot_completed'], 10_000).out.trim() === '1');
+      await poll(`${serial} sys.boot_completed`, 420_000, () => adb(h, ['shell', 'getprop', 'sys.boot_completed'], 10_000, 'adb does not answer while the emulator boots; the poll asks again until its timeout').stdout.trim() === '1');
       break;
     } catch (e) {
       // Only the emulator this attempt spawned is killed: if it exited (say, the port was taken), the serial is someone else's.
@@ -553,8 +541,7 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
 async function prepareAvd(h: { readonly serial: string; readonly tools: AndroidTools }): Promise<void> {
   // Each step must succeed: a device left with animations, another text scale or a locked screen is not the matrix device.
   const step = (args: readonly string[]): void => {
-    const r = adb(h, ['shell', ...args]);
-    if (r.status !== 0) throw new Error(`${h.serial}: adb shell ${args.join(' ')} failed (exit ${r.status}; tooling fault): ${r.out.slice(-300)}`);
+    adb(h, ['shell', ...args]);
   };
   step(['settings', 'put', 'global', 'hide_error_dialogs', '1']);
   for (const k of ['window_animation_scale', 'transition_animation_scale', 'animator_duration_scale']) step(['settings', 'put', 'global', k, '0']);
@@ -631,8 +618,8 @@ async function waitForSettledFocus(h: { readonly serial: string; readonly tools:
   const t0 = Date.now();
   let state = SETTLE_START;
   for (;;) {
-    const r = adb(h, ['shell', 'dumpsys', 'window', '|', 'grep', '-E', "'mCurrentFocus=|mFocusedApp='"], 20_000);
-    const step = settleStep(state, r.status === 0 ? r.out : `adb exited ${r.status}: ${r.out}`);
+    const r = adb(h, ['shell', 'dumpsys', 'window', '|', 'grep', '-E', "'mCurrentFocus=|mFocusedApp='"], 20_000, 'an unreadable sample counts as unparseable, never as a settled focus; the settle timeout bounds the wait');
+    const step = settleStep(state, r.ok ? r.out : `adb exited ${r.status}: ${r.out}`);
     state = step.state;
     if (step.action === 'done') {
       console.log(`${h.serial}: the home screen held the focus after ${((Date.now() - t0) / 1000).toFixed(1)} s (${state.samples} samples, ${state.changes} focus changes, ${state.unparseable} unparseable)`);
@@ -672,11 +659,11 @@ export async function release(h: DeviceHandle, log: (line: string) => void = (l)
 export async function stopDevice(h: DeviceHandle): Promise<string | null> {
   if (!h.startedHere) return null;
   if ('udid' in h) {
-    const r = run('xcrun', ['simctl', 'shutdown', h.udid]);
+    const r = exec('xcrun', ['simctl', 'shutdown', h.udid], { allowFailure: 'shutting down a simulator already shut down fails; the state read next decides' });
     const state = simState(h.udid);
     return state === 'Shutdown' || state === 'missing' ? null : `the ${h.spec.name} simulator is ${state} after simctl shutdown (exit ${r.status}): ${r.out.slice(-300)}`;
   }
-  adb(h, ['emu', 'kill']);
+  adb(h, ['emu', 'kill'], 120_000, 'an emulator that is going away may not answer; the poll for its serial to disappear decides');
   try {
     await poll(`${h.serial} to stop`, 60_000, () => !serialsRunning(h.tools).includes(h.serial));
     return null;
@@ -742,20 +729,21 @@ export async function stableScreenshot(h: DeviceHandle, file: string): Promise<B
 /** The OS screenshot of the whole screen: simctl io screenshot, or adb exec-out screencap -p. */
 export function osScreenshot(h: DeviceHandle, file: string): Buffer {
   if ('udid' in h) {
-    const r = run('xcrun', ['simctl', 'io', h.udid, 'screenshot', '--type=png', file], { timeoutMs: 60_000 });
-    if (r.status !== 0) throw new Error(`simctl io screenshot failed: ${r.out}`);
+    exec('xcrun', ['simctl', 'io', h.udid, 'screenshot', '--type=png', file], { timeoutMs: 60_000 });
     return readFileSync(file);
   }
-  const r = spawnSync(h.tools.adb, ['-s', h.serial, 'exec-out', 'screencap', '-p'], { maxBuffer: 256 * 1024 * 1024, timeout: 60_000 });
-  if (r.status !== 0) throw new Error(`adb exec-out screencap failed: ${String(r.stderr)}`);
-  writeFileSync(file, r.stdout as Buffer);
-  return r.stdout as Buffer;
+  const r = execBytes(h.tools.adb, ['-s', h.serial, 'exec-out', 'screencap', '-p'], { timeoutMs: 60_000 });
+  writeFileSync(file, r.bytes);
+  return r.bytes;
 }
 
 /** adb install; an app signed by another checkout's debug key is the same test host, so it is uninstalled first. */
-export function installApk(h: { readonly serial: string; readonly tools: AndroidTools }, artifact: string): { readonly status: number; readonly out: string } {
-  const first = adb(h, ['install', '-r', '-t', artifact], 600_000);
-  if (!/INSTALL_FAILED_UPDATE_INCOMPATIBLE/.test(first.out)) return first;
+export function installApk(h: { readonly serial: string; readonly tools: AndroidTools }, artifact: string): ExecResult {
+  const first = adb(h, ['install', '-r', '-t', artifact], 600_000, 'INSTALL_FAILED_UPDATE_INCOMPATIBLE (another checkout\'s debug key) is answered by a reinstall; any other failure is thrown below');
+  if (!/INSTALL_FAILED_UPDATE_INCOMPATIBLE/.test(first.out)) {
+    if (!first.ok) throw new Error(`adb install failed (tooling fault): ${first.out.slice(-800)}`);
+    return first;
+  }
   adb(h, ['uninstall', HOST_BUNDLE]);
   return adb(h, ['install', '-r', '-t', artifact], 600_000);
 }
@@ -768,17 +756,13 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
   const timeout = 180_000 + opts.caseCount * perCase;
   let error: string | null = null;
   if ('udid' in h) {
-    const inst = run('xcrun', ['simctl', 'install', h.udid, artifact], { timeoutMs: 300_000 });
-    if (inst.status !== 0) throw new Error(`simctl install failed: ${inst.out}`);
-    run('xcrun', ['simctl', 'terminate', h.udid, HOST_BUNDLE]);
-    const container = run('xcrun', ['simctl', 'get_app_container', h.udid, HOST_BUNDLE, 'data']);
-    if (container.status !== 0) throw new Error(`simctl get_app_container failed: ${container.out}`);
-    const docs = join(container.out.trim(), 'Documents');
+    exec('xcrun', ['simctl', 'install', h.udid, artifact], { timeoutMs: 300_000 });
+    exec('xcrun', ['simctl', 'terminate', h.udid, HOST_BUNDLE], { allowFailure: 'terminating the app fails when it is not running, the usual case' });
+    const docs = join(exec('xcrun', ['simctl', 'get_app_container', h.udid, HOST_BUNDLE, 'data']).stdout.trim(), 'Documents');
     mkdirSync(docs, { recursive: true });
     writeFileSync(join(docs, 'dragon-run.tsv'), opts.runFile);
     const env = { ...process.env, SIMCTL_CHILD_DRAGON_OUT: opts.outDir };
-    const launch = run('xcrun', ['simctl', 'launch', '--terminate-running-process', h.udid, HOST_BUNDLE], { env });
-    if (launch.status !== 0) throw new Error(`simctl launch failed: ${launch.out}`);
+    exec('xcrun', ['simctl', 'launch', '--terminate-running-process', h.udid, HOST_BUNDLE], { env });
     const shot = (id: string) => (): Promise<Buffer> => stableScreenshot(h, join(opts.outDir, `screen-${id}.png`));
     const held = new Set<string>();
     try {
@@ -799,25 +783,28 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
   } else {
     const remote = `/sdcard/Android/data/${HOST_BUNDLE}/files`;
     const inst = installApk(h, artifact);
-    if (inst.status !== 0 || !/Success/.test(inst.out)) throw new Error(`adb install failed: ${inst.out}`);
+    if (!/Success/.test(inst.out)) throw new Error(`adb install did not report Success: ${inst.out}`);
     adb(h, ['shell', 'am', 'force-stop', HOST_BUNDLE]);
     // A dump left from an earlier run must never be pulled as this run's: the files dir starts empty, or the run stops.
     const cleared = adb(h, ['shell', `rm -rf ${remote} && mkdir -p ${remote} && ls -A ${remote} | wc -l`]);
-    if (cleared.status !== 0 || cleared.out.trim() !== '0') throw new Error(`${h.spec.name}: could not empty ${remote} (tooling fault): ${cleared.out.slice(-300)}`);
+    if (cleared.stdout.trim() !== '0') throw new Error(`${h.spec.name}: could not empty ${remote} (tooling fault): ${cleared.out.slice(-300)}`);
     const local = join(opts.outDir, 'dragon-run.tsv');
     writeFileSync(local, opts.runFile);
-    const push = adb(h, ['push', local, `${remote}/dragon-run.tsv`]);
-    rmSync(local, { force: true });
-    if (push.status !== 0) throw new Error(`adb push of the run file failed: ${push.out}`);
+    try {
+      adb(h, ['push', local, `${remote}/dragon-run.tsv`]);
+    } finally {
+      rmSync(local, { force: true });
+    }
     adb(h, ['logcat', '-c', '-b', 'crash']);
     const start = adb(h, ['shell', 'am', 'start', '-W', '-n', `${HOST_BUNDLE}/.DragonActivity`, '--es', 'dragon.model', h.spec.name, '--es', 'dragon.renderer', ANDROID_RENDERER]);
-    if (start.status !== 0 || /Error/.test(start.out)) throw new Error(`am start failed: ${start.out}`);
+    if (/Error/.test(start.out)) throw new Error(`am start failed: ${start.out}`);
     const held = new Set<string>();
     try {
       await poll('the Android host to finish', timeout, async () => {
         if (adb(h, ['logcat', '-d', '-b', 'crash'], 20_000).out.includes(HOST_BUNDLE)) {
-          const focus = adb(h, ['shell', 'dumpsys', 'window', '|', 'grep', '-E', "'mCurrentFocus|mFocusedApp'"], 20_000).out.trim();
-          const power = adb(h, ['shell', 'dumpsys', 'power', '|', 'grep', '-E', "'mWakefulness=|mHoldingDisplaySuspendBlocker'"], 20_000).out.trim();
+          const why = 'diagnostics added to the crash error being thrown';
+          const focus = adb(h, ['shell', 'dumpsys', 'window', '|', 'grep', '-E', "'mCurrentFocus|mFocusedApp'"], 20_000, why).out.trim();
+          const power = adb(h, ['shell', 'dumpsys', 'power', '|', 'grep', '-E', "'mWakefulness=|mHoldingDisplaySuspendBlocker'"], 20_000, why).out.trim();
           throw new Error(`the Android host crashed (${focus.replace(/\s+/g, ' ')}; ${power.replace(/\s+/g, ' ')}): ${adb(h, ['logcat', '-d', '-b', 'crash'], 20_000).out.slice(-3000)}`);
         }
         if (opts.onHold !== undefined) {
@@ -829,13 +816,15 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
             adb(h, ['shell', 'touch', `${remote}/release-${id}`]);
           }
         }
-        return adb(h, ['shell', 'ls', `${remote}/done-android`], 10_000).status === 0;
+        const done = adb(h, ['shell', 'ls', `${remote}/done-android`], 10_000, 'the done file is absent until the host finishes; any other failure is thrown below');
+        if (!done.ok && !/No such file/.test(done.out)) throw new Error(`${h.serial}: could not look for the done file (tooling fault): ${done.out.slice(-300)}`);
+        return done.ok;
       });
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }
-    const pull = adb(h, ['pull', `${remote}/.`, opts.outDir], 600_000);
-    if (pull.status !== 0) error = `${error ?? ''} adb pull failed: ${pull.out.slice(-400)}`.trim();
+    const pull = adb(h, ['pull', `${remote}/.`, opts.outDir], 600_000, 'a failed pull is recorded as the run\'s error, and the dumps it did not bring are missing dumps');
+    if (!pull.ok) error = `${error ?? ''} adb pull failed: ${pull.out.slice(-400)}`.trim();
   }
   const recFile = join(opts.outDir, `device-${h.spec.target}.json`);
   if (!existsSync(recFile)) throw new Error(`${h.spec.name}: the app wrote no device record${error === null ? '' : ` (${error})`}`);

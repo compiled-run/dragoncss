@@ -1,7 +1,7 @@
 // LANE-SPEED: one parity:lanes process runs both targets at once under the device lease; it boots and stops every device itself,
 // admitted by one in-memory budget, while each device's work runs in its own process and the outcomes merge in matrix order.
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -10,7 +10,8 @@ import { deviceJobs, lanesArgs, parseDeviceJob, parseHandle, parseOutcome, pool,
 import type { DeviceOutcome, DeviceSet } from '../src/device-lanes.ts';
 import { afterRelease, mergeOutcomes } from '../src/device-lanes.ts';
 import type { AvdDeviceSpec, DeviceHandle, IosDeviceSpec } from '../src/device-run.ts';
-import { admitDevice, admits, DEVICE_MATRIX, DEVICE_MEMORY, DeviceLeftRunning, failBoot, heldBytes, isAncestor, leaseHolder, MEMORY_RESERVE, parentPid, parseVmStat, release, releaseDeviceMemory, requireDeviceLease, stopSpawned, withDeviceSlot } from '../src/device-run.ts';
+import { ExecError, exec, execAsync, execBytes, spawnChild } from '../src/device-exec.ts';
+import { admitDevice, admits, DEVICE_MATRIX, DEVICE_MEMORY, DeviceLeftRunning, failBoot, heldBytes, isAncestor, leaseHolder, MEMORY_RESERVE, parentPid, parseVmStat, release, releaseDeviceMemory, requireDeviceLease, stopDevice, stopSpawned, withDeviceSlot } from '../src/device-run.ts';
 import type { LanesFile } from '../src/lanes.ts';
 import { readLanesFile } from '../src/lanes.ts';
 import { repoPath } from '../src/paths.ts';
@@ -302,5 +303,55 @@ describe('every boot path is admitted', () => {
       expect(admitted, f).toBeGreaterThanOrEqual(0);
       expect(admitted, f).toBeLessThan(text.search(boots));
     }
+  });
+});
+
+// PR #42 round 5: every child process of the device code runs through device-exec.ts, which throws on a failure unless the call
+// names why its failure is an answer.
+describe('the one child-process helper', () => {
+  const sources = (): string[] => {
+    const src = repoPath('packages/parity/src');
+    return [...readdirSync(src).filter((f) => /^device-.*\.ts$/.test(f) && f !== 'device-exec.ts').map((f) => join(src, f)), join(src, 'cli', 'lanes.ts'), join(src, 'cli', 'device-one.ts')];
+  };
+  it('no device source starts a child process outside the helper, nor uses the non-throwing native-host run()', () => {
+    const files = sources();
+    expect(files.length).toBeGreaterThanOrEqual(7);
+    for (const f of files) {
+      const text = readFileSync(f, 'utf8');
+      expect(text, f).not.toMatch(/from 'node:child_process'|require\('node:child_process'\)|\b(spawnSync|execFileSync|execSync)\(/);
+      expect(text, f).not.toMatch(/import \{[^}]*\brun\b[^}]*\} from '\.\.?\/(native-host|\.\.\/native-host)\.ts'/);
+      // Every allowed failure says why.
+      for (const m of text.matchAll(/allowFailure: ('[^']*'|[A-Za-z_]+)/g)) expect(m[1], f).not.toBe("''");
+    }
+  });
+  it('a failure reaches the caller: a non-zero exit, a signal, a command that cannot start, a timeout', async () => {
+    expect(exec('sh', ['-c', 'echo hi']).stdout).toBe('hi\n');
+    expect(() => exec('sh', ['-c', 'echo boom >&2; exit 3'])).toThrow(ExecError);
+    expect(() => exec('sh', ['-c', 'echo boom >&2; exit 3'])).toThrow(/sh -c echo boom >&2; exit 3 failed \(exit 3; tooling fault\): boom/);
+    expect(() => exec('sh', ['-c', 'kill -9 $$'])).toThrow(/killed by SIGKILL/);
+    expect(() => exec('/nonexistent/adb', ['devices'])).toThrow(/ENOENT/);
+    expect(() => exec('sh', ['-c', 'sleep 5'], { timeoutMs: 100 })).toThrow(/ETIMEDOUT/);
+    await expect(execAsync('sh', ['-c', 'exit 4'])).rejects.toThrow(/exit 4/);
+    await expect(execAsync('/nonexistent/xcrun', [])).rejects.toThrow(/ENOENT/);
+    await expect(spawnChild('sh', ['-c', 'exit 5']).done).rejects.toBeInstanceOf(ExecError);
+    expect(() => execBytes('sh', ['-c', 'exit 6'])).toThrow(/exit 6/);
+    expect(execBytes('sh', ['-c', 'printf ab']).bytes.toString('utf8')).toBe('ab');
+  });
+  it('a call that names why its failure is an answer gets the result to judge; an empty reason is refused', async () => {
+    const r = exec('sh', ['-c', 'echo no >&2; exit 1'], { allowFailure: 'the test judges it' });
+    expect(r).toMatchObject({ ok: false, status: 1, stderr: 'no\n' });
+    expect(exec('/nonexistent/adb', [], { allowFailure: 'judged' })).toMatchObject({ ok: false, errorCode: 'ENOENT' });
+    expect((await execAsync('sh', ['-c', 'exit 2'], { allowFailure: 'judged' })).status).toBe(2);
+    expect(() => exec('sh', ['-c', 'exit 1'], { allowFailure: ' ' })).toThrow(/allowFailure needs a reason/);
+  });
+  // PR #42 finding 4150454065: a failed adb devices read is not an empty list, so a device whose read failed is not "stopped".
+  it('a stop whose adb devices read fails reports the device as possibly running, not stopped', async () => {
+    const dir = tmp();
+    const adb = join(dir, 'adb');
+    writeFileSync(adb, '#!/bin/sh\necho "adb: cannot connect to daemon" >&2\nexit 1\n');
+    chmodSync(adb, 0o755);
+    const spec = DEVICE_MATRIX.find((d) => d.target === 'android') as AvdDeviceSpec;
+    const h = { spec, serial: `emulator-${spec.port}`, startedHere: true, tools: { adb } } as unknown as DeviceHandle;
+    expect(await stopDevice(h)).toMatch(/still runs after adb emu kill: .*adb -s emulator-\d+ devices failed|adb devices failed \(exit 1/);
   });
 });

@@ -2,13 +2,13 @@
 // (cli/device-one.ts, the same runOneDevice a sequential run calls), so launches and checks overlap; the parent merges the outcomes
 // in matrix order. The parent boots and stops every device itself, so all boots of a run, of both targets, are admitted by the one
 // in-memory budget of device-run.ts (under the device lease), and a device is stopped whatever its process did.
-import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { DeviceOutcome, RunLog } from './device-lanes.ts';
 import { afterRelease } from './device-lanes.ts';
 import type { DeviceHandle, DeviceSpec } from './device-run.ts';
+import { spawnChild } from './device-exec.ts';
 import { boot, DEVICE_MATRIX, release } from './device-run.ts';
 import type { HostRun } from './lanes.ts';
 import { nativeOut } from './native-host.ts';
@@ -126,39 +126,25 @@ export function runDeviceChild(job: DeviceJob, spec: DeviceSpec, log: RunLog): P
   writeFileSync(jobFile, JSON.stringify(job));
   const booting = boot(spec);
   const handle = booting.catch(() => null);
-  const outcome = new Promise<DeviceOutcome>((resolve, reject) => {
-    const p = spawn(process.execPath, ['--conditions=dragon-internal', repoPath('packages/parity/src/cli/device-one.ts'), jobFile, outFile], { stdio: ['pipe', 'pipe', 'pipe'] });
-    // A process that has already exited cannot take its device; its exit is reported below, so the write error adds nothing.
-    p.stdin.on('error', () => undefined);
-    booting.then(
-      (h) => p.stdin.end(JSON.stringify({ handle: h })),
-      (e: unknown) => p.stdin.end(JSON.stringify({ blocked: e instanceof Error ? e.message : String(e) })),
-    );
-    const tail: string[] = [];
-    createInterface({ input: p.stdout }).on('line', (l) => log(l));
-    createInterface({ input: p.stderr }).on('line', (l) => {
-      tail.push(l);
-      if (tail.length > 40) tail.shift();
-    });
-    const clean = (): void => {
+  const { child: p, done } = spawnChild(process.execPath, ['--conditions=dragon-internal', repoPath('packages/parity/src/cli/device-one.ts'), jobFile, outFile], { stdio: ['pipe', 'pipe', 'pipe'] });
+  // A process that has already exited cannot take its device; its exit is reported by done, so the write error adds nothing.
+  p.stdin?.on('error', () => undefined);
+  booting.then(
+    (h) => p.stdin?.end(JSON.stringify({ handle: h })),
+    (e: unknown) => p.stdin?.end(JSON.stringify({ blocked: e instanceof Error ? e.message : String(e) })),
+  );
+  if (p.stdout !== null) createInterface({ input: p.stdout }).on('line', (l) => log(l));
+  const outcome = done
+    .then(
+      () => parseOutcome(readFileSync(outFile, 'utf8'), job.device),
+      (e: unknown) => {
+        throw new Error(`${job.device}: the device process failed: ${e instanceof Error ? e.message : String(e)}`);
+      },
+    )
+    .finally(() => {
       rmSync(jobFile, { force: true });
       rmSync(outFile, { force: true });
-    };
-    p.once('error', (e) => {
-      clean();
-      reject(e);
     });
-    p.once('close', (code, signal) => {
-      try {
-        if (code !== 0) throw new Error(`${job.device}: the device process failed (${signal ?? `exit ${code}`}): ${tail.join('\n')}`);
-        resolve(parseOutcome(readFileSync(outFile, 'utf8'), job.device));
-      } catch (e) {
-        reject(e);
-      } finally {
-        clean();
-      }
-    });
-  });
   // The device is stopped once its process is done, and before the outcome is given back; one that could not be stopped blocks it.
   const settle = async (): Promise<string | null> => {
     const h = await handle;
@@ -253,24 +239,21 @@ export function lanesArgs(args: readonly string[]): LanesArgs | { readonly error
  * once; their lines forwarded. Resolves to the targets whose build failed (a crash, a non-zero exit or a process that could not start).
  */
 export async function prebuildApps(targets: readonly NativeTarget[], log: RunLog, command: (t: NativeTarget) => readonly string[] = (t) => ['--conditions=dragon-internal', repoPath('packages/parity/src/cli/lanes.ts'), '--prebuild', t]): Promise<NativeTarget[]> {
-  const codes = await Promise.all(
+  const built = await Promise.all(
     targets.map(
       (t) =>
-        new Promise<number | null>((resolve) => {
+        new Promise<boolean>((resolve) => {
           const t0 = Date.now();
-          const p = spawn(process.execPath, [...command(t)], { stdio: ['ignore', 'pipe', 'pipe'] });
-          createInterface({ input: p.stdout }).on('line', (l) => log(`[${t} build] ${l}`));
-          createInterface({ input: p.stderr }).on('line', (l) => log(`[${t} build] ${l}`));
-          p.once('error', (e) => {
-            log(`[${t} build] could not start: ${e.message}`);
-            resolve(null);
-          });
-          p.once('close', (code, signal) => {
-            log(`[${t} build] ${code === 0 ? 'done' : `FAILED (${signal ?? `exit ${code}`})`} in ${((Date.now() - t0) / 1000).toFixed(0)} s`);
-            resolve(code);
+          const { child: p, done } = spawnChild(process.execPath, [...command(t)], { allowFailure: 'a failed build is this target\'s answer: it is logged, fails the run and the target runs no devices' });
+          if (p.stdout !== null) createInterface({ input: p.stdout }).on('line', (l) => log(`[${t} build] ${l}`));
+          if (p.stderr !== null) createInterface({ input: p.stderr }).on('line', (l) => log(`[${t} build] ${l}`));
+          void done.then((r) => {
+            const how = r.ok ? 'done' : r.error !== null ? `could not start: ${r.error}` : `FAILED (${r.signal ?? `exit ${r.status}`})`;
+            log(`[${t} build] ${how} in ${((Date.now() - t0) / 1000).toFixed(0)} s`);
+            resolve(r.ok);
           });
         }),
     ),
   );
-  return targets.filter((_, i) => codes[i] !== 0);
+  return targets.filter((_, i) => built[i] !== true);
 }

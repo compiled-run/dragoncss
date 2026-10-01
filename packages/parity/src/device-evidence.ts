@@ -16,6 +16,7 @@ export type DeviceEvidence = { readonly laneCode: string; readonly referenceData
 export const EVIDENCE_CODE: readonly string[] = [
   'packages/parity/src/compare.ts',
   'packages/parity/src/device-evidence.ts',
+  'packages/parity/src/device-exec.ts',
   'packages/parity/src/device-jobs.ts',
   'packages/parity/src/device-lanes.ts',
   'packages/parity/src/device-run.ts',

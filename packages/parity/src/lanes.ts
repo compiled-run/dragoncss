@@ -218,8 +218,10 @@ const translateNative = async (): Promise<TranslateNative> => (await import(path
 export type SuiteCount = { readonly corpus: 'p1' | 'extended'; readonly suite: string; readonly declared: number; readonly total: number | null; readonly pass: number | null };
 export type HostRun = { readonly state: LaneState; readonly reason: string | null; readonly toolchain: string | null; readonly suites: readonly SuiteCount[]; readonly digests: { readonly p1: string | null; readonly extended: string | null } };
 
-// Any suite-shaped line, so a suite the manifest does not declare is counted and judgeHost fails it instead of dropping it.
-const SUITE_LINE = /^([a-z0-9][a-z0-9 -]*) (\d+)\/(\d+)/;
+// Any suite-shaped line, so a suite the manifest does not declare is counted and judgeHost fails it instead of dropping it: any
+// nonempty label (PR #42 finding 4150454066) before the first "<pass>/<total>" on the line (lazy, so a count in the trailing note is
+// not taken for the suite's). The committed native:swift and native:kotlin output parses to the same 13 suites (test/lanes.test.ts).
+const SUITE_LINE = /^(.+?) (\d+)\/(\d+)/;
 const FINAL_LINE = /^native:(swift|kotlin): P1 corpus digest ([0-9a-f]+); extended corpus digest ([0-9a-f]+); status (pass|fail|blocked \(owner tooling\))$/m;
 
 /** Parses the native CLI's output into the P1 and extended suite counts, digests and status; null when it cannot. */
