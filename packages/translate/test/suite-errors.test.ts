@@ -43,11 +43,12 @@ describe('T132: a harness that does not account for every case is a named error'
     expect(s.cause).toBe('crash: signal SIGKILL; stderr tail: dying');
   });
 
+  // The 5 s limit leaves a loaded host time to start node and print before the kill; the child would run 120 s.
   it('a process past its timeout names the timeout and keeps what it printed', () => {
-    const s = run(fake(`console.error('started');setTimeout(()=>{},10000)`, 0, 500), 'timeout');
+    const s = run(fake(`console.error('started');setTimeout(()=>{},120000)`, 0, 5000), 'timeout');
     expect(s.pass).toBe(0);
-    expect(s.cause).toBe('timeout: killed after 0.5 s; stderr tail: started');
-  });
+    expect(s.cause).toBe('timeout: killed after 5 s; stderr tail: started');
+  }, 30_000);
 
   it('exit 0 with a short result is a short-output cause, not a count alone', () => {
     const s = run(fake('', 1), 'short');
