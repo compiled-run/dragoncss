@@ -122,7 +122,7 @@ const C_STYLE = /\.(swift|kt|kts|java|zig|zon|c|h|cc|cpp|m|mm|tsrx|modulemap)$/;
 /** Read by codeSpans with # comments. */
 const SHELL = /\.sh$/;
 /** Data, fixtures, docs and binaries: never code, so never scanned. */
-const DATA = /(\.(json|png|jpg|jpeg|gif|bmp|webp|ico|svg|wasm|css|html|xht|dg|md|txt|lock|gitignore|npmignore|yaml|yml|ttf|otf|woff2?)|(^|\/)(\.gitignore|\.npmignore|LICENSE[A-Za-z0-9._-]*|COPYING))$/;
+const DATA = /(\.(json|jsonl|png|jpg|jpeg|gif|bmp|webp|ico|svg|wasm|css|html|xht|dg|md|txt|lock|gitignore|npmignore|yaml|yml|ttf|otf|woff2?)|(^|\/)(\.gitignore|\.npmignore|LICENSE[A-Za-z0-9._-]*|COPYING))$/;
 const isCode = (f: string) => SCRIPT.test(f) || C_STYLE.test(f) || SHELL.test(f);
 
 function allTrackedFiles(): string[] {
