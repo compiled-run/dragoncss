@@ -136,6 +136,9 @@ const specOf = (id: string): FixtureSpec => {
   return f;
 };
 /** The INL2a atomic-inline group's case ids (fixture-groups/atomic-inline.ts), which follow the text-latin cases. */
+/** The atomic-inline cases in a real face (atomic-inline-lato, ltr and rtl): shaped like the text-latin cases. */
+const ATOMIC_SHAPED_IDS: readonly string[] = ['atomic-inline-lato', 'atomic-inline-lato-rtl'];
+const SHAPED_IDS: readonly string[] = [...NEW_IDS, ...TAG_IDS, ...ATOMIC_SHAPED_IDS];
 const ATOMIC_IDS: readonly string[] = ATOMIC_INLINE.flatMap((f) => (f.kind === 'layout' ? f.environments.map((d) => (d === 'rtl' ? `${f.id}-rtl` : f.id)) : []));
 const caseOf = (id: string, direction: 'ltr' | 'rtl' = 'ltr'): ParityCase => {
   const spec = specOf(id);
@@ -162,21 +165,21 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
   });
 
   it('derives the shaped cases from the compiled input alone: every new case, and no BASE case', () => {
-    expect([...shapedCaseIds()]).toEqual([...NEW_IDS, ...TAG_IDS]);
+    expect([...shapedCaseIds()]).toEqual(SHAPED_IDS);
   });
 
   it('compiles each new case with the reference map, captures it under its stated reference, and lists its expected faces', () => {
-    for (const id of [...NEW_IDS, ...TAG_IDS]) {
+    for (const id of SHAPED_IDS) {
       const fixture = id.replace(/-rtl$/, '');
       expect(fontMapOf(fixture), id).toBe(FONT_REFERENCE_MAP);
       const c = caseOf(fixture, id.endsWith('-rtl') ? 'rtl' : 'ltr');
       expect(c.authoredPrepare, id).not.toBeNull();
       // The authored documents need no font URL inlining (fonts-run.ts authoredFontHtml is the identity on them).
       expect(authoredFontHtml(c.authoredHtml), id).toBe(c.authoredHtml);
-      if (fixture !== 'text-ahem-fractional') expect(expectedFacesOf(fixture), id).not.toBeNull();
+      if (fixture !== 'text-ahem-fractional' && !ATOMIC_SHAPED_IDS.includes(id)) expect(expectedFacesOf(fixture), id).not.toBeNull();
     }
     expect(expectedFacesOf('text-ahem-fractional')).toBeNull();
-    for (const f of FIXTURES) if (![...NEW_IDS, ...TAG_IDS].includes(f.id) && f.kind === 'layout') expect(caseOf(f.id, f.environments[0]).authoredPrepare, f.id).toBeNull();
+    for (const f of FIXTURES) if (!SHAPED_IDS.includes(f.id) && f.kind === 'layout') expect(caseOf(f.id, f.environments[0]).authoredPrepare, f.id).toBeNull();
   });
 
   it('makes the Ahem fractional case shaped because the Ahem measurer misses Chrome there, and HarfBuzz does not', () => {
@@ -187,7 +190,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
   });
 
   it('lowers every new case for ios and android in the derive compile (native draws the real faces)', () => {
-    for (const id of [...NEW_IDS, ...TAG_IDS]) {
+    for (const id of SHAPED_IDS) {
       const c = derived(id.replace(/-rtl$/, ''), id.endsWith('-rtl') ? 'rtl' : 'ltr');
       expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.target} ${d.code}: ${d.message}`), id).toEqual([]);
       expect(c.outputs.ios.kind, id).toBe('analysis-only');
@@ -299,7 +302,7 @@ describe('TXT1a-2 phase F: text-latin vectors replay in the translated engine (R
   const lineOf = (v: ReturnType<typeof tl.textLatinVector>, faults: EngineFaults = NO_ENGINE_FAULTS): string => JSON.stringify({ platform: v.platform, faults, input: v.input, shaping: { language: v.language, faces: v.faces, calls: v.calls } });
 
   it('has a vector for every case at every DPR, each written from the committed captures', () => {
-    expect(vecs.length).toBe((NEW_IDS.length + TAG_IDS.length) * 4);
+    expect(vecs.length).toBe(SHAPED_IDS.length * 4);
     for (const { file, v } of vecs) expect(readFileSync(file, 'utf8'), file).toBe(tl.textLatinVectorText(tl.textLatinVector(v.input)));
   });
 
