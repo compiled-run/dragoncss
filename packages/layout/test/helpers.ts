@@ -1,4 +1,4 @@
-import type { LayoutBox, LayoutStyle, TextLeaf } from '../src/index.ts';
+import type { FontSpec, LayoutBox, LayoutStyle, SafeAreaInsets, TextLeaf, Viewport, ViewportUnitSizes } from '../src/index.ts';
 
 /** Test-only: the CSS initial values for a block div, spelled out so each test states what it overrides. */
 export const divStyle: LayoutStyle = {
@@ -55,8 +55,18 @@ export function anon(id: string, style: Partial<LayoutStyle>, children: (LayoutB
 
 /** A 10px Ahem text leaf, already collapsed, with the inherited text properties the compiler writes onto it. */
 export function text(id: string, value: string, over: Partial<TextLeaf> = {}): TextLeaf {
-  return { kind: 'text', id, text: value, font: { family: 'Ahem', size: 10 }, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', ...over };
+  return { kind: 'text', id, text: value, font: ahemFont(10), lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', ...over };
 }
 
 export const px = (value: number) => ({ kind: 'px', value }) as const;
 export const pct = (value: number) => ({ kind: 'percent', value }) as const;
+
+/** An Ahem font at a px size: the specified size is that px leaf, absolute, and the computed size at the reference environment. */
+export function ahemFont(size: number): FontSpec {
+  return { family: 'Ahem', size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true };
+}
+
+/** The environment inputs of a case at a viewport: every viewport unit reads it, no safe area, and a 16px root font size. */
+export function neutralEnvironment(viewport: Viewport): { readonly viewportUnits: ViewportUnitSizes; readonly safeArea: SafeAreaInsets; readonly rootFontSize: number } {
+  return { viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16 };
+}
