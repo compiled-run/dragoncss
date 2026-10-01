@@ -187,5 +187,10 @@ describe('math function checks', () => {
     }
     const literal = project().compile(inputFor(`${FONT} .o { display: flex; } .i { order: 1.5; }`, tree));
     expect(literal.diagnostics.map((d) => d.code)).toContain('DRAGON_CSS_INVALID_VALUE');
+    // An infinite or NaN calculation (Chrome: INT_MAX, INT_MIN or 0) has no finite engine input, so it stays refused, with its reason.
+    for (const value of ['calc(1 / 0)', 'calc(-1 / 0)', 'calc(0 / 0)']) {
+      const c = project().compile(inputFor(`${FONT} .o { display: flex; } .i { order: ${value}; }`, tree));
+      expect(c.diagnostics.map((d) => d.message).filter((m) => m.startsWith('order:') && m.includes('infinite or NaN')), value).toHaveLength(1);
+    }
   });
 });

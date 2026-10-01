@@ -206,9 +206,9 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     borderBottomWidth: resolveBorderWidth(s.borderBottomWidth, env),
     borderLeftWidth: resolveBorderWidth(s.borderLeftWidth, env),
     flexBasis: resolveBasis(s.flexBasis, env),
+    order: resolveOrder(s.order, env.faults),
     rowGap: resolveGap(s.rowGap, env),
     columnGap: resolveGap(s.columnGap, env),
-    order: resolveOrder(s.order, env.faults),
   };
 }
 
