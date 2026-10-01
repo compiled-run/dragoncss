@@ -4,7 +4,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { BorderOp, DashFaults } from '../src/paint-dash.ts';
-import { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from '../src/paint-dash.ts';
+import { borderNeedsSidePainter, borderPaintOps, innerBorderRect, NO_DASH_FAULTS, selectBestDashGap } from '../src/paint-dash.ts';
 
 const INPUTS = new URL('../paint-vectors/dash/inputs.jsonl', import.meta.url);
 const black = (n: number): number[] => Array.from({ length: n }, () => [0, 0, 0, 255]).flat();
@@ -56,6 +56,7 @@ export function dashVectorInputs(): string[] {
   for (const f of [{ phase1: true, gapUnfitted: false }, { phase1: false, gapUnfitted: true }]) for (const s of ['dashed', 'dotted']) out.push(box(21, 21, 97, 40, uniform(s === 'dotted' ? 5 : 2), uniform(s), COLORS[0] as number[], f));
   // Widths wider than the box (ClampWidth), zero widths and a zero-size box.
   out.push(box(0, 0, 8, 6, [10, 10, 10, 10], uniform('dotted'), COLORS[0] as number[], NO_DASH_FAULTS));
+  out.push(box(0, 0, 8, 6, [10, 9, 7, 6], ['dotted', 'solid', 'dashed', 'double'], COLORS[2] as number[], NO_DASH_FAULTS));
   out.push(box(0, 0, 40, 30, [0, 5, 0, 5], uniform('dashed'), COLORS[0] as number[], NO_DASH_FAULTS));
   out.push(box(5, 5, 5, 5, [2, 2, 2, 2], uniform('dashed'), COLORS[0] as number[], NO_DASH_FAULTS));
   return out;
@@ -164,6 +165,26 @@ describe("BoxBorderPainter's complex path (box_border_painter.cc)", () => {
   });
   it('refuses a border style it has no painter for', () => {
     expect(() => ops(0, 0, 10, 10, uniform(2), ['groove', 'solid', 'solid', 'solid'])).toThrow(/groove/);
+  });
+});
+
+describe('the inner border rect (contoured_border_geometry.cc PixelSnappedContouredInnerBorder)', () => {
+  it('is the box less the widths, its size clamped at zero at the inset origin when the widths exceed the box', () => {
+    expect(innerBorderRect(10, 20, 50, 60, [1, 2, 3, 4])).toEqual([14, 21, 48, 57]);
+    expect(innerBorderRect(0, 0, 8, 6, [10, 10, 10, 10])).toEqual([10, 10, 10, 10]);
+    expect(innerBorderRect(0, 0, 40, 6, [4, 5, 4, 5])).toEqual([5, 4, 35, 4]);
+  });
+  it('keeps every clip corner of a box whose widths exceed it out of the inverted rect (mixed styles, so the sides are clipped)', () => {
+    const o = ops(0, 0, 8, 6, [10, 9, 7, 6], ['dotted', 'solid', 'dashed', 'double'], [0, 0, 0, 255, 255, 0, 0, 255, 0, 0, 0, 255, 0, 0, 255, 255]);
+    const clips = o.filter((x) => x.op === 'clip');
+    expect(clips.length).toBeGreaterThan(0);
+    // The unclamped inner corners would be at x 6 and 9 - 9 = -1 (right edge 8 - 9) and y 10 and -1: inverted. Clamped, the inner
+    // rect is the point (6, 10), so no clip point lies left of the inset origin's x or above its y unless it is an outer corner.
+    for (const c of clips) for (let i = 0; i < c.points.length; i += 2) {
+      const x = c.points[i] as number;
+      const y = c.points[i + 1] as number;
+      expect(x === -1 || y === -1, `clip point ${x},${y}`).toBe(false);
+    }
   });
 });
 
