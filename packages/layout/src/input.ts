@@ -119,9 +119,10 @@ export type AspectRatioValue =
 
 /**
  * display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. inline is the display of an
- * InlineBox only (CSS2 §9.2.2); a LayoutBox is block or flex.
+ * InlineBox only (CSS2 §9.2.2); a LayoutBox is block or flex, or inline-block or inline-flex for an atomic inline among a block
+ * container's inline-level children (CSS2 §9.2.4, css-display-3 §2.4).
  */
-export type Display = 'block' | 'flex' | 'inline';
+export type Display = 'block' | 'flex' | 'inline' | 'inline-block' | 'inline-flex';
 /** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
 export type Position = 'static' | 'relative' | 'absolute';
 /** css-overflow-3 §3: hidden makes a scroll container; the validator requires both axes to be equal (the §3.1 computed pair). */

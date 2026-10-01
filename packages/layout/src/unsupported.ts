@@ -19,7 +19,8 @@ export type UnsupportedCode =
   | 'inline-box-position'
   | 'inline-empty-line'
   | 'text-script'
-  | 'text-shaping-run';
+  | 'text-shaping-run'
+  | 'atomic-beside-shaped-text';
 
 export type LayoutUnsupported = {
   readonly code: UnsupportedCode;
