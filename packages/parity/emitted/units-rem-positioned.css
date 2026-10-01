@@ -23,6 +23,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: medium;
   border-right-width: medium;
   border-bottom-width: medium;
@@ -92,6 +93,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: medium;
   border-right-width: medium;
   border-bottom-width: medium;
@@ -165,6 +167,7 @@
   padding-left: 16px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: 5.6px;
   border-right-width: 5.6px;
   border-bottom-width: 5.6px;
@@ -238,6 +241,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: medium;
   border-right-width: medium;
   border-bottom-width: medium;
@@ -311,6 +315,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: medium;
   border-right-width: medium;
   border-bottom-width: medium;
@@ -380,6 +385,7 @@
   padding-left: 8px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: medium;
   border-right-width: medium;
   border-bottom-width: medium;
@@ -453,6 +459,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: medium;
   border-right-width: medium;
   border-bottom-width: medium;
@@ -526,6 +533,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: medium;
   border-right-width: medium;
   border-bottom-width: medium;

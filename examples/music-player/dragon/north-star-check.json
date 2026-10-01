@@ -133,13 +133,13 @@
   "contextProbe": {
    "rounds": 1,
    "blankedRules": 9,
-   "blankedDeclarations": 63,
+   "blankedDeclarations": 61,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 854,
-  "errors": 853,
+  "diagnostics": 855,
+  "errors": 854,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 25,
@@ -149,12 +149,12 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
    "DRAGON_UNSUPPORTED_FONT [android]": 22,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 60,
+   "DRAGON_UNSUPPORTED_PROPERTY": 58,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 588,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 29,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 27
+   "DRAGON_UNSUPPORTED_VALUE [android]": 589,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 30,
+   "DRAGON_UNSUPPORTED_VALUE [web]": 28
   },
   "perTarget": {
    "web": {
@@ -163,9 +163,9 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_PROPERTY": 60,
+     "DRAGON_UNSUPPORTED_PROPERTY": 58,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 30
+     "DRAGON_UNSUPPORTED_VALUE": 31
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -178,9 +178,9 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 60,
+     "DRAGON_UNSUPPORTED_PROPERTY": 58,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 32
+     "DRAGON_UNSUPPORTED_VALUE": 33
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -192,9 +192,9 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 22,
-     "DRAGON_UNSUPPORTED_PROPERTY": 60,
+     "DRAGON_UNSUPPORTED_PROPERTY": 58,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 591
+     "DRAGON_UNSUPPORTED_VALUE": 592
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -285,9 +285,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 395,
-   "B-unwrapped": 425,
-   "C-context": 485
+   "A-authored": 396,
+   "B-unwrapped": 426,
+   "C-context": 488
   }
  },
  "features": {
@@ -2463,7 +2463,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -2801,7 +2801,6 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -8549,23 +8548,66 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4840-4864|-webkit-appearance is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4860-4864|appearance: none (set by -webkit-appearance: none) is unsupported (support profile m1-s5); no appearance value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 4840,
+    "start": 4860,
     "end": 4864,
     "line": 271,
-    "column": 2,
-    "text": "-webkit-appearance: none"
+    "column": 22,
+    "text": "none"
    },
-   "message": "-webkit-appearance is not supported in milestone 1",
+   "message": "appearance: none (set by -webkit-appearance: none) is unsupported (support profile m1-s5); no appearance value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4860-4864|appearance: none (set by -webkit-appearance: none) is unsupported (support profile m1-s5); no appearance value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4860,
+    "end": 4864,
+    "line": 271,
+    "column": 22,
+    "text": "none"
+   },
+   "message": "appearance: none (set by -webkit-appearance: none) is unsupported (support profile m1-s5); no appearance value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4860-4864|appearance: none (set by -webkit-appearance: none) is unsupported (support profile m1-s5); no appearance value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4860,
+    "end": 4864,
+    "line": 271,
+    "column": 22,
+    "text": "none"
+   },
+   "message": "appearance: none (set by -webkit-appearance: none) is unsupported (support profile m1-s5); no appearance value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -9204,26 +9246,6 @@
     "text": "::-webkit-slider-thumb"
    },
    "message": "pseudo-element ::-webkit-slider-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (the form-control package FORM-a)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5479-5503|-webkit-appearance is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 5479,
-    "end": 5503,
-    "line": 310,
-    "column": 2,
-    "text": "-webkit-appearance: none"
-   },
-   "message": "-webkit-appearance is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",

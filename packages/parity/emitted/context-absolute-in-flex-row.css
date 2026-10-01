@@ -23,6 +23,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: medium;
   border-right-width: medium;
   border-bottom-width: medium;
@@ -92,6 +93,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: medium;
   border-right-width: medium;
   border-bottom-width: medium;
@@ -161,6 +163,7 @@
   padding-left: 4px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: 2px;
   border-right-width: 2px;
   border-bottom-width: 2px;
@@ -230,6 +233,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: medium;
   border-right-width: medium;
   border-bottom-width: medium;
@@ -303,6 +307,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: 3px;
   border-right-width: 3px;
   border-bottom-width: 3px;
@@ -376,6 +381,7 @@
   padding-left: 2px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: 4px;
   border-right-width: 4px;
   border-bottom-width: 4px;
@@ -445,6 +451,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: medium;
   border-right-width: medium;
   border-bottom-width: medium;
@@ -514,6 +521,7 @@
   padding-left: 4px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: 2px;
   border-right-width: 2px;
   border-bottom-width: 2px;
@@ -583,6 +591,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: medium;
   border-right-width: medium;
   border-bottom-width: medium;
@@ -656,6 +665,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: 5px;
   border-right-width: 5px;
   border-bottom-width: 5px;
@@ -729,6 +739,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: medium;
   border-right-width: medium;
   border-bottom-width: medium;
@@ -802,6 +813,7 @@
   padding-left: 0px;
   object-fit: fill;
   object-position: 50% 50%;
+  appearance: none;
   border-top-width: medium;
   border-right-width: medium;
   border-bottom-width: medium;
