@@ -2279,6 +2279,9 @@ tasks:
     stop_if:
       - See notes/T047-runtime-spec.md §3.4 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T064J (2026-10-01), notes/T047-runtime-spec.md: split into SELD-R2a (now, on seld-lanes) and SELD-R2b (T146, after PNT1 and PNT2); generated web state conditions; cursor identity test; the Chrome
+        trace decides touch semantics.'
   - id: T065
     type: worker
     assignee: Worker
@@ -2295,6 +2298,7 @@ tasks:
     constraints:
       - 'Owner request (T096): ANIM-b adds clean-room technique fixtures and the motion proof method in notes/T096-motion-research.md (derived sample times, bits/strings/frames/pixels, 12 motion plants
         each moving at least 1 device px, 60 and 120 Hz grids). Do not adopt PocketJS numerics or frame-rounded delays.'
+      - 'T064J: ANIM-b depends on SELD-R2a, and on SELD-R2b only for transformed hover.'
   - id: T066
     type: worker
     assignee: Worker
@@ -3982,6 +3986,14 @@ tasks:
     status: queued
     lane: paint
     objective: 'OVFL-c: single-axis overflow: clip natively (clip beside visible on one axis), refused by T078 Phase A as DRAGON_UNSUPPORTED_VALUE naming OVFL-c. Proven against Chrome. After T078.'
+    receipt: null
+  - id: T146
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'SELD-R2b: hit testing through transforms and stacking (PNT1/PNT2 paint facts), the transformed device-hit fixtures, the hitIgnoresTransform plant, and lifting the paint-dependent hover refusals.
+      After PNT1, PNT2 and SELD-R2a land.'
     receipt: null
   - id: T999
     type: judge
