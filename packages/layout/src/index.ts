@@ -42,3 +42,5 @@ export { dprPlatformRules } from './platform-rules.ts';
 export type { CalcClamp, CalcExpr, CalcInvert, CalcMax, CalcMin, CalcProduct, CalcSum, EmLength, LengthCalc, PixelsAndPercent, ViewportLength } from './input.ts';
 export { applyEnvironment } from './environment.ts';
 export type { BoxShape } from './paint.ts';
+// Form controls (FORM-a): the range thumb offset and default track length, and the button's block centring shift.
+export { buttonContentShift, SLIDER_DEFAULT_TRACK_LENGTH, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbLeft } from './controls.ts';
