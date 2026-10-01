@@ -3,9 +3,9 @@
 // killed), batch launches of the host app with the run file, pulled dumps, the per-device record (model, OS and build, the scale
 // from the device profile and from the app, the window and stage in device px, the text scale), the root-fits-window check, and
 // the OS screenshots of the capture-trust probe. Devices boot only under the device lease, within one in-memory budget.
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { freemem, homedir, totalmem } from 'node:os';
-import { join } from 'node:path';
+import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { freemem, homedir, tmpdir, totalmem } from 'node:os';
+import { dirname, join } from 'node:path';
 import type { SupportPlant } from 'dragon';
 import type { GlyphPosition } from './native-compare.ts';
 import type { AndroidTools } from './native-host.ts';
@@ -424,24 +424,51 @@ function serialsRunning(tools: AndroidTools): string[] {
 
 /**
  * A detached child whose spawn error (a missing or unexecutable binary) is kept, not left unhandled: check() rethrows it, so the
- * caller's retry and tooling-fault handling sees it.
+ * caller's retry and tooling-fault handling sees it. With a log path, the child's stdout and stderr go to that file (truncated at
+ * spawn), and exited() and logTail() say how it ended and what it last printed, so an early exit names its own reason.
  */
-export function spawnDetached(cmd: string, args: readonly string[]): { readonly check: () => void; readonly alive: () => boolean; readonly kill: () => void } {
+export function spawnDetached(cmd: string, args: readonly string[], logPath: string | null = null): { readonly check: () => void; readonly alive: () => boolean; readonly kill: () => void; readonly exited: () => string | null; readonly logTail: () => string } {
   let failure: Error | null = null;
-  const { child: p, done } = spawnChild(cmd, args, { detached: true, stdio: 'ignore', allowFailure: 'an emulator runs until it is killed; whether it booted is judged by the attach and boot polls through check() and alive()' });
+  let fd: number | null = null;
+  if (logPath !== null) {
+    mkdirSync(dirname(logPath), { recursive: true });
+    fd = openSync(logPath, 'w');
+  }
+  let spawned: ReturnType<typeof spawnChild>;
+  try {
+    spawned = spawnChild(cmd, args, { detached: true, stdio: fd === null ? 'ignore' : ['ignore', fd, fd], allowFailure: 'an emulator runs until it is killed; whether it booted is judged by the attach and boot polls through check() and alive()' });
+  } finally {
+    // The child holds its own copy of the descriptor.
+    if (fd !== null) closeSync(fd);
+  }
+  const { child: p, done } = spawned;
   done.catch(() => undefined);
   p.once('error', (e) => {
     failure = e;
   });
   p.unref();
+  const alive = (): boolean => failure === null && p.exitCode === null && p.signalCode === null;
   return {
     check: () => {
       if (failure !== null) throw new Error(`${cmd} could not be started: ${(failure as Error).message}`);
     },
-    alive: () => failure === null && p.exitCode === null && p.signalCode === null,
+    alive,
     kill: () => void p.kill('SIGTERM'),
+    exited: () => (failure !== null ? `could not start: ${(failure as Error).message}` : p.signalCode !== null ? `killed by ${p.signalCode}` : p.exitCode !== null ? `exit ${p.exitCode}` : null),
+    logTail: () => (logPath === null ? '' : logTailOf(logPath)),
   };
 }
+
+/** The last 1500 characters of a log file on one line, or why it cannot be read. */
+export function logTailOf(path: string, chars = 1500): string {
+  if (!existsSync(path)) return `(no log at ${path})`;
+  const t = readFileSync(path, 'utf8').trim().replace(/\s*\n\s*/g, ' | ');
+  if (t === '') return `(${path} is empty)`;
+  return t.length > chars ? `...${t.slice(-chars)}` : t;
+}
+
+/** Where an AVD's emulator writes its stdout and stderr: one file per AVD, rewritten on every boot attempt. */
+export const emulatorLog = (name: string): string => join(tmpdir(), 'dragon-emulator-logs', `${name}.log`);
 
 /** Stops a spawned process that is still alive: null once it has exited, else why it may still run. */
 export async function stopSpawned(p: { readonly alive: () => boolean; readonly kill: () => void }, name: string, timeoutMs = 30_000): Promise<string | null> {
@@ -504,23 +531,26 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
     return { ...h, startedHere: false };
   }
   for (let attempt = 1; ; attempt++) {
-    const p = spawnDetached(tools.emulator, ['-avd', spec.name, '-port', String(spec.port), '-no-window', '-no-audio', '-no-snapshot', '-no-boot-anim', '-gpu', ANDROID_RENDERER]);
+    const log = emulatorLog(spec.name);
+    const p = spawnDetached(tools.emulator, ['-avd', spec.name, '-port', String(spec.port), '-no-window', '-no-audio', '-no-snapshot', '-no-boot-anim', '-gpu', ANDROID_RENDERER], log);
     try {
       await poll(`${serial} to attach`, 240_000, () => {
         p.check();
+        // An emulator that exited cannot attach: fail now with its own reason instead of waiting out the poll.
+        if (!p.alive()) throw new Error(`the emulator process ended (${p.exited() ?? 'unknown'}) before ${serial} attached`);
         return serialsRunning(tools).includes(serial);
       });
       await poll(`${serial} sys.boot_completed`, 420_000, () => adb(h, ['shell', 'getprop', 'sys.boot_completed'], 10_000, 'adb does not answer while the emulator boots; the poll asks again until its timeout').stdout.trim() === '1');
       break;
     } catch (e) {
       // Only the emulator this attempt spawned is killed: if it exited (say, the port was taken), the serial is someone else's.
-      if (!p.alive()) throw new Error(`the ${spec.name} emulator exited before it booted; ${serial} is left alone (tooling fault): ${e instanceof Error ? e.message : String(e)}`);
+      if (!p.alive()) throw new Error(`the ${spec.name} emulator exited (${p.exited() ?? 'unknown'}) before it booted; ${serial} is left alone (tooling fault): ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
       // An emulator that never attached is not reached by adb emu kill, so the process this attempt spawned is stopped as well,
       // whatever the kill gave; a stop that fails keeps the device's memory held (failBoot).
       const problems = await stopAll([() => stopDevice({ ...h, startedHere: true }), () => stopSpawned(p, spec.name)]);
       if (problems.length > 0) throw new DeviceLeftRunning(`the ${spec.name} emulator failed to boot (${e instanceof Error ? e.message : String(e)}); and ${problems.join('; ')}`);
       await sleep(5000);
-      if (attempt === 2) throw new Error(`the ${spec.name} emulator failed to boot twice (tooling fault): ${e instanceof Error ? e.message : String(e)}`);
+      if (attempt === 2) throw new Error(`the ${spec.name} emulator failed to boot twice (tooling fault): ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
     }
   }
   try {

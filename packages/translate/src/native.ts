@@ -170,22 +170,28 @@ export function runSuites(c: Corpus, exec: Exec, tag: string, untilFailure = fal
 }
 
 function runSuite(c: Corpus, s: Suite, exec: Exec, inputs: Map<string, string>, dir: string): SuiteResult {
-  {
-    const outPath = join(dir, `${s.name}.jsonl`);
-    rmSync(outPath, { force: true });
-    const cause = exec(s.mode, inputs.get(s.name) as string, outPath);
-    const got = existsSync(outPath) ? readFileSync(outPath, 'utf8').split('\n') : [];
-    if (got[got.length - 1] === '') got.pop();
-    let pass = 0;
-    const mismatches: Mismatch[] = [];
-    for (let i = 0; i < s.expected.length; i++) {
-      const g = got[i] ?? '<missing>';
-      if (g === s.expected[i]) pass++;
-      else if (mismatches.length < 5) mismatches.push({ index: i, input: s.lines[i] as string, expected: s.expected[i] as string, got: g });
-    }
-    if (got.length !== s.expected.length && mismatches.length < 5) mismatches.push({ index: -1, input: '', expected: `${s.expected.length} lines`, got: `${got.length} lines` });
-    return { name: s.name, total: s.expected.length, pass: got.length === s.expected.length ? pass : Math.min(pass, got.length), mismatches, split: split(got), cause };
+  const outPath = join(dir, `${s.name}.jsonl`);
+  rmSync(outPath, { force: true });
+  const ended = exec(s.mode, inputs.get(s.name) as string, outPath);
+  const written = existsSync(outPath);
+  const got = written ? readFileSync(outPath, 'utf8').split('\n') : [];
+  if (got[got.length - 1] === '') got.pop();
+  let pass = 0;
+  const mismatches: Mismatch[] = [];
+  for (let i = 0; i < s.expected.length; i++) {
+    const g = got[i] ?? '<missing>';
+    if (g === s.expected[i]) pass++;
+    else if (mismatches.length < 5) mismatches.push({ index: i, input: s.lines[i] as string, expected: s.expected[i] as string, got: g });
   }
+  if (got.length !== s.expected.length && mismatches.length < 5) mismatches.push({ index: -1, input: '', expected: `${s.expected.length} lines`, got: `${got.length} lines` });
+  return { name: s.name, total: s.expected.length, pass: got.length === s.expected.length ? pass : Math.min(pass, got.length), mismatches, split: split(got), cause: ended ?? outputCause(written, got.length, s.expected.length) };
+}
+
+/** A process that exited 0 must still account for every case: no result file, or fewer or more lines than cases, is a cause. */
+export function outputCause(written: boolean, lines: number, cases: number): SuiteCause {
+  if (!written) return `no output: exit 0 but no result file was written (${cases} cases)`;
+  if (lines !== cases) return `${lines < cases ? 'short' : 'long'} output: exit 0 but ${lines} result lines for ${cases} cases`;
+  return null;
 }
 
 /** A suite that crashes, traps or runs past the limit leaves its missing lines as failing cases (a planted map fault can loop). */
@@ -197,22 +203,32 @@ export function execSuite(cmd: string, args: readonly string[], timeoutMs: numbe
   return suiteCause(r, timeoutMs);
 }
 
-/** The cause of a suite process ending: timeout, crash (a signal), a non-zero exit, or a spawn error; null for exit 0. */
-export function suiteCause(r: { readonly status: number | null; readonly signal: NodeJS.Signals | null; readonly error?: Error | undefined }, timeoutMs: number): SuiteCause {
+/** The last 600 characters of a process's stderr on one line (the cause is one report line), or '' when it printed nothing. */
+export function stderrTail(stderr: string | null | undefined): string {
+  const t = (stderr ?? '').trim().replace(/\s*\n\s*/g, ' | ');
+  return t.length > 600 ? `...${t.slice(-600)}` : t;
+}
+
+/** The cause of a suite process ending: timeout, crash (a signal), a non-zero exit, or a spawn error, with its stderr tail; null for exit 0. */
+export function suiteCause(r: { readonly status: number | null; readonly signal: NodeJS.Signals | null; readonly error?: Error | undefined; readonly stderr?: string | null }, timeoutMs: number): SuiteCause {
   const code = r.error === undefined ? '' : (r.error as NodeJS.ErrnoException).code ?? '';
-  if (code === 'ETIMEDOUT') return `timeout: killed after ${timeoutMs / 1000} s`;
-  if (r.error !== undefined) return `could not run: ${r.error.message}`;
-  if (r.signal !== null) return `crash: signal ${r.signal}`;
-  if (r.status !== 0) return `crash: exit status ${r.status}`;
-  return null;
+  const tail = stderrTail(r.stderr);
+  const why = code === 'ETIMEDOUT' ? `timeout: killed after ${timeoutMs / 1000} s` : r.error !== undefined ? `could not run: ${r.error.message}` : r.signal !== null ? `crash: signal ${r.signal}` : r.status !== 0 ? `crash: exit status ${r.status}` : null;
+  return why === null ? null : tail === '' ? why : `${why}; stderr tail: ${tail}`;
 }
 
 export function swiftExec(binary: string): Exec {
   return (mode, input, output) => execSuite(binary, [mode, input, output]);
 }
 
+/**
+ * The Kotlin harness heap cap. The JVM default (a quarter of RAM) let the engine suite grow to 4.3 GB, which under machine-wide
+ * memory pressure paged past SUITE_TIMEOUT_MS; it needs between 512 MB and 768 MB, and runs as fast at 2 GB (1.6 GB resident).
+ */
+export const KOTLIN_HEAP = '-Xmx2g';
+
 export function kotlinExec(tool: KotlinTool, jar: string): Exec {
-  return (mode, input, output) => execSuite(join(tool.javaHome, 'bin/java'), ['-Xss64m', '-jar', jar, mode, input, output]);
+  return (mode, input, output) => execSuite(join(tool.javaHome, 'bin/java'), ['-Xss64m', KOTLIN_HEAP, '-jar', jar, mode, input, output]);
 }
 
 export function allPass(suites: readonly SuiteResult[]): boolean {
