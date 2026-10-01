@@ -2470,6 +2470,8 @@ tasks:
         under the edge rule until SKIA-AA, radius rows caveat.'
       - '2026-09-30: T138 and T143 show that native dashed/dotted paint (dragonDrawBorders) causes css-wide-keywords, color-border-sides dotted and possibly logical-border device-pixel failures. p6a-promote
         (with T116 on top) moves up the landing queue, and must add a host check comparing the dash layout with Chrome pixels.'
+      - 'T075J (2026-10-01), notes/T046-paint-spec.md: profiles keep the #49 iOS rule; device gating lives only in NATIVE_LANES and outputs.ready (outside the digest); split into p6a-dash then p6a-promote;
+        cycle proof under the lease.'
   - id: T076
     type: worker
     assignee: Worker
