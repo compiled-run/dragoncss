@@ -138,6 +138,8 @@ type Units = {
   readonly cp: readonly number[];
   readonly wide: readonly boolean[];
   readonly start: readonly number[];
+  /** Whether the unit ends an odd-length run of RI units (LB30a), so the pairing needs no rescan. */
+  readonly riOdd: readonly boolean[];
 };
 
 function unitsOf(text: readonly number[], cjIsIdeographic: boolean): Units {
@@ -145,6 +147,7 @@ function unitsOf(text: readonly number[], cjIsIdeographic: boolean): Units {
   const cp: number[] = [];
   const wide: boolean[] = [];
   const start: number[] = [];
+  const riOdd: boolean[] = [];
   for (let i = 0; i < text.length; i++) {
     const ch = text[i] as number;
     const c = resolveClass(lineBreakClass(ch), cjIsIdeographic);
@@ -161,8 +164,10 @@ function unitsOf(text: readonly number[], cjIsIdeographic: boolean): Units {
     cp.push(ch);
     wide.push(isEastAsian(ch));
     start.push(i);
+    const n = cls.length;
+    riOdd.push((cls[n - 1] as number) === LB_RI && !(n >= 2 && (riOdd[n - 2] as boolean)));
   }
-  return { cls, cp, wide, start };
+  return { cls, cp, wide, start, riOdd };
 }
 
 function clsAt(u: Units, k: number): number {
@@ -300,15 +305,7 @@ function unitBreak(u: Units, k: number, text: readonly number[]): boolean {
   if ((p === LB_AL || p === LB_HL || p === LB_NU) && c === LB_OP && !(u.wide[k] as boolean)) return false;
   if (p === LB_CP && !(u.wide[k - 1] as boolean) && (c === LB_AL || c === LB_HL || c === LB_NU)) return false;
   // LB30a: an odd number of RI before
-  if (p === LB_RI && c === LB_RI) {
-    let odd = false;
-    let j = k - 1;
-    while (clsAt(u, j) === LB_RI) {
-      odd = !odd;
-      j--;
-    }
-    if (odd) return false;
-  }
+  if (p === LB_RI && c === LB_RI && (u.riOdd[k - 1] as boolean)) return false;
   // LB30b
   if (c === LB_EM && (p === LB_EB || isExtPictUnassigned(u.cp[k - 1] as number))) return false;
   // LB31
