@@ -134,8 +134,9 @@ async function captureRangeParts(page: Page, props: readonly string[]): Promise<
         let box: number[] | null = null;
         try {
           box = ((await cdp.send('DOM.getBoxModel', { nodeId: n.nodeId })) as { model: { border: number[] } }).model.border;
-        } catch {
-          // DOM.getBoxModel fails for a node that generates no box (display: none).
+        } catch (e) {
+          // DOM.getBoxModel fails for a node that generates no box (display: none); any other failure is an error.
+          if (!String(e).includes('Could not compute box model')) throw e;
         }
         const [x1, y1, , , x3, y3] = box ?? [0, 0, 0, 0, 0, 0];
         nodes.push({ id: `${id}::${part}`, kind: 'element', hasBox: box !== null, x: x1 as number, y: y1 as number, width: (x3 as number) - (x1 as number), height: (y3 as number) - (y1 as number), computed });
