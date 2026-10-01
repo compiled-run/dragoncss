@@ -3,6 +3,7 @@
 // longhands are the one exception: they are written when any of them is not auto. Auto is their initial value and no Chrome UA
 // rule sets them on a supported tag (ua.test.ts), so leaving them out gives the same computed values.
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
+import { rangePartOf } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
@@ -20,6 +21,20 @@ export type WebEmit = {
 };
 
 export const WEB_CSS_PATH = 'dragon.css';
+
+/** The track and thumb of range input el (analysis/resolve.ts), with the pseudo-element that styles each. */
+function rangeStyledParts(el: ResolvedElement): { readonly pseudo: string; readonly el: ResolvedElement }[] {
+  const out: { pseudo: string; el: ResolvedElement }[] = [];
+  let at: ResolvedElement = el;
+  for (;;) {
+    const next = at.children.find((c): c is ResolvedElement => c.kind === 'element' && rangePartOf(c) !== undefined);
+    if (next === undefined) return out;
+    const part = (rangePartOf(next) as { part: string | null }).part;
+    if (part === 'track') out.push({ pseudo: '-webkit-slider-runnable-track', el: next });
+    if (part === 'thumb') out.push({ pseudo: '-webkit-slider-thumb', el: next });
+    at = next;
+  }
+}
 
 /** CSS2 §9.3.2 box offsets, written only when one of them is not auto. */
 export const INSET_LONGHANDS: readonly (typeof LONGHANDS)[number][] = ['top', 'right', 'bottom', 'left'];
@@ -99,21 +114,28 @@ export function emitWebCss(cases: readonly { readonly key: string; readonly root
   for (const c of cases) {
     const map = new Map<string, string>();
     classOf.set(c.key, map);
-    const visit = (el: ResolvedElement): void => {
+    const declsOf = (el: ResolvedElement): string[] => {
       const insets = writesInsets(el);
-      const decls = LONGHANDS.filter((p) => insets || !INSET_LONGHANDS.includes(p)).map((p) => {
+      return LONGHANDS.filter((p) => insets || !INSET_LONGHANDS.includes(p)).map((p) => {
         const v = (el.props.get(p) as ResolvedValue).value;
         return `  ${p}: ${p === 'font-family' ? familyText(v) : valueText(v)};`;
       });
-      const variant = `${el.element.address}\u0000${decls.join('\n')}`;
+    };
+    const visit = (el: ResolvedElement): void => {
+      const decls = declsOf(el);
+      // FORM-a A4: a range's track and thumb are styled through their pseudo-elements on the input's class; its container takes
+      // only UA and inherited values, which the input's own rule reproduces.
+      const parts = rangePartOf(el)?.part === null ? rangeStyledParts(el).map((p) => ({ pseudo: p.pseudo, decls: declsOf(p.el) })) : [];
+      const variant = `${el.element.address}\u0000${decls.join('\n')}${parts.map((p) => `\u0000${p.pseudo}\u0000${p.decls.join('\n')}`).join('')}`;
       let cls = variants.get(variant);
       if (cls === undefined) {
         cls = `dg${variants.size}`;
         variants.set(variant, cls);
         rules.push(`.${cls} {\n${decls.join('\n')}\n}`);
+        for (const p of parts) rules.push(`.${cls}::${p.pseudo} {\n${p.decls.join('\n')}\n}`);
       }
       map.set(el.element.address, cls);
-      for (const ch of el.children) if (ch.kind === 'element') visit(ch);
+      for (const ch of el.children) if (ch.kind === 'element' && (rangePartOf(ch)?.part ?? null) === null) visit(ch);
     };
     visit(c.root);
   }

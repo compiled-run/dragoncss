@@ -62,7 +62,7 @@ describe('the rendering-neutral attribute table', () => {
 
 describe('refused attributes name the package that owns their effect', () => {
   it.each([
-    ['input', 'type', 'FORM-a'], ['input', 'min', 'FORM-a'], ['input', 'max', 'FORM-a'], ['input', 'value', 'FORM-a'],
+    ['div', 'type', 'FORM-a'], ['div', 'min', 'FORM-a'], ['div', 'max', 'FORM-a'], ['div', 'value', 'FORM-a'],
     ['div', 'src', 'REPL'], ['div', 'alt', 'REPL'], ['div', 'width', 'REPL'], ['div', 'height', 'REPL'], ['iframe', 'alt', 'REPL'],
     ['a', 'href', 'INL1'], ['a', 'rel', 'INL1'], ['a', 'target', 'INL1'], ['html', 'lang', 'TXT1-C'], ['div', 'dir', 'bidi'],
     ['div', 'hidden', 'display'], ['div', 'style', 'SOV'], ['div', 'tabindex', 'not proven neutral'],
@@ -75,6 +75,10 @@ describe('refused attributes name the package that owns their effect', () => {
     expect(attributeRefusal('button', 'type')).toBeNull();
     expect(attributeRefusal('div', 'type')).toContain('FORM-a');
     expect(attributeRefusal('button', 'value')).toContain('FORM-a');
+  });
+
+  it('FORM-a A4 handles type, min, max, value and step on input', () => {
+    for (const name of ['type', 'min', 'max', 'value', 'step']) expect(attributeRefusal('input', name), name).toBeNull();
   });
 
   it('REPL-a handles src, alt, width and height on img, and src, width and height on iframe', () => {

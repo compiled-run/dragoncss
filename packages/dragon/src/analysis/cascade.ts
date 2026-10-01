@@ -2,12 +2,13 @@
 // values come from the captured dataset, computed.ts, and Chrome's UA rules for the supported tags hold no !important), so the
 // order is importance, then specificity, then order of appearance.
 import type { Longhand } from '../css/properties.ts';
+import type { RangePart, Selector } from '../css/selectors.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { LinkedElement } from './link.ts';
-import type { DirectionContext } from './logical.ts';
+import type { Direction, DirectionContext } from './logical.ts';
 import { elementDirection, hasDirectionalValues, inDirection } from './logical.ts';
-import { selectorMatches, specificityFor } from './match.ts';
+import { partSelectorMatches, selectorMatches, specificityFor } from './match.ts';
 import type { CustomProperties, SubstitutedDeclaration, Substitution, VarScope } from './variables.ts';
 import { computeCustoms } from './variables.ts';
 
@@ -55,6 +56,9 @@ export type CascadeResult = {
   readonly scope: VarScope;
 };
 
+/** A range part's cascade: the part's pseudo-element (null for the container, which no author selector reaches) and its direction. */
+export type CascadePart = { readonly name: RangePart | null; readonly direction: Direction };
+
 /** css-variables-1 §3.1: a longhand of a declaration holding var() competes with this value until substitution. */
 const pendingValue = (d: Declaration): CssValue => ({ kind: 'other', type: 'var()', text: d.text });
 
@@ -63,11 +67,14 @@ const pendingValue = (d: Declaration): CssValue => ({ kind: 'other', type: 'var(
  * order: custom properties first (over the parent's, inherited), then direction with var() substituted, then every other
  * longhand with each flow-relative declaration mapped to the physical side of that direction.
  */
-export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties): CascadeResult {
+export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties, part: CascadePart | null = null): CascadeResult {
+  // FORM-a A4: a range part (::-webkit-slider-thumb, ::-webkit-slider-runnable-track) cascades only its own pseudo-element
+  // selectors, matched on the input's chain; the element's cascade never takes them (match.ts selectorMatches).
+  const matches = (rule: Rule, sel: Selector): boolean => (part === null ? selectorMatches(rule, sel, chain, chain.length - 1, 0, faults) : part.name !== null && partSelectorMatches(rule, sel, chain, part.name, faults));
   const customs = new Map<string, { declaration: Declaration; specificity: readonly [number, number, number] }>();
   for (const rule of rules) {
     for (const sel of rule.selectors) {
-      if (!selectorMatches(rule, sel, chain, chain.length - 1, 0, faults)) continue;
+      if (!matches(rule, sel)) continue;
       const specificity = specificityFor(sel, faults);
       for (const d of rule.declarations) {
         if (d.custom === undefined) continue;
@@ -79,13 +86,14 @@ export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedEle
   }
   const scope: VarScope = { customs: computeCustoms(new Map([...customs].map(([name, c]) => [name, c.declaration])), inheritedCustoms), memo: new Map<Declaration, SubstitutedDeclaration>() };
   // css-logical-1 §4: flow-relative declarations take part as the physical longhands of the element's direction (logical.ts).
-  const own = hasDirectionalValues(rules) ? elementDirection(rules, chain, faults, direction, scope) : null;
+  // A part's direction is the one it inherits from the input (computed-checks.ts refuses direction in a part rule).
+  const own = !hasDirectionalValues(rules) ? null : part !== null ? part.direction : elementDirection(rules, chain, faults, direction, scope);
   const winners = new Map<Longhand, Candidate>();
   const matched = new Map<Longhand, Declaration[]>();
   const candidates: (readonly [Longhand, Candidate])[] = [];
   for (const rule of rules) {
     for (const sel of rule.selectors) {
-      if (!selectorMatches(rule, sel, chain, chain.length - 1, 0, faults)) continue;
+      if (!matches(rule, sel)) continue;
       const specificity = specificityFor(sel, faults);
       for (const declared of rule.declarations) {
         const d = own === null ? declared : inDirection(declared, own, faults);

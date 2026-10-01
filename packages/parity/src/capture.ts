@@ -70,6 +70,7 @@ export async function captureFixture(browser: Browser, fixture: string, html: st
       }
       return out;
     }, [...LONGHANDS, ...extra]);
+    const parts = await captureRangeParts(page, [...LONGHANDS, ...extra]);
     return {
       fixture,
       chrome: CHROME_VERSION,
@@ -78,11 +79,73 @@ export async function captureFixture(browser: Browser, fixture: string, html: st
       viewport: { width: env.viewport.width, height: env.viewport.height },
       devicePixelRatio: env.devicePixelRatio,
       direction: env.direction,
-      nodes,
+      nodes: parts.size === 0 ? nodes : nodes.flatMap((n) => [n, ...(parts.get(n.id) ?? [])]),
     };
   } finally {
     await page.context().close();
   }
+}
+
+type DomNode = { readonly nodeId: number; readonly nodeName: string; readonly attributes?: readonly string[]; readonly children?: readonly DomNode[]; readonly shadowRoots?: readonly DomNode[] };
+
+/**
+ * FORM-a A4: the UA shadow parts of every input[type=range] with a data-dragon-id, as element nodes "<id>::container",
+ * "<id>::track" and "<id>::thumb" after the input: their border boxes from DOM.getBoxModel and their computed values from
+ * CSS.getComputedStyleForNode, through CDP with pierce (FORM-0, scripts/capture-form-data.ts). Script cannot reach a UA shadow
+ * root. A page without a range input opens no CDP session, so every earlier capture is unchanged.
+ */
+async function captureRangeParts(page: Page, props: readonly string[]): Promise<Map<string, CapturedNode[]>> {
+  const out = new Map<string, CapturedNode[]>();
+  const count = await page.evaluate(() => document.querySelectorAll('input[type="range" i][data-dragon-id]').length);
+  if (count === 0) return out;
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    const doc = (await cdp.send('DOM.getDocument', { depth: -1, pierce: true })) as { root: DomNode };
+    const inputs: { id: string; node: DomNode }[] = [];
+    const walk = (n: DomNode): void => {
+      const attrs = n.attributes ?? [];
+      const at = (name: string): string | undefined => {
+        for (let k = 0; k + 1 < attrs.length; k += 2) if (attrs[k] === name) return attrs[k + 1];
+        return undefined;
+      };
+      const id = at('data-dragon-id');
+      if (n.nodeName === 'INPUT' && id !== undefined && at('type')?.toLowerCase() === 'range') inputs.push({ id, node: n });
+      for (const c of n.children ?? []) walk(c);
+    };
+    walk(doc.root);
+    if (inputs.length !== count) throw new Error(`the pierced document holds ${inputs.length} range inputs with a data-dragon-id, the page ${count}`);
+    for (const { id, node } of inputs) {
+      const container = node.shadowRoots?.[0]?.children?.[0];
+      const track = container?.children?.[0];
+      const thumb = track?.children?.[0];
+      if (container === undefined || track === undefined || thumb === undefined) throw new Error(`${id}: CDP exposed no user-agent shadow container, track and thumb`);
+      const nodes: CapturedNode[] = [];
+      for (const [part, n] of [['container', container], ['track', track], ['thumb', thumb]] as const) {
+        const style = (await cdp.send('CSS.getComputedStyleForNode', { nodeId: n.nodeId })) as { computedStyle: { name: string; value: string }[] };
+        const byName = new Map(style.computedStyle.map((e) => [e.name, e.value]));
+        const computed: Record<string, string> = {};
+        for (const p of props) {
+          const v = byName.get(p);
+          if (v === undefined) throw new Error(`${id}::${part}: CDP gave no computed ${p}`);
+          computed[p] = v;
+        }
+        let box: number[] | null = null;
+        try {
+          box = ((await cdp.send('DOM.getBoxModel', { nodeId: n.nodeId })) as { model: { border: number[] } }).model.border;
+        } catch {
+          // DOM.getBoxModel fails for a node that generates no box (display: none).
+        }
+        const [x1, y1, , , x3, y3] = box ?? [0, 0, 0, 0, 0, 0];
+        nodes.push({ id: `${id}::${part}`, kind: 'element', hasBox: box !== null, x: x1 as number, y: y1 as number, width: (x3 as number) - (x1 as number), height: (y3 as number) - (y1 as number), computed });
+      }
+      out.set(id, nodes);
+    }
+  } finally {
+    await cdp.detach();
+  }
+  return out;
 }
 
 /** Stable, byte-for-byte JSON for the committed expected files. */

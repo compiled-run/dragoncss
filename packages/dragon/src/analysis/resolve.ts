@@ -14,6 +14,9 @@ import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { appearanceDisplay, blockifyRoot, computeGridLengths, computeJustifyItems, computeLengths, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
 import { presentationalHints } from './elements/replaced.ts';
+import { isRangeType } from './elements/controls.ts';
+import { RANGE_UA_SHADOW } from '../forms/ua-shadow.generated.ts';
+import type { RangePart } from '../css/selectors.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import type { CustomProperties } from './variables.ts';
@@ -96,11 +99,13 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   let resolvedRoot: ResolvedElement | null = null;
   // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
   const customsOf = new WeakMap<ResolvedElement, CustomProperties>();
-  const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {
-    const here = [...chain, el];
-    const { winners, matched, scope } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties));
+  const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null, part: RangeShadowPart | null = null): ResolvedElement => {
+    // A range part cascades its pseudo-element's rules on the input's chain (chain ends with the input); it has no chain of its own.
+    const here = part === null ? [...chain, el] : chain;
+    const cascadePart = part === null ? null : { name: PART_PSEUDO[part], direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
+    const { winners, matched, scope } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), cascadePart);
     const props = new Map<Longhand, ResolvedValue>();
-    const tag = uaTagOf(el.tag);
+    const tag = uaTagOf(el.tag, el.attributes.get('type'));
     const none = { declaration: null, declared: null, losing: [] } as const;
     const fromParent = (p: Longhand): ResolvedValue => {
       if (parent === null) return { value: parseValueText(p, environment.ua.computed.html[p] as string), origin: 'initial', span: null, ...none };
@@ -113,7 +118,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     };
     // Longhands no author declaration set: their UA value depends on the element's final direction and font size (below).
     const defaulted = new Set<Longhand>();
-    const hints = presentationalHints(el.tag, el.attributes);
+    const hints = part === null ? presentationalHints(el.tag, el.attributes) : new Map();
     for (const p of LONGHANDS) {
       const raw = winners.get(p);
       const w = raw === undefined ? undefined : substituteVariables(raw, p, el, scope);
@@ -160,6 +165,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent);
     // A replaced key's forced values (iframe overflow: clip) hold whatever the cascade says (ELB-2 userAgentForced).
     applyForcedUserAgent(tag, props, environment.ua);
+    if (part !== null) applyShadowUserAgent(part, props, defaulted, fromParent);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {
@@ -184,6 +190,12 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     if (resolvedRoot === null) resolvedRoot = self;
     customsOf.set(self, scope.customs);
     const kids: (ResolvedElement | LinkedText)[] = el.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
+    // FORM-a A4: input[type=range] holds Chrome's UA shadow tree, container > track > thumb, each a div (forms/ua-shadow.generated.ts).
+    const host = part === null ? (el.tag === 'input' && isRangeType(el.attributes.get('type')) ? el : null) : (rangeParts.get(parent as ResolvedElement) as RangePartInfo).host;
+    const next: RangeShadowPart | null = part === null ? (host === null ? null : 'container') : part === 'container' ? 'track' : part === 'track' ? 'thumb' : null;
+    if (part !== null) rangeParts.set(self, { part, host: host as LinkedElement });
+    else if (host !== null) rangeParts.set(self, { part: null, host });
+    if (next !== null && host !== null) kids.push(visit(partElement(host, next), here, self, next));
     // An inline formatting context is a maximal sequence of text; display: none elements generate no box (CSS2 §9.2.4), so
     // they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
     const collapsed = new Map<LinkedText, string>();
@@ -214,6 +226,46 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
 }
 
 const resolvedEnvironments = new WeakMap<ResolvedElement, ResolveEnvironment>();
+
+/** The parts of the UA shadow tree of input[type=range] (FORM-a A4). */
+export type RangeShadowPart = 'container' | 'track' | 'thumb';
+const PART_PSEUDO: Readonly<Record<RangeShadowPart, RangePart | null>> = { container: null, track: 'track', thumb: 'thumb' };
+
+/** A range input (part null) or one of its shadow parts, with the input element. */
+export type RangePartInfo = { readonly part: RangeShadowPart | null; readonly host: LinkedElement };
+const rangeParts = new WeakMap<ResolvedElement, RangePartInfo>();
+
+/** The range input or shadow part a resolved element is, or undefined for every other element. */
+export function rangePartOf(el: ResolvedElement): RangePartInfo | undefined {
+  return rangeParts.get(el);
+}
+
+/** A shadow part as an element: a div at "<input address>::<part>", located at the input, with no class or attribute. */
+function partElement(host: LinkedElement, part: RangeShadowPart): LinkedElement {
+  return { kind: 'element', address: `${host.address}::${part}`, node: host.node, instance: host.instance, owner: host.owner, tag: 'div', classes: [], attributes: new Map(), children: [] };
+}
+
+const keywordDirection = (v: ResolvedValue): Direction => (v.value.kind === 'keyword' && v.value.value === 'rtl' ? 'rtl' : 'ltr');
+
+/** The shadow rules' properties that no longhand models, and why each changes nothing Dragon lays out or paints. */
+const UNMODELLED_SHADOW = new Set(['unicode-bidi', '-webkit-user-modify']);
+
+/**
+ * A part's UA declarations after the div rules (RANGE_UA_SHADOW, user-agent origin, in cascade order) for the longhands no author
+ * declaration set: min-inline-size is min-width in horizontal writing; inherit takes the parent's value. unicode-bidi: isolate
+ * (the parts hold no text) and -webkit-user-modify (editing) are not modelled; any other property is an error.
+ */
+function applyShadowUserAgent(part: RangeShadowPart, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, fromParent: (p: Longhand) => ResolvedValue): void {
+  for (const rule of RANGE_UA_SHADOW[part]) {
+    for (const [name, text, important] of rule.declarations) {
+      if (UNMODELLED_SHADOW.has(name)) continue;
+      const p = (name === 'min-inline-size' ? 'min-width' : name) as Longhand;
+      if (important || !(LONGHANDS as readonly string[]).includes(p)) throw new Error(`the range ${part}'s UA rule sets ${name}: ${text}, which Dragon does not model`);
+      if (!defaulted.has(p)) continue;
+      props.set(p, text === 'inherit' ? { ...fromParent(p), origin: 'user-agent' } : { value: parseValueText(p, text), origin: 'user-agent', span: null, declaration: null, declared: null, losing: [] });
+    }
+  }
+}
 
 /** The environment a root returned by resolveTree was resolved in; the computed-value checks read its UA dataset. */
 export function environmentOf(root: ResolvedElement): ResolveEnvironment {
