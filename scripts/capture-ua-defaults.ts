@@ -776,13 +776,17 @@ function render(c: Capture, scheme: Scheme): string {
 }
 
 function applyPlant(p: Plant, light: Capture): void {
-  if (p === 'drop-declared') {
-    for (const dir of ['ltr', 'rtl']) delete ((light.declared['button'] as Dirs)[dir] as Record<string, string>)['padding-left'];
-  } else if (p === 'drop-unmodelled') {
-    for (const dir of ['ltr', 'rtl']) delete ((light.unmodelled['button'] as Dirs)[dir] as Record<string, string>)['appearance'];
-  } else if (p === 'drop-font-size-small') {
-    for (const dir of ['ltr', 'rtl']) delete ((light.declared['small'] as Dirs)[dir] as Record<string, string>)['font-size'];
-  }
+  // Each plant deletes one row entry in both directions; a missing entry throws, so a plant can never pass by deleting nothing.
+  const drop = (table: Record<string, Dirs>, key: string, property: string): void => {
+    for (const dir of ['ltr', 'rtl']) {
+      const row = (table[key] as Dirs | undefined)?.[dir] as Record<string, string> | undefined;
+      if (row === undefined || !(property in row)) throw new Error(`plant ${p}: ${key} ${dir} has no ${property} entry to delete`);
+      delete row[property];
+    }
+  };
+  if (p === 'drop-declared') drop(light.declared, 'button', 'padding-left');
+  else if (p === 'drop-unmodelled') drop(light.unmodelled, 'button', 'cursor');
+  else if (p === 'drop-font-size-small') drop(light.declared, 'small', 'font-size');
 }
 
 /** Compares the committed light dataset with another dataset file: entries of keys present in both. Returns the exit code. */

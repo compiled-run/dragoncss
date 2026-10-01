@@ -10,7 +10,8 @@ export const BOX_LONGHANDS = [
   'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
   'object-fit', 'object-position', 'appearance',
 ] as const;
-export const BOX_SHORTHANDS = ['margin', 'padding'] as const;
+/** -webkit-appearance is Chrome's legacy alias of appearance (css-ui-4 §7.1). */
+export const BOX_SHORTHANDS = ['margin', 'padding', '-webkit-appearance'] as const;
 export const BOX_INHERITED: readonly (typeof BOX_LONGHANDS)[number][] = ['direction'];
 /** direction is a container property: the element's own inline flow, text alignment and flex axes read it. */
 export const BOX_CONTAINER: readonly (typeof BOX_LONGHANDS)[number][] = ['direction'];

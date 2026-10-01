@@ -39,7 +39,7 @@ describe('E2 seams: the property registry', () => {
   });
   it('SHORTHANDS keeps its order', () => {
     expect([...SHORTHANDS]).toEqual([
-      'margin', 'padding', 'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
+      'margin', 'padding', '-webkit-appearance', 'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
       'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow', 'white-space',
       'background',
       ...LOGICAL_SHORTHANDS,
