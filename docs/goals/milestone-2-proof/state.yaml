@@ -90,9 +90,9 @@ dispatched:
   - T050
   - T062
   - T118
-  - T026
   - T119
   - T120
+  - T139
 device_lease: null
 tasks:
   - id: T001
@@ -1097,17 +1097,42 @@ tasks:
   - id: T026
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: engine
     objective: 'V2a engine value model (notes/T012-v2-spec.md §4, binding; APPROVED by the owner 2026-09-28): env(), sv/lv/dv, em and rem as engine values, rootFontSize, calc in font-size and line-height,
       ex/ch/cap/lh/rlh with Ahem metrics. Worktree /tmp/dragon-v2, branch v2a-value-model, from master after P5 (T007) and V1 Phase B (T009). PM rulings 5, 7 and 8 taken as recommended.'
     allowed_files:
       - See notes/T012-v2-spec.md §4 allowed_files (binding)
+      - packages/layout/src/input.ts
+      - packages/layout/src/validate.ts
+      - packages/layout/src/environment.ts
+      - packages/dragon/src/lower/ios-layout.ts
+      - packages/dragon/src/emit/native-support.ts
+      - packages/translate/harness/harness.ts
     verify:
       - See notes/T012-v2-spec.md §4 verify (binding)
     stop_if:
       - See notes/T012-v2-spec.md §4 stop_if (binding)
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'V2a landed as PR #45 (merged 9668e02d8) after 2 Macroscope rounds, plus the gate fix #47 for the already-reviewed skip. It adds environment inputs (viewportUnits, safeArea, rootFontSize),
+        rem/env/ex/ch/cap/lh leaves, font-size resolution and LineHeightCalc (non-negative). A root font-size that does not compute to px is refused. Device run 460 cases equals master; pnpm test 2980/2980.
+        v2a-migration-check (scripts/check-additive-migration.ts) is still to land as a small follow-up PR.'
+      changed_files:
+        - packages/layout/src/input.ts
+        - packages/layout/src/validate.ts
+        - packages/layout/src/environment.ts
+        - packages/dragon/src/lower/ios-layout.ts
+        - packages/dragon/src/emit/native-support.ts
+        - packages/translate/harness/harness.ts
+      commands:
+        - cmd: pnpm test 2980/2980
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices
+          status: pass
+        - cmd: pnpm pr:review 45 exit 0
+          status: pass
     constraints:
       - Never concurrent with T011 Phase B; runs before it by default.
   - id: T027
@@ -1953,6 +1978,9 @@ tasks:
     stop_if:
       - See notes/T045-repl-form-spec.md §3 P4 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T051J amendment (2026-10-01), see notes/T051-repl-a.md: route 2a longhands with a migration checker; a replaced leaf kind; Phase A lowers native layout only and lands together with Phase B; stacked
+        on size-ar.'
   - id: T052
     type: worker
     assignee: Worker
@@ -1966,6 +1994,8 @@ tasks:
     stop_if:
       - See notes/T045-repl-form-spec.md §3 P5 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T051J: FORM-a Phase A stacks on T051 Phase A, not on master.'
   - id: T053
     type: worker
     assignee: Worker
@@ -2433,6 +2463,8 @@ tasks:
         always dithered and premultiplied; focus ring outline_painter.cc:37-890. Skia ports are pending T085; allowances only if T085 recommends one.'
       - 'T085: port Skia blur (BlurRect cubic profile plus the triple-box PlanGauss/small_blur) and the 8x8 dither exactly (notes/T085); a SystemInfo software-raster precondition in lanes (P6a); arc AA
         under the edge rule until SKIA-AA, radius rows caveat.'
+      - '2026-09-30: T138 and T143 show that native dashed/dotted paint (dragonDrawBorders) causes css-wide-keywords, color-border-sides dotted and possibly logical-border device-pixel failures. p6a-promote
+        (with T116 on top) moves up the landing queue, and must add a host check comparing the dash layout with Chrome pixels.'
   - id: T076
     type: worker
     assignee: Worker
@@ -2583,6 +2615,9 @@ tasks:
     constraints:
       - 'T082 finding: today''s ahemMeasurer is 1 LU too wide on 40 of 1,680 Chrome Ahem runs (7.77, 9.99, 11.1111, 17.3, 23.3, 33.33 px); the HarfBuzz path matches all of them. TXT1a-1 adds Ahem fixtures
         at these sizes to prove the fix; R2 (existing outputs byte-identical) still holds for existing fixtures. The script check must use Script_Extensions (U+30FC, U+0964 get their own runs).'
+      - 'T140 (2026-09-30): every visible north-star text node uses Lato 400/700, which native refuses (Ahem only) until TXT1a. This is on the checkpoint-3 critical path.'
+      - 'T083J amendment (2026-09-30), see notes/T083-txt1a-1.md: a TEXT_LATIN_FIXTURES registry outside FIXTURES (no FixtureSpec flag); Phase A (Ahem through HarfBuzz, byte-identical) then Phase B (real
+        fonts); device coverage pinned unchanged.'
   - id: T084
     type: worker
     assignee: Worker
@@ -2596,6 +2631,10 @@ tasks:
     stop_if:
       - See notes/T056-txt1a-spec.md §3 TXT1a-2 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T140 (2026-09-30): every visible north-star text node uses Lato 400/700, which native refuses (Ahem only) until TXT1a. This is on the checkpoint-3 critical path.'
+      - 'T083J: absorb TEXT_LATIN_FIXTURES into FIXTURES (device-lane counts rise by the pinned registry count); add the Ahem fractional-size fixtures; switch native-host, lanes and line-breaks to the shaped
+        measurer; add the text-latin replay to the declared lanes; stop if the registry is non-empty at the end.'
   - id: T085
     type: scout
     assignee: Scout
@@ -3477,6 +3516,10 @@ tasks:
     objective: 'GRID G1a, three stacked PRs: grid-g1a (#32) -> grid-g1a-engine -> grid-g1a-fixtures (notes/T-grid-g1a.md, notes/T098-grid-flt-wm-spec.md). Catch up with master, regenerate, device step,
       land in order.'
     receipt: null
+    constraints:
+      - '2026-09-30: four branches, all host-verified and pending their device runs: grid-g1a 17e4dbd0e (calc percentage gaps on grid; refused elsewhere), grid-g1a-engine 95798708e, grid-g1a-engine-values
+        16e508ddc (percentage-length audit, 6 Chrome probes), grid-g1a-fixtures bff56c0e6. At landing, fixtures adds a calc-percentage grid-gap parity case so the support row is proven, then runs the G1b
+        device step.'
   - id: T122
     type: worker
     assignee: Worker
@@ -3643,6 +3686,9 @@ tasks:
     objective: 'Engine bug (found by CALC-2): in a column flex container, an item with min-height: auto cannot shrink below its own specified height. Chrome shrinks an empty 11px item to 0, the engine keeps
       11px (flex.ts buildItem contentMain via layoutContents measures content with the item height applied). Same for px. Fix with a Chrome-backed fixture.'
     receipt: null
+    constraints:
+      - 'Done on flex-auto-min bdec83854, pending its device run. Random corpus: 136 geometry moves and 35 new percent-height-flex refusals, all without a Chrome reference; refusing is accepted, with follow-up
+        T136.'
   - id: T129
     type: worker
     assignee: Worker
@@ -3651,6 +3697,9 @@ tasks:
     objective: 'Engine vs Chrome (found by CALC-2): rtl block child with margin-left: calc(-1e9px): Chrome x=1.98 (overflow artifact), engine 390. Investigate against Blink LayoutUnit saturation and either
       port it or refuse the range with a typed code.'
     receipt: null
+    constraints:
+      - Done on rtl-huge-margin 2bcc33dd6, pending its device run. It ports Blink's saturating LayoutUnit placement order (block_layout_algorithm.cc and others, BSD) and clamps px lengths after zoom. The
+        rtl margin-left -33554430px case gives x=1.984375 as in Chrome, exact to 1 LU at every DPR. New fixture values-length-saturation; no existing vector moved.
   - id: T130
     type: worker
     assignee: Worker
@@ -3662,19 +3711,63 @@ tasks:
   - id: T131
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: values
     objective: 'Percent inside a border-width calc(): Chrome treats it as invalid; Dragon refuses with a misleading percentage-gaps reason. Give it the right typed reason, matching Chrome validity.'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #46 merged 69756ef3d. mathInvalidity ports Blink math parser type checking (145.0.7632.6). Chrome-rejected math is now DRAGON_CSS_INVALID_VALUE and dropped, so an earlier declaration
+        wins, as in Chrome. Per-context percent reasons. A 3322-row Chrome oracle agrees in both directions, bar 4 undecided values. Round-1 fix kept the validity check bounded by MAX_MATH_TOKENS. pnpm
+        test 2949/2949.'
+      changed_files:
+        - packages/dragon/src/css/math.ts
+        - packages/dragon/src/css/stylesheet.ts
+        - packages/dragon/test/math-validity.test.ts
+        - packages/dragon/test/units.test.ts
+      commands:
+        - cmd: pnpm test 2949/2949
+          status: pass
+        - cmd: pnpm pr:review 46 exit 0
+          status: pass
+    allowed_files:
+      - packages/dragon/src/css/math.ts
+      - packages/dragon/src/css/stylesheet.ts
+      - packages/dragon/test/math-validity.test.ts
+      - packages/dragon/test/units.test.ts
   - id: T132
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: device
     objective: 'Silent lane failure: under machine load, layout-vectors-host native:kotlin (and the Kotlin engine suite in pnpm test) intermittently reports p1/engine 0/20258 with no reason (seen on WM-0
       and T123, 2026-09-30); rerun passes. Find the cause (JVM start or timeout, harness.jar I/O, killed process) and make the lane record the real error (exit code, signal, stderr tail) instead of 0/N,
       with a test. Also: the dragon-320 emulator sometimes exits before it attaches (lane-speed run); record and surface the emulator log.'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #48 merged b3e372dc7 after 4 rounds. Root cause: the Kotlin engine suite was killed at the 180 s timeout under load; the harness writes only at the end, so the record read 0/20258 and
+        the cause was dropped. Likely slowdown: the JVM default heap (4.3 GB resident). Now: the cause plus a stderr tail reach the lane record; Kotlin runs with -Xmx2g (same speed, byte-identical); emulator
+        logs are kept and an early exit fails fast; parity:lanes accepts a leading --; allPass needs no cause. Test cleanup goes through test/scratch.ts. pnpm test 3008/3008; device run equals master.'
+      changed_files:
+        - packages/translate/src/native.ts
+        - packages/parity/src/lanes.ts
+        - packages/parity/src/device-run.ts
+        - packages/parity/src/device-jobs.ts
+        - packages/parity/test/scratch.ts
+      commands:
+        - cmd: pnpm test 3008/3008
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices
+          status: pass
+        - cmd: pnpm pr:review 48 exit 0
+          status: pass
+    allowed_files:
+      - packages/translate/src/native.ts
+      - packages/parity/src/lanes.ts
+      - packages/parity/src/device-run.ts
+      - packages/parity/src/device-jobs.ts
+      - packages/parity/test/scratch.ts
   - id: T133
     type: worker
     assignee: Worker
@@ -3683,6 +3776,8 @@ tasks:
     objective: 'INL1a-tags: accept b, strong, em and i on web, and on native per R7 (notes/T044-inl-spec.md), with their UA values via resolve.ts and datasets.ts. After T058, before TXT1a. small and code
       are recorded as still refused.'
     receipt: null
+    constraints:
+      - 'T083J: R7 tag acceptance (b, strong, em, i) is owned here and runs after T083.'
   - id: T134
     type: worker
     assignee: Worker
@@ -3690,6 +3785,174 @@ tasks:
     lane: runtime
     objective: 'SELD-R1b (split from T063): rt-hit.ts with the Chrome 145 inline hit rule from T063J (notes/T047-runtime-spec.md amendment), pointer-events auto and none (inherited), tap dispatch, and the
       device-states and device-hit lanes, on seld-r1. The pointer-events capture key needs the identity test. targets.ts entries after #42.'
+    receipt: null
+  - id: T136
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'Percentage-height children in a column flex item with a set height: T128 refuses them (percent-height-flex, 35 random-corpus cases) because Chrome resolves the child''s percentage against
+      the item''s set height while the auto-minimum measurement treats the height as auto. Port it exactly: layoutContents (block.ts) returns the content height before the item''s own height is applied
+      (Blink IntrinsicBlockSize), then lift the refusal, with Chrome-captured fixtures. After T128 lands.'
+    receipt: null
+  - id: T135
+    type: worker
+    assignee: Worker
+    status: done
+    lane: tooling
+    objective: pr:review vouches for Macroscope's 'All code in this push has already been reviewed.' skip over reviewed paths; close ignore.md's front matter so test files are reviewed.
+    allowed_files:
+      - scripts/pr-review.ts
+      - scripts/pr-review-vouch.ts
+      - scripts/macroscope-ignore.ts
+      - packages/parity/test/pr-review.test.ts
+      - packages/parity/test/macroscope-ignore.test.ts
+      - .macroscope/ignore.md
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #47 merged 77afadf69. The skip is vouched only when the three-dot diff over the paths ignore.md leaves to review has the same stable patch id as an earlier PR commit with a successful
+        correctness check, under the same ignore blob. Diff flags are pinned against git config, binary-only files are excluded as Macroscope does, and fork PRs and a self-ignoring ignore file are refused.
+        ignore.md''s unclosed ''---'' block is closed, so ignoreTests: false applies and test files are reviewed. pnpm test 2957/2959 (2 load timeouts pass on rerun); live pr-review 45 vouched by 19a66f17e.'
+      changed_files:
+        - scripts/pr-review.ts
+        - scripts/pr-review-vouch.ts
+        - scripts/macroscope-ignore.ts
+        - packages/parity/test/pr-review.test.ts
+        - packages/parity/test/macroscope-ignore.test.ts
+        - .macroscope/ignore.md
+      commands:
+        - cmd: pnpm pr:review 47 exit 0
+          status: pass
+        - cmd: targeted 38 tests
+          status: pass
+  - id: T137
+    type: scout
+    assignee: Scout
+    status: done
+    lane: android
+    objective: 'Scout: why the north star supports 20 declarations on Android against 165 on iOS (572 vs 32 unsupported values), and which Worker packages close the gap (the charter misfire: one platform
+      becomes later).'
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'The cause is a hard-coded generator rule. scripts/gen-profile-rows.ts:39-65 writes all 1884 Android rows unsupported, per native-strategy.md item 13, whose condition is already met: Android
+        non-pixel device lanes pass 460 cases at 3 DPRs on the shared nativeLayoutProjection. deriveRows only takes ios and web. 540 of the 569 Android value errors come from this. Expected effect of the
+        fix: north-star supportedAndroid goes from 20 to about 165. PM ruling: Android rows follow the iOS rule, and generation does not read live lanes.json, because the lanes tests already enforce device
+        truth. Spawned T139 (dispatched), T140 (font map, 22 vs 34) and T141 (report).'
+      evidence:
+        - scripts/gen-profile-rows.ts:39-65
+        - packages/parity/src/profile-rows.ts:12
+        - docs/research/native-strategy.md:271
+        - packages/parity/out/lanes.json
+  - id: T138
+    type: scout
+    assignee: Scout
+    status: done
+    lane: device
+    objective: 'Scout: sort the device-pixels failures (iOS 135, Android 182) by cause and map each cause to a fixing task, existing or new, so checkpoint 2 can close.'
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'All 317 device-pixels failures (iOS 135, Android 182) fall into two causes. (A) Painting order across siblings, 57 iOS / 86 Android: position-relative-block, position-absolute-static-block,
+        position-absolute-scroll-container (each with -rtl) and selectors-universal-root. Native draws the positioned box under its sibling; T115 (z-index and stacking) owns it. (B) Borders, 78 iOS / 96
+        Android: dotted placement (T075 p6a-promote, not on master), the solid 1px one box (maybe T116), whole logical sides missing (T142), css-wide-keywords border colour (T143, likely a cascade bug)
+        and 1px borders on fractional device pixels at DPR 3 (T144). No shadow, radius, gradient, image or glyph failures. pnt1-shadow-v1b fixes none of them.'
+      evidence:
+        - packages/parity/out/device-failures-ios.json
+        - packages/parity/out/device-failures-android.json
+        - state.yaml T008 B2 note
+  - id: T139
+    type: worker
+    assignee: Worker
+    status: done
+    lane: android
+    objective: (T137a) Android rows derived by the iOS rule; rows the Android emitter refuses stay refused; native-strategy item 13 updated; regenerate profiles, the north star and the Tailwind sweep.
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #49 merged d927e912c (clean on first review). Android rows follow the iOS rule, and the UA bold/italic refusal is reported on every native target. North star: supportedAndroid 20 -> 165
+        = iOS; DRAGON_UNSUPPORTED_FONT 34 = iOS; Tailwind Android 0 -> 2214 = iOS. pnpm test 3014/3014; device run equals master.'
+      changed_files:
+        - packages/parity/src/profile-rows.ts
+        - scripts/gen-profile-rows.ts
+        - packages/dragon/src/analysis/computed-checks.ts
+      commands:
+        - cmd: pnpm test 3014/3014
+          status: pass
+        - cmd: pnpm pr:review 49 exit 0
+          status: pass
+    allowed_files:
+      - packages/parity/src/profile-rows.ts
+      - scripts/gen-profile-rows.ts
+      - packages/dragon/src/analysis/computed-checks.ts
+  - id: T140
+    type: worker
+    assignee: Worker
+    status: blocked
+    lane: android
+    objective: (T137b) Android font map parity (north-star DRAGON_UNSUPPORTED_FONT android 22 vs ios 34). After T137a.
+    receipt:
+      result: blocked
+      harness: claude-code
+      blocked_reason: Folded into T139; native Lato waits for TXT1a (T083, T084).
+      summary: 'Explained all 56 north-star font diagnostics. 22 are shared: native lowering (ios-layout.ts textFontProblem) accepts only Ahem. Lato is already pinned in the font map, but TXT1-C (T004 §4,
+        T038 ruling 10) keeps native refused until TXT1a proves device-lines with real fonts. 12 are iOS-only: computed-checks.ts checkUserAgentDefaults hard-codes target ios for UA bold (h1-h4), so Android
+        is missing true diagnostics. That fix is folded into T139. Native Lato (every visible north-star text node) is the TXT1a path, T083 then T084.'
+      changed_files: []
+      commands:
+        - cmd: north-star-check.json analysis
+          status: pass
+  - id: T141
+    type: scout
+    assignee: Scout
+    status: queued
+    lane: android
+    objective: '(T137c) After T137a: report the per-property iOS vs Android differences in the north star and the Tailwind sweep; a non-zero gap goes to a Judge. (After #49: the north star shows 165/165
+      on iOS and Android, with equal error counts.)'
+    receipt: null
+  - id: T142
+    type: worker
+    assignee: Worker
+    status: blocked
+    lane: paint
+    objective: 'LOGB-PAINT: logical-border(-rtl) a7/a8/b6: native leaves out whole px sides in boxes that mix device-px and px widths (device-pixels iOS 38, Android 48). Find whether the cause is the compiler
+      logical-to-physical mapping or the paint path, then fix it, proven against Chrome.'
+    receipt:
+      result: blocked
+      harness: claude-code
+      blocked_reason: Already fixed on p6a-promote (T075); lands with it.
+      summary: 'Every missing logical-border side is dashed or dotted (a7 right and b6 left are 6px dotted; a8 top and bottom are 3px dashed; a10 has a dotted top and a double bottom). Master''s dragonDrawBorders
+        lays dashes and dots out unlike Chrome. The compiler mapping and widths are correct. p6a-promote 000a3f0ad and 0768b09df (Blink dash port, kept by t116-border-join) fix it: its device run shows
+        0 logical-border failures, p6a-dash-oracle.test.ts covers both cases at DPR 2, 3 and 2.625, and a probe of 8 failing points matched Chrome exactly.'
+      changed_files: []
+      commands:
+        - cmd: p6a-dash-oracle probe on t116-border-join
+          status: pass
+  - id: T143
+    type: worker
+    assignee: Worker
+    status: blocked
+    lane: values
+    objective: 'CWK-BORDER: css-wide-keywords p border colour (native [0,170,0], Chrome [254,220,186]) and two missing 3-device-px edges on box a (device-pixels iOS 6, Android 10). Likely a cascade or colour-resolution
+      bug for inherit/initial/unset on border-color; prove against Chrome getComputedStyle.'
+    receipt:
+      result: blocked
+      harness: claude-code
+      blocked_reason: 'Duplicate of T075 B1: not a cascade bug.'
+      summary: 'Values match Chrome at every stage (computed, emitted CSS, generated Swift/Kotlin): p is 2px dashed rgb(0,170,0) and a is 1px solid red. The cause is the native dashed-border painter: dragonDrawBorders
+        (native-support.ts) draws dashes and gaps of 3x width from a corner instead of Chrome dash layout (styled_stroke_data.cc, box_border_painter.cc), the T075 B1 port on p6a-promote. Host gap: no host
+        lane compares Dragon border paint pixels with Chrome; this is closed inside T075.'
+      changed_files: []
+      commands:
+        - cmd: probe of native programs for css-wide-keywords
+          status: pass
+  - id: T144
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'SNAP-1PX: position-absolute-out-of-flow(-rtl) i2 bottom 1px border at DPR 3: native paints 64 coverage where Chrome is solid (iOS 4, Android 4). Snap border edges as Blink does.'
     receipt: null
   - id: T999
     type: judge

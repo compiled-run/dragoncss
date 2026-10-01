@@ -7,6 +7,27 @@
    "height": 300
   },
   "devicePixelRatio": 3,
+  "viewportUnits": {
+   "small": {
+    "width": 400,
+    "height": 300
+   },
+   "large": {
+    "width": 400,
+    "height": 300
+   },
+   "dynamic": {
+    "width": 400,
+    "height": 300
+   }
+  },
+  "safeArea": {
+   "top": 0,
+   "right": 0,
+   "bottom": 0,
+   "left": 0
+  },
+  "rootFontSize": 16,
   "root": {
    "kind": "box",
    "id": "html",
@@ -901,7 +922,12 @@
                  "text": "XXXXX XXXX",
                  "font": {
                   "family": "Ahem",
-                  "size": 14
+                  "size": 14,
+                  "specifiedSize": {
+                   "kind": "px",
+                   "value": 14
+                  },
+                  "absoluteSize": true
                  },
                  "lineHeight": {
                   "kind": "px",
@@ -1028,7 +1054,12 @@
                  "text": "XXX XXXXXXX",
                  "font": {
                   "family": "Ahem",
-                  "size": 10
+                  "size": 10,
+                  "specifiedSize": {
+                   "kind": "px",
+                   "value": 10
+                  },
+                  "absoluteSize": true
                  },
                  "lineHeight": {
                   "kind": "px",
@@ -1155,7 +1186,12 @@
                  "text": "XXXX",
                  "font": {
                   "family": "Ahem",
-                  "size": 10
+                  "size": 10,
+                  "specifiedSize": {
+                   "kind": "px",
+                   "value": 10
+                  },
+                  "absoluteSize": true
                  },
                  "lineHeight": {
                   "kind": "px",
@@ -1621,7 +1657,12 @@
                "text": "X XX",
                "font": {
                 "family": "Ahem",
-                "size": 10
+                "size": 10,
+                "specifiedSize": {
+                 "kind": "px",
+                 "value": 10
+                },
+                "absoluteSize": true
                },
                "lineHeight": {
                 "kind": "px",
@@ -1748,7 +1789,12 @@
                "text": "X XX",
                "font": {
                 "family": "Ahem",
-                "size": 10
+                "size": 10,
+                "specifiedSize": {
+                 "kind": "px",
+                 "value": 10
+                },
+                "absoluteSize": true
                },
                "lineHeight": {
                 "kind": "px",

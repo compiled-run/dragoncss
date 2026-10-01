@@ -46,13 +46,16 @@ export type StateProgram = {
   readonly assignments: readonly { readonly key: string; readonly assignment: Assignment }[];
   readonly initial: number;
   readonly base: NativeProgram;
-  /** The distinct engine inputs, the base's first. */
-  readonly variants: readonly LayoutBox[];
+  /** The distinct engine inputs (the tree and its root font size), the base's first. */
+  readonly variants: readonly LayoutVariant[];
   /** One per assignment; the initial assignment's is empty. */
   readonly deltas: readonly StateDelta[];
   /** next[a][s][v]: the assignment reached from a by setting state s to its v-th domain value, or -1 when it is unreachable. */
   readonly next: readonly (readonly (readonly number[])[])[];
 };
+
+/** One engine input of a state program: the layout tree and the root font size it resolves rem against. */
+export type LayoutVariant = { readonly root: LayoutBox; readonly rootFontSize: number };
 
 export type StateCase = { readonly assignment: Assignment; readonly isInitial: boolean; readonly program: NativeProgram };
 
@@ -92,8 +95,8 @@ export function deriveStateProgram(backend: NativeBackend, cases: readonly State
   const base = (cases[initial] as StateCase).program;
   const baseNodes = new Map(base.nodes.map((n) => [n.id, n]));
   const baseOrder = base.nodes.map((n) => n.id);
-  const variants: LayoutBox[] = [base.root];
-  const variantKeys = [canonicalJson(base.root)];
+  const variants: LayoutVariant[] = [{ root: base.root, rootFontSize: base.rootFontSize }];
+  const variantKeys = [canonicalJson(variants[0])];
   const baseShape = canonicalJson(shapeOf(base.root));
   const deltas = cases.map((c): StateDelta => {
     const p = c.program;
@@ -110,11 +113,12 @@ export function deriveStateProgram(backend: NativeBackend, cases: readonly State
     const kept = baseOrder.filter((id) => ids.has(id));
     const order = p.nodes.map((n) => n.id);
     const sameOrder = kept.length === order.length && kept.every((id, i) => id === order[i]);
-    const rootKey = canonicalJson(p.root);
+    const own: LayoutVariant = { root: p.root, rootFontSize: p.rootFontSize };
+    const rootKey = canonicalJson(own);
     let variant = variantKeys.indexOf(rootKey);
     if (variant < 0) {
       variant = variants.length;
-      variants.push(p.root);
+      variants.push(own);
       variantKeys.push(rootKey);
     }
     const layout: LayoutChange = variant === 0 ? 'none' : canonicalJson(shapeOf(p.root)) === baseShape ? 'styles' : 'tree';
@@ -158,7 +162,8 @@ export function applyDelta(sp: StateProgram, d: StateDelta): ProgramNode[] {
 export function programAt(sp: StateProgram, i: number): NativeProgram {
   const d = sp.deltas[i];
   if (d === undefined) throw new StateProgramError(`no assignment ${i}`);
-  return { ...sp.base, root: sp.variants[d.variant] as LayoutBox, nodes: applyDelta(sp, d) };
+  const v = sp.variants[d.variant] as LayoutVariant;
+  return { ...sp.base, root: v.root, rootFontSize: v.rootFontSize, nodes: applyDelta(sp, d) };
 }
 
 export class StateValueError extends Error {}
@@ -223,9 +228,11 @@ export class StateRuntime {
 
   /** The live program: the current node records over the engine input last laid out. */
   program(): NativeProgram {
+    const v = this.sp.variants[this.laidOut] as LayoutVariant;
     return {
       ...this.sp.base,
-      root: this.sp.variants[this.laidOut] as LayoutBox,
+      root: v.root,
+      rootFontSize: v.rootFontSize,
       nodes: this.order.map((id) => {
         const n = this.nodes.get(id);
         if (n === undefined) throw new StateProgramError(`the runtime orders ${id}, which it does not hold`);

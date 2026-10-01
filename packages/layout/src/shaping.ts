@@ -9,7 +9,8 @@ import {
   bracketIndex, BRACKET_OPEN, BRACKET_PAIRS, isClosePunctuation, isExtendedPictographic, isMark, isOpenPunctuation, SCRIPT_TAGS, scriptCode, scriptExtensions,
   USCRIPT_BOPOMOFO, USCRIPT_COMMON, USCRIPT_HAN, USCRIPT_HIRAGANA, USCRIPT_INHERITED, USCRIPT_KATAKANA, USCRIPT_LATIN,
 } from './script-data.ts';
-import type { FontData, FontMetrics, MeasureResult, TextMeasurer } from './text.ts';
+import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } from './text.ts';
+import { fontMetricLengths } from './text.ts';
 import type { LU } from './units.ts';
 import {
   add, floatAdd, floorToWholePx, fromPxCeil, fromRaw, inlineToFloat, inlineToLayoutUnitCeil, neg, platformFontSize, roundCoreTextMetricToWholePx, sub, toFloat,
@@ -876,6 +877,12 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
       const a = cachedPositionForOffset(s.result, offsetOf(s.item.units, start));
       const b = cachedPositionForOffset(s.result, offsetOf(s.item.units, end));
       return { ok: true, measure: { width: sub(fromRaw(b), fromRaw(a)) } };
+    },
+    // The float metrics of the face at the platform size (V2 of the value model); a face that is not bundled has none.
+    lengths(font: TextFont): FontLengths {
+      const f = faces.get(font.family);
+      if (f === undefined) return { xHeight: 0, capHeight: 0, zeroWidth: 0 };
+      return fontMetricLengths(f.data, platformFontSize(font.size));
     },
   };
   return { measurer, item, line };

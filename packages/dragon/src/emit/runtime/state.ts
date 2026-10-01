@@ -9,7 +9,7 @@ import { PROGRAM_VERSIONS } from '../../lower/native-program.ts';
 import type { StateDelta, StateFaults, StateProgram } from '../../lower/state-program.ts';
 import { NO_STATE_FAULTS } from '../../lower/state-program.ts';
 import type { GeneratedFile, Scalar } from '../../types.ts';
-import { doubleLit, inputFunctions, stringLit } from '../native-support.ts';
+import { doubleLit, environmentArgs, inputFunctions, stringLit } from '../native-support.ts';
 
 export const STATE_RUNTIME_VERSION = 'dragon.runtime-state/1';
 
@@ -51,7 +51,7 @@ public enum DragonStateWrite {
   case borderStyles([String])
   case borderColors([DragonRGBA8])
   case clip
-  case text(String, String, Double, DragonRGBA8)
+  case text(String, String, DragonRGBA8)
 }
 
 /// One node record of a state program.
@@ -142,8 +142,8 @@ public final class DragonStateMachine {
       if n.kind == "text" {
         let v = t.textNode(n.id, parent: n.parent, kind: n.kind)
         for w in n.writes {
-          guard case let .text(s, family, size, color) = w else { fatalError("dragon: text \(n.id) holds a box write") }
-          v.dragonSetText(s, family: family, cssSize: size, color: color)
+          guard case let .text(s, family, color) = w else { fatalError("dragon: text \(n.id) holds a box write") }
+          v.dragonSetText(s, family: family, color: color)
         }
         continue
       }
@@ -200,7 +200,7 @@ sealed class DragonStateWrite {
   class BorderStyles(val s: Array<String>) : DragonStateWrite()
   class BorderColors(val c: Array<DragonRGBA8>) : DragonStateWrite()
   object Clip : DragonStateWrite()
-  class Text(val text: String, val family: String, val cssSize: Double, val color: DragonRGBA8) : DragonStateWrite()
+  class Text(val text: String, val family: String, val color: DragonRGBA8) : DragonStateWrite()
 }
 
 /** One node record of a state program. */
@@ -287,7 +287,7 @@ class DragonStateMachine(
         val v = t.textNode(n.id, n.parent, n.kind)
         for (w in n.writes) {
           if (w !is DragonStateWrite.Text) throw IllegalStateException("dragon: text " + n.id + " holds a box write")
-          v.dragonSetText(w.text, w.family, w.cssSize, w.color)
+          v.dragonSetText(w.text, w.family, w.color)
         }
         continue
       }
@@ -363,7 +363,7 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'font': {
         const color = n.writes.find((x) => x.kind === 'text-color');
         if (color === undefined || color.kind !== 'text-color') throw new StateEmitError(`${n.id}: a text run without a colour`);
-        writes.push(lang === 'swift' ? `.text(${q(n.text ?? '')}, ${q(w.family)}, ${doubleLit(w.size)}, ${rgba(color.color)})` : `DragonStateWrite.Text(${q(n.text ?? '')}, ${q(w.family)}, ${doubleLit(w.size)}, ${rgba(color.color)})`);
+        writes.push(lang === 'swift' ? `.text(${q(n.text ?? '')}, ${q(w.font.family)}, ${rgba(color.color)})` : `DragonStateWrite.Text(${q(n.text ?? '')}, ${q(w.font.family)}, ${rgba(color.color)})`);
         break;
       }
       case 'border-widths':
@@ -433,14 +433,14 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   const p = `dragonStates${k}`;
   const out: string[] = [`// state program ${e.id} (${sp.assignments.length} assignments, ${sp.variants.length} layout variants)`];
   const variantFns: string[] = [];
-  sp.variants.forEach((root, j) => {
-    const input = inputFunctions(lang, root, `${p}V${j}`);
+  sp.variants.forEach((variant, j) => {
+    const input = inputFunctions(lang, variant.root, `${p}V${j}`);
     out.push(...input.decls);
     const fn = `${p}Input${j}`;
     variantFns.push(lang === 'swift' ? fn : `::${fn}`);
     out.push(lang === 'swift'
-      ? `private func ${fn}(_ dpr: Double) -> LayoutInput {\n  return LayoutInput(Viewport(${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}), dpr, ${input.root})\n}`
-      : `private fun ${fn}(dpr: Double): LayoutInput = LayoutInput(Viewport(${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}), dpr, ${input.root})`);
+      ? `private func ${fn}(_ dpr: Double) -> LayoutInput {\n  return LayoutInput(Viewport(${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}), dpr, ${environmentArgs(e.viewport, variant.rootFontSize)}, ${input.root})\n}`
+      : `private fun ${fn}(dpr: Double): LayoutInput = LayoutInput(Viewport(${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}), dpr, ${environmentArgs(e.viewport, variant.rootFontSize)}, ${input.root})`);
   });
   // Every table is its own typed constant, so no single literal grows past what the type checkers handle quickly.
   const decl = (name: string, type: string, value: string): string => (lang === 'swift' ? `private let ${name}: ${type} = ${value}` : `private val ${name}: ${type} = ${value}`);
