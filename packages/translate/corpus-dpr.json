@@ -36,35 +36,35 @@
   ],
   "engineCalc": 4000,
   "snapGenerated": 20000,
-  "snapVectors": 1218,
+  "snapVectors": 1230,
   "cases": {
-    "vectors-m2": 200,
-    "vectors-dpr": 1374,
-    "engine-dpr": 1374,
+    "vectors-m2": 204,
+    "vectors-dpr": 1386,
+    "engine-dpr": 1386,
     "units-m2": 120000,
-    "snap": 21218,
+    "snap": 21230,
     "snap-values": 156,
     "calc-goldens": 17,
     "engine-calc": 4000,
     "units-calc": 50000
   },
   "engineSplit": {
-    "ok": 1374,
-    "unsupported": 0,
+    "ok": 1384,
+    "unsupported": 2,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "445e40797d19774a5fe5efce37f785c69db6d2451bb0d872d1fa5237bf0fbd02",
-    "vectors-dpr": "6d28a3186f0ca7bb84808272a973ee8c2ea321a71145256ec53e13909e582f56",
-    "engine-dpr": "cfe0159143adcbd58e7a18735c6cdbd8ec2c4a95f05e16c79d0963d1264c214a",
+    "vectors-m2": "fd921ef95d4c415bf6439825003b930d51670b6529d3eca6ccba26c26424d242",
+    "vectors-dpr": "114d296ba4d55a6b655dbd4cc235ebeddea2fe50a0346439330229ce9917c6fd",
+    "engine-dpr": "fca9118d8ea0970483e8bfa0a2000345a9a73ef8cf4a6cf1506bd151b804980e",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "999f610e28c35c3ad271a669e55df46b9cbdf032a56bd68febc140fa05351859",
+    "snap": "eb8c79a34bf3286224c2a9eba924ad150033d10415ea4e59f179c3f8b75b8e02",
     "snap-values": "6cf9286b08a091ff333753d47b61d209d565bb71efedd50088eb4bd7efa71e90",
-    "calc-goldens": "7baa7493a35bde492ef150e5118941d10d45ad11d1b852b88e841cd73f777283",
-    "engine-calc": "4331b6d1d1f37d19b03387fb5c04bfd2f6f34c5fc4474eae44bb3263f83771c3",
+    "calc-goldens": "9241f9c160b80efe64019e5fa29409c88f7420d20cf7d6198e32455d7a9f7884",
+    "engine-calc": "6c90bbfc4d08530a285b421bb9640bcc47c0aef388cc4d40fbe0b14f1925a394",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50"
   },
-  "digest": "2ed014ffc47a9030922174c501c22cec1829b9a3559e68ea4e789e76dba75b51"
+  "digest": "dd9524b70328d481be9e07777e77c247d8522fff210eb4d6130853f5f94b9f29"
 }
