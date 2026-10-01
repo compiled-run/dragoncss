@@ -80,19 +80,13 @@ visual_board:
     command: node /Users/jacksm5pro/.claude-swap-backup/sessions/2-jackshelton30_gmail.com/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-2-proof
 active_task: T058
 dispatched:
-  - T121
-  - T071
-  - T074
-  - T072
-  - T073
-  - T114
-  - T075
-  - T050
-  - T062
-  - T118
-  - T119
-  - T120
-  - T139
+  - T134 # SELD-R1a landing (slot 1)
+  - T118 # PORT-0 landing (slot 2)
+  - T071 # paint stack rebuild: ems-a, ems-b, p6a-dash-v2, p6a-promote-v2, t116-border-join-v2
+  - T064 # SELD-R2a
+  - T052 # FORM-a A1 engine (T052J) on form-a; A2 appearance longhand on form-a2
+  - T058 # INL1a encoders check, then T133 on txt1a-2
+  - T059 # INL2a (T059J) on inl2, base txt1a-2 e4266eb0e
 device_lease: null
 tasks:
   - id: T001
@@ -2012,6 +2006,7 @@ tasks:
         and WKWebView/WebView slots; north star img 5/5 (8 img errors cleared on web and iOS). The iframe export, embed route and cover markers wait for T034 (dispatched).'
   - id: T052
     type: worker
+    pm_note: 'T052J (2026-10-01), notes/T052J-form-a.md: control node kind; split into A1 engine, A2 appearance longhand, A3 button, A4 range; Phase B after A4. First worker stopped blocked at form-a 7350315f8 (controls.ts Blink ports; out-of-scope wiring list), resolved by T052J.'
     assignee: Worker
     status: queued
     lane: north-star
@@ -2166,6 +2161,7 @@ tasks:
       - '2026-10-01: native:encoders fails 464/477 at inl1a-compiler b0c8fd13e (inline lines out-of-range), found by T083. It must be fixed before INL1a lands.'
   - id: T059
     type: worker
+    pm_note: 'T059J (2026-10-01), notes/T059J-inl2.md: split into INL2a (now; atomic inline-block/inline-flex, base txt1a-2 e4266eb0e, merge-conflict test replaces the SIZE-ar stop), INL2b (vertical-align longhand, sub/sup; serial after INL2a) and INL2c (deferred: atomics in inline boxes or beside real-font text). The decisions.md record of the replaced stop and the grammar override rule goes in the INL2a PR.'
     assignee: Worker
     status: queued
     lane: engine
@@ -3981,11 +3977,18 @@ tasks:
   - id: T141
     type: scout
     assignee: Scout
-    status: queued
+    status: done
     lane: android
     objective: '(T137c) After T137a: report the per-property iOS vs Android differences in the north star and the Tailwind sweep; a non-zero gap goes to a Judge. (After #49: the north star shows 165/165
       on iOS and Android, with equal error counts.)'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "Gap 0: north star 291/291 declarations equal on iOS and Android (165 supported each; per-target error counts equal, FONT 34/34, VALUE 32/32); Tailwind sweep 23,286 utilities equal in outcome/code/label/value (2214 supported each); 377 differ only in fix-hint wording naming the target (computed-checks.ts:205, by design). No Judge needed. notes/TW-SWEEP.md result tables are stale (pre-#49)."
+      evidence:
+        - examples/music-player/dragon/north-star-check.json
+        - packages/tailwind-sweep/snapshot/summary.md
+        - "packages/dragon/src/analysis/computed-checks.ts:205"
   - id: T142
     type: worker
     assignee: Worker
