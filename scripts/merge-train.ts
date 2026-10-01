@@ -7,6 +7,7 @@ import {
   commitRegen,
   isAncestor,
   type Member,
+  mergeGate,
   mergeMember,
   parseArgs,
   parseLsRemote,
@@ -163,8 +164,9 @@ const land = (members: Member[], from: number): void => {
     // A plain push: git refuses anything but a fast-forward of the clean head.
     if (pr.headOid !== head) run(['git', 'push', 'origin', `${head}:refs/heads/${m.branch}`]);
     run(['pnpm', '-s', 'pr:review', String(m.pr), '--wait']);
-    const reviewed = prState(m);
-    if (reviewed.headOid !== head) stop(`PR #${m.pr} head moved to ${reviewed.headOid} during review`);
+    // Re-read right before merging: the PR may have been retargeted or master moved during the review wait.
+    const gate = mergeGate(git, prState(m), m, plan.positions[k - 1]!, fetchMaster());
+    if (gate.length > 0) stop(`not merging PR #${m.pr}:\n${gate.join('\n')}`);
     const merge = spawnSync('gh', ['pr', 'merge', String(m.pr), '--merge', '--delete-branch', '--match-head-commit', head], { stdio: 'inherit' });
     const merged = prState(m).state === 'MERGED';
     if (!merged) stop(`gh pr merge #${m.pr} exited ${merge.status ?? merge.signal} and the PR is not merged`);

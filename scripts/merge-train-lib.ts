@@ -167,6 +167,19 @@ export const prProblems = (pr: PrState, member: Member, head: string, remoteHead
   return problems;
 };
 
+// Checked immediately before `gh pr merge`, which pins only the PR head: the PR still targets master from the member's branch
+// at the position, and master still holds exactly the previous position outside the board.
+export const mergeGate = (git: Git, pr: PrState, member: Member, position: Position, master: string): string[] => {
+  const problems = prProblems(pr, member, position.head, pr.headOid);
+  if (pr.headOid !== position.head) problems.push(`PR #${member.pr} head is ${pr.headOid}, not position ${position.head}`);
+  if (!isAncestor(git, position.prev, master)) problems.push(`the previous position ${position.prev} is not in master ${master}`);
+  else {
+    const same = treeMatches(git, master, position.prev);
+    if (!same.ok) problems.push(`master ${master} differs from the previous position outside ${BOARD}**: ${same.paths.slice(0, 20).join(', ')}`);
+  }
+  return problems;
+};
+
 // `git ls-remote origin refs/heads/<branch>`: exactly one "<sha>\t<ref>" line.
 export const parseLsRemote = (out: string, ref: string): string => {
   const lines = out.split('\n').filter((l) => l !== '');
@@ -191,7 +204,13 @@ export const mergeMember = (git: Git, prev: string, member: Member, k: number): 
     if (merging) git(['merge', '--abort']);
     return fail(`merging ${member.branch} onto ${prev} failed${conflicted.length ? `; conflicts in ${conflicted.join(', ')}` : `: ${(error as Error).message}`}`);
   }
-  return checkSha(text(git(['rev-parse', 'HEAD'])).trim(), 'merge commit');
+  const merge = checkSha(text(git(['rev-parse', 'HEAD'])).trim(), 'merge commit');
+  // `merge --no-ff` of a commit already in `prev` succeeds without making a merge commit.
+  const parents = parentsOf(git, merge);
+  if (parents.length !== 2 || parents[0] !== prev || parents[1] !== member.clean) {
+    return fail(`merging ${member.branch} onto ${prev} made ${merge} with parents [${parents.join(', ')}], not a merge of [${prev}, ${member.clean}]`);
+  }
+  return merge;
 };
 
 // Commits everything the regen and device steps left in the worktree, as one commit that names the commands.

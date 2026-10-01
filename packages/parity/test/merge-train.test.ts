@@ -7,6 +7,7 @@ import {
   commitRegen,
   isAncestor,
   type Member,
+  mergeGate,
   mergeMember,
   parseArgs,
   parseLsRemote,
@@ -158,6 +159,24 @@ describe('a train position on a scratch repository', () => {
     expect(() => git(['rev-parse', '-q', '--verify', 'MERGE_HEAD'])).toThrow();
     expect(() => mergeMember(git, t.p2, { branch: 'a', pr: 1, clean: sha('e') }, 3)).toThrow(/merging a/);
     expect(git(['status', '--porcelain']).toString()).toBe('');
+  });
+
+  it('refuses a member already in the previous position, before any regen runs', () => {
+    expect(() => mergeMember(git, t.p1, t.A, 2)).toThrow(/not a merge of/);
+  });
+
+  it('gates the merge on the PR as re-read just before it, and on master still holding the previous position', () => {
+    const position = planPositions(git, [t.A, t.B], [t.p1, t.p2]).positions[1]!;
+    const pr = { number: 2, state: 'OPEN', head: 'b', headOid: t.p2, base: 'master', cross: false };
+    git(['checkout', '-q', '--detach', t.p1]);
+    const board = t.commit({ 'docs/goals/board.md': 'PM\n' }, 'board on master');
+    expect(mergeGate(git, pr, t.B, position, board)).toEqual([]);
+    expect(mergeGate(git, { ...pr, base: 'release' }, t.B, position, board)).toEqual([expect.stringContaining('targets release')]);
+    expect(mergeGate(git, { ...pr, state: 'CLOSED' }, t.B, position, board)).toEqual([expect.stringContaining('CLOSED')]);
+    expect(mergeGate(git, { ...pr, headOid: t.B.clean }, t.B, position, board)).toEqual([expect.stringContaining('not position')]);
+    const moved = t.commit({ 'src/a.ts': 'landed meanwhile\n' }, 'code on master');
+    expect(mergeGate(git, pr, t.B, position, moved)).toEqual([expect.stringContaining('differs from the previous position outside docs/goals/**: src/a.ts')]);
+    expect(mergeGate(git, pr, t.B, position, t.base)).toEqual([expect.stringContaining('is not in master')]);
   });
 
   it('tells "not an ancestor" apart from a git failure', () => {
