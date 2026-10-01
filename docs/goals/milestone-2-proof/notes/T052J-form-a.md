@@ -163,3 +163,21 @@ Finding: Chrome 145 drops `appearance: base`, although webref's grammar allows i
 - **Stays refused:** an auto-width flex button in block flow. A flex-button control kind may come with A4 or a later card.
 
 **Next:** A4 dispatched on form-a4.
+
+## A4 host-done (2026-10-01): form-a4 10f27bcf0
+
+**Result.** input[type=range] is laid out as Chrome's shadow tree (container, track, thumb), with the slider pseudo-elements cascaded per part. Every range case matches Chrome's boxes, in ltr and rtl.
+
+**North star:**
+- the range attribute, input element and slider-thumb selector errors fall to 0;
+- supported elements reach 62/62;
+- the demo's range is inline-level, so it is refused naming RF-INL (T053).
+
+**A3 web.json.** The regenerated file is byte-identical to the earlier hand edit. It is recorded in form-a3 8ba1e34e1.
+
+**PM rulings:**
+- **Accepted:** the seams, ua and selectors pin retargets.
+- **Accepted:** the regenerated wpt reason for grid-align-baseline-nested-intrinsic-sizing-001.
+- **Queued:** the flex-button control kind, as T156.
+
+**Stack:** form-a (A1) → form-a3 (A2 merged) → form-a4. It sits on repl-a-phase-b, on size-ar.
