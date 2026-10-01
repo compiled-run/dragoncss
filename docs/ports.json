@@ -503,13 +503,13 @@
       "upstream": "third_party/blink/renderer/core/html/forms/step_range.cc",
       "licence": "lgpl",
       "ruling": {
-        "class": "B",
-        "basis": "range-value.ts clampValue and parseStep follow ClampValue and ParseStep branch by branch",
+        "class": "A",
+        "basis": "HTML range state (step, step base, step mismatch, value sanitisation) and Chrome 145 captures; range-value.ts was rewritten clean-room in T123 and cites this file only to say so",
         "proof": [
           "packages/dragon/test/forms/forms.test.ts"
         ],
         "task": "T123",
-        "note": "clean-room rewrite in T123"
+        "note": "clean-room rewrite done in T123 from spec text and Chrome observations; the port uses were dropped"
       },
       "licencePhrase": "GNU Library General Public License",
       "copyright": "Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.",
@@ -520,20 +520,20 @@
         { "lines": "145-148", "symbol": "RoundByStep", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/dragon/src/forms/range-value.ts", "symbol": null, "use": "port" }
+        { "file": "packages/dragon/src/forms/range-value.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
       "upstream": "third_party/blink/renderer/core/html/forms/step_range.h",
       "licence": "lgpl",
       "ruling": {
-        "class": "B",
-        "basis": "range-value.ts follows DefaultValue and ProportionFromValue",
+        "class": "A",
+        "basis": "HTML range state (default value) and Chrome 145 captures; range-value.ts was rewritten clean-room in T123 and cites this file only to say so",
         "proof": [
           "packages/dragon/test/forms/forms.test.ts"
         ],
         "task": "T123",
-        "note": "clean-room rewrite in T123"
+        "note": "clean-room rewrite done in T123 from spec text and Chrome observations; the port uses were dropped"
       },
       "licencePhrase": "GNU Library General Public License",
       "copyright": "Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.",
@@ -543,7 +543,7 @@
         { "lines": "1-134", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/dragon/src/forms/range-value.ts", "symbol": null, "use": "port" }
+        { "file": "packages/dragon/src/forms/range-value.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -1340,13 +1340,13 @@
       "upstream": "third_party/blink/renderer/platform/text/text_break_iterator.cc",
       "licence": "lgpl",
       "ruling": {
-        "class": "B",
-        "basis": "linebreak.ts fastBreak and the space-run loop follow ShouldBreakFast",
+        "class": "A",
+        "basis": "CSS Text 3, UAX #14 and Chrome 145 captures (fixtures/linebreak); linebreak.ts was rewritten clean-room in T123 and cites this file only to say so",
         "proof": [
           "packages/layout/test/linebreak.test.ts"
         ],
         "task": "T123",
-        "note": "clean-room rewrite in T123; the ASCII pair table is class C on character_property_data_generator.cc"
+        "note": "clean-room rewrite done in T123 from spec text and Chrome observations; the port uses were dropped; the ASCII pair table is class C on character_property_data_generator.cc"
       },
       "licencePhrase": "GNU Library General Public License",
       "copyright": "Copyright (C) 2004, 2005, 2006, 2007, 2008, 2010 Apple Inc. All rights; Copyright (C) 2007-2009 Torch Mobile, Inc.; Copyright (C) 2011 Google Inc. All rights reserved.",
@@ -1356,7 +1356,7 @@
         { "lines": "1-471", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/linebreak.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/linebreak.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
