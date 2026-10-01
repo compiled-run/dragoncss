@@ -137,3 +137,25 @@ The objective, allowed_files, verify and stop_if are in the T059J receipt, copie
 - The branch would merge origin/master, size-ar or any later branch before the landing queue reaches it
 - The north-star target is unmet because min-width, justify-content or rem margins in the new contexts cannot be proven by fixtures in this group
 - Verification fails twice (test timeouts under load that pass on rerun excepted)
+
+## INL2a host work (2026-10-01): inl2a-engine 93cee282e → inl2 e3742bc66
+
+**Result.**
+- 11 atomic-inline cases are Chrome-exact at every DPR, in ltr and rtl.
+- All 7 plants are caught.
+- Breaks equal Chrome's on 1497/1497.
+- Existing outputs are byte-identical, and the profiles gain 45 new rows.
+
+**Refused with typed codes:**
+- an atomic an rtl paragraph would reorder;
+- a relatively positioned atomic;
+- a percentage height on an atomic;
+- an inline-block whose last baseline would come from a flex child.
+
+**PM ruling T059J-1:**
+- **native-compare.ts:** it gets the same anonymous-box rule as compare.ts.
+- **fonts.ts:** it gets MAPS entries for the Lato fixtures.
+- **tailwind-sweep chrome.ts:** it waits for `document.fonts.ready`. This fixes a real race that flipped inline-block between mismatch and supported.
+- **inl1a-tags overlap:** accepted as append-only. The landing order is TXT1a, then T133, then INL2a.
+
+**Expected north-star result with the amendment:** UNPROVEN_CONTEXT falls from 33 to 31 on ios and web.
