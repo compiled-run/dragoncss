@@ -1,5 +1,5 @@
 // Flow-relative properties (css-logical-1 §4-§6) and the inset shorthand (css-logical-1 §4.3). Dragon lays out horizontal-tb
-// only (writing-mode stays refused), so each flow-relative longhand is a surrogate of one physical longhand per direction: it has
+// only (writing-mode accepts horizontal-tb alone), so each flow-relative longhand is a surrogate of one physical longhand per direction: it has
 // no resolved value of its own, and expands (shorthands/logical.ts) into the physical longhands it maps to, which the cascade
 // narrows to the element's own direction (analysis/logical.ts). They are therefore shorthands here, with no longhands.
 import type { PropertyAspect } from '../properties.ts';

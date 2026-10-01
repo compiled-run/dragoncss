@@ -1,0 +1,23 @@
+native:swift: Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)
+vectors 258/258
+units 320000/320000
+engine corpus 20258/20258 (ok 13906, unsupported 6241, refused 111, threw 0; 20258 = 258 mutated vectors + 20000 generated trees)
+library corpus 22000/22000
+corpus digest 08f13b752a691c14a0ba3e37b0e2448d7d30ddc192f3b1c85796fb8e4745291f
+build 0.0 s, run 46.6 s
+status pass
+extended corpus:
+native:swift: Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)
+vectors-m2 202/202
+vectors-dpr 1380/1380
+engine-dpr 1380/1380 (ok 1378, unsupported 2, refused 0, threw 0; one seeded mutation per DPR vector)
+units-m2 120000/120000
+snap 21230/21230
+snap-values 150/150
+calc-goldens 17/17
+engine-calc 4000/4000
+units-calc 50000/50000
+corpus digest b2f661c35fc9a308ce3ac8e37218c677b6f38804c26848f0f58719ed578007b3
+build 0.0 s, run 109.7 s
+status pass
+native:swift: P1 corpus digest 08f13b752a691c14a0ba3e37b0e2448d7d30ddc192f3b1c85796fb8e4745291f; extended corpus digest b2f661c35fc9a308ce3ac8e37218c677b6f38804c26848f0f58719ed578007b3; status pass
