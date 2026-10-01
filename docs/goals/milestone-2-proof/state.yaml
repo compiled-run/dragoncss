@@ -3477,6 +3477,10 @@ tasks:
     objective: 'GRID G1a, three stacked PRs: grid-g1a (#32) -> grid-g1a-engine -> grid-g1a-fixtures (notes/T-grid-g1a.md, notes/T098-grid-flt-wm-spec.md). Catch up with master, regenerate, device step,
       land in order.'
     receipt: null
+    constraints:
+      - '2026-09-30: four branches, all host-verified and pending their device runs: grid-g1a 17e4dbd0e (calc percentage gaps on grid; refused elsewhere), grid-g1a-engine 95798708e, grid-g1a-engine-values
+        16e508ddc (percentage-length audit, 6 Chrome probes), grid-g1a-fixtures bff56c0e6. At landing, fixtures adds a calc-percentage grid-gap parity case so the support row is proven, then runs the G1b
+        device step.'
   - id: T122
     type: worker
     assignee: Worker
@@ -3723,6 +3727,37 @@ tasks:
       the item''s set height while the auto-minimum measurement treats the height as auto. Port it exactly: layoutContents (block.ts) returns the content height before the item''s own height is applied
       (Blink IntrinsicBlockSize), then lift the refusal, with Chrome-captured fixtures. After T128 lands.'
     receipt: null
+  - id: T135
+    type: worker
+    assignee: Worker
+    status: done
+    lane: tooling
+    objective: pr:review vouches for Macroscope's 'All code in this push has already been reviewed.' skip over reviewed paths; close ignore.md's front matter so test files are reviewed.
+    allowed_files:
+      - scripts/pr-review.ts
+      - scripts/pr-review-vouch.ts
+      - scripts/macroscope-ignore.ts
+      - packages/parity/test/pr-review.test.ts
+      - packages/parity/test/macroscope-ignore.test.ts
+      - .macroscope/ignore.md
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #47 merged 77afadf69. The skip is vouched only when the three-dot diff over the paths ignore.md leaves to review has the same stable patch id as an earlier PR commit with a successful
+        correctness check, under the same ignore blob. Diff flags are pinned against git config, binary-only files are excluded as Macroscope does, and fork PRs and a self-ignoring ignore file are refused.
+        ignore.md''s unclosed ''---'' block is closed, so ignoreTests: false applies and test files are reviewed. pnpm test 2957/2959 (2 load timeouts pass on rerun); live pr-review 45 vouched by 19a66f17e.'
+      changed_files:
+        - scripts/pr-review.ts
+        - scripts/pr-review-vouch.ts
+        - scripts/macroscope-ignore.ts
+        - packages/parity/test/pr-review.test.ts
+        - packages/parity/test/macroscope-ignore.test.ts
+        - .macroscope/ignore.md
+      commands:
+        - cmd: pnpm pr:review 47 exit 0
+          status: pass
+        - cmd: targeted 38 tests
+          status: pass
   - id: T999
     type: judge
     assignee: Judge

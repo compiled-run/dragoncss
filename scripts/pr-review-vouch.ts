@@ -1,6 +1,8 @@
-// Pure parts of pr-review.ts: input checks for gh JSON, and the decision on a correctness check skipped as "Diff unchanged".
+// The checked parts of pr-review.ts: input checks for gh JSON and git output, and the decision on a skipped correctness check.
+import { type IgnoreFile, parseIgnoreFile } from './macroscope-ignore.ts';
 export const CORRECTNESS = 'Macroscope - Correctness Check';
 export const DIFF_UNCHANGED = 'Diff unchanged';
+export const ALREADY_REVIEWED = 'All code in this push has already been reviewed.';
 
 export type CheckRun = { name: string; status: string; conclusion: string | null; html_url: string; output?: { title: string | null } };
 export type ReviewComment = {
@@ -94,17 +96,28 @@ export const correctnessSucceeded = (runs: CheckRun[]): boolean => {
   return own.length > 0 && own.every((r) => r.status === 'completed' && r.conclusion === 'success');
 };
 
-export const isDiffUnchangedSkip = (run: CheckRun): boolean =>
-  run.name === CORRECTNESS && run.status === 'completed' && run.conclusion === 'skipped' && run.output?.title === DIFF_UNCHANGED;
+// Which diff a skip is vouched on: "Diff unchanged" on the whole three-dot diff, "already reviewed" on the paths
+// .macroscope/ignore.md leaves to review. Any other skip title is no review.
+export type DiffScope = 'all paths' | 'reviewed paths';
+export const skipScope = (run: CheckRun): DiffScope | null => {
+  if (run.name !== CORRECTNESS || run.status !== 'completed' || run.conclusion !== 'skipped') return null;
+  return run.output?.title === DIFF_UNCHANGED ? 'all paths' : run.output?.title === ALREADY_REVIEWED ? 'reviewed paths' : null;
+};
+export const isVouchableSkip = (run: CheckRun): boolean => skipScope(run) !== null;
 
 export type Earlier = { sha: string; runs: CheckRun[]; patchId?: PatchId };
-export type Vouch = { ok: true; sha: string; patchId: string } | { ok: false; reason: string };
+export type Vouch = { ok: true; sha: string; patchId: string; scope: DiffScope } | { ok: false; reason: string };
 
-// A "Diff unchanged" skip passes only when an earlier commit of the PR with a successful correctness check has the same
-// patch id as the head. `earlier` is oldest first; the caller computes patchId for every commit correctnessSucceeded accepts.
-export const vouchForDiffUnchanged = (run: CheckRun, head: PatchId, earlier: Earlier[]): Vouch => {
-  if (!isDiffUnchangedSkip(run)) {
-    return { ok: false, reason: `correctness check is ${run.status}/${run.conclusion ?? 'none'} (${run.output?.title ?? 'no title'}), not skipped as "${DIFF_UNCHANGED}"` };
+// A vouchable skip passes only when an earlier commit of the PR with a successful correctness check has the same patch id
+// as the head, both taken over the skip's DiffScope. `earlier` is oldest first; the caller computes patchId, over that
+// scope, for every commit correctnessSucceeded accepts.
+export const vouchForSkip = (run: CheckRun, head: PatchId, earlier: Earlier[]): Vouch => {
+  const scope = skipScope(run);
+  if (scope === null) {
+    return {
+      ok: false,
+      reason: `correctness check is ${run.status}/${run.conclusion ?? 'none'} (${run.output?.title ?? 'no title'}), not skipped as "${DIFF_UNCHANGED}" or "${ALREADY_REVIEWED}"`,
+    };
   }
   if ('error' in head) return { ok: false, reason: `head: ${head.error}` };
   const reviewed = earlier.filter((c) => correctnessSucceeded(c.runs)).reverse();
@@ -113,13 +126,58 @@ export const vouchForDiffUnchanged = (run: CheckRun, head: PatchId, earlier: Ear
   for (const c of reviewed) {
     if (c.patchId === undefined) return { ok: false, reason: `${c.sha}: patch id was not computed` };
     if ('error' in c.patchId) return { ok: false, reason: `${c.sha}: ${c.patchId.error}` };
-    if (c.patchId.id === head.id) return { ok: true, sha: c.sha, patchId: head.id };
+    if (c.patchId.id === head.id) return { ok: true, sha: c.sha, patchId: head.id, scope };
     seen.push(`${c.sha.slice(0, 8)}=${c.patchId.id}`);
   }
-  return { ok: false, reason: `head patch id ${head.id} matches no reviewed earlier commit (${seen.join(', ')})` };
+  return { ok: false, reason: `head patch id ${head.id} over ${scope} matches no reviewed earlier commit (${seen.join(', ')})` };
 };
 
-// The one verdict every path of pr-review.ts uses. `vouches` maps a "Diff unchanged" run's html_url to its vouch.
+// `gh pr view --json isCrossRepository`. A fork PR is reviewed with the base branch's ignore file, not its own, so it is never vouched for.
+export const parseCrossRepository = (v: unknown): boolean =>
+  isObject(v) && typeof v.isCrossRepository === 'boolean' ? v.isCrossRepository : fail('pr isCrossRepository', v);
+
+// One entry of `git diff --raw -z --no-abbrev --no-renames`: ":<old mode> <new mode> <old blob> <new blob> <status>\0<path>\0".
+export type RawEntry = { oldMode: string; newMode: string; oldBlob: string; newBlob: string; status: string; path: string };
+const RAW_ENTRY = /^:([0-7]{6}) ([0-7]{6}) ([0-9a-f]{40}) ([0-9a-f]{40}) ([ADMT])$/;
+export const parseRawDiff = (out: string): RawEntry[] => {
+  if (out === '') return [];
+  if (!out.endsWith('\0')) return fail('git diff --raw -z output (no trailing NUL)', out);
+  const fields = out.slice(0, -1).split('\0');
+  if (fields.length % 2 !== 0) return fail('git diff --raw -z output (odd field count)', out);
+  const entries: RawEntry[] = [];
+  for (let i = 0; i < fields.length; i += 2) {
+    const m = RAW_ENTRY.exec(fields[i]!);
+    const path = fields[i + 1]!;
+    if (!m || path === '' || path.includes('\n')) return fail('git diff --raw -z entry', `${fields[i]} ${path}`);
+    entries.push({ oldMode: m[1]!, newMode: m[2]!, oldBlob: m[3]!, newBlob: m[4]!, status: m[5]!, path });
+  }
+  if (new Set(entries.map((e) => e.path)).size !== entries.length) return fail('git diff --raw -z output (a path listed twice)', out);
+  return entries;
+};
+
+// Output of `git cat-file --batch`: "<sha> blob <size>\n<bytes>\n" per requested blob, in request order.
+export const parseBlobBatch = (out: Buffer, shas: string[]): Map<string, Buffer> => {
+  const blobs = new Map<string, Buffer>();
+  let at = 0;
+  for (const sha of shas) {
+    const eol = out.indexOf(0x0a, at);
+    const header = eol < 0 ? '' : out.subarray(at, eol).toString('latin1');
+    const m = /^([0-9a-f]{40}) blob (\d+)$/.exec(header);
+    if (!m || m[1] !== sha) return fail('git cat-file --batch header', header);
+    const start = eol + 1;
+    const end = start + Number(m[2]);
+    if (end >= out.length || out[end] !== 0x0a) return fail('git cat-file --batch body', header);
+    blobs.set(sha, out.subarray(start, end));
+    at = end + 1;
+  }
+  if (at !== out.length) return fail('git cat-file --batch output (trailing bytes)', out.subarray(at, at + 100).toString('latin1'));
+  return blobs;
+};
+
+// Git's own test for binary content: a NUL byte in the first 8000 bytes.
+export const isBinaryBlob = (content: Buffer): boolean => content.subarray(0, 8000).includes(0);
+
+// The one verdict every path of pr-review.ts uses. `vouches` maps a vouchable skip's html_url to its vouch.
 export type Verdict = 'pending' | 'passed' | 'failed';
 export const verdictOf = (run: CheckRun, vouches: ReadonlyMap<string, Vouch>): Verdict => {
   if (run.status !== 'completed') return 'pending';
@@ -136,4 +194,90 @@ export const outcome = (runs: CheckRun[], vouches: ReadonlyMap<string, Vouch>): 
   const pending = runs.filter((r) => verdictOf(r, vouches) === 'pending').map((r) => r.name);
   if (!runs.some((r) => r.name === CORRECTNESS)) pending.push(CORRECTNESS);
   return { pending, failed: runs.filter((r) => verdictOf(r, vouches) === 'failed').map((r) => r.name) };
+};
+
+// The git side, with git passed in so tests can run it on a scratch repository. Every failure becomes a PatchId error.
+// Git output is bytes; text is decoded as strict UTF-8, so nothing is changed or dropped before it is hashed.
+export type Git = (args: string[], input?: Buffer) => Buffer;
+export const IGNORE_FILE = '.macroscope/ignore.md';
+export type Ignore = { blob: string; file: IgnoreFile };
+
+const utf8 = new TextDecoder('utf-8', { fatal: true });
+const text = (out: Buffer): string => utf8.decode(out);
+const errorText = (error: unknown): string => {
+  const stderr = (error as { stderr?: unknown }).stderr;
+  const err = Buffer.isBuffer(stderr) ? stderr.toString('utf8') : stderr;
+  return typeof err === 'string' && err.trim() !== '' ? err.trim() : error instanceof Error ? error.message : String(error);
+};
+
+// The ignore file Macroscope reads for a review of `commit` is the one in that commit; a missing one fails closed,
+// since Macroscope's fallbacks then apply. An ignore file that ignores itself could hide its own edits, so it fails too.
+export const ignoreAt = (git: Git, commit: string): Ignore | { error: string } => {
+  try {
+    const blob = checkSha(text(git(['rev-parse', '--verify', '--quiet', `${commit}:${IGNORE_FILE}`])).trim(), `${IGNORE_FILE} blob at ${commit}`);
+    const file = parseIgnoreFile(text(git(['cat-file', 'blob', blob])));
+    if (file.matches(IGNORE_FILE)) return { error: `${IGNORE_FILE} at ${commit} ignores itself` };
+    return { blob, file };
+  } catch (error) {
+    return { error: `${IGNORE_FILE} at ${commit}: ${errorText(error)}` };
+  }
+};
+
+// Pinned so the user's git config (diff.ignoreSubmodules, diff.relative, diff.submodule, diff.external, color, renames)
+// can neither hide a change nor alter the patch text; --binary --full-index puts binary content in the patch id.
+const PINNED = ['--ignore-submodules=none', '--submodule=short', '--no-relative', '--no-renames', '--no-ext-diff', '--no-textconv', '--no-color'];
+const DIFF = ['diff', ...PINNED, '--binary', '--full-index'];
+const RAW = ['diff', ...PINNED, '--raw', '-z', '--no-abbrev'];
+const ZERO = '0'.repeat(40);
+const PATHS_PER_DIFF = 200;
+
+// Macroscope always skips binary files; a regular file counts as one here only when every side of its change is binary content.
+const binaryPaths = (git: Git, entries: RawEntry[]): Set<string> => {
+  const regular = (mode: string): boolean => mode === '100644' || mode === '100755';
+  const sides = (e: RawEntry): string[] => [e.oldBlob, e.newBlob].filter((b) => b !== ZERO);
+  const candidates = entries.filter((e) => [e.oldMode, e.newMode].every((m) => m === '000000' || regular(m)) && sides(e).length > 0);
+  const shas = [...new Set(candidates.flatMap(sides))];
+  if (shas.length === 0) return new Set();
+  const blobs = parseBlobBatch(git(['cat-file', '--batch'], Buffer.from(`${shas.join('\n')}\n`)), shas);
+  return new Set(candidates.filter((e) => sides(e).every((b) => isBinaryBlob(blobs.get(b)!))).map((e) => e.path));
+};
+
+const countFileDiffs = (diff: Buffer): number => {
+  let n = 0;
+  for (let at = 0; at < diff.length; ) {
+    if (diff.subarray(at, at + 11).toString('latin1') === 'diff --git ') n++;
+    const eol = diff.indexOf(0x0a, at);
+    at = eol < 0 ? diff.length : eol + 1;
+  }
+  return n;
+};
+
+// The three-dot diff of a commit (against its merge-base with the base ref) over `scope`, reduced to its stable patch id.
+// For 'reviewed paths' the commit must carry the same ignore file as `ignore`, which is the head's, and binary files are left out.
+export const patchIdOver = (git: Git, commit: string, baseRef: string, scope: DiffScope, ignore?: Ignore): PatchId => {
+  try {
+    const mergeBase = checkSha(text(git(['merge-base', commit, baseRef])).trim(), `merge-base of ${commit} and ${baseRef}`);
+    const entries = parseRawDiff(text(git([...RAW, mergeBase, commit])));
+    let paths = entries.map((e) => e.path);
+    if (scope === 'reviewed paths') {
+      if (ignore === undefined) return { error: 'no ignore file to restrict the diff to reviewed paths' };
+      const own = ignoreAt(git, commit);
+      if ('error' in own) return own;
+      if (own.blob !== ignore.blob) return { error: `${IGNORE_FILE} differs from the head's (${own.blob} vs ${ignore.blob})` };
+      const reviewed = entries.filter((e) => !ignore.file.matches(e.path));
+      const binary = binaryPaths(git, reviewed);
+      paths = reviewed.map((e) => e.path).filter((p) => !binary.has(p));
+    }
+    if (paths.length === 0) return { error: `no path in ${scope} differs from its merge-base, so there is no patch id to compare` };
+    const chunks: Buffer[] = [];
+    for (let i = 0; i < paths.length; i += PATHS_PER_DIFF) {
+      chunks.push(git([...DIFF, mergeBase, commit, '--', ...paths.slice(i, i + PATHS_PER_DIFF).map((p) => `:(literal)${p}`)]));
+    }
+    const diff = Buffer.concat(chunks);
+    const files = countFileDiffs(diff);
+    if (files !== paths.length) return { error: `git diff printed ${files} file diffs for ${paths.length} paths` };
+    return parsePatchId(text(git(['patch-id', '--stable'], diff)));
+  } catch (error) {
+    return { error: `${commit}: ${errorText(error)}` };
+  }
 };
