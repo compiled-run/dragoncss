@@ -1,13 +1,14 @@
-// FORM-a: the engine lays out Chrome 145's UA shadow structure of input[type=range] and the button content model, compared with
-// FORM-0's CDP boxes (packages/dragon/test/forms/chrome-145) at 0 LU. The compiler's expansion is spelled out here from the
-// captured UA shadow rules (forms/ua-shadow.generated.ts): input flex, container flex 1 1 0% min-inline-size 0 border-box,
-// track block flex 1 1 0% min-inline-size 0 align-self center border-box, thumb block border-box.
+// FORM-a: layout() lays out Chrome 145's UA shadow structure of input[type=range] and the button content model, with the control
+// boxes (input.ts ControlBox) moving the thumb and centring block buttons, compared with FORM-0's CDP boxes
+// (packages/dragon/test/forms/chrome-145) at 0 LU. The compiler's expansion is spelled out here from the captured UA shadow rules
+// (forms/ua-shadow.generated.ts): input flex, container flex 1 1 0% min-inline-size 0 border-box, track block flex 1 1 0%
+// min-inline-size 0 align-self center border-box, thumb block border-box.
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
-import type { LayoutBox, LayoutRect, LayoutStyle, TextLeaf } from '../src/index.ts';
-import { absoluteRects, ahemMeasurer, buttonContentShift, fromRaw, layout, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbLeft, SLIDER_DEFAULT_TRACK_LENGTH } from '../src/index.ts';
+import { describe, expect, it, vi } from 'vitest';
+import type { ControlBox, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, TextLeaf, TextMeasurer } from '../src/index.ts';
 import type { LU } from '../src/units.ts';
-import { anon, box, pct, px, text } from './helpers.ts';
+import { absoluteRects, ahemMeasurer, buttonContentShift, fromRaw, layout, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, SLIDER_DEFAULT_TRACK_LENGTH, validateLayoutInput } from '../src/index.ts';
+import { anon, box, control, pct, px, text } from './helpers.ts';
 
 type Rect = readonly [number, number, number, number];
 type Box = { readonly border: Rect; readonly content: Rect };
@@ -87,26 +88,23 @@ function ratioOf(c: RangeCase): number {
   return max === min ? 0 : (Number(c.value) - min) / (max - min);
 }
 
-/** The range input expanded as the compiler will write it, inside a 400px root; the input's default width is the track length. */
+/**
+ * The range input expanded as the compiler will write it: a flex item of a row flex container that holds it at its content
+ * width, as Chrome's inline-block shrink-to-fit does, so an auto width comes from the engine's 129 px default.
+ */
 function rangeTree(c: RangeCase): LayoutBox {
   const input = declarations(c.css.input);
   const thumb = declarations(c.css.thumb);
   const dir = { direction: c.direction };
   const inputStyle = boxStyle(input);
   if (input.has('box-sizing') && !input.has('width')) throw new Error('a border-box range of auto width is outside the matrix');
-  // layout_box.cc SliderIntrinsicInlineSize: an auto-width range's content inline size (the root shrink-wraps nothing here).
-  const width = inputStyle.width ?? px(sliderIntrinsicInlineSize(1) / 64);
   const themed = (input.get('appearance') ?? 'auto') === 'auto' || (thumb.get('appearance') ?? 'auto') === 'auto';
   const thumbStyle = themed ? { width: px(THEME_THUMB.width), height: px(THEME_THUMB.height) } : boxStyle(thumb);
-  return box('root', { ...dir, width: px(400) }, [
-    box('input', { ...dir, ...ZERO_EDGES, ...inputStyle, width, display: 'flex', flexDirection: 'row' }, [
-      box('container', { ...dir, display: 'flex', flexGrow: 1, flexShrink: 1, flexBasis: pct(0), minWidth: px(0), boxSizing: 'border-box' }, [
-        box('track', { ...dir, flexGrow: 1, flexShrink: 1, flexBasis: pct(0), minWidth: px(0), alignSelf: 'center', boxSizing: 'border-box', ...boxStyle(declarations(c.css.track)) }, [
-          box('thumb', { ...dir, boxSizing: 'border-box', ...thumbStyle }),
-        ]),
-      ]),
-    ]),
-  ]);
+  const thumbBox = control('thumb', { kind: 'slider-thumb', ratio: ratioOf(c) }, { ...dir, boxSizing: 'border-box', ...thumbStyle });
+  const track: LayoutBox = { ...box('track', { ...dir, flexGrow: 1, flexShrink: 1, flexBasis: pct(0), minWidth: px(0), alignSelf: 'center', boxSizing: 'border-box', ...boxStyle(declarations(c.css.track)) }), children: [thumbBox] };
+  const container = box('container', { ...dir, display: 'flex', flexGrow: 1, flexShrink: 1, flexBasis: pct(0), minWidth: px(0), boxSizing: 'border-box' }, [track]);
+  const range = control('input', { kind: 'range', defaultInlineSize: SLIDER_DEFAULT_TRACK_LENGTH }, { ...dir, ...ZERO_EDGES, ...inputStyle, display: 'flex', flexDirection: 'row' }, [container]);
+  return { ...box('root', { ...dir, width: px(400), display: 'flex', alignItems: 'flex-start' }), children: [range] };
 }
 
 /** The engine's border boxes, relative to the subject's border-box origin, as [x, y, width, height] LU. */
@@ -118,16 +116,43 @@ function relative(abs: Map<string, LayoutRect>, origin: string, id: string): Rec
 }
 const relativeTo = (r: Rect, o: Rect): Rect => [r[0] - o[0], r[1] - o[1], r[2], r[3]];
 
-function layoutRects(root: LayoutBox): Map<string, LayoutRect> {
-  const r = layout({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root }, ahemMeasurer);
+type Layout = (input: LayoutInput, measurer: TextMeasurer) => LayoutResult;
+
+function layoutRects(root: LayoutBox, run: Layout = layout, devicePixelRatio = 1): Map<string, LayoutRect> {
+  const input: LayoutInput = { viewport: { width: 400, height: 300 }, devicePixelRatio, root };
+  const valid = validateLayoutInput(input);
+  if (!valid.ok) throw new Error(`invalid input: ${JSON.stringify(valid.errors)}`);
+  const r = run(input, ahemMeasurer);
   if (r.kind !== 'ok') throw new Error(`layout refused: ${JSON.stringify(r.unsupported)}`);
   return absoluteRects(r.boxes);
 }
 
-/** A px length of the matrix (padding and border widths are always px here). */
-function pxValue(v: LayoutStyle['paddingTop'] | LayoutStyle['borderTopWidth']): number {
-  if (v.kind !== 'px') throw new Error(`length ${v.kind} is outside the matrix`);
-  return v.value;
+/** Every range case's input, container, track and thumb border box from layout(), against Chrome's; the misses and the count. */
+function rangeMisses(run: Layout): { readonly misses: string[]; readonly compared: number } {
+  let compared = 0;
+  const misses: string[] = [];
+  for (const c of RANGE) {
+    const abs = layoutRects(rangeTree(c), run);
+    for (const k of ['input', 'container', 'track', 'thumb'] as const) {
+      compared++;
+      const ours = relative(abs, 'input', k);
+      const want = relativeTo(c.boxes[k].border, c.boxes.input.border);
+      if (ours.join() !== want.join()) misses.push(`${c.id} ${c.direction} ${k}: engine [${ours.map((v) => v / 64).join(', ')}] != Chrome [${want.map((v) => v / 64).join(', ')}] (${JSON.stringify(c.css)})`);
+    }
+  }
+  return { misses, compared };
+}
+
+/** The engine with one planted controls.ts function: a fresh module graph in which layout() calls the planted version. */
+async function plantedLayout(plant: Record<string, unknown>): Promise<Layout> {
+  vi.resetModules();
+  vi.doMock('../src/controls.ts', async (original) => ({ ...(await original<typeof import('../src/controls.ts')>()), ...plant }));
+  try {
+    return (await import('../src/index.ts')).layout;
+  } finally {
+    vi.doUnmock('../src/controls.ts');
+    vi.resetModules();
+  }
 }
 
 describe('FORM-a range: the UA shadow structure laid out by the engine', () => {
@@ -139,56 +164,47 @@ describe('FORM-a range: the UA shadow structure laid out by the engine', () => {
     for (const c of auto) expect(c.boxes.input.content[2], c.id).toBe(sliderIntrinsicInlineSize(1));
   });
 
-  it('input, container, track and thumb boxes equal Chrome on every case, ltr and rtl', () => {
-    let compared = 0;
-    const misses: string[] = [];
-    for (const c of RANGE) {
-      const abs = layoutRects(rangeTree(c));
-      const origin = c.boxes.input.border;
-      const track = abs.get('track') as LayoutRect;
-      const thumb = abs.get('thumb') as LayoutRect;
-      const ts = (((rangeTree(c).children[0] as LayoutBox).children[0] as LayoutBox).children[0] as LayoutBox).style;
-      const startInset = (pxValue(ts.borderLeftWidth) + pxValue(ts.paddingLeft)) * 64;
-      const trackContentLeft = fromRaw(track.x + startInset);
-      const trackContentWidth = fromRaw(track.width - startInset - (pxValue(ts.borderRightWidth) + pxValue(ts.paddingRight)) * 64);
-      // The engine's static thumb position is the ratio-0 placement; the slider offset then moves it (AdjustSliderThumbInlineOffset).
-      const ratio = ratioOf(c);
-      const staticLeft = sliderThumbLeft(trackContentLeft, trackContentWidth, thumb.width as LU, 0, c.direction);
-      const finalLeft = sliderThumbLeft(trackContentLeft, trackContentWidth, thumb.width as LU, ratio, c.direction);
-      const ours: Record<string, Rect> = {
-        input: relative(abs, 'input', 'input'),
-        container: relative(abs, 'input', 'container'),
-        track: relative(abs, 'input', 'track'),
-        thumb: [finalLeft - (abs.get('input') as LayoutRect).x, thumb.y - (abs.get('input') as LayoutRect).y, thumb.width, thumb.height],
-      };
-      for (const k of ['input', 'container', 'track', 'thumb'] as const) {
-        compared++;
-        const want = relativeTo(c.boxes[k].border, origin);
-        if (ours[k]?.join() !== want.join()) misses.push(`${c.id} ${c.direction} ${k}: engine [${ours[k]?.map((v) => v / 64).join(', ')}] != Chrome [${want.map((v) => v / 64).join(', ')}] (${JSON.stringify(c.css)})`);
-      }
-      compared++;
-      if (thumb.x !== staticLeft) misses.push(`${c.id} thumb static x ${thumb.x / 64} != ratio-0 placement ${staticLeft / 64}`);
-    }
-    expect(misses).toEqual([]);
-    expect(compared).toBe(RANGE.length * 5);
+  it('layout() gives the input, container, track and thumb boxes Chrome gives on every case, ltr and rtl', () => {
+    const r = rangeMisses(layout);
+    expect(r.misses).toEqual([]);
+    expect(r.compared).toBe(RANGE.length * 4);
   });
 
-  it('the thumb offset truncates toward zero and goes negative when the thumb is wider than the track', () => {
+  it('an auto-width range is its zoomed default track length wide at every lane DPR', () => {
+    const c = RANGE.find((k) => k.css.input === 'appearance:none' && k.css.track === '' && k.direction === 'ltr') as RangeCase;
+    for (const dpr of [1, 2, 3, 2.625]) {
+      const input = layoutRects(rangeTree(c), layout, dpr).get('input') as LayoutRect;
+      expect(input.width, `DPR ${dpr}`).toBe(sliderIntrinsicInlineSize(dpr));
+    }
+  });
+
+  it('a planted thumb that is not mirrored in rtl misses Chrome', async () => {
+    const planted = await plantedLayout({ sliderThumbShift: (ratio: number, w: LU, t: LU) => sliderThumbInlineOffset(ratio, w, t) });
+    const r = rangeMisses(planted);
+    expect(r.misses.length).toBeGreaterThan(0);
+    expect(r.misses.every((m) => m.includes(' rtl thumb: '))).toBe(true);
+  });
+
+  it('the thumb offset truncates toward zero, goes negative when the thumb is wider than the track, and runs leftward in rtl', () => {
     expect(sliderThumbInlineOffset(0.37, fromRaw(8256), fromRaw(1024))).toBe(2675);
     expect(sliderThumbInlineOffset(0.5, fromRaw(640), fromRaw(1024))).toBe(-192);
     expect(sliderThumbInlineOffset(1 / 3, fromRaw(1000), fromRaw(0))).toBe(333);
-    expect(sliderThumbLeft(fromRaw(0), fromRaw(1000), fromRaw(100), 0.25, 'rtl')).toBe(675);
+    expect(sliderThumbShift(0.25, fromRaw(1000), fromRaw(100), 'rtl')).toBe(-225);
+    expect(sliderThumbShift(0.25, fromRaw(1000), fromRaw(100), 'ltr')).toBe(225);
   });
 });
 
-/** The button laid out as the compiler will write it: blockified in the capture's flex row, UA box edges unless the case sets them. */
+/**
+ * The button laid out as the compiler will write it: blockified in the capture's flex row, UA box edges unless the case sets them;
+ * a block button is a button-block control box, a flex button a plain box.
+ */
 function buttonTree(c: ButtonCase): LayoutBox {
   const d = declarations(c.css);
   const dir = { direction: c.direction };
   const flex = d.get('display') === 'flex';
   const textLeaf = (): TextLeaf => text('text', 'XXX');
   const element = (): LayoutBox => box('element', { ...dir, width: px(20), height: px(8) });
-  const textItem = (): LayoutBox | TextLeaf => (flex || c.children === 'both' ? anon('text-box', { ...dir, textAlign: 'center' }, [textLeaf()]) : textLeaf());
+  const textItem = (): LayoutBox | TextLeaf => (flex || c.children === 'both' ? anon('button:anon0', { ...dir, textAlign: 'center' }, [textLeaf()]) : textLeaf());
   const kids: (LayoutBox | TextLeaf)[] = c.children === 'text' ? [textItem()] : c.children === 'element' ? [element()] : [textItem(), element()];
   const textAlign = (d.get('text-align') ?? 'center') as LayoutStyle['textAlign'];
   const s: Partial<LayoutStyle> = {
@@ -206,42 +222,43 @@ function buttonTree(c: ButtonCase): LayoutBox {
   };
   // The anonymous text box inherits the button's text-align.
   const withAlign = kids.map((k) => (k.kind === 'box' && k.boxType === 'anonymous' ? { ...k, style: { ...k.style, textAlign } } : k));
-  return box('root', { ...dir, width: px(400) }, [box('p', { ...dir, display: 'flex', alignItems: 'flex-start' }, [box('button', s, withAlign)])]);
+  const button: LayoutBox | ControlBox = flex ? box('button', s, withAlign) : control('button', { kind: 'button-block' }, s, withAlign);
+  return box('root', { ...dir, width: px(400) }, [{ ...box('p', { ...dir, display: 'flex', alignItems: 'flex-start' }), children: [button] }]);
+}
+
+/** Every button case's button size and child rects from layout(), against Chrome's; the misses and the count. */
+function buttonMisses(run: Layout): { readonly misses: string[]; readonly compared: number } {
+  let compared = 0;
+  const misses: string[] = [];
+  for (const c of BUTTON) {
+    const abs = layoutRects(buttonTree(c), run);
+    compared++;
+    const wantButton: Rect = [0, 0, c.rects.button[2], c.rects.button[3]];
+    const ourButton = relative(abs, 'button', 'button');
+    if (ourButton.join() !== wantButton.join()) misses.push(`${c.id} button size ${ourButton[2] / 64}x${ourButton[3] / 64} != Chrome ${c.rects.button[2] / 64}x${c.rects.button[3] / 64} (${c.css})`);
+    for (const k of ['text', 'element'] as const) {
+      const want = c.rects[k];
+      if (want === null) continue;
+      compared++;
+      const ours = relative(abs, 'button', k);
+      const w = relativeTo(want, c.rects.button);
+      if (ours.join() !== w.join()) misses.push(`${c.id} ${c.direction} ${k}: engine [${ours.map((v) => v / 64).join(', ')}] != Chrome [${w.map((v) => v / 64).join(', ')}] (${c.css}; ${c.children})`);
+    }
+  }
+  return { misses, compared };
 }
 
 describe('FORM-a button: the content model laid out by the engine', () => {
-  it('child boxes equal Chrome on every case: block buttons centre their contents safely, flex buttons are plain flex containers', () => {
-    let compared = 0;
-    const misses: string[] = [];
-    for (const c of BUTTON) {
-      const abs = layoutRects(buttonTree(c));
-      const button = abs.get('button') as LayoutRect;
-      const flex = declarations(c.css).get('display') === 'flex';
-      const leafId = flex || c.children === 'both' ? 'text-box' : 'text';
-      let shift = 0;
-      if (!flex) {
-        // AlignBlockContent: the content box less the in-flow contents, which the engine stacks from the content box top.
-        const st = ((buttonTree(c).children[0] as LayoutBox).children[0] as LayoutBox).style;
-        const ids = c.children === 'text' ? ['text'] : c.children === 'element' ? ['element'] : ['text-box', 'element'];
-        const contents = ids.reduce((sum, id) => sum + (abs.get(id) as LayoutRect).height, 0);
-        shift = buttonContentShift(fromRaw(button.height - (pxValue(st.borderTopWidth) + pxValue(st.paddingTop) + pxValue(st.borderBottomWidth) + pxValue(st.paddingBottom)) * 64), fromRaw(contents));
-      }
-      compared++;
-      const wantButton: Rect = [0, 0, c.rects.button[2], c.rects.button[3]];
-      const ourButton = relative(abs, 'button', 'button');
-      if (ourButton.join() !== wantButton.join()) misses.push(`${c.id} button size ${ourButton[2] / 64}x${ourButton[3] / 64} != Chrome ${c.rects.button[2] / 64}x${c.rects.button[3] / 64} (${c.css})`);
-      for (const k of ['text', 'element'] as const) {
-        const want = c.rects[k];
-        if (want === null) continue;
-        compared++;
-        const r = relative(abs, 'button', k === 'text' ? 'text' : 'element');
-        const ours: Rect = [r[0], r[1] + shift, r[2], r[3]];
-        const w = relativeTo(want, c.rects.button);
-        if (ours.join() !== w.join()) misses.push(`${c.id} ${c.direction} ${k}: engine [${ours.map((v) => v / 64).join(', ')}] != Chrome [${w.map((v) => v / 64).join(', ')}] (${c.css}; ${c.children}; via ${leafId})`);
-      }
-    }
-    expect(misses).toEqual([]);
-    expect(compared).toBe(BUTTON.length + BUTTON.reduce((n, c) => n + (c.rects.text === null ? 0 : 1) + (c.rects.element === null ? 0 : 1), 0));
+  it('layout() gives the child boxes Chrome gives on every case: block buttons centre their contents safely, flex buttons are plain flex containers', () => {
+    const r = buttonMisses(layout);
+    expect(r.misses).toEqual([]);
+    expect(r.compared).toBe(BUTTON.length + BUTTON.reduce((n, c) => n + (c.rects.text === null ? 0 : 1) + (c.rects.element === null ? 0 : 1), 0));
+  });
+
+  it('a planted unsafe centring (no clamp at 0) misses Chrome', async () => {
+    const planted = await plantedLayout({ buttonContentShift: (content: LU, contents: LU) => Math.trunc((content - contents) / 2) as LU });
+    const r = buttonMisses(planted);
+    expect(r.misses.length).toBeGreaterThan(0);
   });
 
   it('the block centring shift clamps at zero and truncates its half (block_layout_algorithm_utils.cc:194-201)', () => {
@@ -251,3 +268,39 @@ describe('FORM-a button: the content model laid out by the engine', () => {
   });
 });
 
+describe('FORM-a control boxes: what the engine and the validator refuse', () => {
+  const thumb = control('thumb', { kind: 'slider-thumb', ratio: 0.5 }, { width: px(10), height: px(10) });
+  const range = (style: Partial<LayoutStyle>, kids: (LayoutBox | ControlBox)[]): LayoutInput => ({
+    viewport: { width: 400, height: 300 },
+    devicePixelRatio: 1,
+    root: { ...box('root', {}), children: [control('input', { kind: 'range', defaultInlineSize: 129 }, { display: 'flex', ...style }, kids)] },
+  });
+  const codes = (input: LayoutInput): string[] => {
+    const v = validateLayoutInput(input);
+    return v.ok ? [] : v.errors.map((e) => `${e.path} ${e.message}`);
+  };
+
+  it('the validator takes a range with its thumb and refuses a bad display, ratio, position or aspect-ratio', () => {
+    const track = (t: ControlBox): LayoutBox => ({ ...box('track', {}), children: [t] });
+    expect(codes(range({}, [track(thumb)]))).toEqual([]);
+    expect(codes(range({ display: 'block' }, [track(thumb)]))).toEqual(['$.root.children[0].style.display a range control is a flex container']);
+    expect(codes(range({}, [track({ ...thumb, control: { kind: 'slider-thumb', ratio: 1.5 } })]))).toEqual(['$.root.children[0].children[0].children[0].control.ratio a slider thumb ratio is at most 1']);
+    expect(codes(range({ position: 'absolute' }, [track(thumb)]))).toEqual(['$.root.children[0].style.position an absolutely positioned form control is not supported']);
+    expect(codes(range({ aspectRatio: { kind: 'ratio', width: 64, height: 64 } }, [track(thumb)]))).toEqual(['$.root.children[0].style.aspectRatio a form control takes no aspect-ratio']);
+    expect(codes(range({}, [track({ ...thumb, style: { ...thumb.style, position: 'absolute' } })]))).toContain('$.root.children[0].children[0].children[0].style.position an absolutely positioned box inside a form control is not supported');
+    const button = control('b', { kind: 'button-block' }, { display: 'flex' });
+    expect(codes({ ...range({}, []), root: { ...box('root', {}), children: [button] } })).toEqual(['$.root.children[0].style.display a block button control is a block container']);
+  });
+
+  it('the engine throws on a block button control with display flex, which the validator rejects', () => {
+    const input: LayoutInput = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root: { ...box('root', {}), children: [control('b', { kind: 'button-block' }, { display: 'flex' })] } };
+    expect(() => layout(input, ahemMeasurer)).toThrow('validateLayoutInput rejects this input');
+  });
+
+  it('the engine refuses an absolutely positioned control, or an absolutely positioned box inside one', () => {
+    const abspos = layout(range({ position: 'absolute' }, []), ahemMeasurer);
+    expect(abspos.kind === 'unsupported' ? abspos.unsupported.code : 'ok').toBe('control-out-of-flow');
+    const inside = layout(range({}, [{ ...box('track', { position: 'relative' }), children: [{ ...thumb, style: { ...thumb.style, position: 'absolute' } }] }]), ahemMeasurer);
+    expect(inside.kind === 'unsupported' ? inside.unsupported.code : 'ok').toBe('control-out-of-flow');
+  });
+});

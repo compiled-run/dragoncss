@@ -1,4 +1,4 @@
-import type { LayoutBox, LayoutStyle, TextLeaf } from '../src/index.ts';
+import type { ControlBox, ControlKind, LayoutBox, LayoutStyle, ReplacedLeaf, TextLeaf } from '../src/index.ts';
 
 /** Test-only: the CSS initial values for a block div, spelled out so each test states what it overrides. */
 export const divStyle: LayoutStyle = {
@@ -48,6 +48,11 @@ export const divStyle: LayoutStyle = {
 
 export function box(id: string, style: Partial<LayoutStyle>, children: (LayoutBox | TextLeaf)[] = []): LayoutBox {
   return { kind: 'box', id, boxType: 'element', style: { ...divStyle, ...style }, children };
+}
+
+/** A form control's box (FORM-a), with the div initial values under its style. */
+export function control(id: string, kind: ControlKind, style: Partial<LayoutStyle>, children: (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf)[] = []): ControlBox {
+  return { kind: 'control', id, boxType: 'element', style: { ...divStyle, ...style }, control: kind, children };
 }
 
 export function anon(id: string, style: Partial<LayoutStyle>, children: (LayoutBox | TextLeaf)[] = []): LayoutBox {

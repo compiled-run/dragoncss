@@ -539,16 +539,17 @@ public final class DragonTree {
     var zStyles: [String: LayoutStyle] = [:]
     var zLeaves: [(String, ReplacedLeaf)] = []
     var zParent: [String: String] = [:]
-    func walk(_ b: LayoutBox) {
+    func walk(_ b: LayoutBox) throws {
       zBoxes[b.id.description] = b
       zStyles[b.id.description] = b.style
       for c in b.children.items {
-        if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
+        if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; try walk(cb) }
+        else if let cc = c as? ControlBox { zParent[cc.id.description] = b.id.description; try walk(try controls_controlAsBox(cc)) }
         else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
         else if let rl = c as? ReplacedLeaf { zParent[rl.id.description] = b.id.description; zStyles[rl.id.description] = rl.style; zLeaves.append((rl.id.description, rl)) }
       }
     }
-    walk(zoomed.root)
+    try walk(zoomed.root)
     let lu = units_LU_PER_PX
     let s = scale
     let cg = CGFloat(scale)
@@ -1148,6 +1149,7 @@ import dev.dragon.dump.DumpPixels
 import dev.dragon.dump.DumpPixelsSamples
 import dev.dragon.dump.DumpTiming
 import dev.dragon.layout.Ctx
+import dev.dragon.layout.ControlBox
 import dev.dragon.layout.LayoutBox
 import dev.dragon.layout.LayoutInput
 import dev.dragon.layout.LayoutRect
@@ -1162,6 +1164,7 @@ import dev.dragon.layout.TextMeasurer
 import dev.dragon.layout.block_NO_ENGINE_FAULTS
 import dev.dragon.layout.box_resolveBorder
 import dev.dragon.layout.box_resolvePadding
+import dev.dragon.layout.controls_controlAsBox
 import dev.dragon.layout.inline_breakLines
 import dev.dragon.layout.inline_buildRun
 import dev.dragon.layout.inline_width
@@ -1251,6 +1254,7 @@ class DragonTree(val context: Context) {
       zStyles[b.id] = b.style
       for (c in b.children) {
         if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) } else if (c is TextLeaf) zParent[c.id] = b.id
+        else if (c is ControlBox) { zParent[c.id] = b.id; walk(controls_controlAsBox(c)) }
         else if (c is ReplacedLeaf) { zParent[c.id] = b.id; zStyles[c.id] = c.style; zLeaves.add(c) }
       }
     }
@@ -1715,6 +1719,9 @@ function engineValue(lang: Lang, v: unknown): string {
   return o.value === undefined ? `${cls}(${str(o.kind)})` : `${cls}(${str(o.kind)}, ${doubleLit(o.value)})`;
 }
 
+/** The translated union of a box's children (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf). */
+const CHILDREN_UNION = 'U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf';
+
 /**
  * Functions that build a LayoutInput with the translated engine's typed constructors (no JSON, no CSS): one small function per box,
  * which builds its style, its text leaves and calls its child boxes' functions. Returns the declarations and the root call.
@@ -1729,17 +1736,27 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
     const natural = c.natural.kind === 'image' ? `NaturalSizeValue_image(${str('image')}, ${doubleLit(c.natural.width)}, ${doubleLit(c.natural.height)})` : `NaturalSizeValue_none(${str('none')})`;
     return `ReplacedLeaf(${str('replaced')}, ${str(c.id)}, ${styleOf(c.style)}, ${natural}, ${doubleLit(c.defaultWidth)}, ${doubleLit(c.defaultHeight)}, ${str(c.objectFit)}, ${engineValue(lang, c.objectPositionX)}, ${engineValue(lang, c.objectPositionY)})`;
   };
-  const visit = (b: import('@dragon/layout').LayoutBox): string => {
+  // A control box's facts (input.ts ControlKind): ControlKind_range, ControlKind_sliderThumb or ControlKind_buttonBlock.
+  const controlKind = (c: import('@dragon/layout').ControlKind): string =>
+    c.kind === 'range'
+      ? `ControlKind_range(${str('range')}, ${doubleLit(c.defaultInlineSize)})`
+      : c.kind === 'slider-thumb'
+        ? `ControlKind_sliderThumb(${str('slider-thumb')}, ${doubleLit(c.ratio)})`
+        : `ControlKind_buttonBlock(${str('button-block')})`;
+  const visit = (b: import('@dragon/layout').LayoutBox | import('@dragon/layout').ControlBox): string => {
     const name = `${prefix}Box${n++}`;
-    const kids = b.children.map((c) => (c.kind === 'box'
+    const kids = b.children.map((c) => (c.kind === 'box' || c.kind === 'control'
       ? `${visit(c)}()`
       : c.kind === 'replaced'
         ? replaced(c)
         : `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, TextFont(${str(c.font.family)}, ${doubleLit(c.font.size)}), ${engineValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)})`));
     const style = styleOf(b.style);
-    const arr = lang === 'swift' ? `JsArray<any U_LayoutBox_ReplacedLeaf_TextLeaf>([${kids.join(', ')}])` : `jsArrayOf<U_LayoutBox_ReplacedLeaf_TextLeaf>(${kids.join(', ')})`;
-    const body = `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${style}, ${arr})`;
-    decls.push(lang === 'swift' ? `private func ${name}() -> LayoutBox {\n  return ${body}\n}` : `private fun ${name}(): LayoutBox =\n  ${body}`);
+    const arr = lang === 'swift' ? `JsArray<any ${CHILDREN_UNION}>([${kids.join(', ')}])` : `jsArrayOf<${CHILDREN_UNION}>(${kids.join(', ')})`;
+    const type = b.kind === 'control' ? 'ControlBox' : 'LayoutBox';
+    const body = b.kind === 'control'
+      ? `ControlBox(${str('control')}, ${str(b.id)}, ${str(b.boxType)}, ${style}, ${controlKind(b.control)}, ${arr})`
+      : `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${style}, ${arr})`;
+    decls.push(lang === 'swift' ? `private func ${name}() -> ${type} {\n  return ${body}\n}` : `private fun ${name}(): ${type} =\n  ${body}`);
     return name;
   };
   const r = visit(root);

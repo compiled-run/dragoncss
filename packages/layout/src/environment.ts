@@ -12,6 +12,8 @@
 import type {
   BorderWidthValue,
   CalcExpr,
+  ControlBox,
+  ControlKind,
   FlexBasisValue,
   GapValue,
   InsetValue,
@@ -34,6 +36,7 @@ import type {
 } from './input.ts';
 import type { EngineFaults } from './block.ts';
 import { calcHasPercent, evaluateCalc } from './calc.ts';
+import { zoomTrackLength } from './controls.ts';
 import {
   clampLengthFloat,
   clampNonNegativeDouble,
@@ -81,10 +84,10 @@ export function applyEnvironment(input: LayoutInput, faults: EngineFaults): Layo
 }
 
 /** Whether any length of the box or its descendants is a calculation, which needs the pass even at DPR 1. */
-function boxNeedsEnvironment(b: LayoutBox): boolean {
+function boxNeedsEnvironment(b: LayoutBox | ControlBox): boolean {
   if (styleNeedsEnvironment(b.style)) return true;
   for (const c of b.children) {
-    if (c.kind === 'box' && boxNeedsEnvironment(c)) return true;
+    if ((c.kind === 'box' || c.kind === 'control') && boxNeedsEnvironment(c)) return true;
     if (c.kind === 'replaced' && styleNeedsEnvironment(c.style)) return true;
   }
   return false;
@@ -103,8 +106,18 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
 }
 
 function resolveBox(b: LayoutBox, env: Env): LayoutBox {
-  const children = b.children.map((c): LayoutBox | TextLeaf | ReplacedLeaf => (c.kind === 'box' ? resolveBox(c, env) : c.kind === 'replaced' ? resolveReplaced(c, env) : zoomText(c, env.zoom)));
-  return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), children };
+  return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), children: resolveChildren(b.children, env) };
+}
+
+function resolveChildren(children: readonly (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf)[], env: Env): (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf)[] {
+  return children.map((c): LayoutBox | ControlBox | TextLeaf | ReplacedLeaf => (c.kind === 'box' ? resolveBox(c, env) : c.kind === 'control' ? resolveControl(c, env) : c.kind === 'replaced' ? resolveReplaced(c, env) : zoomText(c, env.zoom)));
+}
+
+/** A control box in zoomed px: a range's default track length is zoomed in float as Blink does (controls.ts zoomTrackLength). */
+function resolveControl(b: ControlBox, env: Env): ControlBox {
+  const c = b.control;
+  const control: ControlKind = c.kind === 'range' ? { kind: 'range', defaultInlineSize: zoomTrackLength(c.defaultInlineSize, env.zoom) } : c;
+  return { kind: 'control', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), control, children: resolveChildren(b.children, env) };
 }
 
 /** A replaced leaf in zoomed px: its style, natural size, default object size (Blink ComputeDefaultNaturalSize scales it by the zoom) and px object-position. */

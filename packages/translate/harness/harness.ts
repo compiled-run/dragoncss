@@ -10,6 +10,8 @@ import type {
   BoxSizing,
   BoxType,
   CalcExpr,
+  ControlBox,
+  ControlKind,
   Direction,
   Display,
   FlexBasisValue,
@@ -600,12 +602,41 @@ function decodeReplaced(o: JsonObj, path: string): ReplacedLeaf {
   };
 }
 
-function decodeBox(o: JsonObj, path: string): LayoutBox {
-  obj(o, ['kind', 'id', 'boxType', 'style', 'children'], path);
-  const children: (LayoutBox | TextLeaf | ReplacedLeaf)[] = [];
+function decodeChildren(o: JsonObj, path: string): (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf)[] {
+  const children: (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf)[] = [];
   arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
     children.push(decodeNode(c, `${path}.children[${i}]`));
   });
+  return children;
+}
+
+function controlKind(v: JsonValue, path: string): ControlKind {
+  const k = kindOf(v, path);
+  if (k === 'range') return { kind: 'range', defaultInlineSize: numField(obj(v, ['kind', 'defaultInlineSize'], path), 'defaultInlineSize', path) };
+  if (k === 'slider-thumb') return { kind: 'slider-thumb', ratio: numField(obj(v, ['kind', 'ratio'], path), 'ratio', path) };
+  if (k === 'button-block') {
+    obj(v, ['kind'], path);
+    return { kind: 'button-block' };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function decodeControl(o: JsonObj, path: string): ControlBox {
+  obj(o, ['kind', 'id', 'boxType', 'style', 'control', 'children'], path);
+  const children = decodeChildren(o, path);
+  return {
+    kind: 'control',
+    id: str(field(o, 'id', path), `${path}.id`),
+    boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
+    style: decodeStyle(field(o, 'style', path), `${path}.style`),
+    control: controlKind(field(o, 'control', path), `${path}.control`),
+    children,
+  };
+}
+
+function decodeBox(o: JsonObj, path: string): LayoutBox {
+  obj(o, ['kind', 'id', 'boxType', 'style', 'children'], path);
+  const children = decodeChildren(o, path);
   return {
     kind: 'box',
     id: str(field(o, 'id', path), `${path}.id`),
@@ -615,10 +646,11 @@ function decodeBox(o: JsonObj, path: string): LayoutBox {
   };
 }
 
-function decodeNode(v: JsonValue, path: string): LayoutBox | TextLeaf | ReplacedLeaf {
+function decodeNode(v: JsonValue, path: string): LayoutBox | ControlBox | TextLeaf | ReplacedLeaf {
   if (v.kind !== 'obj') return fail(`${path}: expected a node`);
   const k = kindOf(v, path);
   if (k === 'box') return decodeBox(v, path);
+  if (k === 'control') return decodeControl(v, path);
   if (k === 'text') return decodeText(v, path);
   if (k === 'replaced') return decodeReplaced(v, path);
   return fail(`${path}: unknown node kind ${k}`);

@@ -1,21 +1,42 @@
-// Form controls (FORM-a), ported from Blink at 145.0.7632.6 (BSD). A control is laid out as Chrome's own UA shadow structure:
-// - input[type=range]: the input is a flex container (range_input_type.cc:285-288 CreateLayoutObject returns LayoutFlexibleBox)
-//   holding the slider container (flex), the track (a block flex item, align-self center) and the thumb (the track's block
+// Form controls (FORM-a), ported from Blink at 145.0.7632.6 (BSD). The compiler writes a control as Chrome's own UA shadow
+// structure, with a ControlBox (input.ts) where Blink's layout treats the box specially:
+// - input[type=range] (range): a flex container (range_input_type.cc:285-288 CreateLayoutObject returns LayoutFlexibleBox) holding
+//   the slider container (flex), the track (a block flex item, align-self center) and the thumb (slider-thumb, the track's block
 //   child), whose inline offset is moved by the value (block_layout_algorithm.cc:2652-2654 and 3936-3945
 //   AdjustSliderThumbInlineOffset); its default content inline size is 129 px (layout_box.cc:295-298 SliderIntrinsicInlineSize).
-// - button: a block container whose in-flow contents are centred in the block axis, safely (html.css
-//   `-internal-align-content-block: center`, block_layout_algorithm_utils.cc:185-203 AlignBlockContent), or the flex container
-//   its display says (html_button_element.cc:59-74 CreateLayoutObject). There is no anonymous inner box.
-import type { Direction } from './input.ts';
+// - a block button (button-block): its in-flow contents are centred in the block axis, safely (html.css
+//   `-internal-align-content-block: center`, block_layout_algorithm_utils.cc:185-203 AlignBlockContent). A flex or grid button is
+//   the plain container its display says (html_button_element.cc:59-74 CreateLayoutObject). There is no anonymous inner box.
+import type { ControlBox, ControlKind, Direction, LayoutBox } from './input.ts';
 import type { LU } from './units.ts';
-import { add, clampNegativeToZero, divInt, doubleMul, float32, fromCssPx, fromDouble, sub, toPx } from './units.ts';
+import { clampNegativeToZero, divInt, doubleMul, float32, floatMul, fromCssPx, fromDouble, sub, toPx, ZERO } from './units.ts';
 
 /** layout_box.cc:296 kDefaultTrackLength, in CSS px. */
 export const SLIDER_DEFAULT_TRACK_LENGTH = 129;
 
-/** layout_box.cc:295-298: LayoutUnit(kDefaultTrackLength * EffectiveZoom()), an int times a float, truncated to LU. */
+/** layout_box.cc:297: kDefaultTrackLength * EffectiveZoom(), an int times a float, in float; environment.ts zooms a range with it. */
+export function zoomTrackLength(px: number, zoom: number): number {
+  return floatMul(px, float32(zoom));
+}
+
+/** layout_box.cc:295-298: LayoutUnit(kDefaultTrackLength * EffectiveZoom()), truncated to LU. */
 export function sliderIntrinsicInlineSize(zoom: number): LU {
-  return fromCssPx(float32(SLIDER_DEFAULT_TRACK_LENGTH * float32(zoom)));
+  return fromCssPx(zoomTrackLength(SLIDER_DEFAULT_TRACK_LENGTH, zoom));
+}
+
+/** A control box laid out as the plain box it is, without its control facts. */
+export function controlAsBox(c: ControlBox): LayoutBox {
+  return { kind: 'box', id: c.id, boxType: c.boxType, style: c.style, children: c.children };
+}
+
+/** The control facts of a box, or null for a plain box. */
+export function controlOf(box: LayoutBox | ControlBox): ControlKind | null {
+  return box.kind === 'control' ? box.control : null;
+}
+
+/** The plain box of a box or control box. */
+export function plainBox(box: LayoutBox | ControlBox): LayoutBox {
+  return box.kind === 'control' ? controlAsBox(box) : box;
 }
 
 /**
@@ -28,13 +49,12 @@ export function sliderThumbInlineOffset(ratio: number, trackContentInline: LU, t
 }
 
 /**
- * The physical left edge of a thumb with zero inline margins, from the track's content box: the offset is logical, so in rtl it
- * runs from the content box's right edge.
+ * block_layout_algorithm.cc:2652-2654: the physical move of a thumb placed in a block container of the given direction; the
+ * logical offset runs leftward in rtl.
  */
-export function sliderThumbLeft(trackContentLeft: LU, trackContentWidth: LU, thumbWidth: LU, ratio: number, direction: Direction): LU {
+export function sliderThumbShift(ratio: number, trackContentWidth: LU, thumbWidth: LU, direction: Direction): LU {
   const offset = sliderThumbInlineOffset(ratio, trackContentWidth, thumbWidth);
-  if (direction === 'ltr') return add(trackContentLeft, offset);
-  return sub(sub(add(trackContentLeft, trackContentWidth), thumbWidth), offset);
+  return direction === 'rtl' ? sub(ZERO, offset) : offset;
 }
 
 /**

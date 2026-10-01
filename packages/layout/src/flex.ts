@@ -43,6 +43,7 @@ import {
 } from './box.ts';
 import type { ContentsResult, Ctx, EngineFaults } from './block.ts';
 import { directionOf, EMPTY_STRUT, layoutContents } from './block.ts';
+import { plainBox } from './controls.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { blockFromRatio, hasAspectRatio, ratioBlockLevelInlineSize, ratioContentInlineSize, transferredBlockMinMax } from './ratio.ts';
@@ -476,7 +477,7 @@ function buildItem(
   let columnCross = ZERO;
   if (!isRow && box.kind === 'replaced') {
     columnCross = sizeReplacedFlexItem(ctx, box, leafBp, leafSpace as FlexItemSpace, 'normal').inline;
-  } else if (!isRow && box.kind === 'box') {
+  } else if (!isRow && box.kind !== 'replaced') {
     const crossMin = s.minWidth.kind === 'auto' ? hbp : borderBoxFromSpecified(resolveLength(s.minWidth, cbInline, ctx.faults), hbp, s.boxSizing);
     const crossMax = s.maxWidth.kind === 'none' ? null : borderBoxFromSpecified(resolveLength(s.maxWidth, cbInline, ctx.faults), hbp, s.boxSizing);
     const mm: MinMax = { min: crossMin, max: crossMax };
@@ -490,7 +491,7 @@ function buildItem(
       w = min(maxC, max(minC, avail));
       // css-sizing-4 §5.1: fit-content over the ratio's transferred size when the height is definite, else over the content, with
       // the transferred min and max either way. A stretched width takes neither (Blink kStretchExplicit).
-      if (hasAspectRatio(s)) w = ratioBlockLevelInlineSize(ctx, box, cbInline, w);
+      if (hasAspectRatio(s)) w = ratioBlockLevelInlineSize(ctx, plainBox(box), cbInline, w);
     }
     columnCross = max(constrain(w, mm), hbp);
   }
@@ -553,7 +554,7 @@ function buildItem(
   } else if (isScrollContainer(s) && !ctx.faults.scrollMinAuto) {
     minMain = ZERO;
   } else {
-    const suggestionSource = ratio !== null ? ratio.suggestion : isRow && box.kind === 'box' ? intrinsicContentInlineSize(ctx, box, 'min') : contentMain();
+    const suggestionSource = ratio !== null ? ratio.suggestion : isRow && box.kind !== 'replaced' ? intrinsicContentInlineSize(ctx, box, 'min') : contentMain();
     const contentSuggestion = maxMain === null ? suggestionSource : min(suggestionSource, maxMain);
     minMain = specifiedMain === null ? contentSuggestion : min(specifiedMain, contentSuggestion);
   }

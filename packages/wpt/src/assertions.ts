@@ -1,7 +1,7 @@
 // check-layout-th.js semantics against Dragon's engine output. The DOM values are CSSOM View's, rounded to integers here, never in
 // the engine: Chrome 145 rounds offset positions and offset and client sizes half up from the unrounded box (measured on 100
 // fractional boxes, positive and negative). The tolerance is check-layout's own.
-import type { LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
+import type { ControlBox, LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
 import { absoluteRects, LU_PER_PX } from '@dragon/layout';
 import { resolveBorder } from '../../layout/src/box.ts';
 import type { Check, CheckAttribute, Sidecar } from './translate.ts';
@@ -46,10 +46,10 @@ export class DomView {
     this.input = input;
     this.elements = elements;
     this.abs = absoluteRects(boxes);
-    const walk = (b: LayoutBox): void => {
+    const walk = (b: LayoutBox | ControlBox): void => {
       this.styles.set(b.id, b.style);
       for (const c of b.children) {
-        if (c.kind === 'box') walk(c);
+        if (c.kind === 'box' || c.kind === 'control') walk(c);
         else if (c.kind === 'replaced') this.styles.set(c.id, c.style);
       }
     };

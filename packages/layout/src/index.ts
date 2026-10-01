@@ -43,4 +43,4 @@ export type { CalcClamp, CalcExpr, CalcInvert, CalcMax, CalcMin, CalcProduct, Ca
 export { applyEnvironment } from './environment.ts';
 export type { BoxShape } from './paint.ts';
 // Form controls (FORM-a): the range thumb offset and default track length, and the button's block centring shift.
-export { buttonContentShift, SLIDER_DEFAULT_TRACK_LENGTH, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbLeft } from './controls.ts';
+export { buttonContentShift, controlAsBox, SLIDER_DEFAULT_TRACK_LENGTH, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, zoomTrackLength } from './controls.ts';
