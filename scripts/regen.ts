@@ -1,11 +1,12 @@
 // pnpm regen [--check] [--force] [--from <step>]: regenerates every generated output from the sources, in the order below, and
 // repeats the chain until a pass changes nothing (profile rows feed the captures, lanes.json feeds the profile rows). A step is
 // skipped while its input digest and its outputs' digest equal those of its last successful run (node_modules/.cache/dragon-regen).
-// --check exits 1 naming every file the run changed; --force ignores the cache; --from starts the first pass at that step.
+// --check exits 1 naming every file the run changed (and leaves them regenerated); --force ignores the cache for the first pass;
+// --from starts the first pass at that step. A failed step leaves its partial outputs and loses its cache entry, so it reruns.
 // Device lanes are never run: lanes-host rewrites only the host rows of lanes.json and keeps device records that are still current.
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, createWriteStream, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, createWriteStream, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { compilePattern, matchSegments } from './macroscope-ignore.ts';
@@ -81,6 +82,9 @@ export const MANUAL: readonly { readonly command: string; readonly outputs: read
   { command: 'the research spikes\' own probes and notes', outputs: ['docs/research/**'] },
 ];
 
+/** Paths no step reads (a traced run of every step: fs reads and module loads), so a docs, board or test change reruns nothing. */
+export const NOT_READ: readonly string[] = ['docs/**', 'design/**', '.github/**', '.macroscope/**', 'AGENTS.md', 'CLAUDE.md', 'README.md', 'packages/*/test/**', 'scripts/regen.ts'];
+
 export const MAX_PASSES = 5;
 
 /** path -> git blob sha of every tracked or untracked, not ignored file in the working tree. */
@@ -103,7 +107,7 @@ const entriesDigest = (tree: Tree, keep: (path: string) => boolean): string => {
 export function stepDigests(steps: readonly Step[], step: Step, tree: Tree, env: Readonly<Record<string, string | undefined>>): { inputs: string; outputs: string } {
   const own = matcher(step.outputs);
   const later = steps.slice(steps.indexOf(step) + 1).filter((s) => !(step.readsLater ?? []).includes(s.name));
-  const ignored = matcher(later.flatMap((s) => s.outputs));
+  const ignored = matcher([...NOT_READ, ...later.flatMap((s) => s.outputs)]);
   const facts = JSON.stringify({ argv: step.argv, env: (step.env ?? []).map((k) => [k, env[k] ?? null]), platform: process.platform, arch: process.arch, node: process.version });
   return { inputs: sha256(`${facts}\0${entriesDigest(tree, (p) => !own(p) && !ignored(p))}`), outputs: entriesDigest(tree, own) };
 }
@@ -161,7 +165,7 @@ export async function regen(steps: readonly Step[], cache: Cache, opts: Options,
   let ran = 0;
   let lastChanged: string[] = [];
   for (let pass = 1; pass <= maxPasses; pass++) {
-    const before = tree;
+    const touched = new Set<string>();
     const tp = io.now();
     for (const step of steps.slice(pass === 1 ? first : 0)) {
       const d = stepDigests(steps, step, tree, io.env);
@@ -187,11 +191,13 @@ export async function regen(steps: readonly Step[], cache: Cache, opts: Options,
       const stray = changed.filter((p) => !own(p));
       if (stray.length > 0) return { ok: false, changed: changedPaths(start, after), ran, passes: pass, error: `${step.name} changed files outside its declared outputs: ${stray.join(', ')}` };
       tree = after;
+      for (const p of changed) touched.add(p);
       cache[step.name] = { inputs: d.inputs, outputs: stepDigests(steps, step, tree, io.env).outputs };
       io.saveCache(cache);
       io.log(`pass ${pass} ${step.name}: ran in ${secs(io.now() - ts)}, ${changed.length} files changed`);
     }
-    const passChanged = changedPaths(before, tree);
+    // A pass changes nothing only when no step in it changed a file, even if a later step changed it back.
+    const passChanged = [...touched].sort();
     lastChanged = passChanged;
     io.log(`pass ${pass}: ${secs(io.now() - tp)}, ${passChanged.length} files changed`);
     if (passChanged.length === 0 && (pass > 1 || first === 0)) {
@@ -212,11 +218,7 @@ export function snapshotTree(root: string): Tree {
   try {
     const index = join(dir, 'index');
     const real = resolve(root, git(['-C', root, 'rev-parse', '--git-path', 'index']).trim());
-    try {
-      copyFileSync(real, index);
-    } catch {
-      // No index yet: git add -A builds one from scratch.
-    }
+    if (existsSync(real)) copyFileSync(real, index);
     const env = { ...process.env, GIT_INDEX_FILE: index };
     git(['-C', root, 'add', '-A'], env);
     const tree = new Map<string, string>();
@@ -249,13 +251,7 @@ async function main(): Promise<void> {
   const cacheDir = join(root, 'node_modules/.cache/dragon-regen');
   mkdirSync(cacheDir, { recursive: true });
   const cacheFile = join(cacheDir, 'state.json');
-  let text: string | null = null;
-  try {
-    text = readFileSync(cacheFile, 'utf8');
-  } catch {
-    // No cache yet.
-  }
-  const parsed = parseCache(text);
+  const parsed = parseCache(existsSync(cacheFile) ? readFileSync(cacheFile, 'utf8') : null);
   if (parsed.problem !== null) console.log(`regen: ignoring ${cacheFile} (${parsed.problem}); every step runs`);
   let driver = '';
   try {

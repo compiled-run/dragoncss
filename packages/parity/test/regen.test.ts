@@ -11,7 +11,6 @@ const matches = (glob: string, path: string): boolean => matchSegments(compilePa
 function fake(steps: Record<string, (t: Map<string, string>) => void>, tree: Record<string, string>) {
   const t = new Map(Object.entries(tree));
   const ran: string[] = [];
-  const saved: Cache[] = [];
   const io = {
     snapshot: (): Tree => new Map(t),
     run: async (s: Step) => {
@@ -21,12 +20,12 @@ function fake(steps: Record<string, (t: Map<string, string>) => void>, tree: Rec
       steps[s.name]!(t);
       return { code: 0, log: '' };
     },
-    saveCache: (c: Cache) => void saved.push({ ...c }),
+    saveCache: () => {},
     log: () => {},
     now: () => 0,
     env: {},
   };
-  return { t, ran, saved, io };
+  return { t, ran, io };
 }
 
 const step = (name: string, outputs: string[]): Step => ({ name, argv: [name], outputs });
@@ -76,6 +75,20 @@ describe('pnpm regen chain', () => {
     const grow = { a: (t: Map<string, string>) => void t.set('out/a', `A${t.get('out/b') ?? ''}`), b: (t: Map<string, string>) => void t.set('out/b', t.get('out/a')!) };
     const h = fake(grow, {});
     expect((await regen([{ ...step('a', ['out/a']), readsLater: ['b'] }, step('b', ['out/b'])], {}, opts, h.io)).error).toBe('no fixed point after 5 passes; the last pass changed out/a, out/b');
+  });
+
+  it('does not take a pass whose steps changed a file and then changed it back for a fixed point', async () => {
+    const flip = { set: (t: Map<string, string>) => void t.set('out/x', 'set'), reset: (t: Map<string, string>) => void t.set('out/x', 'base') };
+    const f = fake(flip, { 'out/x': 'base' });
+    expect((await regen([step('set', ['out/x']), step('reset', ['out/x'])], {}, opts, f.io)).error).toBe('no fixed point after 5 passes; the last pass changed out/x');
+  });
+
+  it('never reruns a step for a change under NOT_READ', () => {
+    const s = step('s', ['out/a']);
+    const d = (p: string) => stepDigests([s], s, new Map([['src/a', '1'], [p, '2']]), {}).inputs;
+    const none = stepDigests([s], s, new Map([['src/a', '1']]), {}).inputs;
+    for (const p of ['docs/goals/x/state.yaml', 'AGENTS.md', 'packages/parity/test/regen.test.ts', 'scripts/regen.ts']) expect(d(p), p).toBe(none);
+    expect(d('packages/parity/src/x.ts')).not.toBe(none);
   });
 
   it('fails a step that writes outside its declared outputs, and one that exits non-zero, keeping no cache entry for it', async () => {
