@@ -32,8 +32,10 @@ describe('element keys (ELB-2)', () => {
     expect(light.elementKeyDeclared.img.ltr).toEqual({ 'overflow-x': 'clip', 'overflow-y': 'clip' });
   });
   it('list the UA-set properties no longhand models, and the forced longhands', () => {
-    expect(light.userAgentUnmodelled['button']?.ltr).toEqual({ appearance: 'auto', cursor: 'default' });
-    expect(light.userAgentUnmodelled['input']?.ltr).toEqual({ appearance: 'auto', cursor: 'text' });
+    // FORM-a A2: appearance is a longhand, so the controls' UA appearance: auto is a declared value, not an unmodelled one.
+    expect(light.userAgentUnmodelled['button']?.ltr).toEqual({ cursor: 'default' });
+    expect(light.userAgentUnmodelled['input']?.ltr).toEqual({ cursor: 'text' });
+    for (const key of ['button', 'input', 'input[type=range]'] as const) for (const dir of ['ltr', 'rtl'] as const) expect(light.elementKeyDeclared[key][dir]['appearance'], `${key} ${dir}`).toBe('auto');
     expect(light.userAgentUnmodelled['a[href]']?.ltr).toMatchObject({ cursor: 'pointer', 'text-decoration-line': 'underline' });
     expect(light.userAgentUnmodelled['ol']?.ltr).toMatchObject({ 'list-style-type': 'decimal' });
     expect(light.userAgentUnmodelled['span']).toEqual({ ltr: {}, rtl: {} });
