@@ -445,7 +445,7 @@ public func environment_leafPx(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_C
   case S.s_env:
     return try units_zoomCssPx(((e as! EnvLength).value * environment_safeAreaInset((e as! EnvLength).side, env)), z)
   case S.s_font_percent, S.s_font_calc:
-    throw JsError(message: jsConcat(S.s58, (e as! any U_FontCalc_FontPercent).kind, S.s14))
+    throw JsError(message: jsConcat(S.s59, (e as! any U_FontCalc_FontPercent).kind, S.s15))
   default:
     return nil
   }

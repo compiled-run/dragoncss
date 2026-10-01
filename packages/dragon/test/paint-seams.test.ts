@@ -82,8 +82,21 @@ describe('EMS: the paint registries', () => {
       for (const b of ['uikit', 'android-views'] as const) expect(e?.native[b], name).toEqual({ boxMembers: '', file: null, stages: {}, afterLayout: null, applied: null, roundedPath: null, container: null });
       expect(PAINT_LOWERINGS.find((m) => m.name === name)?.css, name).toEqual({});
     }
-    expect(paintPlants()).toEqual([]);
-    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1']);
+    // The border module (P6a) declares the two dash plants; every stub declares none.
+    expect(paintPlants().map((p) => p.name)).toEqual(['dash-phase-1', 'dash-gap-unfitted']);
+    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted']);
+  });
+});
+
+describe('P6a: border styles the side painter cannot draw', () => {
+  it('never reach a native program: groove, ridge, inset and outset beside a dashed side block the native case', () => {
+    for (const k of ['groove', 'ridge', 'inset', 'outset']) {
+      const css = `body { margin: 0; } .a { width: 20px; height: 20px; border: 3px dashed red; border-right-style: ${k}; }`;
+      const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, (r) => [div(r, 'a', ['a'], [])]));
+      const p = nativePrograms(c, []);
+      expect(p.kind, k).toBe('blocked');
+      expect(p.kind === 'blocked' ? p.reason : '', k).toBe(`a: border-right-style ${k} has no native paint technique`);
+    }
   });
 });
 
