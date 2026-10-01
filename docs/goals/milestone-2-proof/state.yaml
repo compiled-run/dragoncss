@@ -4053,6 +4053,7 @@ tasks:
     receipt: null
   - id: T147
     type: worker
+    pm_note: 'T147J (2026-10-01), notes/T147J-txt-weight.md: three parts. TXT-W1 (longhands, bolder/lighter, oblique, UA rows as specified values, non-synthesized native) on inl1a-tags once T133 is host-done; TXT-W2 font shorthand + font-synthesis; TXT-W3 native synthetic bold/oblique (needs T147-3J, after T084 Phase R). Synthesis is paint-only in Blink/Skia (advances unchanged).'
     assignee: Worker
     status: queued
     lane: text
