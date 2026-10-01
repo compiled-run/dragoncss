@@ -20,11 +20,11 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ box: LayoutBox, _
   var widest: Double = units_ZERO
   // ts: packages/layout/src/intrinsic.ts:24
   do {
-    let _a31 = kids
-    var _i31 = 0
-    while _i31 < _a31.items.count {
-      let k: any U_LayoutBox_TextLeaf = _a31.items[_i31]
-      _i31 += 1
+    let _a32 = kids
+    var _i32 = 0
+    while _i32 < _a32.items.count {
+      let k: any U_LayoutBox_TextLeaf = _a32.items[_i32]
+      _i32 += 1
       // ts: packages/layout/src/intrinsic.ts:24
       if try ((k.kind == S.s_box) && (!position_isOutOfFlow(ctx, (k as! LayoutBox)))) {
         try widest = units_max(widest, intrinsic_inlineContribution(ctx, (k as! LayoutBox), kind))
@@ -85,11 +85,11 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
     var widest: Double = units_ZERO
     // ts: packages/layout/src/intrinsic.ts:58
     do {
-      let _a32 = contributions
-      var _i32 = 0
-      while _i32 < _a32.items.count {
-        let c: Double = _a32.items[_i32]
-        _i32 += 1
+      let _a33 = contributions
+      var _i33 = 0
+      while _i33 < _a33.items.count {
+        let c: Double = _a33.items[_i33]
+        _i33 += 1
         try widest = units_max(widest, c)
       }
     }
