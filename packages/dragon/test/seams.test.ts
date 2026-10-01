@@ -42,6 +42,7 @@ describe('E2 seams: the property registry', () => {
       'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow', 'white-space',
       'background',
       ...LOGICAL_SHORTHANDS,
+      'writing-mode', 'text-orientation', 'text-combine-upright',
       ...GRID_SHORTHANDS,
     ]);
   });

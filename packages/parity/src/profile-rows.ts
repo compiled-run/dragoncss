@@ -7,10 +7,17 @@ import type { CaseOutcome } from './pipeline.ts';
 export const PROFILE_REVISION = 'm1-s5';
 
 type Lane = 'linux-dragon-layout' | 'chrome-dual';
+export type ProfileTarget = 'ios' | 'android' | 'web';
 
-/** The rows for one target from the cases of one run: exactly the passing cases that use each key, per lane. */
-export function deriveRows(target: 'ios' | 'web', cases: readonly CaseOutcome[]): ProfileRow[] {
-  const keys = [...new Set(cases.flatMap((c) => c.features[target]))].sort();
+// Android takes the iOS keys: the compiler gives every native target one used-key set per case (project.ts features).
+const keysOf = (target: ProfileTarget, c: CaseOutcome): readonly string[] => (target === 'web' ? c.features.web : c.features.ios);
+
+/**
+ * The rows for one target from the cases of one run: exactly the passing cases that use each key, per lane. Android follows the
+ * iOS rule (docs/research/native-strategy.md 3.9 item 13): both natives share one layout projection and one lowered program.
+ */
+export function deriveRows(target: ProfileTarget, cases: readonly CaseOutcome[]): ProfileRow[] {
+  const keys = [...new Set(cases.flatMap((c) => keysOf(target, c)))].sort();
   const rows: ProfileRow[] = [];
   for (const key of keys) {
     const at = key.lastIndexOf('@');
@@ -20,10 +27,10 @@ export function deriveRows(target: 'ios' | 'web', cases: readonly CaseOutcome[])
     const property = feature.slice(0, colon) as Longhand;
     const valueSubset = feature.slice(colon + 1);
     const aspects = PROPERTY_ASPECTS[property];
-    const passing = (lane: Lane): string[] => cases.filter((c) => c.lanes[lane] === 'pass' && c.features[target].includes(key)).map((c) => c.id);
+    const passing = (lane: Lane): string[] => cases.filter((c) => c.lanes[lane] === 'pass' && keysOf(target, c).includes(key)).map((c) => c.id);
     const proof = (aspect: Proof['aspect'], lane: Lane, ids: readonly string[]): Proof => ({ aspect, lane, valueSubset, context, cases: ids });
     const proofs: Proof[] = [];
-    if (target === 'ios') {
+    if (target !== 'web') {
       const layout = passing('linux-dragon-layout');
       const dual = passing('chrome-dual');
       if (aspects.layout && layout.length === 0) continue;
@@ -44,8 +51,8 @@ export function deriveRows(target: 'ios' | 'web', cases: readonly CaseOutcome[])
   return rows;
 }
 
-export function profileSource(target: 'ios' | 'web', rows: readonly ProfileRow[]): string {
-  const name = target === 'ios' ? 'iosProfile' : 'webProfile';
+export function profileSource(target: ProfileTarget, rows: readonly ProfileRow[]): string {
+  const name = `${target}Profile`;
   const q = (s: string): string => JSON.stringify(s);
   const lines = rows.map((r) => {
     const proofs = r.proofs.map((p) => `{ aspect: ${q(p.aspect)}, lane: ${q(p.lane)}, valueSubset: ${q(p.valueSubset)}, context: ${q(p.context)}, cases: [${p.cases.map(q).join(', ')}] }`);

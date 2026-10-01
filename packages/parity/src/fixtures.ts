@@ -1,5 +1,5 @@
 // The parity corpus. Every fixture is attempted in every run; none carries its own tolerance.
-import type { BackgroundResetLonghand, DiagnosticCode, Environment } from 'dragon';
+import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeResetLonghand } from 'dragon';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
@@ -14,6 +14,7 @@ import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { UNITS } from './fixture-groups/units.ts';
+import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
 import { VALUES } from './fixture-groups/values.ts';
 
 /**
@@ -50,9 +51,10 @@ export type FixtureSpec =
       readonly rootFont: Environment['rootFont'];
       /**
        * Background longhands Dragon does not model, captured and compared besides LONGHANDS: in both renderings Chrome must compute
-       * each to the initial value Dragon holds it at (BACKGROUND_RESET_LONGHANDS). Absent means none.
+       * each to the initial value Dragon holds it at (BACKGROUND_RESET_LONGHANDS), and likewise the writing-mode family
+       * (WRITING_MODE_RESET_LONGHANDS). Absent means none.
        */
-      readonly computedExtra?: readonly BackgroundResetLonghand[];
+      readonly computedExtra?: readonly (BackgroundResetLonghand | WritingModeResetLonghand)[];
     }
   | {
       readonly id: string;
@@ -74,6 +76,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'block-elements', fixtures: BLOCK_ELEMENTS },
   { id: 'units', fixtures: UNITS },
   { id: 'contexts', fixtures: CONTEXTS },
+  { id: 'writing-mode', fixtures: WRITING_MODE },
   { id: 'cascade-var', fixtures: CASCADE_VAR },
   { id: 'attributes', fixtures: ATTRIBUTES },
   { id: 'grid', fixtures: GRID },
