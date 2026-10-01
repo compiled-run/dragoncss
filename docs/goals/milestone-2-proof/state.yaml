@@ -93,7 +93,6 @@ dispatched:
   - T119
   - T120
   - T139
-  - T034
 device_lease: null
 tasks:
   - id: T001
@@ -1516,18 +1515,43 @@ tasks:
   - id: T034
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: north-star
     objective: 'NS-REF recapture: re-capture the north-star Chrome reference and refresh the font key after T011 Phase B and the Lato ruling.'
     allowed_files:
       - examples/music-player/chrome/**
       - examples/music-player/lane/**
+      - examples/music-player/tools/font-map.ts
+      - examples/music-player/tools/capture-chrome.ts
+      - examples/music-player/tools/snapshot.ts
+      - examples/music-player/tools/cover-png.ts
+      - examples/music-player/tree/fixture.json
+      - packages/parity/test/north-star-reference.test.ts
     verify:
       - north-star:capture twice, byte-identical; north-star-reference test
     stop_if:
       - Need files outside allowed_files.
       - Verification fails twice.
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #51 merged a0bcb89a0. The north-star Chrome reference is re-captured with the pinned font map (Lato 2.015, Dragon Sans = Inter 4.1); font key f2115f3b -> f159ba87. The video placeholder
+        is now the iframe slot in the tree, with a labelled no-network embed stand-in, plus cover marker patches for the REPL-a flat-image samples. Three captures byte-identical; 27.8 MB. The Macroscope
+        finding was answered as not applicable, with a pinning test. pnpm test 3029/3029.'
+      changed_files:
+        - examples/music-player/tools/font-map.ts
+        - examples/music-player/tools/capture-chrome.ts
+        - examples/music-player/tools/snapshot.ts
+        - examples/music-player/tools/cover-png.ts
+        - examples/music-player/tree/fixture.json
+        - packages/parity/test/north-star-reference.test.ts
+      commands:
+        - cmd: north-star:capture x3 byte-identical
+          status: pass
+        - cmd: pnpm test 3029/3029
+          status: pass
+        - cmd: pnpm pr:review 51 exit 0
+          status: pass
     constraints:
       - 'Dispatched 2026-10-01 (branch ns-ref-recapture): also owns the north-star iframe export, embed-URL capture route and cover markers that REPL-a deferred.'
   - id: T035
