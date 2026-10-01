@@ -80,8 +80,8 @@ describe('macroscope ignore matcher', () => {
 
   it('reads the repository ignore file and splits code from generated output', () => {
     const f = parseIgnoreFile(readFileSync(new URL('../../../.macroscope/ignore.md', import.meta.url), 'utf8'));
-    // Its leading "---" block is never closed, so Macroscope reads it as patterns and skips test files (check run on 19a66f17e).
-    expect(f.ignoreTests).toBeNull();
+    // The front-matter block is closed, so ignoreTests: false applies and test files are reviewed.
+    expect(f.ignoreTests).toBe(false);
     for (const path of [
       'packages/layout/vectors/dpr-2/writing-mode-horizontal.json',
       'packages/parity/out/lanes.json',
