@@ -7,11 +7,13 @@ import {
   checkSha,
   correctnessSucceeded,
   type Earlier,
+  type Git,
   type Ignore,
   ignoreAt,
   isVouchableSkip,
   outcome,
   parseCheckRunPages,
+  parseCrossRepository,
   parsePrCommits,
   parseReviewCommentPages,
   type PatchId,
@@ -48,10 +50,10 @@ const checkRuns = (): CheckRun[] => {
 };
 const runsOf = (commit: string): CheckRun[] => parseCheckRunPages(ghJson(`repos/${repo}/commits/${commit}/check-runs?per_page=100`));
 
-const git = (args: string[], input?: string): string =>
-  execFileSync('git', args, { encoding: 'utf8', input, stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 512 * 1024 * 1024 });
+const git: Git = (args, input) => execFileSync('git', args, { input, stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 512 * 1024 * 1024 });
 const message = (error: unknown): string => {
-  const stderr = (error as { stderr?: unknown }).stderr;
+  const raw = (error as { stderr?: unknown }).stderr;
+  const stderr = Buffer.isBuffer(raw) ? raw.toString('utf8') : raw;
   return typeof stderr === 'string' && stderr.trim() !== '' ? stderr.trim() : error instanceof Error ? error.message : String(error);
 };
 const haveCommit = (commit: string): boolean => {
@@ -83,6 +85,9 @@ const vouchFor = (run: CheckRun, head: string): Vouch => {
   }
   const scope = skipScope(run);
   if (scope === null) return vouchForSkip(run, { error: 'not a vouchable skip' }, []);
+  if (scope === 'reviewed paths' && parseCrossRepository(JSON.parse(gh(['pr', 'view', pr, '--json', 'isCrossRepository'])))) {
+    return { ok: false, reason: `PR #${pr} comes from a fork, which Macroscope reviews with the base branch's ignore file` };
+  }
   const headMissing = fetched(head);
   if (headMissing) return { ok: false, reason: `head: ${headMissing.error}` };
   let ignore: Ignore | undefined;
