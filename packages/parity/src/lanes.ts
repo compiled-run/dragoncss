@@ -3,7 +3,7 @@
 // native:swift and native:kotlin CLIs, the TS-engine-plus-snapRect reference proof, and out/lanes.json. Lane states are pass,
 // fail, blocked (owner tooling) when a tool lookup fails, and not run. Device lanes carry their run records (P5, device-lanes.ts):
 // the device and OS per DPR set, the counts compared per check, failures by kind, the run digests and the real-dump fault rows.
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -218,7 +218,10 @@ const translateNative = async (): Promise<TranslateNative> => (await import(path
 export type SuiteCount = { readonly corpus: 'p1' | 'extended'; readonly suite: string; readonly declared: number; readonly total: number | null; readonly pass: number | null };
 export type HostRun = { readonly state: LaneState; readonly reason: string | null; readonly toolchain: string | null; readonly suites: readonly SuiteCount[]; readonly digests: { readonly p1: string | null; readonly extended: string | null } };
 
-const SUITE_LINE = /^(vectors|units|engine corpus|library corpus|vectors-m2|vectors-dpr|engine-dpr|units-m2|snap|snap-values|calc-goldens|engine-calc|units-calc) (\d+)\/(\d+)/;
+// Any suite-shaped line, so a suite the manifest does not declare is counted and judgeHost fails it instead of dropping it: any
+// nonempty label (PR #42 finding 4150454066) before the first "<pass>/<total>" on the line (lazy, so a count in the trailing note is
+// not taken for the suite's). The committed native:swift and native:kotlin output parses to the same 13 suites (test/lanes.test.ts).
+const SUITE_LINE = /^(.+?) (\d+)\/(\d+)/;
 const FINAL_LINE = /^native:(swift|kotlin): P1 corpus digest ([0-9a-f]+); extended corpus digest ([0-9a-f]+); status (pass|fail|blocked \(owner tooling\))$/m;
 
 /** Parses the native CLI's output into the P1 and extended suite counts, digests and status; null when it cannot. */
@@ -278,8 +281,18 @@ export async function runHostLane(t: TargetConfig, opts: HostOptions = {}): Prom
     env = { ...process.env, JAVA_HOME: tool.javaHome };
   }
   const script = t.hostCli === 'native:swift' ? 'swift' : 'kotlin';
-  const r = spawnSync(process.execPath, [repoPath('packages/translate/src/cli/native.ts'), script], { cwd: repoPath('.'), env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  return judgeHost(t, parseNativeOutput(`${r.stdout ?? ''}${r.stderr ?? ''}`));
+  // Awaited, not blocking, so parity:lanes runs the host lanes of both targets at once.
+  const out = await new Promise<string>((resolve) => {
+    const p = spawn(process.execPath, [repoPath('packages/translate/src/cli/native.ts'), script], { cwd: repoPath('.'), env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const out: Buffer[] = [];
+    const err: Buffer[] = [];
+    p.stdout.on('data', (c: Buffer) => out.push(c));
+    p.stderr.on('data', (c: Buffer) => err.push(c));
+    // A host that cannot start is judged from what it gave, as the blocking run judged it: no suites, so the lane fails.
+    p.once('error', (e) => resolve(`${Buffer.concat([...out, ...err]).toString('utf8')}${String(e)}`));
+    p.once('close', () => resolve(Buffer.concat([...out, ...err]).toString('utf8')));
+  });
+  return judgeHost(t, parseNativeOutput(out));
 }
 
 // ---------------------------------------------------------------- the reference proof
