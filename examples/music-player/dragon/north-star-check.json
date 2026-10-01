@@ -107,13 +107,13 @@
   "contextProbe": {
    "rounds": 1,
    "blankedRules": 9,
-   "blankedDeclarations": 70,
+   "blankedDeclarations": 69,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 371,
-  "errors": 370,
+  "diagnostics": 370,
+  "errors": 369,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [android]": 33,
@@ -126,7 +126,7 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 10,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 67,
+   "DRAGON_UNSUPPORTED_PROPERTY": 66,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
    "DRAGON_UNSUPPORTED_VALUE": 3,
    "DRAGON_UNSUPPORTED_VALUE [android]": 29,
@@ -140,7 +140,7 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
      "DRAGON_UNSUPPORTED_AT_RULE": 1,
      "DRAGON_UNSUPPORTED_ELEMENT": 10,
-     "DRAGON_UNSUPPORTED_PROPERTY": 67,
+     "DRAGON_UNSUPPORTED_PROPERTY": 66,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 30
     },
@@ -155,7 +155,7 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 10,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 67,
+     "DRAGON_UNSUPPORTED_PROPERTY": 66,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 32
     },
@@ -170,7 +170,7 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 10,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 67,
+     "DRAGON_UNSUPPORTED_PROPERTY": 66,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 32
     },
@@ -180,11 +180,11 @@
    }
   },
   "declarations": 291,
-  "supportedBothTargets": 165,
-  "supportedWeb": 176,
-  "supportedIos": 165,
-  "supportedAndroid": 165,
-  "supportPercent": 56.7,
+  "supportedBothTargets": 166,
+  "supportedWeb": 177,
+  "supportedIos": 166,
+  "supportedAndroid": 166,
+  "supportPercent": 57,
   "elements": 62,
   "supportedElements": 46,
   "tags": {
@@ -263,8 +263,8 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 156,
-   "B-unwrapped": 153,
+   "A-authored": 155,
+   "B-unwrapped": 152,
    "C-context": 220
   }
  },
@@ -2499,12 +2499,10 @@
    "atRule": null,
    "property": "pointer-events",
    "value": "none",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 165,
@@ -5683,26 +5681,6 @@
     "text": "border-radius: 1rem"
    },
    "message": "border-radius is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5265-5285|pointer-events is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 5265,
-    "end": 5285,
-    "line": 297,
-    "column": 2,
-    "text": "pointer-events: none"
-   },
-   "message": "pointer-events is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",

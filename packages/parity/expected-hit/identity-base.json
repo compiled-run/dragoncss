@@ -1,5 +1,5 @@
 {
-  "base": "9b60a9e359d481712d0bea3c6a8b555f03efc3aa",
+  "base": "77c641eca4bef557f5ddbb248070c58973023d12",
   "files": {
     "packages/parity/emitted/attr-drop-invalid-rtl.css": "86d4e5882ca2c893ad33de9bb5e0dd767e2d5840e34103af36b0581406ffe489",
     "packages/parity/emitted/attr-drop-invalid.css": "40d1cf5a3448e78cd2a7e67b64342f3d0ba15c6afd994d607becee813abef77c",
