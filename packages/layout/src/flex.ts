@@ -500,6 +500,9 @@ function buildItem(
     minMain = contentBox(borderBoxFromSpecified(resolveMinLength(minProp, basisLu, ctx.faults), mainBp, s.boxSizing), mainBp);
   } else if (isScrollContainer(s) && !ctx.faults.scrollMinAuto) {
     minMain = ZERO;
+  } else if (!isRow && specifiedMain !== null && s.flexShrink === 0 && specifiedMain <= base && (maxMain === null || specifiedMain <= maxMain)) {
+    // Blink flex_layout_algorithm.cc lines 1078-1084: an item that cannot shrink skips the content measurement; the result is the same.
+    minMain = specifiedMain;
   } else {
     const suggestionSource = isRow ? intrinsicContentInlineSize(ctx, box, 'min') : specifiedMain === null ? contentMain() : columnIntrinsicBlockSize(ctx, box, cbInline, columnCross, heightBasis, vbp);
     const contentSuggestion = maxMain === null ? suggestionSource : min(suggestionSource, maxMain);
