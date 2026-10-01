@@ -22,7 +22,9 @@
     "radius",
     "clip",
     "edge",
-    "glyph"
+    "glyph",
+    "shadow",
+    "gradient"
   ],
   "dumpFaults": [
     "edge-plus-2-device-px",
