@@ -127,6 +127,8 @@ export function hitTable(p: NativeProgram, facts: ReadonlyMap<string, HitFact>, 
       act = f.activation;
     }
     if (own < 0) throw new HitTableError(`anonymous box ${b.id} has no element ancestor`);
+    // Rounded borders change the hit area (Blink's contoured border test); until rt-hit ports it, a radius refuses loudly.
+    if (Object.keys(b.style).some((k) => /radius/i.test(k))) throw new HitTableError(`${b.id}: border radii are not hit tested yet (rt-hit has no contoured border test)`);
     const r = rect(b.id);
     const zb = zoomedBoxes.get(b.id);
     if (zb === undefined) throw new HitTableError(`no zoomed box ${b.id}`);

@@ -96,10 +96,11 @@ export function deriveScripts(g: StateGroup, sp: StateProgram): Script[] {
 // ---------------------------------------------------------------- the host run
 
 /** A script's dumps on the runtime reference: the live program and the assignment at every dump step. */
-export function runScript(sp: StateProgram, steps: readonly ScriptStep[], faults: StateFaults = NO_STATE_FAULTS): { readonly assignment: number; readonly program: NativeProgram }[] {
+export function runScript(sp: StateProgram, steps: readonly ScriptStep[], faults: StateFaults = NO_STATE_FAULTS, tap: ((program: NativeProgram, assignment: number, x: number, y: number) => string | null) | null = null): { readonly assignment: number; readonly program: NativeProgram; readonly taps: readonly (string | null)[] }[] {
   const rt = new StateRuntime(sp, faults);
   const clock = new VirtualClock();
-  const out: { assignment: number; program: NativeProgram }[] = [];
+  const out: { assignment: number; program: NativeProgram; taps: (string | null)[] }[] = [];
+  let taps: (string | null)[] = [];
   for (const s of steps) {
     switch (s.kind) {
       case 'set':
@@ -109,9 +110,12 @@ export function runScript(sp: StateProgram, steps: readonly ScriptStep[], faults
         clock.advance(s.ms);
         break;
       case 'tap':
-        throw new Error(`tap(${s.x}, ${s.y}) needs Dragon hit testing, which comes with SELD-R1b`);
+        // RT-9 tap dispatch on the live program: the activation target the hit test reaches, recorded with the next dump.
+        if (tap === null) throw new Error(`tap(${s.x}, ${s.y}) needs a tap handler (the hit table of the live program)`);
+        taps.push(tap(rt.program(), rt.assignment, s.x, s.y));
       case 'dump':
-        out.push({ assignment: rt.assignment, program: rt.program() });
+        out.push({ assignment: rt.assignment, program: rt.program(), taps });
+        taps = [];
         break;
     }
   }
@@ -160,7 +164,7 @@ export function checkStates(faults: StateFaults = NO_STATE_FAULTS): { readonly f
       for (const s of deriveScripts(g, sp)) {
         scripts++;
         const want = (g.cases[s.ends] as NativeCase).programs[backend];
-        let dumps: { assignment: number; program: NativeProgram }[];
+        let dumps: ReturnType<typeof runScript>;
         try {
           dumps = runScript(sp, s.steps, faults);
         } catch (e) {

@@ -14,6 +14,9 @@ body { margin: 0; font-family: Ahem; font-size: 10px; }
 .fn { pointer-events: none; width: 60px; height: 30px; margin-left: -30px; background-color: #0cc; }
 .rel { position: relative; pointer-events: none; width: 60px; height: 20px; margin-top: -10px; background-color: #cc0; }
 .base { width: 100px; height: 20px; background-color: #660; }
+.holder { position: relative; width: 150px; height: 30px; margin-top: 4px; background-color: #ddd; }
+.track { position: absolute; left: 0; top: 0; width: 100%; height: 100%; padding: 4px; pointer-events: none; background-color: #333; }
+.thumb { width: 50px; height: 20px; background-color: #c00; }
 </style>
 </head>
 <body data-dragon-id="body">
@@ -23,5 +26,6 @@ body { margin: 0; font-family: Ahem; font-size: 10px; }
 <div data-dragon-id="f" class="f"><div data-dragon-id="f1" class="fi">XXXXXXXX</div><div data-dragon-id="f2" class="fn">XX</div></div>
 <div data-dragon-id="base" class="base"></div>
 <div data-dragon-id="rel" class="rel"><div data-dragon-id="relc" class="auto">XX</div></div>
+<div data-dragon-id="holder" class="holder"><div data-dragon-id="thumb" class="thumb"></div><div data-dragon-id="track" class="track"></div></div>
 </body>
 </html>

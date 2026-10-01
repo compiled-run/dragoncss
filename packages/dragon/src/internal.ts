@@ -252,8 +252,9 @@ export { RUNTIME_MODULES } from './emit/runtime/index.ts';
 export type { HitEngine, HitFact, HitNode, HitTable, HitTableFaults } from './emit/runtime/hit.ts';
 export { HIT_TABLE_VERSION, hitTable, HitTableError, NO_HIT_TABLE_FAULTS } from './emit/runtime/hit.ts';
 
-/** The tags whose elements carry an activation handler (RT-9 tap dispatch). */
+/** The tags whose elements carry an activation handler (RT-9 tap dispatch): button, and a with an href (HTML §4.6.1). */
 export const ACTIVATION_TAGS: readonly string[] = ['a', 'button'];
+const activates = (tag: string, attributes: ReadonlyMap<string, string>): boolean => tag === 'button' || (tag === 'a' && attributes.has('href'));
 
 /** Every element's hit facts in one case: computed pointer-events, whether it was inherited, and whether it has a handler. */
 export function hitFacts(compiled: object, assignment: Assignment): ReadonlyMap<string, import('./emit/runtime/hit.ts').HitFact> | null {
@@ -263,7 +264,7 @@ export function hitFacts(compiled: object, assignment: Assignment): ReadonlyMap<
   const walk = (el: ResolvedElement): void => {
     const v = el.props.get('pointer-events');
     if (v === undefined || v.value.kind !== 'keyword' || (v.value.value !== 'auto' && v.value.value !== 'none')) throw new Error(`${el.element.address}: pointer-events did not resolve to auto or none`);
-    out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: ACTIVATION_TAGS.includes(el.element.tag) });
+    out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: activates(el.element.tag, el.element.attributes) });
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
   walk(c.resolved);
