@@ -2,11 +2,12 @@
 // The decision "Porting Chrome's algorithms (owner, 2026-09-30)" in docs/decisions.md: port only BSD-style files at the pinned
 // 145.0.7632.6 tag, never LGPL ones, and record the upstream file, tag and line range of each port. This test works offline from
 // the recorded data. It fails when:
-//   - a source file cites a .cc/.cpp/.mm/.h file (in a comment or a string) that no registry entry or exact notChrome path names for
-//     that file, or a tracked file under packages/, scripts/ or examples/ is neither scanned code nor known data;
+//   - a source file cites a .cc/.cpp/.mm/.h file (in a comment, string or include path) that no registry entry or exact notChrome path
+//     names for that file; a tracked file under packages/, scripts/ or examples/ is neither scanned code nor known data; or a code
+//     file in a skipped directory does not say it is generated;
 //   - an LGPL-headered entry has no ruling, or has a 'port' use without being on the named clean-room list below (T118J ruling);
 //   - a ruling names a proof test file that does not exist;
-//   - a registry entry points at a Dragon file or declaration that no longer exists, or that no longer cites it;
+//   - a registry entry points at a Dragon file or top-level declaration that no longer exists, or that no longer cites it;
 //   - a file that ports a bsd-other or fdlibm-sun entry drops its copyright line or any paragraph of its licence text;
 //   - THIRD_PARTY_NOTICES.md differs from what scripts/gen-third-party-notices.ts writes from the registry.
 import { execFileSync } from 'node:child_process';
@@ -120,21 +121,28 @@ const SCAN_TOPS = ['packages', 'scripts', 'examples'];
 const SKIP_DIRS = ['node_modules', 'dist', 'dist-test', 'build', '.build', 'generated'];
 /** Parsed with the TypeScript parser (comments, string literals, template parts and JSX text). */
 const SCRIPT = /\.(ts|mts|cts|tsx|js|mjs|cjs|jsx)$/;
-/** Scanned for C-style comments and quoted strings. */
-const C_STYLE = /\.(swift|kt|kts|java|zig|c|h|cc|cpp|m|mm|tsrx|modulemap)$/;
-/** Scanned for # comments and quoted strings. */
-const SHELL = /\.(sh|zon)$/;
+/** Read by codeSpans: comments, strings and include paths (or the whole text, for WHOLE_TEXT files). */
+const C_STYLE = /\.(swift|kt|kts|java|zig|zon|c|h|cc|cpp|m|mm|tsrx|modulemap)$/;
+/** Read by codeSpans with # comments. */
+const SHELL = /\.sh$/;
 /** Data, fixtures, docs and binaries: never code, so never scanned. */
 const DATA = /(\.(json|png|jpg|jpeg|gif|bmp|webp|ico|svg|wasm|css|html|xht|dg|md|txt|lock|gitignore|npmignore|yaml|yml|ttf|otf|woff2?)|(^|\/)(\.gitignore|\.npmignore|LICENSE[A-Za-z0-9._-]*|COPYING))$/;
 const isCode = (f: string) => SCRIPT.test(f) || C_STYLE.test(f) || SHELL.test(f);
 
-function trackedFiles(): string[] {
+function allTrackedFiles(): string[] {
   const git = (args: string[]) => execFileSync('git', ['-C', ROOT, 'ls-files', '-z', ...args, '--', ...SCAN_TOPS], { encoding: 'utf8' }).split('\0');
   const files = new Set([...git(['--cached']), ...git(['--others', '--exclude-standard'])]);
-  return [...files]
-    .filter((f) => f !== '' && !f.split('/').some((part) => SKIP_DIRS.includes(part)))
-    .filter((f) => existsSync(join(ROOT, f))) // a tracked file deleted in the working tree
-    .sort();
+  return [...files].filter((f) => f !== '' && existsSync(join(ROOT, f))).sort(); // existsSync: a tracked file deleted in the working tree
+}
+const skipped = (f: string) => f.split('/').some((part) => SKIP_DIRS.includes(part));
+
+function trackedFiles(): string[] {
+  return allTrackedFiles().filter((f) => !skipped(f));
+}
+
+/** Code files the scan skips (under a SKIP_DIRS directory) that do not say they are generated: each is hand-written code left unread. */
+export function skippedHandWritten(files: readonly string[], read: RepoReader): string[] {
+  return files.filter((f) => skipped(f) && isCode(f) && !/^.{0,8}GENERATED\b/m.test((read(f) ?? '').split('\n').slice(0, 5).join('\n')));
 }
 
 /** Tracked files that are neither scanned code nor known data: each one is a kind of file the scan would miss. */
@@ -157,11 +165,12 @@ export function citationsIn(file: string, text: string): Citation[] {
   if (!SCRIPT.test(file)) return nativeCitationsIn(file, text);
   const sf = parse(file, text);
   const spans = new Map<number, number>();
+  // Every token, punctuation and end-of-file included (getChildren), so a comment before a '}' or at the end of the file is read too.
   const visit = (n: ts.Node) => {
     for (const r of ts.getLeadingCommentRanges(text, n.pos) ?? []) spans.set(r.pos, r.end);
-    for (const r of ts.getTrailingCommentRanges(text, n.end) ?? []) spans.set(r.pos, r.end);
+    for (const r of ts.getTrailingCommentRanges(text, n.pos) ?? []) spans.set(r.pos, r.end);
     if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n) || ts.isTemplateHead(n) || ts.isTemplateMiddle(n) || ts.isTemplateTail(n) || ts.isJsxText(n)) spans.set(n.getStart(sf), n.end);
-    ts.forEachChild(n, visit);
+    for (const c of n.getChildren(sf)) visit(c);
   };
   visit(sf);
   const found: [number, Citation][] = [];
@@ -180,40 +189,92 @@ function parse(file: string, text: string): ts.SourceFile {
   return ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, kind);
 }
 
-/** Other code: citations in line and block comments (# comments in shell files), quoted strings (with Swift and Kotlin triple-quoted
- * strings and Zig line strings) and C angle-bracket #include paths. */
+/** Markup-like files (Markless .tsrx has free text between tags; module maps are all paths): every character is read. */
+const WHOLE_TEXT = /\.(tsrx|modulemap)$/;
+/** Block comments nest in these languages, so a comment ends only at the matching close. */
+const NESTED_BLOCK = /\.(swift|kt|kts)$/;
+/** These have triple-quoted multi-line strings. */
+const TRIPLE_QUOTE = /\.(swift|kt|kts|java)$/;
+/** Zig's multi-line string lines start with a double backslash. */
+const ZIG = /\.(zig|zon)$/;
+/** C-family files name headers in #include <...> and #import <...>. */
+const C_FAMILY = /\.(c|h|cc|cpp|m|mm)$/;
+
+/**
+ * The comment, string and include-path spans of a non-script code file, found by a small lexer: line comments (# in shell files),
+ * block comments (nested where the language nests them), quoted strings ("...", '...', `...`, triple-quoted, Zig line strings) and
+ * C angle-bracket includes. An unterminated span runs to the end of the file, so text is never skipped.
+ */
+export function codeSpans(file: string, text: string): [number, number][] {
+  if (WHOLE_TEXT.test(file)) return [[0, text.length]];
+  const out: [number, number][] = [];
+  const shell = SHELL.test(file);
+  const lineEnd = (from: number) => (text.indexOf('\n', from) < 0 ? text.length : text.indexOf('\n', from));
+  let i = 0;
+  while (i < text.length) {
+    const start = i;
+    const lineStart = text.lastIndexOf('\n', i - 1) + 1;
+    if (shell ? text[i] === '#' : text.startsWith('//', i)) {
+      i = lineEnd(i);
+    } else if (!shell && text.startsWith('/*', i)) {
+      let depth = 1;
+      i += 2;
+      while (i < text.length && depth > 0) {
+        if (text.startsWith('*/', i)) (depth--, (i += 2));
+        else if (NESTED_BLOCK.test(file) && text.startsWith('/*', i)) (depth++, (i += 2));
+        else i++;
+      }
+    } else if (C_FAMILY.test(file) && text[i] === '#' && text.slice(lineStart, i).trim() === '' && /^#[ \t]*(?:include|import)[ \t]*</.test(text.slice(i, lineEnd(i)))) {
+      i = lineEnd(i);
+    } else if (ZIG.test(file) && text.startsWith('\\\\', i)) {
+      i = lineEnd(i);
+    } else if (TRIPLE_QUOTE.test(file) && text.startsWith('"""', i)) {
+      const close = text.indexOf('"""', i + 3);
+      i = close < 0 ? text.length : close + 3;
+    } else if (text[i] === '"' || text[i] === "'" || text[i] === '`') {
+      const q = text[i]!;
+      const multiLine = shell || q === '`';
+      i++;
+      while (i < text.length && text[i] !== q && (multiLine || text[i] !== '\n')) i += text[i] === '\\' ? 2 : 1;
+      i = Math.min(i + 1, text.length);
+    } else {
+      i++;
+      continue;
+    }
+    out.push([start, i]);
+  }
+  return out;
+}
+
+/** Non-script code: citations in its comment, string and include-path spans (codeSpans). */
 function nativeCitationsIn(file: string, text: string): Citation[] {
   const out: Citation[] = [];
-  const strings = String.raw`"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|` + '`(?:[^`\\\\]|\\\\.)*`';
-  const cStyle = String.raw`"{3}[\s\S]*?"{3}|\\\\[^\n]*|#[ \t]*(?:include|import)[ \t]*<[^>\n]*>|\/\/[^\n]*|\/\*[\s\S]*?\*\/|`;
-  const spans = new RegExp((SHELL.test(file) ? String.raw`#[^\n]*|` : cStyle) + strings, 'g');
-  for (const span of text.matchAll(spans)) {
-    for (const m of span[0].matchAll(CITATION)) {
-      const at = span.index + m.index;
+  for (const [start, end] of codeSpans(file, text)) {
+    for (const m of text.slice(start, end).matchAll(CITATION)) {
+      const at = start + m.index;
       out.push({ file, line: text.slice(0, at).split('\n').length, token: m[0], path: m[0].replace(/:\d+(?:-\d+)?$/, '') });
     }
   }
   return out;
 }
 
-/** Every declared name in a file (functions, classes, interfaces, types, enums, variables, methods, properties). */
+/** The names a file declares at its top level (the only declarations a registry `symbol` may name; a nested name of the same
+ * spelling does not keep a removed port declaration alive). */
 export function declaredNames(file: string, text: string): Set<string> {
   if (!SCRIPT.test(file)) {
-    const native = /\b(?:func|fun|fn|class|struct|enum|protocol|interface|object|let|var|val|typealias)\s+([A-Za-z_]\w*)/g;
+    const modifiers = String.raw`(?:(?:pub|public|private|internal|fileprivate|open|export|extern|static|final|inline|const|data|sealed|abstract)\s+)*`;
+    const native = new RegExp(String.raw`^` + modifiers + String.raw`(?:func|fun|fn|class|struct|enum|protocol|interface|object|let|var|val|const|typealias)\s+([A-Za-z_]\w*)`, 'gm');
     return new Set([...text.matchAll(native)].map((m) => m[1]!));
   }
-  const sf = parse(file, text);
   const names = new Set<string>();
-  const visit = (n: ts.Node) => {
-    if (
-      (ts.isFunctionDeclaration(n) || ts.isClassDeclaration(n) || ts.isInterfaceDeclaration(n) || ts.isTypeAliasDeclaration(n) || ts.isEnumDeclaration(n) ||
-        ts.isMethodDeclaration(n) || ts.isVariableDeclaration(n) || ts.isPropertyDeclaration(n) || ts.isPropertyAssignment(n) || ts.isPropertySignature(n)) &&
-      n.name && ts.isIdentifier(n.name)
-    )
-      names.add(n.name.text);
-    ts.forEachChild(n, visit);
+  const bind = (n: ts.BindingName) => {
+    if (ts.isIdentifier(n)) names.add(n.text);
+    else for (const el of n.elements) if (!ts.isOmittedExpression(el)) bind(el.name);
   };
-  visit(sf);
+  for (const st of parse(file, text).statements) {
+    if ((ts.isFunctionDeclaration(st) || ts.isClassDeclaration(st) || ts.isInterfaceDeclaration(st) || ts.isTypeAliasDeclaration(st) || ts.isEnumDeclaration(st)) && st.name) names.add(st.name.text);
+    else if (ts.isVariableStatement(st)) for (const d of st.declarationList.declarations) bind(d.name);
+  }
   return names;
 }
 
@@ -361,7 +422,8 @@ export function audit(registry: Registry, sources: ReadonlyMap<string, string>, 
     const cited: readonly string[] = Array.isArray(n.cited) ? n.cited : [];
     if (cited.length === 0) problems.push(`notChrome ${i}: cited is not a list of cited paths`);
     for (const p of cited) {
-      if (registry.entries.some((e) => e.upstream === p || e.upstream.endsWith('/' + p))) problems.push(`notChrome ${p}: it names a registry entry`);
+      if (resolve(registry, p).length > 0) problems.push(`notChrome ${p}: it names a registry entry`);
+      else if (UPSTREAM_ROOTS.some((r) => p.startsWith(r) || p.includes('/' + r))) problems.push(`notChrome ${p}: it is under a Chromium source root (${UPSTREAM_ROOTS.join(', ')}); register it instead`);
       if (![...notChromeUsed].some((k) => k.endsWith(`\0${i}\0${p}`))) problems.push(`notChrome ${p}: no longer cited`);
     }
     for (const f of n.files) if (![...notChromeUsed].some((k) => k.startsWith(`${f}\0${i}\0`))) problems.push(`notChrome ${cited.join(', ')} -> ${f}: no longer cited there`);
@@ -481,6 +543,11 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
     expect(audit(registry, planted, KNOWN_LGPL_CLEAN_ROOM)).toEqual([
       'packages/layout/src/planted.ts:1 cites third_party/blink/renderer/platform/text/uchar.h: no registry entry (add it to docs/ports.json with its tag 145.0.7632.6 file, licence, sha256 and line range)',
     ]);
+    // A notChrome path under a Chromium source root is refused, so an unregistered Chrome file cannot be exempted there.
+    const blink = 'third_party/blink/renderer/core/layout/new_algorithm.cc';
+    const exempted = { ...registry, notChrome: [...registry.notChrome, { cited: [blink], source: 'x', files: ['packages/layout/src/planted.ts'] }] };
+    const citing = new Map(sources).set('packages/layout/src/planted.ts', `// ${blink}\nexport const planted = 1;\n`);
+    expect(audit(exempted, citing, KNOWN_LGPL_CLEAN_ROOM)).toEqual([`notChrome ${blink}: it is under a Chromium source root (${UPSTREAM_ROOTS.join(', ')}); register it instead`]);
     const malformed = { ...registry, notChrome: [...registry.notChrome, { cited: 'uchar.h' as unknown as string[], source: 'x', files: [] }] };
     expect(audit(malformed, sources, KNOWN_LGPL_CLEAN_ROOM)).toEqual([`notChrome ${registry.notChrome.length}: cited is not a list of cited paths`]);
     // Citations in .tsx (JSX text too), .jsx, .cts, Zig, C, modulemap and shell files are read; .mm files are citable.
@@ -493,8 +560,23 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
     expect(citationsIn('x.swift', 'let s = """\nsee\nline_breaker.cc\n"""\nlet t = a.h\n').map((c) => `${c.line} ${c.token}`)).toEqual(['3 line_breaker.cc']);
     expect(citationsIn('x.zig', 'const s =\n    \\\\ from SkBlurMask.cpp\n;\n').map((c) => c.token)).toEqual(['SkBlurMask.cpp']);
     expect(citationsIn('x.h', '#include <third_party/skia/include/core/SkPath.h>\n#include "b.h"\nint x = a.h;\n').map((c) => c.token)).toEqual(['third_party/skia/include/core/SkPath.h', 'b.h']);
+    // Kotlin and Swift block comments nest: the outer comment goes on after an inner close. C's do not.
+    expect(citationsIn('x.kt', '/* x /* y */ Blink layout_block.cc */\nval h = a.h\n').map((c) => c.token)).toEqual(['layout_block.cc']);
+    expect(citationsIn('x.swift', '/* a /* b /* c */ */ SkDraw.cpp */ let h = a.h\n').map((c) => c.token)).toEqual(['SkDraw.cpp']);
+    expect(codeSpans('x.c', '/* x /* y */ z;').map(([a, b]) => b - a)).toEqual(['/* x /* y */'.length]);
+    // Unterminated comments and strings run to the end of the file; shell strings may span lines.
+    expect(citationsIn('x.kt', 'val a = 1 /* open\nline_breaker.cc\n').map((c) => c.token)).toEqual(['line_breaker.cc']);
+    expect(citationsIn('x.sh', 'echo "one\nSkDraw.cpp"\n').map((c) => c.token)).toEqual(['SkDraw.cpp']);
+    expect(citationsIn('x.zon', '.{ // from harfbuzz_face.cc\n}\n').map((c) => c.token)).toEqual(['harfbuzz_face.cc']);
+    expect(citationsIn('x.tsrx', 'export function A() @{\n  <p>as Blink layout_block.cc does</p>;\n}\n').map((c) => c.token)).toEqual(['layout_block.cc']);
     expect(unclassified(['a/b.ts', 'a/b.json', 'a/b.zig', 'a/b.py', 'a/Makefile'])).toEqual(['a/b.py', 'a/Makefile']);
     expect(unclassified(trackedFiles())).toEqual([]);
+    // Skipped directories hold only generated code: a hand-written file there would go unscanned.
+    expect(skippedHandWritten(allTrackedFiles(), readRepo)).toEqual([]);
+    expect(skippedHandWritten(['packages/x/generated/A.swift', 'packages/x/generated/B.swift', 'packages/x/generated/c.json'], (f) => (f.endsWith('A.swift') ? '// GENERATED by x\n' : 'import Foundation\n'))).toEqual(['packages/x/generated/B.swift']);
+    // Comments before a closing brace, inside JSX braces and at the end of a file are read.
+    expect(citationsIn('x.ts', 'function f() { /* layout_block.cc */ }\nconst o = { // SkDraw.cpp\n};\n// line_breaker.cc').map((c) => c.token)).toEqual(['layout_block.cc', 'SkDraw.cpp', 'line_breaker.cc']);
+    expect(citationsIn('x.tsx', 'const a = <div>{/* harfbuzz_face.cc */}</div>;\n').map((c) => c.token)).toEqual(['harfbuzz_face.cc']);
   });
 
   it('review skips the generated THIRD_PARTY_NOTICES.md but reads the registry, its generator and this test', () => {
@@ -532,6 +614,11 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
     expect(audit(renamed, sources, KNOWN_LGPL_CLEAN_ROOM)).toEqual([`entry ${e.upstream} -> ${ref.file} noSuchDeclaration: noSuchDeclaration is no longer declared in ${ref.file}`]);
     const moved: Registry = { ...registry, entries: registry.entries.map((x) => (x === e ? { ...x, dragon: [...x.dragon, { file: 'packages/layout/src/gone.ts', symbol: null, use: 'port' as const }] } : x)) };
     expect(audit(moved, sources, KNOWN_LGPL_CLEAN_ROOM)).toEqual([`entry ${e.upstream} -> packages/layout/src/gone.ts: the Dragon file no longer exists`]);
+    // A symbol counts only as a top-level declaration: a nested name of the same spelling does not keep a removed port alive.
+    expect([...declaredNames('x.ts', 'function outer() { const inner = 1; }\nconst o = { prop: 1 };\nclass K { method() {} field = 1 }\nexport function top() {}\nexport const [a, { b }] = f();\n')].sort()).toEqual(['K', 'a', 'b', 'o', 'outer', 'top']);
+    expect([...declaredNames('x.swift', 'public func a() {}\n  func nested() {}\nclass B { let c = 1 }\n')].sort()).toEqual(['B', 'a']);
+    const nestedOnly = sources.get(ref.file)!.replace(new RegExp(String.raw`\b${ref.symbol}\b`, 'g'), 'renamedTopLevel') + `\nfunction holder() { const ${ref.symbol} = 0; return ${ref.symbol}; }\n`;
+    expect(audit(registry, new Map(sources).set(ref.file, nestedOnly), KNOWN_LGPL_CLEAN_ROOM)).toContain(`entry ${e.upstream} -> ${ref.file} ${ref.symbol}: ${ref.symbol} is no longer declared in ${ref.file}`);
   });
 
   it('reads citations from comments and strings, never from code', () => {

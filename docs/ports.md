@@ -18,12 +18,14 @@
 
 ## What the test checks
 
-- Every `.cc`, `.cpp`, `.mm` or `.h` file named in a comment, a string (multi-line strings included) or a C `#include <...>` of a code file under `packages/`, `scripts/` or `examples/` (TypeScript and JavaScript in every variant including `.tsx`, `.jsx` and `.d.ts`; Swift, Kotlin, Java, Zig, C-family, `.tsrx` and module maps; shell; files git tracks or would track; generated output is skipped) resolves to an exact `notChrome` path or to exactly one entry (by full path, by a trailing part of the path, or by a `citedAs` name), and that entry lists the citing file.
+- Every `.cc`, `.cpp`, `.mm` or `.h` file named in a comment (nested block comments included), a string (multi-line strings included) or a C `#include <...>` of a code file, or anywhere in a Markless `.tsrx` file or module map, under `packages/`, `scripts/` or `examples/` (TypeScript and JavaScript in every variant including `.tsx`, `.jsx` and `.d.ts`; Swift, Kotlin, Java, Zig, C-family, `.tsrx` and module maps; shell; files git tracks or would track; generated output is skipped) resolves to an exact `notChrome` path or to exactly one entry (by full path, by a trailing part of the path, or by a `citedAs` name), and that entry lists the citing file.
 - Every `lgpl` entry has a ruling; none has a `port` use unless it is class B and on `KNOWN_LGPL_CLEAN_ROOM`; every proof file exists; the licence phrase matches the kind.
 - A `bsd-other` or `fdlibm-sun` file's copyright line and every paragraph of its licence text stay in each Dragon file that ports it (compared without comment markers or line wrapping).
 - Every tracked file in those directories is either scanned code or known data, so a new kind of code file fails the test until the scan covers it.
 - `THIRD_PARTY_NOTICES.md` is exactly what `pnpm notices:gen` (`scripts/gen-third-party-notices.ts`) writes from `docs/ports.json` and `vendor/harfbuzz/COPYING`. The published `dragon` package ships it next to `LICENSE`.
-- Every `dragon` file exists, every `symbol` is still declared in it, and the file still cites the entry.
+- Every `dragon` file exists, every `symbol` is still a top-level declaration in it, and the file still cites the entry.
+- A `notChrome` path is never under a Chromium source root and never names a registry entry.
+- The skipped directories (`generated/`, `build/`, `dist/` and the like) hold only code that says it is generated.
 
 ## Adding a port
 
