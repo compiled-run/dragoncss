@@ -133,6 +133,12 @@ export function collapseInlineContext(runs: readonly (string | null)[]): (string
 /** CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7). */
 const isInlineBox = (el: ResolvedElement): boolean => displayOf(el) === 'inline';
 
+/** CSS2 §9.2.4: an atomic inline, an inline-block or inline-flex box that stayed inline-level after blockification. */
+const isAtomicInline = (el: ResolvedElement): boolean => displayOf(el) === 'inline-block' || displayOf(el) === 'inline-flex';
+
+/** An atomic inline's run in collapseInlineContext: U+FFFC, which is not white space (Blink inline_items_builder.cc:1245-1251). */
+const ATOMIC_RUN = '\ufffc';
+
 const displayOf = (el: ResolvedElement): string => {
   const v = (el.props.get('display') as ResolvedValue).value;
   return v.kind === 'keyword' ? v.value : '';
@@ -239,11 +245,12 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     // An inline formatting context is a maximal sequence of text, inline boxes and <br>s; display: none elements generate no box
     // (CSS2 §9.2.4), so they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
     const collapsed = new Map<LinkedText, string>();
-    let run: (LinkedText | null)[] = [];
+    // null is a <br>, and 'atomic' an atomic inline, which stays in the context as U+FFFC (INL-P f5-break-space-atomic).
+    let run: (LinkedText | null | 'atomic')[] = [];
     const flush = (): void => {
-      const texts = collapseInlineContext(run.map((t) => (t === null ? null : t.text)));
+      const texts = collapseInlineContext(run.map((t) => (t === null ? null : t === 'atomic' ? ATOMIC_RUN : t.text)));
       run.forEach((t, i) => {
-        if (t !== null) collapsed.set(t, texts[i] as string);
+        if (t !== null && t !== 'atomic') collapsed.set(t, texts[i] as string);
       });
       run = [];
     };
@@ -254,6 +261,10 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         else if (isInlineBox(kid)) {
           if (kid.element.tag === 'br') run.push(null);
           gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[]);
+        } else if (isAtomicInline(kid)) {
+          // Planted fault atomicCollapsesAsLineEnd: the atomic inline ends the context, so the white space around it goes.
+          if (faults.atomicCollapsesAsLineEnd) flush();
+          else run.push('atomic');
         } else flush();
       }
     };

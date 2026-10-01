@@ -33,7 +33,7 @@ function el(ref: SourceRef, id: string, tag: string, classes: string[] = [], chi
   return { kind: 'element', id, tag, classes: classes.map((name) => staticClass({ owner: DOC, sheet: 's', name }, origin)), attributes: [], children, origin };
 }
 
-const FONT = 'body { font-family: Ahem; } .f { display: flex; } .g { display: grid; } .ct { display: contents; } .ab { position: absolute; } .fx { position: fixed; } .rel { position: relative; } .ib { display: inline-block; } .if { display: inline-flex; } .it { display: inline-table; }';
+const FONT = 'body { font-family: Ahem; } .f { display: flex; } .g { display: grid; } .ct { display: contents; } .ab { position: absolute; } .fx { position: fixed; } .rel { position: relative; } .ib { display: inline-block; } .if { display: inline-flex; } .it { display: inline-table; } .ig { display: inline-grid; }';
 const displayOf = (tree: (r: SourceRef) => TreeNode[], id: string, faults: CompilerFaults = NO_FAULTS): string => {
   const diagnostics: Diagnostic[] = [];
   const rules = parseStylesheet(FONT, { source: SRC, start: 0, end: FONT.length }, { id: 'sheet', owner: DOC, scope: 'document' }, 0, diagnostics);
@@ -192,9 +192,9 @@ describe('blockification in the resolver', () => {
   });
   it('an inline box (display: inline, INL1a) is not refused, an atomic inline is refused on every target, and display: none subtrees are not laid out', () => {
     expect(codes((r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', [], [text(r, 't', 'X')])])])).toEqual([]);
-    // An author's inline-block or inline-flex in a block container: an atomic inline (INL2), refused on ios and web by the
-    // committed support profiles, with both outputs blocked.
-    for (const cls of ['ib', 'if']) {
+    // An author's inline-table or inline-grid in a block container: an atomic inline INL2a does not lay out (it proves inline-block
+    // and inline-flex), refused on ios and web by the committed support profiles, with both outputs blocked.
+    for (const cls of ['it', 'ig']) {
       const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' }).compile(inputFor(FONT, (r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', [cls], [text(r, 't', 'X')])])]));
       const onDisplay = c.diagnostics.filter((d) => /display/.test(d.message));
       expect([...new Set(onDisplay.map((d) => String(d.target)))].sort(), cls).toEqual(['ios', 'web']);
