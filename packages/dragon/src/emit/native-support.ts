@@ -9,6 +9,7 @@ import type { FontSpec } from '@dragon/layout';
 import type { NativeBackend, NativeProgram } from '../lower/native-program.ts';
 import type { PaintPlantName } from './paint/registry.ts';
 import { nativePaints, PAINT_STAGES, paintPlants, soleHook, stagePainters } from './paint/registry.ts';
+import { runtimeSupportFiles } from './runtime/index.ts';
 
 export const NATIVE_SUPPORT_VERSION = 'dragon.native-support/1';
 
@@ -1568,6 +1569,7 @@ function supportFiles(backend: NativeBackend): GeneratedFile[] {
       { path: 'Support/DragonTree.swift', text: header('//', 'the native tree, engine application and dump readback') + SWIFT_TREE },
       { path: 'Support/DragonPaintStages.swift', text: header('//', 'the paint registration points') + paintStagesSource(backend) },
       ...paint.map((m) => ({ path: `Support/Paint/${m.stem}.swift`, text: header('//', `the ${m.name} paint module`) + m.text })),
+      ...runtimeSupportFiles(backend, (what) => header('//', what)),
     ];
   }
   return [
@@ -1579,6 +1581,7 @@ function supportFiles(backend: NativeBackend): GeneratedFile[] {
     { path: 'kotlin/dev/dragon/views/DragonPaintStages.kt', text: header('//', 'the paint registration points') + paintStagesSource(backend) },
     // Paint module files sit under views/paint and keep package dev.dragon.views, so the case code needs no new import.
     ...paint.map((m) => ({ path: `kotlin/dev/dragon/views/paint/${m.stem}.kt`, text: header('//', `the ${m.name} paint module`) + m.text })),
+    ...runtimeSupportFiles(backend, (what) => header('//', what)),
   ];
 }
 

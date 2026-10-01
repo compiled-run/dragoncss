@@ -558,11 +558,17 @@
        ],
        "children": [
         {
-         "el": "div",
+         "el": "iframe",
          "id": "video-placeholder",
          "at": "<div class=\"youtube-player-target\">",
          "class": [
           "styles.youtube-player-target"
+         ],
+         "attr": [
+          {
+           "name": "src",
+           "value": "https://www.youtube.com/embed/DwTzcZxyUUg?controls=1&modestbranding=1&playsinline=1&rel=0&enablejsapi=1"
+          }
          ]
         }
        ]
