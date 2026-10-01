@@ -3643,6 +3643,9 @@ tasks:
     objective: 'Engine bug (found by CALC-2): in a column flex container, an item with min-height: auto cannot shrink below its own specified height. Chrome shrinks an empty 11px item to 0, the engine keeps
       11px (flex.ts buildItem contentMain via layoutContents measures content with the item height applied). Same for px. Fix with a Chrome-backed fixture.'
     receipt: null
+    constraints:
+      - 'Done on flex-auto-min bdec83854, pending its device run. Random corpus: 136 geometry moves and 35 new percent-height-flex refusals, all without a Chrome reference; refusing is accepted, with follow-up
+        T136.'
   - id: T129
     type: worker
     assignee: Worker
@@ -3662,10 +3665,30 @@ tasks:
   - id: T131
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: values
     objective: 'Percent inside a border-width calc(): Chrome treats it as invalid; Dragon refuses with a misleading percentage-gaps reason. Give it the right typed reason, matching Chrome validity.'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #46 merged 69756ef3d. mathInvalidity ports Blink math parser type checking (145.0.7632.6). Chrome-rejected math is now DRAGON_CSS_INVALID_VALUE and dropped, so an earlier declaration
+        wins, as in Chrome. Per-context percent reasons. A 3322-row Chrome oracle agrees in both directions, bar 4 undecided values. Round-1 fix kept the validity check bounded by MAX_MATH_TOKENS. pnpm
+        test 2949/2949.'
+      changed_files:
+        - packages/dragon/src/css/math.ts
+        - packages/dragon/src/css/stylesheet.ts
+        - packages/dragon/test/math-validity.test.ts
+        - packages/dragon/test/units.test.ts
+      commands:
+        - cmd: pnpm test 2949/2949
+          status: pass
+        - cmd: pnpm pr:review 46 exit 0
+          status: pass
+    allowed_files:
+      - packages/dragon/src/css/math.ts
+      - packages/dragon/src/css/stylesheet.ts
+      - packages/dragon/test/math-validity.test.ts
+      - packages/dragon/test/units.test.ts
   - id: T132
     type: worker
     assignee: Worker
@@ -3690,6 +3713,15 @@ tasks:
     lane: runtime
     objective: 'SELD-R1b (split from T063): rt-hit.ts with the Chrome 145 inline hit rule from T063J (notes/T047-runtime-spec.md amendment), pointer-events auto and none (inherited), tap dispatch, and the
       device-states and device-hit lanes, on seld-r1. The pointer-events capture key needs the identity test. targets.ts entries after #42.'
+    receipt: null
+  - id: T136
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'Percentage-height children in a column flex item with a set height: T128 refuses them (percent-height-flex, 35 random-corpus cases) because Chrome resolves the child''s percentage against
+      the item''s set height while the auto-minimum measurement treats the height as auto. Port it exactly: layoutContents (block.ts) returns the content height before the item''s own height is applied
+      (Blink IntrinsicBlockSize), then lift the refusal, with Chrome-captured fixtures. After T128 lands.'
     receipt: null
   - id: T999
     type: judge
