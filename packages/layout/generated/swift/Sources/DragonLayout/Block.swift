@@ -277,7 +277,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   if (jsLength(texts) > 0.0) {
     // ts: packages/layout/src/block.ts:303
     if (jsLength(texts) != jsLength(kids)) {
-      throw JsError(message: jsConcat(box.id, S.s11))
+      throw JsError(message: jsConcat(box.id, S.s12))
     }
     let r: InlineResult = try inline_layoutInline(ctx, box, texts, a.contentWidth, a.origin)
     return try FlowResult(r.height, r.placed, block_EMPTY_STRUT, block_EMPTY_STRUT, true, ((r.firstBaseline == nil) ? (nil as Double?) : (units_add(a.origin.y, jsUnwrap(r.firstBaseline)) as Double?)), JsArray<OutOfFlow>([]))
