@@ -86,7 +86,7 @@ dispatched:
   - T064 # SELD-R2a
   - T052 # FORM-a A1 engine (T052J) on form-a; A2 appearance longhand on form-a2
   - T058 # INL1a encoders check, then T133 on txt1a-2
-  - T059 # INL2 on txt1a-2
+  - T059 # INL2a (T059J) on inl2, base txt1a-2 e4266eb0e
 device_lease: null
 tasks:
   - id: T001
@@ -2161,6 +2161,7 @@ tasks:
       - '2026-10-01: native:encoders fails 464/477 at inl1a-compiler b0c8fd13e (inline lines out-of-range), found by T083. It must be fixed before INL1a lands.'
   - id: T059
     type: worker
+    pm_note: 'T059J (2026-10-01), notes/T059J-inl2.md: split into INL2a (now; atomic inline-block/inline-flex, base txt1a-2 e4266eb0e, merge-conflict test replaces the SIZE-ar stop), INL2b (vertical-align longhand, sub/sup; serial after INL2a) and INL2c (deferred: atomics in inline boxes or beside real-font text). The decisions.md record of the replaced stop and the grammar override rule goes in the INL2a PR.'
     assignee: Worker
     status: queued
     lane: engine
