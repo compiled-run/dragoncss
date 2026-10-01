@@ -394,6 +394,11 @@ export function clampLengthFloat(v: number): number {
   return Math.fround(v);
 }
 
+/** Whether a px length is strictly inside the CSS length range, so ClampToCSSLengthRange leaves it unchanged. */
+export function inCssLengthRange(v: number): boolean {
+  return v > CSS_LENGTH_MIN && v < CSS_LENGTH_MAX;
+}
+
 /** CSSPrimitiveValue::ClampToCSSLengthRange: NaN is 0, then the CSS length range, as float (Length::Fixed). */
 export function cssLengthFixed(v: number): number {
   if (Number.isNaN(v)) return 0;

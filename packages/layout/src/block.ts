@@ -1,7 +1,7 @@
 // Block formatting: box contents, block-level widths and heights, margin collapsing, and inline content (inline.ts).
 import type { Direction, LayoutBox, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
-import { add, divInt, max, min, sub, ZERO } from './units.ts';
+import { add, clampNegativeToZero, divInt, max, min, sub, ZERO } from './units.ts';
 import type { Edges, Frag, HeightBasis, OutOfFlow, Placed, Point } from './box.ts';
 import {
   blockMinMaxWith,
@@ -118,6 +118,8 @@ export type ContentsArgs = {
   readonly heightBasis: HeightBasis;
   /** True when the box establishes an independent formatting context (root, flex item, scroll container). */
   readonly formattingContextRoot: boolean;
+  /** The box's border-box line-left offset in its parent's block formatting context; a formatting context root's children start at 0. */
+  readonly bfcLineOffset: LU;
 };
 
 export type ContentsResult = {
@@ -193,6 +195,8 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
   const canCollapseTop = !a.formattingContextRoot && bor.top === 0 && pad.top === 0;
   const r = layoutBlockFlow(ctx, box, {
     contentWidth,
+    borderBoxWidth: a.borderBoxWidth,
+    bfcLineOffset: a.formattingContextRoot ? ZERO : a.bfcLineOffset,
     origin: { x: add(bor.left, pad.left), y: add(bor.top, pad.top) },
     canCollapseTop,
     childBasis,
@@ -221,12 +225,36 @@ export type BlockLevelResult = {
   readonly contents: ContentsResult;
 };
 
-/** The used border-box width and margins of a block-level box. */
-export type BlockLevelInline = { readonly borderBoxWidth: LU; readonly marginLeft: LU; readonly marginTop: LU; readonly marginBottom: LU };
+/** The used border-box width and margins of a block-level box, and where it sits in its container. */
+export type BlockLevelInline = {
+  readonly borderBoxWidth: LU;
+  /** The border-box x relative to the container's border box. */
+  readonly x: LU;
+  /** The border box's line-left offset in the block formatting context, which its own in-flow children start from. */
+  readonly bfcLineOffset: LU;
+  readonly marginTop: LU;
+  readonly marginBottom: LU;
+};
+
+/** The container a block-level box is placed in, as Blink's BlockLayoutAlgorithm sees it. */
+export type InlineContainer = {
+  /** The container's border-box line-left offset in its block formatting context (ContainerBfcOffset().line_offset). */
+  readonly bfcLineOffset: LU;
+  /** The container's border-box width (container_builder_.InlineSize()). */
+  readonly borderBoxWidth: LU;
+  /** The container's left border and padding (BorderScrollbarPadding().LineLeft()). */
+  readonly lineLeft: LU;
+  /** Whether the box establishes a new formatting context, which Blink places in a layout opportunity (LayoutNewFormattingContext). */
+  readonly newFormattingContext: boolean;
+};
 
 // CSS2 §10.3.3: block-level, non-replaced width and horizontal margins in normal flow. The containing block's direction decides
-// which margin is the start margin; when over-constrained the end margin is ignored (margin-left in rtl).
-export function blockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU, cbDirection: Direction): BlockLevelInline {
+// which margin is the start margin; when over-constrained the end margin is ignored (margin-left in rtl). Every step is Blink's
+// LayoutUnit arithmetic in Blink's order, so a saturated sum lands where Chrome's does (block_layout_algorithm.cc and
+// length_utils.cc at 145.0.7632.6: ComputeChildData 3283-3304, the in-flow line offset 2799-2804, LayoutNewFormattingContext
+// 2054-2169, LogicalFromBfcLineOffset 197-213, ResolveInlineAutoMargins 1555-1574, the stretch size 46-65; and
+// writing_mode_converter.cc SlowToPhysical 71-79).
+export function blockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU, cbDirection: Direction, container: InlineContainer): BlockLevelInline {
   const s = box.style;
   const pad = resolvePaddingWith(s, cbInline, ctx.faults);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
@@ -235,25 +263,63 @@ export function blockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU, cbD
   const mr = resolveMarginWith(s.marginRight, cbInline, ctx.faults);
   const mt = resolveMarginWith(s.marginTop, cbInline, ctx.faults);
   const mb = resolveMarginWith(s.marginBottom, cbInline, ctx.faults);
-  const specified = resolveInlineLengthWith(s.width, cbInline, ctx.faults);
-  const stretched = sub(sub(cbInline, ml.value), mr.value);
-  const raw = specified === null ? stretched : borderBoxFromSpecified(specified, hbp, s.boxSizing);
-  const width = max(constrain(raw, inlineMinMaxWith(s, cbInline, hbp, ctx.faults)), hbp);
-  // Blink ResolveInlineAutoMargins (ng_length_utils.cc), in the containing block's inline direction: both auto centre with
-  // LayoutUnit / 2 on the start side, clamped at zero; a lone auto start margin takes the free space.
   const rtl = cbDirection === 'rtl';
   const startMargin = rtl ? mr : ml;
   const endMargin = rtl ? ml : mr;
-  let start = startMargin.value;
-  const available = sub(cbInline, add(width, add(ml.value, mr.value)));
-  if (startMargin.auto && endMargin.auto) start = max(divInt(available, 2), ZERO);
-  else if (startMargin.auto) start = max(available, ZERO);
-  const marginLeft = rtl ? sub(sub(cbInline, start), width) : start;
-  return { borderBoxWidth: width, marginLeft, marginTop: mt.value, marginBottom: mb.value };
+  const start = startMargin.value;
+  const end = endMargin.value;
+  const inlineSum = add(start, end);
+  const pb = container.bfcLineOffset;
+  const origin = add(pb, container.lineLeft);
+  // The line-left and line-right margins of BoxStrut::LineLeft and LineRight.
+  const lineLeftMargin = rtl ? end : start;
+  const lineRightMargin = rtl ? start : end;
+  let available = cbInline;
+  let lineLeftOffset = ZERO;
+  let lineRightOffset = ZERO;
+  if (container.newFormattingContext) {
+    // With no floats the opportunity is the content box, adjusted by the margins.
+    lineLeftOffset = add(origin, lineLeftMargin);
+    lineRightOffset = sub(add(origin, cbInline), lineRightMargin);
+    const opportunity = clampNegativeToZero(sub(lineRightOffset, lineLeftOffset));
+    available = clampNegativeToZero(add(opportunity, inlineSum));
+  }
+  const specified = resolveInlineLengthWith(s.width, cbInline, ctx.faults);
+  const stretched = max(hbp, sub(sub(available, start), end));
+  const raw = specified === null ? stretched : borderBoxFromSpecified(specified, hbp, s.boxSizing);
+  const width = max(constrain(raw, inlineMinMaxWith(s, cbInline, hbp, ctx.faults)), hbp);
+  // Blink ResolveInlineAutoMargins: both auto centre with LayoutUnit / 2 on the start side, clamped at zero; a lone auto start
+  // margin takes the free space; a lone auto end margin takes the rest.
+  let usedStart = start;
+  let usedEnd = end;
+  const free = sub(available, add(width, inlineSum));
+  if (startMargin.auto && endMargin.auto) {
+    usedStart = clampNegativeToZero(divInt(free, 2));
+    usedEnd = sub(sub(available, width), usedStart);
+  } else if (startMargin.auto) {
+    usedStart = clampNegativeToZero(free);
+  } else if (endMargin.auto) {
+    usedEnd = sub(sub(available, width), usedStart);
+  }
+  let bfcLineOffset: LU;
+  if (container.newFormattingContext) {
+    bfcLineOffset = rtl
+      ? sub(sub(lineRightOffset, sub(usedStart, lineRightMargin)), width)
+      : add(lineLeftOffset, sub(usedStart, lineLeftMargin));
+  } else {
+    const additional = rtl ? sub(sub(cbInline, width), add(usedStart, usedEnd)) : ZERO;
+    bfcLineOffset = add(add(origin, additional), rtl ? usedEnd : usedStart);
+  }
+  const relative = sub(bfcLineOffset, pb);
+  const x = rtl ? sub(sub(container.borderBoxWidth, sub(sub(container.borderBoxWidth, relative), width)), width) : relative;
+  return { borderBoxWidth: width, x, bfcLineOffset, marginTop: mt.value, marginBottom: mb.value };
 }
 
 type FlowArgs = {
   readonly contentWidth: LU;
+  readonly borderBoxWidth: LU;
+  /** The box's border-box line-left offset in the block formatting context its in-flow children are placed in. */
+  readonly bfcLineOffset: LU;
   readonly origin: Point;
   readonly canCollapseTop: boolean;
   readonly childBasis: HeightBasis;
@@ -305,14 +371,16 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       });
       continue;
     }
-    const inline = blockLevelInlineSize(ctx, kid, a.contentWidth, direction);
+    const newFormattingContext = kid.style.display !== 'block' || isScrollContainer(kid.style);
+    const inline = blockLevelInlineSize(ctx, kid, a.contentWidth, direction, { bfcLineOffset: a.bfcLineOffset, borderBoxWidth: a.borderBoxWidth, lineLeft: a.origin.x, newFormattingContext });
     const c = layoutContents(ctx, kid, {
       cbInline: a.contentWidth,
       borderBoxWidth: inline.borderBoxWidth,
       forcedBorderBoxHeight: null,
       forcedHeightDefinite: false,
       heightBasis: a.childBasis,
-      formattingContextRoot: kid.style.display !== 'block' || isScrollContainer(kid.style),
+      formattingContextRoot: newFormattingContext,
+      bfcLineOffset: inline.bfcLineOffset,
     });
     const before = joinStruts(joinMargin(strut, inline.marginTop), c.escapeTop);
     let y: LU;
@@ -331,7 +399,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       seen = true;
       strut = joinStruts(joinMargin(EMPTY_STRUT, inline.marginBottom), c.escapeBottom);
     }
-    const at: Placed = { frag: c.frag, x: add(a.origin.x, inline.marginLeft), y: add(a.origin.y, y) };
+    const at: Placed = { frag: c.frag, x: inline.x, y: add(a.origin.y, y) };
     if (baseline === null && c.frag.baseline !== null) baseline = add(at.y, c.frag.baseline);
     // CSS2 §9.4.3: a relative offset moves the box after layout; the flow, margins and baselines keep its in-flow position.
     const offset = relativeOffsetWith(kid, a.contentWidth, a.childBasis, direction, ctx.faults);

@@ -47,7 +47,8 @@ export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, fau
     const m = faults.metricHalfUp || faults.untruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }) : measurer;
     const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults };
     const icbDirection = directionOf(ctx, root);
-    const inline = blockLevelInlineSize(ctx, root, icbWidth, icbDirection);
+    // The root element establishes a block formatting context in the initial containing block.
+    const inline = blockLevelInlineSize(ctx, root, icbWidth, icbDirection, { bfcLineOffset: ZERO, borderBoxWidth: icbWidth, lineLeft: ZERO, newFormattingContext: true });
     const r = layoutContents(ctx, root, {
       cbInline: icbWidth,
       borderBoxWidth: inline.borderBoxWidth,
@@ -55,10 +56,11 @@ export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, fau
       forcedHeightDefinite: false,
       heightBasis: { kind: 'definite', value: icbHeight },
       formattingContextRoot: true,
+      bfcLineOffset: ZERO,
     });
     const offset = relativeOffsetWith(root, icbWidth, { kind: 'definite', value: icbHeight }, icbDirection, ctx.faults);
     const out: Placement = { boxes: [], absolute: new Map(), pending: [] };
-    flatten(r.frag, null, add(inline.marginLeft, offset.dx), add(inline.marginTop, offset.dy), ZERO, ZERO, out);
+    flatten(r.frag, null, add(inline.x, offset.dx), add(inline.marginTop, offset.dy), ZERO, ZERO, out);
     placeOutOfFlow(ctx, input, out, { x: ZERO, y: ZERO, width: icbWidth, height: icbHeight, direction: icbDirection });
     return { kind: 'ok', boxes: out.boxes };
   } catch (e) {

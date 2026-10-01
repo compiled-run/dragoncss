@@ -173,6 +173,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
         forcedHeightDefinite: false,
         heightBasis: itemHeightBasis,
         formattingContextRoot: true,
+        bfcLineOffset: ZERO,
       });
       hypoFrag.set(item, r.frag);
       hypoCross.set(item, r.frag.height);
@@ -273,6 +274,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
         forcedHeightDefinite: isRow ? stretchDefinite : containerMainDefinite,
         heightBasis: itemHeightBasis,
         formattingContextRoot: true,
+        bfcLineOffset: ZERO,
       });
       const crossPos = add(linePhysical, crossInLine);
       const at: Placed = {
@@ -466,6 +468,7 @@ function buildItem(
         forcedHeightDefinite: false,
         heightBasis,
         formattingContextRoot: true,
+        bfcLineOffset: ZERO,
       });
       contentSized = contentBox(r.frag.height, vbp);
     }

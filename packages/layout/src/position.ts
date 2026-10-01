@@ -216,6 +216,7 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
     forcedHeightDefinite: true,
     heightBasis,
     formattingContextRoot: true,
+    bfcLineOffset: ZERO,
   });
   const u = axisOffset(inlineAxis, width);
   const v = axisOffset(blockAxis, r.frag.height);

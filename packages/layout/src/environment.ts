@@ -50,6 +50,7 @@ import {
   floatMax,
   floatMin,
   floatMul,
+  inCssLengthRange,
   viewportLeafPx,
   viewportUnitBase,
   zoomCssPx,
@@ -89,6 +90,11 @@ function boxNeedsEnvironment(b: LayoutBox): boolean {
     s.borderLeftWidth.kind, s.flexBasis.kind, s.rowGap.kind, s.columnGap.kind,
   ];
   for (const k of kinds) if (k === 'calc') return true;
+  const lengths = [
+    s.top, s.right, s.bottom, s.left, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight,
+    s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.flexBasis, s.rowGap, s.columnGap,
+  ];
+  for (const v of lengths) if (v.kind === 'px' && !inCssLengthRange(v.value)) return true;
   for (const c of b.children) if (c.kind === 'box' && boxNeedsEnvironment(c)) return true;
   return false;
 }
@@ -139,6 +145,12 @@ function zoomPx(v: Px, z: number): Px {
   return { kind: 'px', value: zoomCssPx(v.value, z) };
 }
 
+/** Blink ConvertToLength: a px length zoomed, then clamped to the CSS length range (ClampToCSSLengthRange) when outside it. */
+function lengthPx(v: Px, z: number): Px {
+  const zoomed = zoomPx(v, z);
+  return inCssLengthRange(zoomed.value) ? zoomed : { kind: 'px', value: cssLengthFixed(zoomed.value) };
+}
+
 /** R5: a device-px initial line width keeps its value at every zoom; the planted spec reading zooms it like CSS px. */
 function resolveBorderWidth(v: BorderWidthValue, env: Env): BorderWidthValue {
   if (v.kind === 'px') return zoomPx(v, env.zoom);
@@ -148,43 +160,43 @@ function resolveBorderWidth(v: BorderWidthValue, env: Env): BorderWidthValue {
 }
 
 function resolveSize(v: SizeValue, env: Env): SizeValue {
-  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
 }
 
 function resolveMax(v: MaxSizeValue, env: Env): MaxSizeValue {
-  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
 }
 
 function envMargin(v: MarginValue, env: Env): MarginValue {
-  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
 }
 
 function resolveInset(v: InsetValue, env: Env): InsetValue {
-  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
 }
 
 function envPadding(v: PaddingValue, env: Env): PaddingValue {
-  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
 }
 
 function resolveBasis(v: FlexBasisValue, env: Env): FlexBasisValue {
-  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
 }
 
 function resolveGap(v: GapValue, env: Env): GapValue {
-  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
 }
