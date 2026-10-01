@@ -175,14 +175,15 @@ describe('merge policy (.gitattributes)', () => {
     expect([...policy].filter((p) => !ignore.matches(p))).toEqual([]);
   });
 
-  it('lists exactly the regen steps\' outputs, one anchored pattern per line, each matching a tracked file', () => {
+  it('lists exactly the regen steps\' outputs, one pattern per line, each matching a tracked file (a pattern without "/" only at the root)', () => {
     const outputs = STEPS.flatMap((s) => s.outputs).filter((o) => !MERGE_BY_HAND.some((h) => h.path === o));
     expect(lines).toEqual(outputs.map((o) => `${o} merge=dragon-generated`));
     for (const l of lines) {
       const m = /^(\S+) merge=dragon-generated$/.exec(l);
       expect(m, l).not.toBeNull();
-      expect(m![1]!.includes('/'), l).toBe(true);
-      expect(tracked.some((p) => matches(m![1]!, p)), `${l} matches no tracked file`).toBe(true);
+      const hits = tracked.filter((p) => matches(m![1]!, p));
+      expect(hits, `${l} matches no tracked file`).not.toEqual([]);
+      if (!m![1]!.includes('/')) expect(hits.filter((p) => p.includes('/')), `${l} matches below the root`).toEqual([]);
     }
   });
 

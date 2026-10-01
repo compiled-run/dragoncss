@@ -83,7 +83,7 @@ export const MANUAL: readonly { readonly command: string; readonly outputs: read
 ];
 
 /** Paths no step reads (a traced run of every step: fs reads and module loads), so a docs, board or test change reruns nothing. */
-export const NOT_READ: readonly string[] = ['docs/**', 'design/**', '.github/**', '.macroscope/**', 'AGENTS.md', 'CLAUDE.md', 'README.md', 'packages/*/test/**', 'scripts/regen.ts'];
+export const NOT_READ: readonly string[] = ['docs/goals/**', 'docs/research/**', 'design/**', '.github/**', '.macroscope/**', 'AGENTS.md', 'CLAUDE.md', 'README.md', 'packages/*/test/**', 'scripts/regen.ts'];
 
 export const MAX_PASSES = 5;
 
