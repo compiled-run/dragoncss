@@ -1978,6 +1978,9 @@ tasks:
     stop_if:
       - See notes/T045-repl-form-spec.md §3 P4 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T051J amendment (2026-10-01), see notes/T051-repl-a.md: route 2a longhands with a migration checker; a replaced leaf kind; Phase A lowers native layout only and lands together with Phase B; stacked
+        on size-ar.'
   - id: T052
     type: worker
     assignee: Worker
@@ -1991,6 +1994,8 @@ tasks:
     stop_if:
       - See notes/T045-repl-form-spec.md §3 P5 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T051J: FORM-a Phase A stacks on T051 Phase A, not on master.'
   - id: T053
     type: worker
     assignee: Worker
@@ -3860,10 +3865,27 @@ tasks:
   - id: T139
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: android
     objective: (T137a) Android rows derived by the iOS rule; rows the Android emitter refuses stay refused; native-strategy item 13 updated; regenerate profiles, the north star and the Tailwind sweep.
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #49 merged d927e912c (clean on first review). Android rows follow the iOS rule, and the UA bold/italic refusal is reported on every native target. North star: supportedAndroid 20 -> 165
+        = iOS; DRAGON_UNSUPPORTED_FONT 34 = iOS; Tailwind Android 0 -> 2214 = iOS. pnpm test 3014/3014; device run equals master.'
+      changed_files:
+        - packages/parity/src/profile-rows.ts
+        - scripts/gen-profile-rows.ts
+        - packages/dragon/src/analysis/computed-checks.ts
+      commands:
+        - cmd: pnpm test 3014/3014
+          status: pass
+        - cmd: pnpm pr:review 49 exit 0
+          status: pass
+    allowed_files:
+      - packages/parity/src/profile-rows.ts
+      - scripts/gen-profile-rows.ts
+      - packages/dragon/src/analysis/computed-checks.ts
   - id: T140
     type: worker
     assignee: Worker
@@ -3886,7 +3908,8 @@ tasks:
     assignee: Scout
     status: queued
     lane: android
-    objective: '(T137c) After T137a: report the per-property iOS vs Android differences in the north star and the Tailwind sweep; a non-zero gap goes to a Judge.'
+    objective: '(T137c) After T137a: report the per-property iOS vs Android differences in the north star and the Tailwind sweep; a non-zero gap goes to a Judge. (After #49: the north star shows 165/165
+      on iOS and Android, with equal error counts.)'
     receipt: null
   - id: T142
     type: worker
