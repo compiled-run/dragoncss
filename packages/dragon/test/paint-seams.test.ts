@@ -10,7 +10,10 @@ import type { Longhand } from '../src/css/properties.ts';
 import { emitNativeSupport, SUPPORT_FILES, SUPPORT_PLANTS } from '../src/emit/native-support.ts';
 import { isPaintKind, nativePaints, PAINT_EMITTERS, paintPlants, stagePainters } from '../src/emit/paint/registry.ts';
 import { PAINT_STAGES } from '../src/emit/paint/types.ts';
-import { PAINT_LOWERINGS } from '../src/lower/paint/registry.ts';
+import type { BorderWrite } from '../src/lower/paint/border.ts';
+import type { AnyLowering } from '../src/lower/paint/registry.ts';
+import { checkPaintLowerings, PAINT_LOWERINGS } from '../src/lower/paint/registry.ts';
+import type { PaintLowering } from '../src/lower/paint/types.ts';
 import { PAINT_MODULE_NAMES } from '../src/lower/paint/types.ts';
 import { createProjectWith, nativePrograms, NO_FAULTS, VOCABULARY, WRITE_CSS } from '../src/internal.ts';
 import { div, inputFor, text } from './helpers.ts';
@@ -46,6 +49,16 @@ describe('EMS: the paint registries', () => {
     expect(isPaintKind('font')).toBe(false);
     expect(isPaintKind('text-color')).toBe(false);
   });
+  it('the lowering registry refuses a write kind lowered by two modules, a vocabulary that disagrees with the longhands, or a reordered list', () => {
+    expect(() => checkPaintLowerings(PAINT_LOWERINGS)).not.toThrow();
+    const radius = PAINT_LOWERINGS.findIndex((m) => m.name === 'radius');
+    const withBorderKinds = PAINT_LOWERINGS.map((m, i) => (i === radius ? { ...PAINT_LOWERINGS[1], name: 'radius' } : m)) as AnyLowering[];
+    expect(() => checkPaintLowerings(withBorderKinds)).toThrow(/border-colors is lowered by two modules \(border and radius\)/);
+    const border = PAINT_LOWERINGS[1] as PaintLowering<BorderWrite>;
+    const uikitShort = { ...border, vocabulary: { ...border.vocabulary, uikit: { 'border-widths': border.vocabulary.uikit['border-widths'] } } } as unknown as AnyLowering;
+    expect(() => checkPaintLowerings(PAINT_LOWERINGS.map((m, i) => (i === 1 ? uikitShort : m)))).toThrow(/border paint lowering's uikit vocabulary names border-widths, its longhands name/);
+    expect(() => checkPaintLowerings([...PAINT_LOWERINGS].reverse())).toThrow(/not in PAINT_MODULE_NAMES order/);
+  });
   it('the stub modules lower nothing, emit nothing and add no native code or plants', () => {
     for (const name of STUBS) {
       const e = PAINT_EMITTERS.find((m) => m.name === name);
@@ -74,8 +87,8 @@ describe('EMS: programs', () => {
 
 describe('EMS: native support', () => {
   it('emits the stages file and one file per paint module with native code, under Support/Paint and views/paint', () => {
-    expect(SUPPORT_FILES.uikit).toEqual(['Support/DragonChecked.swift', 'Support/DragonFontTables.swift', 'Support/DragonViews.swift', 'Support/DragonBridge.swift', 'Support/DragonTree.swift', 'Support/DragonPaintStages.swift', 'Support/Paint/DragonPaintBackground.swift', 'Support/Paint/DragonPaintBorder.swift', 'Support/Paint/DragonPaintClip.swift']);
-    expect(SUPPORT_FILES['android-views']).toEqual(['kotlin/dev/dragon/views/DragonChecked.kt', 'kotlin/dev/dragon/views/DragonFontTables.kt', 'kotlin/dev/dragon/views/DragonViews.kt', 'kotlin/dev/dragon/views/DragonBridge.kt', 'kotlin/dev/dragon/views/DragonTree.kt', 'kotlin/dev/dragon/views/DragonPaintStages.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBackground.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBorder.kt', 'kotlin/dev/dragon/views/paint/DragonPaintClip.kt']);
+    expect(SUPPORT_FILES.uikit).toEqual(['Support/DragonChecked.swift', 'Support/DragonFontTables.swift', 'Support/DragonViews.swift', 'Support/DragonBridge.swift', 'Support/DragonTree.swift', 'Support/DragonPaintStages.swift', 'Support/Paint/DragonPaintBackground.swift', 'Support/Paint/DragonPaintBorder.swift', 'Support/Paint/DragonPaintClip.swift', 'Support/DragonClock.swift', 'Support/DragonState.swift']);
+    expect(SUPPORT_FILES['android-views']).toEqual(['kotlin/dev/dragon/views/DragonChecked.kt', 'kotlin/dev/dragon/views/DragonFontTables.kt', 'kotlin/dev/dragon/views/DragonViews.kt', 'kotlin/dev/dragon/views/DragonBridge.kt', 'kotlin/dev/dragon/views/DragonTree.kt', 'kotlin/dev/dragon/views/DragonPaintStages.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBackground.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBorder.kt', 'kotlin/dev/dragon/views/paint/DragonPaintClip.kt', 'kotlin/dev/dragon/views/DragonClock.kt', 'kotlin/dev/dragon/views/DragonState.kt']);
     for (const f of emitNativeSupport('android-views')) expect(f.text, f.path).toContain('\npackage dev.dragon.views\n');
   });
   it('dispatches the box stages in CSS order, the after-layout hooks and the readback in registry order', () => {
