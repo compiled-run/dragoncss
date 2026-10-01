@@ -1,12 +1,12 @@
-// Captures packages/dragon/test/data/math-validity-chrome.json from the pinned Chrome (T131): CSS.supports for every corpus pair
-// (packages/dragon/test/data/math-validity-corpus.json), and the cascade outcome when an invalid calculation follows a valid
+// Captures packages/dragon/test/math-validity-oracle/math-validity-chrome.json from the pinned Chrome (T131): CSS.supports for every corpus pair
+// (packages/dragon/test/math-validity-oracle/math-validity-corpus.json), and the cascade outcome when an invalid calculation follows a valid
 // declaration of the same property, in both directions. It lives here because the dragon suite runs without a browser.
 // Run: node --conditions=dragon-internal packages/parity/src/cli/math-validity-capture.ts
 import { readFileSync, writeFileSync } from 'node:fs';
 import { CHROME_VERSION, launchChrome } from '../chrome.ts';
 
-const OUT = new URL('../../../dragon/test/data/math-validity-chrome.json', import.meta.url);
-const CORPUS = JSON.parse(readFileSync(new URL('../../../dragon/test/data/math-validity-corpus.json', import.meta.url), 'utf8')) as { properties: string[]; values: string[]; undetermined: string[] };
+const OUT = new URL('../../../dragon/test/math-validity-oracle/math-validity-chrome.json', import.meta.url);
+const CORPUS = JSON.parse(readFileSync(new URL('../../../dragon/test/math-validity-oracle/math-validity-corpus.json', import.meta.url), 'utf8')) as { properties: string[]; values: string[]; undetermined: string[] };
 const MATH_VALIDITY_PROPERTIES = CORPUS.properties;
 const MATH_VALIDITY_VALUES = CORPUS.values;
 const MATH_VALIDITY_UNDETERMINED = CORPUS.undetermined;

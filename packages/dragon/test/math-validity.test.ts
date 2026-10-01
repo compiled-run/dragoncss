@@ -1,6 +1,6 @@
 // T131: a math function Chrome's parser rejects is invalid CSS. Dragon reports DRAGON_CSS_INVALID_VALUE and drops the
 // declaration, so an earlier valid declaration of the property wins, exactly as Chrome 145 does. The corpus
-// (test/data/math-validity-corpus.json) and its Chrome capture (test/data/math-validity-chrome.json, written by
+// (test/math-validity-oracle/math-validity-corpus.json) and its Chrome capture (test/math-validity-oracle/math-validity-chrome.json, written by
 // packages/parity/src/cli/math-validity-capture.ts) pin both directions: nothing Chrome accepts is reported invalid, and nothing it rejects is missed.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -18,8 +18,8 @@ type Capture = {
   readonly cascade: { readonly [direction in 'ltr' | 'rtl']: { readonly w: Box; readonly g: Box; readonly h: Box } };
   readonly rows: readonly (readonly [string, string, boolean])[];
 };
-const CAPTURE = JSON.parse(readFileSync(new URL('./data/math-validity-chrome.json', import.meta.url), 'utf8')) as Capture;
-const CORPUS = JSON.parse(readFileSync(new URL('./data/math-validity-corpus.json', import.meta.url), 'utf8')) as { readonly properties: readonly string[]; readonly values: readonly string[]; readonly undetermined: readonly string[] };
+const CAPTURE = JSON.parse(readFileSync(new URL('./math-validity-oracle/math-validity-chrome.json', import.meta.url), 'utf8')) as Capture;
+const CORPUS = JSON.parse(readFileSync(new URL('./math-validity-oracle/math-validity-corpus.json', import.meta.url), 'utf8')) as { readonly properties: readonly string[]; readonly values: readonly string[]; readonly undetermined: readonly string[] };
 const MATH_VALIDITY_PROPERTIES = CORPUS.properties;
 const MATH_VALIDITY_VALUES = CORPUS.values;
 const MATH_VALIDITY_UNDETERMINED = CORPUS.undetermined;

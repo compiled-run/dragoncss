@@ -128,7 +128,7 @@ describe('math function checks', () => {
     expect(folded.ok && folded.node).toEqual({ t: 'lit', value: 500, unit: 'px', inverseOf: null, nested: false });
   });
   it('a percentage in a calculation is refused with the reason for its property: invalid where it survives in a line width or a number, unsupported where it cancels or in a gap (T131)', () => {
-    // Chrome 145.0.7632.6 (test/data/math-validity-chrome.json): invalid for the surviving percentages, valid for the cancelling ones and the gaps.
+    // Chrome 145.0.7632.6 (test/math-validity-oracle/math-validity-chrome.json): invalid for the surviving percentages, valid for the cancelling ones and the gaps.
     const refusal = (property: string, value: string): string => {
       const context = mathContextFor(property);
       if ('refused' in context) throw new Error(property);
