@@ -22,9 +22,12 @@ const REGISTRY_PATH = join(ROOT, 'docs', 'ports.json');
 
 const TAG = '145.0.7632.6';
 const SKIA_REVISION = '2ab8add5be2c46eb6238f4c217f6d6dbc9bccd23'; // Chromium 145.0.7632.6 DEPS skia_revision
+const V8_REVISION = '4e031e4b6bfa4ba1d203e9bcfe3dc26d47a06b2c'; // Chromium 145.0.7632.6 DEPS v8_revision
 
 // The licence header kinds. `lgpl` is recorded so the registry documents it; it is never an allowed port source.
-const PERMISSIVE = ['bsd-chromium', 'bsd-skia', 'bsd-google', 'bsd-apple', 'bsd-other', 'mit-harfbuzz'] as const;
+const PERMISSIVE = ['bsd-chromium', 'bsd-skia', 'bsd-google', 'bsd-apple', 'bsd-other', 'mit-harfbuzz', 'fdlibm-sun'] as const;
+// Kinds whose notice must stay in each Dragon file that ports from the entry (not only in THIRD_PARTY_NOTICES.md).
+const NOTICE_IN_FILE: readonly string[] = ['bsd-other', 'fdlibm-sun'];
 const LICENCES: readonly string[] = [...PERMISSIVE, 'lgpl'];
 const PHRASE: Record<string, RegExp> = {
   'bsd-chromium': /^(Use of this source code is governed by a BSD-style license|Redistributions of source code must retain the above copyright)$/,
@@ -33,6 +36,7 @@ const PHRASE: Record<string, RegExp> = {
   'bsd-apple': /^Redistributions of source code must retain the above copyright$/,
   'bsd-other': /^Redistributions of source code must retain the above copyright$/,
   'mit-harfbuzz': /^Permission is hereby granted/,
+  'fdlibm-sun': /^Permission to use, copy, modify, and distribute this$/,
   lgpl: /^GNU (Library|Lesser) General Public License$/,
 };
 
@@ -47,8 +51,8 @@ const KNOWN_LGPL_CLEAN_ROOM: readonly string[] = [
 ];
 const CLEAN_ROOM_TASK = 'T123';
 
-// Upstream roots inside the Chromium tree at the tag (third_party/skia is resolved at the DEPS-pinned Skia revision).
-const UPSTREAM_ROOTS = ['third_party/blink/', 'third_party/skia/', 'ui/gfx/', 'cc/', 'third_party/rapidhash/', 'third_party/harfbuzz-ng/'];
+// Upstream roots inside the Chromium tree at the tag (third_party/skia and v8 are resolved at their DEPS-pinned revisions).
+const UPSTREAM_ROOTS = ['third_party/blink/', 'third_party/skia/', 'v8/', 'ui/gfx/', 'cc/', 'third_party/rapidhash/', 'third_party/harfbuzz-ng/'];
 
 interface Ruling { class: 'A' | 'B' | 'C'; basis: string; proof: string[]; task?: string; note?: string }
 interface Range { lines: string; symbol: string | null; source: 'cited' | 'located' | 'whole-file' }
@@ -73,6 +77,7 @@ export interface Registry {
   about: string;
   tag: string;
   skiaRevision: string;
+  v8Revision: string;
   sources: Record<string, string>;
   entries: Entry[];
   notChrome: NotChrome[];
@@ -87,6 +92,7 @@ const NOTICE_PREFIX: Record<string, RegExp> = {
   'bsd-apple': /^header-bsd-\d+$/,
   'bsd-other': /^(?!chromium-bsd$|skia-bsd$|header-bsd-)[a-z0-9-]+$/,
   'mit-harfbuzz': /^harfbuzz-mit$/,
+  'fdlibm-sun': /^fdlibm-sun$/,
 };
 
 /** A repository file as text, or undefined when it does not exist. */
@@ -196,6 +202,7 @@ export function audit(registry: Registry, sources: ReadonlyMap<string, string>, 
   const problems: string[] = [];
   if (registry.tag !== TAG) problems.push(`registry tag ${registry.tag} is not the pinned ${TAG}`);
   if (registry.skiaRevision !== SKIA_REVISION) problems.push(`registry skiaRevision ${registry.skiaRevision} is not ${SKIA_REVISION}`);
+  if (registry.v8Revision !== V8_REVISION) problems.push(`registry v8Revision ${registry.v8Revision} is not ${V8_REVISION}`);
 
   // Entry shape and licence.
   const seen = new Set<string>();
@@ -233,7 +240,7 @@ export function audit(registry: Registry, sources: ReadonlyMap<string, string>, 
       if (e.ruling.class === 'B' && e.ruling.task !== CLEAN_ROOM_TASK) problems.push(`${at}: class B ruling not tied to ${CLEAN_ROOM_TASK}`);
     }
     // A permissive notice other than Chromium's or Skia's LICENSE file stays in each Dragon file that ports from the entry.
-    if (e.licence === 'bsd-other') {
+    if (NOTICE_IN_FILE.includes(e.licence)) {
       for (const f of new Set(e.dragon.filter((d) => d.use === 'port').map((d) => d.file))) {
         if (!(sources.get(f) ?? '').includes(e.copyright)) problems.push(`${at}: ${f} ports it without its notice (${e.copyright})`);
       }
@@ -329,7 +336,7 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
 
   it('records a ruling for every LGPL entry: class A ones only referenced, class B ones on the clean-room list for T123', () => {
     const lgpl = registry.entries.filter((e) => e.licence === 'lgpl');
-    expect(lgpl.length).toBe(18);
+    expect(lgpl.length).toBe(19); // the 18 T118J rulings and computed_style_constants.h (cited by V2a after them)
     expect(lgpl.filter((e) => e.ruling?.class === 'B').map((e) => e.upstream).sort()).toEqual([...KNOWN_LGPL_CLEAN_ROOM].sort());
     for (const e of lgpl.filter((x) => x.ruling?.class === 'A')) expect(e.dragon.map((d) => d.use), e.upstream).not.toContain('port');
   });
@@ -380,12 +387,16 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
     expect(proofProblem('packages/dragon/test/fonts/units.test.ts#no such describe', readRepo)).toBe('proof packages/dragon/test/fonts/units.test.ts#no such describe: packages/dragon/test/fonts/units.test.ts does not contain "no such describe"');
   });
 
-  it('keeps the rapidhash notice in the file that ports it', () => {
-    const e = registry.entries.find((x) => x.licence === 'bsd-other')!;
-    const stripped = new Map(sources);
-    const port = e.dragon.find((d) => d.use === 'port')!;
-    stripped.set(port.file, sources.get(port.file)!.replace(e.copyright, 'Copyright (C) someone else'));
-    expect(audit(registry, stripped, KNOWN_LGPL_CLEAN_ROOM)).toEqual([`entry ${e.upstream}: ${port.file} ports it without its notice (${e.copyright})`]);
+  it('keeps the rapidhash and fdlibm notices in the files that port them', () => {
+    for (const kind of NOTICE_IN_FILE) {
+      const e = registry.entries.find((x) => x.licence === kind)!;
+      expect(e, kind).toBeDefined();
+      const stripped = new Map(sources);
+      const port = e.dragon.find((d) => d.use === 'port')!;
+      stripped.set(port.file, sources.get(port.file)!.replace(e.copyright, 'Copyright (C) someone else'));
+      expect(audit(registry, stripped, KNOWN_LGPL_CLEAN_ROOM)).toEqual([`entry ${e.upstream}: ${port.file} ports it without its notice (${e.copyright})`]);
+    }
+    expect(audit({ ...registry, v8Revision: 'main' }, sources, KNOWN_LGPL_CLEAN_ROOM)).toEqual([`registry v8Revision main is not ${V8_REVISION}`]);
   });
 
   it('review skips the generated THIRD_PARTY_NOTICES.md but reads the registry, its generator and this test', () => {
@@ -411,6 +422,8 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
     const { noticeText: _n, ...noText } = registry.entries[0]!;
     expect(() => thirdPartyNotices({ ...registry, entries: [noText] }, harfbuzz)).toThrow('no noticeText');
     expect(() => thirdPartyNotices(registry, 'not a licence')).toThrow('not the HarfBuzz MIT licence');
+    const { v8Revision: _v, ...noV8 } = registry;
+    expect(() => thirdPartyNotices(noV8 as unknown as Registry, harfbuzz)).toThrow('docs/ports.json: no v8Revision');
   });
 
   it('fails when a Dragon file or declaration is gone', () => {

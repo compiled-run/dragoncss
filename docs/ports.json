@@ -1,10 +1,12 @@
 {
-  "about": "Every place Dragon cites a Chrome source file (Blink, Skia, ui/gfx, cc, and third-party code in the Chromium tree), checked by packages/parity/test/chrome-ports.test.ts. See docs/ports.md.",
+  "about": "Every place Dragon cites a Chrome source file (Blink, Skia, V8, ui/gfx, cc, and third-party code in the Chromium tree), checked by packages/parity/test/chrome-ports.test.ts. See docs/ports.md.",
   "tag": "145.0.7632.6",
   "skiaRevision": "2ab8add5be2c46eb6238f4c217f6d6dbc9bccd23",
+  "v8Revision": "4e031e4b6bfa4ba1d203e9bcfe3dc26d47a06b2c",
   "sources": {
     "chromium": "https://chromium.googlesource.com/chromium/src/+/refs/tags/145.0.7632.6/{path}?format=TEXT",
-    "skia": "https://skia.googlesource.com/skia/+/2ab8add5be2c46eb6238f4c217f6d6dbc9bccd23/{path without third_party/skia/}?format=TEXT"
+    "skia": "https://skia.googlesource.com/skia/+/2ab8add5be2c46eb6238f4c217f6d6dbc9bccd23/{path without third_party/skia/}?format=TEXT",
+    "v8": "https://chromium.googlesource.com/v8/v8/+/4e031e4b6bfa4ba1d203e9bcfe3dc26d47a06b2c/{path without v8/}?format=TEXT"
   },
   "entries": [
     {
@@ -826,6 +828,26 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/units.ts", "symbol": "lineHeightFromNumber", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/style/computed_style_constants.h",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation (the constant kMaximumAllowedFontSize, 10000px)",
+        "proof": [],
+        "note": "no Chrome golden yet; cited by V2a after the T118J ruling and recorded in the same class as CSS_LENGTH_MAX"
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2000 Lars Knoll (knoll@kde.org); Copyright (C) 2003, 2005, 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights; Copyright (C) 2006 Graham Dennis (graham.dennis@gmail.com); Copyright (C) 2009 Torch Mobile Inc. All rights reserved.",
+      "fileSha256": "8a04e6960c90066a23dbc9bb1837cc63a9ae0ebe2af182e1e0e2ffee50e1c8ff",
+      "headerSha256": "abda5ae9ccdb3adc40ac7477a533b61d4a7b5870ba1d93f61451bd6e18f41fc3",
+      "ranges": [
+        { "lines": "452-452", "symbol": "kMaximumAllowedFontSize", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/units.ts", "symbol": "MAX_FONT_SIZE", "use": "reference" }
       ]
     },
     {
@@ -1733,6 +1755,24 @@
       "dragon": [
         { "file": "packages/layout/src/rt-easing.ts", "symbol": null, "use": "port" }
       ]
+    },
+    {
+      "upstream": "v8/src/base/ieee754.cc",
+      "licence": "fdlibm-sun",
+      "attribution": "fdlibm (k_sin.c, k_cos.c), Copyright (C) 1993 by Sun Microsystems, Inc. The notice is kept in packages/translate/harness/harness.ts and THIRD_PARTY_NOTICES.md. V8's own changes to the file are under V8's BSD LICENSE; the harness takes only fdlibm's polynomials and constants.",
+      "noticeText": "fdlibm-sun",
+      "licencePhrase": "Permission to use, copy, modify, and distribute this",
+      "copyright": "Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.",
+      "fileSha256": "1bf999809d4c4c1d31ad5ff3578d32614796f159e08b9e7782560d017721a0c2",
+      "headerSha256": "cba7dae1bea31d0082087150918ee58fe4c16a417fa41bd325188d788782713b",
+      "ranges": [
+        { "lines": "305-336", "symbol": "__kernel_cos", "source": "located" },
+        { "lines": "673-698", "symbol": "__kernel_sin", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/translate/harness/harness.ts", "symbol": "rtSin", "use": "port" },
+        { "file": "packages/translate/harness/harness.ts", "symbol": "rtCos", "use": "port" }
+      ]
     }
   ],
   "notChrome": [
@@ -1771,6 +1811,7 @@
     "header-bsd-6": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n\n1. Redistributions of source code must retain the above copyright\n   notice, this list of conditions and the following disclaimer.\n2. Redistributions in binary form must reproduce the above copyright\n   notice, this list of conditions and the following disclaimer\n   in the documentation and/or other materials provided with the\n   distribution.\n3. Neither the name of Google Inc. nor the names of its contributors\n   may be used to endorse or promote products derived from this\n   software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nOWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
     "header-bsd-7": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n\n1.  Redistributions of source code must retain the above copyright\n    notice, this list of conditions and the following disclaimer.\n2.  Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in the\n    documentation and/or other materials provided with the distribution.\n3.  Neither the name of Apple Computer, Inc. (\"Apple\") nor the names of\n    its contributors may be used to endorse or promote products derived\n    from this software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY APPLE AND ITS CONTRIBUTORS \"AS IS\" AND ANY\nEXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL APPLE OR ITS CONTRIBUTORS BE LIABLE FOR ANY\nDIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND\nON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF\nTHIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
     "header-bsd-8": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n1. Redistributions of source code must retain the above copyright\n   notice, this list of conditions and the following disclaimer.\n2. Redistributions in binary form must reproduce the above copyright\n   notice, this list of conditions and the following disclaimer in the\n   documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,\nTHE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\nPURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS\nBE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR\nCONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF\nSUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS\nINTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN\nCONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)\nARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF\nTHE POSSIBILITY OF SUCH DAMAGE.\n",
-    "rapidhash-bsd-2": "rapidhash - Very fast, high quality, platform-independent hashing algorithm.\n\nBased on 'wyhash', by Wang Yi <godspeed_china@yeah.net>\n\nBSD 2-Clause License (https://www.opensource.org/licenses/bsd-license.php)\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n   * Redistributions of source code must retain the above copyright\n     notice, this list of conditions and the following disclaimer.\n   * Redistributions in binary form must reproduce the above\n     copyright notice, this list of conditions and the following disclaimer\n     in the documentation and/or other materials provided with the\n     distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nOWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\nYou can contact the author at:\n  - rapidhash source repository: https://github.com/Nicoshev/rapidhash\n"
+    "rapidhash-bsd-2": "rapidhash - Very fast, high quality, platform-independent hashing algorithm.\n\nBased on 'wyhash', by Wang Yi <godspeed_china@yeah.net>\n\nBSD 2-Clause License (https://www.opensource.org/licenses/bsd-license.php)\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n   * Redistributions of source code must retain the above copyright\n     notice, this list of conditions and the following disclaimer.\n   * Redistributions in binary form must reproduce the above\n     copyright notice, this list of conditions and the following disclaimer\n     in the documentation and/or other materials provided with the\n     distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nOWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\nYou can contact the author at:\n  - rapidhash source repository: https://github.com/Nicoshev/rapidhash\n",
+    "fdlibm-sun": "Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.\n\nDeveloped at SunSoft, a Sun Microsystems, Inc. business.\nPermission to use, copy, modify, and distribute this\nsoftware is freely granted, provided that this notice\nis preserved.\n"
   }
 }
