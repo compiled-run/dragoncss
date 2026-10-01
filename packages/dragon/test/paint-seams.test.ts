@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { Longhand } from '../src/css/properties.ts';
-import { emitNativeSupport, SUPPORT_FILES, SUPPORT_PLANTS } from '../src/emit/native-support.ts';
+import { applyPlant, emitNativeSupport, SUPPORT_FILES, SUPPORT_PLANTS } from '../src/emit/native-support.ts';
 import { isPaintKind, nativePaints, PAINT_EMITTERS, paintPlants, stagePainters } from '../src/emit/paint/registry.ts';
 import { PAINT_STAGES } from '../src/emit/paint/types.ts';
 import type { BorderWrite } from '../src/lower/paint/border.ts';
@@ -90,6 +90,14 @@ describe('EMS: native support', () => {
     expect(SUPPORT_FILES.uikit).toEqual(['Support/DragonChecked.swift', 'Support/DragonFontTables.swift', 'Support/DragonViews.swift', 'Support/DragonBridge.swift', 'Support/DragonTree.swift', 'Support/DragonPaintStages.swift', 'Support/Paint/DragonPaintBackground.swift', 'Support/Paint/DragonPaintBorder.swift', 'Support/Paint/DragonPaintClip.swift', 'Support/DragonClock.swift', 'Support/DragonState.swift']);
     expect(SUPPORT_FILES['android-views']).toEqual(['kotlin/dev/dragon/views/DragonChecked.kt', 'kotlin/dev/dragon/views/DragonFontTables.kt', 'kotlin/dev/dragon/views/DragonViews.kt', 'kotlin/dev/dragon/views/DragonBridge.kt', 'kotlin/dev/dragon/views/DragonTree.kt', 'kotlin/dev/dragon/views/DragonPaintStages.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBackground.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBorder.kt', 'kotlin/dev/dragon/views/paint/DragonPaintClip.kt', 'kotlin/dev/dragon/views/DragonClock.kt', 'kotlin/dev/dragon/views/DragonState.kt']);
     for (const f of emitNativeSupport('android-views')) expect(f.text, f.path).toContain('\npackage dev.dragon.views\n');
+  });
+  it('applies a support plant only when its source text occurs exactly once across the support files', () => {
+    const f = (path: string, text: string) => ({ path, text });
+    expect(applyPlant([f('a', 'x = 0\n'), f('b', 'y\n')], 'x = 0\n', 'x = 1\n', 'p')).toEqual([f('a', 'x = 1\n'), f('b', 'y\n')]);
+    expect(() => applyPlant([f('a', 'y\n')], 'x = 0\n', 'x = 1\n', 'p')).toThrow(/occurs 0 times, not once/);
+    expect(() => applyPlant([f('a', 'x = 0\nx = 0\n')], 'x = 0\n', 'x = 1\n', 'p')).toThrow(/occurs 2 times, not once/);
+    expect(() => applyPlant([f('a', 'x = 0\n'), f('b', 'x = 0\n')], 'x = 0\n', 'x = 1\n', 'p')).toThrow(/occurs 2 times, not once/);
+    for (const b of ['uikit', 'android-views'] as const) for (const p of SUPPORT_PLANTS) expect(emitNativeSupport(b, p).filter((x, i) => x.text !== emitNativeSupport(b)[i]?.text), `${b} ${p}`).toHaveLength(1);
   });
   it('dispatches the box stages in CSS order, the after-layout hooks and the readback in registry order', () => {
     expect([...PAINT_STAGES]).toEqual(['outer-shadow', 'background', 'background-layers', 'inset-shadow', 'border', 'outline']);
