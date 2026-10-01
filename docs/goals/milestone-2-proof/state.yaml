@@ -90,7 +90,6 @@ dispatched:
   - T050
   - T062
   - T118
-  - T026
   - T119
   - T120
   - T139
@@ -1098,17 +1097,42 @@ tasks:
   - id: T026
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: engine
     objective: 'V2a engine value model (notes/T012-v2-spec.md §4, binding; APPROVED by the owner 2026-09-28): env(), sv/lv/dv, em and rem as engine values, rootFontSize, calc in font-size and line-height,
       ex/ch/cap/lh/rlh with Ahem metrics. Worktree /tmp/dragon-v2, branch v2a-value-model, from master after P5 (T007) and V1 Phase B (T009). PM rulings 5, 7 and 8 taken as recommended.'
     allowed_files:
       - See notes/T012-v2-spec.md §4 allowed_files (binding)
+      - packages/layout/src/input.ts
+      - packages/layout/src/validate.ts
+      - packages/layout/src/environment.ts
+      - packages/dragon/src/lower/ios-layout.ts
+      - packages/dragon/src/emit/native-support.ts
+      - packages/translate/harness/harness.ts
     verify:
       - See notes/T012-v2-spec.md §4 verify (binding)
     stop_if:
       - See notes/T012-v2-spec.md §4 stop_if (binding)
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'V2a landed as PR #45 (merged 9668e02d8) after 2 Macroscope rounds, plus the gate fix #47 for the already-reviewed skip. It adds environment inputs (viewportUnits, safeArea, rootFontSize),
+        rem/env/ex/ch/cap/lh leaves, font-size resolution and LineHeightCalc (non-negative). A root font-size that does not compute to px is refused. Device run 460 cases equals master; pnpm test 2980/2980.
+        v2a-migration-check (scripts/check-additive-migration.ts) is still to land as a small follow-up PR.'
+      changed_files:
+        - packages/layout/src/input.ts
+        - packages/layout/src/validate.ts
+        - packages/layout/src/environment.ts
+        - packages/dragon/src/lower/ios-layout.ts
+        - packages/dragon/src/emit/native-support.ts
+        - packages/translate/harness/harness.ts
+      commands:
+        - cmd: pnpm test 2980/2980
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices
+          status: pass
+        - cmd: pnpm pr:review 45 exit 0
+          status: pass
     constraints:
       - Never concurrent with T011 Phase B; runs before it by default.
   - id: T027
