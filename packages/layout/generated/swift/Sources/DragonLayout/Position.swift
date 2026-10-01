@@ -70,12 +70,12 @@ public final class AbsoluteResult {
 }
 
 // ts: packages/layout/src/position.ts:27
-public func position_isOutOfFlow(_ ctx: Block_Ctx, _ box: LayoutBox) throws -> Bool {
+public func position_isOutOfFlow(_ ctx: Ctx, _ box: LayoutBox) throws -> Bool {
   return ((box.style.position == S.s_absolute) && (!ctx.faults.absposInFlow))
 }
 
 // ts: packages/layout/src/position.ts:35
-public func position_checkOutOfFlowSiblings(_ ctx: Block_Ctx, _ box: LayoutBox) throws -> Void {
+public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws -> Void {
   let oof: LayoutBox? = try (jsFind(box.children, { (k: any U_LayoutBox_TextLeaf) throws -> Bool in
     return try ((k.kind == S.s_box) && position_isOutOfFlow(ctx, (k as! LayoutBox)))
 })).map { $0 as! LayoutBox }
@@ -218,7 +218,7 @@ public func position_logicalEdge(_ edge: JsString, _ reversed: Bool) throws -> J
 }
 
 // ts: packages/layout/src/position.ts:159
-public func position_layoutAbsolute(_ ctx: Block_Ctx, _ box: LayoutBox, _ cb: ContainingBlock, _ staticX: StaticAxis, _ staticY: StaticAxis) throws -> AbsoluteResult {
+public func position_layoutAbsolute(_ ctx: Ctx, _ box: LayoutBox, _ cb: ContainingBlock, _ staticX: StaticAxis, _ staticY: StaticAxis) throws -> AbsoluteResult {
   let s: LayoutStyle = box.style
   let rtl: Bool = (cb.direction == S.s_rtl)
   let pad: Edges = try box_resolvePaddingWith(s, cb.width, ctx.faults)

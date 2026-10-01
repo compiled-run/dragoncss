@@ -60,7 +60,7 @@ fun layout_layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, faults: 
   // ts: packages/layout/src/layout.ts:45
   try {
     val m: TextMeasurer = (if ((faults.metricHalfUp || faults.untruncatedFontSize)) text_ahemMeasurerWith(AhemRuleFaults(faults.metricHalfUp, faults.untruncatedFontSize)) else measurer)
-    val ctx: Block_Ctx = Block_Ctx(m, input.devicePixelRatio, faults)
+    val ctx: Ctx = Ctx(m, input.devicePixelRatio, faults)
     val icbDirection: String = block_directionOf(ctx, root)
     val inline: BlockLevelInline = block_blockLevelInlineSize(ctx, root, icbWidth, icbDirection)
     val r: ContentsResult = block_layoutContents(ctx, root, ContentsArgs(icbWidth, inline.borderBoxWidth, null, false, HeightBasis_definite("definite", icbHeight), true))
@@ -132,7 +132,7 @@ fun layout_parents(root: LayoutBox): JsStringMap<LayoutBox> {
 }
 
 // ts: packages/layout/src/layout.ts:95
-fun layout_containingBlock(ctx: Block_Ctx, box: LayoutBox, parentOf: JsStringMap<LayoutBox>, out: Placement, icb: ContainingBlock): ContainingBlock {
+fun layout_containingBlock(ctx: Ctx, box: LayoutBox, parentOf: JsStringMap<LayoutBox>, out: Placement, icb: ContainingBlock): ContainingBlock {
   var at: LayoutBox? = parentOf.get(box.id)
   // ts: packages/layout/src/layout.ts:97
   while (((at != null) && jsStrEq(jsUnwrap(at).style.position, "static"))) {
@@ -161,7 +161,7 @@ fun layout_containingBlock(ctx: Block_Ctx, box: LayoutBox, parentOf: JsStringMap
 }
 
 // ts: packages/layout/src/layout.ts:118
-fun layout_placeOutOfFlow(ctx: Block_Ctx, input: LayoutInput, out: Placement, icb: ContainingBlock): Unit {
+fun layout_placeOutOfFlow(ctx: Ctx, input: LayoutInput, out: Placement, icb: ContainingBlock): Unit {
   val parentOf: JsStringMap<LayoutBox> = layout_parents(input.root)
   // ts: packages/layout/src/layout.ts:120
   run {

@@ -78,7 +78,7 @@ public final class InlineResult {
 }
 
 // ts: packages/layout/src/inline.ts:215
-public final class Inline_Piece {
+public final class Piece {
   public let x: Double
   public let y: Double
   public let width: Double
@@ -152,7 +152,7 @@ public func inline_checkRtlText(_ box: LayoutBox, _ leaves: JsArray<TextLeaf>) t
 }
 
 // ts: packages/layout/src/inline.ts:67
-public func inline_buildRun(_ ctx: Block_Ctx, _ box: LayoutBox, _ leaves: JsArray<TextLeaf>) throws -> Run {
+public func inline_buildRun(_ ctx: Ctx, _ box: LayoutBox, _ leaves: JsArray<TextLeaf>) throws -> Run {
   let first: TextLeaf = try jsUnwrap(jsAt(leaves, 0.0))
   // ts: packages/layout/src/inline.ts:69
   if try (block_directionOf(ctx, box) == S.s_rtl) {
@@ -271,7 +271,7 @@ public func inline_trimEnd(_ run: Run, _ start: Double, _ end: Double) throws ->
 }
 
 // ts: packages/layout/src/inline.ts:138
-public func inline_width(_ ctx: Block_Ctx, _ run: Run, _ start: Double, _ end: Double) throws -> Double {
+public func inline_width(_ ctx: Ctx, _ run: Run, _ start: Double, _ end: Double) throws -> Double {
   var total: Double = units_ZERO
   var i: Double = start
   // ts: packages/layout/src/inline.ts:141
@@ -293,7 +293,7 @@ public func inline_width(_ ctx: Block_Ctx, _ run: Run, _ start: Double, _ end: D
 }
 
 // ts: packages/layout/src/inline.ts:157
-public func inline_cachedWidth(_ ctx: Block_Ctx, _ run: Run, _ start: Double, _ end: Double) throws -> Double {
+public func inline_cachedWidth(_ ctx: Ctx, _ run: Run, _ start: Double, _ end: Double) throws -> Double {
   var total: Double = units_ZERO
   var i: Double = start
   // ts: packages/layout/src/inline.ts:160
@@ -316,7 +316,7 @@ public func inline_cachedWidth(_ ctx: Block_Ctx, _ run: Run, _ start: Double, _ 
 }
 
 // ts: packages/layout/src/inline.ts:173
-public func inline_breakLines(_ ctx: Block_Ctx, _ run: Run, _ available: Double) throws -> JsArray<Inline_Line> {
+public func inline_breakLines(_ ctx: Ctx, _ run: Run, _ available: Double) throws -> JsArray<Inline_Line> {
   let glyph: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s_X, jsUnwrap(jsAt(run.leaves, 0.0)).font)
   let slack: Double = ((ctx.faults.breakOffByOne && glyph.ok) ? (glyph as! MeasureResult_okTrue).measure.width : units_ZERO)
   let lines: JsArray<Inline_Line> = JsArray<Inline_Line>([])
@@ -353,7 +353,7 @@ public func inline_breakLines(_ ctx: Block_Ctx, _ run: Run, _ available: Double)
 }
 
 // ts: packages/layout/src/inline.ts:201
-public func inline_alignOffset(_ ctx: Block_Ctx, _ box: LayoutBox, _ free: Double) throws -> Double {
+public func inline_alignOffset(_ ctx: Ctx, _ box: LayoutBox, _ free: Double) throws -> Double {
   let align: JsString = box.style.textAlign
   // ts: packages/layout/src/inline.ts:203
   if (align == S.s_justify) {
@@ -377,11 +377,11 @@ public func inline_alignOffset(_ ctx: Block_Ctx, _ box: LayoutBox, _ free: Doubl
 }
 
 // ts: packages/layout/src/inline.ts:219
-public func inline_layoutInline(_ ctx: Block_Ctx, _ box: LayoutBox, _ leaves: JsArray<TextLeaf>, _ available: Double, _ origin: Point) throws -> InlineResult {
+public func inline_layoutInline(_ ctx: Ctx, _ box: LayoutBox, _ leaves: JsArray<TextLeaf>, _ available: Double, _ origin: Point) throws -> InlineResult {
   let run: Run = try inline_buildRun(ctx, box, leaves)
   let lines: JsArray<Inline_Line> = try ((jsLength(run.chars) == 0.0) ? JsArray<Inline_Line>([]) : inline_breakLines(ctx, run, available))
-  let pieces: JsArray<JsArray<Inline_Piece>> = try jsMap(leaves, { (_unused0: TextLeaf) throws -> JsArray<Inline_Piece> in
-    return JsArray<Inline_Piece>([])
+  let pieces: JsArray<JsArray<Piece>> = try jsMap(leaves, { (_unused0: TextLeaf) throws -> JsArray<Piece> in
+    return JsArray<Piece>([])
 })
   let glyphHeight: Double = try units_add(run.ascent, run.descent)
   try jsForEachI(lines, { (line: Inline_Line, k: Double) throws -> Void in
@@ -396,13 +396,13 @@ public func inline_layoutInline(_ ctx: Block_Ctx, _ box: LayoutBox, _ leaves: Js
       while try ((i < line.visibleEnd) && (jsUnwrap(jsAt(run.chars, i)).leaf == leaf)) {
         i += 1.0
       }
-      _ = try jsPush(jsUnwrap(jsAt(pieces, leaf)), Inline_Piece(units_add(offset, inline_width(ctx, run, line.start, from)), y, inline_width(ctx, run, from, i), glyphHeight))
+      _ = try jsPush(jsUnwrap(jsAt(pieces, leaf)), Piece(units_add(offset, inline_width(ctx, run, line.start, from)), y, inline_width(ctx, run, from, i), glyphHeight))
     }
 })
   let placed: JsArray<Placed> = JsArray<Placed>([])
   try jsForEachI(leaves, { (t: TextLeaf, leaf: Double) throws -> Void in
-    let own: JsArray<Inline_Piece> = try jsUnwrap(jsAt(pieces, leaf))
-    let firstPiece: Inline_Piece? = jsAt(own, 0.0)
+    let own: JsArray<Piece> = try jsUnwrap(jsAt(pieces, leaf))
+    let firstPiece: Piece? = jsAt(own, 0.0)
     // ts: packages/layout/src/inline.ts:239
     if (firstPiece == nil) {
       return
@@ -416,7 +416,7 @@ public func inline_layoutInline(_ ctx: Block_Ctx, _ box: LayoutBox, _ leaves: Js
       let _a29 = own
       var _i29 = 0
       while _i29 < _a29.items.count {
-        let p: Inline_Piece = _a29.items[_i29]
+        let p: Piece = _a29.items[_i29]
         _i29 += 1
         try left = units_min(left, p.x)
         try top = units_min(top, p.y)
@@ -424,7 +424,7 @@ public func inline_layoutInline(_ ctx: Block_Ctx, _ box: LayoutBox, _ leaves: Js
         try bottom = units_max(bottom, units_add(p.y, p.height))
       }
     }
-    let children: JsArray<Placed> = try jsMapI(own, { (p: Inline_Piece, j: Double) throws -> Placed in
+    let children: JsArray<Placed> = try jsMapI(own, { (p: Piece, j: Double) throws -> Placed in
     return try Placed(Frag(jsConcat(t.id, S.s54, jsNumberToString(j)), p.width, p.height, nil, JsArray<Placed>([]), JsArray<OutOfFlow>([])), units_sub(p.x, left), units_sub(p.y, top))
 })
     let frag: Frag = try Frag(t.id, units_sub(right, left), units_sub(bottom, top), nil, children, JsArray<OutOfFlow>([]))
@@ -434,7 +434,7 @@ public func inline_layoutInline(_ ctx: Block_Ctx, _ box: LayoutBox, _ leaves: Js
 }
 
 // ts: packages/layout/src/inline.ts:260
-public func inline_inlineIntrinsicSize(_ ctx: Block_Ctx, _ box: LayoutBox, _ leaves: JsArray<TextLeaf>, _ kind: JsString) throws -> Double {
+public func inline_inlineIntrinsicSize(_ ctx: Ctx, _ box: LayoutBox, _ leaves: JsArray<TextLeaf>, _ kind: JsString) throws -> Double {
   let run: Run = try inline_buildRun(ctx, box, leaves)
   // ts: packages/layout/src/inline.ts:262
   if (kind == S.s_max) {

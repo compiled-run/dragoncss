@@ -52,7 +52,7 @@ public final class EngineFaults {
 }
 
 // ts: packages/layout/src/block.ts:102
-public final class Block_Ctx {
+public final class Ctx {
   public let measurer: TextMeasurer
   public let devicePixelRatio: Double
   public let faults: EngineFaults
@@ -160,7 +160,7 @@ public let block_NO_ENGINE_FAULTS: EngineFaults = EngineFaults(false, false, fal
 public let block_EMPTY_STRUT: Strut = Strut(units_ZERO, units_ZERO)
 
 // ts: packages/layout/src/block.ts:105
-public func block_directionOf(_ ctx: Block_Ctx, _ box: LayoutBox) throws -> JsString {
+public func block_directionOf(_ ctx: Ctx, _ box: LayoutBox) throws -> JsString {
   return (ctx.faults.rtlAsLtr ? S.s_ltr : box.style.direction)
 }
 
@@ -189,7 +189,7 @@ public func block_clampScrollBaseline(_ box: LayoutBox, _ baseline: Double?, _ h
 }
 
 // ts: packages/layout/src/block.ts:158
-public func block_layoutContents(_ ctx: Block_Ctx, _ box: LayoutBox, _ a: ContentsArgs) throws -> ContentsResult {
+public func block_layoutContents(_ ctx: Ctx, _ box: LayoutBox, _ a: ContentsArgs) throws -> ContentsResult {
   let s: LayoutStyle = box.style
   try position_checkOutOfFlowSiblings(ctx, box)
   let pad: Edges = try box_resolvePaddingWith(s, a.cbInline, ctx.faults)
@@ -225,7 +225,7 @@ public func block_layoutContents(_ ctx: Block_Ctx, _ box: LayoutBox, _ a: Conten
 }
 
 // ts: packages/layout/src/block.ts:229
-public func block_blockLevelInlineSize(_ ctx: Block_Ctx, _ box: LayoutBox, _ cbInline: Double, _ cbDirection: JsString) throws -> BlockLevelInline {
+public func block_blockLevelInlineSize(_ ctx: Ctx, _ box: LayoutBox, _ cbInline: Double, _ cbDirection: JsString) throws -> BlockLevelInline {
   let s: LayoutStyle = box.style
   let pad: Edges = try box_resolvePaddingWith(s, cbInline, ctx.faults)
   let bor: Edges = try box_resolveBorder(s, ctx.devicePixelRatio)
@@ -254,7 +254,7 @@ public func block_blockLevelInlineSize(_ ctx: Block_Ctx, _ box: LayoutBox, _ cbI
 }
 
 // ts: packages/layout/src/block.ts:277
-public func block_layoutBlockFlow(_ ctx: Block_Ctx, _ box: LayoutBox, _ a: FlowArgs) throws -> FlowResult {
+public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) throws -> FlowResult {
   let kids: JsArray<any U_LayoutBox_TextLeaf> = box.children
   let texts: JsArray<TextLeaf> = try jsCastArray(jsFilter(kids, { (k: any U_LayoutBox_TextLeaf) throws -> Bool in
     return (k.kind == S.s_text)

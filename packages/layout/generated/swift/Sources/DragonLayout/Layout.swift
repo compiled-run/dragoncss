@@ -91,7 +91,7 @@ public func layout_layoutWithFaults(_ given: LayoutInput, _ measurer: TextMeasur
   // ts: packages/layout/src/layout.ts:45
   do {
     let m: TextMeasurer = try ((faults.metricHalfUp || faults.untruncatedFontSize) ? text_ahemMeasurerWith(AhemRuleFaults(faults.metricHalfUp, faults.untruncatedFontSize)) : measurer)
-    let ctx: Block_Ctx = Block_Ctx(m, input.devicePixelRatio, faults)
+    let ctx: Ctx = Ctx(m, input.devicePixelRatio, faults)
     let icbDirection: JsString = try block_directionOf(ctx, root)
     let inline: BlockLevelInline = try block_blockLevelInlineSize(ctx, root, icbWidth, icbDirection)
     let r: ContentsResult = try block_layoutContents(ctx, root, ContentsArgs(icbWidth, inline.borderBoxWidth, nil, false, HeightBasis_definite(S.s_definite, icbHeight), true))
@@ -163,7 +163,7 @@ public func layout_parents(_ root: LayoutBox) throws -> JsStringMap<LayoutBox> {
 }
 
 // ts: packages/layout/src/layout.ts:95
-public func layout_containingBlock(_ ctx: Block_Ctx, _ box: LayoutBox, _ parentOf: JsStringMap<LayoutBox>, _ out: Placement, _ icb: ContainingBlock) throws -> ContainingBlock {
+public func layout_containingBlock(_ ctx: Ctx, _ box: LayoutBox, _ parentOf: JsStringMap<LayoutBox>, _ out: Placement, _ icb: ContainingBlock) throws -> ContainingBlock {
   var at: LayoutBox? = parentOf.get(box.id)
   // ts: packages/layout/src/layout.ts:97
   while try ((at != nil) && (jsUnwrap(at).style.position == S.s_static)) {
@@ -192,7 +192,7 @@ public func layout_containingBlock(_ ctx: Block_Ctx, _ box: LayoutBox, _ parentO
 }
 
 // ts: packages/layout/src/layout.ts:118
-public func layout_placeOutOfFlow(_ ctx: Block_Ctx, _ input: LayoutInput, _ out: Placement, _ icb: ContainingBlock) throws -> Void {
+public func layout_placeOutOfFlow(_ ctx: Ctx, _ input: LayoutInput, _ out: Placement, _ icb: ContainingBlock) throws -> Void {
   let parentOf: JsStringMap<LayoutBox> = try layout_parents(input.root)
   // ts: packages/layout/src/layout.ts:120
   do {

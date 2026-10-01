@@ -29,7 +29,7 @@ class EngineFaults(
 )
 
 // ts: packages/layout/src/block.ts:102
-class Block_Ctx(
+class Ctx(
   val measurer: TextMeasurer,
   val devicePixelRatio: Double,
   val faults: EngineFaults,
@@ -93,7 +93,7 @@ val block_NO_ENGINE_FAULTS: EngineFaults = EngineFaults(false, false, false, fal
 val block_EMPTY_STRUT: Strut = Strut(units_ZERO, units_ZERO)
 
 // ts: packages/layout/src/block.ts:105
-fun block_directionOf(ctx: Block_Ctx, box: LayoutBox): String {
+fun block_directionOf(ctx: Ctx, box: LayoutBox): String {
   return (if (ctx.faults.rtlAsLtr) "ltr" else box.style.direction)
 }
 
@@ -122,7 +122,7 @@ fun block_clampScrollBaseline(box: LayoutBox, baseline: Double?, height: Double)
 }
 
 // ts: packages/layout/src/block.ts:158
-fun block_layoutContents(ctx: Block_Ctx, box: LayoutBox, a: ContentsArgs): ContentsResult {
+fun block_layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): ContentsResult {
   val s: LayoutStyle = box.style
   position_checkOutOfFlowSiblings(ctx, box)
   val pad: Edges = box_resolvePaddingWith(s, a.cbInline, ctx.faults)
@@ -158,7 +158,7 @@ fun block_layoutContents(ctx: Block_Ctx, box: LayoutBox, a: ContentsArgs): Conte
 }
 
 // ts: packages/layout/src/block.ts:229
-fun block_blockLevelInlineSize(ctx: Block_Ctx, box: LayoutBox, cbInline: Double, cbDirection: String): BlockLevelInline {
+fun block_blockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: Double, cbDirection: String): BlockLevelInline {
   val s: LayoutStyle = box.style
   val pad: Edges = box_resolvePaddingWith(s, cbInline, ctx.faults)
   val bor: Edges = box_resolveBorder(s, ctx.devicePixelRatio)
@@ -187,7 +187,7 @@ fun block_blockLevelInlineSize(ctx: Block_Ctx, box: LayoutBox, cbInline: Double,
 }
 
 // ts: packages/layout/src/block.ts:277
-fun block_layoutBlockFlow(ctx: Block_Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
+fun block_layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   val kids: JsArray<U_LayoutBox_TextLeaf> = box.children
   val texts: JsArray<TextLeaf> = jsCastArray<TextLeaf>(jsFilter(kids, fun(k: U_LayoutBox_TextLeaf): Boolean {
     return jsStrEq(k.kind, "text")

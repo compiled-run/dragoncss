@@ -2,7 +2,7 @@
 package dev.dragon.layout
 
 // ts: packages/layout/src/intrinsic.ts:15
-fun intrinsic_intrinsicContentInlineSize(ctx: Block_Ctx, box: LayoutBox, kind: String): Double {
+fun intrinsic_intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: String): Double {
   val kids: JsArray<U_LayoutBox_TextLeaf> = box.children
   // ts: packages/layout/src/intrinsic.ts:17
   if (jsStrEq(box.style.display, "flex")) {
@@ -37,7 +37,7 @@ fun intrinsic_intrinsicContentInlineSize(ctx: Block_Ctx, box: LayoutBox, kind: S
 }
 
 // ts: packages/layout/src/intrinsic.ts:30
-fun intrinsic_inlineContribution(ctx: Block_Ctx, box: LayoutBox, kind: String): Double {
+fun intrinsic_inlineContribution(ctx: Ctx, box: LayoutBox, kind: String): Double {
   val s: LayoutStyle = box.style
   val bor: Edges = box_resolveBorder(s, ctx.devicePixelRatio)
   // ts: packages/layout/src/intrinsic.ts:34
@@ -69,7 +69,7 @@ fun intrinsic_inlineContribution(ctx: Block_Ctx, box: LayoutBox, kind: String): 
 }
 
 // ts: packages/layout/src/intrinsic.ts:50
-fun intrinsic_flexIntrinsicContent(ctx: Block_Ctx, box: LayoutBox, kind: String): Double {
+fun intrinsic_flexIntrinsicContent(ctx: Ctx, box: LayoutBox, kind: String): Double {
   val s: LayoutStyle = box.style
   val items: JsArray<LayoutBox> = jsCastArray<LayoutBox>(jsFilter(box.children, fun(k: U_LayoutBox_TextLeaf): Boolean {
     return (jsStrEq(k.kind, "box") && (!position_isOutOfFlow(ctx, (k as LayoutBox))))

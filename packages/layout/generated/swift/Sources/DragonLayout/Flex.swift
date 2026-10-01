@@ -144,7 +144,7 @@ public final class Axes {
 }
 
 // ts: packages/layout/src/flex.ts:120
-public func flex_layoutFlexContainer(_ ctx: Block_Ctx, _ box: LayoutBox, _ a: FlexArgs) throws -> FlexResult {
+public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs) throws -> FlexResult {
   let s: LayoutStyle = box.style
   let isRow: Bool = ((s.flexDirection == S.s_row) || (s.flexDirection == S.s_row_reverse))
   let ltr: Bool = try (block_directionOf(ctx, box) == S.s_ltr)
@@ -399,7 +399,7 @@ public func flex_staticAxis(_ position: JsString, _ lo: Double, _ size: Double, 
 }
 
 // ts: packages/layout/src/flex.ts:314
-public func flex_staticPosition(_ ctx: Block_Ctx, _ container: LayoutBox, _ child: LayoutBox, _ axes: Axes, _ content: ContentRect) throws -> OutOfFlow {
+public func flex_staticPosition(_ ctx: Ctx, _ container: LayoutBox, _ child: LayoutBox, _ axes: Axes, _ content: ContentRect) throws -> OutOfFlow {
   let flexStart: JsString = (axes.reverse ? S.s_end : S.s_start)
   let j: JsString = try flex_justifyFlow(container.style.justifyContent, axes)
   let main: JsString = ((j == S.s_space_between) ? flexStart : (((j == S.s_space_around) || (j == S.s_space_evenly)) ? S.s_center : j))
@@ -416,12 +416,12 @@ public func flex_ownBaseline(_ frag: Frag) throws -> Double {
 }
 
 // ts: packages/layout/src/flex.ts:331
-public func flex_baselineFault(_ ctx: Block_Ctx, _ item: Item) throws -> Double {
+public func flex_baselineFault(_ ctx: Ctx, _ item: Item) throws -> Double {
   return try (ctx.faults.baselineFromBorderTop ? units_add(item.bor.top, item.pad.top) : units_ZERO)
 }
 
 // ts: packages/layout/src/flex.ts:341
-public func flex_itemBaseline(_ ctx: Block_Ctx, _ item: Item, _ axes: Axes, _ frag: Frag?, _ crossSize: Double) throws -> ItemBaseline {
+public func flex_itemBaseline(_ ctx: Ctx, _ item: Item, _ axes: Axes, _ frag: Frag?, _ crossSize: Double) throws -> ItemBaseline {
   let m: Edges = item.margin
   // ts: packages/layout/src/flex.ts:343
   if axes.isRow {
@@ -455,7 +455,7 @@ public func flex_gapsFor(_ n: Double, _ gap: Double) throws -> Double {
 }
 
 // ts: packages/layout/src/flex.ts:368
-public func flex_effectiveAlign(_ ctx: Block_Ctx, _ container: LayoutBox, _ item: LayoutBox, _ axes: Axes) throws -> JsString {
+public func flex_effectiveAlign(_ ctx: Ctx, _ container: LayoutBox, _ item: LayoutBox, _ axes: Axes) throws -> JsString {
   let raw: JsString = ((item.style.alignSelf == S.s_auto) ? container.style.alignItems : item.style.alignSelf)
   let flexStart: JsString = (axes.wrapReverse ? S.s_end : S.s_start)
   let flexEnd: JsString = (axes.wrapReverse ? S.s_start : S.s_end)
@@ -493,7 +493,7 @@ public func flex_stretchesCross(_ item: Item, _ isRow: Bool) throws -> Bool {
 }
 
 // ts: packages/layout/src/flex.ts:403
-public func flex_buildItem(_ ctx: Block_Ctx, _ container: LayoutBox, _ box: LayoutBox, _ axes: Axes, _ a: FlexArgs, _ mainInner: Double?, _ crossInner: Double?, _ singleLine: Bool, _ heightBasis: any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite) throws -> Item {
+public func flex_buildItem(_ ctx: Ctx, _ container: LayoutBox, _ box: LayoutBox, _ axes: Axes, _ a: FlexArgs, _ mainInner: Double?, _ crossInner: Double?, _ singleLine: Bool, _ heightBasis: any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite) throws -> Item {
   let s: LayoutStyle = box.style
   let isRow: Bool = axes.isRow
   let cbInline: Double = a.contentWidth

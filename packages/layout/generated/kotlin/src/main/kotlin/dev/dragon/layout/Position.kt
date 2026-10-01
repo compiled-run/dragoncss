@@ -42,12 +42,12 @@ class AbsoluteResult(
 )
 
 // ts: packages/layout/src/position.ts:27
-fun position_isOutOfFlow(ctx: Block_Ctx, box: LayoutBox): Boolean {
+fun position_isOutOfFlow(ctx: Ctx, box: LayoutBox): Boolean {
   return (jsStrEq(box.style.position, "absolute") && (!ctx.faults.absposInFlow))
 }
 
 // ts: packages/layout/src/position.ts:35
-fun position_checkOutOfFlowSiblings(ctx: Block_Ctx, box: LayoutBox): Unit {
+fun position_checkOutOfFlowSiblings(ctx: Ctx, box: LayoutBox): Unit {
   val oof: LayoutBox? = (jsFind(box.children, fun(k: U_LayoutBox_TextLeaf): Boolean {
     return (jsStrEq(k.kind, "box") && position_isOutOfFlow(ctx, (k as LayoutBox)))
 }) as LayoutBox?)
@@ -190,7 +190,7 @@ fun position_logicalEdge(edge: String, reversed: Boolean): String {
 }
 
 // ts: packages/layout/src/position.ts:159
-fun position_layoutAbsolute(ctx: Block_Ctx, box: LayoutBox, cb: ContainingBlock, staticX: StaticAxis, staticY: StaticAxis): AbsoluteResult {
+fun position_layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, staticX: StaticAxis, staticY: StaticAxis): AbsoluteResult {
   val s: LayoutStyle = box.style
   val rtl: Boolean = jsStrEq(cb.direction, "rtl")
   val pad: Edges = box_resolvePaddingWith(s, cb.width, ctx.faults)
