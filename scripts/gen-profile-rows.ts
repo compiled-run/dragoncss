@@ -1,7 +1,8 @@
 // Derives the support profile rows (packages/dragon/src/profiles/ios.ts, android.ts and web.ts) from the parity run: a row key
 // ("<feature>@<context>", computed by the compiler's usedKeys) gets a row only when cases that use it passed the lane its
 // proof names, against the committed authored captures. The profiles are never enforced while deriving. android.ts follows
-// the iOS rule (native-strategy.md 3.9 item 13).
+// the iOS rule (native-strategy.md 3.9 item 13). It also writes packages/dragon/src/profiles/native-lanes.ts, the committed native
+// lanes verdict that gates outputs.ready (P6a, Amendment T075J); the lanes never decide a profile status.
 // Run with: pnpm run profile:rows
 import { writeFileSync } from 'node:fs';
 import { NO_ENGINE_FAULTS } from '../packages/layout/src/block.ts';
@@ -14,7 +15,7 @@ import { committedFontAuthored, runFontFixture } from '../packages/parity/src/fo
 import { repoPath } from '../packages/parity/src/paths.ts';
 import type { CaseOutcome } from '../packages/parity/src/pipeline.ts';
 import { runFixture } from '../packages/parity/src/pipeline.ts';
-import { deriveRows, profileSource } from '../packages/parity/src/profile-rows.ts';
+import { committedLanes, deriveRows, nativeLanesSource, profileSource } from '../packages/parity/src/profile-rows.ts';
 
 const browser = await launchChrome();
 const cases: CaseOutcome[] = [];
@@ -40,3 +41,6 @@ for (const target of ['ios', 'android', 'web'] as const) {
   writeFileSync(repoPath(`packages/dragon/src/profiles/${target}.ts`), profileSource(target, rows));
   console.log(`${target}: ${rows.length} rows from ${cases.length} cases`);
 }
+const { lanes, stale } = committedLanes();
+writeFileSync(repoPath('packages/dragon/src/profiles/native-lanes.ts'), nativeLanesSource(lanes, stale));
+console.log(`native lanes: ${lanes === null ? 'no committed lanes.json' : `${stale.length} stale`}`);
