@@ -2245,6 +2245,9 @@ tasks:
     stop_if:
       - See notes/T047-runtime-spec.md §3.2 stop_if (binding)
     receipt: null
+    constraints:
+      - '2026-10-01 host-done, pending device runs; 4 stacked PRs on master 77c641eca: ANIM-a2 (anim-a2-translate 00ccd53c8, ~35 KB), SELD-R1a (seld-r1a 7340df522, ~92 KB), SELD-R1b (seld-r1, ~138 KB after
+        split), lane wiring (seld-lanes, ~25 KB). parity:hit-report 0 mismatches over 703,666 Chrome points; p1/hit 1872/1872 Swift and Kotlin; north star Android equals iOS.'
   - id: T063
     type: worker
     assignee: Worker
@@ -2260,6 +2263,8 @@ tasks:
     receipt: null
     constraints:
       - 'Split: SELD-R1a (state runtime) is done on seld-r1 7b7e096, pending its device run and the targets.ts device-states entry after #42. SELD-R1b is T134.'
+      - '2026-10-01 host-done, pending device runs; 4 stacked PRs on master 77c641eca: ANIM-a2 (anim-a2-translate 00ccd53c8, ~35 KB), SELD-R1a (seld-r1a 7340df522, ~92 KB), SELD-R1b (seld-r1, ~138 KB after
+        split), lane wiring (seld-lanes, ~25 KB). parity:hit-report 0 mismatches over 703,666 Chrome points; p1/hit 1872/1872 Swift and Kotlin; north star Android equals iOS.'
   - id: T064
     type: worker
     assignee: Worker
@@ -3793,6 +3798,9 @@ tasks:
     objective: 'SELD-R1b (split from T063): rt-hit.ts with the Chrome 145 inline hit rule from T063J (notes/T047-runtime-spec.md amendment), pointer-events auto and none (inherited), tap dispatch, and the
       device-states and device-hit lanes, on seld-r1. The pointer-events capture key needs the identity test. targets.ts entries after #42.'
     receipt: null
+    constraints:
+      - '2026-10-01 host-done, pending device runs; 4 stacked PRs on master 77c641eca: ANIM-a2 (anim-a2-translate 00ccd53c8, ~35 KB), SELD-R1a (seld-r1a 7340df522, ~92 KB), SELD-R1b (seld-r1, ~138 KB after
+        split), lane wiring (seld-lanes, ~25 KB). parity:hit-report 0 mismatches over 703,666 Chrome points; p1/hit 1872/1872 Swift and Kotlin; north star Android equals iOS.'
   - id: T136
     type: worker
     assignee: Worker
