@@ -10,6 +10,7 @@ import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { CHROME_VERSION, chromeArgsAt, PLAYWRIGHT_VERSION } from '../src/chrome.ts';
 import { ZOOM_GUARD } from '../src/dpr.ts';
+import { parseFixtureHtml } from '../src/fixture-reader.ts';
 import { repoPath } from '../src/paths.ts';
 
 // The example is its own TypeScript project, which this one does not reference; its modules are loaded at run time.
@@ -51,6 +52,7 @@ type Snapshot = {
   FREE_STATES: readonly FreeState[];
   readSnapshot(): { html: string; css: string };
   VIDEO_EMBED_SRC: string;
+  withVideoIframe(html: string): string;
   EMBED_STAND_IN: { readonly contentType: string; readonly body: string; readonly label: string };
 };
 type FontMapModule = { FONTS: unknown; pinnedFaceSrcs(map: unknown): readonly string[] };
@@ -224,6 +226,35 @@ describe('north-star fonts and video slot', () => {
           else expect([id, d.texts.filter((t) => t.id.startsWith(`${id}:`)).map((t) => t.data).join('')], c.dump).toEqual(['play-icon', '❚❚']);
         }
       }
+    }
+  });
+
+  it('withVideoIframe swaps exactly the placeholder element: same parent, no stray text, the src decoded, everything else equal', () => {
+    type Node = ReturnType<typeof parseFixtureHtml>['root'] | { text: string };
+    const find = (n: Node, id: string): ReturnType<typeof parseFixtureHtml>['root'] | null => {
+      if (!('tag' in n)) return null;
+      if (n.attrs.get('data-dragon-id') === id) return n;
+      for (const c of n.children) {
+        const hit = find(c, id);
+        if (hit !== null) return hit;
+      }
+      return null;
+    };
+    const { html } = snapshot.readSnapshot();
+    const before = parseFixtureHtml(html).root;
+    const after = parseFixtureHtml(snapshot.withVideoIframe(html)).root;
+    const host = find(after, 'youtube-frame-host');
+    expect(host?.children.map((c) => ('tag' in c ? [c.tag, c.attrs.get('data-dragon-id'), c.children.length] : ['text', c.text]))).toEqual([['iframe', 'video-placeholder', 0]]);
+    const slot = find(after, 'video-placeholder');
+    expect([...(slot?.attrs ?? new Map()).entries()]).toEqual([['class', 'youtube-player-target'], ['src', snapshot.VIDEO_EMBED_SRC], ['data-dragon-id', 'video-placeholder']]);
+    // Every other element and text is unchanged: the placeholder div back in place of the iframe gives the original tree.
+    const restore = snapshot.withVideoIframe(html).replace(/<iframe class="youtube-player-target" src="[^"]*" data-dragon-id="video-placeholder"><\/iframe/, '<div class="youtube-player-target" data-dragon-id="video-placeholder"></div');
+    expect(restore).toBe(html);
+    expect(find(before, 'video-placeholder')?.tag).toBe('div');
+    // No capture records a text node in the video shell, the player, the frame host or the slot.
+    for (const c of captures) {
+      const d = JSON.parse(read(c.dump).toString('utf8')) as Dump;
+      expect(d.texts.filter((t) => /^(mini-video-shell|youtube-player|youtube-frame-host|video-placeholder):/.test(t.id)).map((t) => t.id), c.dump).toEqual([]);
     }
   });
 

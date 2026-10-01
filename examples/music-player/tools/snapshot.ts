@@ -99,6 +99,7 @@ export const EMBED_STAND_IN = {
   label: 'stand-in: an empty HTML document (color-scheme dark) in place of the YouTube embed (no network)',
 } as const;
 
+// snapshot.html breaks its lines inside tags ("</div\n>"), so the placeholder ends at "</div" and its "\n>" closes the iframe end tag.
 const PLACEHOLDER = '<div class="youtube-player-target" data-dragon-id="video-placeholder"></div';
 
 /**
