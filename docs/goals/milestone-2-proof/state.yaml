@@ -3665,10 +3665,30 @@ tasks:
   - id: T131
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: values
     objective: 'Percent inside a border-width calc(): Chrome treats it as invalid; Dragon refuses with a misleading percentage-gaps reason. Give it the right typed reason, matching Chrome validity.'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #46 merged 69756ef3d. mathInvalidity ports Blink math parser type checking (145.0.7632.6). Chrome-rejected math is now DRAGON_CSS_INVALID_VALUE and dropped, so an earlier declaration
+        wins, as in Chrome. Per-context percent reasons. A 3322-row Chrome oracle agrees in both directions, bar 4 undecided values. Round-1 fix kept the validity check bounded by MAX_MATH_TOKENS. pnpm
+        test 2949/2949.'
+      changed_files:
+        - packages/dragon/src/css/math.ts
+        - packages/dragon/src/css/stylesheet.ts
+        - packages/dragon/test/math-validity.test.ts
+        - packages/dragon/test/units.test.ts
+      commands:
+        - cmd: pnpm test 2949/2949
+          status: pass
+        - cmd: pnpm pr:review 46 exit 0
+          status: pass
+    allowed_files:
+      - packages/dragon/src/css/math.ts
+      - packages/dragon/src/css/stylesheet.ts
+      - packages/dragon/test/math-validity.test.ts
+      - packages/dragon/test/units.test.ts
   - id: T132
     type: worker
     assignee: Worker
