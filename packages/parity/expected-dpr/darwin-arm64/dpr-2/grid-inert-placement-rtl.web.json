@@ -86,7 +86,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "pointer-events": "auto"
       }
     },
     {
@@ -165,7 +166,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "pointer-events": "auto"
       }
     },
     {
@@ -244,7 +246,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "pointer-events": "auto"
       }
     },
     {
@@ -323,7 +326,8 @@
         "grid-column-start": "2",
         "grid-column-end": "4",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "pointer-events": "auto"
       }
     },
     {
@@ -402,7 +406,8 @@
         "grid-column-start": "head",
         "grid-column-end": "head",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "pointer-events": "auto"
       }
     },
     {
@@ -481,7 +486,8 @@
         "grid-column-start": "2 a",
         "grid-column-end": "span 2 b",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "pointer-events": "auto"
       }
     },
     {
@@ -580,7 +586,8 @@
         "grid-column-start": "2",
         "grid-column-end": "4",
         "justify-items": "normal",
-        "justify-self": "normal"
+        "justify-self": "normal",
+        "pointer-events": "auto"
       }
     },
     {
@@ -659,7 +666,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "pointer-events": "auto"
       }
     },
     {
@@ -738,7 +746,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "pointer-events": "auto"
       }
     },
     {
@@ -817,7 +826,8 @@
         "grid-column-start": "span 3 Name",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "pointer-events": "auto"
       }
     },
     {
@@ -916,7 +926,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "pointer-events": "auto"
       }
     },
     {
@@ -995,7 +1006,8 @@
         "grid-column-start": "3",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "center"
+        "justify-self": "center",
+        "pointer-events": "auto"
       }
     },
     {
@@ -1074,7 +1086,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "end"
+        "justify-self": "end",
+        "pointer-events": "auto"
       }
     },
     {
@@ -1153,7 +1166,8 @@
         "grid-column-start": "y",
         "grid-column-end": "y",
         "justify-items": "normal",
-        "justify-self": "safe center"
+        "justify-self": "safe center",
+        "pointer-events": "auto"
       }
     },
     {
@@ -1232,7 +1246,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "stretch"
+        "justify-self": "stretch",
+        "pointer-events": "auto"
       }
     },
     {
@@ -1311,7 +1326,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "left"
+        "justify-self": "left",
+        "pointer-events": "auto"
       }
     },
     {
@@ -1390,7 +1406,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "baseline"
+        "justify-self": "baseline",
+        "pointer-events": "auto"
       }
     },
     {
@@ -1469,7 +1486,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "unsafe self-end"
+        "justify-self": "unsafe self-end",
+        "pointer-events": "auto"
       }
     },
     {
@@ -1548,7 +1566,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "flex-start"
+        "justify-self": "flex-start",
+        "pointer-events": "auto"
       }
     },
     {
@@ -1627,7 +1646,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "pointer-events": "auto"
       }
     },
     {
@@ -1706,7 +1726,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "right"
+        "justify-self": "right",
+        "pointer-events": "auto"
       }
     },
     {
@@ -1785,7 +1806,8 @@
         "grid-column-start": "1",
         "grid-column-end": "-1",
         "justify-items": "normal",
-        "justify-self": "last baseline"
+        "justify-self": "last baseline",
+        "pointer-events": "auto"
       }
     },
     {
@@ -1884,7 +1906,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "anchor-center"
+        "justify-self": "anchor-center",
+        "pointer-events": "auto"
       }
     },
     {
@@ -1963,7 +1986,8 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "pointer-events": "auto"
       }
     },
     {
@@ -2042,7 +2066,8 @@
         "grid-column-start": "3",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "pointer-events": "auto"
       }
     }
   ]
