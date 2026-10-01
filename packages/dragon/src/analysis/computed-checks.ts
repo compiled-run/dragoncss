@@ -20,33 +20,26 @@ const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.
 /** UAX #9: in an rtl paragraph only these keep logical order (strong L letters, space, U+200B not at the end). */
 const RTL_SAFE = /^[A-Za-z \u200b]*$/u;
 
-// css-overflow-3 §3.1 and §3.3: only overflow hidden on both axes is supported. A computed auto, scroll or clip (including auto
-// computed from visible beside hidden) and any overflow on html or body (which propagates to the viewport) are refused.
+// css-overflow-3 §3.1: clip beside visible on the other axis keeps both, and clips one axis only, which native views do not draw
+// yet (OVFL-c). Every other computed pair is supported, html and body included: the lowering resolves viewport propagation (§3.3).
 function checkOverflow(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const axes: Longhand[] = ['overflow-x', 'overflow-y'];
   const values = axes.map((p) => el.props.get(p) as ResolvedValue);
-  const declared = values.find((v) => v.declaration !== null);
-  const tag = el.element.tag;
-  for (const [i, v] of values.entries()) {
-    const k = keywordOf(v);
-    const onRoot = (tag === 'html' || tag === 'body') && k !== 'visible';
-    const unsupportedValue = k === 'auto' || k === 'scroll' || k === 'clip';
-    if (!onRoot && !unsupportedValue) continue;
-    // A value the author wrote and no profile row supports is already DRAGON_UNSUPPORTED_VALUE from the profile check.
-    if (!onRoot && v.declared !== null && v.declared.kind === 'keyword' && v.declared.value === k) continue;
-    const source = v.declaration !== null ? v : declared;
-    if (source === undefined || source.declaration === null) continue;
-    const span = source.declaration.valueSpan;
-    const property = axes[i] as Longhand;
-    const message = onRoot
-      ? `${property}: ${k} on <${tag}> ${el.element.address} propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out`
-      : `${property} computes to ${k} on ${el.element.address} (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported`;
-    for (const t of targets) {
-      const id = `${t}|${span.source.uri}|${span.start}|${el.element.address}`;
-      if (reported.has(id)) continue;
-      reported.add(id);
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), target: t, message, manual: 'Use overflow: hidden on both axes, on an element other than html and body.', basis: 'computed-value' }));
-    }
+  const keys = values.map(keywordOf);
+  const oneAxisClip = (keys[0] === 'clip') !== (keys[1] === 'clip') && (keys[0] === 'visible' || keys[1] === 'visible');
+  if (!oneAxisClip) return;
+  const i = keys[0] === 'clip' ? 0 : 1;
+  const v = values[i] as ResolvedValue;
+  const source = v.declaration !== null ? v : values.find((x) => x.declaration !== null);
+  if (source === undefined || source.declaration === null) return;
+  const span = source.declaration.valueSpan;
+  const property = axes[i] as Longhand;
+  const message = `${property}: clip beside ${axes[1 - i] as Longhand}: visible on ${el.element.address} clips one axis only, which needs OVFL-c (css-overflow-3 §3.1)`;
+  for (const t of targets) {
+    const id = `${t}|${span.source.uri}|${span.start}|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), target: t, message, manual: 'Use overflow: clip on both axes, or hidden.', basis: 'computed-value' }));
   }
 }
 

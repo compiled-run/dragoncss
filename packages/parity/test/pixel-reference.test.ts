@@ -109,7 +109,8 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
   // points (addendum F2). A change here changes what the device lanes compare; it needs a written reason. SIZE-ar: only the 10
   // sizing-ratio cases' rules (edge +8, edge:glyph +4, rescued edge +8 at DPR 2 and 3, +6 at 2.625); with them filtered out the
   // master pins hold exactly. INL1a: plus the INL1a stack's new cases (inline-breaks-*, the inline fixtures and inline-baselines;
-  // the last term, as on the stack against master 7a363ac7b), every existing case unchanged.
+  // the last term, as on the stack against master 7a363ac7b), every existing case unchanged. OVFL (T078): a further term, the sum
+  // over the overflow group's new cases (overflow-*, viewport-prop-*); no earlier case moves.
   const DROPPED = {
     ios: {
       2: { dropped: { edge: 1234 + 262, 'edge:glyph': 924 + 189, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1194 + 236 } },
