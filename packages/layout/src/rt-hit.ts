@@ -97,15 +97,15 @@ function touchesSnapped(px: number, py: number, x: number, y: number, w: number,
   return x0 <= px + LU_PX && px <= x1 && y0 <= py + LU_PX && py <= y1;
 }
 
-type Ctx = { readonly nodes: readonly HitNode[]; readonly children: readonly (readonly number[])[]; readonly px: number; readonly py: number; readonly faults: HitFaults };
+type HitCtx = { readonly nodes: readonly HitNode[]; readonly children: readonly (readonly number[])[]; readonly px: number; readonly py: number; readonly faults: HitFaults };
 
-function node(ctx: Ctx, i: number): HitNode {
+function node(ctx: HitCtx, i: number): HitNode {
   const n = ctx.nodes[i];
   if (n === undefined) throw new HitError(`no hit node ${i}`);
   return n;
 }
 
-function visible(ctx: Ctx, n: HitNode): boolean {
+function visible(ctx: HitCtx, n: HitNode): boolean {
   return ctx.faults.ignorePointerEventsNone || n.pointerEvents === 'auto';
 }
 
@@ -113,18 +113,18 @@ function visible(ctx: Ctx, n: HitNode): boolean {
  * Whether a clipping box lets the point through to its in-flow content: its padding box (NodeAtPoint's overflow clip check), or,
  * for a box that is its own layer, its border box (the layer's own clip, measured).
  */
-function insideClip(ctx: Ctx, n: HitNode): boolean {
+function insideClip(ctx: HitCtx, n: HitNode): boolean {
   if (n.layer) return intersects(ctx.px, ctx.py, n.x, n.y, n.width, n.height);
   return insidePadding(ctx, n);
 }
 
 /** Whether the point lies inside a box's padding box. */
-function insidePadding(ctx: Ctx, n: HitNode): boolean {
+function insidePadding(ctx: HitCtx, n: HitNode): boolean {
   return intersects(ctx.px, ctx.py, n.x + n.borderLeft, n.y + n.borderTop, n.width - n.borderLeft - n.borderRight, n.height - n.borderTop - n.borderBottom);
 }
 
 /** The children of a box in reverse paint order: order-modified document order, reversed (a stable sort by order). */
-function reversedChildren(ctx: Ctx, i: number): number[] {
+function reversedChildren(ctx: HitCtx, i: number): number[] {
   const own = ctx.children[i];
   if (own === undefined) throw new HitError(`no children list for ${i}`);
   const sorted = own.slice(0).sort((a, b) => node(ctx, a).order - node(ctx, b).order);
@@ -132,7 +132,7 @@ function reversedChildren(ctx: Ctx, i: number): number[] {
 }
 
 /** kForeground: inline content (lines last to first, each line's text before the line itself), then block children. */
-function foreground(ctx: Ctx, i: number): number {
+function foreground(ctx: HitCtx, i: number): number {
   const n = node(ctx, i);
   if (n.clips && !insideClip(ctx, n)) return -1;
   const kids = reversedChildren(ctx, i);
@@ -157,7 +157,7 @@ function foreground(ctx: Ctx, i: number): number {
  * first, against their pixel-snapped rects exclusively (HitTestTextItem); then the line itself, exclusively against the line rect
  * and inclusively against the block's border box placed at the line's offset and pixel-snapped (HitTestClippedOutByBorder).
  */
-function lineHit(ctx: Ctx, block: HitNode, line: HitNode, kids: readonly number[]): number {
+function lineHit(ctx: HitCtx, block: HitNode, line: HitNode, kids: readonly number[]): number {
   let x0 = line.x;
   let y0 = line.y;
   let x1 = line.x + line.width;
@@ -186,7 +186,7 @@ function lineHit(ctx: Ctx, block: HitNode, line: HitNode, kids: readonly number[
 }
 
 /** kDescendantBlockBackgrounds then kSelfBlockBackground over the non-atomic block descendants, deepest and last first. */
-function backgrounds(ctx: Ctx, i: number): number {
+function backgrounds(ctx: HitCtx, i: number): number {
   const n = node(ctx, i);
   if (!(n.clips && !insideClip(ctx, n))) {
     for (const c of reversedChildren(ctx, i)) {
@@ -200,13 +200,13 @@ function backgrounds(ctx: Ctx, i: number): number {
 }
 
 /** The box's own border box, unsnapped and exclusive. */
-function self(ctx: Ctx, i: number): number {
+function self(ctx: HitCtx, i: number): number {
   const n = node(ctx, i);
   return visible(ctx, n) && intersects(ctx.px, ctx.py, n.x, n.y, n.width, n.height) ? n.target : -1;
 }
 
 /** HitTestAllPhases: foreground, then the descendant block backgrounds, then the box's own background. */
-function allPhases(ctx: Ctx, i: number): number {
+function allPhases(ctx: HitCtx, i: number): number {
   const f = foreground(ctx, i);
   if (f >= 0) return f;
   const n = node(ctx, i);
@@ -222,7 +222,7 @@ function allPhases(ctx: Ctx, i: number): number {
 }
 
 /** The containing block chain step: a layer's for an absolutely positioned box, the parent otherwise. */
-function containingParent(ctx: Ctx, i: number): number {
+function containingParent(ctx: HitCtx, i: number): number {
   const n = node(ctx, i);
   if (!n.absolute) return n.parent;
   let at = n.parent;
@@ -231,7 +231,7 @@ function containingParent(ctx: Ctx, i: number): number {
 }
 
 /** Whether every clipping box on a layer's containing block chain holds the point (the layer's clip rect). */
-function layerVisible(ctx: Ctx, i: number): boolean {
+function layerVisible(ctx: HitCtx, i: number): boolean {
   let at = containingParent(ctx, i);
   while (at >= 0) {
     const a = node(ctx, at);
@@ -257,7 +257,7 @@ export function hitTest(nodes: readonly HitNode[], px: number, py: number, fault
     if (n.target < 0 || n.target >= nodes.length) throw new HitError(`hit node ${i} has target ${n.target}`);
     (children[n.parent] as number[]).push(i);
   });
-  const ctx: Ctx = { nodes, children, px, py, faults };
+  const ctx: HitCtx = { nodes, children, px, py, faults };
   // The layers in paint order: a preorder walk with each box's children in order-modified document order (measured: Chrome
   // stacks positioned flex items by order).
   const layers: number[] = [];
@@ -407,7 +407,7 @@ function pushNode(s: TableState, n: HitNode, id: string, act: boolean): void {
 }
 
 /** A text piece and whether its leaf inks the whole em box. */
-type Piece = { readonly rect: LayoutRect; readonly full: boolean };
+type HitPiece = { readonly rect: LayoutRect; readonly full: boolean };
 
 function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, leaves: readonly TextLeaf[]): void {
   const zb = zoomedBox(s, b.id);
@@ -423,7 +423,7 @@ function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number
     if (l.font.size !== size) throw new HitError(`${b.id}: text leaves of two font sizes; one inline formatting context holds one font`);
   }
   // The line pieces (<leaf>:line<j>), grouped into lines by their top; a line box starts half-leading above its text.
-  const pieces: Piece[] = [];
+  const pieces: HitPiece[] = [];
   for (const leaf of leaves) {
     const full = inkAbove(leaf);
     let j = 0;
@@ -447,7 +447,7 @@ function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number
 }
 
 /** One line of a block's inline content: the line node, then each text piece on it. */
-function linePieces(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, run: Run, em: number, pieces: readonly Piece[], top: number, k: number): void {
+function linePieces(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, run: Run, em: number, pieces: readonly HitPiece[], top: number, k: number): void {
   const own = pieces.filter((p) => p.rect.y === top);
   const firstPiece = own[0];
   if (firstPiece === undefined) throw new HitError(`${b.id}: an empty line`);
