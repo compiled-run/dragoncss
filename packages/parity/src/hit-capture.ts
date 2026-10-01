@@ -134,3 +134,24 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
 
 /** Every layout case the hit lane covers: all of them. */
 export const hitCases = (): readonly NativeCase[] => nativeCases();
+
+// ---------------------------------------------------------------- the pointer-events identity (PM capture ruling, T063J)
+
+/** The committed outputs that pointer-events may change only by its own key: the Chrome captures and the emitted CSS. */
+export const IDENTITY_ROOTS: readonly string[] = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts', 'packages/parity/emitted'];
+export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.json';
+/** Files that are new with SELD-R1b's fixtures (hit-*, reject-pointer-events-*), not in the base. */
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-)[^/]*$/;
+
+/**
+ * A committed output with the pointer-events key removed: the "pointer-events" computed value of every captured element, and the
+ * pointer-events declaration of every emitted rule; an emitted file's compilation digest (its first line) is masked, since every
+ * compilation digest moves with the compiler input.
+ */
+export function withoutPointerEvents(path: string, text: string): string {
+  if (path.endsWith('.json')) return text.replace(/,\n[ ]*"pointer-events": "[a-z-]+"/g, '');
+  if (path.endsWith('.css')) return text.replace(/^[ ]*pointer-events: [a-z-]+;\n/gm, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+  throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
+}
+
+export type IdentityManifest = { readonly base: string; readonly files: { readonly [path: string]: string } };
