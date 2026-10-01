@@ -1834,6 +1834,15 @@
         "packages/text-shaper/build.zig",
         "packages/text-shaper/src/dragon_hb_jni.zig"
       ]
+    },
+    {
+      "cited": [
+        "stdint.h"
+      ],
+      "source": "the C standard library header, included by Dragon's C header",
+      "files": [
+        "packages/text-shaper/include/dragon_hb.h"
+      ]
     }
   ],
   "licenceTexts": {

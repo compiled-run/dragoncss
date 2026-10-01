@@ -180,11 +180,13 @@ function parse(file: string, text: string): ts.SourceFile {
   return ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, kind);
 }
 
-/** Other code: citations in line and block comments (# comments in shell files) and in quoted strings. */
+/** Other code: citations in line and block comments (# comments in shell files), quoted strings (with Swift and Kotlin triple-quoted
+ * strings and Zig line strings) and C angle-bracket #include paths. */
 function nativeCitationsIn(file: string, text: string): Citation[] {
   const out: Citation[] = [];
   const strings = String.raw`"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|` + '`(?:[^`\\\\]|\\\\.)*`';
-  const spans = new RegExp((SHELL.test(file) ? String.raw`#[^\n]*|` : String.raw`\/\/[^\n]*|\/\*[\s\S]*?\*\/|`) + strings, 'g');
+  const cStyle = String.raw`"{3}[\s\S]*?"{3}|\\\\[^\n]*|#[ \t]*(?:include|import)[ \t]*<[^>\n]*>|\/\/[^\n]*|\/\*[\s\S]*?\*\/|`;
+  const spans = new RegExp((SHELL.test(file) ? String.raw`#[^\n]*|` : cStyle) + strings, 'g');
   for (const span of text.matchAll(spans)) {
     for (const m of span[0].matchAll(CITATION)) {
       const at = span.index + m.index;
@@ -316,7 +318,7 @@ export function audit(registry: Registry, sources: ReadonlyMap<string, string>, 
     for (const c of citationsIn(file, text)) {
       const where = `${c.file}:${c.line} cites ${c.token}`;
       // Exact paths only: a Chrome file that shares a notChrome file's name is still a Chrome citation.
-      const nc = registry.notChrome.findIndex((n) => n.cited.includes(c.path));
+      const nc = registry.notChrome.findIndex((n) => Array.isArray(n.cited) && n.cited.includes(c.path));
       if (nc >= 0) {
         if (!registry.notChrome[nc]!.files.includes(c.file)) problems.push(`${where}: listed under notChrome, but ${c.file} is not among its files`);
         notChromeUsed.add(`${c.file}\0${nc}\0${c.path}`);
@@ -487,6 +489,10 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
     expect(citationsIn('x.cts', '/* line_breaker.cc */ export {};\n').map((c) => c.token)).toEqual(['line_breaker.cc']);
     expect(citationsIn('x.zig', '//! as Blink does (harfbuzz_face.cc)\nconst x = a.h;\n').map((c) => c.token)).toEqual(['harfbuzz_face.cc']);
     expect(citationsIn('x.sh', "# see SkBlurMask.cpp\ncp a.h 'b/c.h'\n").map((c) => c.token)).toEqual(['SkBlurMask.cpp', 'b/c.h']);
+    // Multi-line strings (Swift and Kotlin triple quotes, Zig \\ lines) and C angle-bracket includes are read too.
+    expect(citationsIn('x.swift', 'let s = """\nsee\nline_breaker.cc\n"""\nlet t = a.h\n').map((c) => `${c.line} ${c.token}`)).toEqual(['3 line_breaker.cc']);
+    expect(citationsIn('x.zig', 'const s =\n    \\\\ from SkBlurMask.cpp\n;\n').map((c) => c.token)).toEqual(['SkBlurMask.cpp']);
+    expect(citationsIn('x.h', '#include <third_party/skia/include/core/SkPath.h>\n#include "b.h"\nint x = a.h;\n').map((c) => c.token)).toEqual(['third_party/skia/include/core/SkPath.h', 'b.h']);
     expect(unclassified(['a/b.ts', 'a/b.json', 'a/b.zig', 'a/b.py', 'a/Makefile'])).toEqual(['a/b.py', 'a/Makefile']);
     expect(unclassified(trackedFiles())).toEqual([]);
   });
