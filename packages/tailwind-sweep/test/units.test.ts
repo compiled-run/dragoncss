@@ -2,7 +2,7 @@
 // refusal groups, the snapshot format and the dual comparison. The whole corpus runs in sweep.test.ts.
 import { describe, expect, it } from 'vitest';
 import { categoryOf } from '../src/categories.ts';
-import { checkCaptured, compareCaptures } from '../src/chrome.ts';
+import { checkCaptured, checkFontsLoaded, compareCaptures } from '../src/chrome.ts';
 import type { Blocker } from '../src/dragon.ts';
 import { flatten } from '../src/flatten.ts';
 import type { DragonRow } from '../src/pool.ts';
@@ -187,5 +187,13 @@ describe('the dual comparison', () => {
 describe('class escaping', () => {
   it.each([['w-1/2', 'w-1\\/2'], ['-m-0.5', '-m-0\\.5'], ['@container', '\\@container'], ['from-10%', 'from-10\\%'], ['2xl', '\\32 xl'], ['-2', '-\\32 '], ['-', '\\-']])('%s', (name, escaped) => {
     expect(escapeClass(name)).toBe(escaped);
+  });
+});
+
+describe('the capture waits for the web fonts (T059J-1)', () => {
+  it('refuses a page whose fonts are still loading, and accepts one whose fonts loaded', () => {
+    expect(() => checkFontsLoaded('loading')).toThrow(/not loaded/);
+    expect(() => checkFontsLoaded(undefined)).toThrow(/not loaded/);
+    expect(() => checkFontsLoaded('loaded')).not.toThrow();
   });
 });

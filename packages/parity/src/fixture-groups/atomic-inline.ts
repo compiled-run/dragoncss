@@ -12,5 +12,10 @@ export const ATOMIC_INLINE: readonly FixtureSpec[] = [
   both('atomic-inline-shrink'),
   both('atomic-inline-north-star'),
   layout('atomic-inline-links'),
+  // The music-player disclosure shape: a block span and two inline-block links, so an anonymous box holds only atomic inlines.
+  layout('atomic-inline-disclosure'),
+  // The music-player play icon's text is Lato in the inline-flex's anonymous flex item (fonts.ts maps the reference font map).
+  both('atomic-inline-lato'),
   reject('reject-atomic-in-inline-box', 'DRAGON_UNPROVEN_CONTEXT', '<span data-dragon-id="a" class="ib">X</span>', 'inline-block <span> a is an atomic inline inside the inline box <span> s'),
+  reject('reject-atomic-beside-shaped-text', 'DRAGON_UNPROVEN_CONTEXT', '<span data-dragon-id="a" class="ib"></span>', 'inline-block <span> a shares an inline formatting context of d with text d:text0 in a real face'),
 ];

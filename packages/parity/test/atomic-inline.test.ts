@@ -11,6 +11,11 @@ import type { WebCapture } from '../src/capture.ts';
 import { CHROME_VERSION, launchChrome } from '../src/chrome.ts';
 import { committedAuthored } from '../src/committed.ts';
 import { compareLayout } from '../src/compare.ts';
+import { layout } from '@dragon/layout';
+import { checkAgainstChrome, referenceDump } from '../src/native-compare.ts';
+import { atDpr } from '../src/dpr.ts';
+import { nativeTargets } from '../src/targets.ts';
+import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { committedDprCapture, DPRS, runDprCase } from '../src/dpr.ts';
 import { ENVIRONMENT, FIXTURES } from '../src/fixtures.ts';
@@ -56,6 +61,34 @@ describe('compare.ts: an anonymous box holding only atomic inlines', () => {
   it('fails when it holds no text line and no atomic inline', () => {
     const c = compareLayout(capture(['r']), absolute([]), input([]), ENVIRONMENT);
     expect(c.problems).toContain('r:anon0: anonymous box whose text lines are not all compared with Chrome (no lines)');
+  });
+});
+
+describe('native-compare.ts: the same anonymous-box rule on a device dump (atomic-inline-disclosure)', () => {
+  const spec = FIXTURES.find((f) => f.id === 'atomic-inline-disclosure');
+  if (spec === undefined) throw new Error('atomic-inline-disclosure is not registered');
+  const c = casesOf(spec, fixtureInput(spec))[0];
+  if (c === undefined) throw new Error('no case');
+  const { compiled } = compileFixture(spec, NO_FAULTS, 'enforce', 'ltr');
+  const t = nativeTargets().find((x) => x.target === 'ios');
+  const p = t?.projection(compiled, atDpr(c.environment, 2), c.assignment);
+  if (p === undefined || p.kind !== 'ready') throw new Error('projection blocked');
+  const out = layout(p.input, referenceShapedMeasurer());
+  if (out.kind !== 'ok') throw new Error('unsupported');
+  const dump = referenceDump({ platform: 'ios', caseId: c.id, fixture: spec.id, dpr: 2, direction: 'ltr', compilerDigest: compiled.digest, input: p.input, engine: out.boxes });
+  const capture = committedDprCapture(c.id, 2);
+  const anon = 'disclosure:anon0';
+  it('passes when the anonymous box holds only atomic inlines, all compared', () => {
+    expect(dump.nodes.filter((n) => n.parent === anon).map((n) => `${n.id} ${n.kind}`)).toEqual(['terms element', 'privacy element']);
+    expect(checkAgainstChrome(dump, capture).problems).toEqual([]);
+  });
+  it('fails when an atomic inline it holds is uncompared', () => {
+    const r = checkAgainstChrome(dump, { ...capture, nodes: capture.nodes.filter((n) => n.id !== 'privacy') });
+    expect(r.problems).toContain(`${anon}: anonymous box whose text lines are not all compared with Chrome (privacy)`);
+  });
+  it('fails when it holds nothing', () => {
+    const r = checkAgainstChrome({ ...dump, nodes: dump.nodes.filter((n) => n.parent !== anon) }, { ...capture, nodes: capture.nodes.filter((n) => n.id !== 'terms' && n.id !== 'privacy') });
+    expect(r.problems).toContain(`${anon}: anonymous box whose text lines are not all compared with Chrome (no lines)`);
   });
 });
 

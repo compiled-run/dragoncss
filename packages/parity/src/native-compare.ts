@@ -76,10 +76,12 @@ export function checkAgainstChrome(dump: NativeDump, capture: WebCapture): Check
       problems.push(`${n.id}: the dump has a node Chrome does not have`);
       continue;
     }
-    // An anonymous box only Dragon has passes only if every text line inside it is a compared Chrome node.
+    // An anonymous box only Dragon has passes only if every text line and element inside it (INL2a: atomic inlines) is a compared
+    // Chrome node, and it holds at least one.
     const lines = dump.nodes.filter((t) => t.parent === n.id && t.kind === 'text').flatMap((t) => t.lines.map((_, j) => `${t.id}:line${j}`));
-    const uncompared = lines.filter((l) => !seen.has(l));
-    if (lines.length === 0 || uncompared.length > 0) problems.push(`${n.id}: anonymous box whose text lines are not all compared with Chrome (${uncompared.join(', ') || 'no lines'})`);
+    const elements = dump.nodes.filter((t) => t.parent === n.id && t.kind === 'element').map((t) => t.id);
+    const uncompared = [...lines, ...elements].filter((l) => !seen.has(l));
+    if (lines.length + elements.length === 0 || uncompared.length > 0) problems.push(`${n.id}: anonymous box whose text lines are not all compared with Chrome (${uncompared.join(', ') || 'no lines'})`);
   }
   return result(compared, problems);
 }
