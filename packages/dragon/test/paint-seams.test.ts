@@ -6,6 +6,20 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { computeLengths } from '../src/analysis/computed.ts';
+import type { ResolvedValue } from '../src/analysis/computed.ts';
+import { PAINT_VALUES } from '../src/analysis/paint-values/index.ts';
+import { LONGHANDS, SHORTHANDS } from '../src/css/properties.ts';
+import * as backgroundLayers from '../src/css/properties/background-layers.ts';
+import * as effects from '../src/css/properties/effects.ts';
+import * as outline from '../src/css/properties/outline.ts';
+import * as radius from '../src/css/properties/radius.ts';
+import * as scrollbar from '../src/css/properties/scrollbar.ts';
+import * as shadow from '../src/css/properties/shadow.ts';
+import * as transform from '../src/css/properties/transform.ts';
+import { SHORTHAND_HANDLERS } from '../src/css/shorthands/index.ts';
+import { OUTLINE_SHORTHANDS } from '../src/css/shorthands/outline.ts';
+import { RADIUS_SHORTHANDS } from '../src/css/shorthands/radius.ts';
 import type { Longhand } from '../src/css/properties.ts';
 import { applyPlant, emitNativeSupport, SUPPORT_FILES, SUPPORT_PLANTS } from '../src/emit/native-support.ts';
 import { isPaintKind, nativePaints, PAINT_EMITTERS, paintPlants, stagePainters } from '../src/emit/paint/registry.ts';
@@ -31,10 +45,11 @@ function programs() {
 }
 
 describe('EMS: the paint registries', () => {
-  it('lowering and emission register every module once, in PAINT_MODULE_NAMES order', () => {
+  it('lowering, emission and paint values register every module once, in PAINT_MODULE_NAMES order', () => {
     expect([...PAINT_MODULE_NAMES]).toEqual(['background', 'border', 'clip', 'radius', 'shadow', 'effects', 'stacking', 'outline', 'transform', 'gradient', 'scroll', 'fixed', 'scrollbar', 'image', 'foreign-view', 'control']);
     expect(PAINT_LOWERINGS.map((m) => m.name)).toEqual([...PAINT_MODULE_NAMES]);
     expect(PAINT_EMITTERS.map((m) => m.name)).toEqual([...PAINT_MODULE_NAMES]);
+    expect(PAINT_VALUES.map((m) => m.name)).toEqual([...PAINT_MODULE_NAMES]);
   });
   it('the paint write kinds are the background, border and clip modules\' and every one has a vocabulary entry on both backends', () => {
     expect(PAINT_EMITTERS.flatMap((m) => m.kinds)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip']);
@@ -130,5 +145,29 @@ describe('EMS: native support', () => {
   it('uses no platform animator anywhere in emit/ (RT-2)', () => {
     const walk = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name)]));
     for (const f of walk(join(src, 'emit'))) expect(readFileSync(f, 'utf8'), f).not.toMatch(/CABasicAnimation|CAKeyframeAnimation|UIView\.animate|UIViewPropertyAnimator|ValueAnimator|ObjectAnimator|ViewPropertyAnimator/);
+  });
+});
+
+describe('EMS: CSS families and paint values', () => {
+  it('registers the seven paint families and the two shorthand files empty', () => {
+    for (const [name, fam] of [['RADIUS', radius], ['SHADOW', shadow], ['EFFECTS', effects], ['OUTLINE', outline], ['TRANSFORM', transform], ['BACKGROUND_LAYERS', backgroundLayers], ['SCROLLBAR', scrollbar]] as const) {
+      const f = fam as unknown as Record<string, unknown>;
+      expect(f[`${name}_LONGHANDS`], name).toEqual([]);
+      expect(f[`${name}_SHORTHANDS`], name).toEqual([]);
+      expect(f[`${name}_ASPECTS`], name).toEqual({});
+    }
+    expect(RADIUS_SHORTHANDS).toEqual({});
+    expect(OUTLINE_SHORTHANDS).toEqual({});
+    expect(Object.keys(SHORTHAND_HANDLERS).length).toBe(SHORTHANDS.length);
+  });
+  it('runs computePaintValues at the end of computeLengths; the stubs leave every value alone', () => {
+    const text = readFileSync(join(src, 'analysis/computed.ts'), 'utf8');
+    expect(text.match(/computePaintValues\(/g)).toHaveLength(1);
+    expect(text).toContain('  computePaintValues(props, { em: own, rem: rootFontSize ?? own });\n}');
+    const v = (value: number, unit: string): ResolvedValue => ({ value: { kind: 'length', value, unit }, origin: 'author' }) as unknown as ResolvedValue;
+    const props = new Map<Longhand, ResolvedValue>([['font-size', v(10, 'px')], ['width', v(2, 'em')]]);
+    computeLengths(props, 16, 16);
+    expect([...props.entries()].map(([k, x]) => [k, x.value])).toEqual([['font-size', { kind: 'length', value: 10, unit: 'px' }], ['width', { kind: 'length', value: 20, unit: 'px' }]]);
+    expect((LONGHANDS as readonly string[]).length).toBe(68);
   });
 });
