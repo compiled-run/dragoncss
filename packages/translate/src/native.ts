@@ -222,8 +222,8 @@ export function swiftExec(binary: string): Exec {
 }
 
 /**
- * The Kotlin harness heap cap. The JVM default (a quarter of RAM) let the engine suite grow to 4.3 GB, which under machine-wide
- * memory pressure paged past SUITE_TIMEOUT_MS; it needs between 512 MB and 768 MB, and runs as fast at 2 GB (1.6 GB resident).
+ * The Kotlin harness heap cap. With the JVM default (a quarter of RAM) the engine suite grows to 4.3 GB resident, the likely reason
+ * it ran past SUITE_TIMEOUT_MS under machine-wide memory pressure; it needs 512-768 MB and runs as fast at 2 GB (1.6 GB resident).
  */
 export const KOTLIN_HEAP = '-Xmx2g';
 
