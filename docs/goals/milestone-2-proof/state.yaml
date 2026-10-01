@@ -3685,6 +3685,9 @@ tasks:
     objective: 'Engine vs Chrome (found by CALC-2): rtl block child with margin-left: calc(-1e9px): Chrome x=1.98 (overflow artifact), engine 390. Investigate against Blink LayoutUnit saturation and either
       port it or refuse the range with a typed code.'
     receipt: null
+    constraints:
+      - Done on rtl-huge-margin 2bcc33dd6, pending its device run. It ports Blink's saturating LayoutUnit placement order (block_layout_algorithm.cc and others, BSD) and clamps px lengths after zoom. The
+        rtl margin-left -33554430px case gives x=1.984375 as in Chrome, exact to 1 LU at every DPR. New fixture values-length-saturation; no existing vector moved.
   - id: T130
     type: worker
     assignee: Worker
