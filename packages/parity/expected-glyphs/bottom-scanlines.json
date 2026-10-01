@@ -175,6 +175,8 @@
       "sizing-ratio-flex-row-rtl": [3,3],
       "sizing-ratio-flex-column": [0,8],
       "sizing-ratio-flex-column-rtl": [0,8],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -353,6 +355,8 @@
       "sizing-ratio-flex-row-rtl": [3,3],
       "sizing-ratio-flex-column": [0,8],
       "sizing-ratio-flex-column-rtl": [0,8],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     }
@@ -533,6 +537,8 @@
       "sizing-ratio-flex-row-rtl": [3,3],
       "sizing-ratio-flex-column": [0,8],
       "sizing-ratio-flex-column-rtl": [0,8],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -711,6 +717,8 @@
       "sizing-ratio-flex-row-rtl": [3,3],
       "sizing-ratio-flex-column": [0,8],
       "sizing-ratio-flex-column-rtl": [0,8],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -889,6 +897,8 @@
       "sizing-ratio-flex-row-rtl": [3,3],
       "sizing-ratio-flex-column": [0,8],
       "sizing-ratio-flex-column-rtl": [0,8],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     }
