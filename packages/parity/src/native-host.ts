@@ -200,17 +200,29 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
     exit(0)
   }
   let id = run.ids[k]
-  // SELD-R1a: the case scripts are cases too, looked up beside the layout cases.
-  let dragonCaseTable = DragonHost.dragonCaseTable.merging(dragonStateCaseTable) { a, _ in a }
-  guard let c = dragonCaseTable[id] else { fatalError("dragon host: no case \(id)") }
-  let tree = DragonTree()
-  c.build(tree)
-  stage.addSubview(tree.root)
-  let t0 = CACurrentMediaTime()
-  do {
-    try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
-  } catch {
-    fatalError("dragon host: \(id): \(error)")
+  // SELD-R1a: a case script runs on a state mount, whose every setter rebuilds and lays out the views on the stage; an id that is
+  // both a layout case and a script fails rather than running one of them.
+  let script = dragonStateCaseTable[id]
+  let layoutCase = DragonHost.dragonCaseTable[id]
+  if script != nil && layoutCase != nil { fatalError("dragon host: \(id) is both a layout case and a case script") }
+  guard let c = script?.dragonCase ?? layoutCase else { fatalError("dragon host: no case \(id)") }
+  let t0: CFTimeInterval
+  let tree: DragonTree
+  if let script = script {
+    t0 = CACurrentMediaTime()
+    let mount = DragonStateMount(machine: script.make(), stage: stage, measurer: bridge.measurer, scale: scale, bridge: bridge)
+    script.run(mount.machine)
+    tree = mount.tree
+  } else {
+    tree = DragonTree()
+    c.build(tree)
+    stage.addSubview(tree.root)
+    t0 = CACurrentMediaTime()
+    do {
+      try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
+    } catch {
+      fatalError("dragon host: \(id): \(error)")
+    }
   }
   stage.layoutIfNeeded()
   tree.root.layoutIfNeeded()
@@ -291,6 +303,7 @@ import dev.dragon.dump.DumpTiming
 import dev.dragon.dump.dumpJson
 import dev.dragon.views.DragonBridge
 import dev.dragon.views.DragonRun
+import dev.dragon.views.DragonStateMount
 import dev.dragon.views.DragonTree
 import dev.dragon.views.dragonReadRun
 import dev.dragon.views.dragonSamples
@@ -363,14 +376,26 @@ class DragonActivity : Activity() {
       return
     }
     val id = run.ids[k]
-    // SELD-R1a: the case scripts are cases too, looked up beside the layout cases.
-    val dragonCaseTable = dev.dragon.cases.dragonCaseTable + dev.dragon.cases.dragonStateCaseTable
-    val c = dragonCaseTable[id] ?: throw IllegalStateException("dragon host: no case " + id)
-    val tree = DragonTree(this)
-    c.build(tree)
-    val t0 = SystemClock.elapsedRealtimeNanos()
-    tree.apply(c.input(scale), bridge.measurer, scale, bridge)
-    frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
+    // SELD-R1a: a case script runs on a state mount, whose every setter rebuilds and lays out the views on the stage; an id that
+    // is both a layout case and a script fails rather than running one of them.
+    val script = dev.dragon.cases.dragonStateCaseTable[id]
+    val layoutCase = dev.dragon.cases.dragonCaseTable[id]
+    if (script != null && layoutCase != null) throw IllegalStateException("dragon host: " + id + " is both a layout case and a case script")
+    val c = script?.dragonCase ?: layoutCase ?: throw IllegalStateException("dragon host: no case " + id)
+    val t0: Long
+    val tree: DragonTree
+    if (script != null) {
+      t0 = SystemClock.elapsedRealtimeNanos()
+      val mount = DragonStateMount(script.make(), frame, bridge.measurer, scale, bridge)
+      script.run(mount.machine)
+      tree = mount.tree
+    } else {
+      tree = DragonTree(this)
+      c.build(tree)
+      t0 = SystemClock.elapsedRealtimeNanos()
+      tree.apply(c.input(scale), bridge.measurer, scale, bridge)
+      frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
+    }
     // Settle on explicit signals: the root laid out and drawn, two more frame callbacks, then compositor copies of the window until
     // two consecutive copies are equal (a copy of a frame before the tree was presented differs from the next one).
     var drawnAt = -1

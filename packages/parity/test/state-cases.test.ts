@@ -112,7 +112,10 @@ describe('the host apps carry the case scripts', () => {
         }
       }
       const main = files.find((f) => f.path === (target === 'ios' ? 'Host/main.swift' : 'kotlin/dev/dragon/host/DragonActivity.kt'))?.text ?? '';
-      expect(main).toContain(target === 'ios' ? 'DragonHost.dragonCaseTable.merging(dragonStateCaseTable)' : 'dev.dragon.cases.dragonCaseTable + dev.dragon.cases.dragonStateCaseTable');
+      // A script runs on a state mount (every setter re-renders the stage), and an id in both tables fails (Macroscope 4157246848).
+      expect(main).toContain(target === 'ios' ? 'let mount = DragonStateMount(machine: script.make(), stage: stage, measurer: bridge.measurer, scale: scale, bridge: bridge)\n    script.run(mount.machine)\n    tree = mount.tree' : 'val mount = DragonStateMount(script.make(), frame, bridge.measurer, scale, bridge)\n      script.run(mount.machine)\n      tree = mount.tree');
+      expect(main).toContain('is both a layout case and a case script');
+      expect(main).not.toContain('merging(dragonStateCaseTable)');
       expect(emits.reduce((n, e) => n + e.scripts.length, 0)).toBe(126);
     }
   });

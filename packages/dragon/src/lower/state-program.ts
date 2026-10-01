@@ -59,7 +59,13 @@ export type LayoutVariant = { readonly root: LayoutBox; readonly rootFontSize: n
 
 export type StateCase = { readonly assignment: Assignment; readonly isInitial: boolean; readonly program: NativeProgram };
 
-export const stateKey = (instance: string, state: string): string => `${instance}#${state}`;
+const escapeKeyPart = (s: string): string => s.replace(/[\\#]/g, (c) => `\\${c}`);
+
+/**
+ * A free state's key, "<instance>#<state>" with every '#' and '\' inside either part escaped by a '\', so two different
+ * (instance, state) pairs never share a key (doc/a with b#c is doc/a#b\#c, doc/a#b with c is doc/a\#b#c).
+ */
+export const stateKey = (instance: string, state: string): string => `${escapeKeyPart(instance)}#${escapeKeyPart(state)}`;
 
 const sameScalar = (a: Scalar, b: Scalar): boolean => a === b && typeof a === typeof b;
 
@@ -180,6 +186,8 @@ export class StateRuntime {
   private readonly baseById: Map<string, ProgramNode>;
   readonly sp: StateProgram;
   private readonly faults: StateFaults;
+  /** Called after every committed setter, as the generated machine's onChange is: a mount re-renders from it. */
+  onChange: (() => void) | null = null;
 
   constructor(sp: StateProgram, faults: StateFaults = NO_STATE_FAULTS) {
     this.sp = sp;
@@ -224,6 +232,7 @@ export class StateRuntime {
     // Planted: the setter never lays out again.
     if (!this.faults.setterSkipsRelayout && d.variant !== this.laidOut) this.laidOut = d.variant;
     this.current = to;
+    this.onChange?.();
   }
 
   /** The live program: the current node records over the engine input last laid out. */

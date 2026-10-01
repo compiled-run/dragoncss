@@ -95,9 +95,16 @@ export function deriveScripts(g: StateGroup, sp: StateProgram): Script[] {
 
 // ---------------------------------------------------------------- the host run
 
-/** A script's dumps on the runtime reference: the live program and the assignment at every dump step. */
+/**
+ * A script's dumps on the runtime reference, mounted as the device mounts it (DragonStateMount): the program rendered at the start
+ * and again after every committed setter, and the assignment, at every dump step.
+ */
 export function runScript(sp: StateProgram, steps: readonly ScriptStep[], faults: StateFaults = NO_STATE_FAULTS): { readonly assignment: number; readonly program: NativeProgram }[] {
   const rt = new StateRuntime(sp, faults);
+  let rendered = rt.program();
+  rt.onChange = () => {
+    rendered = rt.program();
+  };
   const clock = new VirtualClock();
   const out: { assignment: number; program: NativeProgram }[] = [];
   for (const s of steps) {
@@ -111,7 +118,7 @@ export function runScript(sp: StateProgram, steps: readonly ScriptStep[], faults
       case 'tap':
         throw new Error(`tap(${s.x}, ${s.y}) needs Dragon hit testing, which comes with SELD-R1b`);
       case 'dump':
-        out.push({ assignment: rt.assignment, program: rt.program() });
+        out.push({ assignment: rt.assignment, program: rendered });
         break;
     }
   }
