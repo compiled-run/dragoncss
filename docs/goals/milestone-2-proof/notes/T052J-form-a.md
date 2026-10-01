@@ -146,3 +146,20 @@ Finding: Chrome 145 drops `appearance: base`, although webref's grammar allows i
   - table and list-item become block.
 
   It needs Chrome fixtures.
+
+## A3 host-done (2026-10-01): form-a3 022fcc762
+
+**North star:**
+- button element errors go from 7 to 0, and type errors on buttons from 7 to 0;
+- supported elements go from 51 to 61.
+
+**The demo still has 24 DRAGON_UNSUPPORTED_FONT errors (8 per target).** The demo's `font: inherit` shorthand is unsupported, so its buttons keep Chrome's UA control font, which R13 refuses. They clear with TXT-W2 (T147 part 2: the font shorthand), not with FORM-a.
+
+**Chrome finding:** the appearance display adjustment also maps math and every table-internal display to inline-block.
+
+**PM rulings:**
+- **Accepted:** the pin retargets in block-elements.test.ts and pixel-reference.test.ts.
+- **Rejected:** the hand edit to wpt/expectations/web.json. It must be regenerated.
+- **Stays refused:** an auto-width flex button in block flow. A flex-button control kind may come with A4 or a later card.
+
+**Next:** A4 dispatched on form-a4.
