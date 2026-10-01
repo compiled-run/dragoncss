@@ -46,8 +46,11 @@ export const TRUST_CASES: readonly string[] = ['color-border-sides', 'text-wrap-
 export const PLANT_CASE = 'tree-projected-text#1';
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
-/** The axis each raster plant moves every glyph along, by PLANT_SHIFT_DEVICE_PX. */
-export const PLANT_AXIS: { readonly [P in SupportPlant]: 'x' | 'y' } = { 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' };
+/** The raster plants that move glyphs; the image plant image-offset-1 is judged by its replaced cases' device pixels instead. */
+export type GlyphPlant = Extract<SupportPlant, 'glyph-offset-1' | 'glyph-offset-y-1'>;
+export const GLYPH_PLANTS: readonly GlyphPlant[] = ['glyph-offset-1', 'glyph-offset-y-1'];
+/** The axis each glyph raster plant moves every glyph along, by PLANT_SHIFT_DEVICE_PX. */
+export const PLANT_AXIS: { readonly [P in GlyphPlant]: 'x' | 'y' } = { 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' };
 /** T093 ruling A: a plant's glyph positions (x centre, or bottom edge), against the clean run on the same device, move by this much... */
 export const PLANT_SHIFT_DEVICE_PX = 1;
 /** ...within this... */
@@ -65,7 +68,7 @@ export type PlantVerdict = { readonly caught: boolean; readonly lines: readonly 
  * one fails the position check with at least PLANT_MARGIN_DEVICE_PX to spare; and every one moved by PLANT_SHIFT_DEVICE_PX within
  * PLANT_SHIFT_SPREAD_DEVICE_PX from the clean run.
  */
-export function judgeGlyphPlant(plant: SupportPlant, clean: { readonly failures: number; readonly centres: readonly GlyphPosition[] }, planted: readonly GlyphPosition[], gate: number, runs: { readonly hostErrors: readonly string[]; readonly frames: number; readonly lines: number }): PlantVerdict {
+export function judgeGlyphPlant(plant: GlyphPlant, clean: { readonly failures: number; readonly centres: readonly GlyphPosition[] }, planted: readonly GlyphPosition[], gate: number, runs: { readonly hostErrors: readonly string[]; readonly frames: number; readonly lines: number }): PlantVerdict {
   const axis = PLANT_AXIS[plant];
   const problems: string[] = [...runs.hostErrors];
   if (runs.frames > 0) problems.push(`device-frames has ${runs.frames} failure(s) across the two runs`);

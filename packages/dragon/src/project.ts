@@ -148,6 +148,8 @@ export type InternalRecord = {
   readonly linked: Linked | null;
   /** The font context font-family feature keys were resolved against. */
   readonly fonts: FamilyKeyContext;
+  /** REPL-a: the bytes of every drawable image src, for the native image paint. */
+  readonly images: ReadonlyMap<string, Uint8Array>;
 };
 
 const records = new WeakMap<object, InternalRecord>();
@@ -785,6 +787,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       profiles: { web: profiles.web, ios: profiles.ios, android: profileFor(profiles, 'android') },
       linked,
       fonts: fonts === null ? NO_FONTS : fonts.keys,
+      images: images === null ? new Map() : images.bytes,
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,

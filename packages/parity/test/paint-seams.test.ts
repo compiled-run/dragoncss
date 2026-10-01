@@ -39,7 +39,8 @@ describe('EMS: paint samples', () => {
 
 describe('EMS: per-kind channel deltas', () => {
   it('appends shadow and gradient to SAMPLE_RULES and maps every kind to GATE_CHANNEL_DELTA', () => {
-    expect(SAMPLE_RULES.slice(-2)).toEqual(['shadow', 'gradient']);
+    // REPL-a appends image-flat after them (R8), also at GATE_CHANNEL_DELTA.
+    expect(SAMPLE_RULES.slice(-3)).toEqual(['shadow', 'gradient', 'image-flat']);
     expect(Object.keys(CHANNEL_DELTA_BY_KIND)).toEqual([...SAMPLE_RULES]);
     for (const k of SAMPLE_RULES) expect(CHANNEL_DELTA_BY_KIND[k], k).toBe(GATE_CHANNEL_DELTA);
     expect(SHADOW_CHANNEL_DELTA).toBe(GATE_CHANNEL_DELTA);

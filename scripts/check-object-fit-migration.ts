@@ -7,7 +7,9 @@
 // - Emitted CSS (packages/parity/emitted/**, expected-fonts/emitted/**): every rule gains "object-fit: fill;" then "object-position: 50% 50%;" after
 //   padding-left; with them removed the file is byte-identical to the base, except the header's compilation digest.
 // - The UA datasets (packages/dragon/src/ua/*.generated.ts): every computed row, sorted by property, gains the same two entries.
-// - The engine inputs (packages/layout/vectors/**, break-vectors/**): unchanged, because the replaced leaf is a new node kind.
+// - The engine inputs (packages/layout/vectors/**, break-vectors/**) and Chrome's line breaks (expected-breaks/**): unchanged,
+//   because the replaced leaf is a new node kind.
+// - The Chrome pixel manifest (expected-pixels/**/manifest.json): every base case entry unchanged; only new fixtures' cases added.
 // `--plant <name>` alters one file in memory before the check, which must then fail (PLANTS below).
 // Run with: node scripts/check-object-fit-migration.ts <base-commit> [--plant <name>]
 import { execFileSync } from 'node:child_process';
@@ -123,14 +125,31 @@ function stripUa(after: string, _before: string, path: string): { text: string; 
   return { text: kept.join('\n'), removed };
 }
 
-/** Engine inputs: no addition at all. */
+/** Engine inputs and break captures: no addition at all. */
 const unchanged = (after: string): { text: string; removed: number } => ({ text: after, removed: 0 });
+
+/** The pixel manifest: each set keeps every base case entry as it was and only gains the new fixtures' cases. */
+function stripPixelManifest(after: string, before: string, path: string): { text: string; removed: number } {
+  type Manifest = { sets: { dpr: number; cases: { case: string }[] }[] };
+  const a = JSON.parse(after) as Manifest;
+  const b = JSON.parse(before) as Manifest;
+  let removed = 0;
+  for (const set of a.sets) {
+    const kept = set.cases.filter((c) => !ofNewFixture(`${c.case}.png`));
+    removed += set.cases.length - kept.length;
+    set.cases = kept;
+  }
+  if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${path}: differs from the base beyond the new fixtures' cases`);
+  return { text: before, removed };
+}
 
 const MIGRATIONS: readonly Migration[] = [
   { name: 'object-fit and object-position computed values (T051)', roots: ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'], extension: '.json', strip: stripCapture },
   { name: 'object-fit and object-position emitted declarations (T051)', roots: ['packages/parity/emitted', 'packages/parity/expected-fonts/emitted'], extension: '.css', strip: stripEmitted },
   { name: 'object-fit and object-position UA computed values (T051)', roots: ['packages/dragon/src/ua'], extension: '.generated.ts', strip: stripUa },
   { name: 'engine inputs, unchanged (T051 replaced leaf kind)', roots: ['packages/layout/vectors', 'packages/layout/break-vectors'], extension: '.json', strip: unchanged },
+  { name: 'Chrome line breaks, unchanged', roots: ['packages/parity/expected-breaks'], extension: '.json', strip: unchanged },
+  { name: 'Chrome pixel manifest, base cases unchanged', roots: ['packages/parity/expected-pixels'], extension: 'manifest.json', strip: stripPixelManifest },
 ];
 
 /** Planted faults, each of which the check must catch: [migration index, file suffix, how the text changes]. */
@@ -144,6 +163,7 @@ const PLANTS: { readonly [name: string]: readonly [number, string, (t: string) =
   'ua-value': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace(UA_POSITION, '    "object-position": "0% 0%",')],
   'vector-output': [3, 'layout/vectors/dpr-2/margin-collapse-body.json', (t) => t.replace(/"height": (\d+)/, (_m, n: string) => `"height": ${Number(n) + 1}`)],
   'stray-file': [0, '', (t) => t],
+  'pixel-manifest': [5, 'darwin-arm64/manifest.json', (t) => t.replace(/"sha256":"[0-9a-f]/, (m) => `${m.slice(0, -1)}${m.endsWith('0') ? '1' : '0'}`)],
 };
 
 const plantAt = process.argv.indexOf('--plant');

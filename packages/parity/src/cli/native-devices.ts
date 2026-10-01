@@ -12,7 +12,8 @@ import type { SupportPlant } from 'dragon';
 import { GATE_GLYPH_POSITION_DEVICE_PX } from '../compare.ts';
 import { caseReference, dumpFile, evaluateCase, readDump } from '../device-lanes.ts';
 import type { DeviceSpec } from '../device-run.ts';
-import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, judgeGlyphPlant, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_DEVICES, recordProblems, release, runApp } from '../device-run.ts';
+import type { GlyphPlant } from '../device-run.ts';
+import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, GLYPH_PLANTS, iosProfileScale, judgeGlyphPlant, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_DEVICES, recordProblems, release, runApp } from '../device-run.ts';
 import { glyphPositions } from '../native-compare.ts';
 import { validateNativeDump } from '../native-dump.ts';
 import { existsSync, readFileSync } from 'node:fs';
@@ -29,8 +30,10 @@ if (onlyArg !== null && onlyArg !== 'ios' && onlyArg !== 'android') {
   process.exit(2);
 }
 const only: NativeTarget | null = onlyArg;
-const plant = args.includes('--plant') ? (args[args.indexOf('--plant') + 1] as SupportPlant) : null;
+const plant = args.includes('--plant') ? (args[args.indexOf('--plant') + 1] as GlyphPlant) : null;
 if (plant !== null && !SUPPORT_PLANTS.includes(plant)) throw new Error(`--plant takes one of ${SUPPORT_PLANTS.join(', ')}`);
+// image-offset-1 moves images, not glyphs: it is judged on the replaced cases by parity:lanes -- --run-device on a planted build.
+if (plant !== null && !GLYPH_PLANTS.includes(plant)) throw new Error(`--plant ${plant} is not a glyph plant; judge it with pnpm run parity:lanes -- --run-device on a native:build --plant ${plant} app`);
 const targets: NativeTarget[] = (['ios', 'android'] as const).filter((t) => only === null || t === only);
 const log = (s: string): void => console.log(`native:devices: ${s}`);
 
