@@ -80,10 +80,7 @@ visual_board:
     command: node /Users/jacksm5pro/.claude-swap-backup/sessions/2-jackshelton30_gmail.com/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/milestone-2-proof
 active_task: T058
 dispatched:
-  - T030
-  - T108
   - T121
-  - T122
   - T071
   - T074
   - T072
@@ -94,6 +91,8 @@ dispatched:
   - T062
   - T118
   - T026
+  - T119
+  - T120
 device_lease: null
 tasks:
   - id: T001
@@ -1393,13 +1392,34 @@ tasks:
   - id: T030
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: north-star
     objective: 'MQ-a Phase B wiring (notes/T025 T016B, binding): @media accepted through at-rules and stylesheet, a per-band project loop, band blocks in web CSS, native refused until MQ-R. After T016,
       T022 and T015 are on master. Not concurrent with T011. Device step after P5.'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'MQ-a Phase B landed as PR #38 (merged 7df9e9210) after 2 Macroscope rounds: 9f4ab98b4 samples width x height (4142696777), 3c1cd8c91 checks unsupported at-rule contents in every band, 2d8dd114a
+        scopes band diagnostics by target (4147910145). media-two-axis fixture added; device run 456 cases, all lanes but device-pixels pass, device-pixels ios 135 / android 182 as master, failures files
+        byte-identical. pnpm test 2851/2851.'
+      changed_files:
+        - packages/dragon/src/project.ts
+        - packages/dragon/test/media-wiring.test.ts
+        - packages/parity/src/media-sweep.ts
+      commands:
+        - cmd: pnpm typecheck
+          status: pass
+        - cmd: pnpm test (2851)
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:lanes -- --run-host --run-device
+          status: pass
+        - cmd: pnpm pr:review 38 (exit 0)
+          status: pass
     allowed_files:
       - See notes/T025-tree-mq-elb2-spec.md worker_packages T016B.allowed_files (binding)
+      - packages/dragon/src/project.ts
+      - packages/dragon/test/media-wiring.test.ts
+      - packages/parity/src/media-sweep.ts
     verify:
       - See notes/T025-tree-mq-elb2-spec.md T016B.verify (binding)
     stop_if:
@@ -2081,6 +2101,9 @@ tasks:
         §1.2. Line metrics come from inline boxes only; br takes its parent's metrics; half-leading is floored per device px; sub/super shifts are parent/5+1 and parent/3+1; paint goes line by line.
       - 'Judge amendment 2026-09-30 (notes/T058-inl1a.md): allowed_files gains four named S16 hunks (capture.ts captureFixture inline line nodes, native-compare.ts nodeKinds, pixel-reference.ts cssFontSizes,
         compare.ts anonymousBoxes if needed); the INL1a-1 split is not used. Stack and state: notes/T058-inl1a.md. Landing waits on pr/v1b-compiler-values and v2a-value-model.'
+      - 'Second Judge amendment 2026-09-30 (T058J2): resolve.ts collapseInlineContext, blockify.ts checkInlineLevel lift, three pin retargets, buildIfc+placeIfcLines deviation accepted, targets.ts engine-inline
+        entry only after T125 (T058L) merges; see notes/T058-inl1a.md.'
+      - 'Third Judge amendment (T058J3): rulings A-G in notes/T058-inl1a.md. Element dump lines are 0/0 on device. F (singleRunBaseline plant) and G (targets.ts) come after #42.'
   - id: T059
     type: worker
     assignee: Worker
@@ -2205,6 +2228,8 @@ tasks:
     stop_if:
       - See notes/T047-runtime-spec.md §3.3 stop_if (binding)
     receipt: null
+    constraints:
+      - 'Split: SELD-R1a (state runtime) is done on seld-r1 7b7e096, pending its device run and the targets.ts device-states entry after #42. SELD-R1b is T134.'
   - id: T064
     type: worker
     assignee: Worker
@@ -3187,10 +3212,16 @@ tasks:
   - id: T108
     type: pm
     assignee: PM
-    status: queued
+    status: done
     lane: integrator
     objective: Land WM-0 (wm0-horizontal-tb d920ef3a) as a PR stacked after the T099 stack (P5, casc, tree, v1), with the P5 device step for its 4 new cases.
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'WM-0 landed as PR #41 (merged 4a0c961e5): writing-mode accepted as horizontal-tb only, vertical values refused; caught up through #43 and #38; device lanes 460 cases per DPR equal to master
+        (iOS 135, Android 182 device-pixels, no writing-mode case); pnpm test 2904/2904; wpt:check web pass.'
+      evidence:
+        - https://github.com/compiled-run/dragoncss/pull/41
   - id: T109
     type: worker
     assignee: Worker
@@ -3446,14 +3477,46 @@ tasks:
     objective: 'GRID G1a, three stacked PRs: grid-g1a (#32) -> grid-g1a-engine -> grid-g1a-fixtures (notes/T-grid-g1a.md, notes/T098-grid-flt-wm-spec.md). Catch up with master, regenerate, device step,
       land in order.'
     receipt: null
+    constraints:
+      - '2026-09-30: four branches, all host-verified and pending their device runs: grid-g1a 17e4dbd0e (calc percentage gaps on grid; refused elsewhere), grid-g1a-engine 95798708e, grid-g1a-engine-values
+        16e508ddc (percentage-length audit, 6 Chrome probes), grid-g1a-fixtures bff56c0e6. At landing, fixtures adds a calc-percentage grid-gap parity case so the support row is proven, then runs the G1b
+        device step.'
   - id: T122
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: device
     objective: 'LANE-SPEED (#42, notes/LANE-SPEED.md): device lanes run a target''s devices at once under a machine-wide memory budget; fix the cross-target memory overcommit finding; record device timings;
       land.'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed in PR #42 (merged 9b60a9e35) after 6 Macroscope rounds. Device runs are machine-exclusive under the device lease. One parity:lanes process runs both targets at once within an in-memory
+        memory budget, and even the first device waits for it. Every child process in the device code goes through device-exec.ts, which throws on failure unless a reason is given, enforced by a scan test.
+        T124 (north-star:check --conditions) and T125 (SUITE_LINE) are included. Device run of 460 cases equals master; pnpm test 2935/2935.'
+      changed_files:
+        - packages/parity/src/device-exec.ts
+        - packages/parity/src/device-run.ts
+        - packages/parity/src/device-jobs.ts
+        - packages/parity/src/device-lanes.ts
+        - packages/parity/src/cli/lanes.ts
+        - packages/parity/src/lanes.ts
+        - package.json
+      commands:
+        - cmd: pnpm pr:review 42 (exit 0)
+          status: pass
+        - cmd: pnpm test 2935/2935
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices
+          status: pass
+    allowed_files:
+      - packages/parity/src/device-exec.ts
+      - packages/parity/src/device-run.ts
+      - packages/parity/src/device-jobs.ts
+      - packages/parity/src/device-lanes.ts
+      - packages/parity/src/cli/lanes.ts
+      - packages/parity/src/lanes.ts
+      - package.json
   - id: T123
     type: worker
     assignee: Worker
@@ -3486,6 +3549,215 @@ tasks:
       - passing needs a changed assertion, fixture expectation, planted-fault meaning or new allowance
       - a file outside allowed_files must change
     receipt: null
+  - id: T124
+    type: worker
+    assignee: Worker
+    status: done
+    lane: tooling
+    objective: 'pnpm run north-star:check fails on master (SyntaxError: ''dragon'' does not provide collectFontFaces): the package.json script lacks --conditions=dragon-internal, which every sibling script
+      has and regen commits worked around. Fix the script, and add a test that every package.json script running a repo .ts file that imports dragon-internal exports uses the condition.'
+    allowed_files:
+      - package.json
+      - packages/parity/test/**
+      - packages/parity/src/device-exec.ts
+      - packages/parity/src/device-run.ts
+      - packages/parity/src/device-jobs.ts
+      - packages/parity/src/device-lanes.ts
+      - packages/parity/src/cli/lanes.ts
+      - packages/parity/src/lanes.ts
+    verify:
+      - pnpm run north-star:check
+      - pnpm typecheck
+      - pnpm test
+    stop_if:
+      - the check itself fails after the fix
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed in PR #42 (merged 9b60a9e35) after 6 Macroscope rounds. Device runs are machine-exclusive under the device lease. One parity:lanes process runs both targets at once within an in-memory
+        memory budget, and even the first device waits for it. Every child process in the device code goes through device-exec.ts, which throws on failure unless a reason is given, enforced by a scan test.
+        T124 (north-star:check --conditions) and T125 (SUITE_LINE) are included. Device run of 460 cases equals master; pnpm test 2935/2935.'
+      changed_files:
+        - packages/parity/src/device-exec.ts
+        - packages/parity/src/device-run.ts
+        - packages/parity/src/device-jobs.ts
+        - packages/parity/src/device-lanes.ts
+        - packages/parity/src/cli/lanes.ts
+        - packages/parity/src/lanes.ts
+        - package.json
+      commands:
+        - cmd: pnpm pr:review 42 (exit 0)
+          status: pass
+        - cmd: pnpm test 2935/2935
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices
+          status: pass
+  - id: T125
+    type: worker
+    assignee: Worker
+    status: done
+    lane: device
+    objective: 'T058L: parseNativeOutput stops dropping suite lines. lanes.ts SUITE_LINE is a closed list, so judgeHost never sees an unknown suite and the host lane passes without counting it. Match any
+      suite-shaped line (keep the '' corpus'' strip) so ''is not a declared suite'' fires.'
+    allowed_files:
+      - packages/parity/src/lanes.ts
+      - packages/parity/test/lanes.test.ts
+    verify:
+      - pnpm test
+      - pnpm run parity:lanes -- --run-host with packages/parity/out/lanes.json byte-identical to master
+      - suites parsed from master swift and kotlin output are the same before and after
+    stop_if:
+      - any master output line newly matches
+      - lanes.json changes
+      - another file is needed
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'lanes-suite-line 94bd2b293: SUITE_LINE matches any suite-shaped line, so judgeHost fails an undeclared suite. Master output parses to the same 13 suites before and after; +2 tests; lanes.json
+        laneCode stamp only. Ships inside PR #42.'
+      changed_files:
+        - packages/parity/src/lanes.ts
+        - packages/parity/test/lanes.test.ts
+      commands:
+        - cmd: pnpm test (lanes, lanes-records, device-failures 34/34 after device commit)
+          status: pass
+        - cmd: parity:lanes --run-host (same suites as master)
+          status: pass
+  - id: T126
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: values
+    objective: 'Relative colour syntax (rgb(from ...), oklch(from ...) etc.): Chrome 145 parses it but the webref grammar refuses it as DRAGON_CSS_INVALID_VALUE (found by COL4). Accept it where Chrome does
+      and resolve it at compile time when the origin colour is static; proven against Chrome. After COL4.'
+    receipt: null
+  - id: T127
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'Translucent CSS Color 4 colours: COL4 refuses them because Chrome blends from unclipped float channels (2,040 of 4,000 differed from 8-bit blending). Research how to match on device (float
+      colour on the native layer, or blending in Dragon) and prove it with the pixel lanes. After COL4.'
+    receipt: null
+  - id: T128
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'Engine bug (found by CALC-2): in a column flex container, an item with min-height: auto cannot shrink below its own specified height. Chrome shrinks an empty 11px item to 0, the engine keeps
+      11px (flex.ts buildItem contentMain via layoutContents measures content with the item height applied). Same for px. Fix with a Chrome-backed fixture.'
+    receipt: null
+    constraints:
+      - 'Done on flex-auto-min bdec83854, pending its device run. Random corpus: 136 geometry moves and 35 new percent-height-flex refusals, all without a Chrome reference; refusing is accepted, with follow-up
+        T136.'
+  - id: T129
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'Engine vs Chrome (found by CALC-2): rtl block child with margin-left: calc(-1e9px): Chrome x=1.98 (overflow artifact), engine 390. Investigate against Blink LayoutUnit saturation and either
+      port it or refuse the range with a typed code.'
+    receipt: null
+  - id: T130
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: values
+    objective: 'Non-integer order via calc(): Chrome rounds half toward +infinity then clamps to int (calc(-1.5) -> -1; css_math_function_value.cc 89-97, math_extras.h 133-139, BSD). Needs an engine-side
+      leaf in validate.ts/environment.ts (compiler may not round). After V2a lands. Unpin values-reject-order-fraction.'
+    receipt: null
+  - id: T131
+    type: worker
+    assignee: Worker
+    status: done
+    lane: values
+    objective: 'Percent inside a border-width calc(): Chrome treats it as invalid; Dragon refuses with a misleading percentage-gaps reason. Give it the right typed reason, matching Chrome validity.'
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #46 merged 69756ef3d. mathInvalidity ports Blink math parser type checking (145.0.7632.6). Chrome-rejected math is now DRAGON_CSS_INVALID_VALUE and dropped, so an earlier declaration
+        wins, as in Chrome. Per-context percent reasons. A 3322-row Chrome oracle agrees in both directions, bar 4 undecided values. Round-1 fix kept the validity check bounded by MAX_MATH_TOKENS. pnpm
+        test 2949/2949.'
+      changed_files:
+        - packages/dragon/src/css/math.ts
+        - packages/dragon/src/css/stylesheet.ts
+        - packages/dragon/test/math-validity.test.ts
+        - packages/dragon/test/units.test.ts
+      commands:
+        - cmd: pnpm test 2949/2949
+          status: pass
+        - cmd: pnpm pr:review 46 exit 0
+          status: pass
+    allowed_files:
+      - packages/dragon/src/css/math.ts
+      - packages/dragon/src/css/stylesheet.ts
+      - packages/dragon/test/math-validity.test.ts
+      - packages/dragon/test/units.test.ts
+  - id: T132
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: device
+    objective: 'Silent lane failure: under machine load, layout-vectors-host native:kotlin (and the Kotlin engine suite in pnpm test) intermittently reports p1/engine 0/20258 with no reason (seen on WM-0
+      and T123, 2026-09-30); rerun passes. Find the cause (JVM start or timeout, harness.jar I/O, killed process) and make the lane record the real error (exit code, signal, stderr tail) instead of 0/N,
+      with a test. Also: the dragon-320 emulator sometimes exits before it attaches (lane-speed run); record and surface the emulator log.'
+    receipt: null
+  - id: T133
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL1a-tags: accept b, strong, em and i on web, and on native per R7 (notes/T044-inl-spec.md), with their UA values via resolve.ts and datasets.ts. After T058, before TXT1a. small and code
+      are recorded as still refused.'
+    receipt: null
+  - id: T134
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'SELD-R1b (split from T063): rt-hit.ts with the Chrome 145 inline hit rule from T063J (notes/T047-runtime-spec.md amendment), pointer-events auto and none (inherited), tap dispatch, and the
+      device-states and device-hit lanes, on seld-r1. The pointer-events capture key needs the identity test. targets.ts entries after #42.'
+    receipt: null
+  - id: T136
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'Percentage-height children in a column flex item with a set height: T128 refuses them (percent-height-flex, 35 random-corpus cases) because Chrome resolves the child''s percentage against
+      the item''s set height while the auto-minimum measurement treats the height as auto. Port it exactly: layoutContents (block.ts) returns the content height before the item''s own height is applied
+      (Blink IntrinsicBlockSize), then lift the refusal, with Chrome-captured fixtures. After T128 lands.'
+    receipt: null
+  - id: T135
+    type: worker
+    assignee: Worker
+    status: done
+    lane: tooling
+    objective: pr:review vouches for Macroscope's 'All code in this push has already been reviewed.' skip over reviewed paths; close ignore.md's front matter so test files are reviewed.
+    allowed_files:
+      - scripts/pr-review.ts
+      - scripts/pr-review-vouch.ts
+      - scripts/macroscope-ignore.ts
+      - packages/parity/test/pr-review.test.ts
+      - packages/parity/test/macroscope-ignore.test.ts
+      - .macroscope/ignore.md
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #47 merged 77afadf69. The skip is vouched only when the three-dot diff over the paths ignore.md leaves to review has the same stable patch id as an earlier PR commit with a successful
+        correctness check, under the same ignore blob. Diff flags are pinned against git config, binary-only files are excluded as Macroscope does, and fork PRs and a self-ignoring ignore file are refused.
+        ignore.md''s unclosed ''---'' block is closed, so ignoreTests: false applies and test files are reviewed. pnpm test 2957/2959 (2 load timeouts pass on rerun); live pr-review 45 vouched by 19a66f17e.'
+      changed_files:
+        - scripts/pr-review.ts
+        - scripts/pr-review-vouch.ts
+        - scripts/macroscope-ignore.ts
+        - packages/parity/test/pr-review.test.ts
+        - packages/parity/test/macroscope-ignore.test.ts
+        - .macroscope/ignore.md
+      commands:
+        - cmd: pnpm pr:review 47 exit 0
+          status: pass
+        - cmd: targeted 38 tests
+          status: pass
   - id: T999
     type: judge
     assignee: Judge
