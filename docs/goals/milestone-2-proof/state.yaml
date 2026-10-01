@@ -85,7 +85,7 @@ dispatched:
   - T071 # paint stack rebuild: ems-a, ems-b, p6a-dash-v2, p6a-promote-v2, t116-border-join-v2
   - T064 # SELD-R2a
   - T052 # FORM-a A1 engine (T052J) on form-a; A2 appearance longhand on form-a2
-  - T058 # INL1a encoders check, then T133 on txt1a-2
+  - T147 # TXT-W1 on inl1a-tags 36e84c1e1
   - T059 # INL2a (T059J) on inl2, base txt1a-2 e4266eb0e
 device_lease: null
 tasks:
@@ -4053,6 +4053,7 @@ tasks:
     receipt: null
   - id: T147
     type: worker
+    pm_note: 'T147J (2026-10-01), notes/T147J-txt-weight.md: three parts. TXT-W1 (longhands, bolder/lighter, oblique, UA rows as specified values, non-synthesized native) on inl1a-tags once T133 is host-done; TXT-W2 font shorthand + font-synthesis; TXT-W3 native synthetic bold/oblique (needs T147-3J, after T084 Phase R). Synthesis is paint-only in Blink/Skia (advances unchanged).'
     assignee: Worker
     status: queued
     lane: text
@@ -4106,6 +4107,13 @@ tasks:
     status: queued
     lane: runtime
     objective: 'user-select (Dragon-built selection per the owner ruling), in the top 100 by usage; after P6c (T077).'
+    receipt: null
+  - id: T155
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL1a fragments (found by T133): a nested inline box with its own text next to a child in another face gets one engine fragment spanning both, where Chrome reports two client rects on one line (<div style="width:240px">Mixed <b>bold <em>bold italic</em></b> ends</div>, Inter: engine right edge 164.8 vs Chrome 88.4). Port Blink''s inline box fragmentation for this shape, Chrome-captured, after the INL1a stack; T133 fixtures avoid the shape meanwhile.'
     receipt: null
   - id: T999
     type: judge

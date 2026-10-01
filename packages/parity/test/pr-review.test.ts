@@ -24,6 +24,7 @@ import {
   parsePatchId,
   parsePrCommits,
   parseReviewCommentPages,
+  regenOnlyProblems,
   vouchForSkip,
 } from '../../../scripts/pr-review-vouch.ts';
 
@@ -393,4 +394,53 @@ describe('patchIdOver under git config that hides or reshapes diffs', () => {
       expect(id(reviewedCommit)).toMatchObject({ id: expect.stringMatching(/^[0-9a-f]{40}$/) });
     });
   }
+});
+
+describe('regenOnlyProblems on a scratch repository', () => {
+  const r = scratch(false);
+  afterAll(r.cleanup);
+  const { git, commit } = r;
+  git(['init', '-q', '-b', 'master']);
+  commit({ '.macroscope/ignore.md': IGNORE_MD, 'src/a.ts': 'a\n', 'out/x.json': '1\n', 'img/logo.png': PNG(0) }, 'base');
+  git(['checkout', '-q', '-b', 'pr']);
+  const reviewedCommit = commit({ 'src/a.ts': 'a2\n' }, 'pr change');
+  const ignore = r.ignoreOf(reviewedCommit);
+  const at = (files: Record<string, string | Buffer>, msg: string) => {
+    git(['checkout', '-q', '--detach', reviewedCommit]);
+    return commit(files, msg);
+  };
+
+  it('accepts a commit that changes only ignored paths, or nothing', () => {
+    expect(regenOnlyProblems(git, at({ 'out/x.json': '2\n', 'pkg/vectors/v.json': '1\n' }, 'regen'), ignore)).toEqual([]);
+    expect(regenOnlyProblems(git, at({}, 'empty regen'), ignore)).toEqual([]);
+  });
+
+  it('(c) refuses a commit that edits .macroscope/ignore.md, and patchIdOver errors across it', () => {
+    const edited = at({ '.macroscope/ignore.md': `${IGNORE_MD}src/**\n`, 'out/x.json': '2\n' }, 'regen widens the ignore file');
+    const own = r.ignoreOf(edited);
+    expect(regenOnlyProblems(git, edited, own)).toEqual([expect.stringContaining('may not edit .macroscope/ignore.md')]);
+    expect(regenOnlyProblems(git, edited, ignore)).toEqual([expect.stringContaining('differs from the one given'), expect.stringContaining('may not edit')]);
+    expect(patchIdOver(git, reviewedCommit, 'master', 'reviewed paths', own)).toMatchObject({ error: expect.stringContaining('differs') });
+    expect(patchIdOver(git, edited, 'master', 'reviewed paths', ignore)).toMatchObject({ error: expect.stringContaining('differs') });
+  });
+
+  it('(d) allows a binary in an ignored path and refuses one in a reviewed path', () => {
+    expect(regenOnlyProblems(git, at({ 'out/frame.png': PNG(1) }, 'binary output'), ignore)).toEqual([]);
+    const logo = at({ 'img/logo.png': PNG(2) }, 'binary in a reviewed path');
+    expect(regenOnlyProblems(git, logo, ignore)).toEqual([expect.stringContaining('img/logo.png: not covered')]);
+    // patchIdOver leaves binary files out, so only regenOnlyProblems sees this change.
+    expect(patchIdOver(git, logo, 'master', 'reviewed paths', ignore)).toEqual(patchIdOver(git, reviewedCommit, 'master', 'reviewed paths', ignore));
+  });
+
+  it('refuses a reviewed-path change, a merge, a root commit and git failures', () => {
+    expect(regenOnlyProblems(git, at({ 'out/x.json': '3\n', 'src/a.ts': 'a3\n' }, 'regen plus code'), ignore)).toEqual([expect.stringContaining('src/a.ts')]);
+    git(['checkout', '-q', 'master']);
+    git(['merge', '-q', '--no-ff', '--no-edit', 'pr']);
+    expect(regenOnlyProblems(git, 'HEAD', ignore)).toEqual([expect.stringContaining('has 2 parents')]);
+    const root = git(['rev-list', '--max-parents=0', 'HEAD']).toString().trim();
+    expect(regenOnlyProblems(git, root, ignore)).toEqual([expect.stringContaining('has 0 parents')]);
+    expect(regenOnlyProblems(git, sha('e'), ignore)).toEqual([expect.any(String)]);
+    const garbage: Git = (args) => (args[0] === 'rev-list' ? Buffer.from(`${sha('a')} ${sha('b')}\n`) : Buffer.from('nonsense'));
+    expect(regenOnlyProblems(garbage, sha('a'), ignore)).not.toEqual([]);
+  });
 });
