@@ -81,7 +81,6 @@ visual_board:
 active_task: T058
 dispatched:
   - T121
-  - T122
   - T071
   - T074
   - T072
@@ -92,7 +91,6 @@ dispatched:
   - T062
   - T118
   - T026
-  - T125
   - T119
   - T120
 device_lease: null
@@ -2105,6 +2103,7 @@ tasks:
         compare.ts anonymousBoxes if needed); the INL1a-1 split is not used. Stack and state: notes/T058-inl1a.md. Landing waits on pr/v1b-compiler-values and v2a-value-model.'
       - 'Second Judge amendment 2026-09-30 (T058J2): resolve.ts collapseInlineContext, blockify.ts checkInlineLevel lift, three pin retargets, buildIfc+placeIfcLines deviation accepted, targets.ts engine-inline
         entry only after T125 (T058L) merges; see notes/T058-inl1a.md.'
+      - 'Third Judge amendment (T058J3): rulings A-G in notes/T058-inl1a.md. Element dump lines are 0/0 on device. F (singleRunBaseline plant) and G (targets.ts) come after #42.'
   - id: T059
     type: worker
     assignee: Worker
@@ -2229,6 +2228,8 @@ tasks:
     stop_if:
       - See notes/T047-runtime-spec.md §3.3 stop_if (binding)
     receipt: null
+    constraints:
+      - 'Split: SELD-R1a (state runtime) is done on seld-r1 7b7e096, pending its device run and the targets.ts device-states entry after #42. SELD-R1b is T134.'
   - id: T064
     type: worker
     assignee: Worker
@@ -3479,11 +3480,39 @@ tasks:
   - id: T122
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: device
     objective: 'LANE-SPEED (#42, notes/LANE-SPEED.md): device lanes run a target''s devices at once under a machine-wide memory budget; fix the cross-target memory overcommit finding; record device timings;
       land.'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed in PR #42 (merged 9b60a9e35) after 6 Macroscope rounds. Device runs are machine-exclusive under the device lease. One parity:lanes process runs both targets at once within an in-memory
+        memory budget, and even the first device waits for it. Every child process in the device code goes through device-exec.ts, which throws on failure unless a reason is given, enforced by a scan test.
+        T124 (north-star:check --conditions) and T125 (SUITE_LINE) are included. Device run of 460 cases equals master; pnpm test 2935/2935.'
+      changed_files:
+        - packages/parity/src/device-exec.ts
+        - packages/parity/src/device-run.ts
+        - packages/parity/src/device-jobs.ts
+        - packages/parity/src/device-lanes.ts
+        - packages/parity/src/cli/lanes.ts
+        - packages/parity/src/lanes.ts
+        - package.json
+      commands:
+        - cmd: pnpm pr:review 42 (exit 0)
+          status: pass
+        - cmd: pnpm test 2935/2935
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices
+          status: pass
+    allowed_files:
+      - packages/parity/src/device-exec.ts
+      - packages/parity/src/device-run.ts
+      - packages/parity/src/device-jobs.ts
+      - packages/parity/src/device-lanes.ts
+      - packages/parity/src/cli/lanes.ts
+      - packages/parity/src/lanes.ts
+      - package.json
   - id: T123
     type: worker
     assignee: Worker
@@ -3519,24 +3548,50 @@ tasks:
   - id: T124
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: tooling
     objective: 'pnpm run north-star:check fails on master (SyntaxError: ''dragon'' does not provide collectFontFaces): the package.json script lacks --conditions=dragon-internal, which every sibling script
       has and regen commits worked around. Fix the script, and add a test that every package.json script running a repo .ts file that imports dragon-internal exports uses the condition.'
     allowed_files:
       - package.json
       - packages/parity/test/**
+      - packages/parity/src/device-exec.ts
+      - packages/parity/src/device-run.ts
+      - packages/parity/src/device-jobs.ts
+      - packages/parity/src/device-lanes.ts
+      - packages/parity/src/cli/lanes.ts
+      - packages/parity/src/lanes.ts
     verify:
       - pnpm run north-star:check
       - pnpm typecheck
       - pnpm test
     stop_if:
       - the check itself fails after the fix
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'Landed in PR #42 (merged 9b60a9e35) after 6 Macroscope rounds. Device runs are machine-exclusive under the device lease. One parity:lanes process runs both targets at once within an in-memory
+        memory budget, and even the first device waits for it. Every child process in the device code goes through device-exec.ts, which throws on failure unless a reason is given, enforced by a scan test.
+        T124 (north-star:check --conditions) and T125 (SUITE_LINE) are included. Device run of 460 cases equals master; pnpm test 2935/2935.'
+      changed_files:
+        - packages/parity/src/device-exec.ts
+        - packages/parity/src/device-run.ts
+        - packages/parity/src/device-jobs.ts
+        - packages/parity/src/device-lanes.ts
+        - packages/parity/src/cli/lanes.ts
+        - packages/parity/src/lanes.ts
+        - package.json
+      commands:
+        - cmd: pnpm pr:review 42 (exit 0)
+          status: pass
+        - cmd: pnpm test 2935/2935
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices
+          status: pass
   - id: T125
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: device
     objective: 'T058L: parseNativeOutput stops dropping suite lines. lanes.ts SUITE_LINE is a closed list, so judgeHost never sees an unknown suite and the host lane passes without counting it. Match any
       suite-shaped line (keep the '' corpus'' strip) so ''is not a declared suite'' fires.'
@@ -3551,7 +3606,19 @@ tasks:
       - any master output line newly matches
       - lanes.json changes
       - another file is needed
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'lanes-suite-line 94bd2b293: SUITE_LINE matches any suite-shaped line, so judgeHost fails an undeclared suite. Master output parses to the same 13 suites before and after; +2 tests; lanes.json
+        laneCode stamp only. Ships inside PR #42.'
+      changed_files:
+        - packages/parity/src/lanes.ts
+        - packages/parity/test/lanes.test.ts
+      commands:
+        - cmd: pnpm test (lanes, lanes-records, device-failures 34/34 after device commit)
+          status: pass
+        - cmd: parity:lanes --run-host (same suites as master)
+          status: pass
   - id: T126
     type: worker
     assignee: Worker
@@ -3607,6 +3674,22 @@ tasks:
     objective: 'Silent lane failure: under machine load, layout-vectors-host native:kotlin (and the Kotlin engine suite in pnpm test) intermittently reports p1/engine 0/20258 with no reason (seen on WM-0
       and T123, 2026-09-30); rerun passes. Find the cause (JVM start or timeout, harness.jar I/O, killed process) and make the lane record the real error (exit code, signal, stderr tail) instead of 0/N,
       with a test. Also: the dragon-320 emulator sometimes exits before it attaches (lane-speed run); record and surface the emulator log.'
+    receipt: null
+  - id: T133
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'INL1a-tags: accept b, strong, em and i on web, and on native per R7 (notes/T044-inl-spec.md), with their UA values via resolve.ts and datasets.ts. After T058, before TXT1a. small and code
+      are recorded as still refused.'
+    receipt: null
+  - id: T134
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'SELD-R1b (split from T063): rt-hit.ts with the Chrome 145 inline hit rule from T063J (notes/T047-runtime-spec.md amendment), pointer-events auto and none (inherited), tap dispatch, and the
+      device-states and device-hit lanes, on seld-r1. The pointer-events capture key needs the identity test. targets.ts entries after #42.'
     receipt: null
   - id: T999
     type: judge
