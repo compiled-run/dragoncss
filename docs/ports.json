@@ -877,7 +877,8 @@
         { "lines": "1-342", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/text-shaper/src/dragon_hb.zig", "symbol": null, "use": "port" }
       ]
     },
     {
@@ -1050,7 +1051,8 @@
         { "lines": "1-668", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/text-shaper/src/dragon_hb.zig", "symbol": null, "use": "port" }
       ]
     },
     {
@@ -1166,7 +1168,8 @@
         { "lines": "1-186", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/text-shaper/src/dragon_hb.zig", "symbol": null, "use": "port" }
       ]
     },
     {
@@ -1777,7 +1780,11 @@
   ],
   "notChrome": [
     {
-      "cited": "uscript.h",
+      "cited": [
+        "uscript.h",
+        "vendor/icu/77.1/uscript.h",
+        "raw.githubusercontent.com/unicode-org/icu/release-77-1/icu4c/source/common/unicode/uscript.h"
+      ],
       "source": "ICU 77.1 unicode/uscript.h (vendor/icu/77.1), Unicode licence: script codes, not a Blink/Skia/gfx port",
       "files": [
         "packages/layout/src/script-data.ts",
@@ -1786,17 +1793,46 @@
       ]
     },
     {
-      "cited": "dragon_hb.h",
-      "source": "Dragon's own C header (packages/text-shaper/include/dragon_hb.h), named in the Swift package manifest",
+      "cited": [
+        "dragon_hb.h",
+        "include/dragon_hb.h",
+        "../include/dragon_hb.h",
+        "../../../include/dragon_hb.h"
+      ],
+      "source": "Dragon's own C header (packages/text-shaper/include/dragon_hb.h), named in the Swift package manifest, the module map and the JNI glue",
       "files": [
-        "packages/text-shaper/swift/Package.swift"
+        "packages/text-shaper/src/dragon_hb_jni.zig",
+        "packages/text-shaper/swift/Package.swift",
+        "packages/text-shaper/swift/Sources/CDragonHB/module.modulemap"
       ]
     },
     {
-      "cited": "uchar.h",
+      "cited": [
+        "source/common/unicode/uchar.h"
+      ],
       "source": "ICU unicode/uchar.h at the ICU revision Chromium 145.0.7632.6 DEPS pins, Unicode licence: cited for U_UNICODE_VERSION only",
       "files": [
         "scripts/gen-linebreak-data.ts"
+      ]
+    },
+    {
+      "cited": [
+        "harfbuzz.cc"
+      ],
+      "source": "HarfBuzz's single-file build source (vendor/harfbuzz/src/harfbuzz.cc), compiled unmodified by the text shaper; its licence is in THIRD_PARTY_NOTICES.md",
+      "files": [
+        "packages/text-shaper/build.zig"
+      ]
+    },
+    {
+      "cited": [
+        "jni.h",
+        "jni_md.h"
+      ],
+      "source": "the JNI headers of the JDK or the Android NDK, included by the JNI glue",
+      "files": [
+        "packages/text-shaper/build.zig",
+        "packages/text-shaper/src/dragon_hb_jni.zig"
       ]
     }
   ],

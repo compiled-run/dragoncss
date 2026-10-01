@@ -38,6 +38,7 @@ export function thirdPartyNotices(registry: NoticeRegistry, harfbuzzCopying: str
   if (!Array.isArray(registry.entries)) throw new Error('docs/ports.json: no entries');
   for (const k of ['tag', 'skiaRevision', 'v8Revision'] as const) if (typeof registry[k] !== 'string' || registry[k] === '') throw new Error(`docs/ports.json: no ${k}`);
   for (const e of registry.entries) {
+    if (typeof e.upstream !== 'string' || e.upstream === '') throw new Error('docs/ports.json: an entry has no upstream path');
     if (typeof e.copyright !== 'string' || !e.copyright.startsWith('Copyright')) throw new Error(`${e.upstream}: no copyright line`);
   }
   for (const [id, text] of Object.entries(registry.licenceTexts)) if (typeof text !== 'string' || text.trim() === '') throw new Error(`licence text ${id} is empty`);

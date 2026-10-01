@@ -14,13 +14,14 @@
 - `note` and `attribution`: free text. `attribution` records a notice that must stay with the ported code (rapidhash, fdlibm).
 - `noticeText`: the id, in `licenceTexts`, of the licence text that covers the file in `THIRD_PARTY_NOTICES.md`. `chromium-bsd` and `skia-bsd` are the Chromium and Skia LICENSE files; `header-bsd-N` are the BSD texts found in file headers (Apple and Google); `lgpl` entries have none.
 
-`notChrome` lists cited `.h` files that are not Chrome code (ICU headers and Dragon's own C header), with the files that cite them.
+`notChrome` lists cited files that are not Chrome code (ICU and JNI headers, HarfBuzz's build source and Dragon's own C header): `cited` holds each path exactly as a source file writes it, and `files` the files that cite it. Only those exact paths are exempt, so a Chrome file with the same name still needs an entry.
 
 ## What the test checks
 
-- Every `.cc`, `.cpp` or `.h` file named in a comment or string of a TypeScript, JavaScript, Swift, Kotlin or Java file under `packages/`, `scripts/` or `examples/` (files git tracks or would track; generated output is skipped) resolves to exactly one entry (by full path, by a trailing part of the path, or by a `citedAs` name), and that entry lists the citing file.
+- Every `.cc`, `.cpp`, `.mm` or `.h` file named in a comment or string of a code file under `packages/`, `scripts/` or `examples/` (TypeScript and JavaScript in every variant including `.tsx`, `.jsx` and `.d.ts`; Swift, Kotlin, Java, Zig, C-family, `.tsrx` and module maps; shell; files git tracks or would track; generated output is skipped) resolves to an exact `notChrome` path or to exactly one entry (by full path, by a trailing part of the path, or by a `citedAs` name), and that entry lists the citing file.
 - Every `lgpl` entry has a ruling; none has a `port` use unless it is class B and on `KNOWN_LGPL_CLEAN_ROOM`; every proof file exists; the licence phrase matches the kind.
-- A `bsd-other` or `fdlibm-sun` file's copyright line stays in each Dragon file that ports it.
+- A `bsd-other` or `fdlibm-sun` file's copyright line and every paragraph of its licence text stay in each Dragon file that ports it (compared without comment markers or line wrapping).
+- Every tracked file in those directories is either scanned code or known data, so a new kind of code file fails the test until the scan covers it.
 - `THIRD_PARTY_NOTICES.md` is exactly what `pnpm notices:gen` (`scripts/gen-third-party-notices.ts`) writes from `docs/ports.json` and `vendor/harfbuzz/COPYING`. The published `dragon` package ships it next to `LICENSE`.
 - Every `dragon` file exists, every `symbol` is still declared in it, and the file still cites the entry.
 
