@@ -127,3 +127,21 @@ Blink and Skia cites are at 145.0.7632.6 and Skia 2ab8add5, from the GitHub mirr
 - native:encoders or a device lane is needed to call part 1 host-done. Device runs follow T084 Phase R.
 
 **PM:** dispatch when T133 (inl1a-tags) is host-done; base = T133's final head (the Judge read 1730a3c07). The worker note goes in the receipt (notes are never committed on branches). The decisions.md entry (synthesis is paint-only; weight/style follow Blink's converters; native synthesis refused until TXT-W3) goes in the TXT-W1 PR.
+
+## TXT-W1 host-done (2026-10-01): txt-w1 601afaf56 on inl1a-tags 36e84c1e1
+
+**Result:**
+- 12 Chrome-proven cases.
+- The grammar table matches Chrome with 0 mismatches.
+- The synthesis predicate matches Chrome's pixels on 21 rows.
+- Existing outputs are identical apart from the two new keys.
+
+**North star:** the h3/h4 `font-weight: 400` rule is supported on web and iOS. Support goes from 57% to 57.4%. Tailwind goes from 2214 to 2225.
+
+**Findings:**
+- Inter oblique 20deg is not synthetic in Chrome: the face's slope is 14. It moves to the native fixture.
+- A contexts fixture was needed to prove font-weight in flex items and inline boxes.
+
+**PM rulings:**
+- **Accepted, outside allowed_files:** the extra files (the gen-css-grammar SUBSET, the stylesheet.ts two-token hook, the text-latin-run.ts lookup) and the pin retargets.
+- **Next:** TXT-W2 (the font shorthand and font-synthesis) is dispatched on txt-w2. It also clears the FORM-a demo buttons' `font: inherit` font errors.
