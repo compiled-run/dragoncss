@@ -95,6 +95,11 @@
               "cases": 22000
             },
             {
+              "corpus": "p1",
+              "suite": "rt",
+              "cases": 54588
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 1380
@@ -130,8 +135,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "3998a2abbc4e6d233ea3a22d13be0549238a2483ba3111a031055509b492f2fa",
-          "totalCases": 560875,
+          "caseListSha256": "5033d1f29e438b6236ccee41d7f324a724dafa899c80aae7fdceed3715a093ba",
+          "totalCases": 615463,
           "run": {
             "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
             "suites": [
@@ -162,6 +167,13 @@
                 "declared": 22000,
                 "total": 22000,
                 "pass": 22000
+              },
+              {
+                "corpus": "p1",
+                "suite": "rt",
+                "declared": 54588,
+                "total": 54588,
+                "pass": 54588
               },
               {
                 "corpus": "extended",
@@ -228,7 +240,7 @@
               }
             ],
             "digests": {
-              "p1": "8d1c1c7840229214d20110846018e798cefda06278bd9e367caec2a83fadbee4",
+              "p1": "ade593101d4113122c572480bfdc204e651775775e5b82dda1f9f3fc37759c55",
               "extended": "ee7ba68e5593a0320c0e4cc81343f1a722a3685ffc8f78a1050da01e15ea2482"
             }
           },
@@ -283,6 +295,11 @@
               "cases": 22000
             },
             {
+              "corpus": "p1",
+              "suite": "rt",
+              "cases": 54588
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 1380
@@ -318,8 +335,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "3998a2abbc4e6d233ea3a22d13be0549238a2483ba3111a031055509b492f2fa",
-          "totalCases": 560875,
+          "caseListSha256": "5033d1f29e438b6236ccee41d7f324a724dafa899c80aae7fdceed3715a093ba",
+          "totalCases": 615463,
           "run": {
             "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1); arm64-apple-ios15.0-simulator; simctl spawn on iPhone 17",
             "suites": [
@@ -350,6 +367,13 @@
                 "declared": 22000,
                 "total": 22000,
                 "pass": 22000
+              },
+              {
+                "corpus": "p1",
+                "suite": "rt",
+                "declared": 54588,
+                "total": 54588,
+                "pass": 54588
               },
               {
                 "corpus": "extended",
@@ -416,15 +440,15 @@
               }
             ],
             "digests": {
-              "p1": "8d1c1c7840229214d20110846018e798cefda06278bd9e367caec2a83fadbee4",
+              "p1": "ade593101d4113122c572480bfdc204e651775775e5b82dda1f9f3fc37759c55",
               "extended": "ee7ba68e5593a0320c0e4cc81343f1a722a3685ffc8f78a1050da01e15ea2482"
             }
           },
           "device": null,
           "evidence": {
-            "laneCode": "fdd58f0614d4494bbfb82c6e90893e76575f8ed263da8eb8c2aac04082b87016",
+            "laneCode": "34b4d3fbaba50537666e7d19867689034fa58f8b0dbb3a48f1b8d4aa1fa3a484",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "85ddd7ae97ef6b8cf914028250f303c66969072d6c3e4f7b2771e0fb2c76ce64"
+            "app": "acb1282c76b3fa64def3a75a92207d34edbfe4df83b43ea7b3b1aed722ec2dfd"
           }
         },
         {
@@ -532,9 +556,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "fdd58f0614d4494bbfb82c6e90893e76575f8ed263da8eb8c2aac04082b87016",
+            "laneCode": "34b4d3fbaba50537666e7d19867689034fa58f8b0dbb3a48f1b8d4aa1fa3a484",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "85ddd7ae97ef6b8cf914028250f303c66969072d6c3e4f7b2771e0fb2c76ce64"
+            "app": "acb1282c76b3fa64def3a75a92207d34edbfe4df83b43ea7b3b1aed722ec2dfd"
           }
         },
         {
@@ -642,9 +666,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "fdd58f0614d4494bbfb82c6e90893e76575f8ed263da8eb8c2aac04082b87016",
+            "laneCode": "34b4d3fbaba50537666e7d19867689034fa58f8b0dbb3a48f1b8d4aa1fa3a484",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "85ddd7ae97ef6b8cf914028250f303c66969072d6c3e4f7b2771e0fb2c76ce64"
+            "app": "acb1282c76b3fa64def3a75a92207d34edbfe4df83b43ea7b3b1aed722ec2dfd"
           }
         },
         {
@@ -752,9 +776,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "fdd58f0614d4494bbfb82c6e90893e76575f8ed263da8eb8c2aac04082b87016",
+            "laneCode": "34b4d3fbaba50537666e7d19867689034fa58f8b0dbb3a48f1b8d4aa1fa3a484",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "85ddd7ae97ef6b8cf914028250f303c66969072d6c3e4f7b2771e0fb2c76ce64"
+            "app": "acb1282c76b3fa64def3a75a92207d34edbfe4df83b43ea7b3b1aed722ec2dfd"
           }
         },
         {
@@ -1044,9 +1068,9 @@
             ]
           },
           "evidence": {
-            "laneCode": "fdd58f0614d4494bbfb82c6e90893e76575f8ed263da8eb8c2aac04082b87016",
+            "laneCode": "34b4d3fbaba50537666e7d19867689034fa58f8b0dbb3a48f1b8d4aa1fa3a484",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "85ddd7ae97ef6b8cf914028250f303c66969072d6c3e4f7b2771e0fb2c76ce64"
+            "app": "acb1282c76b3fa64def3a75a92207d34edbfe4df83b43ea7b3b1aed722ec2dfd"
           }
         }
       ],
@@ -1254,6 +1278,11 @@
               "cases": 22000
             },
             {
+              "corpus": "p1",
+              "suite": "rt",
+              "cases": 54588
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 1380
@@ -1289,8 +1318,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "3998a2abbc4e6d233ea3a22d13be0549238a2483ba3111a031055509b492f2fa",
-          "totalCases": 560875,
+          "caseListSha256": "5033d1f29e438b6236ccee41d7f324a724dafa899c80aae7fdceed3715a093ba",
+          "totalCases": 615463,
           "run": {
             "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18",
             "suites": [
@@ -1321,6 +1350,13 @@
                 "declared": 22000,
                 "total": 22000,
                 "pass": 22000
+              },
+              {
+                "corpus": "p1",
+                "suite": "rt",
+                "declared": 54588,
+                "total": 54588,
+                "pass": 54588
               },
               {
                 "corpus": "extended",
@@ -1387,7 +1423,7 @@
               }
             ],
             "digests": {
-              "p1": "8d1c1c7840229214d20110846018e798cefda06278bd9e367caec2a83fadbee4",
+              "p1": "ade593101d4113122c572480bfdc204e651775775e5b82dda1f9f3fc37759c55",
               "extended": "ee7ba68e5593a0320c0e4cc81343f1a722a3685ffc8f78a1050da01e15ea2482"
             }
           },
@@ -1442,6 +1478,11 @@
               "cases": 22000
             },
             {
+              "corpus": "p1",
+              "suite": "rt",
+              "cases": 54588
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 1380
@@ -1477,8 +1518,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "3998a2abbc4e6d233ea3a22d13be0549238a2483ba3111a031055509b492f2fa",
-          "totalCases": 560875,
+          "caseListSha256": "5033d1f29e438b6236ccee41d7f324a724dafa899c80aae7fdceed3715a093ba",
+          "totalCases": 615463,
           "run": {
             "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18; d8 --min-api 31; ART app_process on dragon-smoke (Android 16)",
             "suites": [
@@ -1509,6 +1550,13 @@
                 "declared": 22000,
                 "total": 22000,
                 "pass": 22000
+              },
+              {
+                "corpus": "p1",
+                "suite": "rt",
+                "declared": 54588,
+                "total": 54588,
+                "pass": 54588
               },
               {
                 "corpus": "extended",
@@ -1575,15 +1623,15 @@
               }
             ],
             "digests": {
-              "p1": "8d1c1c7840229214d20110846018e798cefda06278bd9e367caec2a83fadbee4",
+              "p1": "ade593101d4113122c572480bfdc204e651775775e5b82dda1f9f3fc37759c55",
               "extended": "ee7ba68e5593a0320c0e4cc81343f1a722a3685ffc8f78a1050da01e15ea2482"
             }
           },
           "device": null,
           "evidence": {
-            "laneCode": "fdd58f0614d4494bbfb82c6e90893e76575f8ed263da8eb8c2aac04082b87016",
+            "laneCode": "34b4d3fbaba50537666e7d19867689034fa58f8b0dbb3a48f1b8d4aa1fa3a484",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "0ef55d3a077e8fa34ec19180b13bfd828d6cf7d480815d54772091a8e48f6207"
+            "app": "d000257eaf73d85240365af6da7d89f600912891b904dbaaa3ce2c9171e0b7aa"
           }
         },
         {
@@ -1734,9 +1782,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "fdd58f0614d4494bbfb82c6e90893e76575f8ed263da8eb8c2aac04082b87016",
+            "laneCode": "34b4d3fbaba50537666e7d19867689034fa58f8b0dbb3a48f1b8d4aa1fa3a484",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "0ef55d3a077e8fa34ec19180b13bfd828d6cf7d480815d54772091a8e48f6207"
+            "app": "d000257eaf73d85240365af6da7d89f600912891b904dbaaa3ce2c9171e0b7aa"
           }
         },
         {
@@ -1887,9 +1935,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "fdd58f0614d4494bbfb82c6e90893e76575f8ed263da8eb8c2aac04082b87016",
+            "laneCode": "34b4d3fbaba50537666e7d19867689034fa58f8b0dbb3a48f1b8d4aa1fa3a484",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "0ef55d3a077e8fa34ec19180b13bfd828d6cf7d480815d54772091a8e48f6207"
+            "app": "d000257eaf73d85240365af6da7d89f600912891b904dbaaa3ce2c9171e0b7aa"
           }
         },
         {
@@ -2040,9 +2088,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "fdd58f0614d4494bbfb82c6e90893e76575f8ed263da8eb8c2aac04082b87016",
+            "laneCode": "34b4d3fbaba50537666e7d19867689034fa58f8b0dbb3a48f1b8d4aa1fa3a484",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "0ef55d3a077e8fa34ec19180b13bfd828d6cf7d480815d54772091a8e48f6207"
+            "app": "d000257eaf73d85240365af6da7d89f600912891b904dbaaa3ce2c9171e0b7aa"
           }
         },
         {
@@ -2384,9 +2432,9 @@
             ]
           },
           "evidence": {
-            "laneCode": "fdd58f0614d4494bbfb82c6e90893e76575f8ed263da8eb8c2aac04082b87016",
+            "laneCode": "34b4d3fbaba50537666e7d19867689034fa58f8b0dbb3a48f1b8d4aa1fa3a484",
             "referenceData": "5101f31e4f21ae3b6c054a14ca0d29b417a60f9f0911f7c991189c5e7890c3b2",
-            "app": "0ef55d3a077e8fa34ec19180b13bfd828d6cf7d480815d54772091a8e48f6207"
+            "app": "d000257eaf73d85240365af6da7d89f600912891b904dbaaa3ce2c9171e0b7aa"
           }
         }
       ],
