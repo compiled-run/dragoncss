@@ -12,7 +12,7 @@ export const STATES: readonly FixtureSpec[] = [
   both('hit-line-strip-b'),
   both('hit-order'),
   both('hit-pointer-events'),
-  reject('reject-pointer-events-visiblePainted', 'DRAGON_UNSUPPORTED_VALUE', 'visiblePainted', 'pointer-events: visiblePainted is unsupported'),
+  reject('reject-pointer-events-visiblePainted', 'DRAGON_UNSUPPORTED_VALUE', 'visiblePainted', 'pointer-events: visiblepainted is unsupported'),
   reject('reject-pointer-events-all', 'DRAGON_UNSUPPORTED_VALUE', 'all', 'pointer-events: all is unsupported'),
   reject('reject-pointer-events-bounding-box', 'DRAGON_UNSUPPORTED_VALUE', 'bounding-box', 'pointer-events: bounding-box is unsupported'),
 ];

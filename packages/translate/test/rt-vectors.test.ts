@@ -44,8 +44,8 @@ describe('rt suite (ANIM-a2)', () => {
   const corpus = buildCorpus();
   const rt = corpus.suites.find((s) => s.name === 'rt');
 
-  it('is the last P1 suite, in library mode, one line per rt vector record', () => {
-    expect(corpus.suites.map((s) => s.name)).toEqual(['vectors', 'units', 'engine', 'library', 'rt']);
+  it('is the last P1 suite before SELD-R1b\'s hit suite, in library mode, one line per rt vector record', () => {
+    expect(corpus.suites.map((s) => s.name)).toEqual(['vectors', 'units', 'engine', 'library', 'rt', 'hit']);
     expect(rt?.mode).toBe('library');
     const n = ['timing.json', 'easing.json', 'hold.json', 'interp.json'].reduce((k, f) => k + records(f).length, 0);
     expect(n).toBe(36785 + 10439 + 903 + 6461);

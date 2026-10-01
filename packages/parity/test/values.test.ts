@@ -27,8 +27,8 @@ const spec = (id: string): FixtureSpec => FIXTURES.find((f) => f.id === id) as F
 const committed = (c: ParityCase, dpr: number): WebCapture => (dpr === 1 ? (JSON.parse(readFileSync(expectedPath(c.id), 'utf8')) as WebCapture) : committedDprCapture(c.id, dpr));
 
 describe('values group registration (fixture-groups/values.ts)', () => {
-  it('is the last group; every layout fixture runs in both directions and every id carries the values- prefix the corpus keys on', () => {
-    expect(FIXTURE_GROUPS[FIXTURE_GROUPS.length - 1]?.id).toBe('values');
+  it('is the last group before SELD-R1b\'s states; every layout fixture runs in both directions and every id carries the values- prefix the corpus keys on', () => {
+    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-2)).toEqual(['values', 'states']);
     for (const f of VALUES) expect(f.id.startsWith('values-'), f.id).toBe(true);
     for (const f of LAYOUT) expect(f.kind === 'layout' && f.environments, f.id).toEqual(['ltr', 'rtl']);
     expect(LAYOUT.length).toBeGreaterThanOrEqual(25);

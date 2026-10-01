@@ -34,6 +34,8 @@ describe('E2 seams: the property registry', () => {
       'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'background-color',
       // GRID G0 appends its family (test/grid.test.ts pins GRID_LONGHANDS).
       ...GRID_LONGHANDS,
+      // SELD-R1b appends pointer-events (test/pointer-events.test.ts).
+      'pointer-events',
     ]);
   });
   it('SHORTHANDS keeps its order', () => {
@@ -48,7 +50,7 @@ describe('E2 seams: the property registry', () => {
   });
   it('PROPERTY_ASPECTS keys follow LONGHANDS, and INHERITED and PROPERTY_ROLE are unchanged', () => {
     expect(Object.keys(PROPERTY_ASPECTS)).toEqual([...LONGHANDS]);
-    expect([...INHERITED]).toEqual(['direction', 'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color']);
+    expect([...INHERITED]).toEqual(['direction', 'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'pointer-events']);
     const byRole = (r: string): string[] => LONGHANDS.filter((p) => PROPERTY_ROLE[p] === r);
     expect(byRole('container')).toEqual(['direction', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap',
       'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow', 'justify-items']);
