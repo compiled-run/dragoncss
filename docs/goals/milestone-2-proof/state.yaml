@@ -2134,6 +2134,7 @@ tasks:
       - 'Second Judge amendment 2026-09-30 (T058J2): resolve.ts collapseInlineContext, blockify.ts checkInlineLevel lift, three pin retargets, buildIfc+placeIfcLines deviation accepted, targets.ts engine-inline
         entry only after T125 (T058L) merges; see notes/T058-inl1a.md.'
       - 'Third Judge amendment (T058J3): rulings A-G in notes/T058-inl1a.md. Element dump lines are 0/0 on device. F (singleRunBaseline plant) and G (targets.ts) come after #42.'
+      - '2026-10-01: native:encoders fails 464/477 at inl1a-compiler b0c8fd13e (inline lines out-of-range), found by T083. It must be fixed before INL1a lands.'
   - id: T059
     type: worker
     assignee: Worker
@@ -2628,6 +2629,9 @@ tasks:
       - 'T140 (2026-09-30): every visible north-star text node uses Lato 400/700, which native refuses (Ahem only) until TXT1a. This is on the checkpoint-3 critical path.'
       - 'T083J amendment (2026-09-30), see notes/T083-txt1a-1.md: a TEXT_LATIN_FIXTURES registry outside FIXTURES (no FixtureSpec flag); Phase A (Ahem through HarfBuzz, byte-identical) then Phase B (real
         fonts); device coverage pinned unchanged.'
+      - '2026-10-01 host-done, pending its device run: txt1a-1a 77e6079e1 (Phase A, byte-identical), txt1a-1b 14b911f62 (engine), txt1a-1 b2ce02641 (compiler and parity). 7 text-latin cases are exact against
+        Chrome at 4 DPRs; the ShapeLine and LineBreaker ports; all plants caught. Findings: native:encoders 464/477 fails at the INL1a base (fix dispatched to the INL1a worker); 4 NotoSansJP gate cases
+        (TXT2); no reshape after a space at a break when a background is present.'
   - id: T084
     type: worker
     assignee: Worker
