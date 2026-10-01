@@ -98,7 +98,7 @@ function trapRun(lang: 'swift' | 'kotlin', dir: string): { tool: Tool; outcomes:
     writeFileSync(join(dir, 'main.swift'), 'import Foundation\nlet v = Double(CommandLine.arguments[1])!\nprint(dragonCheckedInt(v, "test"))\n');
     const c = spawnSync('swiftc', ['-O', '-o', join(dir, 'checked'), join(dir, 'Checked.swift'), join(dir, 'main.swift')], { encoding: 'utf8' });
     if (c.status !== 0) return { tool: { ok: false, why: `swiftc: ${c.stderr ?? c.error}` }, outcomes: [] };
-    return { tool: { ok: true, why: '' }, outcomes: args.map((arg) => { const r = spawnSync(join(dir, 'checked'), [arg], { encoding: 'utf8' }); return { arg, status: r.status ?? -1, out: `${r.stdout}${r.stderr}` }; }) };
+    return { tool: { ok: true, why: '' }, outcomes: args.map((arg) => { const r = spawnSync(join(dir, 'checked'), [arg], { encoding: 'utf8', env: { ...process.env, SWIFT_BACKTRACE: 'enable=no' } }); // Linux Swift symbolicates every trap, ~20 s each return { arg, status: r.status ?? -1, out: `${r.stdout}${r.stderr}` }; }) };
   }
   const javaHome = process.env['JAVA_HOME'];
   const which = spawnSync('which', ['kotlinc'], { encoding: 'utf8' });
