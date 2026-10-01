@@ -789,6 +789,51 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/paint/box_border_painter.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "df610e882fc43bb756e031a1741f4516ab82a655b7cbd6f30e73946ccdaf4fa9",
+      "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
+      "ranges": [
+        { "lines": "354-365", "symbol": "kStylePriority", "source": "cited" },
+        { "lines": "369-374", "symbol": null, "source": "cited" },
+        { "lines": "398-498", "symbol": "EnforceDotsAtEndpoints", "source": "cited" },
+        { "lines": "500-559", "symbol": "DrawLineWithStyle", "source": "cited" },
+        { "lines": "561-596", "symbol": "DrawDashedOrDottedBoxSide", "source": "cited" },
+        { "lines": "647-752", "symbol": "DrawDoubleBoxSide", "source": "cited" },
+        { "lines": "839-898", "symbol": "DrawSolidBoxSide", "source": "cited" },
+        { "lines": "900-956", "symbol": "DrawLineForBoxSide", "source": "cited" },
+        { "lines": "1145-1215", "symbol": "ComplexBorderInfo", "source": "cited" },
+        { "lines": "1523-1567", "symbol": "PaintOpacityGroup", "source": "cited" },
+        { "lines": "1569-1649", "symbol": "PaintSide", "source": "cited" },
+        { "lines": "1651-1680", "symbol": "ComputeMiter", "source": "cited" },
+        { "lines": "1651-1694", "symbol": "ComputeMiter", "source": "cited" },
+        { "lines": "1696-1751", "symbol": "PaintOneBorderSide", "source": "cited" },
+        { "lines": "2006-2437", "symbol": "ClipBorderSidePolygon", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/style/border_edge.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "fef1b151ca68c0bab96d68592dc93857eb1c37da61881127b0a73168c3bc8f67",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "1-93", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/style/computed_style.cc",
       "licence": "lgpl",
       "ruling": {
@@ -847,7 +892,8 @@
         { "lines": "452-452", "symbol": "kMaximumAllowedFontSize", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/units.ts", "symbol": "MAX_FONT_SIZE", "use": "reference" }
+        { "file": "packages/layout/src/units.ts", "symbol": "MAX_FONT_SIZE", "use": "reference" },
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": "styleRank", "use": "reference" }
       ]
     },
     {
@@ -1291,6 +1337,23 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/platform/graphics/styled_stroke_data.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "b6587cc405e2f2b499d811ac3380fa1788d1148b942ec8b6161cedf224a35c06",
+      "headerSha256": "f856b86ff4f36c5f357b8c3e2d5f0f4a4e58fca841e52cfd9081fb6d9ddcd747",
+      "ranges": [
+        { "lines": "40-57", "symbol": "SelectBestDashGap", "source": "cited" },
+        { "lines": "81-131", "symbol": "DashEffectFromStrokeStyle", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/platform/image-decoders/image_decoder.cc",
       "licence": "lgpl",
       "ruling": {
@@ -1727,6 +1790,21 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-dither.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/utils/SkDashPath.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 Google Inc.",
+      "fileSha256": "edca5c330d5697594c660f176899513697c27a61702fed2d9843eeb5d70d2c25",
+      "headerSha256": "09fb410fe807746e5c9d267a697de002ac415d5dd13d48c20717ab180ccb1f05",
+      "ranges": [
+        { "lines": "1-487", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" }
       ]
     },
     {
