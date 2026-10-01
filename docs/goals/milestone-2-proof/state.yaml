@@ -3975,11 +3975,18 @@ tasks:
   - id: T141
     type: scout
     assignee: Scout
-    status: queued
+    status: done
     lane: android
     objective: '(T137c) After T137a: report the per-property iOS vs Android differences in the north star and the Tailwind sweep; a non-zero gap goes to a Judge. (After #49: the north star shows 165/165
       on iOS and Android, with equal error counts.)'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "Gap 0: north star 291/291 declarations equal on iOS and Android (165 supported each; per-target error counts equal, FONT 34/34, VALUE 32/32); Tailwind sweep 23,286 utilities equal in outcome/code/label/value (2214 supported each); 377 differ only in fix-hint wording naming the target (computed-checks.ts:205, by design). No Judge needed. notes/TW-SWEEP.md result tables are stale (pre-#49)."
+      evidence:
+        - examples/music-player/dragon/north-star-check.json
+        - packages/tailwind-sweep/snapshot/summary.md
+        - "packages/dragon/src/analysis/computed-checks.ts:205"
   - id: T142
     type: worker
     assignee: Worker
