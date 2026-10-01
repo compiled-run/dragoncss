@@ -7,6 +7,8 @@ import { sha256Hex } from '../digest.ts';
 import type { GeneratedFile } from '../types.ts';
 import type { FontSpec } from '@dragon/layout';
 import type { NativeBackend, NativeProgram } from '../lower/native-program.ts';
+import type { PaintPlantName } from './paint/registry.ts';
+import { nativePaints, PAINT_STAGES, paintPlants, soleHook, stagePainters } from './paint/registry.ts';
 
 export const NATIVE_SUPPORT_VERSION = 'dragon.native-support/1';
 
@@ -148,7 +150,7 @@ public func dragonSelfCheck(_ d: FontData) -> [String] {
 }
 `;
 
-const SWIFT_VIEWS = String.raw`import UIKit
+const swiftViews = (): string => String.raw`import UIKit
 
 public struct DragonRGBA8: Equatable {
   public let r: Int, g: Int, b: Int, a: Int
@@ -201,17 +203,26 @@ public final class DragonClipView: UIView {
   required init?(coder: NSCoder) { fatalError("DragonClipView is built in code") }
 }
 
-/// A box: backgroundColor is a native property; the four border sides are Dragon-owned paint.
+/// The box geometry every paint stage and after-layout hook receives: the snapped border-box edges (left, top, right, bottom) and
+/// the border widths (top, right, bottom, left) in device px, and the eight corner radii in device px (horizontal then vertical,
+/// top-left first), zero until the radius module fills them (PNT1).
+public struct DragonBoxShape {
+  public var edges: [Double]
+  public var borders: [Double]
+  public var radii: [Double]
+  public init(edges: [Double], borders: [Double], radii: [Double] = [0, 0, 0, 0, 0, 0, 0, 0]) {
+    self.edges = edges; self.borders = borders; self.radii = radii
+  }
+}
+
+/// A box: backgroundColor is a native property; every other paint is a paint module's (Support/Paint), drawn in CSS stage order.
 public final class DragonBoxView: UIView, DragonNodeView {
   public let dragonId: String
   public let dragonKind: String
   public let dragonParent: String?
-  /// Points, top right bottom left: the engine's device px at the device scale / scale.
-  public var dragonBorderWidths: [Double] = [0, 0, 0, 0]
-  public var dragonBorderStyles: [String] = ["none", "none", "none", "none"]
-  public var dragonBorderColors: [DragonRGBA8] = [DragonRGBA8(0, 0, 0, 0), DragonRGBA8(0, 0, 0, 0), DragonRGBA8(0, 0, 0, 0), DragonRGBA8(0, 0, 0, 0)]
-  public private(set) var dragonClipView: DragonClipView? = nil
-  public init(dragonId: String, kind: String, parent: String?) {
+  /// The shape of the last layout, passed to every paint stage.
+  public var dragonShape = DragonBoxShape(edges: [0, 0, 0, 0], borders: [0, 0, 0, 0])
+${boxMembers('uikit')}  public init(dragonId: String, kind: String, parent: String?) {
     self.dragonId = dragonId
     self.dragonKind = kind
     self.dragonParent = parent
@@ -221,89 +232,15 @@ public final class DragonBoxView: UIView, DragonNodeView {
     contentMode = .redraw
   }
   required init?(coder: NSCoder) { fatalError("DragonBoxView is built in code") }
-  /// Overflow hidden: the children are hosted by a clip view over the padding box.
-  public func dragonEnableClip() {
-    let c = DragonClipView()
-    addSubview(c)
-    dragonClipView = c
-  }
   public var dragonContainer: UIView { return dragonClipView ?? self }
   public override func draw(_ rect: CGRect) {
     guard let ctx = UIGraphicsGetCurrentContext() else { return }
-    dragonDrawBorders(ctx, bounds, dragonBorderWidths.map { CGFloat($0) }, dragonBorderStyles, dragonBorderColors)
+    dragonPaintBox(self, ctx, dragonShape)
   }
   /// The device scale the frames were applied at; clip values are read back in whole device px / scale.
   public var dragonScale: Double = 1
   public func dragonApplied() -> DumpJsonObject {
-    var o: DumpJsonObject = [
-      ("backgroundColor", dragonColorJson(backgroundColor)),
-      ("dragonBorder.widths", .array(dragonBorderWidths.map { .number($0) })),
-      ("dragonBorder.styles", .array(dragonBorderStyles.map { .string($0) })),
-      ("dragonBorder.colors", .array(dragonBorderColors.map(dragonRGBAJson))),
-    ]
-    if let c = dragonClipView {
-      let s = dragonScale
-      o.append(("dragonClip.frame", c.clipsToBounds ? .array([c.frame.minX, c.frame.minY, c.frame.width, c.frame.height].map { .number(dragonWholeDevicePx(Double($0) * s, "\(dragonId) clip") / s) }) : .null))
-    }
-    return o
-  }
-}
-
-/// Dragon-owned border paint: each side is the trapezoid between the outer and inner edges (corners join on the diagonal);
-/// solid fills it, double fills its outer and inner thirds, dashed strokes dashes of 3 times the width with equal gaps along its
-/// middle, dotted strokes round dots of the width with gaps of the width.
-public func dragonDrawBorders(_ ctx: CGContext, _ o: CGRect, _ w: [CGFloat], _ styles: [String], _ colors: [DragonRGBA8]) {
-  let i = CGRect(x: o.minX + w[3], y: o.minY + w[0], width: o.width - w[3] - w[1], height: o.height - w[0] - w[2])
-  let quads: [[CGPoint]] = [
-    [CGPoint(x: o.minX, y: o.minY), CGPoint(x: o.maxX, y: o.minY), CGPoint(x: i.maxX, y: i.minY), CGPoint(x: i.minX, y: i.minY)],
-    [CGPoint(x: o.maxX, y: o.minY), CGPoint(x: o.maxX, y: o.maxY), CGPoint(x: i.maxX, y: i.maxY), CGPoint(x: i.maxX, y: i.minY)],
-    [CGPoint(x: o.maxX, y: o.maxY), CGPoint(x: o.minX, y: o.maxY), CGPoint(x: i.minX, y: i.maxY), CGPoint(x: i.maxX, y: i.maxY)],
-    [CGPoint(x: o.minX, y: o.maxY), CGPoint(x: o.minX, y: o.minY), CGPoint(x: i.minX, y: i.minY), CGPoint(x: i.minX, y: i.maxY)],
-  ]
-  for k in 0..<4 {
-    let width = w[k]
-    let style = styles[k]
-    if width <= 0 || style == "none" || style == "hidden" || colors[k].a == 0 { continue }
-    ctx.saveGState()
-    let path = CGMutablePath()
-    path.addLines(between: quads[k])
-    path.closeSubpath()
-    ctx.addPath(path)
-    ctx.clip()
-    let color = dragonUIColor(colors[k]).cgColor
-    ctx.setFillColor(color)
-    ctx.setStrokeColor(color)
-    let third = width / 3
-    // The band of side k at depth d from the outer edge with thickness t.
-    func band(_ d: CGFloat, _ t: CGFloat) -> CGRect {
-      switch k {
-      case 0: return CGRect(x: o.minX, y: o.minY + d, width: o.width, height: t)
-      case 1: return CGRect(x: o.maxX - d - t, y: o.minY, width: t, height: o.height)
-      case 2: return CGRect(x: o.minX, y: o.maxY - d - t, width: o.width, height: t)
-      default: return CGRect(x: o.minX + d, y: o.minY, width: t, height: o.height)
-      }
-    }
-    switch style {
-    case "double":
-      ctx.fill(band(0, third))
-      ctx.fill(band(width - third, third))
-    case "dashed", "dotted":
-      let mid = band(width / 2, 0)
-      let a = k == 0 || k == 2 ? CGPoint(x: mid.minX, y: mid.minY) : CGPoint(x: mid.minX, y: mid.minY)
-      let b = k == 0 || k == 2 ? CGPoint(x: mid.maxX, y: mid.minY) : CGPoint(x: mid.minX, y: mid.maxY)
-      ctx.setLineWidth(width)
-      if style == "dashed" {
-        ctx.setLineCap(.butt)
-        ctx.setLineDash(phase: 0, lengths: [3 * width, 3 * width])
-      } else {
-        ctx.setLineCap(.round)
-        ctx.setLineDash(phase: 0, lengths: [0, 2 * width])
-      }
-      ctx.strokeLineSegments(between: [a, b])
-    default:
-      ctx.fill(o)
-    }
-    ctx.restoreGState()
+    return dragonPaintApplied(self)
   }
 }
 
@@ -572,7 +509,17 @@ public final class DragonTree {
   private var order: [String] = []
   private var parents: [String: String?] = [:]
   private var textMetrics: [String: (halfLeading: Double, ascent: Double, descent: Double)] = [:]
+  private var hosts: [String: String] = [:]
+  private var companions: [String: [UIView]] = [:]
   public init() {}
+
+  /// Hosting (PNT1): node id's view is added to host's container instead of its DOM parent's; frames stay absolute from the
+  /// engine and the dump stays in DOM terms.
+  public func host(_ id: String, _ host: String) { hosts[id] = host }
+  /// A companion view placed directly beneath node id in the same host, with the node's frame (outer shadows, PNT1).
+  public func companion(_ id: String, _ view: UIView) { companions[id, default: []].append(view) }
+  /// A built node's view, for the runtime writers (RT-1, RT-2, RT-11).
+  public func node(_ id: String) -> DragonNodeView? { return views[id] }
 
   public func boxNode(_ id: String, parent: String?, kind: String) -> DragonBoxView {
     let v = DragonBoxView(dragonId: id, kind: kind, parent: parent)
@@ -629,22 +576,26 @@ public final class DragonTree {
       var container: UIView = root
       var origin = [0.0, 0.0]
       if let p = r.parent?.description {
-        guard let pv = views[p] as? DragonBoxView, let pe = edges[p], let pb = borders[p] else { fatalError("dragon: \(id) has no placed parent box \(p)") }
+        let h = hosts[id] ?? p
+        guard let pv = views[h] as? DragonBoxView, let pe = edges[h], let pb = borders[h] else { fatalError("dragon: \(id) has no placed parent box \(h)") }
         container = pv.dragonContainer
         origin = pv.dragonClipView == nil ? [pe[0], pe[1]] : [pe[0] + pb[3], pe[1] + pb[0]]
       }
+      let frame = CGRect(x: CGFloat(e.left - origin[0]) / cg, y: CGFloat(e.top - origin[1]) / cg, width: CGFloat(e.right - e.left) / cg, height: CGFloat(e.bottom - e.top) / cg)
+      for c in companions[id] ?? [] {
+        container.addSubview(c)
+        c.frame = frame
+      }
       container.addSubview(v)
-      v.frame = CGRect(x: CGFloat(e.left - origin[0]) / cg, y: CGFloat(e.top - origin[1]) / cg, width: CGFloat(e.right - e.left) / cg, height: CGFloat(e.bottom - e.top) / cg)
+      v.frame = frame
       if let bv = v as? DragonBoxView {
         guard let z = zBoxes[id] else { fatalError("dragon: no zoomed box \(id)") }
         let be = try box_resolveBorder(z.style, zoomed.devicePixelRatio)
         let px = [be.top / lu, be.right / lu, be.bottom / lu, be.left / lu]
         borders[id] = px
-        bv.dragonBorderWidths = px.map { $0 / s }
         bv.dragonScale = s
-        if let c = bv.dragonClipView {
-          c.frame = CGRect(x: CGFloat(px[3]) / cg, y: CGFloat(px[0]) / cg, width: CGFloat(e.right - e.left - px[3] - px[1]) / cg, height: CGFloat(e.bottom - e.top - px[0] - px[2]) / cg)
-        }
+        bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px)
+        dragonAfterLayout(bv, bv.dragonShape, s)
         bv.setNeedsDisplay()
       }
     }
@@ -919,15 +870,12 @@ fun dragonSelfCheck(d: FontData): List<String> {
 }
 `;
 
-const KOTLIN_VIEWS = String.raw`package dev.dragon.views
+const kotlinViews = (): string => String.raw`package dev.dragon.views
 
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.DashPathEffect
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.Rect
-import android.graphics.RectF
 import android.graphics.drawable.ColorDrawable
 import android.text.TextPaint
 import android.view.View
@@ -996,105 +944,23 @@ class DragonClipView(ctx: Context) : DragonGroup(ctx) {
   }
 }
 
-/** A box: the background is a native ColorDrawable; the four border sides are Dragon-owned paint. */
+/**
+ * The box geometry every paint stage and after-layout hook receives: the snapped border-box edges (left, top, right, bottom) and
+ * the border widths (top, right, bottom, left) in device px, and the eight corner radii in device px (horizontal then vertical,
+ * top-left first), zero until the radius module fills them (PNT1).
+ */
+class DragonBoxShape(val edges: DoubleArray, val borders: DoubleArray, val radii: DoubleArray = DoubleArray(8))
+
+/** A box: the background is a native ColorDrawable; every other paint is a paint module's (views/paint), drawn in CSS stage order. */
 class DragonBoxView(ctx: Context, override val dragonId: String, override val dragonKind: String, override val dragonParent: String?) : DragonGroup(ctx), DragonNodeView {
-  /** Whole device px, top right bottom left, from the engine at the device scale. */
-  var dragonBorderWidths = intArrayOf(0, 0, 0, 0)
-  var dragonBorderStyles = arrayOf("none", "none", "none", "none")
-  var dragonBorderColors = arrayOf(DragonRGBA8(0, 0, 0, 0), DragonRGBA8(0, 0, 0, 0), DragonRGBA8(0, 0, 0, 0), DragonRGBA8(0, 0, 0, 0))
-  var dragonClipView: DragonClipView? = null
-    private set
-  /** Overflow hidden: the children are hosted by a clip view over the padding box. */
-  fun dragonEnableClip() {
-    val c = DragonClipView(context)
-    addView(c)
-    dragonClipView = c
-  }
-  val dragonContainer: ViewGroup get() = dragonClipView ?: this
+  /** The shape of the last layout, passed to every paint stage. */
+  var dragonShape = DragonBoxShape(DoubleArray(4), DoubleArray(4))
+${boxMembers('android-views')}  val dragonContainer: ViewGroup get() = dragonClipView ?: this
   override fun onDraw(canvas: Canvas) {
     super.onDraw(canvas)
-    dragonDrawBorders(canvas, width.toFloat(), height.toFloat(), dragonBorderWidths, dragonBorderStyles, dragonBorderColors)
+    dragonPaintBox(this, canvas, dragonShape)
   }
-  override fun dragonApplied(): List<Pair<String, DumpJson>> {
-    val bg = background
-    val out = arrayListOf<Pair<String, DumpJson>>(
-      Pair("background.color", if (bg is ColorDrawable) dragonColorJson(bg.color) else DumpJson.Null),
-      Pair("dragonBorder.widthsPx", DumpJson.Arr(dragonBorderWidths.map { DumpJson.Num(it.toDouble()) })),
-      Pair("dragonBorder.styles", DumpJson.Arr(dragonBorderStyles.map { DumpJson.Str(it) })),
-      Pair("dragonBorder.colors", DumpJson.Arr(dragonBorderColors.map { dragonRGBAJson(it) })),
-    )
-    val c = dragonClipView
-    if (c != null) {
-      val b = c.clipBounds
-      out.add(Pair("dragonClip.clipBounds", if (b == null || b.left != 0 || b.top != 0 || b.right != c.width || b.bottom != c.height) DumpJson.Null else DumpJson.Arr(listOf(c.left, c.top, c.right, c.bottom).map { DumpJson.Num(it.toDouble()) })))
-    }
-    return out
-  }
-}
-
-/**
- * Dragon-owned border paint: each side is the trapezoid between the outer and inner edges (corners join on the diagonal); solid
- * fills it, double fills its outer and inner thirds, dashed strokes dashes of 3 times the width with equal gaps along its middle,
- * dotted strokes round dots of the width with gaps of the width.
- */
-fun dragonDrawBorders(canvas: Canvas, w: Float, h: Float, widths: IntArray, styles: Array<String>, colors: Array<DragonRGBA8>) {
-  val t = widths[0].toFloat()
-  val r = widths[1].toFloat()
-  val b = widths[2].toFloat()
-  val l = widths[3].toFloat()
-  val quads = arrayOf(
-    floatArrayOf(0f, 0f, w, 0f, w - r, t, l, t),
-    floatArrayOf(w, 0f, w, h, w - r, h - b, w - r, t),
-    floatArrayOf(w, h, 0f, h, l, h - b, w - r, h - b),
-    floatArrayOf(0f, h, 0f, 0f, l, t, l, h - b),
-  )
-  for (k in 0 until 4) {
-    val width = widths[k].toFloat()
-    val style = styles[k]
-    if (width <= 0f || style == "none" || style == "hidden" || colors[k].a == 0) continue
-    canvas.save()
-    val q = quads[k]
-    val path = Path()
-    path.moveTo(q[0], q[1]); path.lineTo(q[2], q[3]); path.lineTo(q[4], q[5]); path.lineTo(q[6], q[7]); path.close()
-    canvas.clipPath(path)
-    val paint = Paint()
-    paint.isAntiAlias = true
-    paint.color = dragonArgb(colors[k])
-    val third = width / 3f
-    fun band(d: Float, th: Float): RectF = when (k) {
-      0 -> RectF(0f, d, w, d + th)
-      1 -> RectF(w - d - th, 0f, w - d, h)
-      2 -> RectF(0f, h - d - th, w, h - d)
-      else -> RectF(d, 0f, d + th, h)
-    }
-    when (style) {
-      "double" -> {
-        paint.style = Paint.Style.FILL
-        canvas.drawRect(band(0f, third), paint)
-        canvas.drawRect(band(width - third, third), paint)
-      }
-      "dashed", "dotted" -> {
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = width
-        val m = band(width / 2f, 0f)
-        if (style == "dashed") {
-          paint.strokeCap = Paint.Cap.BUTT
-          paint.pathEffect = DashPathEffect(floatArrayOf(3f * width, 3f * width), 0f)
-        } else {
-          paint.strokeCap = Paint.Cap.ROUND
-          paint.pathEffect = DashPathEffect(floatArrayOf(0.001f, 2f * width), 0f)
-        }
-        val line = Path()
-        if (k == 0 || k == 2) { line.moveTo(m.left, m.top); line.lineTo(m.right, m.top) } else { line.moveTo(m.left, m.top); line.lineTo(m.left, m.bottom) }
-        canvas.drawPath(line, paint)
-      }
-      else -> {
-        paint.style = Paint.Style.FILL
-        canvas.drawRect(0f, 0f, w, h, paint)
-      }
-    }
-    canvas.restore()
-  }
+  override fun dragonApplied(): List<Pair<String, DumpJson>> = dragonPaintApplied(this)
 }
 
 /**
@@ -1270,7 +1136,6 @@ class DragonBridge private constructor(ctx: Context) {
 const KOTLIN_TREE = String.raw`package dev.dragon.views
 
 import android.content.Context
-import android.graphics.drawable.ColorDrawable
 import android.view.ViewGroup
 import dev.dragon.dump.Dump
 import dev.dragon.dump.DumpCase
@@ -1333,6 +1198,18 @@ class DragonTree(val context: Context) {
   private val order = ArrayList<String>()
   private val parents = HashMap<String, String?>()
   private val textMetrics = HashMap<String, DoubleArray>()
+  private val hosts = HashMap<String, String>()
+  private val companions = HashMap<String, ArrayList<android.view.View>>()
+
+  /**
+   * Hosting (PNT1): node id's view is added to host's container instead of its DOM parent's; frames stay absolute from the
+   * engine and the dump stays in DOM terms.
+   */
+  fun host(id: String, host: String) { hosts[id] = host }
+  /** A companion view placed directly beneath node id in the same host, with the node's frame (outer shadows, PNT1). */
+  fun companion(id: String, view: android.view.View) { companions.getOrPut(id) { ArrayList() }.add(view) }
+  /** A built node's view, for the runtime writers (RT-1, RT-2, RT-11). */
+  fun node(id: String): DragonNodeView? = views[id]
 
   fun boxNode(id: String, parent: String?, kind: String): DragonBoxView {
     val v = DragonBoxView(context, id, kind, parent)
@@ -1350,12 +1227,7 @@ class DragonTree(val context: Context) {
     return r.id.startsWith(p + ":line")
   }
 
-  private fun setFrame(f: IntArray, l: Double, t: Double, r: Double, b: Double, what: String) {
-    f[0] = dragonCheckedInt(l, what + " left")
-    f[1] = dragonCheckedInt(t, what + " top")
-    f[2] = dragonCheckedInt(r, what + " right")
-    f[3] = dragonCheckedInt(b, what + " bottom")
-  }
+  private fun setFrame(f: IntArray, l: Double, t: Double, r: Double, b: Double, what: String) = dragonSetFrame(f, l, t, r, b, what)
 
   /** Runs the translated engine at the device scale, snaps with the translated snapEdges and stores every frame in device px. */
   fun apply(input: LayoutInput, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) {
@@ -1396,12 +1268,17 @@ class DragonTree(val context: Context) {
       var oy = 0.0
       val p = r.parent
       if (p != null) {
-        val pv = views[p] as? DragonBoxView ?: throw IllegalStateException("dragon: " + id + " has no parent box " + p)
-        val pe = edges[p] ?: throw IllegalStateException("dragon: parent " + p + " is not placed")
-        val pb = borders[p] ?: throw IllegalStateException("dragon: parent " + p + " has no borders")
+        val h = hosts[id] ?: p
+        val pv = views[h] as? DragonBoxView ?: throw IllegalStateException("dragon: " + id + " has no parent box " + h)
+        val pe = edges[h] ?: throw IllegalStateException("dragon: parent " + h + " is not placed")
+        val pb = borders[h] ?: throw IllegalStateException("dragon: parent " + h + " has no borders")
         container = pv.dragonContainer
         ox = if (pv.dragonClipView == null) pe[0] else pe[0] + pb[3]
         oy = if (pv.dragonClipView == null) pe[1] else pe[1] + pb[0]
+      }
+      for (c in companions[id] ?: emptyList<android.view.View>()) {
+        container.addView(c)
+        setFrame(dragonFrameOf(c), e.left - ox, e.top - oy, e.right - ox, e.bottom - oy, id + " companion")
       }
       container.addView(v as android.view.View)
       setFrame(dragonFrameOf(v), e.left - ox, e.top - oy, e.right - ox, e.bottom - oy, id)
@@ -1410,9 +1287,8 @@ class DragonTree(val context: Context) {
         val be = box_resolveBorder(z.style, zoomed.devicePixelRatio)
         val px = doubleArrayOf(be.top / lu, be.right / lu, be.bottom / lu, be.left / lu)
         borders[id] = px
-        v.dragonBorderWidths = intArrayOf(dragonCheckedInt(px[0], id + " border top"), dragonCheckedInt(px[1], id + " border right"), dragonCheckedInt(px[2], id + " border bottom"), dragonCheckedInt(px[3], id + " border left"))
-        val c = v.dragonClipView
-        if (c != null) setFrame(c.dragonFrame, px[3], px[0], e.right - e.left - px[1], e.bottom - e.top - px[2], id + " clip")
+        v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px)
+        dragonAfterLayout(v, v.dragonShape, scale)
         v.invalidate()
       }
     }
@@ -1519,9 +1395,12 @@ class DragonTree(val context: Context) {
   }
 }
 
-/** The background write of a box: a native ColorDrawable. */
-fun dragonBackground(v: DragonBoxView, c: DragonRGBA8) {
-  v.background = ColorDrawable(dragonArgb(c))
+/** Sets a Dragon frame (left, top, right, bottom in device px) through the checked conversion. */
+fun dragonSetFrame(f: IntArray, l: Double, t: Double, r: Double, b: Double, what: String) {
+  f[0] = dragonCheckedInt(l, what + " left")
+  f[1] = dragonCheckedInt(t, what + " top")
+  f[2] = dragonCheckedInt(r, what + " right")
+  f[3] = dragonCheckedInt(b, what + " bottom")
 }
 
 /** One generated sample point of a case, in device px of the capture. */
@@ -1564,43 +1443,142 @@ const header = (comment: string, what: string): string => `${comment} GENERATED 
 
 /**
  * Raster plants of the support code: glyph-offset-1 draws every glyph 1 device px right of the engine's position (P5), and
- * glyph-offset-y-1 1 device px below it (T093).
+ * glyph-offset-y-1 1 device px below it (T093); the paint modules add theirs.
  */
-export type SupportPlant = 'glyph-offset-1' | 'glyph-offset-y-1';
-export const SUPPORT_PLANTS: readonly SupportPlant[] = ['glyph-offset-1', 'glyph-offset-y-1'];
+export type SupportPlant = 'glyph-offset-1' | 'glyph-offset-y-1' | PaintPlantName;
 
-const PLANT_CONSTANT: { readonly [P in SupportPlant]: { readonly [B in NativeBackend]: string } } = {
-  'glyph-offset-1': { uikit: 'public let dragonGlyphPlantDevicePx: Double = ', 'android-views': 'const val DRAGON_GLYPH_PLANT_DEVICE_PX = ' },
-  'glyph-offset-y-1': { uikit: 'public let dragonGlyphPlantYDevicePx: Double = ', 'android-views': 'const val DRAGON_GLYPH_PLANT_Y_DEVICE_PX = ' },
-};
+type PlantReplacement = { readonly name: SupportPlant; readonly replace: { readonly [B in NativeBackend]: readonly [string, string] } };
 
-/** The support files of a backend, relative to the generated source root; a plant changes only its glyph offset constant. */
+/** A glyph plant: its offset constant goes from 0 to 1. */
+const glyphPlant = (name: SupportPlant, uikit: string, android: string): PlantReplacement => ({
+  name,
+  replace: { uikit: [`${uikit}0\n`, `${uikit}1\n`], 'android-views': [`${android}0.0\n`, `${android}1.0\n`] },
+});
+
+/** Registration point (EMS): every support plant, the glyph plants first, then the paint modules' plants in registry order. */
+const PLANT_REPLACEMENTS: readonly PlantReplacement[] = [
+  glyphPlant('glyph-offset-1', 'public let dragonGlyphPlantDevicePx: Double = ', 'const val DRAGON_GLYPH_PLANT_DEVICE_PX = '),
+  glyphPlant('glyph-offset-y-1', 'public let dragonGlyphPlantYDevicePx: Double = ', 'const val DRAGON_GLYPH_PLANT_Y_DEVICE_PX = '),
+  ...(paintPlants() as readonly PlantReplacement[]),
+];
+
+export const SUPPORT_PLANTS: readonly SupportPlant[] = PLANT_REPLACEMENTS.map((p) => p.name);
+
+/** The support files of a backend, relative to the generated source root; a plant changes only its one replacement. */
 export function emitNativeSupport(backend: NativeBackend, plant: SupportPlant | null = null): GeneratedFile[] {
   const files = supportFiles(backend);
   if (plant === null) return files;
-  const constant = PLANT_CONSTANT[plant][backend];
-  const [from, to] = backend === 'uikit' ? [`${constant}0\n`, `${constant}1\n`] : [`${constant}0.0\n`, `${constant}1.0\n`];
+  const def = PLANT_REPLACEMENTS.find((p) => p.name === plant);
+  if (def === undefined) throw new Error(`no support plant ${plant}`);
+  const [from, to] = def.replace[backend];
   const planted = files.map((f) => (f.text.includes(from) ? { ...f, text: f.text.replace(from, to) } : f));
-  if (planted.every((f, i) => f.text === (files[i] as GeneratedFile).text)) throw new Error(`the ${plant} plant found no glyph offset constant in the ${backend} support`);
+  if (planted.every((f, i) => f.text === (files[i] as GeneratedFile).text)) throw new Error(`the ${plant} plant found no ${plant.startsWith('glyph-offset') ? 'glyph offset constant' : 'replacement'} in the ${backend} support`);
   return planted;
 }
 
+/** The members every paint module adds to the DragonBoxView class body, in registry order. */
+function boxMembers(backend: NativeBackend): string {
+  return nativePaints(backend).map((m) => m.native.boxMembers).join('');
+}
+
+/** The registration points of the paint modules (EMS): stage dispatch, after-layout hooks, readback, rounded paths and the container factory. */
+function paintStagesSource(backend: NativeBackend): string {
+  const paints = nativePaints(backend);
+  const ios = backend === 'uikit';
+  const calls = (fns: readonly string[], args: string): string => fns.map((f) => `  ${f}(${args})\n`).join('');
+  const stages = PAINT_STAGES.map((st) => `  // ${st}\n${calls(stagePainters(backend, st), ios ? 'v, ctx, shape' : 'v, canvas, shape')}`).join('');
+  const after = calls(paints.flatMap((m) => (m.native.afterLayout === null ? [] : [m.native.afterLayout])), 'v, shape, scale');
+  const applied = paints.flatMap((m) => (m.native.applied === null ? [] : [m.native.applied]));
+  const rounded = soleHook(backend, 'roundedPath');
+  const container = soleHook(backend, 'container');
+  if (ios) {
+    return `import UIKit
+
+/// Registration point (EMS): the box paint stages in CSS order (outer shadow, background, background layers, inset shadow, border,
+/// outline); each stage calls its paint modules' painters in registry order. backgroundColor is drawn by UIKit beneath draw(_:).
+public func dragonPaintBox(_ v: DragonBoxView, _ ctx: CGContext, _ shape: DragonBoxShape) {
+${stages}}
+
+/// Registration point (EMS): after every layout, each paint module's hook in registry order.
+public func dragonAfterLayout(_ v: DragonBoxView, _ shape: DragonBoxShape, _ scale: Double) {
+${after}}
+
+/// Registration point (EMS): a box's applied values, each paint module's readback in registry order.
+public func dragonPaintApplied(_ v: DragonBoxView) -> DumpJsonObject {
+  var o: DumpJsonObject = []
+${applied.map((f) => `  o += ${f}(v)\n`).join('')}  return o
+}
+
+/// Registration point (EMS): the rounded border-box path (inner false) or padding-box path (inner true) of a shape, from the
+/// radius module; nil means the stages draw and clip the rectangle.
+public func dragonRoundedPath(_ v: DragonBoxView, _ shape: DragonBoxShape, inner: Bool) -> CGPath? {
+  return ${rounded === null ? 'nil' : `${rounded}(v, shape, inner)`}
+}
+
+/// Registration point (EMS): the view a clipping box hosts its children in.
+public func dragonMakeContainer() -> DragonClipView {
+  return ${container === null ? 'DragonClipView()' : `${container}()`}
+}
+`;
+  }
+  return `package dev.dragon.views
+
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Path
+import dev.dragon.dump.DumpJson
+
+/**
+ * Registration point (EMS): the box paint stages in CSS order (outer shadow, background, background layers, inset shadow, border,
+ * outline); each stage calls its paint modules' painters in registry order. The ColorDrawable background is drawn beneath onDraw.
+ */
+fun dragonPaintBox(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShape) {
+${stages}}
+
+/** Registration point (EMS): after every layout, each paint module's hook in registry order. */
+fun dragonAfterLayout(v: DragonBoxView, shape: DragonBoxShape, scale: Double) {
+${after}}
+
+/** Registration point (EMS): a box's applied values, each paint module's readback in registry order. */
+fun dragonPaintApplied(v: DragonBoxView): List<Pair<String, DumpJson>> {
+  val o = ArrayList<Pair<String, DumpJson>>()
+${applied.map((f) => `  o.addAll(${f}(v))\n`).join('')}  return o
+}
+
+/**
+ * Registration point (EMS): the rounded border-box path (inner false) or padding-box path (inner true) of a shape, from the radius
+ * module; null means the stages draw and clip the rectangle.
+ */
+fun dragonRoundedPath(v: DragonBoxView, shape: DragonBoxShape, inner: Boolean): Path? = ${rounded === null ? 'null' : `${rounded}(v, shape, inner)`}
+
+/** Registration point (EMS): the view a clipping box hosts its children in. */
+fun dragonMakeContainer(ctx: Context): DragonClipView = ${container === null ? 'DragonClipView(ctx)' : `${container}(ctx)`}
+`;
+}
+
+/** Registration point (EMS, RT-13 style): the support files of a backend, then the paint stages file, then one file per paint module that has native code. */
 function supportFiles(backend: NativeBackend): GeneratedFile[] {
+  const paint = nativePaints(backend).flatMap((m) => (m.native.file === null ? [] : [{ name: m.name, stem: m.stem, text: m.native.file }]));
   if (backend === 'uikit') {
     return [
       { path: 'Support/DragonChecked.swift', text: header('//', 'checked conversions') + SWIFT_CHECKED },
       { path: 'Support/DragonFontTables.swift', text: header('//', 'font table reads and the bridge self-check') + SWIFT_FONT_TABLES },
-      { path: 'Support/DragonViews.swift', text: header('//', 'the Dragon views and the glyph-placing text view') + SWIFT_VIEWS },
+      { path: 'Support/DragonViews.swift', text: header('//', 'the Dragon views and the glyph-placing text view') + swiftViews() },
       { path: 'Support/DragonBridge.swift', text: header('//', 'the font-data measurer bridge') + SWIFT_BRIDGE },
       { path: 'Support/DragonTree.swift', text: header('//', 'the native tree, engine application and dump readback') + SWIFT_TREE },
+      { path: 'Support/DragonPaintStages.swift', text: header('//', 'the paint registration points') + paintStagesSource(backend) },
+      ...paint.map((m) => ({ path: `Support/Paint/${m.stem}.swift`, text: header('//', `the ${m.name} paint module`) + m.text })),
     ];
   }
   return [
     { path: 'kotlin/dev/dragon/views/DragonChecked.kt', text: header('//', 'checked conversions') + KOTLIN_CHECKED },
     { path: 'kotlin/dev/dragon/views/DragonFontTables.kt', text: header('//', 'font table reads and the bridge self-check') + KOTLIN_FONT_TABLES },
-    { path: 'kotlin/dev/dragon/views/DragonViews.kt', text: header('//', 'the Dragon views and the glyph-placing text view') + KOTLIN_VIEWS },
+    { path: 'kotlin/dev/dragon/views/DragonViews.kt', text: header('//', 'the Dragon views and the glyph-placing text view') + kotlinViews() },
     { path: 'kotlin/dev/dragon/views/DragonBridge.kt', text: header('//', 'the font-data measurer bridge') + KOTLIN_BRIDGE },
     { path: 'kotlin/dev/dragon/views/DragonTree.kt', text: header('//', 'the native tree, engine application and dump readback') + KOTLIN_TREE },
+    { path: 'kotlin/dev/dragon/views/DragonPaintStages.kt', text: header('//', 'the paint registration points') + paintStagesSource(backend) },
+    // Paint module files sit under views/paint and keep package dev.dragon.views, so the case code needs no new import.
+    ...paint.map((m) => ({ path: `kotlin/dev/dragon/views/paint/${m.stem}.kt`, text: header('//', `the ${m.name} paint module`) + m.text })),
   ];
 }
 
