@@ -369,8 +369,14 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'border-widths':
       case 'text-color':
         break;
+      default: {
+        // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
+        const unknown: never = w;
+        throw new StateEmitError(`${n.id}: no state-node write for ${JSON.stringify(unknown)}`);
+      }
     }
   }
+  if (n.kind === 'text' && !writes.some((x) => x.startsWith(lang === 'swift' ? '.text(' : 'DragonStateWrite.Text('))) throw new StateEmitError(`${n.id}: a text node without a text run`);
   const parent = n.parent === null ? (lang === 'swift' ? 'nil' : 'null') : q(n.parent);
   return lang === 'swift' ? `DragonStateNode(${q(n.id)}, ${parent}, ${q(n.kind)}, [${writes.join(', ')}])` : `DragonStateNode(${q(n.id)}, ${parent}, ${q(n.kind)}, listOf(${writes.join(', ')}))`;
 }
@@ -385,6 +391,9 @@ function deltaLit(lang: Lang, d: StateDelta): string {
   return `DragonStateDelta(${removed}, ${changed}, ${order}, ${d.variant})`;
 }
 
+/** A state key as doc-comment text: one line, and never the end of a block comment. */
+const commentText = (s: string): string => s.replace(/[\r\n\u2028\u2029]/g, ' ').replace(/\*\//g, '* /');
+
 /** An identifier from any text: letters, digits and _, never a keyword (every name carries a prefix). */
 const ident = (s: string): string => s.replace(/[^A-Za-z0-9]/g, '_');
 
@@ -395,7 +404,8 @@ export function typedSetters(sp: StateProgram): { readonly name: string; readonl
     let name = `set_${ident(s.instance)}_${ident(s.state)}`;
     while (names.has(name)) name += '_';
     names.add(name);
-    const boolean = s.domain.every((v) => typeof v === 'boolean');
+    // A Bool setter needs both values reachable: with only one, the other argument would name no domain value.
+    const boolean = s.domain.length === 2 && s.domain.includes(true) && s.domain.includes(false);
     const seen = new Set<string>();
     const cases = s.domain.map((v) => {
       let c = `v_${ident(v === null ? 'null' : String(v))}`;
@@ -431,7 +441,7 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   const q = (s: string): string => stringLit(lang, s);
   const sp = e.program;
   const p = `dragonStates${k}`;
-  const out: string[] = [`// state program ${e.id} (${sp.assignments.length} assignments, ${sp.variants.length} layout variants)`];
+  const out: string[] = [`// state program ${commentText(e.id)} (${sp.assignments.length} assignments, ${sp.variants.length} layout variants)`];
   const variantFns: string[] = [];
   sp.variants.forEach((variant, j) => {
     const input = inputFunctions(lang, variant.root, `${p}V${j}`);
@@ -454,10 +464,10 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   out.push(decl(`${p}Next`, kt ? 'List<List<List<Int>>>' : '[[[Int]]]', list(lang, sp.next.map((a) => list(lang, a.map((st) => list(lang, st.map(String))))))));
   const skip = faults.setterSkipsRelayout ? 'true' : 'false';
   if (lang === 'swift') {
-    out.push(`/// A fresh runtime of state program ${e.id} at its initial assignment.`);
+    out.push(`/// A fresh runtime of state program ${commentText(e.id)} at its initial assignment.`);
     out.push(`public func ${p}Machine() -> DragonStateMachine {\n  return DragonStateMachine(states: ${p}States, domains: ${p}Domains, base: ${p}Base, deltas: ${p}Deltas, next: ${p}Next, initial: ${sp.initial}, variants: ${list(lang, variantFns)}, skipRelayout: ${skip})\n}`);
   } else {
-    out.push(`/** A fresh runtime of state program ${e.id} at its initial assignment. */`);
+    out.push(`/** A fresh runtime of state program ${commentText(e.id)} at its initial assignment. */`);
     out.push(`fun ${p}Machine(): DragonStateMachine =\n  DragonStateMachine(${p}States, ${p}Domains, ${p}Base, ${p}Deltas, ${p}Next, ${sp.initial}, ${list(lang, variantFns)}, ${skip})`);
   }
   // The typed setters (decision 17): booleans for boolean domains, an enum per other domain.
@@ -470,21 +480,21 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
       const t = state.domain.findIndex((v) => v === true);
       const f = state.domain.findIndex((v) => v === false);
       body.push(lang === 'swift'
-        ? `  /// ${state.key}\n  public func ${s.name}(_ v: Bool) { machine.set(${i}, v ? ${t} : ${f}) }`
-        : `  /** ${state.key} */\n  fun ${s.name}(v: Boolean) = machine.set(${i}, if (v) ${t} else ${f})`);
+        ? `  /// ${commentText(state.key)}\n  public func ${s.name}(_ v: Bool) { machine.set(${i}, v ? ${t} : ${f}) }`
+        : `  /** ${commentText(state.key)} */\n  fun ${s.name}(v: Boolean) = machine.set(${i}, if (v) ${t} else ${f})`);
       return;
     }
     const en = `${cls}_${s.name.slice(4)}`;
     body.push(lang === 'swift'
-      ? `  /// ${state.key}\n  public func ${s.name}(_ v: ${en}) { machine.set(${i}, v.rawValue) }`
-      : `  /** ${state.key} */\n  fun ${s.name}(v: ${en}) = machine.set(${i}, v.ordinal)`);
+      ? `  /// ${commentText(state.key)}\n  public func ${s.name}(_ v: ${en}) { machine.set(${i}, v.rawValue) }`
+      : `  /** ${commentText(state.key)} */\n  fun ${s.name}(v: ${en}) = machine.set(${i}, v.ordinal)`);
     out.push(lang === 'swift'
       ? `public enum ${en}: Int { ${s.cases.map((c, j) => `case ${c} = ${j}`).join('; ')} }`
       : `enum class ${en} { ${s.cases.join(', ')} }`);
   });
   out.push(lang === 'swift'
-    ? `/// The typed state API of ${e.id}.\npublic final class ${cls} {\n  public let machine = ${p}Machine()\n  public init() {}\n${body.join('\n')}\n}`
-    : `/** The typed state API of ${e.id}. */\nclass ${cls} {\n  val machine = ${p}Machine()\n${body.join('\n')}\n}`);
+    ? `/// The typed state API of ${commentText(e.id)}.\npublic final class ${cls} {\n  public let machine = ${p}Machine()\n  public init() {}\n${body.join('\n')}\n}`
+    : `/** The typed state API of ${commentText(e.id)}. */\nclass ${cls} {\n  val machine = ${p}Machine()\n${body.join('\n')}\n}`);
   e.scripts.forEach((sc, j) => {
     const steps = list(lang, sc.steps.map((st) => stepLit(lang, sp, sc.id, st)));
     if (lang === 'swift') {
@@ -549,21 +559,25 @@ export function webStateProgram(sp: StateProgram, tables: readonly WebClassTable
 
 /**
  * The web runtime as an ES module: createDragonStates(elementOf) applies the initial assignment's class attributes and returns
- * set(state, value), which validates before any mutation and rewrites only the class attributes that change.
+ * set(state, value), which validates before any mutation (every element it writes included) and rewrites only the class attributes
+ * that change.
  */
 export function webStateModule(w: WebStateProgram): string {
   return `// GENERATED by dragon emit/runtime/state.ts (${STATE_RUNTIME_VERSION}). Do not edit.
 const P = ${JSON.stringify(w)};
 export function createDragonStates(elementOf) {
   let current = P.initial;
+  // Every element is looked up before any attribute is written, so a missing element fails with nothing changed.
   const apply = (from, to) => {
+    const writes = [];
     P.elements.forEach((address, i) => {
       const c = P.classes[to][i];
       if (from !== null && P.classes[from][i] === c) return;
       const el = elementOf(address);
       if (el === null || el === undefined) throw new Error('dragon: no element ' + address);
-      if (c === null) el.removeAttribute('class'); else el.setAttribute('class', c);
+      writes.push([el, c]);
     });
+    for (const [el, c] of writes) if (c === null) el.removeAttribute('class'); else el.setAttribute('class', c);
   };
   apply(null, current);
   return {

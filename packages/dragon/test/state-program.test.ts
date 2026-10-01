@@ -117,6 +117,31 @@ describe('the generated runtime', () => {
     expect(typedSetters(sp)).toEqual([{ name: 'set_doc_open', boolean: true, cases: ['v_false', 'v_true'] }, { name: 'set_doc_side', boolean: false, cases: ['v_start', 'v_end'] }]);
   });
 
+  it('gives a state a Bool setter only when both true and false are reachable', () => {
+    const one = deriveStateProgram('uikit', [{ ...(CASES[0] as StateCase), assignment: [{ state: { instance: 'doc', state: 'on' }, value: true }] }]);
+    expect(typedSetters(one)).toEqual([{ name: 'set_doc_on', boolean: false, cases: ['v_true'] }]);
+    const swift = emitStatePrograms('uikit', [{ ...emit, program: one, scripts: [] }]).map((f) => f.text).join('\n');
+    expect(swift).toContain('public enum DragonStates0_doc_on: Int { case v_true = 0 }');
+    expect(swift).not.toContain('v ? 0 : -1');
+  });
+
+  it('refuses a node write it has no state-node form for and a text node without its run; keeps keys inside their doc comments', () => {
+    const odd = { ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), writes: [{ kind: 'shadow' } as unknown as ProgramNode['writes'][number]] }]) };
+    expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [odd]), scripts: [] }])).toThrow(/r: no state-node write for \{"kind":"shadow"\}/);
+    const bare = { ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), kind: 'text', writes: [] }]) };
+    expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [bare]), scripts: [] }])).toThrow(/r: a text node without a text run/);
+    const weird = deriveStateProgram('uikit', [{ ...(CASES[0] as StateCase), assignment: [{ state: { instance: 'a*/b\nc', state: 'on' }, value: 'x' }] }]);
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const text = emitStatePrograms(backend, [{ ...emit, id: 'demo*/\nx', program: { ...weird, backend }, scripts: [] }]).map((f) => f.text).join('\n');
+      // Every comment line holds its whole text and closes only where the emitter closes it; the key stays verbatim in its string literal.
+      const comments = text.split('\n').filter((l) => /^\s*(\/\/|\/\*\*)/.test(l));
+      expect(comments.filter((l) => l.includes('a* /b c#on'))).toHaveLength(1);
+      expect(comments.filter((l) => l.includes('demo* / x'))).toHaveLength(3);
+      for (const l of comments) expect(l.replace(/\*\/$/, '')).not.toContain('*/');
+      expect(text.split('\n').some((l) => /^x\b/.test(l))).toBe(false);
+    }
+  });
+
   it('emits typed setters, the tables, the layout variants and the script case in Swift and Kotlin', () => {
     const swift = emitStatePrograms('uikit', [emit]).map((f) => f.text).join('\n');
     expect(swift).toContain('public func set_doc_open(_ v: Bool) { machine.set(0, v ? 1 : 0) }');
@@ -159,6 +184,23 @@ describe('the generated runtime', () => {
     expect(() => states.set('doc#nope', true)).toThrow(/no state/);
     expect(states.assignment).toBe(3);
     expect(() => webStateProgram(sp, tables.slice(1))).toThrow(/3 class tables for 4 assignments/);
+    // A missing element fails before any attribute is written: r sorts before x, so a write-as-you-go apply would change r first.
+    let missing = 'x';
+    const lookup = (address: string) => (address === missing ? null : el(address));
+    attrs.clear();
+    writes.length = 0;
+    expect(() => mod.createDragonStates(lookup)).toThrow(/no element x/);
+    expect(writes).toEqual([]);
+    missing = '';
+    const again = mod.createDragonStates(lookup);
+    again.set('doc#side', 'end');
+    expect(again.assignment).toBe(2);
+    missing = 'x';
+    writes.length = 0;
+    expect(() => again.set('doc#open', true)).toThrow(/no element x/);
+    expect(writes).toEqual([]);
+    expect(Object.fromEntries(attrs)).toEqual({ r: 'a', x: 'c' });
+    expect(again.assignment).toBe(2);
   });
 });
 

@@ -8,7 +8,7 @@ import type { LayoutRect } from '@dragon/layout';
 import type { NativeBackend, NativeProgram, ScriptStep, StateEmit, StateFaults, StateProgram, WebClassTable } from 'dragon';
 import { deriveStateProgram, expectedDigest, expectedDump, NO_STATE_FAULTS, programAt, StateRuntime, VirtualClock, webClassMap } from 'dragon';
 import type { NativeCase } from './native-host.ts';
-import { BACKEND_OF, engineBoxes, expectedEngine, nativeCases } from './native-host.ts';
+import { BACKEND_OF, emitCases, engineBoxes, expectedEngine, nativeCases } from './native-host.ts';
 import { compileFixture } from './pipeline.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { directionSuffix } from './fixtures.ts';
@@ -200,6 +200,16 @@ export function canonicalJsonText(v: unknown): string {
 
 const emits = new Map<NativeTarget, StateEmit[]>();
 
+/**
+ * The host apps look a case id up in the layout case table and the script case table together, and a shared id would silently run
+ * one of the two (the Swift merge keeps the layout case, the Kotlin one the script), so no script may share a layout case's id.
+ */
+export function assertDistinctCaseIds(states: readonly StateEmit[], layoutIds: readonly string[]): void {
+  const layout = new Set(layoutIds);
+  const shared = states.flatMap((e) => e.scripts.map((s) => s.id)).filter((id) => layout.has(id));
+  if (shared.length > 0) throw new Error(`case scripts share ids with layout cases: ${shared.join(', ')}`);
+}
+
 /** Every state program of a target with its script cases and their expected digests at the target's device DPRs (computed once). */
 export function stateEmits(target: NativeTarget): StateEmit[] {
   const cached = emits.get(target);
@@ -224,6 +234,7 @@ export function stateEmits(target: NativeTarget): StateEmit[] {
       })),
     };
   });
+  assertDistinctCaseIds(out, emitCases(target).map((c) => c.id));
   emits.set(target, out);
   return out;
 }

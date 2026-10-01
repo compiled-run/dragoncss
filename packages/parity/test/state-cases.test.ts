@@ -4,9 +4,9 @@
 // plants each fail the check; the web attribute program lands on each assignment's classes; the host apps carry every script.
 import { describe, expect, it } from 'vitest';
 import type { NativeCase } from '../src/native-host.ts';
-import { hostSources } from '../src/native-host.ts';
+import { emitCases, hostSources } from '../src/native-host.ts';
 import { NO_FAULTS, webStateModule, webStateProgram } from 'dragon';
-import { checkStates, deriveScripts, runScript, SCRIPT_FRAME_MS, stateEmits, stateGroups, stateProgramOf, webClassTables } from '../src/state-cases.ts';
+import { assertDistinctCaseIds, checkStates, deriveScripts, runScript, SCRIPT_FRAME_MS, stateEmits, stateGroups, stateProgramOf, webClassTables } from '../src/state-cases.ts';
 import { deviceDprs } from '../src/targets.ts';
 
 describe('the state programs of every tree fixture with states', () => {
@@ -121,5 +121,15 @@ describe('the host apps carry the case scripts', () => {
     const ids = new Set(stateEmits('ios').flatMap((e) => e.scripts.map((s) => s.id)));
     const cases: readonly NativeCase[] = stateGroups().flatMap((g) => g.cases);
     expect(cases.some((c) => ids.has(c.case.id))).toBe(false);
+  });
+
+  it('refuses a script id that a layout case of the host app also has (the merged host lookup would silently keep one)', () => {
+    for (const target of ['ios', 'android'] as const) {
+      const emits = stateEmits(target);
+      const layoutIds = emitCases(target).map((c) => c.id);
+      expect(() => assertDistinctCaseIds(emits, layoutIds)).not.toThrow();
+      const planted = emits[0]?.scripts[0]?.id as string;
+      expect(() => assertDistinctCaseIds(emits, [...layoutIds, planted])).toThrow(`case scripts share ids with layout cases: ${planted}`);
+    }
   });
 });
