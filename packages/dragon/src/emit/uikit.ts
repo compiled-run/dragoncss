@@ -7,7 +7,7 @@ import type { GeneratedFile } from '../types.ts';
 import type { ProgramNode, ProgramWrite } from '../lower/native-program.ts';
 import { PROGRAM_VERSIONS } from '../lower/native-program.ts';
 import type { EmitCase } from './native-support.ts';
-import { chunks, doubleLit, inputFunctions, stringLit, supportDigest } from './native-support.ts';
+import { chunks, doubleLit, environmentArgs, inputFunctions, stringLit, supportDigest } from './native-support.ts';
 
 export const UIKIT_EMITTER_VERSION = 'dragon.uikit-emitter/1';
 const CASES_PER_FILE = 10;
@@ -31,7 +31,7 @@ function writeLines(v: string, n: ProgramNode, w: ProgramWrite): string[] {
     case 'font': {
       const color = n.writes.find((x) => x.kind === 'text-color');
       if (color === undefined || color.kind !== 'text-color') throw new Error(`${n.id}: a text run without a colour`);
-      return [`  ${v}.dragonSetText(${q(n.text ?? '')}, family: ${q(w.family)}, cssSize: ${doubleLit(w.size)}, color: ${rgba(color.color)})`];
+      return [`  ${v}.dragonSetText(${q(n.text ?? '')}, family: ${q(w.font.family)}, color: ${rgba(color.color)})`];
     }
     case 'text-color':
       return [`  // ${w.key}: set with the text run above`];
@@ -56,7 +56,7 @@ function caseSource(c: EmitCase, k: number): string {
     ...parts.map((_, j) => `  dragonCase${k}Build${j}(t)`),
     '}',
     `func dragonCase${k}Input(_ dpr: Double) -> LayoutInput {`,
-    `  return LayoutInput(Viewport(${doubleLit(c.viewport.width)}, ${doubleLit(c.viewport.height)}), dpr, ${input.root})`,
+    `  return LayoutInput(Viewport(${doubleLit(c.viewport.width)}, ${doubleLit(c.viewport.height)}), dpr, ${environmentArgs(c.viewport, c.program.rootFontSize)}, ${input.root})`,
     '}',
     `let dragonCase${k} = DragonCase(id: ${q(c.id)}, fixture: ${q(c.fixture)}, direction: ${q(c.direction)}, compilerDigest: ${q(c.compilerDigest)}, viewport: (width: ${doubleLit(c.viewport.width)}, height: ${doubleLit(c.viewport.height)}), expectedDigests: [${digests}], input: dragonCase${k}Input, build: dragonCase${k}Build)`,
   ].join('\n');

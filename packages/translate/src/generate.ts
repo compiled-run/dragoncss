@@ -56,6 +56,13 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
   for (const st of units.statements) {
     if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('units.ts'), name: st.name.text });
   }
+  // ANIM-a2 (T047 RT-12): the rt timing and interpolation reference; every exported function is an entry point.
+  for (const rt of ['rt-easing.ts', 'rt-timing.ts', 'rt-interpolate.ts']) {
+    const sf = program.getSourceFile(at(rt)) as ts.SourceFile;
+    for (const st of sf.statements) {
+      if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at(rt), name: st.name.text });
+    }
+  }
   return roots;
 }
 
