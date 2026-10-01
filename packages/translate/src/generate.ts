@@ -38,12 +38,6 @@ export function translatorDigest(): string {
   return h.digest('hex').slice(0, 16);
 }
 
-/**
- * The paint seam files (EMS, notes/T046-paint-spec.md §3 item 5): every exported function in them is an engine root. The Skia
- * references (paint-blur.ts, paint-dither.ts, paint-aa.ts) are reached through them once a paint package imports them.
- */
-export const PAINT_ROOT_FILES = ['paint.ts', 'paint-radius.ts', 'paint-shadow.ts', 'paint-gradient.ts', 'paint-transform.ts', 'paint-dash.ts', 'paint-scrollbar.ts'];
-
 /** The engine roots (native-strategy.md section 1.3): everything they reach is translated. */
 export function engineRoots(files: readonly string[]): { file: string; name: string }[] {
   const at = (f: string): string => join(LAYOUT_SRC, f);
@@ -62,12 +56,11 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
   for (const st of units.statements) {
     if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('units.ts'), name: st.name.text });
   }
-  // Paint roots (EMS, RT-13 style): every exported function of the paint seam files.
-  for (const f of PAINT_ROOT_FILES) {
-    const paint = program.getSourceFile(at(f));
-    if (paint === undefined) throw new Error(`the paint seam file ${f} is not an engine file`);
-    for (const st of paint.statements) {
-      if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at(f), name: st.name.text });
+  // ANIM-a2 (T047 RT-12): the rt timing and interpolation reference; every exported function is an entry point.
+  for (const rt of ['rt-easing.ts', 'rt-timing.ts', 'rt-interpolate.ts']) {
+    const sf = program.getSourceFile(at(rt)) as ts.SourceFile;
+    for (const st of sf.statements) {
+      if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at(rt), name: st.name.text });
     }
   }
   return roots;

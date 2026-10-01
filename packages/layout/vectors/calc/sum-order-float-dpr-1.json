@@ -7,6 +7,27 @@
    "height": 300
   },
   "devicePixelRatio": 1,
+  "viewportUnits": {
+   "small": {
+    "width": 400,
+    "height": 300
+   },
+   "large": {
+    "width": 400,
+    "height": 300
+   },
+   "dynamic": {
+    "width": 400,
+    "height": 300
+   }
+  },
+  "safeArea": {
+   "top": 0,
+   "right": 0,
+   "bottom": 0,
+   "left": 0
+  },
+  "rootFontSize": 16,
   "root": {
    "kind": "box",
    "id": "html",
@@ -114,10 +135,7 @@
     "columnGap": {
      "kind": "normal"
     },
-    "textAlign": "start",
-    "aspectRatio": {
-     "kind": "auto"
-    }
+    "textAlign": "start"
    },
    "children": [
     {
@@ -227,10 +245,7 @@
       "columnGap": {
        "kind": "normal"
       },
-      "textAlign": "start",
-      "aspectRatio": {
-       "kind": "auto"
-      }
+      "textAlign": "start"
      },
      "children": [
       {
@@ -268,12 +283,14 @@
            {
             "kind": "viewport",
             "value": 0.71,
-            "axis": "width"
+            "axis": "width",
+            "size": "large"
            },
            {
             "kind": "viewport",
             "value": 0.05,
-            "axis": "width"
+            "axis": "width",
+            "size": "large"
            },
            {
             "kind": "em",
@@ -373,10 +390,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": []
       },
@@ -415,22 +429,26 @@
            {
             "kind": "viewport",
             "value": 19.68,
-            "axis": "width"
+            "axis": "width",
+            "size": "large"
            },
            {
             "kind": "viewport",
             "value": 12.96,
-            "axis": "width"
+            "axis": "width",
+            "size": "large"
            },
            {
             "kind": "viewport",
             "value": 9.24,
-            "axis": "width"
+            "axis": "width",
+            "size": "large"
            },
            {
             "kind": "viewport",
             "value": 1.66,
-            "axis": "width"
+            "axis": "width",
+            "size": "large"
            },
            {
             "kind": "percent",
@@ -522,10 +540,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": []
       }

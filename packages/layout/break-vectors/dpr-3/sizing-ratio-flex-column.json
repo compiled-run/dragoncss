@@ -1,8 +1,0 @@
-{
-  "case": "sizing-ratio-flex-column",
-  "dpr": 3,
-  "texts": [
-    {"id":"e:text0","lines":[[0,9],[9,18],[18,27],[27,36],[36,45],[45,54],[54,59]]},
-    {"id":"i:text0","lines":[[0,2]]}
-  ]
-}

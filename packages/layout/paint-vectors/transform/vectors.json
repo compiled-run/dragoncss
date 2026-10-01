@@ -1,7 +1,0 @@
-{
-  "note": "Written by pnpm run layout:paint-vectors from paint-transform.ts through the harness (units mode); native runs must equal expected bit for bit.",
-  "feature": "transform",
-  "cases": 0,
-  "lines": [],
-  "expected": []
-}

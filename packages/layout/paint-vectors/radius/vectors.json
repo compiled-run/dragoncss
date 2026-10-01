@@ -1,7 +1,0 @@
-{
-  "note": "Written by pnpm run layout:paint-vectors from paint-radius.ts through the harness (units mode); native runs must equal expected bit for bit.",
-  "feature": "radius",
-  "cases": 0,
-  "lines": [],
-  "expected": []
-}

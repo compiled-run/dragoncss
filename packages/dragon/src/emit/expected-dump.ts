@@ -41,8 +41,11 @@ export type ExpectedEngine = {
   readonly float32: (x: number) => number;
 };
 
-/** The device values of one node at one scale, from the engine: border widths in whole device px and the snapped border box. */
-export type NodeGeometry = { readonly border: readonly [number, number, number, number]; readonly box: SnappedRect };
+/**
+ * The device values of one node at one scale, from the engine: border widths in whole device px, the snapped border box, and a
+ * text run's computed font size in device px from the resolved input (null for a box).
+ */
+export type NodeGeometry = { readonly border: readonly [number, number, number, number]; readonly box: SnappedRect; readonly fontSize: number | null };
 
 const rgba = (c: { r: number; g: number; b: number; alpha: number }): number[] => [c.r, c.g, c.b, c.alpha];
 
@@ -58,15 +61,36 @@ export function appliedValue(engine: ExpectedEngine, backend: NativeBackend, w: 
   switch (w.kind) {
     case 'text-color':
       return rgba(w.color);
-    case 'font':
-      return ios ? { name: w.family, pointSize: textInstanceSize(engine, w.size, dpr) / dpr } : { typeface: `dragon:${w.family}`, textSize: engine.float32(textInstanceSize(engine, w.size, dpr)) };
+    case 'font': {
+      if (g.fontSize === null) throw new Error(`a font write on a node without a resolved font size`);
+      const size = engine.platformFontSize(g.fontSize);
+      return ios ? { name: w.font.family, pointSize: size / dpr } : { typeface: `dragon:${w.font.family}`, textSize: engine.float32(size) };
+    }
   }
   throw new Error(`write kind ${w.kind} has no applied value`);
 }
 
-/** The engine input of a program at a device scale. */
+/**
+ * The engine input of a program at a device scale, with the environment of the reference case as explicit literals: every
+ * viewport unit reads the viewport, no safe area, and the program's root font size at text scale 1.
+ */
 export function programInput(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): LayoutInput {
-  return { viewport: { width: viewport.width, height: viewport.height }, devicePixelRatio: dpr, root: p.root };
+  const v = { width: viewport.width, height: viewport.height };
+  return { viewport: v, devicePixelRatio: dpr, viewportUnits: { small: v, large: v, dynamic: v }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: p.rootFontSize, root: p.root };
+}
+
+/** The computed font size in device px of every text leaf of the resolved input (environment.ts writes it). */
+export function resolvedFontSizes(engine: ExpectedEngine, input: LayoutInput): Map<string, number> {
+  const zoomed = engine.zoomInput(input, engine.noFaults);
+  const out = new Map<string, number>();
+  const walk = (b: LayoutBox): void => {
+    for (const c of b.children) {
+      if (c.kind === 'box') walk(c);
+      else out.set(c.id, c.font.size);
+    }
+  };
+  walk(zoomed.root);
+  return out;
 }
 
 /** Border widths of every box of the zoomed input, in whole device px (box.ts resolveBorder at zoomed ratio 1). */
@@ -92,13 +116,14 @@ export function expectedDump(p: NativeProgram, caseId: string, viewport: { reado
   if (out.kind !== 'ok') throw new Error(`${caseId}@${dpr}: the engine refused the case (${out.unsupported.code} at ${out.unsupported.nodeId})`);
   const snapped = engine.snapEdges(out.boxes);
   const borders = borderDevicePx(engine, input);
+  const fontSizes = resolvedFontSizes(engine, input);
   const byId = new Map(p.nodes.map((n) => [n.id, n]));
   const nodes: ExpectedNode[] = [];
   out.boxes.forEach((r, i) => {
     if (isLine(r)) return;
     const n = byId.get(r.id);
     if (n === undefined) throw new Error(`${caseId}@${dpr}: the engine laid out ${r.id}, which the program does not have`);
-    const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box: snapped[i] as SnappedRect };
+    const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box: snapped[i] as SnappedRect, fontSize: fontSizes.get(r.id) ?? null };
     const applied: { [key: string]: JsonValue } = {};
     for (const w of n.writes) applied[w.key] = appliedValue(engine, p.backend, w, dpr, g);
     nodes.push({ id: n.id, kind: n.kind, native: n.native, applied });

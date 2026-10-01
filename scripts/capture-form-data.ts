@@ -83,11 +83,19 @@ const LONG_FRACTIONS: readonly RangeAttributes[] = [
   { min: '-1', max: '1', step: '0.0000000000000000001', value: '0.4' },
   { min: '0', max: '100', step: '0.0000000000000000003', value: '33' },
 ];
+// Step rounding at the ends of the range: the nearest step value falls outside [min, max] (min=0 when absent, step base = value).
+const RANGE_END_STEPS: readonly RangeAttributes[] = [
+  { min: null, max: null, step: '6', value: '-20' },
+  { min: null, max: '10', step: '4', value: '15' },
+  { min: null, max: '1', step: '10', value: '5' },
+  { min: null, max: '1', step: '10', value: '-5' },
+  { min: null, max: '3', step: '10', value: '-2' },
+];
 
 async function captureRangeValues(page: Page, chrome: string): Promise<RangeValueCapture> {
   const attrs: RangeAttributes[] = [];
   for (const min of MINS) for (const max of MAXES) for (const step of STEPS) for (const value of VALUES) attrs.push({ min, max, step, value });
-  attrs.push(...LONG_FRACTIONS);
+  attrs.push(...LONG_FRACTIONS, ...RANGE_END_STEPS);
   // Parsed markup, as a compiled page has it: attribute changes made by script after type=range re-sanitise a stored value.
   const markup = attrs.map((a) => `<input type="range"${attrMarkup(a)}>`).join('');
   const got = await page.evaluate((html: string) => {

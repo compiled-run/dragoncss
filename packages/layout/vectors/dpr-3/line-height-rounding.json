@@ -7,6 +7,27 @@
    "height": 300
   },
   "devicePixelRatio": 3,
+  "viewportUnits": {
+   "small": {
+    "width": 400,
+    "height": 300
+   },
+   "large": {
+    "width": 400,
+    "height": 300
+   },
+   "dynamic": {
+    "width": 400,
+    "height": 300
+   }
+  },
+  "safeArea": {
+   "top": 0,
+   "right": 0,
+   "bottom": 0,
+   "left": 0
+  },
+  "rootFontSize": 16,
   "root": {
    "kind": "box",
    "id": "html",
@@ -114,10 +135,7 @@
     "columnGap": {
      "kind": "normal"
     },
-    "textAlign": "start",
-    "aspectRatio": {
-     "kind": "auto"
-    }
+    "textAlign": "start"
    },
    "children": [
     {
@@ -227,10 +245,7 @@
       "columnGap": {
        "kind": "normal"
       },
-      "textAlign": "start",
-      "aspectRatio": {
-       "kind": "auto"
-      }
+      "textAlign": "start"
      },
      "children": [
       {
@@ -341,10 +356,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": [
         {
@@ -353,7 +365,12 @@
          "text": "XX XX XX XX",
          "font": {
           "family": "Ahem",
-          "size": 13.7
+          "size": 13.7,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 13.7
+          },
+          "absoluteSize": true
          },
          "lineHeight": {
           "kind": "number",
@@ -472,10 +489,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": [
         {
@@ -484,7 +498,12 @@
          "text": "XX XX XX XX",
          "font": {
           "family": "Ahem",
-          "size": 13.7
+          "size": 13.7,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 13.7
+          },
+          "absoluteSize": true
          },
          "lineHeight": {
           "kind": "number",
@@ -603,10 +622,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": [
         {
@@ -615,7 +631,12 @@
          "text": "X X X X",
          "font": {
           "family": "Ahem",
-          "size": 9.9
+          "size": 9.9,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 9.9
+          },
+          "absoluteSize": true
          },
          "lineHeight": {
           "kind": "number",
@@ -734,10 +755,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": [
         {
@@ -746,7 +764,12 @@
          "text": "X X X X",
          "font": {
           "family": "Ahem",
-          "size": 10
+          "size": 10,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 10
+          },
+          "absoluteSize": true
          },
          "lineHeight": {
           "kind": "px",
@@ -865,10 +888,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": [
         {
@@ -877,7 +897,12 @@
          "text": "X X X X",
          "font": {
           "family": "Ahem",
-          "size": 10
+          "size": 10,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 10
+          },
+          "absoluteSize": true
          },
          "lineHeight": {
           "kind": "px",
@@ -996,10 +1021,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": [
         {
@@ -1008,7 +1030,12 @@
          "text": "X X X X",
          "font": {
           "family": "Ahem",
-          "size": 10
+          "size": 10,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 10
+          },
+          "absoluteSize": true
          },
          "lineHeight": {
           "kind": "px",
@@ -1127,10 +1154,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": [
         {
@@ -1139,7 +1163,12 @@
          "text": "XX XX XX XX",
          "font": {
           "family": "Ahem",
-          "size": 10.629
+          "size": 10.629,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 10.629
+          },
+          "absoluteSize": true
          },
          "lineHeight": {
           "kind": "number",
@@ -1258,10 +1287,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": [
         {
@@ -1270,7 +1296,12 @@
          "text": "X X X X",
          "font": {
           "family": "Ahem",
-          "size": 10
+          "size": 10,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 10
+          },
+          "absoluteSize": true
          },
          "lineHeight": {
           "kind": "px",
@@ -1389,10 +1420,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": [
         {
@@ -1401,7 +1429,12 @@
          "text": "X X X X",
          "font": {
           "family": "Ahem",
-          "size": 10
+          "size": 10,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 10
+          },
+          "absoluteSize": true
          },
          "lineHeight": {
           "kind": "px",

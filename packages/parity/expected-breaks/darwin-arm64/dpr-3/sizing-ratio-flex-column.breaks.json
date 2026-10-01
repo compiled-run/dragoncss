@@ -1,9 +1,0 @@
-{
-  "case": "sizing-ratio-flex-column",
-  "chrome": "145.0.7632.6",
-  "dpr": 3,
-  "texts": [
-    {"id":"e:text0","data":"XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX","lines":7,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,6,6,6,6,6],"blank":[8,17,26,35,44,53]},
-    {"id":"i:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
-  ]
-}

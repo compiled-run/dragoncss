@@ -3,7 +3,6 @@
 // native:swift and native:kotlin CLIs, the TS-engine-plus-snapRect reference proof, and out/lanes.json. Lane states are pass,
 // fail, blocked (owner tooling) when a tool lookup fails, and not run. Device lanes carry their run records (P5, device-lanes.ts):
 // the device and OS per DPR set, the counts compared per check, failures by kind, the run digests and the real-dump fault rows.
-import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -14,6 +13,8 @@ import { nativeLayoutProjection, NO_FAULTS } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
 import { atDpr, committedDprCapture, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
 import type { FixtureSpec } from './fixtures.ts';
+import { spawnChild } from './device-exec.ts';
+import type { ExecResult } from './device-exec.ts';
 import { checkAgainstChrome, checkAgainstEngine, DUMP_FAULTS, referenceDump } from './native-compare.ts';
 import { validateNativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
@@ -39,9 +40,6 @@ export const LANE_FILES: readonly string[] = [
   'packages/parity/src/native-dump.ts',
   'packages/parity/src/samples.ts',
   'packages/parity/src/cli/lanes.ts',
-  // The measured allowances (EMS, notes/T046-paint-spec.md §2): a channel delta there is an imported constant too.
-  'packages/parity/src/allowances/shadow.ts',
-  'packages/parity/src/allowances/gradient.ts',
 ];
 
 export type SourceFile = { readonly path: string; readonly text: string };
@@ -221,20 +219,27 @@ const translateNative = async (): Promise<TranslateNative> => (await import(path
 export type SuiteCount = { readonly corpus: 'p1' | 'extended'; readonly suite: string; readonly declared: number; readonly total: number | null; readonly pass: number | null };
 export type HostRun = { readonly state: LaneState; readonly reason: string | null; readonly toolchain: string | null; readonly suites: readonly SuiteCount[]; readonly digests: { readonly p1: string | null; readonly extended: string | null } };
 
-const SUITE_LINE = /^(vectors|units|engine corpus|library corpus|vectors-m2|vectors-dpr|engine-dpr|units-m2|snap|snap-values|calc-goldens|engine-calc|units-calc) (\d+)\/(\d+)/;
+// Any suite-shaped line, so a suite the manifest does not declare is counted and judgeHost fails it instead of dropping it: any
+// nonempty label (PR #42 finding 4150454066) before the first "<pass>/<total>" on the line (lazy, so a count in the trailing note is
+// not taken for the suite's). The committed native:swift and native:kotlin output parses to the same 13 suites (test/lanes.test.ts).
+const SUITE_LINE = /^(.+?) (\d+)\/(\d+)/;
+// The cause packages/translate native.ts describe() appends to a suite line whose process did not account for every case (a
+// timeout, a crash by signal or exit, a start error, or a missing, short or long result), from its first " (<kind>: " to the end.
+const SUITE_CAUSE = / \(((?:timeout|crash|could not run|no output|short output|long output): [\s\S]*)\)$/;
 const FINAL_LINE = /^native:(swift|kotlin): P1 corpus digest ([0-9a-f]+); extended corpus digest ([0-9a-f]+); status (pass|fail|blocked \(owner tooling\))$/m;
 
 /** Parses the native CLI's output into the P1 and extended suite counts, digests and status; null when it cannot. */
-export function parseNativeOutput(text: string): { suites: { corpus: 'p1' | 'extended'; suite: string; total: number; pass: number }[]; p1: string; extended: string; status: string; toolchain: string | null } | null {
+export function parseNativeOutput(text: string): { suites: { corpus: 'p1' | 'extended'; suite: string; total: number; pass: number; cause: string | null }[]; p1: string; extended: string; status: string; toolchain: string | null } | null {
   const fin = FINAL_LINE.exec(text);
   if (fin === null) return null;
   const lines = text.split('\n');
   const split = lines.findIndex((l) => l.startsWith('extended corpus:'));
-  const suites: { corpus: 'p1' | 'extended'; suite: string; total: number; pass: number }[] = [];
+  const suites: { corpus: 'p1' | 'extended'; suite: string; total: number; pass: number; cause: string | null }[] = [];
   lines.forEach((l, i) => {
     const m = SUITE_LINE.exec(l);
     if (m === null) return;
-    suites.push({ corpus: split >= 0 && i > split ? 'extended' : 'p1', suite: (m[1] as string).replace(/ corpus$/, ''), pass: Number(m[2]), total: Number(m[3]) });
+    const cause = SUITE_CAUSE.exec(l.slice(m[0].length))?.[1] ?? null;
+    suites.push({ corpus: split >= 0 && i > split ? 'extended' : 'p1', suite: (m[1] as string).replace(/ corpus$/, ''), pass: Number(m[2]), total: Number(m[3]), cause });
   });
   const tool = /^native:(?:swift|kotlin): (.*)$/m.exec(text);
   return { suites, p1: fin[2] as string, extended: fin[3] as string, status: fin[4] as string, toolchain: tool === null || (tool[1] as string).startsWith('P1 corpus') ? null : (tool[1] as string) };
@@ -248,25 +253,49 @@ const hostLane = (t: TargetConfig): LaneConfig => {
 const unrun = (t: TargetConfig): SuiteCount[] => declaredSuites(hostLane(t)).map((d) => ({ corpus: d.corpus, suite: d.suite, declared: d.cases, total: null, pass: null }));
 
 /** The host lane's verdict from a parsed run: pass only if every count equals the declared case list and both digests match. */
-export function judgeHost(t: TargetConfig, parsed: ReturnType<typeof parseNativeOutput>): HostRun {
+export function judgeHost(t: TargetConfig, parsed: ReturnType<typeof parseNativeOutput>, ended: HostEnd | null = null): HostRun {
   const declared = declaredSuites(hostLane(t));
-  if (parsed === null) return { state: 'fail', reason: `${t.hostCli} output could not be parsed`, toolchain: null, suites: unrun(t), digests: { p1: null, extended: null } };
+  const end = ended === null ? '' : `; ${hostEnd(ended)}`;
+  if (parsed === null) return { state: 'fail', reason: `${t.hostCli} output could not be parsed${end}`, toolchain: null, suites: unrun(t), digests: { p1: null, extended: null } };
   const want = { p1: p1Manifest().digest, extended: extendedManifest().digest };
   const suites = declared.map((d): SuiteCount => {
     const got = parsed.suites.find((s) => s.corpus === d.corpus && s.suite === d.suite);
     return { corpus: d.corpus, suite: d.suite, declared: d.cases, total: got?.total ?? null, pass: got?.pass ?? null };
   });
   const problems: string[] = [];
-  if (parsed.status.startsWith('blocked')) return { state: 'blocked (owner tooling)', reason: `${t.hostCli} reported blocked (owner tooling)`, toolchain: parsed.toolchain, suites: unrun(t), digests: { p1: null, extended: null } };
+  // The CLI exits 0 on pass or blocked and 1 on fail; a signal, another exit, or an exit that disagrees with the printed status is a fault.
+  if (ended !== null && !(ended.signal === null && ended.error === null && ended.status === (parsed.status === 'fail' ? 1 : 0))) problems.push(`${t.hostCli} printed status ${parsed.status} but ended with ${hostEnd(ended)}`);
+  if (parsed.status.startsWith('blocked') && problems.length === 0) return { state: 'blocked (owner tooling)', reason: `${t.hostCli} reported blocked (owner tooling)`, toolchain: parsed.toolchain, suites: unrun(t), digests: { p1: null, extended: null } };
   if (parsed.status !== 'pass') problems.push(`${t.hostCli} status ${parsed.status}`);
   for (const s of suites) if (s.total !== s.declared || s.pass !== s.declared) problems.push(`${s.corpus}/${s.suite} ${s.pass ?? '-'}/${s.total ?? '-'}, declared ${s.declared}`);
+  for (const s of parsed.suites) if (s.cause !== null) problems.push(`${s.corpus}/${s.suite}: ${s.cause}`);
+  // A suite printed twice is judged on neither copy: the first could hide a failing second.
+  const seen = new Set<string>();
+  for (const s of parsed.suites) {
+    const k = `${s.corpus}/${s.suite}`;
+    if (seen.has(k)) problems.push(`${k} is printed more than once`);
+    seen.add(k);
+  }
   for (const s of parsed.suites) if (!declared.some((d) => d.corpus === s.corpus && d.suite === s.suite)) problems.push(`${s.corpus}/${s.suite} is not a declared suite`);
   if (parsed.p1 !== want.p1) problems.push(`P1 corpus digest ${parsed.p1}, manifest ${want.p1}`);
   if (parsed.extended !== want.extended) problems.push(`extended corpus digest ${parsed.extended}, manifest ${want.extended}`);
   return { state: problems.length === 0 ? 'pass' : 'fail', reason: problems.length === 0 ? null : problems.join('; '), toolchain: parsed.toolchain, suites, digests: { p1: parsed.p1, extended: parsed.extended } };
 }
 
-export type HostOptions = { readonly kotlinLookup?: KotlinLookup };
+export type HostOptions = {
+  readonly kotlinLookup?: KotlinLookup;
+  /** The node arguments run in place of packages/translate/src/cli/native.ts <target>; a test passes a fake host CLI. */
+  readonly command?: readonly string[];
+};
+
+/** How the host CLI process ended: exit code, signal, start error and its stderr tail. */
+export type HostEnd = Pick<ExecResult, 'status' | 'signal' | 'error' | 'stderr'>;
+
+/** One line naming a host run's end: exit, signal, start error, and the last 600 characters of its stderr. */
+export function hostEnd(e: HostEnd): string {
+  const tail = e.stderr.trim().replace(/\s*[\n\r\u2028\u2029]\s*/g, ' | ');
+  return `exit ${e.status ?? '-'}, signal ${e.signal ?? '-'}${e.error === null ? '' : `, ${e.error}`}; stderr ${tail === '' ? '(empty)' : `tail: ${tail.length > 600 ? `...${tail.slice(-600)}` : tail}`}`;
+}
 
 /** Runs the target's generated engine on the host through its existing CLI; blocked (owner tooling) only when a tool lookup fails. */
 export async function runHostLane(t: TargetConfig, opts: HostOptions = {}): Promise<HostRun> {
@@ -281,8 +310,13 @@ export async function runHostLane(t: TargetConfig, opts: HostOptions = {}): Prom
     env = { ...process.env, JAVA_HOME: tool.javaHome };
   }
   const script = t.hostCli === 'native:swift' ? 'swift' : 'kotlin';
-  const r = spawnSync(process.execPath, [repoPath('packages/translate/src/cli/native.ts'), script], { cwd: repoPath('.'), env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  return judgeHost(t, parseNativeOutput(`${r.stdout ?? ''}${r.stderr ?? ''}`));
+  // Awaited, not blocking, so parity:lanes runs the host lanes of both targets at once. The whole stdout is kept for the parse
+  // (spawnChild keeps only the tail); stderr reaches the verdict through the end's tail.
+  const { child, done } = spawnChild(process.execPath, opts.command ?? [repoPath('packages/translate/src/cli/native.ts'), script], { cwd: repoPath('.'), env, allowFailure: 'a failing host run is the lane\'s answer: judgeHost fails it, naming its suite causes, exit, signal and stderr tail' });
+  const out: Buffer[] = [];
+  child.stdout?.on('data', (c: Buffer) => out.push(c));
+  const r = await done;
+  return judgeHost(t, parseNativeOutput(Buffer.concat(out).toString('utf8')), r);
 }
 
 // ---------------------------------------------------------------- the reference proof

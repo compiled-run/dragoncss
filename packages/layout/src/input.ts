@@ -9,13 +9,40 @@ export type ContentValue = { readonly kind: 'content' };
 export type NormalValue = { readonly kind: 'normal' };
 export type NumberValue = { readonly kind: 'number'; readonly value: number };
 
+/** Which viewport a viewport unit reads (css-values-4 §6.1.2.1): plain vw, vh, vi, vb, vmin and vmax read the large one in Blink. */
+export type ViewportSize = 'small' | 'large' | 'dynamic';
 /** A viewport-percentage length (css-values-4 §6.1.2); the compiler maps vi and vb to width and height (horizontal writing mode). */
-export type ViewportLength = { readonly kind: 'viewport'; readonly value: number; readonly axis: 'width' | 'height' | 'min' | 'max' };
+export type ViewportLength = { readonly kind: 'viewport'; readonly value: number; readonly axis: 'width' | 'height' | 'min' | 'max'; readonly size: ViewportSize };
 /**
- * A font-relative length inside a math function: value * float(fontSize * zoom) (Blink css_length_resolver.cc kEms, kRems). The
- * compiler writes fontSize as the specified font size in px: the element's for em, the root's at text scale 1 for rem.
+ * A font-relative length: value * float(fontSize * zoom) (Blink css_length_resolver.cc kEms). fontSize is the specified font size
+ * expression of the element whose em it reads: its own, or its parent's inside font-size (css-values-4 §6.1.1).
  */
 export type EmLength = { readonly kind: 'em'; readonly value: number; readonly fontSize: CalcExpr };
+/** rem: value * float(rootFontSize * zoom), the root's specified font size from the input (css-values-4 §6.1.1). */
+export type RootFontLength = { readonly kind: 'rem'; readonly value: number };
+/**
+ * ex, ch or cap of a font (css-values-4 §6.1.1): value * metric / fontZoom * zoom in float, the metric read from the font instance
+ * at the font's computed size (Blink CSSToLengthConversionData::FontSizes). font is the element's, or its parent's inside font-size.
+ */
+export type FontMetricLength = { readonly kind: 'font-metric'; readonly value: number; readonly metric: 'ex' | 'ch' | 'cap'; readonly font: FontSpec };
+/**
+ * lh or rlh (css-values-4 §6.1.1): value * the computed line height of font and lineHeight / fontZoom * zoom in float (Blink
+ * LineHeightSize::Lh). The element's own line height, its parent's inside font-size and line-height, or the root's for rlh.
+ */
+export type LineHeightLength = { readonly kind: 'lh'; readonly value: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue };
+export type SafeAreaSide = 'top' | 'right' | 'bottom' | 'left';
+/**
+ * env(safe-area-inset-<side>) (css-env-1 §3): value * the inset in CSS px from the input. Blink substitutes the inset as a px token
+ * before parsing, so the leaf is a px literal at resolution; value is 1, or the number the compiler folded into it.
+ */
+export type EnvLength = { readonly kind: 'env'; readonly value: number; readonly side: SafeAreaSide };
+/** font-size: <percentage> (Blink StyleBuilderConverterBase::ConvertFontSize): float(value * parent / 100) of the parent's specified size. */
+export type FontPercent = { readonly kind: 'font-percent'; readonly value: number; readonly parent: CalcExpr };
+/**
+ * font-size: a math function with a percentage: its percentages are of the parent's specified size (Blink ComputeFontSize,
+ * ToCalcValue(...)->Evaluate(parent)). A math function without one is the plain expression.
+ */
+export type FontCalc = { readonly kind: 'font-calc'; readonly expr: CalcExpr; readonly parent: CalcExpr };
 /** Terms added left to right; a subtracted term arrives negated. */
 export type CalcSum = { readonly kind: 'sum'; readonly terms: readonly CalcExpr[] };
 /** Factors multiplied left to right. */
@@ -43,6 +70,12 @@ export type CalcExpr =
   | NumberValue
   | ViewportLength
   | EmLength
+  | RootFontLength
+  | FontMetricLength
+  | LineHeightLength
+  | EnvLength
+  | FontPercent
+  | FontCalc
   | CalcSum
   | CalcProduct
   | CalcInvert
@@ -70,7 +103,10 @@ export type FlexBasisValue = Px | Percent | Auto | ContentValue | LengthCalc;
 export type GapValue = Px | Percent | NormalValue | LengthCalc;
 /** CSS2 §9.3.2 box offsets (css-position-3 inset properties). */
 export type InsetValue = Px | Percent | Auto | LengthCalc;
-export type LineHeightValue = NormalValue | NumberValue | Px;
+/** A calculated line height: line-height is non-negative (CSS2 §10.8.1), so its calculation is clamped to 0. */
+export type LineHeightCalc = { readonly kind: 'calc'; readonly expr: CalcExpr; readonly range: 'non-negative' };
+/** line-height (CSS2 §10.8.1): a percentage is of the element's computed font size, truncated to a whole percent (Blink ConvertLineHeight). */
+export type LineHeightValue = NormalValue | NumberValue | Px | Percent | LineHeightCalc;
 /**
  * css-sizing-4 §5.1 aspect-ratio as Blink's layout ratio (StyleAspectRatio::GetLayoutRatio): width and height are raw LayoutUnit
  * values, positive integers, which the compiler derives from the <ratio> as Blink's LayoutRatioFromSizeF does. ratio is
@@ -175,7 +211,17 @@ export type LayoutStyle = {
   readonly aspectRatio: AspectRatioValue;
 };
 
+/** The font a measurer reads: the family and the computed font size in zoomed px. */
 export type TextFont = { readonly family: 'Ahem'; readonly size: number };
+
+/**
+ * A text run's font (css-fonts-4 §2). specifiedSize is the specified font size (css-fonts-4 §2.5) as an expression in CSS px at
+ * zoom 1: a px leaf, a rem leaf for the root's size, an em leaf over the parent's expression, a font-percent or font-calc of the
+ * parent's, or any length calculation. absoluteSize is Blink FontDescription::IsAbsoluteSize: false for a size derived through em
+ * or % from a keyword size, which Chrome's minimum logical font size (6px) applies to. size is the computed size in px: the
+ * compiler writes it at its reference environment (text scale 1, DPR 1) and the environment pass rewrites it from specifiedSize.
+ */
+export type FontSpec = { readonly family: 'Ahem'; readonly size: number; readonly specifiedSize: CalcExpr; readonly absoluteSize: boolean };
 
 /** css-text-4 §3.1 white-space-collapse: only collapse is supported; the compiler has already applied phase I collapsing. */
 export type WhiteSpaceCollapse = 'collapse';
@@ -188,7 +234,7 @@ export type TextLeaf = {
   readonly id: string;
   /** Text after white-space phase I collapsing (css-text-3 §4.1.1): no tabs, segment breaks or doubled spaces. */
   readonly text: string;
-  readonly font: TextFont;
+  readonly font: FontSpec;
   readonly lineHeight: LineHeightValue;
   readonly whiteSpaceCollapse: WhiteSpaceCollapse;
   readonly textWrapMode: TextWrapMode;
@@ -209,9 +255,19 @@ export type LayoutBox = {
 /** The initial containing block in CSS px. */
 export type Viewport = { readonly width: number; readonly height: number };
 
+/** The small, large and dynamic viewports viewport units read (css-values-4 §6.1.2.1), in CSS px before the device ceil (R6). */
+export type ViewportUnitSizes = { readonly small: Viewport; readonly large: Viewport; readonly dynamic: Viewport };
+
+/** The safe-area insets env(safe-area-inset-*) reads (css-env-1 §3), in CSS px. */
+export type SafeAreaInsets = { readonly top: number; readonly right: number; readonly bottom: number; readonly left: number };
+
 export type LayoutInput = {
   readonly viewport: Viewport;
   /** Device pixels per CSS px in the target environment; border widths snap to whole device px (css-values-4 §6.1). */
   readonly devicePixelRatio: number;
+  readonly viewportUnits: ViewportUnitSizes;
+  readonly safeArea: SafeAreaInsets;
+  /** The root element's specified font size in CSS px, after the host's text scale; rem leaves read it. */
+  readonly rootFontSize: number;
   readonly root: LayoutBox;
 };

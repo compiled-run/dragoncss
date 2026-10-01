@@ -7,6 +7,27 @@
    "height": 300
   },
   "devicePixelRatio": 1,
+  "viewportUnits": {
+   "small": {
+    "width": 400,
+    "height": 300
+   },
+   "large": {
+    "width": 400,
+    "height": 300
+   },
+   "dynamic": {
+    "width": 400,
+    "height": 300
+   }
+  },
+  "safeArea": {
+   "top": 0,
+   "right": 0,
+   "bottom": 0,
+   "left": 0
+  },
+  "rootFontSize": 16,
   "root": {
    "kind": "box",
    "id": "html",
@@ -114,10 +135,7 @@
     "columnGap": {
      "kind": "normal"
     },
-    "textAlign": "start",
-    "aspectRatio": {
-     "kind": "auto"
-    }
+    "textAlign": "start"
    },
    "children": [
     {
@@ -227,10 +245,7 @@
       "columnGap": {
        "kind": "normal"
       },
-      "textAlign": "start",
-      "aspectRatio": {
-       "kind": "auto"
-      }
+      "textAlign": "start"
      },
      "children": [
       {
@@ -341,10 +356,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": [
         {
@@ -456,10 +468,7 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start",
-          "aspectRatio": {
-           "kind": "auto"
-          }
+          "textAlign": "start"
          },
          "children": []
         },
@@ -572,10 +581,7 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start",
-          "aspectRatio": {
-           "kind": "auto"
-          }
+          "textAlign": "start"
          },
          "children": []
         }
@@ -689,10 +695,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": [
         {
@@ -804,10 +807,7 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start",
-          "aspectRatio": {
-           "kind": "auto"
-          }
+          "textAlign": "start"
          },
          "children": []
         }
@@ -921,10 +921,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": [
         {
@@ -1036,10 +1033,7 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start",
-          "aspectRatio": {
-           "kind": "auto"
-          }
+          "textAlign": "start"
          },
          "children": [
           {
@@ -1048,7 +1042,12 @@
            "text": "XX",
            "font": {
             "family": "Ahem",
-            "size": 10
+            "size": 10,
+            "specifiedSize": {
+             "kind": "px",
+             "value": 10
+            },
+            "absoluteSize": true
            },
            "lineHeight": {
             "kind": "normal"

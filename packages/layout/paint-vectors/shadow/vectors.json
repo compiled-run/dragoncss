@@ -1,7 +1,0 @@
-{
-  "note": "Written by pnpm run layout:paint-vectors from paint-shadow.ts through the harness (units mode); native runs must equal expected bit for bit.",
-  "feature": "shadow",
-  "cases": 0,
-  "lines": [],
-  "expected": []
-}

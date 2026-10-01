@@ -7,6 +7,27 @@
    "height": 851
   },
   "devicePixelRatio": 2.625,
+  "viewportUnits": {
+   "small": {
+    "width": 393,
+    "height": 851
+   },
+   "large": {
+    "width": 393,
+    "height": 851
+   },
+   "dynamic": {
+    "width": 393,
+    "height": 851
+   }
+  },
+  "safeArea": {
+   "top": 0,
+   "right": 0,
+   "bottom": 0,
+   "left": 0
+  },
+  "rootFontSize": 16,
   "root": {
    "kind": "box",
    "id": "html",
@@ -114,10 +135,7 @@
     "columnGap": {
      "kind": "normal"
     },
-    "textAlign": "start",
-    "aspectRatio": {
-     "kind": "auto"
-    }
+    "textAlign": "start"
    },
    "children": [
     {
@@ -227,10 +245,7 @@
       "columnGap": {
        "kind": "normal"
       },
-      "textAlign": "start",
-      "aspectRatio": {
-       "kind": "auto"
-      }
+      "textAlign": "start"
      },
      "children": [
       {
@@ -261,7 +276,8 @@
          "expr": {
           "kind": "viewport",
           "value": 50,
-          "axis": "width"
+          "axis": "width",
+          "size": "large"
          },
          "range": "non-negative"
         },
@@ -270,7 +286,8 @@
          "expr": {
           "kind": "viewport",
           "value": 100,
-          "axis": "height"
+          "axis": "height",
+          "size": "large"
          },
          "range": "non-negative"
         },
@@ -352,10 +369,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": []
       },
@@ -387,7 +401,8 @@
          "expr": {
           "kind": "viewport",
           "value": 25,
-          "axis": "min"
+          "axis": "min",
+          "size": "large"
          },
          "range": "non-negative"
         },
@@ -396,7 +411,8 @@
          "expr": {
           "kind": "viewport",
           "value": 12.5,
-          "axis": "max"
+          "axis": "max",
+          "size": "large"
          },
          "range": "non-negative"
         },
@@ -478,10 +494,7 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start",
-        "aspectRatio": {
-         "kind": "auto"
-        }
+        "textAlign": "start"
        },
        "children": []
       }

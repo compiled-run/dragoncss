@@ -221,9 +221,13 @@ describe('@font-face rules', () => {
     expect(face('@font-face { font-family: F; src: url(fonts/Inter-Regular.ttf); font-d\u0130splay: swap }')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
   });
   it('a family inside an unsupported at-rule is checked in the scratch pass: an unmapped one is a related entry of the at-rule error', () => {
-    const c = compileWith(fontInput('@media (min-width: 1px) { .a { font-family: Nope } }'), MAP);
+    // @media is conditional since MQ-a, so the unsupported at-rule here is @container.
+    const c = compileWith(fontInput('@container (min-width: 1px) { .a { font-family: Nope } }'), MAP);
     expect(codes(c)).toEqual(['DRAGON_UNSUPPORTED_AT_RULE']);
     expect(c.diagnostics[0]?.related.map((r) => r.message.split(':')[0])).toEqual(['DRAGON_FONT_UNMAPPED_FAMILY']);
+  });
+  it('a family inside @media (conditional since MQ-a) is checked like any other rule: an unmapped one is its own diagnostic', () => {
+    expect(codes(compileWith(fontInput('@media (min-width: 1px) { .a { font-family: Nope } }'), MAP))).toContain('DRAGON_FONT_UNMAPPED_FAMILY');
   });
   it('an @font-face nested in a rule or inside another at-rule keeps the milestone-1 refusal', () => {
     expect(faceCodes('.a { @font-face { font-family: F; src: url(x.ttf) } }')).toEqual(['DRAGON_UNSUPPORTED_AT_RULE']);

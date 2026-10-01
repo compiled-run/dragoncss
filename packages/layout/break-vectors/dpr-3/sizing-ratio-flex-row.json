@@ -1,9 +1,0 @@
-{
-  "case": "sizing-ratio-flex-row",
-  "dpr": 3,
-  "texts": [
-    {"id":"c:text0","lines":[[0,2]]},
-    {"id":"g:text0","lines":[[0,6]]},
-    {"id":"i:text0","lines":[[0,2]]}
-  ]
-}

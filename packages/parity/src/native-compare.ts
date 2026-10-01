@@ -6,12 +6,10 @@ import type { LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
 import { absoluteRects, LU_PER_PX, snapEdges } from '@dragon/layout';
 import type { WebCapture } from './capture.ts';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX, GATE_GLYPH_POSITION_DEVICE_PX } from './compare.ts';
-import { GRADIENT_CHANNEL_DELTA } from './allowances/gradient.ts';
-import { SHADOW_CHANNEL_DELTA } from './allowances/shadow.ts';
 import type { DumpEdges, DumpFrame, DumpLine, DumpNode, DumpSample, JsonValue, NativeDump } from './native-dump.ts';
 import { frameOf, REFERENCE_LANE } from './native-dump.ts';
-import type { SamplePoint, SampleRule } from './samples.ts';
-import { GLYPH_EDGE_RULE, isScanlineRule, ruleKind } from './samples.ts';
+import type { SamplePoint } from './samples.ts';
+import { GLYPH_EDGE_RULE, isScanlineRule } from './samples.ts';
 
 export type CheckResult = { readonly pass: boolean; readonly compared: number; readonly problems: readonly string[] };
 
@@ -216,21 +214,8 @@ export function glyphPositions(samples: readonly DumpSample[], chrome: RgbaImage
   return out;
 }
 
-/** The channel delta per rule kind: GATE_CHANNEL_DELTA for every kind but shadow and gradient, which take their allowances/ constant. */
-export const CHANNEL_DELTA_BY_KIND: { readonly [K in SampleRule]: number } = {
-  interior: GATE_CHANNEL_DELTA,
-  border: GATE_CHANNEL_DELTA,
-  outside: GATE_CHANNEL_DELTA,
-  radius: GATE_CHANNEL_DELTA,
-  clip: GATE_CHANNEL_DELTA,
-  edge: GATE_CHANNEL_DELTA,
-  glyph: GATE_CHANNEL_DELTA,
-  shadow: SHADOW_CHANNEL_DELTA,
-  gradient: GRADIENT_CHANNEL_DELTA,
-};
-
 /**
- * The generated points must be the dump's samples in order; colours equal within their kind's channel delta (CHANNEL_DELTA_BY_KIND); edges within GATE_DEVICE_PX;
+ * The generated points must be the dump's samples in order; colours equal within GATE_CHANNEL_DELTA; edges within GATE_DEVICE_PX;
  * each line's glyph x centre and bottom edge within GATE_GLYPH_POSITION_DEVICE_PX. A glyph-edge scanline across which Chrome shows no contrast is
  * compared by colour at its two ends only: the pixels between are within SAMPLE_INSET_DEVICE_PX of the glyph edge (T093 ruling A).
  */
@@ -246,8 +231,7 @@ export function checkPixels(samples: readonly DumpSample[], points: readonly Sam
   const colourCheck = (s: DumpSample): void => {
     compared++;
     const c = pixelAt(chrome, s.x, s.y);
-    const limit = CHANNEL_DELTA_BY_KIND[ruleKind(s.rule)];
-    if (!s.rgba.every((v, k) => Math.abs(v - (c[k] as number)) <= limit)) problems.push(`${s.rule} at ${s.x},${s.y}: native ${JSON.stringify(s.rgba)}, Chrome ${JSON.stringify(c)} (channel delta limit ${limit})`);
+    if (!s.rgba.every((v, k) => Math.abs(v - (c[k] as number)) <= GATE_CHANNEL_DELTA)) problems.push(`${s.rule} at ${s.x},${s.y}: native ${JSON.stringify(s.rgba)}, Chrome ${JSON.stringify(c)} (channel delta limit ${GATE_CHANNEL_DELTA})`);
   };
   for (let i = 0; i < samples.length;) {
     const s = samples[i] as DumpSample;

@@ -20,7 +20,6 @@ import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { GlyphBox, GlyphLine, ImageSize, SampleBox, SamplePoint, SampleResult } from './samples.ts';
 import { SAMPLE_INSET_DEVICE_PX, sampleBoxes, sampleGlyphs } from './samples.ts';
-import { withPaintSamples } from './paint-samples/registry.ts';
 
 // ---------------------------------------------------------------- PNG
 
@@ -266,8 +265,8 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
 
 /**
  * The sample points of a program at a DPR: generateSamples over every element and anonymous box (snapped edges, the engine's
- * border widths in device px, no radius, the program's clip), then the glyph rule over every text line, then the paint modules' points.
- * Every base point stays SAMPLE_INSET_DEVICE_PX clear of every glyph box edge (T093 ruling A); the glyph boxes come from engine data only.
+ * border widths in device px, no radius, the program's clip), then the glyph rule over every text line. Every point stays
+ * SAMPLE_INSET_DEVICE_PX clear of every glyph box edge (T093 ruling A); the glyph boxes come from engine data only.
  */
 export function casePoints(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): SamplePoint[] {
   return caseSamples(p, viewport, dpr).points;
@@ -298,10 +297,7 @@ export function caseSamples(p: NativeProgram, viewport: { readonly width: number
   const lines = glyphLines(p, viewport, dpr);
   const box = sampleBoxes(boxes, size, clearance ? lines.flatMap((l) => l.glyphs) : []);
   const glyph = sampleGlyphs(lines, size, SAMPLE_INSET_DEVICE_PX, clearance);
-  const base = [...box.points, ...glyph.points];
-  // The paint modules' points follow the base points; a module may suppress base points its paint replaces (paint-samples/).
-  const points = withPaintSamples({ program: p, viewport, dpr, size, boxes, base });
-  return { points, dropped: [...box.dropped, ...glyph.dropped], rescued: box.rescued };
+  return { points: [...box.points, ...glyph.points], dropped: [...box.dropped, ...glyph.dropped], rescued: box.rescued };
 }
 
 /** Per target, device DPR and case: [lines with a glyph-bottom scanline, lines with glyphs] (T093 addendum F1), in corpus order. */
