@@ -146,8 +146,8 @@ function sourceFiles(): string[] {
   return trackedFiles().filter((f) => f !== SELF && isCode(f)); // hand-written .d.ts files too
 }
 
-/** A cited C/C++/Objective-C++ file: optional directories, a file name ending .cc, .cpp, .mm or .h, an optional :a-b line range. */
-const CITATION = /(?:[A-Za-z0-9_.\-]+\/)*[A-Za-z0-9_\-]+\.(?:cc|cpp|mm|h)(?![A-Za-z0-9_])(?::\d+(?:-\d+)?)?/g;
+/** A cited C/C++/Objective-C++ file: optional directories, a file name ending .cc, .cpp, .mm or .h, an optional :a-b line range; a sentence-final '.' is not part of it. */
+const CITATION = /(?<![A-Za-z0-9_.\-])(?<![^/]\/)(?:[A-Za-z0-9_.\-]+\/)*[A-Za-z0-9_\-]+\.(?:cc|cpp|mm|h)(?![A-Za-z0-9_\-\/]|\.[A-Za-z0-9_])(?::\d+(?:-\d+)?)?/g; // whole path tokens only ('//' of a URL may precede one)
 
 export interface Citation { file: string; line: number; token: string; path: string }
 
@@ -378,6 +378,16 @@ function loadSources(): Map<string, string> {
 describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
   const registry = loadRegistry();
   const sources = loadSources();
+
+  it('reads a citation only as a whole path token, never a prefix or suffix of a longer path', () => {
+    const paths = (comment: string) => citationsIn('x.ts', `// ${comment}\n`).map((c) => c.token);
+    expect(paths('see third_party/blink/a.cc:3-4.')).toEqual(['third_party/blink/a.cc:3-4']);
+    expect(paths('(foo.h), foo.cpp; bar.mm')).toEqual(['foo.h', 'foo.cpp', 'bar.mm']);
+    expect(paths('https://raw.example.org/src/b.h')).toEqual(['raw.example.org/src/b.h']);
+    for (const longer of ['foo.h.bak', 'foo.h/old', 'foo.h-old', 'foo.cc.orig', 'old/foo.h.bak', 'a.b.c.hpp', 'foo.html', 'v1.2.h5']) {
+      expect(paths(longer).filter((t) => t !== longer), longer).toEqual([]);
+    }
+  });
 
   it('excludes this test from the scan by its git path, so its planted citations are never audited', () => {
     expect(trackedFiles()).toContain(SELF);
