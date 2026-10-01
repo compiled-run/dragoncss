@@ -405,8 +405,10 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
           const el = document.createElement(s.tag);
           for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
           const bare = document.createElement('dragon-unstyled');
-          const given = { ...(declared[tag] as Record<string, Record<string, string>>)[dir], ...textFonts[tag] };
-          for (const [p, v] of Object.entries(given)) bare.style.setProperty(p, v as string);
+          const given: Record<string, string> = { ...(declared[tag] as Record<string, Record<string, string>>)[dir], ...textFonts[tag] };
+          // Blink LayoutTheme::AdjustStyle makes any element with an appearance other than none inline-block (or block), so the
+          // reference never takes the declared appearance: a control's display stays forced, as it is under appearance: none too.
+          for (const [p, v] of Object.entries(given)) if (p !== 'appearance') bare.style.setProperty(p, v);
           parent.append(el, bare);
           hostEl.appendChild(parent);
           const cs = getComputedStyle(el);
@@ -416,7 +418,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
           for (const p of [...new Set([...Array.from(cs), ...Array.from(ref)])].sort()) {
             if (p.startsWith('--')) continue;
             const v = cs.getPropertyValue(p);
-            if (v === ref.getPropertyValue(p)) continue;
+            if (v === ref.getPropertyValue(p) || (p === 'appearance' && given[p] === v)) continue;
             if (known.has(p)) force[p] = v;
             else if (!known.has(physical(p))) row[p] = v;
           }
