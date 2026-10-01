@@ -197,13 +197,40 @@ export type TextLeaf = {
 /** element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4). */
 export type BoxType = 'element' | 'anonymous';
 
-/** Children are either all boxes or all text leaves: the compiler wraps mixed text in anonymous boxes. */
+/** css-images-3 §5.5 object-fit. */
+export type ObjectFit = 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
+/** One object-position axis as an offset from the left or top edge of the content box; the compiler refuses calculations. */
+export type ObjectPositionValue = Px | Percent;
+/** The natural dimensions of a replaced element in CSS px: an image's size (its ratio is the size's), or none (an iframe). */
+export type NaturalSizeValue = { readonly kind: 'image'; readonly width: number; readonly height: number } | { readonly kind: 'none' };
+
+/**
+ * A block-level replaced element (CSS 2.2 §10.3.4, §10.6.2; css-sizing-4 §5): a leaf box whose content is an image or a
+ * foreign view. defaultWidth and defaultHeight are the default object size (CSS 2.2 §10.3.2, 300x150 CSS px), which sizes a box
+ * with no natural size and no ratio.
+ */
+export type ReplacedLeaf = {
+  readonly kind: 'replaced';
+  readonly id: string;
+  readonly style: LayoutStyle;
+  readonly natural: NaturalSizeValue;
+  readonly defaultWidth: number;
+  readonly defaultHeight: number;
+  readonly objectFit: ObjectFit;
+  readonly objectPositionX: ObjectPositionValue;
+  readonly objectPositionY: ObjectPositionValue;
+};
+
+/** A box-level child: an element or anonymous box, or a replaced leaf. */
+export type LayoutNode = LayoutBox | ReplacedLeaf;
+
+/** Children are either all boxes and replaced leaves or all text leaves: the compiler wraps mixed text in anonymous boxes. */
 export type LayoutBox = {
   readonly kind: 'box';
   readonly id: string;
   readonly boxType: BoxType;
   readonly style: LayoutStyle;
-  readonly children: readonly (LayoutBox | TextLeaf)[];
+  readonly children: readonly (LayoutBox | TextLeaf | ReplacedLeaf)[];
 };
 
 /** The initial containing block in CSS px. */

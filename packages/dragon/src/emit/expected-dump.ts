@@ -77,7 +77,13 @@ export function borderDevicePx(engine: ExpectedEngine, input: LayoutInput): Map<
   const walk = (b: LayoutBox): void => {
     const e = engine.resolveBorder(b.style, zoomed.devicePixelRatio);
     out.set(b.id, [e.top / lu, e.right / lu, e.bottom / lu, e.left / lu]);
-    for (const c of b.children) if (c.kind === 'box') walk(c);
+    for (const c of b.children) {
+      if (c.kind === 'box') walk(c);
+      else if (c.kind === 'replaced') {
+        const r = engine.resolveBorder(c.style, zoomed.devicePixelRatio);
+        out.set(c.id, [r.top / lu, r.right / lu, r.bottom / lu, r.left / lu]);
+      }
+    }
   };
   walk(zoomed.root);
   return out;

@@ -3,7 +3,7 @@
 // resolved paint values. A program holds generated node ids, kinds and parents, the typed engine input, every property write in
 // backend vocabulary with its technique and the CSS longhands it realises, and the text runs. The emitters and the expected-dump
 // projection read only the program; nothing downstream re-resolves CSS.
-import type { LayoutBox, TextLeaf } from '@dragon/layout';
+import type { LayoutBox, LayoutNode, TextLeaf } from '@dragon/layout';
 import type { ResolvedElement, ResolvedText } from '../analysis/resolve.ts';
 import type { Rgba8 } from '../css/color.ts';
 import { TRANSPARENT } from '../css/color.ts';
@@ -126,15 +126,18 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement): NodePaint[] {
   };
   walk(resolved);
   const out: NodePaint[] = [];
-  const visit = (b: LayoutBox, parent: string | null, enclosingColor: Rgba8): void => {
-    const el = b.boxType === 'anonymous' ? null : (elements.get(b.id) ?? null);
-    if (b.boxType === 'element' && el === null) throw new ProgramError(`${b.id}: no resolved element for the layout box`);
+  const visit = (b: LayoutNode, parent: string | null, enclosingColor: Rgba8): void => {
+    const anonymous = b.kind === 'box' && b.boxType === 'anonymous';
+    const el = anonymous ? null : (elements.get(b.id) ?? null);
+    if (!anonymous && el === null) throw new ProgramError(`${b.id}: no resolved element for the layout box`);
     const own = el === null ? enclosingColor : usedColors(el).color;
     const facts: Record<string, unknown> = {};
     const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts });
-    out.push({ id: b.id, parent, kind: b.boxType === 'anonymous' ? 'anonymous' : 'element', clips: clipsChildren(b), text: null, writes, facts });
+    out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: clipsChildren(b), text: null, writes, facts });
+    // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
+    if (b.kind === 'replaced') return;
     for (const c of b.children) {
-      if (c.kind === 'box') {
+      if (c.kind !== 'text') {
         visit(c, b.id, own);
         continue;
       }

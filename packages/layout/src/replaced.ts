@@ -2,12 +2,13 @@
 // paints them. Sizing is Blink ComputeReplacedSizeInternal (length_utils.cc); the destination rect is Blink
 // LayoutReplaced::ComputeObjectFitAndPositionRect (layout_replaced.cc), snapped as ImagePainter::PaintIntoRect does. Every size
 // here is border-box LU in zoomed px unless named otherwise.
-import type { LayoutStyle } from './input.ts';
-import type { EngineFaults } from './block.ts';
-import type { LengthPercent, MinMax } from './box.ts';
-import { borderBoxFromSpecified, constrain, hasPercent, resolveLength } from './box.ts';
+import type { LayoutStyle, ReplacedLeaf } from './input.ts';
+import type { Ctx, EngineFaults } from './block.ts';
+import type { Frag, HeightBasis, LengthPercent, MinMax } from './box.ts';
+import { borderBoxFromSpecified, constrain, hasPercent, resolveBorder, resolveLength, resolvePaddingWith, sumEdges } from './box.ts';
 import type { LayoutRatio, LU } from './units.ts';
-import { add, max, min, mulDiv, snapEdge, sub, ZERO } from './units.ts';
+import { add, fromCssPx, max, min, mulDiv, snapEdge, sub, ZERO } from './units.ts';
+import { unsupported } from './unsupported.ts';
 
 /** css-images-3 §5.5 object-fit. */
 export type ObjectFit = 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
@@ -90,13 +91,19 @@ function inlineLength(s: LayoutStyle, v: LengthPercent, basis: LU | null, isMin:
   return borderBoxFromSpecified(resolveLength(v, b, faults), bp.inline, s.boxSizing);
 }
 
-/** Blink ResolveBlockLengthInternal for px, % and calc; `content` is what a main length with an unresolvable percentage gives. */
-function blockLength(s: LayoutStyle, v: LengthPercent, basis: LU | null, kind: 'min' | 'main' | 'max', bp: BorderPadding, content: () => LU | null, faults: EngineFaults): LU | null {
-  if (hasPercent(v) && basis === null) {
-    if (kind === 'main') return content();
-    if (kind === 'max') return null;
-  }
+/**
+ * Blink ResolveBlockLengthInternal for px, % and calc against a basis that may be indefinite: a min length resolves its percentage
+ * against 0, a max length is none (null); a main length with an unresolvable percentage resolves to its content, which the caller
+ * computes (mainNeedsContent).
+ */
+function blockLength(s: LayoutStyle, v: LengthPercent, basis: LU | null, isMin: boolean, bp: BorderPadding, faults: EngineFaults): LU | null {
+  if (hasPercent(v) && basis === null && !isMin) return null;
   return borderBoxFromSpecified(resolveLength(v, basis === null ? ZERO : basis, faults), bp.block, s.boxSizing);
+}
+
+/** Whether a main block length has a percentage that cannot resolve, so it is the content size (Blink kMain). */
+function mainNeedsContent(v: LengthPercent, basis: LU | null): boolean {
+  return hasPercent(v) && basis === null;
 }
 
 /** Blink ComputeReplacedSize for a replaced box that is not an SVG document root. */
@@ -117,15 +124,15 @@ export function replacedSize(s: LayoutStyle, natural: NaturalSizing, defaultSize
   if (mode === 'ignore-block-lengths') {
     blockMm = { min: ZERO, max: null };
   } else {
-    const lo = s.minHeight.kind === 'auto' ? bp.block : blockLength(s, s.minHeight, space.percentBlock, 'min', bp, blockContent, faults);
-    const hi = s.maxHeight.kind === 'none' ? null : blockLength(s, s.maxHeight, space.percentBlock, 'max', bp, blockContent, faults);
+    const lo = s.minHeight.kind === 'auto' ? bp.block : blockLength(s, s.minHeight, space.percentBlock, true, bp, faults);
+    const hi = s.maxHeight.kind === 'none' ? null : blockLength(s, s.maxHeight, space.percentBlock, false, bp, faults);
     const loLu = lo === null ? bp.block : lo;
     blockMm = { min: loLu, max: hi === null ? null : max(loLu, hi) };
     if (space.fixedBlock !== null) {
       replacedBlock = space.fixedBlock;
     } else {
       let size: LU | null;
-      if (s.height.kind !== 'auto') size = blockLength(s, s.height, space.percentBlock, 'main', bp, blockContent, faults);
+      if (s.height.kind !== 'auto') size = mainNeedsContent(s.height, space.percentBlock) ? blockContent() : blockLength(s, s.height, space.percentBlock, false, bp, faults);
       else if (space.blockAutoStretch && space.availableBlock !== null) size = max(bp.block, sub(space.availableBlock, space.blockMargins));
       else size = blockContent();
       if (size !== null) replacedBlock = constrain(size, blockMm);
@@ -215,6 +222,133 @@ export function blockFlowSpace(cbInline: LU, cbBlock: LU | null, inlineMargins: 
     inlineMargins,
     blockMargins: ZERO,
   };
+}
+
+// ---------------------------------------------------------------- the engine's replaced leaves (input.ts ReplacedLeaf)
+
+/** A leaf's natural dimensions in LU; an image's ratio is its natural size, and an empty size has no ratio (Blink PhysicalSize::IsEmpty). */
+export function naturalSizingOf(leaf: ReplacedLeaf): NaturalSizing {
+  const n = leaf.natural;
+  if (n.kind === 'none') return { width: null, height: null, ratio: null };
+  const w = fromCssPx(n.width);
+  const h = fromCssPx(n.height);
+  return { width: w, height: h, ratio: w > 0 && h > 0 ? { width: w, height: h } : null };
+}
+
+/** The default object size in LU. */
+export function defaultSizeOf(leaf: ReplacedLeaf): ReplacedSize {
+  return { inline: fromCssPx(leaf.defaultWidth), block: fromCssPx(leaf.defaultHeight) };
+}
+
+/** Border plus padding of a leaf against its containing block's inline size. */
+export function replacedBorderPadding(ctx: Ctx, leaf: ReplacedLeaf, cbInline: LU): BorderPadding {
+  const pad = resolvePaddingWith(leaf.style, cbInline, ctx.faults);
+  const bor = resolveBorder(leaf.style, ctx.devicePixelRatio);
+  return { inline: sumEdges(bor.left, bor.right, pad.left, pad.right), block: sumEdges(bor.top, bor.bottom, pad.top, pad.bottom) };
+}
+
+/** Whether a block length of the style depends on its percentage basis. */
+function blockLengthsHavePercent(s: LayoutStyle): boolean {
+  return (s.height.kind !== 'auto' && hasPercent(s.height)) || (s.minHeight.kind !== 'auto' && hasPercent(s.minHeight)) || (s.maxHeight.kind !== 'none' && hasPercent(s.maxHeight));
+}
+
+/** The percentage basis of the leaf's block lengths, null when indefinite; a flexed size that §9.8 does not make definite is refused. */
+export function replacedBlockBasis(leaf: ReplacedLeaf, basis: HeightBasis): LU | null {
+  if (basis.kind === 'definite') return basis.value;
+  if (basis.kind === 'flex-dependent' && blockLengthsHavePercent(leaf.style)) {
+    unsupported('percent-height-flex', leaf.id, 'css-flexbox-1 §9.8', 'percentage height against a flexed or stretched size that is not definite');
+  }
+  return null;
+}
+
+/** A leaf's fragment of a border-box size: no children, and no baseline of its own (one is synthesized from its border box). */
+export function replacedFrag(leaf: ReplacedLeaf, size: ReplacedSize): Frag {
+  return { id: leaf.id, width: size.inline, height: size.block, baseline: null, children: [], outOfFlow: [] };
+}
+
+/** The sum of a pair of margins with auto as 0. */
+function marginSum(ctx: Ctx, a: LayoutStyle['marginLeft'], b: LayoutStyle['marginLeft'], cbInline: LU): LU {
+  const va = a.kind === 'auto' ? ZERO : resolveLength(a, cbInline, ctx.faults);
+  const vb = b.kind === 'auto' ? ZERO : resolveLength(b, cbInline, ctx.faults);
+  return add(va, vb);
+}
+
+/** The leaf's size in a space. */
+export function sizeReplaced(ctx: Ctx, leaf: ReplacedLeaf, bp: BorderPadding, space: ReplacedSpace, mode: ReplacedSizeMode): ReplacedSize {
+  return replacedSize(leaf.style, naturalSizingOf(leaf), defaultSizeOf(leaf), bp, space, mode, ctx.faults);
+}
+
+/** A block-level replaced box in normal flow (CSS 2.2 §10.3.4, §10.6.2): its border-box fragment. */
+export function layoutReplacedInFlow(ctx: Ctx, leaf: ReplacedLeaf, cbInline: LU, heightBasis: HeightBasis): Frag {
+  const bp = replacedBorderPadding(ctx, leaf, cbInline);
+  const space = blockFlowSpace(cbInline, replacedBlockBasis(leaf, heightBasis), marginSum(ctx, leaf.style.marginLeft, leaf.style.marginRight, cbInline));
+  return replacedFrag(leaf, sizeReplaced(ctx, leaf, bp, space, 'normal'));
+}
+
+/**
+ * The parts of a flex item's space (Blink FlexLayoutAlgorithm::BuildSpaceForLayout): the container's content box as the available
+ * and percentage sizes, a stretch along the cross axis when the item stretches in a definite cross size, and the sizes the
+ * algorithm fixes once it has them.
+ */
+export type FlexItemSpace = {
+  readonly isRow: boolean;
+  readonly contentWidth: LU;
+  /** The container's inner height, or null when indefinite. */
+  readonly innerHeight: LU | null;
+  /** The percentage basis for the item's block lengths, or null. */
+  readonly percentBlock: LU | null;
+  readonly stretchCross: boolean;
+  readonly fixedInline: LU | null;
+  readonly fixedBlock: LU | null;
+};
+
+/** A flex item leaf's border-box size. */
+export function sizeReplacedFlexItem(ctx: Ctx, leaf: ReplacedLeaf, bp: BorderPadding, f: FlexItemSpace, mode: ReplacedSizeMode): ReplacedSize {
+  const s = leaf.style;
+  const space: ReplacedSpace = {
+    availableInline: f.contentWidth,
+    availableBlock: f.innerHeight,
+    percentInline: f.contentWidth,
+    percentBlock: f.percentBlock,
+    fixedInline: f.fixedInline,
+    fixedBlock: f.fixedBlock,
+    inlineAuto: !f.isRow && f.stretchCross ? 'stretch-explicit' : 'fit-content',
+    blockAutoStretch: f.isRow && f.stretchCross,
+    inlineMargins: marginSum(ctx, s.marginLeft, s.marginRight, f.contentWidth),
+    blockMargins: marginSum(ctx, s.marginTop, s.marginBottom, f.contentWidth),
+  };
+  return sizeReplaced(ctx, leaf, bp, space, mode);
+}
+
+/**
+ * Blink ComputeMinAndMaxContentContributionForReplaced: the leaf's min-content and max-content contribution (border box, no
+ * margins), sized with no available or percentage size; a percentage width or max-width makes the min-content size min-width.
+ */
+export function replacedContribution(ctx: Ctx, leaf: ReplacedLeaf, kind: 'min' | 'max'): LU {
+  const s = leaf.style;
+  const bp = replacedBorderPadding(ctx, leaf, ZERO);
+  const space: ReplacedSpace = {
+    availableInline: null,
+    availableBlock: null,
+    percentInline: null,
+    percentBlock: null,
+    fixedInline: null,
+    fixedBlock: null,
+    inlineAuto: 'fit-content',
+    blockAutoStretch: false,
+    inlineMargins: ZERO,
+    blockMargins: ZERO,
+  };
+  const size = sizeReplaced(ctx, leaf, bp, space, 'normal').inline;
+  const percentWidth = (s.width.kind !== 'auto' && hasPercent(s.width)) || (s.maxWidth.kind !== 'none' && hasPercent(s.maxWidth));
+  if (kind === 'max' || !percentWidth) return size;
+  if (s.minWidth.kind === 'auto') return bp.inline;
+  return borderBoxFromSpecified(resolveLength(s.minWidth, ZERO, ctx.faults), bp.inline, s.boxSizing);
+}
+
+/** The leaf's destination rect for a content box (objectFitRect with the leaf's object-fit and object-position). */
+export function replacedObjectRect(ctx: Ctx, leaf: ReplacedLeaf, content: ObjectRect): ObjectRect {
+  return objectFitRect(content, naturalSizingOf(leaf), leaf.objectFit, { x: leaf.objectPositionX, y: leaf.objectPositionY }, ctx.faults);
 }
 
 /** A rect in zoomed LU. */

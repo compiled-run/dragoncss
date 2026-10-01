@@ -27,6 +27,7 @@ import type {
   Percent,
   PixelsAndPercent,
   Px,
+  ReplacedLeaf,
   SizeValue,
   TextLeaf,
   ViewportLength,
@@ -81,7 +82,16 @@ export function applyEnvironment(input: LayoutInput, faults: EngineFaults): Layo
 
 /** Whether any length of the box or its descendants is a calculation, which needs the pass even at DPR 1. */
 function boxNeedsEnvironment(b: LayoutBox): boolean {
-  const s = b.style;
+  if (styleNeedsEnvironment(b.style)) return true;
+  for (const c of b.children) {
+    if (c.kind === 'box' && boxNeedsEnvironment(c)) return true;
+    if (c.kind === 'replaced' && styleNeedsEnvironment(c.style)) return true;
+  }
+  return false;
+}
+
+/** Whether any length of a style is a calculation. */
+function styleNeedsEnvironment(s: LayoutStyle): boolean {
   const kinds = [
     s.top.kind, s.right.kind, s.bottom.kind, s.left.kind, s.width.kind, s.height.kind, s.minWidth.kind, s.minHeight.kind, s.maxWidth.kind,
     s.maxHeight.kind, s.marginTop.kind, s.marginRight.kind, s.marginBottom.kind, s.marginLeft.kind, s.paddingTop.kind, s.paddingRight.kind,
@@ -89,13 +99,30 @@ function boxNeedsEnvironment(b: LayoutBox): boolean {
     s.borderLeftWidth.kind, s.flexBasis.kind, s.rowGap.kind, s.columnGap.kind,
   ];
   for (const k of kinds) if (k === 'calc') return true;
-  for (const c of b.children) if (c.kind === 'box' && boxNeedsEnvironment(c)) return true;
   return false;
 }
 
 function resolveBox(b: LayoutBox, env: Env): LayoutBox {
-  const children = b.children.map((c): LayoutBox | TextLeaf => (c.kind === 'box' ? resolveBox(c, env) : zoomText(c, env.zoom)));
+  const children = b.children.map((c): LayoutBox | TextLeaf | ReplacedLeaf => (c.kind === 'box' ? resolveBox(c, env) : c.kind === 'replaced' ? resolveReplaced(c, env) : zoomText(c, env.zoom)));
   return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), children };
+}
+
+/** A replaced leaf in zoomed px: its style, natural size, default object size (Blink ComputeDefaultNaturalSize scales it by the zoom) and px object-position. */
+function resolveReplaced(r: ReplacedLeaf, env: Env): ReplacedLeaf {
+  const z = env.zoom;
+  const natural: ReplacedLeaf['natural'] = r.natural.kind === 'image' ? { kind: 'image', width: zoomCssPx(r.natural.width, z), height: zoomCssPx(r.natural.height, z) } : { kind: 'none' };
+  const position = (v: ReplacedLeaf['objectPositionX']): ReplacedLeaf['objectPositionX'] => (v.kind === 'px' ? { kind: 'px', value: zoomCssPx(v.value, z) } : v);
+  return {
+    kind: 'replaced',
+    id: r.id,
+    style: resolveStyle(r.style, env),
+    natural,
+    defaultWidth: zoomCssPx(r.defaultWidth, z),
+    defaultHeight: zoomCssPx(r.defaultHeight, z),
+    objectFit: r.objectFit,
+    objectPositionX: position(r.objectPositionX),
+    objectPositionY: position(r.objectPositionY),
+  };
 }
 
 function zoomText(t: TextLeaf, z: number): TextLeaf {
