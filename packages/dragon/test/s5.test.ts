@@ -200,7 +200,8 @@ describe('T005 rec 3: diagnostics inside an unsupported at-rule are reported in 
     expectCatalogued(c.diagnostics);
   });
   it('the enclosed rules are analysed with the block unwrapped, top-level and nested: their diagnostics are related entries that start with the code, and nothing is emitted', () => {
-    const css = `${FONT}\n@media (min-width: 1px) { .a { display: grid; } }\n.b { width: 5px; @supports (display: flex) { margin-top: auto; } }\n`;
+    // A top-level @media is conditional since MQ-a, so the unsupported top-level at-rule here is @container.
+    const css = `${FONT}\n@container (min-width: 1px) { .a { display: grid; } }\n.b { width: 5px; @supports (display: flex) { margin-top: auto; } }\n`;
     const input = inputFor(css, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])]);
     const c = both().compile(input);
     const atRules = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');

@@ -214,7 +214,8 @@ describe('C6: nested rules and every other non-declaration child of a rule block
     { css: '.a { width: 1px; @media (min-width: 1px) { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@media (min-width: 1px) { width: 2px; }' },
     { css: '.a { width: 1px; @supports (display: flex) { .b { width: 2px; } } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@supports (display: flex) { .b { width: 2px; } }' },
     { css: '.a { width 1px; height: 2px; }', code: 'DRAGON_CSS_PARSE', span: 'width 1px;' },
-    { css: '@media (min-width: 1px) { .a { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@media (min-width: 1px) { .a { width: 2px; } }' },
+    // A top-level @media is conditional since MQ-a, so the unsupported top-level at-rule here is @container.
+    { css: '@container (min-width: 1px) { .a { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@container (min-width: 1px) { .a { width: 2px; } }' },
   ];
   for (const k of cases) {
     it(`${k.css} -> ${k.code}, blocking every output`, () => {

@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../packages/dragon/src/css/properties/grid.ts';
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
+import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/writing-mode.ts';
 
 type WebrefEntry = {
   name: string;
@@ -36,6 +37,7 @@ const SUBSET = [
   'justify-content', 'align-items', 'align-self', 'align-content', 'gap', 'row-gap', 'column-gap',
   'font-size', 'font-family', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
   ...LOGICAL_SHORTHANDS,
+  ...WRITING_MODE_SHORTHANDS,
 
   // Grid (css-grid-2), after the writing-mode family.
   ...GRID_LONGHANDS, ...GRID_SHORTHANDS,
@@ -43,6 +45,14 @@ const SUBSET = [
   // SELD-R1b: pointer-events, after grid.
   'pointer-events',
 ] as const;
+
+/**
+ * Values a browser that supports SVG must also accept, which webref's syntax omits: css-writing-modes-4 Appendix B, the SVG 1.1
+ * writing-mode values (lr, lr-tb, rl and rl-tb compute to horizontal-tb; tb and tb-rl to vertical-rl). Chrome 145 parses all six.
+ */
+const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
+  'writing-mode': 'lr | lr-tb | rl | rl-tb | tb | tb-rl',
+};
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));
 const typesByName = new Map(css.types.map((t) => [t.name, t]));
@@ -62,8 +72,9 @@ while (queue.length > 0) {
     if (properties.has(next.name)) continue;
     const p = propsByName.get(next.name);
     if (p === undefined || p.syntax === undefined) throw new Error(`webref has no syntax for property ${next.name}`);
-    properties.set(next.name, p);
-    syntax = p.syntax;
+    const extension = SYNTAX_EXTENSIONS[next.name];
+    syntax = extension === undefined ? p.syntax : `${p.syntax} | ${extension}`;
+    properties.set(next.name, { ...p, syntax });
   } else {
     if (types.has(next.name) || CSS_TREE_GENERICS.has(next.name)) continue;
     const t = next.name.endsWith('()') ? functionsByName.get(next.name) : typesByName.get(next.name);
