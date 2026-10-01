@@ -43,6 +43,8 @@ import type { LayoutRect } from '../../layout/src/layout.ts';
 import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
 import { measurerFor } from '../../layout/src/platform.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
+import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
+import { borderNeedsSidePainter, borderPaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
 import type { DistributedMode, FactorSum, LU } from '../../layout/src/units.ts';
 import {
   cachedRangeWidth,
@@ -855,7 +857,38 @@ function unitsResult(name: string, a: readonly JsonValue[]): number {
  */
 function paintResult(name: string, a: readonly JsonValue[]): string | null {
   if (a.length === 0) return fail(`paint case ${name} has no name`);
+  if (name === 'paint:dash:selectBestDashGap') return `["ok",${h(selectBestDashGap(arg(a, 1), arg(a, 2), arg(a, 3)))}]`;
+  if (name === 'paint:dash:borderNeedsSidePainter') return `["ok",${borderNeedsSidePainter(bitsList(a, 1), strList(a, 2), bitsList(a, 3)) ? 'true' : 'false'}]`;
+  if (name === 'paint:dash:borderPaintOps') {
+    const faults: DashFaults = { phase1: flagAt(a, 8), gapUnfitted: flagAt(a, 9) };
+    return `["ok",[${commaList(borderPaintOps(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), bitsList(a, 5), strList(a, 6), bitsList(a, 7), faults).map(borderOpJson))}]]`;
+  }
   return null;
+}
+
+/** Argument i: an array of numbers as bit patterns. */
+function bitsList(a: readonly JsonValue[], i: number): number[] {
+  return arr(item(a, i, '$'), `$[${i}]`).map((v) => hexBits(str(v, `$[${i}]`)));
+}
+
+/** Argument i: an array of strings. */
+function strList(a: readonly JsonValue[], i: number): string[] {
+  return arr(item(a, i, '$'), `$[${i}]`).map((v) => str(v, `$[${i}]`));
+}
+
+function flagAt(a: readonly JsonValue[], i: number): boolean {
+  return bool(item(a, i, '$'), `$[${i}]`);
+}
+
+/** A border drawing operation: [op, side, alpha, antialias, [points]] with every number as bits. */
+function borderOpJson(o: BorderOp): string {
+  return `[${q(o.op)},${h(o.side)},${h(o.alpha)},${o.antialias ? 'true' : 'false'},[${commaList(o.points.map(h))}]]`;
+}
+
+function commaList(parts: readonly string[]): string {
+  let out = '';
+  for (const x of parts) out = out === '' ? x : `${out},${x}`;
+  return out;
 }
 
 /** One units case: ["name", arg bits...] in, the result bits out. */

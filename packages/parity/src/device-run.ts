@@ -45,10 +45,25 @@ export const TRUST_CASES: readonly string[] = ['color-border-sides', 'text-wrap-
  * text-wrap-spaces, the P5 case, stacks Ahem lines at line-height 1, so most of its line bottoms are seams.
  */
 export const PLANT_CASE = 'tree-projected-text#1';
+/** The glyph plants (T093), judged against the clean run on PLANT_CASE; every other support plant is a paint plant. */
+export type GlyphPlant = 'glyph-offset-1' | 'glyph-offset-y-1';
+/** The paint plants: every support plant that is not a glyph plant. */
+export type PaintPlant = Exclude<SupportPlant, GlyphPlant>;
+export const isGlyphPlant = (p: SupportPlant): p is GlyphPlant => p === 'glyph-offset-1' || p === 'glyph-offset-y-1';
+/** The cases each paint plant runs on: the dash plants (P6a) run on the border-paint fixtures. */
+export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
+  'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
+  'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
+};
+/** The sample rules a paint plant's device-pixels failures must name: border bands and edges for the dash plants. */
+export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
+  'dash-phase-1': /^(border:|edge:)/,
+  'dash-gap-unfitted': /^(border:|edge:)/,
+};
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
 /** The axis each raster plant moves every glyph along, by PLANT_SHIFT_DEVICE_PX. */
-export const PLANT_AXIS: { readonly [P in SupportPlant]: 'x' | 'y' } = { 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' };
+export const PLANT_AXIS: { readonly [P in GlyphPlant]: 'x' | 'y' } = { 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' };
 /** T093 ruling A: a plant's glyph positions (x centre, or bottom edge), against the clean run on the same device, move by this much... */
 export const PLANT_SHIFT_DEVICE_PX = 1;
 /** ...within this... */
@@ -66,7 +81,7 @@ export type PlantVerdict = { readonly caught: boolean; readonly lines: readonly 
  * one fails the position check with at least PLANT_MARGIN_DEVICE_PX to spare; and every one moved by PLANT_SHIFT_DEVICE_PX within
  * PLANT_SHIFT_SPREAD_DEVICE_PX from the clean run.
  */
-export function judgeGlyphPlant(plant: SupportPlant, clean: { readonly failures: number; readonly centres: readonly GlyphPosition[] }, planted: readonly GlyphPosition[], gate: number, runs: { readonly hostErrors: readonly string[]; readonly frames: number; readonly lines: number }): PlantVerdict {
+export function judgeGlyphPlant(plant: GlyphPlant, clean: { readonly failures: number; readonly centres: readonly GlyphPosition[] }, planted: readonly GlyphPosition[], gate: number, runs: { readonly hostErrors: readonly string[]; readonly frames: number; readonly lines: number }): PlantVerdict {
   const axis = PLANT_AXIS[plant];
   const problems: string[] = [...runs.hostErrors];
   if (runs.frames > 0) problems.push(`device-frames has ${runs.frames} failure(s) across the two runs`);

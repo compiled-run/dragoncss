@@ -25,6 +25,9 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/length_utils.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/paint/box_border_painter.cc`: Copyright 2015 The Chromium Authors
+- `third_party/blink/renderer/core/paint/contoured_border_geometry.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/style/border_edge.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/script_run_iterator.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/font_features.cc`: Copyright 2021 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/han_kerning.cc`: Copyright 2023 The Chromium Authors
@@ -91,6 +94,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/opts/SkRasterPipeline_opts.h`: Copyright 2018 Google Inc.
 - `third_party/skia/src/ports/SkScalerContext_mac_ct.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/shaders/gradients/SkGradientBaseShader.cpp`: Copyright 2022 Google LLC
+- `third_party/skia/src/utils/SkDashPath.cpp`: Copyright 2014 Google Inc.
 
 ```
 Copyright (c) 2011 Google Inc. All rights reserved.
@@ -137,6 +141,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/blink/renderer/platform/fonts/shaping/harfbuzz_shaper.cc`: Copyright (c) 2012 Google Inc. All rights reserved.; Copyright (C) 2013 BlackBerry Limited. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/shaping/shape_result.cc`: Copyright (c) 2012 Google Inc. All rights reserved.; Copyright (C) 2013 BlackBerry Limited. All rights reserved.
 - `third_party/blink/renderer/platform/geometry/layout_unit.h`: Copyright (c) 2012, Google Inc. All rights reserved.
+- `third_party/blink/renderer/platform/graphics/styled_stroke_data.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/wtf/decimal.cc`: Copyright (C) 2012 Google Inc. All rights reserved.
 
 ```

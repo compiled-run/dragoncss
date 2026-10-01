@@ -79,6 +79,9 @@ export const MERGE_BY_HAND: readonly { readonly path: string; readonly why: stri
 export const MANUAL: readonly { readonly command: string; readonly outputs: readonly string[] }[] = [
   { command: '/tmp/device-lease.sh pnpm run parity:devices (device lanes)', outputs: ['packages/parity/out/device-failures-*.json'] },
   { command: 'pnpm run north-star:capture', outputs: ['examples/*/chrome/**'] },
+  // A paint package's vector inputs are written by its test from the input list it pins (paint-dash.test.ts dashVectorInputs);
+  // the test fails when the committed file differs, and the paint-vectors step reads it.
+  { command: 'DRAGON_WRITE_DASH_INPUTS=1 npx vitest run packages/layout/test/paint-dash.test.ts', outputs: ['packages/layout/paint-vectors/*/inputs.jsonl'] },
   { command: 'pnpm run rt:oracle', outputs: ['packages/layout/rt-oracle/**', 'packages/layout/rt-vectors/**'] },
   { command: 'pnpm run parity:hit-capture -- --identity-base <rev> (the pointer-events identity manifest, once per base)', outputs: ['packages/parity/expected-hit/identity-base.json'] },
   { command: 'pnpm run parity:glyph-calibration', outputs: ['packages/parity/expected-glyphs/darwin-arm64/**'] },
