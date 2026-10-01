@@ -64,11 +64,11 @@ val inline_ZWSP: Double = 8203.0
 fun inline_isRtlSafe(text: String): Boolean {
   // ts: packages/layout/src/inline.ts:35
   run {
-    val _a24 = jsCodePoints(text)
-    var _i24 = 0
-    while (_i24 < _a24.size) {
-      val ch: String = _a24[_i24]
-      _i24++
+    val _a25 = jsCodePoints(text)
+    var _i25 = 0
+    while (_i25 < _a25.size) {
+      val ch: String = _a25[_i25]
+      _i25++
       val cp: Double = jsUnwrap(jsCodePointAt0(ch))
       val letter: Boolean = (((cp >= 65.0) && (cp <= 90.0)) || ((cp >= 97.0) && (cp <= 122.0)))
       // ts: packages/layout/src/inline.ts:38
@@ -84,11 +84,11 @@ fun inline_isRtlSafe(text: String): Boolean {
 fun inline_checkRtlText(box: LayoutBox, leaves: JsArray<TextLeaf>): Unit {
   // ts: packages/layout/src/inline.ts:54
   run {
-    val _a25 = leaves
-    var _i25 = 0
-    while (_i25 < _a25.size) {
-      val t: TextLeaf = _a25[_i25]
-      _i25++
+    val _a26 = leaves
+    var _i26 = 0
+    while (_i26 < _a26.size) {
+      val t: TextLeaf = _a26[_i26]
+      _i26++
       // ts: packages/layout/src/inline.ts:55
       if ((!inline_isRtlSafe(t.text))) {
         unsupported_unsupported("bidi-neutral", t.id, "UAX #9 W1-W7, N1-N2", ("text in the rtl paragraph of " + box.id + " holds a character other than A-Z, a-z, space and U+200B"))
@@ -123,11 +123,11 @@ fun inline_buildRun(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLeaf>): Run {
   }
   // ts: packages/layout/src/inline.ts:70
   run {
-    val _a26 = leaves
-    var _i26 = 0
-    while (_i26 < _a26.size) {
-      val t: TextLeaf = _a26[_i26]
-      _i26++
+    val _a27 = leaves
+    var _i27 = 0
+    while (_i27 < _a27.size) {
+      val t: TextLeaf = _a27[_i27]
+      _i27++
       val m: U_MeasureResult_okFalse_MeasureResult_okTrue = ctx.measurer.measure(t.text, t.font)
       // ts: packages/layout/src/inline.ts:72
       if ((!m.ok)) {
@@ -144,11 +144,11 @@ fun inline_buildRun(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLeaf>): Run {
     var at: Double = 0.0
     // ts: packages/layout/src/inline.ts:80
     run {
-      val _a27 = jsCodePoints(t.text)
-      var _i27 = 0
-      while (_i27 < _a27.size) {
-        val ch: String = _a27[_i27]
-        _i27++
+      val _a28 = jsCodePoints(t.text)
+      var _i28 = 0
+      while (_i28 < _a28.size) {
+        val ch: String = _a28[_i28]
+        _i28++
         jsPush(chars, Inline_Char(leaf, (at++), ch, jsUnwrap(jsCodePointAt0(ch))))
       }
     }
@@ -287,11 +287,11 @@ fun inline_breakLines(ctx: Ctx, run: Run, available: Double): JsArray<Inline_Lin
   var end: Double = -1.0
   // ts: packages/layout/src/inline.ts:180
   run {
-    val _a28 = inline_segments(run)
-    var _i28 = 0
-    while (_i28 < _a28.size) {
-      val seg: Segment = _a28[_i28]
-      _i28++
+    val _a29 = inline_segments(run)
+    var _i29 = 0
+    while (_i29 < _a29.size) {
+      val seg: Segment = _a29[_i29]
+      _i29++
       // ts: packages/layout/src/inline.ts:181
       if ((start < 0.0)) {
         start = seg.start
@@ -376,11 +376,11 @@ fun inline_layoutInline(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLeaf>, ava
     var bottom: Double = units_add(jsUnwrap(firstPiece).y, jsUnwrap(firstPiece).height)
     // ts: packages/layout/src/inline.ts:245
     run {
-      val _a29 = own
-      var _i29 = 0
-      while (_i29 < _a29.size) {
-        val p: Piece = _a29[_i29]
-        _i29++
+      val _a30 = own
+      var _i30 = 0
+      while (_i30 < _a30.size) {
+        val p: Piece = _a30[_i30]
+        _i30++
         left = units_min(left, p.x)
         top = units_min(top, p.y)
         right = units_max(right, units_add(p.x, p.width))
@@ -406,11 +406,11 @@ fun inline_inlineIntrinsicSize(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLea
   var widest: Double = units_ZERO
   // ts: packages/layout/src/inline.ts:264
   run {
-    val _a30 = inline_segments(run)
-    var _i30 = 0
-    while (_i30 < _a30.size) {
-      val seg: Segment = _a30[_i30]
-      _i30++
+    val _a31 = inline_segments(run)
+    var _i31 = 0
+    while (_i31 < _a31.size) {
+      val seg: Segment = _a31[_i31]
+      _i31++
       widest = units_max(widest, inline_cachedWidth(ctx, run, seg.start, inline_trimEnd(run, seg.start, seg.end)))
     }
   }

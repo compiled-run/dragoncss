@@ -170,7 +170,9 @@
       "phrasing-blockified-inline-block": [5,7],
       "phrasing-blockified-inline-block-rtl": [5,7],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "values-calc-flex-column-auto-min": [1,1],
+      "values-calc-flex-column-auto-min-rtl": [1,1]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -342,7 +344,9 @@
       "phrasing-blockified-inline-block": [5,7],
       "phrasing-blockified-inline-block-rtl": [5,7],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "values-calc-flex-column-auto-min": [1,1],
+      "values-calc-flex-column-auto-min-rtl": [1,1]
     }
   },
   "android": {
@@ -516,7 +520,9 @@
       "phrasing-blockified-inline-block": [5,7],
       "phrasing-blockified-inline-block-rtl": [5,7],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "values-calc-flex-column-auto-min": [1,1],
+      "values-calc-flex-column-auto-min-rtl": [1,1]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -688,7 +694,9 @@
       "phrasing-blockified-inline-block": [5,7],
       "phrasing-blockified-inline-block-rtl": [5,7],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "values-calc-flex-column-auto-min": [1,1],
+      "values-calc-flex-column-auto-min-rtl": [1,1]
     },
     "2.625": {
       "text-ahem-single-line": [10,10],
@@ -860,7 +868,9 @@
       "phrasing-blockified-inline-block": [5,7],
       "phrasing-blockified-inline-block-rtl": [5,7],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "values-calc-flex-column-auto-min": [1,1],
+      "values-calc-flex-column-auto-min-rtl": [1,1]
     }
   }
 }

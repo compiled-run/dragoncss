@@ -20,11 +20,11 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ box: LayoutBox, _
   var widest: Double = units_ZERO
   // ts: packages/layout/src/intrinsic.ts:24
   do {
-    let _a31 = kids
-    var _i31 = 0
-    while _i31 < _a31.items.count {
-      let k: any U_LayoutBox_TextLeaf = _a31.items[_i31]
-      _i31 += 1
+    let _a32 = kids
+    var _i32 = 0
+    while _i32 < _a32.items.count {
+      let k: any U_LayoutBox_TextLeaf = _a32.items[_i32]
+      _i32 += 1
       // ts: packages/layout/src/intrinsic.ts:24
       if try ((k.kind == S.s_box) && (!position_isOutOfFlow(ctx, (k as! LayoutBox)))) {
         try widest = units_max(widest, intrinsic_inlineContribution(ctx, (k as! LayoutBox), kind))
@@ -78,18 +78,18 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
   let isRow: Bool = ((s.flexDirection == S.s_row) || (s.flexDirection == S.s_row_reverse))
   // ts: packages/layout/src/intrinsic.ts:55
   if ((!isRow) && (s.flexWrap != S.s_nowrap)) {
-    try unsupported_unsupported(S.s_flex_intrinsic_wrap_column, box.id, S.s57, S.s86)
+    try unsupported_unsupported(S.s_flex_intrinsic_wrap_column, box.id, S.s59, S.s88)
   }
   // ts: packages/layout/src/intrinsic.ts:56
   if ((!isRow) || ((kind == S.s_min) && (s.flexWrap != S.s_nowrap))) {
     var widest: Double = units_ZERO
     // ts: packages/layout/src/intrinsic.ts:58
     do {
-      let _a32 = contributions
-      var _i32 = 0
-      while _i32 < _a32.items.count {
-        let c: Double = _a32.items[_i32]
-        _i32 += 1
+      let _a33 = contributions
+      var _i33 = 0
+      while _i33 < _a33.items.count {
+        let c: Double = _a33.items[_i33]
+        _i33 += 1
         try widest = units_max(widest, c)
       }
     }
@@ -98,7 +98,7 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
   let gap: any U_LengthCalc_NormalValue_Percent_Px = s.columnGap
   // ts: packages/layout/src/intrinsic.ts:62
   if try ((gap.kind != S.s_normal) && box_hasPercent((gap as! any U_LengthCalc_Percent_Px))) {
-    try unsupported_unsupported(S.s_percent_gap, box.id, S.s52, S.s115)
+    try unsupported_unsupported(S.s_percent_gap, box.id, S.s53, S.s117)
   }
   let gapLu: Double = try ((gap.kind == S.s_normal) ? units_ZERO : box_resolveLength((gap as! any U_LengthCalc_Percent_Px), units_ZERO, ctx.faults))
   let gaps: Double = try ((jsLength(items) > 1.0) ? units_mulInt(gapLu, (jsLength(items) - 1.0)) : units_ZERO)

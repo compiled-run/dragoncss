@@ -462,7 +462,9 @@
         {"case":"values-calc-em-fractional","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
         {"case":"values-calc-em-fractional-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
         {"case":"values-calc-flex-factors","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
-        {"case":"values-calc-flex-factors-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"}
+        {"case":"values-calc-flex-factors-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
+        {"case":"values-calc-flex-column-auto-min","width":800,"height":600,"sha256":"c358d73bb9828c92baea159a7d846d81abc07af67a1c9926db21afc869897c6a"},
+        {"case":"values-calc-flex-column-auto-min-rtl","width":800,"height":600,"sha256":"f2304c66205e9a12a35a2ed5fad0d12c3bef4f2806751875a776879a704e241e"}
       ]
     },
     {
@@ -924,7 +926,9 @@
         {"case":"values-calc-em-fractional","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
         {"case":"values-calc-em-fractional-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
         {"case":"values-calc-flex-factors","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
-        {"case":"values-calc-flex-factors-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"}
+        {"case":"values-calc-flex-factors-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
+        {"case":"values-calc-flex-column-auto-min","width":1200,"height":900,"sha256":"48421af5c9b5275606832bb018ff943ab45ceba2ea6b934af231bb240c31ddad"},
+        {"case":"values-calc-flex-column-auto-min-rtl","width":1200,"height":900,"sha256":"616cf4a2311655964ad0ffe1a353363a0831a3b80996cd70c9e76f3c3524c3e2"}
       ]
     },
     {
@@ -1386,7 +1390,9 @@
         {"case":"values-calc-em-fractional","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
         {"case":"values-calc-em-fractional-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
         {"case":"values-calc-flex-factors","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
-        {"case":"values-calc-flex-factors-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"}
+        {"case":"values-calc-flex-factors-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
+        {"case":"values-calc-flex-column-auto-min","width":1050,"height":788,"sha256":"a149ac8fe606c40fcf0a3c250ba719cd5985cdde225412af9a52bf0e24f1fb7f"},
+        {"case":"values-calc-flex-column-auto-min-rtl","width":1050,"height":788,"sha256":"81e2cff22cf20dde091bde7182692c9136fbfa156ed38571873b62f3899d9e17"}
       ]
     }
   ]
