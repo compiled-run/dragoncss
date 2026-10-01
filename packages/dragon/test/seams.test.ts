@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { beats, cascadeGroups, substituteVariables } from '../src/analysis/resolve.ts';
 import type { Candidate } from '../src/analysis/resolve.ts';
-import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, refuseAtRule } from '../src/css/at-rules.ts';
+import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
 import type { AtRuleContext } from '../src/css/at-rules.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../src/css/properties/grid.ts';
@@ -42,6 +42,7 @@ describe('E2 seams: the property registry', () => {
       'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow', 'white-space',
       'background',
       ...LOGICAL_SHORTHANDS,
+      'writing-mode', 'text-orientation', 'text-combine-upright',
       ...GRID_SHORTHANDS,
     ]);
   });
@@ -84,8 +85,9 @@ describe('E2 seams: FIXTURES', () => {
   });
 });
 
-describe('E2 seams: every at-rule is still refused', () => {
-  const NAMES = [...Object.keys(AT_RULE_HANDLERS), 'MEDIA', 'Font-Face', 'unknown-thing', '-webkit-keyframes'];
+describe('E2 seams: every at-rule but @media is still refused', () => {
+  // MQ-a made @media conditional; its own seam test follows.
+  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media'), 'Font-Face', 'unknown-thing', '-webkit-keyframes'];
   const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@supports (display: flex) { @${n} z { .b { height: 3px; } } }`];
   const run = (text: string): { text: string; diagnostics: Diagnostic[]; enclosed: EnclosedRules[]; rules: number } => {
     const diagnostics: Diagnostic[] = [];
@@ -94,8 +96,9 @@ describe('E2 seams: every at-rule is still refused', () => {
     return { text, diagnostics, enclosed, rules: rules.length };
   };
   const atRules = (ds: readonly Diagnostic[]): [string, string][] => ds.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE').map((d) => [d.code, d.message]);
-  it('every registered name but font-face is refused today', () => {
-    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : refuseAtRule);
+  it('every registered name but font-face and media is refused today', () => {
+    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : refuseAtRule);
+    expect(atRuleHandler('MEDIA')).toBe(mediaAtRule);
     expect(atRuleHandler('no-such-rule')).toBe(refuseAtRule);
     expect(atRuleHandler('Font-Face')).toBe(acceptFontFace);
   });
@@ -115,6 +118,18 @@ describe('E2 seams: every at-rule is still refused', () => {
       ]);
     }
   });
+  it('@media is conditional only at the top level with a block: its rules carry the condition; blockless or in a rule block it is refused', () => {
+    for (const n of ['media', 'MEDIA']) {
+      const [top, statement, nested, inner] = sheets(n).map(run) as [ReturnType<typeof run>, ReturnType<typeof run>, ReturnType<typeof run>, ReturnType<typeof run>];
+      expect([top.rules, top.diagnostics, top.enclosed], n).toEqual([1, [], []]);
+      expect(atRules(statement.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
+      expect(atRules(nested.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in a rule block is not supported in milestone 1`]]);
+      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@supports in the stylesheet is not supported in milestone 1']]);
+      // The @media inside the refused @supports is parsed into the enclosed rules, with its condition, for analysis only.
+      expect(inner.enclosed.length, n).toBe(1);
+      expect(inner.enclosed[0]?.rules.map((r) => r.condition?.map((c) => c.text)), n).toEqual([['z']]);
+    }
+  });
   it('each at-rule, top level, nested in a rule and inside another at-rule, gets the milestone-1 refusal and produces no rule', () => {
     for (const n of NAMES) {
       const [top, statement, nested, inner] = sheets(n).map(run) as [ReturnType<typeof run>, ReturnType<typeof run>, ReturnType<typeof run>, ReturnType<typeof run>];
@@ -127,7 +142,8 @@ describe('E2 seams: every at-rule is still refused', () => {
     }
   });
   it('the diagnostics and enclosed rules are byte-identical to 4c1331c', () => {
-    const pinned = ['charset', 'color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'keyframes', 'layer', 'media', 'namespace', 'page', 'position-try', 'property', 'scope', 'starting-style', 'supports', 'view-transition', 'MEDIA', 'Font-Face', 'unknown-thing', '-webkit-keyframes'];
+    // media and MEDIA left the list with MQ-a. At cb1a4b2d this list gave 0a07dd1a…, and the full list gave the 4c1331c pin 4cfb6ef0….
+    const pinned = ['charset', 'color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'keyframes', 'layer', 'namespace', 'page', 'position-try', 'property', 'scope', 'starting-style', 'supports', 'view-transition', 'Font-Face', 'unknown-thing', '-webkit-keyframes'];
     const runs = pinned.flatMap((n) => sheets(n).map((text) => {
       const { diagnostics, enclosed } = run(text);
       return { text, diagnostics, enclosed };
@@ -142,7 +158,7 @@ describe('E2 seams: every at-rule is still refused', () => {
       }
       return x;
     }));
-    expect(sha(strip(runs))).toBe('4cfb6ef08f1acac7d6a9a22586a28031d40a74e0a60059bb7612cc16726f68e8');
+    expect(sha(strip(runs))).toBe('0a07dd1a2792ee5f25fe56b981852996a7e54cce342a294d1fd51880928560c7');
     expect(added.length).toBeGreaterThan(0);
     for (const x of added) expect([[], null, false]).toContainEqual(x);
   });

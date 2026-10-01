@@ -268,7 +268,7 @@ Planted faults the check must catch: a target missing a lane, one case dropped, 
 10. **Robolectric or any JVM fake of Android:** never a proof lane.
 11. **Dragon-owned paint:** no such row is promoted from `applied` alone on either platform; it needs pixel samples.
 12. **Colour delta of 1** between Skia and Core Animation: measure first. Any nonzero tolerance needs owner approval.
-13. **Android profile:** it is added to the support profiles with no exact row until a native case passes. Both backends share one native layout projection.
+13. **Android profile:** it is added to the support profiles with no exact row until a native case passes. Both backends share one native layout projection. The condition is met (T137a): in packages/parity/out/lanes.json the android lanes layout-vectors-host and layout-vectors-device pass on 560875 vector cases, and device-frames, device-applied and device-lines pass on all 460 layout cases at DPR 2, 3 and 2.625 (device-pixels fails on both platforms, and no iOS row rests on it). So Android rows follow the iOS rule, with the same keys: a layout aspect needs a passing linux-dragon-layout case, which uses the shared nativeLayoutProjection, and a paint aspect needs a passing chrome-dual case and is capped at caveat. The rows are derived from the parity run, not from the live lanes.json; the lanes tests keep the device lanes honest. A value the Android output refuses stays unsupported: packages/parity/test/android-profile.test.ts requires every case that proves a promoted row to compile for android unblocked and through the Android Views emitter, and no android-only refusal in any enforced native compile.
 
 ## 4. Owner decisions
 

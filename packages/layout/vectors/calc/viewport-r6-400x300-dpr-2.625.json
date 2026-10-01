@@ -7,6 +7,27 @@
    "height": 300
   },
   "devicePixelRatio": 2.625,
+  "viewportUnits": {
+   "small": {
+    "width": 400,
+    "height": 300
+   },
+   "large": {
+    "width": 400,
+    "height": 300
+   },
+   "dynamic": {
+    "width": 400,
+    "height": 300
+   }
+  },
+  "safeArea": {
+   "top": 0,
+   "right": 0,
+   "bottom": 0,
+   "left": 0
+  },
+  "rootFontSize": 16,
   "root": {
    "kind": "box",
    "id": "html",
@@ -255,7 +276,8 @@
          "expr": {
           "kind": "viewport",
           "value": 50,
-          "axis": "width"
+          "axis": "width",
+          "size": "large"
          },
          "range": "non-negative"
         },
@@ -264,7 +286,8 @@
          "expr": {
           "kind": "viewport",
           "value": 100,
-          "axis": "height"
+          "axis": "height",
+          "size": "large"
          },
          "range": "non-negative"
         },
@@ -378,7 +401,8 @@
          "expr": {
           "kind": "viewport",
           "value": 25,
-          "axis": "min"
+          "axis": "min",
+          "size": "large"
          },
          "range": "non-negative"
         },
@@ -387,7 +411,8 @@
          "expr": {
           "kind": "viewport",
           "value": 12.5,
-          "axis": "max"
+          "axis": "max",
+          "size": "large"
          },
          "range": "non-negative"
         },

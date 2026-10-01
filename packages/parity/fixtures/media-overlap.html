@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.shell { margin-right: 24px; padding: 8px; background-color: #eee; }
+.card { width: 200px; height: 20px; margin-left: 12px; background-color: #36c; }
+.title { height: 10px; background-color: #333; }
+@media screen and (max-width: 768px) {
+  .shell { margin-right: 0; padding: 4px; }
+  .card { width: 160px; margin-left: 6px; }
+}
+@media screen and (max-width: 640px) {
+  .card { width: 120px; }
+  .title { height: 8px; }
+}
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="shell" class="shell">
+<div data-dragon-id="title" class="title"></div>
+<div data-dragon-id="card" class="card"></div>
+</div>
+</body>
+</html>

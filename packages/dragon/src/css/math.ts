@@ -346,6 +346,9 @@ type Token =
 const NUMBER = /[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/y;
 const IDENT = /-?[a-zA-Z_][a-zA-Z0-9_-]*/y;
 const UNIT = /[a-zA-Z]+/y;
+/** The code points the validity check tokenizes: css-syntax-3 §4.2 white space, ASCII letters and digits, and - _ + * / ( ) . , %. */
+const CSS_WHITE_SPACE = /[ \t\n\r\f]/;
+const VALIDITY_CHARACTERS = /^[A-Za-z0-9_\-+*/().,% \t\n\r\f]$/;
 
 /**
  * The most tokens a calculation may have. Chrome 145 sets no such limit; Dragon refuses a longer calculation with a reason, so
@@ -359,14 +362,27 @@ const execAt = (re: RegExp, text: string, i: number): RegExpExecArray | null => 
   return re.exec(text);
 };
 
-function tokenize(text: string): Token[] {
+/** The tokens of a calculation, at most MAX_MATH_TOKENS; for the validity check comments are dropped as css-syntax-3 §4.3 does, and an unclosed one or a longer calculation gives null. */
+function tokenize(text: string): Token[];
+function tokenize(text: string, validity: true): Token[] | null;
+function tokenize(text: string, validity = false): Token[] | null {
   const out: Token[] = [];
   let i = 0;
   while (i < text.length) {
-    if (out.length >= MAX_MATH_TOKENS) return refuse(`it has more than ${MAX_MATH_TOKENS} tokens, the most a calculation may have`, 'Write a shorter calculation.');
+    // The bound holds on both paths: past it the validity check is undetermined (null), and parseMath then refuses with the reason.
+    if (out.length >= MAX_MATH_TOKENS) return validity ? null : refuse(`it has more than ${MAX_MATH_TOKENS} tokens, the most a calculation may have`, 'Write a shorter calculation.');
     const ch = text[i] as string;
-    if (/\s/.test(ch)) {
-      while (i < text.length && /\s/.test(text[i] as string)) i++;
+    if (validity && ch === '/' && text[i + 1] === '*') {
+      const end = text.indexOf('*/', i + 2);
+      if (end < 0) return null;
+      i = end + 2;
+      continue;
+    }
+    // Escapes, strings, non-ASCII and other code points the math tokenizer does not model; and css-syntax-3 white space only.
+    if (validity && !VALIDITY_CHARACTERS.test(ch)) return null;
+    const space = validity ? CSS_WHITE_SPACE : /\s/;
+    if (space.test(ch)) {
+      while (i < text.length && space.test(text[i] as string)) i++;
       out.push({ k: 'ws' });
       continue;
     }
@@ -405,10 +421,11 @@ function tokenize(text: string): Token[] {
 class Parser {
   private i = 0;
   private readonly toks: Token[];
-  private readonly percentAllowed: boolean;
-  constructor(toks: Token[], percentAllowed: boolean) {
+  /** The refusal a percentage meets, or null where the property takes one. */
+  private readonly percentRefusal: PercentRefusal | null;
+  constructor(toks: Token[], percentRefusal: PercentRefusal | null) {
     this.toks = toks;
-    this.percentAllowed = percentAllowed;
+    this.percentRefusal = percentRefusal;
   }
   private peek(): Token | undefined {
     return this.toks[this.i];
@@ -482,7 +499,7 @@ class Parser {
   private value(value: number, unit: string): MathNode {
     if (unit === '' || V1_RELATIVE.has(unit) || pxPer(unit) !== null) return lit(value, unit);
     if (unit === '%') {
-      if (!this.percentAllowed) return refuse('a percentage in this property needs percentage gaps, which are not supported yet', 'Use a length without a percentage.');
+      if (this.percentRefusal !== null) return refuse(this.percentRefusal.reason, this.percentRefusal.fix);
       return lit(value, unit);
     }
     if (FONT_METRIC.has(unit)) return refuse(`${unit} is measured from the primary font at its rendered size, which needs the value-model package V2`, 'Use em, rem or px.');
@@ -524,21 +541,42 @@ class Parser {
   }
 }
 
-/** What a property takes: a length (with or without a percentage) or a number (css-values-4 §10.9 type checking). */
-export type MathContext = { readonly type: 'length'; readonly percent: boolean } | { readonly type: 'number' };
+/** Why a percentage in a calculation is refused: the reason names the cause, which differs by property. */
+export type PercentRefusal = { readonly reason: string; readonly fix: string };
+
+/** What a property takes: a length (with a percentage, or with the refusal a percentage meets) or a number (css-values-4 §10.9 type checking). */
+export type MathContext = { readonly type: 'length'; readonly percent: true | PercentRefusal } | { readonly type: 'number' };
 
 const NUMBER_PROPERTIES: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order']);
 const TEXT_PROPERTIES: ReadonlySet<string> = new Set(['font-size', 'line-height', 'font']);
-/** Border widths take no percentage (css-backgrounds-3 §3.3); V1 refuses a percentage in gaps, as it does outside calc(). */
-const NO_PERCENT = /^(border(-(top|right|bottom|left|block|inline)(-(start|end))?)?(-width)?|gap|row-gap|column-gap|outline(-width)?)$/;
+/**
+ * Border, outline and column-rule widths are a <line-width>, which has no percentage (css-backgrounds-3 §3.3, css-ui-4 §3.2,
+ * css-multicol-1 §4.2), so a calculation with one is invalid and Chrome drops the declaration: Chrome 145.0.7632.6 gives
+ * CSS.supports('border-left-width', 'calc(1px + 5%)') false and keeps the earlier border-left-width (T131).
+ */
+const LINE_WIDTH = /^(border(-(top|right|bottom|left|block|inline)(-(start|end))?)?(-width)?|outline(-width)?|column-rule(-width)?)$/;
+/** Gaps take a percentage (css-align-3 §8.1) and Chrome accepts calc(10px + 5%) there, but the layout engine has no percentage gaps yet. */
+const GAP = /^(gap|row-gap|column-gap)$/;
+
+/**
+ * A percentage that survives into the result makes a <line-width> or number calculation invalid (mathInvalidity); one Chrome
+ * accepts cancels out by typed arithmetic, as calc(5% / 5% * 1px) does, which V1 does not support.
+ */
+const LINE_WIDTH_PERCENT: PercentRefusal = {
+  reason: 'a percentage in a border, outline or column-rule width cancels out only by typed arithmetic (css-values-4 §10.9), which is not supported',
+  fix: 'Use a length without a percentage.',
+};
+const NUMBER_PERCENT: PercentRefusal = { reason: 'a percentage in a number calculation cancels out only by typed arithmetic (css-values-4 §10.9), which is not supported', fix: 'Write the calculation with numbers only.' };
+const GAP_PERCENT: PercentRefusal = { reason: 'a percentage in this property needs percentage gaps, which are not supported yet', fix: 'Use a length without a percentage.' };
 
 /** The calculation a property takes, or the reason V1 refuses every calculation in it. */
 export function mathContextFor(property: string): MathContext | { readonly refused: string } {
   if (NUMBER_PROPERTIES.has(property)) return { type: 'number' };
   if (TEXT_PROPERTIES.has(property)) return { refused: `a calculation in ${property} reaches the font and line metrics, which needs the value-model package V2` };
-  return { type: 'length', percent: !NO_PERCENT.test(property) };
+  if (LINE_WIDTH.test(property)) return { type: 'length', percent: LINE_WIDTH_PERCENT };
+  if (GAP.test(property)) return { type: 'length', percent: GAP_PERCENT };
+  return { type: 'length', percent: true };
 }
-
 
 export type ParsedMath = { readonly ok: true; readonly node: MathNode } | { readonly ok: false; readonly reason: string; readonly fix: string };
 
@@ -551,11 +589,15 @@ function finite(n: MathNode): boolean {
 
 /** Parses one math function's text (as css-tree generates it) for a property context. */
 export function parseMath(text: string, context: MathContext): ParsedMath {
+  // What Chrome rejects is invalid whatever V1 supports, so the validity check (the one stylesheet parsing drops declarations by) runs first.
+  const grammar: MathGrammar = context.type === 'number' ? 'number' : context.percent === LINE_WIDTH_PERCENT ? 'length' : 'length-percentage';
+  const invalidity = mathInvalidity(text, grammar);
+  if (invalidity !== null) return { ok: false, reason: `${invalidity}, so Chrome drops the declaration`, fix: 'Write a calculation Chrome accepts for this property.' };
   try {
     const toks = tokenize(text.trim());
     const head = toks[0];
     if (head === undefined || head.k !== 'func') return refuse('it does not parse as a css-values-4 calculation');
-    const p = new Parser(toks.slice(1), context.type === 'length' && context.percent);
+    const p = new Parser(toks.slice(1), context.type === 'number' ? NUMBER_PERCENT : context.percent === true ? null : context.percent);
     const node = p.function(head.name, 0);
     if (!p.atEnd()) return refuse('it does not parse as a css-values-4 calculation');
     const c = category(node);
@@ -565,6 +607,446 @@ export function parseMath(text: string, context: MathContext): ParsedMath {
     return { ok: true, node };
   } catch (e) {
     if (e instanceof MathRefusal) return { ok: false, reason: e.reason, fix: e.fix };
+    throw e;
+  }
+}
+
+// ---------------------------------------------------------------- parse-time validity (Chrome drops the declaration)
+
+/**
+ * What a property's math function must resolve to, as Blink's consumers check it (core/css/properties/css_parsing_utils.cc at
+ * 145.0.7632.6): ConsumeLength takes kCalcLength only (a <line-width>), ConsumeLengthOrPercent a length, a percentage or a mix
+ * (kCalcLengthFunction), ConsumeNumber and ConsumeInteger a number, and ConsumeLineHeight or the flex shorthand either.
+ */
+export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or-length-percentage';
+
+const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright']);
+const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex']);
+
+/** The grammar a top-level math function of a property resolves against; every other numeric property takes <length-percentage>. */
+export function mathGrammarFor(property: string): MathGrammar {
+  if (NUMBER_GRAMMAR.has(property)) return 'number';
+  if (NUMBER_OR_LENGTH_GRAMMAR.has(property)) return 'number-or-length-percentage';
+  if (LINE_WIDTH.test(property)) return 'length';
+  return 'length-percentage';
+}
+
+/**
+ * Blink CSSMathExpressionNodeParser::IsSupportedMathFunction at 145.0.7632.6. Of the functions behind runtime flags, Chrome
+ * 145.0.7632.6 parses progress() and rejects media-progress(), container-progress() and random() (captured by
+ * packages/parity/src/cli/math-validity-capture.ts), so those three are not math functions here.
+ */
+export const BLINK_MATH_FUNCTIONS: ReadonlySet<string> = new Set([
+  'calc', '-webkit-calc', 'min', 'max', 'clamp', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'anchor', 'anchor-size', 'calc-size',
+  'round', 'mod', 'rem', 'pow', 'sqrt', 'hypot', 'log', 'exp', 'sibling-count', 'sibling-index', 'abs', 'sign', 'progress',
+]);
+/** Math functions this check does not model (anchor queries, calc-size(), progress()): a calculation holding one is left to the rest of the pipeline. */
+const UNMODELLED_FUNCTIONS: ReadonlySet<string> = new Set(['anchor', 'anchor-size', 'calc-size', 'progress']);
+/** Substitution functions: a value holding one is valid at parse time and checked after substitution (css-values-5, css-variables-1 §3.1). */
+const SUBSTITUTION_FUNCTIONS: ReadonlySet<string> = new Set(['var', 'env', 'attr', 'if', 'inherit']);
+
+/** Blink CalculationResultCategory, less kCalcOther (a failure) and kCalcIdent (keyword literals, which no checked property takes). */
+type VCategory = 'number' | 'length' | 'percent' | 'length-function' | 'intermediate' | 'angle' | 'time' | 'frequency' | 'resolution';
+
+/** Blink UnitCategory: the dimension units a calculation accepts, with their categories; any other unit fails the parse. */
+const UNIT_CATEGORIES: ReadonlyMap<string, VCategory> = new Map<string, VCategory>([
+  ...['em', 'ex', 'px', 'cm', 'mm', 'q', 'in', 'pt', 'pc', 'rem', 'ch', 'vw', 'vh', 'vmin', 'vmax', 'rex', 'rch', 'ric', 'rlh', 'ic', 'lh', 'cap', 'rcap', 'vi', 'vb', 'cqw', 'cqh', 'cqi', 'cqb', 'cqmin', 'cqmax'].map((u) => [u, 'length'] as const),
+  ...['s', 'l', 'd'].flatMap((p) => ['w', 'h', 'i', 'b', 'min', 'max'].map((a) => [`${p}v${a}`, 'length'] as const)),
+  ...['deg', 'grad', 'rad', 'turn'].map((u) => [u, 'angle'] as const),
+  ...['ms', 's'].map((u) => [u, 'time'] as const),
+  ...['hz', 'khz'].map((u) => [u, 'frequency'] as const),
+  ...['dppx', 'x', 'dpi', 'dpcm'].map((u) => [u, 'resolution'] as const),
+]);
+/** Blink HasDoubleValue: the units a literal folds in. */
+const BLINK_DOUBLE_VALUED: ReadonlySet<string> = new Set(['', '%', 'em', 'ex', 'ch', 'ic', 'lh', 'cap', 'rcap', 'rlh', 'rem', 'rex', 'rch', 'ric', 'px', 'cm', 'mm', 'q', 'in', 'pt', 'pc', 'deg', 'rad', 'grad', 'turn', 'ms', 's', 'hz', 'khz', 'vw', 'vh', 'vmin', 'vmax', 'cqw', 'cqh', 'cqi', 'cqb', 'cqmin', 'cqmax', 'dppx', 'x', 'dpi', 'dpcm']);
+/** Blink UnitTypeToUnitCategory: units that convert to one canonical unit, with it; the rest are their own. */
+const CANONICAL: ReadonlyMap<string, string> = new Map([
+  ...['px', 'cm', 'mm', 'q', 'in', 'pt', 'pc'].map((u) => [u, 'px'] as const),
+  ...['deg', 'rad', 'grad', 'turn'].map((u) => [u, 'deg'] as const),
+  ...['ms', 's'].map((u) => [u, 's'] as const),
+  ...['hz', 'khz'].map((u) => [u, 'hz'] as const),
+  ...['dppx', 'x', 'dpi', 'dpcm'].map((u) => [u, 'dppx'] as const),
+]);
+const CANONICAL_OF_CATEGORY: { readonly [c in VCategory]?: string } = { number: '', length: 'px', angle: 'deg', time: 's', frequency: 'hz', resolution: 'dppx' };
+
+/** css-typed-om-1 §4.1 types (Blink CSSMathType): powers of length, angle, time, frequency, resolution, flex and percent, and a percent hint. */
+type VType = { readonly powers: readonly number[]; readonly hint: number | null };
+const PERCENT_INDEX = 6;
+const BASE_INDEX: { readonly [c in VCategory]?: number } = { length: 0, angle: 1, time: 2, frequency: 3, resolution: 4, percent: PERCENT_INDEX };
+
+/** A parsed node: its category, its type when it is an arithmetic operation, and its unit when it is certainly a numeric literal. */
+type VNode = { readonly category: VCategory; readonly type: VType | null; readonly literal: string | null };
+
+/** A calculation Chrome rejects; reason says why. */
+class MathInvalid extends Error {}
+/** A calculation this check cannot decide (an unmodelled function, a substitution, an escape): it is not reported as invalid. */
+class MathUndetermined extends Error {}
+const invalid = (reason: string): never => {
+  throw new MathInvalid(reason);
+};
+const undetermined = (): never => {
+  throw new MathUndetermined();
+};
+
+function typeOfCategory(c: VCategory): VType {
+  const powers = [0, 0, 0, 0, 0, 0, 0];
+  if (c === 'intermediate') return undetermined();
+  if (c === 'length-function') {
+    powers[0] = 1;
+    return { powers, hint: 0 };
+  }
+  const i = BASE_INDEX[c];
+  if (i !== undefined) powers[i] = 1;
+  return { powers, hint: null };
+}
+const typeOf = (n: VNode): VType => n.type ?? typeOfCategory(n.category);
+
+function applyHint(t: VType, hint: number): VType {
+  if (t.hint !== null) return t;
+  const powers = [...t.powers];
+  if (hint !== PERCENT_INDEX) {
+    powers[hint] = (powers[hint] as number) + (powers[PERCENT_INDEX] as number);
+    powers[PERCENT_INDEX] = 0;
+  }
+  return { powers, hint };
+}
+const sameType = (a: VType, b: VType): boolean => a.hint === b.hint && a.powers.every((p, i) => p === b.powers[i]);
+const sumOf = (t: VType): number => t.powers.reduce((s, p) => s + p, 0);
+
+/** Blink operator+(CSSMathType, CSSMathType): css-typed-om-1 "add two types". */
+function addTypes(t1: VType, t2: VType): VType | null {
+  if (t1.hint !== null && t2.hint !== null && t1.hint !== t2.hint) return null;
+  if (t1.hint !== null && t2.hint === null) t2 = applyHint(t2, t1.hint);
+  if (t1.hint === null && t2.hint !== null) t1 = applyHint(t1, t2.hint);
+  if (sameType(t1, t2)) return t1;
+  const percent = t1.powers[PERCENT_INDEX] !== 0 || t2.powers[PERCENT_INDEX] !== 0;
+  const other = t1.powers[PERCENT_INDEX] !== sumOf(t1) || t2.powers[PERCENT_INDEX] !== sumOf(t2);
+  if (percent && other) {
+    for (let hint = 0; hint < PERCENT_INDEX; hint++) {
+      const a = applyHint(t1, hint);
+      if (sameType(a, applyHint(t2, hint))) return a;
+    }
+  }
+  return null;
+}
+
+/** Blink operator*(CSSMathType, CSSMathType): css-typed-om-1 "multiply two types"; division multiplies by the negated type. */
+function multiplyTypes(t1: VType, t2: VType): VType | null {
+  if (t1.hint !== null && t2.hint !== null && t1.hint !== t2.hint) return null;
+  if (t1.hint !== null && t2.hint === null) t2 = applyHint(t2, t1.hint);
+  if (t1.hint === null && t2.hint !== null) t1 = applyHint(t1, t2.hint);
+  return { powers: t1.powers.map((p, i) => p + (t2.powers[i] as number)), hint: t1.hint };
+}
+const negateType = (t: VType): VType => ({ powers: t.powers.map((p) => -p), hint: t.hint });
+
+/** Blink CSSMathType::Category: null is kCalcOther. */
+function categoryOfType(t: VType): VCategory | null {
+  let sum = 0;
+  let base = -1;
+  for (let i = 0; i < PERCENT_INDEX + 1; i++) {
+    const p = t.powers[i] as number;
+    if (p === 0) continue;
+    if (sum !== 0) {
+      if (i !== PERCENT_INDEX) return 'intermediate';
+      // Percentages beside one other base type resolve against it (the deduced percent hint).
+      sum += p;
+      break;
+    }
+    base = i;
+    sum += p;
+  }
+  if (sum === 0) return 'number';
+  if (sum !== 1) return 'intermediate';
+  if (t.hint !== null) return t.powers[0] !== 0 ? 'length-function' : null;
+  return (['length', 'angle', 'time', 'frequency', 'resolution', null, 'percent'] as const)[base] ?? null;
+}
+
+/** Blink kAddSubtractResult: the category of a sum, a comparison or a stepped-value function; null is kCalcOther. */
+function addCategories(a: VCategory, b: VCategory): VCategory | null {
+  if (a === 'intermediate' || b === 'intermediate') return null;
+  const lengthy = (c: VCategory): boolean => c === 'length' || c === 'percent' || c === 'length-function';
+  if (lengthy(a) && lengthy(b)) return a === b ? a : 'length-function';
+  return a === b ? a : null;
+}
+
+const NAMES: { readonly [c in VCategory]: string } = {
+  number: 'a number', length: 'a length', percent: 'a percentage', 'length-function': 'a length with a percentage', intermediate: 'a product of units',
+  angle: 'an angle', time: 'a time', frequency: 'a frequency', resolution: 'a resolution',
+};
+
+const isRelativeLength = (unit: string): boolean => CANONICAL.get(unit) !== 'px';
+/** Blink CanEagerlySimplify: a literal number, angle, time, frequency or resolution, or an absolute length. */
+const eager = (n: VNode): boolean => n.literal !== null && (n.category === 'length' ? !isRelativeLength(n.literal) : n.category !== 'percent' && n.category !== 'length-function' && n.category !== 'intermediate');
+const opNode = (category: VCategory): VNode => ({ category, type: null, literal: null });
+
+/** Blink CSSMathExpressionOperation::CreateArithmeticOperationSimplified, as far as the category and the literal-ness of the result. */
+function arithmetic(l: VNode, r: VNode, op: 'add' | 'sub' | 'mul' | 'div'): VNode {
+  const lt = typeOf(l);
+  const rt = typeOf(r);
+  const type = op === 'add' || op === 'sub' ? addTypes(lt, rt) : multiplyTypes(lt, op === 'mul' ? rt : negateType(rt));
+  const category = type === null ? null : categoryOfType(type);
+  if (type === null || category === null) {
+    const verb = op === 'add' ? 'adds' : op === 'sub' ? 'subtracts' : op === 'mul' ? 'multiplies' : 'divides';
+    return invalid(`it ${verb} ${NAMES[l.category]} and ${NAMES[r.category]}, which have no common type (css-values-4 §10.9)`);
+  }
+  // CanArithmeticOperationBeSimplified, then the literal folds; anything else is an operation.
+  const literals = l.literal !== null && r.literal !== null && !((op === 'mul' || op === 'div') && l.category !== 'number' && r.category !== 'number') && category !== 'intermediate';
+  if (literals) {
+    if (l.category === 'number' && r.category === 'number') return { category, type: null, literal: '' };
+    if ((op === 'add' || op === 'sub') && l.category === r.category && BLINK_DOUBLE_VALUED.has(l.literal as string)) {
+      if (l.literal === r.literal) return { category, type: null, literal: l.literal };
+      const canonical = CANONICAL.get(l.literal as string);
+      if (canonical !== undefined && canonical === CANONICAL.get(r.literal as string)) return { category, type: null, literal: canonical };
+    }
+    if (op === 'mul' || op === 'div') {
+      const other = r.category === 'number' ? l : l.category === 'number' && op === 'mul' ? r : null;
+      if (other !== null && BLINK_DOUBLE_VALUED.has(other.literal as string)) return { category, type: null, literal: other.literal };
+    }
+  }
+  return { category, type, literal: null };
+}
+
+function validityComparison(args: readonly VNode[], what: string): VCategory {
+  let c: VCategory | null = (args[0] as VNode).category;
+  for (const a of args.slice(1)) {
+    c = addCategories(c, a.category);
+    if (c === null) return invalid(`${what} mixes arguments of different types (css-values-4 §10.9)`);
+  }
+  if (c === 'intermediate') return invalid(`${what} takes a product of units, which has no valid type there`);
+  return c;
+}
+const eagerLiteral = (args: readonly VNode[], category: VCategory): string | null => (args.every(eager) ? (CANONICAL_OF_CATEGORY[category] ?? null) : null);
+
+const ROUNDING_STRATEGIES: ReadonlySet<string> = new Set(['nearest', 'up', 'down', 'to-zero']);
+const CONSTANTS: ReadonlySet<string> = new Set(['e', 'pi', 'infinity', '-infinity', 'nan']);
+/** css-values-4 §10.1: the deepest nesting Blink parses (kMaxExpressionDepth). */
+const MAX_VALIDITY_DEPTH = 100;
+
+/** Blink CSSMathExpressionNodeParser at 145.0.7632.6, reduced to types: what it accepts and what each node's category is. */
+class ValidityParser {
+  private i = 0;
+  private readonly toks: readonly Token[];
+  constructor(toks: readonly Token[]) {
+    this.toks = toks;
+  }
+  private peek(): Token | undefined {
+    return this.toks[this.i];
+  }
+  private skipWs(): boolean {
+    let seen = false;
+    while (this.peek()?.k === 'ws') {
+      this.i++;
+      seen = true;
+    }
+    return seen;
+  }
+  atEnd(): boolean {
+    this.skipWs();
+    return this.i >= this.toks.length;
+  }
+  private syntax(): never {
+    return invalid('it does not parse as a css-values-4 calculation');
+  }
+  /** The arguments up to the closing parenthesis, each an expression (ParseValueExpression), between min and max of them. */
+  private args(depth: number, min: number, max: number, name: string): VNode[] {
+    const out: VNode[] = [];
+    this.skipWs();
+    while (this.peek()?.k !== 'close' && out.length < max) {
+      if (out.length > 0) {
+        if (this.peek()?.k !== 'comma') return this.syntax();
+        this.i++;
+        this.skipWs();
+      }
+      out.push(this.expression(depth));
+      this.skipWs();
+    }
+    if (this.peek()?.k !== 'close') return out.length >= max ? invalid(`${name}() takes at most ${max} argument${max === 1 ? '' : 's'}`) : this.syntax();
+    this.i++;
+    if (out.length < min) return invalid(`${name}() takes at least ${min} argument${min === 1 ? '' : 's'}`);
+    return out;
+  }
+  /** ParseMathFunction: the function's arguments, checked and typed as its Create* function does. */
+  function(name: string, depth: number): VNode {
+    if (SUBSTITUTION_FUNCTIONS.has(name) || UNMODELLED_FUNCTIONS.has(name)) return undetermined();
+    if (!BLINK_MATH_FUNCTIONS.has(name)) return invalid(`${name}() is not a math function`);
+    if (name === 'sibling-index' || name === 'sibling-count') {
+      this.skipWs();
+      if (this.peek()?.k !== 'close') return invalid(`${name}() takes no arguments`);
+      this.i++;
+      return opNode('number');
+    }
+    switch (name) {
+      case 'calc':
+      case '-webkit-calc':
+        return (this.args(depth, 1, 1, name)[0] as VNode);
+      case 'min':
+      case 'max':
+      case 'clamp': {
+        const args = name === 'clamp' ? this.args(depth, 3, 3, name) : this.args(depth, 1, Infinity, name);
+        const c = validityComparison(args, `${name}()`);
+        if (args.length === 1) return args[0] as VNode;
+        return { category: c, type: null, literal: eagerLiteral(args, c) };
+      }
+      case 'sin':
+      case 'cos':
+      case 'tan':
+      case 'asin':
+      case 'acos':
+      case 'atan': {
+        const [a] = this.args(depth, 1, 1, name) as [VNode];
+        const numberOut = name === 'sin' || name === 'cos' || name === 'tan';
+        if (numberOut ? a.category !== 'number' && a.category !== 'angle' : a.category !== 'number') return invalid(`${name}() takes ${numberOut ? 'a number or an angle' : 'a number'}, not ${NAMES[a.category]}`);
+        const c: VCategory = numberOut ? 'number' : 'angle';
+        return { category: c, type: null, literal: eagerLiteral([a], c) };
+      }
+      case 'atan2': {
+        const args = this.args(depth, 2, 2, name);
+        if ((args[0] as VNode).category !== (args[1] as VNode).category) return invalid('atan2() takes two arguments of the same type');
+        return { category: 'angle', type: null, literal: eagerLiteral(args, 'angle') };
+      }
+      case 'pow':
+      case 'sqrt':
+      case 'hypot':
+      case 'log':
+      case 'exp':
+        return this.exponential(name, depth);
+      case 'round':
+      case 'mod':
+      case 'rem': {
+        this.skipWs();
+        const t = this.peek();
+        if (name === 'round' && t?.k === 'ident' && ROUNDING_STRATEGIES.has(t.name)) {
+          this.i++;
+          this.skipWs();
+          if (this.peek()?.k !== 'comma') return this.syntax();
+          this.i++;
+        }
+        const args = name === 'round' ? this.args(depth, 1, 2, name) : this.args(depth, 2, 2, name);
+        if (args.length === 1 && (args[0] as VNode).category !== 'number') return invalid('round() without a step takes a number');
+        const step = args.length === 1 ? { category: 'number' as const, type: null, literal: '' } : (args[1] as VNode);
+        const c = addCategories((args[0] as VNode).category, step.category);
+        if (c === null) return invalid(`${name}() takes a value and a step of the same type`);
+        return { category: c, type: null, literal: eagerLiteral([args[0] as VNode, step], c) };
+      }
+      case 'abs':
+      case 'sign': {
+        const [a] = this.args(depth, 1, 1, name) as [VNode];
+        if (name === 'sign') return { category: 'number', type: null, literal: eager(a) ? '' : null };
+        return { category: a.category, type: null, literal: eager(a) ? (CANONICAL_OF_CATEGORY[a.category] ?? null) : null };
+      }
+      default:
+        return undetermined();
+    }
+  }
+  /** CreateExponentialFunction: pow() and log() take numbers, hypot() one type, sqrt() and exp() a number once folded. */
+  private exponential(name: 'pow' | 'sqrt' | 'hypot' | 'log' | 'exp', depth: number): VNode {
+    const args = name === 'pow' ? this.args(depth, 2, 2, name) : name === 'hypot' ? this.args(depth, 1, MAX_VALIDITY_DEPTH, name) : name === 'log' ? this.args(depth, 1, 2, name) : this.args(depth, 1, 1, name);
+    const first = args[0] as VNode;
+    if (first.category === 'intermediate') return invalid(`${name}() takes a value with a canonical unit, not a product of units`);
+    if (name === 'pow' || name === 'hypot') {
+      const c = validityComparison(args, `${name}()`);
+      if (name === 'pow' && c !== 'number') return invalid('pow() takes numbers');
+      return { category: c, type: null, literal: eagerLiteral(args, c) };
+    }
+    if (name === 'log') {
+      if (first.category !== 'number' || (args[args.length - 1] as VNode).category !== 'number') return invalid('log() takes numbers');
+      return { category: 'number', type: null, literal: eagerLiteral(args, 'number') };
+    }
+    // sqrt() and exp() of a folded literal need a number (ValueAsNumber); otherwise sqrt() keeps its argument's category.
+    if (first.category === 'number') return { category: 'number', type: null, literal: eagerLiteral(args, 'number') };
+    if (first.literal === null) return undetermined();
+    if (eager(first)) return invalid(`${name}() takes a number, not ${NAMES[first.category]}`);
+    return opNode(name === 'exp' ? 'number' : first.category);
+  }
+  /** ParseValueTerm: a nested calculation, a math function or a value; ws reports whether whitespace follows it. */
+  private term(depth: number): { node: VNode; ws: boolean } {
+    const t = this.peek();
+    if (t === undefined) return this.syntax();
+    this.i++;
+    let node: VNode;
+    if (t.k === 'open' || (t.k === 'func' && t.name === 'calc')) {
+      this.skipWs();
+      node = this.expression(depth);
+      this.skipWs();
+      if (this.peek()?.k !== 'close') return this.syntax();
+      this.i++;
+    } else if (t.k === 'func') node = this.function(t.name, depth);
+    else if (t.k === 'num') {
+      const category: VCategory | undefined = t.unit === '' ? 'number' : t.unit === '%' ? 'percent' : UNIT_CATEGORIES.get(t.unit);
+      if (category === undefined) return invalid(`${t.unit} is not a unit a calculation takes`);
+      node = { category, type: null, literal: t.unit };
+    } else if (t.k === 'ident') {
+      if (!CONSTANTS.has(t.name)) return invalid(`${t.name} is not a value in a calculation`);
+      node = { category: 'number', type: null, literal: '' };
+    } else return this.syntax();
+    return { node, ws: this.skipWs() };
+  }
+  private multiplicative(depth: number): { node: VNode; ws: boolean } {
+    let { node, ws } = this.term(depth);
+    for (;;) {
+      const t = this.peek();
+      if (t?.k !== 'delim' || (t.ch !== '*' && t.ch !== '/')) break;
+      this.i++;
+      this.skipWs();
+      const rhs = this.term(depth);
+      node = arithmetic(node, rhs.node, t.ch === '*' ? 'mul' : 'div');
+      ws = rhs.ws;
+    }
+    return { node, ws };
+  }
+  /** ParseValueExpression: depth counts the enclosing expressions, as Blink's State does. */
+  expression(depth: number): VNode {
+    if (depth + 1 > MAX_VALIDITY_DEPTH) return invalid(`it nests calculations deeper than ${MAX_VALIDITY_DEPTH}, the most Chrome parses`);
+    let { node, ws } = this.multiplicative(depth + 1);
+    for (;;) {
+      const t = this.peek();
+      if (t?.k !== 'delim' || (t.ch !== '+' && t.ch !== '-')) break;
+      if (!ws) return invalid(`${t.ch} needs white space on both sides (css-values-4 §10.1)`);
+      this.i++;
+      if (this.peek()?.k !== 'ws') return invalid(`${t.ch} needs white space on both sides (css-values-4 §10.1)`);
+      this.skipWs();
+      const rhs = this.multiplicative(depth + 1);
+      node = arithmetic(node, rhs.node, t.ch === '+' ? 'add' : 'sub');
+      ws = rhs.ws;
+    }
+    return node;
+  }
+}
+
+const GRAMMAR_ACCEPTS: { readonly [g in MathGrammar]: readonly VCategory[] } = {
+  length: ['length'],
+  'length-percentage': ['length', 'percent', 'length-function'],
+  number: ['number'],
+  'number-or-length-percentage': ['number', 'length', 'percent', 'length-function'],
+};
+const GRAMMAR_NAMES: { readonly [g in MathGrammar]: string } = {
+  length: 'a length without a percentage (a <line-width> takes no percentage, css-backgrounds-3 §3.3)',
+  'length-percentage': 'a length or a percentage',
+  number: 'a number',
+  'number-or-length-percentage': 'a number, a length or a percentage',
+};
+
+/**
+ * Whether Chrome's parser rejects a math function as a value of a grammar (Blink CSSMathExpressionNodeParser and the property's
+ * consumer at 145.0.7632.6): the reason it does, or null when Chrome accepts it or this check cannot tell (a substitution
+ * function, an unmodelled math function such as anchor(), an escape, a comment left open). text is the function's source text.
+ */
+export function mathInvalidity(text: string, grammar: MathGrammar): string | null {
+  const source = text.trim();
+  // null: a code point the tokenizer does not model, more than MAX_MATH_TOKENS tokens, or an unclosed comment or block (which Chrome closes at the end).
+  const toks = tokenize(source, true);
+  if (toks === null || toks.filter((t) => t.k === 'open' || t.k === 'func').length !== toks.filter((t) => t.k === 'close').length) return null;
+  const head = toks[0];
+  if (head === undefined || head.k !== 'func' || !BLINK_MATH_FUNCTIONS.has(head.name)) return null;
+  try {
+    const p = new ValidityParser(toks.slice(1));
+    const node = p.function(head.name, 0);
+    if (!p.atEnd()) return 'it does not parse as a css-values-4 calculation';
+    if (!GRAMMAR_ACCEPTS[grammar].includes(node.category)) return `it resolves to ${NAMES[node.category]}, and the property takes ${GRAMMAR_NAMES[grammar]}`;
+    return null;
+  } catch (e) {
+    if (e instanceof MathInvalid) return e.message;
+    if (e instanceof MathUndetermined) return null;
     throw e;
   }
 }
@@ -586,10 +1068,10 @@ function lowerLeaf(n: MathLiteral, fonts: MathFonts): CalcExpr {
   if (n.unit === '%') return { kind: 'percent', value: n.value };
   if (n.unit === 'em') return { kind: 'em', value: n.value, fontSize: { kind: 'px', value: fonts.em } };
   if (n.unit === 'rem') return { kind: 'em', value: n.value, fontSize: { kind: 'px', value: fonts.rem } };
-  if (n.unit === 'vw' || n.unit === 'vi') return { kind: 'viewport', value: n.value, axis: 'width' };
-  if (n.unit === 'vh' || n.unit === 'vb') return { kind: 'viewport', value: n.value, axis: 'height' };
-  if (n.unit === 'vmin') return { kind: 'viewport', value: n.value, axis: 'min' };
-  if (n.unit === 'vmax') return { kind: 'viewport', value: n.value, axis: 'max' };
+  if (n.unit === 'vw' || n.unit === 'vi') return { kind: 'viewport', value: n.value, axis: 'width', size: 'large' };
+  if (n.unit === 'vh' || n.unit === 'vb') return { kind: 'viewport', value: n.value, axis: 'height', size: 'large' };
+  if (n.unit === 'vmin') return { kind: 'viewport', value: n.value, axis: 'min', size: 'large' };
+  if (n.unit === 'vmax') return { kind: 'viewport', value: n.value, axis: 'max', size: 'large' };
   // An absolute unit: ZoomedComputedPixels multiplies by its px ratio, then by the zoom.
   return { kind: 'px', value: n.value * (pxPer(n.unit) as number) };
 }
@@ -774,6 +1256,12 @@ export function computedMathNode(e: CalcExpr): MathNode {
       return createComparison([computedMathNode(e.min), computedMathNode(e.value), computedMathNode(e.max)], 'clamp');
     case 'viewport':
     case 'em':
+    case 'rem':
+    case 'font-metric':
+    case 'lh':
+    case 'env':
+    case 'font-percent':
+    case 'font-calc':
       return refuse(`a ${e.kind} leaf has no computed form`);
   }
 }

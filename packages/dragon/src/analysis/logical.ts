@@ -37,7 +37,7 @@ export function hasDirectionalValues(rules: readonly Rule[]): boolean {
  * css-writing-modes-4 §2.1: the computed direction of chain's last element, from its own cascade of direction (css-cascade-5
  * §6.2-§6.5) and its context. As in Chrome, direction is resolved after the element's custom properties and before the logical
  * mappings that read it: a winner holding var() is substituted with scope first (css-variables-1 §3.1), and one invalid at
- * computed-value time behaves as unset, the parent's direction. writing-mode is refused, so horizontal-tb is the only mode.
+ * computed-value time behaves as unset, the parent's direction. writing-mode accepts only horizontal-tb, the only mode.
  */
 export function elementDirection(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, context: DirectionContext, scope: VarScope): Direction {
   let winner: Candidate | undefined;

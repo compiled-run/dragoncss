@@ -6,8 +6,8 @@ import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
-import { handleAtRule } from './at-rules.ts';
-import type { AtRuleContext } from './at-rules.ts';
+import type { AtRuleContext, RuleCondition } from './at-rules.ts';
+import { handleAtRule, refuseAtRule } from './at-rules.ts';
 import { asciiLower, canonicalizeEscapes, decodeName, preprocessInput, trimValue } from './escapes.ts';
 import { GRID_VALUE_PROPERTIES, parseGridValue } from './grid-values.ts';
 import { webrefLexer } from './lexer.ts';
@@ -18,6 +18,7 @@ import { parseSelectorList } from './selectors.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
 import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, tokenValue, toValue } from './values.ts';
+import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
@@ -25,6 +26,7 @@ import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts
 export type { CssValue } from './values.ts';
 export { featureOf } from './values.ts';
 export type { AttributeTest, Compound, Selector } from './selectors.ts';
+export type { RuleCondition } from './at-rules.ts';
 
 export type LonghandValue = {
   readonly property: Longhand;
@@ -56,6 +58,8 @@ export type Rule = {
   readonly owner: string;
   readonly selectors: readonly Selector[];
   readonly declarations: readonly Declaration[];
+  /** MQ-a: the rule applies only where every condition holds (nested @media conjoin); absent on a rule outside @media. */
+  readonly condition?: readonly RuleCondition[];
 };
 
 /** One stylesheet use: its id, the owner its class symbols belong to, and whether it is component-scoped. */
@@ -69,8 +73,11 @@ export type EnclosedRules = { readonly atRule: Diagnostic; readonly span: Span; 
 
 type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[] };
 
-/** Where a node that is not a style rule or declaration sits: top level (or inside a top-level at-rule), or in a rule block. */
-type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top' };
+/**
+ * Where a node that is not a style rule or declaration sits: top level (or inside a top-level at-rule), or in a rule block.
+ * conditions: the enclosing @media conditions of a top-level node.
+ */
+type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top'; readonly conditions: readonly RuleCondition[] };
 
 /** fontFaces: collects the accepted @font-face rules, in document order, for the fonts module. */
 export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = []): Rule[] {
@@ -86,24 +93,40 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
   const ast = parse(text, { positions: true, parseValue: true, onParseError: (e) => errors.push({ message: e.message, offset: e.offset }) });
   // Only a backslash spells an escape once the input is preprocessed.
   if (text.includes('\\')) canonicalizeEscapes(ast);
+  // An @media prelude is parsed by media/parse.ts, which Chrome 145 proves (an invalid query is `not all`); css-tree's own
+  // prelude grammar rejects valid MQ4 such as `(1px < width < 2px)` and `(not (width))`, so its errors there are not reported.
+  const media: { start: number; end: number }[] = [];
+  const visit = (node: CssNode): void => {
+    const prelude = node.type === 'Atrule' && asciiLower(String(node['name'])) === 'media' ? (node['prelude'] as CssNode | null | undefined) : null;
+    if (prelude !== null && prelude !== undefined && prelude.loc !== null && prelude.loc !== undefined) media.push({ start: prelude.loc.start.offset, end: prelude.loc.end.offset });
+    const block = node['block'] as CssNode | null | undefined;
+    for (const c of [...list(node, 'children'), ...(block === null || block === undefined ? [] : [block])]) visit(c);
+  };
+  visit(ast);
   for (const e of errors) {
+    if (media.some((m) => e.offset >= m.start && e.offset <= m.end)) continue;
     const at = { source: base.source, start: base.start + e.offset, end: base.start + e.offset };
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error: ${e.message}` }));
   }
   const rules: Rule[] = [];
   const st: ParseState = { order: orderStart, base, text, use, fontFaces };
-  for (const node of list(ast, 'children')) {
-    if (node.type !== 'Rule') {
-      refuseNode(node, st, { label: 'the stylesheet', selectors: 'top' }, diagnostics, enclosed);
-      continue;
-    }
-    const rule = parseRule(node, st, diagnostics, enclosed);
-    if (rule !== null) rules.push(rule);
-  }
+  parseTopLevel(list(ast, 'children'), st, { label: 'the stylesheet', selectors: 'top', conditions: [] }, diagnostics, enclosed, rules);
   return rules;
 }
 
-function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[]): Rule | null {
+/** The children of the stylesheet or of a conditional at-rule's block: style rules, and every other node through refuseNode. */
+function parseTopLevel(nodes: readonly CssNode[], st: ParseState, at: Where, diagnostics: Diagnostic[], enclosed: EnclosedRules[], rules: Rule[]): void {
+  for (const node of nodes) {
+    if (node.type !== 'Rule') {
+      refuseNode(node, st, at, diagnostics, enclosed, rules);
+      continue;
+    }
+    const rule = parseRule(node, st, diagnostics, enclosed, at.conditions);
+    if (rule !== null) rules.push(rule);
+  }
+}
+
+function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[], conditions: readonly RuleCondition[]): Rule | null {
   const before = diagnostics.length;
   const selectors = parseSelectorList(node['prelude'] as CssNode, st.base, st.use, diagnostics);
   // Chrome never parses the block of a rule it drops, so neither do its diagnostics count.
@@ -112,36 +135,47 @@ function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enc
   const declarations: Declaration[] = [];
   for (const d of list(node['block'] as CssNode, 'children')) {
     if (d.type !== 'Declaration') {
-      refuseNode(d, st, { label: 'a rule block', selectors }, blockDiagnostics, dropped ? [] : enclosed);
+      refuseNode(d, st, { label: 'a rule block', selectors, conditions }, blockDiagnostics, dropped ? [] : enclosed, []);
       continue;
     }
     const parsed = parseDeclaration(d, st.base, st.text, st.order++, blockDiagnostics);
     if (parsed !== null) declarations.push(parsed);
   }
-  return selectors === null ? null : { sheet: st.use.id, owner: st.use.owner, selectors, declarations };
+  if (selectors === null) return null;
+  return { sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }) };
 }
 
 /** css-syntax-3 §5.4: an empty declaration (a lone ";") and the <!-- --> tokens produce no rule or declaration in the CSSOM. */
 const EMPTY_RAW = /^[\s;]*$/;
 
 // Every node that is not a style rule at the top level, or not a declaration in a rule block, is diagnosed: css-nesting-1 nested
-// rules, nested and top-level at-rules, and anything the parser kept as raw text. Nothing is dropped silently.
-function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagnostic[], enclosed: EnclosedRules[]): void {
+// rules, nested and top-level at-rules, and anything the parser kept as raw text. Nothing is dropped silently. A conditional
+// at-rule (@media) at the top level is the one exception: its block's rules are parsed into accepted.
+function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagnostic[], enclosed: EnclosedRules[], accepted: Rule[]): void {
   const { base, text } = st;
   const where = at.label;
   const span = spanOf(node, base);
   if (where === 'the stylesheet' && (node.type === 'CDO' || node.type === 'CDC')) return;
   if (node.type === 'Raw' && EMPTY_RAW.test(String(node['value']))) return;
   if (node.type === 'Atrule') {
-    // at-rules.ts decides each at-rule; an accepted @font-face goes to the fonts collector, every other one is refused.
-    const outcome = handleAtRule({ node, name: String(node['name']), where, span });
+    const prelude = node['prelude'] as CssNode | null | undefined;
+    const preludeSpan = prelude === null || prelude === undefined ? null : spanOf(prelude, base);
+    const context = { node, name: String(node['name']), where, span, prelude: preludeSpan === null ? '' : text.slice(preludeSpan.start - base.start, preludeSpan.end - base.start) };
+    // at-rules.ts decides each at-rule: an accepted @font-face goes to the fonts collector; a conditional one in a rule block is
+    // css-nesting-1, and one without a block is invalid, so both are refused.
+    const outcome = handleAtRule(context);
     if (outcome.kind === 'font-face') {
       st.fontFaces.push(outcome.context);
       return;
     }
-    const refusal = outcome.diagnostic;
-    diagnostics.push(refusal);
     const block = node['block'] as CssNode | null | undefined;
+    if (outcome.kind === 'conditional' && at.selectors === 'top' && block !== null && block !== undefined) {
+      const inner = { label: `@${String(node['name'])}`, selectors: 'top' as const, conditions: [...at.conditions, outcome.condition] };
+      parseTopLevel(list(block, 'children'), st, inner, diagnostics, enclosed, accepted);
+      return;
+    }
+    const refusal = outcome.kind === 'refuse' ? outcome.diagnostic : refuseAtRule(context).diagnostic;
+    diagnostics.push(refusal);
     if (block === null || block === undefined) return;
     // T005 rec 3: the enclosed rules are parsed with the block unwrapped, for analysis only.
     const inner: Diagnostic[] = [];
@@ -150,15 +184,15 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
     if (at.selectors === 'top') {
       for (const c of list(block, 'children')) {
         if (c.type === 'Rule') {
-          const r = parseRule(c, st, inner, enclosed);
+          const r = parseRule(c, st, inner, enclosed, at.conditions);
           if (r !== null) rules.push(r);
-        } else if (c.type !== 'Declaration') refuseNode(c, st, { label, selectors: 'top' }, inner, enclosed);
+        } else if (c.type !== 'Declaration') refuseNode(c, st, { label, selectors: 'top', conditions: at.conditions }, inner, enclosed, rules);
       }
     } else {
       const declarations: Declaration[] = [];
       for (const c of list(block, 'children')) {
         if (c.type !== 'Declaration') {
-          refuseNode(c, st, { label, selectors: at.selectors }, inner, enclosed);
+          refuseNode(c, st, { label, selectors: at.selectors, conditions: at.conditions }, inner, enclosed, []);
           continue;
         }
         const parsed = parseDeclaration(c, base, text, st.order++, inner);
@@ -223,6 +257,15 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   }
   if (parts !== null && hasVar(parts)) {
     const longhands: readonly Longhand[] = isLonghand(property) ? [property] : shorthandHandler(property).longhands;
+    // Substitution runs per longhand winner, so a refusing shorthand with no longhands (writing-mode) could never check its value.
+    if (longhands.length === 0 && !isLonghand(property) && shorthandHandler(property).refuse !== undefined) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: authored(valueSpan),
+        message: `${property}: ${source.trim()} is unsupported: Dragon checks ${property} values it can read at parse time, and a var() value only exists after substitution`,
+        manual: `Write the ${property} value without var().`,
+      }));
+      return null;
+    }
     const sides = directionSides(property);
     // The source text, since serializing the parsed value would add white space between adjacent var() references.
     return { property, text: source.trim(), span, valueSpan, longhands: [], order, ...important, pending: { parts, longhands, ...(sides === null ? {} : { sides }) } };
@@ -307,12 +350,27 @@ export type ParsedValue =
   | { readonly kind: 'refused'; readonly diagnostic: Diagnostic }
   | { readonly kind: 'multi' };
 
+/** The reason Chrome drops a top-level math function of the value, from its source text in sheetText; null when none is rejected. */
+function invalidMath(property: string, tokens: readonly CssNode[], base: Span, sheetText: string): string | null {
+  for (const t of tokens) {
+    if (t.type !== 'Function' || !BLINK_MATH_FUNCTIONS.has(asciiLower(String(t['name'])))) continue;
+    const span = spanOf(t, base);
+    const text = sheetText.slice(span.start - base.start, span.end - base.start);
+    const reason = mathInvalidity(text, mathGrammarFor(property));
+    if (reason !== null) return `${text.trim()}: ${reason}, so Chrome drops the declaration`;
+  }
+  return null;
+}
+
 /** Grammar validation, token conversion and shorthand expansion of one value; base locates a shorthand refusal in sheetText. */
 export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, tokens: readonly CssNode[], base: Span, sheetText: string): ParsedValue {
   const wide = tokens.length === 1 && tokens[0]?.type === 'Identifier' && CSS_WIDE.has(asciiLower(String(tokens[0]['name'])));
   if (!wide) {
     const match = webrefLexer().matchProperty(property, valueNode);
     if (match.error !== null) return { kind: 'invalid' };
+    // css-tree types a math function loosely; Chrome drops one its math parser rejects (css/math.ts mathInvalidity).
+    const mathInvalid = GRID_VALUE_PROPERTIES.has(property) ? null : invalidMath(property, tokens, base, sheetText);
+    if (mathInvalid !== null) return { kind: 'invalid', reason: mathInvalid };
   }
   // css-grid-2 and justify-*: multi-token values, with the checks Chrome makes beyond the grammar (grid-values.ts).
   if (!wide && GRID_VALUE_PROPERTIES.has(property)) return parseGridValue(property, tokens, base);
