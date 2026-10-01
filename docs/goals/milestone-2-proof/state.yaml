@@ -4028,10 +4028,14 @@ tasks:
   - id: T144
     type: worker
     assignee: Worker
-    status: queued
+    status: blocked
     lane: paint
     objective: 'SNAP-1PX: position-absolute-out-of-flow(-rtl) i2 bottom 1px border at DPR 3: native paints 64 coverage where Chrome is solid (iOS 4, Android 4). Snap border edges as Blink does.'
-    receipt: null
+    receipt:
+      result: blocked
+      harness: claude-code
+      blocked_reason: "Duplicate of T116: closes when t116-border-join-v2 lands (no snapping change needed or justified)."
+      summary: "i2 snaps to whole device px at DPR 3; native 64 at (69,102) is the same-colour miter seam (two half-coverage AA fills, 255*0.25=64) that T116's no-miter side painter removes. p6a-dash-oracle.test.ts on t116-border-join-v2 already compares those pixels at DPR 2, 2.625, 3 and passes. Predicted device delta at T116 landing: border:i2:bottom:clear and edge:i2:bottom:clear at DPR 3 for position-absolute-out-of-flow (69,102) and -rtl (1131,102) leave device-failures-ios.json and -android.json (4 entries each)."
   - id: T145
     type: worker
     assignee: Worker
