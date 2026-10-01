@@ -80,3 +80,7 @@ The full worker_package (allowed_files, verify, stop_if) is in the T058J2 receip
 - (G) The targets.ts engine-inline entry goes in after #42 merges. #42 carries T125.
 - b/strong/em/i stay refused, as a recorded deferral to T133 (INL1a-tags). T058's receipt must not claim R7 complete. small and code are listed as still refused.
 - The Tailwind snapshot is relaxed-tier output. Only its fix-message text may change.
+
+PM ruling (2026-09-30): the INL1a regeneration changes one tailwind-4.3.3.json refusal code. The web `inline` utility stays refused, and its code moves from DRAGON_UNPROVEN_CONTEXT to DRAGON_UNSUPPORTED_VALUE: the sweep's HTML puts a div inside the utility element, which is now refused as block-in-inline. The verdict is unchanged and the new reason is the true one, so this is accepted as generated output. The PR body must state it.
+
+Stack state after J3 A-E: inl1a-engine-corpus b72401123, inl1a-compiler 255551af2. Still open: F and G after #42 merges, the device run when the stack heads the queue, and T133 for the tags.
