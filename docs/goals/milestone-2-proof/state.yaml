@@ -2504,6 +2504,9 @@ tasks:
     stop_if:
       - See notes/T046-paint-spec.md §5.8 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T078J amendment (2026-10-01), see notes/T078-ovfl.md: design A (the compiler resolves viewport propagation; propagationFromBody is a compiler fault); harness, computed-checks and native-program
+        hunks; 4 reject fixtures retargeted or removed into positives; branch ovfl-a on inl1a-compiler; Phase A lands with Phase B.'
   - id: T079
     type: worker
     assignee: Worker
@@ -3957,6 +3960,13 @@ tasks:
     status: queued
     lane: paint
     objective: 'SNAP-1PX: position-absolute-out-of-flow(-rtl) i2 bottom 1px border at DPR 3: native paints 64 coverage where Chrome is solid (iOS 4, Android 4). Snap border edges as Blink does.'
+    receipt: null
+  - id: T145
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'OVFL-c: single-axis overflow: clip natively (clip beside visible on one axis), refused by T078 Phase A as DRAGON_UNSUPPORTED_VALUE naming OVFL-c. Proven against Chrome. After T078.'
     receipt: null
   - id: T999
     type: judge
