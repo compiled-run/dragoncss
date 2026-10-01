@@ -7,6 +7,7 @@ import { sha256Hex } from '../digest.ts';
 import type { GeneratedFile } from '../types.ts';
 import type { FontSpec } from '@dragon/layout';
 import type { NativeBackend, NativeProgram } from '../lower/native-program.ts';
+import { runtimeSupportFiles } from './runtime/index.ts';
 
 export const NATIVE_SUPPORT_VERSION = 'dragon.native-support/1';
 
@@ -1593,6 +1594,7 @@ function supportFiles(backend: NativeBackend): GeneratedFile[] {
       { path: 'Support/DragonViews.swift', text: header('//', 'the Dragon views and the glyph-placing text view') + SWIFT_VIEWS },
       { path: 'Support/DragonBridge.swift', text: header('//', 'the font-data measurer bridge') + SWIFT_BRIDGE },
       { path: 'Support/DragonTree.swift', text: header('//', 'the native tree, engine application and dump readback') + SWIFT_TREE },
+      ...runtimeSupportFiles(backend, (what) => header('//', what)),
     ];
   }
   return [
@@ -1601,6 +1603,7 @@ function supportFiles(backend: NativeBackend): GeneratedFile[] {
     { path: 'kotlin/dev/dragon/views/DragonViews.kt', text: header('//', 'the Dragon views and the glyph-placing text view') + KOTLIN_VIEWS },
     { path: 'kotlin/dev/dragon/views/DragonBridge.kt', text: header('//', 'the font-data measurer bridge') + KOTLIN_BRIDGE },
     { path: 'kotlin/dev/dragon/views/DragonTree.kt', text: header('//', 'the native tree, engine application and dump readback') + KOTLIN_TREE },
+    ...runtimeSupportFiles(backend, (what) => header('//', what)),
   ];
 }
 
