@@ -19,7 +19,7 @@ import { currentNotices, NOTICES_PATH, thirdPartyNotices } from '../../../script
 import { parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const SELF = relative(ROOT, fileURLToPath(import.meta.url));
+const SELF = relative(ROOT, fileURLToPath(import.meta.url)).replaceAll('\\', '/'); // git ls-files paths use '/'
 const REGISTRY_PATH = join(ROOT, 'docs', 'ports.json');
 
 const TAG = '145.0.7632.6';
@@ -378,6 +378,11 @@ function loadSources(): Map<string, string> {
 describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
   const registry = loadRegistry();
   const sources = loadSources();
+
+  it('excludes this test from the scan by its git path, so its planted citations are never audited', () => {
+    expect(trackedFiles()).toContain(SELF);
+    expect(sourceFiles()).not.toContain(SELF);
+  });
 
   it('lists every cited Chrome file with a permissive licence, and every Dragon reference exists', () => {
     expect(audit(registry, sources, KNOWN_LGPL_CLEAN_ROOM)).toEqual([]);
