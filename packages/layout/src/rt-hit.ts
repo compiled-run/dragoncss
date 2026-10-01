@@ -123,12 +123,11 @@ function insidePadding(ctx: HitCtx, n: HitNode): boolean {
   return intersects(ctx.px, ctx.py, n.x + n.borderLeft, n.y + n.borderTop, n.width - n.borderLeft - n.borderRight, n.height - n.borderTop - n.borderBottom);
 }
 
-/** The children of a box in reverse paint order: order-modified document order, reversed (a stable sort by order). */
-function reversedChildren(ctx: HitCtx, i: number): number[] {
+/** The children of a box in reverse paint order (prepared once by prepareHit). */
+function reversedChildren(ctx: HitCtx, i: number): readonly number[] {
   const own = ctx.children[i];
   if (own === undefined) throw new HitError(`no children list for ${i}`);
-  const sorted = own.slice(0).sort((a, b) => node(ctx, a).order - node(ctx, b).order);
-  return ctx.faults.reversedOrder ? sorted : sorted.reverse();
+  return own;
 }
 
 /** kForeground: inline content (lines last to first, each line's text before the line itself), then block children. */
@@ -241,11 +240,11 @@ function layerVisible(ctx: HitCtx, i: number): boolean {
   return true;
 }
 
-/**
- * The index of the node elementFromPoint names at (px, py), a point in LU already floored to 1/64 px: the positioned layers in
- * reverse document order, then the root layer; the root's target when nothing is hit (the view hit returns the document element).
- */
-export function hitTest(nodes: readonly HitNode[], px: number, py: number, faults: HitFaults): number {
+/** A table prepared for many points: each box's children in reverse paint order, and the layers in hit order. */
+export type HitPrepared = { readonly nodes: readonly HitNode[]; readonly children: readonly (readonly number[])[]; readonly layers: readonly number[]; readonly faults: HitFaults };
+
+/** Checks a table and prepares it: children in order-modified document order, reversed, and the layers in reverse paint order. */
+export function prepareHit(nodes: readonly HitNode[], faults: HitFaults): HitPrepared {
   if (nodes.length === 0) throw new HitError('a hit test needs a root');
   const children: number[][] = nodes.map((): number[] => []);
   nodes.forEach((n, i) => {
@@ -257,26 +256,51 @@ export function hitTest(nodes: readonly HitNode[], px: number, py: number, fault
     if (n.target < 0 || n.target >= nodes.length) throw new HitError(`hit node ${i} has target ${n.target}`);
     (children[n.parent] as number[]).push(i);
   });
-  const ctx: HitCtx = { nodes, children, px, py, faults };
-  // The layers in paint order: a preorder walk with each box's children in order-modified document order (measured: Chrome
-  // stacks positioned flex items by order).
+  const orderOf = (i: number): number => {
+    const n = nodes[i];
+    if (n === undefined) throw new HitError(`no hit node ${i}`);
+    return n.order;
+  };
+  // Order-modified document order is a stable sort by order.
+  const ordered = children.map((own) => own.slice(0).sort((a, b) => orderOf(a) - orderOf(b)));
+  // The layers in paint order: a preorder walk in order-modified document order (measured: Chrome stacks positioned flex items
+  // by order).
   const layers: number[] = [];
   const collect = (i: number): void => {
-    const n = node(ctx, i);
+    const n = nodes[i];
+    if (n === undefined) throw new HitError(`no hit node ${i}`);
     if (i > 0 && n.kind === 'box' && n.layer) layers.push(i);
-    const own = ctx.children[i];
+    const own = ordered[i];
     if (own === undefined) throw new HitError(`no children list for ${i}`);
-    for (const c of own.slice(0).sort((a, b) => node(ctx, a).order - node(ctx, b).order)) collect(c);
+    for (const c of own) collect(c);
   };
   collect(0);
-  const order = faults.reversedOrder ? layers : layers.slice(0).reverse();
-  for (const l of order) {
+  return {
+    nodes,
+    children: faults.reversedOrder ? ordered : ordered.map((own) => own.slice(0).reverse()),
+    layers: faults.reversedOrder ? layers : layers.slice(0).reverse(),
+    faults,
+  };
+}
+
+/**
+ * The index of the node elementFromPoint names at (px, py), a point in LU already floored to 1/64 px: the positioned layers in
+ * reverse paint order, then the root layer; the root's target when nothing is hit (the view hit returns the document element).
+ */
+export function hitAt(prepared: HitPrepared, px: number, py: number): number {
+  const ctx: HitCtx = { nodes: prepared.nodes, children: prepared.children, px, py, faults: prepared.faults };
+  for (const l of prepared.layers) {
     if (!layerVisible(ctx, l)) continue;
     const hit = allPhases(ctx, l);
     if (hit >= 0) return hit;
   }
   const root = allPhases(ctx, 0);
   return root >= 0 ? root : node(ctx, 0).target;
+}
+
+/** hitAt on a table prepared for one point. */
+export function hitTest(nodes: readonly HitNode[], px: number, py: number, faults: HitFaults): number {
+  return hitAt(prepareHit(nodes, faults), px, py);
 }
 
 /** Tap dispatch (RT-9): from the hit target to the nearest inclusive ancestor with an activation handler, or -1 for none. */
@@ -583,11 +607,12 @@ export function hitGrid(t: HitTable, width: number, height: number): HitPoint[] 
 
 /** The answers at every grid point, run-length encoded as "<id> <count>;" runs, in grid order (the device-hit record). */
 export function hitRuns(t: HitTable, grid: readonly HitPoint[], faults: HitFaults): string {
+  const prepared = prepareHit(t.nodes, faults);
   let out = '';
   let prev = '';
   let count = 0;
   for (const p of grid) {
-    const id = t.ids[hitTest(t.nodes, p.x, p.y, faults)];
+    const id = t.ids[hitAt(prepared, p.x, p.y)];
     if (id === undefined) throw new HitError('a hit outside the table');
     if (count > 0 && id === prev) {
       count++;

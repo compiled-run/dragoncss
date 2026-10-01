@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { hitFacts, programInput } from 'dragon';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
-import { activationTarget, hitGrid as rtHitGrid, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
+import { activationTarget, hitAt, hitGrid as rtHitGrid, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
 import type { NativeCase } from './native-host.ts';
 import { nativeCases, referenceMeasurer } from './native-host.ts';
@@ -103,8 +103,9 @@ export function compareHits(n: NativeCase, c: HitCapture, faults: HitFaults = NO
   const mismatches: HitMismatch[] = [];
   if (stale) return { points: c.points, mismatches, stale };
   const chrome = capturedIds(c);
+  const prepared = prepareHit(t.nodes, faults);
   grid.forEach(([x, y], i) => {
-    const dragon = t.ids[hitTest(t.nodes, x, y, faults)] as string;
+    const dragon = t.ids[hitAt(prepared, x, y)] as string;
     if (dragon !== chrome[i]) mismatches.push({ case: n.case.id, x, y, chrome: chrome[i] as string, dragon });
   });
   return { points: c.points, mismatches, stale };
