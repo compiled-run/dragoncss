@@ -3733,12 +3733,36 @@ tasks:
   - id: T132
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: device
     objective: 'Silent lane failure: under machine load, layout-vectors-host native:kotlin (and the Kotlin engine suite in pnpm test) intermittently reports p1/engine 0/20258 with no reason (seen on WM-0
       and T123, 2026-09-30); rerun passes. Find the cause (JVM start or timeout, harness.jar I/O, killed process) and make the lane record the real error (exit code, signal, stderr tail) instead of 0/N,
       with a test. Also: the dragon-320 emulator sometimes exits before it attaches (lane-speed run); record and surface the emulator log.'
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #48 merged b3e372dc7 after 4 rounds. Root cause: the Kotlin engine suite was killed at the 180 s timeout under load; the harness writes only at the end, so the record read 0/20258 and
+        the cause was dropped. Likely slowdown: the JVM default heap (4.3 GB resident). Now: the cause plus a stderr tail reach the lane record; Kotlin runs with -Xmx2g (same speed, byte-identical); emulator
+        logs are kept and an early exit fails fast; parity:lanes accepts a leading --; allPass needs no cause. Test cleanup goes through test/scratch.ts. pnpm test 3008/3008; device run equals master.'
+      changed_files:
+        - packages/translate/src/native.ts
+        - packages/parity/src/lanes.ts
+        - packages/parity/src/device-run.ts
+        - packages/parity/src/device-jobs.ts
+        - packages/parity/test/scratch.ts
+      commands:
+        - cmd: pnpm test 3008/3008
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices
+          status: pass
+        - cmd: pnpm pr:review 48 exit 0
+          status: pass
+    allowed_files:
+      - packages/translate/src/native.ts
+      - packages/parity/src/lanes.ts
+      - packages/parity/src/device-run.ts
+      - packages/parity/src/device-jobs.ts
+      - packages/parity/test/scratch.ts
   - id: T133
     type: worker
     assignee: Worker
