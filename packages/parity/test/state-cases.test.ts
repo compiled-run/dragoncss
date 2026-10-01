@@ -5,8 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import type { NativeCase } from '../src/native-host.ts';
 import { hostSources } from '../src/native-host.ts';
-import { hitFacts, hitTable, NO_FAULTS, webStateModule, webStateProgram } from 'dragon';
-import { hitEngine, tapTarget } from '../src/hit-capture.ts';
+import { hitFacts, NO_FAULTS, webStateModule, webStateProgram } from 'dragon';
+import { programHitTable, tapTarget } from '../src/hit-capture.ts';
 import { checkStates, deriveScripts, runScript, SCRIPT_FRAME_MS, stateEmits, stateGroups, stateProgramOf, webClassTables } from '../src/state-cases.ts';
 import { deviceDprs } from '../src/targets.ts';
 
@@ -50,7 +50,7 @@ describe('the state programs of every tree fixture with states', () => {
     expect(() => runScript(sp, [{ kind: 'tap', x: 1, y: 1 }])).toThrow(/needs a tap handler/);
     // A tap dispatches through the hit table of the live program (the host half of RT-9 tap dispatch).
     const n = g.cases[sp.initial] as NativeCase;
-    const handler = (p: Parameters<NonNullable<Parameters<typeof runScript>[3]>>[0], _a: number, x: number, y: number): string | null => tapTarget(hitTable(p, hitFacts(n.compiled, n.case.assignment) ?? new Map(), n.case.environment.viewport, 1, hitEngine()), x, y);
+    const handler = (p: Parameters<NonNullable<Parameters<typeof runScript>[3]>>[0], _a: number, x: number, y: number): string | null => tapTarget(programHitTable(p, hitFacts(n.compiled, n.case.assignment) ?? new Map(), n.case.environment.viewport, 1), x, y);
     expect(runScript(sp, [{ kind: 'tap', x: 64, y: 64 }, { kind: 'dump' }], NO_FAULTS, handler)[0]?.taps).toEqual([null]);
   });
 });

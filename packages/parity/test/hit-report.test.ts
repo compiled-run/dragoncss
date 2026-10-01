@@ -3,8 +3,7 @@
 // (packages/layout/src/rt-hit.ts) over the engine's boxes at every point; each hit plant must fail it; a tap activates the
 // nearest ancestor of Chrome's element that has an activation handler.
 import { describe, expect, it } from 'vitest';
-import { NO_HIT_TABLE_FAULTS } from 'dragon';
-import { NO_HIT_FAULTS } from '../../layout/src/rt-hit.ts';
+import { NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
 import { capturedIds, caseHitTable, committedHits, compareHits, gridSha256, hitCases, hitGrid, tapTarget } from '../src/hit-capture.ts';
 
 const cases = hitCases();
