@@ -2,6 +2,7 @@
 // from the constants, imported tolerances, the same sample rules and dump faults and one projection; each planted lane fault is
 // caught with its own message; lane states are honest; and the committed out/lanes.json matches the configuration.
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { iosLayoutProjection, nativeLayoutProjection, NO_FAULTS } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from '../src/compare.ts';
@@ -231,5 +232,50 @@ describe('committed out/lanes.json', () => {
         for (const x of r.rows) expect([x.fault, x.applicable > 0, x.caught === x.applicable]).toEqual([x.fault, true, true]);
       }
     }
+  });
+});
+
+describe('host suite lines (T125)', () => {
+  const suites = declaredSuites(lane(ios, 'layout-vectors-host') as NonNullable<ReturnType<typeof lane>>);
+  const label = (s: string): string => (s === 'engine' ? 'engine corpus' : s === 'library' ? 'library corpus' : s);
+  const text = (extra: readonly string[]): string => [
+    'native:swift: Swift version 6.4',
+    ...suites.filter((s) => s.corpus === 'p1').map((s) => `${label(s.suite)} ${s.cases}/${s.cases}`),
+    'extended corpus:',
+    ...suites.filter((s) => s.corpus === 'extended').map((s) => `${s.suite} ${s.cases}/${s.cases}`),
+    ...extra,
+    `native:swift: P1 corpus digest ${p1Manifest().digest}; extended corpus digest ${extendedManifest().digest}; status pass`,
+  ].join('\n');
+  it('a suite line the manifest does not declare is parsed and fails judgeHost, whatever its name', () => {
+    expect(judgeHost(ios, parseNativeOutput(text([])))).toMatchObject({ state: 'pass', reason: null });
+    for (const name of ['engine-inline', 'new suite 2', 'x']) {
+      const parsed = parseNativeOutput(text([`${name} 3000/3000`]));
+      expect(parsed?.suites.some((s) => s.corpus === 'extended' && s.suite === name), name).toBe(true);
+      expect(judgeHost(ios, parsed), name).toMatchObject({ state: 'fail', reason: expect.stringContaining(`extended/${name} is not a declared suite`) });
+    }
+  });
+  // PR #42 finding 4150454066: any nonempty label is a suite label, the first count on the line its count.
+  it('a suite line with any label is counted (capitals, dots, underscores, punctuation), with the first count on the line', () => {
+    for (const name of ['Engine_Inline', 'snap.values', 'calc (v2)', 'α-suite']) {
+      const parsed = parseNativeOutput(text([`${name} 7/9 (note 1/2)`]));
+      expect(parsed?.suites.find((s) => s.suite === name), name).toMatchObject({ corpus: 'extended', pass: 7, total: 9 });
+      expect(judgeHost(ios, parsed), name).toMatchObject({ state: 'fail', reason: expect.stringContaining(`extended/${name} is not a declared suite`) });
+    }
+  });
+  it('master\'s native:swift and native:kotlin output (committed, test/native-output) parses to the same 13 suites, nothing else', () => {
+    for (const f of ['swift', 'kotlin']) {
+      const out = readFileSync(join(import.meta.dirname, 'native-output', `${f}.txt`), 'utf8');
+      const parsed = parseNativeOutput(out);
+      expect(parsed?.suites.map((s) => `${s.corpus}/${s.suite} ${s.pass}/${s.total}`), f).toHaveLength(13);
+      // The suites that output printed: node packages/translate/src/cli/native.ts swift and kotlin, run on the merge of master 23c2b507.
+      expect(parsed?.suites.map((s) => `${s.corpus}/${s.suite}`), f).toEqual(['p1/vectors', 'p1/units', 'p1/engine', 'p1/library', ...['vectors-m2', 'vectors-dpr', 'engine-dpr', 'units-m2', 'snap', 'snap-values', 'calc-goldens', 'engine-calc', 'units-calc'].map((x) => `extended/${x}`)]);
+      // No line but a suite line holds a count, so no other line can newly match.
+      expect(out.split('\n').filter((l) => / \d+\/\d+/.test(l)), f).toHaveLength(13);
+    }
+  });
+  it('lines that are not suite counts are not parsed as suites', () => {
+    const parsed = parseNativeOutput(text(['corpus digest 0123abcd', 'build 16.9 s, run 23.5 s', 'status pass', 'native:swift: Swift version 6.4']));
+    expect(parsed?.suites.map((s) => `${s.corpus}/${s.suite}`)).toEqual(suites.map((s) => `${s.corpus}/${s.suite}`));
+    expect(judgeHost(ios, parsed)).toMatchObject({ state: 'pass', reason: null });
   });
 });

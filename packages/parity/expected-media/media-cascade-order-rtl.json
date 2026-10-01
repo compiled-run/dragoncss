@@ -1,0 +1,112 @@
+{
+ "fixture": "media-cascade-order",
+ "direction": "rtl",
+ "chrome": "145.0.7632.6",
+ "bands": [
+  {
+   "index": 0,
+   "condition": "(not (min-width: 100px)) and (max-width: 1000px)"
+  },
+  {
+   "index": 1,
+   "condition": "(min-width: 100px) and (max-width: 1000px)"
+  },
+  {
+   "index": 2,
+   "condition": "(min-width: 100px) and (not (max-width: 1000px))"
+  }
+ ],
+ "samples": [
+  {
+   "width": 50,
+   "height": 300,
+   "band": 0,
+   "pass": true,
+   "boxesCompared": 5,
+   "valuesCompared": 340,
+   "channelsCompared": 30,
+   "problems": []
+  },
+  {
+   "width": 99,
+   "height": 300,
+   "band": 0,
+   "pass": true,
+   "boxesCompared": 5,
+   "valuesCompared": 340,
+   "channelsCompared": 30,
+   "problems": []
+  },
+  {
+   "width": 100,
+   "height": 300,
+   "band": 1,
+   "pass": true,
+   "boxesCompared": 5,
+   "valuesCompared": 340,
+   "channelsCompared": 30,
+   "problems": []
+  },
+  {
+   "width": 101,
+   "height": 300,
+   "band": 1,
+   "pass": true,
+   "boxesCompared": 5,
+   "valuesCompared": 340,
+   "channelsCompared": 30,
+   "problems": []
+  },
+  {
+   "width": 550,
+   "height": 300,
+   "band": 1,
+   "pass": true,
+   "boxesCompared": 5,
+   "valuesCompared": 340,
+   "channelsCompared": 30,
+   "problems": []
+  },
+  {
+   "width": 999,
+   "height": 300,
+   "band": 1,
+   "pass": true,
+   "boxesCompared": 5,
+   "valuesCompared": 340,
+   "channelsCompared": 30,
+   "problems": []
+  },
+  {
+   "width": 1000,
+   "height": 300,
+   "band": 1,
+   "pass": true,
+   "boxesCompared": 5,
+   "valuesCompared": 340,
+   "channelsCompared": 30,
+   "problems": []
+  },
+  {
+   "width": 1001,
+   "height": 300,
+   "band": 2,
+   "pass": true,
+   "boxesCompared": 5,
+   "valuesCompared": 340,
+   "channelsCompared": 30,
+   "problems": []
+  },
+  {
+   "width": 1100,
+   "height": 300,
+   "band": 2,
+   "pass": true,
+   "boxesCompared": 5,
+   "valuesCompared": 340,
+   "channelsCompared": 30,
+   "problems": []
+  }
+ ],
+ "problem": null
+}

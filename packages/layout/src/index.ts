@@ -36,3 +36,8 @@ export type { DprPlatformRule, DprPlatformRuleNode } from './platform-rules.ts';
 export { dprPlatformRules } from './platform-rules.ts';
 export type { CalcClamp, CalcExpr, CalcInvert, CalcMax, CalcMin, CalcProduct, CalcSum, EmLength, LengthCalc, PixelsAndPercent, ViewportLength } from './input.ts';
 export { applyEnvironment } from './environment.ts';
+export type { EnvLength, FontCalc, FontMetricLength, FontPercent, FontSpec, LineHeightCalc, LineHeightLength, RootFontLength, SafeAreaInsets, SafeAreaSide, TextFont, ViewportSize, ViewportUnitSizes } from './input.ts';
+export type { EnvironmentDependencies } from './environment.ts';
+export { environmentDependencies, resolveEnvironment } from './environment.ts';
+export type { FontLengths } from './text.ts';
+export { fontMetricLengths } from './text.ts';

@@ -14,6 +14,7 @@ import type {
   FlexBasisValue,
   FlexDirection,
   FlexWrap,
+  FontSpec,
   GapValue,
   InsetValue,
   JustifyContent,
@@ -21,6 +22,7 @@ import type {
   LayoutInput,
   LayoutStyle,
   LengthCalc,
+  LineHeightCalc,
   LineHeightValue,
   MarginValue,
   MaxSizeValue,
@@ -28,10 +30,14 @@ import type {
   Overflow,
   PaddingValue,
   Position,
+  SafeAreaSide,
   SizeValue,
   TextAlign,
   TextLeaf,
   TextWrapMode,
+  ViewportLength,
+  ViewportSize,
+  Viewport,
 } from '../../layout/src/input.ts';
 import type { LayoutRect } from '../../layout/src/layout.ts';
 import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
@@ -351,17 +357,38 @@ function calcExpr(v: JsonValue, path: string): CalcExpr {
   if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'number') return { kind: 'number', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'viewport') {
-    const o = obj(v, ['kind', 'value', 'axis'], path);
-    const axis = lit(field(o, 'axis', path), ['width', 'height', 'min', 'max'], `${path}.axis`);
-    const value = numField(o, 'value', path);
-    if (axis === 'width') return { kind: 'viewport', value, axis: 'width' };
-    if (axis === 'height') return { kind: 'viewport', value, axis: 'height' };
-    if (axis === 'min') return { kind: 'viewport', value, axis: 'min' };
-    return { kind: 'viewport', value, axis: 'max' };
+    const o = obj(v, ['kind', 'value', 'axis', 'size'], path);
+    return { kind: 'viewport', value: numField(o, 'value', path), axis: viewportAxis(field(o, 'axis', path), `${path}.axis`), size: viewportSize(field(o, 'size', path), `${path}.size`) };
   }
   if (k === 'em') {
     const o = obj(v, ['kind', 'value', 'fontSize'], path);
     return { kind: 'em', value: numField(o, 'value', path), fontSize: calcExpr(field(o, 'fontSize', path), `${path}.fontSize`) };
+  }
+  if (k === 'rem') return { kind: 'rem', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'font-metric') {
+    const o = obj(v, ['kind', 'value', 'metric', 'font'], path);
+    const m = lit(field(o, 'metric', path), ['ex', 'ch', 'cap'], `${path}.metric`);
+    const value = numField(o, 'value', path);
+    const font = fontSpec(field(o, 'font', path), `${path}.font`);
+    if (m === 'ex') return { kind: 'font-metric', value, metric: 'ex', font };
+    if (m === 'ch') return { kind: 'font-metric', value, metric: 'ch', font };
+    return { kind: 'font-metric', value, metric: 'cap', font };
+  }
+  if (k === 'lh') {
+    const o = obj(v, ['kind', 'value', 'font', 'lineHeight'], path);
+    return { kind: 'lh', value: numField(o, 'value', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+  }
+  if (k === 'env') {
+    const o = obj(v, ['kind', 'value', 'side'], path);
+    return { kind: 'env', value: numField(o, 'value', path), side: safeAreaSide(field(o, 'side', path), `${path}.side`) };
+  }
+  if (k === 'font-percent') {
+    const o = obj(v, ['kind', 'value', 'parent'], path);
+    return { kind: 'font-percent', value: numField(o, 'value', path), parent: calcExpr(field(o, 'parent', path), `${path}.parent`) };
+  }
+  if (k === 'font-calc') {
+    const o = obj(v, ['kind', 'expr', 'parent'], path);
+    return { kind: 'font-calc', expr: calcExpr(field(o, 'expr', path), `${path}.expr`), parent: calcExpr(field(o, 'parent', path), `${path}.parent`) };
   }
   if (k === 'sum') return { kind: 'sum', terms: calcTerms(obj(v, ['kind', 'terms'], path), path) };
   if (k === 'product') return { kind: 'product', terms: calcTerms(obj(v, ['kind', 'terms'], path), path) };
@@ -388,12 +415,50 @@ function calcExpr(v: JsonValue, path: string): CalcExpr {
   return fail(`${path}: unknown calculation kind ${k}`);
 }
 
+function viewportAxis(v: JsonValue, path: string): ViewportLength['axis'] {
+  const a = lit(v, ['width', 'height', 'min', 'max'], path);
+  if (a === 'width') return 'width';
+  if (a === 'height') return 'height';
+  if (a === 'min') return 'min';
+  return 'max';
+}
+
+function viewportSize(v: JsonValue, path: string): ViewportSize {
+  const a = lit(v, ['small', 'large', 'dynamic'], path);
+  if (a === 'small') return 'small';
+  if (a === 'large') return 'large';
+  return 'dynamic';
+}
+
+function safeAreaSide(v: JsonValue, path: string): SafeAreaSide {
+  const a = lit(v, ['top', 'right', 'bottom', 'left'], path);
+  if (a === 'top') return 'top';
+  if (a === 'right') return 'right';
+  if (a === 'bottom') return 'bottom';
+  return 'left';
+}
+
+/** A FontSpec {family, size, specifiedSize, absoluteSize}. */
+function fontSpec(v: JsonValue, path: string): FontSpec {
+  const o = obj(v, ['family', 'size', 'specifiedSize', 'absoluteSize'], path);
+  lit(field(o, 'family', path), ['Ahem'], `${path}.family`);
+  return { family: 'Ahem', size: numField(o, 'size', path), specifiedSize: calcExpr(field(o, 'specifiedSize', path), `${path}.specifiedSize`), absoluteSize: bool(field(o, 'absoluteSize', path), `${path}.absoluteSize`) };
+}
+
 /** A LengthCalc {kind: calc, expr, range}. */
 function lengthCalc(v: JsonValue, path: string): LengthCalc {
   const o = obj(v, ['kind', 'expr', 'range'], path);
   const expr = calcExpr(field(o, 'expr', path), `${path}.expr`);
   const range = lit(field(o, 'range', path), ['all', 'non-negative'], `${path}.range`);
   return range === 'all' ? { kind: 'calc', expr, range: 'all' } : { kind: 'calc', expr, range: 'non-negative' };
+}
+
+/** A LineHeightCalc {kind: calc, expr, range: non-negative}: line-height is non-negative. */
+function lineHeightCalc(v: JsonValue, path: string): LineHeightCalc {
+  const o = obj(v, ['kind', 'expr', 'range'], path);
+  const expr = calcExpr(field(o, 'expr', path), `${path}.expr`);
+  lit(field(o, 'range', path), ['non-negative'], `${path}.range`);
+  return { kind: 'calc', expr, range: 'non-negative' };
 }
 
 function sizeValue(v: JsonValue, path: string): SizeValue {
@@ -466,6 +531,8 @@ function flexBasisValue(v: JsonValue, path: string): FlexBasisValue {
 
 function lineHeightValue(v: JsonValue, path: string): LineHeightValue {
   const k = kindOf(v, path);
+  if (k === 'calc') return lineHeightCalc(v, path);
+  if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'number') return { kind: 'number', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'normal') {
@@ -536,14 +603,12 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
 
 function decodeText(o: JsonObj, path: string): TextLeaf {
   obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode'], path);
-  const font = obj(field(o, 'font', path), ['family', 'size'], `${path}.font`);
-  lit(field(font, 'family', `${path}.font`), ['Ahem'], `${path}.font.family`);
   lit(field(o, 'whiteSpaceCollapse', path), ['collapse'], `${path}.whiteSpaceCollapse`);
   return {
     kind: 'text',
     id: str(field(o, 'id', path), `${path}.id`),
     text: str(field(o, 'text', path), `${path}.text`),
-    font: { family: 'Ahem', size: numField(font, 'size', `${path}.font`) },
+    font: fontSpec(field(o, 'font', path), `${path}.font`),
     lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
     whiteSpaceCollapse: 'collapse',
     textWrapMode: lit(field(o, 'textWrapMode', path), ['wrap', 'nowrap'], `${path}.textWrapMode`) as TextWrapMode,
@@ -573,14 +638,27 @@ function decodeNode(v: JsonValue, path: string): LayoutBox | TextLeaf {
   return fail(`${path}: unknown node kind ${k}`);
 }
 
+function decodeViewport(v: JsonValue, path: string): Viewport {
+  const o = obj(v, ['width', 'height'], path);
+  return { width: numField(o, 'width', path), height: numField(o, 'height', path) };
+}
+
 function decodeInput(v: JsonValue): LayoutInput {
-  const o = obj(v, ['viewport', 'devicePixelRatio', 'root'], '$');
-  const vp = obj(field(o, 'viewport', '$'), ['width', 'height'], '$.viewport');
+  const o = obj(v, ['viewport', 'devicePixelRatio', 'viewportUnits', 'safeArea', 'rootFontSize', 'root'], '$');
+  const units = obj(field(o, 'viewportUnits', '$'), ['small', 'large', 'dynamic'], '$.viewportUnits');
+  const safe = obj(field(o, 'safeArea', '$'), ['top', 'right', 'bottom', 'left'], '$.safeArea');
   const root = field(o, 'root', '$');
   if (root.kind !== 'obj' || kindOf(root, '$.root') !== 'box') return fail('$.root: expected a box');
   return {
-    viewport: { width: numField(vp, 'width', '$.viewport'), height: numField(vp, 'height', '$.viewport') },
+    viewport: decodeViewport(field(o, 'viewport', '$'), '$.viewport'),
     devicePixelRatio: numField(o, 'devicePixelRatio', '$'),
+    viewportUnits: {
+      small: decodeViewport(field(units, 'small', '$.viewportUnits'), '$.viewportUnits.small'),
+      large: decodeViewport(field(units, 'large', '$.viewportUnits'), '$.viewportUnits.large'),
+      dynamic: decodeViewport(field(units, 'dynamic', '$.viewportUnits'), '$.viewportUnits.dynamic'),
+    },
+    safeArea: { top: numField(safe, 'top', '$.safeArea'), right: numField(safe, 'right', '$.safeArea'), bottom: numField(safe, 'bottom', '$.safeArea'), left: numField(safe, 'left', '$.safeArea') },
+    rootFontSize: numField(o, 'rootFontSize', '$'),
     root: decodeBox(root, '$.root'),
   };
 }
@@ -589,7 +667,8 @@ const FAULT_KEYS: readonly string[] = [
   'breakOffByOne', 'rtlAsLtr', 'ignoreOrder', 'baselineFromBorderTop', 'scrollMinAuto', 'absposInFlow', 'cbIgnoresPadding',
   'staticPosLtr', 'relativeShiftsFlow', 'metricHalfUp', 'untruncatedFontSize', 'halfLeadingSpec', 'minMaxEndMarginSpec',
   'wrapReverseBaselineSpec', 'initialLineWidthZoomed', 'calcPercentPlainOrder', 'calcDoubleEval', 'calcNoNonNegClamp',
-  'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled',
+  'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled', 'lhUnsnapped',
+  'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -619,6 +698,13 @@ function decodeFaults(v: JsonValue): EngineFaults {
     divideDirect: b('divideDirect'),
     calcLeafUnzoomed: b('calcLeafUnzoomed'),
     viewportUnitsUnceiled: b('viewportUnitsUnceiled'),
+    lhUnsnapped: b('lhUnsnapped'),
+    exUntruncatedFontSize: b('exUntruncatedFontSize'),
+    rootFontSizeIgnored: b('rootFontSizeIgnored'),
+    safeAreaIgnored: b('safeAreaIgnored'),
+    lhNormalUnrounded: b('lhNormalUnrounded'),
+    viewportSizeKindIgnored: b('viewportSizeKindIgnored'),
+    minimumFontSizeIgnored: b('minimumFontSizeIgnored'),
   };
 }
 

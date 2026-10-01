@@ -28,7 +28,7 @@ const node = (id: string, parent: string | null, color: number): ProgramNode => 
   writes: [{ kind: 'background-color', color: { r: color, g: 0, b: 0, alpha: 255 }, key: 'backgroundColor', technique: 'native-property', detail: 'test', css: ['background-color'] }],
 });
 
-const program = (root: LayoutBox, nodes: readonly ProgramNode[]): NativeProgram => ({ version: 'dragon.uikit-program/1', backend: 'uikit', root, nodes });
+const program = (root: LayoutBox, nodes: readonly ProgramNode[]): NativeProgram => ({ version: 'dragon.uikit-program/1', backend: 'uikit', root, rootFontSize: 16, nodes });
 
 const a = (open: boolean, side: string): Assignment => [{ state: { instance: 'doc', state: 'open' }, value: open }, { state: { instance: 'doc', state: 'side' }, value: side }];
 

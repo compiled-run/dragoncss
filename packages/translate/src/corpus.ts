@@ -263,7 +263,7 @@ function randomText(r: Rng, rtl: boolean): string {
 }
 
 function textLeaf(r: Rng, id: string, font: { size: number; lh: TextLeaf['lineHeight']; wrap: TextLeaf['textWrapMode'] }, rtl: boolean): TextLeaf {
-  return { kind: 'text', id, text: randomText(r, rtl), font: { family: 'Ahem', size: font.size }, lineHeight: font.lh, whiteSpaceCollapse: 'collapse', textWrapMode: font.wrap };
+  return { kind: 'text', id, text: randomText(r, rtl), font: { family: 'Ahem', size: font.size, specifiedSize: { kind: 'px', value: font.size }, absoluteSize: true }, lineHeight: font.lh, whiteSpaceCollapse: 'collapse', textWrapMode: font.wrap };
 }
 
 /** Ids: plain, and sometimes canonically equivalent pairs (U+00E9 and e + U+0301) that JS keeps distinct. */
@@ -302,7 +302,16 @@ function randomInput(r: Rng): LayoutInput {
   };
   const root = makeBox(0, false);
   const dpr = r.pick(DPRS);
-  return { viewport: { width: r.chance(0.05) ? 0 : 100 + r.int(900), height: r.chance(0.05) ? 0 : 100 + r.int(900) }, devicePixelRatio: dpr, root };
+  const viewport = { width: r.chance(0.05) ? 0 : 100 + r.int(900), height: r.chance(0.05) ? 0 : 100 + r.int(900) };
+  return { viewport, devicePixelRatio: dpr, ...referenceEnvironment(viewport), root };
+}
+
+/**
+ * The environment inputs of the reference environment, drawing nothing from the generator so the P1 inputs keep their shape:
+ * every viewport unit reads the viewport, no safe area, a 16px root font size (V2 of the value model).
+ */
+export function referenceEnvironment(viewport: { readonly width: number; readonly height: number }): Pick<LayoutInput, 'viewportUnits' | 'safeArea' | 'rootFontSize'> {
+  return { viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16 };
 }
 
 // ---------------------------------------------------------------- library corpus

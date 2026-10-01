@@ -18,6 +18,7 @@ import { fixtureInput } from './cases.ts';
 import { layoutCases } from './dpr.ts';
 import { PROJECT_ID } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
+import { ENVIRONMENT } from './fixtures.ts';
 import type { EncoderLanguage } from './native-encoders.ts';
 import { constructDump, encoderSource, KOTLIN_DUMP_PACKAGE } from './native-encoders.ts';
 import { referenceDump } from './native-compare.ts';
@@ -41,7 +42,8 @@ export const nativeOut = (target: NativeTarget): string => repoPath(`packages/pa
 /** The lane compile (item 9): ios and android together, derive mode, one per fixture and direction. */
 export function nativeCompile(spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'android'> {
   if (spec.kind !== 'layout') throw new Error(`${spec.id} is not a layout fixture`);
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG } }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont });
+  // MQ-a: every native case runs in the parity environment's viewport, so its @media band is the one holding it.
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG } }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport });
   return project.compile(fixtureInput(spec));
 }
 
