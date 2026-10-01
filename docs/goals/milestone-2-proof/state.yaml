@@ -2236,16 +2236,36 @@ tasks:
   - id: T062
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: runtime
     objective: 'ANIM-a2: rt-* translated to Swift and Kotlin; after T061 and T009 B.'
     allowed_files:
       - See notes/T047-runtime-spec.md §3.2 (binding)
+      - packages/translate/harness/harness.ts
+      - packages/translate/src/generate.ts
+      - packages/parity/src/targets.ts
+      - packages/translate/test/rt-harness.test.ts
     verify:
       - See notes/T047-runtime-spec.md §3.2 verify (binding)
     stop_if:
       - See notes/T047-runtime-spec.md §3.2 stop_if (binding)
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #50 merged d3de32eb0 after 2 rounds. The rt timing, easing and interpolation reference became translated engine roots; P1 rt suite of 54,588 lines is bit-exact in Swift and Kotlin and
+        on device (layout-vectors-device). The round 1 fix refuses non-finite rt harness inputs. pnpm test 3024/3024; device-failures byte-identical to master.'
+      changed_files:
+        - packages/translate/harness/harness.ts
+        - packages/translate/src/generate.ts
+        - packages/parity/src/targets.ts
+        - packages/translate/test/rt-harness.test.ts
+      commands:
+        - cmd: pnpm test 3024/3024
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices (p1/rt 54588/54588)
+          status: pass
+        - cmd: pnpm pr:review 50 exit 0
+          status: pass
     constraints:
       - '2026-10-01 host-done, pending device runs; 4 stacked PRs on master 77c641eca: ANIM-a2 (anim-a2-translate 00ccd53c8, ~35 KB), SELD-R1a (seld-r1a 7340df522, ~92 KB), SELD-R1b (seld-r1, ~138 KB after
         split), lane wiring (seld-lanes, ~25 KB). parity:hit-report 0 mismatches over 703,666 Chrome points; p1/hit 1872/1872 Swift and Kotlin; north star Android equals iOS.'
