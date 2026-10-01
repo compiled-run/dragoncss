@@ -3627,7 +3627,7 @@ tasks:
   - id: T123
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: port
     objective: 'Clean-room rewrite of the class-B LGPL translations (notes/T118J-lgpl-ruling.md): range-value.ts parseStep, stepRange, roundByStep, clampValue, defaultValue, rangeRatio; linebreak.ts fastBreak,
       isBreakableSpace, lineBreakOpportunitiesWith; from spec text (HTML Range state, css-text-3, UAX #14, BSD FillAscii) and Chrome captures only, by a worker that has not read the LGPL files or the old
@@ -3655,7 +3655,24 @@ tasks:
       - a Chrome capture row disagrees and spec text plus a new observation cannot settle it
       - passing needs a changed assertion, fixture expectation, planted-fault meaning or new allowance
       - a file outside allowed_files must change
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: "Merged as #56 (3f11566f4): range-value.ts and linebreak.ts rewritten clean-room from specs and Chrome 145 captures; LGPL entries now class A reference-only; KNOWN_LGPL_CLEAN_ROOM empty; LB30a regional-indicator pairing made O(1) (review round 1). Device lanes equal master; pnpm test green (load timeouts pass on rerun)."
+      evidence:
+        - "https://github.com/compiled-run/dragoncss/pull/56"
+      changed_files:
+        - packages/dragon/src/forms/range-value.ts
+        - packages/layout/src/linebreak.ts
+        - docs/ports.json
+        - packages/parity/test/chrome-ports.test.ts
+      commands:
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm test"
+          status: pass
+        - cmd: "pnpm pr:review 56"
+          status: pass
   - id: T124
     type: worker
     assignee: Worker
