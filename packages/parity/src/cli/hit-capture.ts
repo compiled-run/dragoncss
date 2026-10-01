@@ -42,7 +42,7 @@ let points = 0;
 try {
   for (const n of cases) {
     const c = await captureHits(browser, n);
-    points += c.points.length;
+    points += c.points;
     writeFileSync(expectedHitPath(n.case.id), hitCaptureJson(c));
   }
 } finally {

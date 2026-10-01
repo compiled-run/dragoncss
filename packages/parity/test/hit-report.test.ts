@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { NO_HIT_TABLE_FAULTS } from 'dragon';
 import { NO_HIT_FAULTS } from '../../layout/src/rt-hit.ts';
-import { caseHitTable, committedHits, compareHits, hitCases, hitGrid, tapTarget } from '../src/hit-capture.ts';
+import { capturedIds, caseHitTable, committedHits, compareHits, gridSha256, hitCases, hitGrid, tapTarget } from '../src/hit-capture.ts';
 
 const cases = hitCases();
 
@@ -15,7 +15,8 @@ describe('the host hit lane', () => {
     expect(cases.filter((n) => n.case.id.startsWith('hit-')).map((n) => n.case.id)).toEqual(['hit-line-strip-a', 'hit-line-strip-a-rtl', 'hit-line-strip-b', 'hit-line-strip-b-rtl', 'hit-order', 'hit-order-rtl', 'hit-pointer-events', 'hit-pointer-events-rtl']);
     for (const n of cases) {
       const c = committedHits(n.case.id);
-      expect(c.points.length, n.case.id).toBe(hitGrid(caseHitTable(n), n.case.environment.viewport).length);
+      const grid = hitGrid(caseHitTable(n), n.case.environment.viewport);
+      expect([n.case.id, c.points, c.gridSha256]).toEqual([n.case.id, grid.length, gridSha256(grid)]);
     }
   });
 
@@ -56,15 +57,15 @@ describe('tap dispatch', () => {
     let taps = 0;
     for (const n of cases) {
       const t = caseHitTable(n);
-      const c = committedHits(n.case.id);
+      const chrome = capturedIds(committedHits(n.case.id));
       const index = new Map(t.ids.map((id, i) => [id, i]));
-      for (const [x, y, k] of c.points) {
-        let at = index.get(c.ids[k] as string);
+      hitGrid(t, n.case.environment.viewport).forEach(([x, y], i) => {
+        let at = index.get(chrome[i] as string);
         while (at !== undefined && at >= 0 && t.activation[at] !== true) at = t.nodes[at]?.parent;
         const want = at === undefined || at < 0 ? null : t.ids[at];
         expect([n.case.id, x, y, tapTarget(t, x, y)]).toEqual([n.case.id, x, y, want]);
         if (want !== null) taps++;
-      }
+      });
     }
     expect(taps).toBe(0);
   });

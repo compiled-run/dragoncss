@@ -3,6 +3,7 @@
 // centre), Chrome's document.elementFromPoint at each point is captured into packages/parity/expected-hit/, and the TypeScript
 // hit test (packages/layout/src/rt-hit.ts) over the engine's boxes must name the same element at every point. Points are in
 // LU (1/64 px), so every coordinate Chrome is given is exact.
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { absoluteRects, buildRun, layout, NO_ENGINE_FAULTS, resolveBorder, zoomInput } from '@dragon/layout';
@@ -15,7 +16,7 @@ import type { NativeCase } from './native-host.ts';
 import { nativeCases, referenceMeasurer } from './native-host.ts';
 import { repoPath } from './paths.ts';
 
-export const HIT_CAPTURE_VERSION = 'dragon.hit-capture/1';
+export const HIT_CAPTURE_VERSION = 'dragon.hit-capture/2';
 const LU = 64;
 
 export const expectedHitDir = (): string => repoPath('packages/parity/expected-hit');
@@ -71,7 +72,13 @@ export function hitGrid(t: HitTable, viewport: { readonly width: number; readonl
   return out.sort((p, q) => (p[1] === q[1] ? p[0] - q[0] : p[1] - q[1]));
 }
 
-export type HitCapture = { readonly case: string; readonly chrome: string; readonly version: string; readonly viewport: { readonly width: number; readonly height: number }; readonly direction: 'ltr' | 'rtl'; readonly ids: readonly string[]; readonly points: readonly (readonly [number, number, number])[] };
+/**
+ * A case's capture: the grid is not stored, since the hit table derives it; gridSha256 pins the grid it was taken on, and runs
+ * holds Chrome's answer at each grid point in grid order, run-length encoded as [id index, count].
+ */
+export type HitCapture = { readonly case: string; readonly chrome: string; readonly version: string; readonly viewport: { readonly width: number; readonly height: number }; readonly direction: 'ltr' | 'rtl'; readonly points: number; readonly gridSha256: string; readonly ids: readonly string[]; readonly runs: readonly (readonly [number, number])[] };
+
+export const gridSha256 = (grid: readonly (readonly [number, number])[]): string => createHash('sha256').update(grid.map(([x, y]) => `${x},${y}`).join(';')).digest('hex');
 
 /** Chrome's elementFromPoint at every grid point of a case, on its authored rendering; each id is the element's data-dragon-id. */
 export async function captureHits(browser: Browser, n: NativeCase): Promise<HitCapture> {
@@ -84,13 +91,20 @@ export async function captureHits(browser: Browser, n: NativeCase): Promise<HitC
       return el === null ? '#none' : (el.getAttribute('data-dragon-id') as string);
     }), grid);
     const ids = [...new Set(hits)].sort();
-    return { case: n.case.id, chrome: CHROME_VERSION, version: HIT_CAPTURE_VERSION, viewport: n.case.environment.viewport, direction: n.case.environment.direction, ids, points: grid.map(([x, y], i) => [x, y, ids.indexOf(hits[i] as string)] as const) };
+    const runs: [number, number][] = [];
+    for (const h of hits) {
+      const k = ids.indexOf(h);
+      const last = runs[runs.length - 1];
+      if (last !== undefined && last[0] === k) last[1]++;
+      else runs.push([k, 1]);
+    }
+    return { case: n.case.id, chrome: CHROME_VERSION, version: HIT_CAPTURE_VERSION, viewport: n.case.environment.viewport, direction: n.case.environment.direction, points: grid.length, gridSha256: gridSha256(grid), ids, runs };
   } finally {
     await page.context().close();
   }
 }
 
-export const hitCaptureJson = (c: HitCapture): string => `{\n  "case": ${JSON.stringify(c.case)},\n  "chrome": ${JSON.stringify(c.chrome)},\n  "version": ${JSON.stringify(c.version)},\n  "viewport": ${JSON.stringify(c.viewport)},\n  "direction": ${JSON.stringify(c.direction)},\n  "ids": ${JSON.stringify(c.ids)},\n  "points": [\n${c.points.map((p) => `    ${JSON.stringify(p)}`).join(',\n')}\n  ]\n}\n`;
+export const hitCaptureJson = (c: HitCapture): string => `${JSON.stringify({ ...c, runs: undefined }, null, 2).replace(/\n}$/, ',')}\n  "runs": ${JSON.stringify(c.runs)}\n}\n`;
 
 /** The committed capture of a case; a missing or malformed file throws, naming what is wrong. */
 export function committedHits(caseId: string): HitCapture {
@@ -102,10 +116,16 @@ export function committedHits(caseId: string): HitCapture {
     throw new Error(`${caseId}: no readable hit capture at ${path} (${e instanceof Error ? e.message : String(e)}); run pnpm run parity:hit-capture`);
   }
   const c = raw as Partial<HitCapture>;
-  const ok = c.case === caseId && c.chrome === CHROME_VERSION && c.version === HIT_CAPTURE_VERSION && Array.isArray(c.ids) && c.ids.every((x) => typeof x === 'string') && Array.isArray(c.points)
-    && c.points.every((p) => Array.isArray(p) && p.length === 3 && p.every((v) => Number.isInteger(v)) && (p[2] as number) >= 0 && (p[2] as number) < (c.ids as string[]).length);
+  const ok = c.case === caseId && c.chrome === CHROME_VERSION && c.version === HIT_CAPTURE_VERSION && Number.isInteger(c.points) && typeof c.gridSha256 === 'string' && Array.isArray(c.ids) && c.ids.every((x) => typeof x === 'string') && Array.isArray(c.runs)
+    && c.runs.every((r) => Array.isArray(r) && r.length === 2 && Number.isInteger(r[0]) && Number.isInteger(r[1]) && (r[0] as number) >= 0 && (r[0] as number) < (c.ids as string[]).length && (r[1] as number) > 0)
+    && c.runs.reduce((n, r) => n + (r[1] as number), 0) === c.points;
   if (!ok) throw new Error(`${caseId}: the hit capture at ${path} is malformed or from another Chrome or capture version`);
   return c as HitCapture;
+}
+
+/** Chrome's answer at each point of a capture, in grid order. */
+export function capturedIds(c: HitCapture): string[] {
+  return c.runs.flatMap(([k, count]) => Array.from({ length: count }, () => c.ids[k] as string));
 }
 
 export type HitMismatch = { readonly case: string; readonly x: number; readonly y: number; readonly chrome: string; readonly dragon: string };
@@ -114,15 +134,15 @@ export type HitMismatch = { readonly case: string; readonly x: number; readonly 
 export function compareHits(n: NativeCase, c: HitCapture, faults: HitFaults = NO_HIT_FAULTS, tableFaults: HitTableFaults = NO_HIT_TABLE_FAULTS): { readonly points: number; readonly mismatches: readonly HitMismatch[]; readonly stale: boolean } {
   const t = caseHitTable(n, tableFaults);
   const grid = hitGrid(caseHitTable(n), n.case.environment.viewport);
-  const stale = grid.length !== c.points.length || grid.some(([x, y], i) => (c.points[i] as readonly number[])[0] !== x || (c.points[i] as readonly number[])[1] !== y);
+  const stale = grid.length !== c.points || gridSha256(grid) !== c.gridSha256;
   const mismatches: HitMismatch[] = [];
-  for (const [x, y, k] of c.points) {
-    const i = hitTest(t.nodes, x, y, faults);
-    const dragon = t.ids[i] as string;
-    const chrome = c.ids[k] as string;
-    if (dragon !== chrome) mismatches.push({ case: n.case.id, x, y, chrome, dragon });
-  }
-  return { points: c.points.length, mismatches, stale };
+  if (stale) return { points: c.points, mismatches, stale };
+  const chrome = capturedIds(c);
+  grid.forEach(([x, y], i) => {
+    const dragon = t.ids[hitTest(t.nodes, x, y, faults)] as string;
+    if (dragon !== chrome[i]) mismatches.push({ case: n.case.id, x, y, chrome: chrome[i] as string, dragon });
+  });
+  return { points: c.points, mismatches, stale };
 }
 
 /** Tap dispatch on the host: the element a tap at (x, y) in LU activates, or null when no ancestor has a handler. */
