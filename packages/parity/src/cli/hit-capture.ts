@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { launchChrome } from '../chrome.ts';
 import { captureHits, expectedHitDir, expectedHitPath, hitCaptureJson, hitCases, IDENTITY_MANIFEST, IDENTITY_ROOTS, withoutPointerEvents } from '../hit-capture.ts';
+import { hitFacts } from 'dragon';
 import { repoPath } from '../paths.ts';
 import { hostPlatform, requireReferencePlatform } from '../platform.ts';
 
@@ -16,6 +17,20 @@ const git = (args: readonly string[]): string => {
   if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stderr}`);
   return r.stdout;
 };
+// pnpm run parity:hit-capture -- --vectors writes packages/layout/rt-vectors/hit/facts.json instead: every layout case's hit facts,
+// which the P1 corpus hit suite pairs with the layout vectors (no Chrome).
+if (process.argv.includes('--vectors')) {
+  const cases: Record<string, (string | boolean)[][]> = {};
+  for (const n of hitCases()) {
+    const facts = hitFacts(n.compiled, n.case.assignment);
+    if (facts === null) throw new Error(`${n.case.id}: no hit facts`);
+    cases[n.case.id] = [...facts].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([id, f]) => [id, f.pointerEvents, f.inherited, f.activation]);
+  }
+  mkdirSync(repoPath('packages/layout/rt-vectors/hit'), { recursive: true });
+  writeFileSync(repoPath('packages/layout/rt-vectors/hit/facts.json'), `{\n  "cases": {\n${Object.entries(cases).map(([k, v]) => `    ${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(',\n')}\n  }\n}\n`);
+  console.log(`parity:hit-capture: hit facts of ${Object.keys(cases).length} cases into packages/layout/rt-vectors/hit/facts.json`);
+  process.exit(0);
+}
 const at = process.argv.indexOf('--identity-base');
 if (at >= 0) {
   const rev = process.argv[at + 1];

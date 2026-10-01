@@ -517,6 +517,33 @@ export function rtCases(read: <T>(name: string) => T = rtRead): string[] {
   return out;
 }
 
+// ---------------------------------------------------------------- hit suite (SELD-R1b, T047 RT-9)
+
+/** The hit facts of every layout case (packages/parity parity:hit-capture -- --vectors), keyed by case id. */
+export const HIT_FACTS = join(RT_VECTORS_DIR, 'hit/facts.json');
+
+/**
+ * The hit suite: one library-mode line per layout vector, top-level and at every DPR, in directory then file-name order: the
+ * vector's input and its case's hit facts. The TypeScript harness's answers are the expected results; Swift and Kotlin must equal
+ * them, and packages/parity hit-report proves the TypeScript hit test equals Chrome at DPR 1.
+ */
+export function hitCases(): string[] {
+  const facts = (JSON.parse(readFileSync(HIT_FACTS, 'utf8')) as { cases: Record<string, unknown> }).cases;
+  const out: string[] = [];
+  for (const dir of ['', 'dpr-2', 'dpr-3', 'dpr-2.625']) {
+    const at = dir === '' ? VECTORS_DIR : join(VECTORS_DIR, dir);
+    for (const file of readdirSync(at).filter((f) => f.endsWith('.json')).sort()) {
+      const id = file.slice(0, -'.json'.length);
+      const f = facts[id];
+      if (f === undefined) throw new Error(`no hit facts for vector ${dir === '' ? '' : `${dir}/`}${file}; run pnpm run parity:hit-capture -- --vectors`);
+      const v = JSON.parse(readFileSync(join(at, file), 'utf8')) as { platform: string; input: unknown };
+      out.push(JSON.stringify(['rt-hit', v.platform, v.input, f]));
+    }
+  }
+  if (out.length === 0) throw new Error('the hit suite has no cases');
+  return out;
+}
+
 export function buildCorpus(): Corpus {
   const vectors = vectorCases();
   const vLines = vectors.map((v) => v.line);
@@ -524,6 +551,7 @@ export function buildCorpus(): Corpus {
   const engine = engineCases(vectors);
   const library = libraryCases();
   const rt = rtCases();
+  const hit = hitCases();
   const suites: Suite[] = [
     { name: 'vectors', mode: 'engine', lines: vLines, expected: vLines.map(runEngineCase) },
     { name: 'units', mode: 'units', lines: units, expected: units.map(runUnitsCase) },
@@ -531,6 +559,8 @@ export function buildCorpus(): Corpus {
     { name: 'library', mode: 'library', lines: library, expected: library.map(runLibraryCase) },
     // ANIM-a2: the rt vectors (timing, easing, hold and interpolation), after the P1 suites.
     { name: 'rt', mode: 'library', lines: rt, expected: rt.map(runLibraryCase) },
+    // SELD-R1b: the hit table, grid and answers of every layout vector, after rt.
+    { name: 'hit', mode: 'library', lines: hit, expected: hit.map(runLibraryCase) },
   ];
   const d = digestsOf(suites);
   return { suites, vectors, engineSplit: split(suites[2]?.expected ?? []), digest: d.digest, digests: d.digests };

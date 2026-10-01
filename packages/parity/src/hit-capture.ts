@@ -6,11 +6,9 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
-import { absoluteRects, buildRun, layout, NO_ENGINE_FAULTS, resolveBorder, zoomInput } from '@dragon/layout';
-import type { HitEngine, HitTable, HitTableFaults } from 'dragon';
-import { hitFacts, hitTable, NO_HIT_TABLE_FAULTS } from 'dragon';
-import type { HitFaults } from '../../layout/src/rt-hit.ts';
-import { activationTarget, hitTest, NO_HIT_FAULTS } from '../../layout/src/rt-hit.ts';
+import { hitFacts, programInput } from 'dragon';
+import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
+import { activationTarget, hitGrid as rtHitGrid, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
 import type { NativeCase } from './native-host.ts';
 import { nativeCases, referenceMeasurer } from './native-host.ts';
@@ -22,54 +20,21 @@ const LU = 64;
 export const expectedHitDir = (): string => repoPath('packages/parity/expected-hit');
 export const expectedHitPath = (caseId: string): string => `${expectedHitDir()}/${caseId.replace(/#/g, '~')}.hit.json`;
 
-let engine: HitEngine | null = null;
-
-/** The TS engine the hit tables are built with: the helpers the device runs translated. */
-export function hitEngine(): HitEngine {
-  if (engine === null) engine = { layout, measurer: referenceMeasurer(), absoluteRects, zoomInput, resolveBorder, buildRun, noFaults: NO_ENGINE_FAULTS };
-  return engine;
+/** A program's hit table at a DPR (rt-hit.ts hitTableOf, the function the device runs translated). */
+export function programHitTable(program: NativeCase['programs']['uikit'], facts: NonNullable<ReturnType<typeof hitFacts>>, viewport: { readonly width: number; readonly height: number }, dpr: number, faults: HitTableFaults = NO_HIT_TABLE_FAULTS): HitTable {
+  return hitTableOf(programInput(program, viewport, dpr), referenceMeasurer(), facts, faults);
 }
 
 /** A case's hit table at DPR 1 (the Chrome captures' ratio), from its uikit program and its compile's hit facts. */
 export function caseHitTable(n: NativeCase, faults: HitTableFaults = NO_HIT_TABLE_FAULTS, dpr = 1): HitTable {
   const facts = hitFacts(n.compiled, n.case.assignment);
   if (facts === null) throw new Error(`${n.case.id}: no hit facts`);
-  return hitTable(n.programs.uikit, facts, n.case.environment.viewport, dpr, hitEngine(), faults);
+  return programHitTable(n.programs.uikit, facts, n.case.environment.viewport, dpr, faults);
 }
 
-const snap = (v: number): number => Math.floor((v + LU / 2) / LU) * LU;
-
-/**
- * The derived grid of a hit table in LU: for each rect, around each edge's exclusive boundary (a point p hits [a, b) when
- * a - 1 px < p < b) and inclusive boundary, 0.5 px either side of each edge and the centre, crossed per rect, inside the viewport.
- */
+/** The derived grid of a table in LU (rt-hit.ts hitGrid), as [x, y] pairs. */
 export function hitGrid(t: HitTable, viewport: { readonly width: number; readonly height: number }): [number, number][] {
-  const axis = (a: number, b: number): number[] => [a - LU - 1, a - LU, a - LU + 1, a - LU / 2, a + LU / 2, Math.floor((a + b) / 2), b - LU / 2, b - 1, b, b + LU / 2, b + 1];
-  const seen = new Set<string>();
-  const out: [number, number][] = [];
-  const add = (xs: readonly number[], ys: readonly number[]): void => {
-    for (const x of xs) {
-      for (const y of ys) {
-        // elementFromPoint answers only points whose rounded position is inside the viewport (a gate before the hit test).
-        if (x < 0 || y < 0 || x >= viewport.width * LU - LU / 2 || y >= viewport.height * LU - LU / 2) continue;
-        const k = `${x},${y}`;
-        if (seen.has(k)) continue;
-        seen.add(k);
-        out.push([x, y]);
-      }
-    }
-  };
-  t.nodes.forEach((n, i) => {
-    if (n.width <= 0 && n.height <= 0 && n.kind !== 'line') return;
-    add(axis(n.x, n.x + n.width), axis(n.y, n.y + n.height));
-    if (n.kind === 'text') add(axis(snap(n.x), snap(n.x + n.width)), axis(snap(n.y), snap(n.y + n.height)));
-    if (n.kind === 'line') {
-      const block = t.nodes[n.parent];
-      if (block === undefined) throw new Error(`line ${t.ids[i]} has no block`);
-      add(axis(snap(n.x), snap(n.x + block.width)), axis(snap(n.y), snap(n.y + block.height)));
-    }
-  });
-  return out.sort((p, q) => (p[1] === q[1] ? p[0] - q[0] : p[1] - q[1]));
+  return rtHitGrid(t, viewport.width * LU, viewport.height * LU).map((p): [number, number] => [p.x, p.y]);
 }
 
 /**

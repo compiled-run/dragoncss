@@ -7,7 +7,16 @@
 // document order, then the root) and the layer clips (a clipping layer clips its in-flow content to its border box, and descendant
 // layers on its containing-block chain to its padding box) are measured against Chrome, not taken from the LGPL
 // hit_test_location.cc or paint_layer.cc. Every length is in LU (1/64 px), absolute to the root.
-import { floorOf } from './rt-easing.ts';
+import type { Ctx as EngineCtx } from './block.ts';
+import { NO_ENGINE_FAULTS } from './block.ts';
+import { resolveBorder } from './box.ts';
+import type { Run } from './inline.ts';
+import { buildRun } from './inline.ts';
+import type { LayoutBox, LayoutInput, TextLeaf } from './input.ts';
+import type { LayoutRect } from './layout.ts';
+import { absoluteRects, layout, zoomInput } from './layout.ts';
+import { floorOf, roundOf } from './rt-easing.ts';
+import type { TextMeasurer } from './text.ts';
 
 /** One hit node: a box, or a text piece or line of a block's inline content. target is the node index hit testing returns. */
 export type HitNode = {
@@ -282,4 +291,312 @@ export function activationTarget(nodes: readonly HitNode[], activation: readonly
     at = n.parent;
   }
   return -1;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The hit table of a laid-out engine input (SELD-R1b): the same function on the host (TypeScript) and on the device (translated).
+
+/** One element's hit facts from the compiler: computed pointer-events, whether it was inherited, and its activation handler. */
+export type HitFact = { readonly pointerEvents: PointerEvents; readonly inherited: boolean; readonly activation: boolean };
+
+/** A table: the nodes hitTest takes, the id each names, and each node's activation flag. */
+export type HitTable = { readonly nodes: readonly HitNode[]; readonly ids: readonly string[]; readonly activation: readonly boolean[] };
+
+/** Planted fault pointerEventsNotInherited: an inherited pointer-events value is read as auto. */
+export type HitTableFaults = { readonly pointerEventsNotInherited: boolean };
+export const NO_HIT_TABLE_FAULTS: HitTableFaults = { pointerEventsNotInherited: false };
+
+type TableState = {
+  readonly nodes: HitNode[];
+  readonly ids: string[];
+  readonly activation: boolean[];
+  readonly abs: Map<string, LayoutRect>;
+  readonly boxes: readonly LayoutRect[];
+  readonly zoomed: Map<string, LayoutBox>;
+  readonly ctx: EngineCtx;
+  readonly facts: ReadonlyMap<string, HitFact>;
+  readonly faults: HitTableFaults;
+};
+
+function rectOf(s: TableState, id: string): LayoutRect {
+  const r = s.abs.get(id);
+  if (r === undefined) throw new HitError(`the engine laid out no ${id}`);
+  return r;
+}
+
+function zoomedBox(s: TableState, id: string): LayoutBox {
+  const b = s.zoomed.get(id);
+  if (b === undefined) throw new HitError(`no zoomed box ${id}`);
+  return b;
+}
+
+function indexZoomed(m: Map<string, LayoutBox>, b: LayoutBox): void {
+  m.set(b.id, b);
+  for (const c of b.children) {
+    if (c.kind === 'box') indexZoomed(m, c);
+  }
+}
+
+/**
+ * A flex item's place in its container's fragment order: the engine lists in-flow items line by line, each line in flow order
+ * (reversed for a reverse direction), which is Blink's FlexLayoutAlgorithm order except that Blink also reverses the lines under
+ * wrap-reverse (ApplyReversals). A line is a run of items whose cross-axis ranges overlap.
+ */
+function fragmentOrder(s: TableState, container: LayoutBox, id: string): number {
+  const row = container.style.flexDirection === 'row' || container.style.flexDirection === 'row-reverse';
+  const lines: LayoutRect[][] = [];
+  let lo = 0;
+  let hi = 0;
+  for (const x of s.boxes) {
+    const parent = x.parent;
+    if (parent === null || parent !== container.id) continue;
+    let inFlow = false;
+    for (const c of container.children) {
+      if (c.kind === 'box' && c.id === x.id && c.style.position !== 'absolute') inFlow = true;
+    }
+    if (!inFlow) continue;
+    const r = rectOf(s, x.id);
+    const a = row ? r.y : r.x;
+    const z = a + (row ? r.height : r.width);
+    const cur = lines.length > 0 ? lines[lines.length - 1] : undefined;
+    if (cur !== undefined && a < hi && lo < z) {
+      cur.push(r);
+      if (a < lo) lo = a;
+      if (z > hi) hi = z;
+      continue;
+    }
+    lines.push([r]);
+    lo = a;
+    hi = z;
+  }
+  const ordered = container.style.flexWrap === 'wrap-reverse' ? lines.slice(0).reverse() : lines;
+  let k = 0;
+  for (const line of ordered) {
+    for (const r of line) {
+      if (r.id === id) return k;
+      k++;
+    }
+  }
+  return 0;
+}
+
+/** Ahem's ink of a leaf: the em box when a glyph other than p (descender only) shows; p alone inks below the baseline only. */
+function inkAbove(leaf: TextLeaf): boolean {
+  let full = false;
+  for (const ch of leaf.text) {
+    const cp = ch.codePointAt(0);
+    if (cp === undefined) continue;
+    if (cp === 0xc9) throw new HitError(`${leaf.id}: Ahem's É glyph inks only its ascender, which the hit table does not model`);
+    if (cp !== 0x20 && cp !== 0x200b && cp !== 0x70) full = true;
+  }
+  return full;
+}
+
+function hasPartialInk(leaf: TextLeaf): boolean {
+  for (const ch of leaf.text) {
+    const cp = ch.codePointAt(0);
+    if (cp !== undefined && cp === 0x70) return true;
+  }
+  return false;
+}
+
+function pushNode(s: TableState, n: HitNode, id: string, act: boolean): void {
+  s.nodes.push(n);
+  s.ids.push(id);
+  s.activation.push(act);
+}
+
+/** A text piece and whether its leaf inks the whole em box. */
+type Piece = { readonly rect: LayoutRect; readonly full: boolean };
+
+function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, leaves: readonly TextLeaf[]): void {
+  const zb = zoomedBox(s, b.id);
+  const zLeaves: TextLeaf[] = [];
+  for (const c of zb.children) {
+    if (c.kind === 'text') zLeaves.push(c);
+  }
+  const run = buildRun(s.ctx, zb, zLeaves);
+  const first = zLeaves[0];
+  if (first === undefined) throw new HitError(`${b.id}: no text leaves`);
+  const size = first.font.size;
+  for (const l of zLeaves) {
+    if (l.font.size !== size) throw new HitError(`${b.id}: text leaves of two font sizes; one inline formatting context holds one font`);
+  }
+  // The line pieces (<leaf>:line<j>), grouped into lines by their top; a line box starts half-leading above its text.
+  const pieces: Piece[] = [];
+  for (const leaf of leaves) {
+    const full = inkAbove(leaf);
+    let j = 0;
+    while (s.abs.has(`${leaf.id}:line${j}`)) {
+      pieces.push({ rect: rectOf(s, `${leaf.id}:line${j}`), full });
+      j++;
+    }
+    if (hasPartialInk(leaf) && full && j > 1) throw new HitError(`${leaf.id}: Ahem p glyphs mixed with full glyphs over several lines give each line its own ink, which the hit table does not model`);
+  }
+  const tops: number[] = [];
+  for (const p of pieces) {
+    const y = p.rect.y;
+    if (!tops.some((t) => t === y)) tops.push(y);
+  }
+  const sorted = tops.slice(0).sort((x, y) => x - y);
+  let k = 0;
+  for (const top of sorted) {
+    linePieces(s, b, parent, target, pe, run, size, pieces, top, k);
+    k++;
+  }
+}
+
+/** One line of a block's inline content: the line node, then each text piece on it. */
+function linePieces(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, run: Run, em: number, pieces: readonly Piece[], top: number, k: number): void {
+  const own = pieces.filter((p) => p.rect.y === top);
+  const firstPiece = own[0];
+  if (firstPiece === undefined) throw new HitError(`${b.id}: an empty line`);
+  let x0 = firstPiece.rect.x;
+  let x1 = x0 + firstPiece.rect.width;
+  for (const p of own) {
+    if (p.rect.x < x0) x0 = p.rect.x;
+    if (p.rect.x + p.rect.width > x1) x1 = p.rect.x + p.rect.width;
+  }
+  pushNode(s, { kind: 'line', parent, target, x: x0, y: top - run.halfLeading, width: x1 - x0, height: run.lineHeight, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe }, `${b.id}:hitline${k}`, false);
+  for (const p of own) {
+    const q = p.rect;
+    // Ahem's ink: the glyph run's bounds rounded out to whole pixels in the run's own space (from the run origin to n em, and
+    // from 0.8 em above the baseline to 0.2 em below), placed at the text's origin and ascent; measured against Chrome.
+    const baseline = q.y + run.ascent;
+    const glyphs = roundOf(q.width / (em * LU_PX));
+    const above = p.full ? floorOf(-0.8 * em) : 0;
+    pushNode(s, {
+      kind: 'text', parent, target, x: q.x, y: q.y, width: q.width, height: q.height, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0,
+      layer: false, absolute: false, atomic: false, order: 0, line: k, inkLeft: q.x, inkTop: baseline + above * LU_PX, inkRight: q.x - floorOf(-(glyphs * em)) * LU_PX,
+      inkBottom: baseline - floorOf(-0.2 * em) * LU_PX, pointerEvents: pe,
+    }, q.id, false);
+  }
+}
+
+function boxNodes(s: TableState, b: LayoutBox, parent: number, parentBox: LayoutBox | null, target: number, inherited: PointerEvents): void {
+  const i = s.nodes.length;
+  let pe = inherited;
+  let own = target;
+  let act = false;
+  if (b.boxType === 'element') {
+    const f = s.facts.get(b.id);
+    if (f === undefined) throw new HitError(`no hit facts for element ${b.id}`);
+    pe = s.faults.pointerEventsNotInherited && f.inherited ? 'auto' : f.pointerEvents;
+    own = i;
+    act = f.activation;
+  }
+  if (own < 0) throw new HitError(`anonymous box ${b.id} has no element ancestor`);
+  const r = rectOf(s, b.id);
+  const border = resolveBorder(zoomedBox(s, b.id).style, s.ctx.devicePixelRatio);
+  const flexItem = parentBox !== null && parentBox.style.display === 'flex';
+  pushNode(s, {
+    kind: 'box', parent, target: own, x: r.x, y: r.y, width: r.width, height: r.height, clips: b.style.overflowX === 'hidden',
+    borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: b.style.position !== 'static',
+    absolute: b.style.position === 'absolute', atomic: flexItem, order: parentBox !== null && flexItem ? fragmentOrder(s, parentBox, b.id) : 0, line: -1,
+    inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe,
+  }, b.id, act);
+  const leaves: TextLeaf[] = [];
+  const kids: LayoutBox[] = [];
+  for (const c of b.children) {
+    if (c.kind === 'text') leaves.push(c);
+    else kids.push(c);
+  }
+  if (leaves.length > 0 && kids.length > 0) throw new HitError(`${b.id} mixes text and boxes; the compiler wraps text in anonymous boxes`);
+  if (leaves.length > 0) inlineNodes(s, b, i, own, pe, leaves);
+  for (const c of kids) boxNodes(s, c, i, b, own, pe);
+}
+
+/** The hit table of an engine input at its device scale, from the engine's own layout of it and the compiler's hit facts. */
+export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: ReadonlyMap<string, HitFact>, faults: HitTableFaults): HitTable {
+  const out = layout(input, measurer);
+  if (out.kind !== 'ok') throw new HitError(`the engine refused the input (${out.unsupported.code} at ${out.unsupported.nodeId})`);
+  const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
+  const zmap = new Map<string, LayoutBox>();
+  indexZoomed(zmap, zoomed.root);
+  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS }, facts, faults };
+  boxNodes(s, input.root, -1, null, -1, 'auto');
+  return { nodes: s.nodes, ids: s.ids, activation: s.activation };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The derived grid and the encoded answers (the host lane, the vectors and the device-hit lane all read these).
+
+/** One grid point in LU. */
+export type HitPoint = { readonly x: number; readonly y: number };
+
+function addAxis(out: number[], a: number, b: number): void {
+  const values = [a - LU_PX - 1, a - LU_PX, a - LU_PX + 1, a - LU_PX / 2, a + LU_PX / 2, floorOf((a + b) / 2), b - LU_PX / 2, b - 1, b, b + LU_PX / 2, b + 1];
+  for (const v of values) out.push(v);
+}
+
+function cross(out: HitPoint[], xs: readonly number[], ys: readonly number[], width: number, height: number): void {
+  for (const x of xs) {
+    for (const y of ys) {
+      // elementFromPoint answers only points whose rounded position is inside the viewport (a gate before the hit test).
+      if (x < 0 || y < 0 || x >= width - LU_PX / 2 || y >= height - LU_PX / 2) continue;
+      out.push({ x, y });
+    }
+  }
+}
+
+/**
+ * The derived grid of a table in LU, inside a viewport of width x height LU: for each rect, around each edge's exclusive boundary
+ * (a point p hits [a, b) when a - 1 px < p < b) and inclusive boundary, half a pixel either side of each edge and the centre,
+ * crossed per rect; for text the snapped rect too, and for a line the block's snapped border box at the line. Sorted by y then x,
+ * without repeats.
+ */
+export function hitGrid(t: HitTable, width: number, height: number): HitPoint[] {
+  const all: HitPoint[] = [];
+  t.nodes.forEach((n, i) => {
+    if (n.width <= 0 && n.height <= 0 && n.kind !== 'line') return;
+    const xs: number[] = [];
+    const ys: number[] = [];
+    addAxis(xs, n.x, n.x + n.width);
+    addAxis(ys, n.y, n.y + n.height);
+    cross(all, xs, ys, width, height);
+    if (n.kind === 'text') {
+      const sx: number[] = [];
+      const sy: number[] = [];
+      addAxis(sx, roundPx(n.x), roundPx(n.x + n.width));
+      addAxis(sy, roundPx(n.y), roundPx(n.y + n.height));
+      cross(all, sx, sy, width, height);
+    }
+    if (n.kind === 'line') {
+      const block = t.nodes[n.parent];
+      if (block === undefined) throw new HitError(`line ${i} has no block`);
+      const lx: number[] = [];
+      const ly: number[] = [];
+      addAxis(lx, roundPx(n.x), roundPx(n.x + block.width));
+      addAxis(ly, roundPx(n.y), roundPx(n.y + block.height));
+      cross(all, lx, ly, width, height);
+    }
+  });
+  const sorted = all.slice(0).sort((p, q) => (p.y === q.y ? p.x - q.x : p.y - q.y));
+  const out: HitPoint[] = [];
+  for (const p of sorted) {
+    const last = out.length > 0 ? out[out.length - 1] : undefined;
+    if (last !== undefined && last.x === p.x && last.y === p.y) continue;
+    out.push(p);
+  }
+  return out;
+}
+
+/** The answers at every grid point, run-length encoded as "<id> <count>;" runs, in grid order (the device-hit record). */
+export function hitRuns(t: HitTable, grid: readonly HitPoint[], faults: HitFaults): string {
+  let out = '';
+  let prev = '';
+  let count = 0;
+  for (const p of grid) {
+    const id = t.ids[hitTest(t.nodes, p.x, p.y, faults)];
+    if (id === undefined) throw new HitError('a hit outside the table');
+    if (count > 0 && id === prev) {
+      count++;
+      continue;
+    }
+    if (count > 0) out = `${out}${prev} ${count.toString(16)};`;
+    prev = id;
+    count = 1;
+  }
+  if (count > 0) out = `${out}${prev} ${count.toString(16)};`;
+  return out;
 }
