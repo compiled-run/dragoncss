@@ -93,6 +93,7 @@ dispatched:
   - T119
   - T120
   - T139
+  - T034
 device_lease: null
 tasks:
   - id: T001
@@ -1527,6 +1528,8 @@ tasks:
       - Need files outside allowed_files.
       - Verification fails twice.
     receipt: null
+    constraints:
+      - 'Dispatched 2026-10-01 (branch ns-ref-recapture): also owns the north-star iframe export, embed-URL capture route and cover markers that REPL-a deferred.'
   - id: T035
     type: scout
     assignee: Scout
@@ -1981,6 +1984,8 @@ tasks:
     constraints:
       - 'T051J amendment (2026-10-01), see notes/T051-repl-a.md: route 2a longhands with a migration checker; a replaced leaf kind; Phase A lowers native layout only and lands together with Phase B; stacked
         on size-ar.'
+      - '2026-10-01 host-done Phase A and B, pending device runs: repl-a-engine 0f100ae37, repl-a a04f7aaa8, repl-a-phase-b e009c15f8 (on size-ar). Sizing matches Chrome on 264/264 cases; native image paint
+        and WKWebView/WebView slots; north star img 5/5 (8 img errors cleared on web and iOS). The iframe export, embed route and cover markers wait for T034 (dispatched).'
   - id: T052
     type: worker
     assignee: Worker
