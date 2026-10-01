@@ -2434,6 +2434,8 @@ tasks:
         always dithered and premultiplied; focus ring outline_painter.cc:37-890. Skia ports are pending T085; allowances only if T085 recommends one.'
       - 'T085: port Skia blur (BlurRect cubic profile plus the triple-box PlanGauss/small_blur) and the 8x8 dither exactly (notes/T085); a SystemInfo software-raster precondition in lanes (P6a); arc AA
         under the edge rule until SKIA-AA, radius rows caveat.'
+      - '2026-09-30: T138 and T143 show that native dashed/dotted paint (dragonDrawBorders) causes css-wide-keywords, color-border-sides dotted and possibly logical-border device-pixel failures. p6a-promote
+        (with T116 on top) moves up the landing queue, and must add a host check comparing the dash layout with Chrome pixels.'
   - id: T076
     type: worker
     assignee: Worker
@@ -3827,11 +3829,21 @@ tasks:
   - id: T143
     type: worker
     assignee: Worker
-    status: queued
+    status: blocked
     lane: values
     objective: 'CWK-BORDER: css-wide-keywords p border colour (native [0,170,0], Chrome [254,220,186]) and two missing 3-device-px edges on box a (device-pixels iOS 6, Android 10). Likely a cascade or colour-resolution
       bug for inherit/initial/unset on border-color; prove against Chrome getComputedStyle.'
-    receipt: null
+    receipt:
+      result: blocked
+      harness: claude-code
+      blocked_reason: 'Duplicate of T075 B1: not a cascade bug.'
+      summary: 'Values match Chrome at every stage (computed, emitted CSS, generated Swift/Kotlin): p is 2px dashed rgb(0,170,0) and a is 1px solid red. The cause is the native dashed-border painter: dragonDrawBorders
+        (native-support.ts) draws dashes and gaps of 3x width from a corner instead of Chrome dash layout (styled_stroke_data.cc, box_border_painter.cc), the T075 B1 port on p6a-promote. Host gap: no host
+        lane compares Dragon border paint pixels with Chrome; this is closed inside T075.'
+      changed_files: []
+      commands:
+        - cmd: probe of native programs for css-wide-keywords
+          status: pass
   - id: T144
     type: worker
     assignee: Worker
