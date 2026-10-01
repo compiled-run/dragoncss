@@ -3477,6 +3477,10 @@ tasks:
     objective: 'GRID G1a, three stacked PRs: grid-g1a (#32) -> grid-g1a-engine -> grid-g1a-fixtures (notes/T-grid-g1a.md, notes/T098-grid-flt-wm-spec.md). Catch up with master, regenerate, device step,
       land in order.'
     receipt: null
+    constraints:
+      - '2026-09-30: four branches, all host-verified and pending their device runs: grid-g1a 17e4dbd0e (calc percentage gaps on grid; refused elsewhere), grid-g1a-engine 95798708e, grid-g1a-engine-values
+        16e508ddc (percentage-length audit, 6 Chrome probes), grid-g1a-fixtures bff56c0e6. At landing, fixtures adds a calc-percentage grid-gap parity case so the support row is proven, then runs the G1b
+        device step.'
   - id: T122
     type: worker
     assignee: Worker
