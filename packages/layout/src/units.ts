@@ -152,8 +152,8 @@ export function floorToWholePx(a: LU): LU {
 }
 
 /**
- * Blink MinimumValueForLength / ValueForLength for kPercent (length_functions.cc):
- * LayoutUnit(static_cast<float>(maximum_value * length.Percent() / 100.0f)), where LayoutUnit * float yields a float.
+ * A percentage of a LayoutUnit base as Chrome resolves it (observed; Chrome's code is in length_functions.cc): the base as a float
+ * times the float percent, divided by 100 in float, then snapped to a LayoutUnit. Pinned by units, dpr-rules and calc tests.
  */
 export function percentOf(base: LU, percent: number): LU {
   const product = Math.fround(toFloat(base) * Math.fround(percent));
@@ -208,8 +208,9 @@ export function cachedRangeWidth(startAdvances: number, endAdvances: number, ins
 }
 
 /**
- * R3: a font-relative line-height number, stored by Blink as a percent Length and resolved with MinimumValueForLength against
- * ComputedFontSizeAsFixed, which is LayoutUnit::FromFloatRound(ComputedSize()) (computed_style.cc 2568-2585, computed_style.h 893-895).
+ * R3: a font-relative line-height number, as Chrome resolves it (observed; Chrome does this in computed_style.cc 2568-2585 and
+ * computed_style.h 893-895): the percentage (factor * 100) of the font size rounded to the nearest LayoutUnit. Pinned by
+ * dpr-rules.test.ts.
  */
 export function lineHeightFromNumber(fontSizePx: number, factor: number): LU {
   return percentOf(fromFloatRound(fontSizePx), Math.fround(factor * 100));
@@ -328,7 +329,7 @@ export function roundCoreTextMetricToWholePx(units: number, unitsPerEm: number, 
 // (CalculationExpressionNode::Evaluate). calc.ts and environment.ts compose these primitives and do no arithmetic of their own.
 
 const FLOAT_MAX = 3.4028234663852886e38;
-/** Blink kMaxValueForCssLength and kMinValueForCssLength (css_primitive_value.cc): INT_MAX / 64 - 2 and INT_MIN / 64 + 2. */
+/** The largest and smallest CSS lengths Chrome keeps, INT_MAX / 64 - 2 and INT_MIN / 64 + 2 (named in Chrome's css_primitive_value.cc). */
 const CSS_LENGTH_MAX = 33554429;
 const CSS_LENGTH_MIN = -33554430;
 
@@ -366,7 +367,7 @@ export function pixelsAndPercentAt(pixels: number, percent: number, maxValue: nu
   return Math.fround(pixels + Math.fround(Math.fround(percent / 100) * maxValue));
 }
 
-/** Planted fault calcPercentPlainOrder: the plain-percent order of length_functions.cc, float(max * percent / 100.0f). */
+/** Planted fault calcPercentPlainOrder: the plain-percent float order Chrome uses (length_functions.cc), (max * percent) / 100. */
 export function pixelsAndPercentPlainOrder(pixels: number, percent: number, maxValue: number): number {
   return Math.fround(pixels + Math.fround(Math.fround(maxValue * Math.fround(percent)) / 100));
 }

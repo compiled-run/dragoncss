@@ -24,6 +24,7 @@ element, selector and at-rule the screen uses to its Dragon status, its implemen
 | `tools/css-inventory.ts` | Lists every declaration (with its span, rule and at-rule) and every feature the stylesheet uses, with use counts. |
 | `tools/lane-manifest.ts` | The north-star device lane's case manifest: the platform matrix and the derived case list. |
 | `tools/lane-states.ts` | The DOM class and text edits that turn one free state into another, diffed from the two state snapshots. |
+| `tools/font-map.ts` | The north star's font map (Lato, and `sans-serif` as "Dragon Sans"), shared by the Dragon check and the Chrome reference. |
 | `tools/cover-png.ts` | The dependency-free generator of the 1280x720 PNG cover stand-ins. |
 | `tools/capture-chrome.ts` | Renders the Chrome reference of the lane (`pnpm run north-star:capture`). |
 | `tools/check.ts` | Runs the Dragon check (`pnpm run north-star:check`). |
@@ -41,9 +42,14 @@ would write Vite caches into Markless. Line breaks in `snapshot.html` fall insid
 What was stripped or changed:
 
 - **The YouTube iframe.** The demo's `youtube-controller.ts` loads the IFrame API and swaps `.youtube-player-target` for an
-  `<iframe>`. The snapshot keeps `.youtube-player-target` empty as the **video placeholder**. Its box is exactly the iframe's
-  box: `.youtube-player-target` and `.youtube-player iframe` share one rule (`display: block; height: 100%; width: 100%`). It
-  fills the 16:9 `.mini-video-shell` inside its 1px border: 358x200.5 CSS px at 390 wide.
+  `<iframe>`. `snapshot.html` keeps `.youtube-player-target` empty as the **video placeholder**. `withVideoIframe` (in
+  `tools/snapshot.ts`) gives the DOM after the API has run, which the Chrome reference captures and the tree models: the
+  placeholder becomes `<iframe class="youtube-player-target" src="…/embed/DwTzcZxyUUg?…" data-dragon-id="video-placeholder">`,
+  the web-view slot that Dragon sizes. Its box is the placeholder's box, because `.youtube-player-target` and
+  `.youtube-player iframe` share one rule (`display: block; height: 100%; width: 100%`). It fills the 16:9
+  `.mini-video-shell` inside its 1px border: 358x200.5 CSS px at 390 wide. The embed URL is never loaded: Chrome is served
+  `EMBED_STAND_IN`, an empty HTML document with the slot's dark color-scheme, so its canvas is transparent (labelled a
+  stand-in in the pixel manifest). Native lane builds load `about:blank`.
 - **All scripts.** That covers the controller, the router scripts, the hydration and the `onClick` handlers. The `attach`,
   `onClick` and `onToggleLibrary` props render no attributes.
 - **The data attributes the controller reads are kept as SSR renders them:** `data-video-id`, `data-color-start` and
@@ -54,7 +60,9 @@ What was stripped or changed:
   snapshot is visually identical without them.
 - **Cover images.** They keep their real `https://i.ytimg.com/.../maxresdefault.jpg` URLs. Captures serve a deterministic
   1280x720 PNG stand-in in the track's two colours (`covers/<videoId>.png`, from `tools/cover-png.ts`), which has the
-  thumbnail's intrinsic size and aspect ratio. YouTube thumbnails are not committed.
+  thumbnail's intrinsic size and aspect ratio. YouTube thumbnails are not committed. Each stand-in has nine flat marker
+  squares where the image-flat sample grid lands under `object-fit: contain` and `cover`. Each square is 16 source px wider on
+  every side than the largest resampling support the reference draws at.
 
 ### Screen states
 
@@ -143,11 +151,16 @@ and 915 x 2.625 = 2401.875 rasterizes to 2402. The rule is checked on every comm
 **Font key and staleness.** The font key is the sha256 of the sorted, distinct platform fonts that Chrome rendered text with
 (family, PostScript name, custom or not).
 
-- `font-family: 'Lato', sans-serif` names a font the demo never loads, so Chrome uses the host's `sans-serif`. On the darwin
-  capture host that is Helvetica, with LucidaGrande and ZapfDingbatsITC as fallbacks for the symbols.
+- The fonts are the stated reference of the north star's font map (`tools/font-map.ts`, shared with the Dragon check;
+  notes/T033 §1.3). The pinned faces are injected as `@font-face` rules from the vendored bytes: Lato 2.015 Regular and Bold,
+  and "Dragon Sans", the five static Inter 4.1 faces. Every unquoted `sans-serif` is replaced by `"Dragon Sans"` in Chrome's
+  CSSOM. The manifest's `fontReference` records the map, each face's sha256 and the rewrites.
+- Text renders in Lato. ▶ and ♪ are not in Lato, so they fall back to Inter-Regular. ❚ (U+275A) is in neither face, so
+  Chrome takes the host's ZapfDingbatsITC. That is the one host font in the key, and symbol fallback is TXT1d's job.
 - A native lane build whose font key, or whose cover stand-in sha256, differs from this manifest is comparing against a
   **stale** reference. A stale reference counts as a failure, never a pass.
-- The key changes when TXT1-C pins the `sans-serif` face and the reference is re-captured with it.
+- The key changes when the font map, its face bytes or the fallback of a used character changes, and the reference is
+  re-captured.
 
 ### Test
 
@@ -158,11 +171,15 @@ and 915 x 2.625 = 2401.875 rasterizes to 2402. The rule is checked on every comm
 - every sha256, PNG size and dump identity;
 - the line-offset partition;
 - the font key;
-- the cover PNGs regenerate byte-identically and decode to the generator's pixels.
+- the font map equals `tools/font-map.ts`, and the face sha256s equal the vendored files;
+- text renders only in the pinned faces, apart from the host face for ❚;
+- the video slot is the iframe at the placeholder box, with its labelled embed stand-in;
+- the cover PNGs regenerate byte-identically and decode to the generator's pixels;
+- the marker patches are flat, and they are wider than the support at the smallest drawn cover scale.
 
 ### Size
 
-The reference is about 27.7 MB: 100 PNGs plus dumps, and 0.16 MB of covers.
+The reference is about 27.8 MB: 27.63 MB of PNGs and dumps for 100 captures, and 0.17 MB of covers.
 
 ## Dragon check (`pnpm run north-star:check`)
 

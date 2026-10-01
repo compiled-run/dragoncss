@@ -112,18 +112,18 @@
   }
  },
  "summary": {
-  "diagnostics": 371,
-  "errors": 370,
+  "diagnostics": 373,
+  "errors": 372,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [android]": 33,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 33,
    "DRAGON_UNPROVEN_CONTEXT [web]": 35,
-   "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
+   "DRAGON_UNSUPPORTED_ATTRIBUTE": 23,
    "DRAGON_UNSUPPORTED_AT_RULE": 1,
    "DRAGON_UNSUPPORTED_AT_RULE [android]": 2,
    "DRAGON_UNSUPPORTED_AT_RULE [ios]": 2,
-   "DRAGON_UNSUPPORTED_ELEMENT": 10,
+   "DRAGON_UNSUPPORTED_ELEMENT": 11,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
    "DRAGON_UNSUPPORTED_PROPERTY": 67,
@@ -137,9 +137,9 @@
    "web": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 35,
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 23,
      "DRAGON_UNSUPPORTED_AT_RULE": 1,
-     "DRAGON_UNSUPPORTED_ELEMENT": 10,
+     "DRAGON_UNSUPPORTED_ELEMENT": 11,
      "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 30
@@ -151,9 +151,9 @@
    "ios": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 33,
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 23,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
-     "DRAGON_UNSUPPORTED_ELEMENT": 10,
+     "DRAGON_UNSUPPORTED_ELEMENT": 11,
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
@@ -166,9 +166,9 @@
    "android": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 33,
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 22,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 23,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
-     "DRAGON_UNSUPPORTED_ELEMENT": 10,
+     "DRAGON_UNSUPPORTED_ELEMENT": 11,
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 67,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
@@ -186,7 +186,7 @@
   "supportedAndroid": 165,
   "supportPercent": 56.7,
   "elements": 62,
-  "supportedElements": 46,
+  "supportedElements": 45,
   "tags": {
    "html": {
     "count": 1,
@@ -197,7 +197,7 @@
     "supported": true
    },
    "div": {
-    "count": 16,
+    "count": 15,
     "supported": true
    },
    "nav": {
@@ -210,6 +210,10 @@
    },
    "button": {
     "count": 10,
+    "supported": false
+   },
+   "iframe": {
+    "count": 1,
     "supported": false
    },
    "span": {
@@ -263,8 +267,8 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 156,
-   "B-unwrapped": 153,
+   "A-authored": 158,
+   "B-unwrapped": 155,
    "C-context": 220
   }
  },
@@ -7020,6 +7024,23 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@YouTubePlayer/video-placeholder|attribute src on video-placeholder is not supported: its rendering effect belongs to the replaced-element package REPL",
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "location": {
+    "kind": "element",
+    "id": "YouTubePlayer/video-placeholder",
+    "tag": "iframe"
+   },
+   "message": "attribute src on video-placeholder is not supported: its rendering effect belongs to the replaced-element package REPL",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@App/youtube-sync-paused|<button> youtube-sync-paused is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
@@ -7183,6 +7204,23 @@
     "tag": "img"
    },
    "message": "<img> record-cover is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@YouTubePlayer/video-placeholder|<iframe> video-placeholder is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "location": {
+    "kind": "element",
+    "id": "YouTubePlayer/video-placeholder",
+    "tag": "iframe"
+   },
+   "message": "<iframe> video-placeholder is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label)",
    "viaRelated": false,
    "passes": [
     "A-authored",

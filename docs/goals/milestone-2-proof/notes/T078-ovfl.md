@@ -41,3 +41,11 @@ Spec: notes/T046-paint-spec.md §5.8 (binding), amended by T078J. The branch is 
 **Landing.** Phase A is host-done only and lands together with Phase B; the C10/C11 device steps move to Phase B. A follow-up, OVFL-c, adds single-axis clip natively.
 
 The full worker_package is in the T078J receipt and on the board under T078's constraints.
+
+## Phase A host-done (2026-10-01)
+
+ovfl-a a2cf2d768 (f7c4b432d engine and translator, 3edad012d compiler, fixtures and metrics, a2cf2d768 regenerated outputs). 18 scroll cases equal Chrome's boxes and scroll metrics at DPR 1, 2, 3 and 2.625. The plants gutterReserved, overflowIgnoresPadding and propagationFromBody are caught. Swift and Kotlin engine-overflow 3000/3000. North star: iOS and web overflow diagnostics go to 0, and both-target support goes 165 -> 168. Tailwind web and iOS +9.
+
+The PM accepted two files outside the T078J list: targets.ts (two lines declaring the engine-overflow suite) and .macroscope/ignore.md (the expected-scroll generated-output entry, per AGENTS step 3).
+
+Phase B waits for EMS, PNT1 and SELD-R1 on master. native:encoders shows 13 invalid inline-* dumps, which are the INL1a regression being fixed in that lane, not OVFL.
