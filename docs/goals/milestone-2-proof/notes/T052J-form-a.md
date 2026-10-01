@@ -112,3 +112,21 @@ The A2 worker stopped on two files outside allowed_files. Both are allowed, narr
 - **scripts/capture-ua-defaults.ts:** the drop-unmodelled plant is retargeted from button appearance to cursor, because appearance is now modelled. A guard makes the plant fail loudly when its target is not an unmodelled row.
 
 Finding: Chrome 145 drops `appearance: base`, although webref's grammar allows it, so gen-css-grammar.ts narrows the grammar to what Chrome parses.
+
+## A1 host-done (2026-10-01)
+
+**Branch:** form-a, head c69f2f1d9.
+
+**Checks:**
+- layout() matches every FORM-0 Chrome box at 0 LU: 348/348 range cases and 1296/1296 button cases.
+- Both plants are caught: dropping the rtl mirror gives 145 misses, dropping the safe clamp gives 200.
+- No committed output changes outside packages/layout/generated. The engine digests are unchanged.
+- The north-star counts are unchanged.
+
+**PM rulings:**
+- **text.test.ts accepted.** The one-line `find()` type narrowing in cce7e5e40 sits outside A1's allowed_files. It is accepted as the pinned-test retarget REPL-a also made.
+- **The range carries `defaultInlineSize`.** Zoom is lost before layout, so the compiler writes 129×zoom. A4 takes the number from FORM-0's data.
+- **Out-of-flow controls stay refused.** Absolutely positioned controls, and absolutely positioned boxes inside them, are refused with the code control-out-of-flow.
+- **Amendment A3/A4-1: block.ts.** Blink sizes block-level form controls to their content (block_layout_algorithm.cc:3341-3352). A3 and A4 may add a block.ts hunk that does this for control boxes only. Their fixtures must confirm it against Chrome first, and the vectors must stay byte-identical.
+
+**Next:** A3 stacks on A1 with A2 merged in, once A2 is host-done.
