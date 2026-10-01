@@ -243,3 +243,13 @@ Code skip-ink-intercepts (TDEC-d).
 - txt-w2 is rewritten or force-pushed. Rebase only when the PM says so.
 - A file outside allowed_files is needed, or a plant is not caught.
 - Verification fails twice (test timeouts under load that pass on rerun excepted).
+
+## PM amendment T148J-1 (2026-10-01)
+
+**TDEC-d is off the checkpoint-3 path.** Both north-star link strings pass the skip-ink bounds proof at DPR 1, 2, 3 and 2.625. 'Google Privacy' has the smallest clearance, 1.22 px at DPR 1. Chrome also clips neither underline (the auto and none renders are identical).
+
+**Rulings:**
+1. **One resolve.ts hunk is allowed.** It passes the element to a hook, so a:any-link computes color #0000ee and the underline. An identity test covers elements without href.
+2. **Decorated cases go in the web-only lane** (fixture-groups/fonts.ts registry), plus parity:decoration-capture.
+3. **Test-level probes replace the Ahem-auto and native "rejects".** Each probe checks that native is refused and web is ready.
+4. **decoration-capture lays out a copy with decorations stripped.** A Chrome check must show that each decorated fixture's frames and lines equal its stripped copy's. If they don't, stop.
