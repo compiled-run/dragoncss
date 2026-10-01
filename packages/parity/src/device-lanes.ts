@@ -13,7 +13,8 @@ import type { ExpectedDump } from 'dragon';
 import { expectedDigest, expectedDump } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { GATE_CHANNEL_DELTA } from './compare.ts';
-import type { DeviceHandle, DeviceRecord } from './device-run.ts';
+import type { DeviceHandle, DeviceRecord, DeviceSpec } from './device-run.ts';
+import { runDevicesInChildren } from './device-jobs.ts';
 import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, recordProblems, release, runApp, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
 import { deviceEvidence } from './device-evidence.ts';
 import { runDeviceVectors } from './device-vectors.ts';
@@ -353,73 +354,151 @@ export function failuresByKind(fs: readonly LaneFailure[]): Record<string, numbe
 
 export type RunLog = (line: string) => void;
 
+/** What one device of a target's matrix gives the run: its DPR set, capture-trust rows and vectors lane, or why it was blocked. */
+export type DeviceOutcome = {
+  readonly device: string;
+  readonly set: DeviceSet | null;
+  readonly trust: { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] } | null;
+  readonly vectors: (HostRun & { readonly device: string }) | null;
+  readonly blocked: string | null;
+};
+
 /**
- * Runs a target on every device of the matrix, one after another: build (reused when the sources are unchanged), boot, one batch
+ * Runs a target on every device of the matrix: build (reused when the sources are unchanged), then per device boot, one batch
  * launch of every case with its points, the checks, the held capture-trust launch, and on the vectors device the vectors lane.
- * A device that fails to boot twice, or cannot hold the root, is a tooling fault: its DPR is recorded as not run, never as a pass.
+ * With jobs above 1 the devices run at once, each device's work in its own process and its boot and stop here (device-jobs.ts),
+ * so every boot of the run is admitted by the one memory budget (device-run.ts); the outcomes are merged in matrix order,
+ * so the run is the one a sequential run makes. A device that fails to boot twice, or cannot hold the root, is a tooling fault:
+ * its DPR is recorded as not run, never as a pass.
  */
-export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, log: RunLog, opts: { readonly vectors?: boolean } = {}): Promise<DeviceRun> {
+export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, log: RunLog, opts: { readonly vectors?: boolean; readonly jobs?: number } = {}): Promise<DeviceRun> {
   // Stamped before any device work: the code, reference data and app sources this run is made and judged with.
   const evidence = deviceEvidence(t.target);
   const cases = nativeCases();
+  const b0 = Date.now();
   const build = t.target === 'ios' ? buildIos({ reuse: true }) : buildAndroid({ reuse: true });
   for (const l of build.log) log(`${t.target} build: ${l}`);
+  log(`${t.target} build: ${((Date.now() - b0) / 1000).toFixed(0)} s`);
   if (build.cases !== cases.length) throw new Error(`${t.target}: the app holds ${build.cases} cases, layoutCases() ${cases.length}`);
+  const specs = DEVICE_MATRIX.filter((d) => d.target === t.target);
+  const vectors = opts.vectors !== false;
+  const jobs = Math.min(opts.jobs ?? 1, specs.length);
+  const outcomes =
+    jobs <= 1
+      ? await sequentially(specs, (spec) => runOneDevice(t, spec, host, build.artifact, () => cases, vectors, log))
+      : await runDevicesInChildren(t.target, specs, jobs, (spec) => ({ target: t.target, device: spec.name, artifact: build.artifact, host, vectors }), log);
+  return mergeOutcomes(outcomes, evidence);
+}
+
+async function sequentially<A, B>(xs: readonly A[], f: (x: A) => Promise<B>): Promise<B[]> {
+  const out: B[] = [];
+  for (const x of xs) out.push(await f(x));
+  return out;
+}
+
+/** The target's run from its devices' outcomes, in matrix order. */
+export function mergeOutcomes(outcomes: readonly DeviceOutcome[], evidence: DeviceRun['evidence']): DeviceRun {
   const sets: DeviceSet[] = [];
-  const trust: { device: string; dpr: number; rows: TrustRow[] }[] = [];
-  let vectors: (HostRun & { device: string }) | null = null;
+  const trust: { device: string; dpr: number; rows: readonly TrustRow[] }[] = [];
   const blocked: string[] = [];
-  const backend = BACKEND_OF[t.target];
-  for (const spec of DEVICE_MATRIX.filter((d) => d.target === t.target)) {
-    let h: DeviceHandle;
-    try {
-      h = await boot(spec);
-    } catch (e) {
-      blocked.push(e instanceof Error ? e.message : String(e));
-      log(`${spec.name}: ${blocked[blocked.length - 1]}`);
-      continue;
-    }
-    try {
-      const prof = deviceProfile(h);
-      const dpr = prof.profileScale;
-      if (!t.dprs.includes(dpr)) throw new Error(`${spec.name}: profile scale ${dpr} is not a ${t.target} device DPR`);
-      const runFile = runFileText(cases.map((n) => ({ id: n.case.id, points: casePoints(n.programs[backend], n.case.environment.viewport, dpr) })), false);
-      const outDir = join(nativeOut(t.target), 'lanes', spec.name);
-      const t0 = Date.now();
-      const r = await runApp(h, build.artifact, { runFile, caseCount: cases.length, outDir });
-      const rec = deviceRecord(prof, r.record);
-      const root = rasterSize(cases[0]?.case.environment.viewport ?? { width: 0, height: 0 }, dpr);
-      const recProblems = recordProblems(rec, root);
-      log(`${spec.name}: ${rec.os}, build ${rec.build}; scale ${rec.profileScale} (profile) / ${rec.appScale} (app); window ${rec.windowPx.join('x')} px, stage ${rec.stagePx.join('x')} px at ${rec.rootOriginPx.join(',')}; text scale ${rec.textScale}; ${dumpedIds(outDir, dpr).length} dumps in ${((Date.now() - t0) / 1000).toFixed(0)} s${r.error === null ? '' : `; host error: ${r.error}`}`);
-      if (recProblems.some((p) => p.includes('device fit'))) {
-        blocked.push(recProblems.join('; '));
-        continue;
-      }
-      const extra: LaneFailure[] = [...recProblems, ...(r.error === null ? [] : [`the host did not finish: ${r.error}`])].flatMap((p) => DEVICE_CHECK_LANES.map((lane): LaneFailure => ({ lane, case: '-', dpr, node: null, kind: 'device-record', detail: p })));
-      const set = evaluateSet(t.target, dpr, outDir, rec, cases, extra);
-      sets.push(set);
-      log(`${spec.name}: checked ${set.dumps}/${set.cases} dumps; compared a ${set.compared.a}, b ${set.compared.b}, c ${set.compared.c}, d ${set.compared.d}, breaks ${set.compared.breaks}; failures ${JSON.stringify(failuresByKind(set.failures))}`);
-      const trustDir = join(nativeOut(t.target), 'lanes', `${spec.name}-trust`);
-      const trustCases: TrustCase[] = TRUST_CASES.map((id) => {
-        const tc = cases.find((c) => c.case.id === id);
-        if (tc === undefined) throw new Error(`no trust case ${id}`);
-        return { id, points: casePoints(tc.programs[backend], tc.case.environment.viewport, dpr), size: rasterSize(tc.case.environment.viewport, dpr) };
-      });
-      const tr = await runApp(h, build.artifact, { runFile: runFileText(trustCases, true), caseCount: trustCases.length, outDir: trustDir, onHold: async (_id, shot) => void (await shot()) });
-      const rows = captureTrust(trustDir, trustCases, dpr, tr.record.rootOriginPx);
-      trust.push({ device: spec.name, dpr, rows });
-      // Trust mismatches are device-pixels failures of the set, so the failure lists and counts hold them.
-      const trustFailures = trustFailuresOf(rows, dpr, spec.name, tr.error);
-      if (trustFailures.length > 0) sets[sets.length - 1] = { ...set, failures: [...set.failures, ...trustFailures] };
-      log(`${spec.name}: capture trust ${rows.map((x) => `${x.case} ${x.points - x.mismatches.length}/${x.points}`).join(', ')}`);
-      if (opts.vectors !== false && spec.name === VECTOR_DEVICES[t.target]) {
-        const v0 = Date.now();
-        vectors = await runDeviceVectors(h, t, host);
-        log(`${spec.name}: layout-vectors-device ${vectors.state}${vectors.reason === null ? '' : ` (${vectors.reason})`}; ${vectors.suites.map((s) => `${s.corpus}/${s.suite} ${s.pass ?? '-'}/${s.total ?? '-'}`).join(', ')}; digests ${vectors.digests.p1} ${vectors.digests.extended}; ${((Date.now() - v0) / 1000).toFixed(0)} s`);
-      }
-    } finally {
-      await release(h);
+  let vectors: (HostRun & { device: string }) | null = null;
+  for (const o of outcomes) {
+    if (o.blocked !== null) blocked.push(o.blocked);
+    if (o.set !== null) sets.push(o.set);
+    if (o.trust !== null) trust.push(o.trust);
+    if (o.vectors !== null) {
+      if (vectors !== null) throw new Error(`two devices ran the vectors lane (${vectors.device}, ${o.vectors.device})`);
+      vectors = o.vectors;
     }
   }
   return { vectors, sets, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
+}
+
+/** Where a device comes from: booted and stopped by this process, or handed by the parent that boots and stops it (release null). */
+export type DeviceSource = { readonly boot: () => Promise<DeviceHandle>; readonly release: ((h: DeviceHandle) => Promise<string | null>) | null };
+
+/**
+ * A device's outcome given what its stop reported (PR #42 finding 4149997382): a device that may still be running is a tooling fault,
+ * so its results are not used: the outcome is blocked, naming the problem, never a pass.
+ */
+export function afterRelease(o: DeviceOutcome, problem: string | null): DeviceOutcome {
+  if (problem === null) return o;
+  return { device: o.device, set: null, trust: null, vectors: null, blocked: `${o.device}: the device could not be stopped after its run (tooling fault), so its results are not used: ${problem}${o.blocked === null ? '' : `; ${o.blocked}`}` };
+}
+
+/** One device of the matrix: boot, the batch launch and its checks, the capture-trust launch and, on the vectors device, the vectors lane. */
+export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: HostRun | null, artifact: string, casesOf: () => readonly NativeCase[], runVectors: boolean, log: RunLog, source: DeviceSource = { boot: () => boot(spec), release: (h) => release(h, log) }): Promise<DeviceOutcome> {
+  const backend = BACKEND_OF[t.target];
+  const none = { device: spec.name, set: null, trust: null, vectors: null };
+  let h: DeviceHandle;
+  const b0 = Date.now();
+  // The boot runs while the cases are computed (a device process computes them itself).
+  const booting = source.boot();
+  let cases: readonly NativeCase[];
+  try {
+    cases = casesOf();
+  } catch (e) {
+    const stop = source.release;
+    await booting.then((h) => (stop === null ? undefined : stop(h)), () => undefined);
+    throw e;
+  }
+  try {
+    h = await booting;
+  } catch (e) {
+    const blocked = e instanceof Error ? e.message : String(e);
+    log(`${spec.name}: ${blocked}`);
+    return { ...none, blocked };
+  }
+  log(`${spec.name}: booted (the cases computed meanwhile) in ${((Date.now() - b0) / 1000).toFixed(0)} s`);
+  const work = async (): Promise<DeviceOutcome> => {
+    const prof = deviceProfile(h);
+    const dpr = prof.profileScale;
+    if (!t.dprs.includes(dpr)) throw new Error(`${spec.name}: profile scale ${dpr} is not a ${t.target} device DPR`);
+    const runFile = runFileText(cases.map((n) => ({ id: n.case.id, points: casePoints(n.programs[backend], n.case.environment.viewport, dpr) })), false);
+    const outDir = join(nativeOut(t.target), 'lanes', spec.name);
+    const t0 = Date.now();
+    const r = await runApp(h, artifact, { runFile, caseCount: cases.length, outDir });
+    const rec = deviceRecord(prof, r.record);
+    const root = rasterSize(cases[0]?.case.environment.viewport ?? { width: 0, height: 0 }, dpr);
+    const recProblems = recordProblems(rec, root);
+    log(`${spec.name}: ${rec.os}, build ${rec.build}; scale ${rec.profileScale} (profile) / ${rec.appScale} (app); window ${rec.windowPx.join('x')} px, stage ${rec.stagePx.join('x')} px at ${rec.rootOriginPx.join(',')}; text scale ${rec.textScale}; ${dumpedIds(outDir, dpr).length} dumps in ${((Date.now() - t0) / 1000).toFixed(0)} s${r.error === null ? '' : `; host error: ${r.error}`}`);
+    if (recProblems.some((p) => p.includes('device fit'))) return { ...none, blocked: recProblems.join('; ') };
+    const extra: LaneFailure[] = [...recProblems, ...(r.error === null ? [] : [`the host did not finish: ${r.error}`])].flatMap((p) => DEVICE_CHECK_LANES.map((lane): LaneFailure => ({ lane, case: '-', dpr, node: null, kind: 'device-record', detail: p })));
+    const e0 = Date.now();
+    const set = evaluateSet(t.target, dpr, outDir, rec, cases, extra);
+    log(`${spec.name}: checked ${set.dumps}/${set.cases} dumps in ${((Date.now() - e0) / 1000).toFixed(0)} s; compared a ${set.compared.a}, b ${set.compared.b}, c ${set.compared.c}, d ${set.compared.d}, breaks ${set.compared.breaks}; failures ${JSON.stringify(failuresByKind(set.failures))}`);
+    const trustDir = join(nativeOut(t.target), 'lanes', `${spec.name}-trust`);
+    const trustCases: TrustCase[] = TRUST_CASES.map((id) => {
+      const tc = cases.find((c) => c.case.id === id);
+      if (tc === undefined) throw new Error(`no trust case ${id}`);
+      return { id, points: casePoints(tc.programs[backend], tc.case.environment.viewport, dpr), size: rasterSize(tc.case.environment.viewport, dpr) };
+    });
+    const tr0 = Date.now();
+    const tr = await runApp(h, artifact, { runFile: runFileText(trustCases, true), caseCount: trustCases.length, outDir: trustDir, onHold: async (_id, shot) => void (await shot()) });
+    const rows = captureTrust(trustDir, trustCases, dpr, tr.record.rootOriginPx);
+    // Trust mismatches are device-pixels failures of the set, so the failure lists and counts hold them.
+    const trustFailures = trustFailuresOf(rows, dpr, spec.name, tr.error);
+    log(`${spec.name}: capture trust ${rows.map((x) => `${x.case} ${x.points - x.mismatches.length}/${x.points}`).join(', ')} in ${((Date.now() - tr0) / 1000).toFixed(0)} s`);
+    let vectors: (HostRun & { device: string }) | null = null;
+    if (runVectors && spec.name === VECTOR_DEVICES[t.target]) {
+      const v0 = Date.now();
+      vectors = await runDeviceVectors(h, t, host);
+      log(`${spec.name}: layout-vectors-device ${vectors.state}${vectors.reason === null ? '' : ` (${vectors.reason})`}; ${vectors.suites.map((s) => `${s.corpus}/${s.suite} ${s.pass ?? '-'}/${s.total ?? '-'}`).join(', ')}; digests ${vectors.digests.p1} ${vectors.digests.extended}; ${((Date.now() - v0) / 1000).toFixed(0)} s`);
+    }
+    return { device: spec.name, set: trustFailures.length > 0 ? { ...set, failures: [...set.failures, ...trustFailures] } : set, trust: { device: spec.name, dpr, rows }, vectors, blocked: null };
+  };
+  const stop = source.release;
+  if (stop === null) return work();
+  let outcome: DeviceOutcome;
+  try {
+    outcome = await work();
+  } catch (e) {
+    // The run fails with its own error; a stop that also failed is logged by release and keeps the device's memory reserved.
+    await stop(h);
+    throw e;
+  }
+  const r0 = Date.now();
+  const problem = await stop(h);
+  log(`${spec.name}: released in ${((Date.now() - r0) / 1000).toFixed(0)} s`);
+  return afterRelease(outcome, problem);
 }
