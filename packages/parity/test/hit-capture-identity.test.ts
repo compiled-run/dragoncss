@@ -22,6 +22,7 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(manifest.base).toMatch(/^[0-9a-f]{40}$/);
     const files = Object.keys(manifest.files);
     expect(files.length).toBeGreaterThan(1000);
+    for (const [path, sha] of Object.entries(manifest.files)) expect([path, /^[0-9a-f]{64}$/.test(sha)]).toEqual([path, true]);
     for (const root of IDENTITY_ROOTS) expect(files.some((f) => f.startsWith(`${root}/`)), root).toBe(true);
   });
 
