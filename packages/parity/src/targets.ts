@@ -9,7 +9,9 @@ import { DUMP_FAULTS } from './native-compare.ts';
 import { repoPath } from './paths.ts';
 import { SAMPLE_RULES } from './samples.ts';
 
-export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels'] as const;
+export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels',
+  // SELD-R1b (notes/T047 §3.3 item 5): the case scripts' dumps, and the device hit test's answers.
+  'device-states', 'device-hit'] as const;
 export type LaneId = (typeof LANES)[number];
 export type NativeTarget = 'ios' | 'android';
 export const NATIVE_TARGETS: readonly NativeTarget[] = ['ios', 'android'];
@@ -94,6 +96,16 @@ export function corpusSuites(): readonly CorpusSuite[] {
   ];
 }
 
+let scripts: readonly string[] | null = null;
+/**
+ * Every case script id (state-cases.ts deriveScripts), from the layout cases alone: one per case of a tree fixture with free states,
+ * "<fixture>~script<k>" with k the case's assignment index and "-rtl" for right-to-left.
+ */
+export function stateScriptIds(): readonly string[] {
+  if (scripts === null) scripts = layoutCases().flatMap((f) => f.cases.filter((c) => f.spec.format === 'tree' && c.assignment.length > 0).map((c) => `${f.spec.id}~script${c.index}${c.environment.direction === 'rtl' ? '-rtl' : ''}`));
+  return scripts;
+}
+
 /** The declared lane: vectors lanes hold every top-level and DPR vector plus the corpora; device lanes the cases at the device DPRs. */
 export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
   const ids = layoutCaseIds();
@@ -101,6 +113,7 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
   if (lane === 'layout-vectors-host' || lane === 'layout-vectors-device') {
     return { lane, kind: 'vectors', where, sets: [{ dpr: 1, role: 'top-level', extra: null, ids }, ...DPRS.map((d) => dprSet(d, ids))], corpora: corpusSuites() };
   }
+  if (lane === 'device-states') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, stateScriptIds())), corpora: [] };
   return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, ids)), corpora: [] };
 }
 
