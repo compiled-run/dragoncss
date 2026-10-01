@@ -2134,6 +2134,7 @@ tasks:
       - 'Second Judge amendment 2026-09-30 (T058J2): resolve.ts collapseInlineContext, blockify.ts checkInlineLevel lift, three pin retargets, buildIfc+placeIfcLines deviation accepted, targets.ts engine-inline
         entry only after T125 (T058L) merges; see notes/T058-inl1a.md.'
       - 'Third Judge amendment (T058J3): rulings A-G in notes/T058-inl1a.md. Element dump lines are 0/0 on device. F (singleRunBaseline plant) and G (targets.ts) come after #42.'
+      - '2026-10-01: native:encoders fails 464/477 at inl1a-compiler b0c8fd13e (inline lines out-of-range), found by T083. It must be fixed before INL1a lands.'
   - id: T059
     type: worker
     assignee: Worker
@@ -2235,16 +2236,39 @@ tasks:
   - id: T062
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     lane: runtime
     objective: 'ANIM-a2: rt-* translated to Swift and Kotlin; after T061 and T009 B.'
     allowed_files:
       - See notes/T047-runtime-spec.md §3.2 (binding)
+      - packages/translate/harness/harness.ts
+      - packages/translate/src/generate.ts
+      - packages/parity/src/targets.ts
+      - packages/translate/test/rt-harness.test.ts
     verify:
       - See notes/T047-runtime-spec.md §3.2 verify (binding)
     stop_if:
       - See notes/T047-runtime-spec.md §3.2 stop_if (binding)
-    receipt: null
+    receipt:
+      result: done
+      harness: claude-code
+      summary: 'PR #50 merged d3de32eb0 after 2 rounds. The rt timing, easing and interpolation reference became translated engine roots; P1 rt suite of 54,588 lines is bit-exact in Swift and Kotlin and
+        on device (layout-vectors-device). The round 1 fix refuses non-finite rt harness inputs. pnpm test 3024/3024; device-failures byte-identical to master.'
+      changed_files:
+        - packages/translate/harness/harness.ts
+        - packages/translate/src/generate.ts
+        - packages/parity/src/targets.ts
+        - packages/translate/test/rt-harness.test.ts
+      commands:
+        - cmd: pnpm test 3024/3024
+          status: pass
+        - cmd: /tmp/device-lease.sh pnpm run parity:devices (p1/rt 54588/54588)
+          status: pass
+        - cmd: pnpm pr:review 50 exit 0
+          status: pass
+    constraints:
+      - '2026-10-01 host-done, pending device runs; 4 stacked PRs on master 77c641eca: ANIM-a2 (anim-a2-translate 00ccd53c8, ~35 KB), SELD-R1a (seld-r1a 7340df522, ~92 KB), SELD-R1b (seld-r1, ~138 KB after
+        split), lane wiring (seld-lanes, ~25 KB). parity:hit-report 0 mismatches over 703,666 Chrome points; p1/hit 1872/1872 Swift and Kotlin; north star Android equals iOS.'
   - id: T063
     type: worker
     assignee: Worker
@@ -2260,6 +2284,8 @@ tasks:
     receipt: null
     constraints:
       - 'Split: SELD-R1a (state runtime) is done on seld-r1 7b7e096, pending its device run and the targets.ts device-states entry after #42. SELD-R1b is T134.'
+      - '2026-10-01 host-done, pending device runs; 4 stacked PRs on master 77c641eca: ANIM-a2 (anim-a2-translate 00ccd53c8, ~35 KB), SELD-R1a (seld-r1a 7340df522, ~92 KB), SELD-R1b (seld-r1, ~138 KB after
+        split), lane wiring (seld-lanes, ~25 KB). parity:hit-report 0 mismatches over 703,666 Chrome points; p1/hit 1872/1872 Swift and Kotlin; north star Android equals iOS.'
   - id: T064
     type: worker
     assignee: Worker
@@ -2273,6 +2299,9 @@ tasks:
     stop_if:
       - See notes/T047-runtime-spec.md §3.4 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T064J (2026-10-01), notes/T047-runtime-spec.md: split into SELD-R2a (now, on seld-lanes) and SELD-R2b (T146, after PNT1 and PNT2); generated web state conditions; cursor identity test; the Chrome
+        trace decides touch semantics.'
   - id: T065
     type: worker
     assignee: Worker
@@ -2289,6 +2318,7 @@ tasks:
     constraints:
       - 'Owner request (T096): ANIM-b adds clean-room technique fixtures and the motion proof method in notes/T096-motion-research.md (derived sample times, bits/strings/frames/pixels, 12 motion plants
         each moving at least 1 device px, 60 and 120 Hz grids). Do not adopt PocketJS numerics or frame-rounded delays.'
+      - 'T064J: ANIM-b depends on SELD-R2a, and on SELD-R2b only for transformed hover.'
   - id: T066
     type: worker
     assignee: Worker
@@ -2465,6 +2495,8 @@ tasks:
         under the edge rule until SKIA-AA, radius rows caveat.'
       - '2026-09-30: T138 and T143 show that native dashed/dotted paint (dragonDrawBorders) causes css-wide-keywords, color-border-sides dotted and possibly logical-border device-pixel failures. p6a-promote
         (with T116 on top) moves up the landing queue, and must add a host check comparing the dash layout with Chrome pixels.'
+      - 'T075J (2026-10-01), notes/T046-paint-spec.md: profiles keep the #49 iOS rule; device gating lives only in NATIVE_LANES and outputs.ready (outside the digest); split into p6a-dash then p6a-promote;
+        cycle proof under the lease.'
   - id: T076
     type: worker
     assignee: Worker
@@ -2504,6 +2536,9 @@ tasks:
     stop_if:
       - See notes/T046-paint-spec.md §5.8 stop_if (binding)
     receipt: null
+    constraints:
+      - 'T078J amendment (2026-10-01), see notes/T078-ovfl.md: design A (the compiler resolves viewport propagation; propagationFromBody is a compiler fault); harness, computed-checks and native-program
+        hunks; 4 reject fixtures retargeted or removed into positives; branch ovfl-a on inl1a-compiler; Phase A lands with Phase B.'
   - id: T079
     type: worker
     assignee: Worker
@@ -2618,6 +2653,9 @@ tasks:
       - 'T140 (2026-09-30): every visible north-star text node uses Lato 400/700, which native refuses (Ahem only) until TXT1a. This is on the checkpoint-3 critical path.'
       - 'T083J amendment (2026-09-30), see notes/T083-txt1a-1.md: a TEXT_LATIN_FIXTURES registry outside FIXTURES (no FixtureSpec flag); Phase A (Ahem through HarfBuzz, byte-identical) then Phase B (real
         fonts); device coverage pinned unchanged.'
+      - '2026-10-01 host-done, pending its device run: txt1a-1a 77e6079e1 (Phase A, byte-identical), txt1a-1b 14b911f62 (engine), txt1a-1 b2ce02641 (compiler and parity). 7 text-latin cases are exact against
+        Chrome at 4 DPRs; the ShapeLine and LineBreaker ports; all plants caught. Findings: native:encoders 464/477 fails at the INL1a base (fix dispatched to the INL1a worker); 4 NotoSansJP gate cases
+        (TXT2); no reshape after a space at a break when a background is present.'
   - id: T084
     type: worker
     assignee: Worker
@@ -2635,6 +2673,7 @@ tasks:
       - 'T140 (2026-09-30): every visible north-star text node uses Lato 400/700, which native refuses (Ahem only) until TXT1a. This is on the checkpoint-3 critical path.'
       - 'T083J: absorb TEXT_LATIN_FIXTURES into FIXTURES (device-lane counts rise by the pinned registry count); add the Ahem fractional-size fixtures; switch native-host, lanes and line-breaks to the shaped
         measurer; add the text-latin replay to the declared lanes; stop if the registry is non-empty at the end.'
+      - 'T084J (2026-10-01), notes/T084-txt1a-2.md: phases C, F and R. Phase R waits for p6a-promote, seld-lanes and seld-r1a in BASE; the device step waits for the INL1a encoders fix. No Android-only code.'
   - id: T085
     type: scout
     assignee: Scout
@@ -3460,6 +3499,10 @@ tasks:
     lane: paint
     objective: 'PNT1 effects half: opacity, z-index and stacking, outline, color-scheme (notes/T046-paint-spec.md §5.2); pnt1-effects holds no work of its own. After V1 and EMS land.'
     receipt: null
+    constraints:
+      - 'Host-done 2026-10-01, pending its device run: 4 stacked branches on pnt1-shadow-v1b: pnt1-effects-v1b b9bb7aea4, pnt1-stacking-v1b 052c9d484, pnt1-outline-v1b c4386f471, pnt1-foreground-v1b b440ea037.
+        Covers color-scheme, outline (solid and double native), opacity, z-index and Appendix E stacking with background-then-foreground phases. The T138 paint-order acceptance cases match Chrome on the
+        host at every DPR. Known native gaps are recorded. tw web 2334->2394; north star web 187, ios 184.'
   - id: T116
     type: worker
     assignee: Worker
@@ -3786,6 +3829,9 @@ tasks:
     objective: 'SELD-R1b (split from T063): rt-hit.ts with the Chrome 145 inline hit rule from T063J (notes/T047-runtime-spec.md amendment), pointer-events auto and none (inherited), tap dispatch, and the
       device-states and device-hit lanes, on seld-r1. The pointer-events capture key needs the identity test. targets.ts entries after #42.'
     receipt: null
+    constraints:
+      - '2026-10-01 host-done, pending device runs; 4 stacked PRs on master 77c641eca: ANIM-a2 (anim-a2-translate 00ccd53c8, ~35 KB), SELD-R1a (seld-r1a 7340df522, ~92 KB), SELD-R1b (seld-r1, ~138 KB after
+        split), lane wiring (seld-lanes, ~25 KB). parity:hit-report 0 mismatches over 703,666 Chrome points; p1/hit 1872/1872 Swift and Kotlin; north star Android equals iOS.'
   - id: T136
     type: worker
     assignee: Worker
@@ -3953,6 +3999,21 @@ tasks:
     status: queued
     lane: paint
     objective: 'SNAP-1PX: position-absolute-out-of-flow(-rtl) i2 bottom 1px border at DPR 3: native paints 64 coverage where Chrome is solid (iOS 4, Android 4). Snap border edges as Blink does.'
+    receipt: null
+  - id: T145
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'OVFL-c: single-axis overflow: clip natively (clip beside visible on one axis), refused by T078 Phase A as DRAGON_UNSUPPORTED_VALUE naming OVFL-c. Proven against Chrome. After T078.'
+    receipt: null
+  - id: T146
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'SELD-R2b: hit testing through transforms and stacking (PNT1/PNT2 paint facts), the transformed device-hit fixtures, the hitIgnoresTransform plant, and lifting the paint-dependent hover refusals.
+      After PNT1, PNT2 and SELD-R2a land.'
     receipt: null
   - id: T999
     type: judge
