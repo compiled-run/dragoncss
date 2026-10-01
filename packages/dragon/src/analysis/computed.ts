@@ -202,6 +202,28 @@ export function computeJustifyItems(props: Map<Longhand, ResolvedValue>, parent:
   props.set('justify-items', { ...v, value: legacy ? inherited : { kind: 'keyword', value: 'normal' } });
 }
 
+/**
+ * Blink LayoutTheme::AdjustStyle (layout_theme.cc:274-289, Chrome 145.0.7632.6): any element whose appearance is not none has an
+ * inline or table display made inline-block, and a table or list-item display made block, keyed by the display's keywords in sorted
+ * order. Measured on every display value with appearance auto and none (packages/parity/fixtures/controls-button-display*.html).
+ */
+const APPEARANCE_DISPLAY: ReadonlyMap<string, string> = new Map([
+  ['inline', 'inline-block'], ['flow inline', 'inline-block'], ['inline-table', 'inline-block'], ['inline table', 'inline-block'],
+  ['math', 'inline-block'], ['inline math', 'inline-block'],
+  ['table-row-group', 'inline-block'], ['table-header-group', 'inline-block'], ['table-footer-group', 'inline-block'], ['table-row', 'inline-block'],
+  ['table-column-group', 'inline-block'], ['table-column', 'inline-block'], ['table-cell', 'inline-block'], ['table-caption', 'inline-block'],
+  ['table', 'block'], ['block table', 'block'],
+  ['list-item', 'block'], ['block list-item', 'block'], ['flow list-item', 'block'], ['block flow list-item', 'block'],
+]);
+
+/** The display after the appearance adjustment above, or the display itself when appearance is none or the display is not adjusted. */
+export function appearanceDisplay(display: ResolvedValue, appearance: ResolvedValue): ResolvedValue {
+  if (appearance.value.kind === 'keyword' && appearance.value.value === 'none') return display;
+  const keys = display.value.kind === 'keyword' ? display.value.value : display.value.kind === 'other' && display.value.type === 'list' ? display.value.text.trim().split(/\s+/).sort().join(' ') : null;
+  const to = keys === null ? undefined : APPEARANCE_DISPLAY.get(keys);
+  return to === undefined ? display : { ...display, value: { kind: 'keyword', value: to } };
+}
+
 // css-display-3 §2.7: the root element's display is blockified (Chrome reports block for html even under display: initial).
 export function blockifyRoot(v: ResolvedValue): ResolvedValue {
   return v.value.kind === 'keyword' && v.value.value === 'inline' ? { ...v, value: { kind: 'keyword', value: 'block' } } : v;

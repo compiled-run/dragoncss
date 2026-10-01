@@ -1,5 +1,6 @@
 // Stage 2 of docs/api.md §4.1 for ios: resolved CSS to Dragon's layout engine input, with every field set explicitly.
 import type {
+  ControlBox,
   AlignContent,
   AspectRatioValue,
   AlignItems,
@@ -40,6 +41,7 @@ import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath, V1_MATH_FUNCTIONS } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
+import { isControlTag } from '../analysis/elements/controls.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
 import type { ImageNaturals } from '../images/compile.ts';
 
@@ -322,7 +324,10 @@ function anonymousBox(parent: ResolvedElement, id: string, texts: readonly Resol
 export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset, images: ImageNaturals): LayoutBox {
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
   if (isReplacedTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a replaced element`);
-  return lowerBox(root, faults, ua, fontPx((root.props.get('font-size') as ResolvedValue).value), images);
+  if (isControlTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a form control`);
+  const box = lowerBox(root, faults, ua, fontPx((root.props.get('font-size') as ResolvedValue).value), images);
+  if (box.kind !== 'box') throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} lowered to a control box`);
+  return box;
 }
 
 const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', 'scale-down'];
@@ -368,12 +373,12 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
  * wrapped in anonymous boxes "<element>:anon<k>", one per maximal text sequence; display: none children are omitted, so they never
  * split a text sequence. The engine never creates boxes.
  */
-function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null, images: ImageNaturals): LayoutBox {
+function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null, images: ImageNaturals): LayoutBox | ControlBox {
   const id = el.element.address;
   const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
   const style = lowerStyle(el, faults, ua, rootFontSize);
   const wrap = kids.some((c) => c.kind === 'text') && (displayOf(el) === 'flex' || kids.some((c) => c.kind === 'element'));
-  const children: (LayoutBox | TextLeaf | ReplacedLeaf)[] = [];
+  const children: (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf)[] = [];
   let run: ResolvedText[] = [];
   let anon = 0;
   const flush = (): void => {
@@ -391,5 +396,7 @@ function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, ro
     }
   }
   flush();
+  // FORM-a: a block button centres its contents (Blink AlignBlockContent); a flex button is the plain flex container it is.
+  if (isControlTag(el.element.tag) && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, children };
   return { kind: 'box', id, boxType: 'element', style, children };
 }
