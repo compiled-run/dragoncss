@@ -4078,6 +4078,7 @@ tasks:
     receipt: null
   - id: T148
     type: worker
+    pm_note: 'T148J (2026-10-01), notes/T148J-tdec.md: TDEC-a now on txt-w2 (compiler, propagation, a:any-link underline, ported Blink geometry, web; native refused naming TDEC-b); TDEC-b native paint (checkpoint 3); TDEC-c styles/from-font; TDEC-d skip-ink intercepts.'
     assignee: Worker
     status: queued
     lane: text
@@ -4085,6 +4086,7 @@ tasks:
     receipt: null
   - id: T149
     type: worker
+    pm_note: 'T149J (2026-10-01), notes/T149J-txt2.md: TXT2-a (overflow-wrap/word-break break-word, UAX #29 graphemes, letter-spacing 0; checkpoint 3) on inl2 after INL2a host-done, then INL2b restacks on it; TXT2-b letter-spacing, -c white-space preserve, -d break-all/keep-all, -e text-transform, -f text-overflow, serial.'
     assignee: Worker
     status: queued
     lane: text
@@ -4138,6 +4140,20 @@ tasks:
     status: queued
     lane: north-star
     objective: 'FORM-a follow-up: a flex-button control kind, so an auto-width flex button in block flow sizes to its content as in Chrome (refused by FORM-a A3 because a flex button lowers to a plain flex box that stretches). Chrome fixtures first; vectors byte-identical; after FORM-a lands.'
+    receipt: null
+  - id: T157
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'LINK-RT: a[href] rel/target, link activation (tap opens the URL via the platform), and the a:active UA colour state. Unboarded gap found by T148J.'
+    receipt: null
+  - id: T158
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'TDEC-e: text-shadow (45.9% usage) and text-emphasis. Unboarded gap found by T148J; Judge spec first.'
     receipt: null
   - id: T999
     type: judge
