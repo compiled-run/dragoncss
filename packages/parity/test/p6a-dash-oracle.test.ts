@@ -3,7 +3,8 @@
 // visible dashed or dotted side, at every device DPR, each border-band pixel the reference covers wholly or not at all (a crisp
 // pixel) must equal Chrome's pixel exactly: the side's colour, or the box's background. Pixels the reference covers in part
 // (anti-aliased dash ends and dot rims) are the edge rule's business, and pixels another box paints over are skipped. Each
-// planted fault must make crisp pixels differ.
+// planted fault must make crisp pixels differ. T116: boxes whose visible sides are all solid use the same reference, and every case
+// with a solid side is compared the same way (border-join pins its no-miter corners).
 import { describe, expect, it } from 'vitest';
 import type { BorderOp, DashFaults, LayoutRect } from '@dragon/layout';
 import { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, snapEdges } from '@dragon/layout';
@@ -12,7 +13,7 @@ import { borderDevicePx, programInput } from 'dragon';
 import { DPRS } from '../src/dpr.ts';
 import type { NativeCase } from '../src/native-host.ts';
 import { expectedEngine, nativeCases } from '../src/native-host.ts';
-import { committedPixels } from '../src/pixel-reference.ts';
+import { committedPixels, glyphLines } from '../src/pixel-reference.ts';
 
 type Box = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
 type Pt = readonly [number, number];
@@ -109,10 +110,15 @@ function backgroundOf(p: NativeProgram, id: string): number[] {
   return [255, 255, 255];
 }
 
-type Result = { readonly boxes: number; readonly crisp: number; readonly mismatches: readonly string[] };
+/** corners: the boxes' outer corner pixels the reference paints crisp in a side colour, as "id:x,y". */
+type Result = { readonly boxes: number; readonly crisp: number; readonly mismatches: readonly string[]; readonly corners: readonly string[]; readonly checked: readonly string[] };
+
+/** The pre-T116 comparison: dashed or dotted boxes only, no raster-bounds or glyph skip (the subset proof uses it). */
+type Mode = { readonly preT116: boolean };
+const CURRENT: Mode = { preT116: false };
 
 /** Every dashed or dotted box of a case at a DPR against Chrome's committed PNG. */
-function compareCase(nc: NativeCase, dpr: number, faults: DashFaults): Result {
+function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode = CURRENT): Result {
   const p = nc.programs.uikit;
   const chrome = committedPixels(nc.case.id, dpr);
   if (chrome === null) throw new Error(`no committed Chrome pixels for ${nc.case.id}@${dpr}`);
@@ -129,9 +135,12 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults): Result {
     for (let at = p.nodes.find((n) => n.id === id)?.parent ?? null; at !== null; at = p.nodes.find((n) => n.id === at)?.parent ?? null) s.add(at);
     return s;
   };
+  const glyphs: Box[] = glyphLines(p, vp, dpr).flatMap((l) => l.glyphs.map((g) => ({ left: Math.floor(g.left) - 1, top: Math.floor(g.top) - 1, right: Math.ceil(g.right) + 1, bottom: Math.ceil(g.bottom) + 1 })));
   let boxes = 0;
   let crisp = 0;
   const mismatches: string[] = [];
+  const corners: string[] = [];
+  const checked: string[] = [];
   for (const n of p.nodes) {
     const st = writeOf(p, n.id, 'border-styles');
     const co = writeOf(p, n.id, 'border-colors');
@@ -140,6 +149,7 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults): Result {
     const w = [...(borders.get(n.id) ?? [0, 0, 0, 0])];
     const colors = co.colors.flatMap((c) => [c.r, c.g, c.b, c.alpha]);
     if (!borderNeedsSidePainter(w, st.styles, colors)) continue;
+    if (mode.preT116 && !st.styles.some((s, k) => (s === 'dashed' || s === 'dotted') && (w[k] as number) > 0 && co.colors[k]?.alpha !== 0)) continue;
     boxes++;
     const ops = borderPaintOps(b.left, b.top, b.right, b.bottom, w, st.styles, colors, faults);
     const bg = backgroundOf(p, n.id);
@@ -149,13 +159,19 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults): Result {
       const o = boxOf.get(m.id);
       return o === undefined ? [] : [o];
     });
+    // Glyphs paint over borders too (text that overflows its line box), with a device px of anti-aliasing around each glyph box.
+    if (!mode.preT116) over.push(...glyphs);
     for (let y = b.top; y < b.bottom; y++) {
       for (let x = b.left; x < b.right; x++) {
         const inBand = y < b.top + (w[0] as number) || y >= b.bottom - (w[2] as number) || x < b.left + (w[3] as number) || x >= b.right - (w[1] as number);
+        // Pixels outside Chrome's raster (a box past the viewport) are not painted.
+        if (!mode.preT116 && (x < 0 || y < 0 || x >= chrome.width || y >= chrome.height)) continue;
         if (!inBand || over.some((o) => x >= o.left && x < o.right && y >= o.top && y < o.bottom)) continue;
         const side = crispSide(ops, x, y);
         if (side === null) continue;
         crisp++;
+        checked.push(`${n.id}:${x},${y}`);
+        if (side >= 0 && (x === b.left || x === b.right - 1) && (y === b.top || y === b.bottom - 1)) corners.push(`${n.id}:${x},${y}`);
         const want = side < 0 ? bg : colors.slice(4 * side, 4 * side + 3);
         const k = (y * chrome.width + x) * 4;
         const got = [chrome.data[k], chrome.data[k + 1], chrome.data[k + 2]];
@@ -163,12 +179,14 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults): Result {
       }
     }
   }
-  return { boxes, crisp, mismatches };
+  return { boxes, crisp, mismatches, corners, checked };
 }
 
-const dashed = nativeCases().filter((nc) =>
-  nc.programs.uikit.nodes.some((n) => (n.writes.find((w) => w.kind === 'border-styles') as { styles?: readonly string[] } | undefined)?.styles?.some((s) => s === 'dashed' || s === 'dotted')),
-);
+const withStyle = (ok: (s: string) => boolean): NativeCase[] =>
+  nativeCases().filter((nc) => nc.programs.uikit.nodes.some((n) => (n.writes.find((w) => w.kind === 'border-styles') as { styles?: readonly string[] } | undefined)?.styles?.some(ok)));
+const dashed = withStyle((s) => s === 'dashed' || s === 'dotted');
+// T116: boxes whose visible sides are all solid are drawn by the same reference; every case with a solid side is compared.
+const solid = withStyle((s) => s === 'solid').filter((nc) => !dashed.includes(nc));
 
 describe('the dash reference against Chrome 145 (crisp border pixels, channel delta 0)', () => {
   it('covers the border-paint fixtures and every earlier case with a dashed or dotted side', () => {
@@ -195,6 +213,49 @@ describe('planted dash faults fail the Chrome comparison', () => {
       for (const dpr of DPRS) {
         const bad = dashed.filter((nc) => nc.case.id.startsWith('border-')).reduce((n, nc) => n + compareCase(nc, dpr, faults).mismatches.length, 0);
         expect(bad, `DPR ${dpr}`).toBeGreaterThan(0);
+      }
+    });
+  }
+});
+
+describe('the solid border reference against Chrome 145 (T116: same-colour sides join with no miter)', () => {
+  it('covers the border-join fixture and the earlier solid-border cases', () => {
+    expect(solid.map((nc) => nc.case.id)).toEqual(expect.arrayContaining(['border-join', 'tree-projected-text#3']));
+  });
+  // A case's solid boxes may all be covered (children, glyphs, translucent layers); the border-join fixture must not be.
+  for (const nc of solid) {
+    it(`${nc.case.id}: every crisp border pixel equals Chrome at DPR ${DPRS.join(', ')}`, () => {
+      const bad: string[] = [];
+      for (const dpr of DPRS) bad.push(...compareCase(nc, dpr, NO_DASH_FAULTS).mismatches);
+      expect(bad.slice(0, 40), `${bad.length} mismatches`).toEqual([]);
+    });
+  }
+  it('border-join: every box is drawn by the reference and its corners are crisp and solid at every DPR', () => {
+    const nc = solid.find((c) => c.case.id === 'border-join');
+    if (nc === undefined) throw new Error('no border-join case');
+    for (const dpr of DPRS) {
+      const r = compareCase(nc, dpr, NO_DASH_FAULTS);
+      expect(r.boxes, `DPR ${dpr}`).toBe(8);
+      expect(r.crisp, `DPR ${dpr}`).toBeGreaterThan(0);
+      expect(r.mismatches).toEqual([]);
+      // Same-colour opaque corners (no miter): all four outer corner pixels are crisp; the translucent box draws in a layer.
+      // Different colours meet on an anti-aliased soft miter, so those corners are not crisp.
+      const count = (id: string): number => r.corners.filter((c) => c.startsWith(`${id}:`)).length;
+      expect(Object.fromEntries(['all4', 'all1', 'frac', 'two', 'three', 'cols', 'uneven', 'alpha'].map((id) => [id, count(id)])), `DPR ${dpr}`).toEqual({ all4: 4, all1: 4, frac: 4, two: 3, three: 2, cols: 0, uneven: 4, alpha: 0 });
+    }
+  });
+});
+
+describe('the T116 skips drop no pixel the pre-T116 comparison checked', () => {
+  // The pre-T116 test checked dashed or dotted boxes only, without the raster-bounds and glyph skips; every pixel it checked must
+  // still be checked (the new routing only adds solid boxes).
+  for (const nc of dashed) {
+    it(`${nc.case.id}: the pre-T116 checked pixels are a subset at every DPR`, () => {
+      for (const dpr of DPRS) {
+        const now = new Set(compareCase(nc, dpr, NO_DASH_FAULTS).checked);
+        const before = compareCase(nc, dpr, NO_DASH_FAULTS, { preT116: true }).checked;
+        expect(before.length, `${nc.case.id}@${dpr}`).toBeGreaterThan(0);
+        expect(before.filter((k) => !now.has(k)).slice(0, 20), `${nc.case.id}@${dpr}`).toEqual([]);
       }
     });
   }

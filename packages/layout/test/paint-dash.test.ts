@@ -39,6 +39,10 @@ const STYLE_SETS: readonly (readonly string[])[] = [
   ['dashed', 'none', 'dotted', 'hidden'],
   ['dotted', 'dashed', 'dotted', 'dashed'],
   ['double', 'dotted', 'double', 'dotted'],
+  // T116: solid-only boxes route to the side painter too.
+  uniform('solid'),
+  ['solid', 'none', 'solid', 'hidden'],
+  ['solid', 'solid', 'solid', 'solid'],
 ];
 
 /** The vector inputs: selectBestDashGap over a grid, the painter routing, and borderPaintOps over thicknesses, lengths, styles, colours and faults. */
@@ -156,11 +160,32 @@ describe("BoxBorderPainter's complex path (box_border_painter.cc)", () => {
     expect(o.filter((x) => x.op === 'begin-layer').length).toBe(o.filter((x) => x.op === 'end-layer').length);
     expect(o.filter((x) => x.op === 'begin-layer').length).toBeGreaterThan(0);
   });
-  it('routes to the side painter only when a visible side is dashed or dotted', () => {
+  it('routes to the side painter when a visible side is dashed or dotted, or every visible side is solid (T116)', () => {
     expect(borderNeedsSidePainter(uniform(2), uniform('dashed'), black(4))).toBe(true);
-    expect(borderNeedsSidePainter(uniform(2), ['solid', 'double', 'solid', 'solid'], black(4))).toBe(false);
-    expect(borderNeedsSidePainter([0, 2, 2, 2], ['dashed', 'solid', 'solid', 'solid'], black(4))).toBe(false);
-    expect(borderNeedsSidePainter(uniform(2), ['dotted', 'solid', 'solid', 'solid'], [0, 0, 0, 0, ...black(3)])).toBe(false);
+    expect(borderNeedsSidePainter(uniform(3), ['solid', 'double', 'solid', 'solid'], black(4))).toBe(false);
+    expect(borderNeedsSidePainter(uniform(3), ['double', 'dashed', 'solid', 'solid'], black(4))).toBe(true);
+    expect(borderNeedsSidePainter([0, 2, 2, 2], ['dashed', 'solid', 'solid', 'solid'], black(4))).toBe(true);
+    expect(borderNeedsSidePainter([0, 3, 2, 2], ['dashed', 'double', 'solid', 'solid'], black(4))).toBe(false);
+    expect(borderNeedsSidePainter(uniform(2), ['dotted', 'solid', 'solid', 'solid'], [0, 0, 0, 0, ...black(3)])).toBe(true);
+    expect(borderNeedsSidePainter(uniform(4), uniform('solid'), black(4))).toBe(true);
+    // Double under 3 device px is solid (BorderEdge::EffectiveStyle).
+    expect(borderNeedsSidePainter(uniform(2), ['solid', 'double', 'solid', 'solid'], black(4))).toBe(true);
+    expect(borderNeedsSidePainter(uniform(0), uniform('solid'), black(4))).toBe(false);
+    expect(borderNeedsSidePainter(uniform(2), ['none', 'hidden', 'none', 'none'], black(4))).toBe(false);
+    expect(borderNeedsSidePainter(uniform(2), uniform('solid'), [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])).toBe(false);
+  });
+  it('same-colour solid sides meet with no miter: plain fills and no clip, so the corner pixel is covered wholly (T116)', () => {
+    const o = ops(10, 20, 50, 60, uniform(4), uniform('solid'));
+    expect(o.filter((x) => x.op === 'clip' || x.op === 'begin-layer')).toEqual([]);
+    expect(o.filter((x) => x.op === 'fill').map((x) => x.side).sort()).toEqual([0, 1, 2, 3]);
+    expect(fills(o, 0)).toEqual([[10, 20, 50, 20, 50, 24, 10, 24]]);
+    expect(fills(o, 3)).toEqual([[10, 20, 14, 20, 14, 60, 10, 60]]);
+  });
+  it('different-colour solid sides meet on a soft miter: the later side is an anti-aliased trapezoid (DrawSolidBoxSide)', () => {
+    const o = ops(10, 20, 50, 60, uniform(4), uniform('solid'), [255, 0, 0, 255, 0, 0, 255, 255, 255, 0, 0, 255, 0, 0, 255, 255]);
+    expect(o.filter((x) => x.op === 'clip')).toEqual([]);
+    expect(o.filter((x) => x.op === 'fill').every((x) => x.antialias)).toBe(true);
+    expect(fills(o, 3)).toEqual([[10, 20, 10, 60, 14, 56, 14, 24]]);
   });
   it('refuses a border style it has no painter for', () => {
     expect(() => ops(0, 0, 10, 10, uniform(2), ['groove', 'solid', 'solid', 'solid'])).toThrow(/groove/);

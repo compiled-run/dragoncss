@@ -132,13 +132,22 @@ function stylePriority(style: string): number {
   return 0;
 }
 
-/** Whether a visible side is dashed or dotted: then Blink paints the box through the complex side path this file ports. */
+/**
+ * Whether this file paints the box: a visible side is dashed or dotted, or every visible side is solid (T116: same-colour solid
+ * sides meet with no miter, as ComputeMiter rules, and Blink's uniform fast path fills the same pixels). A visible double side
+ * without a dashed or dotted one stays on the native band painter.
+ */
 export function borderNeedsSidePainter(widths: readonly number[], styles: readonly string[], colors: readonly number[]): boolean {
+  let any = false;
+  let allSolid = true;
   for (let side = 0; side < 4; side++) {
     const e = makeEdge(widths, styles, colors, side);
-    if (shouldRender(e) && isDottedOrDashed(e.style)) return true;
+    if (!shouldRender(e)) continue;
+    if (isDottedOrDashed(e.style)) return true;
+    any = true;
+    if (e.style !== 'solid') allSolid = false;
   }
-  return false;
+  return any && allSolid;
 }
 
 function makeEdge(widths: readonly number[], styles: readonly string[], colors: readonly number[], side: number): DashEdge {
