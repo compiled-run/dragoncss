@@ -4051,6 +4051,62 @@ tasks:
     objective: 'SELD-R2b: hit testing through transforms and stacking (PNT1/PNT2 paint facts), the transformed device-hit fixtures, the hitIgnoresTransform plant, and lifting the paint-dependent hover refusals.
       After PNT1, PNT2 and SELD-R2a land.'
     receipt: null
+  - id: T147
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: text
+    objective: 'TXT-W: font-weight and font-style (and the font shorthand) on web, iOS and Android, proven against Chrome with real faces: #14 and #46 by Chrome usage, and no TXT1a branch adds them (usage scout 2026-10-01). Needs a Judge spec after TXT1a-2 (synthetic bold/italic vs bundled faces, per the TXT1a font map).'
+    receipt: null
+  - id: T148
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: text
+    objective: 'TDEC: text-decoration (line, style, colour, thickness, offset), #29 by usage (82.6%). Judge spec first; after TXT1a.'
+    receipt: null
+  - id: T149
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: text
+    objective: 'TXT2 breadth: white-space beyond normal/nowrap, letter-spacing, text-transform, text-overflow, word-break (all in the top 100 by usage). Judge spec first; after TXT1a and INL2a.'
+    receipt: null
+  - id: T150
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'visibility (hidden, collapse on non-table) natively, #48-ish by usage (79.1%); PNT1 branches do not add it. Small; after the PNT1 chain lands.'
+    receipt: null
+  - id: T151
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'GEN: content on ::before/::after and list-style (list markers), both in the top 100 by usage. Judge spec first (generated boxes in the compiler; markers per Blink).'
+    receipt: null
+  - id: T152
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: engine
+    objective: 'FLT: float and clear, in the top 100 by usage; the FLT-P corpus (#16) exists. Judge spec first (notes/T098-grid-flt-wm-spec.md).'
+    receipt: null
+  - id: T153
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: paint
+    objective: 'filter (blur, brightness, etc.) and backdrop-filter, in the top 100 by usage. Judge spec first (Skia references, notes/T109-skia0.md).'
+    receipt: null
+  - id: T154
+    type: worker
+    assignee: Worker
+    status: queued
+    lane: runtime
+    objective: 'user-select (Dragon-built selection per the owner ruling), in the top 100 by usage; after P6c (T077).'
+    receipt: null
   - id: T999
     type: judge
     assignee: Judge
