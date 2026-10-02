@@ -687,8 +687,6 @@ export function latinOpportunities(box: LayoutBox, cps: readonly number[], wrap:
       if (last === HYPHEN_MINUS && cur <= 0x7f && cur >= 0x30 && cur <= 0x39) {
         decided = true;
         breaks = !faults.noHyphenDigitBreak && i >= 2 && isAsciiAlphanumeric(cps[i - 2] as number);
-      } else if (last === HYPHEN_MINUS && cur > 0x7f) {
-        decided = false;
       } else if (last <= 0xff && cur <= 0xff) {
         decided = true;
         if (last <= 0x7f && cur <= 0x7f) breaks = faults.breakAfterSolidus && last === SOLIDUS && isAsciiAlphanumeric(cur) ? true : asciiPairBreaks(last, cur);
