@@ -12,6 +12,7 @@ import { layout, reject } from './define.ts';
 import { TEXT_CALIBRATION } from './text-calibration.ts';
 import { INLINE_TAGS } from './inline-tags.ts';
 import { TEXT_WEIGHT } from './text-weight.ts';
+import { FONT_SHORTHAND } from './font-shorthand.ts';
 import { TEXT_LATIN } from './text-latin.ts';
 
 /** A web-only fonts fixture: its font map (null: none), and the face Chrome must render each element's text with in both documents. */
@@ -53,7 +54,7 @@ const MAPS: ReadonlyMap<string, FontMap> = new Map([
   ['reject-fonts-quoted-generic', FONT_REFERENCE_MAP],
   ['reject-fonts-map-invalid', INVALID_MAP],
   // TXT1a-2: the real-font FIXTURES groups compile with the reference map.
-  ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
+  ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout'), ...TEXT_WEIGHT.filter((f) => f.kind === 'layout'), ...FONT_SHORTHAND.filter((f) => f.kind === 'layout')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
 ]);
 
 /** The font map a fixture compiles with; undefined for every fixture outside this group. */

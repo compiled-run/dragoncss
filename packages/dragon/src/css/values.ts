@@ -118,13 +118,18 @@ function mathValue(node: CssNode, name: string, property: string): CssValue {
 /** The properties whose value may be a two-keyword <baseline-position>. */
 export const BASELINE_PROPERTIES: ReadonlySet<string> = new Set<string>(['align-items', 'align-self', 'align-content']);
 
-/** The properties one of whose single values spans two tokens: <baseline-position>, and font-style's oblique <angle>. */
-export const PAIR_VALUE_PROPERTIES: ReadonlySet<string> = new Set<string>([...BASELINE_PROPERTIES, 'font-style']);
+/** The properties one of whose single values spans two tokens (<baseline-position>, font-style's oblique <angle>), or that Chrome parses more narrowly than the grammar. */
+export const PAIR_VALUE_PROPERTIES: ReadonlySet<string> = new Set<string>([...BASELINE_PROPERTIES, 'font-style', 'font-synthesis-style']);
 
 /** A two-token value, why Chrome's parser drops it (invalid), why Dragon cannot express it (refused), or null when it is not one. */
 export type PairValue = CssValue | { readonly invalid: string } | { readonly refused: string } | null;
 
 export function pairValue(property: string, tokens: readonly CssNode[]): PairValue {
+  if (property === 'font-synthesis-style') {
+    // Chrome 145 does not parse css-fonts-4's oblique-only.
+    const only = tokens.length === 1 && tokens[0]?.type === 'Identifier' ? asciiLower(String(tokens[0]['name'])) : '';
+    return only === 'oblique-only' ? { invalid: 'Chrome 145 does not parse font-synthesis-style: oblique-only' } : null;
+  }
   return property === 'font-style' ? fontStyleValue(tokens) : baselinePosition(tokens);
 }
 

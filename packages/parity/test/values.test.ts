@@ -30,11 +30,11 @@ const committed = (c: ParityCase, dpr: number): WebCapture => (dpr === 1 ? (JSON
 
 describe('values group registration (fixture-groups/values.ts)', () => {
   it('is the last group; every layout fixture runs in both directions and every id carries the values- prefix the corpus keys on', () => {
-    // TXT1a-2, T133 and TXT-W1: the text groups, inline-tags and text-weight come after it, and every case of theirs is shaped, so they add no plain
+    // TXT1a-2, T133, TXT-W1 and TXT-W2: the text groups, inline-tags, text-weight and font-shorthand come after it, and every case of theirs is shaped, so they add no plain
     // vector before the values ones.
-    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-5)).toEqual(['values', 'text-latin', 'text-calibration', 'inline-tags', 'text-weight']);
+    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-6)).toEqual(['values', 'text-latin', 'text-calibration', 'inline-tags', 'text-weight', 'font-shorthand']);
     const shaped = shapedCaseIds();
-    for (const g of FIXTURE_GROUPS.slice(-4)) for (const f of g.fixtures) for (const id of layoutCaseIds().filter((x) => x === f.id || x === `${f.id}-rtl`)) expect(shaped.has(id), id).toBe(true);
+    for (const g of FIXTURE_GROUPS.slice(-5)) for (const f of g.fixtures) for (const id of layoutCaseIds().filter((x) => x === f.id || x === `${f.id}-rtl`)) expect(shaped.has(id), id).toBe(true);
     for (const f of VALUES) expect(f.id.startsWith('values-'), f.id).toBe(true);
     for (const f of LAYOUT) expect(f.kind === 'layout' && f.environments, f.id).toEqual(['ltr', 'rtl']);
     expect(LAYOUT.length).toBeGreaterThanOrEqual(25);

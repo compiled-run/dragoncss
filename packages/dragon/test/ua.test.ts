@@ -7,13 +7,13 @@ import { INHERITED, LONGHANDS } from '../src/css/properties.ts';
 import { properties, webrefVersion } from '../src/css/grammar.generated.ts';
 import { NO_FAULTS } from '../src/faults.ts';
 import { borderWidthKeywords, chromeVersion, computed, platform, userAgentLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
-import { referenceDataset, TEXT_FONT_LONGHANDS } from '../src/ua/datasets.ts';
+import { referenceDataset, UNCAPTURED_LONGHANDS } from '../src/ua/datasets.ts';
 import { elementKeyComputed, elementKeyLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { phrasingKeyComputed, phrasingKeyLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import type { LinkedElement } from '../src/analysis/link.ts';
 
-/** The longhands the UA capture holds: all but font-weight and font-style, which datasets.ts supplies as html.css specified rows. */
-const CAPTURED_LONGHANDS = LONGHANDS.filter((p) => !(TEXT_FONT_LONGHANDS as readonly string[]).includes(p));
+/** The longhands the UA capture holds: all but font-weight and font-style (datasets.ts html.css rows) and font-synthesis. */
+const CAPTURED_LONGHANDS = LONGHANDS.filter((p) => !(UNCAPTURED_LONGHANDS as readonly string[]).includes(p));
 
 describe('captured Chrome defaults and the webref grammar', () => {
   it('pin Chrome 145.0.7632.6 and @webref/css 8.7.5, captured on darwin-arm64', () => {
