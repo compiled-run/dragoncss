@@ -22,5 +22,6 @@ export const ATTRIBUTES: readonly FixtureSpec[] = [
   reject('reject-attr-href', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<div data-dragon-id="a" class="a" href="https://example.com/">', 'attribute href on a is not supported: its rendering effect belongs to the inline and link package INL1'),
   reject('reject-attr-lang', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<div data-dragon-id="a" class="a" lang="en">', 'attribute lang on a is not supported: its rendering effect belongs to the text package TXT1-C'),
   reject('reject-attr-style', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<div data-dragon-id="a" class="a" style="width: 20px">', 'attribute style on a is not supported: its rendering effect belongs to the style-attribute package SOV'),
-  reject('reject-attr-img-src', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<img data-dragon-id="a" class="a" src="cover.png">', 'attribute src on a is not supported: its rendering effect belongs to the replaced-element package REPL'),
+  // REPL-a handles src on img: an unmapped src is now refused as an image Dragon cannot read at build time.
+  reject('reject-attr-img-src', 'DRAGON_REMOTE_IMAGE', '<img data-dragon-id="a" class="a" src="cover.png">', '<img> a: src cover.png is not mapped'),
 ];
