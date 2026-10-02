@@ -188,12 +188,15 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
       const set = Object.entries(row).map(([p, v]) => `${p}: ${v}`).join('; ');
       for (const c of el.children) {
         if (c.kind !== 'text') continue;
-        once(`ios|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
-          origin: c.node.node.origin,
-          target: 'ios',
-          message: `text ${c.node.address} inherits ${set} from Chrome's user-agent stylesheet on <${fonts.element.tag}> ${fonts.element.address}; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`,
-          manual: `Put the text in a div outside <${fonts.element.tag}> ${fonts.element.address}; font-weight and font-style need the real-font text support.`,
-        })));
+        // Web draws the UA weight and style itself; every configured native target draws the regular face.
+        for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+          once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
+            origin: c.node.node.origin,
+            target: t,
+            message: `text ${c.node.address} inherits ${set} from Chrome's user-agent stylesheet on <${fonts.element.tag}> ${fonts.element.address}; Dragon has no font-weight or font-style, so ${t} would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`,
+            manual: `Put the text in a div outside <${fonts.element.tag}> ${fonts.element.address}; font-weight and font-style need the real-font text support.`,
+          })));
+        }
       }
     }
     for (const c of el.children) if (c.kind === 'element') walk(c, [...ancestors, el], absolute, fonts, here);

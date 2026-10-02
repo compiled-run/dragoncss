@@ -4,14 +4,20 @@
 // (the viewport, CDP Page.captureScreenshot) and <case>.json (boxes, computed values, text lines with their start/end offsets,
 // platform fonts, animation clocks), on a virtual clock: timeline rate 0 and every currentTime set explicitly. Also writes
 // covers/*.png, lane/manifest.json and chrome/pixel-manifest.json.
-// Network is closed: styles.css is served from disk, the four YouTube covers by the committed PNG stand-ins.
+// Network is closed: styles.css is served from disk, the four YouTube covers by the committed PNG stand-ins, and the YouTube
+// embed by an empty HTML document (snapshot.ts EMBED_STAND_IN). Any other request fails the capture.
+// Fonts are the stated reference of the north star's font map (tools/font-map.ts; notes/T033 §1.3): the pinned faces injected as
+// @font-face rules from the vendored bytes, and every unquoted pinned generic replaced by its family in Chrome's own CSSOM.
 //   node --conditions=dragon-internal examples/music-player/tools/capture-chrome.ts
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { CHROME_VERSION, chromeArgsAt, launchChrome, PLAYWRIGHT_VERSION } from '../../../packages/parity/src/chrome.ts';
 import { zoomGuard } from '../../../packages/parity/src/dpr.ts';
+import { applyFontReference, fontDataUrl, pinnedFaceCss, pinnedGenerics, VENDOR_FONTS, vendorFontBytes } from '../../../packages/parity/src/font-reference.ts';
+import type { Visit } from '../../../packages/parity/src/font-reference.ts';
 import { COVER_HEIGHT, COVER_IDS, COVER_WIDTH, coverFile, coverPng } from './cover-png.ts';
 import { inventory, usedProperties } from './css-inventory.ts';
+import { FONTS, pinnedFaceSrcs } from './font-map.ts';
 import {
   captureDir,
   DUMP_SCHEMA,
@@ -31,7 +37,7 @@ import {
 } from './lane-manifest.ts';
 import type { LaneCapture, PlatformFont } from './lane-manifest.ts';
 import { stateDomOps } from './lane-states.ts';
-import { examplePath, freeStateHtml, readSnapshot } from './snapshot.ts';
+import { EMBED_STAND_IN, examplePath, freeStateHtml, readSnapshot, VIDEO_EMBED_SRC, withVideoIframe } from './snapshot.ts';
 import type { FreeStateId } from './snapshot.ts';
 
 // Playwright's types come through the parity package's launcher; the example has no node_modules of its own.
@@ -42,25 +48,43 @@ type Cdp = Awaited<ReturnType<ReturnType<Page['context']>['newCDPSession']>>;
 const ORIGIN = 'https://north-star.dragon.test';
 const CONTEXT = { isMobile: true, hasTouch: true, colorScheme: 'dark', reducedMotion: 'no-preference' } as const;
 
+/** A pinned face src (a repository path under vendor/fonts) as the bytes the compiled output bundles. */
+const faceBytes = (src: string): Buffer => {
+  if (!src.startsWith(VENDOR_FONTS)) throw new Error(`font map face ${src} is not under ${VENDOR_FONTS}`);
+  return vendorFontBytes(src.slice(VENDOR_FONTS.length));
+};
+const FACE_CSS = pinnedFaceCss(FONTS, (src) => fontDataUrl(faceBytes(src)));
+const PINNED_GENERICS = pinnedGenerics(FONTS);
+
 const twoFrames = (page: Page): Promise<void> => page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
 
-async function openCase(browser: Browser, cap: LaneCapture, html: string, css: string, covers: ReadonlyMap<string, Uint8Array>): Promise<{ page: Page; cdp: Cdp }> {
+async function openCase(browser: Browser, cap: LaneCapture, html: string, css: string, covers: ReadonlyMap<string, Uint8Array>): Promise<{ page: Page; cdp: Cdp; visits: Visit[]; refused: readonly string[] }> {
   const context = await browser.newContext({ viewport: cap.platform.viewport, deviceScaleFactor: cap.dpr, ...CONTEXT });
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
   // The document timeline never advances (a running animation that was ever composited rasterizes differently run to run).
   await cdp.send('Animation.enable');
   await cdp.send('Animation.setPlaybackRate', { playbackRate: 0 });
+  const refused: string[] = [];
   await page.route('**/*', async (route) => {
     const url = route.request().url();
     if (url === `${ORIGIN}/`) return route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: html });
     if (url === `${ORIGIN}/styles.css`) return route.fulfill({ status: 200, contentType: 'text/css; charset=utf-8', body: css });
+    if (url === VIDEO_EMBED_SRC) return route.fulfill({ status: 200, contentType: EMBED_STAND_IN.contentType, body: EMBED_STAND_IN.body });
     const cover = /^https:\/\/i\.ytimg\.com\/vi\/([^/]+)\/maxresdefault\.jpg$/.exec(url);
     const png = cover === null ? undefined : covers.get(cover[1] as string);
     if (png !== undefined) return route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from(png) });
+    refused.push(url);
     return route.abort();
   });
   await page.goto(`${ORIGIN}/`);
+  // The slot's document is cross-origin to the page, so it is read through its Playwright frame.
+  const embedded = await Promise.all(page.frames().filter((f) => f !== page.mainFrame()).map(async (f) => [f.url(), await f.content()]));
+  if (JSON.stringify(embedded) !== JSON.stringify([[VIDEO_EMBED_SRC, `<!DOCTYPE html><html><head><meta name="color-scheme" content="${EMBED_STAND_IN.colorScheme}"></head><body></body></html>`]])) throw new Error(`${cap.png}: the video slot did not load the embed stand-in: ${JSON.stringify(embedded)}`);
+  const slotScheme = await page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => getComputedStyle(f).colorScheme));
+  if (JSON.stringify(slotScheme) !== JSON.stringify([EMBED_STAND_IN.colorScheme])) throw new Error(`${cap.png}: the video slot's color-scheme is ${JSON.stringify(slotScheme)}, the stand-in declares ${EMBED_STAND_IN.colorScheme}`);
+  const visits = await applyFontReference(page, FACE_CSS, PINNED_GENERICS);
+  if (!visits.some((v) => v.before !== v.after)) throw new Error(`${cap.png}: the font reference rewrote no font-family`);
   await page.evaluate(async () => {
     await document.fonts.ready;
     await Promise.all([...document.images].map((img) => img.decode()));
@@ -73,7 +97,8 @@ async function openCase(browser: Browser, cap: LaneCapture, html: string, css: s
   await twoFrames(page);
   const dpr = await page.evaluate(() => window.devicePixelRatio);
   if (dpr !== cap.dpr) throw new Error(`${cap.png}: devicePixelRatio ${dpr}`);
-  return { page, cdp };
+  if (refused.length > 0) throw new Error(`${cap.png}: requests outside the closed network: ${refused.join(', ')}`);
+  return { page, cdp, visits, refused };
 }
 
 /** Moves the virtual clock: running CSS animations (by their computed play state) and every transition advance by ms. */
@@ -236,7 +261,7 @@ type PixelFile = { file: string; platform: string; dpr: number; case: string; ki
 
 async function captureCase(browser: Browser, cap: LaneCapture, html: string, css: string, covers: ReadonlyMap<string, Uint8Array>, properties: readonly string[], declared: ReadonlyMap<string, readonly string[]>) {
   const c = cap.case;
-  const { page, cdp } = await openCase(browser, cap, freeStateHtml(html, c.start), css, covers);
+  const { page, cdp, visits, refused } = await openCase(browser, cap, withVideoIframe(freeStateHtml(html, c.start)), css, covers);
   try {
     await cdp.send('DOM.enable');
     await cdp.send('CSS.enable');
@@ -283,7 +308,8 @@ async function captureCase(browser: Browser, cap: LaneCapture, html: string, css
       { file: cap.png, ...base, kind: 'png', sha256: sha256(png), bytes: png.length, ...size },
       { file: cap.dump, ...base, kind: 'dump', sha256: sha256(json), bytes: Buffer.byteLength(json) },
     ];
-    return { files, fonts: Object.values(fonts).flat(), elements: dump.elements.length, texts: dump.texts.length, lines: dump.texts.reduce((n, t) => n + t.lines.length, 0) };
+    if (refused.length > 0) throw new Error(`${cap.png}: requests outside the closed network: ${refused.join(', ')}`);
+    return { files, visits, fonts: Object.values(fonts).flat(), elements: dump.elements.length, texts: dump.texts.length, lines: dump.texts.reduce((n, t) => n + t.lines.length, 0) };
   } finally {
     await page.context().close();
   }
@@ -311,6 +337,7 @@ async function main(): Promise<void> {
 
   const captures = laneCaptures(css);
   const files: PixelFile[] = [];
+  let visits: string | null = null;
   const fonts: PlatformFont[] = [];
   const flags: Record<string, readonly string[]> = {};
   const guards: Record<string, string> = {};
@@ -323,6 +350,9 @@ async function main(): Promise<void> {
       for (const cap of captures.filter((x) => x.dpr === dpr)) {
         const out = await captureCase(browser, cap, html, css, covers, properties, declared);
         files.push(...out.files);
+        const v = JSON.stringify(out.visits);
+        if (visits !== null && v !== visits) throw new Error(`${cap.png}: the font reference rewrite differs from the first capture's`);
+        visits = v;
         fonts.push(...out.fonts.map((f) => ({ familyName: f.familyName, postScriptName: f.postScriptName, isCustomFont: f.isCustomFont })));
         const key = captureDir(cap.platform, dpr);
         const n = counts.get(key) ?? { cases: 0, elements: 0, texts: 0, lines: 0 };
@@ -343,9 +373,19 @@ async function main(): Promise<void> {
     context: CONTEXT,
     screenshot: 'CDP Page.captureScreenshot, format png, viewport only (captureBeyondViewport false)',
     rasterRule: { ...RASTER_RULE, sizes: LANE_PLATFORMS.flatMap((p) => p.dprs.map((d) => ({ platform: p.id, dpr: d, css: p.viewport, device: { width: p.viewport.width * d, height: p.viewport.height * d }, png: { width: rasterSize(p.viewport.width, d), height: rasterSize(p.viewport.height, d) } }))) },
+    fontReference: {
+      method: 'notes/T033 §1.3: the pinned faces injected as @font-face rules (data: URLs of the vendored bytes), and every unquoted pinned generic replaced by its family in Chrome\'s CSSOM (packages/parity/src/font-reference.ts applyFontReference)',
+      map: FONTS,
+      faces: pinnedFaceSrcs(FONTS).map((src) => {
+        const bytes = faceBytes(src);
+        return { src, sha256: sha256(bytes), bytes: bytes.length };
+      }),
+      rewrites: JSON.parse(visits ?? '[]') as Visit[],
+    },
     fontKey: fontKey(distinctFonts),
     fonts: distinctFonts,
     covers: coverRows,
+    embeds: [{ src: VIDEO_EMBED_SRC, standIn: EMBED_STAND_IN.label, contentType: EMBED_STAND_IN.contentType, sha256: sha256(EMBED_STAND_IN.body), bytes: Buffer.byteLength(EMBED_STAND_IN.body) }],
     counts: Object.fromEntries([...counts].map(([k, v]) => [k, v.cases])),
     files,
   };

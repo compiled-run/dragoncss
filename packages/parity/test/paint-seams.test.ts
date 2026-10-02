@@ -17,7 +17,7 @@ import { generateSamples, SAMPLE_RULES } from '../src/samples.ts';
 
 const SIZE = { width: 200, height: 120 };
 const box: SampleBox = { id: 'n1', left: 20, top: 20, right: 120, bottom: 80, border: { top: 4, right: 4, bottom: 4, left: 4 }, radius: 0, clips: true };
-const ctx = (): PaintSampleContext => ({ program: { version: 'v', backend: 'uikit', root: {} as never, nodes: [] }, viewport: { width: 100, height: 60 }, dpr: 2, size: SIZE, boxes: [box], base: generateSamples([box], SIZE) });
+const ctx = (): PaintSampleContext => ({ program: { version: 'v', backend: 'uikit', root: {} as never, rootFontSize: 16, nodes: [] }, viewport: { width: 100, height: 60 }, dpr: 2, size: SIZE, boxes: [box], base: generateSamples([box], SIZE) });
 
 describe('EMS: paint samples', () => {
   it('registers every module once in the paint registry order, each a stub for now', () => {

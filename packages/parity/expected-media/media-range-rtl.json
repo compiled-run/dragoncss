@@ -1,0 +1,204 @@
+{
+ "fixture": "media-range",
+ "direction": "rtl",
+ "chrome": "145.0.7632.6",
+ "bands": [
+  {
+   "index": 0,
+   "condition": "(width < 400px) and (width <= 400px) and (not (400px < width)) and (not (400px <= width)) and (not (390px < width < 410px)) and (not (410px <= width <= 500px)) and (not (width = 400px))"
+  },
+  {
+   "index": 1,
+   "condition": "(width < 400px) and (width <= 400px) and (not (400px < width)) and (not (400px <= width)) and (390px < width < 410px) and (not (410px <= width <= 500px)) and (not (width = 400px))"
+  },
+  {
+   "index": 2,
+   "condition": "(not (width < 400px)) and (width <= 400px) and (not (400px < width)) and (400px <= width) and (390px < width < 410px) and (not (410px <= width <= 500px)) and (width = 400px)"
+  },
+  {
+   "index": 3,
+   "condition": "(not (width < 400px)) and (not (width <= 400px)) and (400px < width) and (400px <= width) and (390px < width < 410px) and (not (410px <= width <= 500px)) and (not (width = 400px))"
+  },
+  {
+   "index": 4,
+   "condition": "(not (width < 400px)) and (not (width <= 400px)) and (400px < width) and (400px <= width) and (not (390px < width < 410px)) and (410px <= width <= 500px) and (not (width = 400px))"
+  },
+  {
+   "index": 5,
+   "condition": "(not (width < 400px)) and (not (width <= 400px)) and (400px < width) and (400px <= width) and (not (390px < width < 410px)) and (not (410px <= width <= 500px)) and (not (width = 400px))"
+  }
+ ],
+ "samples": [
+  {
+   "width": 195,
+   "height": 300,
+   "band": 0,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 389,
+   "height": 300,
+   "band": 0,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 390,
+   "height": 300,
+   "band": 0,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 391,
+   "height": 300,
+   "band": 1,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 395,
+   "height": 300,
+   "band": 1,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 399,
+   "height": 300,
+   "band": 1,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 400,
+   "height": 300,
+   "band": 2,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 401,
+   "height": 300,
+   "band": 3,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 405,
+   "height": 300,
+   "band": 3,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 409,
+   "height": 300,
+   "band": 3,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 410,
+   "height": 300,
+   "band": 4,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 411,
+   "height": 300,
+   "band": 4,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 455,
+   "height": 300,
+   "band": 4,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 499,
+   "height": 300,
+   "band": 4,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 500,
+   "height": 300,
+   "band": 4,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 501,
+   "height": 300,
+   "band": 5,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 600,
+   "height": 300,
+   "band": 5,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 621,
+   "channelsCompared": 54,
+   "problems": []
+  }
+ ],
+ "problem": null
+}

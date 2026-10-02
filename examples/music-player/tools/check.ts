@@ -21,7 +21,7 @@
 // diagnostic count and the support percentage.
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import type { Diagnostic, FontMap, FrontEndResult, Origin, TreeNode } from '../../../packages/dragon/src/index.ts';
+import type { Diagnostic, FrontEndResult, Origin, TreeNode } from '../../../packages/dragon/src/index.ts';
 import { createProject } from '../../../packages/dragon/src/index.ts';
 import { SUPPORTED_TAGS } from '../../../packages/dragon/src/analysis/elements.ts';
 import { attributeRefusal } from '../../../packages/dragon/src/attributes.ts';
@@ -30,6 +30,7 @@ import type { TreeFixtureFile } from '../../../packages/parity/src/tree-fixture.
 import { readTreeFixtureDir } from '../../../packages/parity/src/tree-fixture.ts';
 import type { CssDeclaration, Span } from './css-inventory.ts';
 import { inventory } from './css-inventory.ts';
+import { FONTS, pinnedFaceSrcs } from './font-map.ts';
 import { examplePath, readSnapshot } from './snapshot.ts';
 
 export const OUTPUT = 'dragon/north-star-check.json';
@@ -40,21 +41,13 @@ const STYLES_SOURCE = '../styles.css';
 const TARGETS = { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
 const TARGET_IDS = ['web', 'ios', 'android'] as const;
 /**
- * The north star's font map (T033, T036): 'Lato' is the vendored Lato 2.015 Regular and Bold, and sans-serif is pinned to
- * "Dragon Sans", the five static Inter 4.1 faces. The files enter the snapshot as assets named by their repository path.
+ * The files of the north star's font map (tools/font-map.ts, T033, T036): Lato 2.015 Regular and Bold, and the five static
+ * Inter 4.1 faces of "Dragon Sans". The files enter the snapshot as assets named by their repository path.
  */
 const FONT_FILES = ['Lato/Lato-Regular.ttf', 'Lato/Lato-Bold.ttf', 'Inter/Inter-Light.ttf', 'Inter/Inter-Regular.ttf', 'Inter/Inter-Italic.ttf', 'Inter/Inter-Bold.ttf', 'Inter/Inter-BoldItalic.ttf'] as const;
 const asset = (file: string): string => `vendor/fonts/${file}`;
-export const FONTS: FontMap = {
-  generics: {
-    'sans-serif': { mode: 'pinned', family: 'Dragon Sans', faces: [
-      { src: asset('Inter/Inter-Light.ttf'), weight: '300' }, { src: asset('Inter/Inter-Regular.ttf'), weight: '400' },
-      { src: asset('Inter/Inter-Italic.ttf'), weight: '400', style: 'italic' }, { src: asset('Inter/Inter-Bold.ttf'), weight: '700' },
-      { src: asset('Inter/Inter-BoldItalic.ttf'), weight: '700', style: 'italic' },
-    ] },
-  },
-  families: { Lato: { mode: 'pinned', family: 'Lato', faces: [{ src: asset('Lato/Lato-Regular.ttf'), weight: '400' }, { src: asset('Lato/Lato-Bold.ttf'), weight: '700' }] } },
-};
+export { FONTS };
+if ([...FONT_FILES].map(asset).sort().join() !== [...pinnedFaceSrcs(FONTS)].sort().join()) throw new Error('FONT_FILES must list exactly the pinned faces of FONTS');
 const FONT_ASSETS = FONT_FILES.map((file) => {
   const bytes = new Uint8Array(readFileSync(new URL(`../../../${asset(file)}`, import.meta.url)));
   return { id: asset(file), hash: `sha256:${createHash('sha256').update(bytes).digest('hex')}`, bytes };

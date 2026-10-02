@@ -29,7 +29,7 @@ import { PAINT_MODULE_NAMES } from './types.ts';
 export type PaintWrite = BackgroundWrite | BorderWrite | ClipWrite | ImageWrite | ForeignViewWrite;
 export type PaintWriteKind = PaintWrite['kind'];
 
-type AnyLowering = PaintLowering<PaintWrite> | PaintLowering<BackgroundWrite> | PaintLowering<BorderWrite> | PaintLowering<ClipWrite> | PaintLowering<ImageWrite> | PaintLowering<ForeignViewWrite> | PaintLowering<never>;
+export type AnyLowering = PaintLowering<PaintWrite> | PaintLowering<BackgroundWrite> | PaintLowering<BorderWrite> | PaintLowering<ClipWrite> | PaintLowering<ImageWrite> | PaintLowering<ForeignViewWrite> | PaintLowering<never>;
 
 /** Registration point (EMS): the paint lowerings in PAINT_MODULE_NAMES order. */
 export const PAINT_LOWERINGS: readonly AnyLowering[] = [
@@ -51,7 +51,28 @@ export const PAINT_LOWERINGS: readonly AnyLowering[] = [
   CONTROL_LOWERING,
 ];
 
-if (PAINT_LOWERINGS.map((m) => m.name).join() !== PAINT_MODULE_NAMES.join()) throw new Error('the paint lowering registry is not in PAINT_MODULE_NAMES order');
+/**
+ * Checks a lowering registry: the modules in PAINT_MODULE_NAMES order, every write kind declared by one module only, and each
+ * module's longhands and both backends' vocabularies naming the same kinds; throws naming the first fault.
+ */
+export function checkPaintLowerings(lowerings: readonly AnyLowering[]): void {
+  if (lowerings.map((m) => m.name).join() !== PAINT_MODULE_NAMES.join()) throw new Error('the paint lowering registry is not in PAINT_MODULE_NAMES order');
+  const owner = new Map<string, string>();
+  for (const m of lowerings) {
+    const kinds = Object.keys(m.css).sort();
+    for (const b of ['uikit', 'android-views'] as const) {
+      const vocab = Object.keys(m.vocabulary[b]).sort();
+      if (vocab.join() !== kinds.join()) throw new Error(`the ${m.name} paint lowering's ${b} vocabulary names ${vocab.join(', ') || 'no kind'}, its longhands name ${kinds.join(', ') || 'no kind'}`);
+    }
+    for (const k of kinds) {
+      const o = owner.get(k);
+      if (o !== undefined) throw new Error(`paint write kind ${k} is lowered by two modules (${o} and ${m.name})`);
+      owner.set(k, m.name);
+    }
+  }
+}
+
+checkPaintLowerings(PAINT_LOWERINGS);
 
 /** Every box's paint writes: each module's writes, in registry order. */
 export function lowerBoxPaint(ctx: BoxPaintContext): PaintWrite[] {

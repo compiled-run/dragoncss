@@ -49,3 +49,38 @@ Added stop_if conditions:
   - The translated harness does not call validateLayoutInput. validate.ts is TS-only, and every corpus line is validated when it is generated.
   - The flex-strut double error: both errors are true.
   - corpus.ts's random corpus has no inline items. The engine-inline suite in corpus-dpr.ts covers inline boxes, `<br>`s and plants.
+
+## Second Judge amendment (T058J2, 2026-09-30), PM accepted
+
+The first compiler WIP stopped on stop_if. It needed resolve.ts, blockify.ts and blockify.test.ts, and the engine-inline corpus needed S16 targets.ts and lanes.ts. The Judge approved them, limited as follows:
+
+- (A) resolve.ts: only the new collapseInlineContext and isInlineBox, and resolveTree's pendingInline, gather and place changes. With no inline box and no `<br>`, collapseInlineContext must equal collapseInlineRun (tested over every existing text run plus a generated set).
+- (B) blockify.ts: only checkInlineLevel's lift for display: inline, with its doc comment and message.
+- (C) Retarget blockify.test.ts. The refusal pin proves atomic inlines are still refused and a span in a block container is accepted. The blockifySkipped pin fails through lowered input, not a displayOf difference.
+- (D) phrasing-blockified.test.ts: the blockifySkipped pin still fails both cases in both directions, now on a named lane or node.
+- (E) 8f21790db's dropInheritedText retarget is accepted with added asserts: the reason names the w1 text leaf and leaf-font, chrome-dual passes if it ran, and the unfaulted run passes.
+- (F) Deviation 58b7f005c is accepted: callers use buildIfc then placeIfcLines. placeLines stays exactly placeIfcLines(buildIfc(...)), and a test proves them equal on the engine-inline and break-vector inputs.
+- (G) targets.ts: one appended engine-inline extendedSuites entry, plus its ExtendedManifest field, only after T058L merges.
+- (H) Delete scratch-cap.ts and scratch-inline.ts.
+- An inline box whose white-space-collapse is not collapse is refused with a typed code.
+- Stop if any existing fixture's resolved text, capture, vector output or emitted body changes, or if the lift lets through a tag or context INL1a does not support.
+
+T058L (board T125) is a separate PR from master that lands first. lanes.ts SUITE_LINE is a closed list, so judgeHost drops an unknown suite without counting it. The fix matches any suite-shaped line, and master's lanes.json must stay byte-identical.
+
+The full worker_package (allowed_files, verify, stop_if) is in the T058J2 receipt, which is copied into T058's constraints on the board.
+
+## Third Judge amendment (T058J3, 2026-09-30), PM accepted
+
+- (A) reject-phrasing-inline-span: retarget to a span in a block container that holds a block (block-in-inline), still refused. Not inline-block, which reject-phrasing-inline-block covers.
+- (B) Add text-in-inline and text-beside-inline to parity.test.ts's context list, plus a new 2+-line text-beside-inline case in inline-mixed-sizes. New files only.
+- (C) pixel-reference.test.ts: a literal count may change only by the sum of the new cases' rule counts, shown in the receipt (edge @DPR2 +185).
+- (D) Append engine-inline to the translate test suite-list pins, on inl1a-engine-corpus, and merge forward.
+- (E) Device dump element (non-text) lines must carry start = end = 0. This is a device-only check in validateNativeDump's post-check block, error out-of-range. The schema is unchanged, and so is the runtime, which already writes 0/0. The device-lanes.test.ts perfectDump helper writes 0/0 for non-text nodes. Appended tests: null fails, non-zero fails, a reference dump with null passes, the break-shift plant on a TextLeaf inside an InlineBox is still caught, and every existing dump validates.
+- (F) The singleRunBaseline runtime plant is required before landing. It goes in after #42 merges: PLANT_AXIS re-keyed to the glyph plants, plus one appended judgeLinePlant and the --plant dispatch.
+- (G) The targets.ts engine-inline entry goes in after #42 merges. #42 carries T125.
+- b/strong/em/i stay refused, as a recorded deferral to T133 (INL1a-tags). T058's receipt must not claim R7 complete. small and code are listed as still refused.
+- The Tailwind snapshot is relaxed-tier output. Only its fix-message text may change.
+
+PM ruling (2026-09-30): the INL1a regeneration changes one tailwind-4.3.3.json refusal code. The web `inline` utility stays refused, and its code moves from DRAGON_UNPROVEN_CONTEXT to DRAGON_UNSUPPORTED_VALUE: the sweep's HTML puts a div inside the utility element, which is now refused as block-in-inline. The verdict is unchanged and the new reason is the true one, so this is accepted as generated output. The PR body must state it.
+
+Stack state after J3 A-E: inl1a-engine-corpus b72401123, inl1a-compiler 255551af2. Still open: F and G after #42 merges, the device run when the stack heads the queue, and T133 for the tags.

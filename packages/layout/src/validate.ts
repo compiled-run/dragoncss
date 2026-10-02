@@ -6,14 +6,20 @@ type StringRule = { readonly t: 'string' };
 type LiteralRule<V extends string> = { readonly t: 'literal'; readonly values: readonly V[] };
 type ObjectRule = { readonly t: 'object'; readonly fields: { readonly [k: string]: Rule } };
 type TaggedRule = { readonly t: 'tagged'; readonly variants: { readonly [kind: string]: { readonly [k: string]: Rule } } };
-/** The recursive CalcExpr tree, which Infer cannot derive: it is checked by hand (checkCalc). */
-type CalcRule = { readonly t: 'calc' };
-type Rule = NumberRule | StringRule | LiteralRule<string> | ObjectRule | TaggedRule | CalcRule;
+/**
+ * The recursive CalcExpr tree, which Infer cannot derive: it is checked by hand (checkCalc). fontSize marks a specified font size
+ * expression, whose root may be a font-percent or font-calc node and must be a length.
+ */
+type CalcRule = { readonly t: 'calc'; readonly fontSize: boolean };
+type BooleanRule = { readonly t: 'boolean' };
+type Rule = NumberRule | StringRule | LiteralRule<string> | ObjectRule | TaggedRule | CalcRule | BooleanRule;
 
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
 type Infer<R> = R extends CalcRule
   ? CalcExpr
+  : R extends BooleanRule
+  ? boolean
   : R extends NumberRule
   ? number
   : R extends StringRule
@@ -47,7 +53,9 @@ const px = (minimum: number) => ({ px: { value: num(minimum) } }) as const;
 const percent = (minimum: number) => ({ percent: { value: num(minimum) } }) as const;
 const auto = { auto: {} } as const;
 
-const calcExpr: CalcRule = { t: 'calc' };
+const calcExpr: CalcRule = { t: 'calc', fontSize: false };
+const fontSizeExpr: CalcRule = { t: 'calc', fontSize: true };
+const bool: BooleanRule = { t: 'boolean' };
 const calc = { calc: { expr: calcExpr, range: lit('all', 'non-negative') } } as const;
 
 const size = tagged({ ...px(0), ...percent(0), ...auto, ...calc });
@@ -118,12 +126,18 @@ export const styleSchema = obj({
   aspectRatio,
 });
 
+/** css-fonts-4 §2: a font with its specified size expression (input.ts FontSpec). */
+export const fontSpecSchema = obj({ family: lit('Ahem'), size: num(0), specifiedSize: fontSizeExpr, absoluteSize: bool });
+
+/** CSS2 §10.8.1: line-height is non-negative; a percentage is of the font size, and a calculation, clamped to 0, may hold one. */
+export const lineHeightSchema = tagged({ normal: {}, number: { value: num(0) }, px: { value: num(0) }, percent: { value: num(0) }, calc: { expr: calcExpr, range: lit('non-negative') } });
+
 export const textLeafSchema = obj({
   kind: lit('text'),
   id: str,
   text: str,
-  font: obj({ family: lit('Ahem'), size: num(0) }),
-  lineHeight: tagged({ normal: {}, number: { value: num(0) }, px: { value: num(0) } }),
+  font: fontSpecSchema,
+  lineHeight: lineHeightSchema,
   whiteSpaceCollapse: lit('collapse'),
   textWrapMode: lit('wrap', 'nowrap'),
 });
@@ -199,8 +213,14 @@ const CALC_FIELDS: { readonly [kind: string]: readonly string[] } = {
   px: ['value'],
   percent: ['value'],
   number: ['value'],
-  viewport: ['value', 'axis'],
+  viewport: ['value', 'axis', 'size'],
   em: ['value', 'fontSize'],
+  rem: ['value'],
+  'font-metric': ['value', 'metric', 'font'],
+  lh: ['value', 'font', 'lineHeight'],
+  env: ['value', 'side'],
+  'font-percent': ['value', 'parent'],
+  'font-calc': ['expr', 'parent'],
   sum: ['terms'],
   product: ['terms'],
   invert: ['term'],
@@ -210,8 +230,9 @@ const CALC_FIELDS: { readonly [kind: string]: readonly string[] } = {
   'pixels-and-percent': ['pixels', 'percent', 'explicitPixels', 'explicitPercent'],
 };
 
-// css-values-4 §10: a calculation tree. Every number is finite, operator lists are non-empty, and every key is present.
-function checkCalc(value: unknown, path: string, errors: ValidationError[]): void {
+// css-values-4 §10: a calculation tree. Every number is finite, operator lists are non-empty, and every key is present. A
+// font-percent or font-calc node stands only at the root of a specified font size (fontSize), and nowhere else.
+function checkCalc(value: unknown, path: string, errors: ValidationError[], fontSize: boolean): void {
   if (!isRecord(value)) {
     errors.push({ path, code: 'wrong-type', message: 'expected a calculation node' });
     return;
@@ -220,6 +241,10 @@ function checkCalc(value: unknown, path: string, errors: ValidationError[]): voi
   const fields = typeof kind === 'string' && Object.prototype.hasOwnProperty.call(CALC_FIELDS, kind) ? CALC_FIELDS[kind] : undefined;
   if (fields === undefined) {
     errors.push({ path: `${path}.kind`, code: 'unknown-tag', message: `expected kind ${Object.keys(CALC_FIELDS).join(' | ')}` });
+    return;
+  }
+  if (!fontSize && (kind === 'font-percent' || kind === 'font-calc')) {
+    errors.push({ path: `${path}.kind`, code: 'bad-value', message: `a ${kind} node stands only at the root of a specified font size` });
     return;
   }
   for (const key of Object.keys(value)) {
@@ -233,13 +258,20 @@ function checkCalc(value: unknown, path: string, errors: ValidationError[]): voi
     }
     const v = value[key];
     if (key === 'axis') checkRule(v, lit('width', 'height', 'min', 'max'), at, errors);
+    else if (key === 'size') checkRule(v, lit('small', 'large', 'dynamic'), at, errors);
+    else if (key === 'metric') checkRule(v, lit('ex', 'ch', 'cap'), at, errors);
+    else if (key === 'side') checkRule(v, lit('top', 'right', 'bottom', 'left'), at, errors);
+    else if (key === 'font') checkRule(v, fontSpecSchema, at, errors);
+    else if (key === 'lineHeight') checkRule(v, lineHeightSchema, at, errors);
     else if (key === 'explicitPixels' || key === 'explicitPercent') {
       if (typeof v !== 'boolean') errors.push({ path: at, code: 'wrong-type', message: 'expected a boolean' });
     } else if (key === 'terms') {
       if (!Array.isArray(v) || v.length === 0) errors.push({ path: at, code: 'wrong-type', message: 'expected a non-empty array of calculation nodes' });
-      else v.forEach((t: unknown, i: number) => checkCalc(t, `${at}[${i}]`, errors));
-    } else if (key === 'fontSize' || key === 'term' || key === 'min' || key === 'max' || (key === 'value' && kind === 'clamp')) checkCalc(v, at, errors);
-    else checkRule(v, anyNum, at, errors);
+      else v.forEach((t: unknown, i: number) => checkCalc(t, `${at}[${i}]`, errors, false));
+    } else if (key === 'fontSize' || key === 'parent') checkCalc(v, at, errors, true);
+    else if (key === 'term' || key === 'min' || key === 'max' || key === 'expr' || (key === 'value' && kind === 'clamp')) checkCalc(v, at, errors, false);
+    // css-fonts-4 §2.5: a negative font-size percentage is invalid.
+    else checkRule(v, kind === 'font-percent' ? num(0) : anyNum, at, errors);
   }
 }
 
@@ -266,7 +298,19 @@ function calcCategory(e: CalcExpr, path: string, errors: ValidationError[]): Cal
   switch (e.kind) {
     case 'px':
     case 'viewport':
+    case 'rem':
+    case 'font-metric':
+    case 'lh':
+    case 'env':
       return 'length';
+    case 'font-percent':
+      return calcCategory(e.parent, `${path}.parent`, errors) === 'length' ? 'length' : bad('a parent font size must be a length without a percentage');
+    case 'font-calc': {
+      const parent = calcCategory(e.parent, `${path}.parent`, errors);
+      const own = calcCategory(e.expr, `${path}.expr`, errors);
+      if (parent !== 'length') return bad('a parent font size must be a length without a percentage');
+      return own === 'percent' || own === 'length-percent' ? 'length' : bad('a font-calc holds a percentage of the parent font size');
+    }
     case 'percent':
       return 'percent';
     case 'number':
@@ -301,12 +345,16 @@ function checkRule(value: unknown, rule: Rule, path: string, errors: ValidationE
   switch (rule.t) {
     case 'calc': {
       const before = errors.length;
-      checkCalc(value, path, errors);
-      if (errors.length === before && calcCategory(value as CalcExpr, path, errors) === 'number') {
-        errors.push({ path, code: 'bad-value', message: 'a length calculation must not resolve to a number' });
-      }
+      checkCalc(value, path, errors, rule.fontSize);
+      if (errors.length !== before) return;
+      const category = calcCategory(value as CalcExpr, path, errors);
+      if (category === 'number') errors.push({ path, code: 'bad-value', message: 'a length calculation must not resolve to a number' });
+      else if (rule.fontSize && category !== null && category !== 'length') errors.push({ path, code: 'bad-value', message: 'a specified font size holds a percentage only in a font-percent or font-calc node' });
       return;
     }
+    case 'boolean':
+      if (typeof value !== 'boolean') errors.push({ path, code: 'wrong-type', message: 'expected a boolean' });
+      return;
     case 'number':
       if (typeof value !== 'number' || !Number.isFinite(value)) {
         errors.push({ path, code: 'wrong-type', message: 'expected a finite number' });
@@ -548,7 +596,20 @@ export function validateLayoutInput(json: unknown): ValidationResult {
   if (!isRecord(json)) {
     return { ok: false, errors: [{ path: '$', code: 'wrong-type', message: 'expected an object' }] };
   }
-  checkFields(json, { viewport: obj({ width: num(0), height: num(0) }), devicePixelRatio: positive }, '$', errors, ['root']);
+  const viewport = obj({ width: num(0), height: num(0) });
+  checkFields(
+    json,
+    {
+      viewport,
+      devicePixelRatio: positive,
+      viewportUnits: obj({ small: viewport, large: viewport, dynamic: viewport }),
+      safeArea: obj({ top: num(0), right: num(0), bottom: num(0), left: num(0) }),
+      rootFontSize: num(0),
+    },
+    '$',
+    errors,
+    ['root'],
+  );
   if (!Object.prototype.hasOwnProperty.call(json, 'root')) {
     errors.push({ path: '$.root', code: 'missing-key', message: 'missing required key "root"' });
   } else {

@@ -24,7 +24,8 @@ export type UnitEntry = { readonly unit: string; readonly dimension: 'length'; r
 /** The canonical length unit: a unitless zero length (CSS2 §4.3.2) resolves to 0px. */
 export const CANONICAL_LENGTH_UNIT = 'px';
 
-// Blink css_primitive_value.h: the absolute-unit ratios, each derived in double exactly as Chrome derives it.
+// css-values-4 §6.2 absolute lengths: 1in = 96px = 2.54cm, 1cm = 10mm, 1mm = 4Q, 1in = 72pt = 6pc. Each ratio is computed in
+// double from px per inch or per cm as written below; units.test.ts pins the results to Chrome's (css_primitive_value.h).
 const PX_PER_IN = 96;
 const PX_PER_CM = PX_PER_IN / 2.54;
 const PX_PER_MM = PX_PER_CM / 10;

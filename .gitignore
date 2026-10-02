@@ -17,3 +17,4 @@ packages/wpt/generated/
 .vercel/
 packages/dragon/README.md
 packages/dragon/LICENSE
+packages/dragon/THIRD_PARTY_NOTICES.md

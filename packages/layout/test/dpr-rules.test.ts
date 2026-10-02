@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { absoluteRects, ahemMeasurer, layout, layoutWithFaults, NO_ENGINE_FAULTS } from '../src/index.ts';
 import type { BorderWidthValue, LayoutBox, LayoutRect, LayoutResult, LayoutStyle, LineHeightValue } from '../src/index.ts';
 import { cachedRangeWidth, fromCssPx, lineHeightFromNumber, percentOf, textAdvanceAt, zoomViewportPx } from '../src/units.ts';
-import { box, text } from './helpers.ts';
+import { box, text, neutralEnvironment, ahemFont } from './helpers.ts';
 
 function run(root: LayoutBox, dpr: number, viewport = { width: 400, height: 300 }): Map<string, LayoutRect> {
-  const r: LayoutResult = layout({ viewport, devicePixelRatio: dpr, root }, ahemMeasurer);
+  const r: LayoutResult = layout({ viewport, devicePixelRatio: dpr, ...neutralEnvironment(viewport), root }, ahemMeasurer);
   if (r.kind !== 'ok') throw new Error(r.unsupported.code);
   return absoluteRects(r.boxes);
 }
@@ -29,7 +29,7 @@ describe('R1: the initial containing block is ceil(viewport x DPR) device px', (
 describe('R2 and R3: line heights round (LayoutUnit::FromFloatRound), at every DPR', () => {
   /** The line pitch in LU: the offset between the first two line fragments of a two-line paragraph. */
   function pitch(size: number, lh: LineHeightValue, dpr = 1): number {
-    const m = run(box('html', {}, [box('p', { width: { kind: 'px', value: 1 } }, [text('p:text0', 'X X', { font: { family: 'Ahem', size }, lineHeight: lh })])]), dpr);
+    const m = run(box('html', {}, [box('p', { width: { kind: 'px', value: 1 } }, [text('p:text0', 'X X', { font: ahemFont(size), lineHeight: lh })])]), dpr);
     return rect(m, 'p:text0:line1').y - rect(m, 'p:text0:line0').y;
   }
   const num = (value: number): LineHeightValue => ({ kind: 'number', value });
@@ -58,7 +58,7 @@ describe('R2 and R3: line heights round (LayoutUnit::FromFloatRound), at every D
 describe('R4: min-content words are measured by cached positions (ShapeResult::CachedWidth)', () => {
   /** The width in LU of a flex item holding t in a width-0 flex row: its min-content contribution (the probe). */
   function item(t: string, size: number, dpr: number): number {
-    const row = box('row', { display: 'flex', width: { kind: 'px', value: 0 } }, [box('i', {}, [text('i:text0', t, { font: { family: 'Ahem', size } })])]);
+    const row = box('row', { display: 'flex', width: { kind: 'px', value: 0 } }, [box('i', {}, [text('i:text0', t, { font: ahemFont(size) })])]);
     return rect(run(box('html', {}, [row]), dpr), 'i').width;
   }
 
@@ -85,7 +85,7 @@ describe('R4: min-content words are measured by cached positions (ShapeResult::C
   });
 
   it('max-content and line layout keep SnappedWidth per piece: a max-content item holding XXX XX XXXX at 11.11px is ceil(11 advances)', () => {
-    const row = box('row', { display: 'flex', width: { kind: 'px', value: 400 } }, [box('i', { flexShrink: 0 }, [text('i:text0', 'XXX XX XXXX', { font: { family: 'Ahem', size: 11.11 } })])]);
+    const row = box('row', { display: 'flex', width: { kind: 'px', value: 400 } }, [box('i', { flexShrink: 0 }, [text('i:text0', 'XXX XX XXXX', { font: ahemFont(11.11) })])]);
     expect(rect(run(box('html', {}, [row]), 1), 'i').width).toBe(textAdvanceAt(11, 11.11));
   });
 });
@@ -94,7 +94,7 @@ describe('R5: an initial line width is device px at every DPR', () => {
   /** The top border width in device px: the child's offset in the bordered box (zoomed LU / 64). */
   function top(w: BorderWidthValue, dpr: number, faults = NO_ENGINE_FAULTS): number {
     const s: Partial<LayoutStyle> = { borderTopWidth: w, borderRightWidth: w, borderBottomWidth: w, borderLeftWidth: w };
-    const r = layoutWithFaults({ viewport: { width: 400, height: 300 }, devicePixelRatio: dpr, root: box('html', {}, [box('b', s, [box('c', { height: { kind: 'px', value: 1 } })])]) }, ahemMeasurer, faults);
+    const r = layoutWithFaults({ viewport: { width: 400, height: 300 }, devicePixelRatio: dpr, ...neutralEnvironment({ width: 400, height: 300 }), root: box('html', {}, [box('b', s, [box('c', { height: { kind: 'px', value: 1 } })])]) }, ahemMeasurer, faults);
     if (r.kind !== 'ok') throw new Error(r.unsupported.code);
     const m = absoluteRects(r.boxes);
     return (rect(m, 'c').y - rect(m, 'b').y) / 64;

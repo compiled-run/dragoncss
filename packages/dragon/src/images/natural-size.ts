@@ -12,13 +12,14 @@ export type ImageHeader = { readonly format: 'png'; readonly facts: PngFacts } |
 const INCH = 2;
 const DEFAULT_DPI = 72;
 
-/** round(physical * 72 / (num / den)) === stated, in exact integers; std::round rounds halves up for these positive values. */
+/** round(physical * 72 / (num / den)) === stated, in exact integers; rounding halves up, as Chrome does for these positive values. */
 const roundsTo = (physical: number, [num, den]: readonly [number, number], stated: number): boolean =>
   (2 * stated - 1) * num <= 2 * physical * DEFAULT_DPI * den && 2 * physical * DEFAULT_DPI * den < (2 * stated + 1) * num;
 
 /**
- * Blink ExtractDensityCorrectedSize (image_decoder.cc): with ResolutionUnit inch, a non-empty resolution and the Exif pixel
- * dimensions, the pixel dimensions are the size when the physical size scaled by 72 / resolution rounds to them.
+ * The density-corrected natural size (HTML §4.8.4.3.6): with ResolutionUnit inch, a non-empty resolution and the Exif pixel
+ * dimensions, the pixel dimensions are the size when the physical size scaled by 72 / resolution rounds to them. Dragon works
+ * in exact rationals; images.test.ts pins the rules measured in Chrome (which applies them in image_decoder.cc).
  */
 export function densityCorrectedSize(physical: NaturalSize, exif: ExifFacts | null): NaturalSize {
   if (exif === null || exif.resolutionUnit !== INCH || exif.resolution === null || exif.pixelSize === null) return physical;
