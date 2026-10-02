@@ -183,3 +183,22 @@ This follows R7, which sends sub and sup to INL2.
 **Proof required.** A Chrome fixture covering nested sub/sup and font-size: smaller, with the subShiftOwnFont plant caught.
 
 **Progress.** The engine's vertical-align already matches Chrome on 29/29 INL-P probe cases, at every DPR, in ltr and rtl.
+
+## INL2b host-done (2026-10-01): inl2b c638e25d5 on txt2a 919021f19
+
+**Result.** Every CSS2 §10.8.1 vertical-align value is ported from Blink inline_box_state.cc.
+- 29/29 Chrome probe cases match, and the 6 fixtures pass at every DPR in ltr and rtl.
+- All plants are caught.
+- The CSS.supports matrix matches 34/34.
+- sub and sup are supported tags.
+
+**Impact.**
+- North star: unchanged. The music player uses none of these.
+- Tailwind: 2218 supported, 0 mismatches.
+
+**PM rulings:**
+- **Proof cases on existing rows: accepted.** 39 existing iOS and web profile rows gain proof cases, with no status change. Adding proof is not a loosening.
+- **The non-append UA lines: accepted.** They are the CapturedTag union line and sub/sup's vertical-align moving from unmodelled to declared. The migration checker proves both.
+- **The inline-vertical-align-* fixture ids: accepted.** The name keeps the values.test sort rule intact.
+
+**Next.** TXT2-b and later parts stay queued (breadth). This lane moves to landing the PNT2 chain.

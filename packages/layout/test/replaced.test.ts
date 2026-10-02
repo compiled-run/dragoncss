@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { LayoutStyle } from '../src/index.ts';
 import { fromCssPx, NO_ENGINE_FAULTS } from '../src/index.ts';
 import type { NaturalSizing, ObjectFit, ObjectPosition, ReplacedSize } from '../src/replaced.ts';
-import { blockFlowSpace, drawnObjectRect, objectFitRect, pixelSnappedRect, replacedSize } from '../src/replaced.ts';
+import { blockFlowSpace, drawnObjectRect, naturalSizingOf, objectFitRect, pixelSnappedRect, replacedSize } from '../src/replaced.ts';
 import type { LU } from '../src/units.ts';
 import { divStyle, pct, px } from './helpers.ts';
 
@@ -170,5 +170,29 @@ describe('the object-fit destination rect against the REPL-0 Chrome probe (R7)',
     const inside = objectFitRect(content, image(160, 80), 'contain', { x: pct(50), y: pct(50) }, NO_ENGINE_FAULTS);
     expect(drawnObjectRect(inside, content)).toEqual({ x: 10, y: 10, width: 100, height: 50 });
     expect(drawnObjectRect(objectFitRect(content, image(10, 10), 'none', { x: px(200), y: px(0) }, NO_ENGINE_FAULTS), content)).toBeNull();
+  });
+});
+
+describe('an image with an empty natural size (Blink ComputeObjectFitAndPositionRect)', () => {
+  // Chrome returns the content box when the natural size is empty (PhysicalSize::IsEmpty: either side zero) and there is no
+  // natural ratio, whatever object-fit and object-position say; it never sizes the object 0 wide.
+  const content = { x: lu(10), y: lu(20), width: lu(200), height: lu(100) };
+  const corner: ObjectPosition = { x: px(0), y: px(0) };
+  const leaf = (w: number, h: number) => naturalSizingOf({ kind: 'replaced', id: 'i', style: divStyle, natural: { kind: 'image', width: w, height: h }, defaultWidth: 300, defaultHeight: 150, objectFit: 'none', objectPositionX: px(0), objectPositionY: px(0) });
+
+  it('has no natural ratio when a side is zero, and keeps the ratio otherwise', () => {
+    expect(leaf(0, 100).ratio).toBeNull();
+    expect(leaf(100, 0).ratio).toBeNull();
+    expect(leaf(40, 20).ratio).toEqual({ width: lu(40), height: lu(20) });
+  });
+
+  it('paints across the content box for every object-fit, none included', () => {
+    for (const [w, h] of [[0, 100], [100, 0], [0, 0]] as const) {
+      for (const fit of ['fill', 'contain', 'cover', 'none', 'scale-down'] as const) expect(objectFitRect(content, leaf(w, h), fit, corner, NO_ENGINE_FAULTS), `${w}x${h} ${fit}`).toEqual(content);
+    }
+  });
+
+  it('still keeps a non-empty natural size under none (the comparison is not vacuous)', () => {
+    expect(objectFitRect(content, leaf(40, 20), 'none', corner, NO_ENGINE_FAULTS)).toEqual({ x: lu(10), y: lu(20), width: lu(40), height: lu(20) });
   });
 });
