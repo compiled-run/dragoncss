@@ -190,7 +190,9 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     const bg = backgroundOf(p, n.id);
     // The element boxes after this one in paint order (paintsOver: positioned boxes over in-flow ones, then tree order) paint over
     // its border; their pixels are skipped. Boxes before it in paint order paint below it, so a border pixel they overlap is compared.
-    const over = p.nodes.filter((m) => m.kind !== 'text' && m.id !== n.id && paintsOver(order, layer, n.id, m.id)).flatMap((m) => {
+    // The pre-T116 comparison keeps master's tree-order rule, so the subset proof measures everything this file changed.
+    const hides = (m: string): boolean => (mode.preT116 ? order.indexOf(m) > order.indexOf(n.id) : paintsOver(order, layer, n.id, m));
+    const over = p.nodes.filter((m) => m.kind !== 'text' && m.id !== n.id && hides(m.id)).flatMap((m) => {
       const o = boxOf.get(m.id);
       return o === undefined ? [] : [o];
     });
