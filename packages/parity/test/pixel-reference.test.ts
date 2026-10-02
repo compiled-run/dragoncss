@@ -18,6 +18,7 @@ import { PLANT_CASE } from '../src/device-run.ts';
 import { ahemGlyphBoxes, BOTTOM_SCANLINES_PATH, casePoints, caseSamples, checkCasePixels, committedPixels, decodePng, expectedPixelsDir, expectedPixelsPath, glyphLines, PIXEL_MANIFEST, rasterSize, RASTER_RULE, runFileText } from '../src/pixel-reference.ts';
 import { BACKEND_OF } from '../src/native-host.ts';
 import { deviceDprs } from '../src/targets.ts';
+import { withoutTransforms } from '../src/paint-samples/transform.ts';
 import type { SamplePoint } from '../src/samples.ts';
 import { generateGlyphSamples, GLYPH_EDGE_RULE, glyphClearance, ruleKind, SAMPLE_INSET_DEVICE_PX } from '../src/samples.ts';
 
@@ -108,16 +109,17 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
   // (edge:glyph is a glyph-edge scanline), and of those the edge and border rules that kept clear pixels as "<rule>:clear" colour
   // points (addendum F2). A change here changes what the device lanes compare; it needs a written reason. SIZE-ar: only the 10
   // sizing-ratio cases' rules (edge +8, edge:glyph +4, rescued edge +8 at DPR 2 and 3, +6 at 2.625); with them filtered out the
-  // master pins hold exactly. INL1a-breaks: plus the inline-breaks cases' own (the last term), every existing case unchanged.
+  // master pins hold exactly. INL1a-breaks: plus the inline-breaks cases' own, every existing case unchanged. PNT2: plus the
+  // transforms cases' rules (edge +3, rescued edge +3 at every device DPR, judged on their untransformed points), the last addend.
   const DROPPED = {
     ios: {
-      2: { dropped: { edge: 1234 + 71, 'edge:glyph': 924 + 91, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1194 + 69 } },
-      3: { dropped: { edge: 1243 + 71, 'edge:glyph': 872 + 91, glyph: 25, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1215 + 69, border: 18 } },
+      2: { dropped: { edge: 1234 + 71 + 3, 'edge:glyph': 924 + 91, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1194 + 69 + 3 } },
+      3: { dropped: { edge: 1243 + 71 + 3, 'edge:glyph': 872 + 91, glyph: 25, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1215 + 69 + 3, border: 18 } },
     },
     android: {
-      2: { dropped: { edge: 1234 + 71, 'edge:glyph': 924 + 91, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1194 + 69 } },
-      3: { dropped: { edge: 1243 + 71, 'edge:glyph': 872 + 91, glyph: 25, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1215 + 69, border: 18 } },
-      2.625: { dropped: { edge: 1207 + 71, 'edge:glyph': 901 + 91, glyph: 33, outside: 6 + 1, clip: 13, border: 16, interior: 5 }, rescued: { edge: 1071 + 63 } },
+      2: { dropped: { edge: 1234 + 71 + 3, 'edge:glyph': 924 + 91, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1194 + 69 + 3 } },
+      3: { dropped: { edge: 1243 + 71 + 3, 'edge:glyph': 872 + 91, glyph: 25, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1215 + 69 + 3, border: 18 } },
+      2.625: { dropped: { edge: 1207 + 71 + 3, 'edge:glyph': 901 + 91, glyph: 33, outside: 6 + 1, clip: 13, border: 16, interior: 5 }, rescued: { edge: 1071 + 63 + 3 } },
     },
   } as const;
   const bottoms = JSON.parse(readFileSync(BOTTOM_SCANLINES_PATH(), 'utf8')) as BottomScanlines;
@@ -144,7 +146,10 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
           if (inked.length > 0) perCase[n.case.id] = [inked.filter((l) => rules.has(`edge:${l.id}:glyph-bottom`)).length, inked.length];
           const unclear = (q: SamplePoint) => glyphs.filter((g) => glyphClearance(q.x, q.y, g) < I).length;
           const scanlines = new Map<string, SamplePoint[]>();
-          for (const q of r.points) {
+          // The glyph boxes are untransformed, so the clearance is judged on the base points; the transform module maps them and keeps
+          // each mapped point clear of the transformed edges (PNT2, pnt2-samples.test.ts).
+          const plain = withoutTransforms(p);
+          for (const q of (plain === p ? r : caseSamples(plain, n.case.environment.viewport, dpr)).points) {
             if (GLYPH_EDGE_RULE.test(q.rule)) scanlines.set(q.rule, [...(scanlines.get(q.rule) ?? []), q]);
             else if (unclear(q) > 0) throw new Error(`${target} ${n.case.id}@${dpr}: ${q.rule} at ${q.x},${q.y} is within ${I} device px of a glyph box edge`);
           }

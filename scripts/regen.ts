@@ -48,6 +48,8 @@ export const STEPS: readonly Step[] = [
   { name: 'grammar', argv: pnpm('grammar:gen'), outputs: ['packages/dragon/src/css/grammar.generated.ts'] },
   { name: 'notices', argv: pnpm('notices:gen'), outputs: ['THIRD_PARTY_NOTICES.md'] },
   { name: 'ua', argv: pnpm('ua:capture'), outputs: ['packages/dragon/src/ua/*.generated.ts'], readsLater: ['profile-rows'] },
+  // PNT2: Chrome's computed transform and content quads of every transforms case (transform-capture.ts), which pnt2-quads.test reads.
+  { name: 'quads', argv: pnpm('parity:quads-capture'), outputs: ['packages/parity/expected-quads/**'] },
   { name: 'capture', argv: pnpm('parity:capture'), outputs: ['packages/parity/expected/darwin-arm64/**', 'packages/parity/emitted/**', 'packages/parity/expected-fonts/**'], readsLater: ['profile-rows'] },
   // profile:rows also writes the committed native lanes verdict (P6a, T075J) from lanes.json, which lanes-host writes later.
   { name: 'profile-rows', argv: pnpm('profile:rows'), outputs: ['packages/dragon/src/profiles/ios.ts', 'packages/dragon/src/profiles/android.ts', 'packages/dragon/src/profiles/web.ts', 'packages/dragon/src/profiles/native-lanes.ts'], readsLater: ['lanes-host'] },
