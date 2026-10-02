@@ -188,3 +188,18 @@ describe('EMS: CSS families and paint values', () => {
     expect((LONGHANDS as readonly string[]).length).toBe(71);
   });
 });
+
+describe('REPL-a foreign view: the iframe src literal (author input in emitted Swift and Kotlin)', () => {
+  it('escapes exactly as native-support.ts stringLit does, on quotes, backslashes, $, controls, non-ASCII and astral characters', async () => {
+    const { srcLit } = await import('../src/emit/paint/foreign-view.ts');
+    const { stringLit } = await import('../src/emit/native-support.ts');
+    const srcs = ['https://example.com/a?b=1&c=2', 'a"b', 'a\\b', '${x}', '\\(x)', 'tab\there', 'nl\nhere', '\u0000\u007f', 'café', ' ', 'emoji 😀', ''];
+    for (const s of srcs) {
+      expect(srcLit(s, 'uikit'), s).toBe(stringLit('swift', s));
+      expect(srcLit(s, 'android-views'), s).toBe(stringLit('kotlin', s));
+    }
+    expect(srcLit('a"b\\$', 'android-views')).toBe('"a\\"b\\\\\\$"');
+    expect(srcLit(null, 'uikit')).toBe('nil');
+    expect(srcLit(null, 'android-views')).toBe('null');
+  });
+});
