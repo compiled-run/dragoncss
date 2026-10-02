@@ -203,7 +203,7 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:120
         if (advance < 0.0) {
-          return try MeasureResult_okFalse(false, jsConcat(S.s69, jsToUpperCase(jsToStringRadix16(cp)), S.s14))
+          return try MeasureResult_okFalse(false, jsConcat(S.s70, jsToUpperCase(jsToStringRadix16(cp)), S.s15))
         }
         glyphs += advance
       }
@@ -224,7 +224,7 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:133
         if (advance < 0.0) {
-          return try MeasureResult_okFalse(false, jsConcat(S.s69, jsToUpperCase(jsToStringRadix16(cp)), S.s14))
+          return try MeasureResult_okFalse(false, jsConcat(S.s70, jsToUpperCase(jsToStringRadix16(cp)), S.s15))
         }
         // ts: packages/layout/src/text.ts:134
         if (k < start) {

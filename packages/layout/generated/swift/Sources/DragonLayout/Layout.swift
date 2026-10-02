@@ -178,7 +178,7 @@ public func layout_containingBlock(_ ctx: Ctx, _ box: LayoutBox, _ parentOf: JsS
   let r: AbsoluteRect? = try out.absolute.get(jsUnwrap(at).id)
   // ts: packages/layout/src/layout.ts:102
   if (r == nil) {
-    throw try JsError(message: jsConcat(S.s110, jsUnwrap(at).id, S.s23, box.id, S.s15))
+    throw try JsError(message: jsConcat(S.s113, jsUnwrap(at).id, S.s24, box.id, S.s16))
   }
   let bor: Edges = try box_resolveBorder(jsUnwrap(at).style, ctx.devicePixelRatio)
   let s: LayoutStyle = try jsUnwrap(at).style
