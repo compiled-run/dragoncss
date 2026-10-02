@@ -65,6 +65,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg1 {
   display: block;
@@ -132,6 +135,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg2 {
   display: flex;
@@ -199,6 +205,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg3 {
   display: block;
@@ -266,6 +275,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg4 {
   display: flex;
@@ -333,6 +345,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg5 {
   display: block;
@@ -400,6 +415,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg6 {
   display: flex;
@@ -467,6 +485,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg7 {
   display: block;
@@ -534,6 +555,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg8 {
   display: flex;
@@ -601,6 +625,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg9 {
   display: block;
@@ -668,6 +695,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg10 {
   display: flex;
@@ -735,6 +765,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg11 {
   display: block;
@@ -802,6 +835,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg12 {
   display: flex;
@@ -869,6 +905,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg13 {
   display: block;
@@ -936,6 +975,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg14 {
   display: flex;
@@ -1003,6 +1045,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg15 {
   display: block;
@@ -1070,6 +1115,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg16 {
   display: flex;
@@ -1137,6 +1185,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg17 {
   display: block;
@@ -1204,6 +1255,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg18 {
   display: flex;
@@ -1271,6 +1325,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg19 {
   display: block;
@@ -1338,6 +1395,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg20 {
   display: flex;
@@ -1405,6 +1465,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg21 {
   display: block;
@@ -1472,6 +1535,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg22 {
   display: flex;
@@ -1539,6 +1605,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg23 {
   display: block;
@@ -1606,6 +1675,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg24 {
   display: flex;
@@ -1673,6 +1745,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg25 {
   display: block;
@@ -1740,6 +1815,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg26 {
   display: flex;
@@ -1807,6 +1885,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg27 {
   display: block;
@@ -1874,6 +1955,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg28 {
   display: flex;
@@ -1941,6 +2025,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg29 {
   display: block;
@@ -2008,6 +2095,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg30 {
   display: flex;
@@ -2075,6 +2165,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg31 {
   display: block;
@@ -2142,6 +2235,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg32 {
   display: flex;
@@ -2209,6 +2305,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg33 {
   display: block;
@@ -2276,6 +2375,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg34 {
   display: flex;
@@ -2343,6 +2445,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg35 {
   display: block;
@@ -2410,6 +2515,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg36 {
   display: flex;
@@ -2477,6 +2585,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg37 {
   display: block;
@@ -2544,6 +2655,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg38 {
   display: flex;
@@ -2611,6 +2725,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg39 {
   display: block;
@@ -2678,6 +2795,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg40 {
   display: flex;
@@ -2745,6 +2865,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg41 {
   display: block;
@@ -2812,6 +2935,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg42 {
   display: flex;
@@ -2879,6 +3005,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg43 {
   display: block;
@@ -2946,6 +3075,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg44 {
   display: flex;
@@ -3013,6 +3145,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg45 {
   display: block;
@@ -3080,6 +3215,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg46 {
   display: flex;
@@ -3147,6 +3285,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg47 {
   display: block;
@@ -3214,6 +3355,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg48 {
   display: block;
@@ -3281,6 +3425,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg49 {
   display: flex;
@@ -3348,6 +3495,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg50 {
   display: block;
@@ -3415,6 +3565,9 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg51 {
   display: block;
@@ -3482,4 +3635,7 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
