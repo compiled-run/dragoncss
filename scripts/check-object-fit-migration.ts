@@ -4,7 +4,7 @@
 // to a fixture added since the base.
 // - Chrome captures (packages/parity/expected/**, expected-dpr/**, expected-fonts/**): the computed values of every element node gain
 //   "object-fit": "fill" and "object-position": "50% 50%"; with them removed the file is byte-identical to the base.
-// - Emitted CSS (packages/parity/emitted/**, expected-fonts/emitted/**): every rule gains "object-fit: fill;" then "object-position: 50% 50%;" after
+// - Emitted CSS (packages/parity/emitted/**, expected-fonts/emitted/**): every rule outside @media (which writes only differing longhands) gains "object-fit: fill;" then "object-position: 50% 50%;" after
 //   padding-left; with them removed the file is byte-identical to the base, except the header's compilation digest.
 // - The UA datasets (packages/dragon/src/ua/*.generated.ts): every computed row, sorted by property, gains the same two entries.
 // - The engine inputs (packages/layout/vectors/**, break-vectors/**) and Chrome's line breaks (expected-breaks/**): unchanged,
@@ -79,12 +79,28 @@ const RULE = /^\.dg\d+ \{$/;
 const FIT = '  object-fit: fill;';
 const POSITION = '  object-position: 50% 50%;';
 
-/** Emitted CSS: exactly the two declarations per rule, after padding-left; the header keeps its form with any digest. */
+/**
+ * Emitted CSS: exactly the two declarations per rule outside @media, which writes every longhand, after padding-left; a rule
+ * inside @media writes only the longhands that differ (MQ-a), so it gains none. The header keeps its form with any digest.
+ */
 function stripEmitted(after: string, before: string, path: string): { text: string; removed: number } {
   const lines = after.split('\n');
   const was = before.split('\n');
   if (!HEADER.test(lines[0] ?? '') || !HEADER.test(was[0] ?? '')) throw new Error(`${path}: the header is not the generated-file header`);
-  const rules = lines.filter((l) => RULE.test(l)).length;
+  // Rules outside an @media block write every longhand; an @media block closes at the first "}" after its last rule.
+  let rules = 0;
+  let inMedia = false;
+  let inRule = false;
+  for (const l of lines) {
+    if (l.startsWith('@media ')) inMedia = true;
+    else if (RULE.test(l)) {
+      inRule = true;
+      if (!inMedia) rules++;
+    } else if (l === '}') {
+      if (inRule) inRule = false;
+      else inMedia = false;
+    }
+  }
   const kept: string[] = [was[0] as string];
   let removed = 0;
   for (let i = 1; i < lines.length; i++) {
@@ -160,6 +176,7 @@ const PLANTS: { readonly [name: string]: readonly [number, string, (t: string) =
   'emitted-value': [1, 'emitted/margin-collapse-body.css', (t) => t.replace('  width: auto;', '  width: 10px;')],
   'emitted-position': [1, 'emitted/margin-collapse-body.css', (t) => t.replace(POSITION, '  object-position: 0% 0%;')],
   'emitted-extra': [1, 'emitted/margin-collapse-body.css', (t) => t.replace(FIT, `${FIT}\n${FIT}`)],
+  'emitted-media': [1, 'emitted/media-max-width.css', (t) => t.replace(/(@media [^\n]*\n\.dg\d+ \{\n)/, `$1${FIT}\n${POSITION}\n`)],
   'ua-value': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace(UA_POSITION, '    "object-position": "0% 0%",')],
   'vector-output': [3, 'layout/vectors/dpr-2/margin-collapse-body.json', (t) => t.replace(/"height": (\d+)/, (_m, n: string) => `"height": ${Number(n) + 1}`)],
   'stray-file': [0, '', (t) => t],

@@ -273,6 +273,1966 @@
  },
  {
   "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 3,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 240,120: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 3,
+  "node": "edge:a1:bottom",
+  "kind": "pixel",
+  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 3,
+  "node": "interior:a2",
+  "kind": "pixel",
+  "detail": "interior:a2 at 150,315: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 3,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 150,237: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 3,
+  "node": "edge:a2:top",
+  "kind": "pixel",
+  "detail": "edge:a2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 3,
+  "node": "interior:a3",
+  "kind": "pixel",
+  "detail": "interior:a3 at 30,450: native [204,221,255,255], Chrome [178,171,63,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 3,
+  "node": "outside:a3",
+  "kind": "pixel",
+  "detail": "outside:a3 at 30,387: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 3,
+  "node": "edge:a3:top",
+  "kind": "pixel",
+  "detail": "edge:a3:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 3,
+  "node": "edge:a3:bottom",
+  "kind": "pixel",
+  "detail": "edge:a3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 3,
+  "node": "interior:a4",
+  "kind": "pixel",
+  "detail": "interior:a4 at 150,660: native [204,221,255,255], Chrome [139,132,86,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 3,
+  "node": "edge:a4:bottom",
+  "kind": "pixel",
+  "detail": "edge:a4:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 3,
+  "node": "interior:a5",
+  "kind": "pixel",
+  "detail": "interior:a5 at 150,885: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 3,
+  "node": "outside:a5",
+  "kind": "pixel",
+  "detail": "outside:a5 at 150,807: native [204,221,255,255], Chrome [152,143,113,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 3,
+  "node": "edge:a5:top",
+  "kind": "pixel",
+  "detail": "edge:a5:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 960,120: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "outside:a1",
+  "kind": "pixel",
+  "detail": "outside:a1 at 960,242: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "edge:a1:bottom",
+  "kind": "pixel",
+  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "interior:a2",
+  "kind": "pixel",
+  "detail": "interior:a2 at 1050,315: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 1050,237: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "edge:a2:top",
+  "kind": "pixel",
+  "detail": "edge:a2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "interior:a3",
+  "kind": "pixel",
+  "detail": "interior:a3 at 1170,450: native [204,221,255,255], Chrome [178,171,63,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "outside:a3",
+  "kind": "pixel",
+  "detail": "outside:a3 at 1170,387: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "edge:a3:top",
+  "kind": "pixel",
+  "detail": "edge:a3:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "edge:a3:bottom",
+  "kind": "pixel",
+  "detail": "edge:a3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "interior:a4",
+  "kind": "pixel",
+  "detail": "interior:a4 at 1050,660: native [204,221,255,255], Chrome [139,132,86,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "edge:a4:bottom",
+  "kind": "pixel",
+  "detail": "edge:a4:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "interior:a5",
+  "kind": "pixel",
+  "detail": "interior:a5 at 1050,885: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "outside:a5",
+  "kind": "pixel",
+  "detail": "outside:a5 at 1050,807: native [204,221,255,255], Chrome [152,143,113,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 3,
+  "node": "edge:a5:top",
+  "kind": "pixel",
+  "detail": "edge:a5:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "interior:r1",
+  "kind": "pixel",
+  "detail": "interior:r1 at 570,90: native [204,221,255,255], Chrome [111,58,152,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 570,182: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 570,181: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 570,180: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 570,179: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 570,178: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 570,177: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 180,90: native [204,221,255,255], Chrome [153,152,78,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "outside:a1",
+  "kind": "pixel",
+  "detail": "outside:a1 at 362,90: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:a1:right",
+  "kind": "pixel",
+  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:a1:bottom",
+  "kind": "pixel",
+  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "interior:a2",
+  "kind": "pixel",
+  "detail": "interior:a2 at 420,120: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 482,120: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 420,242: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 420,241: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 420,240: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 420,239: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 420,238: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 420,237: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "interior:a3",
+  "kind": "pixel",
+  "detail": "interior:a3 at 576,90: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "outside:a3",
+  "kind": "pixel",
+  "detail": "outside:a3 at 674,90: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:a3:right",
+  "kind": "pixel",
+  "detail": "edge:a3:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:a3:bottom",
+  "kind": "pixel",
+  "detail": "edge:a3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:a3:left",
+  "kind": "pixel",
+  "detail": "edge:a3:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "interior:r2",
+  "kind": "pixel",
+  "detail": "interior:r2 at 570,417: native [204,221,255,255], Chrome [152,191,43,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:r2:bottom",
+  "kind": "pixel",
+  "detail": "edge:r2:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "interior:b1",
+  "kind": "pixel",
+  "detail": "interior:b1 at 240,417: native [204,221,255,255], Chrome [141,140,79,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:b1:top",
+  "kind": "pixel",
+  "detail": "edge:b1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:b1:right",
+  "kind": "pixel",
+  "detail": "edge:b1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:b1:bottom",
+  "kind": "pixel",
+  "detail": "edge:b1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "interior:b2",
+  "kind": "pixel",
+  "detail": "interior:b2 at 540,417: native [204,221,255,255], Chrome [141,140,79,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:b2:top",
+  "kind": "pixel",
+  "detail": "edge:b2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:b2:right",
+  "kind": "pixel",
+  "detail": "edge:b2:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:b2:bottom",
+  "kind": "pixel",
+  "detail": "edge:b2:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "outside:b3",
+  "kind": "pixel",
+  "detail": "outside:b3 at 1050,189: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:b3:top",
+  "kind": "pixel",
+  "detail": "edge:b3:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:b3:left",
+  "kind": "pixel",
+  "detail": "edge:b3:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "interior:r3",
+  "kind": "pixel",
+  "detail": "interior:r3 at 225,774: native [204,221,255,255], Chrome [111,58,152,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:r3:right",
+  "kind": "pixel",
+  "detail": "edge:r3:right at 452,774: native [204,221,255,255], Chrome [165,192,41,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:r3:right",
+  "kind": "pixel",
+  "detail": "edge:r3:right at 451,774: native [204,221,255,255], Chrome [165,192,41,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:r3:right",
+  "kind": "pixel",
+  "detail": "edge:r3:right at 450,774: native [204,221,255,255], Chrome [165,192,41,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:r3:right",
+  "kind": "pixel",
+  "detail": "edge:r3:right at 449,774: native [204,221,255,255], Chrome [165,192,41,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:r3:right",
+  "kind": "pixel",
+  "detail": "edge:r3:right at 448,774: native [204,221,255,255], Chrome [165,192,41,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:r3:right",
+  "kind": "pixel",
+  "detail": "edge:r3:right at 447,774: native [204,221,255,255], Chrome [165,192,41,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "interior:c1",
+  "kind": "pixel",
+  "detail": "interior:c1 at 240,774: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:c1:top",
+  "kind": "pixel",
+  "detail": "edge:c1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:c1:right",
+  "kind": "pixel",
+  "detail": "edge:c1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 3,
+  "node": "edge:c1:bottom",
+  "kind": "pixel",
+  "detail": "edge:c1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "interior:r1",
+  "kind": "pixel",
+  "detail": "interior:r1 at 630,90: native [204,221,255,255], Chrome [165,192,41,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "outside:r1",
+  "kind": "pixel",
+  "detail": "outside:r1 at 630,182: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 630,182: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 630,181: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 630,180: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 630,179: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 630,178: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 630,177: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 1020,90: native [204,221,255,255], Chrome [153,152,78,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:a1:bottom",
+  "kind": "pixel",
+  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:a1:left",
+  "kind": "pixel",
+  "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "interior:a2",
+  "kind": "pixel",
+  "detail": "interior:a2 at 780,120: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 842,120: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 780,242: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 780,241: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 780,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 780,239: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 780,238: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 780,237: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "interior:a3",
+  "kind": "pixel",
+  "detail": "interior:a3 at 624,90: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "outside:a3",
+  "kind": "pixel",
+  "detail": "outside:a3 at 722,90: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:a3:right",
+  "kind": "pixel",
+  "detail": "edge:a3:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:a3:bottom",
+  "kind": "pixel",
+  "detail": "edge:a3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:a3:left",
+  "kind": "pixel",
+  "detail": "edge:a3:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "interior:r2",
+  "kind": "pixel",
+  "detail": "interior:r2 at 630,417: native [204,221,255,255], Chrome [123,56,141,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "interior:b1",
+  "kind": "pixel",
+  "detail": "interior:b1 at 960,417: native [204,221,255,255], Chrome [141,140,79,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:b1:top",
+  "kind": "pixel",
+  "detail": "edge:b1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:b1:bottom",
+  "kind": "pixel",
+  "detail": "edge:b1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:b1:left",
+  "kind": "pixel",
+  "detail": "edge:b1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "interior:b2",
+  "kind": "pixel",
+  "detail": "interior:b2 at 660,417: native [204,221,255,255], Chrome [141,140,79,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:b2:top",
+  "kind": "pixel",
+  "detail": "edge:b2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:b2:right",
+  "kind": "pixel",
+  "detail": "edge:b2:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:b2:bottom",
+  "kind": "pixel",
+  "detail": "edge:b2:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "outside:b3",
+  "kind": "pixel",
+  "detail": "outside:b3 at 150,189: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:b3:top",
+  "kind": "pixel",
+  "detail": "edge:b3:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:b3:right",
+  "kind": "pixel",
+  "detail": "edge:b3:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "interior:r3",
+  "kind": "pixel",
+  "detail": "interior:r3 at 975,774: native [204,221,255,255], Chrome [165,192,41,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:r3:bottom",
+  "kind": "pixel",
+  "detail": "edge:r3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:r3:left",
+  "kind": "pixel",
+  "detail": "edge:r3:left at 747,774: native [204,221,255,255], Chrome [111,58,152,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:r3:left",
+  "kind": "pixel",
+  "detail": "edge:r3:left at 748,774: native [204,221,255,255], Chrome [111,58,152,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:r3:left",
+  "kind": "pixel",
+  "detail": "edge:r3:left at 749,774: native [204,221,255,255], Chrome [111,58,152,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:r3:left",
+  "kind": "pixel",
+  "detail": "edge:r3:left at 750,774: native [204,221,255,255], Chrome [111,58,152,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:r3:left",
+  "kind": "pixel",
+  "detail": "edge:r3:left at 751,774: native [204,221,255,255], Chrome [111,58,152,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:r3:left",
+  "kind": "pixel",
+  "detail": "edge:r3:left at 752,774: native [204,221,255,255], Chrome [111,58,152,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "interior:c1",
+  "kind": "pixel",
+  "detail": "interior:c1 at 960,774: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:c1:top",
+  "kind": "pixel",
+  "detail": "edge:c1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 3,
+  "node": "edge:c1:bottom",
+  "kind": "pixel",
+  "detail": "edge:c1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 3,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 300,150: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 3,
+  "node": "edge:a1:right",
+  "kind": "pixel",
+  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 3,
+  "node": "interior:a2",
+  "kind": "pixel",
+  "detail": "interior:a2 at 60,420: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 3,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 60,297: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 3,
+  "node": "edge:a2:top",
+  "kind": "pixel",
+  "detail": "edge:a2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 3,
+  "node": "interior:a3",
+  "kind": "pixel",
+  "detail": "interior:a3 at 555,585: native [204,221,255,255], Chrome [178,171,63,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 3,
+  "node": "edge:a3:right",
+  "kind": "pixel",
+  "detail": "edge:a3:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 3,
+  "node": "edge:a3:bottom",
+  "kind": "pixel",
+  "detail": "edge:a3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column-rtl",
+  "dpr": 3,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 900,150: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column-rtl",
+  "dpr": 3,
+  "node": "interior:a2",
+  "kind": "pixel",
+  "detail": "interior:a2 at 1140,420: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column-rtl",
+  "dpr": 3,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 1140,297: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column-rtl",
+  "dpr": 3,
+  "node": "edge:a2:top",
+  "kind": "pixel",
+  "detail": "edge:a2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column-rtl",
+  "dpr": 3,
+  "node": "interior:a3",
+  "kind": "pixel",
+  "detail": "interior:a3 at 645,585: native [204,221,255,255], Chrome [178,171,63,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column-rtl",
+  "dpr": 3,
+  "node": "edge:a3:bottom",
+  "kind": "pixel",
+  "detail": "edge:a3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:s1:bottom",
+  "kind": "pixel",
+  "detail": "edge:s1:bottom at 240,482: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:s1:bottom",
+  "kind": "pixel",
+  "detail": "edge:s1:bottom at 240,481: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:s1:bottom",
+  "kind": "pixel",
+  "detail": "edge:s1:bottom at 240,480: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:s1:bottom",
+  "kind": "pixel",
+  "detail": "edge:s1:bottom at 240,479: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:s1:bottom",
+  "kind": "pixel",
+  "detail": "edge:s1:bottom at 240,478: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:s1:bottom",
+  "kind": "pixel",
+  "detail": "edge:s1:bottom at 240,477: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 240,120: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a1:right",
+  "kind": "pixel",
+  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "interior:a2",
+  "kind": "pixel",
+  "detail": "interior:a2 at 75,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 75,237: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:top",
+  "kind": "pixel",
+  "detail": "edge:a2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 137,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 136,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 135,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 134,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 133,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 132,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 75,482: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 75,481: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 75,480: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 75,479: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 75,478: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 75,477: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left at 12,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left at 13,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left at 14,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left at 15,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left at 16,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left at 17,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "interior:b1",
+  "kind": "pixel",
+  "detail": "interior:b1 at 231,418: native [204,221,255,255], Chrome [138,139,76,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:b1:bottom",
+  "kind": "pixel",
+  "detail": "edge:b1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:b1:left",
+  "kind": "pixel",
+  "detail": "edge:b1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left at 3,756: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left at 4,756: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left at 5,756: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left at 6,756: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left at 7,756: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left at 8,756: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "interior:s3",
+  "kind": "pixel",
+  "detail": "interior:s3 at 171,720: native [204,221,255,255], Chrome [165,192,41,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:s3:top",
+  "kind": "pixel",
+  "detail": "edge:s3:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:s3:bottom",
+  "kind": "pixel",
+  "detail": "edge:s3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "interior:c1",
+  "kind": "pixel",
+  "detail": "interior:c1 at 96,720: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:c1:top",
+  "kind": "pixel",
+  "detail": "edge:c1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:c1:bottom",
+  "kind": "pixel",
+  "detail": "edge:c1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "interior:c2",
+  "kind": "pixel",
+  "detail": "interior:c2 at 267,720: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:c2:top",
+  "kind": "pixel",
+  "detail": "edge:c2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 3,
+  "node": "edge:c2:bottom",
+  "kind": "pixel",
+  "detail": "edge:c2:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "interior:html",
+  "kind": "pixel",
+  "detail": "interior:html at 600,450: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "interior:body",
+  "kind": "pixel",
+  "detail": "interior:body at 600,450: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "interior:wrap",
+  "kind": "pixel",
+  "detail": "interior:wrap at 630,450: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 300,120: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:a1:right",
+  "kind": "pixel",
+  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 465,237: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:a2:top",
+  "kind": "pixel",
+  "detail": "edge:a2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 527,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 526,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 525,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 524,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 523,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 522,360: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "outside:s2",
+  "kind": "pixel",
+  "detail": "outside:s2 at 516,297: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "interior:b1",
+  "kind": "pixel",
+  "detail": "interior:b1 at 741,418: native [204,221,255,255], Chrome [138,139,76,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:b1:bottom",
+  "kind": "pixel",
+  "detail": "edge:b1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:b1:left",
+  "kind": "pixel",
+  "detail": "edge:b1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "outside:b2",
+  "kind": "pixel",
+  "detail": "outside:b2 at 516,528: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:b2:top",
+  "kind": "pixel",
+  "detail": "edge:b2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "interior:s3",
+  "kind": "pixel",
+  "detail": "interior:s3 at 231,720: native [204,221,255,255], Chrome [111,58,152,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:s3:top",
+  "kind": "pixel",
+  "detail": "edge:s3:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:s3:right",
+  "kind": "pixel",
+  "detail": "edge:s3:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:s3:bottom",
+  "kind": "pixel",
+  "detail": "edge:s3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "interior:c1",
+  "kind": "pixel",
+  "detail": "interior:c1 at 306,720: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:c1:top",
+  "kind": "pixel",
+  "detail": "edge:c1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:c1:right",
+  "kind": "pixel",
+  "detail": "edge:c1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:c1:bottom",
+  "kind": "pixel",
+  "detail": "edge:c1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "interior:c2",
+  "kind": "pixel",
+  "detail": "interior:c2 at 135,720: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:c2:top",
+  "kind": "pixel",
+  "detail": "edge:c2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 3,
+  "node": "edge:c2:bottom",
+  "kind": "pixel",
+  "detail": "edge:c2:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 3,
+  "node": "interior:record",
+  "kind": "pixel",
+  "detail": "interior:record at 360,360: native [34,34,34,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 3,
+  "node": "interior:song-cover",
+  "kind": "pixel",
+  "detail": "interior:song-cover at 168,820: native [238,238,238,255], Chrome [137,122,87,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 3,
+  "node": "edge:song-cover:top",
+  "kind": "pixel",
+  "detail": "edge:song-cover:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 3,
+  "node": "edge:song-cover:right",
+  "kind": "pixel",
+  "detail": "edge:song-cover:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 3,
+  "node": "edge:song-cover:left",
+  "kind": "pixel",
+  "detail": "edge:song-cover:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 3,
+  "node": "edge:title:left:clear",
+  "kind": "pixel",
+  "detail": "edge:title:left:clear at 321,820: native [238,238,238,255], Chrome [140,190,45,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 3,
+  "node": "interior:label",
+  "kind": "pixel",
+  "detail": "interior:label at 372,372: native [34,34,34,255], Chrome [137,122,87,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 3,
+  "node": "clip:label:top",
+  "kind": "pixel",
+  "detail": "clip:label:top at 372,244: native [34,34,34,255], Chrome [135,110,50,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 3,
+  "node": "clip:label:right",
+  "kind": "pixel",
+  "detail": "clip:label:right at 499,372: native [34,34,34,255], Chrome [140,190,45,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 3,
+  "node": "clip:label:bottom",
+  "kind": "pixel",
+  "detail": "clip:label:bottom at 372,499: native [34,34,34,255], Chrome [140,135,125,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 3,
+  "node": "clip:label:left",
+  "kind": "pixel",
+  "detail": "clip:label:left at 244,372: native [34,34,34,255], Chrome [135,55,130,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 3,
+  "node": "interior:cover",
+  "kind": "pixel",
+  "detail": "interior:cover at 372,372: native [34,34,34,255], Chrome [137,122,87,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 3,
+  "node": "interior:record",
+  "kind": "pixel",
+  "detail": "interior:record at 840,360: native [34,34,34,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 3,
+  "node": "interior:song-cover",
+  "kind": "pixel",
+  "detail": "interior:song-cover at 1032,820: native [238,238,238,255], Chrome [137,122,87,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 3,
+  "node": "edge:song-cover:top",
+  "kind": "pixel",
+  "detail": "edge:song-cover:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 3,
+  "node": "edge:song-cover:right",
+  "kind": "pixel",
+  "detail": "edge:song-cover:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 3,
+  "node": "edge:song-cover:left",
+  "kind": "pixel",
+  "detail": "edge:song-cover:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 3,
+  "node": "edge:title:right:clear",
+  "kind": "pixel",
+  "detail": "edge:title:right:clear at 878,820: native [238,238,238,255], Chrome [135,55,130,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 3,
+  "node": "interior:label",
+  "kind": "pixel",
+  "detail": "interior:label at 852,372: native [34,34,34,255], Chrome [137,122,87,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 3,
+  "node": "clip:label:top",
+  "kind": "pixel",
+  "detail": "clip:label:top at 852,244: native [34,34,34,255], Chrome [135,110,50,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 3,
+  "node": "clip:label:right",
+  "kind": "pixel",
+  "detail": "clip:label:right at 979,372: native [34,34,34,255], Chrome [140,190,45,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 3,
+  "node": "clip:label:bottom",
+  "kind": "pixel",
+  "detail": "clip:label:bottom at 852,499: native [34,34,34,255], Chrome [140,135,125,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 3,
+  "node": "clip:label:left",
+  "kind": "pixel",
+  "detail": "clip:label:left at 724,372: native [34,34,34,255], Chrome [135,55,130,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 3,
+  "node": "interior:cover",
+  "kind": "pixel",
+  "detail": "interior:cover at 852,372: native [34,34,34,255], Chrome [137,122,87,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
   "case": "position-relative-block",
   "dpr": 2,
   "node": "interior:a1",
@@ -518,5 +2478,1965 @@
   "node": "interior:c1",
   "kind": "pixel",
   "detail": "interior:c1 at 598,102: native [63,50,50,255], Chrome [0,0,0,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 2,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 160,80: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 2,
+  "node": "edge:a1:bottom",
+  "kind": "pixel",
+  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 2,
+  "node": "interior:a2",
+  "kind": "pixel",
+  "detail": "interior:a2 at 100,210: native [204,221,255,255], Chrome [196,181,54,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 2,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 100,157: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 2,
+  "node": "edge:a2:top",
+  "kind": "pixel",
+  "detail": "edge:a2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 2,
+  "node": "interior:a3",
+  "kind": "pixel",
+  "detail": "interior:a3 at 20,300: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 2,
+  "node": "outside:a3",
+  "kind": "pixel",
+  "detail": "outside:a3 at 20,257: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 2,
+  "node": "edge:a3:top",
+  "kind": "pixel",
+  "detail": "edge:a3:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 2,
+  "node": "edge:a3:bottom",
+  "kind": "pixel",
+  "detail": "edge:a3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 2,
+  "node": "interior:a4",
+  "kind": "pixel",
+  "detail": "interior:a4 at 100,440: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 2,
+  "node": "edge:a4:bottom",
+  "kind": "pixel",
+  "detail": "edge:a4:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 2,
+  "node": "interior:a5",
+  "kind": "pixel",
+  "detail": "interior:a5 at 100,590: native [204,221,255,255], Chrome [196,181,54,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 2,
+  "node": "outside:a5",
+  "kind": "pixel",
+  "detail": "outside:a5 at 100,537: native [204,221,255,255], Chrome [165,151,101,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block",
+  "dpr": 2,
+  "node": "edge:a5:top",
+  "kind": "pixel",
+  "detail": "edge:a5:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 640,80: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "outside:a1",
+  "kind": "pixel",
+  "detail": "outside:a1 at 640,162: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "edge:a1:bottom",
+  "kind": "pixel",
+  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "interior:a2",
+  "kind": "pixel",
+  "detail": "interior:a2 at 700,210: native [204,221,255,255], Chrome [196,181,54,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 700,157: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "edge:a2:top",
+  "kind": "pixel",
+  "detail": "edge:a2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "interior:a3",
+  "kind": "pixel",
+  "detail": "interior:a3 at 780,300: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "outside:a3",
+  "kind": "pixel",
+  "detail": "outside:a3 at 780,257: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "edge:a3:top",
+  "kind": "pixel",
+  "detail": "edge:a3:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "edge:a3:bottom",
+  "kind": "pixel",
+  "detail": "edge:a3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "interior:a4",
+  "kind": "pixel",
+  "detail": "interior:a4 at 700,440: native [204,221,255,255], Chrome [144,142,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "edge:a4:bottom",
+  "kind": "pixel",
+  "detail": "edge:a4:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "interior:a5",
+  "kind": "pixel",
+  "detail": "interior:a5 at 700,590: native [204,221,255,255], Chrome [196,181,54,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "outside:a5",
+  "kind": "pixel",
+  "detail": "outside:a5 at 700,537: native [204,221,255,255], Chrome [165,151,101,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-block-rtl",
+  "dpr": 2,
+  "node": "edge:a5:top",
+  "kind": "pixel",
+  "detail": "edge:a5:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "interior:r1",
+  "kind": "pixel",
+  "detail": "interior:r1 at 380,60: native [204,221,255,255], Chrome [87,62,175,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 380,122: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 380,121: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 380,120: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 380,119: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 380,118: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 380,117: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 120,60: native [204,221,255,255], Chrome [178,171,63,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "outside:a1",
+  "kind": "pixel",
+  "detail": "outside:a1 at 242,60: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:a1:right",
+  "kind": "pixel",
+  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:a1:bottom",
+  "kind": "pixel",
+  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "interior:a2",
+  "kind": "pixel",
+  "detail": "interior:a2 at 280,80: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 322,80: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 280,162: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 280,161: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 280,160: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 280,159: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 280,158: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 280,157: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "interior:a3",
+  "kind": "pixel",
+  "detail": "interior:a3 at 384,60: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "outside:a3",
+  "kind": "pixel",
+  "detail": "outside:a3 at 450,60: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:a3:right",
+  "kind": "pixel",
+  "detail": "edge:a3:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:a3:bottom",
+  "kind": "pixel",
+  "detail": "edge:a3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:a3:left",
+  "kind": "pixel",
+  "detail": "edge:a3:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "interior:r2",
+  "kind": "pixel",
+  "detail": "interior:r2 at 380,278: native [204,221,255,255], Chrome [165,192,41,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:r2:bottom",
+  "kind": "pixel",
+  "detail": "edge:r2:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "interior:b1",
+  "kind": "pixel",
+  "detail": "interior:b1 at 160,278: native [204,221,255,255], Chrome [151,159,69,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:b1:top",
+  "kind": "pixel",
+  "detail": "edge:b1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:b1:right",
+  "kind": "pixel",
+  "detail": "edge:b1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:b1:bottom",
+  "kind": "pixel",
+  "detail": "edge:b1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "interior:b2",
+  "kind": "pixel",
+  "detail": "interior:b2 at 360,278: native [204,221,255,255], Chrome [151,159,69,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:b2:top",
+  "kind": "pixel",
+  "detail": "edge:b2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:b2:right",
+  "kind": "pixel",
+  "detail": "edge:b2:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:b2:bottom",
+  "kind": "pixel",
+  "detail": "edge:b2:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "outside:b3",
+  "kind": "pixel",
+  "detail": "outside:b3 at 700,125: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:b3:top",
+  "kind": "pixel",
+  "detail": "edge:b3:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:b3:left",
+  "kind": "pixel",
+  "detail": "edge:b3:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "interior:r3",
+  "kind": "pixel",
+  "detail": "interior:r3 at 150,516: native [204,221,255,255], Chrome [87,62,175,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:r3:right",
+  "kind": "pixel",
+  "detail": "edge:r3:right at 302,516: native [204,221,255,255], Chrome [190,195,37,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:r3:right",
+  "kind": "pixel",
+  "detail": "edge:r3:right at 301,516: native [204,221,255,255], Chrome [190,195,37,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:r3:right",
+  "kind": "pixel",
+  "detail": "edge:r3:right at 300,516: native [204,221,255,255], Chrome [190,195,37,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:r3:right",
+  "kind": "pixel",
+  "detail": "edge:r3:right at 299,516: native [204,221,255,255], Chrome [190,195,37,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:r3:right",
+  "kind": "pixel",
+  "detail": "edge:r3:right at 298,516: native [204,221,255,255], Chrome [190,195,37,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:r3:right",
+  "kind": "pixel",
+  "detail": "edge:r3:right at 297,516: native [204,221,255,255], Chrome [190,195,37,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "interior:c1",
+  "kind": "pixel",
+  "detail": "interior:c1 at 160,516: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:c1:top",
+  "kind": "pixel",
+  "detail": "edge:c1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:c1:right",
+  "kind": "pixel",
+  "detail": "edge:c1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row",
+  "dpr": 2,
+  "node": "edge:c1:bottom",
+  "kind": "pixel",
+  "detail": "edge:c1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "interior:r1",
+  "kind": "pixel",
+  "detail": "interior:r1 at 420,60: native [204,221,255,255], Chrome [190,195,37,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "outside:r1",
+  "kind": "pixel",
+  "detail": "outside:r1 at 420,122: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 420,122: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 420,121: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 420,120: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 420,119: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 420,118: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:r1:bottom",
+  "kind": "pixel",
+  "detail": "edge:r1:bottom at 420,117: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 680,60: native [204,221,255,255], Chrome [178,171,63,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:a1:bottom",
+  "kind": "pixel",
+  "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:a1:left",
+  "kind": "pixel",
+  "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "interior:a2",
+  "kind": "pixel",
+  "detail": "interior:a2 at 520,80: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 562,80: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 520,162: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 520,161: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 520,160: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 520,159: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 520,158: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 520,157: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "interior:a3",
+  "kind": "pixel",
+  "detail": "interior:a3 at 416,60: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "outside:a3",
+  "kind": "pixel",
+  "detail": "outside:a3 at 482,60: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:a3:right",
+  "kind": "pixel",
+  "detail": "edge:a3:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:a3:bottom",
+  "kind": "pixel",
+  "detail": "edge:a3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:a3:left",
+  "kind": "pixel",
+  "detail": "edge:a3:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "interior:r2",
+  "kind": "pixel",
+  "detail": "interior:r2 at 420,278: native [204,221,255,255], Chrome [111,58,152,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "interior:b1",
+  "kind": "pixel",
+  "detail": "interior:b1 at 640,278: native [204,221,255,255], Chrome [151,159,69,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:b1:top",
+  "kind": "pixel",
+  "detail": "edge:b1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:b1:bottom",
+  "kind": "pixel",
+  "detail": "edge:b1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:b1:left",
+  "kind": "pixel",
+  "detail": "edge:b1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "interior:b2",
+  "kind": "pixel",
+  "detail": "interior:b2 at 440,278: native [204,221,255,255], Chrome [151,159,69,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:b2:top",
+  "kind": "pixel",
+  "detail": "edge:b2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:b2:right",
+  "kind": "pixel",
+  "detail": "edge:b2:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:b2:bottom",
+  "kind": "pixel",
+  "detail": "edge:b2:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "outside:b3",
+  "kind": "pixel",
+  "detail": "outside:b3 at 100,125: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:b3:top",
+  "kind": "pixel",
+  "detail": "edge:b3:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:b3:right",
+  "kind": "pixel",
+  "detail": "edge:b3:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "interior:r3",
+  "kind": "pixel",
+  "detail": "interior:r3 at 650,516: native [204,221,255,255], Chrome [190,195,37,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:r3:bottom",
+  "kind": "pixel",
+  "detail": "edge:r3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:r3:left",
+  "kind": "pixel",
+  "detail": "edge:r3:left at 497,516: native [204,221,255,255], Chrome [87,62,175,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:r3:left",
+  "kind": "pixel",
+  "detail": "edge:r3:left at 498,516: native [204,221,255,255], Chrome [87,62,175,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:r3:left",
+  "kind": "pixel",
+  "detail": "edge:r3:left at 499,516: native [204,221,255,255], Chrome [87,62,175,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:r3:left",
+  "kind": "pixel",
+  "detail": "edge:r3:left at 500,516: native [204,221,255,255], Chrome [87,62,175,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:r3:left",
+  "kind": "pixel",
+  "detail": "edge:r3:left at 501,516: native [204,221,255,255], Chrome [87,62,175,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:r3:left",
+  "kind": "pixel",
+  "detail": "edge:r3:left at 502,516: native [204,221,255,255], Chrome [87,62,175,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "interior:c1",
+  "kind": "pixel",
+  "detail": "interior:c1 at 640,516: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:c1:top",
+  "kind": "pixel",
+  "detail": "edge:c1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-row-rtl",
+  "dpr": 2,
+  "node": "edge:c1:bottom",
+  "kind": "pixel",
+  "detail": "edge:c1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 2,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 200,100: native [204,221,255,255], Chrome [153,152,78,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 2,
+  "node": "edge:a1:right",
+  "kind": "pixel",
+  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 2,
+  "node": "interior:a2",
+  "kind": "pixel",
+  "detail": "interior:a2 at 40,280: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 2,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 40,197: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 2,
+  "node": "edge:a2:top",
+  "kind": "pixel",
+  "detail": "edge:a2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 2,
+  "node": "interior:a3",
+  "kind": "pixel",
+  "detail": "interior:a3 at 370,390: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 2,
+  "node": "edge:a3:right",
+  "kind": "pixel",
+  "detail": "edge:a3:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column",
+  "dpr": 2,
+  "node": "edge:a3:bottom",
+  "kind": "pixel",
+  "detail": "edge:a3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column-rtl",
+  "dpr": 2,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 600,100: native [204,221,255,255], Chrome [153,152,78,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column-rtl",
+  "dpr": 2,
+  "node": "interior:a2",
+  "kind": "pixel",
+  "detail": "interior:a2 at 760,280: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column-rtl",
+  "dpr": 2,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 760,197: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column-rtl",
+  "dpr": 2,
+  "node": "edge:a2:top",
+  "kind": "pixel",
+  "detail": "edge:a2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column-rtl",
+  "dpr": 2,
+  "node": "interior:a3",
+  "kind": "pixel",
+  "detail": "interior:a3 at 430,390: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-flex-column-rtl",
+  "dpr": 2,
+  "node": "edge:a3:bottom",
+  "kind": "pixel",
+  "detail": "edge:a3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:s1:bottom",
+  "kind": "pixel",
+  "detail": "edge:s1:bottom at 160,322: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:s1:bottom",
+  "kind": "pixel",
+  "detail": "edge:s1:bottom at 160,321: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:s1:bottom",
+  "kind": "pixel",
+  "detail": "edge:s1:bottom at 160,320: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:s1:bottom",
+  "kind": "pixel",
+  "detail": "edge:s1:bottom at 160,319: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:s1:bottom",
+  "kind": "pixel",
+  "detail": "edge:s1:bottom at 160,318: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:s1:bottom",
+  "kind": "pixel",
+  "detail": "edge:s1:bottom at 160,317: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 160,80: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a1:right",
+  "kind": "pixel",
+  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "interior:a2",
+  "kind": "pixel",
+  "detail": "interior:a2 at 50,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 50,157: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:top",
+  "kind": "pixel",
+  "detail": "edge:a2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 92,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 91,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 90,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 89,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 88,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 87,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 50,322: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 50,321: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 50,320: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 50,319: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 50,318: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:bottom",
+  "kind": "pixel",
+  "detail": "edge:a2:bottom at 50,317: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left at 7,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left at 8,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left at 9,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left at 10,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left at 11,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:a2:left",
+  "kind": "pixel",
+  "detail": "edge:a2:left at 12,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "interior:b1",
+  "kind": "pixel",
+  "detail": "interior:b1 at 154,279: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:b1:bottom",
+  "kind": "pixel",
+  "detail": "edge:b1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:b1:left",
+  "kind": "pixel",
+  "detail": "edge:b1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left at 1,504: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left at 2,504: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left at 3,504: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left at 4,504: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left at 5,504: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:b2:left",
+  "kind": "pixel",
+  "detail": "edge:b2:left at 6,504: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "interior:s3",
+  "kind": "pixel",
+  "detail": "interior:s3 at 114,480: native [204,221,255,255], Chrome [177,193,39,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:s3:top",
+  "kind": "pixel",
+  "detail": "edge:s3:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:s3:bottom",
+  "kind": "pixel",
+  "detail": "edge:s3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "interior:c1",
+  "kind": "pixel",
+  "detail": "interior:c1 at 64,480: native [204,221,255,255], Chrome [157,160,70,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:c1:top",
+  "kind": "pixel",
+  "detail": "edge:c1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:c1:bottom",
+  "kind": "pixel",
+  "detail": "edge:c1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "interior:c2",
+  "kind": "pixel",
+  "detail": "interior:c2 at 178,480: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:c2:top",
+  "kind": "pixel",
+  "detail": "edge:c2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic",
+  "dpr": 2,
+  "node": "edge:c2:bottom",
+  "kind": "pixel",
+  "detail": "edge:c2:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "interior:html",
+  "kind": "pixel",
+  "detail": "interior:html at 400,300: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "interior:body",
+  "kind": "pixel",
+  "detail": "interior:body at 400,300: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "interior:wrap",
+  "kind": "pixel",
+  "detail": "interior:wrap at 420,300: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "interior:a1",
+  "kind": "pixel",
+  "detail": "interior:a1 at 200,80: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:a1:right",
+  "kind": "pixel",
+  "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "outside:a2",
+  "kind": "pixel",
+  "detail": "outside:a2 at 310,157: native [204,221,255,255], Chrome [240,200,30,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:a2:top",
+  "kind": "pixel",
+  "detail": "edge:a2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 352,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 351,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 350,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 349,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 348,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:a2:right",
+  "kind": "pixel",
+  "detail": "edge:a2:right at 347,240: native [204,221,255,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "outside:s2",
+  "kind": "pixel",
+  "detail": "outside:s2 at 344,197: native [204,221,255,255], Chrome [40,180,60,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "interior:b1",
+  "kind": "pixel",
+  "detail": "interior:b1 at 494,279: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:b1:bottom",
+  "kind": "pixel",
+  "detail": "edge:b1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:b1:left",
+  "kind": "pixel",
+  "detail": "edge:b1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "outside:b2",
+  "kind": "pixel",
+  "detail": "outside:b2 at 344,351: native [204,221,255,255], Chrome [40,70,220,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:b2:top",
+  "kind": "pixel",
+  "detail": "edge:b2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "interior:s3",
+  "kind": "pixel",
+  "detail": "interior:s3 at 154,480: native [204,221,255,255], Chrome [99,60,163,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:s3:top",
+  "kind": "pixel",
+  "detail": "edge:s3:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:s3:right",
+  "kind": "pixel",
+  "detail": "edge:s3:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:s3:bottom",
+  "kind": "pixel",
+  "detail": "edge:s3:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "interior:c1",
+  "kind": "pixel",
+  "detail": "interior:c1 at 204,480: native [204,221,255,255], Chrome [157,160,70,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:c1:top",
+  "kind": "pixel",
+  "detail": "edge:c1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:c1:right",
+  "kind": "pixel",
+  "detail": "edge:c1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:c1:bottom",
+  "kind": "pixel",
+  "detail": "edge:c1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "interior:c2",
+  "kind": "pixel",
+  "detail": "interior:c2 at 90,480: native [204,221,255,255], Chrome [164,161,71,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:c2:top",
+  "kind": "pixel",
+  "detail": "edge:c2:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-intrinsic-rtl",
+  "dpr": 2,
+  "node": "edge:c2:bottom",
+  "kind": "pixel",
+  "detail": "edge:c2:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 2,
+  "node": "interior:record",
+  "kind": "pixel",
+  "detail": "interior:record at 240,240: native [34,34,34,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 2,
+  "node": "interior:song-cover",
+  "kind": "pixel",
+  "detail": "interior:song-cover at 112,546: native [238,238,238,255], Chrome [137,130,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 2,
+  "node": "edge:song-cover:top",
+  "kind": "pixel",
+  "detail": "edge:song-cover:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 2,
+  "node": "edge:song-cover:right",
+  "kind": "pixel",
+  "detail": "edge:song-cover:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 2,
+  "node": "edge:song-cover:left",
+  "kind": "pixel",
+  "detail": "edge:song-cover:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 2,
+  "node": "edge:title:left:clear",
+  "kind": "pixel",
+  "detail": "edge:title:left:clear at 213,547: native [238,238,238,255], Chrome [165,192,41,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 2,
+  "node": "interior:label",
+  "kind": "pixel",
+  "detail": "interior:label at 248,248: native [34,34,34,255], Chrome [137,122,87,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 2,
+  "node": "clip:label:top",
+  "kind": "pixel",
+  "detail": "clip:label:top at 248,164: native [34,34,34,255], Chrome [135,110,50,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 2,
+  "node": "clip:label:right",
+  "kind": "pixel",
+  "detail": "clip:label:right at 331,248: native [34,34,34,255], Chrome [140,190,45,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 2,
+  "node": "clip:label:bottom",
+  "kind": "pixel",
+  "detail": "clip:label:bottom at 248,331: native [34,34,34,255], Chrome [140,135,125,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 2,
+  "node": "clip:label:left",
+  "kind": "pixel",
+  "detail": "clip:label:left at 164,248: native [34,34,34,255], Chrome [135,55,130,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo",
+  "dpr": 2,
+  "node": "interior:cover",
+  "kind": "pixel",
+  "detail": "interior:cover at 248,248: native [34,34,34,255], Chrome [137,122,87,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 2,
+  "node": "interior:record",
+  "kind": "pixel",
+  "detail": "interior:record at 560,240: native [34,34,34,255], Chrome [230,40,40,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 2,
+  "node": "interior:song-cover",
+  "kind": "pixel",
+  "detail": "interior:song-cover at 688,546: native [238,238,238,255], Chrome [137,130,82,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 2,
+  "node": "edge:song-cover:top",
+  "kind": "pixel",
+  "detail": "edge:song-cover:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 2,
+  "node": "edge:song-cover:right",
+  "kind": "pixel",
+  "detail": "edge:song-cover:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 2,
+  "node": "edge:song-cover:left",
+  "kind": "pixel",
+  "detail": "edge:song-cover:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 2,
+  "node": "edge:title:right:clear",
+  "kind": "pixel",
+  "detail": "edge:title:right:clear at 586,547: native [238,238,238,255], Chrome [111,58,152,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 2,
+  "node": "interior:label",
+  "kind": "pixel",
+  "detail": "interior:label at 568,248: native [34,34,34,255], Chrome [137,122,87,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 2,
+  "node": "clip:label:top",
+  "kind": "pixel",
+  "detail": "clip:label:top at 568,164: native [34,34,34,255], Chrome [135,110,50,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 2,
+  "node": "clip:label:right",
+  "kind": "pixel",
+  "detail": "clip:label:right at 651,248: native [34,34,34,255], Chrome [140,190,45,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 2,
+  "node": "clip:label:bottom",
+  "kind": "pixel",
+  "detail": "clip:label:bottom at 568,331: native [34,34,34,255], Chrome [140,135,125,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 2,
+  "node": "clip:label:left",
+  "kind": "pixel",
+  "detail": "clip:label:left at 484,248: native [34,34,34,255], Chrome [135,55,130,255] (channel delta limit 0)"
+ },
+ {
+  "lane": "device-pixels",
+  "case": "replaced-demo-rtl",
+  "dpr": 2,
+  "node": "interior:cover",
+  "kind": "pixel",
+  "detail": "interior:cover at 568,248: native [34,34,34,255], Chrome [137,122,87,255] (channel delta limit 0)"
  }
 ]

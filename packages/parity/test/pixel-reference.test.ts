@@ -109,15 +109,17 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
   // points (addendum F2). A change here changes what the device lanes compare; it needs a written reason. SIZE-ar: only the 10
   // sizing-ratio cases' rules (edge +8, edge:glyph +4, rescued edge +8 at DPR 2 and 3, +6 at 2.625); with them filtered out the
   // master pins hold exactly.
+  // REPL-a: only the replaced-* cases' rules (edge +4 and rescued edge +4 at every DPR, so every added dropped edge keeps clear
+  // colour points); with the replaced-* cases filtered out the master pins hold exactly.
   const DROPPED = {
     ios: {
-      2: { dropped: { edge: 1234, 'edge:glyph': 924, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1194 } },
-      3: { dropped: { edge: 1243, 'edge:glyph': 872, glyph: 25, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1215, border: 18 } },
+      2: { dropped: { edge: 1238, 'edge:glyph': 924, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1198 } },
+      3: { dropped: { edge: 1247, 'edge:glyph': 872, glyph: 25, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1219, border: 18 } },
     },
     android: {
-      2: { dropped: { edge: 1234, 'edge:glyph': 924, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1194 } },
-      3: { dropped: { edge: 1243, 'edge:glyph': 872, glyph: 25, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1215, border: 18 } },
-      2.625: { dropped: { edge: 1207, 'edge:glyph': 901, glyph: 33, outside: 6, clip: 13, border: 16, interior: 5 }, rescued: { edge: 1071 } },
+      2: { dropped: { edge: 1238, 'edge:glyph': 924, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1198 } },
+      3: { dropped: { edge: 1247, 'edge:glyph': 872, glyph: 25, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1219, border: 18 } },
+      2.625: { dropped: { edge: 1211, 'edge:glyph': 901, glyph: 33, outside: 6, clip: 13, border: 16, interior: 5 }, rescued: { edge: 1075 } },
     },
   } as const;
   const bottoms = JSON.parse(readFileSync(BOTTOM_SCANLINES_PATH(), 'utf8')) as BottomScanlines;

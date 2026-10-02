@@ -10,6 +10,7 @@ packages/parity/expected-fonts/** merge=dragon-generated
 packages/dragon/src/profiles/ios.ts merge=dragon-generated
 packages/dragon/src/profiles/android.ts merge=dragon-generated
 packages/dragon/src/profiles/web.ts merge=dragon-generated
+packages/dragon/src/profiles/native-lanes.ts merge=dragon-generated
 packages/parity/expected-dpr/** merge=dragon-generated
 packages/layout/vectors/*.json merge=dragon-generated
 packages/layout/vectors/dpr-*/** merge=dragon-generated
