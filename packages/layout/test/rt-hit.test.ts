@@ -3,7 +3,7 @@
 // a line against its rect and, inclusively, the block's snapped border box at the line's offset (T063J); paint order; plants.
 import { describe, expect, it } from 'vitest';
 import type { HitNode } from '../src/rt-hit.ts';
-import { activationTarget, HitError, hitTest, NO_HIT_FAULTS } from '../src/rt-hit.ts';
+import { activationTarget, HitError, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../src/rt-hit.ts';
 
 const PX = 64;
 const base = { clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, line: -1, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: 'auto' } as const;
@@ -101,5 +101,19 @@ describe('pointer-events and plants', () => {
   it('refuses a malformed table', () => {
     expect(() => hitTest([], 0, 0, NO_HIT_FAULTS)).toThrow(HitError);
     expect(() => hitTest([root, box(2, 1, 0, 0, 1, 1)], 0, 0, NO_HIT_FAULTS)).toThrow(/not an earlier node/);
+  });
+});
+
+// REPL-a (master) puts replaced leaves in the layout tree; the hit table has no replaced node yet, so it refuses one by name.
+describe('hitTableOf refuses a replaced element', () => {
+  it('throws HitError naming the replaced leaf instead of treating it as a box', async () => {
+    const { hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { box, divStyle, neutralEnvironment, px } = await import('./helpers.ts');
+    const img = { kind: 'replaced', id: 'img', style: { ...divStyle, display: 'block' }, natural: { kind: 'image', width: 20, height: 10 }, defaultWidth: 300, defaultHeight: 150, objectFit: 'fill', objectPositionX: px(0), objectPositionY: px(0) } as const;
+    const root = { ...box('html', { width: px(100) }), children: [img] } as unknown as Parameters<typeof hitTableOf>[0]['root'];
+    const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
+    const facts = new Map([['html', { pointerEvents: 'auto', inherited: true, activation: false }], ['img', { pointerEvents: 'auto', inherited: true, activation: false }]]) as unknown as Parameters<typeof hitTableOf>[2];
+    expect(() => hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS)).toThrow(new HitError('img is a replaced element, which the hit table does not model yet'));
   });
 });

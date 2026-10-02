@@ -523,6 +523,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, parentBox: Layout
   const kids: LayoutBox[] = [];
   for (const c of b.children) {
     if (c.kind === 'text') leaves.push(c);
+    else if (c.kind === 'replaced') throw new HitError(`${c.id} is a replaced element, which the hit table does not model yet`);
     else kids.push(c);
   }
   if (leaves.length > 0 && kids.length > 0) throw new HitError(`${b.id} mixes text and boxes; the compiler wraps text in anonymous boxes`);
