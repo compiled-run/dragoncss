@@ -40,6 +40,9 @@ const OWNERS: Readonly<Record<string, string>> = {
   dir: 'the bidi package (dir sets direction and unicode-bidi)',
   hidden: 'the display package (hidden applies display: none)',
   style: 'the style-attribute package SOV',
+  // rel and target are neutral off hyperlinks (NEUTRAL_ATTRIBUTES); on a, area and link they change link behaviour.
+  rel: 'the link package LINK-RT (on a hyperlink it changes link behaviour)',
+  target: 'the link package LINK-RT (on a hyperlink it changes link behaviour)',
 };
 
 // HTML lowercases attribute names, so a name with ASCII uppercase would not match its lowercased selector as it does in Chrome.
@@ -53,10 +56,10 @@ export function neutralAttribute(tag: string, name: string): NeutralAttribute | 
 
 /** null when the attribute is rendering-neutral on the tag; otherwise why it is refused, naming the package that owns its effect. */
 export function attributeRefusal(tag: string, name: string): string | null {
-  if (neutralAttribute(tag, name) !== undefined) return null;
   // TDEC-a: href on a makes it a hyperlink, whose a:any-link UA rule (color and underline) analysis/text-decoration.ts applies.
   if (tag === 'a' && name === 'href') return null;
-  const owner = (Object.hasOwn(OWNERS, name) ? OWNERS[name] : undefined) ?? ((name === 'rel' || name === 'target') ? 'the link package LINK-RT (on a hyperlink it changes link behaviour)' : null);
+  if (neutralAttribute(tag, name) !== undefined) return null;
+  const owner = (Object.hasOwn(OWNERS, name) ? OWNERS[name] : undefined) ?? ((name === 'rel' || name === 'target') ? 'the inline and link package INL1 (on a hyperlink it changes link behaviour)' : null);
   return owner === null
     ? 'its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)'
     : `its rendering effect belongs to ${owner}`;

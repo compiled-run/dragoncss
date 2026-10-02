@@ -1,7 +1,11 @@
 // TDEC-a (notes/T148J-tdec.md) against the pinned Chrome. The grammar tables: every decoration longhand and the shorthand, set as
 // written on one element and as Dragon's longhands on its sibling, compute alike; a value Dragon calls invalid is one CSS.supports
 // rejects; every value Dragon accepts, CSS.supports accepts. a:any-link computes Chrome's link colour and underline.
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { textDecoration } from '@dragon/layout';
+import { NO_DECORATION_ANALYSIS_FAULTS } from '../../dragon/src/analysis/text-decoration.ts';
+import { checkDecorations, committedDecorations, compileHtml, DECORATION_DPRS, decorationCases, decorationManifest, decorationPath, predictDecorations, sha256 } from '../src/decoration-capture.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
 import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
 import { parseStylesheet } from '../../dragon/src/css/stylesheet.ts';
@@ -81,4 +85,77 @@ describe('the text-decoration grammar tables against Chrome 145', () => {
       await browser.close();
     }
   }, 120_000);
+});
+
+// TDEC-a2: the decoration capture. Chrome's renderings are committed (pnpm run parity:decoration-capture); the engine's rects over
+// the stripped copy's layout must paint exactly the decoration pixels at DPR 1, 2, 3 and 2.625, and each plant must break a case.
+describe('the decoration capture against the engine (TDEC-a2)', () => {
+  const WHITE = { r: 255, g: 255, b: 255, a: 255 };
+  const PROBE = 'text-decoration-ahem-auto';
+  const runAll = (faults: textDecoration.DecorationFaults, compilerFaults = NO_DECORATION_ANALYSIS_FAULTS): { checked: number; failed: string[]; refused: string[]; pixels: number } => {
+    const failed: string[] = [];
+    const refused: string[] = [];
+    let checked = 0;
+    let pixels = 0;
+    for (const { fixture, case: c } of decorationCases()) {
+      for (const dpr of DECORATION_DPRS) {
+        const p = predictDecorations(fixture, c, dpr, faults, compilerFaults);
+        if (p.kind === 'refused') {
+          refused.push(`${c.id}@${dpr}`);
+          continue;
+        }
+        const cap = committedDecorations(c.id, dpr);
+        if (cap === null) throw new Error(`${c.id}@${dpr} is not captured`);
+        const r = checkDecorations(cap.decorated, cap.stripped, p.rects, WHITE);
+        checked++;
+        pixels += r.matched;
+        if (r.problems.length > 0 || r.matched !== r.decorationPixels) failed.push(`${c.id}@${dpr}: ${r.matched}/${r.decorationPixels}; ${r.problems.slice(0, 3).join('; ')}`);
+      }
+    }
+    return { checked, failed, refused, pixels };
+  };
+
+  it('every capture is committed with its sha256, and Chrome lays out each stripped copy as its decorated case', () => {
+    const m = decorationManifest();
+    const cases = decorationCases();
+    expect(m.cases.length).toBe(cases.length * DECORATION_DPRS.length);
+    for (const e of m.cases) {
+      expect(e.sameLayout, `${e.case}@${e.dpr}`).toBe(true);
+      expect(sha256(readFileSync(decorationPath(e.case, e.dpr, false))), e.case).toBe(e.decorated);
+      expect(sha256(readFileSync(decorationPath(e.case, e.dpr, true))), e.case).toBe(e.stripped);
+    }
+  });
+
+  it('the engine paints every decoration pixel exactly, colour included, at every DPR; only the skip-ink probe is refused', () => {
+    const r = runAll(textDecoration.NO_DECORATION_FAULTS);
+    expect(r.failed).toEqual([]);
+    expect([...r.refused].sort()).toEqual([...DECORATION_DPRS.map((d) => `${PROBE}@${d}`), ...DECORATION_DPRS.map((d) => `${PROBE}-rtl@${d}`)].sort());
+    expect(r.checked).toBe((decorationCases().length - 2) * DECORATION_DPRS.length);
+    expect(r.pixels).toBeGreaterThan(100_000);
+  }, 600_000);
+
+  it('the north-star links pass the skip-ink bounds proof at every DPR (TDEC-d is not on the checkpoint-3 path)', () => {
+    for (const { fixture, case: c } of decorationCases().filter((x) => x.case.fixture === 'text-decoration-north-star')) {
+      for (const dpr of DECORATION_DPRS) expect(predictDecorations(fixture, c, dpr).kind, `${c.id}@${dpr}`).toBe('rects');
+    }
+  }, 300_000);
+
+  it('each plant breaks at least one case', () => {
+    for (const k of Object.keys(textDecoration.NO_DECORATION_FAULTS)) {
+      expect(runAll({ ...textDecoration.NO_DECORATION_FAULTS, [k]: true }).failed.length, k).toBeGreaterThan(0);
+    }
+    expect(runAll(textDecoration.NO_DECORATION_FAULTS, { propagatedIntoOutOfFlow: true }).failed.length).toBeGreaterThan(0);
+  }, 600_000);
+
+  it('probes (T148J-1 ruling 3): every decorated case is ready on web and refused on ios naming TDEC-b; the Ahem auto underline is skip-ink-intercepts', () => {
+    for (const { fixture, case: c } of decorationCases()) {
+      const compiled = compileHtml(fixture, c.authoredHtml, c.environment.direction);
+      expect(compiled.outputs.web.kind, c.id).toBe('ready');
+      expect(compiled.diagnostics.some((d) => d.target === 'ios' && d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.includes('draws decorations from TDEC-b')), c.id).toBe(true);
+    }
+    const probe = decorationCases().find((x) => x.case.id === PROBE);
+    if (probe === undefined) throw new Error(PROBE);
+    const p = predictDecorations(probe.fixture, probe.case, 1);
+    expect(p).toMatchObject({ kind: 'refused', code: 'skip-ink-intercepts' });
+  }, 300_000);
 });

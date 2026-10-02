@@ -123,11 +123,12 @@ describe('propagation (css-text-decor-3 §2.1)', () => {
     expect(of('fi:text0')).toEqual(['u:underline']);
     expect(of('ab:text0')).toEqual([]);
     expect(of('if:text0')).toEqual([]);
-    expect(unproven).toEqual([]);
+    // An atomic inline takes none either, but with no Chrome case it is refused as unproven.
+    expect(unproven).toEqual([{ address: 'if', box: 'u' }]);
     expect(applied.get('u:text0')?.[0]?.color).toEqual({ r: 255, g: 0, b: 0, alpha: 255 });
   });
   it('the propagatedIntoOutOfFlow plant decorates the absolutely positioned box', () => {
-    const { applied } = analyzeDecorations(resolve(css, tree), undefined, { ...NO_FAULTS, propagatedIntoOutOfFlow: true });
+    const { applied } = analyzeDecorations(resolve(css, tree), undefined, { propagatedIntoOutOfFlow: true });
     expect((applied.get('ab:text0') ?? []).map((d) => d.box)).toEqual(['u']);
   });
 });

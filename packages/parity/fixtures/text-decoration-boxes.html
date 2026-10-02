@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Lato; font-size: 16px; line-height: 1.5; }
+.u { text-decoration: underline; }
+.o { text-decoration: overline red; }
+.big { font-size: 24px; }
+.f { display: flex; gap: 10px; }
+.rel { position: relative; height: 30px; }
+.ab { position: absolute; left: 200px; top: 0; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="b1" class="u"><span data-dragon-id="b1a">Small then </span><span data-dragon-id="b1b" class="big">Bold</span></div>
+<div data-dragon-id="b2"><span data-dragon-id="b2a">Before </span><span data-dragon-id="b2u" class="u"><span data-dragon-id="b2b" class="big">Bold</span><span data-dragon-id="b2c"> small</span></span></div>
+<div data-dragon-id="b3" class="u"><span data-dragon-id="b3a">Under </span><span data-dragon-id="b3b" class="o big">and over</span></div>
+<div data-dragon-id="b4" class="f u"><div data-dragon-id="b4a">Flex item</div><div data-dragon-id="b4b">Another item</div></div>
+<div data-dragon-id="b5" class="rel u"><div data-dragon-id="b5c">Decorated in flow</div><div data-dragon-id="b5b" class="ab">Absolute</div></div>
+</body>
+</html>
