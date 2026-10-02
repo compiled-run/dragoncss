@@ -2,7 +2,7 @@
 // alignment (§8.3, §9.4 step 8). Chrome 145 computes every offset in flow coordinates, from the writing-mode start edge of each
 // axis: a reverse direction reverses the items and swaps flex-start and flex-end, and wrap-reverse does the same for the lines and
 // the cross axis (measured, notes/T035-slice-4a.md). Flow offsets are then mapped to physical ones.
-import type { AlignItems, JustifyContent, LayoutBox, LayoutStyle } from './input.ts';
+import type { AlignItems, JustifyContent, LayoutBox, LayoutNode, LayoutStyle } from './input.ts';
 import type { DistributedMode, FactorSum, LU } from './units.ts';
 import {
   add,
@@ -41,11 +41,13 @@ import {
   resolvePaddingWith,
   sumEdges,
 } from './box.ts';
-import type { Ctx, EngineFaults } from './block.ts';
-import { directionOf, layoutContents } from './block.ts';
+import type { ContentsResult, Ctx, EngineFaults } from './block.ts';
+import { directionOf, EMPTY_STRUT, layoutContents } from './block.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { blockFromRatio, hasAspectRatio, ratioBlockLevelInlineSize, ratioContentInlineSize, transferredBlockMinMax } from './ratio.ts';
+import type { BorderPadding, FlexItemSpace, ReplacedSize } from './replaced.ts';
+import { replacedBlockBasis, replacedFrag, sizeReplacedFlexItem } from './replaced.ts';
 import { unsupported } from './unsupported.ts';
 
 export type FlexArgs = {
@@ -70,7 +72,7 @@ type ItemAlign = FlowPosition | 'stretch' | 'baseline';
 /** One flex item. Margins are named by flow side: main-start is the inline start (row) or top (column), cross-start the top (row)
  * or inline start (column), whatever the reverse or wrap-reverse. */
 type Item = {
-  readonly box: LayoutBox;
+  readonly box: LayoutNode;
   readonly margin: Edges;
   readonly pad: Edges;
   readonly bor: Edges;
@@ -93,6 +95,8 @@ type Item = {
   readonly align: ItemAlign;
   /** Column only: the border-box width used to size the item's height. */
   readonly columnCross: LU;
+  /** A replaced item's space before the algorithm fixes its sizes; null for a box. */
+  readonly leafSpace: FlexItemSpace | null;
   frozen: boolean;
   target: LU;
 };
@@ -130,13 +134,14 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
     mainStartIsPhysical: isRow ? ltr : true,
     crossStartIsPhysical: isRow ? true : ltr,
   };
-  const boxes: LayoutBox[] = [];
+  const boxes: LayoutNode[] = [];
   const absolute: LayoutBox[] = [];
   for (const k of box.children) {
     // css-flexbox-1 §4: the compiler wraps text in anonymous flex items; validateLayoutInput rejects text in a flex container.
     if (k.kind === 'text') throw new Error(`${k.id} is text directly in flex container ${box.id}; validateLayoutInput rejects this input`);
     // css-flexbox-1 §4.1: an absolutely positioned child is not a flex item.
-    if (isOutOfFlow(ctx, k)) absolute.push(k);
+    // An absolutely positioned replaced child is refused before this (position.ts checkOutOfFlowSiblings).
+    if (k.kind === 'box' && isOutOfFlow(ctx, k)) absolute.push(k);
     else boxes.push(k);
   }
   // css-flexbox-1 §5.4: order-modified document order, stable for equal values (planted fault ignoreOrder keeps document order).
@@ -166,8 +171,22 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
   const hypoFrag = new Map<Item, Frag>();
   const hypoCross = new Map<Item, LU>();
   for (const item of items) {
+    const leaf = item.box;
+    if (leaf.kind === 'replaced') {
+      // A replaced item's cross size comes from its main size through its ratio, or its natural size (replaced.ts).
+      if (isRow) {
+        const base = item.leafSpace as FlexItemSpace;
+        const bp: BorderPadding = { inline: item.mainBp, block: item.crossBp };
+        const size = sizeReplacedFlexItem(ctx, leaf, bp, { ...base, stretchCross: false, fixedInline: add(item.target, item.mainBp) }, 'normal');
+        hypoFrag.set(item, replacedFrag(leaf, size));
+        hypoCross.set(item, size.block);
+      } else {
+        hypoCross.set(item, item.columnCross);
+      }
+      continue;
+    }
     if (isRow) {
-      const r = layoutContents(ctx, item.box, {
+      const r = layoutContents(ctx, leaf, {
         cbInline: a.contentWidth,
         borderBoxWidth: add(item.target, item.mainBp),
         forcedBorderBoxHeight: null,
@@ -268,16 +287,21 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
         const flow = add(crossAxisOffset(item, sub(line.cross, add(crossSize, item.crossMargins)), axes), item.crossStart);
         crossInLine = axes.crossStartIsPhysical ? flow : sub(sub(line.cross, flow), crossSize);
       }
-      const r = layoutContents(ctx, item.box, {
-        cbInline: a.contentWidth,
-        borderBoxWidth: isRow ? mainBorderBox : crossSize,
-        forcedBorderBoxHeight: isRow ? (stretched ? crossSize : null) : mainBorderBox,
-        // Blink AspectRatioProvidesBlockMainSize: a column item's ratio makes its main size definite.
-        forcedHeightDefinite: isRow ? stretchDefinite : containerMainDefinite || hasAspectRatio(item.box.style),
-        heightBasis: itemHeightBasis,
-        formattingContextRoot: true,
-        bfcLineOffset: ZERO,
-      });
+      const node = item.box;
+      // A replaced item takes its flexed main size and its cross size as they are: it has no content to lay out.
+      const placedSize: ReplacedSize = isRow ? { inline: mainBorderBox, block: crossSize } : { inline: crossSize, block: mainBorderBox };
+      const r: ContentsResult = node.kind === 'replaced'
+        ? { frag: replacedFrag(node, placedSize), escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false }
+        : layoutContents(ctx, node, {
+          cbInline: a.contentWidth,
+          borderBoxWidth: isRow ? mainBorderBox : crossSize,
+          forcedBorderBoxHeight: isRow ? (stretched ? crossSize : null) : mainBorderBox,
+          // Blink AspectRatioProvidesBlockMainSize: a column item's ratio makes its main size definite.
+          forcedHeightDefinite: isRow ? stretchDefinite : containerMainDefinite || hasAspectRatio(node.style),
+          heightBasis: itemHeightBasis,
+          formattingContextRoot: true,
+          bfcLineOffset: ZERO,
+        });
       const crossPos = add(linePhysical, crossInLine);
       const at: Placed = {
         frag: r.frag,
@@ -369,7 +393,7 @@ function gapsFor(n: number, gap: LU): LU {
 // css-align-3 §6.1 with css-flexbox-1 §8.3: align-self auto takes the container's align-items; normal behaves as stretch; each
 // value maps to a flow position. flex-start and flex-end follow wrap-reverse; start and end follow the container's writing mode;
 // self-start and self-end the item's own (the inline axis in a column container).
-function effectiveAlign(ctx: Ctx, container: LayoutBox, item: LayoutBox, axes: Axes): ItemAlign {
+function effectiveAlign(ctx: Ctx, container: LayoutBox, item: LayoutNode, axes: Axes): ItemAlign {
   const raw: AlignItems = item.style.alignSelf === 'auto' ? container.style.alignItems : item.style.alignSelf;
   const flexStart: FlowPosition = axes.wrapReverse ? 'end' : 'start';
   const flexEnd: FlowPosition = axes.wrapReverse ? 'start' : 'end';
@@ -407,7 +431,7 @@ function stretchesCross(item: Item, isRow: boolean): boolean {
 function buildItem(
   ctx: Ctx,
   container: LayoutBox,
-  box: LayoutBox,
+  box: LayoutNode,
   axes: Axes,
   a: FlexArgs,
   mainInner: LU | null,
@@ -438,9 +462,23 @@ function buildItem(
   const crossBp = isRow ? vbp : hbp;
   const align = effectiveAlign(ctx, container, box, axes);
 
+  // A replaced item sizes itself (replaced.ts): its width in a column, its main size, and its content size suggestion.
+  const leafSpace: FlexItemSpace | null = box.kind === 'replaced' ? {
+    isRow,
+    contentWidth: cbInline,
+    innerHeight: a.definiteInnerHeight,
+    percentBlock: replacedBlockBasis(box, heightBasis),
+    stretchCross: align === 'stretch' && singleLine && crossInner !== null && !crossStart.auto && !crossEnd.auto && (!isRow || !a.sizeIsFlexDependent),
+    fixedInline: null,
+    fixedBlock: null,
+  } : null;
+  const leafBp: BorderPadding = { inline: hbp, block: vbp };
+
   // Column items need their width before their height: definite stretch (§9.8 rule 1), a specified width, or fit-content.
   let columnCross = ZERO;
-  if (!isRow) {
+  if (!isRow && box.kind === 'replaced') {
+    columnCross = sizeReplacedFlexItem(ctx, box, leafBp, leafSpace as FlexItemSpace, 'normal').inline;
+  } else if (!isRow && box.kind === 'box') {
     const crossMin = s.minWidth.kind === 'auto' ? hbp : borderBoxFromSpecified(resolveLength(s.minWidth, cbInline, ctx.faults), hbp, s.boxSizing);
     const crossMax = s.maxWidth.kind === 'none' ? null : borderBoxFromSpecified(resolveLength(s.maxWidth, cbInline, ctx.faults), hbp, s.boxSizing);
     const mm: MinMax = { min: crossMin, max: crossMax };
@@ -464,7 +502,12 @@ function buildItem(
   let contentSized: LU | null = null;
   const contentMain = (): LU => {
     if (contentSized !== null) return contentSized;
-    if (isRow) contentSized = intrinsicContentInlineSize(ctx, box, 'max');
+    if (box.kind === 'replaced') {
+      // Blink MinMaxSizesFunc (row: IntrinsicFragmentGeometry ignores the inline lengths) and BlockSizeFunc (column: ignores the
+      // block lengths) of a replaced item.
+      const size = sizeReplacedFlexItem(ctx, box, leafBp, leafSpace as FlexItemSpace, isRow ? 'ignore-inline-lengths' : 'ignore-block-lengths');
+      contentSized = isRow ? contentBox(size.inline, hbp) : contentBox(size.block, vbp);
+    } else if (isRow) contentSized = intrinsicContentInlineSize(ctx, box, 'max');
     else {
       const r = layoutContents(ctx, box, {
         cbInline,
@@ -481,7 +524,7 @@ function buildItem(
   };
 
   // css-flexbox-1 §9.2 step 3B with css-sizing-4 §5.1: an auto main size comes from the ratio and the cross size (ratio.ts).
-  const ratio = hasAspectRatio(s) && specifiedMain === null
+  const ratio = box.kind === 'box' && hasAspectRatio(s) && specifiedMain === null
     ? ratioFlexMain(ctx, box, isRow, columnCross, !isRow ? null : rowCrossBlock(box, align, singleLine, crossInner, a.sizeIsFlexDependent, mt.auto || mb.auto, vbp, ctx.faults), cbInline)
     : null;
   let base: LU;
@@ -513,7 +556,7 @@ function buildItem(
   } else if (isScrollContainer(s) && !ctx.faults.scrollMinAuto) {
     minMain = ZERO;
   } else {
-    const suggestionSource = ratio !== null ? ratio.suggestion : isRow ? intrinsicContentInlineSize(ctx, box, 'min') : contentMain();
+    const suggestionSource = ratio !== null ? ratio.suggestion : isRow && box.kind === 'box' ? intrinsicContentInlineSize(ctx, box, 'min') : contentMain();
     const contentSuggestion = maxMain === null ? suggestionSource : min(suggestionSource, maxMain);
     minMain = specifiedMain === null ? contentSuggestion : min(specifiedMain, contentSuggestion);
   }
@@ -542,13 +585,14 @@ function buildItem(
     mainMinMax,
     align,
     columnCross,
+    leafSpace,
     frozen: false,
     target: hypothetical,
   };
 }
 
 // CSS2 §10.5 and css-flexbox-1 §9.8: a percentage block size resolves against a definite basis; indefinite behaves as auto (null).
-function percentMainHeight(box: LayoutBox, basis: HeightBasis, prop: string): LU | null {
+function percentMainHeight(box: LayoutNode, basis: HeightBasis, prop: string): LU | null {
   if (basis.kind === 'indefinite') return null;
   if (basis.kind === 'definite') return basis.value;
   return unsupported('percent-height-flex', box.id, 'css-flexbox-1 §9.8', `${prop} percentage against a flexed or stretched size that is not definite`);
@@ -556,7 +600,7 @@ function percentMainHeight(box: LayoutBox, basis: HeightBasis, prop: string): LU
 
 // css-sizing-3 §4: the definite main size property in content-box terms, or null when auto or indefinite.
 function mainSizeContent(
-  box: LayoutBox,
+  box: LayoutNode,
   v: LayoutStyle['width'],
   isRow: boolean,
   mainInner: LU | null,

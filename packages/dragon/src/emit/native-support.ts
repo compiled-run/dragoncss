@@ -549,12 +549,15 @@ public final class DragonTree {
     let abs = try layout_absoluteRects(ok.boxes)
     let zoomed = try layout_zoomInput(input, block_NO_ENGINE_FAULTS)
     var zBoxes: [String: LayoutBox] = [:]
+    var zStyles: [String: LayoutStyle] = [:]
     var zParent: [String: String] = [:]
     func walk(_ b: LayoutBox) {
       zBoxes[b.id.description] = b
+      zStyles[b.id.description] = b.style
       for c in b.children.items {
         if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
         else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
+        else if let rl = c as? ReplacedLeaf { zParent[rl.id.description] = b.id.description; zStyles[rl.id.description] = rl.style }
       }
     }
     walk(zoomed.root)
@@ -590,8 +593,8 @@ public final class DragonTree {
       container.addSubview(v)
       v.frame = frame
       if let bv = v as? DragonBoxView {
-        guard let z = zBoxes[id] else { fatalError("dragon: no zoomed box \(id)") }
-        let be = try box_resolveBorder(z.style, zoomed.devicePixelRatio)
+        guard let zs = zStyles[id] else { fatalError("dragon: no zoomed box \(id)") }
+        let be = try box_resolveBorder(zs, zoomed.devicePixelRatio)
         let px = [be.top / lu, be.right / lu, be.bottom / lu, be.left / lu]
         borders[id] = px
         bv.dragonScale = s
@@ -1156,6 +1159,8 @@ import dev.dragon.layout.LayoutBox
 import dev.dragon.layout.LayoutInput
 import dev.dragon.layout.LayoutRect
 import dev.dragon.layout.LayoutResult_ok
+import dev.dragon.layout.LayoutStyle
+import dev.dragon.layout.ReplacedLeaf
 import dev.dragon.layout.TextLeaf
 import dev.dragon.layout.TextMeasurer
 import dev.dragon.layout.block_NO_ENGINE_FAULTS
@@ -1241,11 +1246,14 @@ class DragonTree(val context: Context) {
     val abs = layout_absoluteRects(ok.boxes)
     val zoomed = layout_zoomInput(input, block_NO_ENGINE_FAULTS)
     val zBoxes = HashMap<String, LayoutBox>()
+    val zStyles = HashMap<String, LayoutStyle>()
     val zParent = HashMap<String, String>()
     fun walk(b: LayoutBox) {
       zBoxes[b.id] = b
+      zStyles[b.id] = b.style
       for (c in b.children) {
         if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) } else if (c is TextLeaf) zParent[c.id] = b.id
+        else if (c is ReplacedLeaf) { zParent[c.id] = b.id; zStyles[c.id] = c.style }
       }
     }
     walk(zoomed.root)
@@ -1284,8 +1292,8 @@ class DragonTree(val context: Context) {
       container.addView(v as android.view.View)
       setFrame(dragonFrameOf(v), e.left - ox, e.top - oy, e.right - ox, e.bottom - oy, id)
       if (v is DragonBoxView) {
-        val z = zBoxes[id] ?: throw IllegalStateException("dragon: no zoomed box " + id)
-        val be = box_resolveBorder(z.style, zoomed.devicePixelRatio)
+        val zs = zStyles[id] ?: throw IllegalStateException("dragon: no zoomed box " + id)
+        val be = box_resolveBorder(zs, zoomed.devicePixelRatio)
         val px = doubleArrayOf(be.top / lu, be.right / lu, be.bottom / lu, be.left / lu)
         borders[id] = px
         v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px)
@@ -1741,13 +1749,21 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
   const decls: string[] = [];
   let n = 0;
   const str = (s: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, s)})` : stringLit(lang, s));
+  const styleOf = (st: import('@dragon/layout').LayoutStyle): string => `LayoutStyle(${STYLE_FIELDS.map((f) => engineValue(lang, (st as unknown as Record<string, unknown>)[f])).join(', ')})`;
+  // A replaced leaf (input.ts ReplacedLeaf): its natural size is NaturalSizeValue_image or NaturalSizeValue_none.
+  const replaced = (c: import('@dragon/layout').ReplacedLeaf): string => {
+    const natural = c.natural.kind === 'image' ? `NaturalSizeValue_image(${str('image')}, ${doubleLit(c.natural.width)}, ${doubleLit(c.natural.height)})` : `NaturalSizeValue_none(${str('none')})`;
+    return `ReplacedLeaf(${str('replaced')}, ${str(c.id)}, ${styleOf(c.style)}, ${natural}, ${doubleLit(c.defaultWidth)}, ${doubleLit(c.defaultHeight)}, ${str(c.objectFit)}, ${engineValue(lang, c.objectPositionX)}, ${engineValue(lang, c.objectPositionY)})`;
+  };
   const visit = (b: import('@dragon/layout').LayoutBox): string => {
     const name = `${prefix}Box${n++}`;
     const kids = b.children.map((c) => (c.kind === 'box'
       ? `${visit(c)}()`
-      : `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)})`));
-    const style = `LayoutStyle(${STYLE_FIELDS.map((f) => engineValue(lang, (b.style as unknown as Record<string, unknown>)[f])).join(', ')})`;
-    const arr = lang === 'swift' ? `JsArray<any U_LayoutBox_TextLeaf>([${kids.join(', ')}])` : `jsArrayOf<U_LayoutBox_TextLeaf>(${kids.join(', ')})`;
+      : c.kind === 'replaced'
+        ? replaced(c)
+        : `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)})`));
+    const style = styleOf(b.style);
+    const arr = lang === 'swift' ? `JsArray<any U_LayoutBox_ReplacedLeaf_TextLeaf>([${kids.join(', ')}])` : `jsArrayOf<U_LayoutBox_ReplacedLeaf_TextLeaf>(${kids.join(', ')})`;
     const body = `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${style}, ${arr})`;
     decls.push(lang === 'swift' ? `private func ${name}() -> LayoutBox {\n  return ${body}\n}` : `private fun ${name}(): LayoutBox =\n  ${body}`);
     return name;

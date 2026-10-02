@@ -1,5 +1,5 @@
 // Runtime validator for LayoutInput. The schema's inferred type must equal the declared input types exactly.
-import type { CalcExpr, LayoutBox, LayoutInput, LayoutStyle, TextLeaf } from './input.ts';
+import type { CalcExpr, LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
 
 type NumberRule = { readonly t: 'number'; readonly min: number; readonly exclusiveMin: boolean; readonly integer: boolean };
 type StringRule = { readonly t: 'string' };
@@ -142,10 +142,24 @@ export const textLeafSchema = obj({
   textWrapMode: lit('wrap', 'nowrap'),
 });
 
+/** A replaced leaf (input.ts ReplacedLeaf); its style is checked as a box style. */
+export const replacedLeafSchema = obj({
+  kind: lit('replaced'),
+  id: str,
+  style: styleSchema,
+  natural: tagged({ image: { width: num(0), height: num(0) }, none: {} }),
+  defaultWidth: num(0),
+  defaultHeight: num(0),
+  objectFit: lit('fill', 'contain', 'cover', 'none', 'scale-down'),
+  objectPositionX: tagged({ px: { value: anyNum }, percent: { value: anyNum } }),
+  objectPositionY: tagged({ px: { value: anyNum }, percent: { value: anyNum } }),
+});
+
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 type Assert<T extends true> = T;
 export type SchemaMatchesStyle = Assert<Equal<Infer<typeof styleSchema>, LayoutStyle>>;
 export type SchemaMatchesText = Assert<Equal<Infer<typeof textLeafSchema>, TextLeaf>>;
+export type SchemaMatchesReplaced = Assert<Equal<Infer<typeof replacedLeafSchema>, ReplacedLeaf>>;
 
 export type ValidationErrorCode =
   | 'missing-key'
@@ -398,8 +412,19 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     checkRule(value, textLeafSchema, path, errors);
     return;
   }
+  if (value['kind'] === 'replaced') {
+    checkRule(value, replacedLeafSchema, path, errors);
+    const style = value['style'];
+    if (isRecord(style)) {
+      if (style['overflowX'] !== style['overflowY']) errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be equal: css-overflow-3 §3.1 computes visible beside hidden to auto' });
+      // CSS 2.2 §10.3.8 and §10.6.5: absolutely positioned replaced boxes are not supported yet.
+      if (style['position'] === 'absolute') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned replaced box is not supported' });
+      checkRatioBlockLengths(style, path, errors, false);
+    }
+    return;
+  }
   if (value['kind'] !== 'box') {
-    errors.push({ path: `${path}.kind`, code: 'unknown-tag', message: 'expected kind box | text' });
+    errors.push({ path: `${path}.kind`, code: 'unknown-tag', message: 'expected kind box | text | replaced' });
     return;
   }
   checkFields(value, { id: str, boxType: lit('element', 'anonymous'), style: styleSchema }, path, errors, ['kind', 'children']);
@@ -456,7 +481,7 @@ function exprHoldsPercent(e: unknown): boolean {
 
 // css-sizing-4 §5.1: a ratio transfers the block size before layout knows its percentage basis in every context, so Dragon
 // refuses a percentage height, min-height or max-height beside an aspect-ratio (the compiler reports it).
-function checkRatioBlockLengths(style: Record<string, unknown>, path: string, errors: ValidationError[]): void {
+function checkRatioBlockLengths(style: Record<string, unknown>, path: string, errors: ValidationError[], percentsRefused = true): void {
   const ratio = style['aspectRatio'];
   if (!isRecord(ratio) || ratio['kind'] === 'auto') return;
   // The parts are raw LayoutUnits (int), which keeps units.ts mulDiv exact.
@@ -464,6 +489,8 @@ function checkRatioBlockLengths(style: Record<string, unknown>, path: string, er
     const v = ratio[part];
     if (typeof v === 'number' && v > 2147483647) errors.push({ path: `${path}.style.aspectRatio.${part}`, code: 'bad-value', message: 'a layout ratio part is a raw LayoutUnit, at most 2147483647' });
   }
+  // A replaced box resolves its block lengths against its percentage basis itself (replaced.ts), so it takes them.
+  if (!percentsRefused) return;
   for (const key of ['height', 'minHeight', 'maxHeight']) {
     if (holdsPercent(style[key])) errors.push({ path: `${path}.style.${key}`, code: 'bad-value', message: `a percentage ${key} beside an aspect-ratio is not supported` });
   }

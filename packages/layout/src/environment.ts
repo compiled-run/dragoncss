@@ -34,6 +34,7 @@ import type {
   Percent,
   PixelsAndPercent,
   Px,
+  ReplacedLeaf,
   SafeAreaInsets,
   SizeValue,
   TextLeaf,
@@ -139,11 +140,30 @@ export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
 }
 
 /**
- * Whether a box or its descendants hold anything to resolve at DPR 1: a calculation, or a text run whose font size or line
+ * Whether a box or its descendants hold anything to resolve at DPR 1: a calculation, a px length outside the CSS length range, or a text run whose font size or line
  * height is not already its computed px value; the pass returns such an input itself.
  */
 function boxNeedsEnvironment(b: LayoutBox, faults: EngineFaults): boolean {
-  const s = b.style;
+  if (styleNeedsEnvironment(b.style)) return true;
+  for (const c of b.children) {
+    if (c.kind === 'box') {
+      if (boxNeedsEnvironment(c, faults)) return true;
+      continue;
+    }
+    if (c.kind === 'replaced') {
+      if (styleNeedsEnvironment(c.style)) return true;
+      continue;
+    }
+    const f = c.font;
+    if (f.specifiedSize.kind !== 'px' || f.specifiedSize.value !== f.size) return true;
+    if (computedFontSize(f.size, f.absoluteSize, 1, faults.minimumFontSizeIgnored) !== f.size) return true;
+    if (c.lineHeight.kind === 'percent' || c.lineHeight.kind === 'calc') return true;
+  }
+  return false;
+}
+
+/** Whether any length of a style is a calculation, or a px length outside the CSS length range (clamped by the pass). */
+function styleNeedsEnvironment(s: LayoutStyle): boolean {
   const kinds = [
     s.top.kind, s.right.kind, s.bottom.kind, s.left.kind, s.width.kind, s.height.kind, s.minWidth.kind, s.minHeight.kind, s.maxWidth.kind,
     s.maxHeight.kind, s.marginTop.kind, s.marginRight.kind, s.marginBottom.kind, s.marginLeft.kind, s.paddingTop.kind, s.paddingRight.kind,
@@ -156,22 +176,30 @@ function boxNeedsEnvironment(b: LayoutBox, faults: EngineFaults): boolean {
     s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.flexBasis, s.rowGap, s.columnGap,
   ];
   for (const v of lengths) if (v.kind === 'px' && !inCssLengthRange(v.value)) return true;
-  for (const c of b.children) {
-    if (c.kind === 'box') {
-      if (boxNeedsEnvironment(c, faults)) return true;
-      continue;
-    }
-    const f = c.font;
-    if (f.specifiedSize.kind !== 'px' || f.specifiedSize.value !== f.size) return true;
-    if (computedFontSize(f.size, f.absoluteSize, 1, faults.minimumFontSizeIgnored) !== f.size) return true;
-    if (c.lineHeight.kind === 'percent' || c.lineHeight.kind === 'calc') return true;
-  }
   return false;
 }
 
 function resolveBox(b: LayoutBox, env: Env): LayoutBox {
-  const children = b.children.map((c): LayoutBox | TextLeaf => (c.kind === 'box' ? resolveBox(c, env) : resolveText(c, env)));
+  const children = b.children.map((c): LayoutBox | TextLeaf | ReplacedLeaf => (c.kind === 'box' ? resolveBox(c, env) : c.kind === 'replaced' ? resolveReplaced(c, env) : resolveText(c, env)));
   return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), children };
+}
+
+/** A replaced leaf in zoomed px: its style, natural size, default object size (Blink ComputeDefaultNaturalSize scales it by the zoom) and px object-position. */
+function resolveReplaced(r: ReplacedLeaf, env: Env): ReplacedLeaf {
+  const z = env.zoom;
+  const natural: ReplacedLeaf['natural'] = r.natural.kind === 'image' ? { kind: 'image', width: zoomCssPx(r.natural.width, z), height: zoomCssPx(r.natural.height, z) } : { kind: 'none' };
+  const position = (v: ReplacedLeaf['objectPositionX']): ReplacedLeaf['objectPositionX'] => (v.kind === 'px' ? { kind: 'px', value: zoomCssPx(v.value, z) } : v);
+  return {
+    kind: 'replaced',
+    id: r.id,
+    style: resolveStyle(r.style, env),
+    natural,
+    defaultWidth: zoomCssPx(r.defaultWidth, z),
+    defaultHeight: zoomCssPx(r.defaultHeight, z),
+    objectFit: r.objectFit,
+    objectPositionX: position(r.objectPositionX),
+    objectPositionY: position(r.objectPositionY),
+  };
 }
 
 /**
@@ -786,7 +814,19 @@ function calcDependencies(e: CalcExpr, out: DependencyFlags): void {
 }
 
 function boxDependencies(b: LayoutBox, out: DependencyFlags): void {
-  const s = b.style;
+  styleDependencies(b.style, out);
+  for (const c of b.children) {
+    if (c.kind === 'box') boxDependencies(c, out);
+    else if (c.kind === 'replaced') styleDependencies(c.style, out);
+    else {
+      calcDependencies(c.font.specifiedSize, out);
+      if (c.lineHeight.kind === 'calc') calcDependencies(c.lineHeight.expr, out);
+    }
+  }
+}
+
+/** The environment inputs one style's calculations read. */
+function styleDependencies(s: LayoutStyle, out: DependencyFlags): void {
   if (s.top.kind === 'calc') calcDependencies(s.top.expr, out);
   if (s.right.kind === 'calc') calcDependencies(s.right.expr, out);
   if (s.bottom.kind === 'calc') calcDependencies(s.bottom.expr, out);
@@ -812,13 +852,6 @@ function boxDependencies(b: LayoutBox, out: DependencyFlags): void {
   if (s.flexBasis.kind === 'calc') calcDependencies(s.flexBasis.expr, out);
   if (s.rowGap.kind === 'calc') calcDependencies(s.rowGap.expr, out);
   if (s.columnGap.kind === 'calc') calcDependencies(s.columnGap.expr, out);
-  for (const c of b.children) {
-    if (c.kind === 'box') boxDependencies(c, out);
-    else {
-      calcDependencies(c.font.specifiedSize, out);
-      if (c.lineHeight.kind === 'calc') calcDependencies(c.lineHeight.expr, out);
-    }
-  }
 }
 
 /** The environment inputs the input's tree reads (translated, so the native hosts ask the engine rather than re-walk the tree). */

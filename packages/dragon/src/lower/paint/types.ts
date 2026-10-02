@@ -1,7 +1,7 @@
 // The paint lowering seam (notes/T046-paint-spec.md §3 item 1): each paint feature is one module that turns a box's resolved
 // style into typed writes, with one applied key per backend and the CSS longhands each write realises. native-program.ts
 // runs the modules in registry order; nothing here reads a layout result.
-import type { LayoutBox } from '@dragon/layout';
+import type { LayoutNode } from '@dragon/layout';
 import type { ResolvedElement } from '../../analysis/resolve.ts';
 import type { Rgba8 } from '../../css/color.ts';
 import type { Longhand } from '../../css/properties.ts';
@@ -26,7 +26,7 @@ export type PaintModuleName = (typeof PAINT_MODULE_NAMES)[number];
 
 /** One box as a paint module sees it: the layout box, its resolved element (null for an anonymous box) and the enclosing element's color. */
 export type BoxPaintContext = {
-  readonly box: LayoutBox;
+  readonly box: LayoutNode;
   readonly el: ResolvedElement | null;
   readonly parentColor: Rgba8;
   /** The node's facts record: a module publishes typed facts (paint order, radii, transforms) under its own name; never projected. */
