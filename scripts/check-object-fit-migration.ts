@@ -101,9 +101,18 @@ function stripEmitted(after: string, before: string, path: string): { text: stri
   }
   const kept: string[] = [was[0] as string];
   let removed = 0;
+  // Only rules outside @media gain the declarations; one inside an @media block is kept, so the base comparison then fails.
+  inMedia = false;
+  inRule = false;
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i] as string;
-    if (line.includes('object-fit') || line.includes('object-position')) {
+    if (line.startsWith('@media ')) inMedia = true;
+    else if (RULE.test(line)) inRule = true;
+    else if (line === '}') {
+      if (inRule) inRule = false;
+      else inMedia = false;
+    }
+    if (!inMedia && (line.includes('object-fit') || line.includes('object-position'))) {
       const fit = line.includes('object-fit');
       if (line !== (fit ? FIT : POSITION)) throw new Error(`${path}:${i + 1}: "${line.trim()}" is not the neutral declaration`);
       const previous = lines[i - 1] ?? '';
@@ -120,14 +129,32 @@ function stripEmitted(after: string, before: string, path: string): { text: stri
 const UA_FIT = '    "object-fit": "fill",';
 const UA_POSITION = '    "object-position": "50% 50%",';
 
-/** UA datasets: each computed row (sorted by property) gains the two entries, object-position right after object-fit, and nothing else changes. */
+const UA_COMPUTED_TABLE = /^export const \w*[cC]omputed: /;
+const UA_ROW = /^ {2}"[^"]+": \{$/;
+const UA_ROW_END = /^ {2}\},?$/;
+
+/**
+ * UA datasets: every row of every computed table (sorted by property) gains exactly the two entries, object-position right after
+ * object-fit, and nothing else changes; a row missing them, or holding them twice, fails.
+ */
 function stripUa(after: string, _before: string, path: string): { text: string; removed: number } {
   const lines = after.split('\n');
   const kept: string[] = [];
   let removed = 0;
+  let inTable = false;
+  let row: { readonly line: number; pairs: number } | null = null;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] as string;
+    if (UA_COMPUTED_TABLE.test(line)) inTable = true;
+    else if (line === '};') inTable = false;
+    else if (inTable && UA_ROW.test(line)) row = { line: i + 1, pairs: 0 };
+    else if (row !== null && UA_ROW_END.test(line)) {
+      if (row.pairs !== 1) throw new Error(`${path}:${row.line}: a computed row holds ${row.pairs} object-fit and object-position pairs, not 1`);
+      row = null;
+    }
     if (line.includes('"object-fit"') || line.includes('"object-position"')) {
+      if (row === null) throw new Error(`${path}:${i + 1}: an object-fit or object-position entry outside a computed row`);
+      if (line.includes('"object-fit"')) row.pairs++;
       const fit = line.includes('"object-fit"');
       if (line !== (fit ? UA_FIT : UA_POSITION)) throw new Error(`${path}:${i + 1}: "${line.trim()}" is not the neutral entry`);
       if (fit ? lines[i + 1] !== UA_POSITION : lines[i - 1] !== UA_FIT) throw new Error(`${path}:${i + 1}: object-fit and object-position are not adjacent`);
@@ -159,6 +186,8 @@ const PLANTS: { readonly [name: string]: readonly [number, string, (t: string) =
   'emitted-extra': [1, 'emitted/margin-collapse-body.css', (t) => t.replace(FIT, `${FIT}\n${FIT}`)],
   'emitted-media': [1, 'emitted/media-max-width.css', (t) => t.replace(/(@media [^\n]*\n\.dg\d+ \{\n)/, `$1${FIT}\n${POSITION}\n`)],
   'ua-value': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace(UA_POSITION, '    "object-position": "0% 0%",')],
+  'ua-row-missing': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace(`${UA_FIT}\n${UA_POSITION}\n`, '')],
+  'emitted-moved-to-media': [1, 'emitted/media-max-width.css', (t) => t.replace(`${FIT}\n${POSITION}\n`, '').replace(/(@media [^\n]*\n\.dg\d+ \{\n)/, `$1${FIT}\n${POSITION}\n`)],
   'vector-output': [3, 'layout/vectors/dpr-2/margin-collapse-body.json', (t) => t.replace(/"height": (\d+)/, (_m, n: string) => `"height": ${Number(n) + 1}`)],
   'stray-file': [0, '', (t) => t],
 };
