@@ -7,6 +7,10 @@ import { describe, expect, it } from 'vitest';
 import type { NativeProgram } from 'dragon';
 import { DPRS } from '../src/dpr.ts';
 import { nativeCases } from '../src/native-host.ts';
+import type { TransformOp, TransformOrigin } from '@dragon/layout';
+import { paintTransformMatrix, snapEdges } from '@dragon/layout';
+import { programInput } from 'dragon';
+import { expectedEngine } from '../src/native-host.ts';
 import { casePoints, committedPixels, glyphLines } from '../src/pixel-reference.ts';
 import { withPaintSamples } from '../src/paint-samples/registry.ts';
 import { ruleOwner, TRANSFORM_CLEARANCE_DEVICE_PX, withoutTransforms } from '../src/paint-samples/transform.ts';
@@ -60,17 +64,52 @@ function transformedIds(p: NativeProgram): Set<string> {
   return out;
 }
 
-/** The opaque background colours of a node's descendants, as JSON RGBA arrays. */
-function descendantColors(p: NativeProgram, id: string): Set<string> {
+/** The engine's untransformed snapped border boxes of a program at a DPR, in device px (as caseSamples builds them). */
+function deviceBoxes(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): Map<string, { left: number; top: number; right: number; bottom: number }> {
+  const engine = expectedEngine();
+  const out = engine.layout(programInput(p, viewport, dpr), engine.measurer);
+  if (out.kind !== 'ok') throw new Error(`the engine refused the program at ${dpr}`);
+  const snapped = snapEdges(out.boxes);
+  const boxes = new Map<string, { left: number; top: number; right: number; bottom: number }>();
+  // Line rects have ids no node has, so keying by id keeps only the boxes coveringColors asks for.
+  out.boxes.forEach((r, i) => boxes.set(r.id, snapped[i] as { left: number; top: number; right: number; bottom: number }));
+  return boxes;
+}
+
+type Affine = { readonly a: number; readonly b: number; readonly c: number; readonly d: number; readonly e: number; readonly f: number };
+const IDENTITY: Affine = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+const times = (m: Affine, n: Affine): Affine => ({ a: m.a * n.a + m.c * n.b, b: m.b * n.a + m.d * n.b, c: m.a * n.c + m.c * n.d, d: m.b * n.c + m.d * n.d, e: m.a * n.e + m.c * n.f + m.e, f: m.b * n.e + m.d * n.f + m.f });
+function unmap(m: Affine, x: number, y: number): { x: number; y: number } {
+  const det = m.a * m.d - m.b * m.c;
+  const dx = x - m.e;
+  const dy = y - m.f;
+  return { x: (m.d * dx - m.c * dy) / det, y: (m.a * dy - m.b * dx) / det };
+}
+
+/**
+ * The opaque background colours (JSON RGBA) of the descendants of a box that paint over its base point. The point is in the box's
+ * own frame; a descendant's own transforms (each T(box) · paint matrix · T(-box) in device px, as paint-samples/transform.ts maps
+ * them) are undone before its box is tested, so only a descendant whose painted geometry covers the point excuses it.
+ */
+function coveringColors(p: NativeProgram, id: string, at: { readonly x: number; readonly y: number }, boxes: ReadonlyMap<string, { left: number; top: number; right: number; bottom: number }>, dpr: number): Set<string> {
   const out = new Set<string>();
-  const walk = (parent: string): void => {
+  const walk = (parent: string, m: Affine): void => {
     for (const n of p.nodes.filter((x) => x.parent === parent)) {
+      const b = boxes.get(n.id);
+      if (b === undefined) continue;
+      const f = n.facts['transform'] as { ops: readonly TransformOp[]; origin: TransformOrigin } | undefined;
+      let here = m;
+      if (f !== undefined && f.ops.length > 0) {
+        const t = paintTransformMatrix(f.ops, f.origin, (b.right - b.left) / dpr, (b.bottom - b.top) / dpr, { sin: Math.sin, cos: Math.cos });
+        here = times(m, times(times({ ...IDENTITY, e: b.left, f: b.top }, { a: t.a, b: t.b, c: t.c, d: t.d, e: t.e * dpr, f: t.f * dpr }), { ...IDENTITY, e: -b.left, f: -b.top }));
+      }
+      const q = unmap(here, at.x + 0.5, at.y + 0.5);
       const w = n.writes.find((x) => x.kind === 'background-color');
-      if (w?.kind === 'background-color' && w.color.alpha === 255) out.add(JSON.stringify([w.color.r, w.color.g, w.color.b, 255]));
-      walk(n.id);
+      if (q.x >= b.left && q.x <= b.right && q.y >= b.top && q.y <= b.bottom && w?.kind === 'background-color' && w.color.alpha === 255) out.add(JSON.stringify([w.color.r, w.color.g, w.color.b, 255]));
+      walk(n.id, here);
     }
   };
-  walk(id);
+  walk(id, IDENTITY);
   return out;
 }
 
@@ -94,9 +133,10 @@ function originIgnored(p: NativeProgram): NativeProgram {
 }
 
 /** Every mapped interior, border and glyph point of the transforms cases whose colour differs from Chrome's, and how many were compared. */
-async function mismatches(plant: (p: NativeProgram) => NativeProgram): Promise<{ readonly checked: number; readonly problems: readonly string[] }> {
+async function mismatches(plant: (p: NativeProgram) => NativeProgram): Promise<{ readonly checked: number; readonly byKind: { readonly [kind: string]: number }; readonly problems: readonly string[] }> {
   const ids = new Set((await transformCases()).map((c) => c.id));
   let checked = 0;
+  const byKind: { [kind: string]: number } = {};
   const problems: string[] = [];
   for (const n of nativeCases().filter((c) => ids.has(c.case.id))) {
     const p = plant(n.programs.uikit);
@@ -107,6 +147,7 @@ async function mismatches(plant: (p: NativeProgram) => NativeProgram): Promise<{
       const points = casePoints(p, n.case.environment.viewport, dpr);
       const base = casePoints(withoutTransforms(p), n.case.environment.viewport, dpr);
       const lines = glyphLines(p, n.case.environment.viewport, dpr);
+      const boxes = deviceBoxes(p, n.case.environment.viewport, dpr);
       const owned = points.filter((x) => {
         const o = ruleOwner(x.rule);
         return moved.has(ruleKind(x.rule) === 'glyph' ? o.replace(/:line\d+$/, '') : o);
@@ -114,21 +155,23 @@ async function mismatches(plant: (p: NativeProgram) => NativeProgram): Promise<{
       if (moved.size > 0 && owned.length === 0) problems.push(`${n.case.id}@${dpr}: no point on a transformed box`);
       for (const x of owned) {
         expect(ruleKind(x.rule), x.rule).not.toBe('edge');
-        if (ruleKind(x.rule) !== 'interior' && ruleKind(x.rule) !== 'glyph') continue;
+        if (ruleKind(x.rule) !== 'interior' && ruleKind(x.rule) !== 'glyph' && ruleKind(x.rule) !== 'border') continue;
         const at = ruleKind(x.rule) === 'interior' ? base.find((q) => q.rule === x.rule) : undefined;
         const line = at === undefined ? null : glyphUnder(p, ruleOwner(x.rule), at, lines);
         const want = wanted(p, line === null ? x.rule : `glyph:${line}:0`);
         if (want === null) continue;
         const i = (x.y * png.width + x.x) * 4;
         const got = [png.data[i], png.data[i + 1], png.data[i + 2], png.data[i + 3]];
-        // A box's own children paint over it (its base interior point may sit under a child, as the demo's record centre does).
-        if (ruleKind(x.rule) === 'interior' && descendantColors(p, ruleOwner(x.rule)).has(JSON.stringify(got))) continue;
+        // A box's own children paint over it (its base interior point may sit under a child, as the demo's record centre does);
+        // only a descendant that covers the point excuses it.
+        if (at !== undefined && coveringColors(p, ruleOwner(x.rule), at, boxes, dpr).has(JSON.stringify(got))) continue;
         checked++;
+        byKind[ruleKind(x.rule)] = (byKind[ruleKind(x.rule)] ?? 0) + 1;
         if (JSON.stringify(got) !== JSON.stringify(want)) problems.push(`${n.case.id}@${dpr} ${x.rule} at ${x.x},${x.y}: Chrome ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
       }
     }
   }
-  return { checked, problems };
+  return { checked, byKind, problems };
 }
 
 describe('PNT2: the transform sample filter on a rotated box', () => {
@@ -162,6 +205,17 @@ describe('PNT2: the transform sample filter on a rotated box', () => {
     }));
     for (const p of out.filter((x) => !x.rule.startsWith('edge:'))) expect(Math.min(dist(p.x + 0.5, p.y + 0.5, quad), dist(p.x + 0.5, p.y + 0.5, inner)), p.rule).toBeGreaterThanOrEqual(TRANSFORM_CLEARANCE_DEVICE_PX);
   });
+  it('excuses a parent point only by a descendant whose painted geometry covers it, its own transform undone', () => {
+    const bg = (r: number) => ({ kind: 'background-color', color: { r, g: 0, b: 0, alpha: 255 } });
+    const kid = (id: string, r: number, facts: Record<string, unknown>) => ({ ...node(id, 'p', facts), writes: [bg(r)] }) as unknown as NativeProgram['nodes'][number];
+    // c sits at 0..20 untransformed; d at 100..120 is moved by translate(-100px) onto 0..20 (device px at DPR 1).
+    const prog: NativeProgram = { ...program(0), nodes: [node('p', null, {}), kid('c', 10, {}), kid('d', 20, { transform: { ops: [{ fn: 'translate', x: { kind: 'px', px: -100, percent: 0 }, y: px, angle: 0, sx: 1, sy: 1 }], origin: { x: px, y: px }, willChange: [] } })] };
+    const boxes = new Map([['c', { left: 0, top: 0, right: 20, bottom: 20 }], ['d', { left: 100, top: 0, right: 120, bottom: 20 }]]);
+    expect([...coveringColors(prog, 'p', { x: 5, y: 5 }, boxes, 1)].sort()).toEqual(['[10,0,0,255]', '[20,0,0,255]']);
+    // Outside both painted boxes nothing excuses the point, though d's untransformed box holds it.
+    expect([...coveringColors(prog, 'p', { x: 105, y: 5 }, boxes, 1)]).toEqual([]);
+    expect([...coveringColors(prog, 'p', { x: 50, y: 5 }, boxes, 1)]).toEqual([]);
+  });
   it('changes nothing without a transform', () => {
     const base = generateSamples([outer, box], size);
     const plain: NativeProgram = { ...program(0), nodes: [node('p', null, {}), node('b', 'p', {})] };
@@ -178,9 +232,11 @@ describe('PNT2: the transform sample filter on a rotated box', () => {
 
 describe('PNT2: transformed sample points against Chrome', () => {
   it('map every transformed interior, border and glyph point onto its colour in Chrome\'s pixels at every device DPR', async () => {
-    const { checked, problems } = await mismatches((p) => p);
+    const { checked, byKind, problems } = await mismatches((p) => p);
     expect(problems).toEqual([]);
     expect(checked).toBeGreaterThan(200);
+    // Every colour rule kind is compared, borders included.
+    for (const k of ['interior', 'border', 'glyph']) expect(byKind[k] ?? 0, k).toBeGreaterThan(0);
     console.log(`pnt2-samples: ${checked} mapped interior, border and glyph points equal Chrome's colour`);
   }, 600_000);
 
