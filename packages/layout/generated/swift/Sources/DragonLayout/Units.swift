@@ -189,7 +189,7 @@ public func units_clampNegativeToZero(_ a: Double) throws -> Double {
 public func units_mulInt(_ a: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:139
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s184, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s185, jsNumberToString(n)))
   }
   return try units_saturate((a * n))
 }
@@ -198,7 +198,7 @@ public func units_mulInt(_ a: Double, _ n: Double) throws -> Double {
 public func units_divInt(_ a: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:145
   if ((!jsIsInteger(n)) || (n == 0.0)) {
-    throw JsError(message: jsConcat(S.s215, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s216, jsNumberToString(n)))
   }
   return try units_saturate(jsTrunc((a / n)))
 }
@@ -318,7 +318,7 @@ public func units_isFiniteFactorSum(_ total: Double) throws -> Bool {
 public func units_cumulativeShareRounded(_ total: Double, _ k: Double, _ parts: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:278
   if ((total < 0.0) || (parts <= 0.0)) {
-    throw JsError(message: S.s128)
+    throw JsError(message: S.s129)
   }
   return try units_saturate(jsFloor(((((2.0 * total) * k) + parts) / (2.0 * parts))))
 }
@@ -327,7 +327,7 @@ public func units_cumulativeShareRounded(_ total: Double, _ k: Double, _ parts: 
 public func units_cumulativeShareTruncated(_ total: Double, _ numerator: Double, _ denominator: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:284
   if ((total < 0.0) || (denominator <= 0.0)) {
-    throw JsError(message: S.s129)
+    throw JsError(message: S.s130)
   }
   return try units_saturate(jsTrunc(((total * numerator) / denominator)))
 }
@@ -601,7 +601,7 @@ public func units_calcEvaluateFloat(_ value: Double, _ nonNegative: Bool) throws
 public func units_mulDiv(_ v: Double, _ m: Double, _ d: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:541
   if ((((d <= 0.0) || (m < 0.0)) || (!jsIsInteger(m))) || (!jsIsInteger(d))) {
-    throw JsError(message: S.s207)
+    throw JsError(message: S.s208)
   }
   let negative: Bool = (v < 0.0)
   let a: Double = (negative ? (-v) : v)
