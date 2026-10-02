@@ -36,35 +36,35 @@
   ],
   "engineCalc": 4000,
   "snapGenerated": 20000,
-  "snapVectors": 1230,
+  "snapVectors": 1281,
   "cases": {
-    "vectors-m2": 204,
-    "vectors-dpr": 1386,
-    "engine-dpr": 1386,
+    "vectors-m2": 221,
+    "vectors-dpr": 1437,
+    "engine-dpr": 1437,
     "units-m2": 120000,
-    "snap": 21230,
+    "snap": 21281,
     "snap-values": 156,
     "calc-goldens": 17,
     "engine-calc": 4000,
     "units-calc": 50000
   },
   "engineSplit": {
-    "ok": 1384,
-    "unsupported": 2,
+    "ok": 1430,
+    "unsupported": 7,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "fd921ef95d4c415bf6439825003b930d51670b6529d3eca6ccba26c26424d242",
-    "vectors-dpr": "114d296ba4d55a6b655dbd4cc235ebeddea2fe50a0346439330229ce9917c6fd",
-    "engine-dpr": "fca9118d8ea0970483e8bfa0a2000345a9a73ef8cf4a6cf1506bd151b804980e",
+    "vectors-m2": "ff3735ad39933ab0cc1b9fc9411af594ec8cff9cb1489ef53f63a3bf0f4a78d8",
+    "vectors-dpr": "67d9ac0b5a07d36436611d823014df8daf790685f1cb450016014c1a6fa4f657",
+    "engine-dpr": "443079569393ea776fb169d905037a677f17826a699b5cdff4d30fd92766e36f",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "eb8c79a34bf3286224c2a9eba924ad150033d10415ea4e59f179c3f8b75b8e02",
+    "snap": "5f40bf80123a9f86b68befe616a9da4a93d416738b58b82ba16ddbc9520a4f68",
     "snap-values": "6cf9286b08a091ff333753d47b61d209d565bb71efedd50088eb4bd7efa71e90",
-    "calc-goldens": "9241f9c160b80efe64019e5fa29409c88f7420d20cf7d6198e32455d7a9f7884",
-    "engine-calc": "6c90bbfc4d08530a285b421bb9640bcc47c0aef388cc4d40fbe0b14f1925a394",
+    "calc-goldens": "7e4b65e5dc06b7ce49fda178c625859a8e666aa597a7717bc0d88f07fc33c5a0",
+    "engine-calc": "89a0d0af724915f7e151d05dca64be4f19d5cd105540c02a0e3556520e303c1f",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50"
   },
-  "digest": "dd9524b70328d481be9e07777e77c247d8522fff210eb4d6130853f5f94b9f29"
+  "digest": "9c39286d7ea0a698f0373e30179e1d2651cc0b2fb1050c25b58eebf3c06ec266"
 }
