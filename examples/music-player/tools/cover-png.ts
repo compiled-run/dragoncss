@@ -9,6 +9,27 @@ export const COVER_HEIGHT = 720;
 const RING_INNER = 160 - 12;
 const RING_OUTER = 160 + 12;
 
+/**
+ * Flat marker patches (notes/T045 R8, REPL-a's image-flat sample rule): the gradient has almost no source region that is uniform
+ * over a resampling filter's support, so squares of one colour sit where the lane's sample grid (fractions 1/4, 1/2 and 3/4 of
+ * the drawn part) lands under object-fit contain (the library covers: the whole image) and cover (the record: the centre 720 x
+ * 720). The largest support is at the smallest scale, a 104 CSS px library cover at DPR 2: ceil(1280 / 208) + 2 = 9 source px.
+ * Each patch reaches MARKER_REACH source px from its centre: that support plus 16 source px.
+ */
+export const MARKER_SUPPORT_SOURCE_PX = 9;
+export const MARKER_REACH = MARKER_SUPPORT_SOURCE_PX + 16;
+/** Patch centres in source px: the shared centre, the contain quarter points, then the cover quarter points. */
+export const MARKER_CENTRES: readonly (readonly [number, number])[] = [
+  [640, 360],
+  [320, 180], [960, 180], [320, 540], [960, 540],
+  [460, 180], [820, 180], [460, 540], [820, 540],
+];
+
+/** The marker patch that holds source pixel (x, y), or -1. */
+export function markerAt(x: number, y: number): number {
+  return MARKER_CENTRES.findIndex(([cx, cy]) => Math.abs(x - cx) <= MARKER_REACH && Math.abs(y - cy) <= MARKER_REACH);
+}
+
 /** The video ids with a cover, in COVER_COLORS order. */
 export const COVER_IDS: readonly string[] = Object.keys(COVER_COLORS);
 
@@ -20,7 +41,10 @@ function hexColor(hex: string): readonly [number, number, number] {
   return [parseInt(m[1] as string, 16), parseInt(m[2] as string, 16), parseInt(m[3] as string, 16)];
 }
 
-/** RGB bytes, row-major. The gradient runs along x + y (top-left to bottom-right), so row y is row y-1 shifted by one pixel. */
+/**
+ * RGB bytes, row-major. The gradient runs along x + y (top-left to bottom-right), so row y is row y-1 shifted by one pixel,
+ * outside the marker patches.
+ */
 export function coverPixels(videoId: string): Uint8Array {
   const colors = COVER_COLORS[videoId];
   if (colors === undefined) throw new Error(`no cover colours for ${videoId}`);
@@ -35,6 +59,13 @@ export function coverPixels(videoId: string): Uint8Array {
       const dx = 2 * x + 1 - COVER_WIDTH;
       const d = dx * dx + dy * dy;
       const ring = d >= 4 * RING_INNER * RING_INNER && d <= 4 * RING_OUTER * RING_OUTER;
+      const marker = markerAt(x, y);
+      if (marker >= 0) {
+        // A patch takes the far end's colour of the gradient where it sits, so it stands out.
+        const [cx, cy] = MARKER_CENTRES[marker] as readonly [number, number];
+        out.set(2 * (cx + cy) < span ? c1 : c0, (y * COVER_WIDTH + x) * 3);
+        continue;
+      }
       for (let c = 0; c < 3; c++) {
         let v = Math.floor((2 * ((c0[c] as number) * (span - s) + (c1[c] as number) * s) + span) / (2 * span));
         if (ring) v = Math.floor((v * 65 + 255 * 35 + 50) / 100);

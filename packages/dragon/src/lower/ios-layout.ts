@@ -85,7 +85,7 @@ function lengthPercentage(id: string, get: Get, p: Longhand, range: LengthCalc['
   const v = get(p);
   if (v.kind === 'length' && v.unit === 'px') return { kind: 'px', value: v.value };
   if (v.kind === 'percentage') return { kind: 'percent', value: v.value };
-  if (v.kind === 'length' && VIEWPORT_AXIS[v.unit] !== undefined) return { kind: 'calc', expr: { kind: 'viewport', value: v.value, axis: VIEWPORT_AXIS[v.unit] as 'width' }, range };
+  if (v.kind === 'length' && VIEWPORT_AXIS[v.unit] !== undefined) return { kind: 'calc', expr: { kind: 'viewport', value: v.value, axis: VIEWPORT_AXIS[v.unit] as 'width', size: 'large' }, range };
   if (v.kind !== 'other' || !V1_MATH_FUNCTIONS.has(v.type.replace('()', ''))) return null;
   const context = mathContextFor(p);
   const parsed = 'refused' in context ? null : parseMath(v.text, context);
@@ -184,6 +184,16 @@ const ALIGN_ITEMS: readonly AlignItems[] = ['normal', 'stretch', 'flex-start', '
 /** The px value of a computed font-size, or null. */
 function fontPx(v: CssValue): number | null {
   return v.kind === 'length' && v.unit === 'px' ? v.value : null;
+}
+
+/**
+ * The root element's specified font size in px at text scale 1: the engine input's rootFontSize, which rem leaves read (V2 of
+ * the value model). A host scales it for the device text size (docs/decisions.md, Device text size).
+ */
+export function rootFontSizeOf(root: ResolvedElement): number {
+  const px = fontPx((root.props.get('font-size') as ResolvedValue).value);
+  if (px === null) throw new LoweringError(root.element.address, 'font-size', `font-size on the root ${root.element.address} did not compute to px`);
+  return px;
 }
 
 export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null = null): LayoutStyle {
@@ -287,7 +297,7 @@ function lowerText(t: ResolvedText): TextLeaf {
   if (collapse.kind !== 'keyword' || collapse.value !== 'collapse') fail(id, 'white-space-collapse', collapse, 'collapse');
   const wrap = get('text-wrap-mode');
   if (wrap.kind !== 'keyword' || (wrap.value !== 'wrap' && wrap.value !== 'nowrap')) return fail(id, 'text-wrap-mode', wrap, 'wrap | nowrap');
-  return { kind: 'text', id, text: t.text, font: { family: 'Ahem', size: fs.value }, lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: wrap.value as TextWrapMode };
+  return { kind: 'text', id, text: t.text, font: { family: 'Ahem', size: fs.value, specifiedSize: { kind: 'px', value: fs.value }, absoluteSize: true }, lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: wrap.value as TextWrapMode };
 }
 
 const displayOf = (el: ResolvedElement): string => {
@@ -328,7 +338,8 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
   if (isReplacedTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a replaced element`);
   if (isControlTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a form control`);
-  const box = lowerBox(root, faults, ua, fontPx((root.props.get('font-size') as ResolvedValue).value), images);
+  // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
+  const box = lowerBox(root, faults, ua, rootFontSizeOf(root), images);
   if (box.kind !== 'box') throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} lowered to a control box`);
   return box;
 }

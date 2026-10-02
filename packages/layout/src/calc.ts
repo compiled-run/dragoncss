@@ -33,9 +33,14 @@ export function calcHasPercent(e: CalcExpr): boolean {
     case 'px':
     case 'number':
     case 'viewport':
-      return false;
     case 'em':
-      return calcHasPercent(e.fontSize);
+    case 'rem':
+    case 'font-metric':
+    case 'lh':
+    case 'env':
+    case 'font-percent':
+    case 'font-calc':
+      return false;
     case 'invert':
       return calcHasPercent(e.term);
     case 'clamp':
@@ -78,6 +83,12 @@ export function evaluateCalc(e: CalcExpr, maxValue: number, faults: EngineFaults
       return pixelsAndPercentAt(0, float32(e.value), maxValue);
     case 'viewport':
     case 'em':
+    case 'rem':
+    case 'font-metric':
+    case 'lh':
+    case 'env':
+    case 'font-percent':
+    case 'font-calc':
       throw new Error(`a ${e.kind} leaf reached layout; the environment pass resolves it`);
     case 'sum': {
       let total = evaluateCalc(e.terms[0] as CalcExpr, maxValue, faults);

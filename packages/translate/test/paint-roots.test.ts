@@ -21,6 +21,12 @@ describe('paint roots (EMS)', () => {
     const files = engineFiles();
     for (const f of PAINT_ROOT_FILES) expect(files, f).toContain(join(LAYOUT_SRC, f));
   });
+  it('refuses a file list without one of the rt or paint root files, naming it', () => {
+    // layout.ts alone imports neither the rt files nor the paint seam files, so the first root file is missing from the program.
+    expect(() => engineRoots([join(LAYOUT_SRC, 'layout.ts')])).toThrow('the root file rt-easing.ts is not an engine file');
+    const allButPaint = [join(LAYOUT_SRC, 'layout.ts'), ...['rt-easing.ts', 'rt-timing.ts', 'rt-interpolate.ts'].map((f) => join(LAYOUT_SRC, f))];
+    expect(() => engineRoots(allButPaint)).toThrow('the root file paint.ts is not an engine file');
+  });
   it('makes every exported function of the paint seam files a root, and nothing else of them', () => {
     const roots = engineRoots(engineFiles());
     for (const f of PAINT_ROOT_FILES) {

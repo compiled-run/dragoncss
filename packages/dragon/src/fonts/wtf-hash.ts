@@ -1,5 +1,40 @@
 // The iteration order of a Blink HeapHashMap keyed by FontSelectionCapabilities. FontFaceCache picks the first best capability
 // group in that order, so a tie between groups is decided by it. Chromium 145.0.7632.6 sources are cited per function.
+//
+// rapidhash below is ported from third_party/rapidhash/rapidhash.h in Chromium 145.0.7632.6, under this notice:
+//
+//   rapidhash - Very fast, high quality, platform-independent hashing algorithm.
+//   Copyright (C) 2024 Nicolas De Carli
+//
+//   Based on 'wyhash', by Wang Yi <godspeed_china@yeah.net>
+//
+//   BSD 2-Clause License (https://www.opensource.org/licenses/bsd-license.php)
+//
+//   Redistribution and use in source and binary forms, with or without
+//   modification, are permitted provided that the following conditions are
+//   met:
+//
+//      * Redistributions of source code must retain the above copyright
+//        notice, this list of conditions and the following disclaimer.
+//      * Redistributions in binary form must reproduce the above
+//        copyright notice, this list of conditions and the following disclaimer
+//        in the documentation and/or other materials provided with the
+//        distribution.
+//
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+//   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+//   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+//   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+//   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+//   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+//   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+//   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+//   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+//   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+//   You can contact the author at:
+//     - rapidhash source repository: https://github.com/Nicoshev/rapidhash
 
 const M64 = (1n << 64n) - 1n;
 // third_party/rapidhash/rapidhash.h: RAPID_SEED and rapid_secret.
@@ -51,9 +86,9 @@ export function capabilitiesHash(uniqueValues: readonly [number, number, number]
 }
 
 /**
- * wtf/hash_table.h: insert probes i = (i + probe_count) & mask from h & mask; after an insert, ShouldExpand
- * ((keys + deleted) * kMaxLoad(2) >= size) doubles the table (kMinimumTableSize 8) and reinserts in old slot order.
- * Returns the keys in iteration order (slot order).
+ * Dragon's model of the slot order of an open-addressed hash table like Chrome's (wtf/hash_table.h): 8 slots to start, keys
+ * placed at hash & mask with quadratic (triangular) probing, the table doubled and refilled in old slot order once it is half
+ * full. Returns the keys in iteration order (slot order); fonts/units.test.ts "selection ties" checks the result against Chrome.
  */
 export function hashTableOrder<K>(keys: readonly K[], hash: (k: K) => number): K[] {
   let size = 0;

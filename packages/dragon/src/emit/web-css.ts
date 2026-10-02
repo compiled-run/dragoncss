@@ -81,6 +81,21 @@ function valueText(v: CssValue): string {
   }
 }
 
+type WebCase = { readonly key: string; readonly root: ResolvedElement };
+
+/** One band after the first (MQ-a): its condition text and every case resolved in it. */
+export type WebBand = { readonly condition: string; readonly cases: readonly WebCase[] };
+
+function byAddress(root: ResolvedElement): Map<string, ResolvedElement> {
+  const out = new Map<string, ResolvedElement>();
+  const visit = (el: ResolvedElement): void => {
+    out.set(el.element.address, el);
+    for (const ch of el.children) if (ch.kind === 'element') visit(ch);
+  };
+  visit(root);
+  return out;
+}
+
 /**
  * The project's fonts, for a web output that uses any: font-family values are rewritten through the font map (a pinned generic
  * or family becomes its bundled family), and prelude gives the @font-face rules of the pinned families used and of every
@@ -96,9 +111,10 @@ export type WebFontContext = {
 /**
  * One class per resolved variant: an element address gets a new class for each distinct resolved style across the cases.
  * Deterministic: classes are numbered in case order, then element preorder; declarations follow LONGHANDS order. fonts: null
- * when the project declares and maps no font, which leaves the output as it was before fonts.
+ * when the project declares and maps no font, which leaves the output as it was before fonts. cases are resolved in the first
+ * @media band; each later band (MQ-a) gets one @media block with the declarations that differ from it, per class.
  */
-export function emitWebCss(cases: readonly { readonly key: string; readonly root: ResolvedElement }[], digest: string, fonts: WebFontContext | null = null): WebEmit {
+export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = []): WebEmit {
   const usedPinned = new Set<string>();
   const familyText = (v: CssValue): string => {
     const text = familyListText(v);
@@ -108,38 +124,61 @@ export function emitWebCss(cases: readonly { readonly key: string; readonly root
     for (const r of rewritten.resolutions) if (r.kind === 'pinned') usedPinned.add(r.family);
     return fonts.rewrite ? rewritten.value : valueText(v);
   };
+  const declLine = (el: ResolvedElement, p: (typeof LONGHANDS)[number]): string => {
+    const v = (el.props.get(p) as ResolvedValue).value;
+    return `  ${p}: ${p === 'font-family' ? familyText(v) : valueText(v)};`;
+  };
   const classOf = new Map<string, Map<string, string>>();
   const variants = new Map<string, string>();
   const rules: string[] = [];
+  const bandRules: string[][] = bands.map(() => []);
   for (const c of cases) {
     const map = new Map<string, string>();
     classOf.set(c.key, map);
-    const declsOf = (el: ResolvedElement): string[] => {
-      const insets = writesInsets(el);
-      return LONGHANDS.filter((p) => insets || !INSET_LONGHANDS.includes(p)).map((p) => {
-        const v = (el.props.get(p) as ResolvedValue).value;
-        return `  ${p}: ${p === 'font-family' ? familyText(v) : valueText(v)};`;
+    const inBands = bands.map((b) => {
+      const other = b.cases.find((x) => x.key === c.key);
+      if (other === undefined) throw new Error(`case ${c.key} is not resolved in the band ${b.condition}`);
+      return byAddress(other.root);
+    });
+    // Every longhand whose value in a band differs from the first band's (an inset left out there is auto, its value).
+    const bandDiffs = (el: ResolvedElement): string[][] =>
+      inBands.map((m) => {
+        const other = m.get(el.element.address);
+        if (other === undefined) throw new Error(`${el.element.address} is not resolved in every band`);
+        return LONGHANDS.map((p) => declLine(other, p)).filter((line, k) => line !== declLine(el, LONGHANDS[k] as (typeof LONGHANDS)[number]));
       });
-    };
     const visit = (el: ResolvedElement): void => {
-      const decls = declsOf(el);
-      // FORM-a A4: a range's track and thumb are styled through their pseudo-elements on the input's class; its container takes
-      // only UA and inherited values, which the input's own rule reproduces.
-      const parts = rangePartOf(el)?.part === null ? rangeStyledParts(el).map((p) => ({ pseudo: p.pseudo, decls: declsOf(p.el) })) : [];
-      const variant = `${el.element.address}\u0000${decls.join('\n')}${parts.map((p) => `\u0000${p.pseudo}\u0000${p.decls.join('\n')}`).join('')}`;
+      const insets = writesInsets(el);
+      const decls = LONGHANDS.filter((p) => insets || !INSET_LONGHANDS.includes(p)).map((p) => declLine(el, p));
+      const diffs = bandDiffs(el);
+      // FORM-a A4: a range's track and thumb are styled through their pseudo-elements on the input's class (in every band); its
+      // container takes only UA and inherited values, which the input's own rules reproduce.
+      const parts = rangePartOf(el)?.part === null
+        ? rangeStyledParts(el).map((p) => ({ pseudo: p.pseudo, decls: LONGHANDS.filter((q) => writesInsets(p.el) || !INSET_LONGHANDS.includes(q)).map((q) => declLine(p.el, q)), diffs: bandDiffs(p.el) }))
+        : [];
+      const variant = `${el.element.address}\u0000${decls.join('\n')}${diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(diffs)}` : ''}${parts.map((p) => `\u0000${p.pseudo}\u0000${p.decls.join('\n')}\u0000${JSON.stringify(p.diffs)}`).join('')}`;
       let cls = variants.get(variant);
       if (cls === undefined) {
         cls = `dg${variants.size}`;
         variants.set(variant, cls);
         rules.push(`.${cls} {\n${decls.join('\n')}\n}`);
-        for (const p of parts) rules.push(`.${cls}::${p.pseudo} {\n${p.decls.join('\n')}\n}`);
+        diffs.forEach((d, k) => {
+          if (d.length > 0) (bandRules[k] as string[]).push(`.${cls} {\n${d.join('\n')}\n}`);
+        });
+        for (const p of parts) {
+          rules.push(`.${cls}::${p.pseudo} {\n${p.decls.join('\n')}\n}`);
+          p.diffs.forEach((d, k) => {
+            if (d.length > 0) (bandRules[k] as string[]).push(`.${cls}::${p.pseudo} {\n${d.join('\n')}\n}`);
+          });
+        }
       }
       map.set(el.element.address, cls);
       for (const ch of el.children) if (ch.kind === 'element' && (rangePartOf(ch)?.part ?? null) === null) visit(ch);
     };
     visit(c.root);
   }
+  const blocks = bands.flatMap((b, k) => ((bandRules[k] as string[]).length === 0 ? [] : [`@media ${b.condition} {\n${(bandRules[k] as string[]).join('\n')}\n}`]));
   const prelude = fonts === null ? '' : fonts.prelude(usedPinned);
-  const text = `/* Generated by Dragon from compilation ${digest}. Do not edit. */\n${prelude === '' ? '' : `${prelude}\n`}${rules.join('\n')}\n`;
+  const text = `/* Generated by Dragon from compilation ${digest}. Do not edit. */\n${prelude === '' ? '' : `${prelude}\n`}${[...rules, ...blocks].join('\n')}\n`;
   return { files: [{ path: WEB_CSS_PATH, text }], classOf };
 }

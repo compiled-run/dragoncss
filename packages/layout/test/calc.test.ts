@@ -6,10 +6,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { CalcExpr, EngineFaults, LayoutBox, LayoutInput, LayoutRect, LayoutStyle } from '../src/index.ts';
-import { absoluteRects, ahemMeasurer, layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, validateLayoutInput, zoomInput } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, environmentDependencies, layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, validateLayoutInput, zoomInput } from '../src/index.ts';
 import { hasPercent, resolveLength, resolveLengthOrNull, resolveMinLength } from '../src/box.ts';
 import { evaluateCalc } from '../src/calc.ts';
-import { box, text } from './helpers.ts';
+import { box, text, neutralEnvironment } from './helpers.ts';
 import type { LU } from '../src/units.ts';
 import { calcToLu, doubleMaxStep, doubleMinStep, floatDiv, floatInvert, floatMul, fromCssPx, pixelsAndPercentAt, pixelsAndPercentPlainOrder, toFloat, viewportUnitBase } from '../src/units.ts';
 
@@ -136,7 +136,7 @@ describe('length helpers (box.ts) and the environment pass (environment.ts)', ()
     const resolved = zoomInput(g.input, NO_ENGINE_FAULTS);
     expect(resolved).not.toBe(g.input);
     expect(JSON.stringify(resolved)).not.toContain('"kind":"clamp","min":{"kind":"px"');
-    expect(layout(g.input, measurer())).toEqual({ kind: 'ok', boxes: g.output });
+    expect(layout(g.input, measurer())).toEqual({ kind: 'ok', boxes: g.output, dependencies: environmentDependencies(g.input) });
   });
 });
 
@@ -148,7 +148,7 @@ describe('the validator takes calculation trees (validate.ts calc rule)', () => 
     return copy;
   };
   it('accepts every node kind and rejects an unknown kind, an empty operand list, a missing key and a non-finite number', () => {
-    const ok = { kind: 'calc', range: 'all', expr: { kind: 'sum', terms: [{ kind: 'px', value: 1 }, { kind: 'percent', value: 2 }, { kind: 'viewport', value: 1, axis: 'min' }, { kind: 'em', value: 1, fontSize: { kind: 'px', value: 10 } }, { kind: 'product', terms: [{ kind: 'px', value: 2 }, { kind: 'invert', term: { kind: 'number', value: 3 } }] }, { kind: 'clamp', min: { kind: 'px', value: 0 }, value: { kind: 'min', terms: [{ kind: 'px', value: 1 }] }, max: { kind: 'max', terms: [{ kind: 'px', value: 2 }] } }, { kind: 'pixels-and-percent', pixels: 1, percent: 2, explicitPixels: true, explicitPercent: false }] } };
+    const ok = { kind: 'calc', range: 'all', expr: { kind: 'sum', terms: [{ kind: 'px', value: 1 }, { kind: 'percent', value: 2 }, { kind: 'viewport', value: 1, axis: 'min', size: 'large' }, { kind: 'em', value: 1, fontSize: { kind: 'px', value: 10 } }, { kind: 'product', terms: [{ kind: 'px', value: 2 }, { kind: 'invert', term: { kind: 'number', value: 3 } }] }, { kind: 'clamp', min: { kind: 'px', value: 0 }, value: { kind: 'min', terms: [{ kind: 'px', value: 1 }] }, max: { kind: 'max', terms: [{ kind: 'px', value: 2 }] } }, { kind: 'pixels-and-percent', pixels: 1, percent: 2, explicitPixels: true, explicitPercent: false }] } };
     expect(validateLayoutInput(withWidth(ok)).ok).toBe(true);
     for (const bad of [
       { kind: 'calc', range: 'all', expr: { kind: 'pow', terms: [] } },
@@ -215,14 +215,14 @@ describe('intrinsic contributions of calculations with a percentage (css-sizing-
     it(`${parent}: each contributes as Chrome 145 does`, () => {
       for (const [name, s, want] of CASES) {
         const root = box('html', {}, [box('body', { marginTop: px(0), marginLeft: px(0) }, [wrap(child(s))])]);
-        const r = layoutWithFaults({ viewport: { width: 800, height: 600 }, devicePixelRatio: 1, root }, ahemMeasurer, NO_ENGINE_FAULTS);
+        const r = layoutWithFaults({ viewport: { width: 800, height: 600 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 800, height: 600 }), root }, ahemMeasurer, NO_ENGINE_FAULTS);
         if (r.kind !== 'ok') throw new Error(JSON.stringify(r.unsupported));
         expect(absoluteRects(r.boxes).get('p')?.width, `${parent}, ${name}`).toBe(want * 64);
       }
     });
   }
   it('a calculation with no percentage is definite: the environment pass makes it px before any contribution is taken', () => {
-    const r = layoutWithFaults({ viewport: { width: 800, height: 600 }, devicePixelRatio: 1, root: box('html', {}, [box('w', { position: 'relative' }, [box('p', { position: 'absolute' }, [child({ width: calc({ kind: 'sum', terms: [px(20), px(5)] }) })])])]) }, ahemMeasurer, NO_ENGINE_FAULTS);
+    const r = layoutWithFaults({ viewport: { width: 800, height: 600 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 800, height: 600 }), root: box('html', {}, [box('w', { position: 'relative' }, [box('p', { position: 'absolute' }, [child({ width: calc({ kind: 'sum', terms: [px(20), px(5)] }) })])])]) }, ahemMeasurer, NO_ENGINE_FAULTS);
     if (r.kind !== 'ok') throw new Error(JSON.stringify(r.unsupported));
     expect(absoluteRects(r.boxes).get('p')?.width).toBe(25 * 64);
   });
