@@ -253,3 +253,18 @@ Code skip-ink-intercepts (TDEC-d).
 2. **Decorated cases go in the web-only lane** (fixture-groups/fonts.ts registry), plus parity:decoration-capture.
 3. **Test-level probes replace the Ahem-auto and native "rejects".** Each probe checks that native is refused and web is ready.
 4. **decoration-capture lays out a copy with decorations stripped.** A Chrome check must show that each decorated fixture's frames and lines equal its stripped copy's. If they don't, stop.
+
+## TDEC-a host-done (2026-10-01): tdec-a1 aacee82a6, tdec-a2 5a3c7b890 on txt-w2
+
+**Result.** The engine's decoration rects equal Chrome's decoration pixels exactly, colour included, at DPR 1, 2, 3 and 2.625: 40 of 40 case×DPR checks, over 100,000 pixels. To get there, two measured Skia rules were ported:
+- antifilldot8 coverage scaling for one-row decorations;
+- the premultiplied ARGB32 blend.
+
+All nine plants are caught. The grammar tables have 0 mismatches.
+
+**PM rulings:**
+- **Merge conflicts accepted.** The three adjacent-line conflicts (with inl2 at phrasing-blockified.ts; with form-a and form-a2 at attributes.test.ts and s4b.test.ts) are resolved at catch-up.
+- **North-star moves accepted.** On iOS and Android, the decoration properties move from property refusals to value refusals, and the two links' text is refused naming TDEC-b. That is the move the spec asked for, so UNSUPPORTED_VALUE rises by 6 per target. On web, the href and decoration refusals are gone.
+- **Landing order.** tdec-a lands as the stack: tdec-a2 contains the faults.ts move.
+
+**Next.** TDEC-b (native drawing) waits until the text stack has caught up with master (EMS seams).

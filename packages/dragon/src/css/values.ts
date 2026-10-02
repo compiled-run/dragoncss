@@ -150,7 +150,8 @@ export function familyValue(tokens: readonly CssNode[]): CssValue {
  * part is invalid, as Chrome drops it; a math function is refused, because Dragon does not evaluate one inside a ratio.
  */
 export function ratioValue(tokens: readonly CssNode[]): CssValue | 'invalid' | { readonly token: CssNode; readonly reason: string } {
-  const autos = tokens.filter((t) => t.type === 'Identifier' && String(t['name']).toLowerCase() === 'auto');
+  // css-syntax-3 §4.3.11: an escaped identifier is its decoded name, so \61uto is auto.
+  const autos = tokens.filter((t) => t.type === 'Identifier' && asciiLower(decodeName(String(t['name']))) === 'auto');
   const rest = tokens.filter((t) => !autos.includes(t));
   if (autos.length > 1) return 'invalid';
   if (rest.length === 0) return autos.length === 1 ? { kind: 'keyword', value: 'auto' } : 'invalid';

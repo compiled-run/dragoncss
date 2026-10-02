@@ -181,6 +181,16 @@ describe('the validator', () => {
       expect(v.ok).toBe(false);
       expect(validateLayoutInput(input(s)).ok).toBe(true);
     }
+    // A calculated percentage is a percentage whatever its key order or nesting (Macroscope 4162020519): calc(10px + 5%), its
+    // reordered keys, and a percentage inside min(); a pixels-only calculation is not.
+    const pp = (percent: number) => ({ kind: 'calc', expr: { kind: 'pixels-and-percent', pixels: 10, percent, explicitPixels: true, explicitPercent: percent !== 0 }, range: 'non-negative' } as const);
+    const reordered = { range: 'non-negative', expr: { percent: 5, explicitPercent: true, pixels: 10, explicitPixels: true, kind: 'pixels-and-percent' }, kind: 'calc' } as unknown as LayoutStyle['height'];
+    const nested = { kind: 'calc', expr: { kind: 'min', terms: [{ kind: 'px', value: 10 }, { value: 50, kind: 'percent' }] }, range: 'non-negative' } as unknown as LayoutStyle['height'];
+    for (const height of [pp(5), reordered, nested]) {
+      expect(validateLayoutInput(input({ aspectRatio: r(1, 1), height })).ok, JSON.stringify(height)).toBe(false);
+      expect(validateLayoutInput(input({ height })).ok, JSON.stringify(height)).toBe(true);
+    }
+    expect(validateLayoutInput(input({ aspectRatio: r(1, 1), height: pp(0) })).ok).toBe(true);
     expect(validateLayoutInput(input({ aspectRatio: { kind: 'ratio', width: 0, height: 64 } })).ok).toBe(false);
     expect(validateLayoutInput(input({ aspectRatio: { kind: 'ratio', width: 1.5, height: 64 } })).ok).toBe(false);
     expect(validateLayoutInput(input({ aspectRatio: { kind: 'ratio', width: 2147483648, height: 64 } })).ok).toBe(false);
