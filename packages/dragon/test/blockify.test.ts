@@ -18,7 +18,7 @@ import type { ResolvedElement } from '../src/analysis/resolve.ts';
 import { resolveTree } from '../src/analysis/resolve.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { Diagnostic } from '../src/types.ts';
-import { referenceDataset } from '../src/ua/datasets.ts';
+import { darkDatasetFor, referenceDataset, textFontsOf, uaDatasetFor } from '../src/ua/datasets.ts';
 import { DOC, inputFor, staticClass, text } from './helpers.ts';
 
 const SRC: SourceRef = { uri: 's.css', revision: 'r', hash: 'h' };
@@ -64,7 +64,7 @@ describe('span, a and label in the element table', () => {
       expect(uaTagOf(t)).toBe('dragon-unstyled');
     }
     expect(uaTagOf('div')).toBe('div');
-    expect([...UNSTYLED_TAGS].sort()).toEqual(['a', 'br', 'label', 'span']);
+    expect([...UNSTYLED_TAGS].sort()).toEqual(['a', 'b', 'br', 'em', 'i', 'label', 'span', 'strong']);
   });
   // The captured Chrome tables are what makes dragon-unstyled right for them: no modelled UA declaration, context or text font,
   // and every computed longhand equal to dragon-unstyled's, in light and dark.
@@ -110,6 +110,35 @@ describe('br in the element table (INL1a)', () => {
       expect(ds.phrasingKeyUnmodelled.br).toEqual({ ltr: {}, rtl: {} });
       expect(ds.phrasingKeyForced.br).toEqual({ ltr: {}, rtl: {} });
       for (const p of LONGHANDS) expect(ds.phrasingKeyComputed.br[p], `br ${p}`).toBe(ds.computed['dragon-unstyled'][p]);
+    });
+  }
+});
+
+describe('b, strong, em and i in the element table (T133, R7)', () => {
+  it('are supported, appended after br, and read dragon-unstyled\'s UA row', () => {
+    expect([...SUPPORTED_TAGS].slice(-5)).toEqual(['br', 'b', 'strong', 'em', 'i']);
+    for (const t of ['b', 'strong', 'em', 'i']) expect(uaTagOf(t), t).toBe('dragon-unstyled');
+  });
+  for (const [scheme, ds, choice] of [['light', light, uaDatasetFor('darwin-arm64')], ['dark', dark, darkDatasetFor('darwin-arm64')]] as const) {
+    it(`${scheme}: their only UA rule is a text font, every computed longhand equals dragon-unstyled's, and the dataset carries the row`, () => {
+      if (choice.kind !== 'ok') throw new Error(choice.reason);
+      for (const k of ['b', 'strong', 'em', 'i'] as const) {
+        expect(ds.phrasingKeySpecs[k].attributes, k).toEqual({});
+        expect(ds.phrasingKeyLonghands[k], k).toEqual([]);
+        expect(ds.phrasingKeyDeclared[k], k).toEqual({ ltr: {}, rtl: {} });
+        expect(ds.phrasingKeyContexts[k], k).toEqual([]);
+        expect(ds.phrasingKeyUnmodelled[k], k).toEqual({ ltr: {}, rtl: {} });
+        expect(ds.phrasingKeyForced[k], k).toEqual({ ltr: {}, rtl: {} });
+        for (const p of LONGHANDS) expect(ds.phrasingKeyComputed[k][p], `${k} ${p}`).toBe(ds.computed['dragon-unstyled'][p]);
+        expect(textFontsOf(choice.dataset, k), k).toBe(ds.phrasingKeyTextFonts[k]);
+      }
+      expect(textFontsOf(choice.dataset, 'b')).toEqual({ 'font-weight': '700' });
+      expect(textFontsOf(choice.dataset, 'em')).toEqual({ 'font-style': 'italic' });
+      // Only the supported phrasing tags gain a row; the captured tags keep theirs, and every other tag has none.
+      for (const k of ['br', 'label', 'code', 'small', 'sub', 'sup']) expect(k in choice.dataset.userAgentTextFonts, k).toBe(k === 'br' || k === 'label');
+      expect(textFontsOf(choice.dataset, 'h1')).toBe(ds.userAgentTextFonts.h1);
+      expect(textFontsOf(choice.dataset, 'span')).toEqual({});
+      expect(choice.dataset.computed).toBe(ds.computed);
     });
   }
 });

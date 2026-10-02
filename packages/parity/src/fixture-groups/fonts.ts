@@ -10,6 +10,7 @@ import type { FixtureSpec } from '../fixtures.ts';
 import { FONT_REFERENCE_MAP, VENDOR_FONTS, vendorFontBytes } from '../font-reference.ts';
 import { layout, reject } from './define.ts';
 import { TEXT_CALIBRATION } from './text-calibration.ts';
+import { INLINE_TAGS } from './inline-tags.ts';
 import { TEXT_LATIN } from './text-latin.ts';
 
 /** A web-only fonts fixture: its font map (null: none), and the face Chrome must render each element's text with in both documents. */
@@ -28,6 +29,8 @@ export const FONT_FIXTURES: readonly FontFixture[] = [
   font('fonts-lato', FONT_REFERENCE_MAP, { regular: 'Lato-Regular', bold: 'Lato-Bold', italic: 'Lato-Regular' }),
   font('fonts-declared', null, { regular: 'Roboto-Regular', bold: 'Inter-Bold' }),
   font('fonts-platform', FONT_REFERENCE_MAP, { text: 'platform' }),
+  // T133: em and i over Lato, which has no italic face (synthetic oblique, refused on native), and i inside b (Lato-Bold).
+  font('fonts-tags', FONT_REFERENCE_MAP, { regular: 'Lato-Regular', em: 'Lato-Regular', i: 'Lato-Regular', b: 'Lato-Bold', bi: 'Lato-Bold' }),
 ];
 
 /** An invalid map: a pinned entry with no faces. */
@@ -47,7 +50,7 @@ const MAPS: ReadonlyMap<string, FontMap> = new Map([
   ['reject-fonts-quoted-generic', FONT_REFERENCE_MAP],
   ['reject-fonts-map-invalid', INVALID_MAP],
   // TXT1a-2: the real-font FIXTURES groups compile with the reference map.
-  ...[...TEXT_LATIN, ...TEXT_CALIBRATION].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
+  ...[...TEXT_LATIN, ...TEXT_CALIBRATION, ...INLINE_TAGS.filter((f) => f.kind === 'layout')].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
 ]);
 
 /** The font map a fixture compiles with; undefined for every fixture outside this group. */

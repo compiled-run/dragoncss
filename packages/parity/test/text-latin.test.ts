@@ -122,6 +122,8 @@ const NEW_IDS = [
   'text-latin-lato', 'text-latin-punct', 'text-latin-faces', 'text-latin-flex', 'text-latin-words', 'text-latin-words-rtl', 'text-latin-metrics', 'text-ahem-fractional',
   'text-calibration-lato', 'text-calibration-sans', 'text-calibration-mono',
 ];
+/** T133 (fixture-groups/inline-tags.ts): b, strong, em and i over real faces, appended after the TXT1a-2 cases. */
+const TAG_IDS = ['inline-tags-faces', 'inline-tags-faces-rtl'];
 
 const specOf = (id: string): FixtureSpec => {
   const f = FIXTURES.find((x) => x.id === id);
@@ -143,20 +145,20 @@ const probe = (id: string) => {
 };
 
 describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
-  it('keeps every BASE layout case first and in order, and adds exactly the text-latin, Ahem fractional and calibration cases', () => {
+  it('keeps every BASE layout case first and in order, and adds exactly the text-latin, Ahem fractional and calibration cases, then the T133 tag cases', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     // BASE is INL1a part C2 (inl1a-lowering afec4d619), whose FIXTURES hold 489 layout cases.
-    expect(ids.length).toBe(489 + NEW_IDS.length);
+    expect(ids.length).toBe(489 + NEW_IDS.length + TAG_IDS.length);
     expect(createHash('sha256').update(ids.slice(0, 489).join('\n')).digest('hex')).toBe('86cc089d0638ce8d86330503821b1b10e97b97b1756f2a46964ae7dbf3c81a58');
-    expect(ids.slice(489)).toEqual(NEW_IDS);
+    expect(ids.slice(489)).toEqual([...NEW_IDS, ...TAG_IDS]);
   });
 
   it('derives the shaped cases from the compiled input alone: every new case, and no BASE case', () => {
-    expect([...shapedCaseIds()]).toEqual(NEW_IDS);
+    expect([...shapedCaseIds()]).toEqual([...NEW_IDS, ...TAG_IDS]);
   });
 
   it('compiles each new case with the reference map, captures it under its stated reference, and lists its expected faces', () => {
-    for (const id of NEW_IDS) {
+    for (const id of [...NEW_IDS, ...TAG_IDS]) {
       const fixture = id.replace(/-rtl$/, '');
       expect(fontMapOf(fixture), id).toBe(FONT_REFERENCE_MAP);
       const c = caseOf(fixture, id.endsWith('-rtl') ? 'rtl' : 'ltr');
@@ -166,7 +168,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
       if (fixture !== 'text-ahem-fractional') expect(expectedFacesOf(fixture), id).not.toBeNull();
     }
     expect(expectedFacesOf('text-ahem-fractional')).toBeNull();
-    for (const f of FIXTURES) if (!NEW_IDS.includes(f.id) && f.kind === 'layout') expect(caseOf(f.id, f.environments[0]).authoredPrepare, f.id).toBeNull();
+    for (const f of FIXTURES) if (![...NEW_IDS, ...TAG_IDS].includes(f.id) && f.kind === 'layout') expect(caseOf(f.id, f.environments[0]).authoredPrepare, f.id).toBeNull();
   });
 
   it('makes the Ahem fractional case shaped because the Ahem measurer misses Chrome there, and HarfBuzz does not', () => {
@@ -177,7 +179,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
   });
 
   it('lowers every new case for ios and android in the derive compile (native draws the real faces)', () => {
-    for (const id of NEW_IDS) {
+    for (const id of [...NEW_IDS, ...TAG_IDS]) {
       const c = derived(id.replace(/-rtl$/, ''), id.endsWith('-rtl') ? 'rtl' : 'ltr');
       expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.target} ${d.code}: ${d.message}`), id).toEqual([]);
       expect(c.outputs.ios.kind, id).toBe('analysis-only');
@@ -201,7 +203,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
         }
       }
     }
-    expect(compared).toBe((489 + NEW_IDS.length) * 4);
+    expect(compared).toBe((489 + NEW_IDS.length + TAG_IDS.length) * 4);
   });
 
   it('DRAGON_SYNTHETIC_FONT_STYLE fires on no FIXTURES case', () => {
@@ -289,7 +291,7 @@ describe('TXT1a-2 phase F: text-latin vectors replay in the translated engine (R
   const lineOf = (v: ReturnType<typeof tl.textLatinVector>, faults: EngineFaults = NO_ENGINE_FAULTS): string => JSON.stringify({ platform: v.platform, faults, input: v.input, shaping: { language: v.language, faces: v.faces, calls: v.calls } });
 
   it('has a vector for every case at every DPR, each written from the committed captures', () => {
-    expect(vecs.length).toBe(NEW_IDS.length * 4);
+    expect(vecs.length).toBe((NEW_IDS.length + TAG_IDS.length) * 4);
     for (const { file, v } of vecs) expect(readFileSync(file, 'utf8'), file).toBe(tl.textLatinVectorText(tl.textLatinVector(v.input)));
   });
 
