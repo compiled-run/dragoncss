@@ -149,7 +149,7 @@ public func layout_parents(_ root: LayoutBox) throws -> JsStringMap<LayoutBox> {
       let _a41 = b.children
       var _i41 = 0
       while _i41 < _a41.items.count {
-        let c: any U_LayoutBox_ReplacedLeaf_TextLeaf = _a41.items[_i41]
+        let c: any U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf = _a41.items[_i41]
         _i41 += 1
         // ts: packages/layout/src/layout.ts:86
         if (c.kind != S.s_box) {
@@ -178,7 +178,7 @@ public func layout_containingBlock(_ ctx: Ctx, _ box: LayoutBox, _ parentOf: JsS
   let r: AbsoluteRect? = try out.absolute.get(jsUnwrap(at).id)
   // ts: packages/layout/src/layout.ts:102
   if (r == nil) {
-    throw try JsError(message: jsConcat(S.s100, jsUnwrap(at).id, S.s19, box.id, S.s11))
+    throw try JsError(message: jsConcat(S.s105, jsUnwrap(at).id, S.s21, box.id, S.s13))
   }
   let bor: Edges = try box_resolveBorder(jsUnwrap(at).style, ctx.devicePixelRatio)
   let s: LayoutStyle = try jsUnwrap(at).style

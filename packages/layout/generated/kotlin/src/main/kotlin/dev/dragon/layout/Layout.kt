@@ -117,7 +117,7 @@ fun layout_parents(root: LayoutBox): JsStringMap<LayoutBox> {
       val _a41 = b.children
       var _i41 = 0
       while (_i41 < _a41.size) {
-        val c: U_LayoutBox_ReplacedLeaf_TextLeaf = _a41[_i41]
+        val c: U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf = _a41[_i41]
         _i41++
         // ts: packages/layout/src/layout.ts:86
         if (!jsStrEq(c.kind, "box")) {
