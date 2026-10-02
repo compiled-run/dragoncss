@@ -13,7 +13,11 @@ const SWIFT_MEMBERS = String.raw`  /// REPL-a foreign view: the platform web vie
 const SWIFT = String.raw`import UIKit
 import WebKit
 
-/// The slot's web view: inline media without a user gesture; it loads about:blank, never network content.
+/// Whether a slot's web view loads its iframe src (R9). The parity lane and test hosts set it false at launch: they never load
+/// network content, so their web views load about:blank.
+public var dragonForeignViewLoadsSrc = true
+
+/// The slot's web view: inline media without a user gesture; it loads the iframe src, or about:blank in a lane or test host.
 public func dragonSetForeignView(_ v: DragonBoxView, src: String?) {
   let config = WKWebViewConfiguration()
   config.allowsInlineMediaPlayback = true
@@ -22,8 +26,10 @@ public func dragonSetForeignView(_ v: DragonBoxView, src: String?) {
   v.addSubview(web)
   v.dragonForeignView = web
   v.dragonForeignSrc = src
-  guard let blank = URL(string: "about:blank") else { fatalError("dragon: about:blank is not a URL") }
-  web.load(URLRequest(url: blank))
+  // The compiler accepts only an absolute http or https src (analysis/elements/replaced.ts iframeSrcRefusal).
+  let target = dragonForeignViewLoadsSrc ? src : nil
+  guard let url = URL(string: target ?? "about:blank") else { fatalError("dragon: \(v.dragonId): iframe src \(target ?? "about:blank") is not a URL") }
+  web.load(URLRequest(url: url))
 }
 
 /// After every layout: the web view over the content box, in points relative to the box.
@@ -73,7 +79,13 @@ class DragonForeignHost(ctx: Context) : DragonGroup(ctx) {
   }
 }
 
-/** The slot's web view: JavaScript on and media without a user gesture; it loads about:blank, never network content. */
+/**
+ * Whether a slot's web view loads its iframe src (R9). The parity lane and test hosts set it false at launch: they never load
+ * network content, so their web views load about:blank.
+ */
+var dragonForeignViewLoadsSrc = true
+
+/** The slot's web view: JavaScript on and media without a user gesture; it loads the iframe src, or about:blank in a lane or test host. */
 fun dragonSetForeignView(v: DragonBoxView, src: String?) {
   val host = DragonForeignHost(v.context)
   val web = WebView(v.context)
@@ -83,7 +95,8 @@ fun dragonSetForeignView(v: DragonBoxView, src: String?) {
   v.addView(host)
   v.dragonForeignView = host
   v.dragonForeignSrc = src
-  web.loadUrl("about:blank")
+  // The compiler accepts only an absolute http or https src (analysis/elements/replaced.ts iframeSrcRefusal).
+  web.loadUrl(if (dragonForeignViewLoadsSrc && src != null) src else "about:blank")
 }
 
 /** After every layout: the host group over the content box, in device px relative to the box. */

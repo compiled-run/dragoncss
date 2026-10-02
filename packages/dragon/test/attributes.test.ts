@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import type { ElementNode } from '../src/index.ts';
 import { createProject } from '../src/index.ts';
 import { attributeRefusal, NEUTRAL_ATTRIBUTES, neutralAttribute } from '../src/attributes.ts';
-import { dimensionRefusal, parseDimension, presentationalHints } from '../src/analysis/elements/replaced.ts';
+import { dimensionRefusal, iframeSrcRefusal, iframeSrcUrl, parseDimension, presentationalHints } from '../src/analysis/elements/replaced.ts';
 import { HTML_CASE_INSENSITIVE_ATTRIBUTES } from '../src/analysis/match.ts';
 import { OBSERVED_ATTRIBUTE_CASE_INSENSITIVE, PSEUDO_CLASS_VALID, PSEUDO_ELEMENT_VALID, SELECTOR_VALIDITY_CHROME } from '../src/css/selector-validity.generated.ts';
 import { always, div, expectCatalogued, inputFor } from './helpers.ts';
@@ -176,3 +176,27 @@ describe('REPL-a width and height attributes (HTML §2.3.4.4 dimension values, �
     expect(project.compile(tree('99999999')).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_ATTRIBUTE')).toEqual([]);
   });
 });
+
+describe('REPL-a Phase B iframe src (R9: the web view loads it)', () => {
+  it('takes an absolute http or https URL in RFC 3986 characters, stripped of ASCII white space as HTML does', () => {
+    expect(iframeSrcUrl('https://www.youtube.com/embed/DwTzcZxyUUg?autoplay=1&mute=1')).toBe('https://www.youtube.com/embed/DwTzcZxyUUg?autoplay=1&mute=1');
+    expect(iframeSrcUrl(' \thttp://example.com\n')).toBe('http://example.com');
+    expect(iframeSrcUrl('HTTPS://EXAMPLE.COM/a%20b#x')).toBe('HTTPS://EXAMPLE.COM/a%20b#x');
+    for (const bad of ['', '/embed/x', 'embed.html', '//example.com/x', 'javascript:alert(1)', 'data:text/html,x', 'about:blank', 'file:///etc/passwd', 'https://', 'https:///x', 'https://example.com/a b', 'https://exämple.com', 'https://example.com/"x"', 'https://example.com/<x>']) {
+      expect(iframeSrcUrl(bad), bad).toBeNull();
+      expect(iframeSrcRefusal('iframe', 'src', bad), bad).toContain('absolute http or https URL');
+    }
+    expect(iframeSrcRefusal('img', 'src', '/a.png')).toBeNull();
+    expect(iframeSrcRefusal('iframe', 'width', '/x')).toBeNull();
+  });
+
+  it('a compile refuses a relative iframe src and accepts an absolute https one', () => {
+    const attr = (name: string, value: string) => ({ name, value: [{ when: always, value }], origin: { kind: 'unlocated', reason: 'test' } as const });
+    const project = createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } });
+    const tree = (src: string) => inputFor('.a { display: block; border: 0; }', (r) => [{ ...div(r, 'a', ['a']), tag: 'iframe', attributes: [attr('src', src)] } as ElementNode]);
+    const codes = (src: string) => project.compile(tree(src)).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_ATTRIBUTE').map((d) => d.message);
+    expect(codes('/embed/x')).toEqual(['attribute src on a is not supported: a native web view loads only an absolute http or https URL written in RFC 3986 characters (it has no document URL to resolve a relative one against)']);
+    expect(codes('https://example.com/embed')).toEqual([]);
+  });
+});
+

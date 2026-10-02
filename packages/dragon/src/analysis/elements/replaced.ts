@@ -62,3 +62,21 @@ export function presentationalHints(tag: string, attributes: ReadonlyMap<string,
   if (tag === 'img' && w !== null && h !== null && w.kind === 'length' && h.kind === 'length') out.set('aspect-ratio', { kind: 'ratio', auto: true, width: w.value, height: h.value });
   return out;
 }
+
+/** An absolute http or https URL with a host, written only in RFC 3986 characters (what Foundation URL(string:) and Android accept). */
+const HTTP_URL = /^https?:\/\/[A-Za-z0-9\-._~!$&'()*+,;=:@%\[\]]+(?:[/?#][A-Za-z0-9\-._~!$&'()*+,;=:@%/?#\[\]]*)?$/i;
+
+/** An iframe src as the URL its web view loads (HTML strips leading and trailing ASCII white space), or null when it is not one. */
+export function iframeSrcUrl(text: string): string | null {
+  const t = text.replace(/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, '');
+  return HTTP_URL.test(t) ? t : null;
+}
+
+/**
+ * Why an iframe src cannot compile, or null (R9: the slot's web view loads src). Native code has no document URL to resolve a
+ * relative src against, and loads only http and https documents, so the src must be an absolute http or https URL.
+ */
+export function iframeSrcRefusal(tag: string, name: string, text: string): string | null {
+  if (tag !== 'iframe' || name !== 'src' || iframeSrcUrl(text) !== null) return null;
+  return 'a native web view loads only an absolute http or https URL written in RFC 3986 characters (it has no document URL to resolve a relative one against)';
+}

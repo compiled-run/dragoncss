@@ -4,10 +4,10 @@
 // The expected dumps carry each image's destination rect and each web view's frame from the same engine geometry.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { emitAndroidViewsCases, emitUikitCases, expectedDump, WRITE_CSS } from 'dragon';
+import { emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDump, WRITE_CSS } from 'dragon';
 import { deviceDprs } from '../src/targets.ts';
 import { REPLACED } from '../src/fixture-groups/replaced.ts';
-import { expectedEngine, nativeCases } from '../src/native-host.ts';
+import { expectedEngine, hostSources, nativeCases } from '../src/native-host.ts';
 import { flatAt } from '../src/paint-samples/image.ts';
 import { replacedBoxes } from '../src/paint-samples/replaced-geometry.ts';
 import { repoPath } from '../src/paths.ts';
@@ -145,5 +145,23 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
     expect(swift).toMatch(/dragonSetForeignView\(v\d+, src: nil\)/);
     expect(kotlin).toContain(`.dragonSetImage("${image.data}", 32.0, 18.0, "cover")`);
     expect(kotlin).toMatch(/dragonSetForeignView\(v\d+, null\)/);
+  });
+
+  it('loads the iframe src in a web view unless the host clears dragonForeignViewLoadsSrc, which both lane hosts do first (R9)', () => {
+    const support = (b: 'uikit' | 'android-views') => emitNativeSupport(b).map((f) => f.text).join('\n');
+    const swift = support('uikit');
+    const kotlin = support('android-views');
+    expect(swift).toContain('public var dragonForeignViewLoadsSrc = true');
+    expect(swift).toContain('let target = dragonForeignViewLoadsSrc ? src : nil');
+    expect(swift).toContain('web.load(URLRequest(url: url))');
+    expect(kotlin).toContain('var dragonForeignViewLoadsSrc = true');
+    expect(kotlin).toContain('web.loadUrl(if (dragonForeignViewLoadsSrc && src != null) src else "about:blank")');
+    const host = (t: 'ios' | 'android') => hostSources(t, 'toolchain').map((f) => f.text).join('\n');
+    const ios = host('ios');
+    const android = host('android');
+    expect(ios.indexOf('dragonForeignViewLoadsSrc = false')).toBeGreaterThan(-1);
+    expect(ios.indexOf('dragonForeignViewLoadsSrc = false')).toBeLessThan(ios.indexOf('dragonReadRun('));
+    expect(android.indexOf('    dragonForeignViewLoadsSrc = false')).toBeGreaterThan(-1);
+    expect(android.indexOf('    dragonForeignViewLoadsSrc = false')).toBeLessThan(android.indexOf('setContentView(frame)'));
   });
 });
