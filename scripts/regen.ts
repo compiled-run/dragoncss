@@ -78,9 +78,9 @@ export const MERGE_BY_HAND: readonly { readonly path: string; readonly why: stri
 export const MANUAL: readonly { readonly command: string; readonly outputs: readonly string[] }[] = [
   { command: '/tmp/device-lease.sh pnpm run parity:devices (device lanes)', outputs: ['packages/parity/out/device-failures-*.json'] },
   { command: 'pnpm run north-star:capture', outputs: ['examples/*/chrome/**'] },
-  // A paint package's vector inputs are written by its test from the input list it pins (paint-dash.test.ts dashVectorInputs);
-  // the test fails when the committed file differs, and the paint-vectors step reads it.
-  { command: 'DRAGON_WRITE_DASH_INPUTS=1 npx vitest run packages/layout/test/paint-dash.test.ts', outputs: ['packages/layout/paint-vectors/*/inputs.jsonl'] },
+  // A paint package's vector inputs are written from the input list it pins (paint-dash.test.ts dashVectorInputs, PNT2's
+  // paint-transform-cases.ts); its test fails when the committed file differs, and the paint-vectors step reads it.
+  { command: 'DRAGON_WRITE_DASH_INPUTS=1 npx vitest run packages/layout/test/paint-dash.test.ts; node packages/layout/test/paint-transform-cases.ts > packages/layout/paint-vectors/transform/inputs.jsonl', outputs: ['packages/layout/paint-vectors/*/inputs.jsonl'] },
   { command: 'pnpm run rt:oracle', outputs: ['packages/layout/rt-oracle/**', 'packages/layout/rt-vectors/**'] },
   { command: 'pnpm run parity:glyph-calibration', outputs: ['packages/parity/expected-glyphs/darwin-arm64/**'] },
   { command: 'node scripts/gen-script-data.ts', outputs: ['packages/layout/src/script-data.ts'] },

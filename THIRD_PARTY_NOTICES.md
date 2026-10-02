@@ -44,6 +44,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/platform/text/character_property_data_generator.cc`: Copyright 2016 The Chromium Authors
 - `ui/gfx/animation/keyframe/timing_function.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/cubic_bezier.cc`: Copyright 2014 The Chromium Authors
+- `ui/gfx/geometry/transform.cc`: Copyright 2012 The Chromium Authors
 
 ```
 Copyright 2015 The Chromium Authors
