@@ -22,11 +22,11 @@ fun intrinsic_intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: String)
   var widest: Double = units_ZERO
   // ts: packages/layout/src/intrinsic.ts:26
   run {
-    val _a34 = kids
-    var _i34 = 0
-    while (_i34 < _a34.size) {
-      val k: U_LayoutBox_ReplacedLeaf_TextLeaf = _a34[_i34]
-      _i34++
+    val _a39 = kids
+    var _i39 = 0
+    while (_i39 < _a39.size) {
+      val k: U_LayoutBox_ReplacedLeaf_TextLeaf = _a39[_i39]
+      _i39++
       // ts: packages/layout/src/intrinsic.ts:26
       if ((!jsStrEq(k.kind, "text") && (!position_isOutOfFlow(ctx, (k as U_LayoutBox_ReplacedLeaf))))) {
         widest = units_max(widest, intrinsic_inlineContribution(ctx, (k as U_LayoutBox_ReplacedLeaf), kind))
@@ -94,11 +94,11 @@ fun intrinsic_flexIntrinsicContent(ctx: Ctx, box: LayoutBox, kind: String): Doub
     var widest: Double = units_ZERO
     // ts: packages/layout/src/intrinsic.ts:64
     run {
-      val _a35 = contributions
-      var _i35 = 0
-      while (_i35 < _a35.size) {
-        val c: Double = _a35[_i35]
-        _i35++
+      val _a40 = contributions
+      var _i40 = 0
+      while (_i40 < _a40.size) {
+        val c: Double = _a40[_i40]
+        _i40++
         widest = units_max(widest, c)
       }
     }

@@ -186,6 +186,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/blink/renderer/core/css/font_face_cache.h`: Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/font_family.cc`: Copyright (C) 2004, 2008 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/platform/graphics/gradient.cc`: Copyright (C) 2006, 2007, 2008, 2010 Apple Inc. All rights reserved.; Copyright (C) 2007 Alp Toker <alp@atoker.com>; Copyright (C) 2013 Google Inc. All rights reserved.
+- `third_party/blink/renderer/platform/wtf/math_extras.h`: Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
 
 ```
 Redistribution and use in source and binary forms, with or without

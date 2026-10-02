@@ -135,7 +135,10 @@
     "columnGap": {
      "kind": "normal"
     },
-    "textAlign": "start"
+    "textAlign": "start",
+    "aspectRatio": {
+     "kind": "auto"
+    }
    },
    "children": [
     {
@@ -245,7 +248,10 @@
       "columnGap": {
        "kind": "normal"
       },
-      "textAlign": "start"
+      "textAlign": "start",
+      "aspectRatio": {
+       "kind": "auto"
+      }
      },
      "children": [
       {
@@ -356,7 +362,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -811,7 +820,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         },
@@ -1263,7 +1275,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         },
@@ -1719,7 +1734,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         },
@@ -2243,7 +2261,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         },
@@ -2360,7 +2381,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         },
@@ -2477,7 +2501,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         },
@@ -2592,7 +2619,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         },
@@ -2723,7 +2753,10 @@
            "kind": "px",
            "value": 3
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         },
@@ -2854,7 +2887,10 @@
            },
            "range": "non-negative"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         },
@@ -3002,7 +3038,10 @@
            },
            "range": "non-negative"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         },
@@ -3150,7 +3189,10 @@
            },
            "range": "non-negative"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         },
@@ -3306,7 +3348,10 @@
            },
            "range": "non-negative"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         },
@@ -3420,7 +3465,10 @@
            "kind": "px",
            "value": 32
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": []
         }

@@ -81,14 +81,14 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
 })).map { $0 as! LayoutBox }
   // ts: packages/layout/src/position.ts:38
   do {
-    let _a43 = box.children
-    var _i43 = 0
-    while _i43 < _a43.items.count {
-      let k: any U_LayoutBox_ReplacedLeaf_TextLeaf = _a43.items[_i43]
-      _i43 += 1
+    let _a48 = box.children
+    var _i48 = 0
+    while _i48 < _a48.items.count {
+      let k: any U_LayoutBox_ReplacedLeaf_TextLeaf = _a48.items[_i48]
+      _i48 += 1
       // ts: packages/layout/src/position.ts:39
       if try ((k.kind == S.s_replaced) && position_isOutOfFlow(ctx, (k as! ReplacedLeaf))) {
-        try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s50, jsConcat(S.s67, (k as! ReplacedLeaf).id, S.s12))
+        try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s51, jsConcat(S.s68, (k as! ReplacedLeaf).id, S.s12))
       }
     }
   }
@@ -100,7 +100,7 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
   if try jsSome(box.children, { (k: any U_LayoutBox_ReplacedLeaf_TextLeaf) throws -> Bool in
     return ((k.kind == S.s_text) || (((k as! any U_LayoutBox_ReplacedLeaf).kind == S.s_box) && ((k as! LayoutBox).boxType == S.s_anonymous)))
 }) {
-    try unsupported_unsupported(S.s_abspos_in_inline, jsUnwrap(oof).id, S.s52, jsConcat(S.s66, jsUnwrap(oof).id, S.s6, box.id, S.s21))
+    try unsupported_unsupported(S.s_abspos_in_inline, jsUnwrap(oof).id, S.s53, jsConcat(S.s67, jsUnwrap(oof).id, S.s6, box.id, S.s22))
   }
 }
 
@@ -129,7 +129,7 @@ public func position_blockInset(_ box: any U_LayoutBox_ReplacedLeaf, _ v: any U_
   }
   // ts: packages/layout/src/position.ts:57
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s105, S.s208)
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s108, S.s214)
   }
   return try box_resolveLengthOrNull((v as! any U_LengthCalc_Percent_Px), nil, faults)
 }
