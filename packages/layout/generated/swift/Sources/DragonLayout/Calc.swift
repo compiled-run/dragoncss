@@ -16,11 +16,11 @@ public func calc_calcHasPercent(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_
   case S.s_sum, S.s_product, S.s_min, S.s_max:
     // ts: packages/layout/src/calc.ts:52
     do {
-      let _a3 = (e as! any U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
-      var _i3 = 0
-      while _i3 < _a3.items.count {
-        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a3.items[_i3]
-        _i3 += 1
+      let _a2 = (e as! any U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
+      var _i2 = 0
+      while _i2 < _a2.items.count {
+        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a2.items[_i2]
+        _i2 += 1
         // ts: packages/layout/src/calc.ts:52
         if try calc_calcHasPercent(t) {
           return true
@@ -74,7 +74,7 @@ public func calc_evaluateCalc(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_Ca
   case S.s_percent:
     return try units_pixelsAndPercentAt(0.0, units_float32((e as! Percent).value), maxValue)
   case S.s_viewport, S.s_em, S.s_rem, S.s_font_metric, S.s_lh, S.s_env, S.s_font_percent, S.s_font_calc:
-    throw JsError(message: jsConcat(S.s66, (e as! any U_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_RootFontLength_ViewportLength).kind, S.s17))
+    throw JsError(message: jsConcat(S.s74, (e as! any U_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_RootFontLength_ViewportLength).kind, S.s19))
   case S.s_sum:
     var total: Double = try calc_evaluateCalc(jsUnwrap(jsAt((e as! CalcSum).terms, 0.0)), maxValue, faults)
     // ts: packages/layout/src/calc.ts:95
@@ -111,11 +111,11 @@ public func calc_evaluateCalc(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_Ca
     var m: Double = try calc_evaluateCalc(jsUnwrap(jsAt((e as! CalcMin).terms, 0.0)), maxValue, faults)
     // ts: packages/layout/src/calc.ts:114
     do {
-      let _a4 = (e as! CalcMin).terms
-      var _i4 = 0
-      while _i4 < _a4.items.count {
-        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a4.items[_i4]
-        _i4 += 1
+      let _a3 = (e as! CalcMin).terms
+      var _i3 = 0
+      while _i3 < _a3.items.count {
+        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a3.items[_i3]
+        _i3 += 1
         try m = units_floatMin(m, calc_evaluateCalc(t, maxValue, faults))
       }
     }
@@ -124,11 +124,11 @@ public func calc_evaluateCalc(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_Ca
     var m: Double = try calc_evaluateCalc(jsUnwrap(jsAt((e as! CalcMax).terms, 0.0)), maxValue, faults)
     // ts: packages/layout/src/calc.ts:119
     do {
-      let _a5 = (e as! CalcMax).terms
-      var _i5 = 0
-      while _i5 < _a5.items.count {
-        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a5.items[_i5]
-        _i5 += 1
+      let _a4 = (e as! CalcMax).terms
+      var _i4 = 0
+      while _i4 < _a4.items.count {
+        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a4.items[_i4]
+        _i4 += 1
         try m = units_floatMax(m, calc_evaluateCalc(t, maxValue, faults))
       }
     }

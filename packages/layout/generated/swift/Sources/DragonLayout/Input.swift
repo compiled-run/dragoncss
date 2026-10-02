@@ -466,7 +466,7 @@ public final class NaturalSizeValue_none: U_NaturalSizeValue_image_NaturalSizeVa
 }
 
 // ts: packages/layout/src/input.ts:268
-public final class ReplacedLeaf: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf, U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf, U_LayoutBox_LineBreak_ReplacedLeaf, U_LayoutBox_ReplacedLeaf {
+public final class ReplacedLeaf: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf, U_LayoutBox_ReplacedLeaf {
   public let kind: JsString
   public let id: JsString
   public let style: LayoutStyle
@@ -490,7 +490,7 @@ public final class ReplacedLeaf: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf, U
 }
 
 // ts: packages/layout/src/input.ts:287
-public final class InlineBox: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf, U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak, U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak_TextLeaf {
+public final class InlineBox: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak, U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak_TextLeaf {
   public let kind: JsString
   public let id: JsString
   public let style: LayoutStyle
@@ -508,7 +508,7 @@ public final class InlineBox: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf, U_In
 }
 
 // ts: packages/layout/src/input.ts:297
-public final class LineBreak: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf, U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak, U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak_TextLeaf, U_LayoutBox_LineBreak_ReplacedLeaf {
+public final class LineBreak: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak, U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak_TextLeaf {
   public let kind: JsString
   public let id: JsString
   public let font: FontSpec
@@ -532,7 +532,7 @@ public final class LineStrut {
 }
 
 // ts: packages/layout/src/input.ts:309
-public final class LayoutBox: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf, U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_LayoutBox_LineBreak_ReplacedLeaf, U_LayoutBox_ReplacedLeaf {
+public final class LayoutBox: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_LayoutBox_ReplacedLeaf {
   public let kind: JsString
   public let id: JsString
   public let boxType: JsString
