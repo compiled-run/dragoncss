@@ -381,7 +381,7 @@ public func rtInterpolate_blendOp(_ from: TransformOp?, _ to: TransformOp?, _ pr
   }
   // ts: packages/layout/src/rt-interpolate.ts:226
   if (from == nil) {
-    throw JsError(message: S.s79)
+    throw JsError(message: S.s80)
   }
   // ts: packages/layout/src/rt-interpolate.ts:227
   if try (rtInterpolate_family(jsUnwrap(from).fn) == S.s_translate) {
@@ -540,11 +540,11 @@ public func rtInterpolate_transformMatrix(_ ops: JsArray<TransformOp>, _ boxWidt
   var m: Matrix2D = rtInterpolate_IDENTITY_MATRIX
   // ts: packages/layout/src/rt-interpolate.ts:347
   do {
-    let _a42 = ops
-    var _i42 = 0
-    while _i42 < _a42.items.count {
-      let op: TransformOp = _a42.items[_i42]
-      _i42 += 1
+    let _a46 = ops
+    var _i46 = 0
+    while _i46 < _a46.items.count {
+      let op: TransformOp = _a46.items[_i46]
+      _i46 += 1
       let fam: JsString = try rtInterpolate_family(op.fn)
       // ts: packages/layout/src/rt-interpolate.ts:349
       if (fam == S.s_translate) {
@@ -563,41 +563,41 @@ public func rtInterpolate_transformMatrix(_ ops: JsArray<TransformOp>, _ boxWidt
 public func rtInterpolate_digitChar(_ d: Double) throws -> JsString {
   // ts: packages/layout/src/rt-interpolate.ts:361
   if (d == 0.0) {
-    return S.s31
+    return S.s32
   }
   // ts: packages/layout/src/rt-interpolate.ts:362
   if (d == 1.0) {
-    return S.s33
+    return S.s34
   }
   // ts: packages/layout/src/rt-interpolate.ts:363
   if (d == 2.0) {
-    return S.s35
+    return S.s36
   }
   // ts: packages/layout/src/rt-interpolate.ts:364
   if (d == 3.0) {
-    return S.s36
+    return S.s37
   }
   // ts: packages/layout/src/rt-interpolate.ts:365
   if (d == 4.0) {
-    return S.s37
+    return S.s38
   }
   // ts: packages/layout/src/rt-interpolate.ts:366
   if (d == 5.0) {
-    return S.s38
+    return S.s39
   }
   // ts: packages/layout/src/rt-interpolate.ts:367
   if (d == 6.0) {
-    return S.s39
+    return S.s40
   }
   // ts: packages/layout/src/rt-interpolate.ts:368
   if (d == 7.0) {
-    return S.s40
+    return S.s41
   }
   // ts: packages/layout/src/rt-interpolate.ts:369
   if (d == 8.0) {
-    return S.s41
+    return S.s42
   }
-  return S.s42
+  return S.s43
 }
 
 // ts: packages/layout/src/rt-interpolate.ts:374
@@ -640,11 +640,11 @@ public func rtInterpolate_multiplySmall(_ digits: JsArray<Double>, _ factor: Dou
   var carry: Double = 0.0
   // ts: packages/layout/src/rt-interpolate.ts:404
   do {
-    let _a43 = digits
-    var _i43 = 0
-    while _i43 < _a43.items.count {
-      let d: Double = _a43.items[_i43]
-      _i43 += 1
+    let _a47 = digits
+    var _i47 = 0
+    while _i47 < _a47.items.count {
+      let d: Double = _a47.items[_i47]
+      _i47 += 1
       let t: Double = ((d * factor) + carry)
       let q: Double = try rtEasing_floorOf((t / 10.0))
       _ = jsPush(out, (t - (q * 10.0)))
@@ -818,20 +818,20 @@ public func rtInterpolate_lastNonZero(_ digits: JsArray<Double>) throws -> Doubl
 public func rtInterpolate_formatG(_ v: Double, _ precision: Double) throws -> JsString {
   // ts: packages/layout/src/rt-interpolate.ts:510
   if (v == 0.0) {
-    return S.s31
+    return S.s32
   }
   // ts: packages/layout/src/rt-interpolate.ts:511
   if (v < 0.0) {
-    return try jsConcat(S.s27, rtInterpolate_formatG((-v), precision))
+    return try jsConcat(S.s28, rtInterpolate_formatG((-v), precision))
   }
   let r: Decimal = try rtInterpolate_roundSignificant(v, precision, true)
   let x: Double = r.exponent
   let end: Double = try (rtInterpolate_lastNonZero(r.digits) + 1.0)
   // ts: packages/layout/src/rt-interpolate.ts:515
   if ((x < -4.0) || (x >= precision)) {
-    let mantissa: JsString = try ((end > 1.0) ? jsConcat(jsConcat(rtInterpolate_joinDigits(r.digits, 0.0, 1.0), S.s30), rtInterpolate_joinDigits(r.digits, 1.0, end)) : rtInterpolate_joinDigits(r.digits, 0.0, 1.0))
+    let mantissa: JsString = try ((end > 1.0) ? jsConcat(jsConcat(rtInterpolate_joinDigits(r.digits, 0.0, 1.0), S.s31), rtInterpolate_joinDigits(r.digits, 1.0, end)) : rtInterpolate_joinDigits(r.digits, 0.0, 1.0))
     let ax: Double = ((x < 0.0) ? (-x) : x)
-    return try jsConcat(jsConcat(jsConcat(jsConcat(mantissa, S.s_e), ((x < 0.0) ? S.s27 : S.s25)), ((ax < 10.0) ? S.s31 : S.s0)), rtInterpolate_intToString(ax))
+    return try jsConcat(jsConcat(jsConcat(jsConcat(mantissa, S.s_e), ((x < 0.0) ? S.s28 : S.s26)), ((ax < 10.0) ? S.s32 : S.s0)), rtInterpolate_intToString(ax))
   }
   // ts: packages/layout/src/rt-interpolate.ts:520
   if (x < 0.0) {
@@ -840,37 +840,37 @@ public func rtInterpolate_formatG(_ v: Double, _ precision: Double) throws -> Js
     do {
       var i: Double = 0.0
       while (i < ((-x) - 1.0)) {
-        zeros = jsConcat(zeros, S.s31)
+        zeros = jsConcat(zeros, S.s32)
         i += 1.0
       }
     }
-    return try jsConcat(jsConcat(S.s32, zeros), rtInterpolate_joinDigits(r.digits, 0.0, end))
+    return try jsConcat(jsConcat(S.s33, zeros), rtInterpolate_joinDigits(r.digits, 0.0, end))
   }
   let intPart: JsString = try rtInterpolate_joinDigits(r.digits, 0.0, (x + 1.0))
   // ts: packages/layout/src/rt-interpolate.ts:526
   if (end <= (x + 1.0)) {
     return intPart
   }
-  return try jsConcat(jsConcat(intPart, S.s30), rtInterpolate_joinDigits(r.digits, (x + 1.0), end))
+  return try jsConcat(jsConcat(intPart, S.s31), rtInterpolate_joinDigits(r.digits, (x + 1.0), end))
 }
 
 // ts: packages/layout/src/rt-interpolate.ts:531
 public func rtInterpolate_formatPrecision(_ v: Double, _ precision: Double) throws -> JsString {
   // ts: packages/layout/src/rt-interpolate.ts:532
   if (v == 0.0) {
-    return S.s31
+    return S.s32
   }
   // ts: packages/layout/src/rt-interpolate.ts:533
   if (v < 0.0) {
-    return try jsConcat(S.s27, rtInterpolate_formatPrecision((-v), precision))
+    return try jsConcat(S.s28, rtInterpolate_formatPrecision((-v), precision))
   }
   let r: Decimal = try rtInterpolate_roundSignificant(v, precision, false)
   let x: Double = r.exponent
   let end: Double = try (rtInterpolate_lastNonZero(r.digits) + 1.0)
   // ts: packages/layout/src/rt-interpolate.ts:537
   if ((x < -6.0) || (x >= precision)) {
-    let mantissa: JsString = try ((precision > 1.0) ? jsConcat(jsConcat(rtInterpolate_joinDigits(r.digits, 0.0, 1.0), S.s30), rtInterpolate_joinDigits(r.digits, 1.0, precision)) : rtInterpolate_joinDigits(r.digits, 0.0, 1.0))
-    return try jsConcat(jsConcat(jsConcat(mantissa, S.s_e), ((x < 0.0) ? S.s27 : S.s25)), rtInterpolate_intToString(((x < 0.0) ? (-x) : x)))
+    let mantissa: JsString = try ((precision > 1.0) ? jsConcat(jsConcat(rtInterpolate_joinDigits(r.digits, 0.0, 1.0), S.s31), rtInterpolate_joinDigits(r.digits, 1.0, precision)) : rtInterpolate_joinDigits(r.digits, 0.0, 1.0))
+    return try jsConcat(jsConcat(jsConcat(mantissa, S.s_e), ((x < 0.0) ? S.s28 : S.s26)), rtInterpolate_intToString(((x < 0.0) ? (-x) : x)))
   }
   // ts: packages/layout/src/rt-interpolate.ts:541
   if (x < 0.0) {
@@ -879,40 +879,40 @@ public func rtInterpolate_formatPrecision(_ v: Double, _ precision: Double) thro
     do {
       var i: Double = 0.0
       while (i < ((-x) - 1.0)) {
-        zeros = jsConcat(zeros, S.s31)
+        zeros = jsConcat(zeros, S.s32)
         i += 1.0
       }
     }
-    return try jsConcat(jsConcat(S.s32, zeros), rtInterpolate_joinDigits(r.digits, 0.0, end))
+    return try jsConcat(jsConcat(S.s33, zeros), rtInterpolate_joinDigits(r.digits, 0.0, end))
   }
   let intPart: JsString = try rtInterpolate_joinDigits(r.digits, 0.0, (x + 1.0))
   // ts: packages/layout/src/rt-interpolate.ts:547
   if (end <= (x + 1.0)) {
     return intPart
   }
-  return try jsConcat(jsConcat(intPart, S.s30), rtInterpolate_joinDigits(r.digits, (x + 1.0), end))
+  return try jsConcat(jsConcat(intPart, S.s31), rtInterpolate_joinDigits(r.digits, (x + 1.0), end))
 }
 
 // ts: packages/layout/src/rt-interpolate.ts:552
 public func rtInterpolate_formatCssNumber(_ v: Double, _ unit: JsString) throws -> JsString {
   // ts: packages/layout/src/rt-interpolate.ts:553
   if (v).isNaN {
-    return ((unit == S.s0) ? S.s_NaN : jsConcat(S.s53, unit))
+    return ((unit == S.s0) ? S.s_NaN : jsConcat(S.s54, unit))
   }
   // ts: packages/layout/src/rt-interpolate.ts:554
   if (v == rtEasing_INFINITY) {
-    return ((unit == S.s0) ? S.s_infinity : jsConcat(S.s151, unit))
+    return ((unit == S.s0) ? S.s_infinity : jsConcat(S.s153, unit))
   }
   // ts: packages/layout/src/rt-interpolate.ts:555
   if (v == (-rtEasing_INFINITY)) {
-    return ((unit == S.s0) ? S.s28 : jsConcat(S.s29, unit))
+    return ((unit == S.s0) ? S.s29 : jsConcat(S.s30, unit))
   }
   // ts: packages/layout/src/rt-interpolate.ts:556
   if try (((v < -999999.0) || (v > 999999.0)) || (rtEasing_truncOf(v) != v)) {
     return try jsConcat(rtInterpolate_formatG(v, 6.0), unit)
   }
   let i: Double = try rtEasing_truncOf(v)
-  return try jsConcat(((i < 0.0) ? jsConcat(S.s27, rtInterpolate_intToString((-i))) : rtInterpolate_intToString(i)), unit)
+  return try jsConcat(((i < 0.0) ? jsConcat(S.s28, rtInterpolate_intToString((-i))) : rtInterpolate_intToString(i)), unit)
 }
 
 // ts: packages/layout/src/rt-interpolate.ts:564
@@ -933,14 +933,14 @@ public func rtInterpolate_serializeLength(_ l: LengthValue) throws -> JsString {
   }
   // ts: packages/layout/src/rt-interpolate.ts:574
   if (l.kind == S.s_percent) {
-    return try rtInterpolate_formatCssNumber(l.percent, S.s21)
+    return try rtInterpolate_formatCssNumber(l.percent, S.s22)
   }
-  let pct: JsString = try rtInterpolate_formatCssNumber(l.percent, S.s21)
+  let pct: JsString = try rtInterpolate_formatCssNumber(l.percent, S.s22)
   // ts: packages/layout/src/rt-interpolate.ts:576
   if (l.px < 0.0) {
-    return try jsConcat(jsConcat(jsConcat(jsConcat(S.s85, pct), S.s4), rtInterpolate_formatCssNumber((-l.px), S.s_px)), S.s22)
+    return try jsConcat(jsConcat(jsConcat(jsConcat(S.s86, pct), S.s4), rtInterpolate_formatCssNumber((-l.px), S.s_px)), S.s23)
   }
-  return try jsConcat(jsConcat(jsConcat(jsConcat(S.s85, pct), S.s3), rtInterpolate_formatCssNumber(l.px, S.s_px)), S.s22)
+  return try jsConcat(jsConcat(jsConcat(jsConcat(S.s86, pct), S.s3), rtInterpolate_formatCssNumber(l.px, S.s_px)), S.s23)
 }
 
 // ts: packages/layout/src/rt-interpolate.ts:580
@@ -957,10 +957,10 @@ public func rtInterpolate_channel(_ v: Double) throws -> JsString {
 // ts: packages/layout/src/rt-interpolate.ts:590
 public func rtInterpolate_serializeColor(_ c: LegacyColor) throws -> JsString {
   let opaque: Bool = (c.alpha >= 1.0)
-  let head: JsString = try jsConcat(jsConcat(jsConcat(jsConcat(jsConcat((opaque ? S.s207 : S.s208), rtInterpolate_channel(c.r)), S.s26), rtInterpolate_channel(c.g)), S.s26), rtInterpolate_channel(c.b))
+  let head: JsString = try jsConcat(jsConcat(jsConcat(jsConcat(jsConcat((opaque ? S.s210 : S.s211), rtInterpolate_channel(c.r)), S.s27), rtInterpolate_channel(c.g)), S.s27), rtInterpolate_channel(c.b))
   // ts: packages/layout/src/rt-interpolate.ts:593
   if opaque {
-    return jsConcat(head, S.s22)
+    return jsConcat(head, S.s23)
   }
   let eps: Double = try rtEasing_froundOf(1e-7)
   let scaled: Double = try rtInterpolate_roundHalfAway((rtEasing_froundOf((c.alpha + eps)) * 255.0))
@@ -968,15 +968,15 @@ public func rtInterpolate_serializeColor(_ c: LegacyColor) throws -> JsString {
   let two: Double = try rtEasing_froundOf((rtInterpolate_roundHalfAway(((intAlpha * 100.0) / 255.0)) / 100.0))
   // ts: packages/layout/src/rt-interpolate.ts:598
   if try (rtInterpolate_roundHalfAway(rtEasing_froundOf((two * 255.0))) == intAlpha) {
-    return try jsConcat(jsConcat(jsConcat(head, S.s26), rtInterpolate_formatPrecision(two, 2.0)), S.s22)
+    return try jsConcat(jsConcat(jsConcat(head, S.s27), rtInterpolate_formatPrecision(two, 2.0)), S.s23)
   }
   let three: Double = try rtEasing_froundOf((rtInterpolate_roundHalfAway(((intAlpha * 1000.0) / 255.0)) / 1000.0))
-  return try jsConcat(jsConcat(jsConcat(head, S.s26), rtInterpolate_formatPrecision(three, 3.0)), S.s22)
+  return try jsConcat(jsConcat(jsConcat(head, S.s27), rtInterpolate_formatPrecision(three, 3.0)), S.s23)
 }
 
 // ts: packages/layout/src/rt-interpolate.ts:604
 public func rtInterpolate_serializeMatrix(_ m: Matrix2D) throws -> JsString {
-  return try jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(S.s164, rtInterpolate_serializeNumber(m.a)), S.s26), rtInterpolate_serializeNumber(m.b)), S.s26), rtInterpolate_serializeNumber(m.c)), S.s26), rtInterpolate_serializeNumber(m.d)), S.s26), rtInterpolate_serializeNumber(m.e)), S.s26), rtInterpolate_serializeNumber(m.f)), S.s22)
+  return try jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(S.s167, rtInterpolate_serializeNumber(m.a)), S.s27), rtInterpolate_serializeNumber(m.b)), S.s27), rtInterpolate_serializeNumber(m.c)), S.s27), rtInterpolate_serializeNumber(m.d)), S.s27), rtInterpolate_serializeNumber(m.e)), S.s27), rtInterpolate_serializeNumber(m.f)), S.s23)
 }
 
 // ts: packages/layout/src/rt-interpolate.ts:609
