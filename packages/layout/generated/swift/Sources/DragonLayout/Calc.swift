@@ -74,7 +74,7 @@ public func calc_evaluateCalc(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_Ca
   case S.s_percent:
     return try units_pixelsAndPercentAt(0.0, units_float32((e as! Percent).value), maxValue)
   case S.s_viewport, S.s_em, S.s_rem, S.s_font_metric, S.s_lh, S.s_env, S.s_font_percent, S.s_font_calc:
-    throw JsError(message: jsConcat(S.s75, (e as! any U_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_RootFontLength_ViewportLength).kind, S.s18))
+    throw JsError(message: jsConcat(S.s78, (e as! any U_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_RootFontLength_ViewportLength).kind, S.s20))
   case S.s_sum:
     var total: Double = try calc_evaluateCalc(jsUnwrap(jsAt((e as! CalcSum).terms, 0.0)), maxValue, faults)
     // ts: packages/layout/src/calc.ts:95
