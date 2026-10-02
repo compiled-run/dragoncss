@@ -3,7 +3,6 @@
 // every layout with the translated paint-transform.ts and the platform's sin and cos. The node's facts publish the same list,
 // origin and will-change features for the runtime helpers (hit testing, RT-9; SOV and ANIM-b writes).
 import type { TransformLength, TransformOp, TransformOrigin } from '@dragon/layout';
-import { resolveTransformOrigin, transformFunctionsMatrix } from '@dragon/layout';
 import type { TransformFnDecl, TransformLengthDecl } from '../../css/properties/transform.ts';
 import { inFloatRange, matrixParts } from '../../css/properties/transform.ts';
 import type { ResolvedElement } from '../../analysis/resolve.ts';
@@ -53,16 +52,24 @@ function engineOps(f: TransformFnDecl, at: string): TransformOp[] {
 const CHECK_BOX_PX = 1e6;
 const CHECK_SCALE = 4;
 
+/** A bound on a length's magnitude at a box of CHECK_BOX_PX. */
+const lengthBound = (l: TransformLength): number => Math.abs(l.px) + (Math.abs(l.percent) / 100) * CHECK_BOX_PX;
+
 /**
- * Throws when the transform's functions matrix or origin, resolved at a box of CHECK_BOX_PX, leaves the float range in device px:
- * Android writes them as floats, so finite CSS values can still compose past it (scale(1e30) scale(1e30)).
+ * Throws when a bound on the transform's matrix entries and origin, at a box of CHECK_BOX_PX and in device px, leaves the float
+ * range: Android writes them as floats, so finite CSS values can still compose past it (scale(1e30) scale(1e30)). The linear part is
+ * bounded by the product of the scales' larger factors (a rotation keeps lengths), the translation by each translate times the
+ * linear bound before it.
  */
 function checkRange(ops: readonly TransformOp[], origin: TransformOrigin, at: string): void {
-  const trig = { sin: Math.sin, cos: Math.cos };
-  const m = transformFunctionsMatrix(ops, CHECK_BOX_PX, CHECK_BOX_PX, trig);
-  const o = resolveTransformOrigin(origin, CHECK_BOX_PX, CHECK_BOX_PX);
-  const values = [m.a, m.b, m.c, m.d, m.e, m.f, o.x, o.y];
-  if (!values.every((v) => inFloatRange(v * CHECK_SCALE))) throw new ProgramError(`${at}: the transform overflows the float range of the native writers`);
+  let linear = 1;
+  let translation = 0;
+  for (const o of ops) {
+    if (o.fn.startsWith('translate')) translation += linear * (lengthBound(o.x) + lengthBound(o.y));
+    if (o.fn.startsWith('scale')) linear *= Math.max(Math.abs(o.sx), Math.abs(o.sy));
+  }
+  const bounds = [linear, translation, lengthBound(origin.x), lengthBound(origin.y)];
+  if (!bounds.every((v) => inFloatRange(v * CHECK_SCALE))) throw new ProgramError(`${at}: the transform overflows the float range of the native writers`);
 }
 
 /** The typed transform of an element: its engine functions (empty for none) and its origin. */
