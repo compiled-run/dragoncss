@@ -13,12 +13,12 @@ const clearOf = (v: number, e: number): boolean => v >= e + I || v + 1 <= e - I;
 
 describe('sample generator', () => {
   it('the six rules, in order, shared by both targets', () => {
-    expect(SAMPLE_RULES).toEqual(['interior', 'border', 'outside', 'radius', 'clip', 'edge', 'glyph']);
+    expect(SAMPLE_RULES).toEqual(['interior', 'border', 'outside', 'radius', 'clip', 'edge', 'glyph', 'shadow', 'gradient']);
   });
   it('is deterministic and emits every rule for a bordered, rounded, clipping box', () => {
     const a = generateSamples([card, plain], SIZE);
     expect(generateSamples([card, plain], SIZE)).toEqual(a);
-    expect([...new Set(a.filter((p) => p.rule.includes(':n3')).map((p) => ruleKind(p.rule)))]).toEqual(SAMPLE_RULES.filter((r) => r !== 'glyph'));
+    expect([...new Set(a.filter((p) => p.rule.includes(':n3')).map((p) => ruleKind(p.rule)))]).toEqual(SAMPLE_RULES.filter((r) => r !== 'glyph' && r !== 'shadow' && r !== 'gradient'));
     expect(a.filter((p) => ruleKind(p.rule) === 'radius' && p.rule.startsWith('radius:n3')).length).toBe(8);
     expect(a.filter((p) => p.rule === 'interior:n3')).toEqual([{ x: 240, y: 120, rule: 'interior:n3' }]);
     expect(a.filter((p) => p.rule === 'border:n3:top')).toEqual([{ x: 240, y: 62, rule: 'border:n3:top' }]);

@@ -20,6 +20,7 @@ import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { GlyphBox, GlyphLine, ImageSize, SampleBox, SamplePoint, SampleResult } from './samples.ts';
 import { SAMPLE_INSET_DEVICE_PX, sampleBoxes, sampleGlyphs } from './samples.ts';
+import { withPaintSamples } from './paint-samples/registry.ts';
 
 // ---------------------------------------------------------------- PNG
 
@@ -104,16 +105,43 @@ export const expectedPixelsDir = (dpr: number, platform: string = REFERENCE_PLAT
 export const expectedPixelsPath = (caseId: string, dpr: number, platform: string = REFERENCE_PLATFORM): string => `${expectedPixelsDir(dpr, platform)}/${caseId}.png`;
 export const PIXEL_MANIFEST = (platform: string = REFERENCE_PLATFORM): string => repoPath(`packages/parity/expected-pixels/${platform}/manifest.json`);
 
+/** Chrome's raster path as CDP SystemInfo.getInfo reports it (gpu.featureStatus). */
+export type RasterPath = { readonly rasterization: string; readonly gpu_compositing: string };
+
+/**
+ * The software-raster precondition (T085, P6a): Chrome must raster and composite on the CPU with Skia, the path the Skia ports
+ * reproduce (docs/decisions.md, "Chrome rasterises in software with Skia"). Every pixel capture proves it first.
+ */
+export const SOFTWARE_RASTER: RasterPath = { rasterization: 'disabled_software', gpu_compositing: 'disabled_software' };
+
+/** What keeps a SystemInfo featureStatus (or a manifest's raster record) from proving the software raster path; empty when it does. */
+export function rasterPathProblems(featureStatus: unknown): string[] {
+  if (typeof featureStatus !== 'object' || featureStatus === null) return ['no SystemInfo featureStatus record'];
+  const fs = featureStatus as Record<string, unknown>;
+  return (Object.keys(SOFTWARE_RASTER) as (keyof RasterPath)[]).flatMap((k) => (fs[k] === SOFTWARE_RASTER[k] ? [] : [`SystemInfo featureStatus.${k} is ${JSON.stringify(fs[k])}, not ${SOFTWARE_RASTER[k]} (Chrome is not rastering on the CPU with Skia)`]));
+}
+
+/** Reads Chrome's raster path through a CDP SystemInfo.getInfo call and refuses anything but the software path. */
+export async function requireSoftwareRaster(getInfo: () => Promise<unknown>): Promise<RasterPath> {
+  const info = await getInfo();
+  const gpu = typeof info === 'object' && info !== null ? (info as { gpu?: unknown }).gpu : undefined;
+  const fs = typeof gpu === 'object' && gpu !== null ? (gpu as { featureStatus?: unknown }).featureStatus : undefined;
+  const problems = rasterPathProblems(fs);
+  if (problems.length > 0) throw new Error(`the software-raster precondition failed: ${problems.join('; ')}`);
+  const status = fs as Record<string, string>;
+  return { rasterization: status.rasterization as string, gpu_compositing: status.gpu_compositing as string };
+}
+
 export type PixelManifest = {
   readonly chrome: string;
   readonly capture: string;
   readonly rasterRule: string;
-  readonly sets: readonly { readonly dpr: number; readonly flags: readonly string[]; readonly cases: readonly { readonly case: string; readonly width: number; readonly height: number; readonly sha256: string }[] }[];
+  readonly sets: readonly { readonly dpr: number; readonly flags: readonly string[]; readonly raster: RasterPath; readonly cases: readonly { readonly case: string; readonly width: number; readonly height: number; readonly sha256: string }[] }[];
 };
 
 export const PIXEL_CAPTURE = 'CDP Page.captureScreenshot {format: png}, the viewport at the forced device scale factor';
 
-export function pixelManifest(sets: readonly { dpr: number; cases: { case: string; png: Uint8Array }[] }[]): PixelManifest {
+export function pixelManifest(sets: readonly { dpr: number; raster: RasterPath; cases: { case: string; png: Uint8Array }[] }[]): PixelManifest {
   return {
     chrome: CHROME_VERSION,
     capture: PIXEL_CAPTURE,
@@ -121,6 +149,7 @@ export function pixelManifest(sets: readonly { dpr: number; cases: { case: strin
     sets: sets.map((s) => ({
       dpr: s.dpr,
       flags: chromeArgsAt(s.dpr),
+      raster: { rasterization: s.raster.rasterization, gpu_compositing: s.raster.gpu_compositing },
       cases: s.cases.map((c) => {
         const img = decodePng(c.png);
         return { case: c.case, width: img.width, height: img.height, sha256: createHash('sha256').update(c.png).digest('hex') };
@@ -130,8 +159,31 @@ export function pixelManifest(sets: readonly { dpr: number; cases: { case: strin
 }
 
 export function manifestText(m: PixelManifest): string {
-  const sets = m.sets.map((s) => `    {\n      "dpr": ${JSON.stringify(s.dpr)},\n      "flags": ${JSON.stringify(s.flags)},\n      "cases": [\n${s.cases.map((c) => `        ${JSON.stringify(c)}`).join(',\n')}\n      ]\n    }`).join(',\n');
+  const sets = m.sets.map((s) => `    {\n      "dpr": ${JSON.stringify(s.dpr)},\n      "flags": ${JSON.stringify(s.flags)},\n      "raster": ${JSON.stringify(s.raster)},\n      "cases": [\n${s.cases.map((c) => `        ${JSON.stringify(c)}`).join(',\n')}\n      ]\n    }`).join(',\n');
   return `{\n  "chrome": ${JSON.stringify(m.chrome)},\n  "capture": ${JSON.stringify(m.capture)},\n  "rasterRule": ${JSON.stringify(m.rasterRule)},\n  "sets": [\n${sets}\n  ]\n}\n`;
+}
+
+/** What keeps the committed pixel manifest from proving every set was captured on the software raster path; empty when it does. */
+export function pixelManifestRasterProblems(manifest: unknown): string[] {
+  const sets = typeof manifest === 'object' && manifest !== null ? (manifest as { sets?: unknown }).sets : undefined;
+  if (!Array.isArray(sets) || sets.length === 0) return ['the pixel manifest has no capture sets'];
+  return sets.flatMap((s: unknown, i: number) => {
+    const set = typeof s === 'object' && s !== null ? (s as { dpr?: unknown; raster?: unknown }) : {};
+    return rasterPathProblems(set.raster).map((p) => `pixel manifest set ${i} (DPR ${JSON.stringify(set.dpr)}): ${p}`);
+  });
+}
+
+/** The committed pixel manifest's raster-path problems; a missing or unreadable manifest is one. */
+export function committedPixelManifestProblems(platform: string = REFERENCE_PLATFORM): string[] {
+  const path = PIXEL_MANIFEST(platform);
+  if (!existsSync(path)) return [`no pixel manifest at ${path}`];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(path, 'utf8'));
+  } catch (e) {
+    return [`the pixel manifest ${path} is not JSON: ${(e as Error).message}`];
+  }
+  return pixelManifestRasterProblems(parsed);
 }
 
 const pngCache = new Map<string, RgbaImage>();
@@ -265,8 +317,8 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
 
 /**
  * The sample points of a program at a DPR: generateSamples over every element and anonymous box (snapped edges, the engine's
- * border widths in device px, no radius, the program's clip), then the glyph rule over every text line. Every point stays
- * SAMPLE_INSET_DEVICE_PX clear of every glyph box edge (T093 ruling A); the glyph boxes come from engine data only.
+ * border widths in device px, no radius, the program's clip), then the glyph rule over every text line, then the paint modules' points.
+ * Every base point stays SAMPLE_INSET_DEVICE_PX clear of every glyph box edge (T093 ruling A); the glyph boxes come from engine data only.
  */
 export function casePoints(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): SamplePoint[] {
   return caseSamples(p, viewport, dpr).points;
@@ -297,7 +349,10 @@ export function caseSamples(p: NativeProgram, viewport: { readonly width: number
   const lines = glyphLines(p, viewport, dpr);
   const box = sampleBoxes(boxes, size, clearance ? lines.flatMap((l) => l.glyphs) : []);
   const glyph = sampleGlyphs(lines, size, SAMPLE_INSET_DEVICE_PX, clearance);
-  return { points: [...box.points, ...glyph.points], dropped: [...box.dropped, ...glyph.dropped], rescued: box.rescued };
+  const base = [...box.points, ...glyph.points];
+  // The paint modules' points follow the base points; a module may suppress base points its paint replaces (paint-samples/).
+  const points = withPaintSamples({ program: p, viewport, dpr, size, boxes, base });
+  return { points, dropped: [...box.dropped, ...glyph.dropped], rescued: box.rescued };
 }
 
 /** Per target, device DPR and case: [lines with a glyph-bottom scanline, lines with glyphs] (T093 addendum F1), in corpus order. */

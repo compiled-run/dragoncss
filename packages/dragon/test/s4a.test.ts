@@ -180,6 +180,24 @@ describe('C4: one display: none rule, the subtree is omitted wherever it occurs 
   });
 });
 
+describe('the root font size the engine input carries (V2 rootFontSize)', () => {
+  const compileRoot = (fontSize: string) => project('ltr').compile(inputFor(`html { font-size: ${fontSize}; } ${FONT}`, (r) => [div(r, 'a', [], [text(r, 't', 'XX')])]));
+  it('is the root font size in px when it computes to px', () => {
+    for (const [fontSize, px] of [['2em', 32], ['1rem', 16], ['12px', 12]] as const) {
+      const p = iosLayoutProjection(compileRoot(fontSize), { ...ENV, direction: 'ltr' }, []);
+      expect(p.kind === 'ready' ? p.input.rootFontSize : p.reason, fontSize).toBe(px);
+    }
+  });
+  it('blocks the ios output with a typed diagnostic, instead of throwing at projection, when it does not compute to px', () => {
+    for (const fontSize of ['medium', 'larger', '120%', 'calc(10px + 1vw)']) {
+      const c = compileRoot(fontSize);
+      expect(c.outputs.ios.kind, fontSize).toBe('blocked');
+      expect(c.diagnostics.map((d) => d.code), fontSize).toEqual(['DRAGON_LOWERING_FAILED']);
+      expect(iosLayoutProjection(c, { ...ENV, direction: 'ltr' }, []).kind, fontSize).toBe('blocked');
+    }
+  });
+});
+
 describe('C5: a text leaf carries the text-align and direction of its block container', () => {
   const leaf = (align: string, direction: string): ResolvedText => ({
     kind: 'text',

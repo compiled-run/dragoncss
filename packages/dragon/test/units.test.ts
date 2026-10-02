@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/internal.ts';
 import { lengthToPx, mathFunctionRefusal, unitRefusal } from '../src/css/units.ts';
-import { MAX_MATH_TOKENS, parseMath } from '../src/css/math.ts';
+import { mathContextFor, mathInvalidity, MAX_MATH_TOKENS, parseMath } from '../src/css/math.ts';
 import { div, inputFor, text } from './helpers.ts';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
@@ -117,12 +117,47 @@ describe('math function checks', () => {
       const r = parseMath(t, LENGTH);
       expect(r.ok).toBe(false);
       if (!r.ok) expect(r.reason).toBe(`it has more than ${MAX_MATH_TOKENS} tokens, the most a calculation may have`);
+      // The Chrome validity check is bounded too: past MAX_MATH_TOKENS it decides nothing, even where Chrome would reject the nesting.
+      for (const grammar of ['length', 'length-percentage', 'number', 'number-or-length-percentage'] as const) expect(mathInvalidity(t, grammar)).toBeNull();
     }
+    // Within the bound, nesting past Blink's kMaxExpressionDepth (100) is invalid, as Chrome has it.
+    expect(mathInvalidity(`calc(${'('.repeat(100)}1px${')'.repeat(100)})`, 'length')).toBe('it nests calculations deeper than 100, the most Chrome parses');
     // n terms are 4n - 1 tokens (calc(, then value, space, +, space per join, then )): 250 terms is 999, 251 is 1003.
     expect(parseMath(sum(250, '1vi'), LENGTH).ok).toBe(true);
     expect(parseMath(sum(251, '1vi'), LENGTH).ok).toBe(false);
     const folded = parseMath(sum(250, '2px'), LENGTH);
     expect(folded.ok && folded.node).toEqual({ t: 'lit', value: 500, unit: 'px', inverseOf: null, nested: false });
+  });
+  it('a percentage in a calculation is refused with the reason for its property: invalid where it survives in a line width or a number, unsupported where it cancels or in a gap (T131)', () => {
+    // Chrome 145.0.7632.6 (test/math-validity-oracle/math-validity-chrome.json): invalid for the surviving percentages, valid for the cancelling ones and the gaps.
+    const refusal = (property: string, value: string): string => {
+      const context = mathContextFor(property);
+      if ('refused' in context) throw new Error(property);
+      const r = parseMath(value, context);
+      return r.ok ? 'ok' : r.reason;
+    };
+    const lineWidth = 'it resolves to a length with a percentage, and the property takes a length without a percentage (a <line-width> takes no percentage, css-backgrounds-3 §3.3), so Chrome drops the declaration';
+    for (const p of ['border-left-width', 'border-width', 'border-block-start-width', 'border-inline-width', 'border-block-width', 'border', 'border-top', 'outline-width', 'outline', 'column-rule-width']) {
+      expect(refusal(p, 'calc(1px + 5%)'), p).toBe(lineWidth);
+      expect(refusal(p, 'min(1px, 5%)'), p).toBe(lineWidth);
+      expect(refusal(p, 'calc(5%)'), p).toBe('it resolves to a percentage, and the property takes a length without a percentage (a <line-width> takes no percentage, css-backgrounds-3 §3.3), so Chrome drops the declaration');
+      expect(refusal(p, 'calc(5% / 5% * 1px)'), p).toBe('a percentage in a border, outline or column-rule width cancels out only by typed arithmetic (css-values-4 §10.9), which is not supported');
+      expect(refusal(p, 'calc(1px + 2px)'), p).toBe('ok');
+    }
+    expect(refusal('flex-grow', 'calc(5%)')).toBe('it resolves to a percentage, and the property takes a number, so Chrome drops the declaration');
+    expect(refusal('order', 'calc(5% * 2)')).toBe('it resolves to a percentage, and the property takes a number, so Chrome drops the declaration');
+    expect(refusal('flex-grow', 'calc(1 + 5%)')).toBe('it adds a number and a percentage, which have no common type (css-values-4 §10.9), so Chrome drops the declaration');
+    expect(refusal('flex-shrink', 'min(1, 5%)')).toBe('min() mixes arguments of different types (css-values-4 §10.9), so Chrome drops the declaration');
+    expect(refusal('flex-grow', 'calc(5% / 5%)')).toBe('a percentage in a number calculation cancels out only by typed arithmetic (css-values-4 §10.9), which is not supported');
+    for (const p of ['gap', 'row-gap', 'column-gap']) expect(refusal(p, 'calc(10px + 5%)'), p).toBe('a percentage in this property needs percentage gaps, which are not supported yet');
+    for (const p of ['width', 'padding-left', 'margin-top', 'flex-basis', 'left']) expect(refusal(p, 'calc(10px + 5%)'), p).toBe('ok');
+  });
+  it('a border-width declaration with a percentage calculation is invalid CSS, as Chrome has it, not unsupported percentage gaps', () => {
+    const c = project().compile(inputFor(`${FONT} .a { border-left-style: solid; border-left-width: calc(1px + 5%); }`, (r) => [div(r, 'a', ['a'])]));
+    expect(c.diagnostics.map((d) => [d.code, d.message])).toEqual([[
+      'DRAGON_CSS_INVALID_VALUE',
+      '"calc(1px + 5%)" is not a valid value for border-left-width: calc(1px + 5%): it resolves to a length with a percentage, and the property takes a length without a percentage (a <line-width> takes no percentage, css-backgrounds-3 §3.3), so Chrome drops the declaration',
+    ]]);
   });
   it('a declaration whose calculation is longer than MAX_MATH_TOKENS is refused with the reason, in a length and a number property', () => {
     const long = (term: string): string => `calc(${Array.from({ length: 100000 }, () => term).join(' + ')})`;

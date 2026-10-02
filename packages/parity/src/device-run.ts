@@ -3,9 +3,9 @@
 // killed), batch launches of the host app with the run file, pulled dumps, the per-device record (model, OS and build, the scale
 // from the device profile and from the app, the window and stage in device px, the text scale), the root-fits-window check, and
 // the OS screenshots of the capture-trust probe. Devices boot only under the device lease, within one in-memory budget.
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { freemem, homedir, totalmem } from 'node:os';
-import { join } from 'node:path';
+import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, rmSync, writeFileSync } from 'node:fs';
+import { freemem, homedir, tmpdir, totalmem } from 'node:os';
+import { dirname, join } from 'node:path';
 import type { SupportPlant } from 'dragon';
 import type { GlyphPosition } from './native-compare.ts';
 import type { AndroidTools } from './native-host.ts';
@@ -45,10 +45,25 @@ export const TRUST_CASES: readonly string[] = ['color-border-sides', 'text-wrap-
  * text-wrap-spaces, the P5 case, stacks Ahem lines at line-height 1, so most of its line bottoms are seams.
  */
 export const PLANT_CASE = 'tree-projected-text#1';
+/** The glyph plants (T093), judged against the clean run on PLANT_CASE; every other support plant is a paint plant. */
+export type GlyphPlant = 'glyph-offset-1' | 'glyph-offset-y-1';
+/** The paint plants: every support plant that is not a glyph plant. */
+export type PaintPlant = Exclude<SupportPlant, GlyphPlant>;
+export const isGlyphPlant = (p: SupportPlant): p is GlyphPlant => p === 'glyph-offset-1' || p === 'glyph-offset-y-1';
+/** The cases each paint plant runs on: the dash plants (P6a) run on the border-paint fixtures. */
+export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
+  'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
+  'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
+};
+/** The sample rules a paint plant's device-pixels failures must name: border bands and edges for the dash plants. */
+export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
+  'dash-phase-1': /^(border:|edge:)/,
+  'dash-gap-unfitted': /^(border:|edge:)/,
+};
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
 /** The axis each raster plant moves every glyph along, by PLANT_SHIFT_DEVICE_PX. */
-export const PLANT_AXIS: { readonly [P in SupportPlant]: 'x' | 'y' } = { 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' };
+export const PLANT_AXIS: { readonly [P in GlyphPlant]: 'x' | 'y' } = { 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' };
 /** T093 ruling A: a plant's glyph positions (x centre, or bottom edge), against the clean run on the same device, move by this much... */
 export const PLANT_SHIFT_DEVICE_PX = 1;
 /** ...within this... */
@@ -66,7 +81,7 @@ export type PlantVerdict = { readonly caught: boolean; readonly lines: readonly 
  * one fails the position check with at least PLANT_MARGIN_DEVICE_PX to spare; and every one moved by PLANT_SHIFT_DEVICE_PX within
  * PLANT_SHIFT_SPREAD_DEVICE_PX from the clean run.
  */
-export function judgeGlyphPlant(plant: SupportPlant, clean: { readonly failures: number; readonly centres: readonly GlyphPosition[] }, planted: readonly GlyphPosition[], gate: number, runs: { readonly hostErrors: readonly string[]; readonly frames: number; readonly lines: number }): PlantVerdict {
+export function judgeGlyphPlant(plant: GlyphPlant, clean: { readonly failures: number; readonly centres: readonly GlyphPosition[] }, planted: readonly GlyphPosition[], gate: number, runs: { readonly hostErrors: readonly string[]; readonly frames: number; readonly lines: number }): PlantVerdict {
   const axis = PLANT_AXIS[plant];
   const problems: string[] = [...runs.hostErrors];
   if (runs.frames > 0) problems.push(`device-frames has ${runs.frames} failure(s) across the two runs`);
@@ -424,24 +439,66 @@ function serialsRunning(tools: AndroidTools): string[] {
 
 /**
  * A detached child whose spawn error (a missing or unexecutable binary) is kept, not left unhandled: check() rethrows it, so the
- * caller's retry and tooling-fault handling sees it.
+ * caller's retry and tooling-fault handling sees it. With a log path, the child's stdout and stderr go to that file (truncated at
+ * spawn), and exited() and logTail() say how it ended and what it last printed, so an early exit names its own reason.
  */
-export function spawnDetached(cmd: string, args: readonly string[]): { readonly check: () => void; readonly alive: () => boolean; readonly kill: () => void } {
+export function spawnDetached(cmd: string, args: readonly string[], logPath: string | null = null): { readonly check: () => void; readonly alive: () => boolean; readonly kill: () => void; readonly exited: () => string | null; readonly logTail: () => string } {
   let failure: Error | null = null;
-  const { child: p, done } = spawnChild(cmd, args, { detached: true, stdio: 'ignore', allowFailure: 'an emulator runs until it is killed; whether it booted is judged by the attach and boot polls through check() and alive()' });
+  let fd: number | null = null;
+  if (logPath !== null) {
+    mkdirSync(dirname(logPath), { recursive: true });
+    fd = openSync(logPath, 'w');
+  }
+  let spawned: ReturnType<typeof spawnChild>;
+  try {
+    spawned = spawnChild(cmd, args, { detached: true, stdio: fd === null ? 'ignore' : ['ignore', fd, fd], allowFailure: 'an emulator runs until it is killed; whether it booted is judged by the attach and boot polls through check() and alive()' });
+  } finally {
+    // The child holds its own copy of the descriptor.
+    if (fd !== null) closeSync(fd);
+  }
+  const { child: p, done } = spawned;
   done.catch(() => undefined);
   p.once('error', (e) => {
     failure = e;
   });
   p.unref();
+  const alive = (): boolean => failure === null && p.exitCode === null && p.signalCode === null;
   return {
     check: () => {
       if (failure !== null) throw new Error(`${cmd} could not be started: ${(failure as Error).message}`);
     },
-    alive: () => failure === null && p.exitCode === null && p.signalCode === null,
+    alive,
     kill: () => void p.kill('SIGTERM'),
+    exited: () => (failure !== null ? `could not start: ${(failure as Error).message}` : p.signalCode !== null ? `killed by ${p.signalCode}` : p.exitCode !== null ? `exit ${p.exitCode}` : null),
+    logTail: () => (logPath === null ? '' : logTailOf(logPath)),
   };
 }
+
+/**
+ * The last 1500 characters of a log file on one line, or why it cannot be read. Only the file's last 4 bytes per character (and
+ * a margin for line terminators) are read, so a log of any size costs the same.
+ */
+export function logTailOf(path: string, chars = 1500): string {
+  if (!existsSync(path)) return `(no log at ${path})`;
+  const fd = openSync(path, 'r');
+  let text: string;
+  try {
+    const size = fstatSync(fd).size;
+    const want = Math.min(size, chars * 4 + 1024);
+    const buf = Buffer.alloc(want);
+    const got = readSync(fd, buf, 0, want, size - want);
+    // A read that starts inside a UTF-8 sequence decodes its first bytes to U+FFFD; they are dropped.
+    text = buf.subarray(0, got).toString('utf8').replace(want < size ? /^\uFFFD+/ : /^$/, '');
+  } finally {
+    closeSync(fd);
+  }
+  const t = text.trim().replace(/\s*[\n\r\u2028\u2029]\s*/g, ' | ');
+  if (t === '') return `(${path} is empty)`;
+  return t.length > chars ? `...${t.slice(-chars)}` : t;
+}
+
+/** Where an AVD's emulator writes its stdout and stderr: one file per AVD, rewritten on every boot attempt. */
+export const emulatorLog = (name: string): string => join(tmpdir(), 'dragon-emulator-logs', `${name}.log`);
 
 /** Stops a spawned process that is still alive: null once it has exited, else why it may still run. */
 export async function stopSpawned(p: { readonly alive: () => boolean; readonly kill: () => void }, name: string, timeoutMs = 30_000): Promise<string | null> {
@@ -504,23 +561,29 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
     return { ...h, startedHere: false };
   }
   for (let attempt = 1; ; attempt++) {
-    const p = spawnDetached(tools.emulator, ['-avd', spec.name, '-port', String(spec.port), '-no-window', '-no-audio', '-no-snapshot', '-no-boot-anim', '-gpu', ANDROID_RENDERER]);
+    const log = emulatorLog(spec.name);
+    const p = spawnDetached(tools.emulator, ['-avd', spec.name, '-port', String(spec.port), '-no-window', '-no-audio', '-no-snapshot', '-no-boot-anim', '-gpu', ANDROID_RENDERER], log);
     try {
       await poll(`${serial} to attach`, 240_000, () => {
         p.check();
+        // An emulator that exited cannot attach: fail now with its own reason instead of waiting out the poll.
+        if (!p.alive()) throw new Error(`the emulator process ended (${p.exited() ?? 'unknown'}) before ${serial} attached`);
         return serialsRunning(tools).includes(serial);
       });
-      await poll(`${serial} sys.boot_completed`, 420_000, () => adb(h, ['shell', 'getprop', 'sys.boot_completed'], 10_000, 'adb does not answer while the emulator boots; the poll asks again until its timeout').stdout.trim() === '1');
+      await poll(`${serial} sys.boot_completed`, 420_000, () => {
+        if (!p.alive()) throw new Error(`the emulator process ended (${p.exited() ?? 'unknown'}) before ${serial} finished booting`);
+        return adb(h, ['shell', 'getprop', 'sys.boot_completed'], 10_000, 'adb does not answer while the emulator boots; the poll asks again until its timeout').stdout.trim() === '1';
+      });
       break;
     } catch (e) {
       // Only the emulator this attempt spawned is killed: if it exited (say, the port was taken), the serial is someone else's.
-      if (!p.alive()) throw new Error(`the ${spec.name} emulator exited before it booted; ${serial} is left alone (tooling fault): ${e instanceof Error ? e.message : String(e)}`);
+      if (!p.alive()) throw new Error(`the ${spec.name} emulator exited (${p.exited() ?? 'unknown'}) before it booted; ${serial} is left alone (tooling fault): ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
       // An emulator that never attached is not reached by adb emu kill, so the process this attempt spawned is stopped as well,
       // whatever the kill gave; a stop that fails keeps the device's memory held (failBoot).
       const problems = await stopAll([() => stopDevice({ ...h, startedHere: true }), () => stopSpawned(p, spec.name)]);
       if (problems.length > 0) throw new DeviceLeftRunning(`the ${spec.name} emulator failed to boot (${e instanceof Error ? e.message : String(e)}); and ${problems.join('; ')}`);
       await sleep(5000);
-      if (attempt === 2) throw new Error(`the ${spec.name} emulator failed to boot twice (tooling fault): ${e instanceof Error ? e.message : String(e)}`);
+      if (attempt === 2) throw new Error(`the ${spec.name} emulator failed to boot twice (tooling fault): ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
     }
   }
   try {
