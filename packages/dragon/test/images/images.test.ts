@@ -328,6 +328,20 @@ describe('zlibInflate and the PNG decode refusal (Macroscope 4169579864: CRC-val
     // A stored block whose length does not match its complement, and block type 3.
     expect(() => zlibInflate(Uint8Array.of(0x78, 0x01, 0x01, 0x05, 0x00, 0x00, 0x00, 0, 0, 0, 0))).toThrow(/complement/);
     expect(() => zlibInflate(Uint8Array.of(0x78, 0x01, 0x07, 0, 0, 0, 0, 0))).toThrow(/block type 3/);
+    // pngRawSize equals the inflated IDAT size of every corpus PNG, interlaced or not.
+    const { pngRawSize } = await import('../../src/images/png.ts');
+    let sized = 0;
+    for (const f of readdirSync(here('./corpus/'))) {
+      if (!f.endsWith('.png')) continue;
+      const p = parsePng(corpus(f));
+      if (!p.ok) continue;
+      expect(pngRawSize(p.facts), f).toBe(inflateSync(p.idat).length);
+      sized++;
+    }
+    expect(sized).toBeGreaterThan(30);
+    // The limit: exactly the output size passes, one byte less throws.
+    expect(zlibInflate(good, 4000).length).toBe(4000);
+    expect(() => zlibInflate(good, 3999)).toThrow(/inflates past 3999 bytes/);
     // Every single-bit flip in the deflate data either throws or changes nothing the checksum would miss.
     for (let at = 2; at < good.length - 4; at += 13) {
       let out: Uint8Array | null = null;
@@ -371,6 +385,18 @@ describe('zlibInflate and the PNG decode refusal (Macroscope 4169579864: CRC-val
       expect(r?.package, what).toBeNull();
       expect(r?.reason, what).toMatch(why);
     }
+    // An expansion bomb (Macroscope 4170043800): 64 MiB of zeros in a few KB of IDAT stops at the 14 bytes IHDR declares.
+    const bomb = new Uint8Array(deflateSync(new Uint8Array(64 * 1024 * 1024), { level: 9 }));
+    expect(bomb.length).toBeLessThan(100_000);
+    expect(imageRefusal(png(bomb), 'image/png')?.reason).toMatch(/does not decode: the zlib stream is invalid: it inflates past 14 bytes/);
+    // A bitmap Android cannot draw (over 100 MiB) is refused from IHDR alone, before any image buffer is allocated.
+    const huge = Uint8Array.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ...chunk('IHDR', Uint8Array.from([...u32(6000), ...u32(5000), 8, 2, 0, 0, 0])),
+      ...chunk('IDAT', bomb),
+      ...chunk('IEND', new Uint8Array(0)),
+    ]);
+    expect(imageRefusal(huge, 'image/png')?.reason).toBe('its 6000 x 5000 bitmap is 120000000 bytes, over the 104857600 bytes Android draws');
     // The decode check refuses nothing the corpus accepted before it: every corpus PNG it accepts decodes with node:zlib too.
     for (const f of readdirSync(here('./corpus/'))) {
       if (!f.endsWith('.png') || imageRefusal(corpus(f), 'image/png') !== null) continue;

@@ -35,8 +35,11 @@ function huffman(lengths: ArrayLike<number>, what: string): Huffman {
 const FIXED_LIT = huffman(Array.from({ length: 288 }, (_, i) => (i < 144 ? 8 : i < 256 ? 9 : i < 280 ? 7 : 8)), 'fixed literal');
 const FIXED_DIST = huffman(Array.from({ length: 30 }, () => 5), 'fixed distance');
 
-/** Inflates a zlib stream; throws on any malformed or truncated input or a checksum mismatch. */
-export function zlibInflate(data: Uint8Array): Uint8Array {
+/**
+ * Inflates a zlib stream; throws on any malformed or truncated input, a checksum mismatch, or output past `limit` bytes (so a
+ * small expansion bomb stops at the size the caller expects instead of exhausting memory).
+ */
+export function zlibInflate(data: Uint8Array, limit = Number.POSITIVE_INFINITY): Uint8Array {
   if (data.length < 6) bad('shorter than a header and a checksum');
   const cmf = data[0] as number;
   const flg = data[1] as number;
@@ -46,12 +49,14 @@ export function zlibInflate(data: Uint8Array): Uint8Array {
   let pos = 2;
   let bitBuf = 0;
   let bitCnt = 0;
-  let out = new Uint8Array(Math.max(1024, data.length * 4));
+  let out = new Uint8Array(Math.min(Math.max(1024, data.length * 4), Math.max(0, limit)));
   let n = 0;
   const ensure = (more: number): void => {
+    if (n + more > limit) bad(`it inflates past ${limit} bytes`);
     if (n + more <= out.length) return;
-    let size = out.length * 2;
+    let size = Math.max(1, out.length * 2);
     while (size < n + more) size *= 2;
+    size = Math.min(size, limit);
     const grown = new Uint8Array(size);
     grown.set(out.subarray(0, n));
     out = grown;
