@@ -37,11 +37,13 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
   const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
   const zBoxes = new Map<string, LayoutBox>();
   const zParent = new Map<string, string>();
+  const replaced = new Set<string>();
   const walk = (b: LayoutBox): void => {
     zBoxes.set(b.id, b);
     for (const c of b.children) {
       zParent.set(c.id, b.id);
       if (c.kind === 'box') walk(c);
+      else if (c.kind === 'replaced') replaced.add(c.id);
     }
   };
   walk(zoomed.root);
@@ -65,7 +67,8 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
   const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS };
   const out: EngineText[] = [];
   for (const r of boxes) {
-    if (isLine(r) || zBoxes.has(r.id)) continue;
+    // A replaced leaf has no text: only text leaves have lines to break.
+    if (isLine(r) || zBoxes.has(r.id) || replaced.has(r.id)) continue;
     const pId = zParent.get(r.id);
     const p = pId === undefined ? undefined : zBoxes.get(pId);
     if (pId === undefined || p === undefined) throw new Error(`text ${r.id} has no container`);
@@ -315,7 +318,7 @@ export function leafTexts(root: LayoutBox): Map<string, string> {
   const walk = (b: LayoutBox): void => {
     for (const c of b.children) {
       if (c.kind === 'box') walk(c);
-      else out.set(c.id, c.text);
+      else if (c.kind === 'text') out.set(c.id, c.text);
     }
   };
   walk(root);
@@ -343,11 +346,13 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
   let zoomed = try layout_zoomInput(input, block_NO_ENGINE_FAULTS)
   var zBoxes: [String: LayoutBox] = [:]
   var zParent: [String: String] = [:]
+  var replaced: Set<String> = []
   func walk(_ b: LayoutBox) {
     zBoxes[b.id.description] = b
     for c in b.children.items {
       if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
       else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
+      else if let rl = c as? ReplacedLeaf { replaced.insert(rl.id.description) }
     }
   }
   walk(zoomed.root)
@@ -366,7 +371,7 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
     return w
   }
   var out: [String] = []
-  for id in order where zBoxes[id] == nil {
+  for id in order where zBoxes[id] == nil && !replaced.contains(id) {
     guard let pId = zParent[id], let p = zBoxes[pId] else { fatalError("text \(id) has no container") }
     let leaves = p.children.items.compactMap { $0 as? TextLeaf }
     guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("no leaf \(id)") }
@@ -418,11 +423,13 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
   val zoomed = layout_zoomInput(input, block_NO_ENGINE_FAULTS)
   val zBoxes = HashMap<String, LayoutBox>()
   val zParent = HashMap<String, String>()
+  val replaced = HashSet<String>()
   fun walk(b: LayoutBox) {
     zBoxes[b.id] = b
     for (c in b.children) {
       if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) }
       else if (c is TextLeaf) zParent[c.id] = b.id
+      else if (c is ReplacedLeaf) replaced.add(c.id)
     }
   }
   walk(zoomed.root)
@@ -445,7 +452,7 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
   }
   val out = ArrayList<String>()
   for (id in order) {
-    if (zBoxes.containsKey(id)) continue
+    if (zBoxes.containsKey(id) || replaced.contains(id)) continue
     val pId = zParent[id] ?: throw IllegalStateException("text " + id + " has no container")
     val p = zBoxes[pId] ?: throw IllegalStateException("no container " + pId)
     val leaves = ArrayList(p.children.filterIsInstance<TextLeaf>())
