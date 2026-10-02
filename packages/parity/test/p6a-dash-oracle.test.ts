@@ -6,7 +6,7 @@
 // planted fault must make crisp pixels differ. T116: boxes whose visible sides are all solid use the same reference, and every case
 // with a solid side is compared the same way (border-join pins its no-miter corners).
 import { describe, expect, it } from 'vitest';
-import type { BorderOp, DashFaults, LayoutRect } from '@dragon/layout';
+import type { BorderOp, DashFaults, LayoutBox, LayoutRect } from '@dragon/layout';
 import { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, snapEdges } from '@dragon/layout';
 import type { NativeProgram, ProgramWrite } from 'dragon';
 import { borderDevicePx, programInput } from 'dragon';
@@ -110,6 +110,29 @@ function backgroundOf(p: NativeProgram, id: string): number[] {
   return [255, 255, 255];
 }
 
+/**
+ * The boxes in a positioned box's paint layer (CSS2 Appendix E): a box whose position is not static, or any descendant of one.
+ * Within the root stacking context they paint after every in-flow box, in tree order among themselves.
+ */
+export function positionedLayer(root: LayoutBox): Set<string> {
+  const out = new Set<string>();
+  const walk = (b: LayoutBox, inLayer: boolean): void => {
+    const here = inLayer || b.style.position !== 'static';
+    if (here) out.add(b.id);
+    for (const c of b.children) if (c.kind === 'box') walk(c, here);
+  };
+  walk(root, false);
+  return out;
+}
+
+/** Whether box m paints over box n's border: m is in a later paint phase (positioned over in-flow) or the same phase and later in tree order. */
+export function paintsOver(order: readonly string[], layer: ReadonlySet<string>, n: string, m: string): boolean {
+  const ln = layer.has(n);
+  const lm = layer.has(m);
+  if (lm !== ln) return lm;
+  return order.indexOf(m) > order.indexOf(n);
+}
+
 /** corners: the boxes' outer corner pixels the reference paints crisp in a side colour, as "id:x,y". */
 type Result = { readonly boxes: number; readonly crisp: number; readonly mismatches: readonly string[]; readonly corners: readonly string[]; readonly checked: readonly string[] };
 
@@ -131,6 +154,8 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
   const borders = borderDevicePx(engine, input);
   const boxOf = new Map<string, Box>(out.boxes.map((b: LayoutRect, i) => [b.id, snapped[i] as Box]));
   const glyphs: Box[] = glyphLines(p, vp, dpr).flatMap((l) => l.glyphs.map((g) => ({ left: Math.floor(g.left) - 1, top: Math.floor(g.top) - 1, right: Math.ceil(g.right) + 1, bottom: Math.ceil(g.bottom) + 1 })));
+  const order = p.nodes.map((m) => m.id);
+  const layer = positionedLayer(p.root);
   let boxes = 0;
   let crisp = 0;
   const mismatches: string[] = [];
@@ -148,9 +173,9 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     boxes++;
     const ops = borderPaintOps(b.left, b.top, b.right, b.bottom, w, st.styles, colors, faults);
     const bg = backgroundOf(p, n.id);
-    // The element boxes after this one in paint order (its descendants and later boxes) paint over its border; their pixels are
-    // skipped. Earlier boxes paint below it, so a border pixel they overlap is still compared.
-    const over = p.nodes.slice(p.nodes.indexOf(n) + 1).filter((m) => m.kind !== 'text').flatMap((m) => {
+    // The element boxes after this one in paint order (paintsOver: positioned boxes over in-flow ones, then tree order) paint over
+    // its border; their pixels are skipped. Boxes before it in paint order paint below it, so a border pixel they overlap is compared.
+    const over = p.nodes.filter((m) => m.kind !== 'text' && m.id !== n.id && paintsOver(order, layer, n.id, m.id)).flatMap((m) => {
       const o = boxOf.get(m.id);
       return o === undefined ? [] : [o];
     });
@@ -182,6 +207,24 @@ const withStyle = (ok: (s: string) => boolean): NativeCase[] =>
 const dashed = withStyle((s) => s === 'dashed' || s === 'dotted');
 // T116: boxes whose visible sides are all solid are drawn by the same reference; every case with a solid side is compared.
 const solid = withStyle((s) => s === 'solid').filter((nc) => !dashed.includes(nc));
+
+describe('the oracle\'s paint order (which boxes hide a border pixel)', () => {
+  it('puts positioned boxes and their descendants over in-flow ones, and orders each phase by tree order', () => {
+    const order = ['c2', 'b5', 'c3', 'd3', 'c4'];
+    const layer = new Set(['b5', 'd3']);
+    // An earlier positioned box paints over a later in-flow border (b5 over c3); an earlier in-flow box does not (c2 under c3).
+    expect(paintsOver(order, layer, 'c3', 'b5')).toBe(true);
+    expect(paintsOver(order, layer, 'c3', 'c2')).toBe(false);
+    expect(paintsOver(order, layer, 'c3', 'c4')).toBe(true);
+    // A positioned border is under later positioned boxes only, never under an in-flow box.
+    expect(paintsOver(order, layer, 'b5', 'd3')).toBe(true);
+    expect(paintsOver(order, layer, 'd3', 'b5')).toBe(false);
+    expect(paintsOver(order, layer, 'b5', 'c4')).toBe(false);
+    const p = nativeCases().find((c) => c.case.id === 'position-relative-percent')?.programs.uikit;
+    if (p === undefined) throw new Error('no position-relative-percent case');
+    expect([...positionedLayer(p.root)].sort()).toEqual(['a1', 'a2', 'a3', 'a4', 'a5', 'b1', 'b2', 'b3', 'b4', 'b5', 'd1', 'd2', 'd3', 'e1', 'e2']);
+  });
+});
 
 describe('the dash reference against Chrome 145 (crisp border pixels, channel delta 0)', () => {
   it('covers the border-paint fixtures and every earlier case with a dashed or dotted side', () => {
