@@ -23,7 +23,9 @@ import { deriveRows } from '../src/profile-rows.ts';
 import { buildReport, renderSummary, writeReport } from '../src/report.ts';
 import { hostPlatform, REFERENCE_PLATFORM, requireReferencePlatform } from '../src/platform.ts';
 import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';
+import { TEXT_LATIN_FIXTURES, TEXT_LATIN_PROBES } from '../src/fixture-groups/text-latin.ts';
 import { fontEmittedPath, fontExpectedPath, liveFontAuthored, runFontFixture } from '../src/fonts-run.ts';
+import { liveTextLatinOptions, runTextLatinFixture, textLatinCapturePath } from '../src/text-latin-run.ts';
 import type { FrontEndResult } from 'dragon';
 
 let browser: Browser;
@@ -52,7 +54,10 @@ function specFor(id: string): (typeof FIXTURES)[number] {
 const fontOutcomes = new Map<string, CaseOutcome[]>();
 const corpusCases = (): CaseOutcome[] => FIXTURES.flatMap((f) => (outcomes.get(f.id)?.cases ?? []));
 const fontCasesRun = (): CaseOutcome[] => FONT_FIXTURES.flatMap((f) => fontOutcomes.get(f.spec.id) ?? []);
-const allCases = (): CaseOutcome[] => [...corpusCases(), ...fontCasesRun()];
+/** TXT1a-1: the text-latin registry's cases (text-latin-run.ts), which prove web rows through the engine lane and chrome-dual. */
+const textLatinOutcomes = new Map<string, CaseOutcome[]>();
+const webOnlyCasesRun = (): CaseOutcome[] => [...fontCasesRun(), ...TEXT_LATIN_FIXTURES.flatMap((f) => textLatinOutcomes.get(f.spec.id) ?? [])];
+const allCases = (): CaseOutcome[] => [...corpusCases(), ...webOnlyCasesRun()];
 const recorded = async (c: ParityCase): Promise<WebCapture> => {
   const hit = captures.get(c.id);
   if (hit === undefined) throw new Error(`no live capture for ${c.id}`);
@@ -69,9 +74,9 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   it('fixture registry (M7): every packages/parity/fixtures entry is registered, and every registered fixture has its file', () => {
     const dir = repoPath('packages/parity/fixtures');
     const entries = readdirSync(dir).sort();
-    const registered = new Set([...FIXTURES, ...FONT_FIXTURES.map((f) => f.spec)].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)));
+    const registered = new Set([...[...FIXTURES, ...FONT_FIXTURES.map((f) => f.spec), ...TEXT_LATIN_FIXTURES.map((f) => f.spec)].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)), ...TEXT_LATIN_PROBES.map((id) => `${id}.html`)]);
     for (const f of FONT_FIXTURES) expect(statSync(`${dir}/${f.spec.id}.html`).isFile(), f.spec.id).toBe(true);
-    expect(new Set([...FIXTURES.map((f) => f.id), ...FONT_FIXTURES.map((f) => f.spec.id)]).size).toBe(FIXTURES.length + FONT_FIXTURES.length);
+    expect(new Set([...FIXTURES.map((f) => f.id), ...FONT_FIXTURES.map((f) => f.spec.id), ...TEXT_LATIN_FIXTURES.map((f) => f.spec.id), ...TEXT_LATIN_PROBES]).size).toBe(FIXTURES.length + FONT_FIXTURES.length + TEXT_LATIN_FIXTURES.length + TEXT_LATIN_PROBES.length);
     for (const e of entries) expect(registered.has(e), `${e} is not in FIXTURES`).toBe(true);
     for (const f of FIXTURES) {
       if (f.format === 'html') expect(statSync(`${dir}/${f.id}.html`).isFile(), f.id).toBe(true);
@@ -168,6 +173,26 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       for (const d of ['ltr', 'rtl'] as const) {
         const web = compileFixture(f.spec, NO_FAULTS, 'enforce', d).compiled.outputs.web;
         expect(web.kind === 'ready' ? web.files[0]?.text : null, `${f.spec.id} ${d}: emitted web CSS must equal the committed file`).toBe(readFileSync(fontEmittedPath(f.spec.id, d), 'utf8'));
+      }
+    }, 240_000);
+  }
+
+  for (const f of TEXT_LATIN_FIXTURES) {
+    it(`${f.spec.id} (text-latin fixture: the engine lane on the engine projection and chrome-dual, live at DPR 1)`, async () => {
+      const live = liveTextLatinOptions(() => browser, f);
+      const recordLive = async (c: ParityCase, dpr: number): Promise<WebCapture> => {
+        const capture = await live.authored(c, dpr);
+        captures.set(c.id, capture);
+        expect(captureJson(capture), `${c.id}: the live capture must equal the committed expected-text-latin file`).toBe(readFileSync(textLatinCapturePath(c.id, dpr), 'utf8'));
+        return capture;
+      };
+      const cases = await runTextLatinFixture(f, browser, { ...live, authored: recordLive });
+      textLatinOutcomes.set(f.spec.id, cases);
+      expect(cases.map((c) => c.direction)).toEqual(f.spec.kind === 'layout' ? f.spec.environments : []);
+      for (const c of cases) {
+        expect(c.reason, c.id).toBeNull();
+        expect(c.lanes, c.id).toEqual({ 'linux-dragon-layout': 'pass', 'chrome-dual': 'pass' });
+        expect(c.features.ios, c.id).toEqual([]);
       }
     }, 240_000);
   }
@@ -779,8 +804,8 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   it('writes the report and summary.md: at least 114 layout fixtures, at least 110 hand-written; failed 0; unsupportedCodes []; every case in both environments passes both lanes; platform darwin-arm64; the Linux lane unavailable (not run); every exact row linked to passing cases', () => {
     const ordered = FIXTURES.map((f) => outcomes.get(f.id)).filter((o): o is FixtureOutcome => o !== undefined);
     expect(ordered.length).toBe(FIXTURES.length);
-    const report = buildReport(ordered, fontCasesRun());
-    expect(report.summary.webOnly).toEqual({ cases: fontCasesRun().length, passed: fontCasesRun().length, failed: [] });
+    const report = buildReport(ordered, webOnlyCasesRun());
+    expect(report.summary.webOnly).toEqual({ cases: webOnlyCasesRun().length, passed: webOnlyCasesRun().length, failed: [] });
     expect(report.summary.webOnly.cases).toBeGreaterThan(0);
     writeReport(report);
     expect(report.summary.fixtures).toBeGreaterThanOrEqual(137);

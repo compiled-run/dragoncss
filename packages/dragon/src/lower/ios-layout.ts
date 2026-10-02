@@ -267,6 +267,9 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
 
 const AHEM_EXPECTED = 'Ahem (the milestone-1 layout font)';
 
+/** The face id of the bundled Ahem, as the engine names it (layout text.ts AHEM_FACE_ID); other faces are sha256:<hex>. */
+export const AHEM_FACE = 'Ahem';
+
 /** The lowering's font refusal for a text node, or null: the analysis reports it for every case before any lowering (T005 rec 3). */
 export function textFontProblem(t: ResolvedText): string | null {
   const family = (t.props.get('font-family') as ResolvedValue).value;
@@ -274,10 +277,27 @@ export function textFontProblem(t: ResolvedText): string | null {
   return `font-family: ${valueToString(family)} on ${t.node.address} has no layout mapping (expected ${AHEM_EXPECTED})`;
 }
 
+/**
+ * TXT1a-1 engine mode: the bundled face an element's or text node's font resolves to (the face id the engine and its hosts key faces
+ * by: sha256:<hex> of the bytes), or why the engine cannot lay it out (fallback, synthesis, a variable face).
+ */
+export type EngineFace = { readonly kind: 'face'; readonly id: string } | { readonly kind: 'refused'; readonly reason: string };
+
+/** The lowering mode: native targets lay out Ahem only; the engine lane also lays out the bundled static faces it resolves. */
+export type LowerMode = { readonly kind: 'native' } | { readonly kind: 'engine'; readonly faceOf: (address: string) => EngineFace };
+
+/** The face family the engine reads: Ahem, or in engine mode the resolved bundled face; anything else is a lowering failure. */
+function lowerFamily(id: string, family: CssValue, mode: LowerMode): string {
+  if (family.kind === 'family' && family.value === 'Ahem') return AHEM_FACE;
+  if (mode.kind === 'native') return fail(id, 'font-family', family, AHEM_EXPECTED);
+  const face = mode.faceOf(id);
+  if (face.kind === 'refused') throw new LoweringError(id, 'font-family', `font-family: ${valueToString(family)} on ${id}: ${face.reason}`);
+  return face.id;
+}
+
 /** A font and line-height as the engine reads them (input.ts FontSpec, LineHeightValue), from resolved font-size and line-height. */
-function lowerFont(id: string, get: (p: TextLonghand) => CssValue): { readonly font: FontSpec; readonly lineHeight: LineHeightValue } {
-  const family = get('font-family');
-  if (family.kind !== 'family' || family.value !== 'Ahem') fail(id, 'font-family', family, AHEM_EXPECTED);
+function lowerFont(id: string, get: (p: TextLonghand) => CssValue, mode: LowerMode): { readonly font: FontSpec; readonly lineHeight: LineHeightValue } {
+  const face = lowerFamily(id, get('font-family'), mode);
   const fs = get('font-size');
   if (fs.kind !== 'length' || fs.unit !== 'px') fail(id, 'font-size', fs, 'px');
   const lh = get('line-height');
@@ -286,16 +306,14 @@ function lowerFont(id: string, get: (p: TextLonghand) => CssValue): { readonly f
   else if (lh.kind === 'number') lineHeight = { kind: 'number', value: lh.value };
   else if (lh.kind === 'length' && lh.unit === 'px') lineHeight = { kind: 'px', value: lh.value };
   else return fail(id, 'line-height', lh, 'normal | <number> | px');
-  return { font: { family: 'Ahem', size: fs.value, specifiedSize: { kind: 'px', value: fs.value }, absoluteSize: true }, lineHeight };
+  return { font: { family: face, size: fs.value, specifiedSize: { kind: 'px', value: fs.value }, absoluteSize: true }, lineHeight };
 }
 
 // goal.md principle 3: the text node carries its inherited text styles, so the lowering reads the text node and never its parent.
-function lowerText(t: ResolvedText): TextLeaf {
+function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
   const id = t.node.address;
   const get = (p: TextLonghand): CssValue => (t.props.get(p) as ResolvedValue).value;
-  const family = get('font-family');
-  if (textFontProblem(t) !== null) fail(id, 'font-family', family, AHEM_EXPECTED);
-  const { font, lineHeight } = lowerFont(id, get);
+  const { font, lineHeight } = lowerFont(id, get, mode);
   const collapse = get('white-space-collapse');
   if (collapse.kind !== 'keyword' || collapse.value !== 'collapse') fail(id, 'white-space-collapse', collapse, 'collapse');
   const wrap = get('text-wrap-mode');
@@ -307,9 +325,9 @@ function lowerText(t: ResolvedText): TextLeaf {
  * CSS2 §10.8.1: the strut of a block container with inline content, its own font and line-height; an anonymous box's are its
  * parent's (inherited). The text leaves inherit the same values, so the strut equals their font until inline boxes change it.
  */
-function strutOf(el: ResolvedElement, hasInline: boolean): LineStrut | null {
+function strutOf(el: ResolvedElement, hasInline: boolean, mode: LowerMode): LineStrut | null {
   if (!hasInline) return null;
-  return lowerFont(el.element.address, (p) => (el.props.get(p) as ResolvedValue).value);
+  return lowerFont(el.element.address, (p) => (el.props.get(p) as ResolvedValue).value, mode);
 }
 
 const displayOf = (el: ResolvedElement): string => {
@@ -332,7 +350,7 @@ export function assertTextCarriesContainer(container: LayoutStyle, containerId: 
 /** CSS2 §9.2.2: inline-level content: text, and an element whose box is an inline box (display: inline, <br> included). */
 const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || displayOf(c) === 'inline';
 
-type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null };
+type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly mode: LowerMode };
 
 /**
  * One piece of inline content (CSS2 §9.2.2): a text leaf, a <br> as a LineBreak, or an inline box with its own font and
@@ -341,9 +359,9 @@ type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readon
  * carries them (C5).
  */
 function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild {
-  if (c.kind === 'text') return lowerText(c);
+  if (c.kind === 'text') return lowerText(c, l.mode);
   const id = c.element.address;
-  const own = lowerFont(id, (p) => (c.props.get(p) as ResolvedValue).value);
+  const own = lowerFont(id, (p) => (c.props.get(p) as ResolvedValue).value, l.mode);
   if (c.element.tag === 'br') {
     if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' };
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
@@ -367,17 +385,17 @@ function anonymousBox(parent: ResolvedElement, id: string, items: readonly (Reso
   // Every non-inherited property of an anonymous box is its initial value.
   const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), l.faults, l.ua, { em: null, rem: null });
   for (const t of items) if (t.kind === 'text') assertTextCarriesContainer(style, id, t);
-  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0), children: items.map((c) => lowerInline(c, l)) };
+  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), children: items.map((c) => lowerInline(c, l)) };
 }
 
 /**
  * The layout tree of a document. display: none subtrees generate no boxes (CSS2 §9.2.4), so they are omitted wherever they occur
  * (C4) and a display: none root has no layout tree.
  */
-export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset): LayoutBox {
+export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset, mode: LowerMode): LayoutBox {
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
   // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
-  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root) });
+  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), mode });
 }
 
 /**
@@ -413,5 +431,5 @@ function lowerBox(el: ResolvedElement, l: Lowerer): LayoutBox {
     }
   }
   flush();
-  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, children.some((c) => c.kind !== 'box')), children };
+  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, children.some((c) => c.kind !== 'box'), l.mode), children };
 }
