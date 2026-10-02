@@ -3,11 +3,11 @@
 // at UAX #14 opportunities as Blink's break iterator applies them (linebreak.ts) and at every <br>, fitted with Blink's fit test
 // (linefit.ts), and each line box is sized from the strut and every inline box on it, aligned at their baselines (CSS2 §10.8.1).
 // Rounding follows Blink 145 as INL-P measured it (docs/research/inline-spike/blink-notes.md §4, §5).
-import type { FontSpec, InlineBox, InlineChild, LayoutBox, LineBreak, LineHeightValue, MarginValue, NormalValue, NumberValue, PaddingValue, Px, TextFont, TextLeaf } from './input.ts';
+import type { FontSpec, InlineBox, InlineChild, LayoutBox, LineBreak, LineHeightValue, LineStrut, MarginValue, NormalValue, NumberValue, PaddingValue, Px, TextFont, TextLeaf, VerticalAlignValue } from './input.ts';
 import type { LU } from './units.ts';
-import { add, divInt, floorToWholePx, fromFloatRound, fromRaw, lineHeightFromNumber, max, min, sub, toPx, ZERO } from './units.ts';
+import { add, divInt, floorToWholePx, fromFloatRound, fromRaw, fromWholePx, lineHeightFromNumber, max, min, neg, sub, toPx, ZERO } from './units.ts';
 import type { Frag, Placed, Point } from './box.ts';
-import { hasPercent, resolveBorder } from './box.ts';
+import { hasPercent, resolveBorder, resolveLength } from './box.ts';
 import type { Ctx } from './block.ts';
 import { directionOf } from './block.ts';
 import type { LineBreakFaults } from './linebreak.ts';
@@ -55,6 +55,8 @@ export type Ifc = {
   readonly boundaries: readonly Boundary[];
   readonly strut: BoxMetrics;
   readonly boxMetrics: readonly BoxMetrics[];
+  /** The block container's font and line-height (the root inline box of every line, CSS2 §10.8.1). */
+  readonly strutStyle: LineStrut;
   /** Each box's first and last item index holding its visible content or a <br>, or -1 when it holds none. */
   readonly firstContent: readonly number[];
   readonly lastContent: readonly number[];
@@ -275,12 +277,21 @@ function resolvedLineHeight(id: string, lh: LineHeightValue): NormalValue | Numb
 function metricsOf(ctx: Ctx, id: string, font: FontSpec, lineHeight: LineHeightValue, inlineBox: boolean): BoxMetrics {
   const m = ctx.measurer.metrics(fontOf(font));
   const glyphHeight = add(add(m.ascent, m.descent), m.lineGap);
-  const lh = resolvedLineHeight(id, lineHeight);
-  const height = lh.kind === 'normal' ? glyphHeight : lh.kind === 'number' ? lineHeightFromNumber(font.size, lh.value) : fromFloatRound(lh.value);
+  const height = lineHeightOf(ctx, id, font, lineHeight);
   const exact = ctx.faults.halfLeadingSpec || (inlineBox && ctx.faults.halfLeadingUnflooredPerBox);
   const half = exact ? divInt(sub(height, glyphHeight), 2) : floorToWholePx(divInt(sub(height, glyphHeight), 2));
   const above = add(m.ascent, half);
   return { above, below: sub(height, above), ascent: m.ascent, descent: m.descent };
+}
+
+/** ComputedStyle::ComputedLineHeightAsFixed: normal is the font's ascent + descent + line gap, a number multiplies the font size. */
+function lineHeightOf(ctx: Ctx, id: string, font: FontSpec, lineHeight: LineHeightValue): LU {
+  const lh = resolvedLineHeight(id, lineHeight);
+  if (lh.kind === 'normal') {
+    const m = ctx.measurer.metrics(fontOf(font));
+    return add(add(m.ascent, m.descent), m.lineGap);
+  }
+  return lh.kind === 'number' ? lineHeightFromNumber(font.size, lh.value) : fromFloatRound(lh.value);
 }
 
 /** Whether a margin or padding is zero: a zero px or percentage (a calculation counts as a decoration). */
@@ -296,8 +307,8 @@ function zeroEdge(v: MarginValue | PaddingValue): boolean {
   return isZeroLength(v.kind, lengthValue(v));
 }
 
-// INL1a scope: inline box margins, borders and padding (INL1b), vertical-align other than baseline (INL2) and a relatively
-// positioned inline box are refused with typed codes rather than laid out approximately. Block-axis margins do not apply to
+// INL1a scope: inline box margins, borders and padding (INL1b) and a relatively positioned inline box are refused with typed codes
+// rather than laid out approximately (INL2b lays out every vertical-align value). Block-axis margins do not apply to
 // inline boxes (CSS2 §10.6.1), so they are ignored.
 function checkInlineBox(ctx: Ctx, b: InlineBox): void {
   const s = b.style;
@@ -305,8 +316,6 @@ function checkInlineBox(ctx: Ctx, b: InlineBox): void {
   const decorated = !zeroEdge(s.marginLeft) || !zeroEdge(s.marginRight) || !zeroEdge(s.paddingTop) || !zeroEdge(s.paddingRight) || !zeroEdge(s.paddingBottom)
     || !zeroEdge(s.paddingLeft) || bor.top !== 0 || bor.right !== 0 || bor.bottom !== 0 || bor.left !== 0;
   if (decorated) unsupported('inline-box-decoration', b.id, 'CSS2 §10.8, css-break-3 §5.4', `inline box ${b.id} has an inline margin, a border or padding (INL1b)`);
-  const va = s.verticalAlign;
-  if (va.kind !== 'keyword' || va.value !== 'baseline') unsupported('vertical-align', b.id, 'CSS2 §10.8.1', `vertical-align other than baseline on ${b.id} (INL2)`);
   if (s.position !== 'static') unsupported('inline-box-position', b.id, 'CSS2 §9.4.3', `a ${s.position} inline box ${b.id}`);
 }
 
@@ -321,6 +330,10 @@ function checkAtomic(a: LayoutBox): void {
   if (s.position !== 'static') unsupported('inline-box-position', a.id, 'CSS2 §9.4.3', `a ${s.position} atomic inline ${a.id}`);
   const percent = (s.height.kind !== 'auto' && hasPercent(s.height)) || (s.minHeight.kind !== 'auto' && hasPercent(s.minHeight)) || (s.maxHeight.kind !== 'none' && hasPercent(s.maxHeight));
   if (percent) unsupported('percent-height-flex', a.id, 'CSS2 §10.5', `a percentage block size on atomic inline ${a.id}, whose line boxes do not read their block container's height`);
+  // INL2b scope: a percentage vertical-align refers to the box's own line-height, which an atomic inline without inline content
+  // does not carry (its strut is null).
+  const va = s.verticalAlign;
+  if (va.kind !== 'keyword' && va.kind !== 'px' && hasPercent(va) && a.strut === null) unsupported('vertical-align', a.id, 'CSS2 §10.8.1', `a percentage vertical-align on atomic inline ${a.id}, which has no line-height of its own in the layout input`);
 }
 
 /** The block container's children: atomic inlines become U+FFFC items, and inline content is flattened (flatten). */
@@ -443,6 +456,7 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     boundaries,
     strut: metricsOf(ctx, box.id, strut.font, strut.lineHeight, false),
     boxMetrics: flat.boxes.map((b) => metricsOf(ctx, b.id, b.font, b.lineHeight, true)),
+    strutStyle: strut,
     firstContent: flat.boxes.map((_, b) => contentIndex(items, flat.boxParent, b, false)),
     lastContent: flat.boxes.map((_, b) => contentIndex(items, flat.boxParent, b, true)),
     openAt: flat.boxes.map((_, b) => tagIndex(items, b, 'open')),
@@ -1294,27 +1308,16 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
     const offset = alignOffset(ctx, box, sub(available, spanWidth(ctx, ifc, adv, line, line.start, line.visibleEnd)));
     const on: number[] = [];
     for (let b = 0; b < ifc.boxes.length; b++) if (boxOnLine(ifc, b, line.start, line.end)) on.push(b);
-    // CSS2 §10.8.1 with baseline alignment: the strut and every inline box on the line add their ascent and descent with their
-    // half-leadings around one baseline (planted fault lineHeightIgnoresInlineBoxes keeps the strut's only).
-    let above = ifc.strut.above;
-    let below = ifc.strut.below;
-    if (!ctx.faults.lineHeightIgnoresInlineBoxes) {
-      for (const b of on) {
-        above = max(above, (ifc.boxMetrics[b] as BoxMetrics).above);
-        below = max(below, (ifc.boxMetrics[b] as BoxMetrics).below);
-      }
-    }
     // An atomic inline adds its margin box around its baseline (Blink logical_line_builder.cc:470-532).
     const onAtoms: number[] = [];
-    for (let j = line.start; j < line.end; j++) {
-      const it = ifc.items[j] as Item;
-      if (it.kind !== 'atomic') continue;
-      onAtoms.push(j);
-      above = max(above, (atoms[it.atom] as AtomicLayout).above);
-      below = max(below, (atoms[it.atom] as AtomicLayout).below);
-    }
+    for (let j = line.start; j < line.end; j++) if ((ifc.items[j] as Item).kind === 'atomic') onAtoms.push(j);
+    // CSS2 §10.8.1: the strut, every inline box and every atomic inline on the line add their ascent and descent around their
+    // baselines, each shifted by its vertical-align (alignLine); the line's baseline is the root's.
+    const al = alignLine(ctx, ifc, atoms, line, on, onAtoms);
+    const above = al.above;
     const baseline = add(top, above);
-    const height = add(above, below);
+    const height = add(above, al.below);
+    const nb = ifc.boxes.length;
     const endX = penAt(ctx, ifc, adv, line, offset, line.visibleEnd);
     const pieces: LinePiece[] = [];
     let i = line.start;
@@ -1331,7 +1334,7 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
       const t = ifc.leaves[it.leaf] as TextLeaf;
       const m = ctx.measurer.metrics(fontOf(t.font));
       // Planted fault fragmentFromLineTop: the leaf's content area starts at the line top instead of its baseline minus its ascent.
-      const pieceTop = ctx.faults.fragmentFromLineTop ? top : sub(baseline, m.ascent);
+      const pieceTop = ctx.faults.fragmentFromLineTop ? top : sub(add(baseline, shiftOf(al, it.box)), m.ascent);
       pieces.push({ leaf: it.leaf, start: it.at, visibleEnd: it.at + (i - from), end: it.at + (through - from), x: penAt(ctx, ifc, adv, line, offset, from), width: spanWidth(ctx, ifc, adv, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent });
     }
     // A <br>'s content area is its parent box's (Blink places the control item with the parent's text top and height).
@@ -1342,7 +1345,7 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
       if (it.kind !== 'br') continue;
       const p = it.box < 0 ? ifc.strut : (ifc.boxMetrics[it.box] as BoxMetrics);
       breaks.push(it.br);
-      breakRects.push({ x: breakX(ctx, ifc, adv, line, offset, rtl, j), y: sub(baseline, p.ascent), width: ZERO, height: add(p.ascent, p.descent) });
+      breakRects.push({ x: breakX(ctx, ifc, adv, line, offset, rtl, j), y: sub(add(baseline, shiftOf(al, it.box)), p.ascent), width: ZERO, height: add(p.ascent, p.descent) });
     }
     // An inline box's fragment spans its content on the line over its own content area (INL-P f1-*): from its open tag, or the
     // line start when it continues, to its close tag, or the end of the line's content when it continues. A box whose only
@@ -1359,7 +1362,7 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
         left = breakX(ctx, ifc, adv, line, offset, rtl, br);
         right = left;
       }
-      boxRects.push({ x: left, y: sub(baseline, bm.ascent), width: sub(right, left), height: add(bm.ascent, bm.descent) });
+      boxRects.push({ x: left, y: sub(add(baseline, shiftOf(al, b)), bm.ascent), width: sub(right, left), height: add(bm.ascent, bm.descent) });
     }
     // An atomic inline's border box: after its margin at the pen, its margin-box top above the baseline by its ascent.
     const atomics: number[] = [];
@@ -1368,12 +1371,262 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
       const it = ifc.items[j] as Item;
       const a = atoms[it.atom] as AtomicLayout;
       atomics.push(it.atom);
-      atomicRects.push({ x: add(penAt(ctx, ifc, adv, line, offset, j), a.marginLeft), y: add(sub(baseline, a.above), a.marginTop), width: a.frag.width, height: a.frag.height });
+      atomicRects.push({ x: add(penAt(ctx, ifc, adv, line, offset, j), a.marginLeft), y: add(sub(add(baseline, al.shift[nb + it.atom] as LU), a.above), a.marginTop), width: a.frag.width, height: a.frag.height });
     }
     out.push({ line: { top, height, baseline, pieces, boxes: on, boxRects, breaks, breakRects }, atomics, atomicRects });
     top = add(top, height);
   }
   return out;
+}
+
+// CSS2 §10.8.1 vertical-align, as Blink 145 aligns a line (core/layout/inline/inline_box_state.cc InlineLayoutStateStack
+// EndBoxState :449-468 and ApplyBaselineShift :1137-1355; docs/research/inline-spike/blink-notes.md §6). The line's nodes are
+// its inline boxes (0 to boxes - 1), its atomic inlines (boxes + atom) and its root inline box (boxes + atomics), whose metrics
+// are the strut. Each node closes after its descendants: it first aligns the descendants queued on it (text-top and text-bottom
+// against its own text metrics, then top and bottom against its aligned subtree, MetricsForTopAndBottomAlign :1359-1418), then
+// shifts itself by its own vertical-align and unites its metrics (the ascent and descent around its baseline) into its parent's,
+// or queues itself on its parent (text-top, text-bottom) or on the nearest top- or bottom-aligned ancestor or the root (top,
+// bottom). A shift moves the node and every node inside it (LogicalLineItems::MoveInBlockDirection over its fragments).
+// shift holds each node's baseline offset from the root's, positive down; above and below are the root's metrics.
+type LineAlign = { readonly above: LU; readonly below: LU; readonly shift: readonly LU[] };
+
+/**
+ * The working state of one alignLine node: its ascent and descent, whether it has metrics (planted fault
+ * lineHeightIgnoresInlineBoxes gives inline boxes none), its baseline offset, the nodes queued on it, and whether an inline box
+ * is on the line.
+ */
+type AlignNode = { asc: LU; desc: LU; present: boolean; shift: LU; pending: number[]; onLine: boolean };
+type AlignState = readonly AlignNode[];
+
+function nodeAt(st: AlignState, n: number): AlignNode {
+  return st[n] as AlignNode;
+}
+
+function alignLine(ctx: Ctx, ifc: Ifc, atoms: readonly AtomicLayout[], line: Line, on: readonly number[], onAtoms: readonly number[]): LineAlign {
+  const nb = ifc.boxes.length;
+  const root = nb + ifc.atomics.length;
+  const st: AlignNode[] = [];
+  for (let n = 0; n <= root; n++) st.push({ asc: ZERO, desc: ZERO, present: false, shift: ZERO, pending: [], onLine: false });
+  for (const b of on) {
+    const x = nodeAt(st, b);
+    x.onLine = true;
+    if (ctx.faults.lineHeightIgnoresInlineBoxes) continue;
+    x.asc = (ifc.boxMetrics[b] as BoxMetrics).above;
+    x.desc = (ifc.boxMetrics[b] as BoxMetrics).below;
+    x.present = true;
+  }
+  const r = nodeAt(st, root);
+  r.asc = ifc.strut.above;
+  r.desc = ifc.strut.below;
+  r.present = true;
+  // Atomic inlines are children of the root (INL2c refuses them inside inline boxes); boxes close innermost first, and box indices
+  // are in tree order, so a descending walk closes every box after the boxes inside it.
+  for (const j of onAtoms) {
+    const n = nb + (ifc.items[j] as Item).atom;
+    const a = atoms[(ifc.items[j] as Item).atom] as AtomicLayout;
+    const x = nodeAt(st, n);
+    x.asc = a.above;
+    x.desc = a.below;
+    x.present = true;
+    closeNode(ctx, ifc, atoms, line, st, n);
+  }
+  for (let k = on.length - 1; k >= 0; k--) closeNode(ctx, ifc, atoms, line, st, on[k] as number);
+  alignPending(ctx, ifc, st, root);
+  const shift: LU[] = [];
+  for (const x of st) shift.push(x.shift);
+  return { above: r.asc, below: r.desc, shift };
+}
+
+/** The baseline offset of the content of box b (-1, the root, has none). */
+function shiftOf(al: LineAlign, b: number): LU {
+  return b < 0 ? ZERO : (al.shift[b] as LU);
+}
+
+function rootNode(ifc: Ifc): number {
+  return ifc.boxes.length + ifc.atomics.length;
+}
+
+/** The node a node's metrics unite into: an inline box's nearest ancestor box on the line, else the root. */
+function parentNode(ifc: Ifc, st: AlignState, n: number): number {
+  if (n >= ifc.boxes.length) return rootNode(ifc);
+  let q = ifc.boxParent[n] as number;
+  while (q >= 0 && !nodeAt(st, q).onLine) q = ifc.boxParent[q] as number;
+  return q < 0 ? rootNode(ifc) : q;
+}
+
+function verticalAlignOf(ifc: Ifc, n: number): VerticalAlignValue {
+  const nb = ifc.boxes.length;
+  if (n < nb) return (ifc.boxes[n] as InlineBox).style.verticalAlign;
+  return (ifc.atomics[n - nb] as LayoutBox).style.verticalAlign;
+}
+
+function isAlignKeyword(v: VerticalAlignValue, a: string, b: string): boolean {
+  return v.kind === 'keyword' && (v.value === a || v.value === b);
+}
+
+/** A node's font: an inline box's own, the root's strut font, and an atomic inline's strut font or, without one, the root's. */
+function nodeFont(ifc: Ifc, n: number): FontSpec {
+  const nb = ifc.boxes.length;
+  if (n < nb) return (ifc.boxes[n] as InlineBox).font;
+  if (n < rootNode(ifc)) {
+    const s = (ifc.atomics[n - nb] as LayoutBox).strut;
+    if (s !== null) return s.font;
+  }
+  return ifc.strutStyle.font;
+}
+
+/** Whether a node has fragments on the line to move (ApplyBaselineShift :1225-1228): an atomic inline, or an inline box holding content there. */
+function hasFragments(ifc: Ifc, line: Line, n: number): boolean {
+  if (n >= ifc.boxes.length) return true;
+  for (let i = line.start; i < line.end; i++) {
+    const it = ifc.items[i] as Item;
+    if (isContent(it) && it.kind !== 'atomic' && within(ifc.boxParent, it.box, n)) return true;
+  }
+  return false;
+}
+
+/** FontHeight::Move: shifting a node down by s moves its ascent and descent with it. */
+function moveMetrics(st: AlignState, n: number, s: LU): void {
+  const x = nodeAt(st, n);
+  if (!x.present) return;
+  x.asc = sub(x.asc, s);
+  x.desc = add(x.desc, s);
+}
+
+/** FontHeight::Unite of child n into node p. */
+function uniteInto(st: AlignState, p: number, n: number): void {
+  const c = nodeAt(st, n);
+  const x = nodeAt(st, p);
+  if (!c.present) return;
+  if (x.present) {
+    x.asc = max(x.asc, c.asc);
+    x.desc = max(x.desc, c.desc);
+  } else {
+    x.asc = c.asc;
+    x.desc = c.desc;
+    x.present = true;
+  }
+}
+
+/** MoveInBlockDirection over node n's fragments: n and, for an inline box, every box inside it. */
+function moveSubtree(ifc: Ifc, st: AlignState, n: number, s: LU): void {
+  const nb = ifc.boxes.length;
+  if (n >= nb) {
+    nodeAt(st, n).shift = add(nodeAt(st, n).shift, s);
+    return;
+  }
+  for (let m = 0; m < nb; m++) if (within(ifc.boxParent, m, n)) nodeAt(st, m).shift = add(nodeAt(st, m).shift, s);
+}
+
+function shiftNode(ifc: Ifc, st: AlignState, p: number, n: number, s: LU): void {
+  moveMetrics(st, n, s);
+  uniteInto(st, p, n);
+  moveSubtree(ifc, st, n, s);
+}
+
+/** EndBoxState for node n: align what is queued on it, then shift it by its own vertical-align or queue it. */
+function closeNode(ctx: Ctx, ifc: Ifc, atoms: readonly AtomicLayout[], line: Line, st: AlignState, n: number): void {
+  alignPending(ctx, ifc, st, n);
+  const p = parentNode(ifc, st, n);
+  const va = verticalAlignOf(ifc, n);
+  if ((va.kind === 'keyword' && va.value === 'baseline') || !hasFragments(ifc, line, n)) {
+    uniteInto(st, p, n);
+    return;
+  }
+  if (isAlignKeyword(va, 'text-top', 'text-bottom')) {
+    nodeAt(st, p).pending.push(n);
+    return;
+  }
+  if (isAlignKeyword(va, 'top', 'bottom')) {
+    let a = p;
+    while (a !== rootNode(ifc) && !isAlignKeyword(verticalAlignOf(ifc, a), 'top', 'bottom')) a = parentNode(ifc, st, a);
+    nodeAt(st, a).pending.push(n);
+    return;
+  }
+  shiftNode(ifc, st, p, n, ownShift(ctx, ifc, atoms, st, p, n, va));
+}
+
+/**
+ * The shift of node n against its parent p (ApplyBaselineShift :1283-1316): sub and super from the parent's computed font size
+ * (planted fault subShiftOwnFont reads n's own), a length or percentage of n's own line-height upward, and middle centring n's
+ * metrics on half the parent's x-height above the parent's baseline (planted fault middleWithoutXHeight on the baseline).
+ */
+function ownShift(ctx: Ctx, ifc: Ifc, atoms: readonly AtomicLayout[], st: AlignState, p: number, n: number, va: VerticalAlignValue): LU {
+  if (va.kind === 'keyword') {
+    if (va.value === 'sub' || va.value === 'super') {
+      const size = fromFloatRound(nodeFont(ifc, ctx.faults.subShiftOwnFont ? n : p).size);
+      return va.value === 'sub' ? add(divInt(size, 5), fromWholePx(1)) : neg(add(divInt(size, 3), fromWholePx(1)));
+    }
+    // middle: the remaining keywords are queued by closeNode.
+    const half = divInt(sub(nodeAt(st, n).asc, nodeAt(st, n).desc), 2);
+    if (ctx.faults.middleWithoutXHeight) return half;
+    return sub(half, fromFloatRound(ctx.measurer.lengths(fontOf(nodeFont(ifc, p))).xHeight / 2));
+  }
+  if (!hasPercent(va)) return neg(resolveLength(va, ZERO, ctx.faults));
+  // A percentage refers to the element's own line-height (CSS2 §10.8.1; checkAtomic refuses an atomic inline without a strut).
+  const nb = ifc.boxes.length;
+  const lh = n < nb ? lineHeightOf(ctx, (ifc.boxes[n] as InlineBox).id, (ifc.boxes[n] as InlineBox).font, (ifc.boxes[n] as InlineBox).lineHeight) : atomicLineHeight(ctx, ifc, n - nb);
+  return neg(resolveLength(va, lh, ctx.faults));
+}
+
+function atomicLineHeight(ctx: Ctx, ifc: Ifc, atom: number): LU {
+  const a = ifc.atomics[atom] as LayoutBox;
+  if (a.strut === null) throw new Error(`atomic inline ${a.id} has a percentage vertical-align and no strut; checkAtomic refuses this`);
+  return lineHeightOf(ctx, a.id, a.strut.font, a.strut.lineHeight);
+}
+
+/**
+ * Aligns the nodes queued on node n (ApplyBaselineShift :1150-1206): text-top puts a node's ascent at n's text top and
+ * text-bottom its descent at n's text bottom; then top and bottom put its edge at the aligned subtree's (planted fault
+ * topBottomSinglePass aligns them in the first pass, against n's metrics as they stand).
+ */
+function alignPending(ctx: Ctx, ifc: Ifc, st: AlignState, n: number): void {
+  const x = nodeAt(st, n);
+  const queued = x.pending;
+  if (queued.length === 0) return;
+  const m = ctx.measurer.metrics(fontOf(nodeFont(ifc, n)));
+  let hasTopOrBottom = false;
+  for (const c of queued) {
+    const va = verticalAlignOf(ifc, c);
+    if (isAlignKeyword(va, 'top', 'bottom')) {
+      if (!ctx.faults.topBottomSinglePass) {
+        hasTopOrBottom = true;
+        continue;
+      }
+      const top = va.kind === 'keyword' && va.value === 'top';
+      shiftNode(ifc, st, n, c, top ? sub(nodeAt(st, c).asc, x.asc) : sub(x.desc, nodeAt(st, c).desc));
+      continue;
+    }
+    const textTop = va.kind === 'keyword' && va.value === 'text-top';
+    shiftNode(ifc, st, n, c, textTop ? sub(nodeAt(st, c).asc, m.ascent) : sub(m.descent, nodeAt(st, c).desc));
+  }
+  if (hasTopOrBottom) {
+    // MetricsForTopAndBottomAlign: the aligned subtree, extended on the other edge by a taller top- or bottom-aligned node.
+    const baseAsc = x.present ? x.asc : ZERO;
+    const baseDesc = x.present ? x.desc : ZERO;
+    let maxAsc = baseAsc;
+    let maxDesc = baseDesc;
+    for (const c of queued) {
+      const va = verticalAlignOf(ifc, c);
+      if (!isAlignKeyword(va, 'top', 'bottom')) continue;
+      const h = add(nodeAt(st, c).asc, nodeAt(st, c).desc);
+      if (h <= add(maxAsc, maxDesc)) continue;
+      if (va.kind === 'keyword' && va.value === 'top') {
+        maxAsc = baseAsc;
+        maxDesc = sub(h, baseAsc);
+      } else {
+        maxAsc = sub(h, baseDesc);
+        maxDesc = baseDesc;
+      }
+    }
+    for (const c of queued) {
+      const va = verticalAlignOf(ifc, c);
+      if (!isAlignKeyword(va, 'top', 'bottom')) continue;
+      const top = va.kind === 'keyword' && va.value === 'top';
+      shiftNode(ifc, st, n, c, top ? sub(nodeAt(st, c).asc, maxAsc) : sub(maxDesc, nodeAt(st, c).desc));
+    }
+  }
+  x.pending = [];
 }
 
 /**

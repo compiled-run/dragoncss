@@ -145,6 +145,12 @@ export type EngineFaults = {
   readonly emergencyBreakBeforeOpportunity: boolean;
   /** word-break: break-word is laid out as normal. */
   readonly wordBreakBreakWordIgnored: boolean;
+  /** vertical-align top and bottom align to the aligned subtree as it is, without the second pass that extends it (Blink MetricsForTopAndBottomAlign). */
+  readonly topBottomSinglePass: boolean;
+  /** vertical-align: middle leaves out half the parent's x-height. */
+  readonly middleWithoutXHeight: boolean;
+  /** vertical-align sub and super shift by the box's own font size instead of its parent's. */
+  readonly subShiftOwnFont: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -207,6 +213,9 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   breakAnywhereAlways: false,
   emergencyBreakBeforeOpportunity: false,
   wordBreakBreakWordIgnored: false,
+  topBottomSinglePass: false,
+  middleWithoutXHeight: false,
+  subShiftOwnFont: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };

@@ -804,6 +804,7 @@ const FAULT_KEYS: readonly string[] = [
   'metricRoundingSwapped', 'latinCheckSkipped',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'graphemeClusterSplit', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored',
+  'topBottomSinglePass', 'middleWithoutXHeight', 'subShiftOwnFont',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -869,6 +870,9 @@ function decodeFaults(v: JsonValue): EngineFaults {
     breakAnywhereAlways: b('breakAnywhereAlways'),
     emergencyBreakBeforeOpportunity: b('emergencyBreakBeforeOpportunity'),
     wordBreakBreakWordIgnored: b('wordBreakBreakWordIgnored'),
+    topBottomSinglePass: b('topBottomSinglePass'),
+    middleWithoutXHeight: b('middleWithoutXHeight'),
+    subShiftOwnFont: b('subShiftOwnFont'),
   };
 }
 

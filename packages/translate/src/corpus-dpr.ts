@@ -362,9 +362,10 @@ export function unitsCalcCases(): string[] {
 /**
  * engine-inline: generated inline formatting contexts, appended after every earlier suite so their inputs do not move. INL2a
  * appends atomicInline contexts with inline-block and inline-flex boxes after the INL1a ones, so those keep their inputs, and TXT2-a
- * appends wrapInline contexts with overflow-wrap and word-break: break-word after them.
+ * appends wrapInline contexts with overflow-wrap and word-break: break-word after them, and INL2b appends vaInline contexts with
+ * vertical-align after those.
  */
-export const INLINE_SPEC = { engineInline: 3000, atomicInline: 1500, wrapInline: 1500 } as const;
+export const INLINE_SPEC = { engineInline: 3000, atomicInline: 1500, wrapInline: 1500, vaInline: 1500 } as const;
 
 /** The INL1a engine faults engine-inline draws from. */
 const INLINE_FAULT_NAMES: readonly (keyof EngineFaults)[] = [
@@ -479,7 +480,7 @@ export function engineInlineCases(): string[] {
     const faults = r.chance(0.2) ? { ...NO_ENGINE_FAULTS, [r.pick(INLINE_FAULT_NAMES)]: true } : NO_ENGINE_FAULTS;
     out.push(JSON.stringify({ platform: 'darwin-arm64', faults, input }));
   }
-  return [...out, ...atomicInlineCases(), ...wrapInlineCases()];
+  return [...out, ...atomicInlineCases(), ...wrapInlineCases(), ...vaInlineCases()];
 }
 
 /** The INL2a engine faults the atomic contexts draw from. */
@@ -697,6 +698,118 @@ function wrapInlineCases(): string[] {
   return out;
 }
 
+/** The INL2b engine faults the vertical-align contexts draw from. */
+const VA_FAULT_NAMES: readonly (keyof EngineFaults)[] = [
+  'topBottomSinglePass', 'middleWithoutXHeight', 'subShiftOwnFont', 'lineHeightIgnoresInlineBoxes', 'fragmentFromLineTop', 'halfLeadingUnflooredPerBox',
+  'breakOffByOne',
+];
+
+/** A vertical-align value: mostly keywords, some lengths and percentages (percentages only where the node has a line-height). */
+function vaValue(r: Rng, percent: boolean): Json {
+  const pick = r.next();
+  if (pick < 0.75) return { kind: 'keyword', value: r.pick(['baseline', 'sub', 'super', 'text-top', 'text-bottom', 'middle', 'top', 'bottom']) };
+  if (pick < 0.9 || !percent) return { kind: 'px', value: r.pick([5, -5, 3, -7.5, 12, 0.5]) };
+  return { kind: 'percent', value: r.pick([50, -50, 25, 100, -12.5]) };
+}
+
+/**
+ * Generated inline formatting contexts with vertical-align (INL2b): Ahem text, nested inline boxes of mixed sizes and
+ * line-heights, <br>s, and inline-block boxes (empty and sized, or holding text), each with a random vertical-align, collapsed as
+ * the compiler collapses them, in a block container of random width and text-align, at every DPR, some with a planted fault.
+ */
+function vaInlineCases(): string[] {
+  const r = new Rng(EXTENDED_SPEC.seed * 79);
+  const out: string[] = [];
+  let n = 0;
+  while (out.length < INLINE_SPEC.vaInline) {
+    const rtl = r.chance(0.3);
+    const direction = rtl ? 'rtl' : 'ltr';
+    let ids = 0;
+    let afterSpace = true;
+    const leaf = (size: number, lh: Json): Json => {
+      let text = '';
+      const words = 1 + r.int(2);
+      for (let i = 0; i < words; i++) {
+        if (!afterSpace && (i > 0 || r.chance(0.5))) text += ' ';
+        const len = 1 + r.int(5);
+        for (let k = 0; k < len; k++) text += r.pick([...'abcXYZ']);
+        afterSpace = false;
+      }
+      if (r.chance(0.3)) {
+        text += ' ';
+        afterSpace = true;
+      }
+      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', overflowWrap: 'normal', wordBreak: 'normal' };
+    };
+    const inlineBox = (depth: number, lh: Json): Json => {
+      const own = r.pick([7, 8, 10, 13, 16.6667, 20, 30]);
+      const ownLh = r.chance(0.5) ? inlineLineHeight(r) : lh;
+      const kids: Json[] = [leaf(own, ownLh)];
+      if (depth < 2 && r.chance(0.4)) kids.push(inlineBox(depth + 1, ownLh));
+      if (r.chance(0.3)) kids.push(leaf(own, ownLh));
+      return { kind: 'inline', id: `s${ids++}`, style: { ...INLINE_STYLE, direction, verticalAlign: vaValue(r, true) }, font: inlineFont(own), lineHeight: ownLh, children: kids };
+    };
+    const atomic = (size: number, lh: Json): Json => {
+      const id = `a${ids++}`;
+      const withText = r.chance(0.4);
+      const style = { ...INLINE_STYLE, display: 'inline-block', direction, verticalAlign: vaValue(r, withText), width: { kind: 'px', value: r.pick([5, 10, 15]) }, height: withText ? { kind: 'auto' } : { kind: 'px', value: r.pick([0, 10, 25, 40, 60]) } };
+      let children: Json[] = [];
+      if (withText) {
+        afterSpace = true;
+        const t = leaf(size, lh);
+        t['text'] = (t['text'] as string).replace(/ +$/, '');
+        children = [t];
+      }
+      afterSpace = false;
+      return { kind: 'box', id, boxType: 'element', style, strut: withText ? { font: inlineFont(size), lineHeight: lh } : null, children };
+    };
+    const size = r.pick([10, 10, 12.5, 16, 20]);
+    const lh = inlineLineHeight(r);
+    const kids: Json[] = [];
+    const count = 2 + r.int(5);
+    // In rtl an atomic inline needs a letter on both sides in its paragraph (UAX #9), so rtl contexts open and close with text.
+    if (rtl) kids.push(leaf(size, lh));
+    for (let i = 0; i < count; i++) {
+      const pick = r.next();
+      if (pick < 0.3) kids.push(leaf(size, lh));
+      else if (pick < 0.75) kids.push(inlineBox(0, lh));
+      else if (pick < 0.92) kids.push(atomic(size, lh));
+      else if (!rtl) {
+        kids.push({ kind: 'br', id: `b${ids++}`, font: inlineFont(size), lineHeight: lh });
+        afterSpace = true;
+      }
+    }
+    if (rtl) kids.push(leaf(size, lh));
+    const trim = (items: Json[]): boolean => {
+      for (let i = items.length - 1; i >= 0; i--) {
+        const c = items[i] as Json;
+        if (c['kind'] === 'br' || c['kind'] === 'box') return true;
+        if (c['kind'] === 'inline') {
+          if (trim(c['children'] as Json[])) return true;
+          continue;
+        }
+        c['text'] = (c['text'] as string).replace(/ +$/, '');
+        if (c['text'] !== '') return true;
+      }
+      return false;
+    };
+    trim(kids);
+    const dropEmpty = (items: Json[]): Json[] => items.filter((c) => c['kind'] !== 'text' || c['text'] !== '').map((c) => (c['kind'] === 'inline' ? { ...c, children: dropEmpty(c['children'] as Json[]) } : c));
+    const children = dropEmpty(kids).filter((c) => c['kind'] !== 'inline' || (c['children'] as Json[]).length > 0);
+    if (!children.some((c) => c['kind'] === 'text' || c['kind'] === 'inline')) continue;
+    const containerStyle = { ...INLINE_STYLE, display: 'block', direction, width: { kind: 'px', value: 20 + r.int(180) }, textAlign: r.pick(['start', 'end', 'center']) };
+    const container: Json = { kind: 'box', id: 'c', boxType: 'element', style: containerStyle, strut: { font: inlineFont(size), lineHeight: lh }, children };
+    const root: Json = { kind: 'box', id: 'root', boxType: 'element', style: { ...INLINE_STYLE, display: r.chance(0.2) ? 'flex' : 'block', direction }, strut: null, children: [container] };
+    const input: Json = { viewport: { width: 400, height: 300 }, devicePixelRatio: r.pick([1, 2, 3, 2.625]), viewportUnits: { small: { width: 400, height: 300 }, large: { width: 400, height: 300 }, dynamic: { width: 400, height: 300 } }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16, root };
+    n++;
+    const v = validateLayoutInput(input);
+    if (!v.ok) throw new Error(`engine-inline vertical-align: generated input ${n} is invalid: ${JSON.stringify(v.errors)}`);
+    const faults = r.chance(0.25) ? { ...NO_ENGINE_FAULTS, [r.pick(VA_FAULT_NAMES)]: true } : NO_ENGINE_FAULTS;
+    out.push(JSON.stringify({ platform: 'darwin-arm64', faults, input }));
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- text-latin (TXT1a-2)
 
 /** The shaped vectors (packages/layout/vectors/text-latin/dpr-<d>/, written by layout:vectors and layout:dpr-vectors), in DPR then file order. */
@@ -776,7 +889,7 @@ export function extendedLockText(c: ExtendedCorpus): string {
     calcUnitsPerFunction: CALC_SPEC.unitsPerFunction,
     calcUnitsFunctions: UNITS_CALC_FUNCTIONS,
     engineCalc: CALC_SPEC.engineCalc,
-    engineInline: INLINE_SPEC.engineInline + INLINE_SPEC.atomicInline + INLINE_SPEC.wrapInline,
+    engineInline: INLINE_SPEC.engineInline + INLINE_SPEC.atomicInline + INLINE_SPEC.wrapInline + INLINE_SPEC.vaInline,
     snapGenerated: EXTENDED_SPEC.snapGenerated,
     snapVectors: c.snapVectors.length,
     cases: Object.fromEntries(c.suites.map((s) => [s.name, s.lines.length])),
