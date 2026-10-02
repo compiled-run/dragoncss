@@ -20,6 +20,9 @@ import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
 import { resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
+import { ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
+import { emitNativeSupport, supportDigest } from './emit/native-support.ts';
+import { UIKIT_EMITTER_VERSION } from './emit/uikit.ts';
 import { emitWebCss } from './emit/web-css.ts';
 import type { WebFontContext } from './emit/web-css.ts';
 import type { AtRuleContext } from './css/at-rules.ts';
@@ -36,9 +39,12 @@ import type { FontWireProblem, ProjectedFonts } from './fonts/wire.ts';
 import type { CompilerFaults } from './faults.ts';
 import { NO_FAULTS } from './faults.ts';
 import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
+import { PROGRAM_VERSIONS } from './lower/native-program.ts';
 import type { Band, BandPartition } from './media/index.ts';
 import { band, bandAt, evaluateInBand, featuresOfList } from './media/index.ts';
 import { androidProfile } from './profiles/android.ts';
+import type { NativeLanesVerdict } from './profiles/native-lanes.ts';
+import { NATIVE_LANES } from './profiles/native-lanes.ts';
 import { iosProfile } from './profiles/ios.ts';
 import type { SupportProfile } from './profiles/types.ts';
 import { provenContexts, statusOf, supportedValuesFor, supportedValuesIn } from './profiles/types.ts';
@@ -671,6 +677,33 @@ function webFontsOf(fonts: ProjectFonts, faults: CompilerFaults): { context: Web
 const inside = (o: Origin, e: EnclosedRules): boolean =>
   o.kind === 'authored' && o.span.source.uri === e.span.source.uri && o.span.start >= e.span.start && o.span.end <= e.span.end;
 
+const NATIVE_OUTPUT: { readonly [T in 'ios' | 'android']: { readonly backend: 'uikit' | 'android-views'; readonly emitter: string; readonly name: string; readonly language: string } } = {
+  ios: { backend: 'uikit', emitter: UIKIT_EMITTER_VERSION, name: 'iOS', language: 'UIKit Swift' },
+  android: { backend: 'android-views', emitter: ANDROID_VIEWS_EMITTER_VERSION, name: 'Android', language: 'Android Views Kotlin' },
+};
+
+/**
+ * The digest of a native output: the compilation digest with that backend's emitter and program versions and its support
+ * digest (P6a), so a change to the generated native code changes it. The web output keeps the compilation digest.
+ */
+export function nativeDigest(digest: string, t: 'ios' | 'android'): string {
+  const o = NATIVE_OUTPUT[t];
+  return sha256Hex(canonicalJson({ compilation: digest, emitter: o.emitter, program: PROGRAM_VERSIONS[o.backend], support: supportDigest(o.backend) }));
+}
+
+/**
+ * A checked native target's output (P6a): ready only when the committed lanes verdict (profiles/native-lanes.ts, written by
+ * pnpm run profile:rows from packages/parity/out/lanes.json) has every lane of that target passing and none stale; otherwise
+ * analysis-only, naming why. A ready native output carries the backend's native support files.
+ */
+export function nativeOutputState(t: 'ios' | 'android', digest: string, verdict: NativeLanesVerdict): ArtifactState {
+  const o = NATIVE_OUTPUT[t];
+  const d = nativeDigest(digest, t);
+  if (verdict.recorded && verdict.stale.length === 0 && verdict.notPassing.length === 0) return { kind: 'ready', digest: d, files: emitNativeSupport(o.backend), assets: [] };
+  const why = !verdict.recorded ? 'no committed lanes record proves it' : verdict.stale.length > 0 ? `its committed lanes are stale (${verdict.stale.join('; ')})` : `these lanes do not pass: ${verdict.notPassing.join('; ')}`;
+  return { kind: 'analysis-only', digest: d, reason: `The ${o.name} output is analysis-only: its layout projection feeds the internal lanes, and the generated ${o.language} stays internal to the native lanes until every ${t} lane passes in a current committed lanes record; ${why}.` };
+}
+
 type Analysis<K extends string> = {
   readonly report: CheckReport<K>;
   readonly outputs: { [P in K]: ArtifactState };
@@ -888,8 +921,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const key = t as unknown as K;
     status[key] = blocking.length > 0 || cases.length === 0 ? 'blocked' : 'checked';
     if (status[key] === 'blocked') outputs[key] = { kind: 'blocked', diagnostics: blocking };
-    else if (t === 'ios') outputs[key] = { kind: 'analysis-only', digest, reason: 'The iOS output is analysis-only: its layout projection feeds the internal lanes, and the generated UIKit Swift is internal to the native lanes until an iOS native case passes.' };
-    else if (t === 'android') outputs[key] = { kind: 'analysis-only', digest, reason: 'The Android output is analysis-only: its layout projection feeds the internal lanes, and the generated Android Views Kotlin is internal to the native lanes until an Android native case passes.' };
+    else if (t === 'ios' || t === 'android') outputs[key] = nativeOutputState(t, digest, NATIVE_LANES[t]);
     else {
       const webFonts = fonts === null || !fonts.used ? null : webFontsOf(fonts, options.faults);
       const [base, ...extra] = bandCases.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement })) }));
