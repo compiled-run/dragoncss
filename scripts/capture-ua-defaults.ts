@@ -25,6 +25,8 @@ const TAGS = [
   'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside',
   'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd',
   'dragon-unstyled',
+  // INL2b (T044 R7, T059J-INL2b-1): sub and sup, whose UA rules are font-size: smaller and vertical-align: sub and super.
+  'sub', 'sup',
 ] as const;
 /** The tags whose declared values and contexts are derived: every captured tag but the root and the unstyled element. */
 const ELEMENT_TAGS = TAGS.filter((t) => t !== 'html' && t !== 'dragon-unstyled');

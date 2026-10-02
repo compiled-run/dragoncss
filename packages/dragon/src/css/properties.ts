@@ -13,6 +13,7 @@ import { POSITION_ASPECTS, POSITION_CONTAINER, POSITION_INHERITED, POSITION_LONG
 import { TEXT_DECORATION_ASPECTS, TEXT_DECORATION_CONTAINER, TEXT_DECORATION_INHERITED, TEXT_DECORATION_LONGHANDS, TEXT_DECORATION_SHORTHANDS, TEXT_DECORATION_TEXT_ROLE } from './properties/text-decoration.ts';
 import { TEXT_FAMILY_ASPECTS, TEXT_FAMILY_CONTAINER, TEXT_FAMILY_INHERITED, TEXT_FAMILY_LONGHANDS, TEXT_FAMILY_SHORTHANDS, TEXT_FAMILY_TEXT_ROLE } from './properties/text.ts';
 import { TEXT_WRAP_ASPECTS, TEXT_WRAP_CONTAINER, TEXT_WRAP_INHERITED, TEXT_WRAP_LONGHANDS, TEXT_WRAP_SHORTHANDS, TEXT_WRAP_TEXT_ROLE } from './properties/text-wrap.ts';
+import { INLINE_ASPECTS, INLINE_CONTAINER, INLINE_INHERITED, INLINE_LONGHANDS, INLINE_SHORTHANDS, INLINE_TEXT_ROLE } from './properties/inline.ts';
 import { WRITING_MODE_ASPECTS, WRITING_MODE_CONTAINER, WRITING_MODE_INHERITED, WRITING_MODE_LONGHANDS, WRITING_MODE_SHORTHANDS, WRITING_MODE_TEXT_ROLE } from './properties/writing-mode.ts';
 // Paint families (EMS seams, notes/T046-paint-spec.md §3 item 4): empty until their packages fill them.
 import { RADIUS_ASPECTS, RADIUS_CONTAINER, RADIUS_INHERITED, RADIUS_LONGHANDS, RADIUS_SHORTHANDS, RADIUS_TEXT_ROLE } from './properties/radius.ts';
@@ -44,6 +45,9 @@ export const LONGHANDS = [
   // TXT2-a (css-text-3 §5): after the grid family and before the paint families in every table below.
   ...TEXT_WRAP_LONGHANDS,
 
+  // INL2b (CSS2 §10.8.1): after the TXT2-a family in every table below.
+  ...INLINE_LONGHANDS,
+
   // The paint families (EMS seams) go last in every table below.
   ...RADIUS_LONGHANDS,
   ...SHADOW_LONGHANDS,
@@ -72,6 +76,8 @@ export const SHORTHANDS = [
 
   ...TEXT_WRAP_SHORTHANDS,
 
+  ...INLINE_SHORTHANDS,
+
   ...RADIUS_SHORTHANDS,
   ...SHADOW_SHORTHANDS,
   ...EFFECTS_SHORTHANDS,
@@ -98,6 +104,8 @@ export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([
   ...GRID_INHERITED,
 
   ...TEXT_WRAP_INHERITED,
+
+  ...INLINE_INHERITED,
 
   ...RADIUS_INHERITED,
   ...SHADOW_INHERITED,
@@ -152,6 +160,8 @@ export const PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {
 
   ...TEXT_WRAP_ASPECTS,
 
+  ...INLINE_ASPECTS,
+
   ...RADIUS_ASPECTS,
   ...SHADOW_ASPECTS,
   ...EFFECTS_ASPECTS,
@@ -180,6 +190,8 @@ const CONTAINER_LONGHANDS: readonly Longhand[] = [
 
   ...TEXT_WRAP_CONTAINER,
 
+  ...INLINE_CONTAINER,
+
   ...RADIUS_CONTAINER,
   ...SHADOW_CONTAINER,
   ...EFFECTS_CONTAINER,
@@ -203,6 +215,8 @@ const TEXT_ROLE_LONGHANDS: readonly Longhand[] = [
   ...GRID_TEXT_ROLE,
 
   ...TEXT_WRAP_TEXT_ROLE,
+
+  ...INLINE_TEXT_ROLE,
 
   ...RADIUS_TEXT_ROLE,
   ...SHADOW_TEXT_ROLE,

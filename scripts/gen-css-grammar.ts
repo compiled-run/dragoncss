@@ -44,6 +44,9 @@ const SUBSET = [
 
   // TXT2-a (css-text-3 §5.2, §5.5, §8.2), after the grid family.
   'overflow-wrap', 'word-break', 'letter-spacing',
+
+  // INL2b (CSS2 §10.8.1), after the TXT2-a family.
+  'vertical-align',
 ] as const;
 
 /**
@@ -52,6 +55,19 @@ const SUBSET = [
  */
 const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
   'writing-mode': 'lr | lr-tb | rl | rl-tb | tb | tb-rl',
+};
+
+/**
+ * Syntaxes that replace webref's, where Chrome 145 parses a property by an older grammar than the one webref publishes. Unlike
+ * SYNTAX_EXTENSIONS, which add alternatives, an override is the whole syntax; the initial and inherited fields stay webref's.
+ * - vertical-align: webref gives css-inline-3's shorthand ([ first | last ] || <'alignment-baseline'> || <'baseline-shift'>), which
+ *   Chrome 145 does not parse. Blink 145.0.7632.6 VerticalAlign::ParseSingleValue (core/css/properties/longhands/
+ *   longhands_custom.cc:10742-10753) consumes one keyword of the range kBaseline to kWebkitBaselineMiddle (core/css/
+ *   css_value_keywords.json5:468-477: baseline, middle, sub, super, text-top, text-bottom, top, bottom, -webkit-baseline-middle)
+ *   or one <length-percentage> (the unitless quirk applies in quirks mode only). It is a longhand, initial baseline, not inherited.
+ */
+const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
+  'vertical-align': 'baseline | sub | super | text-top | text-bottom | middle | top | bottom | -webkit-baseline-middle | <length-percentage>',
 };
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));
@@ -73,7 +89,9 @@ while (queue.length > 0) {
     const p = propsByName.get(next.name);
     if (p === undefined || p.syntax === undefined) throw new Error(`webref has no syntax for property ${next.name}`);
     const extension = SYNTAX_EXTENSIONS[next.name];
-    syntax = extension === undefined ? p.syntax : `${p.syntax} | ${extension}`;
+    const override = SYNTAX_OVERRIDES[next.name];
+    if (override !== undefined && extension !== undefined) throw new Error(`${next.name} has both a syntax override and an extension`);
+    syntax = override !== undefined ? override : extension === undefined ? p.syntax : `${p.syntax} | ${extension}`;
     properties.set(next.name, { ...p, syntax });
   } else {
     if (types.has(next.name) || CSS_TREE_GENERICS.has(next.name)) continue;
@@ -97,6 +115,9 @@ lines.push(`export const webrefVersion = ${JSON.stringify(webrefVersion)};`);
 lines.push('');
 lines.push('/** Longhands and shorthands the compiler reads, with their webref initial and inherited fields. */');
 lines.push(`export const subset: readonly string[] = ${JSON.stringify([...SUBSET].sort())};`);
+lines.push('');
+lines.push('/** The properties whose syntax replaces webref\'s (scripts/gen-css-grammar.ts SYNTAX_OVERRIDES, each with its Blink citation). */');
+lines.push(`export const syntaxOverrides: readonly string[] = ${JSON.stringify(Object.keys(SYNTAX_OVERRIDES).sort())};`);
 lines.push('');
 lines.push('export type PropertyGrammar = { readonly syntax: string; readonly initial: string; readonly inherited: string };');
 lines.push('');

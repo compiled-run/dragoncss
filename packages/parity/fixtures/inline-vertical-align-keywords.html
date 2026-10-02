@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.c { width: 300px; font-size: 20px; line-height: 30px; }
+.s { font-size: 10px; }
+.base { vertical-align: baseline; }
+.sb { vertical-align: sub; }
+.sp { vertical-align: super; }
+.tt { vertical-align: text-top; }
+.tb { vertical-align: text-bottom; }
+.mid { vertical-align: middle; }
+.top { vertical-align: top; }
+.bot { vertical-align: bottom; }
+.big { font-size: 30px; line-height: 1; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="base" class="c">Xx<span data-dragon-id="base-s" class="s base">yy</span>zz</div>
+<div data-dragon-id="sub" class="c">Xx<span data-dragon-id="sub-s" class="s sb">yy</span>zz</div>
+<div data-dragon-id="super" class="c">Xx<span data-dragon-id="super-s" class="s sp">yy</span>zz</div>
+<div data-dragon-id="ttop" class="c">Xx<span data-dragon-id="ttop-s" class="s tt">yy</span>zz</div>
+<div data-dragon-id="tbot" class="c">Xx<span data-dragon-id="tbot-s" class="s tb">yy</span>zz</div>
+<div data-dragon-id="mid" class="c">Xx<span data-dragon-id="mid-s" class="s mid">yy</span>zz</div>
+<div data-dragon-id="top" class="c">Xx<span data-dragon-id="top-s" class="s top">yy</span>zz</div>
+<div data-dragon-id="bot" class="c">Xx<span data-dragon-id="bot-s" class="s bot">yy</span>zz</div>
+<div data-dragon-id="nest" class="c">Xx<span data-dragon-id="nest-o" class="big sp">yy<span data-dragon-id="nest-i" class="s sb">ww<span data-dragon-id="nest-m" class="mid">vv</span></span></span>zz</div>
+<div data-dragon-id="wrap" class="c">Xxxx xxxx <span data-dragon-id="wrap-s" class="s sp">yyyy yyyy yyyy yyyy yyyy yyyy yyyy yyyy</span> zzzz zzzz</div>
+</body>
+</html>
