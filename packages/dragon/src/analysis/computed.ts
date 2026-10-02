@@ -171,6 +171,12 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
     if (px === null) return;
     props.set(p, { ...v, value: { kind: 'length', value: px, unit: CANONICAL_LENGTH_UNIT } });
   };
+  // css-fonts-4 §2.5 <relative-size>, as Blink computes it (FontDescription::SmallerSize and LargerSize): the parent's computed size
+  // divided or multiplied by 1.2, not the next keyword of the table.
+  const fs = props.get('font-size') as ResolvedValue;
+  if (fs.value.kind === 'keyword' && (fs.value.value === 'smaller' || fs.value.value === 'larger') && parentFontSize !== null) {
+    props.set('font-size', { ...fs, value: { kind: 'length', value: fs.value.value === 'smaller' ? parentFontSize / 1.2 : parentFontSize * 1.2, unit: CANONICAL_LENGTH_UNIT } });
+  }
   toPx('font-size', parentFontSize, rootFontSize ?? parentFontSize);
   const own = pxOf((props.get('font-size') as ResolvedValue).value);
   for (const p of props.keys()) if (p !== 'font-size') toPx(p, own, rootFontSize ?? own);
