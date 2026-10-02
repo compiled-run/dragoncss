@@ -270,7 +270,7 @@ function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: numb
   const walk = (b: LayoutBox): void => {
     for (const c of b.children) {
       if (c.kind === 'box') walk(c);
-      else out.set(c.id, { family: c.font.family, size: c.font.size });
+      else if (c.kind === 'text') out.set(c.id, { family: c.font.family, size: c.font.size });
     }
   };
   walk(root);
