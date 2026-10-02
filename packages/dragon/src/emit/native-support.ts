@@ -5,9 +5,11 @@
 // instance size come from the translated engine; nothing is recomputed from UIFont or FontMetrics.
 import { sha256Hex } from '../digest.ts';
 import type { GeneratedFile } from '../types.ts';
+import type { FontSpec } from '@dragon/layout';
 import type { NativeBackend, NativeProgram } from '../lower/native-program.ts';
 import type { PaintPlantName } from './paint/registry.ts';
 import { nativePaints, PAINT_STAGES, paintPlants, soleHook, stagePainters } from './paint/registry.ts';
+import { runtimeSupportFiles } from './runtime/index.ts';
 
 export const NATIVE_SUPPORT_VERSION = 'dragon.native-support/1';
 
@@ -111,9 +113,22 @@ public func dragonAdvance(hhea: [UInt8], hmtx: [UInt8], _ gid: Int) -> Double {
   return dragonU16(hmtx, 4 * min(gid, n - 1))
 }
 
+/// The metrics font-relative units read, in font units (T005's rule): glyph x's glyf yMax (loca format from head 50), OS/2
+/// sCapHeight (OS/2 88, version 2 or later) and the hmtx advance of glyph 0; 0 where the font has none.
+public func dragonMetricUnits(head: [UInt8], hhea: [UInt8], hmtx: [UInt8], cmap: [UInt8], os2: [UInt8], loca: [UInt8], glyf: [UInt8]) -> (xHeight: Double, capHeight: Double, zeroAdvance: Double) {
+  let x = dragonGlyph(cmap: cmap, 0x78)
+  let long = dragonI16(head, 50) != 0
+  let at = long ? dragonU32(loca, 4 * x) : Int(dragonU16(loca, 2 * x)) * 2
+  let next = long ? dragonU32(loca, 4 * x + 4) : Int(dragonU16(loca, 2 * x + 2)) * 2
+  let xHeight = x == 0 || next == at ? 0 : dragonI16(glyf, at + 8)
+  let capHeight = dragonU16(os2, 0) >= 2 ? dragonI16(os2, 88) : 0
+  let zero = dragonGlyph(cmap: cmap, 0x30)
+  return (xHeight, capHeight, zero == 0 ? 0 : dragonAdvance(hhea: hhea, hmtx: hmtx, zero))
+}
+
 /// The raw data as the translated measurer's FontData.
-public func dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: [Double]) -> FontData {
-  return FontData(unitsPerEm, ascent, descent, lineGap, JsArray(advances))
+public func dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: [Double], xHeight: Double, capHeight: Double, zeroAdvance: Double) -> FontData {
+  return FontData(unitsPerEm, ascent, descent, lineGap, JsArray(advances), xHeight, capHeight, zeroAdvance)
 }
 
 /// The bridge self-check: the raw data read from the bundled font equal the Ahem constants of the translated engine.
@@ -124,6 +139,9 @@ public func dragonSelfCheck(_ d: FontData) -> [String] {
   if d.ascent != want.ascent { out.append("ascent \(d.ascent), Ahem \(want.ascent)") }
   if d.descent != want.descent { out.append("descent \(d.descent), Ahem \(want.descent)") }
   if d.lineGap != want.lineGap { out.append("lineGap \(d.lineGap), Ahem \(want.lineGap)") }
+  if d.xHeight != want.xHeight { out.append("xHeight \(d.xHeight), Ahem \(want.xHeight)") }
+  if d.capHeight != want.capHeight { out.append("capHeight \(d.capHeight), Ahem \(want.capHeight)") }
+  if d.zeroAdvance != want.zeroAdvance { out.append("zeroAdvance \(d.zeroAdvance), Ahem \(want.zeroAdvance)") }
   let cps = try! text_coveredCodePoints().items
   if d.advances.items.count != want.advances.items.count { out.append("\(d.advances.items.count) advances, Ahem \(want.advances.items.count)") }
   for (k, cp) in cps.enumerated() where k < d.advances.items.count && k < want.advances.items.count {
@@ -277,7 +295,6 @@ public final class DragonTextView: UIView, DragonNodeView {
   public let dragonParent: String?
   public private(set) var dragonText = ""
   public private(set) var dragonFamily = ""
-  public private(set) var dragonCssSize: Double = 0
   public private(set) var dragonColor = DragonRGBA8(0, 0, 0, 255)
   public private(set) var dragonTextColor: UIColor? = nil
   public private(set) var dragonFont: UIFont? = nil
@@ -300,11 +317,10 @@ public final class DragonTextView: UIView, DragonNodeView {
   }
   required init?(coder: NSCoder) { fatalError("DragonTextView is built in code") }
 
-  /// The text run from the program: text, font family and CSS size, colour.
-  public func dragonSetText(_ text: String, family: String, cssSize: Double, color: DragonRGBA8) {
+  /// The text run from the program: text, font family and colour; the size comes from the engine at the device scale.
+  public func dragonSetText(_ text: String, family: String, color: DragonRGBA8) {
     dragonText = text
     dragonFamily = family
-    dragonCssSize = cssSize
     dragonColor = color
     dragonTextColor = dragonUIColor(color)
     accessibilityLabel = text
@@ -421,7 +437,9 @@ public final class DragonBridge {
       let gid = dragonGlyph(cmap: cmap, Int(cp))
       advances.append(gid == 0 ? -1 : dragonAdvance(hhea: hhea, hmtx: hmtx, gid))
     }
-    data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: advances)
+    guard let os2Data = CTFontCopyTable(probe, CTFontTableTag(kCTFontTableOS2), []) as Data?, let locaData = CTFontCopyTable(probe, CTFontTableTag(kCTFontTableLoca), []) as Data?, let glyfData = CTFontCopyTable(probe, CTFontTableTag(kCTFontTableGlyf), []) as Data? else { fatalError("dragon bridge: OS/2, loca or glyf is missing") }
+    let units = dragonMetricUnits(head: [UInt8](headData), hhea: hhea, hmtx: hmtx, cmap: cmap, os2: [UInt8](os2Data), loca: [UInt8](locaData), glyf: [UInt8](glyfData))
+    data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: advances, xHeight: units.xHeight, capHeight: units.capHeight, zeroAdvance: units.zeroAdvance)
     selfCheck = dragonSelfCheck(data)
     measurer = try! text_fontDataMeasurer(data, AhemRuleFaults(false, false))
   }
@@ -633,7 +651,8 @@ public final class DragonTree {
       let chars = run.chars.items
       let pieces = boxes.enumerated().filter { DragonTree.isLine($0.element) && $0.element.parent?.description == id }
       textMetrics[id] = (run.halfLeading / lu, run.ascent / lu, run.descent / lu)
-      let size = try units_platformFontSize(units_zoomFontSize(tv.dragonCssSize, s))
+      // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
+      let size = try units_platformFontSize(leaves[li].font.size)
       var specs: [DragonLineSpec] = []
       for line in engineLines {
         let mine = (Int(line.start)..<Int(line.visibleEnd)).filter { Int(chars[$0].leaf) == li }
@@ -838,8 +857,23 @@ fun dragonGlyph(cmap: ByteArray, cp: Int): Int {
 /** A glyph's advance in font units from hmtx (numberOfHMetrics is hhea 34; later glyphs repeat the last advance). */
 fun dragonAdvance(hhea: ByteArray, hmtx: ByteArray, gid: Int): Double = dragonU16(hmtx, 4 * minOf(gid, u16(hhea, 34) - 1))
 
+/**
+ * The metrics font-relative units read, in font units (T005's rule): glyph x's glyf yMax (loca format from head 50), OS/2
+ * sCapHeight (OS/2 88, version 2 or later) and the hmtx advance of glyph 0; 0 where the font has none.
+ */
+fun dragonMetricUnits(head: ByteArray, hhea: ByteArray, hmtx: ByteArray, cmap: ByteArray, os2: ByteArray, loca: ByteArray, glyf: ByteArray): DoubleArray {
+  val x = dragonGlyph(cmap, 0x78)
+  val long = dragonI16(head, 50) != 0.0
+  val at = if (long) u32(loca, 4 * x) else u16(loca, 2 * x) * 2
+  val next = if (long) u32(loca, 4 * x + 4) else u16(loca, 2 * x + 2) * 2
+  val xHeight = if (x == 0 || next == at) 0.0 else dragonI16(glyf, at + 8)
+  val capHeight = if (dragonU16(os2, 0) >= 2.0) dragonI16(os2, 88) else 0.0
+  val zero = dragonGlyph(cmap, 0x30)
+  return doubleArrayOf(xHeight, capHeight, if (zero == 0) 0.0 else dragonAdvance(hhea, hmtx, zero))
+}
+
 /** The raw data as the translated measurer's FontData. */
-fun dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: List<Double>): FontData = FontData(unitsPerEm, ascent, descent, lineGap, ArrayList(advances))
+fun dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: List<Double>, xHeight: Double, capHeight: Double, zeroAdvance: Double): FontData = FontData(unitsPerEm, ascent, descent, lineGap, ArrayList(advances), xHeight, capHeight, zeroAdvance)
 
 /** The bridge self-check: the raw data read from the bundled font equal the Ahem constants of the translated engine. */
 fun dragonSelfCheck(d: FontData): List<String> {
@@ -849,6 +883,9 @@ fun dragonSelfCheck(d: FontData): List<String> {
   if (d.ascent != want.ascent) out.add("ascent " + d.ascent + ", Ahem " + want.ascent)
   if (d.descent != want.descent) out.add("descent " + d.descent + ", Ahem " + want.descent)
   if (d.lineGap != want.lineGap) out.add("lineGap " + d.lineGap + ", Ahem " + want.lineGap)
+  if (d.xHeight != want.xHeight) out.add("xHeight " + d.xHeight + ", Ahem " + want.xHeight)
+  if (d.capHeight != want.capHeight) out.add("capHeight " + d.capHeight + ", Ahem " + want.capHeight)
+  if (d.zeroAdvance != want.zeroAdvance) out.add("zeroAdvance " + d.zeroAdvance + ", Ahem " + want.zeroAdvance)
   val cps = text_coveredCodePoints()
   if (d.advances.size != want.advances.size) out.add("" + d.advances.size + " advances, Ahem " + want.advances.size)
   for (k in cps.indices) {
@@ -982,19 +1019,16 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     private set
   var dragonFamily = ""
     private set
-  var dragonCssSize = 0.0
-    private set
   var dragonColor = DragonRGBA8(0, 0, 0, 255)
     private set
   var specs: List<DragonLineSpec> = emptyList()
     private set
   private var font: android.graphics.fonts.Font? = null
 
-  /** The text run from the program: text, font family and CSS size, colour. */
-  fun dragonSetText(text: String, family: String, cssSize: Double, color: DragonRGBA8) {
+  /** The text run from the program: text, font family and colour; the size comes from the engine at the device scale. */
+  fun dragonSetText(text: String, family: String, color: DragonRGBA8) {
     dragonText = text
     dragonFamily = family
-    dragonCssSize = cssSize
     dragonColor = color
     contentDescription = text
   }
@@ -1086,7 +1120,8 @@ class DragonBridge private constructor(ctx: Context) {
       val gid = dragonGlyph(cmap, cp.toInt())
       advances.add(if (gid == 0) -1.0 else dragonAdvance(hhea, hmtx, gid))
     }
-    data = dragonFontData(header[0], header[1], header[2], header[3], advances)
+    val units = dragonMetricUnits(dragonSfntTable(raw, "head"), hhea, hmtx, cmap, dragonSfntTable(raw, "OS/2"), dragonSfntTable(raw, "loca"), dragonSfntTable(raw, "glyf"))
+    data = dragonFontData(header[0], header[1], header[2], header[3], advances, units[0], units[1], units[2])
     selfCheck = dragonSelfCheck(data)
     measurer = text_fontDataMeasurer(data, AhemRuleFaults(false, false))
   }
@@ -1176,7 +1211,6 @@ import dev.dragon.layout.units_LU_PER_PX
 import dev.dragon.layout.units_fromCssPx
 import dev.dragon.layout.units_platformFontSize
 import dev.dragon.layout.units_snapEdge
-import dev.dragon.layout.units_zoomFontSize
 
 /** One compiled case in the app: its identity, the engine input as typed constructor calls, and the view-building function. */
 class DragonCase(
@@ -1353,7 +1387,8 @@ class DragonTree(val context: Context) {
       val chars = run.chars
       val pieces = boxes.indices.filter { isLine(boxes[it]) && boxes[it].parent == id }
       textMetrics[id] = doubleArrayOf(run.halfLeading / lu, run.ascent / lu, run.descent / lu)
-      val size = units_platformFontSize(units_zoomFontSize(tv.dragonCssSize, scale))
+      // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
+      val size = units_platformFontSize(leaves[li].font.size)
       val specs = ArrayList<DragonLineSpec>()
       for (line in engineLines) {
         val mine = (line.start.toInt() until line.visibleEnd.toInt()).filter { chars[it].leaf.toInt() == li }
@@ -1500,9 +1535,14 @@ export function emitNativeSupport(backend: NativeBackend, plant: SupportPlant | 
   const def = PLANT_REPLACEMENTS.find((p) => p.name === plant);
   if (def === undefined) throw new Error(`no support plant ${plant}`);
   const [from, to] = def.replace[backend];
-  const planted = files.map((f) => (f.text.includes(from) ? { ...f, text: f.text.replace(from, to) } : f));
-  if (planted.every((f, i) => f.text === (files[i] as GeneratedFile).text)) throw new Error(`the ${plant} plant found no ${plant.startsWith('glyph-offset') ? 'glyph offset constant' : 'replacement'} in the ${backend} support`);
-  return planted;
+  return applyPlant(files, from, to, `the ${plant} plant in the ${backend} support`);
+}
+
+/** Replaces a plant's one source text; throws unless it occurs exactly once across the files, so a plant changes one place. */
+export function applyPlant(files: readonly GeneratedFile[], from: string, to: string, what: string): GeneratedFile[] {
+  const count = files.reduce((n, f) => n + f.text.split(from).length - 1, 0);
+  if (count !== 1) throw new Error(`${what}: ${JSON.stringify(from)} occurs ${count} times, not once`);
+  return files.map((f) => (f.text.includes(from) ? { ...f, text: f.text.replace(from, to) } : f));
 }
 
 /** The members every paint module adds to the DragonBoxView class body, in registry order. */
@@ -1597,6 +1637,7 @@ function supportFiles(backend: NativeBackend): GeneratedFile[] {
       { path: 'Support/DragonTree.swift', text: header('//', 'the native tree, engine application and dump readback') + SWIFT_TREE },
       { path: 'Support/DragonPaintStages.swift', text: header('//', 'the paint registration points') + paintStagesSource(backend) },
       ...paint.map((m) => ({ path: `Support/Paint/${m.stem}.swift`, text: header('//', `the ${m.name} paint module`) + m.text })),
+      ...runtimeSupportFiles(backend, (what) => header('//', what)),
     ];
   }
   return [
@@ -1608,6 +1649,7 @@ function supportFiles(backend: NativeBackend): GeneratedFile[] {
     { path: 'kotlin/dev/dragon/views/DragonPaintStages.kt', text: header('//', 'the paint registration points') + paintStagesSource(backend) },
     // Paint module files sit under views/paint and keep package dev.dragon.views, so the case code needs no new import.
     ...paint.map((m) => ({ path: `kotlin/dev/dragon/views/paint/${m.stem}.kt`, text: header('//', `the ${m.name} paint module`) + m.text })),
+    ...runtimeSupportFiles(backend, (what) => header('//', what)),
   ];
 }
 
@@ -1664,8 +1706,8 @@ export const STYLE_FIELDS = [
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = { px: 'Px', percent: 'Percent', auto: 'Auto', none: 'NoneValue', content: 'ContentValue', normal: 'NormalValue', number: 'NumberValue', 'device-px': 'DevicePx' };
 
-/** The translated union of CalcExpr (V1 of the value model): the element type of a calculation's operand list. */
-const CALC_UNION = 'U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_NumberValue_Percent_PixelsAndPercent_Px_ViewportLength';
+/** The translated union of CalcExpr (V2 of the value model): the element type of a calculation's operand list. */
+const CALC_UNION = 'U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength';
 
 const CALC_LISTS: Readonly<Record<string, string>> = { sum: 'CalcSum', product: 'CalcProduct', min: 'CalcMin', max: 'CalcMax' };
 
@@ -1686,9 +1728,21 @@ function calcValue(lang: Lang, o: Record<string, unknown>): string | null {
     case 'calc':
       return `LengthCalc(${str(kind)}, ${e(o['expr'])}, ${str(o['range'] as string)})`;
     case 'viewport':
-      return `ViewportLength(${str(kind)}, ${doubleLit(o['value'] as number)}, ${str(o['axis'] as string)})`;
+      return `ViewportLength(${str(kind)}, ${doubleLit(o['value'] as number)}, ${str(o['axis'] as string)}, ${str(o['size'] as string)})`;
     case 'em':
       return `EmLength(${str(kind)}, ${doubleLit(o['value'] as number)}, ${e(o['fontSize'])})`;
+    case 'rem':
+      return `RootFontLength(${str(kind)}, ${doubleLit(o['value'] as number)})`;
+    case 'font-metric':
+      return `FontMetricLength(${str(kind)}, ${doubleLit(o['value'] as number)}, ${str(o['metric'] as string)}, ${fontSpecValue(lang, o['font'] as FontSpec)})`;
+    case 'lh':
+      return `LineHeightLength(${str(kind)}, ${doubleLit(o['value'] as number)}, ${fontSpecValue(lang, o['font'] as FontSpec)}, ${lineHeightValue(lang, o['lineHeight'])})`;
+    case 'env':
+      return `EnvLength(${str(kind)}, ${doubleLit(o['value'] as number)}, ${str(o['side'] as string)})`;
+    case 'font-percent':
+      return `FontPercent(${str(kind)}, ${doubleLit(o['value'] as number)}, ${e(o['parent'])})`;
+    case 'font-calc':
+      return `FontCalc(${str(kind)}, ${e(o['expr'])}, ${e(o['parent'])})`;
     case 'invert':
       return `CalcInvert(${str(kind)}, ${e(o['term'])})`;
     case 'clamp':
@@ -1717,6 +1771,29 @@ function engineValue(lang: Lang, v: unknown): string {
   const cls = VALUE_CLASSES[o.kind];
   if (cls === undefined) throw new Error(`no engine class for value kind ${o.kind}`);
   return o.value === undefined ? `${cls}(${str(o.kind)})` : `${cls}(${str(o.kind)}, ${doubleLit(o.value)})`;
+}
+
+/** A line height as a constructor call: a calculated one is the engine's LineHeightCalc, whose range is non-negative. */
+function lineHeightValue(lang: Lang, v: unknown): string {
+  const o = v as { kind: string; expr?: unknown };
+  if (o.kind !== 'calc') return engineValue(lang, v);
+  const str = (x: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, x)})` : stringLit(lang, x));
+  return `LineHeightCalc(${str('calc')}, ${engineValue(lang, o.expr)}, ${str('non-negative')})`;
+}
+
+/** A text run's font as a constructor call: family, the reference computed size, the specified size expression, absolute or not. */
+function fontSpecValue(lang: Lang, f: FontSpec): string {
+  const str = (x: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, x)})` : stringLit(lang, x));
+  return `FontSpec(${str(f.family)}, ${doubleLit(f.size)}, ${engineValue(lang, f.specifiedSize)}, ${String(f.absoluteSize)})`;
+}
+
+/**
+ * The environment arguments of a case's LayoutInput, as explicit literals of the reference environment (V2a; hosts read the real
+ * environment in V2b): every viewport unit reads the case viewport, no safe area, and the program's root font size.
+ */
+export function environmentArgs(viewport: { readonly width: number; readonly height: number }, rootFontSize: number): string {
+  const v = `Viewport(${doubleLit(viewport.width)}, ${doubleLit(viewport.height)})`;
+  return `ViewportUnitSizes(${v}, ${v}, ${v}), SafeAreaInsets(0.0, 0.0, 0.0, 0.0), ${doubleLit(rootFontSize)}`;
 }
 
 /** The translated union of a box's children (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf). */
@@ -1749,7 +1826,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
       ? `${visit(c)}()`
       : c.kind === 'replaced'
         ? replaced(c)
-        : `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, TextFont(${str(c.font.family)}, ${doubleLit(c.font.size)}), ${engineValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)})`));
+        : `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)})`));
     const style = styleOf(b.style);
     const arr = lang === 'swift' ? `JsArray<any ${CHILDREN_UNION}>([${kids.join(', ')}])` : `jsArrayOf<${CHILDREN_UNION}>(${kids.join(', ')})`;
     const type = b.kind === 'control' ? 'ControlBox' : 'LayoutBox';

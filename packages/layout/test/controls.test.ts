@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ControlBox, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, TextLeaf, TextMeasurer } from '../src/index.ts';
 import type { LU } from '../src/units.ts';
 import { absoluteRects, ahemMeasurer, buttonContentShift, fromRaw, layout, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, SLIDER_DEFAULT_TRACK_LENGTH, validateLayoutInput } from '../src/index.ts';
-import { anon, box, control, pct, px, text } from './helpers.ts';
+import { anon, box, control, neutralEnvironment, pct, px, text } from './helpers.ts';
 
 type Rect = readonly [number, number, number, number];
 type Box = { readonly border: Rect; readonly content: Rect };
@@ -119,7 +119,7 @@ const relativeTo = (r: Rect, o: Rect): Rect => [r[0] - o[0], r[1] - o[1], r[2], 
 type Layout = (input: LayoutInput, measurer: TextMeasurer) => LayoutResult;
 
 function layoutRects(root: LayoutBox, run: Layout = layout, devicePixelRatio = 1): Map<string, LayoutRect> {
-  const input: LayoutInput = { viewport: { width: 400, height: 300 }, devicePixelRatio, root };
+  const input: LayoutInput = { viewport: { width: 400, height: 300 }, ...neutralEnvironment({ width: 400, height: 300 }), devicePixelRatio, root };
   const valid = validateLayoutInput(input);
   if (!valid.ok) throw new Error(`invalid input: ${JSON.stringify(valid.errors)}`);
   const r = run(input, ahemMeasurer);
@@ -272,6 +272,7 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
   const thumb = control('thumb', { kind: 'slider-thumb', ratio: 0.5 }, { width: px(10), height: px(10) });
   const range = (style: Partial<LayoutStyle>, kids: (LayoutBox | ControlBox)[]): LayoutInput => ({
     viewport: { width: 400, height: 300 },
+    ...neutralEnvironment({ width: 400, height: 300 }),
     devicePixelRatio: 1,
     root: { ...box('root', {}), children: [control('input', { kind: 'range', defaultInlineSize: 129 }, { display: 'flex', ...style }, kids)] },
   });
@@ -293,7 +294,7 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
   });
 
   it('the engine throws on a block button control with display flex, which the validator rejects', () => {
-    const input: LayoutInput = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root: { ...box('root', {}), children: [control('b', { kind: 'button-block' }, { display: 'flex' })] } };
+    const input: LayoutInput = { viewport: { width: 400, height: 300 }, ...neutralEnvironment({ width: 400, height: 300 }), devicePixelRatio: 1, root: { ...box('root', {}), children: [control('b', { kind: 'button-block' }, { display: 'flex' })] } };
     expect(() => layout(input, ahemMeasurer)).toThrow('validateLayoutInput rejects this input');
   });
 

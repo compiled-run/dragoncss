@@ -7,6 +7,27 @@
    "height": 300
   },
   "devicePixelRatio": 2.625,
+  "viewportUnits": {
+   "small": {
+    "width": 400,
+    "height": 300
+   },
+   "large": {
+    "width": 400,
+    "height": 300
+   },
+   "dynamic": {
+    "width": 400,
+    "height": 300
+   }
+  },
+  "safeArea": {
+   "top": 0,
+   "right": 0,
+   "bottom": 0,
+   "left": 0
+  },
+  "rootFontSize": 16,
   "root": {
    "kind": "box",
    "id": "html",
@@ -469,7 +490,12 @@
          "text": "XX XXX X XXXX XX",
          "font": {
           "family": "Ahem",
-          "size": 21.6
+          "size": 21.6,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 21.6
+          },
+          "absoluteSize": true
          },
          "lineHeight": {
           "kind": "px",
@@ -603,7 +629,12 @@
          "text": "XX X XXX",
          "font": {
           "family": "Ahem",
-          "size": 12.48
+          "size": 12.48,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 12.48
+          },
+          "absoluteSize": true
          },
          "lineHeight": {
           "kind": "normal"
@@ -734,7 +765,12 @@
          "text": "X",
          "font": {
           "family": "Ahem",
-          "size": 32
+          "size": 32,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 32
+          },
+          "absoluteSize": true
          },
          "lineHeight": {
           "kind": "normal"
@@ -981,7 +1017,12 @@
            "text": "XX XX",
            "font": {
             "family": "Ahem",
-            "size": 11.2
+            "size": 11.2,
+            "specifiedSize": {
+             "kind": "px",
+             "value": 11.2
+            },
+            "absoluteSize": true
            },
            "lineHeight": {
             "kind": "normal"
@@ -1460,7 +1501,12 @@
            "text": "XXX XX",
            "font": {
             "family": "Ahem",
-            "size": 11.2
+            "size": 11.2,
+            "specifiedSize": {
+             "kind": "px",
+             "value": 11.2
+            },
+            "absoluteSize": true
            },
            "lineHeight": {
             "kind": "normal"

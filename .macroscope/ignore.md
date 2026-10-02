@@ -1,5 +1,6 @@
 ---
 ignoreTests: false
+---
 # Tests are reviewed on purpose: a loosened tolerance or a deleted check is the bug we care most about.
 # Creating this file replaces Macroscope's defaults, so the text-file defaults are copied first
 # (docs.macroscope.com/bug-detection-and-fixes, 2026-09-28). Binary files are always skipped anyway.
@@ -66,6 +67,7 @@ packages/layout/rt-vectors/**
 packages/layout/break-vectors/**
 packages/parity/expected-breaks/**
 packages/parity/expected-pixels/**
+packages/layout/paint-vectors/*/vectors.json
 packages/parity/out/**
 packages/dragon/test/fonts/captures/**
 packages/dragon/test/fonts/reference/**
@@ -83,6 +85,8 @@ docs/research/inline-spike/probe/**
 docs/research/skia-aa-oracle/**
 docs/research/skia-oracle/**
 docs/research/dtxt/widths.json
+# Written by scripts/gen-third-party-notices.ts (pnpm notices:gen) from docs/ports.json; chrome-ports.test.ts checks it is current
+THIRD_PARTY_NOTICES.md
 # General shapes, so a new capture directory is skipped without an edit here
 **/captures/**
 **/reftest-captures/**

@@ -7,7 +7,7 @@ import type { GeneratedFile } from '../types.ts';
 import type { ProgramNode, ProgramWrite } from '../lower/native-program.ts';
 import { PROGRAM_VERSIONS } from '../lower/native-program.ts';
 import type { EmitCase } from './native-support.ts';
-import { chunks, doubleLit, inputFunctions, stringLit, supportDigest } from './native-support.ts';
+import { chunks, doubleLit, environmentArgs, inputFunctions, stringLit, supportDigest } from './native-support.ts';
 import { isPaintKind, paintWriteLines } from './paint/registry.ts';
 
 export const ANDROID_VIEWS_EMITTER_VERSION = 'dragon.android-views-emitter/1';
@@ -24,7 +24,7 @@ function writeLines(v: string, n: ProgramNode, w: ProgramWrite): string[] {
     case 'font': {
       const color = n.writes.find((x) => x.kind === 'text-color');
       if (color === undefined || color.kind !== 'text-color') throw new Error(`${n.id}: a text run without a colour`);
-      return [`  ${v}.dragonSetText(${q(n.text ?? '')}, ${q(w.family)}, ${doubleLit(w.size)}, ${rgba(color.color)})`];
+      return [`  ${v}.dragonSetText(${q(n.text ?? '')}, ${q(w.font.family)}, ${rgba(color.color)})`];
     }
     case 'text-color':
       return [`  // ${w.key}: set with the text run above`];
@@ -50,7 +50,7 @@ function caseSource(c: EmitCase, k: number): string {
     `private fun case${k}Build(t: DragonTree) {`,
     ...parts.map((_, j) => `  case${k}Build${j}(t)`),
     '}',
-    `private fun case${k}Input(dpr: Double): LayoutInput = LayoutInput(Viewport(${doubleLit(c.viewport.width)}, ${doubleLit(c.viewport.height)}), dpr, ${input.root})`,
+    `private fun case${k}Input(dpr: Double): LayoutInput = LayoutInput(Viewport(${doubleLit(c.viewport.width)}, ${doubleLit(c.viewport.height)}), dpr, ${environmentArgs(c.viewport, c.program.rootFontSize)}, ${input.root})`,
     `val dragonCase${k} = DragonCase(${q(c.id)}, ${q(c.fixture)}, ${q(c.direction)}, ${q(c.compilerDigest)}, ${doubleLit(c.viewport.width)}, ${doubleLit(c.viewport.height)}, mapOf(${digests}), ::case${k}Input, ::case${k}Build)`,
   ].join('\n');
 }
