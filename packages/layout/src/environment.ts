@@ -154,12 +154,15 @@ function boxNeedsEnvironment(b: LayoutBox, faults: EngineFaults): boolean {
     }
     if (c.kind === 'replaced') {
       if (styleNeedsEnvironment(c.style) || resolveOrder(c.style.order, faults) !== c.style.order) return true;
+      const x = c.objectPositionX;
+      const y = c.objectPositionY;
+      if ((x.kind === 'px' && !inCssLengthRange(x.value)) || (y.kind === 'px' && !inCssLengthRange(y.value))) return true;
       continue;
     }
     const f = c.font;
     if (f.specifiedSize.kind !== 'px' || f.specifiedSize.value !== f.size) return true;
     if (computedFontSize(f.size, f.absoluteSize, 1, faults.minimumFontSizeIgnored) !== f.size) return true;
-    if (c.lineHeight.kind === 'percent' || c.lineHeight.kind === 'calc') return true;
+    if (c.lineHeight.kind === 'percent' || c.lineHeight.kind === 'calc' || (c.lineHeight.kind === 'px' && !inCssLengthRange(c.lineHeight.value))) return true;
   }
   return false;
 }
@@ -190,7 +193,7 @@ function resolveBox(b: LayoutBox, env: Env): LayoutBox {
 function resolveReplaced(r: ReplacedLeaf, env: Env): ReplacedLeaf {
   const z = env.zoom;
   const natural: ReplacedLeaf['natural'] = r.natural.kind === 'image' ? { kind: 'image', width: zoomCssPx(r.natural.width, z), height: zoomCssPx(r.natural.height, z) } : { kind: 'none' };
-  const position = (v: ReplacedLeaf['objectPositionX']): ReplacedLeaf['objectPositionX'] => (v.kind === 'px' ? { kind: 'px', value: zoomCssPx(v.value, z) } : v);
+  const position = (v: ReplacedLeaf['objectPositionX']): ReplacedLeaf['objectPositionX'] => (v.kind === 'px' ? lengthPx(v, z) : v);
   return {
     kind: 'replaced',
     id: r.id,
@@ -394,7 +397,7 @@ function lineHeightCalcPx(lh: LineHeightCalc, computedFontSize: number, env: Env
 
 /** A text run's line height at the zoom: normal and numbers stay, as layout resolves them (R3); the rest become zoomed px. */
 function resolveLineHeightValue(v: LineHeightValue, computedFontSize: number, env: Env): LineHeightValue {
-  if (v.kind === 'px') return zoomPx(v, env.fontZoom);
+  if (v.kind === 'px') return lengthPx(v, env.fontZoom);
   if (v.kind === 'percent') return { kind: 'px', value: lineHeightPercentPx(computedFontSize, v.value) };
   if (v.kind === 'calc') return { kind: 'px', value: lineHeightCalcPx(v, computedFontSize, atZoom(env, env.fontZoom)) };
   return v;
