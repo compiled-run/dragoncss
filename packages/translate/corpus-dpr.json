@@ -36,35 +36,35 @@
   ],
   "engineCalc": 4000,
   "snapGenerated": 20000,
-  "snapVectors": 1239,
+  "snapVectors": 1269,
   "cases": {
-    "vectors-m2": 205,
-    "vectors-dpr": 1389,
-    "engine-dpr": 1389,
+    "vectors-m2": 215,
+    "vectors-dpr": 1419,
+    "engine-dpr": 1419,
     "units-m2": 120000,
-    "snap": 21239,
+    "snap": 21269,
     "snap-values": 150,
     "calc-goldens": 17,
     "engine-calc": 4000,
     "units-calc": 50000
   },
   "engineSplit": {
-    "ok": 1386,
-    "unsupported": 3,
+    "ok": 1417,
+    "unsupported": 2,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "1cb9551c22281b8cdcb281829544dac17cfffb8d8effe1e89eb222371aa4469a",
-    "vectors-dpr": "40a3c894593e322d9633a7b4572dbde27d5f6d1d9ec7dc5c0d9ad496b308a989",
-    "engine-dpr": "1a40a7732096176dc631320a046895700ce9c37ec7cd12c2fb6cdf7dd11e3f1c",
+    "vectors-m2": "358d6ba091db6da076e4e23ec31fe7b709611ceb01e0a6a4f24bdd08c6369851",
+    "vectors-dpr": "5d18411b10310f3382f915d388d71143c26b89f0887850cbf4721047a6674855",
+    "engine-dpr": "0223de906abea9ebe898e221c41fb296b66b51100ac62aeaebaac35090bd7bf7",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "2b10fa7c43d321418b835710a87065d10d050affa8994daf26b6aa28b691a942",
+    "snap": "dec561fffc0490e71aaabfe3e02ebe58c318469e9d703e3817dd8ca8bef6b7dd",
     "snap-values": "fdeb2cecd1521fdd06c93f68e8a53f0efd51bd155422bff8533ba0224e08b739",
-    "calc-goldens": "9241f9c160b80efe64019e5fa29409c88f7420d20cf7d6198e32455d7a9f7884",
-    "engine-calc": "6d191cc02a2424ec48fae62dcfb064f3e53e9c942d12dd0fa8c10d9c0904a1a4",
+    "calc-goldens": "acc85bbaac29e732c85a60fce430fb2c68424ee135b5960040e4ba42302450c5",
+    "engine-calc": "938eaa419b1aa7b01b984a5905eae945c72b93ada0d4c43ddaa2cadaae7e0831",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50"
   },
-  "digest": "1b1339c5d1532150b775e6b15c753b126d4435fbc271aeb288f3954085149724"
+  "digest": "62b25adf8ead7ef7f117fb06f8038ef0dd5ea3f110163c36a8617e8361128f9f"
 }
