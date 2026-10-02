@@ -112,3 +112,13 @@ describe('the layout ratio the lowering gives the engine', () => {
     expect(compile('.a { aspect-ratio: 2; height: 50px; }').diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE')).toEqual([]);
   });
 });
+
+describe('object-position keywords (REPL-a, Macroscope 4164413914)', () => {
+  it('reads an escaped or upper-case edge keyword as the keyword, as Chrome 145 computes it', async () => {
+    const { parseValueText } = await import('../src/analysis/computed.ts');
+    const left = parseValueText('object-position', 'left top');
+    expect(left).toEqual({ kind: 'position', x: { unit: '%', value: 0 }, y: { unit: '%', value: 0 } });
+    for (const v of [String.raw`\6c eft top`, String.raw`\6C eft \74op`, 'LEFT Top', String.raw`l\65 ft top`]) expect(parseValueText('object-position', v), v).toEqual(left);
+    expect(parseValueText('object-position', String.raw`\72ight b\6fttom`)).toEqual(parseValueText('object-position', 'right bottom'));
+  });
+});

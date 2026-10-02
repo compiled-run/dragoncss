@@ -183,7 +183,8 @@ type PositionPart = { readonly edge: string } | { readonly offset: PositionOffse
 /** One <position> token: an edge keyword, a px length or 0, or a percentage; null when it is none of these. */
 function positionPart(t: CssNode): PositionPart {
   if (t.type === 'Identifier') {
-    const name = String(t['name']).toLowerCase();
+    // css-syntax-3 §4.3.11: an escaped keyword (\6c eft) is the keyword; keywords match ASCII case-insensitively.
+    const name = asciiLower(decodeName(String(t['name'])));
     return Object.hasOwn(POSITION_EDGES, name) ? { edge: name } : null;
   }
   if (t.type === 'Percentage') return { offset: { unit: '%', value: Number(t['value']) } };

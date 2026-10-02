@@ -138,14 +138,14 @@
   }
  },
  "summary": {
-  "diagnostics": 334,
-  "errors": 333,
+  "diagnostics": 335,
+  "errors": 334,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [android]": 25,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 25,
    "DRAGON_UNPROVEN_CONTEXT [web]": 27,
-   "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
+   "DRAGON_UNSUPPORTED_ATTRIBUTE": 19,
    "DRAGON_UNSUPPORTED_AT_RULE": 1,
    "DRAGON_UNSUPPORTED_AT_RULE [android]": 2,
    "DRAGON_UNSUPPORTED_AT_RULE [ios]": 2,
@@ -163,7 +163,7 @@
    "web": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 27,
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 19,
      "DRAGON_UNSUPPORTED_AT_RULE": 1,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_PROPERTY": 60,
@@ -177,7 +177,7 @@
    "ios": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 25,
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 19,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
@@ -192,7 +192,7 @@
    "android": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 25,
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 19,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
@@ -293,8 +293,8 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 143,
-   "B-unwrapped": 140,
+   "A-authored": 144,
+   "B-unwrapped": 141,
    "C-context": 196
   }
  },
@@ -6817,6 +6817,23 @@
     "tag": "button"
    },
    "message": "attribute type on skip-forward is not supported: its rendering effect belongs to the form-control package FORM-a",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@YouTubePlayer/video-placeholder|attribute src on video-placeholder is not supported: its rendering effect belongs to REPL-a Phase B (the iframe web view loads src; Phase A lays out an empty slot)",
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "location": {
+    "kind": "element",
+    "id": "YouTubePlayer/video-placeholder",
+    "tag": "iframe"
+   },
+   "message": "attribute src on video-placeholder is not supported: its rendering effect belongs to REPL-a Phase B (the iframe web view loads src; Phase A lays out an empty slot)",
    "viaRelated": false,
    "passes": [
     "A-authored",

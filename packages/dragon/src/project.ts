@@ -1059,7 +1059,10 @@ function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>, chromeV
       // A presentational hint is author-level in the cascade (css-cascade-5 §6.1); its origin names the attribute.
       cascade: v.origin === 'presentational-hint' ? 'author' : v.origin,
       origin: valueOrigin(c.resolved, address, p, chromeVersion),
-      losing: v.losing.map((d) => ({ origin: authored(d.span), reason: 'lower specificity or earlier in the style order' })),
+      losing: v.losing.map((d) => ({
+        origin: authored(d.span),
+        reason: d === v.forcedOver ? `the user agent forces ${q.property} on this element whatever the cascade says` : 'lower specificity or earlier in the style order',
+      })),
       support: used === null || used === undefined ? null : { feature: used.feature, context: used.context, status: statusOf(profile, used.feature, used.context) },
     });
   }
