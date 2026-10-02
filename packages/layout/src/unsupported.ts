@@ -12,7 +12,8 @@ export type UnsupportedCode =
   | 'flex-basis-content'
   | 'flex-wrap-indefinite-main'
   | 'flex-intrinsic-wrap-column'
-  | 'replaced-out-of-flow';
+  | 'replaced-out-of-flow'
+  | 'line-break';
 
 export type LayoutUnsupported = {
   readonly code: UnsupportedCode;

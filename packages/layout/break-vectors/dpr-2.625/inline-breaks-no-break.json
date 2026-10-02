@@ -1,0 +1,25 @@
+{
+  "case": "inline-breaks-no-break",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"n1:text0","lines":[[0,7]]},
+    {"id":"n2:text0","lines":[[0,7]]},
+    {"id":"n3:text0","lines":[[0,7]]},
+    {"id":"n4:text0","lines":[[0,7]]},
+    {"id":"n5:text0","lines":[[0,7]]},
+    {"id":"n6:text0","lines":[[0,7]]},
+    {"id":"n7:text0","lines":[[0,7]]},
+    {"id":"n8:text0","lines":[[0,7]]},
+    {"id":"n9:text0","lines":[[0,7]]},
+    {"id":"n10:text0","lines":[[0,7]]},
+    {"id":"n11:text0","lines":[[0,7]]},
+    {"id":"n12:text0","lines":[[0,7]]},
+    {"id":"n13:text0","lines":[[0,7]]},
+    {"id":"n14:text0","lines":[[0,7]]},
+    {"id":"n15:text0","lines":[[0,7]]},
+    {"id":"n16:text0","lines":[[0,7]]},
+    {"id":"n17:text0","lines":[[0,7]]},
+    {"id":"n18:text0","lines":[[0,7]]},
+    {"id":"n19:text0","lines":[[0,2],[2,7]]}
+  ]
+}
