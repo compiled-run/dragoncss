@@ -1,5 +1,5 @@
 // Shared box-model resolution: padding, border, margins, box-sizing and min/max (CSS2 §8, §10.4, §10.7; css-sizing-3).
-import type { BorderWidthValue, BoxSizing, LayoutBox, LayoutStyle, LengthCalc, MarginValue, MaxSizeValue, MinSizeValue, Percent, Px, SizeValue } from './input.ts';
+import type { BorderWidthValue, BoxSizing, LayoutBox, LayoutStyle, LengthCalc, MarginValue, MaxSizeValue, MinSizeValue, Percent, Px, SizeValue, TextLeaf } from './input.ts';
 import type { EngineFaults } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
 import { calcHasPercent, resolveCalc } from './calc.ts';
@@ -246,4 +246,20 @@ export function contentBox(borderBox: LU, borderPadding: LU): LU {
 /** css-overflow-3 §3: overflow hidden (on both axes, as the validator requires) makes the box a scroll container. */
 export function isScrollContainer(style: LayoutStyle): boolean {
   return style.overflowX === 'hidden';
+}
+
+/**
+ * The text leaves of a block container whose children are inline-level, or null when its children are boxes (CSS2 §9.2.1.1: the
+ * compiler wraps mixed content in anonymous boxes, and validateLayoutInput rejects anything else). The inline core lays out text
+ * leaves only: an inline box or a <br> is refused until the inline items land (INL1a).
+ */
+export function inlineTextLeaves(box: LayoutBox): TextLeaf[] | null {
+  if (box.strut === null) return null;
+  const out: TextLeaf[] = [];
+  for (const k of box.children) {
+    if (k.kind === 'text') out.push(k);
+    else if (k.kind === 'inline' || k.kind === 'br') unsupported('inline-box', k.id, 'CSS2 §9.2.2', `${k.kind === 'br' ? 'the <br>' : 'the inline box'} ${k.id} in ${box.id} is not laid out yet`);
+    else throw new Error(`${box.id}: a box beside inline content; validateLayoutInput rejects this input`);
+  }
+  return out;
 }

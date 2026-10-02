@@ -10,6 +10,7 @@ import type {
   FlexBasisValue,
   FlexDirection,
   FlexWrap,
+  FontSpec,
   GapValue,
   InsetValue,
   JustifyContent,
@@ -17,6 +18,7 @@ import type {
   LayoutStyle,
   LengthCalc,
   LineHeightValue,
+  LineStrut,
   MarginValue,
   Overflow,
   MaxSizeValue,
@@ -257,6 +259,8 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     columnGap: gap(id, get, 'column-gap', l),
     textAlign: keyword<TextAlign>(id, get, 'text-align', ['start', 'end', 'left', 'right', 'center', 'justify']),
     aspectRatio: aspectRatio(id, get),
+    // CSS2 §10.8.1: vertical-align is not a Dragon longhand; every box takes its initial value, which only inline boxes read.
+    verticalAlign: { kind: 'keyword', value: 'baseline' },
   };
 }
 
@@ -269,12 +273,10 @@ export function textFontProblem(t: ResolvedText): string | null {
   return `font-family: ${valueToString(family)} on ${t.node.address} has no layout mapping (expected ${AHEM_EXPECTED})`;
 }
 
-// goal.md principle 3: the text node carries its inherited text styles, so the lowering reads the text node and never its parent.
-function lowerText(t: ResolvedText): TextLeaf {
-  const id = t.node.address;
-  const get = (p: TextLonghand): CssValue => (t.props.get(p) as ResolvedValue).value;
+/** A font and line-height as the engine reads them (input.ts FontSpec, LineHeightValue), from resolved font-size and line-height. */
+function lowerFont(id: string, get: (p: TextLonghand) => CssValue): { readonly font: FontSpec; readonly lineHeight: LineHeightValue } {
   const family = get('font-family');
-  if (textFontProblem(t) !== null) fail(id, 'font-family', family, AHEM_EXPECTED);
+  if (family.kind !== 'family' || family.value !== 'Ahem') fail(id, 'font-family', family, AHEM_EXPECTED);
   const fs = get('font-size');
   if (fs.kind !== 'length' || fs.unit !== 'px') fail(id, 'font-size', fs, 'px');
   const lh = get('line-height');
@@ -283,11 +285,30 @@ function lowerText(t: ResolvedText): TextLeaf {
   else if (lh.kind === 'number') lineHeight = { kind: 'number', value: lh.value };
   else if (lh.kind === 'length' && lh.unit === 'px') lineHeight = { kind: 'px', value: lh.value };
   else return fail(id, 'line-height', lh, 'normal | <number> | px');
+  return { font: { family: 'Ahem', size: fs.value, specifiedSize: { kind: 'px', value: fs.value }, absoluteSize: true }, lineHeight };
+}
+
+// goal.md principle 3: the text node carries its inherited text styles, so the lowering reads the text node and never its parent.
+function lowerText(t: ResolvedText): TextLeaf {
+  const id = t.node.address;
+  const get = (p: TextLonghand): CssValue => (t.props.get(p) as ResolvedValue).value;
+  const family = get('font-family');
+  if (textFontProblem(t) !== null) fail(id, 'font-family', family, AHEM_EXPECTED);
+  const { font, lineHeight } = lowerFont(id, get);
   const collapse = get('white-space-collapse');
   if (collapse.kind !== 'keyword' || collapse.value !== 'collapse') fail(id, 'white-space-collapse', collapse, 'collapse');
   const wrap = get('text-wrap-mode');
   if (wrap.kind !== 'keyword' || (wrap.value !== 'wrap' && wrap.value !== 'nowrap')) return fail(id, 'text-wrap-mode', wrap, 'wrap | nowrap');
-  return { kind: 'text', id, text: t.text, font: { family: 'Ahem', size: fs.value, specifiedSize: { kind: 'px', value: fs.value }, absoluteSize: true }, lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: wrap.value as TextWrapMode };
+  return { kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: wrap.value as TextWrapMode };
+}
+
+/**
+ * CSS2 §10.8.1: the strut of a block container with inline content, its own font and line-height; an anonymous box's are its
+ * parent's (inherited). The text leaves inherit the same values, so the strut equals their font until inline boxes change it.
+ */
+function strutOf(el: ResolvedElement, hasInline: boolean): LineStrut | null {
+  if (!hasInline) return null;
+  return lowerFont(el.element.address, (p) => (el.props.get(p) as ResolvedValue).value);
 }
 
 const displayOf = (el: ResolvedElement): string => {
@@ -317,7 +338,7 @@ function anonymousBox(parent: ResolvedElement, id: string, texts: readonly Resol
   // Every non-inherited property of an anonymous box is its initial value.
   const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), faults, ua, { em: null, rem: null });
   for (const t of texts) assertTextCarriesContainer(style, id, t);
-  return { kind: 'box', id, boxType: 'anonymous', style, children: texts.map(lowerText) };
+  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, texts.length > 0), children: texts.map(lowerText) };
 }
 
 /**
@@ -358,5 +379,5 @@ function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, ro
     }
   }
   flush();
-  return { kind: 'box', id, boxType: 'element', style, children };
+  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, children.some((c) => c.kind === 'text')), children };
 }

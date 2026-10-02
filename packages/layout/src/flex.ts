@@ -138,7 +138,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
   const absolute: LayoutBox[] = [];
   for (const k of box.children) {
     // css-flexbox-1 §4: the compiler wraps text in anonymous flex items; validateLayoutInput rejects text in a flex container.
-    if (k.kind === 'text') throw new Error(`${k.id} is text directly in flex container ${box.id}; validateLayoutInput rejects this input`);
+    if (k.kind !== 'box' && k.kind !== 'replaced') throw new Error(`${k.id} is inline content directly in flex container ${box.id}; validateLayoutInput rejects this input`);
     // css-flexbox-1 §4.1: an absolutely positioned child is not a flex item.
     // An absolutely positioned replaced child is refused before this (position.ts checkOutOfFlowSiblings).
     if (k.kind === 'box' && isOutOfFlow(ctx, k)) absolute.push(k);
@@ -878,7 +878,7 @@ function ratioFlexMain(ctx: Ctx, box: LayoutBox, isRow: boolean, columnCross: LU
   }
   const fromRatio = blockFromRatio(s, hbp, vbp, columnCross);
   // The content height without the ratio (Blink LayoutResult::IntrinsicBlockSize).
-  const plain: LayoutBox = { kind: 'box', id: box.id, boxType: box.boxType, style: { ...s, aspectRatio: { kind: 'auto' } }, children: box.children };
+  const plain: LayoutBox = { kind: 'box', id: box.id, boxType: box.boxType, style: { ...s, aspectRatio: { kind: 'auto' } }, strut: box.strut, children: box.children };
   const r = layoutContents(ctx, plain, { cbInline, borderBoxWidth: columnCross, forcedBorderBoxHeight: null, forcedHeightDefinite: false, heightBasis: { kind: 'indefinite' }, formattingContextRoot: true });
   const inlineMm: MinMax = {
     min: s.minWidth.kind === 'auto' ? hbp : borderBoxFromSpecified(resolveLength(s.minWidth, cbInline, ctx.faults), hbp, s.boxSizing),

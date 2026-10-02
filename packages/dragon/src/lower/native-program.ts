@@ -141,10 +141,11 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement): NodePaint[] {
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
     if (b.kind === 'replaced') return;
     for (const c of b.children) {
-      if (c.kind !== 'text') {
+      if (c.kind === 'box' || c.kind === 'replaced') {
         visit(c, b.id, own);
         continue;
       }
+      if (c.kind !== 'text') throw new ProgramError(`${c.id}: an inline box or line break has no native lowering yet`);
       out.push(textPaint(c, b.id, texts));
     }
   };

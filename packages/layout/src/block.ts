@@ -1,8 +1,9 @@
 // Block formatting: box contents, block-level widths and heights, margin collapsing, and inline content (inline.ts).
-import type { Direction, LayoutBox, LayoutNode, LayoutStyle, TextLeaf } from './input.ts';
+import type { Direction, LayoutBox, LayoutNode, LayoutStyle } from './input.ts';
 import type { LU } from './units.ts';
 import { add, divInt, max, min, sub, ZERO } from './units.ts';
 import type { Edges, Frag, HeightBasis, OutOfFlow, Placed, Point } from './box.ts';
+import { inlineTextLeaves } from './box.ts';
 import {
   blockMinMaxWith,
   borderBoxFromSpecified,
@@ -323,10 +324,8 @@ type FlowResult = {
 // baseline is the first line box's, or the first in-flow child's that has one.
 function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   const kids = box.children;
-  const texts = kids.filter((k): k is TextLeaf => k.kind === 'text');
-  if (texts.length > 0) {
-    // CSS2 §9.2.1.1: the compiler wraps text beside block boxes in anonymous boxes; validateLayoutInput rejects anything else.
-    if (texts.length !== kids.length) throw new Error(`${box.id} mixes text and boxes; validateLayoutInput rejects this input`);
+  const texts = inlineTextLeaves(box);
+  if (texts !== null) {
     const r = layoutInline(ctx, box, texts, a.contentWidth, a.origin);
     return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: true, baseline: r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline), outOfFlow: [] };
   }
@@ -339,7 +338,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   let baseline: LU | null = null;
   const outOfFlow: OutOfFlow[] = [];
   for (const kid of kids) {
-    if (kid.kind === 'text') continue;
+    if (kid.kind !== 'box' && kid.kind !== 'replaced') continue;
     if (kid.kind === 'box' && isOutOfFlow(ctx, kid)) {
       // CSS2 §10.3.7 static position (Blink HandleOutOfFlowPositioned): the parent's content start edge in its direction, at the
       // flow position, which includes the pending margins once the parent's block offset is fixed (measured).

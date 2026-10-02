@@ -1,8 +1,8 @@
 // Intrinsic inline sizes (css-sizing-3 §5) and flex container intrinsic inline sizes (css-flexbox-1 §9.9.1, §9.9.2).
-import type { LayoutBox, LayoutNode, TextLeaf } from './input.ts';
+import type { LayoutBox, LayoutNode } from './input.ts';
 import type { LU } from './units.ts';
 import { add, fromCssPx, max, min, sum, ZERO, mulInt } from './units.ts';
-import { borderBoxFromSpecified, hasPercent, resolveBorder, resolveLength, resolveMinLength, sumEdges } from './box.ts';
+import { borderBoxFromSpecified, hasPercent, inlineTextLeaves, resolveBorder, resolveLength, resolveMinLength, sumEdges } from './box.ts';
 import type { Ctx } from './block.ts';
 import { inlineIntrinsicSize } from './inline.ts';
 import { isOutOfFlow } from './position.ts';
@@ -17,13 +17,10 @@ export type IntrinsicKind = 'min' | 'max';
 export function intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
   const kids = box.children;
   if (box.style.display === 'flex') return flexIntrinsicContent(ctx, box, kind);
-  const texts = kids.filter((k): k is TextLeaf => k.kind === 'text');
-  if (texts.length > 0) {
-    if (texts.length !== kids.length) throw new Error(`${box.id} mixes text and boxes; validateLayoutInput rejects this input`);
-    return inlineIntrinsicSize(ctx, box, texts, kind);
-  }
+  const texts = inlineTextLeaves(box);
+  if (texts !== null) return inlineIntrinsicSize(ctx, box, texts, kind);
   let widest = ZERO;
-  for (const k of kids) if (k.kind !== 'text' && !isOutOfFlow(ctx, k)) widest = max(widest, inlineContribution(ctx, k, kind));
+  for (const k of kids) if ((k.kind === 'box' || k.kind === 'replaced') && !isOutOfFlow(ctx, k)) widest = max(widest, inlineContribution(ctx, k, kind));
   return widest;
 }
 
@@ -55,7 +52,7 @@ export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKi
 // largest for a multi-line container. §9.9.2 (column, single-line): the largest contribution.
 function flexIntrinsicContent(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
   const s = box.style;
-  const items = box.children.filter((k): k is LayoutNode => k.kind !== 'text' && !isOutOfFlow(ctx, k));
+  const items = box.children.filter((k): k is LayoutNode => (k.kind === 'box' || k.kind === 'replaced') && !isOutOfFlow(ctx, k));
   const contributions = items.map((k) => inlineContribution(ctx, k, kind));
   const isRow = s.flexDirection === 'row' || s.flexDirection === 'row-reverse';
   if (!isRow && s.flexWrap !== 'nowrap') unsupported('flex-intrinsic-wrap-column', box.id, 'css-flexbox-1 §9.9.2', 'intrinsic inline size of a multi-line column flex container');
