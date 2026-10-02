@@ -36,35 +36,35 @@
   ],
   "engineCalc": 4000,
   "snapGenerated": 20000,
-  "snapVectors": 1236,
+  "snapVectors": 1281,
   "cases": {
-    "vectors-m2": 206,
-    "vectors-dpr": 1392,
-    "engine-dpr": 1392,
+    "vectors-m2": 239,
+    "vectors-dpr": 1491,
+    "engine-dpr": 1491,
     "units-m2": 120000,
-    "snap": 21236,
-    "snap-values": 156,
+    "snap": 21281,
+    "snap-values": 210,
     "calc-goldens": 17,
     "engine-calc": 4000,
     "units-calc": 50000
   },
   "engineSplit": {
-    "ok": 1389,
-    "unsupported": 3,
+    "ok": 1484,
+    "unsupported": 7,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "84476ec90fa919d7336d9e0dad9b5b1b8d4da5f1d9c47c0cdbb03f6598b04d10",
-    "vectors-dpr": "d0183ac1544f7b1083a9fee4c7275bb94dc9400e1f6ce0edc5a14e0b1586a548",
-    "engine-dpr": "16762a2737e50ddc810e72d0715fe79ff4b218c971c1cbdd43db21ebb77f0a01",
+    "vectors-m2": "b0a8b1000827c2c1844922c21fe1585b77fa54c481f9b155f2768c98c0186784",
+    "vectors-dpr": "edd9fe7fdf854690e9c44fb903f63bea37ff2f1d23a17a69da9b019d85967740",
+    "engine-dpr": "f8fea99de9721a30dcf85dbce9a3082505e6ee3c47a993cc2f6a1c6ef83a2afc",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "a5816982c40fb8655bdc8af7dfeb7a4e2a0b37336993d8a446828854d8f83061",
-    "snap-values": "cb3d5cbdf9c83b9e218eec405b23c2622d332851fe64c0537fbc010b8bc2575a",
-    "calc-goldens": "13a7b0cf4c93b369cfce7e8d1487635ece4f7a254cdd3bd93c922ad584f07de4",
-    "engine-calc": "998df75f64f5f4206acf6ecbf2488139559c610a56dbcc41a5da8de5763c1f08",
+    "snap": "5f40bf80123a9f86b68befe616a9da4a93d416738b58b82ba16ddbc9520a4f68",
+    "snap-values": "7c85a263f5ede6a3302cbc74a68e6f2d39b42d780774e9d56e2754f0d9ee1c98",
+    "calc-goldens": "205346ef6117fb858afa58f9a4b7d3e308382c516c6bc8a50f8681cb0813c8d1",
+    "engine-calc": "33a1ed801978911d646b454f76bdb3e04fb2b77f10b9642f1c87f89f605dfead",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50"
   },
-  "digest": "e27bf482c4964a1de161d01601c155e2acba19792a6725e9bfb94de62f5969cd"
+  "digest": "829982604ffa5f60e18d05f96b20d41de9c606b921c8a2265d47cf9b4bbc2ed1"
 }
