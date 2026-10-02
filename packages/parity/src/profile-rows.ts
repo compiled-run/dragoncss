@@ -2,7 +2,15 @@
 // committed profile-proof test in parity.test.ts.
 import type { Longhand, ProfileRow, Proof } from 'dragon';
 import { PROPERTY_ASPECTS } from 'dragon';
+import { existsSync, readFileSync } from 'node:fs';
+import type { LaneFailure } from './device-lanes.ts';
+import { DEVICE_CHECK_LANES } from './device-lanes.ts';
+import type { LanesFile } from './lanes.ts';
+import { readLanesFile, staleEvidence, staleLanes } from './lanes.ts';
+import { repoPath } from './paths.ts';
 import type { CaseOutcome } from './pipeline.ts';
+import type { NativeTarget, TargetConfig } from './targets.ts';
+import { nativeTargets } from './targets.ts';
 
 export const PROFILE_REVISION = 'm1-s5';
 
@@ -72,4 +80,196 @@ export function profileSource(target: ProfileTarget, rows: readonly ProfileRow[]
     '};',
     '',
   ].join('\n');
+}
+
+/**
+ * A native target's committed device evidence (oracle clause 4, Amendment T075J): per device lane of the target, the cases it
+ * runs at every one of the target's DPRs and the cases it failed at some DPR. unavailable names why it proves nothing (no
+ * committed lanes.json, a stale or failed parity record, a lane that did not run, a failure list that disagrees). Pure: it
+ * reads its arguments and never decides a profile status, which follows the iOS rule (deriveRows).
+ */
+export type DeviceEvidence = {
+  readonly target: NativeTarget;
+  readonly unavailable: string | null;
+  readonly lanes: readonly { readonly lane: string; readonly perCase: boolean; readonly passed: boolean; readonly cases: ReadonlySet<string>; readonly failing: ReadonlySet<string> }[];
+};
+
+/** The device evidence of one target from the committed lanes.json, its full failure list and the configured lanes. */
+export function deviceEvidence(target: NativeTarget, lanes: LanesFile | null, failures: readonly LaneFailure[] | null, configured: readonly TargetConfig[], stale: readonly string[]): DeviceEvidence {
+  const none = (why: string): DeviceEvidence => ({ target, unavailable: why, lanes: [] });
+  if (lanes === null) return none('no committed packages/parity/out/lanes.json');
+  if (!lanes.parity.pass) return none(`lanes.json records a lane-parity failure: ${lanes.parity.problems.join('; ')}`);
+  if (stale.length > 0) return none(`lanes.json is stale: ${stale.join('; ')}`);
+  const t = lanes.targets.find((x) => x.target === target);
+  const c = configured.find((x) => x.target === target);
+  if (t === undefined || c === undefined) return none(`lanes.json has no ${target} record`);
+  if (failures === null) return none(`no committed packages/parity/out/device-failures-${target}.json`);
+  const out: DeviceEvidence['lanes'][number][] = [];
+  for (const lc of c.lanes) {
+    if (lc.kind !== 'device') continue;
+    const rec = t.lanes.find((l) => l.lane === lc.lane);
+    if (rec === undefined || rec.state === 'not run' || rec.state === 'blocked (owner tooling)') return none(`${target} ${lc.lane} did not run`);
+    const listed = failures.filter((f) => f.lane === lc.lane);
+    const recorded = rec.device === null ? 0 : rec.device.sets.reduce((n, x) => n + x.failures, 0);
+    if (listed.length !== recorded) return none(`device-failures-${target}.json lists ${listed.length} ${lc.lane} failures, lanes.json records ${recorded}`);
+    const perCase = rec.device !== null;
+    if (!perCase && rec.state !== 'pass') return none(`${target} ${lc.lane}: ${rec.state}`);
+    // A case proves nothing on a lane unless the lane runs it at every DPR of the target.
+    const sets = lc.sets.filter((x) => c.dprs.includes(x.dpr));
+    const cases = new Set(c.dprs.every((d) => sets.some((x) => x.dpr === d)) ? (sets[0]?.ids ?? []).filter((id) => sets.every((x) => x.ids.includes(id))) : []);
+    out.push({ lane: lc.lane, perCase, passed: rec.state === 'pass', cases, failing: new Set(listed.map((f) => f.case)) });
+  }
+  return { target, unavailable: null, lanes: out };
+}
+
+/** Why a native row is not device-proven, or null when every proving case passes every device lane it needs (pure). */
+export function promotionBlocker(ev: DeviceEvidence, proving: readonly string[], paint: boolean): string | null {
+  if (ev.unavailable !== null) return ev.unavailable;
+  if (proving.length === 0) return 'no proving case';
+  for (const l of ev.lanes) {
+    if (l.lane === 'device-pixels' && !paint) continue;
+    if (!l.perCase) continue;
+    for (const id of proving) {
+      if (!l.cases.has(id)) return `${id} is not run by ${ev.target} ${l.lane} at every DPR`;
+      if (l.failing.has(id)) return `${id} fails ${ev.target} ${l.lane}`;
+    }
+  }
+  return null;
+}
+
+/** Every lane of a target that did not pass in a lanes record, named with its state and reason. */
+export function notPassingLanes(lanes: LanesFile, target: NativeTarget): string[] {
+  const t = lanes.targets.find((x) => x.target === target);
+  if (t === undefined) return [`${target}: no lanes record`];
+  return t.lanes.filter((l) => l.state !== 'pass').map((l) => `${l.lane} ${l.state}${l.reason === null ? '' : ` (${l.reason})`}`);
+}
+
+/** One native target's committed lanes verdict, as profiles/native-lanes.ts records it. */
+export type NativeVerdict = { readonly recorded: boolean; readonly stale: readonly string[]; readonly notPassing: readonly string[] };
+
+/**
+ * What keeps a target's recorded device lanes from covering its configured run: every configured device lane that the record
+ * says ran has exactly one recorded set per configured DPR, each with a dump for every configured case of that DPR.
+ */
+export function deviceCoverageProblems(lanes: LanesFile, c: TargetConfig): string[] {
+  const t = lanes.targets.find((x) => x.target === c.target);
+  if (t === undefined) return [];
+  const out: string[] = [];
+  for (const lc of c.lanes) {
+    if (lc.where !== 'device') continue;
+    const rec = t.lanes.find((l) => l.lane === lc.lane);
+    if (rec === undefined || rec.state === 'not run' || rec.state === 'blocked (owner tooling)') continue;
+    if (lc.kind !== 'device') continue;
+    const sets = rec.device?.sets ?? [];
+    for (const s of lc.sets) {
+      const got = sets.filter((x) => x.dpr === s.dpr);
+      if (got.length !== 1) out.push(`${c.target} ${lc.lane} records ${got.length} sets at DPR ${s.dpr}, not 1`);
+      else if (got[0]?.dumps !== s.ids.length || got[0]?.cases !== s.ids.length) out.push(`${c.target} ${lc.lane} at DPR ${s.dpr} records ${got[0]?.dumps} dumps of ${got[0]?.cases} cases, not ${s.ids.length}`);
+    }
+    for (const x of sets) if (!lc.sets.some((s) => s.dpr === x.dpr)) out.push(`${c.target} ${lc.lane} records DPR ${x.dpr}, which it does not declare`);
+  }
+  return out;
+}
+
+/**
+ * One native target's verdict from the committed record (pure): stale is staleLanes and staleEvidence over that target alone;
+ * notPassing names a failed lane parity, every lane not passing, a device lane whose recorded sets do not cover the configured
+ * DPRs and cases, and, when all of that passes, why the target's device evidence (its failure list against the record) is unavailable.
+ */
+export function nativeVerdict(target: NativeTarget, lanes: LanesFile | null, failures: readonly LaneFailure[] | null, configured: readonly TargetConfig[]): NativeVerdict {
+  if (lanes === null) return { recorded: false, stale: [], notPassing: [] };
+  const mine = configured.filter((x) => x.target === target);
+  const stale = [...staleLanes(lanes, mine), ...staleEvidence({ ...lanes, targets: lanes.targets.filter((x) => x.target === target) })];
+  const c = mine[0];
+  const notPassing = [
+    ...(lanes.parity.pass ? [] : [`lane parity (${lanes.parity.problems.join('; ')})`]),
+    ...notPassingLanes(lanes, target),
+    ...(c === undefined ? [`${target} is not a configured native target`] : deviceCoverageProblems(lanes, c)),
+  ];
+  if (notPassing.length === 0) {
+    const why = deviceEvidence(target, lanes, failures, configured, []).unavailable;
+    if (why !== null) notPassing.push(`device evidence: ${why}`);
+  }
+  return { recorded: true, stale, notPassing };
+}
+
+/** The committed native lanes verdict the compiler reads for outputs.ios and outputs.android (P6a): packages/dragon/src/profiles/native-lanes.ts. */
+export function nativeLanesSource(verdicts: { readonly [T in NativeTarget]: NativeVerdict }): string {
+  const q = (s: string): string => JSON.stringify(s);
+  const line = (target: NativeTarget): string => {
+    const v = verdicts[target];
+    return `  ${target}: { recorded: ${v.recorded}, stale: [${v.stale.map(q).join(', ')}], notPassing: [${v.notPassing.map(q).join(', ')}] },`;
+  };
+  return [
+    '// Generated by scripts/gen-profile-rows.ts (pnpm run profile:rows) from packages/parity/out/lanes.json and device-failures-<target>.json. Do not edit.',
+    '// A native output is ready only when its target has a recorded lanes run, none stale, in which every lane passes (P6a, T075J).',
+    '',
+    '/** One native target\'s committed lanes verdict. */',
+    'export type NativeLanesVerdict = { readonly recorded: boolean; readonly stale: readonly string[]; readonly notPassing: readonly string[] };',
+    '',
+    "export const NATIVE_LANES: { readonly ios: NativeLanesVerdict; readonly android: NativeLanesVerdict } = {",
+    line('ios'),
+    line('android'),
+    '};',
+    '',
+  ].join('\n');
+}
+
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** A committed device-failures list checked entry by entry (lane, case, dpr, node, kind, detail); throws naming the first bad one. */
+export function checkedFailures(v: unknown, what: string): LaneFailure[] {
+  if (!Array.isArray(v)) throw new Error(`${what}: not a list of failures`);
+  v.forEach((f, i) => {
+    const bad = (why: string): never => {
+      throw new Error(`${what}[${i}]: ${why}`);
+    };
+    if (!isObject(f)) bad('not an object');
+    const o = f as Record<string, unknown>;
+    if (!(DEVICE_CHECK_LANES as readonly unknown[]).includes(o['lane'])) bad(`lane ${JSON.stringify(o['lane'])} is not a device check lane`);
+    if (typeof o['case'] !== 'string' || o['case'] === '') bad('case is not a non-empty string');
+    if (typeof o['dpr'] !== 'number' || !(o['dpr'] > 0)) bad('dpr is not a positive number');
+    if (o['node'] !== null && typeof o['node'] !== 'string') bad('node is neither null nor a string');
+    if (typeof o['kind'] !== 'string' || o['kind'] === '') bad('kind is not a non-empty string');
+    if (typeof o['detail'] !== 'string') bad('detail is not a string');
+  });
+  return v as LaneFailure[];
+}
+
+/** The fields of a committed lanes record the promotion rule reads, checked; throws naming the first bad one. */
+export function checkedLanes(v: unknown, what: string): LanesFile {
+  const bad = (why: string): never => {
+    throw new Error(`${what}: ${why}`);
+  };
+  if (!isObject(v)) return bad('not an object');
+  const parity = v['parity'];
+  if (!isObject(parity) || typeof parity['pass'] !== 'boolean' || !Array.isArray(parity['problems']) || !parity['problems'].every((x) => typeof x === 'string')) bad('parity is not { pass, problems }');
+  const targets = v['targets'];
+  if (!Array.isArray(targets)) return bad('targets is not a list');
+  targets.forEach((t, i) => {
+    if (!isObject(t) || typeof t['target'] !== 'string' || !Array.isArray(t['lanes'])) bad(`targets[${i}] is not { target, lanes }`);
+    ((t as Record<string, unknown>)['lanes'] as unknown[]).forEach((l, j) => {
+      const at = `targets[${i}].lanes[${j}]`;
+      if (!isObject(l) || typeof l['lane'] !== 'string' || typeof l['state'] !== 'string' || typeof l['caseListSha256'] !== 'string') bad(`${at} is not { lane, state, caseListSha256 }`);
+      const o = l as Record<string, unknown>;
+      if (o['reason'] !== null && typeof o['reason'] !== 'string') bad(`${at}.reason is neither null nor a string`);
+      const d = o['device'];
+      if (d === null) return;
+      if (!isObject(d) || !Array.isArray(d['sets']) || !d['sets'].every((x) => isObject(x) && typeof x['failures'] === 'number' && Number.isInteger(x['failures']) && x['failures'] >= 0)) bad(`${at}.device is not { sets: [{ failures }] }`);
+    });
+  });
+  return v as LanesFile;
+}
+
+/** The committed device inputs: packages/parity/out/lanes.json, its staleness (staleLanes plus staleEvidence), each target's failure list and verdict. */
+export function committedLanes(): { readonly lanes: LanesFile | null; readonly stale: readonly string[]; readonly evidence: (target: NativeTarget) => DeviceEvidence; readonly verdict: (target: NativeTarget) => NativeVerdict } {
+  const raw = readLanesFile();
+  const lanes = raw === null ? null : checkedLanes(raw, 'packages/parity/out/lanes.json');
+  const configured = nativeTargets();
+  const stale = lanes === null ? [] : [...staleLanes(lanes, configured), ...staleEvidence(lanes)];
+  const failuresOf = (target: NativeTarget): readonly LaneFailure[] | null => {
+    const path = repoPath(`packages/parity/out/device-failures-${target}.json`);
+    return existsSync(path) ? checkedFailures(JSON.parse(readFileSync(path, 'utf8')) as unknown, `packages/parity/out/device-failures-${target}.json`) : null;
+  };
+  return { lanes, stale, evidence: (target) => deviceEvidence(target, lanes, failuresOf(target), configured, stale), verdict: (target) => nativeVerdict(target, lanes, failuresOf(target), configured) };
 }
