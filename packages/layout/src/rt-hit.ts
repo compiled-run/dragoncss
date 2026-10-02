@@ -10,8 +10,8 @@
 import type { Ctx as EngineCtx } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
 import { resolveBorder } from './box.ts';
-import type { Run } from './inline.ts';
-import { buildRun } from './inline.ts';
+import { placeLines } from './inline.ts';
+import { fromRaw } from './units.ts';
 import type { LayoutBox, LayoutInput, TextLeaf } from './input.ts';
 import type { LayoutRect } from './layout.ts';
 import { absoluteRects, layout, zoomInput } from './layout.ts';
@@ -430,6 +430,12 @@ function pushNode(s: TableState, n: HitNode, id: string, act: boolean): void {
   s.activation.push(act);
 }
 
+/** A run's line box height, its top half-leading and its ascent (CSS2 §10.8.1), as the engine's placeLines lays them out. */
+type LineMetrics = { readonly lineHeight: number; readonly halfLeading: number; readonly ascent: number };
+
+/** A width every line fits in, so the probe line holds the run's first visible text; only its metrics are read. */
+const LINE_PROBE_WIDTH = fromRaw(1073741824);
+
 /** A text piece and whether its leaf inks the whole em box. */
 type HitPiece = { readonly rect: LayoutRect; readonly full: boolean };
 
@@ -439,7 +445,13 @@ function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number
   for (const c of zb.children) {
     if (c.kind === 'text') zLeaves.push(c);
   }
-  const run = buildRun(s.ctx, zb, zLeaves);
+  // The run's line metrics, read from the engine's own first line box (one font per formatting context, checked below).
+  const placed = placeLines(s.ctx, zb, zLeaves, LINE_PROBE_WIDTH);
+  const firstLine = placed[0];
+  const firstPlaced = firstLine === undefined ? undefined : firstLine.pieces[0];
+  const run: LineMetrics = firstLine === undefined || firstPlaced === undefined
+    ? { lineHeight: 0, halfLeading: 0, ascent: 0 }
+    : { lineHeight: firstLine.height, halfLeading: firstPlaced.top - firstLine.top, ascent: firstPlaced.ascent };
   const first = zLeaves[0];
   if (first === undefined) throw new HitError(`${b.id}: no text leaves`);
   const size = first.font.size;
@@ -471,7 +483,7 @@ function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number
 }
 
 /** One line of a block's inline content: the line node, then each text piece on it. */
-function linePieces(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, run: Run, em: number, pieces: readonly HitPiece[], top: number, k: number): void {
+function linePieces(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, run: LineMetrics, em: number, pieces: readonly HitPiece[], top: number, k: number): void {
   const own = pieces.filter((p) => p.rect.y === top);
   const firstPiece = own[0];
   if (firstPiece === undefined) throw new HitError(`${b.id}: an empty line`);

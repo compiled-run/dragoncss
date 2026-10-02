@@ -1,5 +1,5 @@
 // The line-break reference (notes/T015-p4-review-p5-plan.md section 4 item 4): the committed break vectors are the engine's own
-// export for every case at every device DPR; the export equals the device-side inline_breakLines offsets run by the committed
+// export for every case at every device DPR; the export equals the device-side inline_placeLines offsets run by the committed
 // generated engine in host Swift and host Kotlin; Chrome's committed breaks equal the break vectors; and the break check names
 // every mismatch break-mismatch.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -35,7 +35,7 @@ describe('break vectors', () => {
   it('both backends run one engine input, so one break vector serves both targets', () => {
     for (const n of cases) expect(JSON.stringify(n.programs.uikit.root), n.case.id).toBe(JSON.stringify(n.programs['android-views'].root));
   });
-  it.each(['swift', 'kotlin'] as const)('the export equals the device-side inline_breakLines offsets of the generated engine in host %s, for every case at every DPR', (lang) => {
+  it.each(['swift', 'kotlin'] as const)('the export equals the device-side inline_placeLines offsets of the generated engine in host %s, for every case at every DPR', (lang) => {
     const keyed = DPRS.flatMap((dpr) => cases.map((n) => ({ key: `${n.case.id}@${dpr}`, n, dpr })));
     const got = parseHostBreaks(runHostBreaks(lang, keyed.map((k) => hostBreakLine(k.key, inputOf(k.n, k.dpr)))));
     expect(got.size).toBe(keyed.length);
