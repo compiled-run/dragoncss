@@ -4045,7 +4045,7 @@ tasks:
   - id: T144
     type: worker
     assignee: Worker
-    status: blocked
+    status: done
     lane: paint
     objective: 'SNAP-1PX: position-absolute-out-of-flow(-rtl) i2 bottom 1px border at DPR 3: native paints 64 coverage where Chrome is solid (iOS 4, Android 4). Snap border edges as Blink does.'
     receipt:
