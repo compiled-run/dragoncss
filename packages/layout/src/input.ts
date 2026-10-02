@@ -117,8 +117,11 @@ export type AspectRatioValue =
   | { readonly kind: 'ratio'; readonly width: number; readonly height: number }
   | { readonly kind: 'auto-ratio'; readonly width: number; readonly height: number };
 
-/** display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. */
-export type Display = 'block' | 'flex';
+/**
+ * display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. inline is the display of an
+ * InlineBox only (CSS2 §9.2.2); a LayoutBox is block or flex.
+ */
+export type Display = 'block' | 'flex' | 'inline';
 /** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
 export type Position = 'static' | 'relative' | 'absolute';
 /** css-overflow-3 §3: hidden makes a scroll container; the validator requires both axes to be equal (the §3.1 computed pair). */
@@ -165,6 +168,12 @@ export type AlignContent =
   | 'start'
   | 'end';
 export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify';
+/** CSS2 §10.8.1 vertical-align keywords. */
+export type VerticalAlignKeyword = 'baseline' | 'sub' | 'super' | 'text-top' | 'text-bottom' | 'middle' | 'top' | 'bottom';
+/** A vertical-align keyword value. */
+export type VerticalAlignKeywordValue = { readonly kind: 'keyword'; readonly value: VerticalAlignKeyword };
+/** CSS2 §10.8.1 vertical-align: a keyword, a length, or a percentage of the element's own line-height. The compiler writes baseline. */
+export type VerticalAlignValue = VerticalAlignKeywordValue | Px | Percent | LengthCalc;
 
 export type LayoutStyle = {
   readonly display: Display;
@@ -209,6 +218,7 @@ export type LayoutStyle = {
   readonly columnGap: GapValue;
   readonly textAlign: TextAlign;
   readonly aspectRatio: AspectRatioValue;
+  readonly verticalAlign: VerticalAlignValue;
 };
 
 /** The font a measurer reads: the family and the computed font size in zoomed px. */
@@ -270,13 +280,39 @@ export type ReplacedLeaf = {
 /** A box-level child: an element or anonymous box, or a replaced leaf. */
 export type LayoutNode = LayoutBox | ReplacedLeaf;
 
-/** Children are either all boxes and replaced leaves or all text leaves: the compiler wraps mixed text in anonymous boxes. */
+/**
+ * An inline box (CSS2 §9.2.2): an element with display inline inside an inline formatting context. Its font and line-height are
+ * the element's own, which its box contributes to every line it is on (CSS2 §10.8.1); its style's display is inline.
+ */
+export type InlineBox = {
+  readonly kind: 'inline';
+  readonly id: string;
+  readonly style: LayoutStyle;
+  readonly font: FontSpec;
+  readonly lineHeight: LineHeightValue;
+  readonly children: readonly InlineChild[];
+};
+
+/** A <br> element: a forced line break (UAX #14 class BK). Its font and line-height are its own; Blink ignores them (INL-P). */
+export type LineBreak = { readonly kind: 'br'; readonly id: string; readonly font: FontSpec; readonly lineHeight: LineHeightValue };
+
+/** The inline-level content of an inline formatting context. */
+export type InlineChild = TextLeaf | InlineBox | LineBreak;
+
+/** The strut of a block container with inline content (CSS2 §10.8.1): the container's own font and line-height. */
+export type LineStrut = { readonly font: FontSpec; readonly lineHeight: LineHeightValue };
+
+/**
+ * Children are either all boxes and replaced leaves or all inline-level (text leaves, inline boxes and line breaks): the compiler
+ * wraps mixed content in anonymous boxes. strut is the box's font and line-height when its children are inline-level, else null.
+ */
 export type LayoutBox = {
   readonly kind: 'box';
   readonly id: string;
   readonly boxType: BoxType;
   readonly style: LayoutStyle;
-  readonly children: readonly (LayoutBox | TextLeaf | ReplacedLeaf)[];
+  readonly strut: LineStrut | null;
+  readonly children: readonly (LayoutBox | ReplacedLeaf | InlineChild)[];
 };
 
 /** The initial containing block in CSS px. */
