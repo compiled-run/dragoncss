@@ -274,10 +274,11 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   it('planted fault dropInheritedText: text font-size reverts to its initial value and the multi-line fixture fails the layout lane', async () => {
     const faulty = await runFixture(specFor('text-wrap-spaces'), browser, { authored: recorded, faults: { ...NO_FAULTS, dropInheritedText: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
     const c = faulty.cases[0] as CaseOutcome;
+    // INL1a: the reverted leaf font no longer equals its container's strut (the element's own, inherited font), so the validator
+    // rejects the layout input (leaf-font) before the layout lane could lay out the wrong size; the fault still fails the case.
     expect(faulty.status).toBe('fail');
-    expect(c.lanes['linux-dragon-layout']).toBe('fail');
-    expect(c.lanes['chrome-dual']).toBe('pass');
-    expect(c.comparison?.problems.some((p) => /^w1:text0:line0: /.test(p))).toBe(true);
+    expect(c.status).toBe('fail');
+    expect(c.reason).toMatch(/^layout input rejected: .*children\[\d+\] leaf-font/);
     expect(outcomes.get('text-wrap-spaces')?.status).toBe('pass');
   });
 

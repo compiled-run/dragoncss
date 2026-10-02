@@ -78,7 +78,7 @@ describe('until the inline core lands, the engine lays out text leaves only', ()
     expect(r.kind === 'unsupported' ? r.unsupported.code : null).toBe('inline-box');
   });
   it('the environment pass zooms the strut and vertical-align, and resolves a vertical-align calculation', () => {
-    const calc = { kind: 'calc', expr: { kind: 'sum', terms: [{ kind: 'px', value: 1 }, { kind: 'px', value: 1 }] } } as const;
+    const calc = { kind: 'calc', expr: { kind: 'sum', terms: [{ kind: 'px', value: 1 }, { kind: 'px', value: 1 }] }, range: 'all' } as const;
     const root = box('root', { verticalAlign: px(3) }, [box('c', { verticalAlign: calc }, [text('t', 'XX')])]);
     const z = zoomInput({ ...input(root), devicePixelRatio: 2 }, NO_ENGINE_FAULTS);
     const c = z.root.children[0] as LayoutBox;
