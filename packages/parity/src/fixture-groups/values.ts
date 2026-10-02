@@ -35,8 +35,11 @@ export const VALUES: readonly FixtureSpec[] = [
   reject('values-reject-font-metric', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1px + 3ex)', 'height: calc(1px + 3ex) /* ex is measured from the primary font'),
   reject('values-reject-line-height-unit', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1px + 2lh)', 'height: calc(1px + 2lh) /* lh is the used line height'),
   reject('values-reject-typed-arithmetic', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px * 2px / 1px)', 'width: calc(10px*2px/1px) /* it multiplies two lengths, which is typed arithmetic'),
-  reject('values-reject-number-length', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 2)', 'width: calc(10px + 2) /* it adds a number and a length'),
+  reject('values-reject-number-length', 'DRAGON_CSS_INVALID_VALUE', 'calc(10px + 2)', '"calc(10px + 2)" is not a valid value for width: calc(10px + 2): it adds a length and a number, which have no common type'),
   reject('values-reject-mod', 'DRAGON_UNSUPPORTED_VALUE', 'mod(10px, 3px)', 'width: mod(10px,3px) is unsupported: mod() is a css-values-4 stepped-value function'),
+  // Chrome drops these (packages/dragon/test/math-validity-oracle/math-validity-chrome.json), so the earlier declaration would win; Dragon reports them invalid.
+  reject('values-reject-invalid-line-width-percent', 'DRAGON_CSS_INVALID_VALUE', 'calc(1px + 5%)', '"calc(1px + 5%)" is not a valid value for border-left-width: calc(1px + 5%): it resolves to a length with a percentage'),
+  reject('values-reject-invalid-flex-grow-percent', 'DRAGON_CSS_INVALID_VALUE', 'calc(1 + 5%)', '"calc(1 + 5%)" is not a valid value for flex-grow: calc(1 + 5%): it adds a number and a percentage'),
   reject('values-reject-percent-gap', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 5%)', 'row-gap: calc(10px + 5%) /* a percentage in this property needs percentage gaps'),
   reject('values-reject-calc-line-height', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1 + 1)', 'line-height: calc(1 + 1) /* a calculation in line-height reaches the font and line metrics'),
   reject('values-reject-calc-font-size', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 1px)', 'font-size: calc(10px + 1px) /* a calculation in font-size reaches the font and line metrics'),

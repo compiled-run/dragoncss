@@ -7,7 +7,7 @@ import { repoPath } from '../src/paths.ts';
 import { trustCoverageProblems } from '../src/lanes.ts';
 import type { DeviceRecord, DeviceSpec } from '../src/device-run.ts';
 import type { SettleState } from '../src/device-run.ts';
-import { ANDROID_IMAGE_API, avdKeys, parseWindowFocus, SETTLE_SAMPLES, SETTLE_START, settleStep, settleTimeoutMessage, avdScale, DEVICE_MATRIX, GLYPH_PLANTS, judgeGlyphPlant, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_AXIS, PLANT_DEVICES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
+import { ANDROID_IMAGE_API, avdKeys, parseWindowFocus, SETTLE_SAMPLES, SETTLE_START, settleStep, settleTimeoutMessage, avdScale, DEVICE_MATRIX, isGlyphPlant, judgeGlyphPlant, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_AXIS, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
 import { emitNativeSupport, SUPPORT_PLANTS } from 'dragon';
 import { GATE_GLYPH_POSITION_DEVICE_PX } from '../src/compare.ts';
 import type { GlyphPosition } from '../src/native-compare.ts';
@@ -133,19 +133,18 @@ describe('raster plants judged against the clean run (T093 ruling A)', () => {
   const ok = { hostErrors: [], frames: 0, lines: 0 };
   it('the constants and one axis per plant', () => {
     expect([PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, PLANT_MARGIN_DEVICE_PX]).toEqual([1, 0.05, 0.2]);
-    // REPL-a: image-offset-1 is the image paint module's raster plant; it moves images, so it has no glyph axis.
-    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'image-offset-1']);
-    expect(GLYPH_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1']);
+    // REPL-a: image-offset-1 is the image paint module's raster plant, a paint plant judged on the drawn replaced cases.
+    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted', 'image-offset-1']);
+    expect(SUPPORT_PLANTS.filter(isGlyphPlant)).toEqual(['glyph-offset-1', 'glyph-offset-y-1']);
+    expect(Object.keys(PLANT_CASES)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'image-offset-1']);
+    expect(Object.keys(PLANT_RULES)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'image-offset-1']);
+    expect(PLANT_RULES['image-offset-1'].test('image-flat:a1:0') && PLANT_RULES['image-offset-1'].test('edge:a1:top') && !PLANT_RULES['image-offset-1'].test('border:a1:top')).toBe(true);
     expect(PLANT_AXIS).toEqual({ 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' });
   });
   it('each plant changes one line of each backend support: its glyph or image offset constant from 0 to 1', () => {
     for (const backend of ['uikit', 'android-views'] as const) {
       const clean = emitNativeSupport(backend).flatMap((f) => f.text.split('\n'));
-      const image = emitNativeSupport(backend, 'image-offset-1').flatMap((f) => f.text.split('\n'));
-      const imageChanged = image.flatMap((l, i) => (l === clean[i] ? [] : [[clean[i], l]]));
-      expect(imageChanged.length, `${backend} image-offset-1`).toBe(1);
-      expect((imageChanged[0] as [string, string])[0]).toMatch(/(dragonImagePlantDevicePx|DRAGON_IMAGE_PLANT_DEVICE_PX)\b.*= 0(\.0)?$/);
-      for (const plant of GLYPH_PLANTS) {
+      for (const plant of SUPPORT_PLANTS.filter(isGlyphPlant)) {
         const planted = emitNativeSupport(backend, plant).flatMap((f) => f.text.split('\n'));
         const changed = planted.flatMap((l, i) => (l === clean[i] ? [] : [[clean[i], l]]));
         expect(changed.length, `${backend} ${plant}`).toBe(1);

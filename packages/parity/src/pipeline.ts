@@ -118,7 +118,8 @@ export function compileFixture(spec: FixtureSpec, faults: CompilerFaults = NO_FA
   const fonts = fontMapOf(spec.id);
   const input = transformInput(fonts === undefined ? fixtureInput(spec) : withFontMapAssets(fixtureInput(spec), fonts));
   const rootFont = spec.kind === 'layout' ? spec.rootFont : 'ahem';
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} }, ...(fonts === undefined ? {} : { fonts }) }, { faults, profiles, direction, platform: REFERENCE_PLATFORM, rootFont });
+  // MQ-a: the native output is the @media band holding the fixed parity viewport, which is exact for every case here.
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} }, ...(fonts === undefined ? {} : { fonts }) }, { faults, profiles, direction, platform: REFERENCE_PLATFORM, rootFont, foldViewport: ENVIRONMENT.viewport });
   return { input, compiled: project.compile(input) };
 }
 

@@ -1,0 +1,2016 @@
+{
+  "about": "Every place Dragon cites a Chrome source file (Blink, Skia, V8, ui/gfx, cc, and third-party code in the Chromium tree), checked by packages/parity/test/chrome-ports.test.ts. See docs/ports.md.",
+  "tag": "145.0.7632.6",
+  "skiaRevision": "2ab8add5be2c46eb6238f4c217f6d6dbc9bccd23",
+  "v8Revision": "4e031e4b6bfa4ba1d203e9bcfe3dc26d47a06b2c",
+  "sources": {
+    "chromium": "https://chromium.googlesource.com/chromium/src/+/refs/tags/145.0.7632.6/{path}?format=TEXT",
+    "skia": "https://skia.googlesource.com/skia/+/2ab8add5be2c46eb6238f4c217f6d6dbc9bccd23/{path without third_party/skia/}?format=TEXT",
+    "v8": "https://chromium.googlesource.com/v8/v8/+/4e031e4b6bfa4ba1d203e9bcfe3dc26d47a06b2c/{path without v8/}?format=TEXT"
+  },
+  "entries": [
+    {
+      "upstream": "cc/layers/tile_size_calculator.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "bc2251dc8cc3e1e03e454618ed60d91102ca2b3593217c2c91bb78ed01482f9e",
+      "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
+      "ranges": [
+        { "lines": "216-237", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dither.ts", "symbol": "ccTileSize", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "cc/trees/layer_tree_settings.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2011 The Chromium Authors",
+      "fileSha256": "cbb39a50655c0128ca4590bd513c40764814f82674b4f59d895de25b09d6e5b8",
+      "headerSha256": "d194664b5cba16d49bb3a929465992ff0030a558619a3c0bc38c35ab21a28559",
+      "ranges": [
+        { "lines": "263-292", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dither.ts", "symbol": "ccTileSize", "use": "port" },
+        { "file": "scripts/capture-skia-aa-oracle.ts", "symbol": "TILE_SIZE", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/animation/animation_effect.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "364b8a074acd63fd2e2243fbf3b4372bcf0aeef652ec2345a772f15d7fd5fac2",
+      "headerSha256": "7fce36fb20afb48e663abb598bae0bc2a92175288d8b927abfb0fb4ba1d369b1",
+      "ranges": [
+        { "lines": "1-411", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-timing.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/animation/animation.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "0537fe62f1afc908b336cb7b03469a087b86a955a1714182bd5457adfabcc1fc",
+      "headerSha256": "7fce36fb20afb48e663abb598bae0bc2a92175288d8b927abfb0fb4ba1d369b1",
+      "ranges": [
+        { "lines": "1-3847", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-timing.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/animation/timing_calculations.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "3761c95b3a58a685deaae7988253f056dffb28cf2ee6568a8f859bc736991833",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "1-461", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-timing.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/animation/timing.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "31dd3c2b4fe7b4df27858c96e9c241806c2eb56ab0d382836309799aee00b85c",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "1-279", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-timing.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/css_font_face_src_value.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2007, 2010 Apple Inc. All rights reserved.",
+      "fileSha256": "465d17a6d5f4b40307237056d7f9cc9a69bc325df11b5ea9aaafb708a1a6698f",
+      "headerSha256": "fc3752063b7c60eeec0d93961bb75d597ec868ba3749570e49e11014b0a0b7bf",
+      "ranges": [
+        { "lines": "1-211", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/cssom.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/css_font_face.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.",
+      "fileSha256": "cc962e27d7427d79a1aa14779eb328206e8d1a841e74dd4ea45e0852120e0382",
+      "headerSha256": "f42c5ca64d19587e3e171438dbc874cc7bf98859398ec7f47260fc5011ae7741",
+      "ranges": [
+        { "lines": "1-319", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "faceMetrics", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/css_font_style_range_value.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-3",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2017 Apple Inc. All rights reserved.",
+      "fileSha256": "b86e398289b00b1738f3baeec539698fcc819758022db6458e24f06412b58ea4",
+      "headerSha256": "e1a67d16705e548c5a819b93f53f729704dafe876b0443fb1fd2a6c4aeb48b7d",
+      "ranges": [
+        { "lines": "1-60", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/cssom.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/css_gradient_value.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2008 Apple Inc.  All rights reserved.; Copyright (C) 2015 Google Inc. All rights reserved.",
+      "fileSha256": "e0c34ef496c8b9b6dc51720898f563888b4e721a55daa403a0b3628d836f642b",
+      "headerSha256": "b20999bab6461f66d0a5d95f159f1aea8d7160988be022b49353ef0d67f0a8f5",
+      "ranges": [
+        { "lines": "1249-1321", "symbol": "EndPointsFromAngle", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dither.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/css_length_resolver.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2022 The Chromium Authors",
+      "fileSha256": "cc97e088a2002d3106c886dfcff90405823cc0825f825b50fe900700cb30f6e1",
+      "headerSha256": "92d2eeedf6b379a7a4915a6328828c4152ebc772d3b4463657eabf539567fa33",
+      "ranges": [
+        { "lines": "11-13", "symbol": "ViewportWidthPercent", "source": "located" },
+        { "lines": "153-311", "symbol": "ZoomedComputedPixels", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/environment.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/input.ts", "symbol": "EmLength", "use": "port" },
+        { "file": "packages/layout/src/platform-rules.ts", "symbol": "dprPlatformRules", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/css_markup.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "css-syntax-3 ident grammar and CSSOM \"serialize a string\"; IsInvalidFontFamily is in BSD css_parsing_utils.cc",
+        "proof": [
+          "packages/dragon/test/escapes.test.ts",
+          "packages/dragon/test/fonts/wire.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2003 Lars Knoll (knoll@kde.org); Copyright (C) 2005 Allan Sandfeld Jensen (kde@carewolf.com); Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Apple Inc.",
+      "fileSha256": "aef78017309217867838697b7f8bb6914f284b3e510e308c70caf8f90819e48a",
+      "headerSha256": "7044b06fd4b506e942646b23a9088fe49059301c5c885033fc8dbf649844764f",
+      "ranges": [
+        { "lines": "43-72", "symbol": "IsCSSTokenizerIdentifier", "source": "located" },
+        { "lines": "125-143", "symbol": "SerializeString", "source": "located" },
+        { "lines": "155-161", "symbol": "SerializeFontFamily", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "isTokenizerIdentifier", "use": "reference" },
+        { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "serializeFamilyName", "use": "reference" },
+        { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "serializeString", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/css_math_expression_node.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2011, 2012 Google Inc. All rights reserved.",
+      "fileSha256": "d2c912b1111507d85a9799357a224422fffaab522df90584adb6d760ad3a6591",
+      "headerSha256": "bdbec54d83d7d5938b18c678b35f38e55f880fb063dc815d76315d6a2e4000ce",
+      "ranges": [
+        { "lines": "1043-1095", "symbol": "MaybeSimplifySumOrProductNode", "source": "located" },
+        { "lines": "1109-1174", "symbol": "MaybeDistributeArithmeticOperation", "source": "located" },
+        { "lines": "1769-1805", "symbol": "CSSMathExpressionOperation::CreateComparisonFunction", "source": "located" },
+        { "lines": "2229-2324", "symbol": "CSSMathExpressionOperation::CreateArithmeticOperationSimplified", "source": "located" },
+        { "lines": "4093-4945", "symbol": "CSSMathExpressionNodeParser", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/math.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/environment.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/css_math_function_value.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "f6e7fe6985f31285422ba326b0b1fcd5af0a9837d9dff8dd514f6377d6f5a002",
+      "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
+      "ranges": [
+        { "lines": "1-267", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/environment.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/css_primitive_value.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation (the constants INT_MAX / 64 - 2 and INT_MIN / 64 + 2)",
+        "proof": [],
+        "task": "T120",
+        "note": "no Chrome golden yet; T120 CALC-2 adds one"
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2004, 2005, 2006, 2007, 2008, 2012 Apple Inc. All rights",
+      "fileSha256": "8308dc0fd40573c1a29cd40e6c05d3dcc7b4827e3cd27ecada792efc0e0084c0",
+      "headerSha256": "1e9851604ded024932b1faf32ac34284f5dc88020b49fd177d9d2dd5f93ffc8f",
+      "ranges": [
+        { "lines": "50-51", "symbol": "kMaxValueForCssLength", "source": "located" },
+        { "lines": "52-53", "symbol": "kMinValueForCssLength", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/units.ts", "symbol": "CSS_LENGTH_MAX", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/css_primitive_value.h",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "css-values-4 §6.2 (absolute lengths)",
+        "proof": [
+          "packages/dragon/test/units.test.ts:33-36"
+        ]
+      },
+      "note": "The ratios Dragon cites here are defined in the LGPL css_resolution_units.h and resolution_units.h at the tag, not in this file; Dragon takes them from css-values-4 §6.2.",
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2004, 2005, 2006, 2008 Apple Inc. All rights reserved.; Copyright (C) 2007 Alexey Proskuryakov <ap@webkit.org>",
+      "fileSha256": "78d2f9d949ecd880355304170b21dd3643dd2d74249dfad39344a14d31885180",
+      "headerSha256": "f643d338f71000f37abff404deadb402156b49e4d0490245105de875e426b86d",
+      "ranges": [
+        { "lines": "1-515", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/units.ts", "symbol": "PX_PER_IN", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/css_to_length_conversion_data.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "feb42e54e8f7de8bb802de0eccd056b1a5f470b57435cb0e7ef34b5cc968563d",
+      "headerSha256": "7fce36fb20afb48e663abb598bae0bc2a92175288d8b927abfb0fb4ba1d369b1",
+      "ranges": [
+        { "lines": "90-110", "symbol": "FontSizes", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/css_unicode_range_value.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2008 Apple Inc. All rights reserved.",
+      "fileSha256": "196362a02b14c6d0337dc021d9dc0f299e64f17eb05286efd50a73e8d021bd37",
+      "headerSha256": "02ae0a5b33694d783423f39600bef4fa9ef6648c18c43dfcf35c58f814630a82",
+      "ranges": [
+        { "lines": "1-45", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/cssom.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/font_face_cache.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "39ae4e8d5d0fe317e96d40964bb11bbf03d8aaad78350d4c0395d80e356e9c8d",
+      "headerSha256": "c9e82bc87d5a5f74f8c804ab9c29ae368a7a798ae08152cf6e18d9c8dd4d734b",
+      "ranges": [
+        { "lines": "193-203", "symbol": "GetOrCreate", "source": "located" },
+        { "lines": "205-238", "symbol": "FontSelectionQueryResult::GetOrCreate", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "bestSegmentedFace", "use": "port" },
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "segmentedFaces", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/font_face_cache.h",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "409a34631f089e3c614d0be65f4733b52d5e5ba0a4ae31567964edd73c2d07ee",
+      "headerSha256": "c9e82bc87d5a5f74f8c804ab9c29ae368a7a798ae08152cf6e18d9c8dd4d734b",
+      "ranges": [
+        { "lines": "1-183", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "foldFamily", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/font_face.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "b02eabfd3b6e25e7de92462f3322d4bfb0d7e36c8cf89c357e4c747e7dfb39e8",
+      "headerSha256": "7fce36fb20afb48e663abb598bae0bc2a92175288d8b927abfb0fb4ba1d369b1",
+      "ranges": [
+        { "lines": "136-157", "symbol": "FontFace::Create", "source": "located" },
+        { "lines": "615-881", "symbol": "GetFontSelectionCapabilities", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/font-face.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/fonts/font-face.ts", "symbol": "parseFontFace", "use": "port" },
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "capabilitiesOf", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/parser/at_rule_descriptor_parser.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "d4666719469cfc521af0fa686dcca958466374a450e77539e56c0069c4e824f2",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "338-416", "symbol": "AtRuleDescriptorParser::ParseFontFaceDescriptor", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/font-face.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/fonts/font-face.ts", "symbol": "parseDescriptor", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/properties/css_parsing_utils.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "f779a32927a4eddcbb5f917f841d260885393ef6d110a568ab4d90d3b5388cf7",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "4174-4179", "symbol": "IsInvalidFontFamily", "source": "located" },
+        { "lines": "5989-6010", "symbol": "ConsumeFontFamily", "source": "located" },
+        { "lines": "6031-6033", "symbol": "ConsumeGenericFamily", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/grid-values.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/css/math.ts", "symbol": "MathGrammar", "use": "port" },
+        { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "isInvalidFontFamily", "use": "port" },
+        { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "parseFamilyList", "use": "port" },
+        { "file": "packages/dragon/src/fonts/font-face.ts", "symbol": null, "use": "port" },
+        { "file": "packages/parity/src/font-reference.ts", "symbol": "PARSER_GENERICS", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/resolver/style_builder_converter.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-4",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "fbcaab58dff20fe59a784f851858ac5943db7a0f76548ac45d589440e2333bec",
+      "headerSha256": "8344006ca2b0ef81dcc0bb8f77b6545e0d86cb9b232146f5ad5966ed7dd3de6c",
+      "ranges": [
+        { "lines": "1961-1994", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/chrome-deviations-dpr.ts", "symbol": "dprChromeDeviations", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/selector_checker.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation (probed :empty behaviour)",
+        "proof": [
+          "packages/dragon/test/selectors.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2006, 2007 Nicholas Shanks (webkit@nickshanks.com); Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Apple Inc.",
+      "fileSha256": "ff5083824a54be5bcee67c4bf27e9c7885b819d8fb8de766f45e49518835e0ce",
+      "headerSha256": "8f34c112d98563729bfe647301dff3680c12c0f1900624d05b120fb55d11ca4c",
+      "ranges": [
+        { "lines": "1-3943", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/match.ts", "symbol": "isEmpty", "use": "reference" },
+        { "file": "packages/parity/src/compiler-deviations.ts", "symbol": "compilerChromeDeviations", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/frame/local_frame_view.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation (measured rule record)",
+        "proof": [
+          "packages/layout/test/calc.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1998, 1999 Torben Weis <weis@kde.org>; Copyright (C) 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.; Copyright (C) 2009 Google Inc. All rights reserved.",
+      "fileSha256": "4ef883084a6da5e8224698a83931b583e9c0e53cf97d372ee379a2d48b09af5d",
+      "headerSha256": "d6c467745c5d69f594d702db6059b157be0ba5847bbb56a9a156e6154e31ff79",
+      "ranges": [
+        { "lines": "893-907", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/platform-rules.ts", "symbol": "dprPlatformRules", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/html/forms/html_button_element.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "HTML button layout (the rendering section for button)",
+        "proof": [
+          "packages/dragon/test/forms/forms.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2004, 2005, 2006, 2007, 2010 Apple Inc. All rights reserved.; Copyright (C) 2007 Samuel Weinig (sam@webkit.org)",
+      "fileSha256": "cf90dbe7307fb8e9c01d52c32146a6653ff3b8822b1f108093c21339270ab68d",
+      "headerSha256": "5ce99f156d905536f77617d96b38d885d2f8a038155bee4b748c195f2b764fe5",
+      "ranges": [
+        { "lines": "59-74", "symbol": "CreateLayoutObject", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/button-inner.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/html/forms/range_input_type.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2010 Google Inc. All rights reserved.; Copyright (C) 2011 Apple Inc. All rights reserved.",
+      "fileSha256": "81498efad66ad07ff0f7d92b2839caa6359a6d5af3d85f8e726c821f602433a3",
+      "headerSha256": "197231ebf03469885c9b8cf54c5b7a7bd70edd943f314c02ee35bfdc14c8f33c",
+      "ranges": [
+        { "lines": "75-78", "symbol": "EnsureMaximum", "source": "located" },
+        { "lines": "147-171", "symbol": "CreateStepRange", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/range-value.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/html/forms/step_range.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "HTML range state (step, step base, step mismatch, value sanitisation) and Chrome 145 captures; range-value.ts was rewritten clean-room in T123 and cites this file only to say so",
+        "proof": [
+          "packages/dragon/test/forms/forms.test.ts"
+        ],
+        "task": "T123",
+        "note": "clean-room rewrite done in T123 from spec text and Chrome observations; the port uses were dropped"
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.",
+      "fileSha256": "f68aef2e7397f260038ea1ccfc7fa4e4e5874d4009a4016480bf25af094e82f3",
+      "headerSha256": "9d4ccd08befb58fd3f74eb52150187efdbc363a5a69fc6623056675ac69dbab6",
+      "ranges": [
+        { "lines": "85-99", "symbol": "ClampValue", "source": "located" },
+        { "lines": "145-148", "symbol": "RoundByStep", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/range-value.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/html/forms/step_range.h",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "HTML range state (default value) and Chrome 145 captures; range-value.ts was rewritten clean-room in T123 and cites this file only to say so",
+        "proof": [
+          "packages/dragon/test/forms/forms.test.ts"
+        ],
+        "task": "T123",
+        "note": "clean-room rewrite done in T123 from spec text and Chrome observations; the port uses were dropped"
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.",
+      "fileSha256": "2499ed17a3472c867f3fd5ebb04fe41774482304f05bc366d8f4c8b622fd95e5",
+      "headerSha256": "9d4ccd08befb58fd3f74eb52150187efdbc363a5a69fc6623056675ac69dbab6",
+      "ranges": [
+        { "lines": "1-134", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/range-value.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/html/html_document.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "HTML §4.16.2 (case-insensitive attribute list)",
+        "proof": [
+          "packages/dragon/test/selectors.test.ts",
+          "scripts/capture-selector-validity.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights; Copyright (C) 2002 Netscape Communications Corporation.",
+      "fileSha256": "c8fbc678b2b9b9c6383f31cb9687f08fceec862c1eab32f56a0ae59c6ed87577",
+      "headerSha256": "a5d0dc6cc3679382eb38a8269d422a88278e27925b9c869c99f908384ed60929",
+      "ranges": [
+        { "lines": "118-197", "symbol": "HTMLDocument::IsCaseSensitiveAttribute", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/match.ts", "symbol": "HTML_CASE_INSENSITIVE_ATTRIBUTES", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/html/parser/html_parser_idioms.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-5",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2010 Apple Inc. All rights reserved.",
+      "fileSha256": "d2e456efb101836e5987e00e37752876aeb606c257b38ca2db301ccc32487a1c",
+      "headerSha256": "11ffc2344a40d4c038d91b50123ea8f206b6f4bf5d67fd308473782b33310512",
+      "ranges": [
+        { "lines": "96-102", "symbol": "SerializeForNumberType", "source": "located" },
+        { "lines": "110-133", "symbol": "ParseToDecimalForNumberType", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/range-value.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/block_layout_algorithm_utils.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "f250fc24a9070e564c09355a2f9c17ce385ecdb74364c8b5e5c4d4c8830d38e9",
+      "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
+      "ranges": [
+        { "lines": "185-231", "symbol": "AlignBlockContent", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/button-inner.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/absolute_utils.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "46fa3e1ac5646589f28326891f1e82bb403084d84e6c31ebc26bc2feadd845a9",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "659-815", "symbol": "ComputeOofInlineDimensions", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": "ratioAbsoluteInlineSize", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/block_layout_algorithm.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "bd6ddcc1b72372d05d3af299fa634ea536d9edc87591badffac1224898ab8fea",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "1311-1316", "symbol": null, "source": "cited" },
+        { "lines": "1365-1375", "symbol": null, "source": "cited" },
+        { "lines": "3936-3945", "symbol": "AdjustSliderThumbInlineOffset", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/range-geometry.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/block_node.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "8ec81b94c36402c2e9b0fc9d4d773838129ff7b5fc227c5d4a38fd6d361ae009",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "932-1110", "symbol": "BlockNode::ComputeMinMaxSizes", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": "ratioContentInlineSize", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 The Chromium Authors",
+      "fileSha256": "b0ea68654c62d2ca1d73d801ffca395901aa37e51569281266fc9ef87a9e892c",
+      "headerSha256": "bb164409c6a3593ec3b8bb889d907af0efb2e323920ac00bd35aa1f81101ab72",
+      "ranges": [
+        { "lines": "1581-1583", "symbol": null, "source": "cited" },
+        { "lines": "1581-1591", "symbol": "ApplyReversals", "source": "located" },
+        { "lines": "1759-1763", "symbol": null, "source": "cited" },
+        { "lines": "1945-1946", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/flex/line_flexer.cc",
+      "citedAs": [
+        "flexible_box_algorithm.cc"
+      ],
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2024 The Chromium Authors",
+      "fileSha256": "3d5c9c081382f8233210cdb900df69b648d91d546700a42d6e8039d40b1c2327",
+      "headerSha256": "fa52d121cb76cc736e8135134d68e0e6cc5d20dadfddf872088c109adf641532",
+      "ranges": [
+        { "lines": "88-180", "symbol": "ResolveFlexibleLengths", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/units.ts", "symbol": "FACTOR_ZERO", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/fragment_item.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "e117ab909cda771851af2ea956c5b6341b7e742aac2222e480a4ea8304c837f1",
+      "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
+      "ranges": [
+        { "lines": "1-1346", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/line_breaker.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "a2c1fc9940828cc9863b4c1c6aca04b0488e19c015ec800743258ca01815cfd3",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "1807-1990", "symbol": "HandleTextForFastMinContent", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/inline.ts", "symbol": "cachedWidth", "use": "port" },
+        { "file": "packages/layout/src/units.ts", "symbol": "cachedRangeWidth", "use": "port" },
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/line_utils.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 The Chromium Authors",
+      "fileSha256": "9459f6f1bc6e248181acb000d8ec8a5f1c3460a8b85b0d67ec5cc68562119df1",
+      "headerSha256": "bb164409c6a3593ec3b8bb889d907af0efb2e323920ac00bd35aa1f81101ab72",
+      "ranges": [
+        { "lines": "32-41", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "faceMetrics", "use": "port" },
+        { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/layout_text.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation (named in a report string only)",
+        "proof": [],
+        "note": "a report string names the file; nothing is ported"
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2004, 2005, 2006, 2007 Apple Inc. All rights reserved.; Copyright (C) 2006 Andrew Wellington (proton@wiretapped.net); Copyright (C) 2006 Graham Dennis (graham.dennis@gmail.com)",
+      "fileSha256": "3cd1f99d0f5d759bc8131d0b1b0175b11add36c03ef044b97b65238b385ad4d7",
+      "headerSha256": "b1f2b0188cce9d58964ec57b2186a6553a9e62faad8e564ffe2abcbc15c65ea6",
+      "ranges": [
+        { "lines": "1-1513", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/layout_theme.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "css-ui-4 devolvable widgets and the captured devolve probe",
+        "proof": [
+          "packages/dragon/test/forms/forms.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2012 Apple Computer, Inc.",
+      "fileSha256": "67fa71e08b2f0fa53e4343db3f8d64d5f4508a7a075bd0fbb55c6cd1876522e2",
+      "headerSha256": "d3ab780001da94384ef639818ae923b81605e935bd7cc08a97334f4f0aec4f2c",
+      "ranges": [
+        { "lines": "175-184", "symbol": "LayoutTheme::AdjustAppearanceWithAuthorStyle", "source": "located" },
+        { "lines": "440-462", "symbol": "IsControlStyled", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/appearance.generated.ts", "symbol": "APPEARANCE_PROBE", "use": "reference" },
+        { "file": "packages/dragon/src/forms/appearance.ts", "symbol": null, "use": "reference" },
+        { "file": "scripts/capture-form-data.ts", "symbol": "appearanceModule", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/layout_view.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation (measured rule record)",
+        "proof": [
+          "packages/layout/test/calc.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Apple Inc.",
+      "fileSha256": "a0c1b3b73187955b3e6d3174868074a80885e21090716b9c574f3d69b1376bd7",
+      "headerSha256": "126acb7adc8a7a5f8ab74c20369d7220f94e6396a4561e70f12b3bed2ef38195",
+      "ranges": [
+        { "lines": "896-907", "symbol": "SubtractUnconditionalScrollbarsFromViewportUnits", "source": "located" },
+        { "lines": "909-931", "symbol": null, "source": "cited" },
+        { "lines": "909-915", "symbol": "SmallViewportSizeForViewportUnits", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/platform-rules.ts", "symbol": "dprPlatformRules", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/length_utils.cc",
+      "citedAs": [
+        "ng_length_utils.cc"
+      ],
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "d2bc7f5f4c1b32261b67ab761cd1a34b6829522538a07a9ed36bafe959f25199",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "164-283", "symbol": "ResolveBlockLengthInternal", "source": "located" },
+        { "lines": "285-297", "symbol": "InlineSizeFromAspectRatio", "source": "located" },
+        { "lines": "299-312", "symbol": "BlockSizeFromAspectRatio", "source": "located" },
+        { "lines": "531-603", "symbol": "ComputeInlineSizeForFragmentInternal", "source": "located" },
+        { "lines": "699-719", "symbol": "ComputeTransferredMinMaxInlineSizes", "source": "located" },
+        { "lines": "721-739", "symbol": "ComputeTransferredMinMaxBlockSizes", "source": "located" },
+        { "lines": "762-804", "symbol": "ComputeMinMaxInlineSizes", "source": "located" },
+        { "lines": "1555-1574", "symbol": "ResolveInlineAutoMargins", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" },
+        { "file": "packages/layout/src/box.ts", "symbol": "resolveMinLength", "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": "blockFromRatio", "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": "inlineFromRatio", "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": "ratioBlockLevelInlineSize", "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": "transferredBlockMinMax", "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": "transferredInlineMinMax", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/box_border_painter.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "df610e882fc43bb756e031a1741f4516ab82a655b7cbd6f30e73946ccdaf4fa9",
+      "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
+      "ranges": [
+        { "lines": "354-365", "symbol": "kStylePriority", "source": "cited" },
+        { "lines": "369-374", "symbol": null, "source": "cited" },
+        { "lines": "398-498", "symbol": "EnforceDotsAtEndpoints", "source": "cited" },
+        { "lines": "500-559", "symbol": "DrawLineWithStyle", "source": "cited" },
+        { "lines": "561-596", "symbol": "DrawDashedOrDottedBoxSide", "source": "cited" },
+        { "lines": "647-752", "symbol": "DrawDoubleBoxSide", "source": "cited" },
+        { "lines": "839-898", "symbol": "DrawSolidBoxSide", "source": "cited" },
+        { "lines": "900-956", "symbol": "DrawLineForBoxSide", "source": "cited" },
+        { "lines": "1145-1215", "symbol": "ComplexBorderInfo", "source": "cited" },
+        { "lines": "1523-1567", "symbol": "PaintOpacityGroup", "source": "cited" },
+        { "lines": "1569-1649", "symbol": "PaintSide", "source": "cited" },
+        { "lines": "1651-1680", "symbol": "ComputeMiter", "source": "cited" },
+        { "lines": "1651-1694", "symbol": "ComputeMiter", "source": "cited" },
+        { "lines": "1696-1751", "symbol": "PaintOneBorderSide", "source": "cited" },
+        { "lines": "2006-2437", "symbol": "ClipBorderSidePolygon", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/contoured_border_geometry.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "24830dab3c718f430ed4938e24202dbc51a05c0ee8632ecf5e9ab47d51ef0cb6",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "207-231", "symbol": "PixelSnappedContouredInnerBorder", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": "innerBorderRect", "use": "port" },
+        { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/style/border_edge.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "fef1b151ca68c0bab96d68592dc93857eb1c37da61881127b0a73168c3bc8f67",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "1-93", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/style/computed_style.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation (one rounding formula)",
+        "proof": [
+          "packages/layout/test/dpr-rules.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Antti Koivisto (koivisto@kde.org); Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights; Copyright (C) 2011 Adobe Systems Incorporated. All rights reserved.",
+      "fileSha256": "dd5e966d32e824816c0c3467aedadf2c000e87b45819b639cd9613a5d1dad35c",
+      "headerSha256": "e0e2a0ae9decc58db06d38b191654021bb1aa376f267038c0c3095e572dc0b0f",
+      "ranges": [
+        { "lines": "2568-2585", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/units.ts", "symbol": "lineHeightFromNumber", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/style/computed_style.h",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation (one rounding formula)",
+        "proof": [
+          "packages/layout/test/dpr-rules.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2000 Lars Knoll (knoll@kde.org); Copyright (C) 2003, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All; Copyright (C) 2006 Graham Dennis (graham.dennis@gmail.com)",
+      "fileSha256": "283024a1777d69206ec3e48a198f36ca71d62edb0212224bbbaf2d9dde4c5433",
+      "headerSha256": "efcda54144b7f80aeac0ea2b8441812ee1603c4a5609b9e7cd2c493f44a66444",
+      "ranges": [
+        { "lines": "893-895", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/units.ts", "symbol": "lineHeightFromNumber", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/style/computed_style_constants.h",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation (the constant kMaximumAllowedFontSize, 10000px)",
+        "proof": [],
+        "note": "no Chrome golden yet; cited by V2a after the T118J ruling and recorded in the same class as CSS_LENGTH_MAX"
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2000 Lars Knoll (knoll@kde.org); Copyright (C) 2003, 2005, 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights; Copyright (C) 2006 Graham Dennis (graham.dennis@gmail.com); Copyright (C) 2009 Torch Mobile Inc. All rights reserved.",
+      "fileSha256": "8a04e6960c90066a23dbc9bb1837cc63a9ae0ebe2af182e1e0e2ffee50e1c8ff",
+      "headerSha256": "abda5ae9ccdb3adc40ac7477a533b61d4a7b5870ba1d93f61451bd6e18f41fc3",
+      "ranges": [
+        { "lines": "452-452", "symbol": "kMaximumAllowedFontSize", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/units.ts", "symbol": "MAX_FONT_SIZE", "use": "reference" },
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": "styleRank", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/font_cache_key.h",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-6",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "2fdf68d360734ead8f18ad295949e2cef37f503d189b8108dc852ec12e9e9045",
+      "headerSha256": "81775e8f5447f6cd3727abda090d27ebd9a65017d84feea11af07557efeee18e",
+      "ranges": [
+        { "lines": "53-53", "symbol": "kFontSizePrecisionMultiplier", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/platform-rules.ts", "symbol": "platformRules", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/font_custom_platform_data.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2007 Apple Computer, Inc.; Copyright (c) 2007, 2008, 2009, Google Inc. All rights reserved.; Copyright (C) 2010 Company 100, Inc.",
+      "fileSha256": "85eb68acba3d4f65644869eed667e33b12ce673586c955053f1f8ccf94e91a60",
+      "headerSha256": "da421d66838d5e3ce5f0f2890a97cc78a19e02a1b8199cd4499dd6383d986de6",
+      "ranges": [
+        { "lines": "1-342", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/text-shaper/src/dragon_hb.zig", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/font_description.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-7",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2007 Nicholas Shanks <contact@nickshanks.com>; Copyright (C) 2008 Apple Inc. All rights reserved.",
+      "fileSha256": "23aba4a23205793ecb0aa522a0f6ff0f467cf9aee6d30e8c71f82182bbc3085e",
+      "headerSha256": "dcfdfba8b1fa8ad948b1e5a99351360cac40df3b4f00bf86e279215a61048e0a",
+      "ranges": [
+        { "lines": "268-279", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/platform-rules.ts", "symbol": "platformRules", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/font_family.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2004, 2008 Apple Inc. All rights reserved.",
+      "fileSha256": "8b16f91b97c6a93fb560ce1b9b6c3f69b4214f6bcd10471d7e8fe7791b23f13a",
+      "headerSha256": "806f7069d7c239c682f2b54e88341109bd0769c852390103ed2436a88868fd35",
+      "ranges": [
+        { "lines": "1-76", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "INFERRED_GENERIC", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/font_metrics.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-7",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2005, 2008, 2010 Apple Inc. All rights reserved.; Copyright (C) 2006 Alexey Proskuryakov",
+      "fileSha256": "814bbbd68b88860d0f47efa133dd4cb05fb22ed040e19288784dc0e954b15bdc",
+      "headerSha256": "1819cc0f332f19641dad06debe90c9b3584a2b6a3f77e11e09133d478e9a58f5",
+      "ranges": [
+        { "lines": "48-143", "symbol": "FontMetrics::AscentDescentWithHacks", "source": "located" },
+        { "lines": "111-112", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/platform-rules.ts", "symbol": "platformRules", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/font_selection_algorithm.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-8",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2017 Apple Inc. All rights reserved.",
+      "fileSha256": "572b23af8c7a2e1da7d071fec25275a28b6bff9a34f3a9ab964e92a6cadfa65b",
+      "headerSha256": "861bdb3d7303ac86cf0807ee41baca678cf91e6cbddfdccf030af51bc818467e",
+      "ranges": [
+        { "lines": "30-51", "symbol": "StretchDistance", "source": "located" },
+        { "lines": "53-96", "symbol": "StyleDistance", "source": "located" },
+        { "lines": "98-135", "symbol": "WeightDistance", "source": "located" },
+        { "lines": "137-159", "symbol": "IsBetterMatchForRequest", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "FontSelectionAlgorithm", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/font_selection_types.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-8",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2017 Apple Inc. All rights reserved.",
+      "fileSha256": "cfa2e3fecccb2374c1bcbc9966d044a958ad5fa103d60ffdcbc0255b07796782",
+      "headerSha256": "861bdb3d7303ac86cf0807ee41baca678cf91e6cbddfdccf030af51bc818467e",
+      "ranges": [
+        { "lines": "32-39", "symbol": "GetHash", "source": "located" },
+        { "lines": "47-52", "symbol": "FontSelectionCapabilitiesHashTraits::GetHash", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/wtf-hash.ts", "symbol": "capabilitiesHash", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/font_selection_types.h",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-8",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2017 Apple Inc. All rights reserved.",
+      "fileSha256": "b6aa81f0efbff07799bd2a99daaedd5ded9e91b95389da45da451cd6f4cea84e",
+      "headerSha256": "861bdb3d7303ac86cf0807ee41baca678cf91e6cbddfdccf030af51bc818467e",
+      "ranges": [
+        { "lines": "215-216", "symbol": "kUltraCondensedWidthValue", "source": "located" },
+        { "lines": "238-239", "symbol": "kUltraExpandedWidthValue", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "expand", "use": "port" },
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "FontSelectionCapabilities", "use": "port" },
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "FontSelectionRange", "use": "port" },
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "FontSelectionValue", "use": "port" },
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "fsv", "use": "port" },
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "kItalicThreshold", "use": "port" },
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "sub", "use": "port" },
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "uniqueValue", "use": "port" },
+        { "file": "packages/dragon/src/fonts/selection.ts", "symbol": "WIDTH_KEYWORD_VALUES", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/script_run_iterator.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "a75e64d38149f32367fbcda6f687fc99e015bbd41963829b5295aadf2ec61da8",
+      "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
+      "ranges": [
+        { "lines": "1-519", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/shaping.ts", "symbol": null, "use": "port" },
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/text-shaper/src/script.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/shaping/font_features.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2021 The Chromium Authors",
+      "fileSha256": "e5f7c3351ff8d87c3c6329f125e9447511ee54f43fe72f4fa00036f0cc598c41",
+      "headerSha256": "40ecbf467cce38f1e17971fdcdfe424a7eaa7178173604fc79e6715eb35f11a8",
+      "ranges": [
+        { "lines": "1-272", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/shaping/han_kerning.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "d4c7528a883922111e8c395d6f248dab0592167f5b813649c6a8a49df8b05bca",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "412-549", "symbol": "FontData", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/shaping.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/shaping.ts", "symbol": "HanKerningFontData", "use": "port" },
+        { "file": "packages/layout/test/shaping-gate.test.ts", "symbol": "hanKerningData", "use": "reference" },
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/text-shaper/src/han-kerning.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/shaping/harfbuzz_face.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2012 Google Inc. All rights reserved.",
+      "fileSha256": "3fda0277ebddca6cc3f20bf40b0b1e875fe6b469182d0689a2bcd3710fc3eca0",
+      "headerSha256": "20a2b7cee64da20f4ed0a8fc06dac88ff51f87bdccab046a910b4a20582aac28",
+      "ranges": [
+        { "lines": "1-668", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/text-shaper/src/dragon_hb.zig", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/shaping/harfbuzz_shaper.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2012 Google Inc. All rights reserved.; Copyright (C) 2013 BlackBerry Limited. All rights reserved.",
+      "fileSha256": "91c9bde5b279dcf7a1634b586493bcaaf19425fbadf537e2b9c8f2260c15439e",
+      "headerSha256": "ca25e400635fa86af97842949c0c73ca4f5541c4d25d72a2cf8639d232e4c6d3",
+      "ranges": [
+        { "lines": "1-1215", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/shaping/run_segmenter.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "05409314336878f97d63729054d7ab5fdfec182880af0e0ccc27cfe84d89a172",
+      "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
+      "ranges": [
+        { "lines": "1-75", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/shaping.ts", "symbol": null, "use": "port" },
+        { "file": "packages/text-shaper/src/script.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/shaping/shape_result_view.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 The Chromium Authors",
+      "fileSha256": "91b14adeb7785a31cf7415815148ec43b6d2cc6ea5c8cfc54d77e5d1dd64908d",
+      "headerSha256": "bb164409c6a3593ec3b8bb889d907af0efb2e323920ac00bd35aa1f81101ab72",
+      "ranges": [
+        { "lines": "1-765", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/shaping.ts", "symbol": null, "use": "port" },
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/text-shaper/src/blink.ts", "symbol": null, "use": "port" },
+        { "file": "packages/text-shaper/src/blink.ts", "symbol": "sumAdvances", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/shaping/shape_result.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2012 Google Inc. All rights reserved.; Copyright (C) 2013 BlackBerry Limited. All rights reserved.",
+      "fileSha256": "e0feb113310b685bb06de98869235306da4e73e69ef67690f15159c6d4a84322",
+      "headerSha256": "ca25e400635fa86af97842949c0c73ca4f5541c4d25d72a2cf8639d232e4c6d3",
+      "ranges": [
+        { "lines": "1-2508", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/shaping.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/shaping.ts", "symbol": "sumAdvances", "use": "port" },
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/text-shaper/src/blink.ts", "symbol": null, "use": "port" },
+        { "file": "packages/text-shaper/src/blink.ts", "symbol": "sumAdvances", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/shaping/shaping_line_breaker.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "de51234dd4feaeef561a14780702cf124e9c7c5e31466aa4cb265803bfc53e6b",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "1-704", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/shaping.ts", "symbol": null, "use": "port" },
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/text-shaper/src/blink.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/simple_font_data.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-7",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2005, 2008, 2010 Apple Inc. All rights reserved.; Copyright (C) 2006 Alexey Proskuryakov",
+      "fileSha256": "d1faaff725559a494b1e6ffaa8c4ee9a7a718dd0117317756cca98c4794dfb5d",
+      "headerSha256": "1819cc0f332f19641dad06debe90c9b3584a2b6a3f77e11e09133d478e9a58f5",
+      "ranges": [
+        { "lines": "115-222", "symbol": "SimpleFontData::PlatformInit", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "faceMetrics", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/skia/skia_text_metrics.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "376a90b1af745815356bffb02cd3cd16e28c24ecc3daad274715d8578a93ee19",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "1-186", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/text-shaper/src/dragon_hb.zig", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/web_font_typeface_factory.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "b0bbfb2ef9804f9386e3f6d88040c2637292e6237fbb2a5d8376eff7bb73cfbf",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "1-216", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/geometry/calculation_expression_node.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "a15c1761e3d3d05e07bbdbb1cb248bebd1a09129014567c7f94d9d4c6f475b64",
+      "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
+      "ranges": [
+        { "lines": "1-787", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/calc.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/geometry/calculation_value.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "54ae24ea1f3c1b078106bb2c3db363760082eb0b579f6a62a8e0576010fa2171",
+      "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
+      "ranges": [
+        { "lines": "1-197", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/calc.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/geometry/layout_unit.h",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2012, Google Inc. All rights reserved.",
+      "fileSha256": "24284dbab23a6b09f66ba2d7cee94b351b4c6a065a77f2e306ef132a07d84157",
+      "headerSha256": "d983311734bf8ff4077bb863da4446d13a9735f0705deb3bba3ca7e61af93b53",
+      "ranges": [
+        { "lines": "1-882", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/units.ts", "symbol": null, "use": "port" },
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/geometry/length_functions.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation (one-line float order)",
+        "proof": [
+          "packages/layout/test/units.test.ts",
+          "packages/layout/test/dpr-rules.test.ts",
+          "packages/layout/test/calc.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2006, 2008 Apple Inc. All rights reserved.; Copyright (C) 2011 Rik Cabanier (cabanier@adobe.com)",
+      "fileSha256": "336e1c971a0dae24c0e08c9dc634a38a53957adc7364677986e5dce81907377d",
+      "headerSha256": "ec77fd6e6c5b953711352cee8d9153507376057bdd4801fef71c32b78071c8b9",
+      "ranges": [
+        { "lines": "96-120", "symbol": "ValueForLength", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/units.ts", "symbol": "percentOf", "use": "reference" },
+        { "file": "packages/layout/src/units.ts", "symbol": "pixelsAndPercentPlainOrder", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/graphics/gradient.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2006, 2007, 2008, 2010 Apple Inc. All rights reserved.; Copyright (C) 2007 Alp Toker <alp@atoker.com>; Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "8f6b3277b64d87a6829b7af8915413875cb76192efc0059f243a589913587325",
+      "headerSha256": "12138dbd32a7ef8a0bd350a50805aafd04ea8af4ac6d7486df82790f33b68759",
+      "ranges": [
+        { "lines": "129-211", "symbol": "FillSkiaStops", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dither.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/graphics/graphics_context.cc",
+      "citedAs": [
+        "GraphicsContext.cc"
+      ],
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-8",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2003, 2004, 2005, 2006, 2009 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "9593e9d4cee4332d0b6e70280960448b0c7f8a18f6ef7d0b686a6ccd29493da9",
+      "headerSha256": "3b04ff1715a5049bea8d509c3dd0bc86e435dc3c3ac9afa36afc48c448d04584",
+      "ranges": [
+        { "lines": "777-814", "symbol": "IsSimpleDRRect", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": "isSimpleDRRect", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/graphics/styled_stroke_data.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "b6587cc405e2f2b499d811ac3380fa1788d1148b942ec8b6161cedf224a35c06",
+      "headerSha256": "f856b86ff4f36c5f357b8c3e2d5f0f4a4e58fca841e52cfd9081fb6d9ddcd747",
+      "ranges": [
+        { "lines": "40-57", "symbol": "SelectBestDashGap", "source": "cited" },
+        { "lines": "81-131", "symbol": "DashEffectFromStrokeStyle", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/image-decoders/image_decoder.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "HTML §4.8.4.3.6 (density-corrected natural size); Dragon uses exact rationals",
+        "proof": [
+          "packages/dragon/test/images/images.test.ts:64"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) Research In Motion Limited 2009-2010. All rights reserved.",
+      "fileSha256": "3a94330fd6e05538f1a44765261ddc65be49c403c7fec2ba338b13ea1649b60d",
+      "headerSha256": "72e8e102029a7133cdffc83606fbafce05783000eac68461857e79a63c378634",
+      "ranges": [
+        { "lines": "115-140", "symbol": "ExtractDensityCorrectedSize", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/images/natural-size.ts", "symbol": "densityCorrectedSize", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/text/character_property_data_generator.cc",
+      "licence": "bsd-chromium",
+      "ruling": {
+        "class": "C",
+        "basis": "BSD Chromium file; the ASCII pair table is ported from FillAscii",
+        "proof": [
+          "packages/layout/test/linebreak.test.ts"
+        ]
+      },
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "5ce95ecdc00fe380072c708cf5f7dadeea560044e66eee1b3ec61384a9278495",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "119-143", "symbol": "SetHanKerning", "source": "located" },
+        { "lines": "433-470", "symbol": "LineBreakData::FillAscii", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/linebreak.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/linebreak.ts", "symbol": "ASCII_PAIR_OPS", "use": "port" },
+        { "file": "packages/text-shaper/src/han-kerning.ts", "symbol": "hanKerningCharType", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/text/text_break_iterator.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "CSS Text 3, UAX #14 and Chrome 145 captures (fixtures/linebreak); linebreak.ts was rewritten clean-room in T123 and cites this file only to say so",
+        "proof": [
+          "packages/layout/test/linebreak.test.ts"
+        ],
+        "task": "T123",
+        "note": "clean-room rewrite done in T123 from spec text and Chrome observations; the port uses were dropped; the ASCII pair table is class C on character_property_data_generator.cc"
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2004, 2005, 2006, 2007, 2008, 2010 Apple Inc. All rights; Copyright (C) 2007-2009 Torch Mobile, Inc.; Copyright (C) 2011 Google Inc. All rights reserved.",
+      "fileSha256": "18223e335205414665562b450c4b3f31a19a6d2d99c42629268dbd3493e7abca",
+      "headerSha256": "a010a259357e9162d7ce0c0e7ee4f7f55fa98b297793e165d223c0fa44e88fd9",
+      "ranges": [
+        { "lines": "1-471", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/linebreak.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/wtf/decimal.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2012 Google Inc. All rights reserved.",
+      "fileSha256": "408131ec0f3304b0cf6c6c02df334a1f4a76d1e3c0c59439e6b503fc077857b6",
+      "headerSha256": "9223f4874a0ea140744989276f607e1fea653341d252dd94c077112dd953ffd2",
+      "ranges": [
+        { "lines": "1-990", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/decimal.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/wtf/hash_table.h",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation (Dragon's own simulator of the iteration order)",
+        "proof": [
+          "packages/dragon/test/fonts/units.test.ts#selection ties"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2005, 2006, 2007, 2008, 2011, 2012 Apple Inc. All rights; Copyright (C) 2008 David Levin <levin@chromium.org>",
+      "fileSha256": "765f1c9f717e4a5de47b104e25cd4dca5149be78da9f7c9618ccc6f9de3af710",
+      "headerSha256": "2c79056c630067ef81a7d03197a7a4e555b78b14ab45b6445f8db98341e1caeb",
+      "ranges": [
+        { "lines": "873-873", "symbol": "kMaxLoad", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/wtf-hash.ts", "symbol": "hashTableOrder", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/rapidhash/rapidhash.h",
+      "licence": "bsd-other",
+      "attribution": "BSD 2-Clause, Copyright (C) 2024 Nicolas De Carli, based on wyhash by Wang Yi. The notice is kept in packages/dragon/src/fonts/wtf-hash.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "rapidhash-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2024 Nicolas De Carli",
+      "fileSha256": "23780503761d1ffe045e5fea84a8618b0431ff8a290f2aec00913c924e289436",
+      "headerSha256": "c22c67335c2b20162deaf91240106b3063cc0a5a60eedb83dcf2814db90bd12f",
+      "ranges": [
+        { "lines": "180-181", "symbol": "rapid_secret", "source": "located" },
+        { "lines": "191-217", "symbol": "rapid_mul128", "source": "located" },
+        { "lines": "228-231", "symbol": "rapid_mix", "source": "located" },
+        { "lines": "255-320", "symbol": "rapidhash_internal", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/wtf-hash.ts", "symbol": "mix", "use": "port" },
+        { "file": "packages/dragon/src/fonts/wtf-hash.ts", "symbol": "mul128", "use": "port" },
+        { "file": "packages/dragon/src/fonts/wtf-hash.ts", "symbol": "RAPID_SEED", "use": "port" },
+        { "file": "packages/dragon/src/fonts/wtf-hash.ts", "symbol": "rapidhash", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/base/SkTSort.h",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "b23bf8d24a4aff8f30b9bbb5c6242f00f12dff3d70ddbbb6b6b4b4b78a072b26",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "1-214", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkAnalyticEdge.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "53cd793514e542fb01acf7d4cd94b7981373eddcc0731ef2156c1a43f5c10912",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "22-133", "symbol": "quick_inverse", "source": "located" },
+        { "lines": "135-154", "symbol": "quick_div", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": "INVERSE_TABLE", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkBlurMask.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "eb47eaff9958c5cd44f897d6c80d939bc2e1a6caa2b49f5cb4703e6e4d90866e",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "319-460", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-blur.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-blur.ts", "symbol": "gaussianIntegral", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkBlurMaskFilterImpl.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "fa016f565411ed91798f87ab756124f43df241e96b055fa254b5b2c91786f2da",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "262-567", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-blur.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkDraw.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "2c0005964b200062f405650d691d96b3325f6e57dae1e6dd19b1a54ce11cb84f",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "1088-1119", "symbol": "compute_mask_bounds", "source": "located" },
+        { "lines": "1112-1112", "symbol": "kMaxMargin", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-blur.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-blur.ts", "symbol": "maskBounds", "use": "port" },
+        { "file": "packages/layout/src/paint-blur.ts", "symbol": "MAX_MASK_MARGIN", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkEdgeBuilder.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2011 Google Inc.",
+      "fileSha256": "d9c5c057e74d608c02c5078db040fe7885a1cd222c1d5cfbe2957bdc4c1fbc6a",
+      "headerSha256": "622b7f15f4ca99db5c6f8699ec00094accecc7c41c7f967a2b66bab3136702e7",
+      "ranges": [
+        { "lines": "1-371", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkFont.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 Google Inc.",
+      "fileSha256": "a740411282bbe92fcc2bb73cfcc7dfaa361c037351e09694b36aae4cf8e7743f",
+      "headerSha256": "09fb410fe807746e5c9d267a697de002ac415d5dd13d48c20717ab180ccb1f05",
+      "ranges": [
+        { "lines": "1-410", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkGaussFilter.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 Google Inc.",
+      "fileSha256": "455ebbdefb5bbe55c8f4f3d6e8e6d252055f66bdb41370c8ad40046a3ebbfbfa",
+      "headerSha256": "f136320df67e208e8dc2cbacf5fa25672efb103053aa64e05b84dce07c48c3f3",
+      "ranges": [
+        { "lines": "1-109", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-blur.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/paint-blur.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkGeometry.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "d3c29c8469ccbb9a3fbabeaf0b99982edb276862002cc3d30c47b1eb3cca9499",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "279-302", "symbol": "SkChopQuadAtYExtrema", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkMaskBlurFilter.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 Google Inc.",
+      "fileSha256": "ef329043114ce60c5e4a302f4ca6d611b6a42b83c90543f6b4ebd03fe324c1a9",
+      "headerSha256": "f136320df67e208e8dc2cbacf5fa25672efb103053aa64e05b84dce07c48c3f3",
+      "ranges": [
+        { "lines": "25-202", "symbol": null, "source": "cited" },
+        { "lines": "880-975", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-blur.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-blur.ts", "symbol": "PlanGauss", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkMaskFilterBase.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2025 Google LLC",
+      "fileSha256": "8fe0bf4318e051b8799d2238359ec9c838b690f27fcdf902d1c48abd914d50e1",
+      "headerSha256": "f384adcf59d67fc61c96bd382824f8cd1916fd30d7dd36dac165f75a5645f3df",
+      "ranges": [
+        { "lines": "81-187", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-blur.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkPathRawShapes.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2025 Google LLC.",
+      "fileSha256": "800c4ed6ba59d4fc28e753b049b387467a6af85f02d080ba5e34de01cd6f8a3c",
+      "headerSha256": "504d20f10dacbd4798e3b8ef5e6ffb891ff1ee5402909ec114d50d084dd1d82a",
+      "ranges": [
+        { "lines": "1-212", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkRRect.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2012 Google Inc.",
+      "fileSha256": "a099fb3e27f28ef5486b95bbb8d0af35e05519793108cb717b9a5a165a7d9de8",
+      "headerSha256": "6d5cee55d0d673f2b0ca2c716d30eaf2b3aae015ab407bcec967949531619cea",
+      "ranges": [
+        { "lines": "1-993", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkScan_AAAPath.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Android Open Source Project",
+      "fileSha256": "798fafe785e306e0ed006e81cdb379e0b12bba0659020ff25451d431a9aad326",
+      "headerSha256": "9c29a35ae7c8d29584d15be886ee34761a94bc89a03e568a564631110e242bbc",
+      "ranges": [
+        { "lines": "1-1781", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": "isSmoothEnough", "use": "port" },
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": "trapezoidToAlpha", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkScan_AntiPath.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "a73a8b5484d144fcc99cba8873697619dc1f3ffd9c323f7a73263a960a4d8dc1",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "59-135", "symbol": "AntiFillPath", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkStrikeSpec.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Android Open Source Project",
+      "fileSha256": "55c7add963fec51349375c75ff4c5e55a8de7fa3e44de26f2fd24ceeeae3bd88",
+      "headerSha256": "f27690526789aaa2724706c38aac151c2494da4e4bef53bfd8839cc7102a9799",
+      "ranges": [
+        { "lines": "1-236", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkStroke.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2008 The Android Open Source Project",
+      "fileSha256": "840432ed7789bbb667fb44fe964bf2df689fac76d8572d6fcb8b2916d7cf311d",
+      "headerSha256": "4ad16b04cc93dff9ee2b55b441cfce26d0f7bad8c25137e052b64353f17ca302",
+      "ranges": [
+        { "lines": "397-438", "symbol": "SkPathStroker", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": "RESULT_SPLIT", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/opts/SkRasterPipeline_opts.h",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 Google Inc.",
+      "fileSha256": "f2f5979f437e1b9e2d50d42838756cfd638c646ed452a71e177e94e140049ed5",
+      "headerSha256": "ed67bfe7c89c823c159b5d24b529709cd52f9f6597d2056236d8107d11e58925",
+      "ranges": [
+        { "lines": "1-7029", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dither.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/ports/SkScalerContext_mac_ct.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "beb3cdb8e2df81be71ef47a931c404b4c83c18d4f83a4d9266b6f738c4ce2c68",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "1-758", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "faceMetrics", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/shaders/gradients/SkGradientBaseShader.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2022 Google LLC",
+      "fileSha256": "7cb14441cb4d6deff0c3f13860e8cbf920d973ca6d771f0a2eabbe267fef8533",
+      "headerSha256": "c3054c3ae5c4ecc8c3c7f6e86e1a62097d4609488b353b11604014606e62b613",
+      "ranges": [
+        { "lines": "183-500", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dither.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/utils/SkDashPath.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 Google Inc.",
+      "fileSha256": "edca5c330d5697594c660f176899513697c27a61702fed2d9843eeb5d70d2c25",
+      "headerSha256": "09fb410fe807746e5c9d267a697de002ac415d5dd13d48c20717ab180ccb1f05",
+      "ranges": [
+        { "lines": "1-487", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "ui/gfx/animation/keyframe/timing_function.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2012 The Chromium Authors",
+      "fileSha256": "9a8d75772b4a83a665ddbe4a36c05e934a53a370f36ee93318c2c2bbd1a02de9",
+      "headerSha256": "aa3de0c1b5dcf8968d0e8f5cb7ecd5caac9122dca0dfd573d3bb46bbb61ab155",
+      "ranges": [
+        { "lines": "81-88", "symbol": "StepsTimingFunction", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-easing.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/geometry/physical_size.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "5439c8344aaffb982050be9ed24cff47830409c165e9299d6cc7440c230f4833",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "38-94", "symbol": "LayoutRatioFromSizeF", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/units.ts", "symbol": "layoutRatio", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "ui/gfx/geometry/cubic_bezier.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "9eac76cf4ae7d41940bf4e4d4061526aab8e312b39f035eb17d472793cd01b10",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "1-275", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-easing.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "v8/src/base/ieee754.cc",
+      "licence": "fdlibm-sun",
+      "attribution": "fdlibm (k_sin.c, k_cos.c), Copyright (C) 1993 by Sun Microsystems, Inc. The notice is kept in packages/translate/harness/harness.ts and THIRD_PARTY_NOTICES.md. V8's own changes to the file are under V8's BSD LICENSE; the harness takes only fdlibm's polynomials and constants.",
+      "noticeText": "fdlibm-sun",
+      "licencePhrase": "Permission to use, copy, modify, and distribute this",
+      "copyright": "Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.",
+      "fileSha256": "1bf999809d4c4c1d31ad5ff3578d32614796f159e08b9e7782560d017721a0c2",
+      "headerSha256": "cba7dae1bea31d0082087150918ee58fe4c16a417fa41bd325188d788782713b",
+      "ranges": [
+        { "lines": "305-336", "symbol": "__kernel_cos", "source": "located" },
+        { "lines": "673-698", "symbol": "__kernel_sin", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/translate/harness/harness.ts", "symbol": "rtSin", "use": "port" },
+        { "file": "packages/translate/harness/harness.ts", "symbol": "rtCos", "use": "port" }
+      ]
+    }
+  ],
+  "notChrome": [
+    {
+      "cited": [
+        "uscript.h",
+        "vendor/icu/77.1/uscript.h",
+        "raw.githubusercontent.com/unicode-org/icu/release-77-1/icu4c/source/common/unicode/uscript.h"
+      ],
+      "source": "ICU 77.1 unicode/uscript.h (vendor/icu/77.1), Unicode licence: script codes, not a Blink/Skia/gfx port",
+      "files": [
+        "packages/layout/src/script-data.ts",
+        "packages/text-shaper/src/script.ts",
+        "scripts/gen-script-data.ts"
+      ]
+    },
+    {
+      "cited": [
+        "dragon_hb.h",
+        "include/dragon_hb.h",
+        "../include/dragon_hb.h",
+        "../../../include/dragon_hb.h"
+      ],
+      "source": "Dragon's own C header (packages/text-shaper/include/dragon_hb.h), named in the Swift package manifest, the module map and the JNI glue",
+      "files": [
+        "packages/text-shaper/src/dragon_hb_jni.zig",
+        "packages/text-shaper/swift/Package.swift",
+        "packages/text-shaper/swift/Sources/CDragonHB/module.modulemap"
+      ]
+    },
+    {
+      "cited": [
+        "source/common/unicode/uchar.h"
+      ],
+      "source": "ICU unicode/uchar.h at the ICU revision Chromium 145.0.7632.6 DEPS pins, Unicode licence: cited for U_UNICODE_VERSION only",
+      "files": [
+        "scripts/gen-linebreak-data.ts"
+      ]
+    },
+    {
+      "cited": [
+        "harfbuzz.cc"
+      ],
+      "source": "HarfBuzz's single-file build source (vendor/harfbuzz/src/harfbuzz.cc), compiled unmodified by the text shaper; its licence is in THIRD_PARTY_NOTICES.md",
+      "files": [
+        "packages/text-shaper/build.zig"
+      ]
+    },
+    {
+      "cited": [
+        "jni.h",
+        "jni_md.h"
+      ],
+      "source": "the JNI headers of the JDK or the Android NDK, included by the JNI glue",
+      "files": [
+        "packages/text-shaper/build.zig",
+        "packages/text-shaper/src/dragon_hb_jni.zig"
+      ]
+    },
+    {
+      "cited": [
+        "stdint.h"
+      ],
+      "source": "the C standard library header, included by Dragon's C header",
+      "files": [
+        "packages/text-shaper/include/dragon_hb.h"
+      ]
+    }
+  ],
+  "licenceTexts": {
+    "chromium-bsd": "Copyright 2015 The Chromium Authors\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n   * Redistributions of source code must retain the above copyright\nnotice, this list of conditions and the following disclaimer.\n   * Redistributions in binary form must reproduce the above\ncopyright notice, this list of conditions and the following disclaimer\nin the documentation and/or other materials provided with the\ndistribution.\n   * Neither the name of Google LLC nor the names of its\ncontributors may be used to endorse or promote products derived from\nthis software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nOWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
+    "skia-bsd": "Copyright (c) 2011 Google Inc. All rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n  * Redistributions of source code must retain the above copyright\n    notice, this list of conditions and the following disclaimer.\n\n  * Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in\n    the documentation and/or other materials provided with the\n    distribution.\n\n  * Neither the name of the copyright holder nor the names of its\n    contributors may be used to endorse or promote products derived\n    from this software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nOWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
+    "header-bsd-1": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n    * Redistributions of source code must retain the above copyright\nnotice, this list of conditions and the following disclaimer.\n    * Redistributions in binary form must reproduce the above\ncopyright notice, this list of conditions and the following disclaimer\nin the documentation and/or other materials provided with the\ndistribution.\n    * Neither the name of Google Inc. nor the names of its\ncontributors may be used to endorse or promote products derived from\nthis software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nOWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
+    "header-bsd-2": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n1. Redistributions of source code must retain the above copyright\n   notice, this list of conditions and the following disclaimer.\n2. Redistributions in binary form must reproduce the above copyright\n   notice, this list of conditions and the following disclaimer in the\n   documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY\nEXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\nPURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR\nCONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,\nEXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\nPROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\nPROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY\nOF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
+    "header-bsd-3": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n1. Redistributions of source code must retain the above copyright\n   notice, this list of conditions and the following disclaimer.\n2. Redistributions in binary form must reproduce the above copyright\n   notice, this list of conditions and the following disclaimer in the\n   documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY\nEXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\nPURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR\nCONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,\nEXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\nPROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\nPROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY\nOF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
+    "header-bsd-4": "    * Redistributions of source code must retain the above copyright\nnotice, this list of conditions and the following disclaimer.\n    * Redistributions in binary form must reproduce the above\ncopyright notice, this list of conditions and the following disclaimer\nin the documentation and/or other materials provided with the\ndistribution.\n    * Neither the name of Google Inc. nor the names of its\ncontributors may be used to endorse or promote products derived from\nthis software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nOWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
+    "header-bsd-5": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n1.  Redistributions of source code must retain the above copyright\n    notice, this list of conditions and the following disclaimer.\n2.  Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in the\n    documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS'' AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS BE LIABLE FOR\nANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
+    "header-bsd-6": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n\n1. Redistributions of source code must retain the above copyright\n   notice, this list of conditions and the following disclaimer.\n2. Redistributions in binary form must reproduce the above copyright\n   notice, this list of conditions and the following disclaimer\n   in the documentation and/or other materials provided with the\n   distribution.\n3. Neither the name of Google Inc. nor the names of its contributors\n   may be used to endorse or promote products derived from this\n   software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nOWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
+    "header-bsd-7": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n\n1.  Redistributions of source code must retain the above copyright\n    notice, this list of conditions and the following disclaimer.\n2.  Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in the\n    documentation and/or other materials provided with the distribution.\n3.  Neither the name of Apple Computer, Inc. (\"Apple\") nor the names of\n    its contributors may be used to endorse or promote products derived\n    from this software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY APPLE AND ITS CONTRIBUTORS \"AS IS\" AND ANY\nEXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL APPLE OR ITS CONTRIBUTORS BE LIABLE FOR ANY\nDIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND\nON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF\nTHIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
+    "header-bsd-8": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n1. Redistributions of source code must retain the above copyright\n   notice, this list of conditions and the following disclaimer.\n2. Redistributions in binary form must reproduce the above copyright\n   notice, this list of conditions and the following disclaimer in the\n   documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,\nTHE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\nPURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS\nBE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR\nCONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF\nSUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS\nINTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN\nCONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)\nARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF\nTHE POSSIBILITY OF SUCH DAMAGE.\n",
+    "rapidhash-bsd-2": "rapidhash - Very fast, high quality, platform-independent hashing algorithm.\n\nBased on 'wyhash', by Wang Yi <godspeed_china@yeah.net>\n\nBSD 2-Clause License (https://www.opensource.org/licenses/bsd-license.php)\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n   * Redistributions of source code must retain the above copyright\n     notice, this list of conditions and the following disclaimer.\n   * Redistributions in binary form must reproduce the above\n     copyright notice, this list of conditions and the following disclaimer\n     in the documentation and/or other materials provided with the\n     distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nOWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\nYou can contact the author at:\n  - rapidhash source repository: https://github.com/Nicoshev/rapidhash\n",
+    "fdlibm-sun": "Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.\n\nDeveloped at SunSoft, a Sun Microsystems, Inc. business.\nPermission to use, copy, modify, and distribute this\nsoftware is freely granted, provided that this notice\nis preserved.\n"
+  }
+}

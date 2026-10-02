@@ -12,11 +12,14 @@ import type { LU } from '@dragon/layout';
 import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, replacedPaint, resolveBorder, resolvePadding, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
+import { emitStatePrograms } from 'dragon';
+import { stateEmits } from './state-cases.ts';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
 import { layoutCases } from './dpr.ts';
 import { PROJECT_ID } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
+import { ENVIRONMENT } from './fixtures.ts';
 import type { EncoderLanguage } from './native-encoders.ts';
 import { constructDump, encoderSource, KOTLIN_DUMP_PACKAGE } from './native-encoders.ts';
 import { referenceDump } from './native-compare.ts';
@@ -40,7 +43,8 @@ export const nativeOut = (target: NativeTarget): string => repoPath(`packages/pa
 /** The lane compile (item 9): ios and android together, derive mode, one per fixture and direction. */
 export function nativeCompile(spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'android'> {
   if (spec.kind !== 'layout') throw new Error(`${spec.id} is not a layout fixture`);
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG } }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont });
+  // MQ-a: every native case runs in the parity environment's viewport, so its @media band is the one holding it.
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG } }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport });
   return project.compile(fixtureInput(spec));
 }
 
@@ -197,15 +201,29 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
     exit(0)
   }
   let id = run.ids[k]
-  guard let c = dragonCaseTable[id] else { fatalError("dragon host: no case \(id)") }
-  let tree = DragonTree()
-  c.build(tree)
-  stage.addSubview(tree.root)
-  let t0 = CACurrentMediaTime()
-  do {
-    try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
-  } catch {
-    fatalError("dragon host: \(id): \(error)")
+  // SELD-R1a: a case script runs on a state mount, whose every setter rebuilds and lays out the views on the stage; an id that is
+  // both a layout case and a script fails rather than running one of them.
+  let script = dragonStateCaseTable[id]
+  let layoutCase = DragonHost.dragonCaseTable[id]
+  if script != nil && layoutCase != nil { fatalError("dragon host: \(id) is both a layout case and a case script") }
+  guard let c = script?.dragonCase ?? layoutCase else { fatalError("dragon host: no case \(id)") }
+  let t0: CFTimeInterval
+  let tree: DragonTree
+  if let script = script {
+    t0 = CACurrentMediaTime()
+    let mount = DragonStateMount(machine: script.make(), stage: stage, measurer: bridge.measurer, scale: scale, bridge: bridge)
+    script.run(mount.machine)
+    tree = mount.tree
+  } else {
+    tree = DragonTree()
+    c.build(tree)
+    stage.addSubview(tree.root)
+    t0 = CACurrentMediaTime()
+    do {
+      try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
+    } catch {
+      fatalError("dragon host: \(id): \(error)")
+    }
   }
   stage.layoutIfNeeded()
   tree.root.layoutIfNeeded()
@@ -286,6 +304,7 @@ import dev.dragon.dump.DumpTiming
 import dev.dragon.dump.dumpJson
 import dev.dragon.views.DragonBridge
 import dev.dragon.views.DragonRun
+import dev.dragon.views.DragonStateMount
 import dev.dragon.views.DragonTree
 import dev.dragon.views.dragonReadRun
 import dev.dragon.views.dragonSamples
@@ -358,12 +377,26 @@ class DragonActivity : Activity() {
       return
     }
     val id = run.ids[k]
-    val c = dragonCaseTable[id] ?: throw IllegalStateException("dragon host: no case " + id)
-    val tree = DragonTree(this)
-    c.build(tree)
-    val t0 = SystemClock.elapsedRealtimeNanos()
-    tree.apply(c.input(scale), bridge.measurer, scale, bridge)
-    frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
+    // SELD-R1a: a case script runs on a state mount, whose every setter rebuilds and lays out the views on the stage; an id that
+    // is both a layout case and a script fails rather than running one of them.
+    val script = dev.dragon.cases.dragonStateCaseTable[id]
+    val layoutCase = dev.dragon.cases.dragonCaseTable[id]
+    if (script != null && layoutCase != null) throw IllegalStateException("dragon host: " + id + " is both a layout case and a case script")
+    val c = script?.dragonCase ?: layoutCase ?: throw IllegalStateException("dragon host: no case " + id)
+    val t0: Long
+    val tree: DragonTree
+    if (script != null) {
+      t0 = SystemClock.elapsedRealtimeNanos()
+      val mount = DragonStateMount(script.make(), frame, bridge.measurer, scale, bridge)
+      script.run(mount.machine)
+      tree = mount.tree
+    } else {
+      tree = DragonTree(this)
+      c.build(tree)
+      t0 = SystemClock.elapsedRealtimeNanos()
+      tree.apply(c.input(scale), bridge.measurer, scale, bridge)
+      frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
+    }
     // Settle on explicit signals: the root laid out and drawn, two more frame callbacks, then compositor copies of the window until
     // two consecutive copies are equal (a copy of a frame before the tree was presented differs from the next one).
     var drawnAt = -1
@@ -486,6 +519,8 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
   const supportPlant = plant !== null && (SUPPORT_PLANTS as readonly string[]).includes(plant) ? (plant as SupportPlant) : null;
   files.push(...emitNativeSupport(backend, supportPlant));
   files.push(...(backend === 'uikit' ? emitUikitCases(cases) : emitAndroidViewsCases(cases)));
+  // SELD-R1a: the state programs and their case scripts.
+  files.push(...emitStatePrograms(backend, stateEmits(target)));
   if (plant !== null && supportPlant === null) files.push(PLANTED[plant as Exclude<BuildPlant, SupportPlant>]);
   return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }

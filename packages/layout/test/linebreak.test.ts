@@ -149,6 +149,19 @@ describe('UAX #14 core', () => {
     expect(uax14BreakAllowed([0x1f44d, 0x1f3fd, 0x1f44d], false)).toEqual([false, false, true, true]);
     expect(uax14BreakAllowed([0x1f468, 0x200d, 0x1f469], false)).toEqual([false, false, false, true]);
   });
+
+  it('pairs regional indicators (LB30a) in time linear in the run length (PR #56 review)', () => {
+    const flags = (n: number): number[] => Array.from({ length: n }, () => 0x1f1e6);
+    expect(uax14BreakAllowed(flags(5), false)).toEqual([false, false, true, false, true, true]);
+    // A combining mark joins its regional indicator (LB9), so the pairing counts units, not code points.
+    expect(uax14BreakAllowed([0x1f1e6, 0x301, 0x1f1e6, 0x1f1e6], false)).toEqual([false, false, false, true, true]);
+    const n = 50_000;
+    const start = performance.now();
+    const r = uax14BreakAllowed(flags(n), false);
+    // Rescanning the run before every indicator takes over ten seconds here; one pass takes milliseconds.
+    expect(performance.now() - start).toBeLessThan(3000);
+    expect(r.filter((b, i) => b !== (i === n || (i > 0 && i % 2 === 0))).length).toBe(0);
+  });
 });
 
 describe('break opportunities against Chrome 145', () => {

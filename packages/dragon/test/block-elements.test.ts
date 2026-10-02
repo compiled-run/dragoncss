@@ -95,6 +95,21 @@ describe('refusals of UA defaults Dragon does not model', () => {
     expect(c.outputs.web.kind).toBe('ready');
     expect(c.outputs.ios.kind).toBe('blocked');
   });
+  it('heading text is refused for each configured native target: android as ios, and only the configured ones', () => {
+    const input = inputFor(FONT, (r) => [el(r, 'h2', 'h2', [], [text(r, 't', 'XX')])]);
+    const run = (targets: Parameters<typeof createProjectWith>[0]['targets']) => createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+    const all = run({ ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
+    expect(all.diagnostics.map((d) => [d.code, d.target, d.message.split(' from ')[0]]).sort()).toEqual([
+      ['DRAGON_UNSUPPORTED_FONT', 'android', 'text h2:text0 inherits font-weight: 700'],
+      ['DRAGON_UNSUPPORTED_FONT', 'ios', 'text h2:text0 inherits font-weight: 700'],
+    ]);
+    expect(all.diagnostics.find((d) => d.target === 'android')?.message).toMatch(/so android would draw it in the regular face/);
+    expect([all.outputs.ios.kind, all.outputs.android.kind, all.outputs.web.kind]).toEqual(['blocked', 'blocked', 'ready']);
+    const android = run({ android: { minSdk: 31 }, web: {} });
+    expect(android.diagnostics.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_FONT', 'android']]);
+    expect(android.outputs.android.kind).toBe('blocked');
+    expect(run({ web: {} }).diagnostics).toEqual([]);
+  });
   it('headings without text compile on every target', () => {
     expect(codes(inputFor(FONT, (r) => [el(r, 'h1', 'h1'), el(r, 'h6', 'h6'), el(r, 'p', 'p', [], [text(r, 't', 'XX')])]))).toEqual([]);
   });

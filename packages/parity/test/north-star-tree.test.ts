@@ -1,8 +1,9 @@
 // The north star as a tree fixture (examples/music-player/tree, notes/T025 §2 TREE item 5): the Markless demo's components with
 // libraryStatus and isPlaying as free states. Each of the 4 cases, rendered by the parity renderer, must equal the Chrome
-// reference's free-state snapshot (tools/snapshot.ts freeStateHtml), so the tree and the reference cannot drift apart. The
-// hand-declared expectation (free states, cases, initial assignment, text topology) is checked against the renderer, Dragon's
-// case enumeration, an independent walk of the tree and, for each text context, the Chrome reference dumps.
+// reference's free-state snapshot (tools/snapshot.ts freeStateHtml, with the video slot as the iframe of withVideoIframe, as the
+// Chrome reference captures it), so the tree and the reference cannot drift apart. The hand-declared expectation (free states,
+// cases, initial assignment, text topology) is checked against the renderer, Dragon's case enumeration, an independent walk of
+// the tree and, for each text context, the Chrome reference dumps.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -23,6 +24,7 @@ type Snapshot = {
   FREE_STATES: readonly { readonly id: FreeStateId; readonly libraryStatus: boolean; readonly isPlaying: boolean }[];
   readSnapshot(): { html: string; css: string };
   freeStateHtml(html: string, state: FreeStateId): string;
+  withVideoIframe(html: string): string;
 };
 const loadSnapshot = async (): Promise<Snapshot> => (await import(pathToFileURL(join(exampleDir, 'tools/snapshot.ts')).href)) as Snapshot;
 
@@ -138,8 +140,8 @@ describe('the north star as a tree fixture', () => {
   });
 
   it('each case renders exactly the Chrome reference snapshot of its free state', async () => {
-    const { readSnapshot, freeStateHtml } = await loadSnapshot();
-    const { html } = readSnapshot();
+    const { readSnapshot, freeStateHtml, withVideoIframe } = await loadSnapshot();
+    const html = withVideoIframe(readSnapshot().html);
     const seen = new Set<FreeStateId>();
     for (const a of model.assignments) {
       const id = await freeOf(a);
@@ -152,8 +154,9 @@ describe('the north star as a tree fixture', () => {
   });
 
   it('the declared text topology equals the tree walk in every case, with contexts read from the Chrome reference dumps', async () => {
-    const { readSnapshot, freeStateHtml } = await loadSnapshot();
-    const { html, css } = readSnapshot();
+    const { readSnapshot, freeStateHtml, withVideoIframe } = await loadSnapshot();
+    const { html: raw, css } = readSnapshot();
+    const html = withVideoIframe(raw);
     expect(css).not.toMatch(/(^|[^-])direction\s*:|unicode-bidi/);
     expect(html).not.toMatch(/\sdir=/);
     for (const a of model.assignments) {
