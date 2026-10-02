@@ -137,38 +137,6 @@
  },
  {
   "lane": "device-pixels",
-  "case": "position-absolute-out-of-flow",
-  "dpr": 3,
-  "node": "border:i2:bottom:clear",
-  "kind": "pixel",
-  "detail": "border:i2:bottom:clear at 69,102: native [64,64,64,255], Chrome [0,0,0,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-out-of-flow",
-  "dpr": 3,
-  "node": "edge:i2:bottom:clear",
-  "kind": "pixel",
-  "detail": "edge:i2:bottom:clear at 69,102: native [64,64,64,255], Chrome [0,0,0,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-out-of-flow-rtl",
-  "dpr": 3,
-  "node": "border:i2:bottom:clear",
-  "kind": "pixel",
-  "detail": "border:i2:bottom:clear at 1131,102: native [64,64,64,255], Chrome [0,0,0,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
-  "case": "position-absolute-out-of-flow-rtl",
-  "dpr": 3,
-  "node": "edge:i2:bottom:clear",
-  "kind": "pixel",
-  "detail": "edge:i2:bottom:clear at 1131,102: native [64,64,64,255], Chrome [0,0,0,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
   "case": "position-absolute-scroll-container",
   "dpr": 3,
   "node": "edge:a1:right",
