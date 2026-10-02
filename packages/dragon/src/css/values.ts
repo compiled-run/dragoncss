@@ -17,6 +17,8 @@ export type CssValue =
   | { readonly kind: 'percentage'; readonly value: number }
   | { readonly kind: 'number'; readonly value: number }
   | { readonly kind: 'family'; readonly value: string }
+  /** css-sizing-4 §5.1 aspect-ratio: a <ratio> of non-negative numbers, with the auto keyword (`auto && <ratio>`) or without it. */
+  | { readonly kind: 'ratio'; readonly auto: boolean; readonly width: number; readonly height: number }
   /** A resolved legacy sRGB colour; transparent and currentcolor stay keywords. */
   | { readonly kind: 'color'; readonly value: Rgba8; readonly syntax: ColorSyntax }
   | { readonly kind: 'other'; readonly type: string; readonly text: string };
@@ -137,6 +139,49 @@ export function familyValue(tokens: readonly CssNode[]): CssValue {
   return { kind: 'other', type: 'family-list', text };
 }
 
+/**
+ * css-sizing-4 §5.1 as Chrome 145 parses aspect-ratio (AspectRatio::ParseSingleValue): auto || <ratio>, where <ratio> is
+ * <number [0,∞]> [ / <number [0,∞]> ]? and a single number n is n / 1. The tokens have matched the grammar already. A negative
+ * part is invalid, as Chrome drops it; a math function is refused, because Dragon does not evaluate one inside a ratio.
+ */
+export function ratioValue(tokens: readonly CssNode[]): CssValue | 'invalid' | { readonly token: CssNode; readonly reason: string } {
+  // css-syntax-3 §4.3.11: an escaped identifier is its decoded name, so \61uto is auto.
+  const autos = tokens.filter((t) => t.type === 'Identifier' && asciiLower(decodeName(String(t['name']))) === 'auto');
+  const rest = tokens.filter((t) => !autos.includes(t));
+  if (autos.length > 1) return 'invalid';
+  if (rest.length === 0) return autos.length === 1 ? { kind: 'keyword', value: 'auto' } : 'invalid';
+  // auto goes before or after the whole <ratio>, never inside it.
+  if (autos.length === 1 && tokens[0] !== autos[0] && tokens[tokens.length - 1] !== autos[0]) return 'invalid';
+  const math = rest.find((t) => t.type === 'Function');
+  if (math !== undefined) return { token: math, reason: 'a calculation inside aspect-ratio is not supported' };
+  const slash = rest.length === 3 && rest[1]?.type === 'Operator' && rest[1]['value'] === '/';
+  if (rest.length !== 1 && !slash) return 'invalid';
+  const parts = slash ? [rest[0], rest[2]] : [rest[0]];
+  if (!parts.every((t) => t !== undefined && t.type === 'Number')) return 'invalid';
+  const [width, height] = parts.map((t) => Number((t as CssNode)['value']));
+  if (width === undefined || !Number.isFinite(width) || width < 0) return 'invalid';
+  const h = height === undefined ? 1 : height;
+  if (!Number.isFinite(h) || h < 0) return 'invalid';
+  return { kind: 'ratio', auto: autos.length === 1, width, height: h };
+}
+
+/** Raw LayoutUnit parts at most 2^24, so a part that is a whole number of 64ths is also exact as the float Blink stores. */
+const MAX_EXACT_RATIO_RAW = 16777216;
+
+/**
+ * The layout ratio of a <ratio> that needs no float arithmetic (Blink LayoutRatioFromSizeF): a part of zero makes it degenerate
+ * (auto for layout); parts that are whole 64ths are kept as raw LayoutUnits; equal parts are 1 / 1. null for any other ratio,
+ * which Chrome converts by a float continued fraction (packages/layout/src/units.ts layoutRatio) that the compiler does not run.
+ */
+export function exactLayoutRatio(width: number, height: number): { readonly width: number; readonly height: number } | 'degenerate' | null {
+  if (width === 0 || height === 0) return 'degenerate';
+  const rw = width * 64;
+  const rh = height * 64;
+  if (Number.isInteger(rw) && Number.isInteger(rh) && rw <= MAX_EXACT_RATIO_RAW && rh <= MAX_EXACT_RATIO_RAW) return { width: rw, height: rh };
+  if (width === height) return { width: 64, height: 64 };
+  return null;
+}
+
 /** What a font-family feature key is resolved against: the project's font map and the families its @font-face rules declare. */
 export type FamilyKeyContext = { readonly map: FontMap | null; readonly declared: ReadonlySet<string> };
 
@@ -170,6 +215,8 @@ export function featureOf(property: Longhand, v: CssValue, fonts?: FamilyKeyCont
       return `${property}:${v.value}`;
     case 'color':
       return `${property}:<${v.syntax}>`;
+    case 'ratio':
+      return v.auto ? `${property}:auto && <ratio>` : `${property}:<ratio>`;
     case 'other':
       return `${property}:<${v.type}>`;
   }

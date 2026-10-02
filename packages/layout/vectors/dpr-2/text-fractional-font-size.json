@@ -135,7 +135,10 @@
     "columnGap": {
      "kind": "normal"
     },
-    "textAlign": "start"
+    "textAlign": "start",
+    "aspectRatio": {
+     "kind": "auto"
+    }
    },
    "children": [
     {
@@ -245,7 +248,10 @@
       "columnGap": {
        "kind": "normal"
       },
-      "textAlign": "start"
+      "textAlign": "start",
+      "aspectRatio": {
+       "kind": "auto"
+      }
      },
      "children": [
       {
@@ -356,7 +362,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -488,7 +497,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "center"
+        "textAlign": "center",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -661,7 +673,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "end"
+        "textAlign": "end",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -814,7 +829,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "center"
+        "textAlign": "center",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -967,7 +985,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "right"
+        "textAlign": "right",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -1100,7 +1121,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "center"
+        "textAlign": "center",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -1270,7 +1294,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -1380,7 +1407,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": [
           {
@@ -1512,7 +1542,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": [
           {
@@ -1647,7 +1680,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -1757,7 +1793,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": [
           {
@@ -1888,7 +1927,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": [
           {
@@ -2022,7 +2064,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "center"
+        "textAlign": "center",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -2175,7 +2220,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "end"
+        "textAlign": "end",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -2307,7 +2355,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -2417,7 +2468,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": [
           {
@@ -2548,7 +2602,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": [
           {
@@ -2679,7 +2736,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": [
           {
@@ -2813,7 +2873,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -2966,7 +3029,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "center"
+        "textAlign": "center",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -3098,7 +3164,10 @@
         "columnGap": {
          "kind": "normal"
         },
-        "textAlign": "start"
+        "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        }
        },
        "children": [
         {
@@ -3208,7 +3277,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": [
           {
@@ -3339,7 +3411,10 @@
           "columnGap": {
            "kind": "normal"
           },
-          "textAlign": "start"
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          }
          },
          "children": [
           {

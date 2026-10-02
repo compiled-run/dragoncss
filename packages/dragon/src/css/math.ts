@@ -620,7 +620,8 @@ export function parseMath(text: string, context: MathContext): ParsedMath {
  */
 export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or-length-percentage';
 
-const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright']);
+// aspect-ratio: each <ratio> part is a <number [0,∞]> (css-sizing-4 §5.1), so a math function in it resolves to a number.
+const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio']);
 const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex']);
 
 /** The grammar a top-level math function of a property resolves against; every other numeric property takes <length-percentage>. */

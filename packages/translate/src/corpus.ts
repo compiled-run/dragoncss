@@ -153,6 +153,7 @@ const INITIAL: LayoutStyle = {
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
+  aspectRatio: { kind: 'auto' },
 };
 
 function len(r: Rng, min: number): number {
@@ -233,6 +234,12 @@ function randomStyle(r: Rng, flexParent: boolean, depth: number): LayoutStyle {
   s.rowGap = gap();
   s.columnGap = gap();
   s.textAlign = r.chance(0.03) ? 'justify' : r.pick(['start', 'start', 'end', 'left', 'right', 'center']);
+  // SIZE-ar: a layout ratio (raw LayoutUnits) where no block length holds a percentage, which the validator refuses beside one.
+  const percentBlock = s.height.kind === 'percent' || s.minHeight.kind === 'percent' || s.maxHeight.kind === 'percent';
+  if (!percentBlock && r.chance(0.1)) {
+    const parts = r.pick([[1024, 576], [64, 64], [7, 10], [1, 1234], [2111, 171], [128, 64], [64, 192]]);
+    s.aspectRatio = { kind: r.chance(0.25) ? 'auto-ratio' : 'ratio', width: parts[0] as number, height: parts[1] as number };
+  }
   return s;
 }
 

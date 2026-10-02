@@ -106,17 +106,18 @@ describe('the glyph rule', () => {
 describe('the glyph clearance over the corpus (T093 ruling A)', () => {
   // Per target and device DPR, the rules whose point no along-position keeps clear of the engine's glyph boxes, by rule kind
   // (edge:glyph is a glyph-edge scanline), and of those the edge and border rules that kept clear pixels as "<rule>:clear" colour
-  // points (addendum F2). A change here changes what the device lanes compare; it needs a written reason. SELD-R1b: the eight
-  // hit-* cases add 11 dropped edges, 20 glyph-edge scanlines and 8 glyph points per DPR, all from their overflowing text.
+  // points (addendum F2). A change here changes what the device lanes compare; it needs a written reason. SIZE-ar: only the 10
+  // sizing-ratio cases' rules (edge +8, edge:glyph +4, rescued edge +8 at DPR 2 and 3, +6 at 2.625). SELD-R1b: the eight hit-*
+  // cases add 11 dropped edges, 20 glyph-edge scanlines and 8 glyph points per DPR, all from their overflowing text.
   const DROPPED = {
     ios: {
-      2: { dropped: { edge: 1237, 'edge:glyph': 940, glyph: 39, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1197 } },
-      3: { dropped: { edge: 1246, 'edge:glyph': 888, glyph: 33, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1218, border: 18 } },
+      2: { dropped: { edge: 1245, 'edge:glyph': 944, glyph: 39, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1205 } },
+      3: { dropped: { edge: 1254, 'edge:glyph': 892, glyph: 33, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1226, border: 18 } },
     },
     android: {
-      2: { dropped: { edge: 1237, 'edge:glyph': 940, glyph: 39, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1197 } },
-      3: { dropped: { edge: 1246, 'edge:glyph': 888, glyph: 33, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1218, border: 18 } },
-      2.625: { dropped: { edge: 1210, 'edge:glyph': 917, glyph: 41, outside: 6, clip: 13, border: 16, interior: 5 }, rescued: { edge: 1076 } },
+      2: { dropped: { edge: 1245, 'edge:glyph': 944, glyph: 39, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1205 } },
+      3: { dropped: { edge: 1254, 'edge:glyph': 892, glyph: 33, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1226, border: 18 } },
+      2.625: { dropped: { edge: 1218, 'edge:glyph': 921, glyph: 41, outside: 6, clip: 13, border: 16, interior: 5 }, rescued: { edge: 1082 } },
     },
   } as const;
   const bottoms = JSON.parse(readFileSync(BOTTOM_SCANLINES_PATH(), 'utf8')) as BottomScanlines;
