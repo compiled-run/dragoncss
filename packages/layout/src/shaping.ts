@@ -428,6 +428,8 @@ export type ShapeResult = {
   readonly safe: readonly boolean[];
   /** ComputePositionData: x_position per offset, raw LayoutUnits. */
   readonly positions: readonly number[];
+  /** The 16.16 advance before each offset (total_advance before its first glyph, or the preceding glyph's for an offset without one). */
+  readonly raw: readonly number[];
   /** The 16.16 advance sum. */
   readonly total: number;
 };
@@ -557,8 +559,10 @@ function shapeRange(item: ShapeItem, start: number, end: number, isLineStart: bo
   const n = end - start;
   const safe: boolean[] = [];
   const positions: number[] = [];
+  const raw: number[] = [];
   let total = 0;
   let lastX = 0;
+  let lastRaw = 0;
   for (const run of runs) {
     for (const g of run.glyphs) {
       const idx = run.start + g.ci - start;
@@ -566,10 +570,13 @@ function shapeRange(item: ShapeItem, start: number, end: number, isLineStart: bo
         while (safe.length < idx) {
           safe.push(false);
           positions.push(lastX);
+          raw.push(lastRaw);
         }
         lastX = inlineToLayoutUnitCeil(total);
+        lastRaw = total;
         safe.push(g.safe);
         positions.push(lastX);
+        raw.push(lastRaw);
       }
       total = total + g.advance;
     }
@@ -577,8 +584,9 @@ function shapeRange(item: ShapeItem, start: number, end: number, isLineStart: bo
   while (safe.length < n) {
     safe.push(false);
     positions.push(lastX);
+    raw.push(lastRaw);
   }
-  return { start, end, runs, width, missing, safe, positions, total };
+  return { start, end, runs, width, missing, safe, positions, raw, total };
 }
 
 export function shapeItem(item: ShapeItem): ShapeResult {
@@ -616,6 +624,24 @@ function cachedOffsetForPosition(result: ShapeResult, x: number): number {
     step = step / 2;
   }
   return result.start + pos;
+}
+
+/**
+ * ShapingLineBreaker::ShapeLine's candidate break: the last offset whose advance from the line start is at most the available
+ * width, measured on the 16.16 advances (ComputePositionData's total_advance) from start, not on the ceiled cached positions.
+ * Measured: the gate's 1,260 Chrome 145.0.7632.6 cases (packages/layout/test/shaping-gate.test.ts) break where the 16.16 advance
+ * from the line start fits, and the ceiled-position reading of CachedOffsetForPosition breaks 2 Latin lines one opportunity late
+ * (Lato/shy/12.48/120, Lato/kernlig/24/120), each with a view one LayoutUnit wider than the available width.
+ */
+function candidateBreak(result: ShapeResult, start: number, available: number): number {
+  const limit = (result.raw[start] as number) + available * 1024;
+  if (result.total <= limit) return result.end;
+  let candidate = start;
+  for (let k = start; k < result.raw.length; k++) {
+    if ((result.raw[k] as number) <= limit) candidate = k;
+    else break;
+  }
+  return result.start + candidate;
 }
 
 /** A ShapeResultView segment: the characters [start, end) of a ShapeResult. */
@@ -806,6 +832,665 @@ function lineView(item: ShapeItem, paragraph: ShapeResult, start: number, breakO
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
+// ShapingLineBreaker::ShapeLine (LTR): the line breaking decision inside one text item (shaping_line_breaker.cc)
+
+/** A ShapeResultView of a line: its parts, in order. */
+export type LineView = { readonly segments: readonly ViewSegment[] };
+
+/** One break the item's break iterator reports: a line may start at offset; spaces before it end at nonHangableEnd (or -1). */
+type ItemBreak = { readonly offset: number; readonly nonHangableEnd: number };
+
+/** FindNonHangableEnd: the start of the space run that ends at candidate (inclusive). */
+function nonHangableEndOf(units: readonly number[], candidate: number): number {
+  let end = candidate;
+  while (end > 0) {
+    end--;
+    if (!isBreakableSpace(units[end] as number)) return end + 1;
+  }
+  return end;
+}
+
+/** ShapingLineBreaker::PreviousBreakOpportunity without hyphenation: the last opportunity at or before offset and after min. */
+function previousBreak(units: readonly number[], breakable: (offset: number) => boolean, offset: number, min: number): ItemBreak {
+  let b = min;
+  for (let p = offset; p > min; p--) {
+    if (breakable(p)) {
+      b = p;
+      break;
+    }
+  }
+  if (b > 0 && isBreakableSpace(units[b - 1] as number)) return { offset: b, nonHangableEnd: nonHangableEndOf(units, b - 1) };
+  return { offset: b, nonHangableEnd: -1 };
+}
+
+/** ShapingLineBreaker::NextBreakOpportunity without hyphenation: the first opportunity at or after offset, else len. */
+function nextBreak(units: readonly number[], breakable: (offset: number) => boolean, offset: number, len: number): ItemBreak {
+  let b = len;
+  for (let p = offset; p < len; p++) {
+    if (breakable(p)) {
+      b = p;
+      break;
+    }
+  }
+  if (b > 0 && isBreakableSpace(units[b - 1] as number)) return { offset: b, nonHangableEnd: nonHangableEndOf(units, b - 1) };
+  return { offset: b, nonHangableEnd: -1 };
+}
+
+/** What ShapeLine decided: the break offset, the line's view and SnappedWidth, and LineBreaker's result flags. */
+export type ItemLine =
+  | { readonly ok: true; readonly end: number; readonly view: LineView; readonly width: LU; readonly overflow: boolean; readonly hyphenated: boolean; readonly trailingSpaces: boolean }
+  | { readonly ok: false; readonly reason: string };
+
+function viewLine(item: ShapeItem, segments: readonly ViewSegment[], end: number, overflow: boolean, trailingSpaces: boolean): ItemLine {
+  const shaped: ShapeResult[] = [];
+  for (const s of segments) shaped.push(s.result);
+  const missing = missingIn(shaped);
+  if (missing >= 0) {
+    const r = noGlyph(missing);
+    return { ok: false, reason: r.ok ? '' : r.reason };
+  }
+  const hyphenated = end > 0 && (item.units[end - 1] as number) === SOFT_HYPHEN;
+  return { ok: true, end, view: { segments }, width: snapWidth(viewWidth(segments, item.faults), item.faults), overflow, hyphenated, trailingSpaces };
+}
+
+/** ShapingLineBreaker::ShapeToEnd. */
+function shapeToEnd(item: ShapeItem, result: ShapeResult, start: number, lineStart: ShapeResult | null, firstSafe: number, overflow: boolean): ItemLine {
+  const end = result.end;
+  if (lineStart === null) return viewLine(item, [{ result, start, end }], end, overflow, false);
+  if (firstSafe >= end) return viewLine(item, [{ result: lineStart, start, end }], end, overflow, false);
+  return viewLine(item, [{ result: lineStart, start: lineStart.start, end: lineStart.end }, { result, start: firstSafe, end }], end, overflow, false);
+}
+
+/**
+ * ShapingLineBreaker::ShapeLine for the line that starts at start in the item: the candidate from the cached positions, the
+ * previous (or, after a space, next) break opportunity, reshaping at both edges, and stepping back while the reshaped end does not
+ * fit. wrappedStart is IsStartOfWrappedLine; breakable says whether a line may start at an item offset (the item's end included).
+ * Text-spacing-trim is normal, hyphens manual and the text has no auto-spacing; HanKerning applies only to CJK punctuation.
+ */
+export function shapeLine(item: ShapeItem, result: ShapeResult, start: number, availableIn: LU, wrappedStart: boolean, breakable: (offset: number) => boolean, dontReshapeEndIfAtSpace: boolean): ItemLine {
+  const units = item.units;
+  const faults = item.faults;
+  const rangeStart = result.start;
+  const rangeEnd = result.end;
+  if (result.missing >= 0) {
+    const r = noGlyph(result.missing);
+    return { ok: false, reason: r.ok ? '' : r.reason };
+  }
+  let available: number = availableIn < 0 ? 0 : availableIn;
+  if (start === rangeStart && !wrappedStart && available >= snapWidth(result.width, faults) && isStartSafe(result)) {
+    return viewLine(item, [{ result, start: rangeStart, end: rangeEnd }], rangeEnd, false, false);
+  }
+  const startPosition = cachedPositionForOffset(result, start);
+  const firstSafe = wrappedStart && !faults.noReshapeAtBreak ? cachedNextSafeToBreakOffset(result, start) : start;
+  let lineStart: ShapeResult | null = null;
+  if (firstSafe !== start) {
+    const ls = shapeRange(item, start, firstSafe, true, false, false);
+    lineStart = ls;
+    const oldWidth = cachedPositionForOffset(result, firstSafe) - startPosition;
+    const diff = oldWidth - snapWidth(ls.width, faults);
+    if (diff !== 0) available = available + diff > 0 ? available + diff : 0;
+  }
+  const endPosition = startPosition + available;
+  let candidate = candidateBreak(result, start, available);
+  let lastSafe = 0;
+  let lineEnd: ShapeResult | null = null;
+  if (candidate < rangeEnd && maybeHanKerningClose(units[candidate] as number) && breakable(candidate + 1)) {
+    const adjusted = candidate + 1;
+    const safe = cachedPreviousSafeToBreakOffset(result, candidate);
+    const trimmed = shapeRange(item, safe, adjusted, false, false, true);
+    const widthToSafe = cachedPositionForOffset(result, safe) - startPosition;
+    if (floatAdd(toPx(fromRaw(widthToSafe)), trimmed.width) <= toFloat(fromRaw(available))) {
+      candidate = adjusted;
+      lineEnd = trimmed;
+      lastSafe = safe;
+    }
+  }
+  if (candidate >= rangeEnd) return shapeToEnd(item, result, start, lineStart, firstSafe, false);
+  if (candidate < start) candidate = start;
+  let overflow = false;
+  let bo: ItemBreak;
+  if (!isBreakableSpace(units[candidate] as number)) {
+    bo = previousBreak(units, breakable, candidate, start);
+    overflow = bo.offset <= start;
+    if (overflow) bo = nextBreak(units, breakable, candidate > start + 1 ? candidate : start + 1, rangeEnd);
+  } else {
+    bo = nextBreak(units, breakable, candidate > start + 1 ? candidate : start + 1, rangeEnd);
+    if (bo.offset > candidate && (bo.nonHangableEnd < 0 || bo.nonHangableEnd > candidate)) {
+      const previous = previousBreak(units, breakable, candidate, start);
+      if (previous.offset > start) bo = previous;
+      else overflow = true;
+    }
+    if (bo.nonHangableEnd >= 0 && bo.nonHangableEnd <= start) {
+      const end = bo.offset < rangeEnd ? bo.offset : rangeEnd;
+      return viewLine(item, [{ result, start, end }], end, overflow, true);
+    }
+  }
+  let reshapeEnd = lineEnd === null;
+  if (bo.offset >= rangeEnd) {
+    if (overflow) return shapeToEnd(item, result, start, lineStart, firstSafe, true);
+    let nhe = bo.nonHangableEnd >= 0 && rangeEnd < bo.nonHangableEnd ? -1 : bo.nonHangableEnd;
+    if (isBreakableSpace(units[rangeEnd - 1] as number)) nhe = nonHangableEndOf(units, rangeEnd - 1);
+    bo = { offset: rangeEnd, nonHangableEnd: nhe };
+    reshapeEnd = false;
+  }
+  if (dontReshapeEndIfAtSpace && reshapeEnd) reshapeEnd = !isBreakableSpace(units[bo.offset - 1] as number);
+  let offset = bo.offset;
+  if (bo.nonHangableEnd >= 0) offset = start + 1 > bo.nonHangableEnd ? start + 1 : bo.nonHangableEnd;
+  if (firstSafe >= offset) {
+    const all = shapeRange(item, start, offset, true, false, false);
+    return viewLine(item, [{ result: all, start: all.start, end: all.end }], offset, overflow, false);
+  }
+  if (reshapeEnd) {
+    while (true) {
+      if (bo.nonHangableEnd >= 0) offset = start + 1 > bo.nonHangableEnd ? start + 1 : bo.nonHangableEnd;
+      else offset = bo.offset;
+      lastSafe = faults.noReshapeAtBreak ? offset : cachedPreviousSafeToBreakOffset(result, offset);
+      if (lastSafe === offset) break;
+      if (lastSafe < firstSafe) {
+        lastSafe = start;
+        lineStart = null;
+      }
+      if (overflow) {
+        lineEnd = shapeRange(item, lastSafe, offset, false, false, false);
+        break;
+      }
+      const safePosition = cachedPositionForOffset(result, lastSafe);
+      const le = shapeRange(item, lastSafe, offset, false, false, false);
+      if (le.width <= toFloat(fromRaw(endPosition - safePosition))) {
+        lineEnd = le;
+        break;
+      }
+      lineEnd = null;
+      bo = previousBreak(units, breakable, offset - 1, start);
+      if (bo.offset > start) continue;
+      overflow = true;
+      bo = previousBreak(units, breakable, candidate, start);
+      if (bo.offset <= start) {
+        bo = nextBreak(units, breakable, candidate > start + 1 ? candidate : start + 1, rangeEnd);
+        if (bo.offset >= rangeEnd) return shapeToEnd(item, result, start, lineStart, firstSafe, true);
+      }
+    }
+  }
+  if (lineEnd === null) lastSafe = offset;
+  const segments: ViewSegment[] = [];
+  if (lineStart !== null) segments.push({ result: lineStart, start: lineStart.start, end: lineStart.end });
+  if (lastSafe > firstSafe) segments.push({ result, start: firstSafe, end: lastSafe });
+  if (lineEnd !== null) segments.push({ result: lineEnd, start: lineEnd.start, end: lineEnd.end });
+  return viewLine(item, segments, offset, overflow, false);
+}
+
+/** ShapeResultView::Create of a view restricted to [start, end): RemoveTrailingCollapsibleSpace's view without the trailing space. */
+export function subView(view: LineView, start: number, end: number): LineView {
+  const out: ViewSegment[] = [];
+  for (const s of view.segments) {
+    const a = s.start > start ? s.start : start;
+    const b = s.end < end ? s.end : end;
+    if (b > a) out.push({ result: s.result, start: a, end: b });
+  }
+  return { segments: out };
+}
+
+/** ShapeResultView::SnappedWidth. */
+export function viewSnappedWidth(item: ShapeItem, view: LineView): LU {
+  return snapWidth(viewWidth(view.segments, item.faults), item.faults);
+}
+
+/** The whole item as one view (ShapeResultView::Create(result)). */
+export function wholeView(result: ShapeResult): LineView {
+  return { segments: [{ result, start: result.start, end: result.end }] };
+}
+
+/** ShapeResult::CachedWidth of [start, end): the difference of the cached positions. */
+export function cachedRangeLU(result: ShapeResult, start: number, end: number): LU {
+  return sub(fromRaw(cachedPositionForOffset(result, end)), fromRaw(cachedPositionForOffset(result, start)));
+}
+
+/** The InlineSize of the generated hyphen of the item's font (ComputedStyle::HyphenString shaped as its own item). */
+export function hyphenAdvance(item: ShapeItem): LineResult {
+  return hyphenWidth(item);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// LineBreaker (line_breaker.cc): text items, open and close tags of undecorated inline boxes and forced breaks, with collapsible
+// white space, one text-wrap-mode and the initial word-break, overflow-wrap, line-break and hyphens.
+
+/**
+ * One item of a formatting context for the line breaker. A text item is one shaped text item: its shaped result, the item offsets
+ * where a line may start (opportunities, ascending, inside the item), whether a line may start right after it (atEnd), and its
+ * offset in the context's text content. A tag records whether the content character after it is a breakable space.
+ */
+export type BreakItem =
+  | { readonly kind: 'text'; readonly item: ShapeItem; readonly result: ShapeResult; readonly opportunities: readonly number[]; readonly atEnd: boolean; readonly offset: number }
+  | { readonly kind: 'open'; readonly offset: number }
+  | { readonly kind: 'close'; readonly offset: number; readonly spaceBefore: boolean; readonly spaceAfter: boolean }
+  | { readonly kind: 'br'; readonly offset: number };
+
+/** One InlineItemResult: the item, its offsets, its inline size (with the hyphen), its view and whether a line may break after it. */
+export type BreakResult = {
+  readonly index: number;
+  readonly start: number;
+  readonly end: number;
+  readonly width: LU;
+  readonly hyphen: LU;
+  readonly view: LineView | null;
+  readonly canBreakAfter: boolean;
+  readonly mayBreakInside: boolean;
+};
+
+/** A line: its item results, the inline size each shows once a trailing collapsible space hangs, and where the next line starts. */
+export type BrokenLine = {
+  readonly results: readonly BreakResult[];
+  readonly visibleWidths: readonly LU[];
+  readonly nextItem: number;
+  readonly nextOffset: number;
+  readonly forced: boolean;
+};
+
+export type BrokenLines = { readonly ok: true; readonly lines: readonly BrokenLine[] } | { readonly ok: false; readonly reason: string };
+
+type MutableResult = { index: number; start: number; end: number; width: LU; hyphen: LU; view: LineView | null; canBreakAfter: boolean; mayBreakInside: boolean };
+
+type BreakState = 'continue' | 'trailing' | 'overflow' | 'done';
+
+class BreakFailure extends Error {
+  readonly reason: string;
+  constructor(reason: string) {
+    super(reason);
+    this.reason = reason;
+  }
+}
+
+/** The line breaker's state while it builds one line (LineBreaker's members). */
+type LineBuild = {
+  readonly items: readonly BreakItem[];
+  readonly toFit: number;
+  readonly wrap: boolean;
+  readonly accurateEnd: boolean;
+  readonly afterForced: boolean;
+  readonly lineStart: number;
+  results: MutableResult[];
+  position: number;
+  state: BreakState;
+  leading: boolean;
+  forced: boolean;
+  curItem: number;
+  curOffset: number;
+};
+
+/** The state, read after a call that may change it. */
+function stateOf(b: LineBuild): BreakState {
+  return b.state;
+}
+
+function itemLength(it: BreakItem): number {
+  return it.kind === 'text' ? it.result.end : 0;
+}
+
+function textUnit(it: BreakItem, offset: number): number {
+  return it.kind === 'text' && offset >= 0 && offset < it.result.end ? (it.item.units[offset] as number) : -1;
+}
+
+function itemBreakable(it: BreakItem, offset: number): boolean {
+  if (it.kind !== 'text') return false;
+  if (offset >= it.result.end) return it.atEnd;
+  return contains(it.opportunities, offset, 0);
+}
+
+function emptyResult(index: number, offset: number, canBreakAfter: boolean): MutableResult {
+  return { index, start: offset, end: offset, width: ZERO, hyphen: ZERO, view: null, canBreakAfter, mayBreakInside: false };
+}
+
+function recomputePosition(b: LineBuild): void {
+  let p = 0;
+  for (const r of b.results) p = p + r.width;
+  b.position = p;
+}
+
+function moveAfter(b: LineBuild, r: MutableResult): void {
+  const it = b.items[r.index] as BreakItem;
+  if (it.kind === 'text' && r.end < it.result.end) {
+    b.curItem = r.index;
+    b.curOffset = r.end;
+  } else {
+    b.curItem = r.index + 1;
+    b.curOffset = 0;
+  }
+}
+
+/** LineBreaker::Rewind to the first n results. */
+function rewindTo(b: LineBuild, n: number): void {
+  const last = b.results[n - 1] as MutableResult;
+  const kept: MutableResult[] = [];
+  for (let i = 0; i < n; i++) kept.push(b.results[i] as MutableResult);
+  b.results = kept;
+  moveAfter(b, last);
+  b.leading = false;
+  recomputePosition(b);
+}
+
+function isAllSpaces(it: BreakItem, start: number, end: number): boolean {
+  for (let o = start; o < end; o++) if (!isBreakableSpace(textUnit(it, o))) return false;
+  return true;
+}
+
+/** LineBreaker::BreakText: ShapeLine from the result's start, with BreakText's retry when the generated hyphen overflows. */
+function breakText(b: LineBuild, r: MutableResult, availIn: number, availWithHyphens: number): boolean {
+  const it = b.items[r.index] as BreakItem;
+  if (it.kind !== 'text') throw new BreakFailure('breakText on an item that is not text');
+  let avail = availIn;
+  const wrapped = it.offset + r.start !== 0 && it.offset + r.start === b.lineStart && !b.afterForced;
+  while (true) {
+    const l = shapeLine(it.item, it.result, r.start, fromRaw(avail < 0 ? 0 : avail), wrapped, (o) => itemBreakable(it, o), !b.accurateEnd);
+    if (!l.ok) throw new BreakFailure(l.reason);
+    let inline: number = l.width < 0 ? 0 : l.width;
+    let hyphen = 0;
+    if (l.hyphenated && !it.item.faults.softHyphenWidthMissing) {
+      const h = hyphenWidth(it.item);
+      if (!h.ok) throw new BreakFailure(h.reason);
+      if (!l.overflow && inline <= avail) {
+        const space = availWithHyphens - inline;
+        if (space >= 0 && h.width > space) {
+          avail = avail - h.width;
+          continue;
+        }
+      }
+      hyphen = h.width;
+      inline = inline + hyphen;
+    }
+    r.end = l.end;
+    r.width = fromRaw(inline);
+    r.hyphen = fromRaw(hyphen);
+    r.view = l.view;
+    r.canBreakAfter = l.end < it.result.end ? true : itemBreakable(it, it.result.end);
+    r.mayBreakInside = !l.overflow;
+    return inline <= availWithHyphens;
+  }
+}
+
+/** LineBreaker::HandleTrailingSpaces with collapsible white space: one space hangs, then the line is done unless the item ends. */
+function handleTrailingSpaces(b: LineBuild): void {
+  const it = b.items[b.curItem] as BreakItem;
+  if (!b.wrap || textUnit(it, b.curOffset) !== 0x20) {
+    b.state = 'done';
+    return;
+  }
+  b.curOffset++;
+  const last = b.results[b.results.length - 1];
+  if (last !== undefined) last.canBreakAfter = true;
+  if (b.curOffset < itemLength(it)) {
+    b.state = 'done';
+    return;
+  }
+  if (last === undefined || last.index !== b.curItem) b.results.push(emptyResult(b.curItem, b.curOffset, true));
+  b.curItem++;
+  b.curOffset = 0;
+  b.state = 'trailing';
+}
+
+/** LineBreaker::RewindOverflow: trailable items after new_end stay on the line. */
+function rewindOverflow(b: LineBuild, newEnd: number): void {
+  let openCount = 0;
+  let end = newEnd;
+  for (let index = newEnd; index < b.results.length; index++) {
+    const r = b.results[index] as MutableResult;
+    const it = b.items[r.index] as BreakItem;
+    if (it.kind === 'text') {
+      if (r.end === r.start) continue;
+      if (b.wrap && isBreakableSpace(textUnit(it, r.start))) {
+        if (isAllSpaces(it, r.start + 1, r.end)) continue;
+        b.state = 'trailing';
+        rewindTo(b, index);
+        return;
+      }
+    } else if (it.kind === 'open') {
+      if (openCount === 0) end = index;
+      openCount++;
+      continue;
+    } else if (it.kind === 'close') {
+      if (openCount > 0) openCount--;
+      continue;
+    }
+    b.state = 'done';
+    rewindTo(b, openCount > 0 ? end : index);
+    return;
+  }
+  if (openCount > 0) {
+    b.state = 'done';
+    rewindTo(b, end);
+    return;
+  }
+  recomputePosition(b);
+  b.state = 'done';
+}
+
+function removeHyphen(b: LineBuild): void {
+  const last = b.results[b.results.length - 1];
+  if (last !== undefined && last.hyphen > 0) {
+    last.width = sub(last.width, last.hyphen);
+    last.hyphen = ZERO;
+    recomputePosition(b);
+  }
+}
+
+/** LineBreaker::HandleOverflow: the last break opportunity that fits, breaking an earlier text result again if it can. */
+function handleOverflow(b: LineBuild): void {
+  removeHyphen(b);
+  let toRewind = b.position - b.toFit;
+  let breakBefore = 0;
+  for (let i = b.results.length; i > 0; ) {
+    i--;
+    const r = b.results[i] as MutableResult;
+    if (i < b.results.length - 1 && r.canBreakAfter) {
+      if (toRewind <= 0) {
+        rewindOverflow(b, i + 1);
+        return;
+      }
+      breakBefore = i + 1;
+    }
+    toRewind = toRewind - r.width;
+    if (toRewind > 0) continue;
+    const it = b.items[r.index] as BreakItem;
+    if (it.kind !== 'text' || r.end === r.start) continue;
+    if (toRewind < 0 && r.mayBreakInside) {
+      const itemAvail = -toRewind;
+      const minAvail = r.width - 1;
+      if (minAvail <= 0) throw new BreakFailure('a zero-width text result overflows (BreakTextAtPreviousBreakOpportunity)');
+      const before: MutableResult = { index: r.index, start: r.start, end: r.end, width: r.width, hyphen: r.hyphen, view: r.view, canBreakAfter: r.canBreakAfter, mayBreakInside: r.mayBreakInside };
+      breakText(b, r, itemAvail < minAvail ? itemAvail : minAvail, itemAvail);
+      if (r.canBreakAfter && r.width <= itemAvail && r.end < before.end) {
+        if (i + 1 === b.results.length) {
+          b.curItem = r.index;
+          b.curOffset = r.end;
+          recomputePosition(b);
+          handleTrailingSpaces(b);
+          return;
+        }
+        b.state = 'trailing';
+        rewindTo(b, i + 1);
+        return;
+      }
+      r.end = before.end;
+      r.width = before.width;
+      r.hyphen = before.hyphen;
+      r.view = before.view;
+      r.canBreakAfter = before.canBreakAfter;
+      r.mayBreakInside = before.mayBreakInside;
+    }
+  }
+  if (breakBefore > 0) {
+    rewindOverflow(b, breakBefore);
+    return;
+  }
+  const tail = b.results[b.results.length - 1];
+  b.state = tail !== undefined && tail.canBreakAfter ? 'trailing' : 'overflow';
+}
+
+/** LineBreaker::HandleText. */
+function handleText(b: LineBuild): void {
+  const it = b.items[b.curItem] as BreakItem;
+  if (it.kind !== 'text') throw new BreakFailure('handleText on an item that is not text');
+  if (b.state === 'trailing') {
+    handleTrailingSpaces(b);
+    return;
+  }
+  if (b.leading && textUnit(it, b.curOffset) === 0x20) {
+    b.curOffset++;
+    if (b.curOffset >= itemLength(it)) {
+      b.results.push(emptyResult(b.curItem, b.curOffset, false));
+      b.curItem++;
+      b.curOffset = 0;
+      return;
+    }
+  }
+  if (b.state === 'continue' && b.position > b.toFit) {
+    if (b.wrap && isBreakableSpace(textUnit(it, b.curOffset))) {
+      handleTrailingSpaces(b);
+      if (stateOf(b) !== 'done') b.state = 'continue';
+      return;
+    }
+    handleOverflow(b);
+    return;
+  }
+  removeHyphen(b);
+  const r = emptyResult(b.curItem, b.curOffset, false);
+  b.results.push(r);
+  b.leading = false;
+  if (!b.wrap) {
+    const view: LineView = r.start === 0 ? wholeView(it.result) : { segments: [{ result: it.result, start: r.start, end: it.result.end }] };
+    r.end = it.result.end;
+    r.view = view;
+    const w = viewSnappedWidth(it.item, view);
+    r.width = w < 0 ? ZERO : w;
+    b.position = b.position + r.width;
+    b.curItem++;
+    b.curOffset = 0;
+    return;
+  }
+  const remaining = b.toFit - b.position;
+  const fits = breakText(b, r, remaining, remaining);
+  b.position = b.position + r.width;
+  moveAfter(b, r);
+  if (fits) {
+    if (r.end < it.result.end) handleTrailingSpaces(b);
+    return;
+  }
+  if (b.state === 'overflow') {
+    if (r.canBreakAfter) b.state = 'trailing';
+    return;
+  }
+  if (isAllSpaces(it, r.start, r.end)) return;
+  handleOverflow(b);
+}
+
+/** LineBreaker::HandleCloseTag: a break opportunity before the tag moves after it; else one before a space after it. */
+function handleCloseTag(b: LineBuild): void {
+  const it = b.items[b.curItem] as BreakItem;
+  const r = emptyResult(b.curItem, 0, false);
+  const prev = b.results[b.results.length - 1];
+  b.results.push(r);
+  b.curItem++;
+  b.curOffset = 0;
+  if (prev === undefined || it.kind !== 'close') return;
+  if (prev.canBreakAfter) {
+    r.canBreakAfter = true;
+    prev.canBreakAfter = false;
+  } else if (b.wrap) {
+    r.canBreakAfter = it.spaceAfter;
+  }
+}
+
+/** One line: LineBreaker::BreakLine, then ComputeTrailingCollapsibleSpace. */
+function breakOneLine(b: LineBuild): BrokenLine {
+  while (b.state !== 'done') {
+    if (b.curItem >= b.items.length) {
+      if (b.position > b.toFit && b.results.length > 0 && b.state === 'continue') {
+        handleOverflow(b);
+        if (b.curItem < b.items.length) continue;
+      }
+      break;
+    }
+    if (b.state === 'overflow') {
+      const tail = b.results[b.results.length - 1];
+      if (tail !== undefined && tail.canBreakAfter) b.state = 'trailing';
+    }
+    const it = b.items[b.curItem] as BreakItem;
+    if (it.kind === 'text') handleText(b);
+    else if (it.kind === 'open') {
+      b.results.push(emptyResult(b.curItem, 0, false));
+      b.curItem++;
+      b.curOffset = 0;
+    } else if (it.kind === 'close') handleCloseTag(b);
+    else {
+      // HandleForcedLineBreak: the <br>, then the close tags that follow it.
+      b.results.push(emptyResult(b.curItem, 0, true));
+      b.curItem++;
+      b.curOffset = 0;
+      while (b.curItem < b.items.length && (b.items[b.curItem] as BreakItem).kind === 'close') {
+        b.results.push(emptyResult(b.curItem, 0, true));
+        b.curItem++;
+      }
+      b.forced = true;
+      b.state = 'done';
+    }
+  }
+  let hang = -1;
+  let hangWidth = ZERO;
+  for (let i = b.results.length - 1; i >= 0; i--) {
+    const r = b.results[i] as MutableResult;
+    const it = b.items[r.index] as BreakItem;
+    if (it.kind !== 'text' || r.end === r.start) continue;
+    if (textUnit(it, r.end - 1) === 0x20 && r.view !== null) {
+      hang = i;
+      hangWidth = r.end - 1 > r.start ? viewSnappedWidth(it.item, subView(r.view, r.start, r.end - 1)) : ZERO;
+    }
+    break;
+  }
+  const visibleWidths: LU[] = [];
+  for (let i = 0; i < b.results.length; i++) visibleWidths.push(i === hang ? hangWidth : (b.results[i] as MutableResult).width);
+  const results: BreakResult[] = [];
+  for (const r of b.results) results.push({ index: r.index, start: r.start, end: r.end, width: r.width, hyphen: r.hyphen, view: r.view, canBreakAfter: r.canBreakAfter, mayBreakInside: r.mayBreakInside });
+  return { results, visibleWidths, nextItem: b.curItem, nextOffset: b.curOffset, forced: b.forced };
+}
+
+/**
+ * LineBreaker::NextLine over the items with an available width (no floats, no text-indent). wrap is the context's
+ * text-wrap-mode; accurateEnd is LineInfo::NeedsAccurateEndPosition (text-align other than the start side), which keeps
+ * ShapeLine reshaping the end of a line that breaks at a space. epsilon is LayoutUnit::AddEpsilon (AvailableWidthToFit).
+ */
+export function breakItemLines(items: readonly BreakItem[], available: LU, wrap: boolean, accurateEnd: boolean, epsilon: boolean): BrokenLines {
+  const toFit: number = epsilon ? available + 1 : available;
+  const lines: BrokenLine[] = [];
+  let curItem = 0;
+  let curOffset = 0;
+  let afterForced = false;
+  try {
+    while (curItem < items.length) {
+      const b: LineBuild = {
+        items, toFit, wrap, accurateEnd, afterForced, lineStart: lineOffsetOf(items, curItem, curOffset),
+        results: [], position: 0, state: 'continue', leading: true, forced: false, curItem, curOffset,
+      };
+      const line = breakOneLine(b);
+      if (line.results.length === 0) break;
+      if (line.nextItem === curItem && line.nextOffset === curOffset) throw new BreakFailure(`the line breaker made no progress at item ${curItem}`);
+      lines.push(line);
+      curItem = line.nextItem;
+      curOffset = line.nextOffset;
+      afterForced = line.forced;
+    }
+  } catch (e) {
+    if (e instanceof BreakFailure) return { ok: false, reason: e.reason };
+    throw e;
+  }
+  return { ok: true, lines };
+}
+
+/** The text-content offset of an item position. */
+function lineOffsetOf(items: readonly BreakItem[], index: number, offset: number): number {
+  const it = items[index] as BreakItem;
+  return it.offset + offset;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
 // The measurer
 
 /** An item shaped once per text, face and size, cached per ShapedText (per layout). */
@@ -883,6 +1568,9 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
       const f = faces.get(font.family);
       if (f === undefined) throw new Error(`no bundled face ${font.family}; the host passes every face the input names`);
       return fontMetricLengths(f.data, platformFontSize(font.size));
+    },
+    shaped(text: string, font: TextFont): ShapedItem {
+      return itemFor(text, font);
     },
   };
   return { measurer, item, line };
