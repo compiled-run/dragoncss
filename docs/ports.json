@@ -636,6 +636,7 @@
         { "lines": "1365-1375", "symbol": null, "source": "cited" },
         { "lines": "1442-1442", "symbol": null, "source": "cited" },
         { "lines": "2652-2654", "symbol": null, "source": "cited" },
+        { "lines": "3341-3352", "symbol": null, "source": "cited" },
         { "lines": "3936-3945", "symbol": "AdjustSliderThumbInlineOffset", "source": "located" }
       ],
       "dragon": [
