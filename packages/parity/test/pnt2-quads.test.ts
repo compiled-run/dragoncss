@@ -12,7 +12,7 @@ import { programInput } from 'dragon';
 import { GATE_DEVICE_PX } from '../src/compare.ts';
 import { DPRS } from '../src/dpr.ts';
 import { nativeCases, referenceMeasurer } from '../src/native-host.ts';
-import { committedQuads, QUAD_DPRS, transformCases } from '../src/transform-capture.ts';
+import { committedQuads, parseQuads, QUAD_DPRS, transformCases } from '../src/transform-capture.ts';
 
 const TRIG = { sin: Math.sin, cos: Math.cos };
 type Facts = { readonly ops: readonly TransformOp[]; readonly origin: TransformOrigin };
@@ -59,6 +59,9 @@ async function deltas(model: Model): Promise<{ readonly where: string; readonly 
     for (const dpr of QUAD_DPRS) {
       const q = committedQuads(n.case.id, dpr);
       const boxes = cssBoxes(p, dpr);
+      // Every DPR's capture names exactly the nodes Dragon transforms, so no node goes unmeasured at any DPR.
+      const transformed = p.nodes.filter((x) => ((x.facts['transform'] as Facts | undefined)?.ops.length ?? 0) > 0).map((x) => x.id);
+      if (JSON.stringify(q.nodes.map((x) => x.id)) !== JSON.stringify(transformed)) throw new Error(`${n.case.id}@${dpr}: Chrome transforms ${q.nodes.map((x) => x.id).join(', ')}, Dragon ${transformed.join(', ')}`);
       for (const node of q.nodes) {
         const b = boxes.get(node.id);
         if (b === undefined) throw new Error(`${n.case.id}: Chrome transforms ${node.id}, which the engine has no box for`);
@@ -75,6 +78,24 @@ async function deltas(model: Model): Promise<{ readonly where: string; readonly 
 describe('PNT2: transformed geometry against Chrome', () => {
   it('captures quads at DPR 1 and every device DPR', () => {
     expect([...QUAD_DPRS]).toEqual([1, ...DPRS]);
+  });
+
+  it('reads a quads file only when every field has its shape and it names its own case and DPR', () => {
+    const good = { case: 'c', chrome: '145', dpr: 2, direction: 'ltr', nodes: [{ id: 'a', transform: 'matrix(1, 0, 0, 1, 0, 0)', quad: [0, 0, 1, 0, 1, 1, 0, 1] }] };
+    expect(parseQuads(good, 'c', 2)).toEqual(good);
+    const bad: [unknown, RegExp][] = [
+      [null, /not an object/],
+      [[], /not an object/],
+      [{ ...good, case: 'd' }, /names "d"/],
+      [{ ...good, dpr: 3 }, /at DPR 3/],
+      [{ ...good, chrome: undefined }, /no chrome version/],
+      [{ ...good, direction: 'up' }, /direction/],
+      [{ ...good, nodes: {} }, /nodes is not a list/],
+      [{ ...good, nodes: [{ id: 'a', quad: good.nodes[0]?.quad }] }, /node 0 has no id or transform/],
+      [{ ...good, nodes: [{ ...good.nodes[0], quad: [0, 0, 1, 0, 1, 1, 0] }] }, /eight finite numbers/],
+      [{ ...good, nodes: [{ ...good.nodes[0], quad: [0, 0, 1, 0, 1, 1, 0, null] }] }, /eight finite numbers/],
+    ];
+    for (const [json, want] of bad) expect(() => parseQuads(json, 'c', 2)).toThrow(want);
   });
 
   it('transforms exactly the nodes Chrome transforms, and serialises each functions matrix as Chrome computes it', async () => {
@@ -98,7 +119,8 @@ describe('PNT2: transformed geometry against Chrome', () => {
   it('maps the engine box through the transform onto Chrome\'s content quad within GATE_DEVICE_PX at DPR 1, 2, 3 and 2.625', async () => {
     const d = await deltas('dragon');
     expect(d.length).toBeGreaterThan(100);
-    const bad = d.filter((x) => x.worst > GATE_DEVICE_PX);
+    // Written as not-within so a NaN delta fails too.
+    const bad = d.filter((x) => !(x.worst <= GATE_DEVICE_PX));
     expect(bad).toEqual([]);
     console.log(`pnt2-quads: ${d.length} transformed nodes; worst corner ${Math.max(...d.map((x) => x.worst)).toFixed(4)} device px`);
   }, 300_000);

@@ -10,7 +10,10 @@ import { captureTransformQuads, dprLabel, QUAD_DPRS, quadsDir, quadsJson, quadsP
 
 const platform = hostPlatform();
 if (platform !== REFERENCE_PLATFORM) throw new Error(`quads are captured on the reference platform ${REFERENCE_PLATFORM}, not ${platform}`);
-const check = process.argv.includes('--check');
+const argv = process.argv.slice(2).filter((a) => a !== '--');
+const unknown = argv.filter((a) => a !== '--check');
+if (unknown.length > 0) throw new Error(`parity:quads-capture: unknown argument ${unknown.join(' ')} (only --check)`);
+const check = argv.includes('--check');
 const cases = await transformCases();
 // A capture over nothing proves nothing: the transforms group must give cases, and each case a transformed element.
 if (cases.length === 0) throw new Error('parity:quads-capture: the transforms group has no layout case');

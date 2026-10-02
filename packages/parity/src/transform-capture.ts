@@ -90,9 +90,26 @@ export const quadsDir = (dpr: number, platform: string = REFERENCE_PLATFORM): st
 export const quadsPath = (caseId: string, dpr: number, platform: string = REFERENCE_PLATFORM): string => `${quadsDir(dpr, platform)}/${caseId}.json`;
 export const quadsJson = (q: QuadCapture): string => `${JSON.stringify(q, null, 2)}\n`;
 
+/** A quads file's JSON checked field by field: the case and DPR it is named for, and per node an id, a transform and eight finite numbers. */
+export function parseQuads(json: unknown, caseId: string, dpr: number): QuadCapture {
+  const where = `expected-quads ${caseId} at DPR ${dpr}`;
+  const o = json as { readonly [k: string]: unknown } | null;
+  if (typeof o !== 'object' || o === null || Array.isArray(o)) throw new Error(`${where}: not an object`);
+  if (o['case'] !== caseId || o['dpr'] !== dpr) throw new Error(`${where}: the file names ${JSON.stringify(o['case'])} at DPR ${JSON.stringify(o['dpr'])}`);
+  if (typeof o['chrome'] !== 'string' || (o['direction'] !== 'ltr' && o['direction'] !== 'rtl')) throw new Error(`${where}: no chrome version or direction`);
+  if (!Array.isArray(o['nodes'])) throw new Error(`${where}: nodes is not a list`);
+  for (const [i, n] of (o['nodes'] as unknown[]).entries()) {
+    const x = n as { readonly [k: string]: unknown } | null;
+    if (typeof x !== 'object' || x === null || typeof x['id'] !== 'string' || typeof x['transform'] !== 'string') throw new Error(`${where}: node ${i} has no id or transform`);
+    const q = x['quad'];
+    if (!Array.isArray(q) || q.length !== 8 || !q.every((v) => typeof v === 'number' && Number.isFinite(v))) throw new Error(`${where}: node ${x['id']} has no quad of eight finite numbers`);
+  }
+  return o as unknown as QuadCapture;
+}
+
 /** The committed quads of a case at a DPR. */
 export function committedQuads(caseId: string, dpr: number): QuadCapture {
-  return JSON.parse(readFileSync(quadsPath(caseId, dpr), 'utf8')) as QuadCapture;
+  return parseQuads(JSON.parse(readFileSync(quadsPath(caseId, dpr), 'utf8')) as unknown, caseId, dpr);
 }
 
 /** The cases of the transforms fixture group. */

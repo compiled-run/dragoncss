@@ -73,7 +73,14 @@ export async function captureFixture(browser: Browser, fixture: string, html: st
       }
       return out;
     }, [...LONGHANDS, ...extra]);
-    if (twin !== null) for (const [i, n] of nodes.entries()) if (n.kind === 'element') nodes[i] = { ...n, computed: twin.get(n.id) ?? null };
+    if (twin !== null) {
+      for (const [i, n] of nodes.entries()) {
+        if (n.kind !== 'element') continue;
+        const computed = twin.get(n.id);
+        if (computed === undefined) throw new Error(`${fixture}: the transform twin read no computed values for ${n.id}`);
+        nodes[i] = { ...n, computed };
+      }
+    }
     return {
       fixture,
       chrome: CHROME_VERSION,
