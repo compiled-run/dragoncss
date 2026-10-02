@@ -839,3 +839,24 @@ Formula:
 hit_test_location.cc is LGPL: its point semantics come from probes, not its text. ui/gfx quad_f.cc (Chromium BSD) is covered by the porting rule (Blink, Skia, gfx).
 
 PM capture ruling: pointer-events may add its one computed key to every existing capture and emitted file only with hit-capture-identity.test.ts, which proves every other byte identical. The device-states and device-hit entries are appended to targets.ts after PR #42 merges. Full worker package: the T063J receipt, copied to board task T134.
+
+## Amendment T064J (Judge, 2026-10-01), PM accepted: SELD-R2
+
+SELD-R2 splits into R2a, now on seld-lanes 129c5ea42 (branch seld-r2), and R2b, after PNT1 and PNT2: hit testing through transforms and stacking, plus the hitIgnoresTransform plant.
+
+**R2a.**
+- **Selectors.** selectors.ts lifts the :hover, :focus and :focus-visible refusals. match.ts takes an InteractionState; with the default state every match is byte-identical.
+- **States.** The new analysis/interaction.ts finds the candidate sets and the state partition: none; chain(K); forcedHover(E) where it differs from the chain; forcedFocus; forcedFocusVisible. It is counted against MAX_STATE_ASSIGNMENTS.
+- **Resolution.** resolve.ts gets an optional interaction option, and cascade.ts the condition hunk. project.ts gives each CaseResult an interaction array, checked by the same checks, so every refusal inside a hover rule is reported. Case keys and counts are unchanged.
+- **Web.** Per-state diffs follow the bands pattern. Generated condition selectors are built only from dg classes plus the pseudos, with resolved declarations. Author selectors are never copied, and the conditions are mutually exclusive.
+- **cursor.** A longhand, CSS UI 4 keywords only, with url() refused. The Android PointerIcon map; iPadOS pointer as a caveat; no effect on iPhone. It may add its key to every capture only with cursor-capture-identity.test.ts (the pointer-events precedent).
+- **Native.** A compiled table on the R1a state runtime, with no run-time matching. Touch tap gives a sticky hit chain until the next tap. Mouse hover follows the pointer. Focus goes to the nearest focusable element or is cleared. :focus-visible is never set from a pointer.
+- **Parity.** An INTERACTION_FORCED registry outside FixtureSpec. Forced cases use CSS.forcePseudoState through a prepare hook. trace-capture and trace-report compare Dragon's TS trace with Chrome's.
+
+**Checks.**
+- A completeness test fails if any interaction rule is neither compiled nor refused (plant interactionRuleDropped).
+- An exclusivity test.
+- Every non-interaction document is byte-identical apart from the cursor key.
+- The Chrome trace decides the touch semantics.
+
+The full worker_package is in the T064J receipt and on the board under T064.
