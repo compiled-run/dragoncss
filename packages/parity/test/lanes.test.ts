@@ -269,7 +269,7 @@ describe('host suite lines (T125)', () => {
       const parsed = parseNativeOutput(out);
       expect(parsed?.suites.map((s) => `${s.corpus}/${s.suite} ${s.pass}/${s.total}`), f).toHaveLength(13);
       // The suites that output printed: node packages/translate/src/cli/native.ts swift and kotlin, run on the merge of master 23c2b507.
-      expect(parsed?.suites.map((s) => `${s.corpus}/${s.suite}`), f).toEqual(['p1/vectors', 'p1/units', 'p1/engine', 'p1/library', ...['vectors-m2', 'vectors-dpr', 'engine-dpr', 'units-m2', 'snap', 'snap-values', 'calc-goldens', 'engine-calc', 'units-calc', 'engine-inline'].map((x) => `extended/${x}`)]);
+      expect(parsed?.suites.map((s) => `${s.corpus}/${s.suite}`), f).toEqual(['p1/vectors', 'p1/units', 'p1/engine', 'p1/library', ...['vectors-m2', 'vectors-dpr', 'engine-dpr', 'units-m2', 'snap', 'snap-values', 'calc-goldens', 'engine-calc', 'units-calc'].map((x) => `extended/${x}`)]);
       // No line but a suite line holds a count, so no other line can newly match.
       expect(out.split('\n').filter((l) => / \d+\/\d+/.test(l)), f).toHaveLength(13);
     }
