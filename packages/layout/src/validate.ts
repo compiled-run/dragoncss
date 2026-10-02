@@ -66,6 +66,9 @@ const padding = tagged({ ...px(0), ...percent(0), ...calc });
 // R5: an initial line width is typed in device px by the compiler (Chrome stores it unzoomed); only the four border widths take it.
 const border = tagged({ ...px(0), 'device-px': { value: num(0) }, ...calc });
 const gap = tagged({ ...px(0), ...percent(0), normal: {}, ...calc });
+// A layout ratio is two raw LayoutUnit values, positive integers (StyleAspectRatio::GetLayoutRatio).
+const rawRatio = { width: { t: 'number', min: 1, exclusiveMin: false, integer: true }, height: { t: 'number', min: 1, exclusiveMin: false, integer: true } } as const;
+const aspectRatio = tagged({ ...auto, ratio: rawRatio, 'auto-ratio': rawRatio });
 
 const justify = lit(
   'normal', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly',
@@ -120,6 +123,7 @@ export const styleSchema = obj({
   rowGap: gap,
   columnGap: gap,
   textAlign: lit('start', 'end', 'left', 'right', 'center', 'justify'),
+  aspectRatio,
 });
 
 /** css-fonts-4 §2: a font with its specified size expression (input.ts FontSpec). */
@@ -415,6 +419,54 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be equal: css-overflow-3 §3.1 computes visible beside hidden to auto' });
   }
   if (value['boxType'] === 'anonymous') checkAnonymous(value, children, path, errors, parentId);
+  if (isRecord(style)) checkRatioBlockLengths(style, path, errors);
+}
+
+/** A length that holds a percentage: a percentage, or a calculation with one. */
+function holdsPercent(v: unknown): boolean {
+  if (!isRecord(v)) return false;
+  if (v['kind'] === 'percent') return true;
+  return v['kind'] === 'calc' && exprHoldsPercent(v['expr']);
+}
+
+/**
+ * calc.ts calcHasPercent over an expression not yet known to be well formed: a percentage leaf, a pixels-and-percent leaf with an
+ * explicit percentage, or either inside invert, clamp and the term lists; font-size calculations hold no basis percentage.
+ */
+function exprHoldsPercent(e: unknown): boolean {
+  if (!isRecord(e)) return false;
+  switch (e['kind']) {
+    case 'percent':
+      return true;
+    case 'pixels-and-percent':
+      return e['explicitPercent'] === true;
+    case 'invert':
+      return exprHoldsPercent(e['term']);
+    case 'clamp':
+      return exprHoldsPercent(e['min']) || exprHoldsPercent(e['value']) || exprHoldsPercent(e['max']);
+    case 'sum':
+    case 'product':
+    case 'min':
+    case 'max':
+      return Array.isArray(e['terms']) && e['terms'].some(exprHoldsPercent);
+    default:
+      return false;
+  }
+}
+
+// css-sizing-4 §5.1: a ratio transfers the block size before layout knows its percentage basis in every context, so Dragon
+// refuses a percentage height, min-height or max-height beside an aspect-ratio (the compiler reports it).
+function checkRatioBlockLengths(style: Record<string, unknown>, path: string, errors: ValidationError[]): void {
+  const ratio = style['aspectRatio'];
+  if (!isRecord(ratio) || ratio['kind'] === 'auto') return;
+  // The parts are raw LayoutUnits (int), which keeps units.ts mulDiv exact.
+  for (const part of ['width', 'height']) {
+    const v = ratio[part];
+    if (typeof v === 'number' && v > 2147483647) errors.push({ path: `${path}.style.aspectRatio.${part}`, code: 'bad-value', message: 'a layout ratio part is a raw LayoutUnit, at most 2147483647' });
+  }
+  for (const key of ['height', 'minHeight', 'maxHeight']) {
+    if (holdsPercent(style[key])) errors.push({ path: `${path}.style.${key}`, code: 'bad-value', message: `a percentage ${key} beside an aspect-ratio is not supported` });
+  }
 }
 
 /** CSS2 §9.2.1.1 and css-flexbox-1 §4: the initial value of every non-inherited LayoutStyle field an anonymous box must carry. */
@@ -458,6 +510,7 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
   alignContent: 'normal',
   rowGap: { kind: 'normal' },
   columnGap: { kind: 'normal' },
+  aspectRatio: { kind: 'auto' },
 };
 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box wraps a run of text only. It holds at least one text leaf and no box, its

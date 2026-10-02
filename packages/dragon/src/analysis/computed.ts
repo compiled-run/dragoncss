@@ -9,6 +9,7 @@ import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
 import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
+import { ratioValue } from '../css/values.ts';
 import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
 import type { Span } from '../types.ts';
 import type { Candidate } from './cascade.ts';
@@ -53,9 +54,11 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   const children = (node['children'] as { toArray(): CssNode[] }).toArray().filter((n) => n.type !== 'WhiteSpace');
   let v: CssValue;
   const only = children[0];
+  const ratio = property === 'aspect-ratio' ? ratioValue(children) : null;
   const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property);
   const color = isColor && only !== undefined && children.length === 1 ? parseColorNode(only) : null;
-  if (color !== null && color.ok) v = color.kind === 'keyword' ? { kind: 'keyword', value: color.keyword } : { kind: 'color', value: color.value, syntax: color.syntax };
+  if (ratio !== null && ratio !== 'invalid' && !('token' in ratio)) v = ratio;
+  else if (color !== null && color.ok) v = color.kind === 'keyword' ? { kind: 'keyword', value: color.keyword } : { kind: 'color', value: color.value, syntax: color.syntax };
   else if (children.length !== 1 || only === undefined) v = { kind: 'other', type: 'list', text };
   else if (only.type === 'Identifier') v = property === 'font-family' ? { kind: 'family', value: String(only['name']) } : { kind: 'keyword', value: String(only['name']).toLowerCase() };
   else if (only.type === 'Dimension') v = { kind: 'length', value: Number(only['value']), unit: normalizeUnit(String(only['unit'])) };
@@ -214,6 +217,8 @@ export function valueToString(v: CssValue): string {
       return String(v.value);
     case 'color':
       return serializeColor(v.value);
+    case 'ratio':
+      return `${v.auto ? 'auto ' : ''}${v.width} / ${v.height}`;
     case 'other':
       return v.text;
   }

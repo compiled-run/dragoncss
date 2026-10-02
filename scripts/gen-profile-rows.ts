@@ -41,6 +41,7 @@ for (const target of ['ios', 'android', 'web'] as const) {
   writeFileSync(repoPath(`packages/dragon/src/profiles/${target}.ts`), profileSource(target, rows));
   console.log(`${target}: ${rows.length} rows from ${cases.length} cases`);
 }
-const { lanes, stale } = committedLanes();
-writeFileSync(repoPath('packages/dragon/src/profiles/native-lanes.ts'), nativeLanesSource(lanes, stale));
+const committed = committedLanes();
+const { lanes, stale } = committed;
+writeFileSync(repoPath('packages/dragon/src/profiles/native-lanes.ts'), nativeLanesSource({ ios: committed.verdict('ios'), android: committed.verdict('android') }));
 console.log(`native lanes: ${lanes === null ? 'no committed lanes.json' : `${stale.length} stale`}`);

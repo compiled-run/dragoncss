@@ -57,6 +57,8 @@ function valueText(v: CssValue): string {
       return cssNumber(v.value);
     case 'color':
       return serializeColor(v.value);
+    case 'ratio':
+      return `${v.auto ? 'auto ' : ''}${cssNumber(v.width)} / ${cssNumber(v.height)}`;
     case 'other':
       return v.text;
   }
