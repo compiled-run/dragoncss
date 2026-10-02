@@ -126,8 +126,8 @@ export function positionedLayer(root: LayoutBox): Set<string> {
 }
 
 /**
- * The paint order of the boxes within each phase: tree order, with a flex container's items in order-modified document order
- * (css-flexbox-1 §5.4: they paint as if reordered by `order`, stably).
+ * The paint order of the boxes within each phase: tree order, with a flex container's in-flow items in order-modified document
+ * order (css-flexbox-1 §5.4: they paint as if reordered by `order`, stably); out-of-flow children keep their tree-order slots.
  */
 export function paintOrder(root: LayoutBox): string[] {
   const out: string[] = [];
@@ -135,7 +135,11 @@ export function paintOrder(root: LayoutBox): string[] {
     out.push(b.id);
     const kids = b.children.filter((c): c is LayoutBox => c.kind === 'box');
     const flex = b.style.display === 'flex';
-    const sorted = flex ? kids.map((c, i) => ({ c, i })).sort((x, y) => x.c.style.order - y.c.style.order || x.i - y.i).map((x) => x.c) : kids;
+    // Only in-flow children are flex items; an absolutely positioned child keeps its slot in tree order.
+    const outOfFlow = (c: LayoutBox): boolean => c.style.position === 'absolute';
+    const items = kids.map((c, i) => ({ c, i })).filter((x) => !outOfFlow(x.c)).sort((x, y) => x.c.style.order - y.c.style.order || x.i - y.i).map((x) => x.c);
+    let next = 0;
+    const sorted = flex ? kids.map((c) => (outOfFlow(c) ? c : (items[next++] as LayoutBox))) : kids;
     for (const c of sorted) walk(c);
   };
   walk(root);
@@ -203,8 +207,8 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
   walkPositions(p.root);
   /**
    * The clip over what node id paints: the padding boxes of the overflow-clipping boxes on its containing-block chain (css-overflow-3
-   * §3: an absolutely positioned box escapes the clips between it and its containing block, the nearest positioned ancestor; a
-   * fixed one escapes all), and its own with self.
+   * §3: an absolutely positioned box escapes the clips between it and its containing block, the nearest positioned ancestor;
+   * the engine has no fixed positioning), and its own with self.
    */
   const clipOf = (id: string, self: boolean): Box | null => {
     let r: Box | null = { left: -Infinity, top: -Infinity, right: Infinity, bottom: Infinity };
@@ -212,7 +216,6 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     let from = id;
     for (let at = nodeOf.get(id)?.parent ?? null; at !== null; at = nodeOf.get(at)?.parent ?? null) {
       const pos = positionOf.get(from);
-      if (pos === 'fixed') return r;
       // An absolutely positioned box skips every ancestor up to its containing block, which still clips it.
       if (pos === 'absolute' && (positionOf.get(at) ?? 'static') === 'static') continue;
       if (nodeOf.get(at)?.clips === true) r = intersect(r, pad(at));
@@ -334,9 +337,10 @@ describe('the oracle\'s paint order (which boxes hide a border pixel)', () => {
     expect(textPaintsOver(order, layer, 'b5', 'c4')).toBe(false);
     expect(textPaintsOver(order, layer, 'd3', 'b5')).toBe(false);
     // Flex items paint in order-modified document order; other boxes in tree order.
-    const leaf = (id: string, order = 0, display = 'block'): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: { display, position: 'static', order } as unknown as LayoutBox['style'], children: [] });
-    const flex: LayoutBox = { ...leaf('f', 0, 'flex'), children: [leaf('x', 2), leaf('y', -1), leaf('z', 2), { ...leaf('w', 1), children: [leaf('w1', -5)] }] };
-    expect(paintOrder({ ...leaf('r'), children: [flex, leaf('after')] })).toEqual(['r', 'f', 'y', 'w', 'w1', 'x', 'z', 'after']);
+    const leaf = (id: string, order = 0, display = 'block', position = 'static'): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: { display, position, order } as unknown as LayoutBox['style'], children: [] });
+    const flex: LayoutBox = { ...leaf('f', 0, 'flex'), children: [leaf('x', 2), leaf('a', -9, 'block', 'absolute'), leaf('y', -1), leaf('z', 2, 'block', 'relative'), { ...leaf('w', 1), children: [leaf('w1', -5)] }] };
+    // a is out of flow, so its order is ignored and it keeps its slot; z is a relatively positioned flex item and is reordered.
+    expect(paintOrder({ ...leaf('r'), children: [flex, leaf('after')] })).toEqual(['r', 'f', 'y', 'a', 'w', 'w1', 'x', 'z', 'after']);
     expect(intersect({ left: 0, top: 0, right: 10, bottom: 10 }, { left: 5, top: -2, right: 20, bottom: 3 })).toEqual({ left: 5, top: 0, right: 10, bottom: 3 });
     expect(intersect({ left: 0, top: 0, right: 10, bottom: 10 }, { left: 10, top: 0, right: 20, bottom: 3 })).toBeNull();
     expect([...positionedLayer(p.root)].sort()).toEqual(['a1', 'a2', 'a3', 'a4', 'a5', 'b1', 'b2', 'b3', 'b4', 'b5', 'd1', 'd2', 'd3', 'e1', 'e2']);
