@@ -31,6 +31,8 @@ import type {
   TextWrapMode,
   OverflowWrap,
   WordBreak,
+  VerticalAlignKeyword,
+  VerticalAlignValue,
 } from '@dragon/layout';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
@@ -174,6 +176,19 @@ function aspectRatio(id: string, get: Get): AspectRatioValue {
   return { kind: v.auto ? 'auto-ratio' : 'ratio', width: raw.width, height: raw.height };
 }
 
+// CSS2 §10.8.1: a keyword, a length or a percentage of the box's own line-height (the engine reads it on inline boxes and atomic
+// inlines only). -webkit-baseline-middle, which Chrome parses, has no layout mapping. Planted fault verticalAlignDropped lowers
+// every value as baseline.
+const VERTICAL_ALIGN_KEYWORDS: readonly VerticalAlignKeyword[] = ['baseline', 'sub', 'super', 'text-top', 'text-bottom', 'middle', 'top', 'bottom'];
+
+function verticalAlign(id: string, get: Get, l: Lowering): VerticalAlignValue {
+  if (l.faults.verticalAlignDropped) return { kind: 'keyword', value: 'baseline' };
+  const v = get('vertical-align');
+  if (v.kind === 'keyword') return { kind: 'keyword', value: keyword<VerticalAlignKeyword>(id, get, 'vertical-align', VERTICAL_ALIGN_KEYWORDS) };
+  const lp = lengthPercentage(id, get, 'vertical-align', 'all', l);
+  return lp === null ? fail(id, 'vertical-align', v, 'baseline | sub | super | text-top | text-bottom | middle | top | bottom | px | % | a viewport length | a calculation') : lp;
+}
+
 const ALIGN_ITEMS: readonly AlignItems[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
 
 /** The px value of a computed font-size, or null. */
@@ -262,8 +277,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     columnGap: gap(id, get, 'column-gap', l),
     textAlign: keyword<TextAlign>(id, get, 'text-align', ['start', 'end', 'left', 'right', 'center', 'justify']),
     aspectRatio: aspectRatio(id, get),
-    // CSS2 §10.8.1: vertical-align is not a Dragon longhand; every box takes its initial value, which only inline boxes read.
-    verticalAlign: { kind: 'keyword', value: 'baseline' },
+    verticalAlign: verticalAlign(id, get, l),
   };
 }
 

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.c { width: 200px; font-size: 10px; line-height: 15px; }
+.ib { display: inline-block; width: 10px; }
+.h40 { height: 40px; }
+.h60 { height: 60px; }
+.top { vertical-align: top; }
+.bot { vertical-align: bottom; }
+.tt { vertical-align: text-top; }
+.big { font-size: 30px; }
+.lhbig { line-height: 50px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="top" class="c">aa <span data-dragon-id="top-ib" class="ib h60 top"></span> bb cc dd</div>
+<div data-dragon-id="bot" class="c">aa <span data-dragon-id="bot-ib" class="ib h60 bot"></span> bb</div>
+<div data-dragon-id="tb" class="c">aa <span data-dragon-id="tb-t" class="ib h40 top"></span><span data-dragon-id="tb-b" class="ib h60 bot"></span> bb</div>
+<div data-dragon-id="bt" class="c">aa <span data-dragon-id="bt-b" class="ib h40 bot"></span><span data-dragon-id="bt-t" class="ib h60 top"></span> bb</div>
+<div data-dragon-id="span" class="c">aa <span data-dragon-id="span-s" class="big top">bb</span> cc</div>
+<div data-dragon-id="mix" class="c">aa <span data-dragon-id="mix-t" class="big tt">bb</span><span data-dragon-id="mix-b" class="lhbig bot">cc</span> dd</div>
+<div data-dragon-id="in" class="c">aa <span data-dragon-id="in-o" class="big top">bb<span data-dragon-id="in-i" class="lhbig bot">cc</span></span> dd</div>
+</body>
+</html>

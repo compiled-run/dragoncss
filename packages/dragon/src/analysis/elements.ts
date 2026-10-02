@@ -9,6 +9,8 @@ export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
   'span', 'a', 'label',
   'br',
   'b', 'strong', 'em', 'i',
+  // INL2b (T044 R7, T059J-INL2b-1): sub and sup, styled by their UA rules (font-size: smaller, vertical-align: sub and super).
+  'sub', 'sup',
 ]);
 
 /**

@@ -20,7 +20,9 @@ export const INLINE: readonly FixtureSpec[] = [
   reject('reject-inline-padding', 'DRAGON_UNPROVEN_CONTEXT', '2px', 'padding-left:<length-px> on s is used in the inline/ltr context'),
   reject('reject-inline-margin', 'DRAGON_UNPROVEN_CONTEXT', '3px', 'margin-right:<length-px> on s is used in the inline/ltr context'),
   reject('reject-inline-border', 'DRAGON_UNPROVEN_CONTEXT', '1px solid #000', 'border-bottom-width:<length-px> (set by border-bottom: 1px solid #000) on s is used in the inline/ltr context'),
-  reject('reject-inline-vertical-align', 'DRAGON_UNSUPPORTED_PROPERTY', 'vertical-align: sub', 'vertical-align is not supported'),
+  // INL2b retarget (T044 pinned tests): every CSS2 value lays out, so the reject keeps the one value Chrome parses that has no layout
+  // mapping, -webkit-baseline-middle.
+  reject('reject-inline-vertical-align', 'DRAGON_UNSUPPORTED_VALUE', '-webkit-baseline-middle', null),
   reject('reject-inline-block-in-inline', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="b">YY</div>', '<div> b is block-level inside the inline box <span> s'),
   reject('reject-inline-mixed-wrap', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="d" class="w">aa <span data-dragon-id="s" class="nw">XX YY</span> bb</div>', 'text-wrap-mode wrap (d:text0) and nowrap (s:text0) in one inline formatting context of d'),
   reject('reject-inline-position', 'DRAGON_UNPROVEN_CONTEXT', 'relative', 'position:relative on s is used in the relative-in-inline/ltr context'),

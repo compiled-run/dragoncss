@@ -68,6 +68,7 @@ const MAPS: ReadonlyMap<string, FontMap> = new Map([
   ['reject-atomic-beside-shaped-text', FONT_REFERENCE_MAP],
   // TXT2-a: the real-font text-wrap-break cases.
   ['text-wrap-break-lato', FONT_REFERENCE_MAP],
+  ['inline-vertical-align-lato', FONT_REFERENCE_MAP],
 ]);
 
 /** The font map a fixture compiles with; undefined for every fixture outside this group. */
