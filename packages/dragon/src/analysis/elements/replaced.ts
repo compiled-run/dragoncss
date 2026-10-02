@@ -29,7 +29,20 @@ export function parseDimension(text: string): Dimension | null {
   const m = /^([0-9]+)(\.[0-9]*)?(%?)/.exec(text.replace(ASCII_WHITESPACE, ''));
   if (m === null) return null;
   const value = Number(`${m[1] as string}${m[2] === undefined || m[2] === '.' ? '' : m[2]}`);
+  // A digit run past the double range is Infinity, which no length holds; dimensionRefusal reports it, so it never reaches a hint.
+  if (!Number.isFinite(value)) return null;
   return { kind: m[3] === '%' ? 'percentage' : 'length', value };
+}
+
+/**
+ * Why a width or height attribute value of a replaced element cannot compile, or null: a value whose digits overflow a double.
+ * Dragon has no Chrome proof of how such a value lays out, so it refuses it instead of dropping the hint silently.
+ */
+export function dimensionRefusal(tag: string, name: string, text: string): string | null {
+  if (!isReplacedTag(tag) || (name !== 'width' && name !== 'height')) return null;
+  const m = /^([0-9]+)(\.[0-9]*)?/.exec(text.replace(ASCII_WHITESPACE, ''));
+  if (m === null || Number.isFinite(Number(`${m[1] as string}${m[2] === undefined || m[2] === '.' ? '' : m[2]}`))) return null;
+  return `its value starts with ${(m[1] as string).length} digits, past the range of a length`;
 }
 
 /** HTML §15.4.5 presentational hints of a replaced element, as CSS values; author rules win over them (css-cascade-5 §6.1). */
