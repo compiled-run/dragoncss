@@ -1905,6 +1905,9 @@
      "kind": "normal"
     },
     "textAlign": "start",
+    "aspectRatio": {
+     "kind": "auto"
+    },
     "verticalAlign": {
      "kind": "keyword",
      "value": "baseline"
@@ -2020,6 +2023,9 @@
        "kind": "normal"
       },
       "textAlign": "start",
+      "aspectRatio": {
+       "kind": "auto"
+      },
       "verticalAlign": {
        "kind": "keyword",
        "value": "baseline"
@@ -2136,6 +2142,9 @@
          "kind": "normal"
         },
         "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        },
         "verticalAlign": {
          "kind": "keyword",
          "value": "baseline"
@@ -2285,6 +2294,9 @@
          "kind": "normal"
         },
         "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        },
         "verticalAlign": {
          "kind": "keyword",
          "value": "baseline"
@@ -2434,6 +2446,9 @@
          "kind": "normal"
         },
         "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        },
         "verticalAlign": {
          "kind": "keyword",
          "value": "baseline"
@@ -2583,6 +2598,9 @@
          "kind": "normal"
         },
         "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        },
         "verticalAlign": {
          "kind": "keyword",
          "value": "baseline"
@@ -2698,6 +2716,9 @@
            "kind": "normal"
           },
           "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          },
           "verticalAlign": {
            "kind": "keyword",
            "value": "baseline"
@@ -2849,6 +2870,9 @@
          "kind": "normal"
         },
         "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        },
         "verticalAlign": {
          "kind": "keyword",
          "value": "baseline"
@@ -2999,6 +3023,9 @@
          "kind": "normal"
         },
         "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        },
         "verticalAlign": {
          "kind": "keyword",
          "value": "baseline"
@@ -3149,6 +3176,9 @@
          "kind": "normal"
         },
         "textAlign": "start",
+        "aspectRatio": {
+         "kind": "auto"
+        },
         "verticalAlign": {
          "kind": "keyword",
          "value": "baseline"
@@ -3276,6 +3306,9 @@
            "kind": "normal"
           },
           "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          },
           "verticalAlign": {
            "kind": "keyword",
            "value": "baseline"
@@ -3422,6 +3455,9 @@
            "kind": "normal"
           },
           "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          },
           "verticalAlign": {
            "kind": "keyword",
            "value": "baseline"
@@ -3568,6 +3604,9 @@
            "kind": "normal"
           },
           "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          },
           "verticalAlign": {
            "kind": "keyword",
            "value": "baseline"
@@ -3714,6 +3753,9 @@
            "kind": "normal"
           },
           "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          },
           "verticalAlign": {
            "kind": "keyword",
            "value": "baseline"
@@ -3860,6 +3902,9 @@
            "kind": "normal"
           },
           "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          },
           "verticalAlign": {
            "kind": "keyword",
            "value": "baseline"
@@ -4022,6 +4067,9 @@
            "kind": "normal"
           },
           "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          },
           "verticalAlign": {
            "kind": "keyword",
            "value": "baseline"
@@ -4168,6 +4216,9 @@
            "kind": "normal"
           },
           "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          },
           "verticalAlign": {
            "kind": "keyword",
            "value": "baseline"
@@ -4314,6 +4365,9 @@
            "kind": "normal"
           },
           "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          },
           "verticalAlign": {
            "kind": "keyword",
            "value": "baseline"
