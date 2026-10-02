@@ -10,7 +10,7 @@
 // Files new since BASE are not compared. Plants (--plant <name>) corrupt one comparison and must make the check fail.
 // Usage: node --conditions=dragon-internal scripts/check-vertical-align-migration.ts [--base <rev>] [--plant <name>]
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -101,6 +101,8 @@ for (const dir of ['packages/parity/emitted', 'packages/parity/expected-fonts/em
 // ---------------------------------------------------------------- UA tables
 
 const tmp = mkdtempSync(join(tmpdir(), 'va-migration-'));
+// The BASE copies of the UA modules are removed however the comparison ends.
+process.on('exit', () => rmSync(tmp, { recursive: true, force: true }));
 let uaEntries = 0;
 /** The tag a UA table key names (a captured tag, an element key such as a[href], or a phrasing key). */
 const tagOf = (key: string): string => key.replace(/\[.*$/, '');
