@@ -819,6 +819,22 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/paint/contoured_border_geometry.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "24830dab3c718f430ed4938e24202dbc51a05c0ee8632ecf5e9ab47d51ef0cb6",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "207-231", "symbol": "PixelSnappedContouredInnerBorder", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": "innerBorderRect", "use": "port" },
+        { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/style/border_edge.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",

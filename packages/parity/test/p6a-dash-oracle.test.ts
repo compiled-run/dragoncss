@@ -130,11 +130,6 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
   const snapped = snapEdges(out.boxes);
   const borders = borderDevicePx(engine, input);
   const boxOf = new Map<string, Box>(out.boxes.map((b: LayoutRect, i) => [b.id, snapped[i] as Box]));
-  const ancestors = (id: string): Set<string> => {
-    const s = new Set<string>();
-    for (let at = p.nodes.find((n) => n.id === id)?.parent ?? null; at !== null; at = p.nodes.find((n) => n.id === at)?.parent ?? null) s.add(at);
-    return s;
-  };
   const glyphs: Box[] = glyphLines(p, vp, dpr).flatMap((l) => l.glyphs.map((g) => ({ left: Math.floor(g.left) - 1, top: Math.floor(g.top) - 1, right: Math.ceil(g.right) + 1, bottom: Math.ceil(g.bottom) + 1 })));
   let boxes = 0;
   let crisp = 0;
@@ -153,9 +148,9 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     boxes++;
     const ops = borderPaintOps(b.left, b.top, b.right, b.bottom, w, st.styles, colors, faults);
     const bg = backgroundOf(p, n.id);
-    const up = ancestors(n.id);
-    // Other element boxes paint over this border (descendants and later boxes); their pixels are skipped.
-    const over = p.nodes.filter((m) => m.id !== n.id && m.kind !== 'text' && !up.has(m.id)).flatMap((m) => {
+    // The element boxes after this one in paint order (its descendants and later boxes) paint over its border; their pixels are
+    // skipped. Earlier boxes paint below it, so a border pixel they overlap is still compared.
+    const over = p.nodes.slice(p.nodes.indexOf(n) + 1).filter((m) => m.kind !== 'text').flatMap((m) => {
       const o = boxOf.get(m.id);
       return o === undefined ? [] : [o];
     });

@@ -184,10 +184,11 @@ export function borderPaintOps(left: number, top: number, right: number, bottom:
   let count = 0;
   for (let side = 0; side < 4; side++) if (shouldRender(edgeAt(edges, side))) count++;
   if (count === 0 || right <= left || bottom <= top) return out;
-  const innerLeft = left + edgeAt(edges, LEFT).width;
-  const innerTop = top + edgeAt(edges, TOP).width;
-  const innerRight = right - edgeAt(edges, RIGHT).width;
-  const innerBottom = bottom - edgeAt(edges, BOTTOM).width;
+  const inner = innerBorderRect(left, top, right, bottom, widths);
+  const innerLeft = at(inner, 0);
+  const innerTop = at(inner, 1);
+  const innerRight = at(inner, 2);
+  const innerBottom = at(inner, 3);
   // The border width never exceeds the border box (BoxBorderPainter's constructor, ClampWidth).
   clampWidth(edgeAt(edges, TOP), bottom - top);
   clampWidth(edgeAt(edges, RIGHT), right - left);
@@ -197,6 +198,19 @@ export function borderPaintOps(left: number, top: number, right: number, bottom:
   const groups = opacityGroups(p);
   paintOpacityGroup(p, groups, 0, 1);
   return out;
+}
+
+/**
+ * The inner border rect [left, top, right, bottom] (PixelSnappedContouredInnerBorder without radii, contoured_border_geometry.cc
+ * :207-231): the border box less the side widths, its size clamped at zero (ClampNegativeToZero), so a border wider than the box
+ * leaves an empty rect at the inset origin. Blink takes it before ClampWidth, from the unclamped widths.
+ */
+export function innerBorderRect(left: number, top: number, right: number, bottom: number, widths: readonly number[]): number[] {
+  const l = left + at(widths, LEFT);
+  const t = top + at(widths, TOP);
+  const r = right - at(widths, RIGHT);
+  const b = bottom - at(widths, BOTTOM);
+  return [l, t, r < l ? l : r, b < t ? t : b];
 }
 
 function clampWidth(e: DashEdge, max: number): void {
