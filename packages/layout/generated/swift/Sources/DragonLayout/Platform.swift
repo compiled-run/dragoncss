@@ -40,7 +40,7 @@ public final class MeasurerEntry {
 }
 
 // ts: packages/layout/src/platform.ts:18
-public let platform_MEASURERS: JsStringMap<MeasurerEntry> = JsStringMap<MeasurerEntry>([(S.s_darwin_arm64, MeasurerEntry(S.s90, text_ahemMeasurer))])
+public let platform_MEASURERS: JsStringMap<MeasurerEntry> = JsStringMap<MeasurerEntry>([(S.s_darwin_arm64, MeasurerEntry(S.s91, text_ahemMeasurer))])
 
 // ts: packages/layout/src/platform.ts:23
 public func platform_measurerFor(_ platform: JsString) throws -> any U_MeasurerChoice_ok_MeasurerChoice_refused {
@@ -48,7 +48,7 @@ public func platform_measurerFor(_ platform: JsString) throws -> any U_MeasurerC
   let rules: JsArray<PlatformRule>? = platformRules_PLATFORM_RULES.get(platform)
   // ts: packages/layout/src/platform.ts:26
   if ((m == nil) || (rules == nil)) {
-    return MeasurerChoice_refused(S.s_refused, S.s_no_platform_rules, platform, jsConcat(S.s214, platform, S.s63))
+    return MeasurerChoice_refused(S.s_refused, S.s_no_platform_rules, platform, jsConcat(S.s217, platform, S.s64))
   }
   return try MeasurerChoice_ok(S.s_ok, platform, jsUnwrap(m).key, jsUnwrap(m).measurer, jsUnwrap(rules))
 }
