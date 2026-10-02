@@ -480,7 +480,8 @@
         { "lines": "59-74", "symbol": "CreateLayoutObject", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/dragon/src/forms/button-inner.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/dragon/src/forms/button-inner.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/controls.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -493,10 +494,12 @@
       "headerSha256": "197231ebf03469885c9b8cf54c5b7a7bd70edd943f314c02ee35bfdc14c8f33c",
       "ranges": [
         { "lines": "75-78", "symbol": "EnsureMaximum", "source": "located" },
-        { "lines": "147-171", "symbol": "CreateStepRange", "source": "located" }
+        { "lines": "147-171", "symbol": "CreateStepRange", "source": "located" },
+        { "lines": "285-288", "symbol": "RangeInputType::CreateLayoutObject", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/dragon/src/forms/range-value.ts", "symbol": null, "use": "port" }
+        { "file": "packages/dragon/src/forms/range-value.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/controls.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -593,10 +596,14 @@
       "fileSha256": "f250fc24a9070e564c09355a2f9c17ce385ecdb74364c8b5e5c4d4c8830d38e9",
       "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
       "ranges": [
-        { "lines": "185-231", "symbol": "AlignBlockContent", "source": "located" }
+        { "lines": "185-231", "symbol": "AlignBlockContent", "source": "located" },
+        { "lines": "194-201", "symbol": null, "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/dragon/src/forms/button-inner.ts", "symbol": null, "use": "port" }
+        { "file": "packages/dragon/src/forms/button-inner.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/controls.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/controls.ts", "symbol": "buttonContentShift", "use": "port" },
+        { "file": "packages/layout/test/controls.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -626,11 +633,18 @@
       "ranges": [
         { "lines": "1311-1316", "symbol": null, "source": "cited" },
         { "lines": "1365-1375", "symbol": null, "source": "cited" },
+        { "lines": "1442-1442", "symbol": null, "source": "cited" },
+        { "lines": "2652-2654", "symbol": null, "source": "cited" },
         { "lines": "3936-3945", "symbol": "AdjustSliderThumbInlineOffset", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/range-geometry.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" }
+        { "file": "packages/layout/src/block.ts", "symbol": "layoutBlockFlow", "use": "port" },
+        { "file": "packages/layout/src/block.ts", "symbol": "layoutContents", "use": "port" },
+        { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" },
+        { "file": "packages/layout/src/controls.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/controls.ts", "symbol": "sliderThumbInlineOffset", "use": "port" },
+        { "file": "packages/layout/src/controls.ts", "symbol": "sliderThumbShift", "use": "port" }
       ]
     },
     {
@@ -647,6 +661,21 @@
       "dragon": [
         { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/ratio.ts", "symbol": "ratioContentInlineSize", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/box_fragment_builder.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "afafce938439bdf772b40da828dd43f52d847309be84687a8130d199982bcc85",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "393-461", "symbol": "BoxFragmentBuilder::MoveChildrenInDirection", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/block.ts", "symbol": "layoutBlockFlow", "use": "port" }
       ]
     },
     {
@@ -735,6 +764,27 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/layout_box.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation: an auto-width input[type=range] has a 129 CSS px content box, times the zoom (FORM-0's captured boxes); controls.ts states the measured length and zooms it as environment.ts zooms any px length",
+        "proof": [
+          "packages/layout/test/controls.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); (C) 1999 Antti Koivisto (koivisto@kde.org); (C) 2005 Allan Sandfeld Jensen (kde@carewolf.com); (C) 2005, 2006 Samuel Weinig (sam.weinig@gmail.com); Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.; Copyright (C) 2013 Adobe Systems Incorporated. All rights reserved.",
+      "fileSha256": "5b7d4fe37d8a005a9e4e2a19204d7bba3fb4a74ba221abdf74aae6c636ef46b3",
+      "headerSha256": "e22b84ad6de0303644c75d0954810286d7f2c912ec2917c798416dbf219a01d3",
+      "ranges": [
+        { "lines": "295-298", "symbol": "SliderIntrinsicInlineSize", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/controls.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/layout_text.cc",
       "licence": "lgpl",
       "ruling": {
@@ -761,7 +811,8 @@
         "class": "A",
         "basis": "css-ui-4 devolvable widgets and the captured devolve probe",
         "proof": [
-          "packages/dragon/test/forms/forms.test.ts"
+          "packages/dragon/test/forms/forms.test.ts",
+          "packages/parity/test/controls-identity.test.ts"
         ]
       },
       "licencePhrase": "GNU Library General Public License",
@@ -770,12 +821,36 @@
       "headerSha256": "d3ab780001da94384ef639818ae923b81605e935bd7cc08a97334f4f0aec4f2c",
       "ranges": [
         { "lines": "175-184", "symbol": "LayoutTheme::AdjustAppearanceWithAuthorStyle", "source": "located" },
+        { "lines": "266-322", "symbol": "LayoutTheme::AdjustStyle", "source": "located" },
         { "lines": "440-462", "symbol": "IsControlStyled", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "APPEARANCE_DISPLAY", "use": "reference" },
+        { "file": "packages/dragon/src/analysis/elements/controls.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/forms/appearance.generated.ts", "symbol": "APPEARANCE_PROBE", "use": "reference" },
         { "file": "packages/dragon/src/forms/appearance.ts", "symbol": null, "use": "reference" },
         { "file": "scripts/capture-form-data.ts", "symbol": "appearanceModule", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/layout_replaced.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "css-images-3 §5.5 and §5.6 (object-fit, object-position); replaced.ts writes the destination rect from the spec text and is pinned to Chrome by the REPL-0 quadrant probe",
+        "proof": [
+          "packages/layout/test/replaced.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2000 Dirk Mueller (mueller@kde.org); Copyright (C) 2004, 2006, 2007 Apple Inc. All rights reserved.",
+      "fileSha256": "f1678d62d3b94570e559a655c284cd522ef0f7d869e1d6f6ac4a0cebffe25643",
+      "headerSha256": "7699ca43bf1cb970dac2971d9d5ff6d020946449f200273e537b09dac2cffde2",
+      "ranges": [
+        { "lines": "265-327", "symbol": "LayoutReplaced::ComputeObjectFitAndPositionRect", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -816,21 +891,28 @@
         { "lines": "164-283", "symbol": "ResolveBlockLengthInternal", "source": "located" },
         { "lines": "285-297", "symbol": "InlineSizeFromAspectRatio", "source": "located" },
         { "lines": "299-312", "symbol": "BlockSizeFromAspectRatio", "source": "located" },
+        { "lines": "318-357", "symbol": "ComputeMinAndMaxContentContributionForReplaced", "source": "located" },
         { "lines": "531-603", "symbol": "ComputeInlineSizeForFragmentInternal", "source": "located" },
         { "lines": "699-719", "symbol": "ComputeTransferredMinMaxInlineSizes", "source": "located" },
         { "lines": "721-739", "symbol": "ComputeTransferredMinMaxBlockSizes", "source": "located" },
         { "lines": "762-804", "symbol": "ComputeMinMaxInlineSizes", "source": "located" },
-        { "lines": "1555-1574", "symbol": "ResolveInlineAutoMargins", "source": "located" }
+        { "lines": "1016-1231", "symbol": "ComputeReplacedSizeInternal", "source": "located" },
+        { "lines": "1555-1574", "symbol": "ResolveInlineAutoMargins", "source": "located" },
+        { "lines": "1905-1938", "symbol": "CalculateMinMaxSizesIgnoringChildren", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" },
         { "file": "packages/layout/src/box.ts", "symbol": "resolveMinLength", "use": "port" },
+        { "file": "packages/layout/src/intrinsic.ts", "symbol": "intrinsicContentInlineSize", "use": "port" },
         { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/ratio.ts", "symbol": "blockFromRatio", "use": "port" },
         { "file": "packages/layout/src/ratio.ts", "symbol": "inlineFromRatio", "use": "port" },
         { "file": "packages/layout/src/ratio.ts", "symbol": "ratioBlockLevelInlineSize", "use": "port" },
         { "file": "packages/layout/src/ratio.ts", "symbol": "transferredBlockMinMax", "use": "port" },
-        { "file": "packages/layout/src/ratio.ts", "symbol": "transferredInlineMinMax", "use": "port" }
+        { "file": "packages/layout/src/ratio.ts", "symbol": "transferredInlineMinMax", "use": "port" },
+        { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/replaced.ts", "symbol": "replacedContribution", "use": "port" },
+        { "file": "packages/layout/src/replaced.ts", "symbol": "replacedSize", "use": "port" }
       ]
     },
     {
@@ -1892,9 +1974,11 @@
       "fileSha256": "5439c8344aaffb982050be9ed24cff47830409c165e9299d6cc7440c230f4833",
       "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
       "ranges": [
+        { "lines": "12-26", "symbol": "PhysicalSize::FitToAspectRatio", "source": "located" },
         { "lines": "38-94", "symbol": "LayoutRatioFromSizeF", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/units.ts", "symbol": "layoutRatio", "use": "port" }
       ]
     },

@@ -270,3 +270,16 @@ describe('the quadrant probe (R7)', () => {
     expect(off).toEqual([]);
   });
 });
+
+describe('base64Encode (the PNG bytes the native image paint embeds)', () => {
+  it('equals RFC 4648 base64 with padding on every length remainder, every byte value and every corpus image', async () => {
+    const { base64Encode } = await import('../../src/images/compile.ts');
+    const cases: Uint8Array[] = [new Uint8Array(0), Uint8Array.of(0), Uint8Array.of(255, 254), Uint8Array.of(1, 2, 3), Uint8Array.from({ length: 256 }, (_, i) => i)];
+    let seed = 7;
+    for (let n = 0; n < 64; n++) cases.push(Uint8Array.from({ length: n }, () => (seed = (seed * 1103515245 + 12345) >>> 0) >>> 24));
+    const dir = new URL('./corpus/', import.meta.url);
+    for (const f of readdirSync(dir)) if (f.endsWith('.png')) cases.push(new Uint8Array(readFileSync(new URL(f, dir))));
+    expect(cases.length).toBeGreaterThan(69);
+    for (const b of cases) expect(base64Encode(b), `${b.length} bytes`).toBe(Buffer.from(b).toString('base64'));
+  });
+});

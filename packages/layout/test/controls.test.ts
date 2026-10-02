@@ -156,7 +156,7 @@ async function plantedLayout(plant: Record<string, unknown>): Promise<Layout> {
 }
 
 describe('FORM-a range: the UA shadow structure laid out by the engine', () => {
-  it('the default track length is 129 px at every zoom the lanes use (layout_box.cc:296)', () => {
+  it('the default track length is 129 px at every zoom the lanes use (the auto-width range boxes Chrome gives)', () => {
     expect(SLIDER_DEFAULT_TRACK_LENGTH).toBe(129);
     expect([1, 2, 3, 2.625].map((z) => sliderIntrinsicInlineSize(z))).toEqual([8256, 16512, 24768, 21672]);
     const auto = RANGE.filter((c) => !declarations(c.css.input).has('width'));

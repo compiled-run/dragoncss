@@ -27,8 +27,8 @@ export const NEUTRAL_ATTRIBUTES: readonly NeutralAttribute[] = [
 
 /**
  * Attributes a replaced element renders, which REPL-a handles (HTML §4.8.3, §4.8.5, §15.4.5): src gives the image bytes or the
- * web view's document, width and height are presentational hints (analysis/elements/replaced.ts), and alt renders nothing for an
- * image that decodes, which every accepted image does.
+ * document the iframe's web view loads (an absolute http or https URL, analysis/elements/replaced.ts iframeSrcRefusal), width and
+ * height are presentational hints, and alt renders nothing for an image that decodes, which every accepted image does.
  */
 export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } = {
   img: ['src', 'alt', 'width', 'height'],

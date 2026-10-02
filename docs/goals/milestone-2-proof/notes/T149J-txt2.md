@@ -231,3 +231,25 @@ The TextLeaf migration (overflowWrap, wordBreak) needs three small edits outside
 **Why it is needed.** resolve.ts reads root inherited values from the UA capture, so every compile fails without these entries.
 
 **Rejected alternative.** A computed.ts fallback to initial values, because it would hide a missing capture.
+
+## TXT2-a host-done (2026-10-01): txt2a 919021f19 on inl2 08df24673
+
+**Result:**
+- overflow-wrap (normal, break-word, anywhere) and word-break: break-word work. The anywhere-if-overflow path is ported from line_breaker.cc.
+- Grapheme clusters follow UAX #29 16.0: GraphemeBreakTest passes 1093/1093, and Chrome's Intl.Segmenter agrees on 1109/1109.
+- The shaping.ts hunk is 37 lines added and 3 removed. The HarfBuzz gate passes 620/620.
+- The migration checker passes, with 6 plants caught.
+
+**North star (web and iOS):**
+- the overflow-wrap errors go from 4 to 0;
+- the letter-spacing error goes from 1 to 0;
+- UNPROVEN_CONTEXT goes from 31 to 27.
+
+**PM rulings:**
+- **Android value refusals +8: accepted.** It is an artefact of this stack's old base, which predates #49, so its Android profile supports no value. It must be re-measured at catch-up, where Android follows the iOS rule.
+- **Merge conflicts: accepted.** The extra conflict paths against txt-w2, size-ar, form-a and form-a2 are all same-place appends, resolved by keeping both sides at catch-up.
+- **Deviations: accepted.**
+  - The word-wrap alias is deferred to TXT2-b, since it needs the shorthands files.
+  - There is no combining-marks fixture, because the shaping core refuses U+0301. grapheme.test catches the plant instead.
+
+**Next:** INL2b is dispatched, stacked on txt2a.

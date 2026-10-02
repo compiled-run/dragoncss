@@ -13,7 +13,11 @@ const SWIFT_MEMBERS = String.raw`  /// REPL-a foreign view: the platform web vie
 const SWIFT = String.raw`import UIKit
 import WebKit
 
-/// The slot's web view: inline media without a user gesture; it loads about:blank, never network content.
+/// Whether a slot's web view loads its iframe src (R9). The parity lane and test hosts set it false at launch: they never load
+/// network content, so their web views load about:blank.
+public var dragonForeignViewLoadsSrc = true
+
+/// The slot's web view: inline media without a user gesture; it loads the iframe src, or about:blank in a lane or test host.
 public func dragonSetForeignView(_ v: DragonBoxView, src: String?) {
   let config = WKWebViewConfiguration()
   config.allowsInlineMediaPlayback = true
@@ -22,8 +26,10 @@ public func dragonSetForeignView(_ v: DragonBoxView, src: String?) {
   v.addSubview(web)
   v.dragonForeignView = web
   v.dragonForeignSrc = src
-  guard let blank = URL(string: "about:blank") else { fatalError("dragon: about:blank is not a URL") }
-  web.load(URLRequest(url: blank))
+  // The compiler accepts only an absolute http or https src (analysis/elements/replaced.ts iframeSrcRefusal).
+  let target = dragonForeignViewLoadsSrc ? src : nil
+  guard let url = URL(string: target ?? "about:blank") else { fatalError("dragon: \(v.dragonId): iframe src \(target ?? "about:blank") is not a URL") }
+  web.load(URLRequest(url: url))
 }
 
 /// After every layout: the web view over the content box, in points relative to the box.
@@ -73,7 +79,13 @@ class DragonForeignHost(ctx: Context) : DragonGroup(ctx) {
   }
 }
 
-/** The slot's web view: JavaScript on and media without a user gesture; it loads about:blank, never network content. */
+/**
+ * Whether a slot's web view loads its iframe src (R9). The parity lane and test hosts set it false at launch: they never load
+ * network content, so their web views load about:blank.
+ */
+var dragonForeignViewLoadsSrc = true
+
+/** The slot's web view: JavaScript on and media without a user gesture; it loads the iframe src, or about:blank in a lane or test host. */
 fun dragonSetForeignView(v: DragonBoxView, src: String?) {
   val host = DragonForeignHost(v.context)
   val web = WebView(v.context)
@@ -83,7 +95,8 @@ fun dragonSetForeignView(v: DragonBoxView, src: String?) {
   v.addView(host)
   v.dragonForeignView = host
   v.dragonForeignSrc = src
-  web.loadUrl("about:blank")
+  // The compiler accepts only an absolute http or https src (analysis/elements/replaced.ts iframeSrcRefusal).
+  web.loadUrl(if (dragonForeignViewLoadsSrc && src != null) src else "about:blank")
 }
 
 /** After every layout: the host group over the content box, in device px relative to the box. */
@@ -107,11 +120,24 @@ fun dragonAppliedForeignView(v: DragonBoxView): List<Pair<String, DumpJson>> {
 }
 `;
 
-/** An iframe src as a Swift or Kotlin string literal, or nil/null; a src holding a quote, backslash, $ or a control is refused. */
-const srcLit = (src: string | null, backend: 'uikit' | 'android-views'): string => {
+/**
+ * An iframe src as a Swift or Kotlin string literal, or nil/null. The src is author input, so everything outside printable ASCII,
+ * a quote, a backslash and (in Kotlin) a $ are escaped, as native-support.ts stringLit does (paint modules never import it;
+ * paint-seams.test.ts checks the two agree).
+ */
+export const srcLit = (src: string | null, backend: 'uikit' | 'android-views'): string => {
   if (src === null) return backend === 'uikit' ? 'nil' : 'null';
-  if (/["\\$\u0000-\u001f\u007f]/.test(src)) throw new Error(`iframe src ${JSON.stringify(src)} needs escaping the emitter does not do`);
-  return `"${src}"`;
+  let out = '"';
+  for (const ch of src) {
+    const cp = ch.codePointAt(0) as number;
+    if (ch === '"' || ch === '\\') out += `\\${ch}`;
+    else if (backend === 'android-views' && ch === '$') out += '\\$';
+    else if (cp >= 0x20 && cp < 0x7f) out += ch;
+    else if (backend === 'uikit') out += `\\u{${cp.toString(16)}}`;
+    else if (cp < 0x10000) out += `\\u${cp.toString(16).padStart(4, '0')}`;
+    else out += `\\u${ch.charCodeAt(0).toString(16)}\\u${ch.charCodeAt(1).toString(16)}`;
+  }
+  return `${out}"`;
 };
 
 export const FOREIGN_VIEW_EMITTER: PaintEmitter<'foreign-view'> = {

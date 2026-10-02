@@ -139,3 +139,17 @@ describe('refusals of UA defaults Dragon does not model', () => {
     expect(c.diagnostics.map((d) => [d.code, d.message])).toEqual([['DRAGON_UNSUPPORTED_ELEMENT', expect.stringMatching(/^<pre> pre is not supported \(supported: html, body, div, p, h1/)]]);
   });
 });
+
+describe('REPL-a forced UA values in explain (Macroscope 4164413940)', () => {
+  it('names the forced value as what beat the author winner, and keeps the cascade reason for the declarations that winner beat', () => {
+    const css = `${FONT} .f { display: block; border: 0; overflow: hidden; } .f.g { overflow: auto; }`;
+    const c = project().compile(inputFor(css, (r) => [el(r, 'fr', 'iframe', ['f', 'g'])]));
+    const e = explainOne(c, 'ios', 'fr', 'overflow-x');
+    expect(e.value).toBe('clip');
+    expect(e.cascade).toBe('user-agent');
+    expect(e.losing.map((l) => l.reason)).toEqual(['the user agent forces overflow-x on this element whatever the cascade says', 'lower specificity or earlier in the style order']);
+    const spans = e.losing.map((l) => (l.origin.kind === 'authored' ? css.slice(l.origin.span.start, l.origin.span.end) : null));
+    expect(spans[0]).toContain('auto');
+    expect(spans[1]).toContain('hidden');
+  });
+});

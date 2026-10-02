@@ -43,6 +43,8 @@ export type ResolvedValue = {
   readonly losing: readonly Declaration[];
   /** Present when the winning declaration held var(); declaration is then as substituted (analysis/variables.ts). */
   readonly substitution?: Substitution;
+  /** The author declaration that won the cascade and that a forced UA value then overrode (ELB-2 userAgentForced); it heads losing. */
+  readonly forcedOver?: Declaration;
 };
 
 const valueCache = new Map<string, CssValue>();
@@ -203,9 +205,10 @@ export function computeJustifyItems(props: Map<Longhand, ResolvedValue>, parent:
 }
 
 /**
- * Blink LayoutTheme::AdjustStyle (layout_theme.cc:274-289, Chrome 145.0.7632.6): any element whose appearance is not none has an
- * inline or table display made inline-block, and a table or list-item display made block, keyed by the display's keywords in sorted
- * order. Measured on every display value with appearance auto and none (packages/parity/fixtures/controls-button-display*.html).
+ * Chrome 145's appearance display adjustment, measured on every display value with appearance auto and none
+ * (packages/parity/fixtures/controls-button-display*.html): when appearance is not none, an inline, math or table-internal display
+ * becomes inline-block and a table or list-item display becomes block, keyed by the display's keywords in sorted order. Blink does
+ * this in LGPL layout_theme.cc:274-289 LayoutTheme::AdjustStyle, a reference only: the table is the measurement, not that code.
  */
 const APPEARANCE_DISPLAY: ReadonlyMap<string, string> = new Map([
   ['inline', 'inline-block'], ['flow inline', 'inline-block'], ['inline-table', 'inline-block'], ['inline table', 'inline-block'],
