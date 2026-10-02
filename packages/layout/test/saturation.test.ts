@@ -1,9 +1,9 @@
 // T129: LayoutUnit saturation in block-level inline placement and the CSS length range, pinned in raw LU against Chrome 145
 // (fixture values-length-saturation, captured at DPR 1, 2, 3 and 2.625 in both directions; probe matrix in the T129 receipt).
 import { describe, expect, it } from 'vitest';
-import { absoluteRects, ahemMeasurer, layout } from '../src/index.ts';
-import type { LayoutBox, LayoutRect, LayoutStyle } from '../src/index.ts';
-import { box, neutralEnvironment, px } from './helpers.ts';
+import { absoluteRects, ahemMeasurer, layout, NO_ENGINE_FAULTS, resolveEnvironment } from '../src/index.ts';
+import type { LayoutBox, LayoutRect, LayoutStyle, ReplacedLeaf } from '../src/index.ts';
+import { box, divStyle, neutralEnvironment, px, text } from './helpers.ts';
 
 const INT_MAX = 2147483647;
 const auto = { kind: 'auto' } as const;
@@ -82,6 +82,26 @@ describe('px lengths are clamped to the CSS length range after zoom (ClampToCSSL
     expect(rect(box('html', {}, [box('k', { marginLeft: px(1e9), width: px(0), height: px(5) })]), 'k').x).toBe(33554428 * 64);
     expect(rect(box('html', {}, [box('k', { paddingLeft: px(1e9), height: px(5) })]), 'k').width).toBe(33554428 * 64);
     expect(rect(box('html', {}, [box('k', { position: 'relative', left: px(1e9), height: px(5) })]), 'k').x).toBe(33554428 * 64);
+  });
+
+  it('a text run\'s px line height clamps the same way, at DPR 1 and zoomed (Macroscope 4169406044)', () => {
+    const root = (lh: number) => box('html', {}, [box('k', {}, [text('t', 'X', { lineHeight: px(lh) })])]);
+    for (const dpr of [1, 2]) {
+      expect(rect(root(1e9), 'k', dpr).height).toBe(rect(root(33554429), 'k', dpr).height);
+      expect(rect(root(1e9), 'k', dpr).height).toBeLessThan(INT_MAX);
+    }
+  });
+
+  it('a replaced leaf\'s px object-position clamps the same way, at DPR 1 and zoomed (Macroscope 4169406044)', () => {
+    const img = (x: number, y: number): ReplacedLeaf => ({
+      kind: 'replaced', id: 'i', style: { ...divStyle, display: 'block' }, natural: { kind: 'image', width: 10, height: 10 },
+      defaultWidth: 300, defaultHeight: 150, objectFit: 'none', objectPositionX: px(x), objectPositionY: px(y),
+    });
+    for (const dpr of [1, 2]) {
+      const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: dpr, ...neutralEnvironment({ width: 400, height: 300 }), root: box('html', {}, [img(1e9, -1e9) as unknown as LayoutBox]) };
+      const leaf = resolveEnvironment(input, NO_ENGINE_FAULTS, ahemMeasurer).root.children[0] as ReplacedLeaf;
+      expect([leaf.objectPositionX, leaf.objectPositionY]).toEqual([px(33554429), px(-33554430)]);
+    }
   });
 });
 
