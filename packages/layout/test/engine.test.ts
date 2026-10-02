@@ -147,6 +147,13 @@ describe('column flex automatic minimum size ignores the item height', () => {
     ])]));
     expect(r.kind === 'unsupported' && r.unsupported.code).toBe('percent-height-flex');
   });
+  it('a percentage height replaced child of a sized column item returns percent-height-flex too (Macroscope 4164309445)', async () => {
+    const { divStyle } = await import('./helpers.ts');
+    const img = { kind: 'replaced', id: 'k', style: { ...divStyle, display: 'block', height: pct(50) }, natural: { kind: 'image', width: 10, height: 30 }, defaultWidth: 300, defaultHeight: 150, objectFit: 'fill', objectPositionX: px(0), objectPositionY: px(0) };
+    const item = { ...box('a', { height: px(20) }), children: [img] } as unknown as LayoutBox;
+    const r = run(box('root', {}, [box('c', { display: 'flex', flexDirection: 'column', width: px(100), height: px(10) }, [item])]));
+    expect(r.kind === 'unsupported' && r.unsupported.code).toBe('percent-height-flex');
+  });
   it('a percentage flex-basis child of a sized row flex item is not a height and lays out', () => {
     const r = run(box('root', {}, [box('c', { display: 'flex', flexDirection: 'column', width: px(100), height: px(4) }, [
       box('a', { display: 'flex', height: px(20) }, [box('k', { flexBasis: pct(33), height: px(4) })]),
