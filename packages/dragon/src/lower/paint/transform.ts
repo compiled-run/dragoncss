@@ -59,7 +59,8 @@ const lengthBound = (l: TransformLength): number => Math.abs(l.px) + (Math.abs(l
  * Throws when a bound on the transform's matrix entries and origin, at a box of CHECK_BOX_PX and in device px, leaves the float
  * range: Android writes them as floats, so finite CSS values can still compose past it (scale(1e30) scale(1e30)). The linear part is
  * bounded by the product of the scales' larger factors (a rotation keeps lengths), the translation by each translate times the
- * linear bound before it.
+ * linear bound before it plus the origin compensation T(o) · M · T(-o), at most (1 + linear) times the origin. Angles never reach a
+ * float: both writers take the matrix, whose rotation sinCosDegrees range-reduces.
  */
 function checkRange(ops: readonly TransformOp[], origin: TransformOrigin, at: string): void {
   let linear = 1;
@@ -68,18 +69,18 @@ function checkRange(ops: readonly TransformOp[], origin: TransformOrigin, at: st
     if (o.fn.startsWith('translate')) translation += linear * (lengthBound(o.x) + lengthBound(o.y));
     if (o.fn.startsWith('scale')) linear *= Math.max(Math.abs(o.sx), Math.abs(o.sy));
   }
-  const bounds = [linear, translation, lengthBound(origin.x), lengthBound(origin.y)];
+  const o = lengthBound(origin.x) + lengthBound(origin.y);
+  const bounds = [linear, translation + (1 + linear) * o, o];
   if (!bounds.every((v) => inFloatRange(v * CHECK_SCALE))) throw new ProgramError(`${at}: the transform overflows the float range of the native writers`);
 }
 
-/** The typed transform of an element: its engine functions (empty for none) and its origin. */
-export function transformOf(el: ResolvedElement): { readonly ops: readonly TransformOp[]; readonly origin: TransformOrigin } {
+/** The typed origin of an element, checked against its functions for the native writers' range. */
+function originOf(el: ResolvedElement, ops: readonly TransformOp[]): TransformOrigin {
   const at = el.element.address;
   const o = elementTransformOrigin(el);
-  const ops = elementTransform(el).flatMap((f) => engineOps(f, at));
   const origin = { x: length(o.x, at), y: length(o.y, at) };
   checkRange(ops, origin, at);
-  return { ops, origin };
+  return origin;
 }
 
 export const TRANSFORM_LOWERING: PaintLowering<TransformWrite> = {
@@ -92,9 +93,12 @@ export const TRANSFORM_LOWERING: PaintLowering<TransformWrite> = {
   lower: ({ el, facts }) => {
     // An anonymous box takes the initial value of every non-inherited property (CSS2 §9.2.1.1): transform none.
     if (el === null) return [];
-    const t = transformOf(el);
+    const ops = elementTransform(el).flatMap((f) => engineOps(f, el.element.address));
     const willChange = elementWillChange(el);
-    if (t.ops.length > 0 || willChange.length > 0) facts['transform'] = { ops: t.ops, origin: t.origin, willChange } satisfies TransformFacts;
-    return t.ops.length === 0 ? [] : [{ kind: 'transform', ops: t.ops, origin: t.origin }];
+    // Without a transform or will-change the origin is never read, so it is neither lowered nor checked.
+    if (ops.length === 0 && willChange.length === 0) return [];
+    const origin = originOf(el, ops);
+    facts['transform'] = { ops, origin, willChange } satisfies TransformFacts;
+    return ops.length === 0 ? [] : [{ kind: 'transform', ops, origin }];
   },
 };

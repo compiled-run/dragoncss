@@ -127,10 +127,12 @@ function readAngle(n: CssNode): Read<number> {
   return no(n, `${generate(n)} is not an angle`);
 }
 
-/** A <number> or, for scale functions, a <percentage> (css-transforms-2 §5.1). */
-function readNumber(n: CssNode, percent: boolean): Read<number> {
+/**
+ * A <number>. Scale functions take numbers only: the grammar subset is webref's css-transforms-1 syntax, which matches before this
+ * parse runs, so css-transforms-2 percentages (scale(50%)) never reach it.
+ */
+function readNumber(n: CssNode): Read<number> {
   if (n.type === 'Number') return finite(n, Number(n['value']));
-  if (n.type === 'Percentage' && percent) return finite(n, Number(n['value']) / 100);
   if (n.type === 'Function') return no(n, `${String(n['name']).toLowerCase()}() in a transform function is not supported yet; write a number`);
   return no(n, `${generate(n)} is not a number`);
 }
@@ -165,10 +167,10 @@ function readFunction(fn: CssNode): Read<TransformFnDecl> {
     return ok({ kind: 'translate', fn: 'translate', x: x.value, y: y.value, text });
   }
   if (name.startsWith('scale')) {
-    const sx = readNumber(first, true);
+    const sx = readNumber(first);
     if (!sx.ok) return sx;
     const second = a[1];
-    const sy = second === undefined ? sx : readNumber(second, true);
+    const sy = second === undefined ? sx : readNumber(second);
     if (!sy.ok) return sy;
     if (name === 'scalex') return ok({ kind: 'scale', fn: 'scaleX', sx: sx.value, sy: 1, text });
     if (name === 'scaley') return ok({ kind: 'scale', fn: 'scaleY', sx: 1, sy: sx.value, text });
@@ -176,7 +178,7 @@ function readFunction(fn: CssNode): Read<TransformFnDecl> {
   }
   const values: number[] = [];
   for (const n of a) {
-    const v = readNumber(n, false);
+    const v = readNumber(n);
     if (!v.ok) return v;
     values.push(v.value);
   }

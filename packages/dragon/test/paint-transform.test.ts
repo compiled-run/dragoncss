@@ -8,6 +8,8 @@ import { paintWriteLines } from '../src/emit/paint/registry.ts';
 import { TRANSFORM_EMITTER } from '../src/emit/paint/transform.ts';
 import { inFloatRange, matrixParts, skewDot } from '../src/css/properties/transform.ts';
 import { div, inputFor, spanTextOf, text } from './helpers.ts';
+import type { TransformOp } from '@dragon/layout';
+import { transformFunctionsMatrix } from '@dragon/layout';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
 
@@ -69,6 +71,25 @@ describe('PNT2: parse', () => {
       const m = nativePrograms(compile(`.a { transform: ${v}; }`).c, []);
       expect(m.kind === 'blocked' ? m.reason : m.kind, v).toContain('the transform overflows the float range of the native writers');
     }
+  });
+  it('checks the origin only with a transform or will-change, counts the origin compensation, and keeps a huge angle finite', () => {
+    // Without a transform or will-change the origin is never read.
+    for (const css of ['.a { transform-origin: 1e38px 0; }', '.a { font-size: 20px; transform-origin: 1e38em 0; }', '.a { transform: none; transform-origin: 1e38px 0; }']) {
+      expect(nativePrograms(compile(css).c, []).kind, css).toBe('ready');
+    }
+    // T(o) · scale(1e20) · T(-o) translates by about 1e40 device px.
+    const m = nativePrograms(compile('.a { transform: scale(1e20); transform-origin: 1e20px 0; }').c, []);
+    expect(m.kind === 'blocked' ? m.reason : m.kind).toContain('the transform overflows the float range of the native writers');
+    // An angle reaches the writers only through sinCosDegrees's range reduction, never as a float.
+    const r = compile('.a { transform: rotate(1e300deg); }');
+    const f = node(r, 'a').uikit.facts['transform'] as { ops: TransformOp[] };
+    const mat = transformFunctionsMatrix(f.ops, 10, 10, { sin: Math.sin, cos: Math.cos });
+    expect([mat.a, mat.b, mat.c, mat.d, mat.e, mat.f].every(Number.isFinite)).toBe(true);
+  });
+  it('rejects a percentage in scale() as the css-transforms-1 grammar does, before the transform parse', () => {
+    const e = errors(compile('.a { transform: scale(50%); }'));
+    expect(e).toHaveLength(1);
+    expect(e[0]).toMatch(/^DRAGON_CSS_INVALID_VALUE /);
   });
   it('inFloatRange holds exactly where Math.fround stays finite', () => {
     const edge = 2 ** 128 - 2 ** 103;
