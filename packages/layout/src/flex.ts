@@ -552,8 +552,11 @@ function buildItem(
     minMain = contentBox(borderBoxFromSpecified(resolveMinLength(minProp, basisLu, ctx.faults), mainBp, s.boxSizing), mainBp);
   } else if (isScrollContainer(s) && !ctx.faults.scrollMinAuto) {
     minMain = ZERO;
+  } else if (!isRow && specifiedMain !== null && s.flexShrink === 0 && specifiedMain <= base && (maxMain === null || specifiedMain <= maxMain)) {
+    // Blink flex_layout_algorithm.cc lines 1078-1084: an item that cannot shrink skips the content measurement; the result is the same.
+    minMain = specifiedMain;
   } else {
-    const suggestionSource = ratio !== null ? ratio.suggestion : isRow && box.kind === 'box' ? intrinsicContentInlineSize(ctx, box, 'min') : contentMain();
+    const suggestionSource = ratio !== null ? ratio.suggestion : isRow && box.kind === 'box' ? intrinsicContentInlineSize(ctx, box, 'min') : !isRow && box.kind === 'box' && specifiedMain !== null ? columnIntrinsicBlockSize(ctx, box, cbInline, columnCross, heightBasis, vbp) : contentMain();
     const contentSuggestion = maxMain === null ? suggestionSource : min(suggestionSource, maxMain);
     minMain = specifiedMain === null ? contentSuggestion : min(specifiedMain, contentSuggestion);
   }
@@ -589,6 +592,31 @@ function buildItem(
 }
 
 // CSS2 §10.5 and css-flexbox-1 §9.8: a percentage block size resolves against a definite basis; indefinite behaves as auto (null).
+// css-flexbox-1 §4.5: a column item's content size suggestion is its content height with its own height treated as auto. Blink
+// flex_layout_algorithm.cc at 145.0.7632.6 (BSD) lines 1117-1120 and 914-923 take it from LayoutResult::IntrinsicBlockSize().
+function columnIntrinsicBlockSize(ctx: Ctx, box: LayoutBox, cbInline: LU, borderBoxWidth: LU, heightBasis: HeightBasis, vbp: LU): LU {
+  // Blink resolves the children's percentage heights against the set height, which an auto-height measurement cannot reproduce.
+  const pct = (v: LayoutStyle['flexBasis'] | LayoutStyle['maxHeight']): boolean => v.kind !== 'auto' && v.kind !== 'none' && v.kind !== 'content' && hasPercent(v);
+  const columnFlex = box.style.display === 'flex' && (box.style.flexDirection === 'column' || box.style.flexDirection === 'column-reverse');
+  for (const k of box.children) {
+    if (k.kind !== 'box' || isOutOfFlow(ctx, k)) continue;
+    const ks = k.style;
+    if (pct(ks.height) || pct(ks.minHeight) || pct(ks.maxHeight) || (columnFlex && pct(ks.flexBasis))) {
+      return unsupported('percent-height-flex', k.id, 'css-flexbox-1 §4.5', 'percentage height inside a column flex item whose content size suggestion is measured (not yet supported)');
+    }
+  }
+  const autoHeight: LayoutBox = { ...box, style: { ...box.style, height: { kind: 'auto' } } };
+  const r = layoutContents(ctx, autoHeight, {
+    cbInline,
+    borderBoxWidth,
+    forcedBorderBoxHeight: null,
+    forcedHeightDefinite: false,
+    heightBasis,
+    formattingContextRoot: true,
+  });
+  return contentBox(r.frag.height, vbp);
+}
+
 function percentMainHeight(box: LayoutNode, basis: HeightBasis, prop: string): LU | null {
   if (basis.kind === 'indefinite') return null;
   if (basis.kind === 'definite') return basis.value;

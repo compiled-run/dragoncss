@@ -176,6 +176,18 @@ describe('math function checks', () => {
     const c = style('.o { display: flex; } .i { flex-grow: calc(1 + 1); flex-shrink: calc(3 / 2); }', tree, 'i');
     expect([c.style.flexGrow, c.style.flexShrink]).toEqual([2, 1.5]);
   });
+  it('a calculation in a border shorthand is the width, typed as the border-*-width longhands (css-backgrounds-3 §3.1)', () => {
+    const tree = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'o', ['o'], [div(r, 'i', ['i'])])];
+    const widths = (b: LayoutBox) => [b.style.borderTopWidth, b.style.borderRightWidth, b.style.borderBottomWidth, b.style.borderLeftWidth].map((w) => w.kind);
+    expect(widths(style('.i { border: calc(1px + 0.15em) solid #000; }', tree, 'i'))).toEqual(['calc', 'calc', 'calc', 'calc']);
+    expect(widths(style('.i { border: solid #000 max(0.2em, 1.5px); }', tree, 'i'))).toEqual(['calc', 'calc', 'calc', 'calc']);
+    expect(widths(style('.i { border-top: min(3px, 0.1em) solid; border-left: 2px solid; }', tree, 'i'))).toEqual(['calc', 'px', 'px', 'px']);
+    expect(widths(style('.i { border-inline-start: clamp(1px, 3px, 5px) solid; }', tree, 'i'))).toEqual(['px', 'px', 'px', 'calc']);
+    expect(widths(style('.i { border-block: calc(2px * 2) solid; }', tree, 'i'))).toEqual(['calc', 'px', 'calc', 'px']);
+    // A calculation V1 refuses is refused on the width longhand the shorthand sets, with its reason.
+    const c = project().compile(inputFor(`${FONT} .i { border-left: calc(1px * 2px / 1px) solid #000; }`, tree));
+    expect(c.diagnostics.map((d) => d.message).filter((m) => m.startsWith('border-left-width: calc(1px*2px/1px) /* it multiplies two lengths'))).toHaveLength(1);
+  });
   it('T130: an order calculation that is not a whole number reaches the engine unrounded, and web CSS keeps it a calculation', () => {
     const tree = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'o', ['o'], [div(r, 'i', ['i'], [text(r, 't', 'X')])])];
     const cases = [['calc(1.5)', 1.5, 'calc(1.5)'], ['calc(-1.5)', -1.5, 'calc(-1.5)'], ['min(2.5, 7)', 2.5, 'calc(2.5)'], ['calc(3000000000)', 3000000000, '3000000000'], ['calc(4 / 2)', 2, '2']] as const;
