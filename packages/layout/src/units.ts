@@ -538,3 +538,64 @@ export function calcEvaluateFloat(value: number, nonNegative: boolean): number {
   const clamped = value >= FLOAT_MAX ? FLOAT_MAX : value <= -FLOAT_MAX ? -FLOAT_MAX : Math.fround(value);
   return nonNegative && clamped < 0 ? 0 : clamped;
 }
+
+// Aspect ratios (css-sizing-4 §5.1, SIZE-ar, ratio.ts).
+
+/** Blink LayoutUnit::MulDiv: raw * m / d in int64, truncated toward zero, then clamped to int. m and d are non-negative integers below 2^31, d positive. */
+export function mulDiv(v: LU, m: number, d: number): LU {
+  if (d <= 0 || m < 0 || !Number.isInteger(m) || !Number.isInteger(d)) throw new Error('mulDiv needs a non-negative integer multiplier and a positive integer divisor');
+  const negative = v < 0;
+  const a = negative ? -v : v;
+  // raw * m can pass 2^53, so m is split into 16-bit halves and the long division keeps every product exact in a double.
+  const high = Math.floor(m / 65536);
+  const low = m - high * 65536;
+  const upper = a * high;
+  const q1 = Math.floor(upper / d);
+  const q2 = Math.floor(((upper - q1 * d) * 65536 + a * low) / d);
+  const q = q1 * 65536 + q2;
+  return saturate(negative ? 0 - q : q);
+}
+
+/** A layout ratio: two raw LayoutUnit values, both positive (StyleAspectRatio::GetLayoutRatio). */
+export type LayoutRatio = { readonly width: number; readonly height: number };
+
+function positiveRatio(width: number, height: number): LayoutRatio | null {
+  return width > 0 && height > 0 ? { width, height } : null;
+}
+
+/**
+ * Blink LayoutRatioFromSizeF (platform/geometry/physical_size.cc, Chrome 145) for a <ratio> width / height, whose parts Blink
+ * stores as float: the layout ratio, or null for a degenerate ratio, which layout treats as auto. Parts that are exact
+ * LayoutUnits are kept; equal parts are 1 / 1; anything else is the float continued-fraction convergent that first comes within
+ * 1e-6 of width / height, in at most 16 steps, as raw values.
+ */
+export function layoutRatio(ratioWidth: number, ratioHeight: number): LayoutRatio | null {
+  const w = clampLengthFloat(ratioWidth);
+  const h = clampLengthFloat(ratioHeight);
+  const rw: number = fromCssPx(w);
+  const rh: number = fromCssPx(h);
+  if ((Math.fround(rw / LU_PER_PX) === w && Math.fround(rh / LU_PER_PX) === h) || w === 0 || h === 0) return positiveRatio(rw, rh);
+  if (w === h) return { width: LU_PER_PX, height: LU_PER_PX };
+  const initial = Math.fround(w / h);
+  let x = initial;
+  let h0 = 0;
+  let h1 = 1;
+  let k0 = 1;
+  let k1 = 0;
+  for (let i = 0; i < 16; i++) {
+    if (!Number.isFinite(x)) break;
+    const error = Math.fround(initial - Math.fround(Math.fround(h1) / Math.fround(k1)));
+    if ((error < 0 ? -error : error) < Math.fround(0.000001)) break;
+    const a: number = saturate(Math.floor(x));
+    const h2: number = saturate(saturate(h1 * a) + h0);
+    const k2: number = saturate(saturate(k1 * a) + k0);
+    if (h2 === INT_MAX || k2 === INT_MAX) break;
+    h0 = h1;
+    k0 = k1;
+    h1 = h2;
+    k1 = k2;
+    x = Math.fround(1 / Math.fround(x - Math.fround(a)));
+  }
+  if (h1 === 0 || k1 === 0) return positiveRatio(rw, rh);
+  return positiveRatio(h1, k1);
+}

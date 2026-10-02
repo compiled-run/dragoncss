@@ -6,6 +6,7 @@ import { borderBoxFromSpecified, hasPercent, resolveBorder, resolveLength, resol
 import type { Ctx } from './block.ts';
 import { inlineIntrinsicSize } from './inline.ts';
 import { isOutOfFlow } from './position.ts';
+import { hasAspectRatio, ratioInlineContribution } from './ratio.ts';
 import { unsupported } from './unsupported.ts';
 
 export type IntrinsicKind = 'min' | 'max';
@@ -37,6 +38,7 @@ export function inlineContribution(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind
   // a min-width with one resolves against 0, so min-width: calc(60px - 10%) contributes 60px (probed in Chrome 145).
   let size: LU;
   if (s.width.kind !== 'auto' && !hasPercent(s.width)) size = borderBoxFromSpecified(resolveLength(s.width, ZERO, ctx.faults), bp, s.boxSizing);
+  else if (hasAspectRatio(s)) size = ratioInlineContribution(ctx, box, kind);
   else size = add(intrinsicContentInlineSize(ctx, box, kind), bp);
   if (s.maxWidth.kind !== 'none' && !hasPercent(s.maxWidth)) size = min(size, borderBoxFromSpecified(resolveLength(s.maxWidth, ZERO, ctx.faults), bp, s.boxSizing));
   if (s.minWidth.kind !== 'auto') size = max(size, borderBoxFromSpecified(resolveMinLength(s.minWidth, null, ctx.faults), bp, s.boxSizing));

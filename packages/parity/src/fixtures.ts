@@ -14,6 +14,7 @@ import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
+import { SIZING } from './fixture-groups/sizing.ts';
 import { UNITS } from './fixture-groups/units.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
 import { VALUES } from './fixture-groups/values.ts';
@@ -86,6 +87,8 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'fonts', fixtures: FONTS },
   { id: 'media', fixtures: MEDIA },
   { id: 'border-paint', fixtures: BORDER_PAINT },
+  { id: 'sizing-ratio', fixtures: SIZING },
+  // values stays last: the extended corpus keys its vectors on the values- prefix (values.test.ts).
   { id: 'values', fixtures: VALUES },
 ];
 

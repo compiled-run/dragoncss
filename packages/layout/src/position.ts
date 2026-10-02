@@ -21,6 +21,7 @@ import {
 import type { Ctx, EngineFaults } from './block.ts';
 import { layoutContents, NO_ENGINE_FAULTS } from './block.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
+import { hasAspectRatio, ratioAbsoluteInlineSize, ratioSetsAbsoluteHeight } from './ratio.ts';
 import { unsupported } from './unsupported.ts';
 
 /** CSS2 §9.3.1: an absolutely positioned box leaves the flow (planted fault absposInFlow lays it out as static). */
@@ -194,7 +195,10 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
   const margins = add(inlineAxis.marginStart.value, inlineAxis.marginEnd.value);
   const specified = resolveInlineLengthWith(s.width, cb.width, ctx.faults);
   let width: LU;
-  if (specified !== null) width = borderBoxFromSpecified(specified, hbp, s.boxSizing);
+  const bothBlockInsets = blockAxis.insetStart !== null && blockAxis.insetEnd !== null;
+  // css-sizing-4 §5.1 (ratio.ts): an auto width may come through the ratio from a height or a stretched block size.
+  if (specified === null && hasAspectRatio(s)) width = ratioAbsoluteInlineSize(ctx, box, cb.width, inlineAxis.insetStart !== null && inlineAxis.insetEnd !== null ? sub(axisAvailable(inlineAxis), margins) : null, sub(axisAvailable(inlineAxis), margins), bothBlockInsets ? sub(axisAvailable(blockAxis), add(mt.value, mb.value)) : null);
+  else if (specified !== null) width = borderBoxFromSpecified(specified, hbp, s.boxSizing);
   else if (inlineAxis.insetStart !== null && inlineAxis.insetEnd !== null) width = sub(axisAvailable(inlineAxis), margins);
   else {
     const minContent = add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
@@ -206,7 +210,7 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
   // Height: auto with both insets set stretches; otherwise the contents decide (layoutContents applies height and min/max).
   const heightBasis: HeightBasis = { kind: 'definite', value: cb.height };
   let forced: LU | null = null;
-  if (s.height.kind === 'auto' && blockAxis.insetStart !== null && blockAxis.insetEnd !== null) {
+  if (s.height.kind === 'auto' && bothBlockInsets && !ratioSetsAbsoluteHeight(box)) {
     forced = max(constrain(sub(axisAvailable(blockAxis), add(mt.value, mb.value)), blockMinMaxWith(box, heightBasis, vbp, ctx.faults)), vbp);
   }
   const r = layoutContents(ctx, box, {

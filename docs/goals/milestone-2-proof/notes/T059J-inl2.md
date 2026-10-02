@@ -171,3 +171,15 @@ The objective, allowed_files, verify and stop_if are in the T059J receipt, copie
 **Merge conflicts with inl1a-tags:** five append collisions (fonts.ts MAPS was added). They are accepted under T059J-1 (4) and resolved by keeping both sides at catch-up.
 
 **Order:** TXT2-a is dispatched on inl2 08df24673. INL2b restacks on TXT2-a afterwards.
+
+## PM amendment T059J-INL2b-1 (2026-10-01)
+
+**sub and sup tags.** INL2b may:
+- append them to the TAGS list in capture-ua-defaults.ts, then run ua:capture (append-only);
+- append them to SUPPORTED_TAGS.
+
+This follows R7, which sends sub and sup to INL2.
+
+**Proof required.** A Chrome fixture covering nested sub/sup and font-size: smaller, with the subShiftOwnFont plant caught.
+
+**Progress.** The engine's vertical-align already matches Chrome on 29/29 INL-P probe cases, at every DPR, in ltr and rtl.

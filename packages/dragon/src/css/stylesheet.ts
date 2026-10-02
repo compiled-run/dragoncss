@@ -17,7 +17,7 @@ import type { Selector } from './selectors.ts';
 import { parseSelectorList } from './selectors.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
-import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, tokenValue, toValue } from './values.ts';
+import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, ratioValue, tokenValue, toValue } from './values.ts';
 import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
@@ -371,6 +371,15 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
     // css-tree types a math function loosely; Chrome drops one its math parser rejects (css/math.ts mathInvalidity).
     const mathInvalid = GRID_VALUE_PROPERTIES.has(property) ? null : invalidMath(property, tokens, base, sheetText);
     if (mathInvalid !== null) return { kind: 'invalid', reason: mathInvalid };
+  }
+  // css-sizing-4 §5.1: aspect-ratio is one value of up to four tokens (values.ts ratioValue).
+  if (!wide && property === 'aspect-ratio') {
+    const ratio = ratioValue(tokens);
+    if (ratio === 'invalid') return { kind: 'invalid' };
+    if ('token' in ratio) {
+      return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(ratio.token, base)), message: `${property}: ${generate(ratio.token)} is unsupported: ${ratio.reason}`, manual: 'Write the ratio as two numbers, for example 16 / 9.' }) };
+    }
+    return { kind: 'ok', longhands: [{ property, value: ratio, explicit: true }] };
   }
   // css-grid-2 and justify-*: multi-token values, with the checks Chrome makes beyond the grammar (grid-values.ts).
   if (!wide && GRID_VALUE_PROPERTIES.has(property)) return parseGridValue(property, tokens, base);
