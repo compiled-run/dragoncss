@@ -8,6 +8,7 @@ import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRID } from './fixture-groups/grid.ts';
+import { INLINE } from './fixture-groups/inline.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
 import { CONTROLS } from './fixture-groups/controls.ts';
@@ -90,6 +91,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'media', fixtures: MEDIA },
   { id: 'border-paint', fixtures: BORDER_PAINT },
   { id: 'sizing-ratio', fixtures: SIZING },
+  { id: 'inline', fixtures: INLINE },
   { id: 'replaced', fixtures: REPLACED },
   { id: 'controls', fixtures: CONTROLS },
   // values stays last: the extended corpus keys its vectors on the values- prefix (values.test.ts).

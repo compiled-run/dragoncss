@@ -43,6 +43,8 @@ export type ResolvedValue = {
   readonly losing: readonly Declaration[];
   /** Present when the winning declaration held var(); declaration is then as substituted (analysis/variables.ts). */
   readonly substitution?: Substitution;
+  /** The author declaration that won the cascade and that a forced UA value then overrode (ELB-2 userAgentForced); it heads losing. */
+  readonly forcedOver?: Declaration;
 };
 
 const valueCache = new Map<string, CssValue>();

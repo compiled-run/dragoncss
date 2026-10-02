@@ -150,7 +150,8 @@ export function familyValue(tokens: readonly CssNode[]): CssValue {
  * part is invalid, as Chrome drops it; a math function is refused, because Dragon does not evaluate one inside a ratio.
  */
 export function ratioValue(tokens: readonly CssNode[]): CssValue | 'invalid' | { readonly token: CssNode; readonly reason: string } {
-  const autos = tokens.filter((t) => t.type === 'Identifier' && String(t['name']).toLowerCase() === 'auto');
+  // css-syntax-3 §4.3.11: an escaped identifier is its decoded name, so \61uto is auto.
+  const autos = tokens.filter((t) => t.type === 'Identifier' && asciiLower(decodeName(String(t['name']))) === 'auto');
   const rest = tokens.filter((t) => !autos.includes(t));
   if (autos.length > 1) return 'invalid';
   if (rest.length === 0) return autos.length === 1 ? { kind: 'keyword', value: 'auto' } : 'invalid';
@@ -182,13 +183,16 @@ type PositionPart = { readonly edge: string } | { readonly offset: PositionOffse
 /** One <position> token: an edge keyword, a px length or 0, or a percentage; null when it is none of these. */
 function positionPart(t: CssNode): PositionPart {
   if (t.type === 'Identifier') {
-    const name = String(t['name']).toLowerCase();
+    // css-syntax-3 §4.3.11: an escaped keyword (\6c eft) is the keyword; keywords match ASCII case-insensitively.
+    const name = asciiLower(decodeName(String(t['name'])));
     return Object.hasOwn(POSITION_EDGES, name) ? { edge: name } : null;
   }
-  if (t.type === 'Percentage') return { offset: { unit: '%', value: Number(t['value']) } };
+  // A number past the double range (1e999px) is Infinity, which no offset holds; Dragon has no Chrome proof of how it clamps it.
+  const overflow = { refused: t, reason: 'an offset past the range of a number is not supported in object-position' } as const;
+  if (t.type === 'Percentage') return Number.isFinite(Number(t['value'])) ? { offset: { unit: '%', value: Number(t['value']) } } : overflow;
   if (t.type === 'Number' && Number(t['value']) === 0) return { offset: { unit: 'px', value: 0 } };
   if (t.type === 'Dimension') {
-    if (normalizeUnit(String(t['unit'])) === 'px') return { offset: { unit: 'px', value: Number(t['value']) } };
+    if (normalizeUnit(String(t['unit'])) === 'px') return Number.isFinite(Number(t['value'])) ? { offset: { unit: 'px', value: Number(t['value']) } } : overflow;
     return { refused: t, reason: 'only px and % offsets are supported in object-position' };
   }
   if (t.type === 'Function') return { refused: t, reason: 'a calculation in object-position is not supported' };

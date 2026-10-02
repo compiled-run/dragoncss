@@ -246,7 +246,10 @@ function applyForcedUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>, u
   for (const [p, text] of Object.entries(forced)) {
     const was = props.get(p as Longhand);
     if (was === undefined) throw new Error(`forced UA value for ${p}, which is not a longhand`);
-    props.set(p as Longhand, { value: parseValueText(p as Longhand, text), origin: 'user-agent', span: null, declaration: null, declared: null, losing: was.declaration === null ? was.losing : [was.declaration, ...was.losing] });
+    const value = parseValueText(p as Longhand, text);
+    // The author winner lost to the forced value, not to another declaration; the declarations it beat keep their own reason.
+    if (was.declaration === null) props.set(p as Longhand, { value, origin: 'user-agent', span: null, declaration: null, declared: null, losing: was.losing });
+    else props.set(p as Longhand, { value, origin: 'user-agent', span: null, declaration: null, declared: null, losing: [was.declaration, ...was.losing], forcedOver: was.declaration });
   }
 }
 
