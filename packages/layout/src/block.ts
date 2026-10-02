@@ -343,7 +343,8 @@ function inlineMargins(ctx: Ctx, s: LayoutStyle, cbInline: LU, cbDirection: Dire
 }
 
 function placeWithMargins(m: InlineMargins, container: InlineContainer, width: LU): BlockLevelInline {
-  const { rtl, available } = m;
+  const rtl = m.rtl;
+  const available = m.available;
   const inlineSum = add(m.start.value, m.end.value);
   // Blink ResolveInlineAutoMargins: both auto centre with LayoutUnit / 2 on the start side, clamped at zero; a lone auto start
   // margin takes the free space; a lone auto end margin takes the rest.
