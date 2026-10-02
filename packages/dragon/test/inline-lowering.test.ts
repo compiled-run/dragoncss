@@ -87,10 +87,15 @@ describe('refusals', () => {
     const wrap = compile((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', 'span', ['nw'], [text(r, 't1', 'b c')])])]).diagnostics.filter((d) => d.message.startsWith('text-wrap-mode'));
     expect(wrap.map((d) => String(d.target)).sort()).toEqual(['ios', 'web']);
   });
-  it('the phrasing tags INL1a does not reproduce stay refused: small, code, sub and sup', () => {
-    for (const tag of ['small', 'code', 'sub', 'sup']) {
+  // INL2b (T059J-INL2b-1) retarget: sub and sup are supported tags now; the other phrasing tags stay refused.
+  it('the phrasing tags INL1a does not reproduce stay refused: small and code; sub and sup are supported (INL2b)', () => {
+    for (const tag of ['small', 'code']) {
       const got = compile((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', tag, [], [text(r, 't1', 'b')])])]).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_ELEMENT');
       expect(got.length, tag).toBeGreaterThan(0);
+    }
+    for (const tag of ['sub', 'sup']) {
+      const got = compile((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', tag, [], [text(r, 't1', 'b')])])]).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_ELEMENT');
+      expect(got, tag).toEqual([]);
     }
   });
   it('b, strong, em and i are elements since T133; in Ahem only ios refuses them, for the UA font-weight or font-style (synthetic bold and italic)', () => {

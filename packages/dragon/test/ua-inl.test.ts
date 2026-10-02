@@ -23,13 +23,15 @@ const parentSize = (family: string, parent: string): number => {
 };
 
 describe('phrasing keys (INL-U)', () => {
-  it('are captured in tables of their own, light and dark; no other table lists them', () => {
+  // INL2b (T059J-INL2b-1): sub and sup are also captured tags, so the captured-tag tables list them too.
+  it('are captured in tables of their own, light and dark; no other table lists them but sub and sup in the captured-tag tables', () => {
     for (const ds of [light, dark]) {
       for (const table of [ds.phrasingKeySpecs, ds.phrasingKeyComputed, ds.phrasingKeyLonghands, ds.phrasingKeyDeclared, ds.phrasingKeyContexts, ds.phrasingKeyTextFonts, ds.phrasingKeyUnmodelled, ds.phrasingKeyForced, ds.elementKeyFontSizes]) {
         expect(Object.keys(table)).toEqual([...PHRASING]);
       }
       for (const table of [ds.computed, ds.userAgentLonghands, ds.userAgentDeclared, ds.userAgentContexts, ds.userAgentTextFonts, ds.elementKeySpecs, ds.elementKeyComputed, ds.userAgentUnmodelled, ds.userAgentForced, ds.replacedKeySpecs]) {
-        for (const k of PHRASING) expect(k in table, k).toBe(false);
+        const captured = table === ds.computed || table === ds.userAgentLonghands || table === ds.userAgentDeclared || table === ds.userAgentContexts || table === ds.userAgentTextFonts || table === ds.userAgentUnmodelled || table === ds.userAgentForced;
+        for (const k of PHRASING) expect(k in table, k).toBe(captured && (k === 'sub' || k === 'sup'));
       }
     }
     for (const k of PHRASING) expect(light.phrasingKeySpecs[k]).toEqual({ tag: k, attributes: {} });
@@ -45,13 +47,13 @@ describe('phrasing keys (INL-U)', () => {
   });
   it('pin the UA longhands, declared values, text fonts, unmodelled and forced properties, and contexts', () => {
     expect(light.phrasingKeyLonghands).toEqual({
-      br: [], strong: [], b: [], em: [], i: [], code: ['font-family'], small: ['font-size'], sub: ['font-size'], sup: ['font-size'], label: [],
+      br: [], strong: [], b: [], em: [], i: [], code: ['font-family'], small: ['font-size'], sub: ['font-size', 'vertical-align'], sup: ['font-size', 'vertical-align'], label: [],
     });
     const both = (row: Record<string, string>) => ({ ltr: row, rtl: row });
     expect(light.phrasingKeyDeclared).toEqual({
       br: both({}), strong: both({}), b: both({}), em: both({}), i: both({}),
       code: both({ 'font-family': 'monospace' }),
-      small: both({ 'font-size': 'smaller' }), sub: both({ 'font-size': 'smaller' }), sup: both({ 'font-size': 'smaller' }),
+      small: both({ 'font-size': 'smaller' }), sub: both({ 'font-size': 'smaller', 'vertical-align': 'sub' }), sup: both({ 'font-size': 'smaller', 'vertical-align': 'super' }),
       label: both({}),
     });
     expect(light.phrasingKeyTextFonts).toEqual({
@@ -60,7 +62,8 @@ describe('phrasing keys (INL-U)', () => {
     });
     expect(light.phrasingKeyUnmodelled).toEqual({
       br: both({}), strong: both({}), b: both({}), em: both({}), i: both({}), code: both({}), small: both({}),
-      sub: both({ 'vertical-align': 'sub' }), sup: both({ 'vertical-align': 'super' }), label: both({ cursor: 'default' }),
+      // INL2b: vertical-align is now modelled (a longhand), so sub and sup have no unmodelled UA property left.
+      sub: both({}), sup: both({}), label: both({ cursor: 'default' }),
     });
     for (const k of PHRASING) {
       expect(light.phrasingKeyForced[k], k).toEqual(both({}));

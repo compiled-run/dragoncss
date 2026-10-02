@@ -69,6 +69,9 @@ describe('UA versus initial origin, per tag and longhand', () => {
       dt: ['display'],
       dd: ['display', 'margin-left'],
       'dragon-unstyled': [],
+      // INL2b (T059J-INL2b-1) appends sub and sup to the captured tags.
+      sub: ['font-size', 'vertical-align'],
+      sup: ['font-size', 'vertical-align'],
     });
   });
 
@@ -176,8 +179,9 @@ describe('UA longhands of the element keys (ELB-2)', () => {
 
 describe('UA longhands of the phrasing keys (INL-U)', () => {
   it('pins the longhands a Chrome UA rule sets on br, strong, b, em, i, code, small, sub, sup and label', () => {
+    // INL2b: vertical-align is a longhand, so sub and sup's UA vertical-align is one of theirs.
     expect(phrasingKeyLonghands).toEqual({
-      br: [], strong: [], b: [], em: [], i: [], code: ['font-family'], small: ['font-size'], sub: ['font-size'], sup: ['font-size'], label: [],
+      br: [], strong: [], b: [], em: [], i: [], code: ['font-family'], small: ['font-size'], sub: ['font-size', 'vertical-align'], sup: ['font-size', 'vertical-align'], label: [],
     });
     for (const key of Object.keys(phrasingKeyComputed) as (keyof typeof phrasingKeyComputed)[]) {
       for (const p of CAPTURED_LONGHANDS) expect(phrasingKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');

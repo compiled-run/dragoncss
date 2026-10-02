@@ -128,16 +128,17 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
   // sum over the text-latin, Ahem fractional and text-calibration cases (the last term); a real face's glyph boxes are its shaped
   // HarfBuzz extents (pixel-reference.ts glyphLines). TXT-W1: plus the sum over the text-weight cases (the last term of each changed
   // count); every existing case is unchanged. INL2a (T059J): plus the sum over the atomic-inline cases;
-  // TXT2-a (T149): plus the sum over the text-wrap-break cases (the last addend).
+  // TXT2-a (T149): plus the sum over the text-wrap-break cases; INL2b (T059J): plus the sum over the vertical-align cases (the
+  // last addend).
   const DROPPED = {
     ios: {
-      2: { dropped: { edge: 1234 + 262 + 15 + 3 + 136 + 49, 'edge:glyph': 924 + 189 + 8 + 8 + 131 + 155, glyph: 31, clip: 4, border: 16, interior: 5 + 1 + 4, outside: 4 }, rescued: { edge: 1194 + 236 + 2 + 1 + 132 + 45 } },
-      3: { dropped: { edge: 1243 + 254 + 15 + 106 + 49, 'edge:glyph': 872 + 172 + 8 + 6 + 128 + 155, glyph: 25, border: 18, interior: 5 + 1 + 4, clip: 2, outside: 2 }, rescued: { edge: 1215 + 231 + 7 + 106 + 45, border: 18 } },
+      2: { dropped: { edge: 1234 + 262 + 15 + 3 + 136 + 49 + 208, 'edge:glyph': 924 + 189 + 8 + 8 + 131 + 155 + 182, glyph: 31, clip: 4, border: 16, interior: 5 + 1 + 4, outside: 4 }, rescued: { edge: 1194 + 236 + 2 + 1 + 132 + 45 + 205 } },
+      3: { dropped: { edge: 1243 + 254 + 15 + 106 + 49 + 210, 'edge:glyph': 872 + 172 + 8 + 6 + 128 + 155 + 178, glyph: 25, border: 18, interior: 5 + 1 + 4, clip: 2, outside: 2 }, rescued: { edge: 1215 + 231 + 7 + 106 + 45 + 208, border: 18 } },
     },
     android: {
-      2: { dropped: { edge: 1234 + 262 + 15 + 3 + 136 + 49, 'edge:glyph': 924 + 189 + 8 + 8 + 131 + 155, glyph: 31, clip: 4, border: 16, interior: 5 + 1 + 4, outside: 4 }, rescued: { edge: 1194 + 236 + 2 + 1 + 132 + 45 } },
-      3: { dropped: { edge: 1243 + 254 + 15 + 106 + 49, 'edge:glyph': 872 + 172 + 8 + 6 + 128 + 155, glyph: 25, border: 18, interior: 5 + 1 + 4, clip: 2, outside: 2 }, rescued: { edge: 1215 + 231 + 7 + 106 + 45, border: 18 } },
-      2.625: { dropped: { edge: 1207 + 260 + 15 + 110 + 49, 'edge:glyph': 901 + 189 + 8 + 8 + 130 + 155, glyph: 33, outside: 6 + 4 + 3 + 2, clip: 13 + 12, border: 16, interior: 5 + 1 + 4 }, rescued: { edge: 1071 + 194 + 8 + 106 + 37 } },
+      2: { dropped: { edge: 1234 + 262 + 15 + 3 + 136 + 49 + 208, 'edge:glyph': 924 + 189 + 8 + 8 + 131 + 155 + 182, glyph: 31, clip: 4, border: 16, interior: 5 + 1 + 4, outside: 4 }, rescued: { edge: 1194 + 236 + 2 + 1 + 132 + 45 + 205 } },
+      3: { dropped: { edge: 1243 + 254 + 15 + 106 + 49 + 210, 'edge:glyph': 872 + 172 + 8 + 6 + 128 + 155 + 178, glyph: 25, border: 18, interior: 5 + 1 + 4, clip: 2, outside: 2 }, rescued: { edge: 1215 + 231 + 7 + 106 + 45 + 208, border: 18 } },
+      2.625: { dropped: { edge: 1207 + 260 + 15 + 110 + 49 + 210, 'edge:glyph': 901 + 189 + 8 + 8 + 130 + 155 + 178, glyph: 33, outside: 6 + 4 + 3 + 2, clip: 13 + 12, border: 16, interior: 5 + 1 + 4 }, rescued: { edge: 1071 + 194 + 8 + 106 + 37 + 172 } },
     },
   } as const;
   const bottoms = JSON.parse(readFileSync(BOTTOM_SCANLINES_PATH(), 'utf8')) as BottomScanlines;

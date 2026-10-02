@@ -9,6 +9,7 @@ import type { AtRuleContext } from '../src/css/at-rules.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../src/css/properties/grid.ts';
 import { TEXT_WRAP_LONGHANDS } from '../src/css/properties/text-wrap.ts';
+import { INLINE_LONGHANDS } from '../src/css/properties/inline.ts';
 import { LOGICAL_SHORTHANDS } from '../src/css/properties/logical.ts';
 import { SHORTHAND_HANDLERS } from '../src/css/shorthands/index.ts';
 import type { Declaration, EnclosedRules } from '../src/css/stylesheet.ts';
@@ -39,6 +40,8 @@ describe('E2 seams: the property registry', () => {
       ...GRID_LONGHANDS,
       // TXT2-a appends overflow-wrap, word-break and letter-spacing after the grid family.
       ...TEXT_WRAP_LONGHANDS,
+      // INL2b appends vertical-align after the TXT2-a family.
+      ...INLINE_LONGHANDS,
     ]);
   });
   it('SHORTHANDS keeps its order', () => {
