@@ -87,6 +87,18 @@ export type EngineFaults = {
   readonly viewportSizeKindIgnored: boolean;
   /** A font size that is not absolute ignores Chrome's minimum logical font size (6px). */
   readonly minimumFontSizeIgnored: boolean;
+  /** Soft wrap opportunities only after a space or U+200B, as before UAX #14 was wired (linebreak.ts bypassed). */
+  readonly spaceOnlyBreaks: boolean;
+  /** A line fits only at or under the available width, without Blink's one-LayoutUnit epsilon (linefit.ts noEpsilon). */
+  readonly fitWithoutEpsilon: boolean;
+  /** A break is allowed after '/' before a letter or digit, as ICU does (linebreak.ts breakAfterSolidus). */
+  readonly breakAfterSolidus: boolean;
+  /** No break between '-' and a digit, as UAX #14 LB25 does (linebreak.ts noHyphenDigitBreak). */
+  readonly noHyphenDigitBreak: boolean;
+  /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
+  readonly orderHalfEven: boolean;
+  /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
+  readonly orderUnclamped: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -120,6 +132,12 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   lhNormalUnrounded: false,
   viewportSizeKindIgnored: false,
   minimumFontSizeIgnored: false,
+  spaceOnlyBreaks: false,
+  fitWithoutEpsilon: false,
+  breakAfterSolidus: false,
+  noHyphenDigitBreak: false,
+  orderHalfEven: false,
+  orderUnclamped: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };

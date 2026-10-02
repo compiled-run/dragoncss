@@ -1,0 +1,3564 @@
+{
+ "platform": "darwin-arm64",
+ "measurer": "ahem/darwin-arm64",
+ "input": {
+  "viewport": {
+   "width": 400,
+   "height": 300
+  },
+  "devicePixelRatio": 3,
+  "viewportUnits": {
+   "small": {
+    "width": 400,
+    "height": 300
+   },
+   "large": {
+    "width": 400,
+    "height": 300
+   },
+   "dynamic": {
+    "width": 400,
+    "height": 300
+   }
+  },
+  "safeArea": {
+   "top": 0,
+   "right": 0,
+   "bottom": 0,
+   "left": 0
+  },
+  "rootFontSize": 16,
+  "root": {
+   "kind": "box",
+   "id": "html",
+   "boxType": "element",
+   "style": {
+    "display": "block",
+    "position": "static",
+    "top": {
+     "kind": "auto"
+    },
+    "right": {
+     "kind": "auto"
+    },
+    "bottom": {
+     "kind": "auto"
+    },
+    "left": {
+     "kind": "auto"
+    },
+    "overflowX": "visible",
+    "overflowY": "visible",
+    "direction": "ltr",
+    "boxSizing": "content-box",
+    "width": {
+     "kind": "auto"
+    },
+    "height": {
+     "kind": "auto"
+    },
+    "minWidth": {
+     "kind": "auto"
+    },
+    "minHeight": {
+     "kind": "auto"
+    },
+    "maxWidth": {
+     "kind": "none"
+    },
+    "maxHeight": {
+     "kind": "none"
+    },
+    "marginTop": {
+     "kind": "px",
+     "value": 0
+    },
+    "marginRight": {
+     "kind": "px",
+     "value": 0
+    },
+    "marginBottom": {
+     "kind": "px",
+     "value": 0
+    },
+    "marginLeft": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingTop": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingRight": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingBottom": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingLeft": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderTopWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderRightWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderBottomWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderLeftWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "flexDirection": "row",
+    "flexWrap": "nowrap",
+    "flexGrow": 0,
+    "flexShrink": 1,
+    "flexBasis": {
+     "kind": "auto"
+    },
+    "order": 0,
+    "justifyContent": "normal",
+    "alignItems": "normal",
+    "alignSelf": "auto",
+    "alignContent": "normal",
+    "rowGap": {
+     "kind": "normal"
+    },
+    "columnGap": {
+     "kind": "normal"
+    },
+    "textAlign": "start"
+   },
+   "children": [
+    {
+     "kind": "box",
+     "id": "body",
+     "boxType": "element",
+     "style": {
+      "display": "block",
+      "position": "static",
+      "top": {
+       "kind": "auto"
+      },
+      "right": {
+       "kind": "auto"
+      },
+      "bottom": {
+       "kind": "auto"
+      },
+      "left": {
+       "kind": "auto"
+      },
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "direction": "ltr",
+      "boxSizing": "content-box",
+      "width": {
+       "kind": "auto"
+      },
+      "height": {
+       "kind": "auto"
+      },
+      "minWidth": {
+       "kind": "auto"
+      },
+      "minHeight": {
+       "kind": "auto"
+      },
+      "maxWidth": {
+       "kind": "none"
+      },
+      "maxHeight": {
+       "kind": "none"
+      },
+      "marginTop": {
+       "kind": "px",
+       "value": 0
+      },
+      "marginRight": {
+       "kind": "px",
+       "value": 0
+      },
+      "marginBottom": {
+       "kind": "px",
+       "value": 0
+      },
+      "marginLeft": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingTop": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingRight": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingBottom": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingLeft": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderTopWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderRightWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderBottomWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderLeftWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "flexDirection": "row",
+      "flexWrap": "nowrap",
+      "flexGrow": 0,
+      "flexShrink": 1,
+      "flexBasis": {
+       "kind": "auto"
+      },
+      "order": 0,
+      "justifyContent": "normal",
+      "alignItems": "normal",
+      "alignSelf": "auto",
+      "alignContent": "normal",
+      "rowGap": {
+       "kind": "normal"
+      },
+      "columnGap": {
+       "kind": "normal"
+      },
+      "textAlign": "start"
+     },
+     "children": [
+      {
+       "kind": "box",
+       "id": "o",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "ltr",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "px",
+         "value": 300
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start"
+       },
+       "children": [
+        {
+         "kind": "box",
+         "id": "c1",
+         "boxType": "element",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 10
+             },
+             {
+              "kind": "px",
+              "value": 3
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "right": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "percent",
+              "value": -5
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "bottom": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 2
+             },
+             {
+              "kind": "percent",
+              "value": 3
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "left": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 4
+             },
+             {
+              "kind": "px",
+              "value": -1
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "direction": "ltr",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 50
+             },
+             {
+              "kind": "px",
+              "value": -7
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "height": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 10
+             },
+             {
+              "kind": "em",
+              "value": 0.5,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "minWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 10
+             },
+             {
+              "kind": "px",
+              "value": 3
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "minHeight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 2
+             },
+             {
+              "kind": "em",
+              "value": 1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "maxWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 90
+             },
+             {
+              "kind": "em",
+              "value": -1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "maxHeight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 100
+             },
+             {
+              "kind": "em",
+              "value": -1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "marginTop": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 1
+             },
+             {
+              "kind": "percent",
+              "value": 1
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "marginRight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 2
+             },
+             {
+              "kind": "px",
+              "value": -1
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "marginBottom": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 3
+             },
+             {
+              "kind": "em",
+              "value": 0.5,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "marginLeft": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "percent",
+              "value": -2
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "paddingTop": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 1
+             },
+             {
+              "kind": "percent",
+              "value": 2
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "paddingRight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 0.3,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "px",
+              "value": 1
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "paddingBottom": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 4
+             },
+             {
+              "kind": "px",
+              "value": -2
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "paddingLeft": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 2
+             },
+             {
+              "kind": "percent",
+              "value": 1.5
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "borderTopWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 1
+             },
+             {
+              "kind": "em",
+              "value": 0.5,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "borderRightWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 0.25,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "px",
+              "value": 0.5
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "borderBottomWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "px",
+            "value": 2
+           },
+           "range": "non-negative"
+          },
+          "borderLeftWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 1.5
+             },
+             {
+              "kind": "em",
+              "value": 0.1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 20
+             },
+             {
+              "kind": "px",
+              "value": 3
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "normal"
+          },
+          "columnGap": {
+           "kind": "normal"
+          },
+          "textAlign": "start"
+         },
+         "children": []
+        },
+        {
+         "kind": "box",
+         "id": "c2",
+         "boxType": "element",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 5
+             },
+             {
+              "kind": "px",
+              "value": 3
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "right": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "percent",
+              "value": 20
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "bottom": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 2
+             },
+             {
+              "kind": "percent",
+              "value": 1
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "left": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 3
+             },
+             {
+              "kind": "px",
+              "value": 8
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "direction": "ltr",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 40
+             },
+             {
+              "kind": "px",
+              "value": 150
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "height": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 12
+             },
+             {
+              "kind": "em",
+              "value": 2,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "minWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 20
+             },
+             {
+              "kind": "px",
+              "value": 30
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "minHeight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 5
+             },
+             {
+              "kind": "em",
+              "value": 1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "maxWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 80
+             },
+             {
+              "kind": "px",
+              "value": 250
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "maxHeight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 100
+             },
+             {
+              "kind": "em",
+              "value": 50,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "marginTop": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 3
+             },
+             {
+              "kind": "percent",
+              "value": 1
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "marginRight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 2
+             },
+             {
+              "kind": "px",
+              "value": 9
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "marginBottom": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 4
+             },
+             {
+              "kind": "em",
+              "value": 1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "marginLeft": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "percent",
+              "value": 3
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "paddingTop": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 2
+             },
+             {
+              "kind": "px",
+              "value": 5
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "paddingRight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "px",
+              "value": 3
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "paddingBottom": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 1
+             },
+             {
+              "kind": "percent",
+              "value": 4
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "paddingLeft": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 3
+             },
+             {
+              "kind": "px",
+              "value": 2
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "borderTopWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 3
+             },
+             {
+              "kind": "em",
+              "value": 0.2,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "borderRightWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "px",
+              "value": 1.5
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "borderBottomWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "px",
+            "value": 2
+           },
+           "range": "non-negative"
+          },
+          "borderLeftWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 0.4,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "px",
+              "value": 9
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 10
+             },
+             {
+              "kind": "px",
+              "value": 7
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "normal"
+          },
+          "columnGap": {
+           "kind": "normal"
+          },
+          "textAlign": "start"
+         },
+         "children": []
+        },
+        {
+         "kind": "box",
+         "id": "c3",
+         "boxType": "element",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 5
+             },
+             {
+              "kind": "px",
+              "value": 3
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "right": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "percent",
+              "value": 2
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "bottom": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 2
+             },
+             {
+              "kind": "percent",
+              "value": 1
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "left": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 3
+             },
+             {
+              "kind": "px",
+              "value": 8
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "direction": "ltr",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 30
+             },
+             {
+              "kind": "px",
+              "value": 50
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "height": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 8
+             },
+             {
+              "kind": "em",
+              "value": 0.5,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "minWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 20
+             },
+             {
+              "kind": "px",
+              "value": 30
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "minHeight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 5
+             },
+             {
+              "kind": "em",
+              "value": 1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "maxWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 50
+             },
+             {
+              "kind": "em",
+              "value": 20,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "maxHeight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 10
+             },
+             {
+              "kind": "em",
+              "value": 5,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "marginTop": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 3
+             },
+             {
+              "kind": "percent",
+              "value": 1
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "marginRight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 2
+             },
+             {
+              "kind": "px",
+              "value": 1
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "marginBottom": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 4
+             },
+             {
+              "kind": "em",
+              "value": 1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "marginLeft": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 0.5,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "percent",
+              "value": 3
+             }
+            ]
+           },
+           "range": "all"
+          },
+          "paddingTop": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 2
+             },
+             {
+              "kind": "px",
+              "value": 5
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "paddingRight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 0.1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "px",
+              "value": 3
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "paddingBottom": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 1
+             },
+             {
+              "kind": "percent",
+              "value": 4
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "paddingLeft": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 3
+             },
+             {
+              "kind": "px",
+              "value": 2
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "borderTopWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 1
+             },
+             {
+              "kind": "em",
+              "value": 0.2,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "borderRightWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 0.1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "px",
+              "value": 2.5
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "borderBottomWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "px",
+            "value": 2
+           },
+           "range": "non-negative"
+          },
+          "borderLeftWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 0.4,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "px",
+              "value": 1
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "percent",
+              "value": 10
+             },
+             {
+              "kind": "px",
+              "value": 7
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "normal"
+          },
+          "columnGap": {
+           "kind": "normal"
+          },
+          "textAlign": "start"
+         },
+         "children": []
+        },
+        {
+         "kind": "box",
+         "id": "c4",
+         "boxType": "element",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 1
+            },
+            "value": {
+             "kind": "percent",
+             "value": 5
+            },
+            "max": {
+             "kind": "em",
+             "value": 3,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            }
+           },
+           "range": "all"
+          },
+          "right": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 0
+            },
+            "value": {
+             "kind": "em",
+             "value": 1,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            },
+            "max": {
+             "kind": "percent",
+             "value": 2
+            }
+           },
+           "range": "all"
+          },
+          "bottom": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 1
+            },
+            "value": {
+             "kind": "percent",
+             "value": 1
+            },
+            "max": {
+             "kind": "px",
+             "value": 2
+            }
+           },
+           "range": "all"
+          },
+          "left": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "percent",
+             "value": 3
+            },
+            "value": {
+             "kind": "px",
+             "value": 8
+            },
+            "max": {
+             "kind": "em",
+             "value": 5,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            }
+           },
+           "range": "all"
+          },
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "direction": "ltr",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 20
+            },
+            "value": {
+             "kind": "percent",
+             "value": 45
+            },
+            "max": {
+             "kind": "px",
+             "value": 200
+            }
+           },
+           "range": "non-negative"
+          },
+          "height": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 6
+            },
+            "value": {
+             "kind": "em",
+             "value": 1,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            },
+            "max": {
+             "kind": "px",
+             "value": 30
+            }
+           },
+           "range": "non-negative"
+          },
+          "minWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 10
+            },
+            "value": {
+             "kind": "percent",
+             "value": 20
+            },
+            "max": {
+             "kind": "px",
+             "value": 90
+            }
+           },
+           "range": "non-negative"
+          },
+          "minHeight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 1
+            },
+            "value": {
+             "kind": "em",
+             "value": 1,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            },
+            "max": {
+             "kind": "em",
+             "value": 2,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            }
+           },
+           "range": "non-negative"
+          },
+          "maxWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 100
+            },
+            "value": {
+             "kind": "percent",
+             "value": 80
+            },
+            "max": {
+             "kind": "em",
+             "value": 30,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            }
+           },
+           "range": "non-negative"
+          },
+          "maxHeight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 10
+            },
+            "value": {
+             "kind": "em",
+             "value": 50,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            },
+            "max": {
+             "kind": "px",
+             "value": 60
+            }
+           },
+           "range": "non-negative"
+          },
+          "marginTop": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 1
+            },
+            "value": {
+             "kind": "percent",
+             "value": 1
+            },
+            "max": {
+             "kind": "px",
+             "value": 5
+            }
+           },
+           "range": "all"
+          },
+          "marginRight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 0
+            },
+            "value": {
+             "kind": "percent",
+             "value": 2
+            },
+            "max": {
+             "kind": "em",
+             "value": 1,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            }
+           },
+           "range": "all"
+          },
+          "marginBottom": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 2
+            },
+            "value": {
+             "kind": "em",
+             "value": 1,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            },
+            "max": {
+             "kind": "px",
+             "value": 3
+            }
+           },
+           "range": "all"
+          },
+          "marginLeft": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "em",
+             "value": 1,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            },
+            "value": {
+             "kind": "percent",
+             "value": 3
+            },
+            "max": {
+             "kind": "px",
+             "value": 20
+            }
+           },
+           "range": "all"
+          },
+          "paddingTop": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 1
+            },
+            "value": {
+             "kind": "percent",
+             "value": 2
+            },
+            "max": {
+             "kind": "px",
+             "value": 3
+            }
+           },
+           "range": "non-negative"
+          },
+          "paddingRight": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 1
+            },
+            "value": {
+             "kind": "em",
+             "value": 1,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            },
+            "max": {
+             "kind": "em",
+             "value": 2,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            }
+           },
+           "range": "non-negative"
+          },
+          "paddingBottom": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 0
+            },
+            "value": {
+             "kind": "percent",
+             "value": 4
+            },
+            "max": {
+             "kind": "px",
+             "value": 1
+            }
+           },
+           "range": "non-negative"
+          },
+          "paddingLeft": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 1
+            },
+            "value": {
+             "kind": "percent",
+             "value": 3
+            },
+            "max": {
+             "kind": "px",
+             "value": 20
+            }
+           },
+           "range": "non-negative"
+          },
+          "borderTopWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 1
+            },
+            "value": {
+             "kind": "em",
+             "value": 0.25,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            },
+            "max": {
+             "kind": "px",
+             "value": 3
+            }
+           },
+           "range": "non-negative"
+          },
+          "borderRightWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 1
+            },
+            "value": {
+             "kind": "em",
+             "value": 1,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            },
+            "max": {
+             "kind": "px",
+             "value": 2
+            }
+           },
+           "range": "non-negative"
+          },
+          "borderBottomWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "px",
+            "value": 2
+           },
+           "range": "non-negative"
+          },
+          "borderLeftWidth": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "em",
+             "value": 1,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            },
+            "value": {
+             "kind": "px",
+             "value": 1
+            },
+            "max": {
+             "kind": "em",
+             "value": 2,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            }
+           },
+           "range": "non-negative"
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 1
+            },
+            "value": {
+             "kind": "percent",
+             "value": 10
+            },
+            "max": {
+             "kind": "px",
+             "value": 7
+            }
+           },
+           "range": "non-negative"
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "normal"
+          },
+          "columnGap": {
+           "kind": "normal"
+          },
+          "textAlign": "start"
+         },
+         "children": []
+        },
+        {
+         "kind": "box",
+         "id": "s1",
+         "boxType": "element",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "px",
+           "value": 16
+          },
+          "right": {
+           "kind": "percent",
+           "value": 5
+          },
+          "bottom": {
+           "kind": "px",
+           "value": 5
+          },
+          "left": {
+           "kind": "px",
+           "value": 16
+          },
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "direction": "ltr",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "auto"
+          },
+          "height": {
+           "kind": "px",
+           "value": 4
+          },
+          "minWidth": {
+           "kind": "auto"
+          },
+          "minHeight": {
+           "kind": "auto"
+          },
+          "maxWidth": {
+           "kind": "none"
+          },
+          "maxHeight": {
+           "kind": "none"
+          },
+          "marginTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderTopWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderRightWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderBottomWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderLeftWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "px",
+           "value": 10
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "normal"
+          },
+          "columnGap": {
+           "kind": "normal"
+          },
+          "textAlign": "start"
+         },
+         "children": []
+        },
+        {
+         "kind": "box",
+         "id": "s2",
+         "boxType": "element",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "percent",
+           "value": 7
+          },
+          "right": {
+           "kind": "px",
+           "value": 16
+          },
+          "bottom": {
+           "kind": "percent",
+           "value": 10
+          },
+          "left": {
+           "kind": "px",
+           "value": 7
+          },
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "direction": "ltr",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "auto"
+          },
+          "height": {
+           "kind": "px",
+           "value": 4
+          },
+          "minWidth": {
+           "kind": "auto"
+          },
+          "minHeight": {
+           "kind": "auto"
+          },
+          "maxWidth": {
+           "kind": "none"
+          },
+          "maxHeight": {
+           "kind": "none"
+          },
+          "marginTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderTopWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderRightWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderBottomWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderLeftWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "px",
+           "value": 32
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "normal"
+          },
+          "columnGap": {
+           "kind": "normal"
+          },
+          "textAlign": "start"
+         },
+         "children": []
+        },
+        {
+         "kind": "box",
+         "id": "s3",
+         "boxType": "element",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "auto"
+          },
+          "right": {
+           "kind": "auto"
+          },
+          "bottom": {
+           "kind": "px",
+           "value": 16
+          },
+          "left": {
+           "kind": "percent",
+           "value": 5
+          },
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "direction": "ltr",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "auto"
+          },
+          "height": {
+           "kind": "px",
+           "value": 4
+          },
+          "minWidth": {
+           "kind": "auto"
+          },
+          "minHeight": {
+           "kind": "auto"
+          },
+          "maxWidth": {
+           "kind": "none"
+          },
+          "maxHeight": {
+           "kind": "none"
+          },
+          "marginTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderTopWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderRightWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderBottomWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderLeftWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "percent",
+           "value": 30
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "normal"
+          },
+          "columnGap": {
+           "kind": "normal"
+          },
+          "textAlign": "start"
+         },
+         "children": []
+        },
+        {
+         "kind": "box",
+         "id": "g1",
+         "boxType": "element",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "auto"
+          },
+          "right": {
+           "kind": "auto"
+          },
+          "bottom": {
+           "kind": "auto"
+          },
+          "left": {
+           "kind": "auto"
+          },
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "direction": "ltr",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "auto"
+          },
+          "height": {
+           "kind": "px",
+           "value": 4
+          },
+          "minWidth": {
+           "kind": "auto"
+          },
+          "minHeight": {
+           "kind": "auto"
+          },
+          "maxWidth": {
+           "kind": "none"
+          },
+          "maxHeight": {
+           "kind": "none"
+          },
+          "marginTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderTopWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderRightWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderBottomWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderLeftWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "auto"
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 2
+             },
+             {
+              "kind": "em",
+              "value": 0.5,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "columnGap": {
+           "kind": "px",
+           "value": 3
+          },
+          "textAlign": "start"
+         },
+         "children": []
+        },
+        {
+         "kind": "box",
+         "id": "g2",
+         "boxType": "element",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "auto"
+          },
+          "right": {
+           "kind": "auto"
+          },
+          "bottom": {
+           "kind": "auto"
+          },
+          "left": {
+           "kind": "auto"
+          },
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "direction": "ltr",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "auto"
+          },
+          "height": {
+           "kind": "px",
+           "value": 4
+          },
+          "minWidth": {
+           "kind": "auto"
+          },
+          "minHeight": {
+           "kind": "auto"
+          },
+          "maxWidth": {
+           "kind": "none"
+          },
+          "maxHeight": {
+           "kind": "none"
+          },
+          "marginTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderTopWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderRightWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderBottomWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderLeftWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "auto"
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "px",
+           "value": 5
+          },
+          "columnGap": {
+           "kind": "calc",
+           "expr": {
+            "kind": "sum",
+            "terms": [
+             {
+              "kind": "em",
+              "value": 1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             },
+             {
+              "kind": "px",
+              "value": -1
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "textAlign": "start"
+         },
+         "children": []
+        },
+        {
+         "kind": "box",
+         "id": "g3",
+         "boxType": "element",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "auto"
+          },
+          "right": {
+           "kind": "auto"
+          },
+          "bottom": {
+           "kind": "auto"
+          },
+          "left": {
+           "kind": "auto"
+          },
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "direction": "ltr",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "auto"
+          },
+          "height": {
+           "kind": "px",
+           "value": 4
+          },
+          "minWidth": {
+           "kind": "auto"
+          },
+          "minHeight": {
+           "kind": "auto"
+          },
+          "maxWidth": {
+           "kind": "none"
+          },
+          "maxHeight": {
+           "kind": "none"
+          },
+          "marginTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderTopWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderRightWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderBottomWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderLeftWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "auto"
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 3
+             },
+             {
+              "kind": "em",
+              "value": 1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "columnGap": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 2
+             },
+             {
+              "kind": "em",
+              "value": 0.1,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "textAlign": "start"
+         },
+         "children": []
+        },
+        {
+         "kind": "box",
+         "id": "g4",
+         "boxType": "element",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "auto"
+          },
+          "right": {
+           "kind": "auto"
+          },
+          "bottom": {
+           "kind": "auto"
+          },
+          "left": {
+           "kind": "auto"
+          },
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "direction": "ltr",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "auto"
+          },
+          "height": {
+           "kind": "px",
+           "value": 4
+          },
+          "minWidth": {
+           "kind": "auto"
+          },
+          "minHeight": {
+           "kind": "auto"
+          },
+          "maxWidth": {
+           "kind": "none"
+          },
+          "maxHeight": {
+           "kind": "none"
+          },
+          "marginTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderTopWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderRightWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderBottomWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderLeftWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "auto"
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "calc",
+           "expr": {
+            "kind": "max",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 1
+             },
+             {
+              "kind": "em",
+              "value": 0.5,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "columnGap": {
+           "kind": "calc",
+           "expr": {
+            "kind": "min",
+            "terms": [
+             {
+              "kind": "px",
+              "value": 9
+             },
+             {
+              "kind": "em",
+              "value": 2,
+              "fontSize": {
+               "kind": "px",
+               "value": 10
+              }
+             }
+            ]
+           },
+           "range": "non-negative"
+          },
+          "textAlign": "start"
+         },
+         "children": []
+        },
+        {
+         "kind": "box",
+         "id": "g5",
+         "boxType": "element",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "auto"
+          },
+          "right": {
+           "kind": "auto"
+          },
+          "bottom": {
+           "kind": "auto"
+          },
+          "left": {
+           "kind": "auto"
+          },
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "direction": "ltr",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "auto"
+          },
+          "height": {
+           "kind": "px",
+           "value": 4
+          },
+          "minWidth": {
+           "kind": "auto"
+          },
+          "minHeight": {
+           "kind": "auto"
+          },
+          "maxWidth": {
+           "kind": "none"
+          },
+          "maxHeight": {
+           "kind": "none"
+          },
+          "marginTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderTopWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderRightWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderBottomWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderLeftWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "auto"
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 1
+            },
+            "value": {
+             "kind": "em",
+             "value": 1,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            },
+            "max": {
+             "kind": "px",
+             "value": 5
+            }
+           },
+           "range": "non-negative"
+          },
+          "columnGap": {
+           "kind": "calc",
+           "expr": {
+            "kind": "clamp",
+            "min": {
+             "kind": "px",
+             "value": 2
+            },
+            "value": {
+             "kind": "em",
+             "value": 0.5,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            },
+            "max": {
+             "kind": "em",
+             "value": 3,
+             "fontSize": {
+              "kind": "px",
+              "value": 10
+             }
+            }
+           },
+           "range": "non-negative"
+          },
+          "textAlign": "start"
+         },
+         "children": []
+        },
+        {
+         "kind": "box",
+         "id": "g6",
+         "boxType": "element",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "auto"
+          },
+          "right": {
+           "kind": "auto"
+          },
+          "bottom": {
+           "kind": "auto"
+          },
+          "left": {
+           "kind": "auto"
+          },
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "direction": "ltr",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "auto"
+          },
+          "height": {
+           "kind": "px",
+           "value": 4
+          },
+          "minWidth": {
+           "kind": "auto"
+          },
+          "minHeight": {
+           "kind": "auto"
+          },
+          "maxWidth": {
+           "kind": "none"
+          },
+          "maxHeight": {
+           "kind": "none"
+          },
+          "marginTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderTopWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderRightWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderBottomWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderLeftWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "auto"
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "px",
+           "value": 16
+          },
+          "columnGap": {
+           "kind": "px",
+           "value": 32
+          },
+          "textAlign": "start"
+         },
+         "children": []
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "output": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 34048
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 768,
+   "width": 76800,
+   "height": 33280
+  },
+  {
+   "id": "o",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 57600,
+   "height": 33280
+  },
+  {
+   "id": "c1",
+   "parent": "o",
+   "x": 768,
+   "y": 0,
+   "width": 30496,
+   "height": 7680
+  },
+  {
+   "id": "c2",
+   "parent": "o",
+   "x": 1728,
+   "y": 9216,
+   "width": 25024,
+   "height": 4224
+  },
+  {
+   "id": "c3",
+   "parent": "o",
+   "x": 1728,
+   "y": 14208,
+   "width": 20800,
+   "height": 6144
+  },
+  {
+   "id": "c4",
+   "parent": "o",
+   "x": 1920,
+   "y": 22272,
+   "width": 31872,
+   "height": 3520
+  },
+  {
+   "id": "s1",
+   "parent": "o",
+   "x": 0,
+   "y": 26368,
+   "width": 57600,
+   "height": 768
+  },
+  {
+   "id": "s2",
+   "parent": "o",
+   "x": 0,
+   "y": 27136,
+   "width": 57600,
+   "height": 768
+  },
+  {
+   "id": "s3",
+   "parent": "o",
+   "x": 0,
+   "y": 27904,
+   "width": 57600,
+   "height": 768
+  },
+  {
+   "id": "g1",
+   "parent": "o",
+   "x": 0,
+   "y": 28672,
+   "width": 57600,
+   "height": 768
+  },
+  {
+   "id": "g2",
+   "parent": "o",
+   "x": 0,
+   "y": 29440,
+   "width": 57600,
+   "height": 768
+  },
+  {
+   "id": "g3",
+   "parent": "o",
+   "x": 0,
+   "y": 30208,
+   "width": 57600,
+   "height": 768
+  },
+  {
+   "id": "g4",
+   "parent": "o",
+   "x": 0,
+   "y": 30976,
+   "width": 57600,
+   "height": 768
+  },
+  {
+   "id": "g5",
+   "parent": "o",
+   "x": 0,
+   "y": 31744,
+   "width": 57600,
+   "height": 768
+  },
+  {
+   "id": "g6",
+   "parent": "o",
+   "x": 0,
+   "y": 32512,
+   "width": 57600,
+   "height": 768
+  }
+ ]
+}
