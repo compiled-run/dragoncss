@@ -5,7 +5,7 @@
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Longhand } from '../../css/properties.ts';
 import type { TransformFnDecl, TransformLengthDecl, TransformOriginDecl } from '../../css/properties/transform.ts';
-import { lengthText, originText, TRANSFORM_LIST_TYPE, TRANSFORM_ORIGIN_TYPE, transformFunctionsOf, transformListText, transformOriginOf, willChangeFeatures } from '../../css/properties/transform.ts';
+import { inFloatRange, lengthText, originText, TRANSFORM_LIST_TYPE, TRANSFORM_ORIGIN_TYPE, transformFunctionsOf, transformListText, transformOriginOf, willChangeFeatures } from '../../css/properties/transform.ts';
 import { lengthToPx } from '../../css/units.ts';
 import type { Diagnostic, Origin } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
@@ -18,8 +18,8 @@ function toPx(l: TransformLengthDecl, ctx: PaintValueContext): TransformLengthDe
   const base = l.unit === 'em' ? ctx.em : l.unit === 'rem' ? ctx.rem : 0;
   if (base === null) return l;
   const px = lengthToPx(l.value, l.unit, { em: ctx.em ?? 0, rem: ctx.rem ?? 0 });
-  // A px value that overflows a double stays in its unit, so the native lowering blocks on it (lower/paint/transform.ts).
-  return px === null || !Number.isFinite(px) ? l : { value: px, unit: 'px' };
+  // A px value past the float range (lengths are stored as floats) stays in its unit, so the native lowering blocks on it (lower/paint/transform.ts).
+  return px === null || !inFloatRange(px) ? l : { value: px, unit: 'px' };
 }
 
 /** A function with its lengths in px; the text of a translate function is rewritten from them. */

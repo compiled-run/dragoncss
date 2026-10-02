@@ -6,7 +6,7 @@ import type { Compiled, FrontEndResult } from '../src/index.ts';
 import { createProjectWith, emitNativeSupport, nativePrograms, NO_FAULTS, WEB_CSS_PATH } from '../src/internal.ts';
 import { paintWriteLines } from '../src/emit/paint/registry.ts';
 import { TRANSFORM_EMITTER } from '../src/emit/paint/transform.ts';
-import { matrixParts } from '../src/css/properties/transform.ts';
+import { inFloatRange, matrixParts, skewDot } from '../src/css/properties/transform.ts';
 import { div, inputFor, spanTextOf, text } from './helpers.ts';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
@@ -52,20 +52,40 @@ describe('PNT2: parse', () => {
     for (const v of ['auto', 'transform', 'opacity', 'transform, opacity']) expect(errors(compile(`.a { will-change: ${v}; }`)), v).toEqual([]);
     expect(webRule(compile('.a { will-change: transform , opacity; }'))).toContain('will-change: transform, opacity;');
   });
-  it('refuses a number, length or angle that overflows a double, and blocks the native output on an em that overflows in px', () => {
-    for (const [v, at] of [['scale(1e400)', '1e400'], ['translate(1e400px)', '1e400px'], ['translateX(1e400%)', '1e400%'], ['rotate(1e308rad)', '1e308rad'], ['rotate(1e307turn)', '1e307turn'], ['matrix(1, 0, 0, 1, 1e400, 0)', '1e400']] as const) {
+  it('refuses a length or number past the float range and an angle past the double range, and blocks the native output on a transform that overflows on the writers', () => {
+    for (const [v, at] of [['scale(1e400)', '1e400'], ['translate(1e400px)', '1e400px'], ['translateX(1e400%)', '1e400%'], ['rotate(1e308rad)', '1e308rad'], ['rotate(1e307turn)', '1e307turn'], ['matrix(1, 0, 0, 1, 1e400, 0)', '1e400'], ['translateX(1e100px)', '1e100px'], ['scale(1e39)', '1e39'], ['matrix(1, 0, 0, 1, 4e38, 0)', '4e38']] as const) {
       const e = errors(compile(`.a { transform: ${v}; }`));
       expect(e, v).toHaveLength(1);
       expect(e[0], v).toContain(`DRAGON_UNSUPPORTED_VALUE ${JSON.stringify(at)}`);
       expect(e[0], v).toContain('is out of range');
     }
     expect(errors(compile('.a { transform-origin: 1e400px 0; }'))[0]).toContain('is out of range');
-    const r = compile('.a { font-size: 20px; transform: translate(1e307em); }');
+    const r = compile('.a { font-size: 20px; transform: translate(1e38em); }');
     const p = nativePrograms(r.c, []);
     expect(p.kind).toBe('blocked');
     expect(p.kind === 'blocked' ? p.reason : '').toContain('a transform length in em did not compute to px');
-    const m = nativePrograms(compile('.a { transform: matrix(1e200, 0, 0, 1e200, 0, 0); }').c, []);
-    expect(m.kind === 'blocked' ? m.reason : m.kind).toContain('overflows when written as translate, rotate and scale');
+    // Float-range values that compose past it on the native writers.
+    for (const v of ['scale(1e30) scale(1e30)', 'translateX(1e38px) translateX(1e38px) translateX(1e38px) translateX(1e38px)', 'translateX(1e37%)']) {
+      const m = nativePrograms(compile(`.a { transform: ${v}; }`).c, []);
+      expect(m.kind === 'blocked' ? m.reason : m.kind, v).toContain('the transform overflows the float range of the native writers');
+    }
+  });
+  it('inFloatRange holds exactly where Math.fround stays finite', () => {
+    const edge = 2 ** 128 - 2 ** 103;
+    for (const v of [0, 1, 3.4028234663852886e38, edge * (1 - 2 ** -52), edge, edge * (1 + 2 ** -52), 1e39, Infinity, NaN]) {
+      for (const x of [v, -v]) expect(inFloatRange(x), String(x)).toBe(Number.isFinite(Math.fround(x)));
+    }
+  });
+  it('refuses a matrix with a shear too small for the raw dot product of its columns, and keeps every rotation matrix', () => {
+    for (const v of ['matrix(1e-200, 0, 1e-200, 1, 0, 0)', 'matrix(1, 1e-200, 1e-200, 1, 0, 0)']) {
+      const e = errors(compile(`.a { transform: ${v}; }`));
+      expect(e, v).toHaveLength(1);
+      expect(e[0], v).toContain('it skews the box');
+    }
+    for (let deg = 0; deg < 360; deg += 7) {
+      const [c, s] = [Math.cos((deg * Math.PI) / 180), Math.sin((deg * Math.PI) / 180)];
+      for (const k of [1, 2, 2 ** -100]) expect(skewDot(k * c, k * s, -s, c), `${deg}deg x${k}`).toBe(0);
+    }
   });
   it('refuses skew, 3D functions, perspective and a non-zero origin z naming PNT2-m', () => {
     for (const [v, at] of [['skew(10deg)', 'skew(10deg)'], ['translate(1px) skewX(5deg)', 'skewX(5deg)'], ['rotate3d(0, 0, 1, 10deg)', 'rotate3d(0, 0, 1, 10deg)'], ['translateZ(4px)', 'translateZ(4px)'], ['perspective(100px)', 'perspective(100px)'], ['matrix(1, 0.5, 0, 1, 0, 0)', 'matrix(1, 0.5, 0, 1, 0, 0)']] as const) {

@@ -3,8 +3,9 @@
 // every layout with the translated paint-transform.ts and the platform's sin and cos. The node's facts publish the same list,
 // origin and will-change features for the runtime helpers (hit testing, RT-9; SOV and ANIM-b writes).
 import type { TransformLength, TransformOp, TransformOrigin } from '@dragon/layout';
+import { resolveTransformOrigin, transformFunctionsMatrix } from '@dragon/layout';
 import type { TransformFnDecl, TransformLengthDecl } from '../../css/properties/transform.ts';
-import { matrixParts } from '../../css/properties/transform.ts';
+import { inFloatRange, matrixParts } from '../../css/properties/transform.ts';
 import type { ResolvedElement } from '../../analysis/resolve.ts';
 import { elementTransform, elementTransformOrigin, elementWillChange } from '../../analysis/paint-values/transform.ts';
 import type { PaintLowering } from './types.ts';
@@ -48,11 +49,30 @@ function engineOps(f: TransformFnDecl, at: string): TransformOp[] {
   }
 }
 
+/** The largest box the overflow check resolves percentages against, in CSS px, and the largest device scale. */
+const CHECK_BOX_PX = 1e6;
+const CHECK_SCALE = 4;
+
+/**
+ * Throws when the transform's functions matrix or origin, resolved at a box of CHECK_BOX_PX, leaves the float range in device px:
+ * Android writes them as floats, so finite CSS values can still compose past it (scale(1e30) scale(1e30)).
+ */
+function checkRange(ops: readonly TransformOp[], origin: TransformOrigin, at: string): void {
+  const trig = { sin: Math.sin, cos: Math.cos };
+  const m = transformFunctionsMatrix(ops, CHECK_BOX_PX, CHECK_BOX_PX, trig);
+  const o = resolveTransformOrigin(origin, CHECK_BOX_PX, CHECK_BOX_PX);
+  const values = [m.a, m.b, m.c, m.d, m.e, m.f, o.x, o.y];
+  if (!values.every((v) => inFloatRange(v * CHECK_SCALE))) throw new ProgramError(`${at}: the transform overflows the float range of the native writers`);
+}
+
 /** The typed transform of an element: its engine functions (empty for none) and its origin. */
 export function transformOf(el: ResolvedElement): { readonly ops: readonly TransformOp[]; readonly origin: TransformOrigin } {
   const at = el.element.address;
   const o = elementTransformOrigin(el);
-  return { ops: elementTransform(el).flatMap((f) => engineOps(f, at)), origin: { x: length(o.x, at), y: length(o.y, at) } };
+  const ops = elementTransform(el).flatMap((f) => engineOps(f, at));
+  const origin = { x: length(o.x, at), y: length(o.y, at) };
+  checkRange(ops, origin, at);
+  return { ops, origin };
 }
 
 export const TRANSFORM_LOWERING: PaintLowering<TransformWrite> = {

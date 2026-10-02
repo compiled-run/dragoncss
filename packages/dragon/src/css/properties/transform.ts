@@ -73,10 +73,16 @@ export function cssNumberText(n: number): string {
 
 export const lengthText = (l: TransformLengthDecl): string => `${cssNumberText(l.value)}${l.unit}`;
 
-/** The value, or a refusal when it overflows a double (css-values-4 clamps it to the largest finite value; Dragon refuses it). */
-function finite(n: CssNode, v: number): Read<number> {
-  return Number.isFinite(v) ? ok(v) : no(n, `${generate(n)} is out of range`);
+/**
+ * The value, or a refusal when it overflows: a length or number past the float range (Blink stores them as floats, and so does the
+ * paint resolver), an angle past the double range. css-values-4 clamps such values to the largest finite value; Dragon refuses them.
+ */
+function finite(n: CssNode, v: number, float = true): Read<number> {
+  return (float ? inFloatRange(v) : Number.isFinite(v)) ? ok(v) : no(n, `${generate(n)} is out of range`);
 }
+
+/** Whether a double rounds to a finite float: below 2^128 - 2^103, the midpoint between the largest float and 2^128. */
+export const inFloatRange = (v: number): boolean => Math.abs(v) < 2 ** 128 - 2 ** 103;
 
 const args = (fn: CssNode): CssNode[] => list(fn, 'children').filter((n) => n.type !== 'WhiteSpace' && !(n.type === 'Operator' && n['value'] === ','));
 
@@ -110,13 +116,13 @@ function readAngle(n: CssNode): Read<number> {
   const v = Number(n['value']);
   switch (normalizeUnit(String(n['unit']))) {
     case 'deg':
-      return finite(n, v);
+      return finite(n, v, false);
     case 'rad':
-      return finite(n, v * (180 / Math.PI));
+      return finite(n, v * (180 / Math.PI), false);
     case 'grad':
-      return finite(n, v * (360 / 400));
+      return finite(n, v * (360 / 400), false);
     case 'turn':
-      return finite(n, v * 360);
+      return finite(n, v * 360, false);
   }
   return no(n, `${generate(n)} is not an angle`);
 }
@@ -177,8 +183,18 @@ function readFunction(fn: CssNode): Read<TransformFnDecl> {
   if (values.length !== 6) return no(fn, `matrix() takes six numbers`);
   const [ma, mb, mc, md] = values as [number, number, number, number, number, number];
   // A skewed matrix has columns that are not orthogonal; only a rotation times an axis-aligned scale is accepted.
-  if (ma * mc + mb * md !== 0) return no(fn, `it skews the box: ${PNT2_M}`);
+  if (skewDot(ma, mb, mc, md) !== 0) return no(fn, `it skews the box: ${PNT2_M}`);
   return ok({ kind: 'matrix', values, text });
+}
+
+/**
+ * The dot product of the columns (a, b) and (c, d), each first divided by its largest component, so a tiny shear cannot underflow
+ * to 0; a rotation matrix (c, s, -s, c) still gives exactly 0, since both columns divide by the same component.
+ */
+export function skewDot(a: number, b: number, c: number, d: number): number {
+  const m1 = Math.max(Math.abs(a), Math.abs(b)) || 1;
+  const m2 = Math.max(Math.abs(c), Math.abs(d)) || 1;
+  return (a / m1) * (c / m2) + (b / m1) * (d / m2);
 }
 
 /** matrix(a, b, c, d, e, f) with orthogonal columns as translate(e, f) · rotate(angle) · scale(sx, sy), in degrees and px. */
