@@ -687,6 +687,22 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/inline/fragment_item.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "e117ab909cda771851af2ea956c5b6341b7e742aac2222e480a4ea8304c837f1",
+      "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
+      "ranges": [
+        { "lines": "1-1346", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/hit_test_location.cc",
       "licence": "lgpl",
       "ruling": {
@@ -706,22 +722,6 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" }
-      ]
-    },
-    {
-      "upstream": "third_party/blink/renderer/core/layout/inline/fragment_item.cc",
-      "licence": "bsd-chromium",
-      "noticeText": "chromium-bsd",
-      "licencePhrase": "Use of this source code is governed by a BSD-style license",
-      "copyright": "Copyright 2019 The Chromium Authors",
-      "fileSha256": "e117ab909cda771851af2ea956c5b6341b7e742aac2222e480a4ea8304c837f1",
-      "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
-      "ranges": [
-        { "lines": "1-1346", "symbol": null, "source": "whole-file" }
-      ],
-      "dragon": [
-        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
-        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "port" }
       ]
     },
     {
