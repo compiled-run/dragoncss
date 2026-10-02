@@ -163,7 +163,7 @@ public func environment_resolveText(_ t: TextLeaf, _ env: Env) throws -> TextLea
 
 // ts: packages/layout/src/environment.ts:181
 public func environment_resolveStyle(_ s: LayoutStyle, _ env: Env) throws -> LayoutStyle {
-  return try LayoutStyle(s.display, s.position, environment_resolveInset(s.top, env), environment_resolveInset(s.right, env), environment_resolveInset(s.bottom, env), environment_resolveInset(s.left, env), s.overflowX, s.overflowY, s.direction, s.boxSizing, environment_resolveSize(s.width, env), environment_resolveSize(s.height, env), environment_resolveSize(s.minWidth, env), environment_resolveSize(s.minHeight, env), environment_resolveMax(s.maxWidth, env), environment_resolveMax(s.maxHeight, env), environment_envMargin(s.marginTop, env), environment_envMargin(s.marginRight, env), environment_envMargin(s.marginBottom, env), environment_envMargin(s.marginLeft, env), environment_envPadding(s.paddingTop, env), environment_envPadding(s.paddingRight, env), environment_envPadding(s.paddingBottom, env), environment_envPadding(s.paddingLeft, env), environment_resolveBorderWidth(s.borderTopWidth, env), environment_resolveBorderWidth(s.borderRightWidth, env), environment_resolveBorderWidth(s.borderBottomWidth, env), environment_resolveBorderWidth(s.borderLeftWidth, env), s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, environment_resolveBasis(s.flexBasis, env), s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, environment_resolveGap(s.rowGap, env), environment_resolveGap(s.columnGap, env), s.textAlign)
+  return try LayoutStyle(s.display, s.position, environment_resolveInset(s.top, env), environment_resolveInset(s.right, env), environment_resolveInset(s.bottom, env), environment_resolveInset(s.left, env), s.overflowX, s.overflowY, s.direction, s.boxSizing, environment_resolveSize(s.width, env), environment_resolveSize(s.height, env), environment_resolveSize(s.minWidth, env), environment_resolveSize(s.minHeight, env), environment_resolveMax(s.maxWidth, env), environment_resolveMax(s.maxHeight, env), environment_envMargin(s.marginTop, env), environment_envMargin(s.marginRight, env), environment_envMargin(s.marginBottom, env), environment_envMargin(s.marginLeft, env), environment_envPadding(s.paddingTop, env), environment_envPadding(s.paddingRight, env), environment_envPadding(s.paddingBottom, env), environment_envPadding(s.paddingLeft, env), environment_resolveBorderWidth(s.borderTopWidth, env), environment_resolveBorderWidth(s.borderRightWidth, env), environment_resolveBorderWidth(s.borderBottomWidth, env), environment_resolveBorderWidth(s.borderLeftWidth, env), s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, environment_resolveBasis(s.flexBasis, env), s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, environment_resolveGap(s.rowGap, env), environment_resolveGap(s.columnGap, env), s.textAlign, s.aspectRatio)
 }
 
 // ts: packages/layout/src/environment.ts:212
@@ -445,7 +445,7 @@ public func environment_leafPx(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_C
   case S.s_env:
     return try units_zoomCssPx(((e as! EnvLength).value * environment_safeAreaInset((e as! EnvLength).side, env)), z)
   case S.s_font_percent, S.s_font_calc:
-    throw JsError(message: jsConcat(S.s60, (e as! any U_FontCalc_FontPercent).kind, S.s16))
+    throw JsError(message: jsConcat(S.s61, (e as! any U_FontCalc_FontPercent).kind, S.s17))
   default:
     return nil
   }
