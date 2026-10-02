@@ -602,7 +602,7 @@ function columnIntrinsicBlockSize(ctx: Ctx, box: LayoutBox, cbInline: LU, border
   const pct = (v: LayoutStyle['flexBasis'] | LayoutStyle['maxHeight']): boolean => v.kind !== 'auto' && v.kind !== 'none' && v.kind !== 'content' && hasPercent(v);
   const columnFlex = box.style.display === 'flex' && (box.style.flexDirection === 'column' || box.style.flexDirection === 'column-reverse');
   for (const k of box.children) {
-    if (k.kind !== 'box' || isOutOfFlow(ctx, k)) continue;
+    if (k.kind === 'text' || isOutOfFlow(ctx, k)) continue;
     const ks = k.style;
     if (pct(ks.height) || pct(ks.minHeight) || pct(ks.maxHeight) || (columnFlex && pct(ks.flexBasis))) {
       return unsupported('percent-height-flex', k.id, 'css-flexbox-1 §4.5', 'percentage height inside a column flex item whose content size suggestion is measured (not yet supported)');
