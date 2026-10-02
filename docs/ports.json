@@ -237,7 +237,8 @@
         { "lines": "1-267", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/environment.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/environment.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/calc.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -626,11 +627,16 @@
       "ranges": [
         { "lines": "1311-1316", "symbol": null, "source": "cited" },
         { "lines": "1365-1375", "symbol": null, "source": "cited" },
-        { "lines": "3936-3945", "symbol": "AdjustSliderThumbInlineOffset", "source": "located" }
+        { "lines": "3936-3945", "symbol": "AdjustSliderThumbInlineOffset", "source": "located" },
+        { "lines": "3283-3304", "symbol": null, "source": "cited" },
+        { "lines": "2799-2804", "symbol": null, "source": "cited" },
+        { "lines": "2054-2169", "symbol": null, "source": "cited" },
+        { "lines": "197-213", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/range-geometry.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" }
+        { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" },
+        { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" }
       ]
     },
     {
@@ -661,11 +667,16 @@
         { "lines": "1581-1583", "symbol": null, "source": "cited" },
         { "lines": "1581-1591", "symbol": "ApplyReversals", "source": "located" },
         { "lines": "1759-1763", "symbol": null, "source": "cited" },
-        { "lines": "1945-1946", "symbol": null, "source": "cited" }
+        { "lines": "1945-1946", "symbol": null, "source": "cited" },
+        { "lines": "1078-1084", "symbol": null, "source": "cited" },
+        { "lines": "914-923", "symbol": null, "source": "cited" },
+        { "lines": "1117-1120", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" },
-        { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/flex.ts", "symbol": "buildItem", "use": "port" },
+        { "file": "packages/layout/src/flex.ts", "symbol": "columnIntrinsicBlockSize", "use": "port" }
       ]
     },
     {
@@ -684,6 +695,21 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/units.ts", "symbol": "FACTOR_ZERO", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/geometry/writing_mode_converter.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "abb678e72678a1b0050d33e80a261b406dc84ca53bbca5d05d76a0fbee6f25f8",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "71-79", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" }
       ]
     },
     {
@@ -1656,6 +1682,21 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/fonts/wtf-hash.ts", "symbol": "hashTableOrder", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/wtf/math_extras.h",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.",
+      "fileSha256": "c71bc62c8705ac3e0807be57fd0211daf50200191879fb1687211bb1409bc2c6",
+      "headerSha256": "1d07881efaf395c5703df7a5c863b1109ec1e18c69433396be98742416f0442e",
+      "ranges": [
+        { "lines": "133-139", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/test/calc.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
