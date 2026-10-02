@@ -1,0 +1,1853 @@
+{
+ "platform": "darwin-arm64",
+ "measurer": "shaped/darwin-arm64",
+ "language": "en-US",
+ "faces": [
+  {
+   "id": "sha256:8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1",
+   "data": {
+    "unitsPerEm": 2000,
+    "ascent": 1974,
+    "descent": 426,
+    "lineGap": 0,
+    "advances": [],
+    "xHeight": 1026,
+    "capHeight": 1446,
+    "zeroAdvance": 1160
+   },
+   "hanKerning": {
+    "hasAlternateSpacing": false,
+    "hasContextualSpacing": false,
+    "typeForDot": 0,
+    "typeForColon": 0,
+    "typeForSemicolon": 0,
+    "isQuoteFullwidth": false
+   }
+  },
+  {
+   "id": "sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+   "data": {
+    "unitsPerEm": 2000,
+    "ascent": 1974,
+    "descent": 426,
+    "lineGap": 0,
+    "advances": [],
+    "xHeight": 1013,
+    "capHeight": 1433,
+    "zeroAdvance": 1160
+   },
+   "hanKerning": {
+    "hasAlternateSpacing": false,
+    "hasContextualSpacing": false,
+    "typeForDot": 0,
+    "typeForColon": 0,
+    "typeForSemicolon": 0,
+    "isQuoteFullwidth": false
+   }
+  }
+ ],
+ "calls": [
+  [
+   "sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+   34.12,
+   "Morning light settles on a calm river bank near the old mill",
+   0,
+   60,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    24,
+    0,
+    2041549,
+    0,
+    0,
+    0,
+    0,
+    111,
+    1,
+    1267862,
+    0,
+    0,
+    0,
+    1,
+    117,
+    2,
+    813936,
+    0,
+    0,
+    0,
+    0,
+    109,
+    3,
+    1247737,
+    0,
+    0,
+    0,
+    0,
+    98,
+    4,
+    536661,
+    0,
+    0,
+    0,
+    0,
+    109,
+    5,
+    1247737,
+    0,
+    0,
+    0,
+    0,
+    93,
+    6,
+    1162765,
+    0,
+    0,
+    0,
+    0,
+    2,
+    7,
+    572438,
+    0,
+    0,
+    0,
+    0,
+    1140,
+    8,
+    527716,
+    0,
+    0,
+    0,
+    0,
+    98,
+    9,
+    536661,
+    0,
+    0,
+    0,
+    0,
+    93,
+    10,
+    1162765,
+    0,
+    0,
+    0,
+    0,
+    95,
+    11,
+    1232084,
+    0,
+    0,
+    0,
+    0,
+    124,
+    12,
+    801637,
+    0,
+    0,
+    0,
+    1,
+    2,
+    13,
+    572438,
+    0,
+    0,
+    0,
+    0,
+    118,
+    14,
+    968226,
+    0,
+    0,
+    0,
+    0,
+    59,
+    15,
+    1172828,
+    0,
+    0,
+    0,
+    0,
+    130,
+    16,
+    1527248,
+    0,
+    0,
+    0,
+    1,
+    1140,
+    18,
+    527716,
+    0,
+    0,
+    0,
+    0,
+    59,
+    19,
+    1180654,
+    0,
+    0,
+    0,
+    0,
+    118,
+    20,
+    968226,
+    0,
+    0,
+    0,
+    0,
+    2,
+    21,
+    572438,
+    0,
+    0,
+    0,
+    0,
+    111,
+    22,
+    1267862,
+    0,
+    0,
+    0,
+    0,
+    109,
+    23,
+    1247737,
+    0,
+    0,
+    0,
+    0,
+    2,
+    24,
+    572438,
+    0,
+    0,
+    0,
+    0,
+    45,
+    25,
+    1111335,
+    0,
+    0,
+    0,
+    0,
+    2,
+    26,
+    572438,
+    0,
+    0,
+    0,
+    0,
+    49,
+    27,
+    1067732,
+    0,
+    0,
+    0,
+    0,
+    45,
+    28,
+    1111335,
+    0,
+    0,
+    0,
+    0,
+    1140,
+    29,
+    527716,
+    0,
+    0,
+    0,
+    0,
+    108,
+    30,
+    1839182,
+    0,
+    0,
+    0,
+    0,
+    2,
+    31,
+    572438,
+    0,
+    0,
+    0,
+    0,
+    117,
+    32,
+    813936,
+    0,
+    0,
+    0,
+    0,
+    98,
+    33,
+    536661,
+    0,
+    0,
+    0,
+    0,
+    136,
+    34,
+    1122516,
+    0,
+    0,
+    0,
+    0,
+    59,
+    35,
+    1180654,
+    0,
+    0,
+    0,
+    1,
+    117,
+    36,
+    766978,
+    0,
+    0,
+    0,
+    0,
+    2,
+    37,
+    572438,
+    0,
+    0,
+    0,
+    1,
+    48,
+    38,
+    1252209,
+    0,
+    0,
+    0,
+    0,
+    45,
+    39,
+    1111335,
+    0,
+    0,
+    0,
+    0,
+    109,
+    40,
+    1247737,
+    0,
+    0,
+    0,
+    0,
+    104,
+    41,
+    1135932,
+    0,
+    0,
+    0,
+    0,
+    2,
+    42,
+    572438,
+    0,
+    0,
+    0,
+    0,
+    109,
+    43,
+    1247737,
+    0,
+    0,
+    0,
+    0,
+    59,
+    44,
+    1180654,
+    0,
+    0,
+    0,
+    0,
+    45,
+    45,
+    1111335,
+    0,
+    0,
+    0,
+    0,
+    117,
+    46,
+    766978,
+    0,
+    0,
+    0,
+    0,
+    2,
+    47,
+    572438,
+    0,
+    0,
+    0,
+    1,
+    124,
+    48,
+    801637,
+    0,
+    0,
+    0,
+    0,
+    95,
+    49,
+    1247737,
+    0,
+    0,
+    0,
+    0,
+    59,
+    50,
+    1180654,
+    0,
+    0,
+    0,
+    0,
+    2,
+    51,
+    572438,
+    0,
+    0,
+    0,
+    0,
+    111,
+    52,
+    1267862,
+    0,
+    0,
+    0,
+    0,
+    1140,
+    53,
+    527716,
+    0,
+    0,
+    0,
+    0,
+    55,
+    54,
+    1252209,
+    0,
+    0,
+    0,
+    0,
+    2,
+    55,
+    572438,
+    0,
+    0,
+    0,
+    0,
+    108,
+    56,
+    1839182,
+    0,
+    0,
+    0,
+    0,
+    98,
+    57,
+    536661,
+    0,
+    0,
+    0,
+    0,
+    1140,
+    58,
+    527716,
+    0,
+    0,
+    0,
+    0,
+    1140,
+    59,
+    527716,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+   47.25,
+   "Sixty jugglers marched past the bright yellow kiosk",
+   0,
+   51,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    34,
+    0,
+    1665957,
+    0,
+    0,
+    0,
+    0,
+    98,
+    1,
+    743178,
+    0,
+    0,
+    0,
+    1,
+    138,
+    2,
+    1542094,
+    0,
+    0,
+    0,
+    0,
+    124,
+    3,
+    1110122,
+    0,
+    0,
+    0,
+    0,
+    139,
+    4,
+    1520418,
+    0,
+    0,
+    0,
+    0,
+    2,
+    5,
+    792723,
+    0,
+    0,
+    0,
+    1,
+    102,
+    6,
+    743178,
+    0,
+    0,
+    0,
+    0,
+    134,
+    7,
+    1726341,
+    0,
+    0,
+    0,
+    0,
+    93,
+    8,
+    1604026,
+    0,
+    0,
+    0,
+    0,
+    93,
+    9,
+    1610219,
+    0,
+    0,
+    0,
+    1,
+    1140,
+    10,
+    730791,
+    0,
+    0,
+    0,
+    0,
+    59,
+    11,
+    1634992,
+    0,
+    0,
+    0,
+    0,
+    117,
+    12,
+    1117863,
+    0,
+    0,
+    0,
+    0,
+    118,
+    13,
+    1340817,
+    0,
+    0,
+    0,
+    1,
+    2,
+    14,
+    792723,
+    0,
+    0,
+    0,
+    0,
+    108,
+    15,
+    2546933,
+    0,
+    0,
+    0,
+    0,
+    45,
+    16,
+    1538998,
+    0,
+    0,
+    0,
+    0,
+    117,
+    17,
+    1063673,
+    0,
+    0,
+    0,
+    0,
+    49,
+    18,
+    1478615,
+    0,
+    0,
+    0,
+    1,
+    95,
+    19,
+    1727889,
+    0,
+    0,
+    0,
+    0,
+    59,
+    20,
+    1634992,
+    0,
+    0,
+    0,
+    0,
+    55,
+    21,
+    1734082,
+    0,
+    0,
+    0,
+    0,
+    2,
+    22,
+    792723,
+    0,
+    0,
+    0,
+    0,
+    114,
+    23,
+    1735630,
+    0,
+    0,
+    0,
+    0,
+    45,
+    24,
+    1538998,
+    0,
+    0,
+    0,
+    0,
+    118,
+    25,
+    1340817,
+    0,
+    0,
+    0,
+    0,
+    124,
+    26,
+    1110122,
+    0,
+    0,
+    0,
+    0,
+    2,
+    27,
+    792723,
+    0,
+    0,
+    0,
+    0,
+    124,
+    28,
+    1110122,
+    0,
+    0,
+    0,
+    0,
+    95,
+    29,
+    1727889,
+    0,
+    0,
+    0,
+    0,
+    59,
+    30,
+    1634992,
+    0,
+    0,
+    0,
+    0,
+    2,
+    31,
+    792723,
+    0,
+    0,
+    0,
+    0,
+    48,
+    32,
+    1734082,
+    0,
+    0,
+    0,
+    0,
+    117,
+    33,
+    1127153,
+    0,
+    0,
+    0,
+    0,
+    98,
+    34,
+    743178,
+    0,
+    0,
+    0,
+    0,
+    93,
+    35,
+    1610219,
+    0,
+    0,
+    0,
+    0,
+    95,
+    36,
+    1706213,
+    0,
+    0,
+    0,
+    0,
+    124,
+    37,
+    1110122,
+    0,
+    0,
+    0,
+    1,
+    2,
+    38,
+    715309,
+    0,
+    0,
+    0,
+    0,
+    139,
+    39,
+    1552932,
+    0,
+    0,
+    0,
+    1,
+    59,
+    40,
+    1634992,
+    0,
+    0,
+    0,
+    1,
+    1140,
+    41,
+    730791,
+    0,
+    0,
+    0,
+    0,
+    1140,
+    42,
+    730791,
+    0,
+    0,
+    0,
+    0,
+    111,
+    43,
+    1732534,
+    0,
+    0,
+    0,
+    0,
+    137,
+    44,
+    2368880,
+    0,
+    0,
+    0,
+    1,
+    2,
+    45,
+    792723,
+    0,
+    0,
+    0,
+    1,
+    104,
+    46,
+    1573060,
+    0,
+    0,
+    0,
+    0,
+    98,
+    47,
+    743178,
+    0,
+    0,
+    0,
+    0,
+    111,
+    48,
+    1755758,
+    0,
+    0,
+    0,
+    0,
+    118,
+    49,
+    1340817,
+    0,
+    0,
+    0,
+    0,
+    104,
+    50,
+    1573060,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1",
+   49.14,
+   "Evening Programme Notes",
+   0,
+   23,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    11,
+    0,
+    1795394,
+    0,
+    0,
+    0,
+    0,
+    136,
+    1,
+    1648864,
+    0,
+    0,
+    0,
+    1,
+    59,
+    2,
+    1719714,
+    0,
+    0,
+    0,
+    1,
+    109,
+    3,
+    1816327,
+    0,
+    0,
+    0,
+    0,
+    98,
+    4,
+    817991,
+    0,
+    0,
+    0,
+    0,
+    109,
+    5,
+    1816327,
+    0,
+    0,
+    0,
+    0,
+    93,
+    6,
+    1700391,
+    0,
+    0,
+    0,
+    0,
+    2,
+    7,
+    782566,
+    0,
+    0,
+    0,
+    0,
+    30,
+    8,
+    1967687,
+    0,
+    0,
+    0,
+    0,
+    117,
+    9,
+    1154527,
+    0,
+    0,
+    0,
+    1,
+    111,
+    10,
+    1837260,
+    0,
+    0,
+    0,
+    1,
+    93,
+    11,
+    1700391,
+    0,
+    0,
+    0,
+    1,
+    117,
+    12,
+    1180290,
+    0,
+    0,
+    0,
+    0,
+    45,
+    13,
+    1634372,
+    0,
+    0,
+    0,
+    1,
+    108,
+    14,
+    2697117,
+    0,
+    0,
+    0,
+    0,
+    108,
+    15,
+    2697117,
+    0,
+    0,
+    0,
+    0,
+    59,
+    16,
+    1719714,
+    0,
+    0,
+    0,
+    0,
+    2,
+    17,
+    782566,
+    0,
+    0,
+    0,
+    0,
+    25,
+    18,
+    2431431,
+    0,
+    0,
+    0,
+    0,
+    111,
+    19,
+    1817938,
+    0,
+    0,
+    0,
+    1,
+    124,
+    20,
+    1185121,
+    0,
+    0,
+    0,
+    1,
+    59,
+    21,
+    1719714,
+    0,
+    0,
+    0,
+    1,
+    118,
+    22,
+    1415383,
+    0,
+    0,
+    0,
+    0
+   ]
+  ]
+ ],
+ "input": {
+  "viewport": {
+   "width": 400,
+   "height": 300
+  },
+  "devicePixelRatio": 2.625,
+  "viewportUnits": {
+   "small": {
+    "width": 400,
+    "height": 300
+   },
+   "large": {
+    "width": 400,
+    "height": 300
+   },
+   "dynamic": {
+    "width": 400,
+    "height": 300
+   }
+  },
+  "safeArea": {
+   "top": 0,
+   "right": 0,
+   "bottom": 0,
+   "left": 0
+  },
+  "rootFontSize": 16,
+  "root": {
+   "kind": "box",
+   "id": "html",
+   "boxType": "element",
+   "style": {
+    "display": "block",
+    "position": "static",
+    "top": {
+     "kind": "auto"
+    },
+    "right": {
+     "kind": "auto"
+    },
+    "bottom": {
+     "kind": "auto"
+    },
+    "left": {
+     "kind": "auto"
+    },
+    "overflowX": "visible",
+    "overflowY": "visible",
+    "direction": "ltr",
+    "boxSizing": "content-box",
+    "width": {
+     "kind": "auto"
+    },
+    "height": {
+     "kind": "auto"
+    },
+    "minWidth": {
+     "kind": "auto"
+    },
+    "minHeight": {
+     "kind": "auto"
+    },
+    "maxWidth": {
+     "kind": "none"
+    },
+    "maxHeight": {
+     "kind": "none"
+    },
+    "marginTop": {
+     "kind": "px",
+     "value": 0
+    },
+    "marginRight": {
+     "kind": "px",
+     "value": 0
+    },
+    "marginBottom": {
+     "kind": "px",
+     "value": 0
+    },
+    "marginLeft": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingTop": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingRight": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingBottom": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingLeft": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderTopWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderRightWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderBottomWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderLeftWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "flexDirection": "row",
+    "flexWrap": "nowrap",
+    "flexGrow": 0,
+    "flexShrink": 1,
+    "flexBasis": {
+     "kind": "auto"
+    },
+    "order": 0,
+    "justifyContent": "normal",
+    "alignItems": "normal",
+    "alignSelf": "auto",
+    "alignContent": "normal",
+    "rowGap": {
+     "kind": "normal"
+    },
+    "columnGap": {
+     "kind": "normal"
+    },
+    "textAlign": "start",
+    "verticalAlign": {
+     "kind": "keyword",
+     "value": "baseline"
+    }
+   },
+   "strut": null,
+   "children": [
+    {
+     "kind": "box",
+     "id": "body",
+     "boxType": "element",
+     "style": {
+      "display": "block",
+      "position": "static",
+      "top": {
+       "kind": "auto"
+      },
+      "right": {
+       "kind": "auto"
+      },
+      "bottom": {
+       "kind": "auto"
+      },
+      "left": {
+       "kind": "auto"
+      },
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "direction": "ltr",
+      "boxSizing": "content-box",
+      "width": {
+       "kind": "auto"
+      },
+      "height": {
+       "kind": "auto"
+      },
+      "minWidth": {
+       "kind": "auto"
+      },
+      "minHeight": {
+       "kind": "auto"
+      },
+      "maxWidth": {
+       "kind": "none"
+      },
+      "maxHeight": {
+       "kind": "none"
+      },
+      "marginTop": {
+       "kind": "px",
+       "value": 0
+      },
+      "marginRight": {
+       "kind": "px",
+       "value": 0
+      },
+      "marginBottom": {
+       "kind": "px",
+       "value": 0
+      },
+      "marginLeft": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingTop": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingRight": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingBottom": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingLeft": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderTopWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderRightWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderBottomWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderLeftWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "flexDirection": "row",
+      "flexWrap": "nowrap",
+      "flexGrow": 0,
+      "flexShrink": 1,
+      "flexBasis": {
+       "kind": "auto"
+      },
+      "order": 0,
+      "justifyContent": "normal",
+      "alignItems": "normal",
+      "alignSelf": "auto",
+      "alignContent": "normal",
+      "rowGap": {
+       "kind": "normal"
+      },
+      "columnGap": {
+       "kind": "normal"
+      },
+      "textAlign": "start",
+      "verticalAlign": {
+       "kind": "keyword",
+       "value": "baseline"
+      }
+     },
+     "strut": null,
+     "children": [
+      {
+       "kind": "box",
+       "id": "p1",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "ltr",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "px",
+         "value": 210
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+         "size": 13,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 13
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "p1:text0",
+         "text": "Morning light settles on a calm river bank near the old mill",
+         "font": {
+          "family": "sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+          "size": 13,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 13
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "p2",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "ltr",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "px",
+         "value": 290
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+         "size": 18,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 18
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "p2:text0",
+         "text": "Sixty jugglers marched past the bright yellow kiosk",
+         "font": {
+          "family": "sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+          "size": 18,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 18
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "p3",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "ltr",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 18.72
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 18.72
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1",
+         "size": 18.72,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 18.72
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "p3:text0",
+         "text": "Evening Programme Notes",
+         "font": {
+          "family": "sha256:8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1",
+          "size": 18.72,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 18.72
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "output": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 22608
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 19464
+  },
+  {
+   "id": "p1",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 35280,
+   "height": 5248
+  },
+  {
+   "id": "p1:text0",
+   "parent": "p1",
+   "x": 0,
+   "y": 0,
+   "width": 34134,
+   "height": 5248
+  },
+  {
+   "id": "p1:text0:line0",
+   "parent": "p1:text0",
+   "x": 0,
+   "y": 0,
+   "width": 34134,
+   "height": 2624
+  },
+  {
+   "id": "p1:text0:line1",
+   "parent": "p1:text0",
+   "x": 0,
+   "y": 2624,
+   "width": 20560,
+   "height": 2624
+  },
+  {
+   "id": "p2",
+   "parent": "body",
+   "x": 0,
+   "y": 5248,
+   "width": 48720,
+   "height": 7296
+  },
+  {
+   "id": "p2:text0",
+   "parent": "p2",
+   "x": 0,
+   "y": 0,
+   "width": 41196,
+   "height": 7296
+  },
+  {
+   "id": "p2:text0:line0",
+   "parent": "p2:text0",
+   "x": 0,
+   "y": 0,
+   "width": 41196,
+   "height": 3648
+  },
+  {
+   "id": "p2:text0:line1",
+   "parent": "p2:text0",
+   "x": 0,
+   "y": 3648,
+   "width": 24684,
+   "height": 3648
+  },
+  {
+   "id": "p3",
+   "parent": "body",
+   "x": 0,
+   "y": 15688,
+   "width": 67200,
+   "height": 3776
+  },
+  {
+   "id": "p3:text0",
+   "parent": "p3",
+   "x": 0,
+   "y": 0,
+   "width": 37147,
+   "height": 3776
+  },
+  {
+   "id": "p3:text0:line0",
+   "parent": "p3:text0",
+   "x": 0,
+   "y": 0,
+   "width": 37147,
+   "height": 3776
+  }
+ ]
+}

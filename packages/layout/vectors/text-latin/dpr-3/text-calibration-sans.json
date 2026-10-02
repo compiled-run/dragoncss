@@ -1,0 +1,1825 @@
+{
+ "platform": "darwin-arm64",
+ "measurer": "shaped/darwin-arm64",
+ "language": "en-US",
+ "faces": [
+  {
+   "id": "sha256:288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f",
+   "data": {
+    "unitsPerEm": 2048,
+    "ascent": 1984,
+    "descent": 494,
+    "lineGap": 0,
+    "advances": [],
+    "xHeight": 1118,
+    "capHeight": 1490,
+    "zeroAdvance": 1381
+   },
+   "hanKerning": {
+    "hasAlternateSpacing": false,
+    "hasContextualSpacing": false,
+    "typeForDot": 0,
+    "typeForColon": 0,
+    "typeForSemicolon": 0,
+    "isQuoteFullwidth": false
+   }
+  },
+  {
+   "id": "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+   "data": {
+    "unitsPerEm": 2048,
+    "ascent": 1984,
+    "descent": 494,
+    "lineGap": 0,
+    "advances": [],
+    "xHeight": 1118,
+    "capHeight": 1490,
+    "zeroAdvance": 1292
+   },
+   "hanKerning": {
+    "hasAlternateSpacing": false,
+    "hasContextualSpacing": false,
+    "typeForDot": 0,
+    "typeForColon": 0,
+    "typeForSemicolon": 0,
+    "isQuoteFullwidth": false
+   }
+  }
+ ],
+ "calls": [
+  [
+   "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+   42,
+   "Gentle rain drummed softly on the tin roof of the garden shed",
+   0,
+   61,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    141,
+    0,
+    2053632,
+    0,
+    0,
+    0,
+    0,
+    614,
+    1,
+    1604736,
+    0,
+    0,
+    0,
+    0,
+    773,
+    2,
+    1626240,
+    0,
+    0,
+    0,
+    0,
+    889,
+    3,
+    900480,
+    0,
+    0,
+    0,
+    0,
+    736,
+    4,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    614,
+    5,
+    1604736,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    6,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    852,
+    7,
+    1036224,
+    0,
+    0,
+    0,
+    0,
+    507,
+    8,
+    1545600,
+    0,
+    0,
+    0,
+    0,
+    689,
+    9,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    773,
+    10,
+    1626240,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    11,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    597,
+    12,
+    1685376,
+    0,
+    0,
+    0,
+    0,
+    852,
+    13,
+    1036224,
+    0,
+    0,
+    0,
+    0,
+    915,
+    14,
+    1627584,
+    0,
+    0,
+    0,
+    0,
+    766,
+    15,
+    2411136,
+    0,
+    0,
+    0,
+    0,
+    766,
+    16,
+    2411136,
+    0,
+    0,
+    0,
+    0,
+    614,
+    17,
+    1604736,
+    0,
+    0,
+    0,
+    0,
+    597,
+    18,
+    1685376,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    19,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    871,
+    20,
+    1452864,
+    0,
+    0,
+    0,
+    0,
+    790,
+    21,
+    1650432,
+    0,
+    0,
+    0,
+    0,
+    647,
+    22,
+    924672,
+    0,
+    0,
+    0,
+    0,
+    889,
+    23,
+    900480,
+    0,
+    0,
+    0,
+    1,
+    736,
+    24,
+    680064,
+    0,
+    0,
+    0,
+    0,
+    998,
+    25,
+    1546944,
+    0,
+    0,
+    0,
+    1,
+    1777,
+    26,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    790,
+    27,
+    1650432,
+    0,
+    0,
+    0,
+    0,
+    773,
+    28,
+    1626240,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    29,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    889,
+    30,
+    900480,
+    0,
+    0,
+    0,
+    0,
+    670,
+    31,
+    1627584,
+    0,
+    0,
+    0,
+    0,
+    614,
+    32,
+    1604736,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    33,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    889,
+    34,
+    900480,
+    0,
+    0,
+    0,
+    0,
+    689,
+    35,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    773,
+    36,
+    1626240,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    37,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    852,
+    38,
+    990528,
+    0,
+    0,
+    0,
+    0,
+    790,
+    39,
+    1650432,
+    0,
+    0,
+    0,
+    1,
+    790,
+    40,
+    1650432,
+    0,
+    0,
+    0,
+    0,
+    647,
+    41,
+    1018752,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    42,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    790,
+    43,
+    1650432,
+    0,
+    0,
+    0,
+    0,
+    647,
+    44,
+    1018752,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    45,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    889,
+    46,
+    900480,
+    0,
+    0,
+    0,
+    0,
+    670,
+    47,
+    1627584,
+    0,
+    0,
+    0,
+    0,
+    614,
+    48,
+    1604736,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    49,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    658,
+    50,
+    1688064,
+    0,
+    0,
+    0,
+    0,
+    507,
+    51,
+    1545600,
+    0,
+    0,
+    0,
+    0,
+    852,
+    52,
+    990528,
+    0,
+    0,
+    0,
+    0,
+    597,
+    53,
+    1685376,
+    0,
+    0,
+    0,
+    1,
+    614,
+    54,
+    1604736,
+    0,
+    0,
+    0,
+    0,
+    773,
+    55,
+    1626240,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    56,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    871,
+    57,
+    1452864,
+    0,
+    0,
+    0,
+    0,
+    670,
+    58,
+    1627584,
+    0,
+    0,
+    0,
+    0,
+    614,
+    59,
+    1604736,
+    0,
+    0,
+    0,
+    0,
+    597,
+    60,
+    1685376,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+   57,
+   "Quiet zebras grazed beside a winding gravel path",
+   0,
+   48,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    382,
+    0,
+    2856384,
+    0,
+    0,
+    0,
+    0,
+    915,
+    1,
+    2208864,
+    0,
+    0,
+    0,
+    0,
+    689,
+    2,
+    904704,
+    0,
+    0,
+    0,
+    0,
+    614,
+    3,
+    2177856,
+    0,
+    0,
+    0,
+    0,
+    889,
+    4,
+    1222080,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    5,
+    1050624,
+    0,
+    0,
+    0,
+    0,
+    1022,
+    6,
+    2008224,
+    0,
+    0,
+    0,
+    0,
+    614,
+    7,
+    2177856,
+    0,
+    0,
+    0,
+    1,
+    578,
+    8,
+    2287296,
+    0,
+    0,
+    0,
+    0,
+    852,
+    9,
+    1406304,
+    0,
+    0,
+    0,
+    0,
+    507,
+    10,
+    2097600,
+    0,
+    0,
+    0,
+    0,
+    871,
+    11,
+    1971744,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    12,
+    1050624,
+    0,
+    0,
+    0,
+    0,
+    658,
+    13,
+    2290944,
+    0,
+    0,
+    0,
+    0,
+    852,
+    14,
+    1406304,
+    0,
+    0,
+    0,
+    0,
+    507,
+    15,
+    2097600,
+    0,
+    0,
+    0,
+    0,
+    1022,
+    16,
+    2008224,
+    0,
+    0,
+    0,
+    0,
+    614,
+    17,
+    2177856,
+    0,
+    0,
+    0,
+    1,
+    597,
+    18,
+    2287296,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    19,
+    1050624,
+    0,
+    0,
+    0,
+    0,
+    578,
+    20,
+    2287296,
+    0,
+    0,
+    0,
+    0,
+    614,
+    21,
+    2177856,
+    0,
+    0,
+    0,
+    0,
+    871,
+    22,
+    1971744,
+    0,
+    0,
+    0,
+    0,
+    689,
+    23,
+    904704,
+    0,
+    0,
+    0,
+    0,
+    597,
+    24,
+    2287296,
+    0,
+    0,
+    0,
+    0,
+    614,
+    25,
+    2177856,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    26,
+    1050624,
+    0,
+    0,
+    0,
+    0,
+    507,
+    27,
+    2097600,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    28,
+    1050624,
+    0,
+    0,
+    0,
+    0,
+    984,
+    29,
+    3057024,
+    0,
+    0,
+    0,
+    0,
+    689,
+    30,
+    904704,
+    0,
+    0,
+    0,
+    0,
+    773,
+    31,
+    2207040,
+    0,
+    0,
+    0,
+    0,
+    597,
+    32,
+    2287296,
+    0,
+    0,
+    0,
+    0,
+    689,
+    33,
+    904704,
+    0,
+    0,
+    0,
+    0,
+    773,
+    34,
+    2207040,
+    0,
+    0,
+    0,
+    0,
+    658,
+    35,
+    2290944,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    36,
+    1050624,
+    0,
+    0,
+    0,
+    0,
+    658,
+    37,
+    2290944,
+    0,
+    0,
+    0,
+    0,
+    852,
+    38,
+    1406304,
+    0,
+    0,
+    0,
+    0,
+    507,
+    39,
+    2042880,
+    0,
+    0,
+    0,
+    0,
+    980,
+    40,
+    2026464,
+    0,
+    0,
+    0,
+    1,
+    614,
+    41,
+    2177856,
+    0,
+    0,
+    0,
+    1,
+    736,
+    42,
+    904704,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    43,
+    1050624,
+    0,
+    0,
+    0,
+    0,
+    843,
+    44,
+    2323776,
+    0,
+    0,
+    0,
+    0,
+    507,
+    45,
+    2097600,
+    0,
+    0,
+    0,
+    1,
+    889,
+    46,
+    1222080,
+    0,
+    0,
+    0,
+    0,
+    670,
+    47,
+    2208864,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f",
+   56.15,
+   "Weekly Market Report",
+   0,
+   20,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    459,
+    0,
+    3634926,
+    0,
+    0,
+    0,
+    0,
+    614,
+    1,
+    2192096,
+    0,
+    0,
+    0,
+    1,
+    614,
+    2,
+    2192096,
+    0,
+    0,
+    0,
+    0,
+    727,
+    3,
+    2134598,
+    0,
+    0,
+    0,
+    0,
+    736,
+    4,
+    1034957,
+    0,
+    0,
+    0,
+    0,
+    998,
+    5,
+    2215454,
+    0,
+    0,
+    0,
+    1,
+    1777,
+    6,
+    871448,
+    0,
+    0,
+    0,
+    0,
+    292,
+    7,
+    3428294,
+    0,
+    0,
+    0,
+    0,
+    507,
+    8,
+    2136395,
+    0,
+    0,
+    0,
+    0,
+    852,
+    9,
+    1556029,
+    0,
+    0,
+    0,
+    0,
+    727,
+    10,
+    2051945,
+    0,
+    0,
+    0,
+    1,
+    614,
+    11,
+    2192096,
+    0,
+    0,
+    0,
+    1,
+    889,
+    12,
+    1347600,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    13,
+    871448,
+    0,
+    0,
+    0,
+    0,
+    384,
+    14,
+    2371776,
+    0,
+    0,
+    0,
+    0,
+    614,
+    15,
+    2192096,
+    0,
+    0,
+    0,
+    1,
+    843,
+    16,
+    2319668,
+    0,
+    0,
+    0,
+    0,
+    790,
+    17,
+    2256780,
+    0,
+    0,
+    0,
+    0,
+    852,
+    18,
+    1570403,
+    0,
+    0,
+    0,
+    0,
+    889,
+    19,
+    1347600,
+    0,
+    0,
+    0,
+    1
+   ]
+  ]
+ ],
+ "input": {
+  "viewport": {
+   "width": 400,
+   "height": 300
+  },
+  "devicePixelRatio": 3,
+  "viewportUnits": {
+   "small": {
+    "width": 400,
+    "height": 300
+   },
+   "large": {
+    "width": 400,
+    "height": 300
+   },
+   "dynamic": {
+    "width": 400,
+    "height": 300
+   }
+  },
+  "safeArea": {
+   "top": 0,
+   "right": 0,
+   "bottom": 0,
+   "left": 0
+  },
+  "rootFontSize": 16,
+  "root": {
+   "kind": "box",
+   "id": "html",
+   "boxType": "element",
+   "style": {
+    "display": "block",
+    "position": "static",
+    "top": {
+     "kind": "auto"
+    },
+    "right": {
+     "kind": "auto"
+    },
+    "bottom": {
+     "kind": "auto"
+    },
+    "left": {
+     "kind": "auto"
+    },
+    "overflowX": "visible",
+    "overflowY": "visible",
+    "direction": "ltr",
+    "boxSizing": "content-box",
+    "width": {
+     "kind": "auto"
+    },
+    "height": {
+     "kind": "auto"
+    },
+    "minWidth": {
+     "kind": "auto"
+    },
+    "minHeight": {
+     "kind": "auto"
+    },
+    "maxWidth": {
+     "kind": "none"
+    },
+    "maxHeight": {
+     "kind": "none"
+    },
+    "marginTop": {
+     "kind": "px",
+     "value": 0
+    },
+    "marginRight": {
+     "kind": "px",
+     "value": 0
+    },
+    "marginBottom": {
+     "kind": "px",
+     "value": 0
+    },
+    "marginLeft": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingTop": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingRight": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingBottom": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingLeft": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderTopWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderRightWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderBottomWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderLeftWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "flexDirection": "row",
+    "flexWrap": "nowrap",
+    "flexGrow": 0,
+    "flexShrink": 1,
+    "flexBasis": {
+     "kind": "auto"
+    },
+    "order": 0,
+    "justifyContent": "normal",
+    "alignItems": "normal",
+    "alignSelf": "auto",
+    "alignContent": "normal",
+    "rowGap": {
+     "kind": "normal"
+    },
+    "columnGap": {
+     "kind": "normal"
+    },
+    "textAlign": "start",
+    "verticalAlign": {
+     "kind": "keyword",
+     "value": "baseline"
+    }
+   },
+   "strut": null,
+   "children": [
+    {
+     "kind": "box",
+     "id": "body",
+     "boxType": "element",
+     "style": {
+      "display": "block",
+      "position": "static",
+      "top": {
+       "kind": "auto"
+      },
+      "right": {
+       "kind": "auto"
+      },
+      "bottom": {
+       "kind": "auto"
+      },
+      "left": {
+       "kind": "auto"
+      },
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "direction": "ltr",
+      "boxSizing": "content-box",
+      "width": {
+       "kind": "auto"
+      },
+      "height": {
+       "kind": "auto"
+      },
+      "minWidth": {
+       "kind": "auto"
+      },
+      "minHeight": {
+       "kind": "auto"
+      },
+      "maxWidth": {
+       "kind": "none"
+      },
+      "maxHeight": {
+       "kind": "none"
+      },
+      "marginTop": {
+       "kind": "px",
+       "value": 0
+      },
+      "marginRight": {
+       "kind": "px",
+       "value": 0
+      },
+      "marginBottom": {
+       "kind": "px",
+       "value": 0
+      },
+      "marginLeft": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingTop": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingRight": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingBottom": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingLeft": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderTopWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderRightWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderBottomWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderLeftWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "flexDirection": "row",
+      "flexWrap": "nowrap",
+      "flexGrow": 0,
+      "flexShrink": 1,
+      "flexBasis": {
+       "kind": "auto"
+      },
+      "order": 0,
+      "justifyContent": "normal",
+      "alignItems": "normal",
+      "alignSelf": "auto",
+      "alignContent": "normal",
+      "rowGap": {
+       "kind": "normal"
+      },
+      "columnGap": {
+       "kind": "normal"
+      },
+      "textAlign": "start",
+      "verticalAlign": {
+       "kind": "keyword",
+       "value": "baseline"
+      }
+     },
+     "strut": null,
+     "children": [
+      {
+       "kind": "box",
+       "id": "p1",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "ltr",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "px",
+         "value": 230
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "p1:text0",
+         "text": "Gentle rain drummed softly on the tin roof of the garden shed",
+         "font": {
+          "family": "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "p2",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "ltr",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "px",
+         "value": 310
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+         "size": 19,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 19
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "p2:text0",
+         "text": "Quiet zebras grazed beside a winding gravel path",
+         "font": {
+          "family": "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+          "size": 19,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 19
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "p3",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "ltr",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 18.72
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 18.72
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f",
+         "size": 18.72,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 18.72
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "p3:text0",
+         "text": "Weekly Market Report",
+         "font": {
+          "family": "sha256:288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f",
+          "size": 18.72,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 18.72
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "output": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 26900
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 23306
+  },
+  {
+   "id": "p1",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 44160,
+   "height": 6528
+  },
+  {
+   "id": "p1:text0",
+   "parent": "p1",
+   "x": 0,
+   "y": 0,
+   "width": 43192,
+   "height": 6528
+  },
+  {
+   "id": "p1:text0:line0",
+   "parent": "p1:text0",
+   "x": 0,
+   "y": 0,
+   "width": 43192,
+   "height": 3264
+  },
+  {
+   "id": "p1:text0:line1",
+   "parent": "p1:text0",
+   "x": 0,
+   "y": 3264,
+   "width": 33875,
+   "height": 3264
+  },
+  {
+   "id": "p2",
+   "parent": "body",
+   "x": 0,
+   "y": 6528,
+   "width": 59520,
+   "height": 8832
+  },
+  {
+   "id": "p2:text0",
+   "parent": "p2",
+   "x": 0,
+   "y": 0,
+   "width": 50483,
+   "height": 8832
+  },
+  {
+   "id": "p2:text0:line0",
+   "parent": "p2:text0",
+   "x": 0,
+   "y": 0,
+   "width": 50483,
+   "height": 4416
+  },
+  {
+   "id": "p2:text0:line1",
+   "parent": "p2:text0",
+   "x": 0,
+   "y": 4416,
+   "width": 33850,
+   "height": 4416
+  },
+  {
+   "id": "p3",
+   "parent": "body",
+   "x": 0,
+   "y": 18954,
+   "width": 76800,
+   "height": 4352
+  },
+  {
+   "id": "p3:text0",
+   "parent": "p3",
+   "x": 0,
+   "y": 0,
+   "width": 38983,
+   "height": 4352
+  },
+  {
+   "id": "p3:text0:line0",
+   "parent": "p3:text0",
+   "x": 0,
+   "y": 0,
+   "width": 38983,
+   "height": 4352
+  }
+ ]
+}

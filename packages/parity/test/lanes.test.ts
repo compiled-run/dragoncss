@@ -15,7 +15,8 @@ import { repoPath } from '../src/paths.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import { SAMPLE_RULES } from '../src/samples.ts';
 import type { NativeTarget, TargetConfig } from '../src/targets.ts';
-import { corpusSuites, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest } from '../src/targets.ts';
+import { corpusSuites, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest, vectorCaseIds } from '../src/targets.ts';
+import { shapedCaseIds } from '../src/text-latin-run.ts';
 
 const targets = nativeTargets();
 const sources = laneSources();
@@ -35,8 +36,11 @@ describe('native targets', () => {
     for (const t of targets) {
       for (const l of ['layout-vectors-host', 'layout-vectors-device']) {
         const v = lane(t, l);
-        expect(v?.sets.map((s) => [s.dpr, s.role, s.extra, s.ids.length])).toEqual([[1, 'top-level', null, ids.length], ...DPRS.map((d) => [d, SHARED_DPRS.includes(d) ? 'shared' : 'extra', EXTRA_DPRS.find((e) => e.dpr === d)?.name ?? null, ids.length])]);
-        expect(v?.sets.reduce((n, s) => n + s.ids.length, 0)).toBe(declaredLayoutCaseCount() * (1 + DPRS.length));
+        // TXT1a-2: a shaped case's vectors are the text-latin suite's (with their transcripts), so the vector sets hold the rest.
+        const plain = vectorCaseIds();
+        expect(plain).toEqual(ids.filter((id) => !shapedCaseIds().has(id)));
+        expect(v?.sets.map((s) => [s.dpr, s.role, s.extra, s.ids.length])).toEqual([[1, 'top-level', null, plain.length], ...DPRS.map((d) => [d, SHARED_DPRS.includes(d) ? 'shared' : 'extra', EXTRA_DPRS.find((e) => e.dpr === d)?.name ?? null, plain.length])]);
+        expect((v?.sets.reduce((n, s) => n + s.ids.length, 0) ?? 0) + shapedCaseIds().size * (1 + DPRS.length)).toBe(declaredLayoutCaseCount() * (1 + DPRS.length));
         expect(v?.corpora).toEqual(corpusSuites());
       }
     }

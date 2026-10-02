@@ -238,7 +238,7 @@ const BORDER_STYLES: readonly Longhand[] = ['border-top-style', 'border-right-st
 // css-cascade-5 §6.3: Chrome's UA defaults that the captured tables do not model. A tag inside an ancestor a UA rule keys on
 // (nested lists), display: list-item (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
 // minimum logical font size clamps, and text that inherits a UA font-weight or font-style no longhand models (headings, address).
-function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
   const once = (id: string, push: () => void): void => {
     if (reported.has(id)) return;
     reported.add(id);
@@ -284,7 +284,8 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
       const row = ua.userAgentTextFonts[uaTagOf(fonts.element.tag)];
       const set = Object.entries(row).map(([p, v]) => `${p}: ${v}`).join('; ');
       for (const c of el.children) {
-        if (c.kind !== 'text') continue;
+        // TXT1a-2: a real bundled face at the UA weight and style draws it (synthesis is refused as DRAGON_SYNTHETIC_FONT_STYLE).
+        if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
         // Web draws the UA weight and style itself; every configured native target draws the regular face.
         for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
           once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
@@ -344,7 +345,7 @@ function checkSubstitution(el: ResolvedElement, targets: readonly string[], diag
 
 /** Walks one resolved case and records the refusals above; reported deduplicates them across cases. Text in a display: none
  * subtree is never laid out (CSS2 §9.2.4), so only the overflow check reaches it. fonts keys a substituted font-family as usedKeys does. */
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean): void {
   const walk = (el: ResolvedElement, hidden: boolean): void => {
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     checkOverflow(el, targets, diagnostics, reported);
@@ -357,6 +358,6 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     for (const c of el.children) if (c.kind === 'element') walk(c, here);
   };
   walk(root, false);
-  checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported);
+  checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt);
 }
 

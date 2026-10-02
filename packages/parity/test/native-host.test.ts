@@ -101,7 +101,8 @@ describe('the generated sources', () => {
         }
         for (const cls of new Set([...css.matchAll(/\.([A-Za-z_][\w-]*)/g)].map((x) => x[1] as string))) {
           classes++;
-          expect(new RegExp(`\\.${cls}(?![\\w-])`).test(generated), `.${cls}`).toBe(false);
+          // A selector token, not prose: "e.g." in a text literal is not the class .g (TXT1a-2 text-latin-punct).
+          expect(new RegExp(`(?<![\\w.])\\.${cls}(?![\\w-])`).test(generated), `.${cls}`).toBe(false);
         }
       }
       for (const direction of new Set(f.cases.map((c) => c.environment.direction))) {

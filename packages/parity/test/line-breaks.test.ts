@@ -10,6 +10,7 @@ import type { ChromeBreakText } from '../src/line-breaks.ts';
 import { alignUnits, BREAK_MISMATCH, breakVector, breakVectorDir, breakVectorPath, breakVectorText, checkDumpBreaks, chromeLines, compareVectorWithChrome, engineTextLines, expectedBreaksDir, hostBreakLine, leafTexts, parseHostBreaks, readBreakVector, readChromeBreaks, runHostBreaks } from '../src/line-breaks.ts';
 import { plantDumpFault } from '../src/native-compare.ts';
 import { nativeCases, referenceMeasurer, relabelledReferenceDumps } from '../src/native-host.ts';
+import { shapingOf } from '../src/text-latin-run.ts';
 
 const cases = nativeCases();
 const m = referenceMeasurer();
@@ -37,7 +38,7 @@ describe('break vectors', () => {
   });
   it.each(['swift', 'kotlin'] as const)('the export equals the device-side inline_placeLines offsets of the generated engine in host %s, for every case at every DPR', (lang) => {
     const keyed = DPRS.flatMap((dpr) => cases.map((n) => ({ key: `${n.case.id}@${dpr}`, n, dpr })));
-    const got = parseHostBreaks(runHostBreaks(lang, keyed.map((k) => hostBreakLine(k.key, inputOf(k.n, k.dpr)))));
+    const got = parseHostBreaks(runHostBreaks(lang, keyed.map((k) => hostBreakLine(k.key, inputOf(k.n, k.dpr), shapingOf(inputOf(k.n, k.dpr))))));
     expect(got.size).toBe(keyed.length);
     let texts = 0;
     for (const k of keyed) {

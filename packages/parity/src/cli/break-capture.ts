@@ -26,6 +26,7 @@ for (const dpr of DPRS) {
     for (const n of cases) {
       const page = await openPage(browser, n.case.authoredHtml, atDpr(n.case.environment, dpr));
       try {
+        if (n.case.authoredPrepare !== null) await n.case.authoredPrepare(page);
         const b: ChromeBreaks = { case: n.case.id, chrome: CHROME_VERSION, dpr, texts: await captureBreakTexts(page) };
         captured.set(`${n.case.id}@${dpr}`, b);
         writeFileSync(expectedBreaksPath(n.case.id, dpr, platform), chromeBreaksText(b));

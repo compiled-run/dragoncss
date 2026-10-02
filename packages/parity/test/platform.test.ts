@@ -25,7 +25,10 @@ describe('platform keys', () => {
     for (const [id, c] of captures) expect([c.platform, c.browser], id).toEqual(['darwin-arm64', BROWSER_FLAVOUR]);
     const dir = repoPath('packages/layout/vectors');
     const vectors = readdirSync(dir).filter((f) => f.endsWith('.json'));
-    expect(vectors.length).toBe(captures.size);
+    // TXT1a-2: a shaped case's vector (with its transcript) lives in vectors/text-latin/dpr-1; its keys are checked by text-latin.test.ts.
+    const shaped = readdirSync(`${dir}/text-latin/dpr-1`).filter((f) => f.endsWith('.json'));
+    expect(vectors.length + shaped.length).toBe(captures.size);
+    for (const f of shaped) expect(JSON.parse(readFileSync(`${dir}/text-latin/dpr-1/${f}`, 'utf8')).platform, f).toBe('darwin-arm64');
     for (const f of vectors) {
       const v = JSON.parse(readFileSync(`${dir}/${f}`, 'utf8')) as Record<string, unknown>;
       expect([Object.keys(v), v['platform'], v['measurer']], f).toEqual([['platform', 'measurer', 'input', 'output'], 'darwin-arm64', 'ahem/darwin-arm64']);

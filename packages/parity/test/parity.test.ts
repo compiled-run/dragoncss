@@ -16,16 +16,15 @@ import { repoPath } from '../src/paths.ts';
 import type { CaseOutcome, FixtureOutcome } from '../src/pipeline.ts';
 import { caseCountProblems, runFixture, topologyProblems } from '../src/pipeline.ts';
 import { fixtureInput } from '../src/cases.ts';
-import { compileFixture } from '../src/pipeline.ts';
+import { compileFixture, inlineFontAssets } from '../src/pipeline.ts';
 import { compilerChromeDeviations } from '../src/compiler-deviations.ts';
 import { readTreeExpectation } from '../src/tree-fixture.ts';
 import { deriveRows } from '../src/profile-rows.ts';
 import { buildReport, renderSummary, writeReport } from '../src/report.ts';
 import { hostPlatform, REFERENCE_PLATFORM, requireReferencePlatform } from '../src/platform.ts';
 import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';
-import { TEXT_LATIN_FIXTURES, TEXT_LATIN_PROBES } from '../src/fixture-groups/text-latin.ts';
+import { TEXT_LATIN_PROBES } from '../src/fixture-groups/text-latin.ts';
 import { fontEmittedPath, fontExpectedPath, liveFontAuthored, runFontFixture } from '../src/fonts-run.ts';
-import { liveTextLatinOptions, runTextLatinFixture, textLatinCapturePath } from '../src/text-latin-run.ts';
 import type { FrontEndResult } from 'dragon';
 
 let browser: Browser;
@@ -54,9 +53,7 @@ function specFor(id: string): (typeof FIXTURES)[number] {
 const fontOutcomes = new Map<string, CaseOutcome[]>();
 const corpusCases = (): CaseOutcome[] => FIXTURES.flatMap((f) => (outcomes.get(f.id)?.cases ?? []));
 const fontCasesRun = (): CaseOutcome[] => FONT_FIXTURES.flatMap((f) => fontOutcomes.get(f.spec.id) ?? []);
-/** TXT1a-1: the text-latin registry's cases (text-latin-run.ts), which prove web rows through the engine lane and chrome-dual. */
-const textLatinOutcomes = new Map<string, CaseOutcome[]>();
-const webOnlyCasesRun = (): CaseOutcome[] => [...fontCasesRun(), ...TEXT_LATIN_FIXTURES.flatMap((f) => textLatinOutcomes.get(f.spec.id) ?? [])];
+const webOnlyCasesRun = (): CaseOutcome[] => fontCasesRun();
 const allCases = (): CaseOutcome[] => [...corpusCases(), ...webOnlyCasesRun()];
 const recorded = async (c: ParityCase): Promise<WebCapture> => {
   const hit = captures.get(c.id);
@@ -74,9 +71,9 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   it('fixture registry (M7): every packages/parity/fixtures entry is registered, and every registered fixture has its file', () => {
     const dir = repoPath('packages/parity/fixtures');
     const entries = readdirSync(dir).sort();
-    const registered = new Set([...[...FIXTURES, ...FONT_FIXTURES.map((f) => f.spec), ...TEXT_LATIN_FIXTURES.map((f) => f.spec)].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)), ...TEXT_LATIN_PROBES.map((id) => `${id}.html`)]);
+    const registered = new Set([...[...FIXTURES, ...FONT_FIXTURES.map((f) => f.spec)].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)), ...TEXT_LATIN_PROBES.map((id) => `${id}.html`)]);
     for (const f of FONT_FIXTURES) expect(statSync(`${dir}/${f.spec.id}.html`).isFile(), f.spec.id).toBe(true);
-    expect(new Set([...FIXTURES.map((f) => f.id), ...FONT_FIXTURES.map((f) => f.spec.id), ...TEXT_LATIN_FIXTURES.map((f) => f.spec.id), ...TEXT_LATIN_PROBES]).size).toBe(FIXTURES.length + FONT_FIXTURES.length + TEXT_LATIN_FIXTURES.length + TEXT_LATIN_PROBES.length);
+    expect(new Set([...FIXTURES.map((f) => f.id), ...FONT_FIXTURES.map((f) => f.spec.id), ...TEXT_LATIN_PROBES]).size).toBe(FIXTURES.length + FONT_FIXTURES.length + TEXT_LATIN_PROBES.length);
     for (const e of entries) expect(registered.has(e), `${e} is not in FIXTURES`).toBe(true);
     for (const f of FIXTURES) {
       if (f.format === 'html') expect(statSync(`${dir}/${f.id}.html`).isFile(), f.id).toBe(true);
@@ -109,7 +106,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   for (const spec of FIXTURES) {
     it(`${spec.id} (${spec.format} ${spec.kind})`, async () => {
       const live = async (c: ParityCase): Promise<WebCapture> => {
-        const capture = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra);
+        const capture = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, c.authoredPrepare ?? undefined);
         captures.set(c.id, capture);
         expect(captureJson(capture), `${c.id}: the live capture must equal the committed expected file`).toBe(readFileSync(expectedPath(c.id), 'utf8'));
         return capture;
@@ -132,8 +129,14 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
           expect(c.lanes, c.id).toEqual({ 'linux-dragon-layout': 'pass', 'chrome-dual': 'pass' });
           expect(c.unsupported, c.id).toBeNull();
         }
-        expect(outcome.webCss.ltr, 'emitted web CSS must equal the committed file').toBe(readFileSync(emittedPath(spec.id, 'ltr'), 'utf8'));
-        if (spec.environments.includes('rtl')) expect(outcome.webCss.rtl, 'emitted rtl web CSS must equal the committed file').toBe(readFileSync(emittedPath(spec.id, 'rtl'), 'utf8'));
+        // A fixture with font assets renders its CSS with each asset inlined (pipeline.ts webCssOf); the committed file is as emitted.
+        const committedCss = (d: 'ltr' | 'rtl'): string => {
+          const text = readFileSync(emittedPath(spec.id, d), 'utf8');
+          const web = compileFixture(spec, NO_FAULTS, 'enforce', d).compiled.outputs.web;
+          return web.kind === 'ready' && web.assets.length > 0 ? inlineFontAssets(text, web.assets) : text;
+        };
+        expect(outcome.webCss.ltr, 'emitted web CSS must equal the committed file').toBe(committedCss('ltr'));
+        if (spec.environments.includes('rtl')) expect(outcome.webCss.rtl, 'emitted rtl web CSS must equal the committed file').toBe(committedCss('rtl'));
         else expect(existsSync(emittedPath(spec.id, 'rtl'))).toBe(false);
         // Each environment has its own cases and captures, and the capture's root direction is the environment's.
         for (const d of spec.environments) {
@@ -173,26 +176,6 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       for (const d of ['ltr', 'rtl'] as const) {
         const web = compileFixture(f.spec, NO_FAULTS, 'enforce', d).compiled.outputs.web;
         expect(web.kind === 'ready' ? web.files[0]?.text : null, `${f.spec.id} ${d}: emitted web CSS must equal the committed file`).toBe(readFileSync(fontEmittedPath(f.spec.id, d), 'utf8'));
-      }
-    }, 240_000);
-  }
-
-  for (const f of TEXT_LATIN_FIXTURES) {
-    it(`${f.spec.id} (text-latin fixture: the engine lane on the engine projection and chrome-dual, live at DPR 1)`, async () => {
-      const live = liveTextLatinOptions(() => browser, f);
-      const recordLive = async (c: ParityCase, dpr: number): Promise<WebCapture> => {
-        const capture = await live.authored(c, dpr);
-        captures.set(c.id, capture);
-        expect(captureJson(capture), `${c.id}: the live capture must equal the committed expected-text-latin file`).toBe(readFileSync(textLatinCapturePath(c.id, dpr), 'utf8'));
-        return capture;
-      };
-      const cases = await runTextLatinFixture(f, browser, { ...live, authored: recordLive });
-      textLatinOutcomes.set(f.spec.id, cases);
-      expect(cases.map((c) => c.direction)).toEqual(f.spec.kind === 'layout' ? f.spec.environments : []);
-      for (const c of cases) {
-        expect(c.reason, c.id).toBeNull();
-        expect(c.lanes, c.id).toEqual({ 'linux-dragon-layout': 'pass', 'chrome-dual': 'pass' });
-        expect(c.features.ios, c.id).toEqual([]);
       }
     }, 240_000);
   }
@@ -899,6 +882,8 @@ describe('renderer isolation', () => {
     expect(src.filter(([, t]) => t.includes('data-dragon-harness')).map(([f]) => f)).toEqual(['chrome.ts']);
     const pipeline = readFileSync(repoPath('packages/parity/src/pipeline.ts'), 'utf8');
     expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.compiledHtml\(webCss, classOf\), c\.environment, c\.computedExtra\)/);
-    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.authoredHtml, c\.environment, c\.computedExtra\)/);
+    // TXT1a-2: the authored rendering of a fixture with a font map also takes its stated font reference (cases.ts authoredPrepare),
+    // which injects the pinned faces and rewrites pinned generics only; direction and the root font still come from the environment.
+    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.authoredHtml, c\.environment, c\.computedExtra, c\.authoredPrepare \?\? undefined\)/);
   });
 });

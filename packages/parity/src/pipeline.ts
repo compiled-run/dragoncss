@@ -20,6 +20,7 @@ import { ENVIRONMENT, environmentsOf } from './fixtures.ts';
 import { fontMapOf, withFontMapAssets } from './fixture-groups/fonts.ts';
 import { fontDataUrl } from './font-reference.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
+import { breakProblems, expectedFacesOf, faceCheck, isShapedInput, joinHyphenRects, liveChromeBreaks } from './text-latin-run.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import { authoredModel } from './render.ts';
 import type { TreeExpectation } from './tree-fixture.ts';
@@ -278,9 +279,21 @@ export async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, 
     layoutStatus = 'fail';
     reasons.push(`linux-dragon-layout: LayoutUnsupported ${unsupported.code} at ${unsupported.nodeId} (${unsupported.specSection}): ${unsupported.detail}`);
   } else {
-    comparison = compareLayout(authored, absoluteRects(result.boxes), validated.input, c.environment);
-    layoutStatus = comparison.pass ? 'pass' : 'fail';
-    if (!comparison.pass) reasons.push(`linux-dragon-layout: ${comparison.problems.join('; ')}`);
+    // TXT1a-2: a shaped case (text-latin-run.ts) is compared against the capture with its hyphen rects joined, exactly at 1/64 px,
+    // and its engine breaks against Chrome's at DPR 1.
+    const shaped = isShapedInput(validated.input);
+    comparison = compareLayout(shaped ? joinHyphenRects(authored) : authored, absoluteRects(result.boxes), validated.input, c.environment);
+    const problems = [...comparison.problems];
+    if (shaped) {
+      for (const n of comparison.nodes) if (n.dragon !== null && !n.exactLu) problems.push(`${n.id} is not exact at 1/64 px (chrome ${JSON.stringify(n.chrome)}, dragon ${JSON.stringify(n.dragon)})`);
+      if (problems.length === 0) {
+        const b = breakProblems(c.id, 1, validated.input, await liveChromeBreaks(browser, c, 1), opts.engineFaults);
+        if (b.compared === 0) problems.push('breaks: no text node compared');
+        for (const p of b.problems) problems.push(`breaks: ${p}`);
+      }
+    }
+    layoutStatus = comparison.pass && problems.length === 0 ? 'pass' : 'fail';
+    if (layoutStatus === 'fail') reasons.push(`linux-dragon-layout: ${problems.join('; ')}`);
   }
 
   // Lane chrome-dual.
@@ -290,9 +303,14 @@ export async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, 
   if (classOf === null || colors === null || textColors === null) return fail('the compiled result has no web class map or resolved colours for this case');
   const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(webCss, classOf), c.environment, c.computedExtra);
   const dual = compareDual(authored, compiledCapture, colors, textColors, c.computedExtra);
+  // TXT1a-2: every listed element's text is drawn with its face alone in both documents (text-latin-run.ts faceCheck).
+  const faces = expectedFacesOf(c.fixture);
+  const faceProblems = faces === null ? [] : await faceCheck(browser, c, authored, c.compiledHtml(webCss, classOf), faces);
+  const dualPass = dual.pass && faceProblems.length === 0;
   if (!dual.pass) reasons.push(`chrome-dual: ${dual.problems.join('; ')}`);
+  if (faceProblems.length > 0) reasons.push(`chrome-dual faces: ${faceProblems.join('; ')}`);
 
-  const pass = layoutStatus === 'pass' && dual.pass;
+  const pass = layoutStatus === 'pass' && dualPass;
   const boxes = result.kind === 'ok' ? result.boxes : [];
   const textLines = (topology === null ? [] : topology).map((t) => ({
     address: t.address,
@@ -302,7 +320,7 @@ export async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, 
   return {
     ...base,
     textLines,
-    lanes: { 'linux-dragon-layout': layoutStatus, 'chrome-dual': dual.pass ? 'pass' : 'fail' },
+    lanes: { 'linux-dragon-layout': layoutStatus, 'chrome-dual': dualPass ? 'pass' : 'fail' },
     status: pass ? 'pass' : 'fail',
     reason: pass ? null : reasons.join(' | '),
     unsupported,
@@ -313,4 +331,4 @@ export async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, 
 }
 
 /** Authored captures taken live in the pinned Chrome, in the case's environment. */
-export const liveAuthored = (browser: Browser) => (c: ParityCase): Promise<WebCapture> => captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra);
+export const liveAuthored = (browser: Browser) => (c: ParityCase): Promise<WebCapture> => captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, c.authoredPrepare ?? undefined);

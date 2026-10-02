@@ -9,6 +9,8 @@ import type { FontMap, FrontEndResult } from 'dragon';
 import type { FixtureSpec } from '../fixtures.ts';
 import { FONT_REFERENCE_MAP, VENDOR_FONTS, vendorFontBytes } from '../font-reference.ts';
 import { layout, reject } from './define.ts';
+import { TEXT_CALIBRATION } from './text-calibration.ts';
+import { TEXT_LATIN } from './text-latin.ts';
 
 /** A web-only fonts fixture: its font map (null: none), and the face Chrome must render each element's text with in both documents. */
 export type FontFixture = {
@@ -44,6 +46,8 @@ const MAPS: ReadonlyMap<string, FontMap> = new Map([
   ...FONT_FIXTURES.flatMap((f) => (f.map === null ? [] : [[f.spec.id, f.map] as const])),
   ['reject-fonts-quoted-generic', FONT_REFERENCE_MAP],
   ['reject-fonts-map-invalid', INVALID_MAP],
+  // TXT1a-2: the real-font FIXTURES groups compile with the reference map.
+  ...[...TEXT_LATIN, ...TEXT_CALIBRATION].map((f) => [f.id, FONT_REFERENCE_MAP] as const),
 ]);
 
 /** The font map a fixture compiles with; undefined for every fixture outside this group. */

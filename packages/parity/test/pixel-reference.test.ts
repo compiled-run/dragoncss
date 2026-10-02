@@ -18,6 +18,7 @@ import { PLANT_CASE } from '../src/device-run.ts';
 import { ahemGlyphBoxes, BOTTOM_SCANLINES_PATH, casePoints, caseSamples, checkCasePixels, committedPixels, decodePng, expectedPixelsDir, expectedPixelsPath, glyphLines, PIXEL_MANIFEST, rasterSize, RASTER_RULE, runFileText } from '../src/pixel-reference.ts';
 import { BACKEND_OF } from '../src/native-host.ts';
 import { deviceDprs } from '../src/targets.ts';
+import { shapedCaseIds } from '../src/text-latin-run.ts';
 import type { SamplePoint } from '../src/samples.ts';
 import { generateGlyphSamples, GLYPH_EDGE_RULE, glyphClearance, ruleKind, SAMPLE_INSET_DEVICE_PX } from '../src/samples.ts';
 
@@ -95,11 +96,25 @@ describe('the glyph rule', () => {
     expect(pts.filter((p) => p.rule.endsWith(':glyph-left')).length).toBeGreaterThan(0);
     for (const dpr of DPRS) for (const c of cases) expect(() => casePoints(c.programs.uikit, c.case.environment.viewport, dpr), `${c.case.id}@${dpr}`).not.toThrow();
   });
-  it('refuses a family other than Ahem', () => {
+  // TXT1a-2 retarget: a real bundled face has glyph boxes now (its shaped HarfBuzz extents); a face the host was never given is refused.
+  it('refuses a face that is not bundled', () => {
     const n = cases.find((c) => c.case.id === 'text-wrap-spaces');
     if (n === undefined) throw new Error('no text-wrap-spaces');
     const other = JSON.parse(JSON.stringify(n.programs.uikit).replaceAll('"family":"Ahem"', '"family":"Inter"')) as NativeProgram;
-    expect(() => glyphLines(other, n.case.environment.viewport, 3)).toThrow(/refuses the font family Inter/);
+    expect(() => glyphLines(other, n.case.environment.viewport, 3)).toThrow(/the engine refused the input/);
+  });
+
+  it('gives a real face its shaped glyph boxes on every inked line of every shaped case', () => {
+    const shaped = shapedCaseIds();
+    let lines = 0;
+    for (const n of cases.filter((c) => shaped.has(c.case.id) && c.spec.id !== 'text-ahem-fractional')) {
+      for (const l of glyphLines(n.programs.uikit, n.case.environment.viewport, 3)) {
+        lines++;
+        expect(l.glyphs.length, l.id).toBeGreaterThan(0);
+        for (const g of l.glyphs) expect(g.right > g.left && g.bottom > g.top, l.id).toBe(true);
+      }
+    }
+    expect(lines).toBeGreaterThan(50);
   });
 });
 
@@ -109,16 +124,18 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
   // points (addendum F2). A change here changes what the device lanes compare; it needs a written reason. SIZE-ar: only the 10
   // sizing-ratio cases' rules (edge +8, edge:glyph +4, rescued edge +8 at DPR 2 and 3, +6 at 2.625); with them filtered out the
   // master pins hold exactly. INL1a: plus the INL1a stack's new cases (inline-breaks-*, the inline fixtures and inline-baselines;
-  // the last term, as on the stack against master 7a363ac7b), every existing case unchanged.
+  // the second term, as on the stack against master 7a363ac7b), every existing case unchanged. TXT1a-2 (T084J phase F): plus the
+  // sum over the text-latin, Ahem fractional and text-calibration cases (the last term); a real face's glyph boxes are its shaped
+  // HarfBuzz extents (pixel-reference.ts glyphLines).
   const DROPPED = {
     ios: {
-      2: { dropped: { edge: 1234 + 262, 'edge:glyph': 924 + 189, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1194 + 236 } },
-      3: { dropped: { edge: 1243 + 254, 'edge:glyph': 872 + 172, glyph: 25, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1215 + 231, border: 18 } },
+      2: { dropped: { edge: 1234 + 262 + 15, 'edge:glyph': 924 + 189 + 8, glyph: 31, clip: 4, border: 16, interior: 5 + 1, outside: 4 }, rescued: { edge: 1194 + 236 + 2 } },
+      3: { dropped: { edge: 1243 + 254 + 15, 'edge:glyph': 872 + 172 + 8, glyph: 25, border: 18, interior: 5 + 1, clip: 2, outside: 2 }, rescued: { edge: 1215 + 231 + 7, border: 18 } },
     },
     android: {
-      2: { dropped: { edge: 1234 + 262, 'edge:glyph': 924 + 189, glyph: 31, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1194 + 236 } },
-      3: { dropped: { edge: 1243 + 254, 'edge:glyph': 872 + 172, glyph: 25, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1215 + 231, border: 18 } },
-      2.625: { dropped: { edge: 1207 + 260, 'edge:glyph': 901 + 189, glyph: 33, outside: 6 + 4, clip: 13, border: 16, interior: 5 }, rescued: { edge: 1071 + 194 } },
+      2: { dropped: { edge: 1234 + 262 + 15, 'edge:glyph': 924 + 189 + 8, glyph: 31, clip: 4, border: 16, interior: 5 + 1, outside: 4 }, rescued: { edge: 1194 + 236 + 2 } },
+      3: { dropped: { edge: 1243 + 254 + 15, 'edge:glyph': 872 + 172 + 8, glyph: 25, border: 18, interior: 5 + 1, clip: 2, outside: 2 }, rescued: { edge: 1215 + 231 + 7, border: 18 } },
+      2.625: { dropped: { edge: 1207 + 260 + 15, 'edge:glyph': 901 + 189 + 8, glyph: 33, outside: 6 + 4 + 3, clip: 13, border: 16, interior: 5 + 1 }, rescued: { edge: 1071 + 194 + 8 } },
     },
   } as const;
   const bottoms = JSON.parse(readFileSync(BOTTOM_SCANLINES_PATH(), 'utf8')) as BottomScanlines;

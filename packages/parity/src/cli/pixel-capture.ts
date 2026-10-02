@@ -26,6 +26,7 @@ const cases = nativeCases();
 async function shoot(browser: Browser, c: ParityCase, dpr: number): Promise<Buffer> {
   const page = await openPage(browser, c.authoredHtml, atDpr(c.environment, dpr));
   try {
+    if (c.authoredPrepare !== null) await c.authoredPrepare(page);
     const cdp = await page.context().newCDPSession(page);
     const r = (await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data: string };
     const png = Buffer.from(r.data, 'base64');

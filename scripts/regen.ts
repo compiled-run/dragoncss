@@ -52,8 +52,8 @@ export const STEPS: readonly Step[] = [
   // profile:rows also writes the committed native lanes verdict (P6a, T075J) from lanes.json, which lanes-host writes later.
   { name: 'profile-rows', argv: pnpm('profile:rows'), outputs: ['packages/dragon/src/profiles/ios.ts', 'packages/dragon/src/profiles/android.ts', 'packages/dragon/src/profiles/web.ts', 'packages/dragon/src/profiles/native-lanes.ts'], readsLater: ['lanes-host'] },
   { name: 'dpr-capture', argv: pnpm('parity:dpr-capture'), outputs: ['packages/parity/expected-dpr/**'] },
-  { name: 'vectors', argv: pnpm('layout:vectors'), outputs: ['packages/layout/vectors/*.json'] },
-  { name: 'dpr-vectors', argv: pnpm('layout:dpr-vectors'), outputs: ['packages/layout/vectors/dpr-*/**'] },
+  { name: 'vectors', argv: pnpm('layout:vectors'), outputs: ['packages/layout/vectors/*.json', 'packages/layout/vectors/text-latin/dpr-1/**'] },
+  { name: 'dpr-vectors', argv: pnpm('layout:dpr-vectors'), outputs: ['packages/layout/vectors/dpr-*/**', 'packages/layout/vectors/text-latin/dpr-2/**', 'packages/layout/vectors/text-latin/dpr-3/**', 'packages/layout/vectors/text-latin/dpr-2.625/**'] },
   { name: 'break-vectors', argv: pnpm('layout:break-vectors'), outputs: ['packages/layout/break-vectors/**'] },
   { name: 'break-capture', argv: pnpm('parity:break-capture'), outputs: ['packages/parity/expected-breaks/**'] },
   { name: 'pixel-capture', argv: pnpm('parity:pixel-capture'), outputs: ['packages/parity/expected-pixels/**'] },
