@@ -138,8 +138,13 @@
     "textAlign": "start",
     "aspectRatio": {
      "kind": "auto"
+    },
+    "verticalAlign": {
+     "kind": "keyword",
+     "value": "baseline"
     }
    },
+   "strut": null,
    "children": [
     {
      "kind": "box",
@@ -251,8 +256,13 @@
       "textAlign": "start",
       "aspectRatio": {
        "kind": "auto"
+      },
+      "verticalAlign": {
+       "kind": "keyword",
+       "value": "baseline"
       }
      },
+     "strut": null,
      "children": [
       {
        "kind": "box",
@@ -365,6 +375,25 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "Ahem",
+         "size": 13.7,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 13.7
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "number",
+         "value": 1
         }
        },
        "children": [
@@ -501,6 +530,25 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "Ahem",
+         "size": 13.7,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 13.7
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "number",
+         "value": 1.5
         }
        },
        "children": [
@@ -637,6 +685,25 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "Ahem",
+         "size": 9.9,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 9.9
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "number",
+         "value": 2
         }
        },
        "children": [
@@ -773,6 +840,25 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "Ahem",
+         "size": 10,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 10
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "px",
+         "value": 9.6171875
         }
        },
        "children": [
@@ -909,6 +995,25 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "Ahem",
+         "size": 10,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 10
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "px",
+         "value": 12.0078125
         }
        },
        "children": [
@@ -1045,6 +1150,25 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "Ahem",
+         "size": 10,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 10
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "px",
+         "value": 10.4921875
         }
        },
        "children": [
@@ -1181,6 +1305,25 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "Ahem",
+         "size": 10.629,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 10.629
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "number",
+         "value": 1.2
         }
        },
        "children": [
@@ -1317,6 +1460,25 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "Ahem",
+         "size": 10,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 10
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "px",
+         "value": 9.6
         }
        },
        "children": [
@@ -1453,6 +1615,25 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "Ahem",
+         "size": 10,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 10
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "px",
+         "value": 17.3
         }
        },
        "children": [

@@ -91,11 +91,11 @@ val inline_SOLIDUS: Double = 47.0
 fun inline_isRtlSafe(text: String): Boolean {
   // ts: packages/layout/src/inline.ts:64
   run {
-    val _a26 = jsCodePoints(text)
-    var _i26 = 0
-    while (_i26 < _a26.size) {
-      val ch: String = _a26[_i26]
-      _i26++
+    val _a29 = jsCodePoints(text)
+    var _i29 = 0
+    while (_i29 < _a29.size) {
+      val ch: String = _a29[_i29]
+      _i29++
       val cp: Double = jsUnwrap(jsCodePointAt0(ch))
       val letter: Boolean = (((cp >= 65.0) && (cp <= 90.0)) || ((cp >= 97.0) && (cp <= 122.0)))
       // ts: packages/layout/src/inline.ts:67
@@ -111,11 +111,11 @@ fun inline_isRtlSafe(text: String): Boolean {
 fun inline_checkRtlText(box: LayoutBox, leaves: JsArray<TextLeaf>): Unit {
   // ts: packages/layout/src/inline.ts:83
   run {
-    val _a27 = leaves
-    var _i27 = 0
-    while (_i27 < _a27.size) {
-      val t: TextLeaf = _a27[_i27]
-      _i27++
+    val _a30 = leaves
+    var _i30 = 0
+    while (_i30 < _a30.size) {
+      val t: TextLeaf = _a30[_i30]
+      _i30++
       // ts: packages/layout/src/inline.ts:84
       if ((!inline_isRtlSafe(t.text))) {
         unsupported_unsupported("bidi-neutral", t.id, "UAX #9 W1-W7, N1-N2", ("text in the rtl paragraph of " + box.id + " holds a character other than A-Z, a-z, space and U+200B"))
@@ -150,11 +150,11 @@ fun inline_buildRun(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLeaf>): Run {
   }
   // ts: packages/layout/src/inline.ts:99
   run {
-    val _a28 = leaves
-    var _i28 = 0
-    while (_i28 < _a28.size) {
-      val t: TextLeaf = _a28[_i28]
-      _i28++
+    val _a31 = leaves
+    var _i31 = 0
+    while (_i31 < _a31.size) {
+      val t: TextLeaf = _a31[_i31]
+      _i31++
       val m: U_MeasureResult_okFalse_MeasureResult_okTrue = ctx.measurer.measure(t.text, inline_leafFont(t))
       // ts: packages/layout/src/inline.ts:101
       if ((!m.ok)) {
@@ -171,11 +171,11 @@ fun inline_buildRun(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLeaf>): Run {
     var at: Double = 0.0
     // ts: packages/layout/src/inline.ts:109
     run {
-      val _a29 = jsCodePoints(t.text)
-      var _i29 = 0
-      while (_i29 < _a29.size) {
-        val ch: String = _a29[_i29]
-        _i29++
+      val _a32 = jsCodePoints(t.text)
+      var _i32 = 0
+      while (_i32 < _a32.size) {
+        val ch: String = _a32[_i32]
+        _i32++
         jsPush(chars, Inline_Char(leaf, (at++), ch, jsUnwrap(jsCodePointAt0(ch))))
       }
     }
@@ -221,11 +221,11 @@ fun inline_ahemOpportunities(box: LayoutBox, cps: JsArray<Double>, wrap: Boolean
   val out: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/inline.ts:150
   run {
-    val _a30 = cps
-    var _i30 = 0
-    while (_i30 < _a30.size) {
-      val cp: Double = _a30[_i30]
-      _i30++
+    val _a33 = cps
+    var _i33 = 0
+    while (_i33 < _a33.size) {
+      val cp: Double = _a33[_i33]
+      _i33++
       // ts: packages/layout/src/inline.ts:150
       if ((text_coveredIndex(cp) < 0.0)) {
         unsupported_unsupported("line-break", box.id, "css-text-3 \u00a75", ("U+" + jsToUpperCase(jsToStringRadix16(cp)) + " is outside the code points the line breaker decides"))
@@ -332,11 +332,11 @@ fun inline_segments(run: Run): JsArray<Segment> {
   var start: Double = 0.0
   // ts: packages/layout/src/inline.ts:212
   run {
-    val _a31 = run.opportunities
-    var _i31 = 0
-    while (_i31 < _a31.size) {
-      val at: Double = _a31[_i31]
-      _i31++
+    val _a34 = run.opportunities
+    var _i34 = 0
+    while (_i34 < _a34.size) {
+      val at: Double = _a34[_i34]
+      _i34++
       jsPush(out, Segment(start, at))
       start = at
     }
@@ -413,11 +413,11 @@ fun inline_breakLines(ctx: Ctx, run: Run, available: Double): JsArray<Inline_Lin
   var end: Double = -1.0
   // ts: packages/layout/src/inline.ts:273
   run {
-    val _a32 = inline_segments(run)
-    var _i32 = 0
-    while (_i32 < _a32.size) {
-      val seg: Segment = _a32[_i32]
-      _i32++
+    val _a35 = inline_segments(run)
+    var _i35 = 0
+    while (_i35 < _a35.size) {
+      val seg: Segment = _a35[_i35]
+      _i35++
       // ts: packages/layout/src/inline.ts:274
       if ((start < 0.0)) {
         start = seg.start
@@ -502,18 +502,18 @@ fun inline_layoutInline(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLeaf>, ava
 })
   // ts: packages/layout/src/inline.ts:351
   run {
-    val _a33 = lines
-    var _i33 = 0
-    while (_i33 < _a33.size) {
-      val line: PlacedLine = _a33[_i33]
-      _i33++
+    val _a36 = lines
+    var _i36 = 0
+    while (_i36 < _a36.size) {
+      val line: PlacedLine = _a36[_i36]
+      _i36++
       // ts: packages/layout/src/inline.ts:352
       run {
-        val _a34 = line.pieces
-        var _i34 = 0
-        while (_i34 < _a34.size) {
-          val p: LinePiece = _a34[_i34]
-          _i34++
+        val _a37 = line.pieces
+        var _i37 = 0
+        while (_i37 < _a37.size) {
+          val p: LinePiece = _a37[_i37]
+          _i37++
           jsPush(jsUnwrap(jsAt(pieces, p.leaf)), Piece(p.x, p.top, p.width, units_add(p.ascent, p.descent)))
         }
       }
@@ -533,11 +533,11 @@ fun inline_layoutInline(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLeaf>, ava
     var bottom: Double = units_add(jsUnwrap(firstPiece).y, jsUnwrap(firstPiece).height)
     // ts: packages/layout/src/inline.ts:364
     run {
-      val _a35 = own
-      var _i35 = 0
-      while (_i35 < _a35.size) {
-        val p: Piece = _a35[_i35]
-        _i35++
+      val _a38 = own
+      var _i38 = 0
+      while (_i38 < _a38.size) {
+        val p: Piece = _a38[_i38]
+        _i38++
         left = units_min(left, p.x)
         top = units_min(top, p.y)
         right = units_max(right, units_add(p.x, p.width))
@@ -565,11 +565,11 @@ fun inline_inlineIntrinsicSize(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLea
   var widest: Double = units_ZERO
   // ts: packages/layout/src/inline.ts:385
   run {
-    val _a36 = inline_segments(run)
-    var _i36 = 0
-    while (_i36 < _a36.size) {
-      val seg: Segment = _a36[_i36]
-      _i36++
+    val _a39 = inline_segments(run)
+    var _i39 = 0
+    while (_i39 < _a39.size) {
+      val seg: Segment = _a39[_i39]
+      _i39++
       widest = units_max(widest, inline_cachedWidth(ctx, run, seg.start, inline_trimEnd(run, seg.start, seg.end)))
     }
   }

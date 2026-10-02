@@ -138,8 +138,13 @@
     "textAlign": "start",
     "aspectRatio": {
      "kind": "auto"
+    },
+    "verticalAlign": {
+     "kind": "keyword",
+     "value": "baseline"
     }
    },
+   "strut": null,
    "children": [
     {
      "kind": "box",
@@ -251,8 +256,13 @@
       "textAlign": "start",
       "aspectRatio": {
        "kind": "auto"
+      },
+      "verticalAlign": {
+       "kind": "keyword",
+       "value": "baseline"
       }
      },
+     "strut": null,
      "children": [
       {
        "kind": "box",
@@ -365,8 +375,13 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
         }
        },
+       "strut": null,
        "children": [
         {
          "kind": "box",
@@ -481,8 +496,13 @@
            "kind": "ratio",
            "width": 1024,
            "height": 576
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
           }
          },
+         "strut": null,
          "children": []
         },
         {
@@ -598,8 +618,13 @@
            "kind": "ratio",
            "width": 1024,
            "height": 576
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
           }
          },
+         "strut": null,
          "children": []
         },
         {
@@ -715,8 +740,13 @@
            "kind": "ratio",
            "width": 1024,
            "height": 576
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
           }
          },
+         "strut": null,
          "children": []
         },
         {
@@ -832,8 +862,13 @@
            "kind": "auto-ratio",
            "width": 128,
            "height": 64
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
           }
          },
+         "strut": null,
          "children": []
         },
         {
@@ -950,8 +985,13 @@
            "kind": "ratio",
            "width": 1024,
            "height": 576
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
           }
          },
+         "strut": null,
          "children": []
         },
         {
@@ -1068,8 +1108,13 @@
            "kind": "ratio",
            "width": 1024,
            "height": 576
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
           }
          },
+         "strut": null,
          "children": []
         },
         {
@@ -1185,8 +1230,13 @@
            "kind": "ratio",
            "width": 1024,
            "height": 576
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
           }
          },
+         "strut": null,
          "children": []
         },
         {
@@ -1300,8 +1350,13 @@
            "kind": "ratio",
            "width": 1024,
            "height": 576
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
           }
          },
+         "strut": null,
          "children": []
         },
         {
@@ -1417,6 +1472,24 @@
            "kind": "ratio",
            "width": 64,
            "height": 64
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          }
+         },
+         "strut": {
+          "font": {
+           "family": "Ahem",
+           "size": 10,
+           "specifiedSize": {
+            "kind": "px",
+            "value": 10
+           },
+           "absoluteSize": true
+          },
+          "lineHeight": {
+           "kind": "normal"
           }
          },
          "children": [
@@ -1554,6 +1627,24 @@
            "kind": "ratio",
            "width": 64,
            "height": 64
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          }
+         },
+         "strut": {
+          "font": {
+           "family": "Ahem",
+           "size": 10,
+           "specifiedSize": {
+            "kind": "px",
+            "value": 10
+           },
+           "absoluteSize": true
+          },
+          "lineHeight": {
+           "kind": "normal"
           }
          },
          "children": [
@@ -1691,8 +1782,13 @@
            "kind": "ratio",
            "width": 1024,
            "height": 576
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
           }
          },
+         "strut": null,
          "children": [
           {
            "kind": "box",
@@ -1805,8 +1901,13 @@
             "textAlign": "start",
             "aspectRatio": {
              "kind": "auto"
+            },
+            "verticalAlign": {
+             "kind": "keyword",
+             "value": "baseline"
             }
            },
+           "strut": null,
            "children": []
           }
          ]
@@ -1924,8 +2025,13 @@
            "kind": "ratio",
            "width": 448,
            "height": 192
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
           }
          },
+         "strut": null,
          "children": []
         },
         {
@@ -2040,8 +2146,13 @@
            "kind": "ratio",
            "width": 64,
            "height": 64
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
           }
          },
+         "strut": null,
          "children": []
         }
        ]
