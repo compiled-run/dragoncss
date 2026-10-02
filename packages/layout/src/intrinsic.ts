@@ -1,5 +1,5 @@
 // Intrinsic inline sizes (css-sizing-3 §5) and flex container intrinsic inline sizes (css-flexbox-1 §9.9.1, §9.9.2).
-import type { LayoutBox, TextLeaf } from './input.ts';
+import type { LayoutBox, LayoutNode, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, fromCssPx, max, min, sum, ZERO, mulInt } from './units.ts';
 import { borderBoxFromSpecified, hasPercent, resolveBorder, resolveLength, resolveMinLength, sumEdges } from './box.ts';
@@ -7,6 +7,7 @@ import type { Ctx } from './block.ts';
 import { inlineIntrinsicSize } from './inline.ts';
 import { isOutOfFlow } from './position.ts';
 import { hasAspectRatio, ratioInlineContribution } from './ratio.ts';
+import { replacedContribution } from './replaced.ts';
 import { unsupported } from './unsupported.ts';
 
 export type IntrinsicKind = 'min' | 'max';
@@ -22,14 +23,18 @@ export function intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: Intri
     return inlineIntrinsicSize(ctx, box, texts, kind);
   }
   let widest = ZERO;
-  for (const k of kids) if (k.kind === 'box' && !isOutOfFlow(ctx, k)) widest = max(widest, inlineContribution(ctx, k, kind));
+  for (const k of kids) if (k.kind !== 'text' && !isOutOfFlow(ctx, k)) widest = max(widest, inlineContribution(ctx, k, kind));
   return widest;
 }
 
 // css-sizing-3 §5.2: a box's outer inline-size contribution. §5.2.1 cyclic percentages: percentage width behaves as auto, percentage
 // min-width as auto and max-width as none, percentage padding and margins and auto margins contribute zero (fixture intrinsic-percent).
-export function inlineContribution(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
-  const s = box.style;
+export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKind): LU {
+  const s = node.style;
+  const margin = (v: typeof s.marginLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : v.kind === 'calc' ? resolveLength(v, ZERO, ctx.faults) : ZERO);
+  // A replaced box contributes its replaced size, which already holds min-width and max-width (replaced.ts).
+  if (node.kind === 'replaced') return add(replacedContribution(ctx, node, kind), add(margin(s.marginLeft), margin(s.marginRight)));
+  const box = node;
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   // A calculation evaluates against a basis of 0 (Blink MinimumValueForLength with no percentage resolution size): calc(10px + 5%) is 10px.
   const pad = (v: typeof s.paddingLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : v.kind === 'calc' ? resolveLength(v, ZERO, ctx.faults) : ZERO);
@@ -43,7 +48,6 @@ export function inlineContribution(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind
   if (s.maxWidth.kind !== 'none' && !hasPercent(s.maxWidth)) size = min(size, borderBoxFromSpecified(resolveLength(s.maxWidth, ZERO, ctx.faults), bp, s.boxSizing));
   if (s.minWidth.kind !== 'auto') size = max(size, borderBoxFromSpecified(resolveMinLength(s.minWidth, null, ctx.faults), bp, s.boxSizing));
   size = max(size, bp);
-  const margin = (v: typeof s.marginLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : v.kind === 'calc' ? resolveLength(v, ZERO, ctx.faults) : ZERO);
   return add(size, add(margin(s.marginLeft), margin(s.marginRight)));
 }
 
@@ -51,7 +55,7 @@ export function inlineContribution(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind
 // largest for a multi-line container. §9.9.2 (column, single-line): the largest contribution.
 function flexIntrinsicContent(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
   const s = box.style;
-  const items = box.children.filter((k): k is LayoutBox => k.kind === 'box' && !isOutOfFlow(ctx, k));
+  const items = box.children.filter((k): k is LayoutNode => k.kind !== 'text' && !isOutOfFlow(ctx, k));
   const contributions = items.map((k) => inlineContribution(ctx, k, kind));
   const isRow = s.flexDirection === 'row' || s.flexDirection === 'row-reverse';
   if (!isRow && s.flexWrap !== 'nowrap') unsupported('flex-intrinsic-wrap-column', box.id, 'css-flexbox-1 §9.9.2', 'intrinsic inline size of a multi-line column flex container');

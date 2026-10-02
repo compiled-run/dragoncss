@@ -48,7 +48,10 @@ export class DomView {
     this.abs = absoluteRects(boxes);
     const walk = (b: LayoutBox): void => {
       this.styles.set(b.id, b.style);
-      for (const c of b.children) if (c.kind === 'box') walk(c);
+      for (const c of b.children) {
+        if (c.kind === 'box') walk(c);
+        else if (c.kind === 'replaced') this.styles.set(c.id, c.style);
+      }
     };
     walk(input.root);
   }
