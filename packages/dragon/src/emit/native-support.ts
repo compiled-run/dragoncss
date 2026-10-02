@@ -1638,7 +1638,7 @@ export const STYLE_FIELDS = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height', 'minWidth', 'minHeight',
   'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
   'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order',
-  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign',
+  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio',
 ] as const;
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = { px: 'Px', percent: 'Percent', auto: 'Auto', none: 'NoneValue', content: 'ContentValue', normal: 'NormalValue', number: 'NumberValue', 'device-px': 'DevicePx' };
@@ -1647,6 +1647,9 @@ const VALUE_CLASSES: Readonly<Record<string, string>> = { px: 'Px', percent: 'Pe
 const CALC_UNION = 'U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength';
 
 const CALC_LISTS: Readonly<Record<string, string>> = { sum: 'CalcSum', product: 'CalcProduct', min: 'CalcMin', max: 'CalcMax' };
+
+/** The translated classes of the AspectRatioValue members with parts (input.ts); auto is the shared Auto class. */
+const RATIO_CLASSES: Readonly<Record<string, string>> = { ratio: 'AspectRatioValue_ratio', 'auto-ratio': 'AspectRatioValue_autoRatio' };
 
 /** A LengthCalc or a CalcExpr node that is not a plain value, as a constructor call; null for any other value. */
 function calcValue(lang: Lang, o: Record<string, unknown>): string | null {
@@ -1695,6 +1698,12 @@ function engineValue(lang: Lang, v: unknown): string {
   if (typeof v === 'number') return doubleLit(v);
   const calc = calcValue(lang, v as Record<string, unknown>);
   if (calc !== null) return calc;
+  const r = v as { kind: string; width?: number; height?: number };
+  const ratio = RATIO_CLASSES[r.kind];
+  if (ratio !== undefined) {
+    if (typeof r.width !== 'number' || typeof r.height !== 'number') throw new Error(`aspect ratio ${JSON.stringify(v)} lacks its parts`);
+    return `${ratio}(${str(r.kind)}, ${doubleLit(r.width)}, ${doubleLit(r.height)})`;
+  }
   const o = v as { kind: string; value?: number };
   const cls = VALUE_CLASSES[o.kind];
   if (cls === undefined) throw new Error(`no engine class for value kind ${o.kind}`);

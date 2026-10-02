@@ -107,6 +107,15 @@ export type InsetValue = Px | Percent | Auto | LengthCalc;
 export type LineHeightCalc = { readonly kind: 'calc'; readonly expr: CalcExpr; readonly range: 'non-negative' };
 /** line-height (CSS2 §10.8.1): a percentage is of the element's computed font size, truncated to a whole percent (Blink ConvertLineHeight). */
 export type LineHeightValue = NormalValue | NumberValue | Px | Percent | LineHeightCalc;
+/**
+ * css-sizing-4 §5.1 aspect-ratio as Blink's layout ratio (StyleAspectRatio::GetLayoutRatio): width and height are raw LayoutUnit
+ * values, positive integers, which the compiler derives from the <ratio> as Blink's LayoutRatioFromSizeF does. ratio is
+ * `<ratio>`; auto-ratio is `auto && <ratio>`, which sizes the content box whatever box-sizing says. A degenerate ratio is auto.
+ */
+export type AspectRatioValue =
+  | Auto
+  | { readonly kind: 'ratio'; readonly width: number; readonly height: number }
+  | { readonly kind: 'auto-ratio'; readonly width: number; readonly height: number };
 
 /** display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. */
 export type Display = 'block' | 'flex';
@@ -199,6 +208,7 @@ export type LayoutStyle = {
   readonly rowGap: GapValue;
   readonly columnGap: GapValue;
   readonly textAlign: TextAlign;
+  readonly aspectRatio: AspectRatioValue;
 };
 
 /** The font a measurer reads: the family and the computed font size in zoomed px. */
