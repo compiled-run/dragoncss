@@ -275,9 +275,12 @@ describe('INL1a refusals and the new input kinds', () => {
     expect(code(decorated({ borderBottomWidth: px(1) }))).toBe('inline-box-decoration');
     expect(code(decorated({ marginTop: px(7), marginBottom: px(9) }))).toBeNull();
   });
-  it('refuses vertical-align other than baseline (INL2) and a positioned inline box', () => {
-    expect(code([span('s', [text('t', 'XX')], { style: { ...span('x', []).style, verticalAlign: { kind: 'keyword', value: 'sub' } } })])).toBe('vertical-align');
-    expect(code([span('s', [text('t', 'XX')], { style: { ...span('x', []).style, verticalAlign: px(3) } })])).toBe('vertical-align');
+  // INL2b retarget: every vertical-align value lays out on an inline box; what stays refused is a percentage on an atomic inline
+  // with no line-height of its own in the input (no strut), and a positioned inline box.
+  it('refuses a percentage vertical-align on an atomic inline without inline content (INL2b) and a positioned inline box', () => {
+    expect(code([span('s', [text('t', 'XX')], { style: { ...span('x', []).style, verticalAlign: { kind: 'keyword', value: 'sub' } } })])).toBeNull();
+    expect(code([span('s', [text('t', 'XX')], { style: { ...span('x', []).style, verticalAlign: px(3) } })])).toBeNull();
+    expect(code([text('t', 'XX'), box('ib', { display: 'inline-block', width: px(5), height: px(5), verticalAlign: { kind: 'percent', value: 50 } }, [], null) as unknown as InlineChild])).toBe('vertical-align');
     expect(code([span('s', [text('t', 'XX')], { style: { ...span('x', []).style, position: 'relative' } })])).toBe('inline-box-position');
   });
   it('in rtl, refuses a U+200B in the white space before a <br> as at the end of the paragraph (UAX #9 L1: a <br> is bidi class B)', () => {
