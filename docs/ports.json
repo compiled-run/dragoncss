@@ -811,7 +811,8 @@
         "class": "A",
         "basis": "css-ui-4 devolvable widgets and the captured devolve probe",
         "proof": [
-          "packages/dragon/test/forms/forms.test.ts"
+          "packages/dragon/test/forms/forms.test.ts",
+          "packages/parity/test/controls-identity.test.ts"
         ]
       },
       "licencePhrase": "GNU Library General Public License",
@@ -820,9 +821,12 @@
       "headerSha256": "d3ab780001da94384ef639818ae923b81605e935bd7cc08a97334f4f0aec4f2c",
       "ranges": [
         { "lines": "175-184", "symbol": "LayoutTheme::AdjustAppearanceWithAuthorStyle", "source": "located" },
+        { "lines": "266-322", "symbol": "LayoutTheme::AdjustStyle", "source": "located" },
         { "lines": "440-462", "symbol": "IsControlStyled", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "APPEARANCE_DISPLAY", "use": "reference" },
+        { "file": "packages/dragon/src/analysis/elements/controls.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/forms/appearance.generated.ts", "symbol": "APPEARANCE_PROBE", "use": "reference" },
         { "file": "packages/dragon/src/forms/appearance.ts", "symbol": null, "use": "reference" },
         { "file": "scripts/capture-form-data.ts", "symbol": "appearanceModule", "use": "reference" }
