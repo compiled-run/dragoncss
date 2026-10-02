@@ -643,43 +643,44 @@ public final class DragonTree {
       guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("dragon: no leaf \(id)") }
       let scalars = Array(leaves[li].text.description.unicodeScalars)
       func utf16(_ cp: Int) -> Int { return scalars[0..<cp].reduce(0) { $0 + $1.utf16.count } }
-      // The engine's own line metrics and line breaks: inline.ts buildRun and breakLines, translated, over the zoomed context.
+      // The engine's own lines: inline.ts placeLines, translated, over the zoomed context. Each line gives this leaf's piece.
       let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
-      let run = try inline_buildRun(ctx, p, JsArray(leaves))
-      let engineLines = try inline_breakLines(ctx, run, try contentWidth(pId)).items
-      let chars = run.chars.items
+      let placed = try inline_placeLines(ctx, p, JsArray(leaves), try contentWidth(pId)).items
       let pieces = boxes.enumerated().filter { DragonTree.isLine($0.element) && $0.element.parent?.description == id }
-      textMetrics[id] = (run.halfLeading / lu, run.ascent / lu, run.descent / lu)
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       let size = try units_platformFontSize(leaves[li].font.size)
       var specs: [DragonLineSpec] = []
-      for line in engineLines {
-        let mine = (Int(line.start)..<Int(line.visibleEnd)).filter { Int(chars[$0].leaf) == li }
-        guard let first = mine.first, let last = mine.last else { continue }
+      var viewMetrics: (halfLeading: Double, ascent: Double, descent: Double)? = nil
+      for line in placed {
+        guard let piece = line.pieces.items.first(where: { Int($0.leaf) == li }) else { continue }
+        // One font per text view: every line's leading, ascent and descent are the view's (the dump reads them per view).
+        let metrics: (halfLeading: Double, ascent: Double, descent: Double) = ((piece.top - line.top) / lu, piece.ascent / lu, piece.descent / lu)
+        if let m = viewMetrics, m != metrics { fatalError("dragon: \(id): line metrics \(metrics) differ from the text view's \(m)") }
+        viewMetrics = metrics
         let k = specs.count
         if k >= pieces.count { fatalError("dragon: \(id): the engine's breaks give more lines than its layout (\(pieces.count))") }
         let (i, r) = pieces[k]
-        let width = try inline_width(ctx, run, Double(first), Double(last + 1))
-        if width != r.width { fatalError("dragon: \(id) line \(k): the engine's break gives width \(width) LU, its layout \(r.width) LU") }
-        let throughEnd = (Int(line.start)..<Int(line.end)).filter { Int(chars[$0].leaf) == li }.last ?? last
+        if piece.width != r.width { fatalError("dragon: \(id) line \(k): the engine's break gives width \(piece.width) LU, its layout \(r.width) LU") }
         guard let a = abs.get(r.id) else { fatalError("dragon: no absolute rect for \(r.id)") }
-        let top = try units_snapEdge(a.y - run.halfLeading)
-        let baseline = snapped[i].top + run.ascent / lu
+        let top = try units_snapEdge(a.y - (piece.top - line.top))
+        let baseline = snapped[i].top + piece.ascent / lu
         // Dragon places every glyph: the pen starts at the engine's run left and advances by the engine's per-glyph advance
         // (the instance size times the font-unit advance / unitsPerEm, summed in float as textAdvanceAt does).
         let xLU = a.x - e[0] * lu
+        let shown = Array(scalars[Int(piece.start)..<Int(piece.visibleEnd)])
         var glyphs: [CGGlyph] = []
         var xs: [Double] = []
         var pen: Float = 0
-        for idx in mine {
-          let gid = bridge.glyph(Int(chars[idx].cp))
+        for sc in shown {
+          let gid = bridge.glyph(Int(sc.value))
           glyphs.append(CGGlyph(gid))
           xs.append(xLU / lu + Double(pen))
           pen = pen + Float(size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm)
         }
-        specs.append(DragonLineSpec(text: mine.map { chars[$0].ch.description }.joined(), glyphs: glyphs, xs: xs, xLU: xLU, widthLU: width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(chars[first].at)), end: utf16(Int(chars[throughEnd].at) + 1)))
+        specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: glyphs, xs: xs, xLU: xLU, widthLU: piece.width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end))))
       }
       if specs.count != pieces.count { fatalError("dragon: \(id): the engine's breaks give \(specs.count) lines, its layout \(pieces.count)") }
+      textMetrics[id] = viewMetrics
       tv.dragonConfigure(font: bridge.font(pointSize: CGFloat(size / s)), lines: specs, scale: s)
     }
   }
@@ -696,7 +697,8 @@ public final class DragonTree {
       let rr = dragonWholeDevicePx(Double(r.maxX) * s, "\(id) right")
       let b = dragonWholeDevicePx(Double(r.maxY) * s, "\(id) bottom")
       var lines: [DumpNodesLines] = []
-      if let tv = v as? DragonTextView, let m = textMetrics[id] {
+      if let tv = v as? DragonTextView, !tv.specs.isEmpty {
+        guard let m = textMetrics[id] else { fatalError("dragon: \(id): a text view with lines has no line metrics") }
         // Each line as Dragon placed it in the live view: the run from the view's live position, snapped with the one snap rule.
         for x in tv.specs {
           let top = t + x.top + m.halfLeading
@@ -1197,9 +1199,7 @@ import dev.dragon.layout.TextMeasurer
 import dev.dragon.layout.block_NO_ENGINE_FAULTS
 import dev.dragon.layout.box_resolveBorder
 import dev.dragon.layout.box_resolvePadding
-import dev.dragon.layout.inline_breakLines
-import dev.dragon.layout.inline_buildRun
-import dev.dragon.layout.inline_width
+import dev.dragon.layout.inline_placeLines
 import dev.dragon.layout.layout_absoluteRects
 import dev.dragon.layout.layout_layout
 import dev.dragon.layout.layout_zoomInput
@@ -1376,47 +1376,49 @@ class DragonTree(val context: Context) {
       if (li < 0) throw IllegalStateException("dragon: no leaf " + id)
       val leafText = leaves[li].text
       fun utf16(cp: Int): Int = leafText.offsetByCodePoints(0, cp)
-      // The engine's own line metrics and line breaks: inline.ts buildRun and breakLines, translated, over the zoomed context.
+      // The engine's own lines: inline.ts placeLines, translated, over the zoomed context. Each line gives this leaf's piece.
       val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
-      val run = inline_buildRun(ctx, p, leaves)
-      val engineLines = inline_breakLines(ctx, run, contentWidth(pId))
-      val chars = run.chars
+      val placed = inline_placeLines(ctx, p, leaves, contentWidth(pId))
       val pieces = boxes.indices.filter { isLine(boxes[it]) && boxes[it].parent == id }
-      textMetrics[id] = doubleArrayOf(run.halfLeading / lu, run.ascent / lu, run.descent / lu)
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       val size = units_platformFontSize(leaves[li].font.size)
       val specs = ArrayList<DragonLineSpec>()
-      for (line in engineLines) {
-        val mine = (line.start.toInt() until line.visibleEnd.toInt()).filter { chars[it].leaf.toInt() == li }
-        if (mine.isEmpty()) continue
-        val first = mine.first()
-        val last = mine.last()
+      var viewMetrics: DoubleArray? = null
+      for (line in placed) {
+        val piece = line.pieces.firstOrNull { it.leaf.toInt() == li } ?: continue
+        // One font per text view: every line's leading, ascent and descent are the view's (the dump reads them per view).
+        val metrics = doubleArrayOf((piece.top - line.top) / lu, piece.ascent / lu, piece.descent / lu)
+        val known = viewMetrics
+        if (known != null && !known.contentEquals(metrics)) throw IllegalStateException("dragon: " + id + ": line metrics " + metrics.contentToString() + " differ from the text view's " + known.contentToString())
+        viewMetrics = metrics
         val k = specs.size
         if (k >= pieces.size) throw IllegalStateException("dragon: " + id + ": the engine's breaks give more lines than its layout (" + pieces.size + ")")
         val i = pieces[k]
         val r = boxes[i]
-        val width = inline_width(ctx, run, first.toDouble(), (last + 1).toDouble())
-        if (width != r.width) throw IllegalStateException("dragon: " + id + " line " + k + ": the engine's break gives width " + width + " LU, its layout " + r.width + " LU")
-        val throughEnd = (line.start.toInt() until line.end.toInt()).filter { chars[it].leaf.toInt() == li }.lastOrNull() ?: last
+        if (piece.width != r.width) throw IllegalStateException("dragon: " + id + " line " + k + ": the engine's break gives width " + piece.width + " LU, its layout " + r.width + " LU")
         val a = abs.get(r.id) ?: throw IllegalStateException("dragon: no absolute rect for " + r.id)
-        val top = units_snapEdge(a.y - run.halfLeading)
-        val baseline = snapped[i].top + run.ascent / lu
+        val top = units_snapEdge(a.y - (piece.top - line.top))
+        val baseline = snapped[i].top + piece.ascent / lu
         // Dragon places every glyph: the pen starts at the engine's run left and advances by the engine's per-glyph advance
         // (the instance size times the font-unit advance / unitsPerEm, summed in float as textAdvanceAt does).
         val xLU = a.x - e[0] * lu
-        val text = mine.joinToString("") { chars[it].ch }
-        val glyphs = IntArray(mine.size)
-        val xs = DoubleArray(mine.size)
+        val from = utf16(piece.start.toInt())
+        val text = leafText.substring(from, utf16(piece.visibleEnd.toInt()))
+        val cps = text.codePoints().toArray()
+        val glyphs = IntArray(cps.size)
+        val xs = DoubleArray(cps.size)
         var pen = 0f
-        for ((n, idx) in mine.withIndex()) {
-          val gid = bridge.glyph(chars[idx].cp.toInt())
+        for ((n, cp) in cps.withIndex()) {
+          val gid = bridge.glyph(cp)
           glyphs[n] = gid
           xs[n] = xLU / lu + pen.toDouble()
           pen = pen + (size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat()
         }
-        specs.add(DragonLineSpec(text, glyphs, xs, xLU, width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), utf16(chars[first].at.toInt()), utf16(chars[throughEnd].at.toInt() + 1)))
+        specs.add(DragonLineSpec(text, glyphs, xs, xLU, piece.width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), from, utf16(piece.end.toInt())))
       }
       if (specs.size != pieces.size) throw IllegalStateException("dragon: " + id + ": the engine's breaks give " + specs.size + " lines, its layout " + pieces.size)
+      val vm = viewMetrics
+      if (vm != null) textMetrics[id] = vm else textMetrics.remove(id)
       tv.dragonConfigure(bridge, size.toFloat(), specs)
     }
   }
@@ -1437,8 +1439,8 @@ class DragonTree(val context: Context) {
       val rr = l + view.width
       val b = t + view.height
       val lines = ArrayList<DumpNodesLines>()
-      val m = textMetrics[id]
-      if (v is DragonTextView && m != null) {
+      if (v is DragonTextView && v.specs.isNotEmpty()) {
+        val m = textMetrics[id] ?: throw IllegalStateException("dragon: " + id + ": a text view with lines has no line metrics")
         // Each line as Dragon placed it in the live view: the run from the view's live position, snapped with the one snap rule.
         for (x in v.specs) {
           val top = t + x.top + m[0]
