@@ -1,7 +1,7 @@
 // Inline formatting of a block container whose children are Ahem text leaves: line breaking (css-text-3 §5, UAX #14 subset),
 // white-space phase II at line ends (css-text-3 §4.1.2), text-align (css-text-3 §7.1) and line box heights (CSS2 §10.8).
 // Every leaf shares one font, line-height and text-wrap-mode: without inline elements they all inherit from one box.
-import type { LayoutBox, TextLeaf } from './input.ts';
+import type { LayoutBox, NormalValue, NumberValue, Px, TextFont, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, divInt, floorToWholePx, fromFloatRound, lineHeightFromNumber, max, min, mulInt, sub, ZERO } from './units.ts';
 import type { Frag, Placed, Point } from './box.ts';
@@ -68,7 +68,7 @@ export function buildRun(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[]):
   const first = leaves[0] as TextLeaf;
   if (directionOf(ctx, box) === 'rtl') checkRtlText(box, leaves);
   for (const t of leaves) {
-    const m = ctx.measurer.measure(t.text, t.font);
+    const m = ctx.measurer.measure(t.text, leafFont(t));
     if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
     if (t.font.family !== first.font.family || t.font.size !== first.font.size || !sameLineHeight(t, first) || t.textWrapMode !== first.textWrapMode) {
       unsupported('mixed-inline-font', t.id, 'CSS2 §10.8', `text runs with different fonts, line-heights or text-wrap-mode in one formatting context of ${box.id}`);
@@ -79,7 +79,7 @@ export function buildRun(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[]):
     let at = 0;
     for (const ch of t.text) chars.push({ leaf, at: at++, ch, cp: ch.codePointAt(0) as number });
   });
-  const metrics = ctx.measurer.metrics(first.font);
+  const metrics = ctx.measurer.metrics(leafFont(first));
   const glyphHeight = add(add(metrics.ascent, metrics.descent), metrics.lineGap);
   const lineHeight = resolveLineHeight(first, glyphHeight);
   // Blink CalculateLeadingSpace: ((line_height - font height) / 2).Floor(), so a line-height below the glyphs gives negative leading.
@@ -88,16 +88,28 @@ export function buildRun(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[]):
   return { leaves, chars, wrap: first.textWrapMode === 'wrap', lineHeight, ascent: metrics.ascent, descent: metrics.descent, halfLeading };
 }
 
+/** A leaf's font as the measurer reads it: the family and the computed size the environment pass wrote (environment.ts). */
+function leafFont(t: TextLeaf): TextFont {
+  return { family: t.font.family, size: t.font.size };
+}
+
+/** A leaf's line height after the environment pass, which resolves percentages and calculations to px. */
+function leafLineHeight(t: TextLeaf): NormalValue | NumberValue | Px {
+  const lh = t.lineHeight;
+  if (lh.kind === 'percent' || lh.kind === 'calc') throw new Error(`${t.id}: a ${lh.kind} line height reached layout; the environment pass resolves it`);
+  return lh;
+}
+
 function sameLineHeight(a: TextLeaf, b: TextLeaf): boolean {
-  const x = a.lineHeight;
-  const y = b.lineHeight;
+  const x = leafLineHeight(a);
+  const y = leafLineHeight(b);
   if (x.kind === 'normal' || y.kind === 'normal') return x.kind === y.kind;
   return x.kind === y.kind && x.value === y.value;
 }
 
 // CSS2 §10.8.1: normal uses the font's ascent + descent + line gap; numbers multiply the font size.
 function resolveLineHeight(t: TextLeaf, normal: LU): LU {
-  const lh = t.lineHeight;
+  const lh = leafLineHeight(t);
   if (lh.kind === 'normal') return normal;
   if (lh.kind === 'number') return lineHeightFromNumber(t.font.size, lh.value);
   return fromFloatRound(lh.value);
@@ -142,7 +154,7 @@ function width(ctx: Ctx, run: Run, start: number, end: number): LU {
     const leaf = (run.chars[i] as Char).leaf;
     let text = '';
     while (i < end && (run.chars[i] as Char).leaf === leaf) text += (run.chars[i++] as Char).ch;
-    const m = ctx.measurer.measure(text, (run.leaves[leaf] as TextLeaf).font);
+    const m = ctx.measurer.measure(text, leafFont(run.leaves[leaf] as TextLeaf));
     if (!m.ok) unsupported('text-glyph', (run.leaves[leaf] as TextLeaf).id, 'css-fonts-4 §5', m.reason);
     total = add(total, m.measure.width);
   }
@@ -162,7 +174,7 @@ function cachedWidth(ctx: Ctx, run: Run, start: number, end: number): LU {
     let last = first;
     while (i < end && (run.chars[i] as Char).leaf === first.leaf) last = run.chars[i++] as Char;
     const t = run.leaves[first.leaf] as TextLeaf;
-    const m = ctx.measurer.measureRange(t.text, first.at, last.at + 1, t.font);
+    const m = ctx.measurer.measureRange(t.text, first.at, last.at + 1, leafFont(t));
     if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
     total = add(total, m.measure.width);
   }
@@ -172,7 +184,7 @@ function cachedWidth(ctx: Ctx, run: Run, start: number, end: number): LU {
 // css-text-3 §5: greedy line breaking at soft wrap opportunities; a segment wider than the line overflows it alone.
 export function breakLines(ctx: Ctx, run: Run, available: LU): Line[] {
   // Planted fault breakOffByOne: a line accepts one more glyph advance than fits, so breaks land one glyph late.
-  const glyph = ctx.measurer.measure('X', (run.leaves[0] as TextLeaf).font);
+  const glyph = ctx.measurer.measure('X', leafFont(run.leaves[0] as TextLeaf));
   const slack = ctx.faults.breakOffByOne && glyph.ok ? glyph.measure.width : ZERO;
   const lines: Line[] = [];
   let start = -1;

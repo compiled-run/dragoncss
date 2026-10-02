@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.t { width: 10px; height: 4px; margin-bottom: 1px; background-color: #ccc; }
+@media (width < 400px) { .a { width: 20px; } }
+@media (width <= 400px) { .b { width: 30px; } }
+@media (400px < width) { .c { width: 40px; } }
+@media (400px <= width) { .d { width: 50px; } }
+@media (390px < width < 410px) { .e { width: 60px; } }
+@media (410px <= width <= 500px) { .f { width: 70px; } }
+@media (width = 400px) { .g { width: 80px; } }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="t a"></div>
+<div data-dragon-id="b" class="t b"></div>
+<div data-dragon-id="c" class="t c"></div>
+<div data-dragon-id="d" class="t d"></div>
+<div data-dragon-id="e" class="t e"></div>
+<div data-dragon-id="f" class="t f"></div>
+<div data-dragon-id="g" class="t g"></div>
+</body>
+</html>

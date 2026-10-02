@@ -17,11 +17,12 @@ Each `<case>.json` here is one passing parity case, written only by `pnpm run la
 Every field is required and there are no defaults: the compiler writes every value, and `validateLayoutInput` rejects a missing key, an extra key, an unknown tag or a non-finite number.
 
 - `viewport` `{ width, height }` in CSS px, the initial containing block. `devicePixelRatio`: border widths snap to whole device px.
+- The environment (V2 of the value model): `viewportUnits` `{ small, large, dynamic }`, each a `{ width, height }` in CSS px that viewport units of that kind read (plain `vw` reads `large`); `safeArea` `{ top, right, bottom, left }` in CSS px, the insets `env(safe-area-inset-*)` reads; `rootFontSize`, the root element's specified font size in CSS px, which `rem` reads. The compiler writes the reference environment: every size the viewport, no safe area, and the root's font size at text scale 1; a host writes the device's.
 - `root`: a `LayoutBox` `{ kind: "box", id, boxType: "element" | "anonymous", style: LayoutStyle, children }`. Children are all boxes or all text leaves. The compiler wraps mixed text in anonymous boxes `<element>:anon<k>`; the engine never creates boxes.
 - `style` has all 42 `LayoutStyle` fields. Lengths are tagged `{ kind: "px", value }` (CSS px), `{ kind: "percent", value }` (100 is the whole basis), or keywords such as `{ kind: "auto" }`, `{ kind: "none" }`, `{ kind: "normal" }` and `{ kind: "content" }`, as each field allows. Enumerations are strings; flexGrow, flexShrink and order are numbers.
 - `aspectRatio` is `{ kind: "auto" }`, or Blink's layout ratio `{ kind: "ratio" | "auto-ratio", width, height }` in raw LayoutUnit values (positive integers; `auto-ratio` is `auto && <ratio>`, which sizes the content box). A percentage height, min-height or max-height beside a ratio is refused.
 - The four border widths also take `{ kind: "device-px", value }`: an initial line width (no width declared, or a border shorthand that omits it), which Chrome keeps in device px at every pixel ratio (rule R5 below).
-- A text leaf is `{ kind: "text", id: "<element>:text<k>", text, font: { family: "Ahem", size }, lineHeight, whiteSpaceCollapse: "collapse", textWrapMode }`. The text is already collapsed, and the leaf carries every inherited text property itself.
+- A text leaf is `{ kind: "text", id: "<element>:text<k>", text, font, lineHeight, whiteSpaceCollapse: "collapse", textWrapMode }`. The text is already collapsed, and the leaf carries every inherited text property itself. `font` is `{ family: "Ahem", size, specifiedSize, absoluteSize }`: `specifiedSize` is the specified font size as a calculation leaf or tree at zoom 1 (below), `absoluteSize` is false for a size derived through `em` or `%` from a keyword size (Chrome's 6px minimum logical font size applies to it), and `size` is the computed size the compiler found at the reference environment, which the environment pass recomputes. `lineHeight` is `normal`, a `number`, `px`, a `percent` of the font size, or a `calc`.
 - Ids are unique. Parents come before children, and children are in document order. `order` and the reverse flex directions are applied by the engine, never by reordering the input.
 
 ## Output (`LayoutRect[]`)
@@ -43,6 +44,27 @@ Input:
   "height": 300
  },
  "devicePixelRatio": 1,
+ "viewportUnits": {
+  "small": {
+   "width": 400,
+   "height": 300
+  },
+  "large": {
+   "width": 400,
+   "height": 300
+  },
+  "dynamic": {
+   "width": 400,
+   "height": 300
+  }
+ },
+ "safeArea": {
+  "top": 0,
+  "right": 0,
+  "bottom": 0,
+  "left": 0
+ },
+ "rootFontSize": 16,
  "root": {
   "kind": "box",
   "id": "html",
@@ -276,7 +298,12 @@ Input:
       "text": "AB CD",
       "font": {
        "family": "Ahem",
-       "size": 10
+       "size": 10,
+       "specifiedSize": {
+        "kind": "px",
+        "value": 10
+       },
+       "absoluteSize": true
       },
       "lineHeight": {
        "kind": "normal"
@@ -342,7 +369,7 @@ Output with measurer `ahem/darwin-arm64`:
 
 Native lanes run at DPR 2 and 3 on both platforms, and at 2.625 on Android as a named extra (never a substitute). Chrome is captured at those ratios with `--force-device-scale-factor=N` and a context `deviceScaleFactor` of N (`pnpm run parity:dpr-capture`, into `packages/parity/expected-dpr/<platform>/dpr-<N>`), guarded by a zoom check: a 0.5px border must compute to 0.5px, 0.333333px and 0.380952px.
 
-**The zoom model** (`layout.ts` `zoomInput`). At DPR N the engine multiplies every CSS length by N on entry (`zoomCssPx`, in double), computes font sizes as `fround(fround(size) * N)` (`zoomFontSize`), applies the font rules to the zoomed size, and lays out in zoomed px with `devicePixelRatio` 1, so borders snap to whole zoomed px. A zoomed px is a device px: output LU are 1/64 device px, and CSS px = LU / (64 * N). At DPR 1 an input with no calculation is used as given, so the model is the identity. A `device-px` border width is not multiplied.
+**The zoom model** (`layout.ts` `zoomInput`). At DPR N the engine multiplies every CSS length by N on entry (`zoomCssPx`, in double), computes font sizes as `fround(fround(size) * N)` (`zoomFontSize`), applies the font rules to the zoomed size, and lays out in zoomed px with `devicePixelRatio` 1, so borders snap to whole zoomed px. A zoomed px is a device px: output LU are 1/64 device px, and CSS px = LU / (64 * N). At DPR 1 an input with no calculation and no font to resolve is used as given, so the model is the identity. A `device-px` border width is not multiplied.
 
 **The five engine rules** (Chrome 145.0.7632.6, notes/T010-p2-triage.md), applied at every DPR, DPR 1 included:
 
@@ -359,6 +386,15 @@ Native lanes run at DPR 2 and 3 on both platforms, and at 2.625 on Android as a 
 - a calculation with no percentage is evaluated in double and stored as a float `px`; one whose only dimension is a percentage becomes a `percent`; any other becomes `{ "kind": "pixels-and-percent" }` when its sums and products by a number allow it, and otherwise a tree of `number` and `pixels-and-percent` leaves. The engine evaluates both at layout in float against the percentage basis (`calc.ts`); a percentage against an indefinite basis makes a height auto and a max none, and a min resolves against 0.
 
 - R6: viewport units read `float(ceil(w * N) / N)` CSS px, the whole device px window of R1 over the zoom (`viewportUnitBase`): at 2.625 a 300px viewport is 788 / 2.625 px for `vh`. It is registered in `src/platform-rules.ts` as the DPR platform rule `viewport-device-ceil`.
+
+**Fonts and font-relative lengths** (V2 of the value model, notes/T012-v2-spec.md; measured on the pinned Chrome, notes/T026-v2a-value-model.md). The pass also resolves every text run's font and the font-relative leaves:
+
+- more leaves: `viewport` names the viewport it reads (`size`: `small`, `large` or `dynamic`); `rem` is `value * float(rootFontSize * z)`; `env` is `value` times the inset of its `side`, a px literal as Blink substitutes it; `font-metric` (`ex`, `ch`, `cap`) and `lh` carry the font (and line height) they read;
+- a specified font size is evaluated at zoom 1 in CSS px and stored as a float: a length or a calculation without a percentage in double, clamped non-negative; `font-percent` is `float(value * parent / 100)` of the parent's specified size; `font-calc` evaluates its calculation, in float, against the parent's specified size. `em` reads the specified size of its `fontSize`, never the computed one;
+- the computed size is `float(specified * z)`, 0 below float epsilon, capped at 10000px, and at least 6px when `absoluteSize` is false (Chrome's minimum logical font size);
+- `ex`, `ch` and `cap` are `metric / z * zoom` in float, the metric of the font instance at the truncated computed size: the x-height `float(size * float(xHeight / unitsPerEm))` (the bounds of glyph x), the cap height `float(size * capHeight / unitsPerEm)` and the advance of `0` (`fontMetricLengths`); inside a font size the zoom is 1 and the font is the parent's;
+- `lh` is the computed line height of its font over `z` times the zoom: `normal` is the rounded ascent + descent + line gap, a number is its percent of `LayoutUnit(computed size)` (truncated, unlike R3), a percentage is `float(float(size * int(percent)) / 100)`, and px or a calculation is its stored float;
+- a text run's `percent` or `calc` line height becomes `px` at the zoom (a calculation with a percentage resolves against `LayoutUnit(computed size)`).
 
 **Calc goldens.** `calc/<name>.json` has the four keys of a top-level vector: one engine vector per (verify) point of the value model (engine-value-model-plan.md §2), named in `test/calc.test.ts` and, where a values fixture holds the same element, checked against the Chrome capture in `packages/parity/test/values.test.ts`. They are hand-picked, not regenerated by `layout:vectors`.
 

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.c { width: 120px; border: 1px solid #000; padding: 2px 5px 2px 1px; margin-bottom: 3px; }
+.b { width: 70px; margin-inline-start: 4px; margin-bottom: 2px; }
+.h { writing-mode: horizontal-tb; }
+.lr { writing-mode: lr; }
+.lrtb { writing-mode: lr-tb; }
+.rl { writing-mode: rl; }
+.rltb { writing-mode: rl-tb; }
+.upper { writing-mode: LR-TB; }
+.inh { writing-mode: inherit; }
+.ini { writing-mode: lr; writing-mode: initial; }
+.uns { writing-mode: unset; }
+.rtl { direction: rtl; }
+.row { display: flex; width: 90px; column-gap: 2px; }
+.row > div { width: 20px; height: 8px; background-color: #888; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="c lr">
+<div data-dragon-id="a1" class="b h">XX XXX XX XX</div>
+<div data-dragon-id="a2" class="b lrtb">XX XXX XX XX</div>
+<div data-dragon-id="a3" class="b rl">XXX XX X</div>
+<div data-dragon-id="a4" class="b rltb">XX XX XXXX</div>
+<div data-dragon-id="a5" class="b upper">XX XXX</div>
+<div data-dragon-id="a6" class="b inh">XX XX XX XXX</div>
+<div data-dragon-id="a7" class="b ini">X XX</div>
+<div data-dragon-id="a8" class="b uns">XX XX</div>
+<div data-dragon-id="a9" class="row rl"><div data-dragon-id="a9a"></div><div data-dragon-id="a9b" class="lrtb"></div></div>
+</div>
+<div data-dragon-id="c2" class="c rl rtl">
+<div data-dragon-id="b1" class="b">XX XXX XX XX</div>
+<div data-dragon-id="b2" class="b lr">XXX XX X</div>
+<div data-dragon-id="b3" class="row"><div data-dragon-id="b3a" class="rltb"></div><div data-dragon-id="b3b"></div></div>
+</div>
+</body>
+</html>

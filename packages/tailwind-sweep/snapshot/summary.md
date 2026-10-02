@@ -6,7 +6,7 @@
 |---|---:|---:|---:|---:|
 | web | 2216 (9.5%) | 21069 (90.5%) | 1 | 0 |
 | ios | 2216 (9.5%) | 21069 (90.5%) | 1 | 0 |
-| android | 0 (0.0%) | 23285 (100.0%) | 1 | 0 |
+| android | 2216 (9.5%) | 21069 (90.5%) | 1 | 0 |
 
 As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 and android 0 of 23286 utilities.
 
@@ -14,14 +14,14 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 
 | category | utilities | web | ios | android |
 |---|---:|---|---|---|
-| layout | 1551 | 45 / 1506 / 0 / 0 | 45 / 1506 / 0 / 0 | 0 / 1551 / 0 / 0 |
-| flexbox-grid | 513 | 139 / 373 / 1 / 0 | 139 / 373 / 1 / 0 | 0 / 512 / 1 / 0 |
-| spacing | 1308 | 973 / 335 / 0 / 0 | 973 / 335 / 0 / 0 | 0 / 1308 / 0 / 0 |
-| sizing | 1015 | 899 / 116 / 0 / 0 | 899 / 116 / 0 / 0 | 0 / 1015 / 0 / 0 |
-| typography | 261 | 21 / 240 / 0 / 0 | 21 / 240 / 0 / 0 | 0 / 261 / 0 / 0 |
-| colours | 14842 | 70 / 14772 / 0 / 0 | 70 / 14772 / 0 / 0 | 0 / 14842 / 0 / 0 |
+| layout | 1551 | 45 / 1506 / 0 / 0 | 45 / 1506 / 0 / 0 | 45 / 1506 / 0 / 0 |
+| flexbox-grid | 513 | 139 / 373 / 1 / 0 | 139 / 373 / 1 / 0 | 139 / 373 / 1 / 0 |
+| spacing | 1308 | 973 / 335 / 0 / 0 | 973 / 335 / 0 / 0 | 973 / 335 / 0 / 0 |
+| sizing | 1015 | 899 / 116 / 0 / 0 | 899 / 116 / 0 / 0 | 899 / 116 / 0 / 0 |
+| typography | 261 | 21 / 240 / 0 / 0 | 21 / 240 / 0 / 0 | 21 / 240 / 0 / 0 |
+| colours | 14842 | 70 / 14772 / 0 / 0 | 70 / 14772 / 0 / 0 | 70 / 14772 / 0 / 0 |
 | backgrounds | 151 | 0 / 151 / 0 / 0 | 0 / 151 / 0 / 0 | 0 / 151 / 0 / 0 |
-| borders | 250 | 69 / 181 / 0 / 0 | 69 / 181 / 0 / 0 | 0 / 250 / 0 / 0 |
+| borders | 250 | 69 / 181 / 0 / 0 | 69 / 181 / 0 / 0 | 69 / 181 / 0 / 0 |
 | effects | 1178 | 0 / 1178 / 0 / 0 | 0 / 1178 / 0 / 0 | 0 / 1178 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 | 0 / 134 / 0 / 0 | 0 / 134 / 0 / 0 |
 | tables | 111 | 0 / 111 / 0 / 0 | 0 / 111 / 0 / 0 | 0 / 111 / 0 / 0 |
@@ -40,11 +40,11 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | `property box-shadow` | 1489 | 1489 | 1489 | 8 |
 | `property background-image` | 964 | 964 | 964 | 8 |
 | `property scrollbar-color` | 582 | 582 | 582 | 2 |
-| `unproven context top:<calc()>` | 468 | 468 | 0 | 8 |
+| `unproven context top:<calc()>` | 468 | 468 | 468 | 8 |
 | `property translate` | 444 | 444 | 444 | 24 |
 | `property filter` | 351 | 351 | 351 | 10 |
-| `unproven context right:<calc()>` | 351 | 351 | 0 | 6 |
-| `profile margin-bottom:<calc()>` | 329 | 329 | 130 | 13 |
+| `unproven context right:<calc()>` | 351 | 351 | 351 | 6 |
+| `profile margin-bottom:<calc()>` | 329 | 329 | 329 | 13 |
 | `property text-shadow` | 298 | 298 | 298 | 2 |
 | `property accent-color` | 292 | 292 | 292 | 2 |
 | `property fill` | 292 | 292 | 292 | 2 |
@@ -53,12 +53,12 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | `property outline-color` | 291 | 291 | 291 | 1 |
 | `property text-decoration-color` | 291 | 291 | 291 | 1 |
 | `selector pseudo-element ::placeholder` | 291 | 291 | 291 | 1 |
-| `unproven context bottom:<calc()>` | 234 | 234 | 0 | 4 |
-| `unproven context left:<calc()>` | 234 | 234 | 0 | 4 |
+| `unproven context bottom:<calc()>` | 234 | 234 | 234 | 4 |
+| `unproven context left:<calc()>` | 234 | 234 | 234 | 4 |
 | `property border-spacing` | 105 | 105 | 105 | 6 |
 | `property transform` | 94 | 94 | 94 | 16 |
 | `property scale` | 90 | 90 | 90 | 10 |
-| `unproven context flex-basis:<calc()>` | 84 | 84 | 0 | 2 |
+| `unproven context flex-basis:<calc()>` | 84 | 84 | 84 | 2 |
 | `property -webkit-backdrop-filter` | 74 | 74 | 74 | 9 |
 | `property scroll-margin` | 70 | 70 | 70 | 4 |
 | `property scroll-margin-block` | 70 | 70 | 70 | 4 |
@@ -72,6 +72,6 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | `property scroll-margin-right` | 70 | 70 | 70 | 4 |
 | `property scroll-margin-top` | 70 | 70 | 70 | 4 |
 | `property text-indent` | 70 | 70 | 70 | 4 |
-| `unproven context row-gap:<calc()>` | 64 | 64 | 0 | 2 |
+| `unproven context row-gap:<calc()>` | 64 | 64 | 64 | 2 |
 | `value calc()` | 52 | 52 | 52 | 4 |
-| `profile line-height:<refused calc()>` | 40 | 40 | 32 | 2 |
+| `profile line-height:<refused calc()>` | 40 | 40 | 40 | 2 |

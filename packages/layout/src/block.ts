@@ -73,6 +73,20 @@ export type EngineFaults = {
   readonly calcLeafUnzoomed: boolean;
   /** Viewport units read the CSS viewport instead of the whole device-px window over the zoom (R6 off). */
   readonly viewportUnitsUnceiled: boolean;
+  /** lh of a number line height uses the computed font size and product in float, without Blink's LayoutUnit truncation. */
+  readonly lhUnsnapped: boolean;
+  /** ex, ch and cap read the font at its computed size instead of the truncated instance size (platformFontSize). */
+  readonly exUntruncatedFontSize: boolean;
+  /** rem reads the initial 16px instead of the input's rootFontSize. */
+  readonly rootFontSizeIgnored: boolean;
+  /** env(safe-area-inset-*) reads 0 instead of the input's safe-area insets. */
+  readonly safeAreaIgnored: boolean;
+  /** lh of line-height normal sums the unrounded ascent, descent and line gap instead of the rounded line spacing. */
+  readonly lhNormalUnrounded: boolean;
+  /** Small and dynamic viewport units read the large viewport. */
+  readonly viewportSizeKindIgnored: boolean;
+  /** A font size that is not absolute ignores Chrome's minimum logical font size (6px). */
+  readonly minimumFontSizeIgnored: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -99,6 +113,13 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   divideDirect: false,
   calcLeafUnzoomed: false,
   viewportUnitsUnceiled: false,
+  lhUnsnapped: false,
+  exUntruncatedFontSize: false,
+  rootFontSizeIgnored: false,
+  safeAreaIgnored: false,
+  lhNormalUnrounded: false,
+  viewportSizeKindIgnored: false,
+  minimumFontSizeIgnored: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };

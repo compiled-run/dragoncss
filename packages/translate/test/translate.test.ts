@@ -149,7 +149,8 @@ describe('differential corpus (native-strategy.md 1.7)', () => {
   it('matches the committed seed, sizes and digest; at least 50% of the engine corpus lays out ok', () => {
     expect(c.digest).toBe(lockedDigest());
     const n = Object.fromEntries(c.suites.map((s) => [s.name, s.lines.length]));
-    expect(n).toEqual({ vectors: 258, units: 320000, engine: 20258, library: 22000 });
+    // ANIM-a2 appends the rt suite (one line per rt vector record); the four P1 suites keep their sizes.
+    expect(n).toEqual({ vectors: 258, units: 320000, engine: 20258, library: 22000, rt: 54588 });
     expect(c.engineSplit.ok / 20258).toBeGreaterThanOrEqual(0.5);
     expect(c.engineSplit.threw + c.engineSplit.harnessError).toBe(0);
   });
@@ -168,5 +169,26 @@ describe('differential corpus (native-strategy.md 1.7)', () => {
       const boxes = r[2].map(([id, parent, x, y, w, h]) => ({ id, parent, x: hexBits(x), y: hexBits(y), width: hexBits(w), height: hexBits(h) }));
       expect(boxes, v.file).toEqual(v.output);
     });
+  });
+});
+
+describe('the harness decodes a calculated line height only with the non-negative range (CSS2 §10.8.1)', () => {
+  it('lays out range non-negative and reports a harness error for range all', async () => {
+    const { runEngineCase } = await import('../harness/harness.ts');
+    const { NO_ENGINE_FAULTS } = await import('../../layout/src/block.ts');
+    const v = JSON.parse(readFileSync(join(import.meta.dirname, '../../layout/vectors/phrasing-blockified-abspos.json'), 'utf8')) as { platform: string; input: unknown };
+    const withLineHeight = (range: string): string => {
+      const input = JSON.parse(JSON.stringify(v.input)) as unknown;
+      let set = 0;
+      const walk = (n: { kind: string; lineHeight?: unknown; children?: unknown[] }): void => {
+        if (n.kind === 'text') { n.lineHeight = { kind: 'calc', expr: { kind: 'px', value: 12 }, range }; set++; }
+        for (const c of n.children ?? []) walk(c as never);
+      };
+      walk((input as { root: never }).root);
+      expect(set).toBeGreaterThan(0);
+      return JSON.stringify({ platform: v.platform, faults: NO_ENGINE_FAULTS, input });
+    };
+    expect(runEngineCase(withLineHeight('non-negative'))).toMatch(/^\["ok",/);
+    expect(runEngineCase(withLineHeight('all'))).toMatch(/^\["harness-error",".*range/);
   });
 });

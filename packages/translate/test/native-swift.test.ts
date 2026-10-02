@@ -14,7 +14,9 @@ describe('Swift host run (native:swift)', () => {
       expect(swiftTool()).toBeNull();
       return;
     }
-    expect(r.suites.map((s) => `${s.name} ${s.pass}/${s.total}`)).toEqual(['vectors 258/258', 'units 320000/320000', 'engine 20258/20258', 'library 22000/22000']);
+    // A suite that timed out, crashed or wrote a short result fails here with its cause (exit, signal, stderr tail), not only a count.
+    expect(r.suites.filter((s) => s.cause !== null).map((s) => `${s.name}: ${s.cause}`)).toEqual([]);
+    expect(r.suites.map((s) => `${s.name} ${s.pass}/${s.total}`)).toEqual(['vectors 258/258', 'units 320000/320000', 'engine 20258/20258', 'library 22000/22000', 'rt 54588/54588']);
     expect(r.status).toBe('pass');
   }, 600_000);
 });

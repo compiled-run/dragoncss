@@ -197,8 +197,9 @@ describe('(f4) Node consumer and (f5) publish shape of the packed dragon tarball
     expect(packed.length).toBeGreaterThan(40);
     expect(readFileSync(join(pkgDir, 'README.md'), 'utf8')).toBe(readFileSync(repoPath('README.md'), 'utf8'));
     expect(readFileSync(join(pkgDir, 'LICENSE'), 'utf8')).toBe(readFileSync(repoPath('LICENSE'), 'utf8'));
+    expect(readFileSync(join(pkgDir, 'THIRD_PARTY_NOTICES.md'), 'utf8')).toBe(readFileSync(repoPath('THIRD_PARTY_NOTICES.md'), 'utf8'));
     for (const f of packed) {
-      expect(f, f).toMatch(/^(package\.json|README\.md|LICENSE|build\/.+\.(js|d\.ts))$/);
+      expect(f, f).toMatch(/^(package\.json|README\.md|LICENSE|THIRD_PARTY_NOTICES\.md|build\/.+\.(js|d\.ts))$/);
       expect(f, f).not.toMatch(/internal|\.test\.|test\//);
       expect(readFileSync(join(pkgDir, f), 'utf8'), f).not.toMatch(/dragon-internal|internal\.ts/);
     }

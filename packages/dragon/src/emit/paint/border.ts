@@ -1,5 +1,6 @@
 // The four border sides: Dragon-owned paint on the box view (the border stage). Widths come from the engine at the device scale
-// through the after-layout hook; styles and colours are written by the case code through the view's public setters.
+// through the after-layout hook; styles and colours are written by the case code through the view's public setters. A box with a
+// visible dashed or dotted side is drawn from the translated paint-dash.ts operations (Blink 145's side painter in device px).
 import type { PaintEmitter } from './types.ts';
 import { keywordLit, NO_NATIVE_PAINT, rgbaLit } from './types.ts';
 
@@ -11,8 +12,13 @@ const SWIFT_MEMBERS = String.raw`  /// Points, top right bottom left: the engine
 
 const SWIFT = String.raw`import UIKit
 
-/// The border stage: the four sides over the box's bounds.
+/// The planted dash faults: none, except in the dash-phase-1 and dash-gap-unfitted raster plant builds (P6a).
+public let dragonDashFaults = DashFaults(false, false)
+
+/// The border stage: a box with a visible dashed or dotted side is drawn by Blink's side painter (paint-dash.ts), every other box
+/// by the band painter.
 public func dragonPaintBorderStage(_ v: DragonBoxView, _ ctx: CGContext, _ shape: DragonBoxShape) {
+  if dragonDrawBorderOps(ctx, shape, CGFloat(v.dragonScale), v.dragonBorderStyles, v.dragonBorderColors, v.dragonId) { return }
   dragonDrawBorders(ctx, v.bounds, v.dragonBorderWidths.map { CGFloat($0) }, v.dragonBorderStyles, v.dragonBorderColors)
 }
 
@@ -30,9 +36,70 @@ public func dragonAppliedBorder(_ v: DragonBoxView) -> DumpJsonObject {
   ]
 }
 
-/// Dragon-owned border paint: each side is the trapezoid between the outer and inner edges (corners join on the diagonal);
-/// solid fills it, double fills its outer and inner thirds, dashed strokes dashes of 3 times the width with equal gaps along its
-/// middle, dotted strokes round dots of the width with gaps of the width.
+/// A polygon path from x, y pairs in device px.
+func dragonPolygon(_ pts: [Double]) -> CGPath {
+  let path = CGMutablePath()
+  path.addLines(between: stride(from: 0, to: pts.count - 1, by: 2).map { CGPoint(x: pts[$0], y: pts[$0 + 1]) })
+  path.closeSubpath()
+  return path
+}
+
+/// Draws the border operations of paint-dash.ts in device px (the box's absolute snapped edges) when a visible side is dashed
+/// or dotted; false for every other box.
+public func dragonDrawBorderOps(_ ctx: CGContext, _ shape: DragonBoxShape, _ scale: CGFloat, _ styles: [String], _ colors: [DragonRGBA8], _ id: String) -> Bool {
+  let widths = JsArray<Double>(shape.borders)
+  let st = JsArray<JsString>(styles.map { JsString($0) })
+  let cs = JsArray<Double>(colors.flatMap { [Double($0.r), Double($0.g), Double($0.b), Double($0.a)] })
+  let ops: JsArray<BorderOp>
+  do {
+    if !(try paintDash_borderNeedsSidePainter(widths, st, cs)) { return false }
+    ops = try paintDash_borderPaintOps(shape.edges[0], shape.edges[1], shape.edges[2], shape.edges[3], widths, st, cs, dragonDashFaults)
+  } catch {
+    fatalError("dragon: \(id): the border side painter threw \(error)")
+  }
+  ctx.saveGState()
+  ctx.scaleBy(x: 1 / scale, y: 1 / scale)
+  ctx.translateBy(x: CGFloat(-shape.edges[0]), y: CGFloat(-shape.edges[1]))
+  for o in ops.items {
+    let pts = o.points.items
+    switch o.op.description {
+    case "begin-layer":
+      ctx.saveGState()
+      ctx.setAlpha(CGFloat(o.alpha))
+      ctx.beginTransparencyLayer(auxiliaryInfo: nil)
+    case "end-layer":
+      ctx.endTransparencyLayer()
+      ctx.restoreGState()
+    case "save":
+      ctx.saveGState()
+    case "restore":
+      ctx.restoreGState()
+    case "clip":
+      ctx.setShouldAntialias(o.antialias)
+      ctx.addPath(dragonPolygon(pts))
+      ctx.clip()
+      ctx.setShouldAntialias(true)
+    case "fill", "dot":
+      let c = colors[Int(o.side)]
+      ctx.setFillColor(UIColor(red: CGFloat(c.r) / 255, green: CGFloat(c.g) / 255, blue: CGFloat(c.b) / 255, alpha: CGFloat(o.alpha)).cgColor)
+      ctx.setShouldAntialias(o.antialias)
+      if o.op.description == "fill" {
+        ctx.addPath(dragonPolygon(pts))
+        ctx.fillPath()
+      } else {
+        ctx.fillEllipse(in: CGRect(x: pts[0] - pts[2], y: pts[1] - pts[2], width: 2 * pts[2], height: 2 * pts[2]))
+      }
+      ctx.setShouldAntialias(true)
+    default:
+      fatalError("dragon: \(id): unknown border operation \(o.op)")
+    }
+  }
+  ctx.restoreGState()
+  return true
+}
+
+/// The band painter for boxes without a visible dashed or dotted side: each side is the trapezoid between the outer and inner
+/// edges (corners join on the diagonal); solid fills it, double fills its outer and inner thirds.
 public func dragonDrawBorders(_ ctx: CGContext, _ o: CGRect, _ w: [CGFloat], _ styles: [String], _ colors: [DragonRGBA8]) {
   let i = CGRect(x: o.minX + w[3], y: o.minY + w[0], width: o.width - w[3] - w[1], height: o.height - w[0] - w[2])
   let quads: [[CGPoint]] = [
@@ -51,9 +118,7 @@ public func dragonDrawBorders(_ ctx: CGContext, _ o: CGRect, _ w: [CGFloat], _ s
     path.closeSubpath()
     ctx.addPath(path)
     ctx.clip()
-    let color = dragonUIColor(colors[k]).cgColor
-    ctx.setFillColor(color)
-    ctx.setStrokeColor(color)
+    ctx.setFillColor(dragonUIColor(colors[k]).cgColor)
     let third = width / 3
     // The band of side k at depth d from the outer edge with thickness t.
     func band(_ d: CGFloat, _ t: CGFloat) -> CGRect {
@@ -69,18 +134,7 @@ public func dragonDrawBorders(_ ctx: CGContext, _ o: CGRect, _ w: [CGFloat], _ s
       ctx.fill(band(0, third))
       ctx.fill(band(width - third, third))
     case "dashed", "dotted":
-      let mid = band(width / 2, 0)
-      let a = k == 0 || k == 2 ? CGPoint(x: mid.minX, y: mid.minY) : CGPoint(x: mid.minX, y: mid.minY)
-      let b = k == 0 || k == 2 ? CGPoint(x: mid.maxX, y: mid.minY) : CGPoint(x: mid.minX, y: mid.maxY)
-      ctx.setLineWidth(width)
-      if style == "dashed" {
-        ctx.setLineCap(.butt)
-        ctx.setLineDash(phase: 0, lengths: [3 * width, 3 * width])
-      } else {
-        ctx.setLineCap(.round)
-        ctx.setLineDash(phase: 0, lengths: [0, 2 * width])
-      }
-      ctx.strokeLineSegments(between: [a, b])
+      fatalError("dragon: a visible \(style) side reached the band painter")
     default:
       ctx.fill(o)
     }
@@ -101,14 +155,23 @@ const KOTLIN_MEMBERS = String.raw`  /** Whole device px, top right bottom left, 
 const KOTLIN = String.raw`package dev.dragon.views
 
 import android.graphics.Canvas
-import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import dev.dragon.dump.DumpJson
+import dev.dragon.layout.BorderOp
+import dev.dragon.layout.DashFaults
+import dev.dragon.layout.JsArray
+import dev.dragon.layout.paintDash_borderNeedsSidePainter
+import dev.dragon.layout.paintDash_borderPaintOps
+import kotlin.math.roundToInt
 
-/** The border stage: the four sides over the box's size. */
+/** The planted dash faults: none, except in the dash-phase-1 and dash-gap-unfitted raster plant builds (P6a). */
+val DRAGON_DASH_FAULTS = DashFaults(false, false)
+
+/** The border stage: a box with a visible dashed or dotted side is drawn by Blink's side painter (paint-dash.ts), every other box by the band painter. */
 fun dragonPaintBorderStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShape) {
+  if (dragonDrawBorderOps(canvas, shape, v.dragonBorderStyles, v.dragonBorderColors, v.dragonId)) return
   dragonDrawBorders(canvas, v.width.toFloat(), v.height.toFloat(), v.dragonBorderWidths, v.dragonBorderStyles, v.dragonBorderColors)
 }
 
@@ -125,10 +188,62 @@ fun dragonAppliedBorder(v: DragonBoxView): List<Pair<String, DumpJson>> = listOf
   Pair("dragonBorder.colors", DumpJson.Arr(v.dragonBorderColors.map { dragonRGBAJson(it) })),
 )
 
+/** A polygon path from x, y pairs in device px. */
+fun dragonPolygon(pts: List<Double>): Path {
+  val path = Path()
+  path.moveTo(pts[0].toFloat(), pts[1].toFloat())
+  var k = 2
+  while (k + 1 < pts.size) {
+    path.lineTo(pts[k].toFloat(), pts[k + 1].toFloat())
+    k += 2
+  }
+  path.close()
+  return path
+}
+
 /**
- * Dragon-owned border paint: each side is the trapezoid between the outer and inner edges (corners join on the diagonal); solid
- * fills it, double fills its outer and inner thirds, dashed strokes dashes of 3 times the width with equal gaps along its middle,
- * dotted strokes round dots of the width with gaps of the width.
+ * Draws the border operations of paint-dash.ts in device px (the box's absolute snapped edges) when a visible side is dashed or
+ * dotted; false for every other box.
+ */
+fun dragonDrawBorderOps(canvas: Canvas, shape: DragonBoxShape, styles: Array<String>, colors: Array<DragonRGBA8>, id: String): Boolean {
+  val widths = JsArray<Double>(shape.borders.toList())
+  val st = JsArray<String>(styles.toList())
+  val cs = JsArray<Double>(colors.flatMap { listOf(it.r.toDouble(), it.g.toDouble(), it.b.toDouble(), it.a.toDouble()) })
+  val ops: JsArray<BorderOp>
+  try {
+    if (!paintDash_borderNeedsSidePainter(widths, st, cs)) return false
+    ops = paintDash_borderPaintOps(shape.edges[0], shape.edges[1], shape.edges[2], shape.edges[3], widths, st, cs, DRAGON_DASH_FAULTS)
+  } catch (e: Exception) {
+    throw IllegalStateException("dragon: " + id + ": the border side painter threw " + e.message, e)
+  }
+  canvas.save()
+  canvas.translate((-shape.edges[0]).toFloat(), (-shape.edges[1]).toFloat())
+  for (o in ops) {
+    val pts = o.points
+    when (o.op) {
+      "begin-layer" -> canvas.saveLayerAlpha(null, (o.alpha * 255.0).roundToInt())
+      "end-layer", "restore" -> canvas.restore()
+      "save" -> canvas.save()
+      "clip" -> canvas.clipPath(dragonPolygon(pts))
+      "fill", "dot" -> {
+        val c = colors[o.side.toInt()]
+        val paint = Paint()
+        paint.isAntiAlias = o.antialias
+        paint.style = Paint.Style.FILL
+        paint.color = dragonArgb(DragonRGBA8(c.r, c.g, c.b, 255))
+        paint.alpha = (o.alpha * 255.0).roundToInt()
+        if (o.op == "fill") canvas.drawPath(dragonPolygon(pts), paint) else canvas.drawCircle(pts[0].toFloat(), pts[1].toFloat(), pts[2].toFloat(), paint)
+      }
+      else -> throw IllegalStateException("dragon: " + id + ": unknown border operation " + o.op)
+    }
+  }
+  canvas.restore()
+  return true
+}
+
+/**
+ * The band painter for boxes without a visible dashed or dotted side: each side is the trapezoid between the outer and inner edges
+ * (corners join on the diagonal); solid fills it, double fills its outer and inner thirds.
  */
 fun dragonDrawBorders(canvas: Canvas, w: Float, h: Float, widths: IntArray, styles: Array<String>, colors: Array<DragonRGBA8>) {
   val t = widths[0].toFloat()
@@ -160,31 +275,14 @@ fun dragonDrawBorders(canvas: Canvas, w: Float, h: Float, widths: IntArray, styl
       2 -> RectF(0f, h - d - th, w, h - d)
       else -> RectF(d, 0f, d + th, h)
     }
+    paint.style = Paint.Style.FILL
     when (style) {
       "double" -> {
-        paint.style = Paint.Style.FILL
         canvas.drawRect(band(0f, third), paint)
         canvas.drawRect(band(width - third, third), paint)
       }
-      "dashed", "dotted" -> {
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = width
-        val m = band(width / 2f, 0f)
-        if (style == "dashed") {
-          paint.strokeCap = Paint.Cap.BUTT
-          paint.pathEffect = DashPathEffect(floatArrayOf(3f * width, 3f * width), 0f)
-        } else {
-          paint.strokeCap = Paint.Cap.ROUND
-          paint.pathEffect = DashPathEffect(floatArrayOf(0.001f, 2f * width), 0f)
-        }
-        val line = Path()
-        if (k == 0 || k == 2) { line.moveTo(m.left, m.top); line.lineTo(m.right, m.top) } else { line.moveTo(m.left, m.top); line.lineTo(m.left, m.bottom) }
-        canvas.drawPath(line, paint)
-      }
-      else -> {
-        paint.style = Paint.Style.FILL
-        canvas.drawRect(0f, 0f, w, h, paint)
-      }
+      "dashed", "dotted" -> throw IllegalStateException("dragon: a visible " + style + " side reached the band painter")
+      else -> canvas.drawRect(0f, 0f, w, h, paint)
     }
     canvas.restore()
   }
@@ -231,5 +329,8 @@ export const BORDER_EMITTER: PaintEmitter<'border-widths' | 'border-styles' | 'b
     uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, stages: { border: 'dragonPaintBorderStage' }, afterLayout: 'dragonAfterLayoutBorder', applied: 'dragonAppliedBorder' },
     'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS, file: KOTLIN, stages: { border: 'dragonPaintBorderStage' }, afterLayout: 'dragonAfterLayoutBorder', applied: 'dragonAppliedBorder' },
   },
-  plants: [],
+  plants: [
+    { name: 'dash-phase-1', replace: { uikit: ['DashFaults(false, false)', 'DashFaults(true, false)'], 'android-views': ['DashFaults(false, false)', 'DashFaults(true, false)'] } },
+    { name: 'dash-gap-unfitted', replace: { uikit: ['DashFaults(false, false)', 'DashFaults(false, true)'], 'android-views': ['DashFaults(false, false)', 'DashFaults(false, true)'] } },
+  ],
 };

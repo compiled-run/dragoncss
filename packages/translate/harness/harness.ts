@@ -15,6 +15,7 @@ import type {
   FlexBasisValue,
   FlexDirection,
   FlexWrap,
+  FontSpec,
   GapValue,
   InsetValue,
   JustifyContent,
@@ -22,6 +23,7 @@ import type {
   LayoutInput,
   LayoutStyle,
   LengthCalc,
+  LineHeightCalc,
   LineHeightValue,
   MarginValue,
   NaturalSizeValue,
@@ -33,15 +35,21 @@ import type {
   Overflow,
   PaddingValue,
   Position,
+  SafeAreaSide,
   SizeValue,
   TextAlign,
   TextLeaf,
   TextWrapMode,
+  ViewportLength,
+  ViewportSize,
+  Viewport,
 } from '../../layout/src/input.ts';
 import type { LayoutRect } from '../../layout/src/layout.ts';
 import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
 import { measurerFor } from '../../layout/src/platform.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
+import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
+import { borderNeedsSidePainter, borderPaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
 import type { DistributedMode, FactorSum, LU } from '../../layout/src/units.ts';
 import {
   cachedRangeWidth,
@@ -77,6 +85,12 @@ import {
   zoomFontSize,
   zoomViewportPx,
 } from '../../layout/src/units.ts';
+import type { EasingSpec, RtFaults, StepPosition } from '../../layout/src/rt-easing.ts';
+import { cubicBezier, easingFromSpec, solveBezier } from '../../layout/src/rt-easing.ts';
+import type { AnimatedValue, LegacyColor, LengthValue, TransformFn, TransformOp, Trig } from '../../layout/src/rt-interpolate.ts';
+import { interpolateValue, serializeValue } from '../../layout/src/rt-interpolate.ts';
+import type { EffectTimingSpec, FillMode, PlaybackDirection } from '../../layout/src/rt-timing.ts';
+import { computeTiming, currentTimeAt, seekPaused } from '../../layout/src/rt-timing.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
@@ -350,17 +364,38 @@ function calcExpr(v: JsonValue, path: string): CalcExpr {
   if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'number') return { kind: 'number', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'viewport') {
-    const o = obj(v, ['kind', 'value', 'axis'], path);
-    const axis = lit(field(o, 'axis', path), ['width', 'height', 'min', 'max'], `${path}.axis`);
-    const value = numField(o, 'value', path);
-    if (axis === 'width') return { kind: 'viewport', value, axis: 'width' };
-    if (axis === 'height') return { kind: 'viewport', value, axis: 'height' };
-    if (axis === 'min') return { kind: 'viewport', value, axis: 'min' };
-    return { kind: 'viewport', value, axis: 'max' };
+    const o = obj(v, ['kind', 'value', 'axis', 'size'], path);
+    return { kind: 'viewport', value: numField(o, 'value', path), axis: viewportAxis(field(o, 'axis', path), `${path}.axis`), size: viewportSize(field(o, 'size', path), `${path}.size`) };
   }
   if (k === 'em') {
     const o = obj(v, ['kind', 'value', 'fontSize'], path);
     return { kind: 'em', value: numField(o, 'value', path), fontSize: calcExpr(field(o, 'fontSize', path), `${path}.fontSize`) };
+  }
+  if (k === 'rem') return { kind: 'rem', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'font-metric') {
+    const o = obj(v, ['kind', 'value', 'metric', 'font'], path);
+    const m = lit(field(o, 'metric', path), ['ex', 'ch', 'cap'], `${path}.metric`);
+    const value = numField(o, 'value', path);
+    const font = fontSpec(field(o, 'font', path), `${path}.font`);
+    if (m === 'ex') return { kind: 'font-metric', value, metric: 'ex', font };
+    if (m === 'ch') return { kind: 'font-metric', value, metric: 'ch', font };
+    return { kind: 'font-metric', value, metric: 'cap', font };
+  }
+  if (k === 'lh') {
+    const o = obj(v, ['kind', 'value', 'font', 'lineHeight'], path);
+    return { kind: 'lh', value: numField(o, 'value', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+  }
+  if (k === 'env') {
+    const o = obj(v, ['kind', 'value', 'side'], path);
+    return { kind: 'env', value: numField(o, 'value', path), side: safeAreaSide(field(o, 'side', path), `${path}.side`) };
+  }
+  if (k === 'font-percent') {
+    const o = obj(v, ['kind', 'value', 'parent'], path);
+    return { kind: 'font-percent', value: numField(o, 'value', path), parent: calcExpr(field(o, 'parent', path), `${path}.parent`) };
+  }
+  if (k === 'font-calc') {
+    const o = obj(v, ['kind', 'expr', 'parent'], path);
+    return { kind: 'font-calc', expr: calcExpr(field(o, 'expr', path), `${path}.expr`), parent: calcExpr(field(o, 'parent', path), `${path}.parent`) };
   }
   if (k === 'sum') return { kind: 'sum', terms: calcTerms(obj(v, ['kind', 'terms'], path), path) };
   if (k === 'product') return { kind: 'product', terms: calcTerms(obj(v, ['kind', 'terms'], path), path) };
@@ -387,12 +422,50 @@ function calcExpr(v: JsonValue, path: string): CalcExpr {
   return fail(`${path}: unknown calculation kind ${k}`);
 }
 
+function viewportAxis(v: JsonValue, path: string): ViewportLength['axis'] {
+  const a = lit(v, ['width', 'height', 'min', 'max'], path);
+  if (a === 'width') return 'width';
+  if (a === 'height') return 'height';
+  if (a === 'min') return 'min';
+  return 'max';
+}
+
+function viewportSize(v: JsonValue, path: string): ViewportSize {
+  const a = lit(v, ['small', 'large', 'dynamic'], path);
+  if (a === 'small') return 'small';
+  if (a === 'large') return 'large';
+  return 'dynamic';
+}
+
+function safeAreaSide(v: JsonValue, path: string): SafeAreaSide {
+  const a = lit(v, ['top', 'right', 'bottom', 'left'], path);
+  if (a === 'top') return 'top';
+  if (a === 'right') return 'right';
+  if (a === 'bottom') return 'bottom';
+  return 'left';
+}
+
+/** A FontSpec {family, size, specifiedSize, absoluteSize}. */
+function fontSpec(v: JsonValue, path: string): FontSpec {
+  const o = obj(v, ['family', 'size', 'specifiedSize', 'absoluteSize'], path);
+  lit(field(o, 'family', path), ['Ahem'], `${path}.family`);
+  return { family: 'Ahem', size: numField(o, 'size', path), specifiedSize: calcExpr(field(o, 'specifiedSize', path), `${path}.specifiedSize`), absoluteSize: bool(field(o, 'absoluteSize', path), `${path}.absoluteSize`) };
+}
+
 /** A LengthCalc {kind: calc, expr, range}. */
 function lengthCalc(v: JsonValue, path: string): LengthCalc {
   const o = obj(v, ['kind', 'expr', 'range'], path);
   const expr = calcExpr(field(o, 'expr', path), `${path}.expr`);
   const range = lit(field(o, 'range', path), ['all', 'non-negative'], `${path}.range`);
   return range === 'all' ? { kind: 'calc', expr, range: 'all' } : { kind: 'calc', expr, range: 'non-negative' };
+}
+
+/** A LineHeightCalc {kind: calc, expr, range: non-negative}: line-height is non-negative. */
+function lineHeightCalc(v: JsonValue, path: string): LineHeightCalc {
+  const o = obj(v, ['kind', 'expr', 'range'], path);
+  const expr = calcExpr(field(o, 'expr', path), `${path}.expr`);
+  lit(field(o, 'range', path), ['non-negative'], `${path}.range`);
+  return { kind: 'calc', expr, range: 'non-negative' };
 }
 
 function sizeValue(v: JsonValue, path: string): SizeValue {
@@ -465,6 +538,8 @@ function flexBasisValue(v: JsonValue, path: string): FlexBasisValue {
 
 function lineHeightValue(v: JsonValue, path: string): LineHeightValue {
   const k = kindOf(v, path);
+  if (k === 'calc') return lineHeightCalc(v, path);
+  if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'number') return { kind: 'number', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'normal') {
@@ -551,14 +626,12 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
 
 function decodeText(o: JsonObj, path: string): TextLeaf {
   obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode'], path);
-  const font = obj(field(o, 'font', path), ['family', 'size'], `${path}.font`);
-  lit(field(font, 'family', `${path}.font`), ['Ahem'], `${path}.font.family`);
   lit(field(o, 'whiteSpaceCollapse', path), ['collapse'], `${path}.whiteSpaceCollapse`);
   return {
     kind: 'text',
     id: str(field(o, 'id', path), `${path}.id`),
     text: str(field(o, 'text', path), `${path}.text`),
-    font: { family: 'Ahem', size: numField(font, 'size', `${path}.font`) },
+    font: fontSpec(field(o, 'font', path), `${path}.font`),
     lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
     whiteSpaceCollapse: 'collapse',
     textWrapMode: lit(field(o, 'textWrapMode', path), ['wrap', 'nowrap'], `${path}.textWrapMode`) as TextWrapMode,
@@ -624,14 +697,27 @@ function decodeNode(v: JsonValue, path: string): LayoutBox | TextLeaf | Replaced
   return fail(`${path}: unknown node kind ${k}`);
 }
 
+function decodeViewport(v: JsonValue, path: string): Viewport {
+  const o = obj(v, ['width', 'height'], path);
+  return { width: numField(o, 'width', path), height: numField(o, 'height', path) };
+}
+
 function decodeInput(v: JsonValue): LayoutInput {
-  const o = obj(v, ['viewport', 'devicePixelRatio', 'root'], '$');
-  const vp = obj(field(o, 'viewport', '$'), ['width', 'height'], '$.viewport');
+  const o = obj(v, ['viewport', 'devicePixelRatio', 'viewportUnits', 'safeArea', 'rootFontSize', 'root'], '$');
+  const units = obj(field(o, 'viewportUnits', '$'), ['small', 'large', 'dynamic'], '$.viewportUnits');
+  const safe = obj(field(o, 'safeArea', '$'), ['top', 'right', 'bottom', 'left'], '$.safeArea');
   const root = field(o, 'root', '$');
   if (root.kind !== 'obj' || kindOf(root, '$.root') !== 'box') return fail('$.root: expected a box');
   return {
-    viewport: { width: numField(vp, 'width', '$.viewport'), height: numField(vp, 'height', '$.viewport') },
+    viewport: decodeViewport(field(o, 'viewport', '$'), '$.viewport'),
     devicePixelRatio: numField(o, 'devicePixelRatio', '$'),
+    viewportUnits: {
+      small: decodeViewport(field(units, 'small', '$.viewportUnits'), '$.viewportUnits.small'),
+      large: decodeViewport(field(units, 'large', '$.viewportUnits'), '$.viewportUnits.large'),
+      dynamic: decodeViewport(field(units, 'dynamic', '$.viewportUnits'), '$.viewportUnits.dynamic'),
+    },
+    safeArea: { top: numField(safe, 'top', '$.safeArea'), right: numField(safe, 'right', '$.safeArea'), bottom: numField(safe, 'bottom', '$.safeArea'), left: numField(safe, 'left', '$.safeArea') },
+    rootFontSize: numField(o, 'rootFontSize', '$'),
     root: decodeBox(root, '$.root'),
   };
 }
@@ -640,7 +726,8 @@ const FAULT_KEYS: readonly string[] = [
   'breakOffByOne', 'rtlAsLtr', 'ignoreOrder', 'baselineFromBorderTop', 'scrollMinAuto', 'absposInFlow', 'cbIgnoresPadding',
   'staticPosLtr', 'relativeShiftsFlow', 'metricHalfUp', 'untruncatedFontSize', 'halfLeadingSpec', 'minMaxEndMarginSpec',
   'wrapReverseBaselineSpec', 'initialLineWidthZoomed', 'calcPercentPlainOrder', 'calcDoubleEval', 'calcNoNonNegClamp',
-  'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled',
+  'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled', 'lhUnsnapped',
+  'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -670,6 +757,13 @@ function decodeFaults(v: JsonValue): EngineFaults {
     divideDirect: b('divideDirect'),
     calcLeafUnzoomed: b('calcLeafUnzoomed'),
     viewportUnitsUnceiled: b('viewportUnitsUnceiled'),
+    lhUnsnapped: b('lhUnsnapped'),
+    exUntruncatedFontSize: b('exUntruncatedFontSize'),
+    rootFontSizeIgnored: b('rootFontSizeIgnored'),
+    safeAreaIgnored: b('safeAreaIgnored'),
+    lhNormalUnrounded: b('lhNormalUnrounded'),
+    viewportSizeKindIgnored: b('viewportSizeKindIgnored'),
+    minimumFontSizeIgnored: b('minimumFontSizeIgnored'),
   };
 }
 
@@ -818,7 +912,38 @@ function unitsResult(name: string, a: readonly JsonValue[]): number {
  */
 function paintResult(name: string, a: readonly JsonValue[]): string | null {
   if (a.length === 0) return fail(`paint case ${name} has no name`);
+  if (name === 'paint:dash:selectBestDashGap') return `["ok",${h(selectBestDashGap(arg(a, 1), arg(a, 2), arg(a, 3)))}]`;
+  if (name === 'paint:dash:borderNeedsSidePainter') return `["ok",${borderNeedsSidePainter(bitsList(a, 1), strList(a, 2), bitsList(a, 3)) ? 'true' : 'false'}]`;
+  if (name === 'paint:dash:borderPaintOps') {
+    const faults: DashFaults = { phase1: flagAt(a, 8), gapUnfitted: flagAt(a, 9) };
+    return `["ok",[${commaList(borderPaintOps(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), bitsList(a, 5), strList(a, 6), bitsList(a, 7), faults).map(borderOpJson))}]]`;
+  }
   return null;
+}
+
+/** Argument i: an array of numbers as bit patterns. */
+function bitsList(a: readonly JsonValue[], i: number): number[] {
+  return arr(item(a, i, '$'), `$[${i}]`).map((v) => hexBits(str(v, `$[${i}]`)));
+}
+
+/** Argument i: an array of strings. */
+function strList(a: readonly JsonValue[], i: number): string[] {
+  return arr(item(a, i, '$'), `$[${i}]`).map((v) => str(v, `$[${i}]`));
+}
+
+function flagAt(a: readonly JsonValue[], i: number): boolean {
+  return bool(item(a, i, '$'), `$[${i}]`);
+}
+
+/** A border drawing operation: [op, side, alpha, antialias, [points]] with every number as bits. */
+function borderOpJson(o: BorderOp): string {
+  return `[${q(o.op)},${h(o.side)},${h(o.alpha)},${o.antialias ? 'true' : 'false'},[${commaList(o.points.map(h))}]]`;
+}
+
+function commaList(parts: readonly string[]): string {
+  let out = '';
+  for (const x of parts) out = out === '' ? x : `${out},${x}`;
+  return out;
 }
 
 /** One units case: ["name", arg bits...] in, the result bits out. */
@@ -952,6 +1077,18 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
       if (x === undefined || y === undefined) return fail('missing strings');
       return str(x, '$[1]') === str(y, '$[2]') ? 'true' : 'false';
     }
+    // rt suite (ANIM-a2, T047 section 3.2): the rt timing, easing, hold and interpolation reference on the rt vector inputs.
+    case 'rt-timing':
+      if (a.length !== 3) return fail('rt-timing: expected [op, timing, timeMs]');
+      return rtTimingResult(rtTimingSpec(item(a, 1, '$'), '$[1]'), rtFinite(a, 2, '$'), 0);
+    case 'rt-hold':
+      if (a.length !== 4) return fail('rt-hold: expected [op, timing, timeMs, elapsedSeconds]');
+      return rtTimingResult(rtTimingSpec(item(a, 1, '$'), '$[1]'), rtFinite(a, 2, '$'), rtFinite(a, 3, '$'));
+    case 'rt-easing':
+      if (a.length !== 3) return fail('rt-easing: expected [op, easing, timeMs]');
+      return rtTimingResult(rtOneIteration(rtEasing(item(a, 1, '$'), '$[1]')), rtFinite(a, 2, '$'), 0);
+    case 'rt-interp':
+      return rtInterpResult(a);
     default:
       return fail(`unknown operation ${op}`);
   }
@@ -973,4 +1110,234 @@ export function runLibraryCase(line: string): string {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
   }
+}
+
+// ---------------------------------------------------------------- rt suite (ANIM-a2)
+
+/** The rt reference runs with no planted fault: the rt faults are proven against the Chrome oracle in TypeScript (ANIM-a). */
+const RT_NO_FAULTS: RtFaults = {
+  newtonIterations3: false,
+  epsilon1e6: false,
+  noSplineGuess: false,
+  stepsIgnoreBeforeFlag: false,
+  rotateViaMatrix: false,
+  colorUnpremultiplied: false,
+  holdTimeLost: false,
+};
+
+/**
+ * A finite rt number argument: the rt reference loops (fmod's doubling, the timing phases) assume finite inputs, so NaN or an
+ * infinity is a harness error, never a computation (Macroscope 4153809247).
+ */
+function rtFinite(a: readonly JsonValue[], i: number, path: string): number {
+  const v = arg(a, i);
+  if (!Number.isFinite(v)) return fail(`${path}[${i}]: ${bitsHex(v)} is not a finite number`);
+  return v;
+}
+
+/** An iteration count: finite and not negative, or +Infinity (the only infinity Web Animations allows); NaN is refused. */
+function rtIterations(a: readonly JsonValue[], i: number, path: string): number {
+  const v = arg(a, i);
+  if (Number.isNaN(v) || v < 0) return fail(`${path}[${i}]: iterations ${bitsHex(v)} is not a non-negative number or +Infinity`);
+  return v;
+}
+
+function rtStepPosition(v: JsonValue, path: string): StepPosition {
+  const p = lit(v, ['jump-start', 'jump-end', 'jump-none', 'jump-both', 'start', 'end'], path);
+  if (p === 'jump-start') return 'jump-start';
+  if (p === 'jump-end') return 'jump-end';
+  if (p === 'jump-none') return 'jump-none';
+  if (p === 'jump-both') return 'jump-both';
+  if (p === 'start') return 'start';
+  return 'end';
+}
+
+/** An easing [kind, x1, y1, x2, y2, steps, position], every number as bits. */
+function rtEasing(v: JsonValue, path: string): EasingSpec {
+  const a = arr(v, path);
+  if (a.length !== 7) return fail(`${path}: expected [kind, x1, y1, x2, y2, steps, position]`);
+  const k = lit(item(a, 0, path), ['linear', 'cubic-bezier', 'steps'], path);
+  const x1 = rtFinite(a, 1, path);
+  const y1 = rtFinite(a, 2, path);
+  const x2 = rtFinite(a, 3, path);
+  const y2 = rtFinite(a, 4, path);
+  const steps = rtFinite(a, 5, path);
+  const position = rtStepPosition(item(a, 6, path), path);
+  if (k === 'linear') return { kind: 'linear', x1, y1, x2, y2, steps, position };
+  if (k === 'steps') return { kind: 'steps', x1, y1, x2, y2, steps, position };
+  return { kind: 'cubic-bezier', x1, y1, x2, y2, steps, position };
+}
+
+function rtDirection(v: JsonValue, path: string): PlaybackDirection {
+  const d = lit(v, ['normal', 'reverse', 'alternate', 'alternate-reverse'], path);
+  if (d === 'normal') return 'normal';
+  if (d === 'reverse') return 'reverse';
+  if (d === 'alternate') return 'alternate';
+  return 'alternate-reverse';
+}
+
+function rtFill(v: JsonValue, path: string): FillMode {
+  const f = lit(v, ['none', 'forwards', 'backwards', 'both', 'auto'], path);
+  if (f === 'none') return 'none';
+  if (f === 'forwards') return 'forwards';
+  if (f === 'backwards') return 'backwards';
+  if (f === 'both') return 'both';
+  return 'auto';
+}
+
+/** Effect timing [delayMs, endDelayMs, durationMs, iterations, iterationStart, direction, fill, easing], numbers as bits. */
+function rtTimingSpec(v: JsonValue, path: string): EffectTimingSpec {
+  const a = arr(v, path);
+  if (a.length !== 8) return fail(`${path}: expected [delay, endDelay, duration, iterations, iterationStart, direction, fill, easing]`);
+  return {
+    delayMs: rtFinite(a, 0, path),
+    endDelayMs: rtFinite(a, 1, path),
+    durationMs: rtFinite(a, 2, path),
+    iterations: rtIterations(a, 3, path),
+    iterationStart: rtFinite(a, 4, path),
+    direction: rtDirection(item(a, 5, path), `${path}[5]`),
+    fill: rtFill(item(a, 6, path), `${path}[6]`),
+    easing: easingFromSpec(rtEasing(item(a, 7, path), `${path}[7]`)),
+  };
+}
+
+/** One 1000 ms iteration with fill both: the timing the easing records sample each timing function through. */
+function rtOneIteration(e: EasingSpec): EffectTimingSpec {
+  return { delayMs: 0, endDelayMs: 0, durationMs: 1000, iterations: 1, iterationStart: 0, direction: 'normal', fill: 'both', easing: easingFromSpec(e) };
+}
+
+function rtBits(v: number | null): string {
+  return v === null ? 'null' : h(v);
+}
+
+/** An animation paused at timeMs at timeline time 0 and read elapsedSeconds later: [progress, currentIteration], bits or null. */
+function rtTimingResult(spec: EffectTimingSpec, timeMs: number, elapsedSeconds: number): string {
+  const t = computeTiming(spec, currentTimeAt(seekPaused(timeMs, 0, 1), elapsedSeconds, RT_NO_FAULTS), RT_NO_FAULTS);
+  return `[${rtBits(t.progress)},${rtBits(t.currentIteration)}]`;
+}
+
+/** A length [kind, px, percent], numbers as bits. */
+function rtLength(v: JsonValue, path: string): LengthValue {
+  const a = arr(v, path);
+  if (a.length !== 3) return fail(`${path}: expected [kind, px, percent]`);
+  const k = lit(item(a, 0, path), ['px', 'percent', 'calc'], path);
+  const px = rtFinite(a, 1, path);
+  const percent = rtFinite(a, 2, path);
+  if (k === 'px') return { kind: 'px', px, percent };
+  if (k === 'percent') return { kind: 'percent', px, percent };
+  return { kind: 'calc', px, percent };
+}
+
+function rtColor(v: JsonValue, path: string): LegacyColor {
+  const a = arr(v, path);
+  if (a.length !== 4) return fail(`${path}: expected [r, g, b, alpha]`);
+  return { r: rtFinite(a, 0, path), g: rtFinite(a, 1, path), b: rtFinite(a, 2, path), alpha: rtFinite(a, 3, path) };
+}
+
+function rtTransformFn(v: JsonValue, path: string): TransformFn {
+  const f = lit(v, ['translate', 'translateX', 'translateY', 'rotate', 'scale', 'scaleX', 'scaleY'], path);
+  if (f === 'translate') return 'translate';
+  if (f === 'translateX') return 'translateX';
+  if (f === 'translateY') return 'translateY';
+  if (f === 'rotate') return 'rotate';
+  if (f === 'scale') return 'scale';
+  if (f === 'scaleX') return 'scaleX';
+  return 'scaleY';
+}
+
+/** A transform function [fn, x, y, angle, sx, sy]. */
+function rtOp(v: JsonValue, path: string): TransformOp {
+  const a = arr(v, path);
+  if (a.length !== 6) return fail(`${path}: expected [fn, x, y, angle, sx, sy]`);
+  return { fn: rtTransformFn(item(a, 0, path), path), x: rtLength(item(a, 1, path), `${path}[1]`), y: rtLength(item(a, 2, path), `${path}[2]`), angle: rtFinite(a, 3, path), sx: rtFinite(a, 4, path), sy: rtFinite(a, 5, path) };
+}
+
+/** An animated value [kind, number, length, color, ops]. */
+function rtValue(v: JsonValue, path: string): AnimatedValue {
+  const a = arr(v, path);
+  if (a.length !== 5) return fail(`${path}: expected [kind, number, length, color, ops]`);
+  const k = lit(item(a, 0, path), ['opacity', 'length', 'angle', 'color', 'transform'], path);
+  const n = rtFinite(a, 1, path);
+  const length = rtLength(item(a, 2, path), `${path}[2]`);
+  const color = rtColor(item(a, 3, path), `${path}[3]`);
+  const ops: TransformOp[] = [];
+  arr(item(a, 4, path), `${path}[4]`).forEach((o, i) => {
+    ops.push(rtOp(o, `${path}[4][${i}]`));
+  });
+  if (k === 'opacity') return { kind: 'opacity', number: n, length, color, ops };
+  if (k === 'length') return { kind: 'length', number: n, length, color, ops };
+  if (k === 'angle') return { kind: 'angle', number: n, length, color, ops };
+  if (k === 'color') return { kind: 'color', number: n, length, color, ops };
+  return { kind: 'transform', number: n, length, color, ops };
+}
+
+// fdlibm's __kernel_sin and __kernel_cos (k_sin.c, k_cos.c; V8 base/ieee754.cc) with a zero tail (x * y dropped), which are sin and cos for
+// |x| <= pi/4. gfx::SinCosDegrees reduces every angle below 9e7 degrees to [0, 45] degrees first, so the rt suite needs no other
+// argument; outside that range the harness fails the case rather than guess. The subset has no platform trigonometry (RT-4).
+// fdlibm's notice: Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved. Developed at SunSoft, a Sun Microsystems, Inc.
+// business. Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved.
+const RT_S1 = -1.66666666666666324348e-1;
+const RT_S2 = 8.33333333332248946124e-3;
+const RT_S3 = -1.98412698298579493134e-4;
+const RT_S4 = 2.75573137070700676789e-6;
+const RT_S5 = -2.50507602534068634195e-8;
+const RT_S6 = 1.58969099521155010221e-10;
+const RT_C1 = 4.16666666666666019037e-2;
+const RT_C2 = -1.38888888888741095749e-3;
+const RT_C3 = 2.48015872894767294178e-5;
+const RT_C4 = -2.75573143513906633035e-7;
+const RT_C5 = 2.08757232129817482790e-9;
+const RT_C6 = -1.13596475577881948265e-11;
+
+/** |x| as a comparison (the subset has no Math.abs). */
+function rtMagnitude(x: number): number {
+  return x < 0 ? -x : x;
+}
+
+/** fdlibm's |x| <= pi/4 test on the high word (ix <= 0x3fe921fb): every |x| below 0x3fe921fc00000000. */
+function rtKernelDomain(x: number): void {
+  if (!(rtMagnitude(x) < hexBits('3fe921fc00000000'))) fail(`rt trig argument ${bitsHex(x)} is outside [-pi/4, pi/4]`);
+}
+
+function rtSin(x: number): number {
+  rtKernelDomain(x);
+  if (rtMagnitude(x) < hexBits('3e40000000000000')) return x;
+  const z = x * x;
+  const v = z * x;
+  const r = RT_S2 + z * (RT_S3 + z * (RT_S4 + z * (RT_S5 + z * RT_S6)));
+  return x + v * (RT_S1 + z * r);
+}
+
+function rtCos(x: number): number {
+  rtKernelDomain(x);
+  const ax = rtMagnitude(x);
+  if (ax < hexBits('3e40000000000000')) return 1.0;
+  const z = x * x;
+  const r = z * (RT_C1 + z * (RT_C2 + z * (RT_C3 + z * (RT_C4 + z * (RT_C5 + z * RT_C6)))));
+  if (ax < hexBits('3fd3333300000000')) return 1.0 - (0.5 * z - z * r);
+  // qx: 0.28125 above 0.78125, else |x| / 4 with its low word cleared (INSERT_WORDS(qx, ix - 0x00200000, 0)). Here |x| / 4 lies
+  // in [2^-4, 2^-2), so clearing the low word keeps the multiples of 2^-24 or 2^-23 below it; each step is exact.
+  const quarter = ax / 4;
+  const unit = quarter < 0.125 ? 5.9604644775390625e-8 : 1.1920928955078125e-7;
+  const qx = ax >= hexBits('3fe9000100000000') ? 0.28125 : Math.floor(quarter / unit) * unit;
+  const hz = 0.5 * z - qx;
+  const a = 1.0 - qx;
+  return a - (hz - z * r);
+}
+
+const RT_TRIG: Trig = { sin: rtSin, cos: rtCos };
+
+/** An interpolation read: [op, from, to, effectEasing, keyframeEasing, timeMs, boxWidth, boxHeight] -> [progress, value]. */
+function rtInterpResult(a: readonly JsonValue[]): string {
+  if (a.length !== 8) return fail('rt-interp: expected [op, from, to, effectEasing, keyframeEasing, timeMs, boxWidth, boxHeight]');
+  const from = rtValue(item(a, 1, '$'), '$[1]');
+  const to = rtValue(item(a, 2, '$'), '$[2]');
+  const effect = rtEasing(item(a, 3, '$'), '$[3]');
+  const keyframe = rtEasing(item(a, 4, '$'), '$[4]');
+  if (keyframe.kind === 'steps') return fail('rt-interp: a steps keyframe easing is outside the rt vectors (linear or cubic-bezier only)');
+  const t = computeTiming(rtOneIteration(effect), currentTimeAt(seekPaused(rtFinite(a, 5, '$'), 0, 1), 0, RT_NO_FAULTS), RT_NO_FAULTS);
+  const p = t.progress === null ? 0 : t.progress;
+  const local = keyframe.kind === 'cubic-bezier' ? solveBezier(cubicBezier(keyframe.x1, keyframe.y1, keyframe.x2, keyframe.y2), p, RT_NO_FAULTS) : p;
+  const v = interpolateValue(from, to, local, RT_NO_FAULTS);
+  return `[${rtBits(t.progress)},${q(v.refused ? 'refused' : serializeValue(v.value, rtFinite(a, 6, '$'), rtFinite(a, 7, '$'), RT_TRIG))}]`;
 }

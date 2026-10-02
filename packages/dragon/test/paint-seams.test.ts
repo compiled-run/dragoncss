@@ -21,10 +21,13 @@ import { SHORTHAND_HANDLERS } from '../src/css/shorthands/index.ts';
 import { OUTLINE_SHORTHANDS } from '../src/css/shorthands/outline.ts';
 import { RADIUS_SHORTHANDS } from '../src/css/shorthands/radius.ts';
 import type { Longhand } from '../src/css/properties.ts';
-import { emitNativeSupport, SUPPORT_FILES, SUPPORT_PLANTS } from '../src/emit/native-support.ts';
+import { applyPlant, emitNativeSupport, SUPPORT_FILES, SUPPORT_PLANTS } from '../src/emit/native-support.ts';
 import { isPaintKind, nativePaints, PAINT_EMITTERS, paintPlants, stagePainters } from '../src/emit/paint/registry.ts';
 import { PAINT_STAGES } from '../src/emit/paint/types.ts';
-import { PAINT_LOWERINGS } from '../src/lower/paint/registry.ts';
+import type { BorderWrite } from '../src/lower/paint/border.ts';
+import type { AnyLowering } from '../src/lower/paint/registry.ts';
+import { checkPaintLowerings, PAINT_LOWERINGS } from '../src/lower/paint/registry.ts';
+import type { PaintLowering } from '../src/lower/paint/types.ts';
 import { PAINT_MODULE_NAMES } from '../src/lower/paint/types.ts';
 import { createProjectWith, nativePrograms, NO_FAULTS, VOCABULARY, WRITE_CSS } from '../src/internal.ts';
 import { div, inputFor, text } from './helpers.ts';
@@ -61,6 +64,16 @@ describe('EMS: the paint registries', () => {
     expect(isPaintKind('font')).toBe(false);
     expect(isPaintKind('text-color')).toBe(false);
   });
+  it('the lowering registry refuses a write kind lowered by two modules, a vocabulary that disagrees with the longhands, or a reordered list', () => {
+    expect(() => checkPaintLowerings(PAINT_LOWERINGS)).not.toThrow();
+    const radius = PAINT_LOWERINGS.findIndex((m) => m.name === 'radius');
+    const withBorderKinds = PAINT_LOWERINGS.map((m, i) => (i === radius ? { ...PAINT_LOWERINGS[1], name: 'radius' } : m)) as AnyLowering[];
+    expect(() => checkPaintLowerings(withBorderKinds)).toThrow(/border-colors is lowered by two modules \(border and radius\)/);
+    const border = PAINT_LOWERINGS[1] as PaintLowering<BorderWrite>;
+    const uikitShort = { ...border, vocabulary: { ...border.vocabulary, uikit: { 'border-widths': border.vocabulary.uikit['border-widths'] } } } as unknown as AnyLowering;
+    expect(() => checkPaintLowerings(PAINT_LOWERINGS.map((m, i) => (i === 1 ? uikitShort : m)))).toThrow(/border paint lowering's uikit vocabulary names border-widths, its longhands name/);
+    expect(() => checkPaintLowerings([...PAINT_LOWERINGS].reverse())).toThrow(/not in PAINT_MODULE_NAMES order/);
+  });
   it('the stub modules lower nothing, emit nothing and add no native code or plants', () => {
     for (const name of STUBS) {
       const e = PAINT_EMITTERS.find((m) => m.name === name);
@@ -69,8 +82,21 @@ describe('EMS: the paint registries', () => {
       for (const b of ['uikit', 'android-views'] as const) expect(e?.native[b], name).toEqual({ boxMembers: '', file: null, stages: {}, afterLayout: null, applied: null, roundedPath: null, container: null });
       expect(PAINT_LOWERINGS.find((m) => m.name === name)?.css, name).toEqual({});
     }
-    expect(paintPlants()).toEqual([]);
-    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1']);
+    // The border module (P6a) declares the two dash plants; every stub declares none.
+    expect(paintPlants().map((p) => p.name)).toEqual(['dash-phase-1', 'dash-gap-unfitted']);
+    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted']);
+  });
+});
+
+describe('P6a: border styles the side painter cannot draw', () => {
+  it('never reach a native program: groove, ridge, inset and outset beside a dashed side block the native case', () => {
+    for (const k of ['groove', 'ridge', 'inset', 'outset']) {
+      const css = `body { margin: 0; } .a { width: 20px; height: 20px; border: 3px dashed red; border-right-style: ${k}; }`;
+      const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, (r) => [div(r, 'a', ['a'], [])]));
+      const p = nativePrograms(c, []);
+      expect(p.kind, k).toBe('blocked');
+      expect(p.kind === 'blocked' ? p.reason : '', k).toBe(`a: border-right-style ${k} has no native paint technique`);
+    }
   });
 });
 
@@ -89,9 +115,17 @@ describe('EMS: programs', () => {
 
 describe('EMS: native support', () => {
   it('emits the stages file and one file per paint module with native code, under Support/Paint and views/paint', () => {
-    expect(SUPPORT_FILES.uikit).toEqual(['Support/DragonChecked.swift', 'Support/DragonFontTables.swift', 'Support/DragonViews.swift', 'Support/DragonBridge.swift', 'Support/DragonTree.swift', 'Support/DragonPaintStages.swift', 'Support/Paint/DragonPaintBackground.swift', 'Support/Paint/DragonPaintBorder.swift', 'Support/Paint/DragonPaintClip.swift']);
-    expect(SUPPORT_FILES['android-views']).toEqual(['kotlin/dev/dragon/views/DragonChecked.kt', 'kotlin/dev/dragon/views/DragonFontTables.kt', 'kotlin/dev/dragon/views/DragonViews.kt', 'kotlin/dev/dragon/views/DragonBridge.kt', 'kotlin/dev/dragon/views/DragonTree.kt', 'kotlin/dev/dragon/views/DragonPaintStages.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBackground.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBorder.kt', 'kotlin/dev/dragon/views/paint/DragonPaintClip.kt']);
+    expect(SUPPORT_FILES.uikit).toEqual(['Support/DragonChecked.swift', 'Support/DragonFontTables.swift', 'Support/DragonViews.swift', 'Support/DragonBridge.swift', 'Support/DragonTree.swift', 'Support/DragonPaintStages.swift', 'Support/Paint/DragonPaintBackground.swift', 'Support/Paint/DragonPaintBorder.swift', 'Support/Paint/DragonPaintClip.swift', 'Support/DragonClock.swift', 'Support/DragonState.swift']);
+    expect(SUPPORT_FILES['android-views']).toEqual(['kotlin/dev/dragon/views/DragonChecked.kt', 'kotlin/dev/dragon/views/DragonFontTables.kt', 'kotlin/dev/dragon/views/DragonViews.kt', 'kotlin/dev/dragon/views/DragonBridge.kt', 'kotlin/dev/dragon/views/DragonTree.kt', 'kotlin/dev/dragon/views/DragonPaintStages.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBackground.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBorder.kt', 'kotlin/dev/dragon/views/paint/DragonPaintClip.kt', 'kotlin/dev/dragon/views/DragonClock.kt', 'kotlin/dev/dragon/views/DragonState.kt']);
     for (const f of emitNativeSupport('android-views')) expect(f.text, f.path).toContain('\npackage dev.dragon.views\n');
+  });
+  it('applies a support plant only when its source text occurs exactly once across the support files', () => {
+    const f = (path: string, text: string) => ({ path, text });
+    expect(applyPlant([f('a', 'x = 0\n'), f('b', 'y\n')], 'x = 0\n', 'x = 1\n', 'p')).toEqual([f('a', 'x = 1\n'), f('b', 'y\n')]);
+    expect(() => applyPlant([f('a', 'y\n')], 'x = 0\n', 'x = 1\n', 'p')).toThrow(/occurs 0 times, not once/);
+    expect(() => applyPlant([f('a', 'x = 0\nx = 0\n')], 'x = 0\n', 'x = 1\n', 'p')).toThrow(/occurs 2 times, not once/);
+    expect(() => applyPlant([f('a', 'x = 0\n'), f('b', 'x = 0\n')], 'x = 0\n', 'x = 1\n', 'p')).toThrow(/occurs 2 times, not once/);
+    for (const b of ['uikit', 'android-views'] as const) for (const p of SUPPORT_PLANTS) expect(emitNativeSupport(b, p).filter((x, i) => x.text !== emitNativeSupport(b)[i]?.text), `${b} ${p}`).toHaveLength(1);
   });
   it('dispatches the box stages in CSS order, the after-layout hooks and the readback in registry order', () => {
     expect([...PAINT_STAGES]).toEqual(['outer-shadow', 'background', 'background-layers', 'inset-shadow', 'border', 'outline']);
@@ -147,6 +181,7 @@ describe('EMS: CSS families and paint values', () => {
     const props = new Map<Longhand, ResolvedValue>([['font-size', v(10, 'px')], ['width', v(2, 'em')]]);
     computeLengths(props, 16, 16);
     expect([...props.entries()].map(([k, x]) => [k, x.value])).toEqual([['font-size', { kind: 'length', value: 10, unit: 'px' }], ['width', { kind: 'length', value: 20, unit: 'px' }]]);
+    // SIZE-ar: aspect-ratio is a longhand (box family, after max-height).
     expect((LONGHANDS as readonly string[]).length).toBe(69);
   });
 });
