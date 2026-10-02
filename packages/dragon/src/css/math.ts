@@ -547,7 +547,7 @@ export type PercentRefusal = { readonly reason: string; readonly fix: string };
 /** What a property takes: a length (with a percentage, or with the refusal a percentage meets) or a number (css-values-4 §10.9 type checking). */
 export type MathContext = { readonly type: 'length'; readonly percent: true | PercentRefusal } | { readonly type: 'number' };
 
-const NUMBER_PROPERTIES: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order']);
+const NUMBER_PROPERTIES: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'font-weight']);
 const TEXT_PROPERTIES: ReadonlySet<string> = new Set(['font-size', 'line-height', 'font']);
 /**
  * Border, outline and column-rule widths are a <line-width>, which has no percentage (css-backgrounds-3 §3.3, css-ui-4 §3.2,

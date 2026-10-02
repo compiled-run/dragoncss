@@ -1,0 +1,4882 @@
+{
+ "platform": "darwin-arm64",
+ "measurer": "shaped/darwin-arm64",
+ "language": "en-US",
+ "faces": [
+  {
+   "id": "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+   "data": {
+    "unitsPerEm": 2048,
+    "ascent": 1984,
+    "descent": 494,
+    "lineGap": 0,
+    "advances": [],
+    "xHeight": 1118,
+    "capHeight": 1490,
+    "zeroAdvance": 1292
+   },
+   "hanKerning": {
+    "hasAlternateSpacing": false,
+    "hasContextualSpacing": false,
+    "typeForDot": 0,
+    "typeForColon": 0,
+    "typeForSemicolon": 0,
+    "isQuoteFullwidth": false
+   }
+  },
+  {
+   "id": "sha256:8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1",
+   "data": {
+    "unitsPerEm": 2000,
+    "ascent": 1974,
+    "descent": 426,
+    "lineGap": 0,
+    "advances": [],
+    "xHeight": 1026,
+    "capHeight": 1446,
+    "zeroAdvance": 1160
+   },
+   "hanKerning": {
+    "hasAlternateSpacing": false,
+    "hasContextualSpacing": false,
+    "typeForDot": 0,
+    "typeForColon": 0,
+    "typeForSemicolon": 0,
+    "isQuoteFullwidth": false
+   }
+  },
+  {
+   "id": "sha256:948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d",
+   "data": {
+    "unitsPerEm": 2048,
+    "ascent": 1984,
+    "descent": 494,
+    "lineGap": 0,
+    "advances": [],
+    "xHeight": 1118,
+    "capHeight": 1490,
+    "zeroAdvance": 1380
+   },
+   "hanKerning": {
+    "hasAlternateSpacing": false,
+    "hasContextualSpacing": false,
+    "typeForDot": 0,
+    "typeForColon": 0,
+    "typeForSemicolon": 0,
+    "isQuoteFullwidth": false
+   }
+  },
+  {
+   "id": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+   "data": {
+    "unitsPerEm": 2048,
+    "ascent": 1984,
+    "descent": 494,
+    "lineGap": 0,
+    "advances": [],
+    "xHeight": 1118,
+    "capHeight": 1490,
+    "zeroAdvance": 1291
+   },
+   "hanKerning": {
+    "hasAlternateSpacing": false,
+    "hasContextualSpacing": false,
+    "typeForDot": 0,
+    "typeForColon": 0,
+    "typeForSemicolon": 0,
+    "isQuoteFullwidth": false
+   }
+  },
+  {
+   "id": "sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+   "data": {
+    "unitsPerEm": 2000,
+    "ascent": 1974,
+    "descent": 426,
+    "lineGap": 0,
+    "advances": [],
+    "xHeight": 1013,
+    "capHeight": 1433,
+    "zeroAdvance": 1160
+   },
+   "hanKerning": {
+    "hasAlternateSpacing": false,
+    "hasContextualSpacing": false,
+    "typeForDot": 0,
+    "typeForColon": 0,
+    "typeForSemicolon": 0,
+    "isQuoteFullwidth": false
+   }
+  }
+ ],
+ "calls": [
+  [
+   "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+   42,
+   "Italic style",
+   0,
+   12,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    197,
+    0,
+    779520,
+    0,
+    0,
+    0,
+    0,
+    858,
+    1,
+    876288,
+    0,
+    0,
+    0,
+    1,
+    507,
+    2,
+    1689408,
+    0,
+    0,
+    0,
+    1,
+    705,
+    3,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    658,
+    4,
+    667968,
+    0,
+    0,
+    0,
+    0,
+    555,
+    5,
+    1573824,
+    0,
+    0,
+    0,
+    0,
+    1746,
+    6,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    840,
+    7,
+    1451520,
+    0,
+    0,
+    0,
+    0,
+    858,
+    8,
+    956928,
+    0,
+    0,
+    0,
+    0,
+    967,
+    9,
+    1560384,
+    0,
+    0,
+    0,
+    1,
+    705,
+    10,
+    666624,
+    0,
+    0,
+    0,
+    1,
+    583,
+    11,
+    1584576,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+   42,
+   "Oblique style",
+   0,
+   13,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    321,
+    0,
+    2104704,
+    0,
+    0,
+    0,
+    0,
+    547,
+    1,
+    1686720,
+    0,
+    0,
+    0,
+    0,
+    705,
+    2,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    658,
+    3,
+    667968,
+    0,
+    0,
+    0,
+    0,
+    818,
+    4,
+    1686720,
+    0,
+    0,
+    0,
+    0,
+    884,
+    5,
+    1628928,
+    0,
+    0,
+    0,
+    0,
+    583,
+    6,
+    1584576,
+    0,
+    0,
+    0,
+    0,
+    1746,
+    7,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    840,
+    8,
+    1451520,
+    0,
+    0,
+    0,
+    0,
+    858,
+    9,
+    956928,
+    0,
+    0,
+    0,
+    0,
+    967,
+    10,
+    1560384,
+    0,
+    0,
+    0,
+    1,
+    705,
+    11,
+    666624,
+    0,
+    0,
+    0,
+    1,
+    583,
+    12,
+    1584576,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+   42,
+   "Oblique fourteen",
+   0,
+   16,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    321,
+    0,
+    2104704,
+    0,
+    0,
+    0,
+    0,
+    547,
+    1,
+    1686720,
+    0,
+    0,
+    0,
+    0,
+    705,
+    2,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    658,
+    3,
+    667968,
+    0,
+    0,
+    0,
+    0,
+    818,
+    4,
+    1686720,
+    0,
+    0,
+    0,
+    0,
+    884,
+    5,
+    1628928,
+    0,
+    0,
+    0,
+    0,
+    583,
+    6,
+    1584576,
+    0,
+    0,
+    0,
+    0,
+    1746,
+    7,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    616,
+    8,
+    946176,
+    0,
+    0,
+    0,
+    0,
+    759,
+    9,
+    1651776,
+    0,
+    0,
+    0,
+    1,
+    884,
+    10,
+    1628928,
+    0,
+    0,
+    0,
+    0,
+    821,
+    11,
+    1080576,
+    0,
+    0,
+    0,
+    0,
+    858,
+    12,
+    876288,
+    0,
+    0,
+    0,
+    1,
+    583,
+    13,
+    1584576,
+    0,
+    0,
+    0,
+    1,
+    583,
+    14,
+    1584576,
+    0,
+    0,
+    0,
+    0,
+    742,
+    15,
+    1627584,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+   42,
+   "Oblique twenty",
+   0,
+   14,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    321,
+    0,
+    2104704,
+    0,
+    0,
+    0,
+    0,
+    547,
+    1,
+    1686720,
+    0,
+    0,
+    0,
+    0,
+    705,
+    2,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    658,
+    3,
+    667968,
+    0,
+    0,
+    0,
+    0,
+    818,
+    4,
+    1686720,
+    0,
+    0,
+    0,
+    0,
+    884,
+    5,
+    1628928,
+    0,
+    0,
+    0,
+    0,
+    583,
+    6,
+    1584576,
+    0,
+    0,
+    0,
+    0,
+    1746,
+    7,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    858,
+    8,
+    943488,
+    0,
+    0,
+    0,
+    0,
+    953,
+    9,
+    2202816,
+    0,
+    0,
+    0,
+    1,
+    583,
+    10,
+    1584576,
+    0,
+    0,
+    0,
+    1,
+    742,
+    11,
+    1627584,
+    0,
+    0,
+    0,
+    0,
+    858,
+    12,
+    956928,
+    0,
+    0,
+    0,
+    0,
+    967,
+    13,
+    1546944,
+    0,
+    0,
+    0,
+    1
+   ]
+  ],
+  [
+   "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+   42,
+   "Oblique ten",
+   0,
+   11,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    321,
+    0,
+    2104704,
+    0,
+    0,
+    0,
+    0,
+    578,
+    1,
+    1685376,
+    0,
+    0,
+    0,
+    0,
+    736,
+    2,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    689,
+    3,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    849,
+    4,
+    1685376,
+    0,
+    0,
+    0,
+    0,
+    915,
+    5,
+    1627584,
+    0,
+    0,
+    0,
+    0,
+    614,
+    6,
+    1604736,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    7,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    889,
+    8,
+    873600,
+    0,
+    0,
+    0,
+    0,
+    614,
+    9,
+    1604736,
+    0,
+    0,
+    0,
+    1,
+    773,
+    10,
+    1626240,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+   42,
+   "Oblique negative",
+   0,
+   16,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    321,
+    0,
+    2104704,
+    0,
+    0,
+    0,
+    0,
+    578,
+    1,
+    1685376,
+    0,
+    0,
+    0,
+    0,
+    736,
+    2,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    689,
+    3,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    849,
+    4,
+    1685376,
+    0,
+    0,
+    0,
+    0,
+    915,
+    5,
+    1627584,
+    0,
+    0,
+    0,
+    0,
+    614,
+    6,
+    1604736,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    7,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    773,
+    8,
+    1626240,
+    0,
+    0,
+    0,
+    0,
+    614,
+    9,
+    1604736,
+    0,
+    0,
+    0,
+    0,
+    658,
+    10,
+    1688064,
+    0,
+    0,
+    0,
+    0,
+    507,
+    11,
+    1545600,
+    0,
+    0,
+    0,
+    0,
+    889,
+    12,
+    900480,
+    0,
+    0,
+    0,
+    0,
+    689,
+    13,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    980,
+    14,
+    1493184,
+    0,
+    0,
+    0,
+    0,
+    614,
+    15,
+    1604736,
+    0,
+    0,
+    0,
+    1
+   ]
+  ],
+  [
+   "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+   42,
+   "Oblique zero",
+   0,
+   12,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    321,
+    0,
+    2104704,
+    0,
+    0,
+    0,
+    0,
+    578,
+    1,
+    1685376,
+    0,
+    0,
+    0,
+    0,
+    736,
+    2,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    689,
+    3,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    849,
+    4,
+    1685376,
+    0,
+    0,
+    0,
+    0,
+    915,
+    5,
+    1627584,
+    0,
+    0,
+    0,
+    0,
+    614,
+    6,
+    1604736,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    7,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    1022,
+    8,
+    1479744,
+    0,
+    0,
+    0,
+    0,
+    614,
+    9,
+    1604736,
+    0,
+    0,
+    0,
+    1,
+    852,
+    10,
+    990528,
+    0,
+    0,
+    0,
+    0,
+    790,
+    11,
+    1650432,
+    0,
+    0,
+    0,
+    1
+   ]
+  ],
+  [
+   "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+   42,
+   "Oblique radians",
+   0,
+   15,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    321,
+    0,
+    2104704,
+    0,
+    0,
+    0,
+    0,
+    547,
+    1,
+    1686720,
+    0,
+    0,
+    0,
+    0,
+    705,
+    2,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    658,
+    3,
+    667968,
+    0,
+    0,
+    0,
+    0,
+    818,
+    4,
+    1686720,
+    0,
+    0,
+    0,
+    0,
+    884,
+    5,
+    1628928,
+    0,
+    0,
+    0,
+    0,
+    583,
+    6,
+    1584576,
+    0,
+    0,
+    0,
+    0,
+    1746,
+    7,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    821,
+    8,
+    991872,
+    0,
+    0,
+    0,
+    0,
+    507,
+    9,
+    1689408,
+    0,
+    0,
+    0,
+    1,
+    566,
+    10,
+    1686720,
+    0,
+    0,
+    0,
+    0,
+    658,
+    11,
+    667968,
+    0,
+    0,
+    0,
+    0,
+    507,
+    12,
+    1689408,
+    0,
+    0,
+    0,
+    0,
+    742,
+    13,
+    1627584,
+    0,
+    0,
+    0,
+    0,
+    840,
+    14,
+    1451520,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+   42,
+   "Oblique gradians",
+   0,
+   16,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    321,
+    0,
+    2104704,
+    0,
+    0,
+    0,
+    0,
+    547,
+    1,
+    1686720,
+    0,
+    0,
+    0,
+    0,
+    705,
+    2,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    658,
+    3,
+    667968,
+    0,
+    0,
+    0,
+    0,
+    818,
+    4,
+    1686720,
+    0,
+    0,
+    0,
+    0,
+    884,
+    5,
+    1628928,
+    0,
+    0,
+    0,
+    0,
+    583,
+    6,
+    1584576,
+    0,
+    0,
+    0,
+    0,
+    1746,
+    7,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    627,
+    8,
+    1688064,
+    0,
+    0,
+    0,
+    0,
+    821,
+    9,
+    991872,
+    0,
+    0,
+    0,
+    0,
+    507,
+    10,
+    1689408,
+    0,
+    0,
+    0,
+    1,
+    566,
+    11,
+    1686720,
+    0,
+    0,
+    0,
+    0,
+    658,
+    12,
+    667968,
+    0,
+    0,
+    0,
+    0,
+    507,
+    13,
+    1689408,
+    0,
+    0,
+    0,
+    0,
+    742,
+    14,
+    1627584,
+    0,
+    0,
+    0,
+    0,
+    840,
+    15,
+    1451520,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+   42,
+   "Oblique turns",
+   0,
+   13,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    321,
+    0,
+    2104704,
+    0,
+    0,
+    0,
+    0,
+    547,
+    1,
+    1686720,
+    0,
+    0,
+    0,
+    0,
+    705,
+    2,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    658,
+    3,
+    667968,
+    0,
+    0,
+    0,
+    0,
+    818,
+    4,
+    1686720,
+    0,
+    0,
+    0,
+    0,
+    884,
+    5,
+    1628928,
+    0,
+    0,
+    0,
+    0,
+    583,
+    6,
+    1584576,
+    0,
+    0,
+    0,
+    0,
+    1746,
+    7,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    858,
+    8,
+    903168,
+    0,
+    0,
+    0,
+    0,
+    884,
+    9,
+    1628928,
+    0,
+    0,
+    0,
+    0,
+    821,
+    10,
+    1080576,
+    0,
+    0,
+    0,
+    0,
+    742,
+    11,
+    1627584,
+    0,
+    0,
+    0,
+    1,
+    840,
+    12,
+    1451520,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d",
+   42,
+   "Bold italic",
+   0,
+   11,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    65,
+    0,
+    1821120,
+    0,
+    0,
+    0,
+    0,
+    759,
+    1,
+    1689408,
+    0,
+    0,
+    0,
+    0,
+    705,
+    2,
+    745920,
+    0,
+    0,
+    0,
+    0,
+    566,
+    3,
+    1735104,
+    0,
+    0,
+    0,
+    0,
+    1746,
+    4,
+    651840,
+    0,
+    0,
+    0,
+    0,
+    658,
+    5,
+    747264,
+    0,
+    0,
+    0,
+    0,
+    858,
+    6,
+    983808,
+    0,
+    0,
+    0,
+    0,
+    507,
+    7,
+    1736448,
+    0,
+    0,
+    0,
+    1,
+    705,
+    8,
+    745920,
+    0,
+    0,
+    0,
+    0,
+    658,
+    9,
+    747264,
+    0,
+    0,
+    0,
+    0,
+    555,
+    10,
+    1618176,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+   42,
+   "Light italic",
+   0,
+   12,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    281,
+    0,
+    1556352,
+    0,
+    0,
+    0,
+    0,
+    658,
+    1,
+    667968,
+    0,
+    0,
+    0,
+    0,
+    627,
+    2,
+    1688064,
+    0,
+    0,
+    0,
+    0,
+    639,
+    3,
+    1627584,
+    0,
+    0,
+    0,
+    0,
+    858,
+    4,
+    903168,
+    0,
+    0,
+    0,
+    0,
+    1746,
+    5,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    658,
+    6,
+    667968,
+    0,
+    0,
+    0,
+    0,
+    858,
+    7,
+    876288,
+    0,
+    0,
+    0,
+    0,
+    507,
+    8,
+    1689408,
+    0,
+    0,
+    0,
+    1,
+    705,
+    9,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    658,
+    10,
+    667968,
+    0,
+    0,
+    0,
+    0,
+    555,
+    11,
+    1573824,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+   42,
+   "Normal inside italic",
+   0,
+   20,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    300,
+    0,
+    2073792,
+    0,
+    0,
+    0,
+    0,
+    790,
+    1,
+    1650432,
+    0,
+    0,
+    0,
+    0,
+    852,
+    2,
+    1079232,
+    0,
+    0,
+    0,
+    0,
+    766,
+    3,
+    2411136,
+    0,
+    0,
+    0,
+    1,
+    507,
+    4,
+    1545600,
+    0,
+    0,
+    0,
+    0,
+    736,
+    5,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    6,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    689,
+    7,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    773,
+    8,
+    1626240,
+    0,
+    0,
+    0,
+    0,
+    871,
+    9,
+    1452864,
+    0,
+    0,
+    0,
+    0,
+    689,
+    10,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    597,
+    11,
+    1685376,
+    0,
+    0,
+    0,
+    0,
+    614,
+    12,
+    1604736,
+    0,
+    0,
+    0,
+    0,
+    1777,
+    13,
+    774144,
+    0,
+    0,
+    0,
+    0,
+    689,
+    14,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    889,
+    15,
+    913920,
+    0,
+    0,
+    0,
+    0,
+    507,
+    16,
+    1545600,
+    0,
+    0,
+    0,
+    1,
+    736,
+    17,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    689,
+    18,
+    666624,
+    0,
+    0,
+    0,
+    0,
+    586,
+    19,
+    1572480,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+   42,
+   "Lato oblique ten",
+   0,
+   16,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    21,
+    0,
+    1413414,
+    0,
+    0,
+    0,
+    0,
+    45,
+    1,
+    1350107,
+    0,
+    0,
+    0,
+    0,
+    124,
+    2,
+    979894,
+    0,
+    0,
+    0,
+    1,
+    111,
+    3,
+    1560674,
+    0,
+    0,
+    0,
+    1,
+    2,
+    4,
+    704643,
+    0,
+    0,
+    0,
+    0,
+    111,
+    5,
+    1560674,
+    0,
+    0,
+    0,
+    0,
+    48,
+    6,
+    1541406,
+    0,
+    0,
+    0,
+    0,
+    1140,
+    7,
+    649592,
+    0,
+    0,
+    0,
+    0,
+    98,
+    8,
+    660602,
+    0,
+    0,
+    0,
+    0,
+    116,
+    9,
+    1541406,
+    0,
+    0,
+    0,
+    0,
+    134,
+    10,
+    1534525,
+    0,
+    0,
+    0,
+    0,
+    59,
+    11,
+    1453326,
+    0,
+    0,
+    0,
+    0,
+    2,
+    12,
+    704643,
+    0,
+    0,
+    0,
+    0,
+    124,
+    13,
+    979894,
+    0,
+    0,
+    0,
+    0,
+    59,
+    14,
+    1453326,
+    0,
+    0,
+    0,
+    1,
+    109,
+    15,
+    1535901,
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  [
+   "sha256:8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1",
+   42,
+   "Lato bold negative",
+   0,
+   18,
+   "Latn",
+   false,
+   "en-US",
+   [
+    1667790707,
+    1,
+    0,
+    4294967295
+   ],
+   [
+    21,
+    0,
+    1429930,
+    0,
+    0,
+    0,
+    0,
+    45,
+    1,
+    1377631,
+    0,
+    0,
+    0,
+    0,
+    124,
+    2,
+    1012924,
+    0,
+    0,
+    0,
+    1,
+    111,
+    3,
+    1581318,
+    0,
+    0,
+    0,
+    1,
+    2,
+    4,
+    668860,
+    0,
+    0,
+    0,
+    0,
+    48,
+    5,
+    1562050,
+    0,
+    0,
+    0,
+    0,
+    111,
+    6,
+    1581318,
+    0,
+    0,
+    0,
+    0,
+    1140,
+    7,
+    683999,
+    0,
+    0,
+    0,
+    0,
+    55,
+    8,
+    1562050,
+    0,
+    0,
+    0,
+    0,
+    2,
+    9,
+    668860,
+    0,
+    0,
+    0,
+    0,
+    109,
+    10,
+    1552416,
+    0,
+    0,
+    0,
+    0,
+    59,
+    11,
+    1469841,
+    0,
+    0,
+    0,
+    0,
+    93,
+    12,
+    1453326,
+    0,
+    0,
+    0,
+    0,
+    45,
+    13,
+    1377631,
+    0,
+    0,
+    0,
+    0,
+    2462,
+    14,
+    1771241,
+    0,
+    0,
+    0,
+    1,
+    136,
+    16,
+    1409286,
+    0,
+    0,
+    0,
+    0,
+    59,
+    17,
+    1469841,
+    0,
+    0,
+    0,
+    1
+   ]
+  ]
+ ],
+ "input": {
+  "viewport": {
+   "width": 400,
+   "height": 300
+  },
+  "devicePixelRatio": 3,
+  "viewportUnits": {
+   "small": {
+    "width": 400,
+    "height": 300
+   },
+   "large": {
+    "width": 400,
+    "height": 300
+   },
+   "dynamic": {
+    "width": 400,
+    "height": 300
+   }
+  },
+  "safeArea": {
+   "top": 0,
+   "right": 0,
+   "bottom": 0,
+   "left": 0
+  },
+  "rootFontSize": 16,
+  "root": {
+   "kind": "box",
+   "id": "html",
+   "boxType": "element",
+   "style": {
+    "display": "block",
+    "position": "static",
+    "top": {
+     "kind": "auto"
+    },
+    "right": {
+     "kind": "auto"
+    },
+    "bottom": {
+     "kind": "auto"
+    },
+    "left": {
+     "kind": "auto"
+    },
+    "overflowX": "visible",
+    "overflowY": "visible",
+    "direction": "rtl",
+    "boxSizing": "content-box",
+    "width": {
+     "kind": "auto"
+    },
+    "height": {
+     "kind": "auto"
+    },
+    "minWidth": {
+     "kind": "auto"
+    },
+    "minHeight": {
+     "kind": "auto"
+    },
+    "maxWidth": {
+     "kind": "none"
+    },
+    "maxHeight": {
+     "kind": "none"
+    },
+    "marginTop": {
+     "kind": "px",
+     "value": 0
+    },
+    "marginRight": {
+     "kind": "px",
+     "value": 0
+    },
+    "marginBottom": {
+     "kind": "px",
+     "value": 0
+    },
+    "marginLeft": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingTop": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingRight": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingBottom": {
+     "kind": "px",
+     "value": 0
+    },
+    "paddingLeft": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderTopWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderRightWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderBottomWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "borderLeftWidth": {
+     "kind": "px",
+     "value": 0
+    },
+    "flexDirection": "row",
+    "flexWrap": "nowrap",
+    "flexGrow": 0,
+    "flexShrink": 1,
+    "flexBasis": {
+     "kind": "auto"
+    },
+    "order": 0,
+    "justifyContent": "normal",
+    "alignItems": "normal",
+    "alignSelf": "auto",
+    "alignContent": "normal",
+    "rowGap": {
+     "kind": "normal"
+    },
+    "columnGap": {
+     "kind": "normal"
+    },
+    "textAlign": "start",
+    "verticalAlign": {
+     "kind": "keyword",
+     "value": "baseline"
+    }
+   },
+   "strut": null,
+   "children": [
+    {
+     "kind": "box",
+     "id": "body",
+     "boxType": "element",
+     "style": {
+      "display": "block",
+      "position": "static",
+      "top": {
+       "kind": "auto"
+      },
+      "right": {
+       "kind": "auto"
+      },
+      "bottom": {
+       "kind": "auto"
+      },
+      "left": {
+       "kind": "auto"
+      },
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "direction": "rtl",
+      "boxSizing": "content-box",
+      "width": {
+       "kind": "auto"
+      },
+      "height": {
+       "kind": "auto"
+      },
+      "minWidth": {
+       "kind": "auto"
+      },
+      "minHeight": {
+       "kind": "auto"
+      },
+      "maxWidth": {
+       "kind": "none"
+      },
+      "maxHeight": {
+       "kind": "none"
+      },
+      "marginTop": {
+       "kind": "px",
+       "value": 0
+      },
+      "marginRight": {
+       "kind": "px",
+       "value": 0
+      },
+      "marginBottom": {
+       "kind": "px",
+       "value": 0
+      },
+      "marginLeft": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingTop": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingRight": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingBottom": {
+       "kind": "px",
+       "value": 0
+      },
+      "paddingLeft": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderTopWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderRightWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderBottomWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "borderLeftWidth": {
+       "kind": "px",
+       "value": 0
+      },
+      "flexDirection": "row",
+      "flexWrap": "nowrap",
+      "flexGrow": 0,
+      "flexShrink": 1,
+      "flexBasis": {
+       "kind": "auto"
+      },
+      "order": 0,
+      "justifyContent": "normal",
+      "alignItems": "normal",
+      "alignSelf": "auto",
+      "alignContent": "normal",
+      "rowGap": {
+       "kind": "normal"
+      },
+      "columnGap": {
+       "kind": "normal"
+      },
+      "textAlign": "start",
+      "verticalAlign": {
+       "kind": "keyword",
+       "value": "baseline"
+      }
+     },
+     "strut": null,
+     "children": [
+      {
+       "kind": "box",
+       "id": "it",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "it:text0",
+         "text": "Italic style",
+         "font": {
+          "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "ob",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "ob:text0",
+         "text": "Oblique style",
+         "font": {
+          "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "o14",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "o14:text0",
+         "text": "Oblique fourteen",
+         "font": {
+          "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "o20",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "o20:text0",
+         "text": "Oblique twenty",
+         "font": {
+          "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "o10",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "o10:text0",
+         "text": "Oblique ten",
+         "font": {
+          "family": "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "on20",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "on20:text0",
+         "text": "Oblique negative",
+         "font": {
+          "family": "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "o0",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "o0:text0",
+         "text": "Oblique zero",
+         "font": {
+          "family": "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "orad",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "orad:text0",
+         "text": "Oblique radians",
+         "font": {
+          "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "ograd",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "ograd:text0",
+         "text": "Oblique gradians",
+         "font": {
+          "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "oturn",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "oturn:text0",
+         "text": "Oblique turns",
+         "font": {
+          "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "bi",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "bi:text0",
+         "text": "Bold italic",
+         "font": {
+          "family": "sha256:948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "li",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "li:text0",
+         "text": "Light italic",
+         "font": {
+          "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "nn",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": null,
+       "children": [
+        {
+         "kind": "box",
+         "id": "nni",
+         "boxType": "element",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "top": {
+           "kind": "auto"
+          },
+          "right": {
+           "kind": "auto"
+          },
+          "bottom": {
+           "kind": "auto"
+          },
+          "left": {
+           "kind": "auto"
+          },
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "direction": "rtl",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "auto"
+          },
+          "height": {
+           "kind": "auto"
+          },
+          "minWidth": {
+           "kind": "auto"
+          },
+          "minHeight": {
+           "kind": "auto"
+          },
+          "maxWidth": {
+           "kind": "none"
+          },
+          "maxHeight": {
+           "kind": "none"
+          },
+          "marginTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderTopWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderRightWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderBottomWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderLeftWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "auto"
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "normal"
+          },
+          "columnGap": {
+           "kind": "normal"
+          },
+          "textAlign": "start",
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          }
+         },
+         "strut": {
+          "font": {
+           "family": "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+           "size": 14,
+           "specifiedSize": {
+            "kind": "px",
+            "value": 14
+           },
+           "absoluteSize": true
+          },
+          "lineHeight": {
+           "kind": "normal"
+          }
+         },
+         "children": [
+          {
+           "kind": "text",
+           "id": "nni:text0",
+           "text": "Normal inside italic",
+           "font": {
+            "family": "sha256:40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+            "size": 14,
+            "specifiedSize": {
+             "kind": "px",
+             "value": 14
+            },
+            "absoluteSize": true
+           },
+           "lineHeight": {
+            "kind": "normal"
+           },
+           "whiteSpaceCollapse": "collapse",
+           "textWrapMode": "wrap"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "lo",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "lo:text0",
+         "text": "Lato oblique ten",
+         "font": {
+          "family": "sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      },
+      {
+       "kind": "box",
+       "id": "lbn",
+       "boxType": "element",
+       "style": {
+        "display": "block",
+        "position": "static",
+        "top": {
+         "kind": "auto"
+        },
+        "right": {
+         "kind": "auto"
+        },
+        "bottom": {
+         "kind": "auto"
+        },
+        "left": {
+         "kind": "auto"
+        },
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "direction": "rtl",
+        "boxSizing": "content-box",
+        "width": {
+         "kind": "auto"
+        },
+        "height": {
+         "kind": "auto"
+        },
+        "minWidth": {
+         "kind": "auto"
+        },
+        "minHeight": {
+         "kind": "auto"
+        },
+        "maxWidth": {
+         "kind": "none"
+        },
+        "maxHeight": {
+         "kind": "none"
+        },
+        "marginTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "marginLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingTop": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingRight": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingBottom": {
+         "kind": "px",
+         "value": 0
+        },
+        "paddingLeft": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderTopWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderRightWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderBottomWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "borderLeftWidth": {
+         "kind": "px",
+         "value": 0
+        },
+        "flexDirection": "row",
+        "flexWrap": "nowrap",
+        "flexGrow": 0,
+        "flexShrink": 1,
+        "flexBasis": {
+         "kind": "auto"
+        },
+        "order": 0,
+        "justifyContent": "normal",
+        "alignItems": "normal",
+        "alignSelf": "auto",
+        "alignContent": "normal",
+        "rowGap": {
+         "kind": "normal"
+        },
+        "columnGap": {
+         "kind": "normal"
+        },
+        "textAlign": "start",
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        }
+       },
+       "strut": {
+        "font": {
+         "family": "sha256:8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1",
+         "size": 14,
+         "specifiedSize": {
+          "kind": "px",
+          "value": 14
+         },
+         "absoluteSize": true
+        },
+        "lineHeight": {
+         "kind": "normal"
+        }
+       },
+       "children": [
+        {
+         "kind": "text",
+         "id": "lbn:text0",
+         "text": "Lato bold negative",
+         "font": {
+          "family": "sha256:8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1",
+          "size": 14,
+          "specifiedSize": {
+           "kind": "px",
+           "value": 14
+          },
+          "absoluteSize": true
+         },
+         "lineHeight": {
+          "kind": "normal"
+         },
+         "whiteSpaceCollapse": "collapse",
+         "textWrapMode": "wrap"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "output": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 48832
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 48832
+  },
+  {
+   "id": "it",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 3264
+  },
+  {
+   "id": "it:text0",
+   "parent": "it",
+   "x": 63862,
+   "y": 0,
+   "width": 12938,
+   "height": 3264
+  },
+  {
+   "id": "it:text0:line0",
+   "parent": "it:text0",
+   "x": 0,
+   "y": 0,
+   "width": 12938,
+   "height": 3264
+  },
+  {
+   "id": "ob",
+   "parent": "body",
+   "x": 0,
+   "y": 3264,
+   "width": 76800,
+   "height": 3264
+  },
+  {
+   "id": "ob:text0",
+   "parent": "ob",
+   "x": 60178,
+   "y": 0,
+   "width": 16622,
+   "height": 3264
+  },
+  {
+   "id": "ob:text0:line0",
+   "parent": "ob:text0",
+   "x": 0,
+   "y": 0,
+   "width": 16622,
+   "height": 3264
+  },
+  {
+   "id": "o14",
+   "parent": "body",
+   "x": 0,
+   "y": 6528,
+   "width": 76800,
+   "height": 3264
+  },
+  {
+   "id": "o14:text0",
+   "parent": "o14",
+   "x": 55529,
+   "y": 0,
+   "width": 21271,
+   "height": 3264
+  },
+  {
+   "id": "o14:text0:line0",
+   "parent": "o14:text0",
+   "x": 0,
+   "y": 0,
+   "width": 21271,
+   "height": 3264
+  },
+  {
+   "id": "o20",
+   "parent": "body",
+   "x": 0,
+   "y": 9792,
+   "width": 76800,
+   "height": 3264
+  },
+  {
+   "id": "o20:text0",
+   "parent": "o20",
+   "x": 57598,
+   "y": 0,
+   "width": 19202,
+   "height": 3264
+  },
+  {
+   "id": "o20:text0:line0",
+   "parent": "o20:text0",
+   "x": 0,
+   "y": 0,
+   "width": 19202,
+   "height": 3264
+  },
+  {
+   "id": "o10",
+   "parent": "body",
+   "x": 0,
+   "y": 13056,
+   "width": 76800,
+   "height": 3264
+  },
+  {
+   "id": "o10:text0",
+   "parent": "o10",
+   "x": 62229,
+   "y": 0,
+   "width": 14571,
+   "height": 3264
+  },
+  {
+   "id": "o10:text0:line0",
+   "parent": "o10:text0",
+   "x": 0,
+   "y": 0,
+   "width": 14571,
+   "height": 3264
+  },
+  {
+   "id": "on20",
+   "parent": "body",
+   "x": 0,
+   "y": 16320,
+   "width": 76800,
+   "height": 3264
+  },
+  {
+   "id": "on20:text0",
+   "parent": "on20",
+   "x": 55369,
+   "y": 0,
+   "width": 21431,
+   "height": 3264
+  },
+  {
+   "id": "on20:text0:line0",
+   "parent": "on20:text0",
+   "x": 0,
+   "y": 0,
+   "width": 21431,
+   "height": 3264
+  },
+  {
+   "id": "o0",
+   "parent": "body",
+   "x": 0,
+   "y": 19584,
+   "width": 76800,
+   "height": 3264
+  },
+  {
+   "id": "o0:text0",
+   "parent": "o0",
+   "x": 60647,
+   "y": 0,
+   "width": 16153,
+   "height": 3264
+  },
+  {
+   "id": "o0:text0:line0",
+   "parent": "o0:text0",
+   "x": 0,
+   "y": 0,
+   "width": 16153,
+   "height": 3264
+  },
+  {
+   "id": "orad",
+   "parent": "body",
+   "x": 0,
+   "y": 22848,
+   "width": 76800,
+   "height": 3264
+  },
+  {
+   "id": "orad:text0",
+   "parent": "orad",
+   "x": 56678,
+   "y": 0,
+   "width": 20122,
+   "height": 3264
+  },
+  {
+   "id": "orad:text0:line0",
+   "parent": "orad:text0",
+   "x": 0,
+   "y": 0,
+   "width": 20122,
+   "height": 3264
+  },
+  {
+   "id": "ograd",
+   "parent": "body",
+   "x": 0,
+   "y": 26112,
+   "width": 76800,
+   "height": 3264
+  },
+  {
+   "id": "ograd:text0",
+   "parent": "ograd",
+   "x": 55029,
+   "y": 0,
+   "width": 21771,
+   "height": 3264
+  },
+  {
+   "id": "ograd:text0:line0",
+   "parent": "ograd:text0",
+   "x": 0,
+   "y": 0,
+   "width": 21771,
+   "height": 3264
+  },
+  {
+   "id": "oturn",
+   "parent": "body",
+   "x": 0,
+   "y": 29376,
+   "width": 76800,
+   "height": 3264
+  },
+  {
+   "id": "oturn:text0",
+   "parent": "oturn",
+   "x": 59717,
+   "y": 0,
+   "width": 17083,
+   "height": 3264
+  },
+  {
+   "id": "oturn:text0:line0",
+   "parent": "oturn:text0",
+   "x": 0,
+   "y": 0,
+   "width": 17083,
+   "height": 3264
+  },
+  {
+   "id": "bi",
+   "parent": "body",
+   "x": 0,
+   "y": 32640,
+   "width": 76800,
+   "height": 3264
+  },
+  {
+   "id": "bi:text0",
+   "parent": "bi",
+   "x": 63887,
+   "y": 0,
+   "width": 12913,
+   "height": 3264
+  },
+  {
+   "id": "bi:text0:line0",
+   "parent": "bi:text0",
+   "x": 0,
+   "y": 0,
+   "width": 12913,
+   "height": 3264
+  },
+  {
+   "id": "li",
+   "parent": "body",
+   "x": 0,
+   "y": 35904,
+   "width": 76800,
+   "height": 3264
+  },
+  {
+   "id": "li:text0",
+   "parent": "li",
+   "x": 63753,
+   "y": 0,
+   "width": 13047,
+   "height": 3264
+  },
+  {
+   "id": "li:text0:line0",
+   "parent": "li:text0",
+   "x": 0,
+   "y": 0,
+   "width": 13047,
+   "height": 3264
+  },
+  {
+   "id": "nn",
+   "parent": "body",
+   "x": 0,
+   "y": 39168,
+   "width": 76800,
+   "height": 3264
+  },
+  {
+   "id": "nni",
+   "parent": "nn",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 3264
+  },
+  {
+   "id": "nni:text0",
+   "parent": "nni",
+   "x": 52669,
+   "y": 0,
+   "width": 24131,
+   "height": 3264
+  },
+  {
+   "id": "nni:text0:line0",
+   "parent": "nni:text0",
+   "x": 0,
+   "y": 0,
+   "width": 24131,
+   "height": 3264
+  },
+  {
+   "id": "lo",
+   "parent": "body",
+   "x": 0,
+   "y": 42432,
+   "width": 76800,
+   "height": 3200
+  },
+  {
+   "id": "lo:text0",
+   "parent": "lo",
+   "x": 57635,
+   "y": 0,
+   "width": 19165,
+   "height": 3200
+  },
+  {
+   "id": "lo:text0:line0",
+   "parent": "lo:text0",
+   "x": 0,
+   "y": 0,
+   "width": 19165,
+   "height": 3200
+  },
+  {
+   "id": "lbn",
+   "parent": "body",
+   "x": 0,
+   "y": 45632,
+   "width": 76800,
+   "height": 3200
+  },
+  {
+   "id": "lbn:text0",
+   "parent": "lbn",
+   "x": 54697,
+   "y": 0,
+   "width": 22103,
+   "height": 3200
+  },
+  {
+   "id": "lbn:text0:line0",
+   "parent": "lbn:text0",
+   "x": 0,
+   "y": 0,
+   "width": 22103,
+   "height": 3200
+  }
+ ]
+}

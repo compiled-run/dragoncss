@@ -310,3 +310,9 @@ PNT1 measured Dragon's device shadows against Chrome 145 at up to 2 channel leve
 - **Every port names its source.** A port records the upstream file, the tag and the line range, so a Chrome update can be diffed and carried over. PORT-0 (T118) makes this a checked registry.
 - **A port counts only when Chrome agrees.** The same differential and device lanes judge it, with no new allowance.
 - **Order ports by real-world use,** starting with what the Tailwind sweep shows is blocking the most: colour spaces (T119), `calc()` in the remaining contexts (T120), then grid, borders, shadows and transforms through their existing tasks (G1a/G1b, T116, T114, PNT2).
+
+## font-weight and font-style (TXT-W1, T147J, PM accepted 2026-10-01)
+
+- **Blink's converters.** font-weight computes as Blink's ConvertFontWeight (numbers clamped to [1,1000] in FontSelectionValue quarter units, truncated toward zero) and bolder and lighter as BolderWeight and LighterWeight against the parent's computed weight; font-style as ConvertFontStyle (bare oblique and oblique 14deg are italic, oblique 0deg is normal). Chrome 145's parse rules beyond the grammar hold: font-style left and right are invalid, and an oblique angle's number must lie in [-90, 90] in any unit.
+- **UA rows are specified values.** html.css's bold (h1-h6), bolder (b, strong) and italic (address, em, i) go through the cascade like author values, so b inside h1 is 900.
+- **Synthesis is paint-only.** Chrome synthesizes bold for a request of 600 and up over a face below 600, and oblique for a slope of 14 and up over a face below 14. It changes no advance, so layout uses the base face. Native refuses synthesized text (DRAGON_SYNTHETIC_FONT_STYLE) until TXT-W3 draws it; web accepts it. Where the face file has the bold or italic trait, Chrome suppresses the synthesis; Dragon refuses that case rather than model it.

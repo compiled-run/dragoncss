@@ -17,7 +17,7 @@ import type { Selector } from './selectors.ts';
 import { parseSelectorList } from './selectors.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
-import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, ratioValue, tokenValue, toValue } from './values.ts';
+import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, PAIR_VALUE_PROPERTIES, pairValue, ratioValue, tokenValue, toValue } from './values.ts';
 import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
@@ -383,10 +383,12 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   }
   // css-grid-2 and justify-*: multi-token values, with the checks Chrome makes beyond the grammar (grid-values.ts).
   if (!wide && GRID_VALUE_PROPERTIES.has(property)) return parseGridValue(property, tokens, base);
-  // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
-  const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
-  const values: CssValue[] = baseline === null ? [] : [baseline];
-  for (const t of baseline === null ? tokens : []) {
+  // css-align-3 §4.2 <baseline-position> and css-fonts-4 §2.3 oblique <angle>: one value in two tokens.
+  const pair = !wide && PAIR_VALUE_PROPERTIES.has(property) ? pairValue(property, tokens) : null;
+  if (pair !== null && 'invalid' in pair) return { kind: 'invalid', reason: pair.invalid };
+  if (pair !== null && 'refused' in pair) return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(tokens[tokens.length - 1] as CssNode, base)), message: `${property}: ${pair.refused}`, manual: 'Write the angle in deg, between -90deg and 90deg.' }) };
+  const values: CssValue[] = pair === null ? [] : [pair];
+  for (const t of pair === null ? tokens : []) {
     const unitRefused = t.type === 'Dimension' ? unitRefusal(normalizeUnit(String(t['unit']))) : t.type === 'Function' ? mathFunctionRefusal(String(t['name'])) : null;
     if (unitRefused !== null) {
       return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${unitRefused.reason}`, manual: unitRefused.fix }) };

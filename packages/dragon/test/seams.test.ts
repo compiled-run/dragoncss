@@ -31,7 +31,7 @@ describe('E2 seams: the property registry', () => {
       'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
       'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
       'justify-content', 'align-items', 'align-self', 'align-content', 'row-gap', 'column-gap',
-      'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'background-color',
+      'font-size', 'font-family', 'font-weight', 'font-style', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'background-color',
       // GRID G0 appends its family (test/grid.test.ts pins GRID_LONGHANDS).
       ...GRID_LONGHANDS,
     ]);
@@ -48,11 +48,11 @@ describe('E2 seams: the property registry', () => {
   });
   it('PROPERTY_ASPECTS keys follow LONGHANDS, and INHERITED and PROPERTY_ROLE are unchanged', () => {
     expect(Object.keys(PROPERTY_ASPECTS)).toEqual([...LONGHANDS]);
-    expect([...INHERITED]).toEqual(['direction', 'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color']);
+    expect([...INHERITED]).toEqual(['direction', 'font-size', 'font-family', 'font-weight', 'font-style', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color']);
     const byRole = (r: string): string[] => LONGHANDS.filter((p) => PROPERTY_ROLE[p] === r);
     expect(byRole('container')).toEqual(['direction', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap',
       'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow', 'justify-items']);
-    expect(byRole('text')).toEqual(['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode']);
+    expect(byRole('text')).toEqual(['font-size', 'font-family', 'font-weight', 'font-style', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode']);
     expect(byRole('paint')).toEqual(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color']);
   });
   it('every shorthand has exactly one handler in shorthands/index.ts, and each sets only longhands', () => {
