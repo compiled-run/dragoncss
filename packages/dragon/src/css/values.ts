@@ -187,10 +187,12 @@ function positionPart(t: CssNode): PositionPart {
     const name = asciiLower(decodeName(String(t['name'])));
     return Object.hasOwn(POSITION_EDGES, name) ? { edge: name } : null;
   }
-  if (t.type === 'Percentage') return { offset: { unit: '%', value: Number(t['value']) } };
+  // A number past the double range (1e999px) is Infinity, which no offset holds; Dragon has no Chrome proof of how it clamps it.
+  const overflow = { refused: t, reason: 'an offset past the range of a number is not supported in object-position' } as const;
+  if (t.type === 'Percentage') return Number.isFinite(Number(t['value'])) ? { offset: { unit: '%', value: Number(t['value']) } } : overflow;
   if (t.type === 'Number' && Number(t['value']) === 0) return { offset: { unit: 'px', value: 0 } };
   if (t.type === 'Dimension') {
-    if (normalizeUnit(String(t['unit'])) === 'px') return { offset: { unit: 'px', value: Number(t['value']) } };
+    if (normalizeUnit(String(t['unit'])) === 'px') return Number.isFinite(Number(t['value'])) ? { offset: { unit: 'px', value: Number(t['value']) } } : overflow;
     return { refused: t, reason: 'only px and % offsets are supported in object-position' };
   }
   if (t.type === 'Function') return { refused: t, reason: 'a calculation in object-position is not supported' };
