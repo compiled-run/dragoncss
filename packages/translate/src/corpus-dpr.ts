@@ -357,6 +357,127 @@ export function unitsCalcCases(): string[] {
   return out;
 }
 
+// ---------------------------------------------------------------- inline formatting (INL1a)
+
+/** engine-inline: generated inline formatting contexts, appended after every earlier suite so their inputs do not move. */
+export const INLINE_SPEC = { engineInline: 3000 } as const;
+
+/** The INL1a engine faults engine-inline draws from. */
+const INLINE_FAULT_NAMES: readonly (keyof EngineFaults)[] = [
+  'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak', 'lineHeightIgnoresInlineBoxes', 'halfLeadingUnflooredPerBox',
+  'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop', 'halfLeadingSpec', 'breakOffByOne',
+];
+
+const INLINE_STYLE: Json = {
+  display: 'inline', position: 'static', top: { kind: 'auto' }, right: { kind: 'auto' }, bottom: { kind: 'auto' }, left: { kind: 'auto' },
+  overflowX: 'visible', overflowY: 'visible', direction: 'ltr', boxSizing: 'content-box', width: { kind: 'auto' }, height: { kind: 'auto' },
+  minWidth: { kind: 'auto' }, minHeight: { kind: 'auto' }, maxWidth: { kind: 'none' }, maxHeight: { kind: 'none' },
+  marginTop: { kind: 'px', value: 0 }, marginRight: { kind: 'px', value: 0 }, marginBottom: { kind: 'px', value: 0 }, marginLeft: { kind: 'px', value: 0 },
+  paddingTop: { kind: 'px', value: 0 }, paddingRight: { kind: 'px', value: 0 }, paddingBottom: { kind: 'px', value: 0 }, paddingLeft: { kind: 'px', value: 0 },
+  borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
+  flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
+  alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
+  verticalAlign: { kind: 'keyword', value: 'baseline' },
+};
+
+const inlineFont = (size: number): Json => ({ family: 'Ahem', size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true });
+
+function inlineLineHeight(r: Rng): Json {
+  if (r.chance(0.4)) return { kind: 'normal' };
+  if (r.chance(0.5)) return { kind: 'number', value: r.pick([1, 1.2, 1.5, 0.5, 2, 1.3, 3]) };
+  return { kind: 'px', value: r.pick([5, 10, 12, 15, 25, 12.5, 7.7, 23.3, 40]) };
+}
+
+/** A word of Ahem-covered characters: letters in rtl (UAX #9), and in ltr also digits, the punctuation of INL-P family 3 and U+200B. */
+function inlineWord(r: Rng, rtl: boolean): string {
+  const letters = 'abcXYZ';
+  const extra = '0123456789-?!|/(),.;:%$+"{}[]​';
+  let w = '';
+  const n = 1 + r.int(6);
+  for (let i = 0; i < n; i++) w += !rtl && r.chance(0.3) ? r.pick([...extra]) : r.pick([...letters]);
+  return w;
+}
+
+/**
+ * Generated inline formatting contexts (INL1a): text, nested inline boxes of mixed sizes and line-heights, and <br>s, collapsed as
+ * the compiler collapses them (css-text-3 §4.1.1: no doubled spaces, none at the start, after a <br> or at the end), in a block
+ * container of random width, text-align and direction, at every DPR, some with an INL1a planted fault.
+ */
+export function engineInlineCases(): string[] {
+  const r = new Rng(EXTENDED_SPEC.seed * 67);
+  const out: string[] = [];
+  let n = 0;
+  while (out.length < INLINE_SPEC.engineInline) {
+    const rtl = r.chance(0.3);
+    const direction = rtl ? 'rtl' : 'ltr';
+    let ids = 0;
+    // afterSpace: the last character written is a space, or nothing has been written since the start or a <br>.
+    let afterSpace = true;
+    const leaf = (size: number, lh: Json, wrap: string): Json => {
+      let text = '';
+      const words = 1 + r.int(3);
+      for (let i = 0; i < words; i++) {
+        if (!afterSpace && (i > 0 || r.chance(0.4))) text += ' ';
+        text += inlineWord(r, rtl);
+        afterSpace = false;
+      }
+      if (r.chance(0.3)) {
+        text += ' ';
+        afterSpace = true;
+      }
+      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: wrap };
+    };
+    const wrap = r.chance(0.9) ? 'wrap' : 'nowrap';
+    const content = (depth: number, size: number, lh: Json): Json[] => {
+      const kids: Json[] = [];
+      const count = r.int(4) + (depth === 0 ? 1 : 0);
+      for (let i = 0; i < count; i++) {
+        const pick = r.next();
+        if (pick < 0.5) kids.push(leaf(size, lh, wrap));
+        else if (pick < 0.65) {
+          kids.push({ kind: 'br', id: `b${ids++}`, font: inlineFont(r.pick([size, 30, 8])), lineHeight: r.chance(0.7) ? lh : inlineLineHeight(r) });
+          afterSpace = true;
+        } else if (depth < 2) {
+          const own = r.chance(0.6) ? r.pick([8, 10, 13, 15, 20, 23.3, 30, 17.5]) : size;
+          const ownLh = r.chance(0.5) ? inlineLineHeight(r) : lh;
+          const id = `s${ids++}`;
+          kids.push({ kind: 'inline', id, style: { ...INLINE_STYLE, direction }, font: inlineFont(own), lineHeight: ownLh, children: content(depth + 1, own, ownLh) });
+        }
+      }
+      return kids;
+    };
+    const strutSize = r.pick([10, 10, 12.5, 16, 20, 17.5]);
+    const strutLh = inlineLineHeight(r);
+    const kids = content(0, strutSize, strutLh);
+    // The context ends without a space (phase II would remove it; the compiler strips it).
+    const trim = (items: Json[]): boolean => {
+      for (let i = items.length - 1; i >= 0; i--) {
+        const c = items[i] as Json;
+        if (c['kind'] === 'br') return true;
+        if (c['kind'] === 'inline') {
+          if (trim(c['children'] as Json[])) return true;
+          continue;
+        }
+        c['text'] = (c['text'] as string).replace(/ +$/, '');
+        if (c['text'] !== '') return true;
+      }
+      return false;
+    };
+    trim(kids);
+    const dropEmpty = (items: Json[]): Json[] => items.filter((c) => c['kind'] !== 'text' || c['text'] !== '').map((c) => (c['kind'] === 'inline' ? { ...c, children: dropEmpty(c['children'] as Json[]) } : c));
+    const children = dropEmpty(kids);
+    const containerStyle = { ...INLINE_STYLE, display: 'block', direction, width: { kind: 'px', value: 20 + r.int(180) + (r.chance(0.2) ? r.pick([0.015625, 0.5, 0.3]) : 0) }, textAlign: r.pick(['start', 'end', 'left', 'right', 'center']) };
+    const container: Json = { kind: 'box', id: 'c', boxType: 'element', style: containerStyle, strut: children.length === 0 ? null : { font: inlineFont(strutSize), lineHeight: strutLh }, children };
+    const root: Json = { kind: 'box', id: 'root', boxType: 'element', style: { ...INLINE_STYLE, display: r.chance(0.2) ? 'flex' : 'block', direction }, strut: null, children: [container] };
+    const input: Json = { viewport: { width: 400, height: 300 }, devicePixelRatio: r.pick([1, 2, 3, 2.625]), viewportUnits: { small: { width: 400, height: 300 }, large: { width: 400, height: 300 }, dynamic: { width: 400, height: 300 } }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16, root };
+    n++;
+    if (!validateLayoutInput(input).ok) throw new Error(`engine-inline: generated input ${n} is invalid: ${JSON.stringify(validateLayoutInput(input))}`);
+    const faults = r.chance(0.2) ? { ...NO_ENGINE_FAULTS, [r.pick(INLINE_FAULT_NAMES)]: true } : NO_ENGINE_FAULTS;
+    out.push(JSON.stringify({ platform: 'darwin-arm64', faults, input }));
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- the extended corpus
 
 export type ExtendedCorpus = Corpus & {
@@ -378,6 +499,7 @@ export function buildExtendedCorpus(): ExtendedCorpus {
   const goldenLines = calcGoldenCases().map((v) => v.line);
   const engineCalc = engineCalcCases();
   const unitsCalc = unitsCalcCases();
+  const engineInline = engineInlineCases();
   const suites: Suite[] = [
     { name: 'vectors-m2', mode: 'engine', lines: m2Lines, expected: m2Lines.map(runEngineCase) },
     { name: 'vectors-dpr', mode: 'engine', lines: dprLines, expected: dprLines.map(runEngineCase) },
@@ -389,6 +511,8 @@ export function buildExtendedCorpus(): ExtendedCorpus {
     { name: 'calc-goldens', mode: 'engine', lines: goldenLines, expected: goldenLines.map(runEngineCase) },
     { name: 'engine-calc', mode: 'engine', lines: engineCalc, expected: engineCalc.map(runEngineCase) },
     { name: 'units-calc', mode: 'units', lines: unitsCalc, expected: unitsCalc.map(runUnitsCase) },
+    // INL1a: a new suite only, after the V1 ones.
+    { name: 'engine-inline', mode: 'engine', lines: engineInline, expected: engineInline.map(runEngineCase) },
   ];
   const d = digestsOf(suites);
   const engineSplit: Split = split(suites[2]?.expected ?? []);
@@ -406,6 +530,7 @@ export function extendedLockText(c: ExtendedCorpus): string {
     calcUnitsPerFunction: CALC_SPEC.unitsPerFunction,
     calcUnitsFunctions: UNITS_CALC_FUNCTIONS,
     engineCalc: CALC_SPEC.engineCalc,
+    engineInline: INLINE_SPEC.engineInline,
     snapGenerated: EXTENDED_SPEC.snapGenerated,
     snapVectors: c.snapVectors.length,
     cases: Object.fromEntries(c.suites.map((s) => [s.name, s.lines.length])),

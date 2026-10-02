@@ -551,6 +551,11 @@ public final class DragonTree {
     var zBoxes: [String: LayoutBox] = [:]
     var zStyles: [String: LayoutStyle] = [:]
     var zParent: [String: String] = [:]
+    // A text leaf's container is the block container of its inline formatting context, through any inline boxes.
+    func walkInline(_ c: any U_InlineBox_LineBreak_TextLeaf, _ container: String) {
+      if let t = c as? TextLeaf { zParent[t.id.description] = container }
+      else if let ib = c as? InlineBox { for k in ib.children.items { walkInline(k, container) } }
+    }
     func walk(_ b: LayoutBox) {
       zBoxes[b.id.description] = b
       zStyles[b.id.description] = b.style
@@ -558,6 +563,7 @@ public final class DragonTree {
         if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
         else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
         else if let rl = c as? ReplacedLeaf { zParent[rl.id.description] = b.id.description; zStyles[rl.id.description] = rl.style }
+        else if let ib = c as? InlineBox { for k in ib.children.items { walkInline(k, b.id.description) } }
       }
     }
     walk(zoomed.root)
@@ -618,13 +624,15 @@ public final class DragonTree {
     for id in order {
       guard let tv = views[id] as? DragonTextView else { continue }
       guard let pId = zParent[id], let p = zBoxes[pId], let e = edges[id] else { fatalError("dragon: text \(id) has no container") }
-      let leaves = p.children.items.compactMap { $0 as? TextLeaf }
+      // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
+      // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
+      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      let ifc = try inline_buildIfc(ctx, p)
+      let leaves = ifc.leaves.items
       guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("dragon: no leaf \(id)") }
       let scalars = Array(leaves[li].text.description.unicodeScalars)
       func utf16(_ cp: Int) -> Int { return scalars[0..<cp].reduce(0) { $0 + $1.utf16.count } }
-      // The engine's own lines: inline.ts placeLines, translated, over the zoomed context. Each line gives this leaf's piece.
-      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
-      let placed = try inline_placeLines(ctx, p, JsArray(leaves), try contentWidth(pId)).items
+      let placed = try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items
       let pieces = boxes.enumerated().filter { DragonTree.isLine($0.element) && $0.element.parent?.description == id }
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       let size = try units_platformFontSize(leaves[li].font.size)
@@ -1168,7 +1176,10 @@ import dev.dragon.layout.TextMeasurer
 import dev.dragon.layout.block_NO_ENGINE_FAULTS
 import dev.dragon.layout.box_resolveBorder
 import dev.dragon.layout.box_resolvePadding
-import dev.dragon.layout.inline_placeLines
+import dev.dragon.layout.InlineBox
+import dev.dragon.layout.U_InlineBox_LineBreak_TextLeaf
+import dev.dragon.layout.inline_buildIfc
+import dev.dragon.layout.inline_placeIfcLines
 import dev.dragon.layout.layout_absoluteRects
 import dev.dragon.layout.layout_layout
 import dev.dragon.layout.layout_zoomInput
@@ -1248,12 +1259,18 @@ class DragonTree(val context: Context) {
     val zBoxes = HashMap<String, LayoutBox>()
     val zStyles = HashMap<String, LayoutStyle>()
     val zParent = HashMap<String, String>()
+    // A text leaf's container is the block container of its inline formatting context, through any inline boxes.
+    fun walkInline(c: U_InlineBox_LineBreak_TextLeaf, container: String) {
+      if (c is TextLeaf) zParent[c.id] = container
+      else if (c is InlineBox) for (k in c.children) walkInline(k, container)
+    }
     fun walk(b: LayoutBox) {
       zBoxes[b.id] = b
       zStyles[b.id] = b.style
       for (c in b.children) {
         if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) } else if (c is TextLeaf) zParent[c.id] = b.id
         else if (c is ReplacedLeaf) { zParent[c.id] = b.id; zStyles[c.id] = c.style }
+        else if (c is InlineBox) for (k in c.children) walkInline(k, b.id)
       }
     }
     walk(zoomed.root)
@@ -1320,14 +1337,16 @@ class DragonTree(val context: Context) {
       val pId = zParent[id] ?: throw IllegalStateException("dragon: text " + id + " has no container")
       val p = zBoxes[pId] ?: throw IllegalStateException("dragon: no container " + pId)
       val e = edges[id] ?: throw IllegalStateException("dragon: text " + id + " is not placed")
-      val leaves = ArrayList(p.children.filterIsInstance<TextLeaf>())
+      // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
+      // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
+      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      val ifc = inline_buildIfc(ctx, p)
+      val leaves = ifc.leaves
       val li = leaves.indexOfFirst { it.id == id }
       if (li < 0) throw IllegalStateException("dragon: no leaf " + id)
       val leafText = leaves[li].text
       fun utf16(cp: Int): Int = leafText.offsetByCodePoints(0, cp)
-      // The engine's own lines: inline.ts placeLines, translated, over the zoomed context. Each line gives this leaf's piece.
-      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
-      val placed = inline_placeLines(ctx, p, leaves, contentWidth(pId))
+      val placed = inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))
       val pieces = boxes.indices.filter { isLine(boxes[it]) && boxes[it].parent == id }
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       val size = units_platformFontSize(leaves[li].font.size)
