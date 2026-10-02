@@ -4,7 +4,7 @@
 // to a fixture added since the base.
 // - Chrome captures (packages/parity/expected/**, expected-dpr/**, expected-fonts/**): the computed values of every element node gain
 //   "object-fit": "fill" and "object-position": "50% 50%"; with them removed the file is byte-identical to the base.
-// - Emitted CSS (packages/parity/emitted/**, expected-fonts/emitted/**): every rule gains "object-fit: fill;" then "object-position: 50% 50%;" after
+// - Emitted CSS (packages/parity/emitted/**, expected-fonts/emitted/**): every rule outside @media (which writes only differing longhands) gains "object-fit: fill;" then "object-position: 50% 50%;" after
 //   padding-left; with them removed the file is byte-identical to the base, except the header's compilation digest.
 // - The UA datasets (packages/dragon/src/ua/*.generated.ts): every computed row, sorted by property, gains the same two entries.
 // - The engine inputs (packages/layout/vectors/**, break-vectors/**) and Chrome's line breaks (expected-breaks/**): unchanged,
@@ -79,17 +79,42 @@ const RULE = /^\.dg\d+ \{$/;
 const FIT = '  object-fit: fill;';
 const POSITION = '  object-position: 50% 50%;';
 
-/** Emitted CSS: exactly the two declarations per rule, after padding-left; the header keeps its form with any digest. */
+/**
+ * Emitted CSS: exactly the two declarations per rule outside @media, which writes every longhand, after padding-left; a rule
+ * inside @media writes only the longhands that differ (MQ-a), so it gains none. The header keeps its form with any digest.
+ */
 function stripEmitted(after: string, before: string, path: string): { text: string; removed: number } {
   const lines = after.split('\n');
   const was = before.split('\n');
   if (!HEADER.test(lines[0] ?? '') || !HEADER.test(was[0] ?? '')) throw new Error(`${path}: the header is not the generated-file header`);
-  const rules = lines.filter((l) => RULE.test(l)).length;
+  // Rules outside an @media block write every longhand; an @media block closes at the first "}" after its last rule.
+  let rules = 0;
+  let inMedia = false;
+  let inRule = false;
+  for (const l of lines) {
+    if (l.startsWith('@media ')) inMedia = true;
+    else if (RULE.test(l)) {
+      inRule = true;
+      if (!inMedia) rules++;
+    } else if (l === '}') {
+      if (inRule) inRule = false;
+      else inMedia = false;
+    }
+  }
   const kept: string[] = [was[0] as string];
   let removed = 0;
+  // Only rules outside @media gain the declarations; one inside an @media block is kept, so the base comparison then fails.
+  inMedia = false;
+  inRule = false;
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i] as string;
-    if (line.includes('object-fit') || line.includes('object-position')) {
+    if (line.startsWith('@media ')) inMedia = true;
+    else if (RULE.test(line)) inRule = true;
+    else if (line === '}') {
+      if (inRule) inRule = false;
+      else inMedia = false;
+    }
+    if (!inMedia && (line.includes('object-fit') || line.includes('object-position'))) {
       const fit = line.includes('object-fit');
       if (line !== (fit ? FIT : POSITION)) throw new Error(`${path}:${i + 1}: "${line.trim()}" is not the neutral declaration`);
       const previous = lines[i - 1] ?? '';
@@ -106,14 +131,32 @@ function stripEmitted(after: string, before: string, path: string): { text: stri
 const UA_FIT = '    "object-fit": "fill",';
 const UA_POSITION = '    "object-position": "50% 50%",';
 
-/** UA datasets: each computed row (sorted by property) gains the two entries, object-position right after object-fit, and nothing else changes. */
+const UA_COMPUTED_TABLE = /^export const \w*[cC]omputed: /;
+const UA_ROW = /^ {2}"[^"]+": \{$/;
+const UA_ROW_END = /^ {2}\},?$/;
+
+/**
+ * UA datasets: every row of every computed table (sorted by property) gains exactly the two entries, object-position right after
+ * object-fit, and nothing else changes; a row missing them, or holding them twice, fails.
+ */
 function stripUa(after: string, _before: string, path: string): { text: string; removed: number } {
   const lines = after.split('\n');
   const kept: string[] = [];
   let removed = 0;
+  let inTable = false;
+  let row: { readonly line: number; pairs: number } | null = null;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] as string;
+    if (UA_COMPUTED_TABLE.test(line)) inTable = true;
+    else if (line === '};') inTable = false;
+    else if (inTable && UA_ROW.test(line)) row = { line: i + 1, pairs: 0 };
+    else if (row !== null && UA_ROW_END.test(line)) {
+      if (row.pairs !== 1) throw new Error(`${path}:${row.line}: a computed row holds ${row.pairs} object-fit and object-position pairs, not 1`);
+      row = null;
+    }
     if (line.includes('"object-fit"') || line.includes('"object-position"')) {
+      if (row === null) throw new Error(`${path}:${i + 1}: an object-fit or object-position entry outside a computed row`);
+      if (line.includes('"object-fit"')) row.pairs++;
       const fit = line.includes('"object-fit"');
       if (line !== (fit ? UA_FIT : UA_POSITION)) throw new Error(`${path}:${i + 1}: "${line.trim()}" is not the neutral entry`);
       if (fit ? lines[i + 1] !== UA_POSITION : lines[i - 1] !== UA_FIT) throw new Error(`${path}:${i + 1}: object-fit and object-position are not adjacent`);
@@ -160,7 +203,10 @@ const PLANTS: { readonly [name: string]: readonly [number, string, (t: string) =
   'emitted-value': [1, 'emitted/margin-collapse-body.css', (t) => t.replace('  width: auto;', '  width: 10px;')],
   'emitted-position': [1, 'emitted/margin-collapse-body.css', (t) => t.replace(POSITION, '  object-position: 0% 0%;')],
   'emitted-extra': [1, 'emitted/margin-collapse-body.css', (t) => t.replace(FIT, `${FIT}\n${FIT}`)],
+  'emitted-media': [1, 'emitted/media-max-width.css', (t) => t.replace(/(@media [^\n]*\n\.dg\d+ \{\n)/, `$1${FIT}\n${POSITION}\n`)],
   'ua-value': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace(UA_POSITION, '    "object-position": "0% 0%",')],
+  'ua-row-missing': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace(`${UA_FIT}\n${UA_POSITION}\n`, '')],
+  'emitted-moved-to-media': [1, 'emitted/media-max-width.css', (t) => t.replace(`${FIT}\n${POSITION}\n`, '').replace(/(@media [^\n]*\n\.dg\d+ \{\n)/, `$1${FIT}\n${POSITION}\n`)],
   'vector-output': [3, 'layout/vectors/dpr-2/margin-collapse-body.json', (t) => t.replace(/"height": (\d+)/, (_m, n: string) => `"height": ${Number(n) + 1}`)],
   'stray-file': [0, '', (t) => t],
   'pixel-manifest': [5, 'darwin-arm64/manifest.json', (t) => t.replace(/"sha256":"[0-9a-f]/, (m) => `${m.slice(0, -1)}${m.endsWith('0') ? '1' : '0'}`)],

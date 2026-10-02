@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { emitAndroidViewsCases, emitUikitCases, expectedDump, WRITE_CSS } from 'dragon';
 import { deviceDprs } from '../src/targets.ts';
 import { REPLACED } from '../src/fixture-groups/replaced.ts';
-import { expectedEngine, nativeCases } from '../src/native-host.ts';
+import { expectedEngine, hostSources, nativeCases } from '../src/native-host.ts';
 import { flatAt } from '../src/paint-samples/image.ts';
 import { replacedBoxes } from '../src/paint-samples/replaced-geometry.ts';
 import { repoPath } from '../src/paths.ts';
@@ -145,5 +145,31 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
     expect(swift).toMatch(/dragonSetForeignView\(v\d+, src: nil\)/);
     expect(kotlin).toContain(`.dragonSetImage("${image.data}", 32.0, 18.0, "cover")`);
     expect(kotlin).toMatch(/dragonSetForeignView\(v\d+, null\)/);
+  });
+
+  it('both lane hosts clear dragonForeignViewLoadsSrc in their entry point, before the first case runs (R9: lanes never load src)', () => {
+    // Production support loads src (paint-seams.test.ts); a lane or test host must clear the flag before any web view exists.
+    const check = (target: 'ios' | 'android', file: string, entry: string, indent: string, firstCase: string) => {
+      const files = hostSources(target, 'toolchain');
+      const all = files.map((f) => f.text).join('\n');
+      // One declaration (true) in the support, one clear in the host, no other write.
+      expect([...(all.match(/dragonForeignViewLoadsSrc\s*=\s*\w+/g) ?? [])].sort(), target).toEqual(['dragonForeignViewLoadsSrc = false', 'dragonForeignViewLoadsSrc = true']);
+      const host = files.find((f) => f.path === file)?.text;
+      if (host === undefined) throw new Error(`${target}: no ${file}`);
+      const start = host.indexOf(entry);
+      expect(start, `${target} ${entry}`).toBeGreaterThan(-1);
+      const end = host.indexOf(`\n${indent.slice(2)}}\n`, start);
+      const clear = host.indexOf(`\n${indent}dragonForeignViewLoadsSrc = false\n`, start);
+      // A statement of the entry body itself (not nested in a branch), so it runs on every launch.
+      expect(clear, `${target}: the clear is a top-level statement of ${entry}`).toBeGreaterThan(start);
+      expect(clear, target).toBeLessThan(end);
+      for (const first of [firstCase, 'DragonTree(']) {
+        const at = host.indexOf(first);
+        expect(at, `${target} ${first}`).toBeGreaterThan(-1);
+        expect(clear, `${target}: clear before ${first}`).toBeLessThan(at);
+      }
+    };
+    check('ios', 'Host/main.swift', 'func dragonRun(window: UIWindow, host: UIView) {', '  ', 'dragonCase(');
+    check('android', 'kotlin/dev/dragon/host/DragonActivity.kt', 'override fun onCreate(savedInstanceState: Bundle?) {', '    ', 'runCase(');
   });
 });

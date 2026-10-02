@@ -28,4 +28,7 @@ export const REPLACED: readonly FixtureSpec[] = [
   reject('reject-replaced-abspos', 'DRAGON_UNSUPPORTED_VALUE', 'absolute', 'position: absolute on <img> a is not supported on a replaced element'),
   reject('reject-replaced-position-calc', 'DRAGON_UNSUPPORTED_VALUE', 'right', 'object-position: right is unsupported'),
   reject('reject-replaced-no-src', 'DRAGON_UNSUPPORTED_IMAGE', imgTag('reject-replaced-no-src'), '<img> a has no src'),
+  // A zero natural width or height: PNG IHDR and JPEG SOFn forbid it, so the image never decodes (Chrome draws no image) and the
+  // engine's empty-natural-size path is reachable only from a hand-written layout input (replaced.test.ts pins it there).
+  reject('reject-replaced-zero-size', 'DRAGON_UNSUPPORTED_IMAGE', imgTag('reject-replaced-zero-size'), '<img> a: the PNG does not parse: zero image size'),
 ];

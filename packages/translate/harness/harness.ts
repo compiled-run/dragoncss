@@ -760,6 +760,7 @@ const FAULT_KEYS: readonly string[] = [
   'wrapReverseBaselineSpec', 'initialLineWidthZoomed', 'calcPercentPlainOrder', 'calcDoubleEval', 'calcNoNonNegClamp',
   'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled', 'lhUnsnapped',
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
+  'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -796,6 +797,10 @@ function decodeFaults(v: JsonValue): EngineFaults {
     lhNormalUnrounded: b('lhNormalUnrounded'),
     viewportSizeKindIgnored: b('viewportSizeKindIgnored'),
     minimumFontSizeIgnored: b('minimumFontSizeIgnored'),
+    spaceOnlyBreaks: b('spaceOnlyBreaks'),
+    fitWithoutEpsilon: b('fitWithoutEpsilon'),
+    breakAfterSolidus: b('breakAfterSolidus'),
+    noHyphenDigitBreak: b('noHyphenDigitBreak'),
   };
 }
 
