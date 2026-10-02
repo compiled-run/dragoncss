@@ -1,5 +1,5 @@
 // pnpm run layout:break-vectors (notes/T015-p4-review-p5-plan.md section 4 item 4 (i)): the engine's per-line start and end of every
-// text node of every layout case at every device DPR, through the engine's own buildRun and breakLines as the device reads them,
+// text node of every layout case at every device DPR, through the engine's own placeLines as the device reads them,
 // written to packages/layout/break-vectors/dpr-<d>/<case>.json. The case list is layoutCases(); the DPRs are DPRS.
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { programInput } from 'dragon';

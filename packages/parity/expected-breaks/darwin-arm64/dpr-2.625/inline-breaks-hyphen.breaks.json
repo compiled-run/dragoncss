@@ -1,0 +1,15 @@
+{
+  "case": "inline-breaks-hyphen",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"h1:text0","data":"aaa-bbb","lines":2,"units":[0,0,0,0,1,1,1],"blank":[]},
+    {"id":"h2:text0","data":"aaa-123","lines":2,"units":[0,0,0,0,1,1,1],"blank":[]},
+    {"id":"h3:text0","data":"123-456","lines":2,"units":[0,0,0,0,1,1,1],"blank":[]},
+    {"id":"h4:text0","data":"a -bbbb","lines":2,"units":[0,0,0,1,1,1,1],"blank":[]},
+    {"id":"h5:text0","data":"aaa?bbb","lines":2,"units":[0,0,0,0,1,1,1],"blank":[]},
+    {"id":"h6:text0","data":"a ?bbbb","lines":2,"units":[0,0,0,1,1,1,1],"blank":[]},
+    {"id":"h7:text0","data":"aa-bb-cc?dd","lines":3,"units":[0,0,0,1,1,1,2,2,2,2,2],"blank":[]},
+    {"id":"h8:text0","data":"aaa-bb?cccc","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[]}
+  ]
+}

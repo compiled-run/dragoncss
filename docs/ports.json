@@ -600,6 +600,22 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/absolute_utils.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "46fa3e1ac5646589f28326891f1e82bb403084d84e6c31ebc26bc2feadd845a9",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "659-815", "symbol": "ComputeOofInlineDimensions", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": "ratioAbsoluteInlineSize", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/block_layout_algorithm.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -615,6 +631,22 @@
       "dragon": [
         { "file": "packages/dragon/src/forms/range-geometry.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/block_node.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "8ec81b94c36402c2e9b0fc9d4d773838129ff7b5fc227c5d4a38fd6d361ae009",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "932-1110", "symbol": "BlockNode::ComputeMinMaxSizes", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": "ratioContentInlineSize", "use": "port" }
       ]
     },
     {
@@ -636,6 +668,7 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/flex.ts", "symbol": "buildItem", "use": "port" },
         { "file": "packages/layout/src/flex.ts", "symbol": "columnIntrinsicBlockSize", "use": "port" }
       ]
@@ -751,6 +784,27 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/layout_replaced.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "css-images-3 §5.5 and §5.6 (object-fit, object-position); replaced.ts writes the destination rect from the spec text and is pinned to Chrome by the REPL-0 quadrant probe",
+        "proof": [
+          "packages/layout/test/replaced.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2000 Dirk Mueller (mueller@kde.org); Copyright (C) 2004, 2006, 2007 Apple Inc. All rights reserved.",
+      "fileSha256": "f1678d62d3b94570e559a655c284cd522ef0f7d869e1d6f6ac4a0cebffe25643",
+      "headerSha256": "7699ca43bf1cb970dac2971d9d5ff6d020946449f200273e537b09dac2cffde2",
+      "ranges": [
+        { "lines": "265-327", "symbol": "LayoutReplaced::ComputeObjectFitAndPositionRect", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/layout_view.cc",
       "licence": "lgpl",
       "ruling": {
@@ -786,11 +840,89 @@
       "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
       "ranges": [
         { "lines": "164-283", "symbol": "ResolveBlockLengthInternal", "source": "located" },
+        { "lines": "285-297", "symbol": "InlineSizeFromAspectRatio", "source": "located" },
+        { "lines": "299-312", "symbol": "BlockSizeFromAspectRatio", "source": "located" },
+        { "lines": "318-357", "symbol": "ComputeMinAndMaxContentContributionForReplaced", "source": "located" },
+        { "lines": "531-603", "symbol": "ComputeInlineSizeForFragmentInternal", "source": "located" },
+        { "lines": "699-719", "symbol": "ComputeTransferredMinMaxInlineSizes", "source": "located" },
+        { "lines": "721-739", "symbol": "ComputeTransferredMinMaxBlockSizes", "source": "located" },
+        { "lines": "762-804", "symbol": "ComputeMinMaxInlineSizes", "source": "located" },
+        { "lines": "1016-1231", "symbol": "ComputeReplacedSizeInternal", "source": "located" },
         { "lines": "1555-1574", "symbol": "ResolveInlineAutoMargins", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" },
-        { "file": "packages/layout/src/box.ts", "symbol": "resolveMinLength", "use": "port" }
+        { "file": "packages/layout/src/box.ts", "symbol": "resolveMinLength", "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": "blockFromRatio", "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": "inlineFromRatio", "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": "ratioBlockLevelInlineSize", "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": "transferredBlockMinMax", "use": "port" },
+        { "file": "packages/layout/src/ratio.ts", "symbol": "transferredInlineMinMax", "use": "port" },
+        { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/replaced.ts", "symbol": "replacedContribution", "use": "port" },
+        { "file": "packages/layout/src/replaced.ts", "symbol": "replacedSize", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/box_border_painter.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "df610e882fc43bb756e031a1741f4516ab82a655b7cbd6f30e73946ccdaf4fa9",
+      "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
+      "ranges": [
+        { "lines": "354-365", "symbol": "kStylePriority", "source": "cited" },
+        { "lines": "369-374", "symbol": null, "source": "cited" },
+        { "lines": "398-498", "symbol": "EnforceDotsAtEndpoints", "source": "cited" },
+        { "lines": "500-559", "symbol": "DrawLineWithStyle", "source": "cited" },
+        { "lines": "561-596", "symbol": "DrawDashedOrDottedBoxSide", "source": "cited" },
+        { "lines": "647-752", "symbol": "DrawDoubleBoxSide", "source": "cited" },
+        { "lines": "839-898", "symbol": "DrawSolidBoxSide", "source": "cited" },
+        { "lines": "900-956", "symbol": "DrawLineForBoxSide", "source": "cited" },
+        { "lines": "1145-1215", "symbol": "ComplexBorderInfo", "source": "cited" },
+        { "lines": "1523-1567", "symbol": "PaintOpacityGroup", "source": "cited" },
+        { "lines": "1569-1649", "symbol": "PaintSide", "source": "cited" },
+        { "lines": "1651-1680", "symbol": "ComputeMiter", "source": "cited" },
+        { "lines": "1651-1694", "symbol": "ComputeMiter", "source": "cited" },
+        { "lines": "1696-1751", "symbol": "PaintOneBorderSide", "source": "cited" },
+        { "lines": "2006-2437", "symbol": "ClipBorderSidePolygon", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/contoured_border_geometry.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "24830dab3c718f430ed4938e24202dbc51a05c0ee8632ecf5e9ab47d51ef0cb6",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "207-231", "symbol": "PixelSnappedContouredInnerBorder", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": "innerBorderRect", "use": "port" },
+        { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/style/border_edge.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "fef1b151ca68c0bab96d68592dc93857eb1c37da61881127b0a73168c3bc8f67",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "1-93", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" }
       ]
     },
     {
@@ -852,7 +984,8 @@
         { "lines": "452-452", "symbol": "kMaximumAllowedFontSize", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/units.ts", "symbol": "MAX_FONT_SIZE", "use": "reference" }
+        { "file": "packages/layout/src/units.ts", "symbol": "MAX_FONT_SIZE", "use": "reference" },
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": "styleRank", "use": "reference" }
       ]
     },
     {
@@ -1296,6 +1429,23 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/platform/graphics/styled_stroke_data.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "b6587cc405e2f2b499d811ac3380fa1788d1148b942ec8b6161cedf224a35c06",
+      "headerSha256": "f856b86ff4f36c5f357b8c3e2d5f0f4a4e58fca841e52cfd9081fb6d9ddcd747",
+      "ranges": [
+        { "lines": "40-57", "symbol": "SelectBestDashGap", "source": "cited" },
+        { "lines": "81-131", "symbol": "DashEffectFromStrokeStyle", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/platform/image-decoders/image_decoder.cc",
       "licence": "lgpl",
       "ruling": {
@@ -1735,6 +1885,21 @@
       ]
     },
     {
+      "upstream": "third_party/skia/src/utils/SkDashPath.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 Google Inc.",
+      "fileSha256": "edca5c330d5697594c660f176899513697c27a61702fed2d9843eeb5d70d2c25",
+      "headerSha256": "09fb410fe807746e5c9d267a697de002ac415d5dd13d48c20717ab180ccb1f05",
+      "ranges": [
+        { "lines": "1-487", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "ui/gfx/animation/keyframe/timing_function.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -1747,6 +1912,23 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/rt-easing.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/geometry/physical_size.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "5439c8344aaffb982050be9ed24cff47830409c165e9299d6cc7440c230f4833",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "12-26", "symbol": "PhysicalSize::FitToAspectRatio", "source": "located" },
+        { "lines": "38-94", "symbol": "LayoutRatioFromSizeF", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/units.ts", "symbol": "layoutRatio", "use": "port" }
       ]
     },
     {

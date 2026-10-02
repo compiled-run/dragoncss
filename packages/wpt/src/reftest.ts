@@ -374,7 +374,10 @@ export function dragonGeometry(t: Extract<Translation, { kind: 'fixture' }>, lai
   const styles = new Map<string, Parameters<typeof resolveBorder>[0]>();
   const walk = (b: (typeof laid.input)['root']): void => {
     styles.set(b.id, b.style);
-    for (const c of b.children) if (c.kind === 'box') walk(c);
+    for (const c of b.children) {
+      if (c.kind === 'box') walk(c);
+      else if (c.kind === 'replaced') styles.set(c.id, c.style);
+    }
   };
   walk(laid.input.root);
   const byIndex = new Map<number, string>();

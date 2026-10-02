@@ -1,0 +1,14 @@
+{
+  "case": "inline-breaks-hyphen",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"h1:text0","lines":[[0,4],[4,7]]},
+    {"id":"h2:text0","lines":[[0,4],[4,7]]},
+    {"id":"h3:text0","lines":[[0,4],[4,7]]},
+    {"id":"h4:text0","lines":[[0,3],[3,7]]},
+    {"id":"h5:text0","lines":[[0,4],[4,7]]},
+    {"id":"h6:text0","lines":[[0,3],[3,7]]},
+    {"id":"h7:text0","lines":[[0,3],[3,6],[6,11]]},
+    {"id":"h8:text0","lines":[[0,4],[4,7],[7,11]]}
+  ]
+}
