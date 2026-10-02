@@ -1,24 +1,26 @@
-// pnpm run native:devices [-- --target ios|android] [-- --plant glyph-offset-1|glyph-offset-y-1] (notes/T015-p4-review-p5-plan.md
-// section 4 items 1 and 5; T093 ruling A and addendum). Without --plant: provisions and verifies the device matrix, one device at a
-// time: boots it headless (emulators by serial), runs the app once, and prints the model, OS and build, the scale from the device
-// profile and from the app, the window and stage in device px, the root's window offset and the text scale; any disagreement, a root
-// that does not fit, or a text scale other than the pinned one fails. With --plant: runs the plant case on each target's plant device
-// twice, with the clean app and with the planted one (every glyph 1 device px right, or down), and judges the plant against the clean
-// run (judgeGlyphPlant): both hosts finished; the clean run has no device-pixels failure; on the plant's axis every line's glyph
-// position (the x centre, or the bottom edge) fails the position check by PLANT_MARGIN_DEVICE_PX or more and moved
-// PLANT_SHIFT_DEVICE_PX within the spread; and device-frames and device-lines pass in both runs.
+// pnpm run native:devices [-- --target ios|android] [-- --plant glyph-offset-1|glyph-offset-y-1|dash-phase-1|dash-gap-unfitted]
+// (notes/T015-p4-review-p5-plan.md section 4 items 1 and 5; T093 ruling A and addendum). Without --plant: provisions and verifies
+// the device matrix, one device at a time: boots it headless (emulators by serial), runs the app once, and prints the model, OS and
+// build, the scale from the device profile and from the app, the window and stage in device px, the root's window offset and the
+// text scale; any disagreement, a root that does not fit, or a text scale other than the pinned one fails. With a glyph --plant:
+// runs the plant case on each target's plant device twice, with the clean app and with the planted one (every glyph 1 device px
+// right, or down), and judges the plant against the clean run (judgeGlyphPlant): both hosts finished; the clean run has no
+// device-pixels failure; on the plant's axis every line's glyph position (the x centre, or the bottom edge) fails the position
+// check by PLANT_MARGIN_DEVICE_PX or more and moved PLANT_SHIFT_DEVICE_PX within the spread; and device-frames and device-lines
+// pass in both runs. A paint plant (P6a) runs its cases (PLANT_CASES) once with the planted app: device-pixels must fail on its
+// sample rules (PLANT_RULES) while device-frames and device-lines pass (plantVerdict).
 import { SUPPORT_PLANTS } from 'dragon';
 import type { SupportPlant } from 'dragon';
 import { GATE_GLYPH_POSITION_DEVICE_PX } from '../compare.ts';
-import { caseReference, dumpFile, evaluateCase, readDump } from '../device-lanes.ts';
+import { caseReference, dumpFile, evaluateCase, plantVerdict, readDump } from '../device-lanes.ts';
 import type { DeviceSpec } from '../device-run.ts';
-import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, judgeGlyphPlant, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_DEVICES, recordProblems, release, runApp } from '../device-run.ts';
+import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, isGlyphPlant, judgeGlyphPlant, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, recordProblems, release, runApp } from '../device-run.ts';
 import { glyphPositions } from '../native-compare.ts';
 import { validateNativeDump } from '../native-dump.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BACKEND_OF, buildAndroid, buildIos, nativeCases, nativeOut } from '../native-host.ts';
-import { rasterSize, runFileText } from '../pixel-reference.ts';
+import { casePoints, rasterSize, runFileText } from '../pixel-reference.ts';
 import type { NativeTarget } from '../targets.ts';
 
 const args = process.argv.slice(2);
@@ -66,6 +68,40 @@ if (plant === null) {
     }
   }
   log(`status ${failures === 0 ? 'pass' : 'fail'} (${failures} problem(s))`);
+  process.exit(failures === 0 ? 0 : 1);
+}
+
+// A paint plant (P6a): pixels must see what (d) cannot, on the plant's cases (PLANT_CASES) and sample rules (PLANT_RULES).
+if (!isGlyphPlant(plant)) {
+  for (const target of targets) {
+    const build = target === 'ios' ? buildIos({ reuse: true, plant }) : buildAndroid({ reuse: true, plant });
+    const spec = DEVICE_MATRIX.find((d) => d.name === PLANT_DEVICES[target]);
+    if (spec === undefined) throw new Error(`no plant device ${PLANT_DEVICES[target]}`);
+    const ns = PLANT_CASES[plant].map((id) => {
+      const n = cases.find((c) => c.case.id === id);
+      if (n === undefined) throw new Error(`no case ${id}`);
+      return n;
+    });
+    const h = await boot(spec);
+    try {
+      const dpr = deviceProfile(h).profileScale;
+      const dir = join(nativeOut(target), 'devices', `${spec.name}-${plant}`);
+      const r = await runApp(h, build.artifact, { runFile: runFileText(ns.map((n) => ({ id: n.case.id, points: casePoints(n.programs[BACKEND_OF[target]], n.case.environment.viewport, dpr) })), false), caseCount: ns.length, outDir: dir });
+      if (r.error !== null) log(`${target} ${spec.name} @${dpr} ${plant}: FAIL the host did not finish: ${r.error}`);
+      const all = ns.flatMap((n) => {
+        const read = readDump(dumpFile(dir, n.case.id, dpr));
+        const raw = read.kind === 'ok' ? read.raw : read.kind === 'unparseable' ? { unparseable: read.detail } : null;
+        return evaluateCase(target, n, dpr, raw, caseReference(target, n, dpr)).failures;
+      });
+      for (const f of all) log(`${target} ${spec.name} @${dpr} ${plant}: ${f.case} ${f.lane} ${f.kind} ${f.node ?? ''}: ${f.detail}`);
+      const v = plantVerdict(all, r.error, PLANT_RULES[plant]);
+      log(`${target} ${spec.name} @${dpr} ${plant} on ${PLANT_CASES[plant].join(', ')}: device-pixels ${v.pixels} failures (${v.inked} on ${PLANT_RULES[plant].source} rules); device-frames ${v.frames}, device-lines ${v.lines} failures${r.error === null ? '' : '; the host did not finish'}: plant ${v.caught ? 'CAUGHT' : 'NOT CAUGHT'}`);
+      if (!v.caught) failures++;
+    } finally {
+      await release(h);
+    }
+  }
+  log(`plant ${plant}: status ${failures === 0 ? 'pass' : 'fail'}`);
   process.exit(failures === 0 ? 0 : 1);
 }
 

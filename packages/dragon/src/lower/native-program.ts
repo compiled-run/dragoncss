@@ -3,7 +3,8 @@
 // resolved paint values. A program holds generated node ids, kinds and parents, the typed engine input, every property write in
 // backend vocabulary with its technique and the CSS longhands it realises, and the text runs. The emitters and the expected-dump
 // projection read only the program; nothing downstream re-resolves CSS.
-import type { LayoutBox, LayoutNode, TextLeaf } from '@dragon/layout';
+import type { FontSpec, LayoutBox, LayoutNode, TextLeaf } from '@dragon/layout';
+import { rootFontSizeOf } from './ios-layout.ts';
 import type { ResolvedElement, ResolvedText } from '../analysis/resolve.ts';
 import type { Rgba8 } from '../css/color.ts';
 import { TRANSPARENT } from '../css/color.ts';
@@ -36,7 +37,8 @@ export const BACKEND_TARGET: { readonly [B in NativeBackend]: 'ios' | 'android' 
 export type WriteKind =
   /** The paint writes: background, border and clip, and every paint module's (lower/paint/registry.ts). */
   | PaintWrite
-  | { readonly kind: 'font'; readonly family: 'Ahem'; readonly size: number }
+  /** A text run's font: the device takes the size from the engine's resolved input at its environment (layout.ts zoomInput). */
+  | { readonly kind: 'font'; readonly font: FontSpec }
   | { readonly kind: 'text-color'; readonly color: Rgba8 };
 
 export type ProgramWrite = WriteKind & {
@@ -70,6 +72,8 @@ export type NativeProgram = {
   readonly backend: NativeBackend;
   /** The shared engine input tree (nativeLayoutProjection's root); the viewport and ratio come from the environment and device. */
   readonly root: LayoutBox;
+  /** The engine input's rootFontSize at text scale 1 (ios-layout.ts rootFontSizeOf). */
+  readonly rootFontSize: number;
   readonly nodes: readonly ProgramNode[];
 };
 
@@ -153,16 +157,17 @@ function textPaint(t: TextLeaf, parent: string, texts: ReadonlyMap<string, Resol
   if (r === undefined) throw new ProgramError(`${t.id}: no resolved text for the text leaf`);
   const color = r.props.get('color');
   if (color === undefined) throw new ProgramError(`${t.id}: color did not resolve`);
-  return { id: t.id, parent, kind: 'text', clips: false, text: t.text, writes: [{ kind: 'font', family: t.font.family, size: t.font.size }, { kind: 'text-color', color: colorChannels(color.value, t.id) }], facts: {} };
+  return { id: t.id, parent, kind: 'text', clips: false, text: t.text, writes: [{ kind: 'font', font: t.font }, { kind: 'text-color', color: colorChannels(color.value, t.id) }], facts: {} };
 }
 
-function toBackend(backend: NativeBackend, root: LayoutBox, paint: readonly NodePaint[]): NativeProgram {
+function toBackend(backend: NativeBackend, root: LayoutBox, rootFontSize: number, paint: readonly NodePaint[]): NativeProgram {
   const vocab = VOCABULARY[backend];
   const classes = NATIVE_CLASSES[backend];
   return {
     version: PROGRAM_VERSIONS[backend],
     backend,
     root,
+    rootFontSize,
     nodes: paint.map((n) => ({
       id: n.id,
       parent: n.parent,
@@ -180,5 +185,6 @@ function toBackend(backend: NativeBackend, root: LayoutBox, paint: readonly Node
 /** Both backends' programs of one case, from one shared layout tree and one paint lowering. */
 export function lowerNativePrograms(root: LayoutBox, resolved: ResolvedElement): { readonly [B in NativeBackend]: NativeProgram } {
   const paint = sharedPaint(root, resolved);
-  return { uikit: toBackend('uikit', root, paint), 'android-views': toBackend('android-views', root, paint) };
+  const rootFontSize = rootFontSizeOf(resolved);
+  return { uikit: toBackend('uikit', root, rootFontSize, paint), 'android-views': toBackend('android-views', root, rootFontSize, paint) };
 }

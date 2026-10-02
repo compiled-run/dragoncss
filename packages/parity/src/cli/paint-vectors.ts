@@ -3,7 +3,7 @@
 // lines a paint package commits in packages/layout/paint-vectors/<feature>/inputs.jsonl, runs each through the translated
 // harness's TypeScript source (units mode, "paint:<feature>:<function>" names) and writes <feature>/vectors.json. A feature with
 // no inputs gets an empty suite. --check fails when a committed file differs from a fresh run.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { repoPath } from '../paths.ts';
@@ -16,6 +16,11 @@ type Harness = { readonly runUnitsCase: (line: string) => string };
 /** The paint features: the paint-<feature>.ts seam files, in PAINT_ROOT_FILES order. */
 export function paintFeatures(rootFiles: readonly string[]): string[] {
   return rootFiles.filter((f) => f.startsWith('paint-')).map((f) => f.slice('paint-'.length, -'.ts'.length));
+}
+
+/** The entries of the paint-vectors directory that are not a feature's directory: a removed or misspelt feature, refused. */
+export function strayEntries(entries: readonly string[], features: readonly string[]): string[] {
+  return entries.filter((e) => !features.includes(e)).sort();
 }
 
 /** The vectors file text of one feature from its input lines and the TypeScript results. */
@@ -34,7 +39,11 @@ async function main(): Promise<void> {
   const harness = (await import(pathToFileURL(repoPath('packages/translate/harness/harness.ts')).href)) as Harness;
   const check = process.argv.includes('--check');
   const stale: string[] = [];
-  for (const feature of paintFeatures(gen.PAINT_ROOT_FILES)) {
+  const features = paintFeatures(gen.PAINT_ROOT_FILES);
+  const root = repoPath(PAINT_VECTORS_DIR);
+  const stray = existsSync(root) ? strayEntries(readdirSync(root), features) : [];
+  if (stray.length > 0) throw new Error(`layout:paint-vectors: ${PAINT_VECTORS_DIR} holds ${stray.join(', ')}, which no paint-<feature>.ts root names; remove it or add its root`);
+  for (const feature of features) {
     const dir = repoPath(join(PAINT_VECTORS_DIR, feature));
     const inputs = join(dir, 'inputs.jsonl');
     const lines = existsSync(inputs) ? readFileSync(inputs, 'utf8').split('\n').filter((l) => l.length > 0) : [];

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { absoluteRects, ahemMeasurer, layout, validateLayoutInput } from '../src/index.ts';
 import { fromCssPx, fromRaw, layoutRatio, mulDiv } from '../src/units.ts';
 import type { AspectRatioValue, LayoutBox, LayoutRect, LayoutStyle, TextLeaf } from '../src/index.ts';
-import { box, pct, px, text } from './helpers.ts';
+import { box, neutralEnvironment, pct, px, text } from './helpers.ts';
 
 // SIZE-ar (T050): aspect-ratio on non-replaced boxes, pinned to rects measured in Chrome 145.0.7632.6 (probe markup mirrored
 // here: body margin 0, 10px Ahem, a 400x300 viewport). Layout ratios are raw LayoutUnit pairs, as the compiler writes them.
@@ -15,7 +15,8 @@ const edges = (side: 'padding' | 'border', top: number, right: number, bottom = 
     : { borderTopWidth: px(top), borderRightWidth: px(right), borderBottomWidth: px(bottom), borderLeftWidth: px(left) };
 
 function run(body: LayoutBox[], bodyStyle: Partial<LayoutStyle> = {}): Map<string, LayoutRect> {
-  const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root: box('html', {}, [box('body', bodyStyle, body)]) };
+  const viewport = { width: 400, height: 300 };
+  const input = { viewport, ...neutralEnvironment(viewport), devicePixelRatio: 1, root: box('html', {}, [box('body', bodyStyle, body)]) };
   const v = validateLayoutInput(input);
   if (!v.ok) throw new Error(JSON.stringify(v.errors));
   const out = layout(v.input, ahemMeasurer);
@@ -174,7 +175,7 @@ describe('intrinsic contributions', () => {
 
 describe('the validator', () => {
   it('refuses a percentage block size beside a ratio, and a ratio part that is not a positive integer', () => {
-    const input = (s: Partial<LayoutStyle>) => ({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, root: box('html', {}, [box('a', s)]) });
+    const input = (s: Partial<LayoutStyle>) => ({ viewport: { width: 400, height: 300 }, ...neutralEnvironment({ width: 400, height: 300 }), devicePixelRatio: 1, root: box('html', {}, [box('a', s)]) });
     for (const s of [{ height: pct(50) }, { minHeight: pct(10) }, { maxHeight: pct(10) }]) {
       const v = validateLayoutInput(input({ aspectRatio: r(1, 1), ...s }));
       expect(v.ok).toBe(false);

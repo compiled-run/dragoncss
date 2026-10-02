@@ -1,5 +1,6 @@
-// The used appearance of a button or range: Blink layout_theme.cc AdjustAppearanceWithAuthorStyle and IsControlStyled.
-// A push button with an author background or border devolves to CSS painting; a slider never does. A range's thumb has its own
+// The used appearance of a button or range, per css-ui-4's devolvable widgets and the devolve probe captured from Chrome
+// (appearance.generated.ts; Chrome decides this in layout_theme.cc). A push button with an author background or border devolves
+// to CSS painting; a slider never does. A range's thumb has its own
 // appearance (html.css gives ::-webkit-slider-thumb appearance:auto), so the whole range is CSS-painted only when the input and the
 // thumb are both appearance:none.
 import { NO_FORM_FAULTS } from './faults.ts';
