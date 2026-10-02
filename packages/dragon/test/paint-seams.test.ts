@@ -84,7 +84,8 @@ describe('EMS: the paint registries', () => {
     }
     // The border module (P6a) declares the two dash plants; every stub declares none.
     expect(paintPlants().map((p) => p.name)).toEqual(['dash-phase-1', 'dash-gap-unfitted']);
-    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted']);
+    // INL1a appends its line plant (single-run-baseline) after the paint plants; it is no paint module's.
+    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted', 'single-run-baseline']);
   });
 });
 

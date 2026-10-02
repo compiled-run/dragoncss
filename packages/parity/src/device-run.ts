@@ -47,9 +47,13 @@ export const TRUST_CASES: readonly string[] = ['color-border-sides', 'text-wrap-
 export const PLANT_CASE = 'tree-projected-text#1';
 /** The glyph plants (T093), judged against the clean run on PLANT_CASE; every other support plant is a paint plant. */
 export type GlyphPlant = 'glyph-offset-1' | 'glyph-offset-y-1';
-/** The paint plants: every support plant that is not a glyph plant. */
-export type PaintPlant = Exclude<SupportPlant, GlyphPlant>;
+/** The INL1a line plant, judged against the clean run on LINE_PLANT_CASE (judgeLinePlant). */
+export type LinePlant = 'single-run-baseline';
+/** The paint plants: every support plant that is neither a glyph plant nor the line plant. */
+export type PaintPlant = Exclude<SupportPlant, GlyphPlant | LinePlant>;
 export const isGlyphPlant = (p: SupportPlant): p is GlyphPlant => p === 'glyph-offset-1' || p === 'glyph-offset-y-1';
+export const isLinePlant = (p: SupportPlant): p is LinePlant => p === 'single-run-baseline';
+export const isPaintPlant = (p: SupportPlant): p is PaintPlant => !isGlyphPlant(p) && !isLinePlant(p);
 /** The cases each paint plant runs on: the dash plants (P6a) run on the border-paint fixtures. */
 export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
@@ -64,6 +68,8 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
 /** The axis each raster plant moves every glyph along, by PLANT_SHIFT_DEVICE_PX. */
 export const PLANT_AXIS: { readonly [P in GlyphPlant]: 'x' | 'y' } = { 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' };
+/** The case of the single-run-baseline line plant: b1 holds a text node on two lines whose baselines sit differently below their line tops. */
+export const LINE_PLANT_CASE = 'inline-baselines';
 /** T093 ruling A: a plant's glyph positions (x centre, or bottom edge), against the clean run on the same device, move by this much... */
 export const PLANT_SHIFT_DEVICE_PX = 1;
 /** ...within this... */
@@ -101,6 +107,51 @@ export function judgeGlyphPlant(plant: GlyphPlant, clean: { readonly failures: n
     if (Math.abs(shift - PLANT_SHIFT_DEVICE_PX) > PLANT_SHIFT_SPREAD_DEVICE_PX) problems.push(`${c.line}: the glyph ${axis === 'x' ? 'centre' : 'bottom edge'} moved ${shift.toFixed(3)} device px from the clean run, not ${PLANT_SHIFT_DEVICE_PX} within ${PLANT_SHIFT_SPREAD_DEVICE_PX}`);
     if (!(margin >= PLANT_MARGIN_DEVICE_PX)) problems.push(`${c.line}: the position check fails by ${margin.toFixed(3)} device px beyond the gate, less than ${PLANT_MARGIN_DEVICE_PX}`);
   }
+  return { caught: problems.length === 0, lines, problems };
+}
+
+/** One text line's absolute baseline in device px, read from a dump. */
+export type DumpBaseline = { readonly line: string; readonly baseline: number };
+
+/**
+ * The single-run-baseline line plant judged against the clean run (INL1a): both hosts finished; device-frames and device-lines have
+ * no failure in either run (the plant moves glyphs, not line boxes); the clean run has no device-pixels failure; both runs dumped the
+ * same text lines; every text node's first line keeps its baseline; at least one line's baseline moved by a whole device px or more;
+ * and on every moved line the glyph bottom edge moved by the same amount within PLANT_SHIFT_SPREAD_DEVICE_PX and fails the position
+ * check with at least PLANT_MARGIN_DEVICE_PX to spare.
+ */
+export function judgeLinePlant(clean: { readonly failures: number; readonly baselines: readonly DumpBaseline[]; readonly bottoms: readonly GlyphPosition[] }, planted: { readonly baselines: readonly DumpBaseline[]; readonly bottoms: readonly GlyphPosition[] }, gate: number, runs: { readonly hostErrors: readonly string[]; readonly frames: number; readonly lines: number }): PlantVerdict {
+  const problems: string[] = [...runs.hostErrors];
+  if (runs.frames > 0) problems.push(`device-frames has ${runs.frames} failure(s) across the two runs`);
+  if (runs.lines > 0) problems.push(`device-lines has ${runs.lines} failure(s) across the two runs`);
+  if (clean.failures > 0) problems.push(`the clean run has ${clean.failures} device-pixels failure(s)`);
+  const cleanAt = new Map(clean.baselines.map((b) => [b.line, b.baseline]));
+  if (planted.baselines.length !== cleanAt.size || planted.baselines.some((b) => !cleanAt.has(b.line))) problems.push(`the planted run dumped ${planted.baselines.length} text lines, the clean run ${cleanAt.size}, not the same lines`);
+  const cleanBottom = new Map(clean.bottoms.filter((c) => c.axis === 'y').map((c) => [c.line, c]));
+  const plantedBottom = new Map(planted.bottoms.filter((c) => c.axis === 'y').map((c) => [c.line, c]));
+  const lines: PlantLine[] = [];
+  for (const b of planted.baselines) {
+    const base = cleanAt.get(b.line);
+    if (base === undefined) continue;
+    const shift = b.baseline - base;
+    if (/:line0$/.test(b.line)) {
+      if (shift !== 0) problems.push(`${b.line}: a first line's baseline moved ${shift} device px`);
+      continue;
+    }
+    if (Math.abs(shift) < PLANT_SHIFT_DEVICE_PX) continue;
+    const c = cleanBottom.get(b.line);
+    const p = plantedBottom.get(b.line);
+    if (c === undefined || p === undefined) {
+      problems.push(`${b.line}: its baseline moved ${shift} device px, and no glyph bottom edge was measured on it`);
+      continue;
+    }
+    lines.push({ line: b.line, chrome: p.chrome, clean: c.native, planted: p.native });
+    const moved = p.native - c.native;
+    const margin = Math.abs(p.native - p.chrome) - gate;
+    if (Math.abs(moved - shift) > PLANT_SHIFT_SPREAD_DEVICE_PX) problems.push(`${b.line}: the glyph bottom edge moved ${moved.toFixed(3)} device px, the baseline ${shift}`);
+    if (!(margin >= PLANT_MARGIN_DEVICE_PX)) problems.push(`${b.line}: the position check fails by ${margin.toFixed(3)} device px beyond the gate, less than ${PLANT_MARGIN_DEVICE_PX}`);
+  }
+  if (lines.length === 0 && problems.length === 0) problems.push('no line baseline moved by a whole device px');
   return { caught: problems.length === 0, lines, problems };
 }
 

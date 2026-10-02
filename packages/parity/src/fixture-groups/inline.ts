@@ -8,8 +8,15 @@ export const INLINE: readonly FixtureSpec[] = [
   layout('inline-breaks-hyphen'),
   layout('inline-breaks-no-break'),
   both('inline-breaks-fit'),
-  // INL1a part C1 refuses what the inline core does not lay out; the contexts that hold inline boxes stay unproven until their
-  // fixtures (part C2) prove them.
+  // Inline boxes, <br>s and struts (CSS2 §10.8), from INL-P families 1 to 3; '-' is refused in rtl, so inline-box-hyphen runs ltr.
+  both('inline-mixed-sizes'),
+  both('inline-empty-boxes'),
+  both('inline-br'),
+  both('inline-box-boundaries'),
+  layout('inline-box-hyphen'),
+  both('inline-tags'),
+  // b1:text1 sits on two lines whose baselines lie differently below their line tops: the single-run-baseline plant case.
+  both('inline-baselines'),
   reject('reject-inline-padding', 'DRAGON_UNPROVEN_CONTEXT', '2px', 'padding-left:<length-px> on s is used in the inline/ltr context'),
   reject('reject-inline-margin', 'DRAGON_UNPROVEN_CONTEXT', '3px', 'margin-right:<length-px> on s is used in the inline/ltr context'),
   reject('reject-inline-border', 'DRAGON_UNPROVEN_CONTEXT', '1px solid #000', 'border-bottom-width:<length-px> (set by border-bottom: 1px solid #000) on s is used in the inline/ltr context'),

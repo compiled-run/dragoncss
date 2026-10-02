@@ -34,7 +34,7 @@ type BoxMetrics = { readonly above: LU; readonly below: LU; readonly ascent: LU;
 /** A place a line may start: an item index, and whether the line before it ends there by force (after a <br>). */
 type Boundary = { readonly at: number; readonly forced: boolean };
 
-type Ifc = {
+export type Ifc = {
   readonly leaves: readonly TextLeaf[];
   readonly boxes: readonly InlineBox[];
   /** The index of each box's parent box, or -1 for the root. */
@@ -292,7 +292,7 @@ function tagIndex(items: readonly Item[], b: number, kind: 'open' | 'close'): nu
 }
 
 /** Flattens the formatting context into items and resolves its boxes' metrics. */
-function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
+export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   const flat: Flat = { leaves: [], boxes: [], boxParent: [], brs: [], items: [] };
   flatten(ctx, inlineChildren(box), -1, flat);
   const items = flat.items;
@@ -601,7 +601,7 @@ export function placeLines(ctx: Ctx, box: LayoutBox, available: LU): PlacedLine[
   return placeIfcLines(ctx, box, buildIfc(ctx, box), available);
 }
 
-function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): PlacedLine[] {
+export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): PlacedLine[] {
   const lines = breakLines(ctx, ifc, available);
   const rtl = directionOf(ctx, box) === 'rtl';
   const out: PlacedLine[] = [];

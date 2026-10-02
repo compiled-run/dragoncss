@@ -340,11 +340,16 @@ export type ReferenceCase = {
 
 function nodeKinds(input: LayoutInput): Map<string, DumpNode['kind']> {
   const out = new Map<string, DumpNode['kind']>();
+  // INL1a: an inline box and a <br> are element nodes, and the text inside an inline box is a text node.
+  const inline = (c: Exclude<LayoutBox['children'][number], LayoutBox>): void => {
+    out.set(c.id, c.kind === 'text' ? 'text' : 'element');
+    if (c.kind === 'inline') for (const k of c.children) inline(k);
+  };
   const walk = (b: LayoutBox): void => {
     out.set(b.id, b.boxType === 'anonymous' ? 'anonymous' : 'element');
     for (const c of b.children) {
       if (c.kind === 'box') walk(c);
-      else out.set(c.id, c.kind === 'replaced' ? 'element' : 'text');
+      else inline(c);
     }
   };
   walk(input.root);
