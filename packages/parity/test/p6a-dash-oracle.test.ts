@@ -133,6 +133,16 @@ export function paintsOver(order: readonly string[], layer: ReadonlySet<string>,
   return order.indexOf(m) > order.indexOf(n);
 }
 
+/**
+ * Whether the text of box `owner` paints over box n's border (CSS2 Appendix E): in-flow text paints after every in-flow border of
+ * the stacking context, so over an in-flow border any text does; over a positioned border only its own text and the text of a box
+ * that paintsOver it.
+ */
+export function textPaintsOver(order: readonly string[], layer: ReadonlySet<string>, n: string, owner: string): boolean {
+  if (owner === n || !layer.has(n)) return true;
+  return paintsOver(order, layer, n, owner);
+}
+
 /** corners: the boxes' outer corner pixels the reference paints crisp in a side colour, as "id:x,y". */
 type Result = { readonly boxes: number; readonly crisp: number; readonly mismatches: readonly string[]; readonly corners: readonly string[]; readonly checked: readonly string[] };
 
@@ -153,7 +163,12 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
   const snapped = snapEdges(out.boxes);
   const borders = borderDevicePx(engine, input);
   const boxOf = new Map<string, Box>(out.boxes.map((b: LayoutRect, i) => [b.id, snapped[i] as Box]));
-  const glyphs: Box[] = glyphLines(p, vp, dpr).flatMap((l) => l.glyphs.map((g) => ({ left: Math.floor(g.left) - 1, top: Math.floor(g.top) - 1, right: Math.ceil(g.right) + 1, bottom: Math.ceil(g.bottom) + 1 })));
+  const ownerOf = new Map(p.nodes.filter((m) => m.kind === 'text').map((m) => [m.id, m.parent]));
+  const glyphs = glyphLines(p, vp, dpr).flatMap((l) => {
+    const owner = ownerOf.get(l.id.slice(0, l.id.lastIndexOf(':line')));
+    if (owner === undefined || owner === null) throw new Error(`${nc.case.id}: no owning box for the text line ${l.id}`);
+    return l.glyphs.map((g) => ({ owner, box: { left: Math.floor(g.left) - 1, top: Math.floor(g.top) - 1, right: Math.ceil(g.right) + 1, bottom: Math.ceil(g.bottom) + 1 } }));
+  });
   const order = p.nodes.map((m) => m.id);
   const layer = positionedLayer(p.root);
   let boxes = 0;
@@ -179,8 +194,9 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
       const o = boxOf.get(m.id);
       return o === undefined ? [] : [o];
     });
-    // Glyphs paint over borders too (text that overflows its line box), with a device px of anti-aliasing around each glyph box.
-    if (!mode.preT116) over.push(...glyphs);
+    // Glyphs that paint over this border (textPaintsOver) hide it too (text that overflows its line box), with a device px of
+    // anti-aliasing around each glyph box; text painted below a positioned border is compared.
+    if (!mode.preT116) for (const g of glyphs) if (textPaintsOver(order, layer, n.id, g.owner)) over.push(g.box);
     for (let y = b.top; y < b.bottom; y++) {
       for (let x = b.left; x < b.right; x++) {
         const inBand = y < b.top + (w[0] as number) || y >= b.bottom - (w[2] as number) || x < b.left + (w[3] as number) || x >= b.right - (w[1] as number);
@@ -209,7 +225,7 @@ const dashed = withStyle((s) => s === 'dashed' || s === 'dotted');
 const solid = withStyle((s) => s === 'solid').filter((nc) => !dashed.includes(nc));
 
 describe('the oracle\'s paint order (which boxes hide a border pixel)', () => {
-  it('puts positioned boxes and their descendants over in-flow ones, and orders each phase by tree order', () => {
+  it('puts positioned boxes and their descendants over in-flow ones, orders each phase by tree order, and puts in-flow text over every in-flow border', () => {
     const order = ['c2', 'b5', 'c3', 'd3', 'c4'];
     const layer = new Set(['b5', 'd3']);
     // An earlier positioned box paints over a later in-flow border (b5 over c3); an earlier in-flow box does not (c2 under c3).
@@ -222,6 +238,13 @@ describe('the oracle\'s paint order (which boxes hide a border pixel)', () => {
     expect(paintsOver(order, layer, 'b5', 'c4')).toBe(false);
     const p = nativeCases().find((c) => c.case.id === 'position-relative-percent')?.programs.uikit;
     if (p === undefined) throw new Error('no position-relative-percent case');
+    // Over an in-flow border every text paints; over a positioned border its own text and that of boxes painting over it only.
+    expect(textPaintsOver(order, layer, 'c3', 'c2')).toBe(true);
+    expect(textPaintsOver(order, layer, 'c3', 'b5')).toBe(true);
+    expect(textPaintsOver(order, layer, 'b5', 'b5')).toBe(true);
+    expect(textPaintsOver(order, layer, 'b5', 'd3')).toBe(true);
+    expect(textPaintsOver(order, layer, 'b5', 'c4')).toBe(false);
+    expect(textPaintsOver(order, layer, 'd3', 'b5')).toBe(false);
     expect([...positionedLayer(p.root)].sort()).toEqual(['a1', 'a2', 'a3', 'a4', 'a5', 'b1', 'b2', 'b3', 'b4', 'b5', 'd1', 'd2', 'd3', 'e1', 'e2']);
   });
 });
