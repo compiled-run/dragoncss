@@ -171,3 +171,34 @@ The objective, allowed_files, verify and stop_if are in the T059J receipt, copie
 **Merge conflicts with inl1a-tags:** five append collisions (fonts.ts MAPS was added). They are accepted under T059J-1 (4) and resolved by keeping both sides at catch-up.
 
 **Order:** TXT2-a is dispatched on inl2 08df24673. INL2b restacks on TXT2-a afterwards.
+
+## PM amendment T059J-INL2b-1 (2026-10-01)
+
+**sub and sup tags.** INL2b may:
+- append them to the TAGS list in capture-ua-defaults.ts, then run ua:capture (append-only);
+- append them to SUPPORTED_TAGS.
+
+This follows R7, which sends sub and sup to INL2.
+
+**Proof required.** A Chrome fixture covering nested sub/sup and font-size: smaller, with the subShiftOwnFont plant caught.
+
+**Progress.** The engine's vertical-align already matches Chrome on 29/29 INL-P probe cases, at every DPR, in ltr and rtl.
+
+## INL2b host-done (2026-10-01): inl2b c638e25d5 on txt2a 919021f19
+
+**Result.** Every CSS2 §10.8.1 vertical-align value is ported from Blink inline_box_state.cc.
+- 29/29 Chrome probe cases match, and the 6 fixtures pass at every DPR in ltr and rtl.
+- All plants are caught.
+- The CSS.supports matrix matches 34/34.
+- sub and sup are supported tags.
+
+**Impact.**
+- North star: unchanged. The music player uses none of these.
+- Tailwind: 2218 supported, 0 mismatches.
+
+**PM rulings:**
+- **Proof cases on existing rows: accepted.** 39 existing iOS and web profile rows gain proof cases, with no status change. Adding proof is not a loosening.
+- **The non-append UA lines: accepted.** They are the CapturedTag union line and sub/sup's vertical-align moving from unmodelled to declared. The migration checker proves both.
+- **The inline-vertical-align-* fixture ids: accepted.** The name keeps the values.test sort rule intact.
+
+**Next.** TXT2-b and later parts stay queued (breadth). This lane moves to landing the PNT2 chain.

@@ -273,3 +273,18 @@ describe('order from a math function: rounded half toward +infinity, then clampe
     expect(lefts([2147483647, 3e9, 2147483647], { ...NO_ENGINE_FAULTS, orderUnclamped: true })).toEqual([0, 40, 10]);
   });
 });
+
+// A replaced flex item (REPL-a) carries order too: at DPR 1 the environment pass must still round a non-integer one.
+describe('order of a replaced flex item from a math function', () => {
+  it('is rounded at DPR 1, so a 1.5 ties with 2 and keeps document order', async () => {
+    const { divStyle } = await import('./helpers.ts');
+    const px = (value: number) => ({ kind: 'px', value }) as const;
+    const img = { kind: 'replaced', id: 'r', style: { ...divStyle, width: px(10), height: px(8), order: 1.5 }, natural: { kind: 'image', width: 10, height: 8 }, defaultWidth: 300, defaultHeight: 150, objectFit: 'fill', objectPositionX: px(0), objectPositionY: px(0) } as const;
+    const flex = { ...box('f', { display: 'flex', width: px(300), height: px(8) }), children: [box('a', { width: px(20), order: 2 }), img] } as unknown as LayoutBox;
+    const input: LayoutInput = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root: box('html', {}, [flex]) };
+    const r = layout(input, ahemMeasurer);
+    if (r.kind !== 'ok') throw new Error(JSON.stringify(r.unsupported));
+    const a = absoluteRects(r.boxes);
+    expect([(a.get('a') as LayoutRect).x / 64, (a.get('r') as LayoutRect).x / 64]).toEqual([0, 20]);
+  });
+});

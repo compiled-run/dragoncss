@@ -1,5 +1,5 @@
 // Block formatting: box contents, block-level widths and heights, margin collapsing, and inline content (inline.ts).
-import type { Direction, LayoutBox, TextLeaf } from './input.ts';
+import type { Direction, LayoutBox, LayoutNode, LayoutStyle, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, divInt, max, min, sub, ZERO } from './units.ts';
 import type { Edges, Frag, HeightBasis, OutOfFlow, Placed, Point } from './box.ts';
@@ -21,6 +21,8 @@ import {
 import { layoutFlexContainer } from './flex.ts';
 import { layoutInline } from './inline.ts';
 import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './position.ts';
+import { hasAspectRatio, ratioBlockLevelInlineSize, ratioFinalBlockSize, ratioInitialBlockSize } from './ratio.ts';
+import { layoutReplacedInFlow } from './replaced.ts';
 import type { TextMeasurer } from './text.ts';
 
 /** Seeded engine errors, so the parity harness can prove it fails (docs/api.md §7). The product runs with NO_ENGINE_FAULTS. */
@@ -85,6 +87,14 @@ export type EngineFaults = {
   readonly viewportSizeKindIgnored: boolean;
   /** A font size that is not absolute ignores Chrome's minimum logical font size (6px). */
   readonly minimumFontSizeIgnored: boolean;
+  /** Soft wrap opportunities only after a space or U+200B, as before UAX #14 was wired (linebreak.ts bypassed). */
+  readonly spaceOnlyBreaks: boolean;
+  /** A line fits only at or under the available width, without Blink's one-LayoutUnit epsilon (linefit.ts noEpsilon). */
+  readonly fitWithoutEpsilon: boolean;
+  /** A break is allowed after '/' before a letter or digit, as ICU does (linebreak.ts breakAfterSolidus). */
+  readonly breakAfterSolidus: boolean;
+  /** No break between '-' and a digit, as UAX #14 LB25 does (linebreak.ts noHyphenDigitBreak). */
+  readonly noHyphenDigitBreak: boolean;
   /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
@@ -122,6 +132,10 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   lhNormalUnrounded: false,
   viewportSizeKindIgnored: false,
   minimumFontSizeIgnored: false,
+  spaceOnlyBreaks: false,
+  fitWithoutEpsilon: false,
+  breakAfterSolidus: false,
+  noHyphenDigitBreak: false,
   orderHalfEven: false,
   orderUnclamped: false,
 };
@@ -129,7 +143,7 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
 
 /** css-writing-modes-4 §2.1: the box's inline base direction. */
-export function directionOf(ctx: Ctx, box: LayoutBox): Direction {
+export function directionOf(ctx: Ctx, box: LayoutNode): Direction {
   return ctx.faults.rtlAsLtr ? 'ltr' : box.style.direction;
 }
 
@@ -192,9 +206,11 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
   const contentWidth = contentBox(a.borderBoxWidth, hbp);
   const minMax = blockMinMaxWith(box, a.heightBasis, vbp, ctx.faults);
   const specified = a.forcedBorderBoxHeight === null ? specifiedBlockSizeWith(box, a.heightBasis, vbp, ctx.faults) : null;
+  // css-sizing-4 §5.1: an auto height comes from the ratio; it is definite for the children before content (ratio.ts).
+  const fromRatio = a.forcedBorderBoxHeight === null && specified === null ? ratioInitialBlockSize(box, a.borderBoxWidth, hbp, vbp) : null;
   const fixedBorderBox = a.forcedBorderBoxHeight !== null
     ? a.forcedBorderBoxHeight
-    : specified === null ? null : constrain(specified, minMax);
+    : specified !== null ? constrain(specified, minMax) : fromRatio === null ? null : constrain(fromRatio, minMax);
   const childBasis: HeightBasis = fixedBorderBox === null
     ? INDEFINITE
     : a.forcedBorderBoxHeight !== null && !a.forcedHeightDefinite ? { kind: 'flex-dependent' } : { kind: 'definite', value: contentBox(fixedBorderBox, vbp) };
@@ -212,7 +228,7 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
       childBasis,
       sizeIsFlexDependent: a.forcedBorderBoxHeight !== null && !a.forcedHeightDefinite,
     });
-    const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
+    const height = fromRatio !== null ? ratioFinalBlockSize(box, fromRatio, add(r.contentHeight, vbp), minMax) : fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
     const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
     return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
   }
@@ -229,7 +245,10 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
   const specNoCollapse = ctx.faults.minMaxEndMarginSpec && minMax.min > vbp;
   const bottomAdjoins = !a.formattingContextRoot && bor.bottom === 0 && pad.bottom === 0 && fixedBorderBox === null && !specNoCollapse;
   const intrinsic = bottomAdjoins ? r.cursor : add(r.cursor, collapsed(r.endStrut));
-  const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(intrinsic, vbp), minMax);
+  // Blink: with a definite initial block size the end margins neither escape nor count toward the content height.
+  const height = fromRatio !== null
+    ? ratioFinalBlockSize(box, fromRatio, add(a.formattingContextRoot || bor.bottom !== 0 || pad.bottom !== 0 ? intrinsic : r.cursor, vbp), minMax)
+    : fixedBorderBox !== null ? fixedBorderBox : constrain(add(intrinsic, vbp), minMax);
   const baseline = clampScrollBaseline(box, r.baseline, height);
   const collapseThrough = !a.formattingContextRoot && !r.hasContent && height === 0 && vbp === 0;
   if (collapseThrough) {
@@ -260,12 +279,19 @@ export function blockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU, cbD
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
   const ml = resolveMarginWith(s.marginLeft, cbInline, ctx.faults);
   const mr = resolveMarginWith(s.marginRight, cbInline, ctx.faults);
-  const mt = resolveMarginWith(s.marginTop, cbInline, ctx.faults);
-  const mb = resolveMarginWith(s.marginBottom, cbInline, ctx.faults);
   const specified = resolveInlineLengthWith(s.width, cbInline, ctx.faults);
   const stretched = sub(sub(cbInline, ml.value), mr.value);
   const raw = specified === null ? stretched : borderBoxFromSpecified(specified, hbp, s.boxSizing);
-  const width = max(constrain(raw, inlineMinMaxWith(s, cbInline, hbp, ctx.faults)), hbp);
+  const width = specified === null && hasAspectRatio(s) ? ratioBlockLevelInlineSize(ctx, box, cbInline, raw) : max(constrain(raw, inlineMinMaxWith(s, cbInline, hbp, ctx.faults)), hbp);
+  return placeBlockLevel(ctx, s, cbInline, cbDirection, width);
+}
+
+/** The margins of a block-level box of a used border-box width (CSS2 §10.3.3, and §10.3.4 for a replaced box). */
+export function placeBlockLevel(ctx: Ctx, s: LayoutStyle, cbInline: LU, cbDirection: Direction, width: LU): BlockLevelInline {
+  const ml = resolveMarginWith(s.marginLeft, cbInline, ctx.faults);
+  const mr = resolveMarginWith(s.marginRight, cbInline, ctx.faults);
+  const mt = resolveMarginWith(s.marginTop, cbInline, ctx.faults);
+  const mb = resolveMarginWith(s.marginBottom, cbInline, ctx.faults);
   // Blink ResolveInlineAutoMargins (ng_length_utils.cc), in the containing block's inline direction: both auto centre with
   // LayoutUnit / 2 on the start side, clamped at zero; a lone auto start margin takes the free space.
   const rtl = cbDirection === 'rtl';
@@ -319,8 +345,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   let baseline: LU | null = null;
   const outOfFlow: OutOfFlow[] = [];
   for (const kid of kids) {
-    if (kid.kind !== 'box') continue;
-    if (isOutOfFlow(ctx, kid)) {
+    if (kid.kind === 'text') continue;
+    if (kid.kind === 'box' && isOutOfFlow(ctx, kid)) {
       // CSS2 §10.3.7 static position (Blink HandleOutOfFlowPositioned): the parent's content start edge in its direction, at the
       // flow position, which includes the pending margins once the parent's block offset is fixed (measured).
       const rtl = direction === 'rtl' && !ctx.faults.staticPosLtr;
@@ -332,15 +358,24 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       });
       continue;
     }
-    const inline = blockLevelInlineSize(ctx, kid, a.contentWidth, direction);
-    const c = layoutContents(ctx, kid, {
-      cbInline: a.contentWidth,
-      borderBoxWidth: inline.borderBoxWidth,
-      forcedBorderBoxHeight: null,
-      forcedHeightDefinite: false,
-      heightBasis: a.childBasis,
-      formattingContextRoot: kid.style.display !== 'block' || isScrollContainer(kid.style),
-    });
+    let inline: BlockLevelInline;
+    let c: ContentsResult;
+    if (kid.kind === 'replaced') {
+      // CSS 2.2 §10.3.4 and §10.6.2: a block-level replaced box sizes itself and never collapses through (replaced.ts).
+      const frag = layoutReplacedInFlow(ctx, kid, a.contentWidth, a.childBasis);
+      inline = placeBlockLevel(ctx, kid.style, a.contentWidth, direction, frag.width);
+      c = { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
+    } else {
+      inline = blockLevelInlineSize(ctx, kid, a.contentWidth, direction);
+      c = layoutContents(ctx, kid, {
+        cbInline: a.contentWidth,
+        borderBoxWidth: inline.borderBoxWidth,
+        forcedBorderBoxHeight: null,
+        forcedHeightDefinite: false,
+        heightBasis: a.childBasis,
+        formattingContextRoot: kid.style.display !== 'block' || isScrollContainer(kid.style),
+      });
+    }
     const before = joinStruts(joinMargin(strut, inline.marginTop), c.escapeTop);
     let y: LU;
     if (c.collapseThrough) {

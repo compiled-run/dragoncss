@@ -3,6 +3,7 @@
 import type { EngineFaults } from '../../layout/src/block.ts';
 import type {
   AlignContent,
+  AspectRatioValue,
   AlignItems,
   AlignSelf,
   BorderWidthValue,
@@ -25,6 +26,10 @@ import type {
   LineHeightCalc,
   LineHeightValue,
   MarginValue,
+  NaturalSizeValue,
+  ObjectFit,
+  ObjectPositionValue,
+  ReplacedLeaf,
   MaxSizeValue,
   MinSizeValue,
   Overflow,
@@ -544,12 +549,27 @@ function lineHeightValue(v: JsonValue, path: string): LineHeightValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
+function aspectRatioValue(v: JsonValue, path: string): AspectRatioValue {
+  const k = kindOf(v, path);
+  if (k === 'auto') {
+    obj(v, ['kind'], path);
+    return { kind: 'auto' };
+  }
+  if (k === 'ratio' || k === 'auto-ratio') {
+    const o = obj(v, ['kind', 'width', 'height'], path);
+    const width = numField(o, 'width', path);
+    const height = numField(o, 'height', path);
+    return k === 'ratio' ? { kind: 'ratio', width, height } : { kind: 'auto-ratio', width, height };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
 const STYLE_KEYS: readonly string[] = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height',
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio',
 ];
 
 const ALIGN_ITEMS: readonly string[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
@@ -600,6 +620,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     rowGap: gapValue(f('rowGap'), p('rowGap')),
     columnGap: gapValue(f('columnGap'), p('columnGap')),
     textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify'], p('textAlign')) as TextAlign,
+    aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
   };
 }
 
@@ -617,9 +638,44 @@ function decodeText(o: JsonObj, path: string): TextLeaf {
   };
 }
 
+function naturalSizeValue(v: JsonValue, path: string): NaturalSizeValue {
+  const k = kindOf(v, path);
+  if (k === 'none') {
+    obj(v, ['kind'], path);
+    return { kind: 'none' };
+  }
+  if (k === 'image') {
+    const o = obj(v, ['kind', 'width', 'height'], path);
+    return { kind: 'image', width: numField(o, 'width', path), height: numField(o, 'height', path) };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function objectPositionValue(v: JsonValue, path: string): ObjectPositionValue {
+  const k = kindOf(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function decodeReplaced(o: JsonObj, path: string): ReplacedLeaf {
+  obj(o, ['kind', 'id', 'style', 'natural', 'defaultWidth', 'defaultHeight', 'objectFit', 'objectPositionX', 'objectPositionY'], path);
+  return {
+    kind: 'replaced',
+    id: str(field(o, 'id', path), `${path}.id`),
+    style: decodeStyle(field(o, 'style', path), `${path}.style`),
+    natural: naturalSizeValue(field(o, 'natural', path), `${path}.natural`),
+    defaultWidth: numField(o, 'defaultWidth', path),
+    defaultHeight: numField(o, 'defaultHeight', path),
+    objectFit: lit(field(o, 'objectFit', path), ['fill', 'contain', 'cover', 'none', 'scale-down'], `${path}.objectFit`) as ObjectFit,
+    objectPositionX: objectPositionValue(field(o, 'objectPositionX', path), `${path}.objectPositionX`),
+    objectPositionY: objectPositionValue(field(o, 'objectPositionY', path), `${path}.objectPositionY`),
+  };
+}
+
 function decodeBox(o: JsonObj, path: string): LayoutBox {
   obj(o, ['kind', 'id', 'boxType', 'style', 'children'], path);
-  const children: (LayoutBox | TextLeaf)[] = [];
+  const children: (LayoutBox | TextLeaf | ReplacedLeaf)[] = [];
   arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
     children.push(decodeNode(c, `${path}.children[${i}]`));
   });
@@ -632,11 +688,12 @@ function decodeBox(o: JsonObj, path: string): LayoutBox {
   };
 }
 
-function decodeNode(v: JsonValue, path: string): LayoutBox | TextLeaf {
+function decodeNode(v: JsonValue, path: string): LayoutBox | TextLeaf | ReplacedLeaf {
   if (v.kind !== 'obj') return fail(`${path}: expected a node`);
   const k = kindOf(v, path);
   if (k === 'box') return decodeBox(v, path);
   if (k === 'text') return decodeText(v, path);
+  if (k === 'replaced') return decodeReplaced(v, path);
   return fail(`${path}: unknown node kind ${k}`);
 }
 
@@ -671,6 +728,7 @@ const FAULT_KEYS: readonly string[] = [
   'wrapReverseBaselineSpec', 'initialLineWidthZoomed', 'calcPercentPlainOrder', 'calcDoubleEval', 'calcNoNonNegClamp',
   'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled', 'lhUnsnapped',
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
+  'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak',
   'orderHalfEven', 'orderUnclamped',
 ];
 
@@ -708,6 +766,10 @@ function decodeFaults(v: JsonValue): EngineFaults {
     lhNormalUnrounded: b('lhNormalUnrounded'),
     viewportSizeKindIgnored: b('viewportSizeKindIgnored'),
     minimumFontSizeIgnored: b('minimumFontSizeIgnored'),
+    spaceOnlyBreaks: b('spaceOnlyBreaks'),
+    fitWithoutEpsilon: b('fitWithoutEpsilon'),
+    breakAfterSolidus: b('breakAfterSolidus'),
+    noHyphenDigitBreak: b('noHyphenDigitBreak'),
     orderHalfEven: b('orderHalfEven'),
     orderUnclamped: b('orderUnclamped'),
   };
