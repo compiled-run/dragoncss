@@ -50,6 +50,10 @@ describe('aspect-ratio parsing (Chrome 145, probed in the pinned Chrome)', () =>
     expect(emitted('+2/1')).toBe('2 / 1');
     expect(emitted('.5')).toBe('0.5 / 1');
     expect(emitted('auto')).toBe('auto');
+    // An escaped auto is auto (Macroscope 4162020520; Chrome 145 computes auto 16 / 9, auto and auto 16 / 9 for these).
+    expect(emitted(String.raw`\61uto 16/9`)).toBe('auto 16 / 9');
+    expect(emitted(String.raw`\61 uto`)).toBe('auto');
+    expect(emitted(String.raw`16/9 AU\54O`)).toBe('auto 16 / 9');
   });
   it('drops what Chrome drops: negative parts, a unit, two ratios, two autos and a second slash', () => {
     for (const v of ['-1', '-1/2', '1/-2', '1px', 'auto auto', '16/9 16/9', '16/9/2', '16 / auto 9']) {
