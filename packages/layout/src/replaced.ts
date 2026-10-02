@@ -1,7 +1,8 @@
 // Replaced elements (CSS 2.2 §10.3.2, §10.6.2 and §10.4 with css-sizing-4 §5 and css-images-3 §5.5), as Chrome 145 sizes and
-// paints them. Sizing is Blink ComputeReplacedSizeInternal (length_utils.cc); the destination rect is Blink
-// LayoutReplaced::ComputeObjectFitAndPositionRect (layout_replaced.cc), snapped as ImagePainter::PaintIntoRect does. Every size
-// here is border-box LU in zoomed px unless named otherwise.
+// paints them. Sizing is Blink ComputeReplacedSizeInternal (length_utils.cc). The destination rect is written from css-images-3
+// §5.5 and §5.6, not ported: Chrome's layout_replaced.cc is LGPL (docs/ports.json); the REPL-0 quadrant probe pins it to Chrome
+// (replaced.test.ts). It is snapped as ImagePainter::PaintIntoRect does. Every size here is border-box LU in zoomed px unless
+// named otherwise.
 import type { LayoutStyle, ReplacedLeaf } from './input.ts';
 import type { Ctx, EngineFaults } from './block.ts';
 import type { Frag, HeightBasis, LengthPercent, MinMax } from './box.ts';
@@ -360,7 +361,7 @@ export type ObjectPosition = { readonly x: LengthPercent; readonly y: LengthPerc
 /** A physical size in LU. */
 type ObjectSize = { readonly width: LU; readonly height: LU };
 
-/** Blink PhysicalSize::FitToAspectRatio: shrink (contain) or grow (cover) one side so the size takes the ratio. */
+/** Blink PhysicalSize::FitToAspectRatio (physical_size.cc): shrink (contain) or grow (cover) one side so the size takes the ratio. */
 function fitToRatio(width: LU, height: LU, ratio: LayoutRatio, grow: boolean): ObjectSize {
   const constrainedHeight = mulDiv(width, ratio.height, ratio.width);
   if ((grow && constrainedHeight < height) || (!grow && constrainedHeight > height)) return { width: mulDiv(height, ratio.width, ratio.height), height };
@@ -368,35 +369,47 @@ function fitToRatio(width: LU, height: LU, ratio: LayoutRatio, grow: boolean): O
 }
 
 /**
- * Blink LayoutReplaced::ComputeObjectFitAndPositionRect: where the natural content is drawn, in the same coordinates as the
- * content box. With no natural size or ratio (an iframe) it is the content box. object-position resolves against the free space.
+ * css-images-3 §5.5: the concrete object size a fit gives inside the content box, which is the default object size. contain and
+ * cover take the largest size with the natural ratio inside the box and the smallest that covers it; with no ratio they size
+ * like fill. none keeps the natural size, or with a ratio alone the contain size (the default sizing algorithm). scale-down is
+ * none or contain, whichever is smaller. null when there is nothing to fit (no natural size and no ratio, an iframe).
+ */
+function concreteObjectSize(content: ObjectRect, natural: NaturalSizing, fit: ObjectFit): ObjectSize | null {
+  const sized = natural.width !== null && natural.height !== null && natural.width > 0 && natural.height > 0;
+  if (!sized && natural.ratio === null) return null;
+  const box: ObjectSize = { width: content.width, height: content.height };
+  const ratio = natural.ratio;
+  const contain = (): ObjectSize => (ratio === null ? box : fitToRatio(box.width, box.height, ratio, false));
+  const naturalSize = (): ObjectSize => (sized ? { width: natural.width as LU, height: natural.height as LU } : contain());
+  switch (fit) {
+    case 'fill':
+      return box;
+    case 'contain':
+      return contain();
+    case 'cover':
+      return ratio === null ? box : fitToRatio(box.width, box.height, ratio, true);
+    case 'none':
+      return naturalSize();
+    case 'scale-down': {
+      // Both sizes share the natural ratio, so the narrower one is the smaller.
+      const c = contain();
+      const n = naturalSize();
+      return n.width < c.width ? n : c;
+    }
+  }
+}
+
+/**
+ * css-images-3 §5.6: the destination rect, in the content box's coordinates: the concrete object size placed by object-position,
+ * whose percentages resolve against the free space (the content box size less the object size); the content box itself when
+ * there is nothing to fit.
  */
 export function objectFitRect(content: ObjectRect, natural: NaturalSizing, fit: ObjectFit, position: ObjectPosition, faults: EngineFaults): ObjectRect {
-  const hasSize = natural.width !== null && natural.height !== null && natural.width > 0 && natural.height > 0;
-  if (!hasSize && natural.ratio === null) return content;
-  let w = content.width;
-  let h = content.height;
-  const nw = natural.width === null ? ZERO : natural.width;
-  const nh = natural.height === null ? ZERO : natural.height;
-  if (fit === 'contain' || fit === 'cover' || fit === 'scale-down') {
-    if (natural.ratio !== null) {
-      const f: ObjectSize = fitToRatio(w, h, natural.ratio, fit === 'cover');
-      w = f.width;
-      h = f.height;
-    }
-    // scale-down: the smaller of contain and none (an image from src has an image pixel ratio of 1).
-    if (fit === 'scale-down' && w > nw && hasSize) {
-      w = nw;
-      h = nh;
-    }
-  } else if (fit === 'none' && hasSize) {
-    // A ratio with no natural size (Blink ConcreteObjectSize) does not arise: a PNG has both, an iframe neither.
-    w = nw;
-    h = nh;
-  }
-  const x = resolveLength(position.x, sub(content.width, w), faults);
-  const y = resolveLength(position.y, sub(content.height, h), faults);
-  return { x: add(content.x, x), y: add(content.y, y), width: w, height: h };
+  const size = concreteObjectSize(content, natural, fit);
+  if (size === null) return content;
+  const x = resolveLength(position.x, sub(content.width, size.width), faults);
+  const y = resolveLength(position.y, sub(content.height, size.height), faults);
+  return { x: add(content.x, x), y: add(content.y, y), width: size.width, height: size.height };
 }
 
 /** A rect in whole device px. */
