@@ -49,7 +49,8 @@ export const STEPS: readonly Step[] = [
   { name: 'notices', argv: pnpm('notices:gen'), outputs: ['THIRD_PARTY_NOTICES.md'] },
   { name: 'ua', argv: pnpm('ua:capture'), outputs: ['packages/dragon/src/ua/*.generated.ts'], readsLater: ['profile-rows'] },
   { name: 'capture', argv: pnpm('parity:capture'), outputs: ['packages/parity/expected/darwin-arm64/**', 'packages/parity/emitted/**', 'packages/parity/expected-fonts/**'], readsLater: ['profile-rows'] },
-  { name: 'profile-rows', argv: pnpm('profile:rows'), outputs: ['packages/dragon/src/profiles/ios.ts', 'packages/dragon/src/profiles/android.ts', 'packages/dragon/src/profiles/web.ts'] },
+  // profile:rows also writes the committed native lanes verdict (P6a, T075J) from lanes.json, which lanes-host writes later.
+  { name: 'profile-rows', argv: pnpm('profile:rows'), outputs: ['packages/dragon/src/profiles/ios.ts', 'packages/dragon/src/profiles/android.ts', 'packages/dragon/src/profiles/web.ts', 'packages/dragon/src/profiles/native-lanes.ts'], readsLater: ['lanes-host'] },
   { name: 'dpr-capture', argv: pnpm('parity:dpr-capture'), outputs: ['packages/parity/expected-dpr/**'] },
   { name: 'vectors', argv: pnpm('layout:vectors'), outputs: ['packages/layout/vectors/*.json'] },
   { name: 'dpr-vectors', argv: pnpm('layout:dpr-vectors'), outputs: ['packages/layout/vectors/dpr-*/**'] },
@@ -77,6 +78,9 @@ export const MERGE_BY_HAND: readonly { readonly path: string; readonly why: stri
 export const MANUAL: readonly { readonly command: string; readonly outputs: readonly string[] }[] = [
   { command: '/tmp/device-lease.sh pnpm run parity:devices (device lanes)', outputs: ['packages/parity/out/device-failures-*.json'] },
   { command: 'pnpm run north-star:capture', outputs: ['examples/*/chrome/**'] },
+  // A paint package's vector inputs are written by its test from the input list it pins (paint-dash.test.ts dashVectorInputs);
+  // the test fails when the committed file differs, and the paint-vectors step reads it.
+  { command: 'DRAGON_WRITE_DASH_INPUTS=1 npx vitest run packages/layout/test/paint-dash.test.ts', outputs: ['packages/layout/paint-vectors/*/inputs.jsonl'] },
   { command: 'pnpm run rt:oracle', outputs: ['packages/layout/rt-oracle/**', 'packages/layout/rt-vectors/**'] },
   { command: 'pnpm run parity:glyph-calibration', outputs: ['packages/parity/expected-glyphs/darwin-arm64/**'] },
   { command: 'node scripts/gen-script-data.ts', outputs: ['packages/layout/src/script-data.ts'] },

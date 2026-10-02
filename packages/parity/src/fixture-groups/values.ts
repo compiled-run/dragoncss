@@ -30,6 +30,7 @@ export const VALUES: readonly FixtureSpec[] = [
   both('values-calc-gap-px'),
   both('values-calc-em-fractional'),
   both('values-calc-flex-factors'),
+  both('values-calc-flex-column-auto-min'),
   both('values-calc-contexts-block'),
   both('values-calc-contexts-flex'),
   both('values-calc-contexts-positioned'),

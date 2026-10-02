@@ -150,11 +150,11 @@ fun harness_expect(c: Cursor, cp: Double): Unit {
 fun harness_word(c: Cursor, cps: JsArray<Double>): Unit {
   // ts: packages/translate/harness/harness.ts:133
   run {
-    val _a45 = cps
-    var _i45 = 0
-    while (_i45 < _a45.size) {
-      val cp: Double = _a45[_i45]
-      _i45++
+    val _a46 = cps
+    var _i46 = 0
+    while (_i46 < _a46.size) {
+      val cp: Double = _a46[_i46]
+      _i46++
       harness_expect(c, cp)
     }
   }
@@ -416,11 +416,11 @@ fun harness_parseJson(text: String): U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj
   val cps: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/translate/harness/harness.ts:287
   run {
-    val _a46 = jsCodePoints(text)
-    var _i46 = 0
-    while (_i46 < _a46.size) {
-      val ch: String = _a46[_i46]
-      _i46++
+    val _a47 = jsCodePoints(text)
+    var _i47 = 0
+    while (_i47 < _a47.size) {
+      val ch: String = _a47[_i47]
+      _i47++
       jsPush(cps, jsUnwrap(jsCodePointAt0(ch)))
     }
   }
@@ -446,11 +446,11 @@ fun harness_obj(v: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, keys: Js
   }
   // ts: packages/translate/harness/harness.ts:300
   run {
-    val _a47 = keys
-    var _i47 = 0
-    while (_i47 < _a47.size) {
-      val k: String = _a47[_i47]
-      _i47++
+    val _a48 = keys
+    var _i48 = 0
+    while (_i48 < _a48.size) {
+      val k: String = _a48[_i48]
+      _i48++
       // ts: packages/translate/harness/harness.ts:300
       if ((!(v as JsonObj).values.has(k))) {
         harness_fail((path + ": missing key " + k))
@@ -960,11 +960,11 @@ fun harness_q(s: String): String {
   var out: String = "\""
   // ts: packages/translate/harness/harness.ts:716
   run {
-    val _a48 = jsCodePoints(s)
-    var _i48 = 0
-    while (_i48 < _a48.size) {
-      val ch: String = _a48[_i48]
-      _i48++
+    val _a49 = jsCodePoints(s)
+    var _i49 = 0
+    while (_i49 < _a49.size) {
+      val ch: String = _a49[_i49]
+      _i49++
       val cp: Double = jsUnwrap(jsCodePointAt0(ch))
       // ts: packages/translate/harness/harness.ts:718
       if (jsStrEq(ch, "\"")) {
@@ -1308,13 +1308,13 @@ fun harness_libraryResult(op: String, a: JsArray<U_JsonArr_JsonBool_JsonNull_Jso
       var out: String = ""
       // ts: packages/translate/harness/harness.ts:963
       run {
-        val _a49 = jsSort(jsCopy(items), fun(x: SortItem, y: SortItem): Double {
+        val _a50 = jsSort(jsCopy(items), fun(x: SortItem, y: SortItem): Double {
     return (x.key - y.key)
 })
-        var _i49 = 0
-        while (_i49 < _a49.size) {
-          val it: SortItem = _a49[_i49]
-          _i49++
+        var _i50 = 0
+        while (_i50 < _a50.size) {
+          val it: SortItem = _a50[_i50]
+          _i50++
           out += ((if (jsStrEq(out, "")) "" else ",") + harness_q(it.tag))
         }
       }
@@ -1346,11 +1346,11 @@ fun harness_libraryResult(op: String, a: JsArray<U_JsonArr_JsonBool_JsonNull_Jso
       var out: String = ""
       // ts: packages/translate/harness/harness.ts:981
       run {
-        val _a50 = jsCodePoints(harness_str(jsUnwrap(v), "\$[1]"))
-        var _i50 = 0
-        while (_i50 < _a50.size) {
-          val ch: String = _a50[_i50]
-          _i50++
+        val _a51 = jsCodePoints(harness_str(jsUnwrap(v), "\$[1]"))
+        var _i51 = 0
+        while (_i51 < _a51.size) {
+          val ch: String = _a51[_i51]
+          _i51++
           out += ((if (jsStrEq(out, "")) "" else ",") + harness_h(jsUnwrap(jsCodePointAt0(ch))))
         }
       }

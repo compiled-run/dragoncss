@@ -1,5 +1,5 @@
 // The line-break reference (notes/T015-p4-review-p5-plan.md section 4 item 4): the engine's per-line start and end of every text
-// node in UTF-16 units, exported through the engine's own buildRun and breakLines exactly as the device reads them back
+// node in UTF-16 units, exported through the engine's own placeLines exactly as the device reads them back
 // (DragonTree.apply in emit/native-support.ts), committed as break vectors; Chrome's breaks from single-code-unit Range rects
 // grouped by line; and the break check of a device dump against both. Every mismatch is the failure kind break-mismatch.
 import { spawnSync } from 'node:child_process';
@@ -7,8 +7,8 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from 'playwright';
-import type { Ctx, InlineLine, InlineRun, LayoutBox, LayoutInput, LayoutRect, LU, TextLeaf, TextMeasurer } from '@dragon/layout';
-import { absoluteRects, breakLines, buildRun, fromCssPx, layout, NO_ENGINE_FAULTS, resolveBorder, resolvePadding, snapEdges, zoomInput } from '@dragon/layout';
+import type { Ctx, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextLeaf, TextMeasurer } from '@dragon/layout';
+import { absoluteRects, fromCssPx, layout, NO_ENGINE_FAULTS, placeLines, resolveBorder, resolvePadding, snapEdges, zoomInput } from '@dragon/layout';
 import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
@@ -24,8 +24,8 @@ const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(
 
 /**
  * Every text node's lines, as the device computes them: the engine's layout of the input, the zoomed input's boxes, the content
- * width of the text's container (border box minus borders and paddings, percentages of the parent's), then buildRun and
- * breakLines over the container's leaves; a line where the leaf shows nothing has no line box and is skipped.
+ * width of the text's container (border box minus borders and paddings, percentages of the parent's), then placeLines over the
+ * container's leaves; a line where the leaf shows nothing has no piece and is skipped.
  */
 export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): EngineText[] {
   const result = layout(input, measurer);
@@ -37,11 +37,13 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
   const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
   const zBoxes = new Map<string, LayoutBox>();
   const zParent = new Map<string, string>();
+  const replaced = new Set<string>();
   const walk = (b: LayoutBox): void => {
     zBoxes.set(b.id, b);
     for (const c of b.children) {
       zParent.set(c.id, b.id);
       if (c.kind === 'box') walk(c);
+      else if (c.kind === 'replaced') replaced.add(c.id);
     }
   };
   walk(zoomed.root);
@@ -65,7 +67,8 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
   const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS };
   const out: EngineText[] = [];
   for (const r of boxes) {
-    if (isLine(r) || zBoxes.has(r.id)) continue;
+    // A replaced leaf has no text: only text leaves have lines to break.
+    if (isLine(r) || zBoxes.has(r.id) || replaced.has(r.id)) continue;
     const pId = zParent.get(r.id);
     const p = pId === undefined ? undefined : zBoxes.get(pId);
     if (pId === undefined || p === undefined) throw new Error(`text ${r.id} has no container`);
@@ -75,23 +78,18 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
     const leaf = leaves[li] as TextLeaf;
     const scalars = [...leaf.text];
     const utf16 = (cp: number): number => scalars.slice(0, cp).reduce((n, s) => n + s.length, 0);
-    const run: InlineRun = buildRun(ctx, p, leaves);
-    const lines: readonly InlineLine[] = breakLines(ctx, run, contentWidth(pId));
+    const placed: readonly PlacedLine[] = placeLines(ctx, p, leaves, contentWidth(pId));
     const pieces = boxes.filter((b) => isLine(b) && b.parent === r.id);
     const own: EngineLine[] = [];
-    for (const line of lines) {
-      const mine: number[] = [];
-      for (let i = line.start; i < line.visibleEnd; i++) if (run.chars[i]?.leaf === li) mine.push(i);
-      if (mine.length === 0) continue;
-      const first = mine[0] as number;
-      let through = mine[mine.length - 1] as number;
-      for (let i = line.start; i < line.end; i++) if (run.chars[i]?.leaf === li) through = i;
+    for (const line of placed) {
+      const mine = line.pieces.find((q) => q.leaf === li);
+      if (mine === undefined) continue;
       const piece = pieces[own.length];
       if (piece === undefined) throw new Error(`${r.id}: the engine's breaks give more lines than its layout (${pieces.length})`);
       const a = abs.get(piece.id);
       const e = snapped.get(piece.id);
       if (a === undefined || e === undefined) throw new Error(`no absolute rect for ${piece.id}`);
-      own.push({ start: utf16(run.chars[first]?.at as number), end: utf16((run.chars[through]?.at as number) + 1), cps: mine.map((i) => run.chars[i]?.cp as number), rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom } });
+      own.push({ start: utf16(mine.start), end: utf16(mine.end), cps: scalars.slice(mine.start, mine.visibleEnd).map((ch) => ch.codePointAt(0) as number), rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom } });
     }
     if (own.length !== pieces.length) throw new Error(`${r.id}: the engine's breaks give ${own.length} lines, its layout ${pieces.length}`);
     out.push({ id: r.id, container: pId, font: leaf.font, lines: own });
@@ -315,7 +313,7 @@ export function leafTexts(root: LayoutBox): Map<string, string> {
   const walk = (b: LayoutBox): void => {
     for (const c of b.children) {
       if (c.kind === 'box') walk(c);
-      else out.set(c.id, c.text);
+      else if (c.kind === 'text') out.set(c.id, c.text);
     }
   };
   walk(root);
@@ -328,7 +326,7 @@ export function leafTexts(root: LayoutBox): Map<string, string> {
 export const hostBreakLine = (key: string, input: LayoutInput): string => `${key}\t${JSON.stringify(input)}`;
 
 // The device-side text loop of DragonTree.apply (emit/native-support.ts), over the committed generated engine and the generated
-// harness's JSON decoder: the same zoomed boxes, content widths, buildRun and breakLines, and UTF-16 offsets.
+// harness's JSON decoder: the same zoomed boxes, content widths, placeLines pieces, and UTF-16 offsets.
 const SWIFT_BREAKS = String.raw`import Foundation
 
 func dragonIsLine(_ r: LayoutRect) -> Bool {
@@ -343,11 +341,13 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
   let zoomed = try layout_zoomInput(input, block_NO_ENGINE_FAULTS)
   var zBoxes: [String: LayoutBox] = [:]
   var zParent: [String: String] = [:]
+  var replaced: Set<String> = []
   func walk(_ b: LayoutBox) {
     zBoxes[b.id.description] = b
     for c in b.children.items {
       if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
       else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
+      else if let rl = c as? ReplacedLeaf { replaced.insert(rl.id.description) }
     }
   }
   walk(zoomed.root)
@@ -366,22 +366,18 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
     return w
   }
   var out: [String] = []
-  for id in order where zBoxes[id] == nil {
+  for id in order where zBoxes[id] == nil && !replaced.contains(id) {
     guard let pId = zParent[id], let p = zBoxes[pId] else { fatalError("text \(id) has no container") }
     let leaves = p.children.items.compactMap { $0 as? TextLeaf }
     guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("no leaf \(id)") }
     let scalars = Array(leaves[li].text.description.unicodeScalars)
     func utf16(_ cp: Int) -> Int { return scalars[0..<cp].reduce(0) { $0 + $1.utf16.count } }
     let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
-    let run = try inline_buildRun(ctx, p, JsArray(leaves))
-    let engineLines = try inline_breakLines(ctx, run, try contentWidth(pId)).items
-    let chars = run.chars.items
+    let placed = try inline_placeLines(ctx, p, JsArray(leaves), try contentWidth(pId)).items
     var lines: [String] = []
-    for line in engineLines {
-      let mine = (Int(line.start)..<Int(line.visibleEnd)).filter { Int(chars[$0].leaf) == li }
-      guard let first = mine.first, let last = mine.last else { continue }
-      let throughEnd = (Int(line.start)..<Int(line.end)).filter { Int(chars[$0].leaf) == li }.last ?? last
-      lines.append("[\(utf16(Int(chars[first].at))),\(utf16(Int(chars[throughEnd].at) + 1))]")
+    for line in placed {
+      guard let piece = line.pieces.items.first(where: { Int($0.leaf) == li }) else { continue }
+      lines.append("[\(utf16(Int(piece.start))),\(utf16(Int(piece.end)))]")
     }
     out.append("\(id)\t[\(lines.joined(separator: ","))]")
   }
@@ -418,11 +414,13 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
   val zoomed = layout_zoomInput(input, block_NO_ENGINE_FAULTS)
   val zBoxes = HashMap<String, LayoutBox>()
   val zParent = HashMap<String, String>()
+  val replaced = HashSet<String>()
   fun walk(b: LayoutBox) {
     zBoxes[b.id] = b
     for (c in b.children) {
       if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) }
       else if (c is TextLeaf) zParent[c.id] = b.id
+      else if (c is ReplacedLeaf) replaced.add(c.id)
     }
   }
   walk(zoomed.root)
@@ -445,7 +443,7 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
   }
   val out = ArrayList<String>()
   for (id in order) {
-    if (zBoxes.containsKey(id)) continue
+    if (zBoxes.containsKey(id) || replaced.contains(id)) continue
     val pId = zParent[id] ?: throw IllegalStateException("text " + id + " has no container")
     val p = zBoxes[pId] ?: throw IllegalStateException("no container " + pId)
     val leaves = ArrayList(p.children.filterIsInstance<TextLeaf>())
@@ -453,17 +451,11 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
     val leafText = leaves[li].text
     fun utf16(cp: Int): Int = leafText.offsetByCodePoints(0, cp)
     val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
-    val run = inline_buildRun(ctx, p, leaves)
-    val engineLines = inline_breakLines(ctx, run, contentWidth(pId))
-    val chars = run.chars
+    val placed = inline_placeLines(ctx, p, leaves, contentWidth(pId))
     val lines = ArrayList<String>()
-    for (line in engineLines) {
-      val mine = (line.start.toInt() until line.visibleEnd.toInt()).filter { chars[it].leaf.toInt() == li }
-      if (mine.isEmpty()) continue
-      val first = mine.first()
-      val last = mine.last()
-      val throughEnd = (line.start.toInt() until line.end.toInt()).filter { chars[it].leaf.toInt() == li }.lastOrNull() ?: last
-      lines.add("[" + utf16(chars[first].at.toInt()) + "," + utf16(chars[throughEnd].at.toInt() + 1) + "]")
+    for (line in placed) {
+      val piece = line.pieces.firstOrNull { it.leaf.toInt() == li } ?: continue
+      lines.add("[" + utf16(piece.start.toInt()) + "," + utf16(piece.end.toInt()) + "]")
     }
     out.add(id + "\t[" + lines.joinToString(",") + "]")
   }

@@ -122,7 +122,7 @@ const C_STYLE = /\.(swift|kt|kts|java|zig|zon|c|h|cc|cpp|m|mm|tsrx|modulemap)$/;
 /** Read by codeSpans with # comments. */
 const SHELL = /\.sh$/;
 /** Data, fixtures, docs and binaries: never code, so never scanned. */
-const DATA = /(\.(json|png|jpg|jpeg|gif|bmp|webp|ico|svg|wasm|css|html|xht|dg|md|txt|lock|gitignore|npmignore|yaml|yml|ttf|otf|woff2?)|(^|\/)(\.gitignore|\.npmignore|LICENSE[A-Za-z0-9._-]*|COPYING))$/;
+const DATA = /(\.(json|jsonl|png|jpg|jpeg|gif|bmp|webp|ico|svg|wasm|css|html|xht|dg|md|txt|lock|gitignore|npmignore|yaml|yml|ttf|otf|woff2?)|(^|\/)(\.gitignore|\.npmignore|LICENSE[A-Za-z0-9._-]*|COPYING))$/;
 const isCode = (f: string) => SCRIPT.test(f) || C_STYLE.test(f) || SHELL.test(f);
 
 function allTrackedFiles(): string[] {
@@ -460,7 +460,7 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
 
   it('records a ruling for every LGPL entry: class A ones only referenced, class B ones on the clean-room list for T123', () => {
     const lgpl = registry.entries.filter((e) => e.licence === 'lgpl');
-    expect(lgpl.length).toBe(19); // the 18 T118J rulings and computed_style_constants.h (cited by V2a after them)
+    expect(lgpl.length).toBe(20); // the 18 T118J rulings, computed_style_constants.h (cited by V2a after them) and layout_replaced.cc (REPL-a, class A: the destination rect is written from css-images-3)
     expect(lgpl.filter((e) => e.ruling?.class === 'B').map((e) => e.upstream).sort()).toEqual([...KNOWN_LGPL_CLEAN_ROOM].sort());
     for (const e of lgpl.filter((x) => x.ruling?.class === 'A')) expect(e.dragon.map((d) => d.use), e.upstream).not.toContain('port');
   });

@@ -1,24 +1,33 @@
-// Inline formatting of a block container whose children are Ahem text leaves: line breaking (css-text-3 §5, UAX #14 subset),
-// white-space phase II at line ends (css-text-3 §4.1.2), text-align (css-text-3 §7.1) and line box heights (CSS2 §10.8).
-// Every leaf shares one font, line-height and text-wrap-mode: without inline elements they all inherit from one box.
+// Inline formatting of a block container whose children are Ahem text leaves: line breaking (css-text-3 §5, UAX #14 as Blink's
+// break iterator applies it, linebreak.ts), white-space phase II at line ends (css-text-3 §4.1.2), text-align (css-text-3 §7.1) and
+// line box heights (CSS2 §10.8). Every leaf shares one font, line-height and text-wrap-mode: without inline elements they all
+// inherit from one box.
 import type { LayoutBox, NormalValue, NumberValue, Px, TextFont, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
-import { add, divInt, floorToWholePx, fromFloatRound, lineHeightFromNumber, max, min, mulInt, sub, ZERO } from './units.ts';
+import { add, divInt, floorToWholePx, fromFloatRound, lineHeightFromNumber, max, min, mulInt, sub, toPx, ZERO } from './units.ts';
 import type { Frag, Placed, Point } from './box.ts';
 import type { Ctx } from './block.ts';
 import { directionOf } from './block.ts';
+import type { LineBreakFaults } from './linebreak.ts';
+import { asciiPairBreaks } from './linebreak.ts';
+import { coveredIndex } from './text.ts';
+import type { FitFaults } from './linefit.ts';
+import { fitsAvailable, isHangingSpace } from './linefit.ts';
 import { unsupported } from './unsupported.ts';
 
 const SPACE = 0x20;
 const ZWSP = 0x200b;
+const HYPHEN_MINUS = 0x2d;
+const SOLIDUS = 0x2f;
 
 /** One code point of the formatting context, the leaf it belongs to and its code point index in that leaf. */
-export type Char = { readonly leaf: number; readonly at: number; readonly ch: string; readonly cp: number };
+type Char = { readonly leaf: number; readonly at: number; readonly ch: string; readonly cp: number };
 
-export type Run = {
+type Run = {
   readonly leaves: readonly TextLeaf[];
   readonly chars: readonly Char[];
-  readonly wrap: boolean;
+  /** The code point indices where a line may start after a soft wrap, in order (linebreak.ts). */
+  readonly opportunities: readonly number[];
   /** The line box height (CSS2 §10.8.1). */
   readonly lineHeight: LU;
   readonly ascent: LU;
@@ -28,7 +37,27 @@ export type Run = {
 };
 
 /** A line: chars [start, end), where end includes the spaces that end the line; [start, visibleEnd) is what the line shows. */
-export type Line = { readonly start: number; readonly end: number; readonly visibleEnd: number };
+type Line = { readonly start: number; readonly end: number; readonly visibleEnd: number };
+
+/**
+ * What one leaf shows on one line. Code points [start, visibleEnd) of the leaf show; [start, end) adds the leaf's own spaces that
+ * hang at the line end. x is the line-left offset from the content-box left after text-align and width the advance, top the top
+ * of the leaf's content area (its baseline minus its ascent) from the content-box top, ascent and descent the leaf font's.
+ */
+export type LinePiece = {
+  readonly leaf: number;
+  readonly start: number;
+  readonly visibleEnd: number;
+  readonly end: number;
+  readonly x: LU;
+  readonly width: LU;
+  readonly top: LU;
+  readonly ascent: LU;
+  readonly descent: LU;
+};
+
+/** One line box: its top and height, its baseline, all from the content-box top, and the leaf pieces on it in order. */
+export type PlacedLine = { readonly top: LU; readonly height: LU; readonly baseline: LU; readonly pieces: readonly LinePiece[] };
 
 /** UAX #9: in an rtl paragraph these code points keep logical order without reordering (strong L letters, space, U+200B). */
 export function isRtlSafe(text: string): boolean {
@@ -64,7 +93,7 @@ function checkRtlText(box: LayoutBox, leaves: readonly TextLeaf[]): void {
 }
 
 // CSS2 §10.8: the leaves of one inline formatting context must share their font and line-height (no inline elements yet).
-export function buildRun(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[]): Run {
+function buildRun(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[]): Run {
   const first = leaves[0] as TextLeaf;
   if (directionOf(ctx, box) === 'rtl') checkRtlText(box, leaves);
   for (const t of leaves) {
@@ -85,7 +114,68 @@ export function buildRun(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[]):
   // Blink CalculateLeadingSpace: ((line_height - font height) / 2).Floor(), so a line-height below the glyphs gives negative leading.
   // The planted spec reading of deviation half-leading-floor (CSS2 §10.8.1) keeps the exact half.
   const halfLeading = ctx.faults.halfLeadingSpec ? divInt(sub(lineHeight, glyphHeight), 2) : floorToWholePx(divInt(sub(lineHeight, glyphHeight), 2));
-  return { leaves, chars, wrap: first.textWrapMode === 'wrap', lineHeight, ascent: metrics.ascent, descent: metrics.descent, halfLeading };
+  const opportunities = breakOpportunities(ctx, box, chars, first.textWrapMode === 'wrap');
+  return { leaves, chars, opportunities, lineHeight, ascent: metrics.ascent, descent: metrics.descent, halfLeading };
+}
+
+/**
+ * The soft wrap opportunities of the formatting context's text (css-text-3 §5.1): Blink's break iterator (linebreak.ts
+ * lineBreakOpportunitiesWith) with the initial word-break, overflow-wrap, line-break and hyphens and the leaf's text-wrap-mode,
+ * over the whole content text. Leaf boundaries add no characters, so they neither make nor block an opportunity.
+ */
+function breakOpportunities(ctx: Ctx, box: LayoutBox, chars: readonly Char[], wrap: boolean): number[] {
+  const out: number[] = [];
+  if (ctx.faults.spaceOnlyBreaks) {
+    // Planted fault spaceOnlyBreaks: the pre-UAX #14 rule, an opportunity only after a space or U+200B (after any spaces that follow).
+    if (!wrap) return out;
+    for (let i = 0; i + 1 < chars.length; i++) {
+      const here = (chars[i] as Char).cp;
+      if ((here === SPACE || here === ZWSP) && (chars[i + 1] as Char).cp !== SPACE) out.push(i + 1);
+    }
+    return out;
+  }
+  return ahemOpportunities(box, chars.map((c) => c.cp), wrap, { breakAfterSolidus: ctx.faults.breakAfterSolidus, noHyphenDigitBreak: ctx.faults.noHyphenDigitBreak });
+}
+
+/**
+ * lineBreakOpportunitiesWith (linebreak.ts) on the code points the Ahem measurer covers: printable ASCII but the apostrophe, and
+ * U+200B. Over them Blink's pair rules decide every position: a space run breaks after its end, ASCII pairs read Blink's ASCII
+ * table (asciiPairBreaks) with the hyphen-before-digit rule, and a pair with U+200B follows UAX #14 LB7 (no break before ZW) and
+ * LB8 (a break after ZW, after any spaces). It never reaches linebreak-data.ts, whose Unicode tables the Kotlin translation cannot
+ * hold in one JVM class initializer; test/inline.test.ts proves it equal to lineBreakOpportunitiesWith on every pair and triple
+ * of these code points and on generated runs. Any other code point is refused (the measurer refuses it first).
+ */
+export function ahemOpportunities(box: LayoutBox, cps: readonly number[], wrap: boolean, faults: LineBreakFaults): number[] {
+  const out: number[] = [];
+  for (const cp of cps) if (coveredIndex(cp) < 0) unsupported('line-break', box.id, 'css-text-3 §5', `U+${cp.toString(16).toUpperCase()} is outside the code points the line breaker decides`);
+  if (!wrap) return out;
+  for (let i = 1; i < cps.length; i++) {
+    const cur = cps[i] as number;
+    const last = cps[i - 1] as number;
+    // BreakSpaceType::kAfterSpaceRun
+    if (cur === SPACE) continue;
+    if (last === SPACE) {
+      out.push(i);
+      continue;
+    }
+    // UAX #14 LB7 (no break before ZW) comes before LB8 (a break after it).
+    if (cur === ZWSP) continue;
+    if (last === ZWSP) {
+      out.push(i);
+      continue;
+    }
+    // LazyLineBreakIterator::ShouldBreakFast over two ASCII code points.
+    let breaks = false;
+    if (last === HYPHEN_MINUS && cur >= 0x30 && cur <= 0x39) breaks = !faults.noHyphenDigitBreak && i >= 2 && isAsciiAlphanumeric(cps[i - 2] as number);
+    else if (faults.breakAfterSolidus && last === SOLIDUS && isAsciiAlphanumeric(cur)) breaks = true;
+    else breaks = asciiPairBreaks(last, cur);
+    if (breaks) out.push(i);
+  }
+  return out;
+}
+
+function isAsciiAlphanumeric(cp: number): boolean {
+  return (cp >= 0x30 && cp <= 0x39) || (cp >= 0x41 && cp <= 0x5a) || (cp >= 0x61 && cp <= 0x7a);
 }
 
 /** A leaf's font as the measurer reads it: the family and the computed size the environment pass wrote (environment.ts). */
@@ -115,34 +205,22 @@ function resolveLineHeight(t: TextLeaf, normal: LU): LU {
   return fromFloatRound(lh.value);
 }
 
-// css-text-3 §5.1 with UAX #14 LB8 and LB18: a soft wrap opportunity follows a space or U+200B (after any spaces that follow it).
-// text-wrap-mode: nowrap suppresses every opportunity (css-text-4 §5.1).
-function breaksAfter(run: Run, i: number): boolean {
-  if (!run.wrap) return false;
-  const here = run.chars[i] as Char;
-  const next = run.chars[i + 1];
-  if (next === undefined) return false;
-  return (here.cp === SPACE || here.cp === ZWSP) && next.cp !== SPACE;
-}
-
 /** Segments between soft wrap opportunities: [start, end), each ending with the spaces or U+200B that precede its opportunity. */
 function segments(run: Run): Segment[] {
   const out: Segment[] = [];
   let start = 0;
-  for (let i = 0; i < run.chars.length; i++) {
-    if (breaksAfter(run, i)) {
-      out.push({ start, end: i + 1 });
-      start = i + 1;
-    }
+  for (const at of run.opportunities) {
+    out.push({ start, end: at });
+    start = at;
   }
   if (start < run.chars.length) out.push({ start, end: run.chars.length });
   return out;
 }
 
-/** css-text-3 §4.1.2: collapsible spaces at the end of a line are removed, so they neither fit nor show. */
+/** css-text-3 §4.1.3: the spaces at the end of a line hang (linefit.ts isHangingSpace), so they neither fit nor show. */
 function trimEnd(run: Run, start: number, end: number): number {
   let e = end;
-  while (e > start && (run.chars[e - 1] as Char).cp === SPACE) e--;
+  while (e > start && isHangingSpace((run.chars[e - 1] as Char).cp)) e--;
   return e;
 }
 
@@ -181,11 +259,14 @@ function cachedWidth(ctx: Ctx, run: Run, start: number, end: number): LU {
   return total;
 }
 
-// css-text-3 §5: greedy line breaking at soft wrap opportunities; a segment wider than the line overflows it alone.
-export function breakLines(ctx: Ctx, run: Run, available: LU): Line[] {
+// css-text-3 §5: greedy line breaking at soft wrap opportunities; a segment wider than the line overflows it alone. A line fits
+// when its width without the hanging spaces passes Blink's fit test (linefit.ts fitsAvailable: at most the available width plus
+// one LayoutUnit); the planted fault fitWithoutEpsilon drops that LayoutUnit.
+function breakLines(ctx: Ctx, run: Run, available: LU): Line[] {
   // Planted fault breakOffByOne: a line accepts one more glyph advance than fits, so breaks land one glyph late.
   const glyph = ctx.measurer.measure('X', leafFont(run.leaves[0] as TextLeaf));
   const slack = ctx.faults.breakOffByOne && glyph.ok ? glyph.measure.width : ZERO;
+  const fit: FitFaults = { noEpsilon: ctx.faults.fitWithoutEpsilon, breakInsideWord: false };
   const lines: Line[] = [];
   let start = -1;
   let end = -1;
@@ -195,7 +276,7 @@ export function breakLines(ctx: Ctx, run: Run, available: LU): Line[] {
       end = seg.end;
       continue;
     }
-    if (width(ctx, run, start, trimEnd(run, start, seg.end)) <= add(available, slack)) {
+    if (fitsAvailable(toPx(width(ctx, run, start, trimEnd(run, start, seg.end))), add(available, slack), fit)) {
       end = seg.end;
       continue;
     }
@@ -221,29 +302,55 @@ function alignOffset(ctx: Ctx, box: LayoutBox, free: LU): LU {
   return free;
 }
 
+/**
+ * The line boxes of an inline formatting context whose content is text leaves (CSS2 §10.8, css-text-3 §5 and §7.1), stacked at k
+ * times the line height from the content-box top. This is the one source of lines: layout, the native runtime, the break vectors
+ * and the line-break reference all read it. A leaf that shows nothing on a line has no piece there.
+ */
+export function placeLines(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], available: LU): PlacedLine[] {
+  const run = buildRun(ctx, box, leaves);
+  const lines = run.chars.length === 0 ? [] : breakLines(ctx, run, available);
+  return lines.map((line, k): PlacedLine => {
+    const offset = alignOffset(ctx, box, sub(available, width(ctx, run, line.start, line.visibleEnd)));
+    const top = mulInt(run.lineHeight, k);
+    const baseline = add(add(top, run.halfLeading), run.ascent);
+    const pieces: LinePiece[] = [];
+    let i = line.start;
+    while (i < line.visibleEnd) {
+      const first = run.chars[i] as Char;
+      const from = i;
+      while (i < line.visibleEnd && (run.chars[i] as Char).leaf === first.leaf) i++;
+      let through = i;
+      while (through < line.end && (run.chars[through] as Char).leaf === first.leaf) through++;
+      pieces.push({
+        leaf: first.leaf,
+        start: first.at,
+        visibleEnd: first.at + (i - from),
+        end: first.at + (through - from),
+        x: add(offset, width(ctx, run, line.start, from)),
+        width: width(ctx, run, from, i),
+        top: sub(baseline, run.ascent),
+        ascent: run.ascent,
+        descent: run.descent,
+      });
+    }
+    return { top, height: run.lineHeight, baseline, pieces };
+  });
+}
+
 /** firstBaseline: the first line box's baseline from the content-box top (CSS2 §10.8.1), or null with no line boxes. */
 export type InlineResult = { readonly height: LU; readonly placed: readonly Placed[]; readonly firstBaseline: LU | null };
 
 type Piece = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
 
-// CSS2 §10.8 and css-text-3 §5: lays out the leaves in line boxes stacked at k times the line height. Each leaf becomes a
-// fragment covering its per-line pieces (<leaf>:line<j>); a leaf with nothing visible on any line has no fragment.
+// CSS2 §10.8 and css-text-3 §5: lays out the leaves in the line boxes of placeLines. Each leaf becomes a fragment covering its
+// per-line pieces (<leaf>:line<j>); a leaf with nothing visible on any line has no fragment.
 export function layoutInline(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], available: LU, origin: Point): InlineResult {
-  const run = buildRun(ctx, box, leaves);
-  const lines = run.chars.length === 0 ? [] : breakLines(ctx, run, available);
+  const lines = placeLines(ctx, box, leaves, available);
   const pieces: Piece[][] = leaves.map((): Piece[] => []);
-  const glyphHeight = add(run.ascent, run.descent);
-  lines.forEach((line, k) => {
-    const offset = alignOffset(ctx, box, sub(available, width(ctx, run, line.start, line.visibleEnd)));
-    const y = add(mulInt(run.lineHeight, k), run.halfLeading);
-    let i = line.start;
-    while (i < line.visibleEnd) {
-      const leaf = (run.chars[i] as Char).leaf;
-      const from = i;
-      while (i < line.visibleEnd && (run.chars[i] as Char).leaf === leaf) i++;
-      (pieces[leaf] as Piece[]).push({ x: add(offset, width(ctx, run, line.start, from)), y, width: width(ctx, run, from, i), height: glyphHeight });
-    }
-  });
+  for (const line of lines) {
+    for (const p of line.pieces) (pieces[p.leaf] as Piece[]).push({ x: p.x, y: p.top, width: p.width, height: add(p.ascent, p.descent) });
+  }
   const placed: Placed[] = [];
   leaves.forEach((t, leaf) => {
     const own = pieces[leaf] as Piece[];
@@ -264,7 +371,9 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf
     const frag: Frag = { id: t.id, width: sub(right, left), height: sub(bottom, top), baseline: null, children, outOfFlow: [] };
     placed.push({ frag, x: add(origin.x, left), y: add(origin.y, top) });
   });
-  return { height: mulInt(run.lineHeight, lines.length), placed, firstBaseline: lines.length === 0 ? null : add(run.halfLeading, run.ascent) };
+  const last = lines[lines.length - 1];
+  const first = lines[0];
+  return { height: last === undefined ? ZERO : add(last.top, last.height), placed, firstBaseline: first === undefined ? null : first.baseline };
 }
 
 // css-sizing-3 §5.1 with css-text-3 §5: max-content puts the whole context on one line; min-content takes every soft wrap

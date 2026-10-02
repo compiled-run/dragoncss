@@ -17,6 +17,7 @@ import { spawnChild } from './device-exec.ts';
 import type { ExecResult } from './device-exec.ts';
 import { checkAgainstChrome, checkAgainstEngine, DUMP_FAULTS, referenceDump } from './native-compare.ts';
 import { validateNativeDump } from './native-dump.ts';
+import { committedPixelManifestProblems } from './pixel-reference.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import { compileFixture } from './pipeline.ts';
@@ -118,6 +119,8 @@ function checkManifests(problems: string[]): void {
   const top = layoutCaseIds();
   const m1 = m1CaseIds();
   if (!m1.every((id) => top.includes(id))) problems.push('corpus-m1-cases.json names a case that is not a layout case');
+  // The software-raster precondition (P6a): the Chrome pixels the pixel lane compares were captured on the CPU raster path.
+  for (const p of committedPixelManifestProblems()) problems.push(p);
   if (JSON.stringify(x.dprSets) !== JSON.stringify(DPRS)) problems.push(`corpus-dpr.json dprSets ${JSON.stringify(x.dprSets)} is not DPRS ${JSON.stringify(DPRS)}`);
   for (const s of declaredSuites(declaredLane('ios', 'layout-vectors-host'))) {
     const m = (s.corpus === 'p1' ? p1 : x).cases[s.suite];

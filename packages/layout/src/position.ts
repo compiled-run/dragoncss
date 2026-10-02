@@ -1,6 +1,6 @@
 // Positioned boxes: relative offsets (CSS2 §9.4.3) and absolutely positioned boxes (CSS2 §10.3.7, §10.6.4, css-position-3 §4),
 // placed in their containing block once it is laid out. Measured against Chrome 145 in notes/T037-slice-4b.md.
-import type { Direction, InsetValue, LayoutBox } from './input.ts';
+import type { Direction, InsetValue, LayoutBox, LayoutNode } from './input.ts';
 import type { LU } from './units.ts';
 import { add, divInt, max, min, sub, ZERO } from './units.ts';
 import type { Frag, HeightBasis, MarginResolved, StaticAxis, StaticEdge } from './box.ts';
@@ -21,10 +21,11 @@ import {
 import type { Ctx, EngineFaults } from './block.ts';
 import { layoutContents, NO_ENGINE_FAULTS } from './block.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
+import { hasAspectRatio, ratioAbsoluteInlineSize, ratioSetsAbsoluteHeight } from './ratio.ts';
 import { unsupported } from './unsupported.ts';
 
 /** CSS2 §9.3.1: an absolutely positioned box leaves the flow (planted fault absposInFlow lays it out as static). */
-export function isOutOfFlow(ctx: Ctx, box: LayoutBox): boolean {
+export function isOutOfFlow(ctx: Ctx, box: LayoutNode): boolean {
   return box.style.position === 'absolute' && !ctx.faults.absposInFlow;
 }
 
@@ -34,8 +35,11 @@ export function isOutOfFlow(ctx: Ctx, box: LayoutBox): boolean {
  */
 export function checkOutOfFlowSiblings(ctx: Ctx, box: LayoutBox): void {
   const oof = box.children.find((k): k is LayoutBox => k.kind === 'box' && isOutOfFlow(ctx, k));
+  for (const k of box.children) {
+    if (k.kind === 'replaced' && isOutOfFlow(ctx, k)) unsupported('replaced-out-of-flow', k.id, 'CSS 2.2 §10.3.8, §10.6.5', `absolutely positioned replaced ${k.id} is not supported`);
+  }
   if (oof === undefined) return;
-  if (box.children.some((k) => k.kind === 'text' || k.boxType === 'anonymous')) {
+  if (box.children.some((k) => k.kind === 'text' || (k.kind === 'box' && k.boxType === 'anonymous'))) {
     unsupported('abspos-in-inline', oof.id, 'CSS2 §9.2.1.1, §10.3.7', `absolutely positioned ${oof.id} beside text in ${box.id} would take a static position in its inline formatting context`);
   }
 }
@@ -46,7 +50,7 @@ function inset(v: InsetValue, basis: LU, faults: EngineFaults): LU | null {
 }
 
 // CSS2 §9.4.3 and §10.5: a vertical percentage offset against a containing block whose height is not definite behaves as auto.
-function blockInset(box: LayoutBox, v: InsetValue, basis: HeightBasis, faults: EngineFaults): LU | null {
+function blockInset(box: LayoutNode, v: InsetValue, basis: HeightBasis, faults: EngineFaults): LU | null {
   if (v.kind === 'auto') return null;
   if (!hasPercent(v)) return resolveLength(v, ZERO, faults);
   if (basis.kind === 'definite') return resolveLength(v, basis.value, faults);
@@ -66,7 +70,7 @@ export function relativeOffset(box: LayoutBox, cbInline: LU, cbBlock: HeightBasi
 }
 
 /** relativeOffset with the planted engine faults the layout runs with. */
-export function relativeOffsetWith(box: LayoutBox, cbInline: LU, cbBlock: HeightBasis, cbDirection: Direction, faults: EngineFaults): RelativeOffset {
+export function relativeOffsetWith(box: LayoutNode, cbInline: LU, cbBlock: HeightBasis, cbDirection: Direction, faults: EngineFaults): RelativeOffset {
   if (box.style.position !== 'relative') return { dx: ZERO, dy: ZERO };
   const s = box.style;
   const left = inset(s.left, cbInline, faults);
@@ -194,7 +198,10 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
   const margins = add(inlineAxis.marginStart.value, inlineAxis.marginEnd.value);
   const specified = resolveInlineLengthWith(s.width, cb.width, ctx.faults);
   let width: LU;
-  if (specified !== null) width = borderBoxFromSpecified(specified, hbp, s.boxSizing);
+  const bothBlockInsets = blockAxis.insetStart !== null && blockAxis.insetEnd !== null;
+  // css-sizing-4 §5.1 (ratio.ts): an auto width may come through the ratio from a height or a stretched block size.
+  if (specified === null && hasAspectRatio(s)) width = ratioAbsoluteInlineSize(ctx, box, cb.width, inlineAxis.insetStart !== null && inlineAxis.insetEnd !== null ? sub(axisAvailable(inlineAxis), margins) : null, sub(axisAvailable(inlineAxis), margins), bothBlockInsets ? sub(axisAvailable(blockAxis), add(mt.value, mb.value)) : null);
+  else if (specified !== null) width = borderBoxFromSpecified(specified, hbp, s.boxSizing);
   else if (inlineAxis.insetStart !== null && inlineAxis.insetEnd !== null) width = sub(axisAvailable(inlineAxis), margins);
   else {
     const minContent = add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
@@ -206,7 +213,7 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
   // Height: auto with both insets set stretches; otherwise the contents decide (layoutContents applies height and min/max).
   const heightBasis: HeightBasis = { kind: 'definite', value: cb.height };
   let forced: LU | null = null;
-  if (s.height.kind === 'auto' && blockAxis.insetStart !== null && blockAxis.insetEnd !== null) {
+  if (s.height.kind === 'auto' && bothBlockInsets && !ratioSetsAbsoluteHeight(box)) {
     forced = max(constrain(sub(axisAvailable(blockAxis), add(mt.value, mb.value)), blockMinMaxWith(box, heightBasis, vbp, ctx.faults)), vbp);
   }
   const r = layoutContents(ctx, box, {

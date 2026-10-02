@@ -16,7 +16,7 @@ export type BorderWrite =
   | { readonly kind: 'border-styles'; readonly styles: Sides<BorderStyleName> }
   | { readonly kind: 'border-colors'; readonly colors: Sides<Rgba8> };
 
-const BORDER_PAINT = 'Dragon draws each side as a band of its width: solid fills it; dashed draws dashes of 3 times the width with equal gaps; dotted draws square dots of the width with equal gaps; double draws two bands of a third of the width';
+const BORDER_PAINT = 'Dragon draws each side as a band of its width: solid fills it; double draws two bands of a third of the width. A box with a visible dashed or dotted side is drawn as Blink 145 draws it in device px (translated paint-dash.ts): sides in Blink\'s paint order with its corner miters; dashes of 3 (under 3 device px thick) or 2 times the thickness with the gap fitted so a dash ends each side; dotted sides of 3 device px or less as square dots with whole end dots; thicker dotted sides as round dots with a fitted gap';
 
 const BORDER_STYLES: readonly BorderStyleName[] = ['none', 'hidden', 'solid', 'dotted', 'dashed', 'double'];
 

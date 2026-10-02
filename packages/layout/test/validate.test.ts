@@ -113,4 +113,51 @@ describe('V2 value-model inputs the engine cannot lay out are rejected (validate
     expect(r.kind).toBe('ok');
     if (r.kind === 'ok') expect(r.boxes.find((b) => b.id === 'p')?.height).toBe(0);
   });
+  describe('replaced leaves (REPL-a)', () => {
+    const leaf = (over: Record<string, unknown> = {}, style: Record<string, unknown> = {}): Record<string, unknown> => ({
+      kind: 'replaced',
+      id: 'img',
+      style: { ...(box('x', {}).style as unknown as Record<string, unknown>), ...style },
+      natural: { kind: 'image', width: 40, height: 20 },
+      defaultWidth: 300,
+      defaultHeight: 150,
+      objectFit: 'fill',
+      objectPositionX: { kind: 'percent', value: 50 },
+      objectPositionY: { kind: 'percent', value: 50 },
+      ...over,
+    });
+    const withLeaf = (l: Record<string, unknown>): unknown => ({ ...clone(good), root: { ...box('root', {}), children: [l] } });
+    const codes = (v: unknown): string[] => {
+      const r = validateLayoutInput(v);
+      return r.ok ? [] : r.errors.map((e) => `${e.code} ${e.path}`);
+    };
+
+    it('accepts a well-formed replaced leaf beside boxes', () => {
+      expect(codes(withLeaf(leaf()))).toEqual([]);
+    });
+
+    it('rejects a bad object-fit, an unknown natural kind, a negative natural size and a missing default size', () => {
+      const missing = leaf({ objectFit: 'stretch', natural: { kind: 'svg' } });
+      delete missing['defaultHeight'];
+      expect(codes(withLeaf(missing))).toEqual(expect.arrayContaining([expect.stringMatching(/objectFit$/), expect.stringMatching(/natural/), expect.stringMatching(/^missing-key .*defaultHeight$/)]));
+      expect(codes(withLeaf(leaf({ natural: { kind: 'image', width: -1, height: 20 } })))).toEqual([expect.stringMatching(/natural\.width$/)]);
+    });
+
+    it('refuses an absolutely positioned replaced leaf and unequal overflow axes, as for a box', () => {
+      expect(codes(withLeaf(leaf({}, { position: 'absolute' })))).toEqual(['bad-value $.root.children[0].style.position']);
+      expect(codes(withLeaf(leaf({}, { overflowX: 'hidden' })))).toEqual(['bad-value $.root.children[0].style.overflowY']);
+    });
+
+    it('takes a percentage height beside an aspect-ratio (it resolves its own basis) but still bounds the ratio parts', () => {
+      expect(codes(withLeaf(leaf({}, { height: { kind: 'percent', value: 50 }, aspectRatio: { kind: 'ratio', width: 128, height: 64 } })))).toEqual([]);
+      expect(codes(withLeaf(leaf({}, { aspectRatio: { kind: 'ratio', width: 2147483648, height: 64 } })))).toEqual(['bad-value $.root.children[0].style.aspectRatio.width']);
+    });
+
+    it('counts a replaced leaf among a box\'s ids and refuses it beside text', () => {
+      const dup = { ...clone(good), root: { ...box('root', {}), children: [leaf({ id: 'root' })] } };
+      expect(codes(dup)).toContain('duplicate-id $.root.children[0].id');
+      const mixed = { ...clone(good), root: { ...box('root', {}), children: [leaf(), text('t', 'x')] } };
+      expect(codes(mixed)).toContain('mixed-children $.root.children');
+    });
+  });
 });
