@@ -293,27 +293,27 @@ public func inline_ahemOpportunities(_ box: LayoutBox, _ cps: JsArray<Double>, _
   // ts: packages/layout/src/inline.ts:152
   do {
     var i: Double = 1.0
-    loop2: while (i < jsLength(cps)) {
-      loop2_body: do {
+    loop3: while (i < jsLength(cps)) {
+      loop3_body: do {
         let cur: Double = try jsUnwrap(jsAt(cps, i))
         let last: Double = try jsUnwrap(jsAt(cps, (i - 1.0)))
         // ts: packages/layout/src/inline.ts:156
         if (cur == inline_SPACE) {
-          break loop2_body
+          break loop3_body
         }
         // ts: packages/layout/src/inline.ts:157
         if (last == inline_SPACE) {
           _ = jsPush(out, i)
-          break loop2_body
+          break loop3_body
         }
         // ts: packages/layout/src/inline.ts:162
         if (cur == inline_ZWSP) {
-          break loop2_body
+          break loop3_body
         }
         // ts: packages/layout/src/inline.ts:163
         if (last == inline_ZWSP) {
           _ = jsPush(out, i)
-          break loop2_body
+          break loop3_body
         }
         var breaks: Bool = false
         // ts: packages/layout/src/inline.ts:169

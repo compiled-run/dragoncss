@@ -36,35 +36,35 @@
   ],
   "engineCalc": 4000,
   "snapGenerated": 20000,
-  "snapVectors": 1269,
+  "snapVectors": 1281,
   "cases": {
-    "vectors-m2": 215,
-    "vectors-dpr": 1419,
-    "engine-dpr": 1419,
+    "vectors-m2": 219,
+    "vectors-dpr": 1431,
+    "engine-dpr": 1431,
     "units-m2": 120000,
-    "snap": 21269,
+    "snap": 21281,
     "snap-values": 150,
     "calc-goldens": 17,
     "engine-calc": 4000,
     "units-calc": 50000
   },
   "engineSplit": {
-    "ok": 1417,
-    "unsupported": 2,
+    "ok": 1424,
+    "unsupported": 7,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "358d6ba091db6da076e4e23ec31fe7b709611ceb01e0a6a4f24bdd08c6369851",
-    "vectors-dpr": "5d18411b10310f3382f915d388d71143c26b89f0887850cbf4721047a6674855",
-    "engine-dpr": "0223de906abea9ebe898e221c41fb296b66b51100ac62aeaebaac35090bd7bf7",
+    "vectors-m2": "8cf7fef9c891b4cba543ffebee5c05967162f59575564fd77ccd1ab7bb2950c7",
+    "vectors-dpr": "987ea8f7809a25f832f2d53619c5337ecc67bb2dc9606209074a2808928f4ff5",
+    "engine-dpr": "f63b480dde88b550e29b00b8a52a71e678b828630489ae487886c1cc95184f4c",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "dec561fffc0490e71aaabfe3e02ebe58c318469e9d703e3817dd8ca8bef6b7dd",
+    "snap": "5f40bf80123a9f86b68befe616a9da4a93d416738b58b82ba16ddbc9520a4f68",
     "snap-values": "fdeb2cecd1521fdd06c93f68e8a53f0efd51bd155422bff8533ba0224e08b739",
-    "calc-goldens": "acc85bbaac29e732c85a60fce430fb2c68424ee135b5960040e4ba42302450c5",
-    "engine-calc": "938eaa419b1aa7b01b984a5905eae945c72b93ada0d4c43ddaa2cadaae7e0831",
+    "calc-goldens": "7e4b65e5dc06b7ce49fda178c625859a8e666aa597a7717bc0d88f07fc33c5a0",
+    "engine-calc": "6aaa0ee87a361f64e5a0b8887fd6382415b7dd11173a51e4b0285f90da1eea2d",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50"
   },
-  "digest": "62b25adf8ead7ef7f117fb06f8038ef0dd5ea3f110163c36a8617e8361128f9f"
+  "digest": "1e00c8dcf2601a494d144314ffd5cf20e41eed13360aa49dae3ba53584dd4dcc"
 }
