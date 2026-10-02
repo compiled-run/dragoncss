@@ -97,7 +97,14 @@ function touchesSnapped(px: number, py: number, x: number, y: number, w: number,
   return x0 <= px + LU_PX && px <= x1 && y0 <= py + LU_PX && py <= y1;
 }
 
-type HitCtx = { readonly nodes: readonly HitNode[]; readonly children: readonly (readonly number[])[]; readonly px: number; readonly py: number; readonly faults: HitFaults };
+type HitCtx = {
+  readonly nodes: readonly HitNode[];
+  readonly children: readonly (readonly number[])[];
+  readonly lineTexts: readonly (readonly number[])[];
+  readonly px: number;
+  readonly py: number;
+  readonly faults: HitFaults;
+};
 
 function node(ctx: HitCtx, i: number): HitNode {
   const n = ctx.nodes[i];
@@ -144,7 +151,7 @@ function foreground(ctx: HitCtx, i: number): number {
       continue;
     }
     if (k.kind === 'line') {
-      const hit = lineHit(ctx, n, k, kids);
+      const hit = lineHit(ctx, n, k, c);
       if (hit >= 0) return hit;
     }
   }
@@ -156,15 +163,16 @@ function foreground(ctx: HitCtx, i: number): number {
  * first, against their pixel-snapped rects exclusively (HitTestTextItem); then the line itself, exclusively against the line rect
  * and inclusively against the block's border box placed at the line's offset and pixel-snapped (HitTestClippedOutByBorder).
  */
-function lineHit(ctx: HitCtx, block: HitNode, line: HitNode, kids: readonly number[]): number {
+function lineHit(ctx: HitCtx, block: HitNode, line: HitNode, at: number): number {
   let x0 = line.x;
   let y0 = line.y;
   let x1 = line.x + line.width;
   let y1 = line.y + line.height;
+  const own = ctx.lineTexts[at];
+  if (own === undefined) throw new HitError(`no text list for line ${at}`);
   const texts: HitNode[] = [];
-  for (const c of kids) {
+  for (const c of own) {
     const t = node(ctx, c);
-    if (t.kind !== 'text' || t.line !== line.line) continue;
     texts.push(t);
     // The text item's ink overflow: its rect and its glyph ink.
     const left = t.inkLeft < t.x ? t.inkLeft : t.x;
@@ -241,7 +249,14 @@ function layerVisible(ctx: HitCtx, i: number): boolean {
 }
 
 /** A table prepared for many points: each box's children in reverse paint order, and the layers in hit order. */
-export type HitPrepared = { readonly nodes: readonly HitNode[]; readonly children: readonly (readonly number[])[]; readonly layers: readonly number[]; readonly faults: HitFaults };
+export type HitPrepared = {
+  readonly nodes: readonly HitNode[];
+  readonly children: readonly (readonly number[])[];
+  /** For each line node, the text pieces of its block on that line, in its block's reverse paint order; empty for other nodes. */
+  readonly lineTexts: readonly (readonly number[])[];
+  readonly layers: readonly number[];
+  readonly faults: HitFaults;
+};
 
 /** Checks a table and prepares it: children in order-modified document order, reversed, and the layers in reverse paint order. */
 export function prepareHit(nodes: readonly HitNode[], faults: HitFaults): HitPrepared {
@@ -254,6 +269,7 @@ export function prepareHit(nodes: readonly HitNode[], faults: HitFaults): HitPre
     }
     if (n.parent < 0 || n.parent >= i) throw new HitError(`hit node ${i} has parent ${n.parent}, not an earlier node`);
     if (n.target < 0 || n.target >= nodes.length) throw new HitError(`hit node ${i} has target ${n.target}`);
+    if (n.kind !== 'box' && !(Number.isInteger(n.line) && n.line >= 0 && n.line < nodes.length)) throw new HitError(`hit node ${i} has line ${n.line}`);
     (children[n.parent] as number[]).push(i);
   });
   const orderOf = (i: number): number => {
@@ -275,12 +291,27 @@ export function prepareHit(nodes: readonly HitNode[], faults: HitFaults): HitPre
     for (const c of own) collect(c);
   };
   collect(0);
-  return {
-    nodes,
-    children: faults.reversedOrder ? ordered : ordered.map((own) => own.slice(0).reverse()),
-    layers: faults.reversedOrder ? layers : layers.slice(0).reverse(),
-    faults,
-  };
+  const reversed = faults.reversedOrder ? ordered : ordered.map((own) => own.slice(0).reverse());
+  // Each line's text pieces, grouped once per block (in the block's child order) so a point tests a line in O(its pieces).
+  const lineTexts: number[][] = nodes.map((): number[] => []);
+  reversed.forEach((own) => {
+    const byLine: number[][] = [];
+    for (const c of own) {
+      const t = nodes[c];
+      if (t === undefined || t.kind !== 'text') continue;
+      while (byLine.length <= t.line) byLine.push([]);
+      (byLine[t.line] as number[]).push(c);
+    }
+    for (const c of own) {
+      const l = nodes[c];
+      if (l === undefined || l.kind !== 'line') continue;
+      const texts = byLine[l.line];
+      if (texts === undefined) continue;
+      const dest = lineTexts[c] as number[];
+      for (const x of texts) dest.push(x);
+    }
+  });
+  return { nodes, children: reversed, lineTexts, layers: faults.reversedOrder ? layers : layers.slice(0).reverse(), faults };
 }
 
 /**
@@ -288,7 +319,7 @@ export function prepareHit(nodes: readonly HitNode[], faults: HitFaults): HitPre
  * reverse paint order, then the root layer; the root's target when nothing is hit (the view hit returns the document element).
  */
 export function hitAt(prepared: HitPrepared, px: number, py: number): number {
-  const ctx: HitCtx = { nodes: prepared.nodes, children: prepared.children, px, py, faults: prepared.faults };
+  const ctx: HitCtx = { nodes: prepared.nodes, children: prepared.children, lineTexts: prepared.lineTexts, px, py, faults: prepared.faults };
   for (const l of prepared.layers) {
     if (!layerVisible(ctx, l)) continue;
     const hit = allPhases(ctx, l);
@@ -362,28 +393,41 @@ function indexZoomed(m: Map<string, LayoutBox>, b: LayoutBox): void {
 }
 
 /**
- * A flex item's place in its container's fragment order: the engine lists in-flow items line by line, each line in flow order
- * (reversed for a reverse direction), which is Blink's FlexLayoutAlgorithm order except that Blink also reverses the lines under
- * wrap-reverse (ApplyReversals). A line is a run of items whose cross-axis ranges overlap.
+ * The flex items' places in a container's fragment order, by id: the engine lists in-flow items line by line, each line in flow
+ * order (reversed for a reverse direction), which is Blink's FlexLayoutAlgorithm order except that Blink also reverses the lines
+ * under wrap-reverse (ApplyReversals). A line is a run of items whose cross-axis ranges overlap. When an empty cross-axis range
+ * only touches the current line's, the main axis decides: an item past the previous one in flow direction continues its line, one
+ * before it starts the next; an item at the same main position is refused under wrap-reverse, where the lines' order matters.
  */
-function fragmentOrder(s: TableState, container: LayoutBox, id: string): number {
+function fragmentOrders(s: TableState, container: LayoutBox): Map<string, number> {
   const row = container.style.flexDirection === 'row' || container.style.flexDirection === 'row-reverse';
+  const reverse = container.style.flexWrap === 'wrap-reverse';
+  // The engine's main-axis flow start is the physical left for an ltr row, the right for an rtl row, and the top for a column.
+  const flow = row && container.style.direction === 'rtl' ? -1 : 1;
+  const inFlow = new Map<string, boolean>();
+  for (const c of container.children) {
+    if (c.kind === 'box' && c.style.position !== 'absolute') inFlow.set(c.id, true);
+  }
   const lines: LayoutRect[][] = [];
   let lo = 0;
   let hi = 0;
+  let main = 0;
   for (const x of s.boxes) {
     const parent = x.parent;
-    if (parent === null || parent !== container.id) continue;
-    let inFlow = false;
-    for (const c of container.children) {
-      if (c.kind === 'box' && c.id === x.id && c.style.position !== 'absolute') inFlow = true;
-    }
-    if (!inFlow) continue;
+    if (parent === null || parent !== container.id || !inFlow.has(x.id)) continue;
     const r = rectOf(s, x.id);
     const a = row ? r.y : r.x;
     const z = a + (row ? r.height : r.width);
+    const m = row ? r.x : r.y;
     const cur = lines.length > 0 ? lines[lines.length - 1] : undefined;
-    if (cur !== undefined && a < hi && lo < z) {
+    let same = cur !== undefined && a < hi && lo < z;
+    if (cur !== undefined && !same && a <= hi && lo <= z && (z <= a || hi <= lo)) {
+      const step = flow * (m - main);
+      if (step === 0 && reverse) throw new HitError(`${x.id}: a wrap-reverse flex item whose line neither its cross nor its main position tells`);
+      same = step > 0;
+    }
+    main = m;
+    if (cur !== undefined && same) {
       cur.push(r);
       if (a < lo) lo = a;
       if (z > hi) hi = z;
@@ -393,15 +437,16 @@ function fragmentOrder(s: TableState, container: LayoutBox, id: string): number 
     lo = a;
     hi = z;
   }
-  const ordered = container.style.flexWrap === 'wrap-reverse' ? lines.slice(0).reverse() : lines;
+  const ordered = reverse ? lines.slice(0).reverse() : lines;
+  const out = new Map<string, number>();
   let k = 0;
   for (const line of ordered) {
     for (const r of line) {
-      if (r.id === id) return k;
+      out.set(r.id, k);
       k++;
     }
   }
-  return 0;
+  return out;
 }
 
 /** Ahem's ink of a leaf: the em box when a glyph other than p (descender only) shows; p alone inks below the baseline only. */
@@ -469,22 +514,29 @@ function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number
     }
     if (hasPartialInk(leaf) && full && j > 1) throw new HitError(`${leaf.id}: Ahem p glyphs mixed with full glyphs over several lines give each line its own ink, which the hit table does not model`);
   }
-  const tops: number[] = [];
-  for (const p of pieces) {
-    const y = p.rect.y;
-    if (!tops.some((t) => t === y)) tops.push(y);
-  }
-  const sorted = tops.slice(0).sort((x, y) => x - y);
+  // Grouped by top with one stable sort (piece order within a line), so the table is not quadratic in the pieces.
+  const byTop = pieces.slice(0).sort((p, q) => p.rect.y - q.rect.y);
   let k = 0;
-  for (const top of sorted) {
-    linePieces(s, b, parent, target, pe, run, size, pieces, top, k);
+  let from = 0;
+  while (from < byTop.length) {
+    const head = byTop[from];
+    if (head === undefined) throw new HitError(`${b.id}: no piece ${from}`);
+    const own: HitPiece[] = [];
+    let at = from;
+    while (at < byTop.length) {
+      const p = byTop[at];
+      if (p === undefined || p.rect.y !== head.rect.y) break;
+      own.push(p);
+      at++;
+    }
+    linePieces(s, b, parent, target, pe, run, size, own, head.rect.y, k);
     k++;
+    from = at;
   }
 }
 
-/** One line of a block's inline content: the line node, then each text piece on it. */
-function linePieces(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, run: LineMetrics, em: number, pieces: readonly HitPiece[], top: number, k: number): void {
-  const own = pieces.filter((p) => p.rect.y === top);
+/** One line of a block's inline content (its pieces, all with this top): the line node, then each text piece on it. */
+function linePieces(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, run: LineMetrics, em: number, own: readonly HitPiece[], top: number, k: number): void {
   const firstPiece = own[0];
   if (firstPiece === undefined) throw new HitError(`${b.id}: an empty line`);
   let x0 = firstPiece.rect.x;
@@ -509,7 +561,7 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
   }
 }
 
-function boxNodes(s: TableState, b: LayoutBox, parent: number, parentBox: LayoutBox | null, target: number, inherited: PointerEvents): void {
+function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<string, number> | null, target: number, inherited: PointerEvents): void {
   const i = s.nodes.length;
   let pe = inherited;
   let own = target;
@@ -524,11 +576,11 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, parentBox: Layout
   if (own < 0) throw new HitError(`anonymous box ${b.id} has no element ancestor`);
   const r = rectOf(s, b.id);
   const border = resolveBorder(zoomedBox(s, b.id).style, s.ctx.devicePixelRatio);
-  const flexItem = parentBox !== null && parentBox.style.display === 'flex';
+  const order = orders === null ? undefined : orders.get(b.id);
   pushNode(s, {
     kind: 'box', parent, target: own, x: r.x, y: r.y, width: r.width, height: r.height, clips: b.style.overflowX === 'hidden',
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: b.style.position !== 'static',
-    absolute: b.style.position === 'absolute', atomic: flexItem, order: parentBox !== null && flexItem ? fragmentOrder(s, parentBox, b.id) : 0, line: -1,
+    absolute: b.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order, line: -1,
     inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe,
   }, b.id, act);
   const leaves: TextLeaf[] = [];
@@ -540,7 +592,8 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, parentBox: Layout
   }
   if (leaves.length > 0 && kids.length > 0) throw new HitError(`${b.id} mixes text and boxes; the compiler wraps text in anonymous boxes`);
   if (leaves.length > 0) inlineNodes(s, b, i, own, pe, leaves);
-  for (const c of kids) boxNodes(s, c, i, b, own, pe);
+  const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : null;
+  for (const c of kids) boxNodes(s, c, i, childOrders, own, pe);
 }
 
 /** The hit table of an engine input at its device scale, from the engine's own layout of it and the compiler's hit facts. */

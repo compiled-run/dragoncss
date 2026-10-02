@@ -117,3 +117,78 @@ describe('hitTableOf refuses a replaced element', () => {
     expect(() => hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS)).toThrow(new HitError('img is a replaced element, which the hit table does not model yet'));
   });
 });
+
+// PR #75 round 1 (Macroscope 4170551537, 4170551540, 4170551550): flex line grouping under wrap-reverse, and the work per point and
+// per table, counted by reads so the bound is exact rather than a timing.
+describe('hitTableOf and prepareHit scale with the table', () => {
+  const flexInput = async (n: number, wrap: 'wrap' | 'wrap-reverse', itemHeight: number, itemWidth = 30) => {
+    const { box, neutralEnvironment, px } = await import('./helpers.ts');
+    const items = Array.from({ length: n }, (_, k) => box(`i${k}`, { width: px(itemWidth), height: px(itemHeight) }));
+    const container = box('f', { display: 'flex', flexWrap: wrap, width: px(100) }, items);
+    const root = box('html', {}, [container]);
+    const facts = new Map(['html', 'f', ...items.map((b) => b.id)].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false }] as const));
+    return { input: { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, facts, container };
+  };
+
+  it('groups zero-height wrap-reverse items into lines by their main position, and refuses one neither axis places (4170551537)', async () => {
+    const { hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    // Three 30px items per 100px line: lines [i0 i1 i2] [i3], reversed under wrap-reverse, whether the items have a height or not.
+    for (const h of [10, 0]) {
+      const { input, facts } = await flexInput(4, 'wrap-reverse', h);
+      expect(hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS).nodes.slice(2).map((x) => x.order)).toEqual([1, 2, 3, 0]);
+    }
+    // rtl: the main axis runs right to left.
+    const rtl = await flexInput(4, 'wrap-reverse', 0);
+    const rtlRoot = { ...rtl.input.root, children: [{ ...rtl.container, style: { ...rtl.container.style, direction: 'rtl' as const } }] };
+    expect(hitTableOf({ ...rtl.input, root: rtlRoot }, ahemMeasurer, rtl.facts, NO_HIT_TABLE_FAULTS).nodes.slice(2).map((x) => x.order)).toEqual([1, 2, 3, 0]);
+    // Zero-size items sit at one point: neither axis tells the lines apart, so wrap-reverse is refused and wrap keeps engine order.
+    const dot = await flexInput(3, 'wrap-reverse', 0, 0);
+    expect(() => hitTableOf(dot.input, ahemMeasurer, dot.facts, NO_HIT_TABLE_FAULTS)).toThrow(new HitError('i1: a wrap-reverse flex item whose line neither its cross nor its main position tells'));
+    const dotWrap = await flexInput(3, 'wrap', 0, 0);
+    expect(hitTableOf(dotWrap.input, ahemMeasurer, dotWrap.facts, NO_HIT_TABLE_FAULTS).nodes.slice(2).map((x) => x.order)).toEqual([0, 1, 2]);
+  });
+
+  it('orders a flex container\'s items with one pass over its children, not one per item (4170551550)', async () => {
+    const { hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer, layout } = await import('../src/index.ts');
+    const reads = async (n: number, table: boolean): Promise<number> => {
+      const { input, facts, container } = await flexInput(n, 'wrap', 10);
+      let count = 0;
+      const counted = new Proxy(container.children, { get: (t, k, r) => { if (typeof k === 'string' && /^\d+$/.test(k)) count++; return Reflect.get(t, k, r); } });
+      const root = { ...input.root, children: [{ ...container, children: counted }] };
+      if (table) hitTableOf({ ...input, root }, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+      else layout({ ...input, root }, ahemMeasurer);
+      return count;
+    };
+    // The table's own reads beyond the engine's layout of the input are linear in the items (the old fragmentOrder read n^3).
+    for (const n of [20, 40]) expect((await reads(n, true)) - (await reads(n, false)) * 2).toBeLessThanOrEqual(4 * n);
+  });
+
+  it('tests a line against its own text pieces only, grouped once by prepareHit (4170551540)', async () => {
+    const { hitAt, prepareHit } = await import('../src/rt-hit.ts');
+    const n = 200;
+    const nodes: HitNode[] = [box(-1, 0, 0, 0, 400, 3000), box(0, 1, 0, 0, 30, 10 * n)];
+    for (let k = 0; k < n; k++) {
+      nodes.push({ ...box(1, 1, 0, 10 * k, 20, 10), kind: 'line', line: k });
+      nodes.push({ ...box(1, 1, 0, 10 * k, 20, 10), kind: 'text', line: k, inkLeft: 0, inkTop: 10 * k * PX, inkRight: 20 * PX, inkBottom: (10 * k + 10) * PX });
+    }
+    const prepared = prepareHit(nodes, NO_HIT_FAULTS);
+    expect(prepared.lineTexts[2]).toEqual([3]);
+    expect(prepared.lineTexts[2 + 2 * (n - 1)]).toEqual([3 + 2 * (n - 1)]);
+    expect(prepared.lineTexts[3]).toEqual([]);
+    let count = 0;
+    const counted = new Proxy(nodes, { get: (t, k, r) => { if (typeof k === 'string' && /^\d+$/.test(k)) count++; return Reflect.get(t, k, r); } });
+    const p = { ...prepared, nodes: counted };
+    expect(hitAt(p, 5 * PX, 5 * PX)).toBe(1);
+    // Every line is visited once with its one piece: linear in the nodes (the old scan read every piece for every line, n^2).
+    expect(count).toBeLessThanOrEqual(8 * nodes.length);
+  });
+
+  it('refuses a text or line node whose line is not a small whole number', () => {
+    const root = box(-1, 0, 0, 0, 400, 300);
+    for (const line of [-1, 0.5, 99]) {
+      expect(() => hitTest([root, box(0, 1, 0, 0, 30, 10), { ...box(1, 1, 0, 0, 20, 10), kind: 'line', line }], 0, 0, NO_HIT_FAULTS)).toThrow(/has line/);
+    }
+  });
+});
