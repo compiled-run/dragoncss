@@ -56,8 +56,8 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | `unproven context bottom:<calc()>` | 234 | 234 | 234 | 4 |
 | `unproven context left:<calc()>` | 234 | 234 | 234 | 4 |
 | `property border-spacing` | 105 | 105 | 105 | 6 |
-| `property transform` | 94 | 94 | 94 | 16 |
 | `property scale` | 90 | 90 | 90 | 10 |
+| `value transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-` | 90 | 90 | 90 | 12 |
 | `unproven context flex-basis:<calc()>` | 84 | 84 | 84 | 2 |
 | `property -webkit-backdrop-filter` | 74 | 74 | 74 | 9 |
 | `property scroll-margin` | 70 | 70 | 70 | 4 |
