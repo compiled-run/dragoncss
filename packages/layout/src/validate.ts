@@ -426,8 +426,32 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
 function holdsPercent(v: unknown): boolean {
   if (!isRecord(v)) return false;
   if (v['kind'] === 'percent') return true;
-  if (v['kind'] === 'calc') return JSON.stringify(v['expr']).includes('"kind":"percent"');
-  return false;
+  return v['kind'] === 'calc' && exprHoldsPercent(v['expr']);
+}
+
+/**
+ * calc.ts calcHasPercent over an expression not yet known to be well formed: a percentage leaf, a pixels-and-percent leaf with an
+ * explicit percentage, or either inside invert, clamp and the term lists; font-size calculations hold no basis percentage.
+ */
+function exprHoldsPercent(e: unknown): boolean {
+  if (!isRecord(e)) return false;
+  switch (e['kind']) {
+    case 'percent':
+      return true;
+    case 'pixels-and-percent':
+      return e['explicitPercent'] === true;
+    case 'invert':
+      return exprHoldsPercent(e['term']);
+    case 'clamp':
+      return exprHoldsPercent(e['min']) || exprHoldsPercent(e['value']) || exprHoldsPercent(e['max']);
+    case 'sum':
+    case 'product':
+    case 'min':
+    case 'max':
+      return Array.isArray(e['terms']) && e['terms'].some(exprHoldsPercent);
+    default:
+      return false;
+  }
 }
 
 // css-sizing-4 §5.1: a ratio transfers the block size before layout knows its percentage basis in every context, so Dragon
