@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.song-container { align-items: center; display: flex; flex-direction: column; justify-content: center; min-height: 290px; }
+.record { align-items: center; aspect-ratio: 1; background-color: #0b0d12; display: flex; justify-content: center; overflow: hidden; position: relative; width: clamp(16rem, 24vw, 24rem); }
+.record-label { aspect-ratio: 1; background-color: #050608; border: 0.4rem solid #0b0d12; left: 50%; position: absolute; top: 50%; width: 36%; }
+.record-center { aspect-ratio: 1; background-color: #0b0d12; border: 0.35rem solid #0a0c10; left: 50%; position: absolute; top: 50%; width: 10%; }
+.mini-video-shell { aspect-ratio: 16 / 9; background-color: #050608; border: 1px solid #333; left: 1rem; overflow: hidden; position: absolute; top: 1rem; width: clamp(22.5rem, 24vw, 30rem); }
+.youtube-player { display: block; height: 100%; width: 100%; background-color: #336; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="song" class="song-container"><div data-dragon-id="record" class="record"><div data-dragon-id="label" class="record-label"></div><div data-dragon-id="center" class="record-center"></div></div></div>
+<div data-dragon-id="shell" class="mini-video-shell"><div data-dragon-id="player" class="youtube-player"></div></div>
+</body>
+</html>

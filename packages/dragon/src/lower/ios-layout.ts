@@ -1,6 +1,7 @@
 // Stage 2 of docs/api.md §4.1 for ios: resolved CSS to Dragon's layout engine input, with every field set explicitly.
 import type {
   AlignContent,
+  AspectRatioValue,
   AlignItems,
   AlignSelf,
   BorderWidthValue,
@@ -29,6 +30,7 @@ import type {
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
+import { exactLayoutRatio } from '../css/values.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
 import type { CompilerFaults } from '../faults.ts';
@@ -156,6 +158,17 @@ function gap(id: string, get: Get, p: Longhand, l: Lowering): GapValue {
   return lp === null ? fail(id, p, v, 'px | % | a viewport length | a calculation | normal') : lp;
 }
 
+// css-sizing-4 §5.1: the engine takes Blink's layout ratio as raw LayoutUnits (analysis/computed-checks.ts refuses the rest).
+function aspectRatio(id: string, get: Get): AspectRatioValue {
+  const v = get('aspect-ratio');
+  if (v.kind === 'keyword' && v.value === 'auto') return { kind: 'auto' };
+  if (v.kind !== 'ratio') return fail(id, 'aspect-ratio', v, 'auto | <ratio> | auto && <ratio>');
+  const raw = exactLayoutRatio(v.width, v.height);
+  if (raw === 'degenerate') return { kind: 'auto' };
+  if (raw === null) return fail(id, 'aspect-ratio', v, 'a ratio whose parts are whole multiples of 1/64, or equal');
+  return { kind: v.auto ? 'auto-ratio' : 'ratio', width: raw.width, height: raw.height };
+}
+
 const ALIGN_ITEMS: readonly AlignItems[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
 
 /** The px value of a computed font-size, or null. */
@@ -243,6 +256,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     rowGap: gap(id, get, 'row-gap', l),
     columnGap: gap(id, get, 'column-gap', l),
     textAlign: keyword<TextAlign>(id, get, 'text-align', ['start', 'end', 'left', 'right', 'center', 'justify']),
+    aspectRatio: aspectRatio(id, get),
   };
 }
 
