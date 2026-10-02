@@ -344,7 +344,7 @@ function nodeKinds(input: LayoutInput): Map<string, DumpNode['kind']> {
     out.set(b.id, b.boxType === 'anonymous' ? 'anonymous' : 'element');
     for (const c of b.children) {
       if (c.kind === 'box') walk(c);
-      else out.set(c.id, 'text');
+      else out.set(c.id, c.kind === 'replaced' ? 'element' : 'text');
     }
   };
   walk(input.root);

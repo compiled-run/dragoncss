@@ -20,6 +20,9 @@ export type { MeasurerChoice } from './platform.ts';
 export { measurerFor, REFERENCE_PLATFORM } from './platform.ts';
 export type { SnappedRect } from './snap.ts';
 export { snapEdges, snapRect } from './snap.ts';
+// Replaced elements (REPL-a): sizing and the object-fit destination rect.
+export type { BorderPadding, InlineAutoBehavior, NaturalSizing, ObjectFit, ObjectPosition, ObjectRect, PixelRect, ReplacedSize, ReplacedSizeMode, ReplacedSpace } from './replaced.ts';
+export { blockFlowSpace, drawnObjectRect, objectFitRect, pixelSnappedRect, replacedAspectRatio, replacedSize } from './replaced.ts';
 export type { DprChromeDeviation, DprDeviationControl, DprDeviationFault, DprDeviationNode } from './chrome-deviations-dpr.ts';
 export { dprChromeDeviations } from './chrome-deviations-dpr.ts';
 export type { AhemRuleFaults, FontData } from './text.ts';

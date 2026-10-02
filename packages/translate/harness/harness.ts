@@ -26,6 +26,10 @@ import type {
   LineHeightCalc,
   LineHeightValue,
   MarginValue,
+  NaturalSizeValue,
+  ObjectFit,
+  ObjectPositionValue,
+  ReplacedLeaf,
   MaxSizeValue,
   MinSizeValue,
   Overflow,
@@ -636,9 +640,44 @@ function decodeText(o: JsonObj, path: string): TextLeaf {
   };
 }
 
+function naturalSizeValue(v: JsonValue, path: string): NaturalSizeValue {
+  const k = kindOf(v, path);
+  if (k === 'none') {
+    obj(v, ['kind'], path);
+    return { kind: 'none' };
+  }
+  if (k === 'image') {
+    const o = obj(v, ['kind', 'width', 'height'], path);
+    return { kind: 'image', width: numField(o, 'width', path), height: numField(o, 'height', path) };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function objectPositionValue(v: JsonValue, path: string): ObjectPositionValue {
+  const k = kindOf(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function decodeReplaced(o: JsonObj, path: string): ReplacedLeaf {
+  obj(o, ['kind', 'id', 'style', 'natural', 'defaultWidth', 'defaultHeight', 'objectFit', 'objectPositionX', 'objectPositionY'], path);
+  return {
+    kind: 'replaced',
+    id: str(field(o, 'id', path), `${path}.id`),
+    style: decodeStyle(field(o, 'style', path), `${path}.style`),
+    natural: naturalSizeValue(field(o, 'natural', path), `${path}.natural`),
+    defaultWidth: numField(o, 'defaultWidth', path),
+    defaultHeight: numField(o, 'defaultHeight', path),
+    objectFit: lit(field(o, 'objectFit', path), ['fill', 'contain', 'cover', 'none', 'scale-down'], `${path}.objectFit`) as ObjectFit,
+    objectPositionX: objectPositionValue(field(o, 'objectPositionX', path), `${path}.objectPositionX`),
+    objectPositionY: objectPositionValue(field(o, 'objectPositionY', path), `${path}.objectPositionY`),
+  };
+}
+
 function decodeBox(o: JsonObj, path: string): LayoutBox {
   obj(o, ['kind', 'id', 'boxType', 'style', 'children'], path);
-  const children: (LayoutBox | TextLeaf)[] = [];
+  const children: (LayoutBox | TextLeaf | ReplacedLeaf)[] = [];
   arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
     children.push(decodeNode(c, `${path}.children[${i}]`));
   });
@@ -651,11 +690,12 @@ function decodeBox(o: JsonObj, path: string): LayoutBox {
   };
 }
 
-function decodeNode(v: JsonValue, path: string): LayoutBox | TextLeaf {
+function decodeNode(v: JsonValue, path: string): LayoutBox | TextLeaf | ReplacedLeaf {
   if (v.kind !== 'obj') return fail(`${path}: expected a node`);
   const k = kindOf(v, path);
   if (k === 'box') return decodeBox(v, path);
   if (k === 'text') return decodeText(v, path);
+  if (k === 'replaced') return decodeReplaced(v, path);
   return fail(`${path}: unknown node kind ${k}`);
 }
 

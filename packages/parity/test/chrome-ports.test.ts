@@ -460,7 +460,7 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
 
   it('records a ruling for every LGPL entry: class A ones only referenced, class B ones on the clean-room list for T123', () => {
     const lgpl = registry.entries.filter((e) => e.licence === 'lgpl');
-    expect(lgpl.length).toBe(21); // the 18 T118J rulings, computed_style_constants.h (V2a), hit_test_location.cc and paint_layer.cc (SELD-R1b)
+    expect(lgpl.length).toBe(22); // the 18 T118J rulings, computed_style_constants.h (V2a), layout_replaced.cc (REPL-a, class A: the destination rect is written from css-images-3), hit_test_location.cc and paint_layer.cc (SELD-R1b)
     expect(lgpl.filter((e) => e.ruling?.class === 'B').map((e) => e.upstream).sort()).toEqual([...KNOWN_LGPL_CLEAN_ROOM].sort());
     for (const e of lgpl.filter((x) => x.ruling?.class === 'A')) expect(e.dragon.map((d) => d.use), e.upstream).not.toContain('port');
   });
