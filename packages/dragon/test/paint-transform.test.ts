@@ -52,6 +52,21 @@ describe('PNT2: parse', () => {
     for (const v of ['auto', 'transform', 'opacity', 'transform, opacity']) expect(errors(compile(`.a { will-change: ${v}; }`)), v).toEqual([]);
     expect(webRule(compile('.a { will-change: transform , opacity; }'))).toContain('will-change: transform, opacity;');
   });
+  it('refuses a number, length or angle that overflows a double, and blocks the native output on an em that overflows in px', () => {
+    for (const [v, at] of [['scale(1e400)', '1e400'], ['translate(1e400px)', '1e400px'], ['translateX(1e400%)', '1e400%'], ['rotate(1e308rad)', '1e308rad'], ['rotate(1e307turn)', '1e307turn'], ['matrix(1, 0, 0, 1, 1e400, 0)', '1e400']] as const) {
+      const e = errors(compile(`.a { transform: ${v}; }`));
+      expect(e, v).toHaveLength(1);
+      expect(e[0], v).toContain(`DRAGON_UNSUPPORTED_VALUE ${JSON.stringify(at)}`);
+      expect(e[0], v).toContain('is out of range');
+    }
+    expect(errors(compile('.a { transform-origin: 1e400px 0; }'))[0]).toContain('is out of range');
+    const r = compile('.a { font-size: 20px; transform: translate(1e307em); }');
+    const p = nativePrograms(r.c, []);
+    expect(p.kind).toBe('blocked');
+    expect(p.kind === 'blocked' ? p.reason : '').toContain('a transform length in em did not compute to px');
+    const m = nativePrograms(compile('.a { transform: matrix(1e200, 0, 0, 1e200, 0, 0); }').c, []);
+    expect(m.kind === 'blocked' ? m.reason : m.kind).toContain('overflows when written as translate, rotate and scale');
+  });
   it('refuses skew, 3D functions, perspective and a non-zero origin z naming PNT2-m', () => {
     for (const [v, at] of [['skew(10deg)', 'skew(10deg)'], ['translate(1px) skewX(5deg)', 'skewX(5deg)'], ['rotate3d(0, 0, 1, 10deg)', 'rotate3d(0, 0, 1, 10deg)'], ['translateZ(4px)', 'translateZ(4px)'], ['perspective(100px)', 'perspective(100px)'], ['matrix(1, 0.5, 0, 1, 0, 0)', 'matrix(1, 0.5, 0, 1, 0, 0)']] as const) {
       const e = errors(compile(`.a { transform: ${v}; }`));

@@ -12,13 +12,14 @@ import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
 import type { PaintValueContext, PaintValues } from './types.ts';
 
-/** A declared length in px, or unchanged when its font base is unknown (the font-size pre-pass) or it is a percentage. */
+/** A declared length in px, or unchanged when its font base is unknown (the font-size pre-pass), it is a percentage or it overflows. */
 function toPx(l: TransformLengthDecl, ctx: PaintValueContext): TransformLengthDecl {
   if (l.unit === '%' || l.unit === 'px') return l;
   const base = l.unit === 'em' ? ctx.em : l.unit === 'rem' ? ctx.rem : 0;
   if (base === null) return l;
   const px = lengthToPx(l.value, l.unit, { em: ctx.em ?? 0, rem: ctx.rem ?? 0 });
-  return px === null ? l : { value: px, unit: 'px' };
+  // A px value that overflows a double stays in its unit, so the native lowering blocks on it (lower/paint/transform.ts).
+  return px === null || !Number.isFinite(px) ? l : { value: px, unit: 'px' };
 }
 
 /** A function with its lengths in px; the text of a translate function is rewritten from them. */

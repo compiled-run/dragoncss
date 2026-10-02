@@ -37,6 +37,8 @@ function engineOps(f: TransformFnDecl, at: string): TransformOp[] {
       return [{ fn: f.fn, x: ZERO, y: ZERO, angle: 0, sx: n(f.sx), sy: n(f.sy) }];
     case 'matrix': {
       const p = matrixParts(f.values);
+      // Finite entries can still overflow in the decomposition (a determinant past the double range).
+      if (![p.tx, p.ty, p.deg, p.sx, p.sy].every(Number.isFinite)) throw new ProgramError(`${at}: ${f.text} overflows when written as translate, rotate and scale`);
       return [
         { fn: 'translate', x: { kind: 'px', px: n(p.tx), percent: 0 }, y: { kind: 'px', px: n(p.ty), percent: 0 }, angle: 0, sx: 1, sy: 1 },
         { fn: 'rotate', x: ZERO, y: ZERO, angle: n(p.deg), sx: 1, sy: 1 },

@@ -73,11 +73,16 @@ export function cssNumberText(n: number): string {
 
 export const lengthText = (l: TransformLengthDecl): string => `${cssNumberText(l.value)}${l.unit}`;
 
+/** The value, or a refusal when it overflows a double (css-values-4 clamps it to the largest finite value; Dragon refuses it). */
+function finite(n: CssNode, v: number): Read<number> {
+  return Number.isFinite(v) ? ok(v) : no(n, `${generate(n)} is out of range`);
+}
+
 const args = (fn: CssNode): CssNode[] => list(fn, 'children').filter((n) => n.type !== 'WhiteSpace' && !(n.type === 'Operator' && n['value'] === ','));
 
 /** A <length-percentage> argument: px, an absolute unit, em or rem, a percentage, or a unitless zero. */
 function readLength(n: CssNode, percent: boolean): Read<TransformLengthDecl> {
-  if (n.type === 'Percentage') return percent ? ok({ value: Number(n['value']), unit: '%' }) : no(n, 'a percentage is not a length here');
+  if (n.type === 'Percentage') return percent ? finiteLength(n, Number(n['value']), '%') : no(n, 'a percentage is not a length here');
   if (n.type === 'Number' && Number(n['value']) === 0) return ok(ZERO);
   if (n.type === 'Function') return no(n, `${String(n['name']).toLowerCase()}() in a transform function is not supported yet; write a length or a percentage`);
   if (n.type !== 'Dimension') return no(n, `${generate(n)} is not a length`);
@@ -86,7 +91,12 @@ function readLength(n: CssNode, percent: boolean): Read<TransformLengthDecl> {
   if (c === undefined) return no(n, `the unit ${unit} is not supported`);
   if (c.kind === 'refused') return no(n, c.reason);
   if (c.kind === 'viewport') return no(n, `${unit} in a transform function would be resolved against the device viewport after layout, which Dragon's transform writer does not do yet; use px, em, rem or a percentage of the box`);
-  return ok({ value: Number(n['value']), unit });
+  return finiteLength(n, Number(n['value']), unit);
+}
+
+function finiteLength(n: CssNode, value: number, unit: string): Read<TransformLengthDecl> {
+  const v = finite(n, value);
+  return v.ok ? ok({ value: v.value, unit }) : v;
 }
 
 /**
@@ -100,21 +110,21 @@ function readAngle(n: CssNode): Read<number> {
   const v = Number(n['value']);
   switch (normalizeUnit(String(n['unit']))) {
     case 'deg':
-      return ok(v);
+      return finite(n, v);
     case 'rad':
-      return ok(v * (180 / Math.PI));
+      return finite(n, v * (180 / Math.PI));
     case 'grad':
-      return ok(v * (360 / 400));
+      return finite(n, v * (360 / 400));
     case 'turn':
-      return ok(v * 360);
+      return finite(n, v * 360);
   }
   return no(n, `${generate(n)} is not an angle`);
 }
 
 /** A <number> or, for scale functions, a <percentage> (css-transforms-2 §5.1). */
 function readNumber(n: CssNode, percent: boolean): Read<number> {
-  if (n.type === 'Number') return ok(Number(n['value']));
-  if (n.type === 'Percentage' && percent) return ok(Number(n['value']) / 100);
+  if (n.type === 'Number') return finite(n, Number(n['value']));
+  if (n.type === 'Percentage' && percent) return finite(n, Number(n['value']) / 100);
   if (n.type === 'Function') return no(n, `${String(n['name']).toLowerCase()}() in a transform function is not supported yet; write a number`);
   return no(n, `${generate(n)} is not a number`);
 }
