@@ -63,20 +63,25 @@ export function presentationalHints(tag: string, attributes: ReadonlyMap<string,
   return out;
 }
 
-/** An absolute http or https URL with a host, written only in RFC 3986 characters (what Foundation URL(string:) and Android accept). */
-const HTTP_URL = /^https?:\/\/[A-Za-z0-9\-._~!$&'()*+,;=:@%\[\]]+(?:[/?#][A-Za-z0-9\-._~!$&'()*+,;=:@%/?#\[\]]*)?$/i;
+/**
+ * An absolute https URL with a host, written only in RFC 3986 characters (what Foundation URL(string:) and Android accept), with
+ * every % starting a two-hex-digit escape (Foundation and Android treat a malformed one differently). Plain http is refused:
+ * App Transport Security on iOS and the cleartext default on Android (API 28+) block it in a normal app build.
+ */
+const HTTPS_URL = /^https:\/\/[A-Za-z0-9\-._~!$&'()*+,;=:@%\[\]]+(?:[/?#][A-Za-z0-9\-._~!$&'()*+,;=:@%/?#\[\]]*)?$/i;
+const BAD_ESCAPE = /%(?![0-9A-Fa-f]{2})/;
 
 /** An iframe src as the URL its web view loads (HTML strips leading and trailing ASCII white space), or null when it is not one. */
 export function iframeSrcUrl(text: string): string | null {
   const t = text.replace(/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, '');
-  return HTTP_URL.test(t) ? t : null;
+  return HTTPS_URL.test(t) && !BAD_ESCAPE.test(t) ? t : null;
 }
 
 /**
  * Why an iframe src cannot compile, or null (R9: the slot's web view loads src). Native code has no document URL to resolve a
- * relative src against, and loads only http and https documents, so the src must be an absolute http or https URL.
+ * relative src against, and a normal app build loads only https documents, so the src must be an absolute https URL.
  */
 export function iframeSrcRefusal(tag: string, name: string, text: string): string | null {
   if (tag !== 'iframe' || name !== 'src' || iframeSrcUrl(text) !== null) return null;
-  return 'a native web view loads only an absolute http or https URL written in RFC 3986 characters (it has no document URL to resolve a relative one against)';
+  return 'a native web view loads only an absolute https URL written in RFC 3986 characters with well-formed % escapes (it has no document URL to resolve a relative one against, and an app build blocks plain http)';
 }

@@ -1,5 +1,5 @@
-// PNG chunk parse (PNG 3rd edition) and an RGBA8 decode for bit depths up to 8. The core uses no Node built-ins, so the
-// build-time caller passes the zlib inflate (node:zlib inflateSync).
+// PNG chunk parse (PNG 3rd edition) and an RGBA8 decode for bit depths up to 8. The caller passes the zlib inflate: the
+// compiler's own (images/inflate.ts, no Node built-ins) or node:zlib inflateSync.
 
 export type Inflate = (data: Uint8Array) => Uint8Array;
 

@@ -8,7 +8,8 @@ import type { ImageFaults } from './faults.ts';
 import { parseJpeg } from './jpeg.ts';
 import { naturalSize } from './natural-size.ts';
 import type { ImageHeader, NaturalSize } from './natural-size.ts';
-import { parsePng, pngColourRefusal } from './png.ts';
+import { zlibInflate } from './inflate.ts';
+import { decodePng, parsePng, pngColourRefusal } from './png.ts';
 import { sniffImage } from './sniff.ts';
 import type { ImageFormat } from './sniff.ts';
 
@@ -155,13 +156,26 @@ const OTHER_FORMATS: Readonly<Record<Exclude<ImageFormat, 'png' | 'jpeg'>, Image
   gif: 'REPL-g', webp: 'REPL-g', avif: 'REPL-g', bmp: 'REPL-g', ico: 'REPL-g', svg: 'REPL-svg',
 };
 
+/**
+ * Why a PNG whose chunks parse still cannot be drawn: its image data does not inflate and unfilter to the declared size. The
+ * device decoders would fail at run time on such bytes, so the build refuses them (Macroscope 4169579864).
+ */
+function pngDecodeRefusal(bytes: Uint8Array): ImageRefusal | null {
+  try {
+    decodePng(bytes, zlibInflate);
+    return null;
+  } catch (e) {
+    return { package: null, reason: `the PNG image data does not decode: ${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
 /** Why REPL-a cannot draw these bytes, with the owning package; null for an 8-bit sRGB or untagged PNG. */
 export function imageRefusal(bytes: Uint8Array, declaredType: string | null): ImageRefusal | null {
   const format = sniffImage(bytes, declaredType);
   if (format === null) return { package: null, reason: 'the bytes match no image format Chrome decodes' };
   if (format === 'png') {
     const p = parsePng(bytes);
-    return p.ok ? pngColourRefusal(p.facts) : { package: null, reason: `the PNG does not parse: ${p.reason}` };
+    return p.ok ? (pngColourRefusal(p.facts) ?? pngDecodeRefusal(bytes)) : { package: null, reason: `the PNG does not parse: ${p.reason}` };
   }
   if (format === 'jpeg') {
     const j = parseJpeg(bytes);

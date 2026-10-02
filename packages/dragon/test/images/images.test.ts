@@ -283,3 +283,98 @@ describe('base64Encode (the PNG bytes the native image paint embeds)', () => {
     for (const b of cases) expect(base64Encode(b), `${b.length} bytes`).toBe(Buffer.from(b).toString('base64'));
   });
 });
+
+describe('zlibInflate and the PNG decode refusal (Macroscope 4169579864: CRC-valid PNGs whose image data does not decode)', () => {
+  it('inflates exactly as node:zlib on every corpus PNG and on seeded data at every level and strategy', async () => {
+    const { deflateSync, constants } = await import('node:zlib');
+    const { zlibInflate } = await import('../../src/images/inflate.ts');
+    const { parsePng } = await import('../../src/images/png.ts');
+    let checked = 0;
+    for (const f of readdirSync(here('./corpus/'))) {
+      if (!f.endsWith('.png')) continue;
+      const p = parsePng(corpus(f));
+      if (!p.ok) continue;
+      expect(Buffer.from(zlibInflate(p.idat)).equals(inflateSync(p.idat)), f).toBe(true);
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(30);
+    let seed = 11;
+    const rand = (): number => (seed = (seed * 1103515245 + 12345) >>> 0) >>> 24;
+    for (const n of [0, 1, 7, 300, 5000, 70000]) {
+      // Runs and noise, so every block type and long back-references occur.
+      const data = Uint8Array.from({ length: n }, (_, i) => ((i >> 6) % 3 === 0 ? rand() : (i >> 4) & 0xff));
+      for (const level of [0, 1, 6, 9]) {
+        for (const strategy of [constants.Z_DEFAULT_STRATEGY, constants.Z_FIXED, constants.Z_HUFFMAN_ONLY, constants.Z_RLE]) {
+          const z = deflateSync(data, { level, strategy });
+          expect(Buffer.from(zlibInflate(z)).equals(Buffer.from(data)), `${n} bytes, level ${level}, strategy ${strategy}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('throws on a bad header, a preset dictionary, a truncated stream, a corrupt block and a checksum mismatch', async () => {
+    const { deflateSync } = await import('node:zlib');
+    const { zlibInflate } = await import('../../src/images/inflate.ts');
+    const good = new Uint8Array(deflateSync(Uint8Array.from({ length: 4000 }, (_, i) => (i * 7) & 0xff)));
+    const flip = (at: number, mask: number): Uint8Array => {
+      const b = good.slice();
+      b[at] = (b[at] as number) ^ mask;
+      return b;
+    };
+    expect(() => zlibInflate(flip(0, 0x01))).toThrow(/compression method|header check/);
+    expect(() => zlibInflate(Uint8Array.of(0x78, 0xbb, 0, 0, 0, 0, 0, 0))).toThrow(/preset dictionary/);
+    for (const cut of [2, 5, good.length - 5, good.length - 1]) expect(() => zlibInflate(good.subarray(0, cut)), `cut at ${cut}`).toThrow(/zlib stream is invalid/);
+    expect(() => zlibInflate(flip(good.length - 1, 0x01))).toThrow(/Adler-32/);
+    // A stored block whose length does not match its complement, and block type 3.
+    expect(() => zlibInflate(Uint8Array.of(0x78, 0x01, 0x01, 0x05, 0x00, 0x00, 0x00, 0, 0, 0, 0))).toThrow(/complement/);
+    expect(() => zlibInflate(Uint8Array.of(0x78, 0x01, 0x07, 0, 0, 0, 0, 0))).toThrow(/block type 3/);
+    // Every single-bit flip in the deflate data either throws or changes nothing the checksum would miss.
+    for (let at = 2; at < good.length - 4; at += 13) {
+      let out: Uint8Array | null = null;
+      try {
+        out = zlibInflate(flip(at, 0x10));
+      } catch {
+        continue;
+      }
+      expect(Buffer.from(out).equals(inflateSync(good)), `flip at ${at}`).toBe(true);
+    }
+  });
+
+  it('refuses a PNG whose chunks and CRCs are valid but whose image data does not decode, and accepts the corpus PNGs it accepted', async () => {
+    const { crc32, parsePng } = await import('../../src/images/png.ts');
+    const { deflateSync } = await import('node:zlib');
+    const u32 = (n: number): number[] => [(n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff];
+    const chunk = (type: string, data: Uint8Array): number[] => {
+      const body = Uint8Array.from([...type].map((c) => c.charCodeAt(0)).concat([...data]));
+      return [...u32(data.length), ...body, ...u32(crc32(body))];
+    };
+    // A 2 x 2 8-bit RGB PNG: IHDR, one IDAT, IEND, with every CRC correct.
+    const png = (idat: Uint8Array): Uint8Array => Uint8Array.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ...chunk('IHDR', Uint8Array.from([...u32(2), ...u32(2), 8, 2, 0, 0, 0])),
+      ...chunk('IDAT', idat),
+      ...chunk('IEND', new Uint8Array(0)),
+    ]);
+    const rows = Uint8Array.of(0, 255, 0, 0, 0, 255, 0, 0, 0, 0, 255, 255, 255, 255);
+    const ok = png(new Uint8Array(deflateSync(rows)));
+    expect(parsePng(ok).ok).toBe(true);
+    expect(imageRefusal(ok, 'image/png')).toBeNull();
+    const cases: [string, Uint8Array, RegExp][] = [
+      ['not a zlib stream', Uint8Array.of(1, 2, 3, 4, 5, 6, 7, 8), /does not decode: the zlib stream is invalid/],
+      ['truncated image data', new Uint8Array(deflateSync(rows.subarray(0, 7))), /does not decode: PNG image data is truncated/],
+      ['an unknown row filter', new Uint8Array(deflateSync(Uint8Array.of(9, ...rows.subarray(1)))), /does not decode: unknown PNG filter 9/],
+    ];
+    for (const [what, idat, why] of cases) {
+      const bytes = png(idat);
+      expect(parsePng(bytes).ok, what).toBe(true);
+      const r = imageRefusal(bytes, 'image/png');
+      expect(r?.package, what).toBeNull();
+      expect(r?.reason, what).toMatch(why);
+    }
+    // The decode check refuses nothing the corpus accepted before it: every corpus PNG it accepts decodes with node:zlib too.
+    for (const f of readdirSync(here('./corpus/'))) {
+      if (!f.endsWith('.png') || imageRefusal(corpus(f), 'image/png') !== null) continue;
+      expect(() => decodePng(corpus(f), (d) => new Uint8Array(inflateSync(d))), f).not.toThrow();
+    }
+  });
+});

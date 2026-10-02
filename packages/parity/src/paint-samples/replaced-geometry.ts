@@ -13,7 +13,13 @@ import type { PaintSampleContext } from './types.ts';
  * A replaced box: its paint rects, its decoded image (null for a web view) and the snapped rects of every box and line laid out
  * after it, which paint over it (CSS2 Appendix E: later boxes in tree order paint later; positioned boxes are placed last).
  */
-export type ReplacedSamplesBox = { readonly paint: ReplacedPaint; readonly image: RgbaImage | null; readonly later: readonly SnappedRect[] };
+export type ReplacedSamplesBox = {
+  readonly paint: ReplacedPaint;
+  readonly image: RgbaImage | null;
+  readonly later: readonly SnappedRect[];
+  /** The later boxes that hide whatever is under them: an opaque background-color over the border box, and no clipping ancestor. */
+  readonly cover: readonly SnappedRect[];
+};
 
 const cache = new WeakMap<PaintSampleContext, ReadonlyMap<string, ReplacedSamplesBox>>();
 
@@ -34,13 +40,25 @@ export function replacedBoxes(ctx: PaintSampleContext): ReadonlyMap<string, Repl
   const paints = replacedGeometries(engine, input, out.boxes);
   const snapped = snapEdges(out.boxes);
   const order = new Map(out.boxes.map((b, i) => [b.id, i]));
+  const byId = new Map(ctx.program.nodes.map((n) => [n.id, n]));
+  const clipped = (id: string | null): boolean => {
+    for (let a = id === null ? undefined : byId.get(id); a !== undefined; a = a.parent === null ? undefined : byId.get(a.parent)) {
+      if (a.writes.some((w) => w.kind === 'padding-box-clip')) return true;
+    }
+    return false;
+  };
+  const opaque = (id: string): boolean => {
+    const n = byId.get(id);
+    return n !== undefined && n.writes.some((w) => w.kind === 'background-color' && w.color.alpha === 255) && !clipped(n.parent);
+  };
   const boxes = new Map<string, ReplacedSamplesBox>();
   for (const n of ctx.program.nodes) {
     const paint = paints.get(n.id);
     if (paint === undefined) continue;
     const w = n.writes.find((x) => x.kind === 'replaced-image');
     const image = w === undefined || w.kind !== 'replaced-image' ? null : decodePng(new Uint8Array(Buffer.from(w.data, 'base64')), (d) => new Uint8Array(inflateSync(d)));
-    boxes.set(n.id, { paint, image, later: snapped.slice((order.get(n.id) as number) + 1) });
+    const later = snapped.slice((order.get(n.id) as number) + 1);
+    boxes.set(n.id, { paint, image, later, cover: later.filter((r) => opaque(r.id)) });
   }
   cache.set(ctx, boxes);
   return boxes;
