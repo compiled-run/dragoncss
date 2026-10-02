@@ -89,9 +89,9 @@ export function programInput(p: NativeProgram, viewport: { readonly width: numbe
 export function resolvedFontSizes(engine: ExpectedEngine, input: LayoutInput): Map<string, number> {
   const zoomed = engine.zoomInput(input, engine.noFaults);
   const out = new Map<string, number>();
-  const walk = (b: LayoutBox): void => {
+  const walk = (b: LayoutBox | ControlBox): void => {
     for (const c of b.children) {
-      if (c.kind === 'box') walk(c);
+      if (c.kind === 'box' || c.kind === 'control') walk(c);
       else if (c.kind === 'text') out.set(c.id, c.font.size);
     }
   };
