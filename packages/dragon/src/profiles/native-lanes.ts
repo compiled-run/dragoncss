@@ -5,6 +5,6 @@
 export type NativeLanesVerdict = { readonly recorded: boolean; readonly stale: readonly string[]; readonly notPassing: readonly string[] };
 
 export const NATIVE_LANES: { readonly ios: NativeLanesVerdict; readonly android: NativeLanesVerdict } = {
-  ios: { recorded: true, stale: [], notPassing: ["device-pixels fail (61 failures (pixel 61))"] },
-  android: { recorded: true, stale: [], notPassing: ["device-pixels fail (90 failures (pixel 90))"] },
+  ios: { recorded: true, stale: [], notPassing: ["device-pixels fail (57 failures (pixel 57))"] },
+  android: { recorded: true, stale: [], notPassing: ["device-pixels fail (86 failures (pixel 86))"] },
 };
