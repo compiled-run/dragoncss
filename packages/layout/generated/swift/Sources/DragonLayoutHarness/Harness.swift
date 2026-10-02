@@ -869,8 +869,8 @@ func harness_parseString(_ c: Cursor) throws -> JsString {
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/translate/harness/harness.ts:168
   do {
-    loop4: while true {
-      loop4_body: do {
+    loop5: while true {
+      loop5_body: do {
         let ch: Double = try harness_peek(c)
         // ts: packages/translate/harness/harness.ts:170
         if (ch == -1.0) {
@@ -888,7 +888,7 @@ func harness_parseString(_ c: Cursor) throws -> JsString {
         // ts: packages/translate/harness/harness.ts:174
         if (ch != 92.0) {
           _ = jsPush(out, ch)
-          break loop4_body
+          break loop5_body
         }
         let e: Double = try harness_peek(c)
         c.pos += 1.0
@@ -988,14 +988,14 @@ func harness_parseArray(_ c: Cursor) throws -> any U_JsonArr_JsonBool_JsonNull_J
   }
   // ts: packages/translate/harness/harness.ts:233
   do {
-    loop3: while true {
-      loop3_body: do {
+    loop4: while true {
+      loop4_body: do {
         _ = try jsPush(items, harness_parseValue(c))
         try harness_skipWs(c)
         // ts: packages/translate/harness/harness.ts:236
         if try (harness_peek(c) == 44.0) {
           c.pos += 1.0
-          break loop3_body
+          break loop4_body
         }
         try harness_expect(c, 93.0)
         return JsonArr(HS.s_arr, items)
@@ -1017,8 +1017,8 @@ func harness_parseObject(_ c: Cursor) throws -> any U_JsonArr_JsonBool_JsonNull_
   }
   // ts: packages/translate/harness/harness.ts:254
   do {
-    loop2: while true {
-      loop2_body: do {
+    loop3: while true {
+      loop3_body: do {
         try harness_skipWs(c)
         let key: JsString = try harness_parseString(c)
         try harness_skipWs(c)
@@ -1034,7 +1034,7 @@ func harness_parseObject(_ c: Cursor) throws -> any U_JsonArr_JsonBool_JsonNull_
         // ts: packages/translate/harness/harness.ts:264
         if try (harness_peek(c) == 44.0) {
           c.pos += 1.0
-          break loop2_body
+          break loop3_body
         }
         try harness_expect(c, 125.0)
         return JsonObj(HS.s_obj, keys, values)
