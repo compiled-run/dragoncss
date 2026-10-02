@@ -8,6 +8,7 @@ import type { Environment } from 'dragon';
 import { LONGHANDS } from 'dragon';
 import { CHROME_VERSION, openPage } from './chrome.ts';
 import { BROWSER_FLAVOUR, hostPlatform } from './platform.ts';
+import { applyTransformTwin } from './transform-capture.ts';
 
 export type CapturedNode = {
   readonly id: string;
@@ -43,6 +44,8 @@ export async function captureFixture(browser: Browser, fixture: string, html: st
   const page = await openPage(browser, html, env);
   try {
     if (prepare !== undefined) await prepare(page);
+    // PNT2 case-kind registration (RT-13 style): a page with a transformed element is captured through the transform twin.
+    const twin = await applyTransformTwin(page, [...LONGHANDS, ...extra]);
     const nodes = await page.evaluate((props) => {
       const out: CapturedNode[] = [];
       const blank = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
@@ -70,6 +73,14 @@ export async function captureFixture(browser: Browser, fixture: string, html: st
       }
       return out;
     }, [...LONGHANDS, ...extra]);
+    if (twin !== null) {
+      for (const [i, n] of nodes.entries()) {
+        if (n.kind !== 'element') continue;
+        const computed = twin.get(n.id);
+        if (computed === undefined) throw new Error(`${fixture}: the transform twin read no computed values for ${n.id}`);
+        nodes[i] = { ...n, computed };
+      }
+    }
     return {
       fixture,
       chrome: CHROME_VERSION,

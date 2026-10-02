@@ -208,6 +208,22 @@ export const TRANSFORM_EMITTER: PaintEmitter<'transform'> = {
     uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, afterLayout: 'dragonAfterLayoutTransform', applied: 'dragonAppliedTransform' },
     'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS, file: KOTLIN, afterLayout: 'dragonAfterLayoutTransform', applied: 'dragonAppliedTransform' },
   },
-  // The transform raster plants come with the transforms fixtures they run on (PNT2 parity).
-  plants: [],
+  plants: [
+    // The origin taken as the border box's top left: rotated and scaled boxes land elsewhere unless the origin is 0 0.
+    {
+      name: 'transform-origin-ignored',
+      replace: {
+        uikit: ['let m = try paintTransform_paintTransformMatrix(JsArray(v.dragonTransformOps), origin, rw, rh, dragonTransformTrig)', 'let m = try paintTransform_paintTransformMatrix(JsArray(v.dragonTransformOps), TransformOrigin(LengthValue(JsString("px"), 0, 0), LengthValue(JsString("px"), 0, 0)), rw, rh, dragonTransformTrig)'],
+        'android-views': ['val o = paintTransform_resolveTransformOrigin(origin, rw, rh)', 'val o = OriginPoint(0.0, 0.0)'],
+      },
+    },
+    // Percentages resolved against the parent's box instead of the border box (css-transforms-1 §5: the reference box).
+    {
+      name: 'translate-percent-of-parent',
+      replace: {
+        uikit: ['let rw = w, rh = h', 'let rw = Double(v.superview?.bounds.width ?? 0), rh = Double(v.superview?.bounds.height ?? 0)'],
+        'android-views': ['val rw = w\n  val rh = h', 'val rw = ((v.parent as? android.view.View)?.width ?: 0) / scale\n  val rh = ((v.parent as? android.view.View)?.height ?: 0) / scale'],
+      },
+    },
+  ],
 };

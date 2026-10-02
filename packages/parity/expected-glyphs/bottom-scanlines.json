@@ -183,6 +183,8 @@
       "inline-breaks-no-break": [2,20],
       "inline-breaks-fit": [2,11],
       "inline-breaks-fit-rtl": [2,11],
+      "transform-nested": [0,1],
+      "transform-text": [0,3],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -369,6 +371,8 @@
       "inline-breaks-no-break": [2,20],
       "inline-breaks-fit": [2,11],
       "inline-breaks-fit-rtl": [2,11],
+      "transform-nested": [0,1],
+      "transform-text": [0,3],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     }
@@ -557,6 +561,8 @@
       "inline-breaks-no-break": [2,20],
       "inline-breaks-fit": [2,11],
       "inline-breaks-fit-rtl": [2,11],
+      "transform-nested": [0,1],
+      "transform-text": [0,3],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -743,6 +749,8 @@
       "inline-breaks-no-break": [2,20],
       "inline-breaks-fit": [2,11],
       "inline-breaks-fit-rtl": [2,11],
+      "transform-nested": [0,1],
+      "transform-text": [0,3],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -929,6 +937,8 @@
       "inline-breaks-no-break": [2,20],
       "inline-breaks-fit": [2,11],
       "inline-breaks-fit-rtl": [2,11],
+      "transform-nested": [0,1],
+      "transform-text": [0,3],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     }
