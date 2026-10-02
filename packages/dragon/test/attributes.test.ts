@@ -72,13 +72,9 @@ describe('refused attributes name the package that owns their effect', () => {
     expect(attributeRefusal(tag, name)).toContain(owner);
   });
 
-  it('REPL-a handles src, alt, width and height on img, and width and height on iframe', () => {
+  it('REPL-a handles src, alt, width and height on img, and src (Phase B: the web view loads it), width and height on iframe', () => {
     for (const name of ['src', 'alt', 'width', 'height']) expect(attributeRefusal('img', name), name).toBeNull();
-    for (const name of ['width', 'height']) expect(attributeRefusal('iframe', name), name).toBeNull();
-  });
-
-  it('refuses an iframe src until Phase B loads it in the web view (Macroscope 4164413918), rather than dropping it', () => {
-    expect(attributeRefusal('iframe', 'src')).toContain('REPL-a Phase B');
+    for (const name of ['src', 'width', 'height']) expect(attributeRefusal('iframe', name), name).toBeNull();
   });
 
   it('compiles neutral attributes silently and refuses the others with the owner in the message', () => {
