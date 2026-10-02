@@ -20,6 +20,7 @@ import { fixtureInput } from '../src/cases.ts';
 import { layout } from '../src/fixture-groups/define.ts';
 import { FONT_FIXTURES, withFontMapAssets } from '../src/fixture-groups/fonts.ts';
 import { TEXT_WEIGHT } from '../src/fixture-groups/text-weight.ts';
+import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
 import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-reference.ts';
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
@@ -197,7 +198,7 @@ describe('BASE pins', () => {
   const git = (...args: string[]): string => execFileSync('git', args, { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 1 << 28 });
   it('the text-weight group follows BASE\'s groups and adds exactly its own layout cases', () => {
     // TXT-W2 appends font-shorthand after it (font-shorthand.test.ts).
-    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-2)).toEqual(['text-weight', 'font-shorthand']);
+    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-3)).toEqual(['text-weight', 'font-shorthand', 'text-decoration']);
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     const added = TEXT_WEIGHT.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
     expect(ids.slice(502, 502 + added.length)).toEqual(added);
@@ -207,8 +208,8 @@ describe('BASE pins', () => {
       .split('\n').filter((l) => l !== '' && !l.startsWith('A\t') && !/expected-pixels\/darwin-arm64\/manifest\.json$/.test(l));
     expect(changed).toEqual([]);
   });
-  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, then TXT-W2's font-synthesis longhands. */
-  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps'];
+  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands. */
+  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS];
   it('every existing capture equals BASE once the computed keys added since are removed', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = git('ls-tree', '-r', '--name-only', BASE, '--', ...dirs).split('\n').filter((p) => p.endsWith('.json'));

@@ -23,6 +23,7 @@ import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
 import { INLINE_TAGS } from './fixture-groups/inline-tags.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
+import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
 import { VALUES } from './fixture-groups/values.ts';
 
 /**
@@ -102,6 +103,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'inline-tags', fixtures: INLINE_TAGS },
   { id: 'text-weight', fixtures: TEXT_WEIGHT },
   { id: 'font-shorthand', fixtures: FONT_SHORTHAND },
+  { id: 'text-decoration', fixtures: TEXT_DECORATION },
 ];
 
 export const FIXTURES: readonly FixtureSpec[] = FIXTURE_GROUPS.flatMap((g) => g.fixtures);

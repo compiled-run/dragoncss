@@ -39,8 +39,9 @@ describe('element keys (ELB-2)', () => {
     expect(light.userAgentUnmodelled['span']).toEqual({ ltr: {}, rtl: {} });
     expect(light.userAgentForced['input']?.ltr).toEqual({ display: 'inline-block', 'overflow-x': 'clip', 'overflow-y': 'clip' });
     expect(light.userAgentForced['button']?.ltr).toEqual({ display: 'inline-block' });
+    // TDEC-a: a[href]'s text-decoration-line is a longhand now, applied from the capture by datasets.ts anyLink.
     for (const [key, dirs] of Object.entries(light.userAgentUnmodelled)) {
-      for (const p of Object.keys(dirs.ltr)) expect((LONGHANDS as readonly string[]).includes(p), `${key} ${p}`).toBe(false);
+      for (const p of Object.keys(dirs.ltr)) expect((LONGHANDS as readonly string[]).includes(p) && !(key === 'a[href]' && p === 'text-decoration-line'), `${key} ${p}`).toBe(false);
     }
     for (const [key, dirs] of Object.entries(light.userAgentForced)) {
       for (const p of Object.keys(dirs.ltr)) expect((LONGHANDS as readonly string[]).includes(p), `${key} ${p}`).toBe(true);
