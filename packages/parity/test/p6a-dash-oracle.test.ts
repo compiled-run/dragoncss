@@ -125,6 +125,30 @@ export function positionedLayer(root: LayoutBox): Set<string> {
   return out;
 }
 
+/**
+ * The paint order of the boxes within each phase: tree order, with a flex container's items in order-modified document order
+ * (css-flexbox-1 §5.4: they paint as if reordered by `order`, stably).
+ */
+export function paintOrder(root: LayoutBox): string[] {
+  const out: string[] = [];
+  const walk = (b: LayoutBox): void => {
+    out.push(b.id);
+    const kids = b.children.filter((c): c is LayoutBox => c.kind === 'box');
+    const flex = b.style.display === 'flex';
+    const sorted = flex ? kids.map((c, i) => ({ c, i })).sort((x, y) => x.c.style.order - y.c.style.order || x.i - y.i).map((x) => x.c) : kids;
+    for (const c of sorted) walk(c);
+  };
+  walk(root);
+  return out;
+}
+
+/** A device-px rect, or null for an empty one. */
+export function intersect(a: Box | null, b: Box | null): Box | null {
+  if (a === null || b === null) return null;
+  const r = { left: Math.max(a.left, b.left), top: Math.max(a.top, b.top), right: Math.min(a.right, b.right), bottom: Math.min(a.bottom, b.bottom) };
+  return r.left < r.right && r.top < r.bottom ? r : null;
+}
+
 /** Whether box m paints over box n's border: m is in a later paint phase (positioned over in-flow) or the same phase and later in tree order. */
 export function paintsOver(order: readonly string[], layer: ReadonlySet<string>, n: string, m: string): boolean {
   const ln = layer.has(n);
@@ -163,14 +187,71 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
   const snapped = snapEdges(out.boxes);
   const borders = borderDevicePx(engine, input);
   const boxOf = new Map<string, Box>(out.boxes.map((b: LayoutRect, i) => [b.id, snapped[i] as Box]));
-  const ownerOf = new Map(p.nodes.filter((m) => m.kind === 'text').map((m) => [m.id, m.parent]));
-  const glyphs = glyphLines(p, vp, dpr).flatMap((l) => {
-    const owner = ownerOf.get(l.id.slice(0, l.id.lastIndexOf(':line')));
-    if (owner === undefined || owner === null) throw new Error(`${nc.case.id}: no owning box for the text line ${l.id}`);
-    return l.glyphs.map((g) => ({ owner, box: { left: Math.floor(g.left) - 1, top: Math.floor(g.top) - 1, right: Math.ceil(g.right) + 1, bottom: Math.ceil(g.bottom) + 1 } }));
-  });
-  const order = p.nodes.map((m) => m.id);
+  const order = paintOrder(p.root);
   const layer = positionedLayer(p.root);
+  const nodeOf = new Map(p.nodes.map((m) => [m.id, m]));
+  const pad = (id: string): Box | null => {
+    const o = boxOf.get(id);
+    const bw = borders.get(id) ?? [0, 0, 0, 0];
+    return o === undefined ? null : intersect(o, { left: o.left + bw[3], top: o.top + bw[0], right: o.right - bw[1], bottom: o.bottom - bw[2] });
+  };
+  const positionOf = new Map<string, string>();
+  const walkPositions = (b: LayoutBox): void => {
+    positionOf.set(b.id, b.style.position);
+    for (const c of b.children) if (c.kind === 'box') walkPositions(c);
+  };
+  walkPositions(p.root);
+  /**
+   * The clip over what node id paints: the padding boxes of the overflow-clipping boxes on its containing-block chain (css-overflow-3
+   * §3: an absolutely positioned box escapes the clips between it and its containing block, the nearest positioned ancestor; a
+   * fixed one escapes all), and its own with self.
+   */
+  const clipOf = (id: string, self: boolean): Box | null => {
+    let r: Box | null = { left: -Infinity, top: -Infinity, right: Infinity, bottom: Infinity };
+    if (self && nodeOf.get(id)?.clips === true) r = intersect(r, pad(id));
+    let from = id;
+    for (let at = nodeOf.get(id)?.parent ?? null; at !== null; at = nodeOf.get(at)?.parent ?? null) {
+      const pos = positionOf.get(from);
+      if (pos === 'fixed') return r;
+      // An absolutely positioned box skips every ancestor up to its containing block, which still clips it.
+      if (pos === 'absolute' && (positionOf.get(at) ?? 'static') === 'static') continue;
+      if (nodeOf.get(at)?.clips === true) r = intersect(r, pad(at));
+      from = at;
+    }
+    return r;
+  };
+  /** Where box m paints over others: its border box when its background is not transparent, else its visible border bands; clipped. */
+  const paintedBy = (m: string): Box[] => {
+    const o = boxOf.get(m);
+    if (o === undefined) return [];
+    const clip = clipOf(m, false);
+    const bg = writeOf(p, m, 'background-color');
+    if (bg !== undefined && bg.color.alpha > 0) return [intersect(o, clip)].filter((x): x is Box => x !== null);
+    const bw = borders.get(m) ?? [0, 0, 0, 0];
+    const st = writeOf(p, m, 'border-styles')?.styles ?? [];
+    const co = writeOf(p, m, 'border-colors')?.colors ?? [];
+    const bands: Box[] = [
+      { left: o.left, top: o.top, right: o.right, bottom: o.top + bw[0] },
+      { left: o.right - bw[1], top: o.top, right: o.right, bottom: o.bottom },
+      { left: o.left, top: o.bottom - bw[2], right: o.right, bottom: o.bottom },
+      { left: o.left, top: o.top, right: o.left + bw[3], bottom: o.bottom },
+    ];
+    return bands.flatMap((band, k) => ((bw[k] ?? 0) > 0 && st[k] !== 'none' && st[k] !== 'hidden' && (co[k]?.alpha ?? 0) > 0 ? [intersect(band, clip)].filter((x): x is Box => x !== null) : []));
+  };
+  const ownerOf = new Map(p.nodes.filter((m) => m.kind === 'text').map((m) => [m.id, m.parent]));
+  // Each glyph box with a device px of anti-aliasing around it, clipped like its text; a transparent text run paints nothing.
+  const glyphsOf = (): { owner: string; box: Box }[] => glyphLines(p, vp, dpr).flatMap((l) => {
+    const text = l.id.slice(0, l.id.lastIndexOf(':line'));
+    const owner = ownerOf.get(text);
+    if (owner === undefined || owner === null) throw new Error(`${nc.case.id}: no owning box for the text line ${l.id}`);
+    if ((writeOf(p, text, 'text-color')?.color.alpha ?? 255) === 0) return [];
+    const clip = clipOf(owner, true);
+    return l.glyphs.flatMap((g) => {
+      const box = intersect({ left: Math.floor(g.left) - 1, top: Math.floor(g.top) - 1, right: Math.ceil(g.right) + 1, bottom: Math.ceil(g.bottom) + 1 }, clip);
+      return box === null ? [] : [{ owner, box }];
+    });
+  });
+  const glyphs = glyphsOf();
   let boxes = 0;
   let crisp = 0;
   const mismatches: string[] = [];
@@ -191,13 +272,18 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     // The element boxes after this one in paint order (paintsOver: positioned boxes over in-flow ones, then tree order) paint over
     // its border; their pixels are skipped. Boxes before it in paint order paint below it, so a border pixel they overlap is compared.
     // The pre-T116 comparison keeps master's tree-order rule, so the subset proof measures everything this file changed.
-    const hides = (m: string): boolean => (mode.preT116 ? order.indexOf(m) > order.indexOf(n.id) : paintsOver(order, layer, n.id, m));
-    const over = p.nodes.filter((m) => m.kind !== 'text' && m.id !== n.id && hides(m.id)).flatMap((m) => {
-      const o = boxOf.get(m.id);
-      return o === undefined ? [] : [o];
-    });
-    // Glyphs that paint over this border (textPaintsOver) hide it too (text that overflows its line box), with a device px of
-    // anti-aliasing around each glyph box; text painted below a positioned border is compared.
+    // An occluder hides only what it paints (paintedBy: its opaque-or-translucent background, else its visible border bands, inside
+    // its ancestors' overflow clips). The pre-T116 comparison keeps master's rule (every later box in program order, as a rectangle),
+    // so the subset proof measures everything this file changed.
+    const programOrder = p.nodes.map((m) => m.id);
+    const over = mode.preT116
+      ? p.nodes.filter((m) => m.kind !== 'text' && programOrder.indexOf(m.id) > programOrder.indexOf(n.id)).flatMap((m) => {
+          const o = boxOf.get(m.id);
+          return o === undefined ? [] : [o];
+        })
+      : p.nodes.filter((m) => m.kind !== 'text' && m.id !== n.id && paintsOver(order, layer, n.id, m.id)).flatMap((m) => paintedBy(m.id));
+    // Glyphs that paint over this border (textPaintsOver) hide it too (text that overflows its line box); a translucent run still
+    // changes the pixel, so it hides it; text painted below a positioned border is compared.
     if (!mode.preT116) for (const g of glyphs) if (textPaintsOver(order, layer, n.id, g.owner)) over.push(g.box);
     for (let y = b.top; y < b.bottom; y++) {
       for (let x = b.left; x < b.right; x++) {
@@ -247,6 +333,12 @@ describe('the oracle\'s paint order (which boxes hide a border pixel)', () => {
     expect(textPaintsOver(order, layer, 'b5', 'd3')).toBe(true);
     expect(textPaintsOver(order, layer, 'b5', 'c4')).toBe(false);
     expect(textPaintsOver(order, layer, 'd3', 'b5')).toBe(false);
+    // Flex items paint in order-modified document order; other boxes in tree order.
+    const leaf = (id: string, order = 0, display = 'block'): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: { display, position: 'static', order } as unknown as LayoutBox['style'], children: [] });
+    const flex: LayoutBox = { ...leaf('f', 0, 'flex'), children: [leaf('x', 2), leaf('y', -1), leaf('z', 2), { ...leaf('w', 1), children: [leaf('w1', -5)] }] };
+    expect(paintOrder({ ...leaf('r'), children: [flex, leaf('after')] })).toEqual(['r', 'f', 'y', 'w', 'w1', 'x', 'z', 'after']);
+    expect(intersect({ left: 0, top: 0, right: 10, bottom: 10 }, { left: 5, top: -2, right: 20, bottom: 3 })).toEqual({ left: 5, top: 0, right: 10, bottom: 3 });
+    expect(intersect({ left: 0, top: 0, right: 10, bottom: 10 }, { left: 10, top: 0, right: 20, bottom: 3 })).toBeNull();
     expect([...positionedLayer(p.root)].sort()).toEqual(['a1', 'a2', 'a3', 'a4', 'a5', 'b1', 'b2', 'b3', 'b4', 'b5', 'd1', 'd2', 'd3', 'e1', 'e2']);
   });
 });
