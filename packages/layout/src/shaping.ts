@@ -13,8 +13,8 @@ import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } 
 import { fontMetricLengths } from './text.ts';
 import type { LU } from './units.ts';
 import {
-  add, floatAdd, floorToWholePx, fromPxCeil, fromRaw, inlineToFloat, inlineToLayoutUnitCeil, neg, platformFontSize, roundCoreTextMetricToWholePx, sub, toFloat,
-  toPx, ZERO,
+  add, floatAdd, floorToWholePx, fontMetricPx, fromPxCeil, fromRaw, inlineToFloat, inlineToLayoutUnitCeil, neg, platformFontSize, roundCoreTextMetricToWholePx,
+  roundFontMetricHalfUpToWholePx, sub, toFloat, toPx, ZERO,
 } from './units.ts';
 
 /** Integers per shaped glyph: glyph id, cluster (UTF-16 offset in the text), x advance, y advance, x offset, y offset (16.16), flags. */
@@ -61,10 +61,13 @@ export type ShapingFaults = {
   readonly wholePixelPositions: boolean;
   /** Leave out the generated hyphen at a soft hyphen break. */
   readonly softHyphenWidthMissing: boolean;
+  /** Round ascent and descent from the unquantised size * units / upem, halves up (T005's rule), instead of Core Text's 16.16 value. */
+  readonly metricRoundingSwapped: boolean;
 };
 
 export const NO_SHAPING_FAULTS: ShapingFaults = {
   advanceNot16_16: false, doubleAccumulation: false, noReshapeAtBreak: false, kerningDropped: false, wholePixelPositions: false, softHyphenWidthMissing: false,
+  metricRoundingSwapped: false,
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------
@@ -809,7 +812,7 @@ function lineView(item: ShapeItem, paragraph: ShapeResult, start: number, breakO
 export type ShapedItem = { readonly ok: true; readonly item: ShapeItem; readonly result: ShapeResult } | { readonly ok: false; readonly reason: string };
 
 export type ShapedText = {
-  /** R2's TextMeasurer. Until TXT1a-1 adds TextFont.face, TextFont.family names the face id. */
+  /** R2's TextMeasurer, over the face TextFont.family names (the face id: Ahem, or a bundled face's sha256). */
   readonly measurer: TextMeasurer;
   item(text: string, face: string, size: number): ShapedItem;
   line(shaped: ShapedItem, start: number, breakOffset: number, available: LU, isBreakable: (offset: number) => boolean): LineResult;
@@ -855,14 +858,11 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     // R5: SimpleFontData's rounded ascent and descent of the platform-size font; a zero line gap stays ZERO.
     metrics(font: TextFont): FontMetrics {
       const f = faces.get(font.family);
-      if (f === undefined) return { ascent: ZERO, descent: ZERO, lineGap: ZERO };
+      if (f === undefined) throw new Error(`no bundled face ${font.family}; the host passes every face the input names`);
       const size = platformFontSize(font.size);
       const d = f.data;
-      return {
-        ascent: roundCoreTextMetricToWholePx(d.ascent, d.unitsPerEm, size),
-        descent: roundCoreTextMetricToWholePx(d.descent, d.unitsPerEm, size),
-        lineGap: d.lineGap === 0 ? ZERO : roundCoreTextMetricToWholePx(d.lineGap, d.unitsPerEm, size),
-      };
+      const round = (units: number): LU => (faults.metricRoundingSwapped ? roundFontMetricHalfUpToWholePx(fontMetricPx(size, d.unitsPerEm, units)) : roundCoreTextMetricToWholePx(units, d.unitsPerEm, size));
+      return { ascent: round(d.ascent), descent: round(d.descent), lineGap: d.lineGap === 0 ? ZERO : round(d.lineGap) };
     },
     // ShapeResult::SnappedWidth of the whole item: FromFloatCeil of its float width.
     measure(text: string, font: TextFont): MeasureResult {
@@ -881,7 +881,7 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     // The float metrics of the face at the platform size (V2 of the value model); a face that is not bundled has none.
     lengths(font: TextFont): FontLengths {
       const f = faces.get(font.family);
-      if (f === undefined) return { xHeight: 0, capHeight: 0, zeroWidth: 0 };
+      if (f === undefined) throw new Error(`no bundled face ${font.family}; the host passes every face the input names`);
       return fontMetricLengths(f.data, platformFontSize(font.size));
     },
   };

@@ -7,6 +7,7 @@
 // under the reference platform's rules. Writes packages/parity/out/platform-check-<platform>.json; exits 1 on a hard failure.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { absoluteRects, layout, measurerFor, validateLayoutInput } from '@dragon/layout';
+import { referenceShapedMeasurer } from '../text-shaper-host.ts';
 import { iosLayoutProjection, resolvedColors, resolvedTextColors, WEB_CSS_PATH, webClassMap } from 'dragon';
 import { captureFixture } from '../capture.ts';
 import { casesOf, fixtureInput } from '../cases.ts';
@@ -70,7 +71,7 @@ else {
         if (own === undefined || p.kind !== 'ready') continue;
         const v = validateLayoutInput(JSON.parse(JSON.stringify(p.input)));
         if (!v.ok) continue;
-        const r = layout(v.input, m.measurer);
+        const r = layout(v.input, referenceShapedMeasurer());
         if (r.kind !== 'ok') continue;
         for (const n of compareLayout(own, absoluteRects(r.boxes), v.input, c.environment).nodes) {
           if (n.exactLu || n.delta === null) continue;

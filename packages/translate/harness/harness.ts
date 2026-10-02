@@ -785,6 +785,8 @@ const FAULT_KEYS: readonly string[] = [
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
   'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak', 'lineHeightIgnoresInlineBoxes',
   'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
+  'advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing',
+  'metricRoundingSwapped', 'latinCheckSkipped',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -830,6 +832,14 @@ function decodeFaults(v: JsonValue): EngineFaults {
     brIgnored: b('brIgnored'),
     breakAtBoxBoundary: b('breakAtBoxBoundary'),
     fragmentFromLineTop: b('fragmentFromLineTop'),
+    advanceNot16_16: b('advanceNot16_16'),
+    doubleAccumulation: b('doubleAccumulation'),
+    noReshapeAtBreak: b('noReshapeAtBreak'),
+    kerningDropped: b('kerningDropped'),
+    wholePixelPositions: b('wholePixelPositions'),
+    softHyphenWidthMissing: b('softHyphenWidthMissing'),
+    metricRoundingSwapped: b('metricRoundingSwapped'),
+    latinCheckSkipped: b('latinCheckSkipped'),
   };
 }
 

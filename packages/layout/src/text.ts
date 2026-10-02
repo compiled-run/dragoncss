@@ -85,6 +85,12 @@ export function fontMetricLengths(data: FontData, instanceSizePx: number): FontL
 
 export const AHEM_FONT_DATA: FontData = ahemFontData();
 
+/** The face id of the bundled WPT Ahem v1.50: its family name, which every milestone-1 input writes. Other faces are named by sha256. */
+export const AHEM_FACE_ID = 'Ahem';
+
+/** The sha256 of the bundled Ahem's bytes (vendor/fonts/Ahem.ttf), which a host checks before it shapes with the face. */
+export const AHEM_SHA256 = 'b719ecb31c5b21fc573c03f6421c74ac63c271a5a3ff841e34f9705fb94b8448';
+
 /** A covered code point's advance in whole em, or -1 when it is not covered or its advance is not a whole number of em. */
 function emAdvance(data: FontData, cp: number): number {
   const k = coveredIndex(cp);
