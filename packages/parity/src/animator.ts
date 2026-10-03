@@ -6,15 +6,8 @@
 // environment by the engine's own resolver (R14), and from the animation tables (lower/anim-program.ts).
 import type { LayoutBox, LayoutInput, LayoutStyle } from '@dragon/layout';
 import { resolveEnvironment, NO_ENGINE_FAULTS, rtAnimations, rtEasing, rtInterpolate, rtTiming, rtTransition } from '@dragon/layout';
-import type { AnimValue } from '../../analysis/animations.ts';
-import type { Rgba8 } from '../../css/color.ts';
-import type { EasingValue } from '../../css/properties/animation.ts';
-import type { Longhand } from '../../css/properties.ts';
-import { animationKind } from '../../css/animation-kinds.ts';
-import type { AnimProgram, SlotListing } from '../../lower/anim-program.ts';
-import type { NativeProgram, ProgramNode } from '../../lower/native-program.ts';
-import type { StateProgram } from '../../lower/state-program.ts';
-import { programAt } from '../../lower/state-program.ts';
+import type { AnimProgram, AnimValue, EasingValue, Longhand, NativeProgram, ProgramNode, Rgba8, SlotListing, StateProgram } from 'dragon';
+import { animationKind, programAt } from 'dragon';
 import type { TextMeasurer } from '@dragon/layout';
 
 export const ANIM_RUNTIME_VERSION = 'dragon.runtime-anim/1';

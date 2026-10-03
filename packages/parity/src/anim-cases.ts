@@ -7,8 +7,10 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Compiled, NativeProgram, Scalar, StateProgram } from 'dragon';
-import { Animator, animProgramOf, compiledCases, deriveStateProgram, NO_ANIM_FAULTS, nativePrograms, stateKey, StateRuntime } from 'dragon';
-import type { AnimFaults, AnimFrame, AnimProgram } from 'dragon';
+import { animProgramOf, compiledCases, deriveStateProgram, nativePrograms, stateKey, StateRuntime } from 'dragon';
+import type { AnimProgram } from 'dragon';
+import type { AnimFaults, AnimFrame } from './animator.ts';
+import { Animator, NO_ANIM_FAULTS } from './animator.ts';
 import { rtEasing } from '@dragon/layout';
 import { tree } from './fixture-groups/define.ts';
 import type { FixtureSpec } from './fixtures.ts';

@@ -4,8 +4,10 @@
 // fails its own fixture's frame lanes.
 import { describe, expect, it } from 'vitest';
 import { rtEasing, rtInterpolate } from '@dragon/layout';
-import { NO_ANIM_FAULTS, stateKey } from 'dragon';
-import type { AnimFaults, SlotListing } from 'dragon';
+import { stateKey } from 'dragon';
+import type { SlotListing } from 'dragon';
+import type { AnimFaults } from '../src/animator.ts';
+import { NO_ANIM_FAULTS } from '../src/animator.ts';
 import type { AnimCase } from '../src/anim-cases.ts';
 import { animCasesOf, animFixtures, frameScript, parseFrames, runFrameScript, simulator } from '../src/anim-cases.ts';
 import { animCaseReport, animReport } from '../src/frame-capture.ts';

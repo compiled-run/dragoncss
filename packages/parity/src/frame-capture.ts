@@ -16,8 +16,10 @@ import { canonicalJsonText } from './state-cases.ts';
 import { CHROME_VERSION, openFrozenPage } from './chrome.ts';
 import { authoredModel } from './render.ts';
 import { fixtureInput } from './cases.ts';
-import type { AnimFaults, Assignment } from 'dragon';
-import { closureFrame, NO_ANIM_FAULTS, programAt, programInput, StateRuntime, trackKey, webClassMap } from 'dragon';
+import type { Assignment } from 'dragon';
+import { programAt, programInput, StateRuntime, webClassMap } from 'dragon';
+import type { AnimFaults } from './animator.ts';
+import { closureFrame, NO_ANIM_FAULTS, trackKey } from './animator.ts';
 
 export const FRAMES_CAPTURE_SCHEMA = 'dragon-frames-capture/1';
 
@@ -247,7 +249,11 @@ function staticValue(c: AnimCase, d: FrameDump, node: string, property: string):
   const slot = c.ap.slots.find((s) => s.node === node && s.property === property);
   const base = c.ap.bases.find((b) => b.node === node && b.property === property);
   const v = (slot?.values[d.assignment] ?? base?.values[d.assignment]) ?? null;
-  if (v === null) return null;
+  if (v === null) {
+    // R9: a closure write inherits its source's colour or is currentcolor of it, so its static value is the source's.
+    const source = c.ap.closure.find((x) => x.writes.some((w) => w.node === node && w.property === property))?.source;
+    return source === undefined ? null : staticValue(c, d, source.node, source.property);
+  }
   if (v.kind === 'color') return { kind: 'color', number: 0, length: rtInterpolate.ZERO_PX, color: rtInterpolate.legacyColor(v.r, v.g, v.b, v.alpha), ops: [] };
   if (v.kind === 'length' && !v.calc) return { kind: 'length', number: 0, length: v.percent !== 0 ? rtInterpolate.lengthPercent(v.percent) : rtInterpolate.lengthPx(v.px), color: rtInterpolate.TRANSPARENT, ops: [] };
   return null;
