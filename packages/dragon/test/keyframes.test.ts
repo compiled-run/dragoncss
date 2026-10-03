@@ -56,7 +56,7 @@ describe('@keyframes', () => {
       ['DRAGON_UNSUPPORTED_PROPERTY', 'foo inside @keyframes k is not supported in milestone 1'],
     ]);
     // The refusals that delete the declaration carry the edit their catalogue entry needs.
-    expect(diagnostics.filter((d) => d.code !== 'DRAGON_UNSUPPORTED_VALUE').every((d) => 'edits' in d.fix && d.fix.edits.length === 1)).toBe(true);
+    expect(diagnostics.filter((d) => d.code !== 'DRAGON_UNSUPPORTED_VALUE').every((d) => d.fix !== null && 'edits' in d.fix && d.fix.edits.length === 1)).toBe(true);
     expect(rules[0]?.blocks.map((b) => b.values.length)).toEqual([0, 1]);
   });
 
