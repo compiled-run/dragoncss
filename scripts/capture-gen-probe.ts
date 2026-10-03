@@ -442,7 +442,7 @@ export function snappedSymbolRect(fontSize: number, dpr: number, fx: number, fy:
 
 const ORACLE_PADDING = 60;
 /** cc raster tiles: 256 device px at DPR 1, 512 at DSF >= 2 on macOS (T109); every crop stays inside tile 0. */
-const tileSizeAt = (dpr: number): number => (dpr >= 2 ? 512 : 256);
+export const tileSizeAt = (dpr: number): number => (dpr >= 2 ? 512 : 256);
 
 async function softwareRaster(browser: Browser): Promise<Record<string, string>> {
   const cdp = await browser.newBrowserCDPSession();

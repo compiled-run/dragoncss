@@ -11,7 +11,7 @@ import { CHROME_VERSION } from '../packages/parity/src/chrome.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
 import type { AaFaults, Device, FRect, IRect } from '../packages/layout/src/paint-aa.ts';
 import { antiFillPath, devicePixels, drawRRect, NO_AA_FAULTS, ovalPath, setRectRadii, strokeRRect, whiteDevice } from '../packages/layout/src/paint-aa.ts';
-import { DPRS, FAMILIES, geometryProblems, MARKER_SIZES, ORACLE_FILE, OUT_DIR, snappedSymbolRect, snapshotText, SYMBOLS } from './capture-gen-probe.ts';
+import { DPRS, FAMILIES, geometryProblems, MARKER_SIZES, ORACLE_FILE, OUT_DIR, snappedSymbolRect, snapshotText, SYMBOLS, tileSizeAt } from './capture-gen-probe.ts';
 import type { OracleCrop, OracleFile, Run, Snapshot } from './capture-gen-probe.ts';
 import { parseProbeArgs } from './probe-common.ts';
 
@@ -35,7 +35,8 @@ export function readOracle(json: unknown): OracleCrop[] {
     if (!want.has(id)) throw new Error(`oracle: unexpected crop ${id}`);
     if (seen.has(id)) throw new Error(`oracle: crop ${id} repeats`);
     seen.add(id);
-    if (`${k.symbol}-${k.fontSize}-dpr${k.dpr}` !== id) throw new Error(`oracle ${id}: symbol, fontSize and dpr disagree with the id`);
+    if (!isNum(k.fontSize) || !isNum(k.dpr) || `${k.symbol}-${k.fontSize}-dpr${k.dpr}` !== id) throw new Error(`oracle ${id}: symbol, fontSize and dpr disagree with the id`);
+    if (k.tileSize !== tileSizeAt(k.dpr)) throw new Error(`oracle ${id}: tile size ${String(k.tileSize)} is not ${tileSizeAt(k.dpr)}`);
     if (!isQuad(k.rect) || !isQuad(k.crop) || !Array.isArray(k.fragment) || k.fragment.length !== 2 || !k.fragment.every(isNum) || !isNum(k.tileSize)) throw new Error(`oracle ${id}: malformed geometry`);
     const [fx, fy] = k.fragment as [number, number];
     const rect = snappedSymbolRect(k.fontSize as number, k.dpr as number, fx, fy);
@@ -115,6 +116,8 @@ function selfTest(file: OracleFile): string[] {
   expect('other Chrome', throws(() => readOracle({ ...file, chrome: '144.0.0.0' }), /captured with Chrome/));
   expect('moved rect', throws(() => readOracle(withCrop({ ...first, rect: [first.rect[0] + 1, first.rect[1], first.rect[2] + 1, first.rect[3]] })), /snapped symbol rect/));
   expect('bad row', throws(() => readOracle(withCrop({ ...first, rows: [`zz${(first.rows[0] as string).slice(2)}`, ...first.rows.slice(1)] })), /hex rows/));
+  expect('string font size', throws(() => readOracle(withCrop({ ...first, fontSize: String(first.fontSize) as unknown as number })), /disagree with the id/));
+  expect('wrong tile size', throws(() => readOracle(withCrop({ ...first, tileSize: 1024 })), /tile size/));
   expect('short rows', throws(() => readOracle(withCrop({ ...first, rows: first.rows.slice(1) })), /hex rows/));
   const disc = crops.find((c) => c.symbol === 'disc' && c.fontSize === 16 && c.dpr === 2) as OracleCrop;
   const row = disc.rows[2] as string;
