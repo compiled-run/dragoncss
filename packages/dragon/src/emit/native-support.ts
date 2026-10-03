@@ -207,14 +207,20 @@ public final class DragonClipView: UIView {
 /// The box geometry every paint stage and after-layout hook receives: the snapped border-box edges (left, top, right, bottom) and
 /// the border widths (top, right, bottom, left) in device px, the eight corner radii in device px (horizontal then vertical,
 /// top-left first), zero until the radius module fills them (PNT1), and the layout border-box size (width, height) in device px
-/// before snapping, which percentage radii resolve against.
+/// before snapping, which percentage radii resolve against. lu is the unsnapped absolute border box (x, y, width, height) and padding
+/// the padding widths (top, right, bottom, left), both in LU at the device scale, which Blink's background geometry reads (BG2).
+/// rootX is where the root scroller's scrolling contents start on the x axis, in page LU (0, or negative at Chrome's scroll
+/// origin in a right-to-left document overflowing to the left), which starts the cc tiles of the root layer (BG2 R4).
 public struct DragonBoxShape {
   public var edges: [Double]
   public var borders: [Double]
   public var radii: [Double]
   public var size: [Double]
-  public init(edges: [Double], borders: [Double], radii: [Double] = [0, 0, 0, 0, 0, 0, 0, 0], size: [Double] = [0, 0]) {
-    self.edges = edges; self.borders = borders; self.radii = radii; self.size = size
+  public var lu: [Double]
+  public var padding: [Double]
+  public var rootX: Double
+  public init(edges: [Double], borders: [Double], radii: [Double] = [0, 0, 0, 0, 0, 0, 0, 0], size: [Double] = [0, 0], lu: [Double] = [0, 0, 0, 0], padding: [Double] = [0, 0, 0, 0], rootX: Double = 0) {
+    self.edges = edges; self.borders = borders; self.radii = radii; self.size = size; self.lu = lu; self.padding = padding; self.rootX = rootX
   }
 }
 
@@ -576,10 +582,40 @@ public final class DragonTree {
     let lu = units_LU_PER_PX
     let s = scale
     let cg = CGFloat(scale)
+    // BG2 R4: the root scroller's scrolling contents start at Chrome's scroll origin. In a right-to-left document that is the left
+    // edge of the content overflowing to the left: the leftmost box or line no clipping box holds (html and body never clip here,
+    // as their overflow propagates to the viewport); 0 otherwise (paint-samples/gradient.ts rootScrollX on the host).
+    var rootX = 0.0
+    if zoomed.root.style.direction.description == "rtl" {
+      var parentOf: [String: String] = [:]
+      for r in boxes { if let p = r.parent { parentOf[r.id.description] = p.description } }
+      func depth(_ id: String) -> Int { var d = 0; var p = parentOf[id]; while let q = p { d += 1; p = parentOf[q] }; return d }
+      for r in boxes {
+        var held = false
+        var p = parentOf[r.id.description]
+        while let q = p, !held {
+          if depth(q) >= 2, let bv = views[q] as? DragonBoxView, bv.dragonClipView != nil { held = true }
+          p = parentOf[q]
+        }
+        if !held, let a = abs.get(r.id), a.x < rootX { rootX = a.x }
+      }
+    }
     root.frame = CGRect(x: 0, y: 0, width: CGFloat(input.viewport.width), height: CGFloat(input.viewport.height))
     var edges: [String: [Double]] = [:]
     var borders: [String: [Double]] = [:]
     var rects: [String: LayoutRect] = [:]
+    // Content widths in LU, for the text breaking width: the border box minus borders and paddings (percentages of the parent's).
+    var contentCache: [String: Double] = [:]
+    func contentWidth(_ id: String) throws -> Double {
+      if let c = contentCache[id] { return c }
+      guard let z = zBoxes[id], let r = rects[id] else { fatalError("dragon: no box \(id)") }
+      let cb = try zParent[id].map { try contentWidth($0) } ?? units_fromCssPx(zoomed.viewport.width)
+      let pad = try box_resolvePadding(z.style, cb)
+      let bor = try box_resolveBorder(z.style, zoomed.devicePixelRatio)
+      let w = r.width - bor.left - bor.right - pad.left - pad.right
+      contentCache[id] = w
+      return w
+    }
     for (i, r) in boxes.enumerated() {
       if DragonTree.isLine(r) { continue }
       let id = r.id.description
@@ -610,22 +646,13 @@ public final class DragonTree {
         let px = [be.top / lu, be.right / lu, be.bottom / lu, be.left / lu]
         borders[id] = px
         bv.dragonScale = s
-        bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px, size: [r.width / lu, r.height / lu])
+        // BG2: the unsnapped border box and the paddings (percentages of the containing block's content width), in LU.
+        guard let a = abs.get(r.id) else { fatalError("dragon: no absolute rect for \(id)") }
+        let pad = try box_resolvePadding(zs, try zParent[id].map { try contentWidth($0) } ?? units_fromCssPx(zoomed.viewport.width))
+        bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px, size: [r.width / lu, r.height / lu], lu: [a.x, a.y, a.width, a.height], padding: [pad.top, pad.right, pad.bottom, pad.left], rootX: rootX)
         dragonAfterLayout(bv, bv.dragonShape, s)
         bv.setNeedsDisplay()
       }
-    }
-    // Content widths in LU, for the text breaking width: the border box minus borders and paddings (percentages of the parent's).
-    var contentCache: [String: Double] = [:]
-    func contentWidth(_ id: String) throws -> Double {
-      if let c = contentCache[id] { return c }
-      guard let z = zBoxes[id], let r = rects[id] else { fatalError("dragon: no box \(id)") }
-      let cb = try zParent[id].map { try contentWidth($0) } ?? units_fromCssPx(zoomed.viewport.width)
-      let pad = try box_resolvePadding(z.style, cb)
-      let bor = try box_resolveBorder(z.style, zoomed.devicePixelRatio)
-      let w = r.width - bor.left - bor.right - pad.left - pad.right
-      contentCache[id] = w
-      return w
     }
     for id in order {
       guard let tv = views[id] as? DragonTextView else { continue }
@@ -968,7 +995,7 @@ class DragonClipView(ctx: Context) : DragonGroup(ctx) {
  * top-left first), zero until the radius module fills them (PNT1), and the layout border-box size (width, height) in device px
  * before snapping, which percentage radii resolve against.
  */
-class DragonBoxShape(val edges: DoubleArray, val borders: DoubleArray, val radii: DoubleArray = DoubleArray(8), val size: DoubleArray = DoubleArray(2))
+class DragonBoxShape(val edges: DoubleArray, val borders: DoubleArray, val radii: DoubleArray = DoubleArray(8), val size: DoubleArray = DoubleArray(2), val lu: DoubleArray = DoubleArray(4), val padding: DoubleArray = DoubleArray(4), val rootX: Double = 0.0)
 
 /** A box: the background is a native ColorDrawable; every other paint is a paint module's (views/paint), drawn in CSS stage order. */
 class DragonBoxView(ctx: Context, override val dragonId: String, override val dragonKind: String, override val dragonParent: String?) : DragonGroup(ctx), DragonNodeView {
@@ -1281,10 +1308,44 @@ class DragonTree(val context: Context) {
     }
     walk(zoomed.root)
     val lu = units_LU_PER_PX
+    // BG2 R4: the root scroller's scrolling contents start at Chrome's scroll origin. In a right-to-left document that is the left
+    // edge of the content overflowing to the left: the leftmost box or line no clipping box holds (html and body never clip here,
+    // as their overflow propagates to the viewport); 0 otherwise (paint-samples/gradient.ts rootScrollX on the host).
+    var rootX = 0.0
+    if (zoomed.root.style.direction == "rtl") {
+      val parentOf = HashMap<String, String>()
+      for (r in boxes) { val p = r.parent; if (p != null) parentOf[r.id] = p }
+      fun depth(id: String): Int { var d = 0; var p = parentOf[id]; while (p != null) { d++; p = parentOf[p] }; return d }
+      for (r in boxes) {
+        var held = false
+        var p = parentOf[r.id]
+        while (p != null && !held) {
+          val bv = views[p] as? DragonBoxView
+          if (depth(p) >= 2 && bv != null && bv.dragonClipView != null) held = true
+          p = parentOf[p]
+        }
+        val a = abs.get(r.id)
+        if (!held && a != null && a.x < rootX) rootX = a.x
+      }
+    }
     setFrame(root.dragonFrame, 0.0, 0.0, kotlin.math.ceil(input.viewport.width * scale), kotlin.math.ceil(input.viewport.height * scale), "root")
     val edges = HashMap<String, DoubleArray>()
     val borders = HashMap<String, DoubleArray>()
     val rects = HashMap<String, LayoutRect>()
+    val contentCache = HashMap<String, Double>()
+    fun contentWidth(id: String): Double {
+      val cached = contentCache[id]
+      if (cached != null) return cached
+      val z = zBoxes[id] ?: throw IllegalStateException("dragon: no box " + id)
+      val r = rects[id] ?: throw IllegalStateException("dragon: no rect " + id)
+      val parent = zParent[id]
+      val cb = if (parent != null) contentWidth(parent) else units_fromCssPx(zoomed.viewport.width)
+      val pad = box_resolvePadding(z.style, cb)
+      val bor = box_resolveBorder(z.style, zoomed.devicePixelRatio)
+      val w = r.width - bor.left - bor.right - pad.left - pad.right
+      contentCache[id] = w
+      return w
+    }
     for (i in boxes.indices) {
       val r = boxes[i]
       if (isLine(r)) continue
@@ -1319,24 +1380,14 @@ class DragonTree(val context: Context) {
         val be = box_resolveBorder(zs, zoomed.devicePixelRatio)
         val px = doubleArrayOf(be.top / lu, be.right / lu, be.bottom / lu, be.left / lu)
         borders[id] = px
-        v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px, DoubleArray(8), doubleArrayOf(r.width / lu, r.height / lu))
+        // BG2: the unsnapped border box and the paddings (percentages of the containing block's content width), in LU.
+        val a = abs.get(r.id) ?: throw IllegalStateException("dragon: no absolute rect for " + id)
+        val zp = zParent[id]
+        val pad = box_resolvePadding(zs, if (zp != null) contentWidth(zp) else units_fromCssPx(zoomed.viewport.width))
+        v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px, DoubleArray(8), doubleArrayOf(r.width / lu, r.height / lu), doubleArrayOf(a.x, a.y, a.width, a.height), doubleArrayOf(pad.top, pad.right, pad.bottom, pad.left), rootX)
         dragonAfterLayout(v, v.dragonShape, scale)
         v.invalidate()
       }
-    }
-    val contentCache = HashMap<String, Double>()
-    fun contentWidth(id: String): Double {
-      val cached = contentCache[id]
-      if (cached != null) return cached
-      val z = zBoxes[id] ?: throw IllegalStateException("dragon: no box " + id)
-      val r = rects[id] ?: throw IllegalStateException("dragon: no rect " + id)
-      val parent = zParent[id]
-      val cb = if (parent != null) contentWidth(parent) else units_fromCssPx(zoomed.viewport.width)
-      val pad = box_resolvePadding(z.style, cb)
-      val bor = box_resolveBorder(z.style, zoomed.devicePixelRatio)
-      val w = r.width - bor.left - bor.right - pad.left - pad.right
-      contentCache[id] = w
-      return w
     }
     for (id in order) {
       val tv = views[id] as? DragonTextView ?: continue
