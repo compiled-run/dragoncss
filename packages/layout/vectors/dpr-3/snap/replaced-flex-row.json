@@ -8,7 +8,7 @@
    "x": 0,
    "y": 0,
    "width": 76800,
-   "height": 98688
+   "height": 114816
   },
   {
    "id": "body",
@@ -16,7 +16,7 @@
    "x": 0,
    "y": 0,
    "width": 76800,
-   "height": 97920
+   "height": 114048
   },
   {
    "id": "r1",
@@ -177,6 +177,30 @@
    "y": 12288,
    "width": 7680,
    "height": 15360
+  },
+  {
+   "id": "r6",
+   "parent": "body",
+   "x": 0,
+   "y": 98688,
+   "width": 19200,
+   "height": 15360
+  },
+  {
+   "id": "f1",
+   "parent": "r6",
+   "x": 0,
+   "y": 0,
+   "width": 0,
+   "height": 15360
+  },
+  {
+   "id": "f2",
+   "parent": "r6",
+   "x": 0,
+   "y": 0,
+   "width": 30720,
+   "height": 15360
   }
  ],
  "output": [
@@ -185,18 +209,18 @@
    "left": 0,
    "top": 0,
    "right": 1200,
-   "bottom": 1542,
+   "bottom": 1794,
    "width": 1200,
-   "height": 1542
+   "height": 1794
   },
   {
    "id": "body",
    "left": 0,
    "top": 0,
    "right": 1200,
-   "bottom": 1530,
+   "bottom": 1782,
    "width": 1200,
-   "height": 1530
+   "height": 1782
   },
   {
    "id": "r1",
@@ -376,6 +400,33 @@
    "right": 120,
    "bottom": 1530,
    "width": 120,
+   "height": 240
+  },
+  {
+   "id": "r6",
+   "left": 0,
+   "top": 1542,
+   "right": 300,
+   "bottom": 1782,
+   "width": 300,
+   "height": 240
+  },
+  {
+   "id": "f1",
+   "left": 0,
+   "top": 1542,
+   "right": 0,
+   "bottom": 1782,
+   "width": 0,
+   "height": 240
+  },
+  {
+   "id": "f2",
+   "left": 0,
+   "top": 1542,
+   "right": 480,
+   "bottom": 1782,
+   "width": 480,
    "height": 240
   }
  ]
