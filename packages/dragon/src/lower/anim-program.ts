@@ -217,6 +217,10 @@ export function webAnimationsOf(analysis: AnimationAnalysis, valueText: (v: CssV
       if (ea === undefined || ea.declarations.length === 0) return [];
       return ANIM_LONGHANDS.map((p) => `  ${p}: ${(ea.lists.get(p) ?? []).map((i) => itemText(p, i)).join(', ')};`);
     },
+    sources: (caseKey) => {
+      const c = byKey.get(caseKey);
+      return new Set(c === undefined ? [] : [...c.elements.values()].filter((ea) => ea.declarations.length > 0).map((ea) => ea.address));
+    },
     keyframes: rules.join('\n'),
   };
 }
