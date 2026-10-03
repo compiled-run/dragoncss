@@ -22,6 +22,8 @@ import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts'
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
+import type { AnimationDeclValue } from './properties/animation.ts';
+import { isAnimationProperty, parseAnimationDeclaration } from './properties/animation.ts';
 
 export type { CssValue } from './values.ts';
 export { featureOf } from './values.ts';
@@ -50,6 +52,8 @@ export type Declaration = {
   readonly custom?: CustomValue;
   /** A declaration whose value holds var(); its longhands are empty until substitution (css-variables-1 §3.1). */
   readonly pending?: PendingSubstitution;
+  /** T065: a transition or animation declaration; its longhands are empty, and analysis/animations.ts cascades these values. */
+  readonly animation?: AnimationDeclValue;
 };
 
 /** A class selector in this rule matches only class symbols with this owner and sheet (docs/api.md §3.1). */
@@ -234,6 +238,11 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   }
   const important = priority === false ? {} : { important: true as const };
   if (property.startsWith('--')) return parseCustomDeclaration(property, valueNode, span, valueSpan, order, important, diagnostics);
+  if (isAnimationProperty(property)) {
+    const source = sheetText.slice(valueSpan.start - base.start, valueSpan.end - base.start);
+    const animation = parseAnimationDeclaration(property, valueNode, { span, valueSpan, text, source, base }, diagnostics);
+    return animation === null ? null : { property, text, span, valueSpan, longhands: [], order, ...important, animation };
+  }
   if (!isLonghand(property) && !isShorthand(property)) {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_PROPERTY', {
       origin: authored(span),
