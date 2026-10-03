@@ -72,6 +72,12 @@ describe('refused attributes name the package that owns their effect', () => {
     expect(attributeRefusal(tag, name)).toContain(owner);
   });
 
+  it('FORM-a A3 handles type on button only; type stays refused elsewhere, naming FORM-a', () => {
+    expect(attributeRefusal('button', 'type')).toBeNull();
+    expect(attributeRefusal('div', 'type')).toContain('FORM-a');
+    expect(attributeRefusal('button', 'value')).toContain('FORM-a');
+  });
+
   it('REPL-a handles src, alt, width and height on img, and src (Phase B: the web view loads it), width and height on iframe', () => {
     for (const name of ['src', 'alt', 'width', 'height']) expect(attributeRefusal('img', name), name).toBeNull();
     for (const name of ['src', 'width', 'height']) expect(attributeRefusal('iframe', name), name).toBeNull();

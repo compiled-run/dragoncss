@@ -33,6 +33,9 @@ export const NEUTRAL_ATTRIBUTES: readonly NeutralAttribute[] = [
 export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } = {
   img: ['src', 'alt', 'width', 'height'],
   iframe: ['src', 'width', 'height'],
+  // FORM-a A3: a button's type (button, submit, reset, or an invalid value, which is submit) changes only its activation
+  // behaviour; Chrome's UA rules for button do not read it (HTML §15.5.3; parity fixture controls-button-type).
+  button: ['type'],
 };
 
 /** The package that owns the rendering effect of a refused attribute. */

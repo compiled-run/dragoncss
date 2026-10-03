@@ -26,7 +26,7 @@ describe('E2 seams: the property registry', () => {
       'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'aspect-ratio',
       'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
       'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
-      'object-fit', 'object-position',
+      'object-fit', 'object-position', 'appearance',
       'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
       'border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style',
       'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
@@ -39,7 +39,7 @@ describe('E2 seams: the property registry', () => {
   });
   it('SHORTHANDS keeps its order', () => {
     expect([...SHORTHANDS]).toEqual([
-      'margin', 'padding', 'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
+      'margin', 'padding', '-webkit-appearance', 'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
       'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow', 'white-space',
       'background',
       ...LOGICAL_SHORTHANDS,
@@ -54,7 +54,7 @@ describe('E2 seams: the property registry', () => {
     expect(byRole('container')).toEqual(['direction', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap',
       'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow', 'justify-items']);
     expect(byRole('text')).toEqual(['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode']);
-    expect(byRole('paint')).toEqual(['object-fit', 'object-position', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color']);
+    expect(byRole('paint')).toEqual(['object-fit', 'object-position', 'appearance', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color']);
   });
   it('every shorthand has exactly one handler in shorthands/index.ts, and each sets only longhands', () => {
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());
@@ -67,6 +67,23 @@ describe('E2 seams: the property registry', () => {
     expect(lengthFeatureType('px')).toBe('<length-px>');
     expect(lengthFeatureType('em')).toBe('<length-em>');
     expect(featureOf('width', { kind: 'length', value: 2, unit: 'rem' })).toBe('width:<length-rem>');
+  });
+  it('appearance and its -webkit-appearance alias parse as Chrome 145 does (FORM-a A2)', () => {
+    // Chrome 145, probed 2026-10-01 on a div: each keyword below is declared and computed as written; base, the older -webkit-
+    // keywords, two keywords and an unknown word are dropped (declared empty, computed none). Both spellings agree.
+    const kept = ['none', 'auto', 'base-select', 'searchfield', 'textarea', 'checkbox', 'radio', 'menulist', 'listbox', 'meter', 'progress-bar', 'button', 'textfield', 'menulist-button'];
+    const dropped = ['base', 'push-button', 'slider-horizontal', 'inner-spin-button', 'square-button', 'sliderthumb-horizontal', 'media-slider', 'none auto', 'bogus'];
+    const read = (decl: string): { longhands: [string, unknown][]; codes: string[] } => {
+      const diagnostics: Diagnostic[] = [];
+      const text = `.a { ${decl} }`;
+      const rules = parseStylesheet(text, { source: SRC, start: 0, end: text.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics);
+      return { longhands: rules.flatMap((r) => r.declarations.flatMap((d) => d.longhands.map((l): [string, unknown] => [l.property, l.value]))), codes: diagnostics.map((d) => d.code) };
+    };
+    for (const property of ['appearance', '-webkit-appearance']) {
+      for (const k of kept) expect(read(`${property}: ${k.toUpperCase()};`), `${property}: ${k}`).toEqual({ longhands: [['appearance', { kind: 'keyword', value: k }]], codes: [] });
+      for (const k of dropped) expect(read(`${property}: ${k};`), `${property}: ${k}`).toEqual({ longhands: [], codes: [expect.stringMatching(/^DRAGON_(CSS_INVALID_VALUE|UNSUPPORTED_VALUE)$/)] });
+      expect(read(`${property}: inherit;`).longhands, `${property}: inherit`).toEqual([['appearance', { kind: 'keyword', value: 'inherit' }]]);
+    }
   });
 });
 

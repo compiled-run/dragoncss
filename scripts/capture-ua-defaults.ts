@@ -405,8 +405,10 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
           const el = document.createElement(s.tag);
           for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
           const bare = document.createElement('dragon-unstyled');
-          const given = { ...(declared[tag] as Record<string, Record<string, string>>)[dir], ...textFonts[tag] };
-          for (const [p, v] of Object.entries(given)) bare.style.setProperty(p, v as string);
+          const given: Record<string, string> = { ...(declared[tag] as Record<string, Record<string, string>>)[dir], ...textFonts[tag] };
+          // Blink LayoutTheme::AdjustStyle makes any element with an appearance other than none inline-block (or block), so the
+          // reference never takes the declared appearance: a control's display stays forced, as it is under appearance: none too.
+          for (const [p, v] of Object.entries(given)) if (p !== 'appearance') bare.style.setProperty(p, v);
           parent.append(el, bare);
           hostEl.appendChild(parent);
           const cs = getComputedStyle(el);
@@ -416,7 +418,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
           for (const p of [...new Set([...Array.from(cs), ...Array.from(ref)])].sort()) {
             if (p.startsWith('--')) continue;
             const v = cs.getPropertyValue(p);
-            if (v === ref.getPropertyValue(p)) continue;
+            if (v === ref.getPropertyValue(p) || (p === 'appearance' && given[p] === v)) continue;
             if (known.has(p)) force[p] = v;
             else if (!known.has(physical(p))) row[p] = v;
           }
@@ -776,13 +778,17 @@ function render(c: Capture, scheme: Scheme): string {
 }
 
 function applyPlant(p: Plant, light: Capture): void {
-  if (p === 'drop-declared') {
-    for (const dir of ['ltr', 'rtl']) delete ((light.declared['button'] as Dirs)[dir] as Record<string, string>)['padding-left'];
-  } else if (p === 'drop-unmodelled') {
-    for (const dir of ['ltr', 'rtl']) delete ((light.unmodelled['button'] as Dirs)[dir] as Record<string, string>)['appearance'];
-  } else if (p === 'drop-font-size-small') {
-    for (const dir of ['ltr', 'rtl']) delete ((light.declared['small'] as Dirs)[dir] as Record<string, string>)['font-size'];
-  }
+  // Each plant deletes one row entry in both directions; a missing entry throws, so a plant can never pass by deleting nothing.
+  const drop = (table: Record<string, Dirs>, key: string, property: string): void => {
+    for (const dir of ['ltr', 'rtl']) {
+      const row = (table[key] as Dirs | undefined)?.[dir] as Record<string, string> | undefined;
+      if (row === undefined || !(property in row)) throw new Error(`plant ${p}: ${key} ${dir} has no ${property} entry to delete`);
+      delete row[property];
+    }
+  };
+  if (p === 'drop-declared') drop(light.declared, 'button', 'padding-left');
+  else if (p === 'drop-unmodelled') drop(light.unmodelled, 'button', 'cursor');
+  else if (p === 'drop-font-size-small') drop(light.declared, 'small', 'font-size');
 }
 
 /** Compares the committed light dataset with another dataset file: entries of keys present in both. Returns the exit code. */
