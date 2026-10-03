@@ -10,6 +10,7 @@ import { FONTS } from './fixture-groups/fonts.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
+import { REPLACED } from './fixture-groups/replaced.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
@@ -90,6 +91,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'border-paint', fixtures: BORDER_PAINT },
   { id: 'sizing-ratio', fixtures: SIZING },
   { id: 'inline', fixtures: INLINE },
+  { id: 'replaced', fixtures: REPLACED },
   // values stays last: the extended corpus keys its vectors on the values- prefix (values.test.ts).
   { id: 'values', fixtures: VALUES },
 ];
