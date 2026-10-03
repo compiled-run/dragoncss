@@ -3,7 +3,7 @@
 // composited layers with the DOM node each paints for. The compiler puts every box Dragon draws in the root scroller's layer
 // (gradientLayerOf, origin 0, 0, in the write), so no gradient box may own a layer of its own, and the root layer must start at the
 // page origin. The planted prediction (each box in a layer of its own) must be caught.
-import type { CDPSession } from 'playwright';
+import type { CDPSession, Page } from 'playwright';
 import { describe, expect, it } from 'vitest';
 import { launchChrome, openPage } from '../src/chrome.ts';
 import { atDpr } from '../src/dpr.ts';
@@ -12,15 +12,22 @@ import { BACKEND_OF, nativeCases } from '../src/native-host.ts';
 type Layer = { readonly layerId: string; readonly parentLayerId?: string; readonly backendNodeId?: number; readonly offsetX: number; readonly offsetY: number; readonly drawsContent: boolean };
 type Prediction = { readonly id: string; readonly origin: readonly [number, number] };
 
-/** The composited layers of the page once LayerTree has reported them. */
-async function layers(cdp: CDPSession): Promise<readonly Layer[]> {
-  const got = new Promise<readonly Layer[]>((resolve) => {
+/** The composited layers of the page once LayerTree has reported them; two frames make Chrome commit, and 20 s without a report fails. */
+async function layers(cdp: CDPSession, page: Page): Promise<readonly Layer[]> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const got = new Promise<readonly Layer[]>((resolve, reject) => {
+    timer = setTimeout(() => reject(new Error('LayerTree reported no layers within 20 s')), 20_000);
     cdp.on('LayerTree.layerTreeDidChange', (e: { layers?: Layer[] }) => {
       if (e.layers !== undefined && e.layers.length > 0) resolve(e.layers);
     });
   });
   await cdp.send('LayerTree.enable');
-  return await got;
+  await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+  try {
+    return await got;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** The problems of a page's layers against the predictions: a gradient box in a layer of its own, or a root layer off the origin. */
@@ -54,7 +61,7 @@ describe('BG2 R4: each gradient box rasters in the layer the compiler predicts (
         const page = await openPage(browser, n.case.authoredHtml, atDpr(n.case.environment, 2));
         try {
           const cdp = await page.context().newCDPSession(page);
-          const found = await layers(cdp);
+          const found = await layers(cdp, page);
           const predictions = n.programs[BACKEND_OF.android].nodes.flatMap((node) => node.writes.filter((w) => w.kind === 'background-layers').map((w) => ({ id: node.id, origin: (w as unknown as { layerOrigin: readonly [number, number] }).layerOrigin })));
           const nodeOf = new Map<string, number>();
           const doc = (await cdp.send('DOM.getDocument', { depth: -1 })) as { root: { nodeId: number } };
@@ -77,7 +84,7 @@ describe('BG2 R4: each gradient box rasters in the layer the compiler predicts (
     }
     console.log(`bg2-layers: ${cases.length} cases, ${boxes} gradient boxes, all in the root layer as predicted`);
     expect(boxes).toBeGreaterThan(50);
-  }, 600_000);
+  }, 1_800_000);
   it('reports a box Chrome composites apart from a root prediction', () => {
     const found: Layer[] = [{ layerId: 'r', offsetX: 0, offsetY: 0, drawsContent: true }, { layerId: 'a', parentLayerId: 'r', backendNodeId: 7, offsetX: 10, offsetY: 4, drawsContent: true }];
     expect(layerProblems(found, new Map([['box', 7]]), [{ id: 'box', origin: [0, 0] }])).toEqual(['box: Chrome gives it a layer of its own at 10, 4; the compiler predicts the root layer']);

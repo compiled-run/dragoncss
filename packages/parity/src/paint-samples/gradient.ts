@@ -110,6 +110,25 @@ export function gradientPoints(ctx: PaintSampleContext): SamplePoint[] {
         if (clear) out.push({ x, y, rule: `gradient:${id}` });
       }
     }
+    // A small layer the grid misses (a no-repeat tile): the middle of each layer's drawn area, when its neighbourhood is exact.
+    if (!out.some((q) => q.rule === `gradient:${id}`)) {
+      for (const l of plan.layers) {
+        const p = l.placement;
+        const left = Math.max(Math.ceil(p.destX / 64), p.clipLeft);
+        const right = Math.min(Math.floor((p.destX + p.destWidth) / 64), p.clipRight);
+        const top = Math.max(Math.ceil(p.destY / 64), p.clipTop);
+        const bottom = Math.min(Math.floor((p.destY + p.destHeight) / 64), p.clipBottom);
+        const x = plan.originX + Math.floor((left + right) / 2);
+        const y = plan.originY + Math.floor((top + bottom) / 2);
+        if (right - left < 2 * INSET + 1 || bottom - top < 2 * INSET + 1 || x < 0 || y < 0 || x >= ctx.size.width || y >= ctx.size.height) continue;
+        let clear = true;
+        for (let dy = -INSET; dy <= INSET && clear; dy++) for (let dx = -INSET; dx <= INSET && clear; dx++) if (!painted(x + dx, y + dy)) clear = false;
+        if (clear) {
+          out.push({ x, y, rule: `gradient:${id}` });
+          break;
+        }
+      }
+    }
   }
   return out;
 }
