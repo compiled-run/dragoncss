@@ -57,10 +57,10 @@ describe('placeLines is exactly placeIfcLines(buildIfc(...)) (T058J2 (F))', () =
   it('on every engine-inline corpus input, with its planted fault', async () => {
     // Loaded from packages/translate at run time (packages/layout does not depend on it).
     const root = new URL('../../../', import.meta.url).pathname;
-    const dpr = (await import(pathToFileURL(join(root, 'packages/translate/src/corpus-dpr.ts')).href)) as { readonly engineInlineCases: () => string[]; readonly INLINE_SPEC: { readonly engineInline: number; readonly atomicInline: number } };
+    const dpr = (await import(pathToFileURL(join(root, 'packages/translate/src/corpus-dpr.ts')).href)) as { readonly engineInlineCases: () => string[]; readonly INLINE_SPEC: { readonly engineInline: number; readonly atomicInline: number; readonly wrapInline: number } };
     const lines = dpr.engineInlineCases();
     // INL2a appends its atomic contexts after INL1a's 3000.
-    expect(lines.length).toBe(dpr.INLINE_SPEC.engineInline + dpr.INLINE_SPEC.atomicInline);
+    expect(lines.length).toBe(dpr.INLINE_SPEC.engineInline + dpr.INLINE_SPEC.atomicInline + dpr.INLINE_SPEC.wrapInline);
     let n = 0;
     lines.forEach((line, i) => {
       const c = JSON.parse(line) as { readonly faults: EngineFaults; readonly input: LayoutInput };

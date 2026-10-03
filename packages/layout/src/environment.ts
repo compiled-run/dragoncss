@@ -235,7 +235,7 @@ function resolveReplaced(r: ReplacedLeaf, env: Env): ReplacedLeaf {
 function resolveText(t: TextLeaf, env: Env): TextLeaf {
   const size = computedSize(t.font, env);
   const font: FontSpec = { family: t.font.family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true };
-  return { kind: 'text', id: t.id, text: t.text, font, lineHeight: resolveLineHeightValue(t.lineHeight, size, env), whiteSpaceCollapse: t.whiteSpaceCollapse, textWrapMode: t.textWrapMode };
+  return { kind: 'text', id: t.id, text: t.text, font, lineHeight: resolveLineHeightValue(t.lineHeight, size, env), whiteSpaceCollapse: t.whiteSpaceCollapse, textWrapMode: t.textWrapMode, overflowWrap: t.overflowWrap, wordBreak: t.wordBreak };
 }
 
 function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {

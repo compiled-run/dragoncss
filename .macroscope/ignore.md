@@ -102,6 +102,8 @@ THIRD_PARTY_NOTICES.md
 **/*.generated.*
 packages/translate/corpus*.json
 packages/layout/test/fixtures/linebreak/*.json
+packages/layout/src/grapheme-data.ts
+packages/layout/test/fixtures/grapheme/*.json
 examples/*/dragon/north-star-check.json
 docs/research/**/*.json
 docs/research/**/*.md

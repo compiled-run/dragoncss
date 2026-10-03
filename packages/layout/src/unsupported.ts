@@ -20,7 +20,8 @@ export type UnsupportedCode =
   | 'inline-empty-line'
   | 'text-script'
   | 'text-shaping-run'
-  | 'atomic-beside-shaped-text';
+  | 'atomic-beside-shaped-text'
+  | 'word-break';
 
 export type LayoutUnsupported = {
   readonly code: UnsupportedCode;

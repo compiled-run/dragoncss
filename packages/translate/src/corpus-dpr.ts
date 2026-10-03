@@ -361,9 +361,10 @@ export function unitsCalcCases(): string[] {
 
 /**
  * engine-inline: generated inline formatting contexts, appended after every earlier suite so their inputs do not move. INL2a
- * appends atomicInline contexts with inline-block and inline-flex boxes after the INL1a ones, so those keep their inputs.
+ * appends atomicInline contexts with inline-block and inline-flex boxes after the INL1a ones, so those keep their inputs, and TXT2-a
+ * appends wrapInline contexts with overflow-wrap and word-break: break-word after them.
  */
-export const INLINE_SPEC = { engineInline: 3000, atomicInline: 1500 } as const;
+export const INLINE_SPEC = { engineInline: 3000, atomicInline: 1500, wrapInline: 1500 } as const;
 
 /** The INL1a engine faults engine-inline draws from. */
 const INLINE_FAULT_NAMES: readonly (keyof EngineFaults)[] = [
@@ -428,7 +429,7 @@ export function engineInlineCases(): string[] {
         text += ' ';
         afterSpace = true;
       }
-      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: wrap };
+      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: wrap, overflowWrap: 'normal', wordBreak: 'normal' };
     };
     const wrap = r.chance(0.9) ? 'wrap' : 'nowrap';
     const content = (depth: number, size: number, lh: Json): Json[] => {
@@ -478,7 +479,7 @@ export function engineInlineCases(): string[] {
     const faults = r.chance(0.2) ? { ...NO_ENGINE_FAULTS, [r.pick(INLINE_FAULT_NAMES)]: true } : NO_ENGINE_FAULTS;
     out.push(JSON.stringify({ platform: 'darwin-arm64', faults, input }));
   }
-  return [...out, ...atomicInlineCases()];
+  return [...out, ...atomicInlineCases(), ...wrapInlineCases()];
 }
 
 /** The INL2a engine faults the atomic contexts draw from. */
@@ -519,7 +520,7 @@ function atomicInlineCases(): string[] {
         text += ' ';
         afterSpace = true;
       }
-      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' };
+      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', overflowWrap: 'normal', wordBreak: 'normal' };
     };
     // A box's own inline content, collapsed: it starts a context of its own.
     const ownText = (size: number, lh: Json): Json[] => {
@@ -613,6 +614,89 @@ function atomicInlineCases(): string[] {
   return out;
 }
 
+/** The TXT2-a engine faults the wrap contexts draw from. */
+const WRAP_FAULT_NAMES: readonly (keyof EngineFaults)[] = [
+  'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'graphemeClusterSplit', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored',
+  'fitWithoutEpsilon', 'breakOffByOne',
+];
+
+/**
+ * Generated inline formatting contexts for TXT2-a: Ahem words of 1 to 24 letters (so some overflow), inline boxes and <br>s, with
+ * one overflow-wrap and word-break per context (normal, break-word, anywhere; normal or break-word), some nowrap, in a block
+ * container of random width and text-align, sometimes a flex item, at every DPR, some with a planted fault.
+ */
+function wrapInlineCases(): string[] {
+  const r = new Rng(EXTENDED_SPEC.seed * 73);
+  const out: string[] = [];
+  let n = 0;
+  while (out.length < INLINE_SPEC.wrapInline) {
+    const rtl = r.chance(0.3);
+    const direction = rtl ? 'rtl' : 'ltr';
+    const overflowWrap = r.pick(['normal', 'break-word', 'anywhere', 'anywhere']);
+    const wordBreak = r.chance(0.25) ? 'break-word' : 'normal';
+    const wrap = r.chance(0.9) ? 'wrap' : 'nowrap';
+    let ids = 0;
+    let afterSpace = true;
+    const leaf = (size: number, lh: Json): Json => {
+      let text = '';
+      const words = 1 + r.int(3);
+      for (let i = 0; i < words; i++) {
+        if (!afterSpace && (i > 0 || r.chance(0.4))) text += ' ';
+        const len = 1 + r.int(r.chance(0.5) ? 24 : 5);
+        for (let k = 0; k < len; k++) text += r.pick([...'abXY']);
+        afterSpace = false;
+      }
+      if (r.chance(0.3)) {
+        text += ' ';
+        afterSpace = true;
+      }
+      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: wrap, overflowWrap, wordBreak };
+    };
+    const size = r.pick([10, 10, 12.5, 16, 20]);
+    const lh = inlineLineHeight(r);
+    const kids: Json[] = [];
+    const count = 1 + r.int(4);
+    for (let i = 0; i < count; i++) {
+      const pick = r.next();
+      if (pick < 0.65) kids.push(leaf(size, lh));
+      else if (pick < 0.8 && !rtl) {
+        kids.push({ kind: 'br', id: `b${ids++}`, font: inlineFont(size), lineHeight: lh });
+        afterSpace = true;
+      } else {
+        const own = r.pick([8, 13, 20]);
+        kids.push({ kind: 'inline', id: `s${ids++}`, style: { ...INLINE_STYLE, direction }, font: inlineFont(own), lineHeight: lh, children: [leaf(own, lh)] });
+      }
+    }
+    const trim = (items: Json[]): boolean => {
+      for (let i = items.length - 1; i >= 0; i--) {
+        const c = items[i] as Json;
+        if (c['kind'] === 'br') return true;
+        if (c['kind'] === 'inline') {
+          if (trim(c['children'] as Json[])) return true;
+          continue;
+        }
+        c['text'] = (c['text'] as string).replace(/ +$/, '');
+        if (c['text'] !== '') return true;
+      }
+      return false;
+    };
+    trim(kids);
+    const dropEmpty = (items: Json[]): Json[] => items.filter((c) => c['kind'] !== 'text' || c['text'] !== '').map((c) => (c['kind'] === 'inline' ? { ...c, children: dropEmpty(c['children'] as Json[]) } : c));
+    const children = dropEmpty(kids).filter((c) => c['kind'] !== 'inline' || (c['children'] as Json[]).length > 0);
+    if (!children.some((c) => c['kind'] === 'text' || c['kind'] === 'inline')) continue;
+    const containerStyle = { ...INLINE_STYLE, display: 'block', direction, width: { kind: 'px', value: 10 + r.int(120) }, textAlign: r.pick(['start', 'end', 'center']) };
+    const container: Json = { kind: 'box', id: 'c', boxType: 'element', style: containerStyle, strut: { font: inlineFont(size), lineHeight: lh }, children };
+    const root: Json = { kind: 'box', id: 'root', boxType: 'element', style: { ...INLINE_STYLE, display: r.chance(0.3) ? 'flex' : 'block', direction, width: { kind: 'px', value: 20 + r.int(200) } }, strut: null, children: [container] };
+    const input: Json = { viewport: { width: 400, height: 300 }, devicePixelRatio: r.pick([1, 2, 3, 2.625]), viewportUnits: { small: { width: 400, height: 300 }, large: { width: 400, height: 300 }, dynamic: { width: 400, height: 300 } }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16, root };
+    n++;
+    const v = validateLayoutInput(input);
+    if (!v.ok) throw new Error(`engine-inline wrap: generated input ${n} is invalid: ${JSON.stringify(v.errors)}`);
+    const faults = r.chance(0.25) ? { ...NO_ENGINE_FAULTS, [r.pick(WRAP_FAULT_NAMES)]: true } : NO_ENGINE_FAULTS;
+    out.push(JSON.stringify({ platform: 'darwin-arm64', faults, input }));
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- text-latin (TXT1a-2)
 
 /** The shaped vectors (packages/layout/vectors/text-latin/dpr-<d>/, written by layout:vectors and layout:dpr-vectors), in DPR then file order. */
@@ -692,7 +776,7 @@ export function extendedLockText(c: ExtendedCorpus): string {
     calcUnitsPerFunction: CALC_SPEC.unitsPerFunction,
     calcUnitsFunctions: UNITS_CALC_FUNCTIONS,
     engineCalc: CALC_SPEC.engineCalc,
-    engineInline: INLINE_SPEC.engineInline + INLINE_SPEC.atomicInline,
+    engineInline: INLINE_SPEC.engineInline + INLINE_SPEC.atomicInline + INLINE_SPEC.wrapInline,
     snapGenerated: EXTENDED_SPEC.snapGenerated,
     snapVectors: c.snapVectors.length,
     cases: Object.fromEntries(c.suites.map((s) => [s.name, s.lines.length])),

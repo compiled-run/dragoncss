@@ -63,8 +63,8 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
     expect(n['calc-goldens']).toBeGreaterThan(0);
     expect(n['engine-calc']).toBe(CALC_SPEC.engineCalc);
     expect(n['units-calc']).toBe(CALC_SPEC.unitsPerFunction * UNITS_CALC_FUNCTIONS.length);
-    // INL2a appends its atomic contexts after INL1a's 3000 (derived from INLINE_SPEC).
-    expect(n['engine-inline']).toBe(INLINE_SPEC.engineInline + INLINE_SPEC.atomicInline);
+    // INL2a and TXT2-a append their atomic and wrap contexts after INL1a's 3000 (derived from INLINE_SPEC).
+    expect(n['engine-inline']).toBe(INLINE_SPEC.engineInline + INLINE_SPEC.atomicInline + INLINE_SPEC.wrapInline);
     expect(INLINE_SPEC.engineInline).toBe(3000);
     // TXT1a-2: 11 shaped cases, T133: 2 (inline-tags-faces ltr and rtl) and TXT-W1: 12 (text-weight-*) and TXT-W2: 4 (font-shorthand-*), at DPR 1, 2, 3 and 2.625,
     // each with its shape transcript. INL2a: plus atomic-inline-lato (ltr and rtl).

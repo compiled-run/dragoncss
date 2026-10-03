@@ -44,6 +44,8 @@ import type {
   TextAlign,
   TextLeaf,
   TextWrapMode,
+  OverflowWrap,
+  WordBreak,
   VerticalAlignKeyword,
   VerticalAlignValue,
   ViewportLength,
@@ -655,7 +657,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
 }
 
 function decodeText(o: JsonObj, path: string): TextLeaf {
-  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode'], path);
+  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'overflowWrap', 'wordBreak'], path);
   lit(field(o, 'whiteSpaceCollapse', path), ['collapse'], `${path}.whiteSpaceCollapse`);
   return {
     kind: 'text',
@@ -665,6 +667,8 @@ function decodeText(o: JsonObj, path: string): TextLeaf {
     lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
     whiteSpaceCollapse: 'collapse',
     textWrapMode: lit(field(o, 'textWrapMode', path), ['wrap', 'nowrap'], `${path}.textWrapMode`) as TextWrapMode,
+    overflowWrap: lit(field(o, 'overflowWrap', path), ['normal', 'break-word', 'anywhere'], `${path}.overflowWrap`) as OverflowWrap,
+    wordBreak: lit(field(o, 'wordBreak', path), ['normal', 'break-all', 'keep-all', 'break-word', 'auto-phrase'], `${path}.wordBreak`) as WordBreak,
   };
 }
 
@@ -799,6 +803,7 @@ const FAULT_KEYS: readonly string[] = [
   'advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing',
   'metricRoundingSwapped', 'latinCheckSkipped',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
+  'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'graphemeClusterSplit', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -858,6 +863,12 @@ function decodeFaults(v: JsonValue): EngineFaults {
     atomicMarginExcluded: b('atomicMarginExcluded'),
     noBreakAroundAtomic: b('noBreakAroundAtomic'),
     atomicShrinkToFitIgnored: b('atomicShrinkToFitIgnored'),
+    anywhereMinContentIgnored: b('anywhereMinContentIgnored'),
+    breakWordShrinksMinContent: b('breakWordShrinksMinContent'),
+    graphemeClusterSplit: b('graphemeClusterSplit'),
+    breakAnywhereAlways: b('breakAnywhereAlways'),
+    emergencyBreakBeforeOpportunity: b('emergencyBreakBeforeOpportunity'),
+    wordBreakBreakWordIgnored: b('wordBreakBreakWordIgnored'),
   };
 }
 
