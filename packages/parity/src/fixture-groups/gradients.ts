@@ -5,7 +5,8 @@
 // translucent stacks over a known backdrop (R6 a and b), em, rem, absolute lengths and edge offsets (R7), background geometry in
 // every box with padding, and the music player's gradient rules. The rejects cover what no target draws yet, naming the package
 // that lifts it; what only the native targets refuse (an angle off the grid, a corner, tiling, a translucent stack over an unknown
-// backdrop) is proven in packages/dragon/test/paint-gradient.test.ts, as a reject fixture blocks the web output too.
+// backdrop, a rounded box Chrome paints into a bleed-avoidance layer, as the music player's .record is, and a transformed subtree)
+// is proven in packages/dragon/test/paint-gradient.test.ts, as a reject fixture blocks the web output too.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, layout, reject } from './define.ts';
 
