@@ -52,29 +52,49 @@ export function lanesVerdict(code: number, log: string): boolean {
   return lanes.some((l) => l.state === 'fail') && lanes.some((l) => !device(l.lane)) && lanes.every((l) => (device(l.lane) ? true : l.state === 'pass'));
 }
 
+// reads, imports and packages come from a traced run of every step (scripts/regen-trace.ts); a run that reads anything else fails.
+const FIXTURES = 'packages/parity/fixtures/**';
+const FONTS = 'vendor/fonts/**';
+// The translator reads the layout engine's sources as text and lowers them to Swift and Kotlin.
+const ENGINE_SOURCES = ['packages/layout/src/**', 'packages/layout/package.json'];
 export const STEPS: readonly Step[] = [
   { name: 'grammar', argv: pnpm('grammar:gen'), outputs: ['packages/dragon/src/css/grammar.generated.ts'] },
-  { name: 'notices', argv: pnpm('notices:gen'), outputs: ['THIRD_PARTY_NOTICES.md'] },
-  { name: 'ua', argv: pnpm('ua:capture'), outputs: ['packages/dragon/src/ua/*.generated.ts'] },
-  { name: 'capture', argv: pnpm('parity:capture'), outputs: ['packages/parity/expected/darwin-arm64/**', 'packages/parity/emitted/**', 'packages/parity/expected-fonts/**'] },
-  // profile:rows also writes the committed native lanes verdict (P6a, T075J) from lanes.json, which lanes-host writes later.
-  { name: 'profile-rows', argv: pnpm('profile:rows'), outputs: ['packages/dragon/src/profiles/ios.ts', 'packages/dragon/src/profiles/android.ts', 'packages/dragon/src/profiles/web.ts', 'packages/dragon/src/profiles/native-lanes.ts'] },
-  { name: 'dpr-capture', argv: pnpm('parity:dpr-capture'), outputs: ['packages/parity/expected-dpr/**'] },
-  { name: 'vectors', argv: pnpm('layout:vectors'), outputs: ['packages/layout/vectors/*.json'] },
-  { name: 'dpr-vectors', argv: pnpm('layout:dpr-vectors'), outputs: ['packages/layout/vectors/dpr-*/**'] },
-  { name: 'break-vectors', argv: pnpm('layout:break-vectors'), outputs: ['packages/layout/break-vectors/**'] },
-  { name: 'break-capture', argv: pnpm('parity:break-capture'), outputs: ['packages/parity/expected-breaks/**'] },
-  { name: 'pixel-capture', argv: pnpm('parity:pixel-capture'), outputs: ['packages/parity/expected-pixels/**'] },
+  { name: 'notices', argv: pnpm('notices:gen'), outputs: ['THIRD_PARTY_NOTICES.md'], reads: ['docs/ports.json', 'vendor/harfbuzz/COPYING'] },
+  { name: 'ua', argv: pnpm('ua:capture'), outputs: ['packages/dragon/src/ua/*.generated.ts'], reads: [FONTS] },
+  { name: 'capture', argv: pnpm('parity:capture'), outputs: ['packages/parity/expected/darwin-arm64/**', 'packages/parity/emitted/**', 'packages/parity/expected-fonts/**'], reads: [FIXTURES, FONTS] },
+  // profile:rows judges every captured and generated output, and writes the native lanes verdict (P6a, T075J) from lanes.json.
+  {
+    name: 'profile-rows',
+    argv: pnpm('profile:rows'),
+    outputs: ['packages/dragon/src/profiles/ios.ts', 'packages/dragon/src/profiles/android.ts', 'packages/dragon/src/profiles/web.ts', 'packages/dragon/src/profiles/native-lanes.ts'],
+    reads: [FIXTURES, FONTS, 'packages/parity/expected/**', 'packages/parity/expected-*/**', 'packages/parity/out/*.json', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'],
+  },
+  { name: 'dpr-capture', argv: pnpm('parity:dpr-capture'), outputs: ['packages/parity/expected-dpr/**'], reads: [FIXTURES, FONTS] },
+  { name: 'vectors', argv: pnpm('layout:vectors'), outputs: ['packages/layout/vectors/*.json'], reads: [FIXTURES, FONTS, 'packages/parity/expected/**', 'packages/layout/vectors/**'] },
+  { name: 'dpr-vectors', argv: pnpm('layout:dpr-vectors'), outputs: ['packages/layout/vectors/dpr-*/**'], reads: [FIXTURES, 'packages/parity/expected-dpr/**'] },
+  { name: 'break-vectors', argv: pnpm('layout:break-vectors'), outputs: ['packages/layout/break-vectors/**'], reads: [FIXTURES] },
+  { name: 'break-capture', argv: pnpm('parity:break-capture'), outputs: ['packages/parity/expected-breaks/**'], reads: [FIXTURES, FONTS, 'packages/layout/break-vectors/**'] },
+  { name: 'pixel-capture', argv: pnpm('parity:pixel-capture'), outputs: ['packages/parity/expected-pixels/**'], reads: [FIXTURES, FONTS] },
   // EMS: each paint feature's vectors from its committed inputs.jsonl through the TypeScript harness (units mode).
-  { name: 'paint-vectors', argv: pnpm('layout:paint-vectors'), outputs: ['packages/layout/paint-vectors/*/vectors.json'] },
-  { name: 'native-gen', argv: pnpm('native:gen'), outputs: ['packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'] },
-  { name: 'north-star', argv: pnpm('north-star:check'), outputs: ['examples/music-player/dragon/north-star-check.json'] },
+  { name: 'paint-vectors', argv: pnpm('layout:paint-vectors'), outputs: ['packages/layout/paint-vectors/*/vectors.json'], reads: ['packages/layout/paint-vectors/**', ...ENGINE_SOURCES], imports: ['packages/translate/src/generate.ts', 'packages/translate/harness/harness.ts'] },
+  { name: 'native-gen', argv: pnpm('native:gen'), outputs: ['packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'], reads: [...ENGINE_SOURCES, 'packages/layout/vectors/**', 'packages/layout/rt-vectors/**', 'packages/translate/corpus-m1-cases.json', 'packages/translate/package.json'] },
+  { name: 'north-star', argv: pnpm('north-star:check'), outputs: ['examples/music-player/dragon/north-star-check.json'], reads: [FONTS, 'examples/music-player/snapshot.html', 'examples/music-player/styles.css', 'examples/music-player/tree/**'] },
   // wpt:update-expectations merges the run into expectations/web.json and copies the run's Chrome snapshots into snapshots/.
-  { name: 'wpt', argv: ['sh', '-c', 'pnpm -s run wpt:run --target web && pnpm -s run wpt:update-expectations --target web'], outputs: ['packages/wpt/expectations/web.json', 'packages/wpt/snapshots/**'], env: ['DRAGON_WPT_DIR'] },
-  { name: 'tw-sweep', argv: pnpm('tw:sweep'), outputs: ['packages/tailwind-sweep/snapshot/**'] },
-  { name: 'glyph-b3', argv: pnpm('parity:glyph-b3', '--write-bottom-pins'), outputs: ['packages/parity/expected-glyphs/bottom-scanlines.json'] },
-  { name: 'media-sweep', argv: ['node', '--conditions=dragon-internal', 'packages/parity/src/cli/media-sweep.ts'], outputs: ['packages/parity/expected-media/**'] },
-  { name: 'lanes-host', argv: pnpm('parity:lanes', '--run-host'), outputs: ['packages/parity/out/lanes.json'], env: ['JAVA_HOME', 'ANDROID_HOME'], verdict: lanesVerdict },
+  { name: 'wpt', argv: ['sh', '-c', 'pnpm -s run wpt:run --target web && pnpm -s run wpt:update-expectations --target web'], outputs: ['packages/wpt/expectations/web.json', 'packages/wpt/snapshots/**'], env: ['DRAGON_WPT_DIR'], reads: ['packages/wpt/wpt.lock', 'packages/wpt/interop-labels.json'] },
+  { name: 'tw-sweep', argv: pnpm('tw:sweep'), outputs: ['packages/tailwind-sweep/snapshot/**'], reads: [FONTS] },
+  { name: 'glyph-b3', argv: pnpm('parity:glyph-b3', '--write-bottom-pins'), outputs: ['packages/parity/expected-glyphs/bottom-scanlines.json'], reads: [FIXTURES, FONTS] },
+  { name: 'media-sweep', argv: ['node', '--conditions=dragon-internal', 'packages/parity/src/cli/media-sweep.ts'], outputs: ['packages/parity/expected-media/**'], reads: [FIXTURES, FONTS] },
+  // lanes-host builds the generated engine with swiftc and kotlinc and runs the host lanes over every vector and capture.
+  {
+    name: 'lanes-host',
+    argv: pnpm('parity:lanes', '--run-host'),
+    outputs: ['packages/parity/out/lanes.json'],
+    env: ['JAVA_HOME', 'ANDROID_HOME'],
+    verdict: lanesVerdict,
+    reads: [FIXTURES, FONTS, ...ENGINE_SOURCES, 'packages/parity/expected-*/**', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus*.json', 'packages/translate/package.json', 'packages/translate/harness/**', 'packages/translate/src/**'],
+    imports: ['packages/translate/src/native.ts', 'packages/translate/src/cli/native.ts'],
+    packages: ['typescript'],
+  },
 ];
 
 /** Regen outputs a merge must not keep from one side: wpt fail entries carry a hand-written reason, deviation and issue. */
@@ -249,6 +269,9 @@ export const changedKeys = (a: Readonly<Record<string, string>>, b: Readonly<Rec
 
 // ---------------------------------------------------------------------------------------------------------------- trace check
 
+/** The preload every step process loads; not an input of any step. */
+export const TRACER = 'scripts/regen-trace.ts';
+
 /**
  * Checks what a step's processes read (regen-trace.ts lines) against its inputs. Tree files read, listed directories' tree
  * contents and tree paths named on a child's command line must be keyed; installed package files must belong to a keyed
@@ -286,7 +309,7 @@ export function checkTrace(step: Step, inputs: Inputs, tree: Tree, lines: readon
   const PNPM_FILES = new Set(['package.json', 'pnpm-workspace.yaml', 'pnpm-lock.yaml', '.npmrc']);
   let isPnpm = false;
   const file = (p: string, how: string): void => {
-    if (!tree.has(p)) return;
+    if (!tree.has(p) || p === TRACER) return;
     if (own(p)) {
       if (how === 'read') readOwn = true;
       return;
@@ -500,11 +523,13 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
     const running = new Map<string, { step: Step; inputs: Inputs; promise: Promise<{ name: string; r: RunResult }>; ts: number; why: string }>();
     let error: string | null = null;
     const finish = (s: Step, before: Inputs, after: Tree, ts: number, action: 'ran' | 'restored', reason: string, r: RunResult | null): string | null => {
-      const others = [...running.values()].filter((x) => x.step !== s).map((x) => matcher(x.step.outputs));
+      const beside = [...running.values()].filter((x) => x.step !== s);
+      const others = beside.map((x) => matcher(x.step.outputs));
       const own = matcher(s.outputs);
       const changed = changedPaths(tree, after).filter((p) => !others.some((m) => m(p)));
       const stray = changed.filter((p) => !own(p));
-      if (stray.length > 0) return `${s.name} changed files outside its declared outputs: ${stray.join(', ')}`;
+      const who = beside.length === 0 ? s.name : `${s.name} (or ${beside.map((x) => x.step.name).join(', ')}, running beside it)`;
+      if (stray.length > 0) return `${who} changed files outside its declared outputs: ${stray.join(', ')}`;
       // Take this step's changes into the tree; a running step's partial outputs wait for its own finish.
       const next = new Map(tree);
       for (const p of changed) {
@@ -540,14 +565,16 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
         for (let i = 0; i < pending.length; i++) {
           const s = pending[i]!;
           let ins: Inputs;
+          let blocked: boolean;
           try {
             ins = inputsOf(s, tree);
+            const blockers = [...pending.slice(0, i).map((p) => ({ step: p, inputs: inputsOf(p, tree) })), ...[...running.values()]];
+            blocked = blockers.some((b) => conflict(s, ins, b.step, b.inputs));
           } catch (e) {
             error = e instanceof Error ? e.message : String(e);
             break;
           }
-          const blockers = [...pending.slice(0, i).map((p) => ({ step: p, inputs: inputsOf(p, tree) })), ...[...running.values()]];
-          if (blockers.some((b) => conflict(s, ins, b.step, b.inputs))) continue;
+          if (blocked) continue;
           pending.splice(i, 1);
           const outputs = outputsOf(s, tree);
           const hit = lookup(s.name, ins.key);
@@ -711,7 +738,7 @@ async function main(): Promise<void> {
     // Unset: git config exits 1.
   }
   if (driver !== 'true') console.log('regen: run pnpm setup:git once so merges keep generated files instead of stopping on them');
-  const tracer = join(root, 'scripts/regen-trace.ts');
+  const tracer = join(root, TRACER);
   const machine = JSON.stringify({ platform: process.platform, arch: process.arch, node: process.version });
   const texts = new Map<string, string>();
   const io: Io = {
