@@ -107,42 +107,42 @@
   "contextProbe": {
    "rounds": 1,
    "blankedRules": 9,
-   "blankedDeclarations": 63,
+   "blankedDeclarations": 61,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 272,
-  "errors": 271,
+  "diagnostics": 284,
+  "errors": 283,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [android]": 25,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 25,
    "DRAGON_UNPROVEN_CONTEXT [web]": 25,
-   "DRAGON_UNSUPPORTED_ATTRIBUTE": 23,
+   "DRAGON_UNSUPPORTED_ATTRIBUTE": 21,
    "DRAGON_UNSUPPORTED_AT_RULE": 1,
    "DRAGON_UNSUPPORTED_AT_RULE [android]": 2,
    "DRAGON_UNSUPPORTED_AT_RULE [ios]": 2,
    "DRAGON_UNSUPPORTED_ELEMENT": 11,
    "DRAGON_UNSUPPORTED_FONT [android]": 2,
    "DRAGON_UNSUPPORTED_FONT [ios]": 2,
-   "DRAGON_UNSUPPORTED_PROPERTY": 60,
+   "DRAGON_UNSUPPORTED_PROPERTY": 58,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 27,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 27,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 27
+   "DRAGON_UNSUPPORTED_VALUE [android]": 33,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 33,
+   "DRAGON_UNSUPPORTED_VALUE [web]": 31
   },
   "perTarget": {
    "web": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 25,
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 23,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 21,
      "DRAGON_UNSUPPORTED_AT_RULE": 1,
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
-     "DRAGON_UNSUPPORTED_PROPERTY": 60,
+     "DRAGON_UNSUPPORTED_PROPERTY": 58,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 30
+     "DRAGON_UNSUPPORTED_VALUE": 34
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -151,13 +151,13 @@
    "ios": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 25,
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 23,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 21,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
      "DRAGON_UNSUPPORTED_FONT": 2,
-     "DRAGON_UNSUPPORTED_PROPERTY": 60,
+     "DRAGON_UNSUPPORTED_PROPERTY": 58,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 30
+     "DRAGON_UNSUPPORTED_VALUE": 36
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -166,13 +166,13 @@
    "android": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 25,
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 23,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 21,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
      "DRAGON_UNSUPPORTED_FONT": 2,
-     "DRAGON_UNSUPPORTED_PROPERTY": 60,
+     "DRAGON_UNSUPPORTED_PROPERTY": 58,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 30
+     "DRAGON_UNSUPPORTED_VALUE": 36
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -267,9 +267,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 149,
-   "B-unwrapped": 146,
-   "C-context": 128
+   "A-authored": 151,
+   "B-unwrapped": 148,
+   "C-context": 138
   }
  },
  "features": {
@@ -3635,7 +3635,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -3649,7 +3649,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -6134,19 +6134,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@7882-7930|text-decoration-color is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7905-7930|text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 7882,
+    "start": 7905,
     "end": 7930,
     "line": 461,
-    "column": 2,
-    "text": "text-decoration-color: rgba(167, 175, 189, 0.45)"
+    "column": 25,
+    "text": "rgba(167, 175, 189, 0.45)"
    },
-   "message": "text-decoration-color is not supported in milestone 1",
+   "message": "text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6154,19 +6154,99 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@7933-7962|text-underline-offset is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@7905-7930|text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "ios",
    "location": {
     "kind": "css",
-    "start": 7933,
+    "start": 7905,
+    "end": 7930,
+    "line": 461,
+    "column": 25,
+    "text": "rgba(167, 175, 189, 0.45)"
+   },
+   "message": "text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@7905-7930|text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 7905,
+    "end": 7930,
+    "line": 461,
+    "column": 25,
+    "text": "rgba(167, 175, 189, 0.45)"
+   },
+   "message": "text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 7956,
     "end": 7962,
     "line": 462,
-    "column": 2,
-    "text": "text-underline-offset: 0.2rem"
+    "column": 25,
+    "text": "0.2rem"
    },
-   "message": "text-underline-offset is not supported in milestone 1",
+   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 7956,
+    "end": 7962,
+    "line": 462,
+    "column": 25,
+    "text": "0.2rem"
+   },
+   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 7956,
+    "end": 7962,
+    "line": 462,
+    "column": 25,
+    "text": "0.2rem"
+   },
+   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6449,7 +6529,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/privacy-link|attribute href on privacy-link is not supported: its rendering effect belongs to the inline and link package INL1 (an href makes the :link UA rules apply)",
+   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/privacy-link|attribute rel on privacy-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
    "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
    "severity": "error",
    "target": null,
@@ -6458,7 +6538,7 @@
     "id": "App/privacy-link",
     "tag": "a"
    },
-   "message": "attribute href on privacy-link is not supported: its rendering effect belongs to the inline and link package INL1 (an href makes the :link UA rules apply)",
+   "message": "attribute rel on privacy-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6466,7 +6546,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/privacy-link|attribute rel on privacy-link is not supported: its rendering effect belongs to the inline and link package INL1 (on a hyperlink it changes link behaviour)",
+   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/privacy-link|attribute target on privacy-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
    "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
    "severity": "error",
    "target": null,
@@ -6475,7 +6555,7 @@
     "id": "App/privacy-link",
     "tag": "a"
    },
-   "message": "attribute rel on privacy-link is not supported: its rendering effect belongs to the inline and link package INL1 (on a hyperlink it changes link behaviour)",
+   "message": "attribute target on privacy-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6483,24 +6563,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/privacy-link|attribute target on privacy-link is not supported: its rendering effect belongs to the inline and link package INL1 (on a hyperlink it changes link behaviour)",
-   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "App/privacy-link",
-    "tag": "a"
-   },
-   "message": "attribute target on privacy-link is not supported: its rendering effect belongs to the inline and link package INL1 (on a hyperlink it changes link behaviour)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/terms-link|attribute href on terms-link is not supported: its rendering effect belongs to the inline and link package INL1 (an href makes the :link UA rules apply)",
+   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/terms-link|attribute rel on terms-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
    "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
    "severity": "error",
    "target": null,
@@ -6509,7 +6572,7 @@
     "id": "App/terms-link",
     "tag": "a"
    },
-   "message": "attribute href on terms-link is not supported: its rendering effect belongs to the inline and link package INL1 (an href makes the :link UA rules apply)",
+   "message": "attribute rel on terms-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6517,7 +6580,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/terms-link|attribute rel on terms-link is not supported: its rendering effect belongs to the inline and link package INL1 (on a hyperlink it changes link behaviour)",
+   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/terms-link|attribute target on terms-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
    "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
    "severity": "error",
    "target": null,
@@ -6526,24 +6589,7 @@
     "id": "App/terms-link",
     "tag": "a"
    },
-   "message": "attribute rel on terms-link is not supported: its rendering effect belongs to the inline and link package INL1 (on a hyperlink it changes link behaviour)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/terms-link|attribute target on terms-link is not supported: its rendering effect belongs to the inline and link package INL1 (on a hyperlink it changes link behaviour)",
-   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "App/terms-link",
-    "tag": "a"
-   },
-   "message": "attribute target on terms-link is not supported: its rendering effect belongs to the inline and link package INL1 (on a hyperlink it changes link behaviour)",
+   "message": "attribute target on terms-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -8661,6 +8707,120 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7905-7930|text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 7905,
+    "end": 7930,
+    "line": 461,
+    "column": 25,
+    "text": "rgba(167, 175, 189, 0.45)"
+   },
+   "message": "text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@7905-7930|text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 7905,
+    "end": 7930,
+    "line": 461,
+    "column": 25,
+    "text": "rgba(167, 175, 189, 0.45)"
+   },
+   "message": "text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@7905-7930|text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 7905,
+    "end": 7930,
+    "line": 461,
+    "column": 25,
+    "text": "rgba(167, 175, 189, 0.45)"
+   },
+   "message": "text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 7956,
+    "end": 7962,
+    "line": 462,
+    "column": 25,
+    "text": "0.2rem"
+   },
+   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 7956,
+    "end": 7962,
+    "line": 462,
+    "column": 25,
+    "text": "0.2rem"
+   },
+   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 7956,
+    "end": 7962,
+    "line": 462,
+    "column": 25,
+    "text": "0.2rem"
+   },
+   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8552-8559|left:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, relative-in-block/ltr, relative-in-block/rtl); left values proven in flex-column/ltr: auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
@@ -9346,6 +9506,70 @@
     "text": "▶"
    },
    "message": "font-family: \"Lato\" , sans-serif on page/player-call/play-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|src@examples/music-player/tree/src/pages/index.tsrx:Google Privacy|text page/privacy-link:text0 draws text-decoration (underline from page/privacy-link); android draws decorations from TDEC-b",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/pages/index.tsrx",
+    "text": "Google Privacy"
+   },
+   "message": "text page/privacy-link:text0 draws text-decoration (underline from page/privacy-link); android draws decorations from TDEC-b",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|src@examples/music-player/tree/src/pages/index.tsrx:YouTube Terms|text page/terms-link:text0 draws text-decoration (underline from page/terms-link); android draws decorations from TDEC-b",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/pages/index.tsrx",
+    "text": "YouTube Terms"
+   },
+   "message": "text page/terms-link:text0 draws text-decoration (underline from page/terms-link); android draws decorations from TDEC-b",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|src@examples/music-player/tree/src/pages/index.tsrx:Google Privacy|text page/privacy-link:text0 draws text-decoration (underline from page/privacy-link); ios draws decorations from TDEC-b",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/pages/index.tsrx",
+    "text": "Google Privacy"
+   },
+   "message": "text page/privacy-link:text0 draws text-decoration (underline from page/privacy-link); ios draws decorations from TDEC-b",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|src@examples/music-player/tree/src/pages/index.tsrx:YouTube Terms|text page/terms-link:text0 draws text-decoration (underline from page/terms-link); ios draws decorations from TDEC-b",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "source",
+    "file": "examples/music-player/tree/src/pages/index.tsrx",
+    "text": "YouTube Terms"
+   },
+   "message": "text page/terms-link:text0 draws text-decoration (underline from page/terms-link); ios draws decorations from TDEC-b",
    "viaRelated": false,
    "passes": [
     "C-context"
