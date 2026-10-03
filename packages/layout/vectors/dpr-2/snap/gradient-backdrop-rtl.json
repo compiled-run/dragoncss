@@ -41,22 +41,6 @@
    "y": 2048,
    "width": 4096,
    "height": 4096
-  },
-  {
-   "id": "grad-group",
-   "parent": "stage",
-   "x": 32768,
-   "y": 2048,
-   "width": 4096,
-   "height": 4096
-  },
-  {
-   "id": "grad-group-radial",
-   "parent": "stage",
-   "x": 26624,
-   "y": 2048,
-   "width": 4096,
-   "height": 4096
   }
  ],
  "output": [
@@ -101,24 +85,6 @@
    "left": 608,
    "top": 32,
    "right": 672,
-   "bottom": 96,
-   "width": 64,
-   "height": 64
-  },
-  {
-   "id": "grad-group",
-   "left": 512,
-   "top": 32,
-   "right": 576,
-   "bottom": 96,
-   "width": 64,
-   "height": 64
-  },
-  {
-   "id": "grad-group-radial",
-   "left": 416,
-   "top": 32,
-   "right": 480,
    "bottom": 96,
    "width": 64,
    "height": 64

@@ -112,8 +112,8 @@
   }
  },
  "summary": {
-  "diagnostics": 325,
-  "errors": 324,
+  "diagnostics": 327,
+  "errors": 326,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [android]": 26,
@@ -128,8 +128,8 @@
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
    "DRAGON_UNSUPPORTED_PROPERTY": 38,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 32,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 32,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 33,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 33,
    "DRAGON_UNSUPPORTED_VALUE [web]": 27
   },
   "perTarget": {
@@ -156,7 +156,7 @@
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 38,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 32
+     "DRAGON_UNSUPPORTED_VALUE": 33
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -171,7 +171,7 @@
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 38,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 32
+     "DRAGON_UNSUPPORTED_VALUE": 33
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -179,11 +179,11 @@
    }
   },
   "declarations": 291,
-  "supportedBothTargets": 193,
+  "supportedBothTargets": 192,
   "supportedWeb": 208,
-  "supportedIos": 193,
-  "supportedAndroid": 193,
-  "supportPercent": 66.3,
+  "supportedIos": 192,
+  "supportedAndroid": 192,
+  "supportPercent": 66,
   "elements": 62,
   "supportedElements": 45,
   "tags": {
@@ -268,7 +268,7 @@
   "rawDiagnosticsPerPass": {
    "A-authored": 126,
    "B-unwrapped": 123,
-   "C-context": 204
+   "C-context": 206
   }
  },
  "features": {
@@ -1703,9 +1703,11 @@
    "property": "background",
    "value": "linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 104,
@@ -7663,6 +7665,44 @@
     "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
    },
    "message": "background-image on page/song-call/record: Chrome paints the background of this rounded box into a bleed-avoidance layer (kBackgroundBleedClipLayer: a border radius with a border not every side of which is opaque and solid, or with a background colour or more than one layer), whose origin in each cc tile is the anti-aliased clip's coverage bounds; that origin starts the dither and the shader matrix, and the native targets do not model it (BG2c)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3470-3603|background-image on page/song-call/record-shine: the gradient layers are not opaque over every pixel they paint; an opacity below 1 isolates them (R6 b), but Chrome's composite of the translucent raster under group alpha is not the one PNT1's group alpha proves (it differs by one in a channel on gradient-backdrop's groups), so the native targets refuse it until it is modelled (BG2c)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3470,
+    "end": 3603,
+    "line": 192,
+    "column": 14,
+    "text": "linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
+   },
+   "message": "background-image on page/song-call/record-shine: the gradient layers are not opaque over every pixel they paint; an opacity below 1 isolates them (R6 b), but Chrome's composite of the translucent raster under group alpha is not the one PNT1's group alpha proves (it differs by one in a channel on gradient-backdrop's groups), so the native targets refuse it until it is modelled (BG2c)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3470-3603|background-image on page/song-call/record-shine: the gradient layers are not opaque over every pixel they paint; an opacity below 1 isolates them (R6 b), but Chrome's composite of the translucent raster under group alpha is not the one PNT1's group alpha proves (it differs by one in a channel on gradient-backdrop's groups), so the native targets refuse it until it is modelled (BG2c)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3470,
+    "end": 3603,
+    "line": 192,
+    "column": 14,
+    "text": "linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
+   },
+   "message": "background-image on page/song-call/record-shine: the gradient layers are not opaque over every pixel they paint; an opacity below 1 isolates them (R6 b), but Chrome's composite of the translucent raster under group alpha is not the one PNT1's group alpha proves (it differs by one in a channel on gradient-backdrop's groups), so the native targets refuse it until it is modelled (BG2c)",
    "viaRelated": false,
    "passes": [
     "C-context"
