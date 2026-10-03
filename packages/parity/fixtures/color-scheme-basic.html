@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; color: rgb(230, 230, 230); color-scheme: dark; }
+.row { display: flex; column-gap: 8px; padding: 8px; background-color: rgb(20, 24, 30); }
+.c { width: 40px; height: 30px; background-color: rgb(60, 70, 90); color: rgb(250, 200, 100); }
+.light { color-scheme: light; }
+.both { color-scheme: light dark; }
+.rev { color-scheme: dark light; }
+.only { color-scheme: only dark; }
+.custom { color-scheme: Brand dark; }
+.normal { color-scheme: normal; }
+.inherit { color-scheme: inherit; }
+.initial { color-scheme: initial; }
+.var { --scheme: light only; color-scheme: var(--scheme); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row" class="row">
+<div data-dragon-id="cs-plain" class="c"></div>
+<div data-dragon-id="cs-light" class="c light"></div>
+<div data-dragon-id="cs-both" class="c both"></div>
+<div data-dragon-id="cs-rev" class="c rev"></div>
+<div data-dragon-id="cs-only" class="c only"></div>
+<div data-dragon-id="cs-custom" class="c custom"></div>
+<div data-dragon-id="cs-normal" class="c normal"></div>
+<div data-dragon-id="cs-light2" class="c light"><div data-dragon-id="cs-inherit" class="c inherit"></div></div>
+<div data-dragon-id="cs-initial" class="c initial"></div>
+<div data-dragon-id="cs-var" class="c var"></div>
+</div>
+</body>
+</html>

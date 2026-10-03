@@ -188,6 +188,9 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
   });
   (values['html'] as Record<string, string>)['display'] = htmlDisplay.own;
   (initial['html'] as Record<string, string>)['display'] = htmlDisplay.init;
+  // The dark capture's own html{color-scheme:dark} gives every element color-scheme: dark; it is the capture's environment, not a
+  // UA rule, so it is compared against itself (the light capture computes normal everywhere).
+  if (scheme === 'dark') for (const name of Object.keys(values)) (initial[name] as Record<string, string>)['color-scheme'] = (values[name] as Record<string, string>)['color-scheme'] as string;
 
   // Declared values: each tag under a parent of font-size 100px and 200px, in each direction; a UA rule sets a longhand whose value
   // differs from the same element under "<longhand>: unset" (the parent is not the root). A px value that doubles with the

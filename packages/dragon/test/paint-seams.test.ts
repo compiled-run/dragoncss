@@ -166,17 +166,19 @@ describe('EMS: native support', () => {
 
 describe('EMS: CSS families and paint values', () => {
   it('registers the seven paint families and the two shorthand files empty', () => {
-    // PNT1 fills the radius family and its shorthand file.
+    // PNT1 fills the radius, shadow and outline families, both shorthand files, and color-scheme in the effects family.
     expect(radius.RADIUS_LONGHANDS).toEqual(['border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius']);
     expect(Object.keys(RADIUS_SHORTHANDS)).toEqual(['border-radius']);
     expect(shadow.SHADOW_LONGHANDS).toEqual(['box-shadow']);
-    for (const [name, fam] of [['EFFECTS', effects], ['OUTLINE', outline], ['TRANSFORM', transform], ['BACKGROUND_LAYERS', backgroundLayers], ['SCROLLBAR', scrollbar]] as const) {
+    expect(effects.EFFECTS_LONGHANDS).toEqual(['color-scheme']);
+    expect(outline.OUTLINE_LONGHANDS).toEqual(['outline-color', 'outline-style', 'outline-width', 'outline-offset']);
+    expect(Object.keys(OUTLINE_SHORTHANDS)).toEqual(['outline']);
+    for (const [name, fam] of [['TRANSFORM', transform], ['BACKGROUND_LAYERS', backgroundLayers], ['SCROLLBAR', scrollbar]] as const) {
       const f = fam as unknown as Record<string, unknown>;
       expect(f[`${name}_LONGHANDS`], name).toEqual([]);
       expect(f[`${name}_SHORTHANDS`], name).toEqual([]);
       expect(f[`${name}_ASPECTS`], name).toEqual({});
     }
-    expect(OUTLINE_SHORTHANDS).toEqual({});
     expect(Object.keys(SHORTHAND_HANDLERS).length).toBe(SHORTHANDS.length);
   });
   it('runs computePaintValues at the end of computeLengths; the stubs leave every value alone', () => {
@@ -187,7 +189,7 @@ describe('EMS: CSS families and paint values', () => {
     const props = new Map<Longhand, ResolvedValue>([['font-size', v(10, 'px')], ['width', v(2, 'em')]]);
     computeLengths(props, 16, 16);
     expect([...props.entries()].map(([k, x]) => [k, x.value])).toEqual([['font-size', { kind: 'length', value: 10, unit: 'px' }], ['width', { kind: 'length', value: 20, unit: 'px' }]]);
-    // SIZE-ar: aspect-ratio is a longhand (box family, after max-height); PNT1 adds its radius and shadow longhands.
-    expect((LONGHANDS as readonly string[]).length).toBe(74);
+    // SIZE-ar: aspect-ratio is a longhand (box family, after max-height); PNT1 adds its radius and shadow longhands, then outline (4) and color-scheme (1).
+    expect((LONGHANDS as readonly string[]).length).toBe(79);
   });
 });
