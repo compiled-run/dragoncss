@@ -3,7 +3,7 @@ import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromeDeviations, NO_ENGINE_FAULTS, platformRules } from '@dragon/layout';
 import type { Assignment, ProfileRow } from 'dragon';
-import { CATALOGUE, iosProfile, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
+import { CATALOGUE, iosLayoutProjection, iosProfile, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
 import type { Longhand } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
 import { captureFixture, captureJson } from '../src/capture.ts';
@@ -279,6 +279,17 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     expect(faulty.status).toBe('fail');
     expect(c.status).toBe('fail');
     expect(c.reason).toMatch(/^layout input rejected: .*children\[\d+\] leaf-font/);
+    // Every rejected path is a text leaf, and w1's is one of them.
+    const { compiled } = compileFixture(specFor('text-wrap-spaces'), { ...NO_FAULTS, dropInheritedText: true }, 'enforce', c.direction);
+    const p = iosLayoutProjection(compiled, ENVIRONMENT, c.assignment);
+    if (p.kind !== 'ready') throw new Error('the faulted projection is blocked');
+    const at = (path: string): unknown => [...path.matchAll(/\.(\w+)|\[(\d+)\]/g)].reduce<unknown>((v, m) => (v as Record<string, unknown>)[(m[1] ?? m[2]) as string], p.input);
+    const leaves = [...(c.reason as string).matchAll(/(\$[^ ;]*) leaf-font/g)].map((m) => at((m[1] as string).slice(1)) as { kind: string; id: string });
+    expect(leaves.length).toBeGreaterThan(0);
+    for (const l of leaves) expect(l.kind, l.id).toBe('text');
+    expect(leaves.map((l) => l.id)).toContain('w1:text0');
+    // The dual lane passes whenever it runs; here the rejected input leaves both lanes not run.
+    expect(['pass', 'not-run']).toContain(c.lanes['chrome-dual']);
     expect(outcomes.get('text-wrap-spaces')?.status).toBe('pass');
   });
 

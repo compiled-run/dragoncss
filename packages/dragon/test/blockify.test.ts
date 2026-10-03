@@ -8,7 +8,7 @@ import type { Longhand } from '../src/css/properties.ts';
 import { LONGHANDS } from '../src/css/properties.ts';
 import type { ResolvedValue } from '../src/analysis/computed.ts';
 import { parseValueText, valueToString } from '../src/analysis/computed.ts';
-import { blockify, blockifiedDisplay } from '../src/analysis/blockify.ts';
+import { blockify, blockifiedDisplay, checkInlineLevel } from '../src/analysis/blockify.ts';
 import { SUPPORTED_TAGS, UNSTYLED_TAGS, uaTagOf } from '../src/analysis/elements.ts';
 import * as dark from '../src/ua/chrome-145.darwin-arm64.dark.generated.ts';
 import * as light from '../src/ua/chrome-145.darwin-arm64.generated.ts';
@@ -62,7 +62,7 @@ describe('span, a and label in the element table', () => {
       expect(uaTagOf(t)).toBe('dragon-unstyled');
     }
     expect(uaTagOf('div')).toBe('div');
-    expect([...UNSTYLED_TAGS].sort()).toEqual(['a', 'label', 'span']);
+    expect([...UNSTYLED_TAGS].sort()).toEqual(['a', 'br', 'label', 'span']);
   });
   // The captured Chrome tables are what makes dragon-unstyled right for them: no modelled UA declaration, context or text font,
   // and every computed longhand equal to dragon-unstyled's, in light and dark.
@@ -89,6 +89,25 @@ describe('span, a and label in the element table', () => {
       expect(ds.phrasingKeyForced.label).toEqual({ ltr: {}, rtl: {} });
       expect(LONGHANDS).not.toContain('cursor');
       for (const p of LONGHANDS) expect(ds.phrasingKeyComputed.label[p], `label ${p}`).toBe(ds.computed['dragon-unstyled'][p]);
+    });
+  }
+});
+
+describe('br in the element table (INL1a)', () => {
+  it('is supported and reads dragon-unstyled\'s UA row', () => {
+    expect(SUPPORTED_TAGS.has('br')).toBe(true);
+    expect(uaTagOf('br')).toBe('dragon-unstyled');
+  });
+  for (const [scheme, ds] of [['light', light], ['dark', dark]] as const) {
+    it(`${scheme}: br has no UA rule at all and computes like dragon-unstyled`, () => {
+      expect(ds.phrasingKeySpecs.br.attributes).toEqual({});
+      expect(ds.phrasingKeyLonghands.br).toEqual([]);
+      expect(ds.phrasingKeyDeclared.br).toEqual({ ltr: {}, rtl: {} });
+      expect(ds.phrasingKeyContexts.br).toEqual([]);
+      expect(ds.phrasingKeyTextFonts.br).toEqual({});
+      expect(ds.phrasingKeyUnmodelled.br).toEqual({ ltr: {}, rtl: {} });
+      expect(ds.phrasingKeyForced.br).toEqual({ ltr: {}, rtl: {} });
+      for (const p of LONGHANDS) expect(ds.phrasingKeyComputed.br[p], `br ${p}`).toBe(ds.computed['dragon-unstyled'][p]);
     });
   }
 });
@@ -139,16 +158,30 @@ describe('blockification in the resolver', () => {
     expect(displayOf((r) => [el(r, 'c', 'div', ['f'], [el(r, 'b', 'span', [], [el(r, 's', 'span')])])], 's')).toBe('inline');
     expect(displayOf((r) => [el(r, 'c', 'div', ['f'], [el(r, 'b', 'span', ['if'], [el(r, 's', 'span')])])], 's')).toBe('block');
   });
-  it('an inline-level box whose display no author set is refused on every target; display: none subtrees are not laid out', () => {
-    expect(codes((r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', [], [text(r, 't', 'X')])])])).toEqual(['DRAGON_UNSUPPORTED_VALUE ios display: inline on <span> s', 'DRAGON_UNSUPPORTED_VALUE web display: inline on <span> s']);
+  it('an inline box (display: inline, INL1a) is not refused, an atomic inline is refused on every target, and display: none subtrees are not laid out', () => {
+    // INL1a part C1: analysis lets the inline box through; it has no lowering until part C2, so the ios output refuses it there.
+    expect(codes((r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', [], [text(r, 't', 'X')])])])).toEqual(['DRAGON_LOWERING_FAILED ios display: inline on s has no layout mapping (expected block | flex)']);
+    // An author's inline-block or inline-flex in a block container: an atomic inline (INL2), refused on ios and web by the
+    // committed support profiles, with both outputs blocked.
+    for (const cls of ['ib', 'if']) {
+      const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' }).compile(inputFor(FONT, (r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', [cls], [text(r, 't', 'X')])])]));
+      const onDisplay = c.diagnostics.filter((d) => /display/.test(d.message));
+      expect([...new Set(onDisplay.map((d) => String(d.target)))].sort(), cls).toEqual(['ios', 'web']);
+      expect([c.outputs.ios.kind, c.outputs.web.kind], cls).toEqual(['blocked', 'blocked']);
+    }
+    const reported: Diagnostic[] = [];
+    const atomic = { element: { address: 's', tag: 'span', node: { origin: { kind: 'unlocated', reason: 'test' } } }, props: new Map([['display', { value: parseValueText('display', 'inline-block'), origin: 'user-agent', span: null, declaration: null, declared: null, losing: [] }]]) } as unknown as ResolvedElement;
+    checkInlineLevel(atomic, ['ios', 'web'], reported, new Set());
+    expect(reported.map((d) => `${d.code} ${String(d.target)} ${d.message.split(' makes ')[0]}`)).toEqual(['DRAGON_UNSUPPORTED_VALUE ios display: inline-block on <span> s', 'DRAGON_UNSUPPORTED_VALUE web display: inline-block on <span> s']);
     expect(codes((r) => [el(r, 'c', 'div', ['f'], [el(r, 's', 'label', [], [text(r, 't', 'X')])])])).toEqual([]);
     expect(project().compile(inputFor(`${FONT} .n { display: none; }`, (r) => [el(r, 'c', 'div', ['n'], [el(r, 's', 'span')])])).diagnostics).toEqual([]);
   });
-  it('blockifySkipped leaves a flex item inline, which is then refused', () => {
+  it('blockifySkipped leaves a flex item inline: an inline box, which the ios lowering refuses until INL1a part C2 lowers it', () => {
     const faults = { ...NO_FAULTS, blockifySkipped: true };
     const tree = (r: SourceRef) => [el(r, 'c', 'div', ['f'], [el(r, 's', 'span', [], [text(r, 't', 'X')])])];
     expect(displayOf(tree, 's', faults)).toBe('inline');
-    expect(codes(tree, faults)).toEqual(['DRAGON_UNSUPPORTED_VALUE ios display: inline on <span> s', 'DRAGON_UNSUPPORTED_VALUE web display: inline on <span> s']);
+    expect(codes(tree)).toEqual([]);
+    expect(codes(tree, faults)).toEqual(['DRAGON_LOWERING_FAILED ios display: inline on s has no layout mapping (expected block | flex)']);
   });
   it('a parent that was not blockified first is an error, not a silent in-flow child', () => {
     const props = (display: string) => new Map<Longhand, ResolvedValue>([['display', { value: parseValueText('display', display), origin: 'author', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue], ['position', { value: parseValueText('position', 'static'), origin: 'initial', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue]]);
