@@ -299,3 +299,10 @@ export function animProgramOf(compiled: object, assignments: readonly Assignment
   });
   return lowerAnimProgram(record.animation, cases);
 }
+
+/** The animation features a compile uses (the support gate's keys in the animation context), sorted. */
+export function animationFeatures(compiled: object): readonly string[] {
+  const record = internalRecord(compiled);
+  if (record === undefined || record.animation === null) return [];
+  return [...new Set(record.animation.features.map((f) => f.feature))].sort();
+}

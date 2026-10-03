@@ -13,6 +13,7 @@ import { rtEasing } from '@dragon/layout';
 import { tree } from './fixture-groups/define.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { nativeCompile, referenceMeasurer } from './native-host.ts';
+import { compileFixture, webCssOf } from './pipeline.ts';
 import { repoPath } from './paths.ts';
 
 export const FRAMES_SCHEMA = 'dragon-frames/1';
@@ -69,6 +70,9 @@ export type AnimCase = {
   readonly direction: 'ltr' | 'rtl';
   readonly viewport: { readonly width: number; readonly height: number };
   readonly compiled: Compiled<'ios' | 'android'>;
+  /** The web compile of the same fixture and direction (derive mode) and its CSS, for the chrome-dual rendering. */
+  readonly webCompiled: Compiled<'ios' | 'web'>;
+  readonly webCss: string | null;
   readonly sp: StateProgram;
   readonly ap: AnimProgram;
 };
@@ -93,7 +97,9 @@ export function animCasesOf(fx: AnimFixture): AnimCase[] {
     }));
     const ap = animProgramOf(c, sp.assignments.map((x) => x.assignment));
     if (ap === null) throw new Error(`${fx.id}: the compile has no animation analysis`);
-    return fx.frames.viewports.map((viewport) => ({ id: `${fx.id}${direction === 'rtl' ? '-rtl' : ''}@${viewport.width}x${viewport.height}`, fixture: fx, direction, viewport, compiled: c, sp, ap }));
+    const webCompiled = compileFixture(fx.spec, undefined, 'derive', direction).compiled;
+    const webCss = webCssOf(webCompiled);
+    return fx.frames.viewports.map((viewport) => ({ id: `${fx.id}${direction === 'rtl' ? '-rtl' : ''}@${viewport.width}x${viewport.height}`, fixture: fx, direction, viewport, compiled: c, webCompiled, webCss, sp, ap }));
   });
 }
 
