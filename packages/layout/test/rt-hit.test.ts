@@ -6,7 +6,7 @@ import type { HitNode } from '../src/rt-hit.ts';
 import { activationTarget, HitError, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../src/rt-hit.ts';
 
 const PX = 64;
-const base = { clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, line: -1, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: 'auto' } as const;
+const base = { clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: -1, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: 'auto' } as const;
 const box = (parent: number, target: number, x: number, y: number, w: number, h: number, more: Partial<HitNode> = {}): HitNode => ({ ...base, kind: 'box', parent, target, x: x * PX, y: y * PX, width: w * PX, height: h * PX, ...more });
 const at = (nodes: readonly HitNode[], x: number, y: number, faults = NO_HIT_FAULTS): number => hitTest(nodes, Math.floor(x * PX), Math.floor(y * PX), faults);
 
@@ -190,5 +190,40 @@ describe('hitTableOf and prepareHit scale with the table', () => {
     for (const line of [-1, 0.5, 99]) {
       expect(() => hitTest([root, box(0, 1, 0, 0, 30, 10), { ...box(1, 1, 0, 0, 20, 10), kind: 'line', line }], 0, 0, NO_HIT_FAULTS)).toThrow(/has line/);
     }
+  });
+});
+
+// Chrome 145 elementFromPoint (measured 2026-10-03, PR #75 pre-landing review): positioned flex items stack in order-modified
+// document order with an absolute child at order 0, never reversed by a reverse direction; static items keep fragment order.
+describe('hitTableOf stacks positioned flex children in order-modified document order', () => {
+  const answer = async (dir: 'row' | 'row-reverse' | 'column-reverse', items: readonly [string, Record<string, unknown>][], x: number, y: number, extra: Record<string, unknown> = {}): Promise<string | undefined> => {
+    const { hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { box, neutralEnvironment, px } = await import('./helpers.ts');
+    const row = dir.startsWith('row');
+    const kids = items.map(([id, s]) => box(id, { width: px(60), height: px(40), ...s }));
+    const flex = box('f', { display: 'flex', flexDirection: dir, position: 'relative', width: px(row ? 200 : 60), height: px(row ? 40 : 200), ...extra }, kids);
+    const root = box('html', { width: px(400) }, [flex]) as unknown as Parameters<typeof hitTableOf>[0]['root'];
+    const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
+    const fact = { pointerEvents: 'auto', inherited: true, activation: false };
+    const facts = new Map(['html', 'f', ...items.map(([id]) => id)].map((id) => [id, fact])) as unknown as Parameters<typeof hitTableOf>[2];
+    const t = hitTableOf(input as Parameters<typeof hitTableOf>[0], ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+    return t.ids[hitTest(t.nodes, x * PX, y * PX, NO_HIT_FAULTS)];
+  };
+  const rel = { position: 'relative' };
+  const len = (value: number) => ({ kind: 'px', value });
+  const overlay = { position: 'absolute', left: len(0), top: len(0), width: len(200), height: len(40) };
+  it('an absolute child keeps its document slot among relative items (Chrome: ov at 90,20)', async () => {
+    expect(await answer('row', [['i1', rel], ['i2', rel], ['ov', overlay]], 90, 20)).toBe('ov');
+    expect(await answer('row', [['ov', overlay], ['i1', rel], ['i2', rel]], 90, 20)).toBe('i2');
+  });
+  it('an absolute child counts as order 0 (Chrome: an order 1 item over a later ov, a later order -1 item under ov)', async () => {
+    expect(await answer('row', [['i1', { ...rel, order: 1 }], ['ov', overlay]], 30, 20)).toBe('i1');
+    expect(await answer('row', [['ov', overlay], ['i1', { ...rel, order: -1 }]], 30, 20)).toBe('ov');
+  });
+  it('a reverse direction does not reverse positioned items (Chrome: i2 at 155,20 and j2 at 30,170), but does static ones', async () => {
+    expect(await answer('row-reverse', [['i1', rel], ['i2', { ...rel, marginRight: len(-30) }]], 155, 20)).toBe('i2');
+    expect(await answer('column-reverse', [['j1', { ...rel, marginTop: len(-20) }], ['j2', rel]], 30, 170)).toBe('j2');
+    expect(await answer('row-reverse', [['s1', { marginLeft: len(-30) }], ['s2', {}]], 155, 20)).toBe('s1');
   });
 });
