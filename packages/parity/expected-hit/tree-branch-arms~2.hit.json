@@ -1,0 +1,18 @@
+{
+  "case": "tree-branch-arms#2",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "ltr",
+  "points": 56,
+  "gridSha256": "997216b779491db26248f03bee9c7aadf9b5c9515d9664f57be317513fb5da1c",
+  "ids": [
+    "body",
+    "empty",
+    "html"
+  ],
+  "runs": [[1,4],[0,4],[1,4],[0,4],[1,4],[0,4],[1,4],[0,4],[2,24]]
+}

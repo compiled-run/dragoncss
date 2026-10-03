@@ -1,0 +1,18 @@
+{
+  "case": "context-root-box-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 308,
+  "gridSha256": "841614c8601b85efb88b744aec19474ead1eafaf66f065ca4de0a39fffb0423f",
+  "ids": [
+    "a",
+    "body",
+    "html"
+  ],
+  "runs": [[2,91],[1,6],[0,6],[2,5],[1,6],[0,6],[2,5],[1,6],[0,6],[2,5],[1,6],[0,6],[2,5],[1,6],[0,6],[2,5],[1,6],[0,6],[2,120]]
+}
