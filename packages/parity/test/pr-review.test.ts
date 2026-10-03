@@ -521,6 +521,22 @@ describe('the CI run is required', () => {
     expect(() => ciJobIds('jobs:\n  build:\n    name: Build\n')).toThrow(/name/);
   });
 
+  it('runs CI on every branch push but master, as well as on pull requests', () => {
+    const yml = readFileSync(new URL(`../../../${CI_WORKFLOW}`, import.meta.url), 'utf8');
+    expect(yml).toMatch(/^on:\n  pull_request:\n    branches: \[master, 'review\/\*\*'\]\n  push:\n    branches-ignore: \[master\]\n/m);
+  });
+
+  // A pushed head has a push run and, once its PR exists, a pull_request run, both named "checks" on the same commit.
+  it('counts a push-triggered CI run on the head, alone or beside the pull_request run', () => {
+    const push = { ...ci('success'), html_url: 'push' };
+    const pr = (conclusion: string | null): CheckRun => ({ ...ci(conclusion), html_url: 'pull_request', status: conclusion === null ? 'in_progress' : 'completed' });
+    expect(reviewExit(outcome([push, ...waived], new Map(), HEAD), 0)).toBe(0);
+    expect(reviewExit(outcome([push, pr('success'), ...waived], new Map(), HEAD), 0)).toBe(0);
+    expect(settled([push, pr(null), ...waived], new Map(), HEAD)).toBe(false);
+    expect(outcome([push, pr(null), ...waived], new Map(), HEAD).pending).toEqual([CI_CHECK]);
+    expect(outcome([push, pr('failure'), ...waived], new Map(), HEAD).failed).toEqual([CI_CHECK]);
+  });
+
   it('fails a waived commit with no CI run, after waiting for it', () => {
     expect(settled(waived, new Map(), HEAD)).toBe(false);
     const o = outcome(waived, new Map(), HEAD);

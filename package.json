@@ -25,6 +25,8 @@
     "build": "node scripts/build-dist.ts",
     "pr:review": "node scripts/pr-review.ts",
     "train": "node scripts/merge-train.ts",
+    "land": "node scripts/land.ts",
+    "evidence:stamp": "node --conditions=dragon-internal scripts/evidence-stamp.ts",
     "layout:subset": "node packages/translate/src/cli/subset.ts",
     "linebreak:gen": "node scripts/gen-linebreak-data.ts",
     "notices:gen": "node scripts/gen-third-party-notices.ts",

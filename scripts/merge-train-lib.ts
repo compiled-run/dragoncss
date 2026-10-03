@@ -96,11 +96,13 @@ export const parentsOf = (git: Git, commit: string): string[] => {
 };
 
 export const TRAIN_SUBJECT = 'Train position ';
+// The landing driver (scripts/land.ts) makes the same merge and regen commits under this subject.
+export const LAND_SUBJECT = 'Land: ';
 const MAX_BUILDS = 10;
 
 // The commit a member's position merges: its clean head, or a PR head that an earlier build of the train pushed (a position
 // of that build), so the new position fast-forwards from it. Every commit between the clean head and that PR head must be one
-// the train made (a "Train position" merge or regen commit); anything else is an unreviewed push.
+// the train or the landing driver made (a "Train position" or "Land:" merge or regen commit); anything else is an unreviewed push.
 export const tipProblem = (git: Git, member: Member, prHead: string): string | null => {
   checkSha(prHead, `${member.branch} PR head`);
   if (prHead === member.clean) return null;
@@ -110,7 +112,7 @@ export const tipProblem = (git: Git, member: Member, prHead: string): string | n
   for (let depth = 0; at !== member.clean; depth++) {
     if (depth >= 2 * MAX_BUILDS) return `${member.branch}'s PR head ${prHead} is more than ${MAX_BUILDS} train builds above its clean head`;
     const subject = text(git(['log', '-1', '--format=%s', at])).trim();
-    if (!subject.startsWith(TRAIN_SUBJECT)) return `${member.branch}'s PR head ${prHead} holds ${at}, which the train did not make ("${subject.slice(0, 80)}")`;
+    if (!subject.startsWith(TRAIN_SUBJECT) && !subject.startsWith(LAND_SUBJECT)) return `${member.branch}'s PR head ${prHead} holds ${at}, which the train did not make ("${subject.slice(0, 80)}")`;
     const parents = parentsOf(git, at);
     if (parents.length === 1) at = parents[0]!;
     else if (parents.length === 2) at = parents[1]!;
@@ -224,11 +226,11 @@ export const parseLsRemote = (out: string, ref: string): string => {
 };
 
 // Merges the member's tip (its clean head, or its PR head from an earlier build; memberTip) onto `prev` with a merge commit, in
-// a clean worktree. A conflict aborts the merge and throws.
-export const mergeMember = (git: Git, prev: string, member: Member, k: number, tip: string = member.clean): string => {
+// a clean worktree. A conflict aborts the merge and throws. `label` starts the subject (the landing driver passes "Land").
+export const mergeMember = (git: Git, prev: string, member: Member, k: number, tip: string = member.clean, label = `${TRAIN_SUBJECT}${k}`): string => {
   git(['checkout', '-q', '--detach', prev]);
   try {
-    git(['-c', 'rerere.enabled=false', 'merge', '-q', '--no-ff', '--no-edit', '-m', `${TRAIN_SUBJECT}${k}: merge ${member.branch} (#${member.pr})`, tip]);
+    git(['-c', 'rerere.enabled=false', 'merge', '-q', '--no-ff', '--no-edit', '-m', `${label}: merge ${member.branch} (#${member.pr})`, tip]);
   } catch (error) {
     const conflicted = text(git(['diff', '--name-only', '--diff-filter=U', '-z'])).split('\0').filter((p) => p !== '');
     let merging = true;
@@ -250,9 +252,9 @@ export const mergeMember = (git: Git, prev: string, member: Member, k: number, t
 };
 
 // Commits everything the regen and device steps left in the worktree, as one commit that names the commands.
-export const commitRegen = (git: Git, k: number, member: Member, commands: string[]): string => {
+export const commitRegen = (git: Git, k: number, member: Member, commands: string[], label = `${TRAIN_SUBJECT}${k}`): string => {
   git(['add', '-A']);
-  git(['commit', '-q', '--allow-empty', '-m', `${TRAIN_SUBJECT}${k}: regenerate after merging ${member.branch} (#${member.pr})\n\nCommands: ${commands.join('; ')}`]);
+  git(['commit', '-q', '--allow-empty', '-m', `${label}: regenerate after merging ${member.branch} (#${member.pr})\n\nCommands: ${commands.join('; ')}`]);
   return checkSha(text(git(['rev-parse', 'HEAD'])).trim(), 'regen commit');
 };
 
