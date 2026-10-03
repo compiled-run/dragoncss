@@ -81,11 +81,15 @@ function checkEmitted(path: string, before: string, after: string): void {
   if (kept.join('\n') !== b.slice(1).join('\n')) problems.push(`${path}: differs from the base beyond added visibility declarations`);
   let rule: string[] | null = null;
   let rules = 0;
+  // A rule inside @media (a band's override) holds only the longhands that differ there, so it gains nothing.
+  let media = false;
   for (const l of a.slice(1)) {
-    if (l.endsWith(' {')) rule = [];
+    if (l.startsWith('@media ')) media = true;
+    else if (l.endsWith(' {')) rule = [];
+    else if (l === '}' && rule === null) media = false;
     else if (l === '}' && rule !== null) {
       rules++;
-      if (rule.join(' ') !== NEW.join(' ')) problems.push(`${path}: a rule added [${rule.join(', ')}]`);
+      if (rule.join(' ') !== (media ? '' : NEW.join(' '))) problems.push(`${path}: a${media ? 'n @media' : ''} rule added [${rule.join(', ')}]`);
       rule = null;
     } else if (rule !== null) {
       const d = newDeclaration(l);
