@@ -174,3 +174,21 @@ describe('the layer origin and the reference plants', () => {
     expect(gradientFaults('tanCorrectlyRounded')).toEqual(NO_GRADIENT_FAULTS);
   });
 });
+
+describe('edge offsets (notes/T074-bg2-spec.md R7)', () => {
+  it('places a gradient centre from the right or bottom edge as PositionFromValue does: the edge distance less the offset', () => {
+    const at = (centerX: GradientImage['centerX'], centerY: GradientImage['centerY']) => gradientDesc(linear({ radial: true, centerX, centerY }), 200, 100, 2);
+    const d = at({ unit: 'end-px', value: 10 }, { unit: 'end-percent', value: 25 });
+    expect([d.p0x, d.p0y]).toEqual([180, 75]);
+    const e = at({ unit: 'px', value: 10 }, { unit: 'percent', value: 25 });
+    expect([e.p0x, e.p0y]).toEqual([20, 25]);
+  });
+  it('places a layer from the right or bottom edge as calc(100% - px) or 100% - p, Blink\'s SubtractFromOneHundredPercent', () => {
+    const g = (positionX: LayerGeometry['positionX'], positionY: LayerGeometry['positionY']) => layerPlacement(box({}), geometry({ repeatX: 'no-repeat', repeatY: 'no-repeat', sizeX: { unit: 'px', value: 20 }, sizeY: { unit: 'px', value: 10 }, positionX, positionY }), 2, true, NO_GRADIENT_FAULTS);
+    const end = g({ unit: 'end-px', value: 5 }, { unit: 'end-percent', value: 25 });
+    const start = g({ unit: 'percent', value: 100 }, { unit: 'percent', value: 75 });
+    // 100% less 5 css px (10 device px, 640 LU) on the x axis; 75% on the y axis, the same as 100% - 25%.
+    expect(end.destX).toBe(start.destX - 640);
+    expect(end.destY).toBe(start.destY);
+  });
+});

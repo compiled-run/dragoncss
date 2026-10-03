@@ -1079,7 +1079,7 @@ function commaList(parts: readonly string[]): string {
 
 function gradLength(v: JsonValue, path: string): LengthPct {
   const o = obj(v, ['unit', 'value'], path);
-  return { unit: lit(field(o, 'unit', path), ['percent', 'px'], `${path}.unit`) as 'percent' | 'px', value: numField(o, 'value', path) };
+  return { unit: lit(field(o, 'unit', path), ['percent', 'px', 'end-percent', 'end-px'], `${path}.unit`) as LengthPct['unit'], value: numField(o, 'value', path) };
 }
 
 function gradColor(v: JsonValue, path: string): StopColor {

@@ -258,8 +258,11 @@ function matRectToRect(sl: number, st: number, sr: number, sb: number, dl: numbe
 /** An 8-bit legacy sRGB colour; alpha is 8-bit too, as Chrome keeps legacy colours (css/color.ts). */
 export type StopColor = { readonly r: number; readonly g: number; readonly b: number; readonly alpha: number };
 
-/** A <length-percentage> of the subset: a percentage, or CSS px (zoomed by the device scale at paint time). */
-export type LengthPct = { readonly unit: 'percent' | 'px'; readonly value: number };
+/**
+ * A <length-percentage> of the subset: a percentage, or CSS px (zoomed by the device scale at paint time). A position may also be
+ * an offset from the right or bottom edge (end-percent, end-px; notes/T074-bg2-spec.md R7).
+ */
+export type LengthPct = { readonly unit: 'percent' | 'px' | 'end-percent' | 'end-px'; readonly value: number };
 
 /** A colour stop: its colour and position ('auto' for a stop without one; two positions arrive as two stops). */
 export type CssStop = { readonly color: StopColor; readonly unit: 'auto' | 'percent' | 'px'; readonly value: number };
@@ -311,9 +314,14 @@ function stopColor4(c: StopColor): Color4 {
   return { r: f32(c.r / 255), g: f32(c.g / 255), b: f32(c.b / 255), a: f32(c.alpha / 255) };
 }
 
-/** PositionFromValue for a computed centre coordinate: a percentage of the edge distance, or px times the zoom. */
+/**
+ * PositionFromValue for a computed centre coordinate: a percentage of the edge distance, or px times the zoom; from the right or
+ * bottom edge, the edge distance less that.
+ */
 function positionOf(v: LengthPct, edge: number, zoom: number): number {
   if (v.unit === 'percent') return f32(f32(f32(v.value) / 100) * edge);
+  if (v.unit === 'end-percent') return f32(edge - f32(f32(f32(v.value) / 100) * edge));
+  if (v.unit === 'end-px') return f32(edge - f32(v.value * zoom));
   return f32(v.value * zoom);
 }
 
@@ -925,12 +933,18 @@ function luFloat(raw: number): number {
   return f32(raw / 64);
 }
 
-/** MinimumValueForLength for a zoomed px length or a percentage of `available` (units.ts percentOf). */
+/**
+ * MinimumValueForLength for a zoomed px length or a percentage of `available` (units.ts percentOf). An edge offset is Blink's
+ * SubtractFromOneHundredPercent: a percentage p becomes 100 - p, and px becomes calc(100% - px), evaluated by CalculationValue as
+ * pixels + percent / 100 * available in float.
+ */
 function luLength(v: LengthPct, available: number, zoom: number): number {
-  if (v.unit === 'percent') {
-    const product = f32(luFloat(available) * f32(v.value));
+  if (v.unit === 'percent' || v.unit === 'end-percent') {
+    const pct = v.unit === 'percent' ? f32(v.value) : f32(100 - f32(v.value));
+    const product = f32(luFloat(available) * pct);
     return luFromFloat(f32(product / 100));
   }
+  if (v.unit === 'end-px') return luFromFloat(f32(-f32(v.value * zoom) + luFloat(available)));
   return luFromFloat(f32(v.value * zoom));
 }
 
