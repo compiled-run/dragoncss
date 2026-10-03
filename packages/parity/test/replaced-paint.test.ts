@@ -8,7 +8,9 @@ import { emitAndroidViewsCases, emitUikitCases, expectedDump, WRITE_CSS } from '
 import { deviceDprs } from '../src/targets.ts';
 import { REPLACED } from '../src/fixture-groups/replaced.ts';
 import { expectedEngine, hostSources, nativeCases } from '../src/native-host.ts';
-import { flatAt } from '../src/paint-samples/image.ts';
+import { maskedAt } from '../src/paint-samples/foreign-view.ts';
+import { dropsBaseAt, flatAt, imagePointsOf } from '../src/paint-samples/image.ts';
+import type { ReplacedSamplesBox } from '../src/paint-samples/replaced-geometry.ts';
 import { replacedBoxes } from '../src/paint-samples/replaced-geometry.ts';
 import { repoPath } from '../src/paths.ts';
 import { caseSamples, committedPixels } from '../src/pixel-reference.ts';
@@ -88,6 +90,8 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
   });
 
   it('keeps no base point on non-flat image content and none inside a web view', () => {
+    // The image module's own points (image-flat, image edges) are not base points; flatAt and the edge test judge them.
+    const base = (rule: string): boolean => !rule.startsWith('image-flat:') && !/^edge:[^:]+:image-/.test(rule);
     const off: string[] = [];
     for (const n of cases) {
       for (const dpr of DPRS) {
@@ -95,15 +99,12 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
         const boxes = replacedBoxes(ctx);
         const kept = ctx.points;
         for (const p of kept) {
+          if (p.x < 0 || p.y < 0) off.push(`${n.case.id}@${dpr} ${p.rule}: outside the raster at (${p.x}, ${p.y})`);
           for (const [id, b] of boxes) {
-            const d = b.paint.drawn;
-            const c = b.paint.content;
-            // A box laid out later paints over this one, so a point under it shows that box.
-            if (b.later.some((r) => p.x >= r.left && p.x < r.right && p.y >= r.top && p.y < r.bottom)) continue;
-            const inContent = p.x >= c.x && p.y >= c.y && p.x < c.x + c.width && p.y < c.y + c.height;
-            if (b.image === null && inContent) off.push(`${n.case.id}@${dpr} ${p.rule}: inside the web view ${id}`);
-            const inImage = d !== null && p.x >= d.x && p.y >= d.y && p.x < d.x + d.width && p.y < d.y + d.height;
-            if (b.image !== null && inImage && !p.rule.startsWith(`edge:${id}:image-`) && !flatAt(b, p.x, p.y)) off.push(`${n.case.id}@${dpr} ${p.rule}: on non-flat content of ${id}`);
+            // maskedAt and dropsBaseAt leave a point a later opaque box hides: it shows that box.
+            if (b.image === null && maskedAt(b, p.x, p.y)) off.push(`${n.case.id}@${dpr} ${p.rule}: inside the web view ${id}`);
+            if (b.image !== null && base(p.rule) && dropsBaseAt(b, p.x, p.y)) off.push(`${n.case.id}@${dpr} ${p.rule}: on non-flat content of ${id}`);
+            if (p.rule.startsWith(`image-flat:${id}:`) && !flatAt(b, p.x, p.y)) off.push(`${n.case.id}@${dpr} ${p.rule}: an image-flat point not on flat content of ${id}`);
           }
         }
       }
@@ -172,4 +173,43 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
     check('ios', 'Host/main.swift', 'func dragonRun(window: UIWindow, host: UIView) {', '  ', 'dragonCase(');
     check('android', 'kotlin/dev/dragon/host/DragonActivity.kt', 'override fun onCreate(savedInstanceState: Bundle?) {', '    ', 'runCase(');
   });
+
+  describe('a synthetic replaced box: occlusion and the raster edges (Macroscope 4169579863, 4169579868)', () => {
+    // A 64 x 64 image, red on the left half and blue on the right, drawn 10x into a 640 x 640 rect from (-320, -320).
+    const data = new Uint8Array(64 * 64 * 4);
+    for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) data.set(x < 32 ? [255, 0, 0, 255] : [0, 0, 255, 255], (y * 64 + x) * 4);
+    const rect = { x: -320, y: -320, width: 640, height: 640 };
+    const box = (later: ReplacedSamplesBox['later'], cover: ReplacedSamplesBox['cover'], image = true): ReplacedSamplesBox =>
+      ({ paint: { dest: rect, content: rect, drawn: rect }, image: image ? { width: 64, height: 64, data } : null, later, cover });
+    const over = { id: 'later', left: -10, top: -10, right: 40, bottom: 40, width: 50, height: 50 };
+
+    it('never places an image point outside the raster, though the drawn part starts left of and above it', () => {
+      const points = imagePointsOf(new Map([['img', box([], [])]]), { width: 400, height: 400 });
+      expect(points.length).toBeGreaterThan(0);
+      expect(points.filter((p) => p.x < 0 || p.y < 0 || p.x >= 400 || p.y >= 400)).toEqual([]);
+      // Without the lower bound the grid puts flat points at negative coordinates: (-160, -160) is flat red.
+      expect(flatAt(box([], []), -160, -160)).toBe(true);
+    });
+
+    it('drops a base point on non-flat content unless a later opaque box hides it; a transparent later box hides nothing', () => {
+      // (0, 0) is on the red/blue seam (source x 32), so the content there is not flat.
+      expect(dropsBaseAt(box([], []), 0, 0)).toBe(true);
+      expect(dropsBaseAt(box([over], []), 0, 0)).toBe(true);
+      expect(dropsBaseAt(box([over], [over]), 0, 0)).toBe(false);
+      // Flat content (source x 8) is kept with or without a later box, and nothing outside the drawn part is dropped.
+      expect(dropsBaseAt(box([over], []), -200, -200)).toBe(false);
+      expect(dropsBaseAt(box([], []), 330, 0)).toBe(false);
+      // An image-flat point still needs no later box at all over it.
+      expect(flatAt(box([over], []), 20, 20)).toBe(false);
+      expect(flatAt(box([], []), -200, -200)).toBe(true);
+    });
+
+    it('masks a web view point unless a later opaque box hides it', () => {
+      expect(maskedAt(box([], [], false), 0, 0)).toBe(true);
+      expect(maskedAt(box([over], [], false), 0, 0)).toBe(true);
+      expect(maskedAt(box([over], [over], false), 0, 0)).toBe(false);
+      expect(maskedAt(box([], [], false), 330, 0)).toBe(false);
+    });
+  });
 });
+

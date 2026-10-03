@@ -178,24 +178,34 @@ describe('REPL-a width and height attributes (HTML §2.3.4.4 dimension values, �
 });
 
 describe('REPL-a Phase B iframe src (R9: the web view loads it)', () => {
-  it('takes an absolute http or https URL in RFC 3986 characters, stripped of ASCII white space as HTML does', () => {
+  it('takes an absolute https URL in RFC 3986 characters with well-formed % escapes, stripped of ASCII white space as HTML does', () => {
     expect(iframeSrcUrl('https://www.youtube.com/embed/DwTzcZxyUUg?autoplay=1&mute=1')).toBe('https://www.youtube.com/embed/DwTzcZxyUUg?autoplay=1&mute=1');
-    expect(iframeSrcUrl(' \thttp://example.com\n')).toBe('http://example.com');
-    expect(iframeSrcUrl('HTTPS://EXAMPLE.COM/a%20b#x')).toBe('HTTPS://EXAMPLE.COM/a%20b#x');
-    for (const bad of ['', '/embed/x', 'embed.html', '//example.com/x', 'javascript:alert(1)', 'data:text/html,x', 'about:blank', 'file:///etc/passwd', 'https://', 'https:///x', 'https://example.com/a b', 'https://exämple.com', 'https://example.com/"x"', 'https://example.com/<x>']) {
+    expect(iframeSrcUrl(' \thttps://example.com\n')).toBe('https://example.com');
+    expect(iframeSrcUrl('HTTPS://EXAMPLE.COM/a%20b%c3%A9#x')).toBe('HTTPS://EXAMPLE.COM/a%20b%c3%A9#x');
+    for (const ok of ['https://[::1]/embed', 'https://[2001:db8::7]:8443/v?x=1#t=2', 'https://user:pw@example.com:443/a/b;c?d=e/f?g#h/i?', 'https://127.0.0.1/x', 'https://example.com', 'https://example.com/', 'https://[::]/', 'https://[1:2:3:4:5:6:7:8]/', 'https://[::ffff:192.0.2.1]/', 'https://[1:2:3:4:5:6:192.0.2.1]/', 'https://example.com:65535/', 'https://my_host.example.com./']) expect(iframeSrcUrl(ok), ok).toBe(ok);
+    // http is blocked in an app build (App Transport Security, Android's cleartext default), so it is refused (Macroscope 4169579880);
+    // a % that does not start two hex digits is read differently by Foundation and Android (Macroscope 4169579866).
+    const refused = ['http://example.com', ' HTTP://example.com/embed', 'https://example.com/a%zz', 'https://example.com/%', 'https://example.com/a%4', 'https://example.com/?q=100%', 'https://ex%ample.com/',
+      // Brackets only around a valid IPv6 literal in the host (Macroscope 4170043826); a bad port; a second #; brackets in a path.
+      'https://[x]', 'https://[x]/embed', 'https://[::1', 'https://[1:2:3]/', 'https://example.com:99999/', 'https://example.com:8a/', 'https://example.com/a#b#c', 'https://example.com/[a]', 'https://@/', 'https://:443/',
+      'https://[1::2::3]/', 'https://[1:2:3:4:5:6:7:8:9]/', 'https://[::ffff:999.0.0.1]/', 'https://[v1.x]/', 'https://example.com:65536/', 'https://exa!mple.com/', 'https://example..com/'];
+    for (const bad of ['', '/embed/x', 'embed.html', '//example.com/x', 'javascript:alert(1)', 'data:text/html,x', 'about:blank', 'file:///etc/passwd', 'https://', 'https:///x', 'https://example.com/a b', 'https://exämple.com', 'https://example.com/"x"', 'https://example.com/<x>', ...refused]) {
       expect(iframeSrcUrl(bad), bad).toBeNull();
-      expect(iframeSrcRefusal('iframe', 'src', bad), bad).toContain('absolute http or https URL');
+      expect(iframeSrcRefusal('iframe', 'src', bad), bad).toContain('absolute https URL');
     }
     expect(iframeSrcRefusal('img', 'src', '/a.png')).toBeNull();
     expect(iframeSrcRefusal('iframe', 'width', '/x')).toBeNull();
   });
 
-  it('a compile refuses a relative iframe src and accepts an absolute https one', () => {
+  it('a compile refuses a relative, http or malformed-escape iframe src and accepts an absolute https one', () => {
     const attr = (name: string, value: string) => ({ name, value: [{ when: always, value }], origin: { kind: 'unlocated', reason: 'test' } as const });
     const project = createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } });
     const tree = (src: string) => inputFor('.a { display: block; border: 0; }', (r) => [{ ...div(r, 'a', ['a']), tag: 'iframe', attributes: [attr('src', src)] } as ElementNode]);
     const codes = (src: string) => project.compile(tree(src)).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_ATTRIBUTE').map((d) => d.message);
-    expect(codes('/embed/x')).toEqual(['attribute src on a is not supported: a native web view loads only an absolute http or https URL written in RFC 3986 characters (it has no document URL to resolve a relative one against)']);
+    const refusal = 'attribute src on a is not supported: a native web view loads only a well-formed absolute https URL (RFC 3986; it has no document URL to resolve a relative one against, and an app build blocks plain http)';
+    expect(codes('/embed/x')).toEqual([refusal]);
+    expect(codes('http://example.com/embed')).toEqual([refusal]);
+    expect(codes('https://example.com/a%zz')).toEqual([refusal]);
     expect(codes('https://example.com/embed')).toEqual([]);
   });
 });

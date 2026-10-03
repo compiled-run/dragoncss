@@ -26,7 +26,7 @@ public func dragonSetForeignView(_ v: DragonBoxView, src: String?) {
   v.addSubview(web)
   v.dragonForeignView = web
   v.dragonForeignSrc = src
-  // The compiler accepts only an absolute http or https src (analysis/elements/replaced.ts iframeSrcRefusal).
+  // The compiler accepts only an absolute https src (analysis/elements/replaced.ts iframeSrcRefusal).
   let target = dragonForeignViewLoadsSrc ? src : nil
   guard let url = URL(string: target ?? "about:blank") else { fatalError("dragon: \(v.dragonId): iframe src \(target ?? "about:blank") is not a URL") }
   web.load(URLRequest(url: url))
@@ -95,7 +95,7 @@ fun dragonSetForeignView(v: DragonBoxView, src: String?) {
   v.addView(host)
   v.dragonForeignView = host
   v.dragonForeignSrc = src
-  // The compiler accepts only an absolute http or https src (analysis/elements/replaced.ts iframeSrcRefusal).
+  // The compiler accepts only an absolute https src (analysis/elements/replaced.ts iframeSrcRefusal).
   web.loadUrl(if (dragonForeignViewLoadsSrc && src != null) src else "about:blank")
 }
 
