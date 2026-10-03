@@ -223,6 +223,17 @@ describe('pnpm regen chain', () => {
     expect(w.t.get('out/b')).toBe(a.get('out/b'));
   });
 
+  it('--explain names what each step would do and why, and changes nothing', async () => {
+    const w = await warm();
+    w.set({ 'tools/lib.ts': '// edited\n', 'out/c': 'stale' });
+    const before = new Map(w.t);
+    const r = await regen(CHAIN, { ...opts, explain: true }, w.io());
+    expect(r).toMatchObject({ ok: true, ran: 0, changed: [] });
+    expect(r.records.map((x) => `${x.step}: ${x.action} (${x.why})`)).toEqual(['gen: would run (inputs changed: tools/lib.ts)', 'rows: would run (inputs changed: tools/lib.ts)', 'other: would restore (outputs differ from the recorded run: out/c)']);
+    expect(w.ran).toEqual([]);
+    expect(w.t).toEqual(before);
+  });
+
   it('keys a step on its command, script text, environment and machine', async () => {
     const tree = new Map([['tools/gen.ts', 'x'], ['data/a/x', '1']].map(([p, c]) => [p!, blobOf(c!)]));
     const ctx = (over: Partial<Context> = {}): Context => ({ tree, read: () => '', scripts: { 'gen:x': 'node tools/gen.ts' }, env: { E: '1' }, machine: 'm', ...over });

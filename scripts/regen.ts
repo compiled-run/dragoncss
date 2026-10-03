@@ -1,5 +1,5 @@
-// pnpm regen [--check] [--force] [--from <step>] [--jobs <n>]: regenerates every generated output from the sources and repeats
-// the chain until a pass changes nothing (profile rows feed the captures, lanes.json feeds the profile rows).
+// pnpm regen [--check] [--force] [--from <step>] [--jobs <n>] [--explain]: regenerates every generated output from the sources
+// and repeats the chain until a pass changes nothing (profile rows feed the captures, lanes.json feeds the profile rows).
 // A step's cache key is the content of exactly what it reads (scripts/regen-inputs.ts): the import closure of its entry files,
 // its declared data globs, the lockfile entries of the packages it imports, its command and its environment. Every step runs
 // under scripts/regen-trace.ts, and a run that read a tree file or package outside that set fails, so the key cannot miss an
@@ -7,7 +7,8 @@
 // when an entry for its key recorded the outputs the tree has now, and its outputs are restored from the entry's git blobs when
 // they differ and the recorded run wrote every output without reading any of them. Steps that neither read nor write each
 // other's files run in parallel (--jobs, default 2). --check exits 1 naming every file the run changed (and leaves them
-// regenerated); --force ignores entries recorded before this run; --from starts the first pass at that step.
+// regenerated); --force ignores entries recorded before this run; --from starts the first pass at that step; --explain prints
+// what each step would do and why, and changes nothing.
 // Device lanes are never run: lanes-host rewrites only the host rows of lanes.json and keeps device records that are still current.
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -464,8 +465,9 @@ export type Io = {
   readonly now: () => number;
 };
 
-export type Options = { readonly force: boolean; readonly check: boolean; readonly from: string | null; readonly jobs?: number };
-export type StepRecord = { readonly pass: number; readonly step: string; readonly action: 'skipped' | 'restored' | 'ran'; readonly ms: number; readonly changed: number; readonly why: string };
+/** explain: decide every step of one pass (skip, restore or run, and why) and change nothing. */
+export type Options = { readonly force: boolean; readonly check: boolean; readonly from: string | null; readonly jobs?: number; readonly explain?: boolean };
+export type StepRecord = { readonly pass: number; readonly step: string; readonly action: 'skipped' | 'restored' | 'ran' | 'would restore' | 'would run'; readonly ms: number; readonly changed: number; readonly why: string };
 export type Result = { readonly ok: boolean; readonly changed: readonly string[]; readonly ran: number; readonly passes: number; readonly error: string | null; readonly records: readonly StepRecord[] };
 
 const secs = (ms: number): string => `${(ms / 1000).toFixed(1)} s`;
@@ -595,6 +597,13 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
             break;
           }
           const reason = why(io.store, s, ins, outputs, opts.force && pass === 1);
+          if (opts.explain === true) {
+            const action = hit !== null && hit.restorable ? 'would restore' : 'would run';
+            records.push({ pass, step: s.name, action, ms: 0, changed: 0, why: reason });
+            io.log(`${s.name}: ${action} (${reason})`);
+            started = true;
+            break;
+          }
           if (hit !== null && hit.restorable) {
             const ts = io.now();
             const files: Record<string, string | null> = { ...hit.outputs };
@@ -647,6 +656,7 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
       error ??= e;
     }
     if (error !== null) return fail(error, changedPaths(start, io.snapshot()), ran, pass);
+    if (opts.explain === true) return { ok: true, changed: [], ran: 0, passes: 1, error: null, records };
     // A pass changes nothing only when no step in it changed a file, even if a later step changed it back.
     const passChanged = [...touched].sort();
     lastChanged = passChanged;
@@ -726,15 +736,16 @@ export function restoreBlobs(root: string, files: Readonly<Record<string, string
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
-  const opts: { force: boolean; check: boolean; from: string | null; jobs: number } = { force: false, check: false, from: null, jobs: Number(process.env.DRAGON_REGEN_JOBS ?? DEFAULT_JOBS) };
+  const opts: { force: boolean; check: boolean; from: string | null; jobs: number; explain: boolean } = { force: false, check: false, from: null, jobs: Number(process.env.DRAGON_REGEN_JOBS ?? DEFAULT_JOBS), explain: false };
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === '--force') opts.force = true;
     else if (a === '--check') opts.check = true;
+    else if (a === '--explain') opts.explain = true;
     else if (a === '--from' && i + 1 < args.length && !args[i + 1]!.startsWith('--')) opts.from = args[++i]!;
     else if (a === '--jobs' && i + 1 < args.length && /^[1-9]\d*$/.test(args[i + 1]!)) opts.jobs = Number(args[++i]!);
     else {
-      console.error(`regen: unknown argument ${JSON.stringify(a)}; usage: pnpm regen [--check] [--force] [--from <step>] [--jobs <n>]`);
+      console.error(`regen: unknown argument ${JSON.stringify(a)}; usage: pnpm regen [--check] [--force] [--from <step>] [--jobs <n>] [--explain]`);
       process.exit(2);
     }
   }
