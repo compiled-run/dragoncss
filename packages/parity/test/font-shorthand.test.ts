@@ -140,8 +140,8 @@ describe('font-synthesis on native', () => {
 });
 
 describe('the font-shorthand group', () => {
-  it('every capture of TXT-W1 (601afaf56) is unchanged but for the font-synthesis keys', () => {
-    const W1 = '601afaf56';
+  it('every capture of TXT-W1 (txt-w1-v2 53699e28b) is unchanged but for the font-synthesis keys', () => {
+    const W1 = '53699e28b';
     const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps'];
     const root = repoPath('.');
     const paths = execFileSync('git', ['ls-tree', '-r', '--name-only', W1, '--', 'packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'], { cwd: root, encoding: 'utf8', maxBuffer: 1 << 28 }).split('\n').filter((p) => p.endsWith('.json'));
