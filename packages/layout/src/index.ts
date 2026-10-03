@@ -47,7 +47,7 @@ export type { EnvironmentDependencies } from './environment.ts';
 export { environmentDependencies, resolveEnvironment } from './environment.ts';
 export type { FontLengths } from './text.ts';
 export { fontMetricLengths } from './text.ts';
-// ANIM-b1 (T065): the rt roots the runtime animator's TypeScript reference runs (packages/parity/src/animator.ts), namespaced.
+// ANIM-b1 (T065): the rt roots the runtime animator's TypeScript reference runs (packages/parity/src/anim-cases.ts), namespaced.
 export * as rtEasing from './rt-easing.ts';
 export * as rtTiming from './rt-timing.ts';
 export * as rtInterpolate from './rt-interpolate.ts';

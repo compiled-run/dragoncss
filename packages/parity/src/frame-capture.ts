@@ -18,8 +18,8 @@ import { authoredModel } from './render.ts';
 import { fixtureInput } from './cases.ts';
 import type { Assignment } from 'dragon';
 import { programAt, programInput, StateRuntime, webClassMap } from 'dragon';
-import type { AnimFaults } from './animator.ts';
-import { closureFrame, NO_ANIM_FAULTS, trackKey } from './animator.ts';
+import type { AnimFaults } from './anim-cases.ts';
+import { closureFrame, NO_ANIM_FAULTS, trackKey } from './anim-cases.ts';
 
 export const FRAMES_CAPTURE_SCHEMA = 'dragon-frames-capture/1';
 

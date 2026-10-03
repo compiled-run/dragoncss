@@ -285,7 +285,7 @@ export type { AnimProgram, SlotListing, TransitionSlot } from './lower/anim-prog
 export { ANIM_PROGRAM_VERSION } from './lower/anim-program.ts';
 import { lowerAnimProgram } from './lower/anim-program.ts';
 export { lowerAnimProgram };
-// T065: the TypeScript reference animator (packages/parity/src/animator.ts) reads these.
+// T065: the TypeScript reference animator (packages/parity/src/anim-cases.ts) reads these.
 export type { EasingValue } from './css/properties/animation.ts';
 export { animationKind } from './css/animation-kinds.ts';
 
