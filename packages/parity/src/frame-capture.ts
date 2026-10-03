@@ -17,7 +17,7 @@ import { CHROME_VERSION, openFrozenPage } from './chrome.ts';
 import { authoredModel } from './render.ts';
 import { fixtureInput } from './cases.ts';
 import type { AnimFaults, Assignment } from 'dragon';
-import { NO_ANIM_FAULTS, programAt, programInput, StateRuntime, trackKey, webClassMap } from 'dragon';
+import { closureFrame, NO_ANIM_FAULTS, programAt, programInput, StateRuntime, trackKey, webClassMap } from 'dragon';
 
 export const FRAMES_CAPTURE_SCHEMA = 'dragon-frames-capture/1';
 
@@ -195,6 +195,7 @@ export function animCaseReport(c: AnimCase, dprs: readonly number[] = [1, 2, 2.6
     const env = { viewport: c.viewport, devicePixelRatio: dpr, direction: c.direction, rootFont: 'ahem' as const };
     cap.samples.forEach((s, i) => {
       const d = dumps[i] as FrameDump;
+      const shown = closureFrame(d.frame, c.ap, anim);
       samples++;
       if (s.at !== d.at) failures.push(`${c.id} DPR ${dpr} sample ${i}: captured at ${s.at} ms, scripted at ${d.at} ms`);
       for (const t of tracked) {
@@ -202,7 +203,7 @@ export function animCaseReport(c: AnimCase, dprs: readonly number[] = [1, 2, 2.6
         const node = s.nodes.find((n) => n.id === t.node);
         if (node === undefined || !node.hasBox) continue;
         const want = (node.computed ?? {})[t.property];
-        const mine = d.frame.get(trackKey(t.node, t.property)) ?? staticValue(c, d, t.node, t.property);
+        const mine = shown.get(trackKey(t.node, t.property)) ?? staticValue(c, d, t.node, t.property);
         if (mine === null) continue;
         values++;
         const got = rtInterpolate.serializeValue(mine, 0, 0, trig);

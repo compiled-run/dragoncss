@@ -237,5 +237,7 @@ export function trackedProperties(ap: AnimProgram): readonly { readonly node: st
   const out = new Map<string, { node: string; property: string }>();
   for (const s of ap.slots) out.set(`${s.node}|${s.property}`, { node: s.node, property: s.property });
   for (const b of ap.bases) out.set(`${b.node}|${b.property}`, { node: b.node, property: b.property });
+  // R9: the colours an animated colour reaches (inheriting descendants, currentcolor borders), compared as Chrome computes them.
+  for (const c of ap.closure) for (const w of c.writes) out.set(`${w.node}|${w.property}`, { node: w.node, property: w.property });
   return [...out.values()];
 }

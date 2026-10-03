@@ -85,6 +85,14 @@ export function rgba8Of(c: rtInterpolate.LegacyColor): Rgba8 {
   return { r: ch(c.r), g: ch(c.g), b: ch(c.b), alpha: a < 0 ? 0 : a > 255 ? 255 : a };
 }
 
+const zeroOf = (kind: 'length' | 'color'): AnimatedValue => ({
+  kind,
+  number: 0,
+  length: rtInterpolate.ZERO_PX,
+  color: rtInterpolate.TRANSPARENT,
+  ops: [],
+});
+
 type Track = { readonly node: string; readonly property: Longhand; readonly kind: 'length' | 'color'; readonly range: 'all' | 'non-negative' };
 
 /** One frame's output: the value of every animated (node, property), the strings Chrome's getComputedStyle would show. */
@@ -177,8 +185,12 @@ export class Animator {
         this.transitions[k] = this.anim.displayNoneKeepsTransition ? running : null;
         return;
       }
+      // Planted displayNoneKeepsTransition: the transition outlives display: none and resumes when the element is shown again.
+      if (!shownBefore && this.anim.displayNoneKeepsTransition && running !== null) return;
       const track: Track = { node: s.node, property: s.property, kind: s.kind, range: s.range };
-      const before = this.base(track, from, s.values[from] ?? null);
+      const stored = this.base(track, from, s.values[from] ?? null);
+      // Planted transitionOnFirstStyle: a first style transitions from a zero value (0px, transparent) as if it had an old style.
+      const before = stored === null && !shownBefore && this.anim.transitionOnFirstStyle ? zeroOf(s.kind) : stored;
       const after = this.base(track, to, s.values[to] ?? null);
       const listing = s.listings[to] as SlotListing | null;
       if (after === null || listing === null) {
@@ -295,21 +307,30 @@ export class Animator {
 
 const SIDES = ['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'];
 
+/**
+ * R9: a frame with the closure of its animated colours: each inheriting descendant's colour and currentcolor border side takes its
+ * source's value, unless the frame animates it itself. These are the values the program's writes show, and Chrome's computed ones.
+ */
+export function closureFrame(frame: AnimFrame, ap: AnimProgram, anim: AnimFaults = NO_ANIM_FAULTS): AnimFrame {
+  const out = new Map(frame);
+  if (anim.inheritedNotPropagated) return out;
+  for (const c of ap.closure) {
+    const v = frame.get(trackKey(c.source.node, c.source.property));
+    if (v === undefined) continue;
+    for (const w of c.writes) if (!out.has(trackKey(w.node, w.property))) out.set(trackKey(w.node, w.property), v);
+  }
+  return out;
+}
+
 /** Writes a frame into a program: a new program, the base untouched. */
 export function applyFrame(base: NativeProgram, frame: AnimFrame, ap: AnimProgram, anim: AnimFaults = NO_ANIM_FAULTS): NativeProgram {
   if (frame.size === 0) return base;
   const colors = new Map<string, Rgba8>();
   const lengths = new Map<string, { property: Longhand; value: rtInterpolate.LengthValue }[]>();
-  for (const [k, v] of frame) {
+  for (const [k, v] of closureFrame(frame, ap, anim)) {
     const [node, property] = k.split('|') as [string, Longhand];
     if (v.kind === 'color') colors.set(k, rgba8Of(v.color));
-    else if (v.kind === 'length') lengths.set(node, [...(lengths.get(node) ?? []), { property, value: v.length }]);
-  }
-  // R9: the closure of an animated colour: inheriting descendants' colour and currentcolor border sides.
-  for (const c of ap.closure) {
-    const v = colors.get(trackKey(c.source.node, c.source.property));
-    if (v === undefined || anim.inheritedNotPropagated) continue;
-    for (const w of c.writes) if (!colors.has(trackKey(w.node, w.property))) colors.set(trackKey(w.node, w.property), v);
+    else if (v.kind === 'length' && frame.has(k)) lengths.set(node, [...(lengths.get(node) ?? []), { property, value: v.length }]);
   }
   const nodes = base.nodes.map((n): ProgramNode => {
     const textColor = n.kind === 'text' && n.parent !== null ? colors.get(trackKey(n.parent, 'color')) : undefined;
