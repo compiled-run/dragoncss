@@ -108,6 +108,7 @@ const f6: Case[] = [
   { id: 'line-height', note: 'line-height 40px on the li', css: `${LIST} li{line-height:40px}`, html: '<ul data-p="u"><li data-p="a">c</li></ul><ol data-p="o"><li data-p="b">d</li></ol>' },
   { id: 'push-down', note: 'li font 32px, child font 10px: the marker ascent pushes content down', css: `${LIST} li{font-size:32px}`, html: '<ul data-p="u"><li data-p="a"><span data-p="s" style="font-size:10px">c</span></li><li data-p="b"><div data-p="d" style="font-size:10px">e</div></li></ul>' },
   { id: 'empty-item', note: 'an item with no line boxes top-aligns the marker and grows to its height', css: LIST, html: '<ul data-p="u"><li data-p="a"></li><li data-p="b" style="padding-top:5px"></li></ul>' },
+  { id: 'no-line-boxes', note: 'block children with no line boxes: the marker is placed without a line box', css: LIST, html: '<ul data-p="u"><li data-p="a"><div data-p="d1" style="height:10px"></div></li><li data-p="b" style="padding-top:5px"><div data-p="d2" style="height:4px"></div></li></ul>' },
   { id: 'border-left', note: "the offset is taken from the li's border box", css: `${LIST} li{border-left:7px solid;border-right:7px solid;padding-inline-start:3px}`, html: '<ul data-p="u"><li data-p="a">c</li></ul><ol data-p="o"><li data-p="b">d</li></ol>' },
   { id: 'overflow-hidden', note: 'overflow hidden on the li', css: `${LIST} li{overflow:hidden}`, html: '<ul data-p="u"><li data-p="a">c</li></ul>' },
   { id: 'before-on-li', note: '::before on an li with a marker', css: `${LIST} li::before{content:'B'}`, html: '<ul data-p="u"><li data-p="a">a</li></ul>' },
@@ -266,7 +267,7 @@ function pageSide(args: { computed: readonly string[]; pseudos: readonly string[
   return { elements, textRects };
 }
 
-type Snapshot = {
+export type Snapshot = {
   strings: string[];
   documents: {
     nodes: { parentIndex: number[]; nodeType: number[]; nodeName: number[]; attributes: number[][]; pseudoType?: { index: number[]; value: number[] }; shadowRootType?: { index: number[]; value: number[] } };
@@ -276,7 +277,7 @@ type Snapshot = {
 };
 
 /** Snapshot text boxes per owner, and the cross-check of every real (light DOM) text node against its Range client rects. */
-function snapshotText(snap: Snapshot, dpr: number, textRects: readonly (readonly number[][])[]): { text: TextRecord[]; lines: number; worst: number } {
+export function snapshotText(snap: Snapshot, dpr: number, textRects: readonly (readonly number[][])[]): { text: TextRecord[]; lines: number; worst: number } {
   const d = snap.documents[0];
   if (d === undefined) throw new Error('DOMSnapshot has no document');
   const S = snap.strings;

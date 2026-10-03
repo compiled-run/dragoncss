@@ -4,14 +4,15 @@
 // circle an oval stroked at 1 device px, square a fill of the pixel-snapped rect. Prints equal/total pixels per symbol, font size
 // and DPR, then each planted AaFaults fault per symbol. Without --claim it only reports; --claim=<symbol,...> exits 1 unless every
 // crop of each claimed symbol is equal at every pixel (GEN-c's gate). Malformed or incomplete oracle data always exits 1.
-// Run with: node --conditions=dragon-internal scripts/check-marker-paint-oracle.ts [--claim=disc,square]
+// --self-test plants faults in the oracle data, a geometry run and a snapshot, and exits 1 unless each one is caught.
+// Run with: node --conditions=dragon-internal scripts/check-marker-paint-oracle.ts [--claim=disc,square] [--self-test]
 import { readFileSync } from 'node:fs';
 import { CHROME_VERSION } from '../packages/parity/src/chrome.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
 import type { AaFaults, Device, FRect, IRect } from '../packages/layout/src/paint-aa.ts';
 import { antiFillPath, devicePixels, drawRRect, NO_AA_FAULTS, ovalPath, setRectRadii, strokeRRect, whiteDevice } from '../packages/layout/src/paint-aa.ts';
-import { DPRS, MARKER_SIZES, ORACLE_FILE, snappedSymbolRect, SYMBOLS } from './capture-gen-probe.ts';
-import type { OracleCrop, OracleFile } from './capture-gen-probe.ts';
+import { DPRS, FAMILIES, geometryProblems, MARKER_SIZES, ORACLE_FILE, OUT_DIR, snappedSymbolRect, snapshotText, SYMBOLS } from './capture-gen-probe.ts';
+import type { OracleCrop, OracleFile, Run, Snapshot } from './capture-gen-probe.ts';
 import { parseProbeArgs } from './probe-common.ts';
 
 type Symbol = (typeof SYMBOLS)[number];
@@ -89,10 +90,73 @@ export function compareCrop(c: OracleCrop, faults: AaFaults = NO_AA_FAULTS): Cro
   return { ...base, equal, first };
 }
 
+
+function throws(f: () => unknown, pattern: RegExp): boolean {
+  try {
+    f();
+  } catch (e) {
+    return pattern.test((e as Error).message);
+  }
+  return false;
+}
+
+/** Each plant must be caught: malformed oracle data, a changed Chrome pixel, a marker off its formula, a text box off its Range rect. */
+function selfTest(file: OracleFile): string[] {
+  const failed: string[] = [];
+  const expect = (name: string, ok: boolean): void => {
+    if (!ok) failed.push(name);
+  };
+  const crops = file.crops;
+  const first = crops[0] as OracleCrop;
+  const withCrop = (c: OracleCrop): OracleFile => ({ ...file, crops: [c, ...crops.slice(1)] });
+  expect('oracle reads', !throws(() => readOracle(file), /./));
+  expect('missing crop', throws(() => readOracle({ ...file, crops: crops.slice(1) }), /missing crops/));
+  expect('repeated crop', throws(() => readOracle({ ...file, crops: [...crops, first] }), /repeats/));
+  expect('other Chrome', throws(() => readOracle({ ...file, chrome: '144.0.0.0' }), /captured with Chrome/));
+  expect('moved rect', throws(() => readOracle(withCrop({ ...first, rect: [first.rect[0] + 1, first.rect[1], first.rect[2] + 1, first.rect[3]] })), /snapped symbol rect/));
+  expect('bad row', throws(() => readOracle(withCrop({ ...first, rows: [`zz${(first.rows[0] as string).slice(2)}`, ...first.rows.slice(1)] })), /hex rows/));
+  expect('short rows', throws(() => readOracle(withCrop({ ...first, rows: first.rows.slice(1) })), /hex rows/));
+  const disc = crops.find((c) => c.symbol === 'disc' && c.fontSize === 16 && c.dpr === 2) as OracleCrop;
+  const row = disc.rows[2] as string;
+  const flipped = { ...disc, rows: [...disc.rows.slice(0, 2), `${row.slice(0, 4)}${row.slice(4, 6) === '00' ? '01' : '00'}${row.slice(6)}`, ...disc.rows.slice(3)] };
+  const r = compareCrop(flipped);
+  expect('changed pixel', r.equal === r.pixels - 1);
+  const fam = FAMILIES.find((f) => f.id === 'family5-markers');
+  const geo = fam?.cases.find((c) => c.id === 'geometry-disc');
+  const stored = JSON.parse(readFileSync(repoPath(`${OUT_DIR}/family5-markers.json`), 'utf8')) as { cases: { id: string; runs: Record<string, Run> }[] };
+  const run = stored.cases.find((c) => c.id === 'geometry-disc')?.runs['dpr-2/ltr'];
+  if (geo === undefined || run === undefined) failed.push('geometry-disc run');
+  else {
+    expect('geometry holds', geometryProblems(geo, run, 2, 'ltr').length === 0);
+    const moved: Run = { ...run, pseudo: run.pseudo.map((p, i) => (i === 2 && p.box !== null ? { ...p, box: [p.box[0] + 0.5, p.box[1], p.box[2], p.box[3]] } : p)) };
+    expect('marker off its formula', geometryProblems(geo, moved, 2, 'ltr').length === 1);
+    expect('marker missing', geometryProblems(geo, { ...run, pseudo: run.pseudo.slice(1) }, 2, 'ltr').length === 1);
+  }
+  const snap = (dx: number): Snapshot => ({
+    strings: ['#document', 'HTML', 'BODY', '#text', 'ab'],
+    documents: [{
+      nodes: { parentIndex: [-1, 0, 1, 2], nodeType: [9, 1, 1, 3], nodeName: [0, 1, 2, 3], attributes: [[], [], [], []] },
+      layout: { nodeIndex: [3], text: [4] },
+      textBoxes: { layoutIndex: [0], bounds: [[2 * dx, 0, 64, 32]], start: [0], length: [2] },
+    }],
+  });
+  expect('cross-check holds', !throws(() => snapshotText(snap(0), 2, [[[0, 0, 32, 16]]]), /./));
+  expect('cross-check catches a moved box', throws(() => snapshotText(snap(0.01), 2, [[[0, 0, 32, 16]]]), /differs from its Range client rect/));
+  expect('cross-check catches a missing box', throws(() => snapshotText(snap(0), 2, [[[0, 0, 32, 16], [0, 16, 32, 16]]]), /Range client rects/));
+  expect('cross-check catches a missing text node', throws(() => snapshotText(snap(0), 2, []), /light-DOM text nodes/));
+  return failed;
+}
+
 const PLANTS: readonly (keyof AaFaults)[] = ['supersampleInsteadOfAAA', 'conicNotQuadded', 'edgeFixedPointRounding', 'rrectRadiiUnclamped', 'coverageNotAccumulated'];
 
 function main(): void {
-  const args = parseProbeArgs(process.argv.slice(2), [], ['--claim']);
+  const args = parseProbeArgs(process.argv.slice(2), ['--self-test'], ['--claim']);
+  if (args.flags.has('--self-test')) {
+    const failed = selfTest(JSON.parse(readFileSync(repoPath(ORACLE_FILE), 'utf8')) as OracleFile);
+    console.log(failed.length === 0 ? 'self-test: every plant caught' : `self-test: not caught: ${failed.join(', ')}`);
+    if (failed.length > 0) process.exitCode = 1;
+    return;
+  }
   const claimed = (args.values.get('--claim') ?? '').split(',').filter((s) => s !== '');
   for (const s of claimed) if (!(SYMBOLS as readonly string[]).includes(s)) throw new Error(`--claim: ${s} is not one of ${SYMBOLS.join(', ')}`);
   const crops = readOracle(JSON.parse(readFileSync(repoPath(ORACLE_FILE), 'utf8')));
