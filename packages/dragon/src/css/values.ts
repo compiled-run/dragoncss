@@ -19,9 +19,14 @@ export type CssValue =
   | { readonly kind: 'family'; readonly value: string }
   /** css-sizing-4 §5.1 aspect-ratio: a <ratio> of non-negative numbers, with the auto keyword (`auto && <ratio>`) or without it. */
   | { readonly kind: 'ratio'; readonly auto: boolean; readonly width: number; readonly height: number }
+  /** css-images-3 §5.6 object-position as Chrome computes it: each axis an offset from the left or top edge, in px or %. */
+  | { readonly kind: 'position'; readonly x: PositionOffset; readonly y: PositionOffset }
   /** A resolved legacy sRGB colour; transparent and currentcolor stay keywords. */
   | { readonly kind: 'color'; readonly value: Rgba8; readonly syntax: ColorSyntax }
   | { readonly kind: 'other'; readonly type: string; readonly text: string };
+
+/** One computed <position> axis: px or a percentage of the free space. */
+export type PositionOffset = { readonly unit: 'px' | '%'; readonly value: number };
 
 export const CSS_WIDE: ReadonlySet<string> = new Set(['inherit', 'initial', 'unset', 'revert', 'revert-layer']);
 export const LINE_STYLES: ReadonlySet<string> = new Set(['none', 'hidden', 'dotted', 'dashed', 'solid', 'double', 'groove', 'ridge', 'inset', 'outset']);
@@ -165,6 +170,99 @@ export function ratioValue(tokens: readonly CssNode[]): CssValue | 'invalid' | {
   return { kind: 'ratio', auto: autos.length === 1, width, height: h };
 }
 
+const POSITION_EDGES: { readonly [k: string]: { readonly axis: 'x' | 'y' | 'center'; readonly percent: number } } = {
+  left: { axis: 'x', percent: 0 },
+  right: { axis: 'x', percent: 100 },
+  top: { axis: 'y', percent: 0 },
+  bottom: { axis: 'y', percent: 100 },
+  center: { axis: 'center', percent: 50 },
+};
+
+type PositionPart = { readonly edge: string } | { readonly offset: PositionOffset } | { readonly refused: CssNode; readonly reason: string } | null;
+
+/** One <position> token: an edge keyword, a px length or 0, or a percentage; null when it is none of these. */
+function positionPart(t: CssNode): PositionPart {
+  if (t.type === 'Identifier') {
+    // css-syntax-3 §4.3.11: an escaped keyword (\6c eft) is the keyword; keywords match ASCII case-insensitively.
+    const name = asciiLower(decodeName(String(t['name'])));
+    return Object.hasOwn(POSITION_EDGES, name) ? { edge: name } : null;
+  }
+  // A number past the double range (1e999px) is Infinity, which no offset holds; Dragon has no Chrome proof of how it clamps it.
+  const overflow = { refused: t, reason: 'an offset past the range of a number is not supported in object-position' } as const;
+  if (t.type === 'Percentage') return Number.isFinite(Number(t['value'])) ? { offset: { unit: '%', value: Number(t['value']) } } : overflow;
+  if (t.type === 'Number' && Number(t['value']) === 0) return { offset: { unit: 'px', value: 0 } };
+  if (t.type === 'Dimension') {
+    if (normalizeUnit(String(t['unit'])) === 'px') return Number.isFinite(Number(t['value'])) ? { offset: { unit: 'px', value: Number(t['value']) } } : overflow;
+    return { refused: t, reason: 'only px and % offsets are supported in object-position' };
+  }
+  if (t.type === 'Function') return { refused: t, reason: 'a calculation in object-position is not supported' };
+  return null;
+}
+
+/** An offset from a far edge (right or bottom) as Chrome computes it: 100% - p% for a percentage, 100% for 0; any other length is a calc(), which Dragon refuses. */
+function fromFarEdge(edgePercent: number, o: PositionOffset): PositionOffset | null {
+  if (edgePercent === 0) return o;
+  if (o.unit === '%') return { unit: '%', value: 100 - o.value };
+  return o.value === 0 ? { unit: '%', value: 100 } : null;
+}
+
+/**
+ * css-values-4 §9.1 <position> as Chrome 145 parses and computes object-position (probed): one value (the other axis is center),
+ * two values (keywords in either order, or x then y), or four values (an edge and an offset per axis). Chrome rejects three
+ * values. Keywords compute to percentages; an offset from right or bottom computes to calc() unless it is 0 or a percentage.
+ */
+export function positionValue(tokens: readonly CssNode[]): CssValue | 'invalid' | { readonly token: CssNode; readonly reason: string } {
+  const parts = tokens.map(positionPart);
+  for (const p of parts) {
+    if (p === null) return 'invalid';
+    if ('refused' in p) return { token: p.refused, reason: p.reason };
+  }
+  const ps = parts as ({ readonly edge: string } | { readonly offset: PositionOffset })[];
+  const pct = (value: number): PositionOffset => ({ unit: '%', value });
+  const edge = (p: (typeof ps)[number]): (typeof POSITION_EDGES)[string] | null => ('edge' in p ? (POSITION_EDGES[p.edge] as (typeof POSITION_EDGES)[string]) : null);
+  if (ps.length === 1) {
+    const a = ps[0] as (typeof ps)[number];
+    const e = edge(a);
+    if (e === null) return { kind: 'position', x: (a as { offset: PositionOffset }).offset, y: pct(50) };
+    return e.axis === 'y' ? { kind: 'position', x: pct(50), y: pct(e.percent) } : { kind: 'position', x: pct(e.percent), y: pct(50) };
+  }
+  if (ps.length === 2) {
+    const [a, b] = ps as [(typeof ps)[number], (typeof ps)[number]];
+    const ea = edge(a);
+    const eb = edge(b);
+    if (ea !== null && eb !== null) {
+      // Two keywords: in either order, as long as the axes differ (center fills either).
+      const swap = ea.axis === 'y' || eb.axis === 'x';
+      const [x, y] = swap ? [eb, ea] : [ea, eb];
+      if (x.axis === 'y' || y.axis === 'x') return 'invalid';
+      return { kind: 'position', x: pct(x.percent), y: pct(y.percent) };
+    }
+    // An offset with a keyword or another offset: x first, then y; a vertical keyword cannot come first.
+    if (ea !== null && ea.axis === 'y') return 'invalid';
+    if (eb !== null && eb.axis === 'x') return 'invalid';
+    const x = ea !== null ? pct(ea.percent) : (a as { offset: PositionOffset }).offset;
+    const y = eb !== null ? pct(eb.percent) : (b as { offset: PositionOffset }).offset;
+    return { kind: 'position', x, y };
+  }
+  if (ps.length === 4) {
+    const [k1, o1, k2, o2] = ps as [(typeof ps)[number], (typeof ps)[number], (typeof ps)[number], (typeof ps)[number]];
+    const e1 = edge(k1);
+    const e2 = edge(k2);
+    if (e1 === null || e2 === null || !('offset' in o1) || !('offset' in o2) || e1.axis === 'center' || e2.axis === 'center' || e1.axis === e2.axis) return 'invalid';
+    const [ex, ox, ey, oy] = e1.axis === 'x' ? [e1, o1.offset, e2, o2.offset] : [e2, o2.offset, e1, o1.offset];
+    const x = fromFarEdge(ex.percent, ox);
+    const y = fromFarEdge(ey.percent, oy);
+    if (x === null || y === null) return { token: tokens[0] as CssNode, reason: 'an offset from right or bottom computes to a calculation, which object-position does not support' };
+    return { kind: 'position', x, y };
+  }
+  return 'invalid';
+}
+
+/** The computed serialisation of a <position> axis. */
+export function positionOffsetText(o: PositionOffset): string {
+  return `${o.value}${o.unit}`;
+}
+
 /** Raw LayoutUnit parts at most 2^24, so a part that is a whole number of 64ths is also exact as the float Blink stores. */
 const MAX_EXACT_RATIO_RAW = 16777216;
 
@@ -217,6 +315,8 @@ export function featureOf(property: Longhand, v: CssValue, fonts?: FamilyKeyCont
       return `${property}:<${v.syntax}>`;
     case 'ratio':
       return v.auto ? `${property}:auto && <ratio>` : `${property}:<ratio>`;
+    case 'position':
+      return `${property}:<position>`;
     case 'other':
       return `${property}:<${v.type}>`;
   }

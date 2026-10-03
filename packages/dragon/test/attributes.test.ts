@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import type { ElementNode } from '../src/index.ts';
 import { createProject } from '../src/index.ts';
 import { attributeRefusal, NEUTRAL_ATTRIBUTES, neutralAttribute } from '../src/attributes.ts';
+import { dimensionRefusal, parseDimension, presentationalHints } from '../src/analysis/elements/replaced.ts';
 import { HTML_CASE_INSENSITIVE_ATTRIBUTES } from '../src/analysis/match.ts';
 import { OBSERVED_ATTRIBUTE_CASE_INSENSITIVE, PSEUDO_CLASS_VALID, PSEUDO_ELEMENT_VALID, SELECTOR_VALIDITY_CHROME } from '../src/css/selector-validity.generated.ts';
 import { always, div, expectCatalogued, inputFor } from './helpers.ts';
@@ -63,12 +64,21 @@ describe('the rendering-neutral attribute table', () => {
 describe('refused attributes name the package that owns their effect', () => {
   it.each([
     ['input', 'type', 'FORM-a'], ['input', 'min', 'FORM-a'], ['input', 'max', 'FORM-a'], ['input', 'value', 'FORM-a'],
-    ['img', 'src', 'REPL'], ['img', 'alt', 'REPL'], ['img', 'width', 'REPL'], ['img', 'height', 'REPL'],
+    ['div', 'src', 'REPL'], ['div', 'alt', 'REPL'], ['div', 'width', 'REPL'], ['div', 'height', 'REPL'], ['iframe', 'alt', 'REPL'],
     ['a', 'href', 'INL1'], ['a', 'rel', 'INL1'], ['a', 'target', 'INL1'], ['html', 'lang', 'TXT1-C'], ['div', 'dir', 'bidi'],
     ['div', 'hidden', 'display'], ['div', 'style', 'SOV'], ['div', 'tabindex', 'not proven neutral'],
     ['div', 'constructor', 'not proven neutral'], ['div', 'toString', 'not proven neutral'],
   ])('<%s %s> names %s', (tag, name, owner) => {
     expect(attributeRefusal(tag, name)).toContain(owner);
+  });
+
+  it('REPL-a handles src, alt, width and height on img, and width and height on iframe', () => {
+    for (const name of ['src', 'alt', 'width', 'height']) expect(attributeRefusal('img', name), name).toBeNull();
+    for (const name of ['width', 'height']) expect(attributeRefusal('iframe', name), name).toBeNull();
+  });
+
+  it('refuses an iframe src until Phase B loads it in the web view (Macroscope 4164413918), rather than dropping it', () => {
+    expect(attributeRefusal('iframe', 'src')).toContain('REPL-a Phase B');
   });
 
   it('compiles neutral attributes silently and refuses the others with the owner in the message', () => {
@@ -119,5 +129,54 @@ describe('Chrome observations (scripts/capture-selector-validity.ts)', () => {
     const disagree = Object.entries({ ...PSEUDO_ELEMENT_VALID }).filter(([, v]) => v.valid !== v.supports).map(([k]) => k);
     expect(disagree).toEqual(['-webkit-outer-spin-button']);
     expect(Object.values(PSEUDO_CLASS_VALID).every((v) => v.valid === v.supports)).toBe(true);
+  });
+});
+
+describe('REPL-a width and height attributes (HTML §2.3.4.4 dimension values, §15.4.5 hints)', () => {
+  const LONG = '9'.repeat(400);
+
+  it('parses lengths and percentages after leading ASCII white space and ignores what follows the number', () => {
+    expect(parseDimension('100')).toEqual({ kind: 'length', value: 100 });
+    expect(parseDimension(' \t\n50.5px')).toEqual({ kind: 'length', value: 50.5 });
+    expect(parseDimension('25%')).toEqual({ kind: 'percentage', value: 25 });
+    expect(parseDimension('10.')).toEqual({ kind: 'length', value: 10 });
+    expect(parseDimension('1e5')).toEqual({ kind: 'length', value: 1 });
+    expect(parseDimension('0')).toEqual({ kind: 'length', value: 0 });
+  });
+
+  it('takes no number from a value that does not start with a digit, or whose digits overflow a double', () => {
+    for (const t of ['', 'abc', '-5', '+5', '.5', '\u00a07', LONG, `${LONG}%`]) expect(parseDimension(t), t.slice(0, 12)).toBeNull();
+  });
+
+  it('maps an img\'s two lengths to auto && ratio, a percentage only to its own property, and nothing on other tags', () => {
+    const hints = (tag: string, attrs: Record<string, string>) => Object.fromEntries(presentationalHints(tag, new Map(Object.entries(attrs))));
+    expect(hints('img', { width: '90', height: '30' })).toEqual({
+      width: { kind: 'length', value: 90, unit: 'px' },
+      height: { kind: 'length', value: 30, unit: 'px' },
+      'aspect-ratio': { kind: 'ratio', auto: true, width: 90, height: 30 },
+    });
+    expect(hints('img', { width: '90', height: '25%' })).toEqual({ width: { kind: 'length', value: 90, unit: 'px' }, height: { kind: 'percentage', value: 25 } });
+    expect(hints('iframe', { width: '120', height: '40' })).toEqual({ width: { kind: 'length', value: 120, unit: 'px' }, height: { kind: 'length', value: 40, unit: 'px' } });
+    expect(hints('div', { width: '90', height: '30' })).toEqual({});
+    expect(hints('img', { width: LONG, height: '30' })).toEqual({ height: { kind: 'length', value: 30, unit: 'px' } });
+  });
+
+  it('refuses a width or height whose digits overflow a double, on replaced tags only', () => {
+    expect(dimensionRefusal('img', 'width', LONG)).toContain('400 digits');
+    expect(dimensionRefusal('iframe', 'height', ` ${LONG}.5%`)).toContain('400 digits');
+    expect(dimensionRefusal('img', 'width', '99999999')).toBeNull();
+    expect(dimensionRefusal('img', 'width', 'abc')).toBeNull();
+    expect(dimensionRefusal('img', 'alt', LONG)).toBeNull();
+    expect(dimensionRefusal('div', 'width', LONG)).toBeNull();
+  });
+
+  it('a compile reports the overflowing attribute as DRAGON_UNSUPPORTED_ATTRIBUTE', () => {
+    const attr = (name: string, value: string) => ({ name, value: [{ when: always, value }], origin: { kind: 'unlocated', reason: 'test' } as const });
+    const project = createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } });
+    const tree = (w: string) => inputFor('.a { display: block; }', (r) => [{ ...div(r, 'a', ['a']), tag: 'iframe', attributes: [attr('width', w), attr('height', '10')] } as ElementNode]);
+    const bad = project.compile(tree(LONG)).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_ATTRIBUTE');
+    expect(bad.map((d) => d.message)).toEqual(['attribute width on a is not supported: its value starts with 400 digits, past the range of a length']);
+    expectCatalogued(bad);
+    expect(project.compile(tree('99999999')).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_ATTRIBUTE')).toEqual([]);
   });
 });
