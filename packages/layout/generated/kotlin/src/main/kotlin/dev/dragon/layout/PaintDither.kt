@@ -4,6 +4,11 @@ package dev.dragon.layout
 // ts: packages/layout/src/paint-dither.ts:39
 val paintDither_CC_BORDER_TEXELS: Double = 1.0
 
+// ts: packages/layout/src/paint-dither.ts:46
+fun paintDither_ccTileSize(macOrChromeOs: Boolean, deviceScaleFactor: Double): Double {
+  return (if ((macOrChromeOs && (deviceScaleFactor >= 2.0))) 512.0 else 256.0)
+}
+
 // ts: packages/layout/src/paint-dither.ts:51
 fun paintDither_ccTileIndex(v: Double, tileSize: Double): Double {
   val inner: Double = (tileSize - (2.0 * paintDither_CC_BORDER_TEXELS))
@@ -22,4 +27,88 @@ fun paintDither_ccTileStart(i: Double, tileSize: Double): Double {
 // ts: packages/layout/src/paint-dither.ts:63
 fun paintDither_ccTileEnd(i: Double, tileSize: Double): Double {
   return (paintDither_ccTileStart(i, tileSize) + tileSize)
+}
+
+// ts: packages/layout/src/paint-dither.ts:89
+fun paintDither_f32(v: Double): Double {
+  return rtEasing_froundOf(v)
+}
+
+// ts: packages/layout/src/paint-dither.ts:93
+fun paintDither_minNum(a: Double, b: Double): Double {
+  return (if ((a < b)) a else b)
+}
+
+// ts: packages/layout/src/paint-dither.ts:97
+fun paintDither_maxNum(a: Double, b: Double): Double {
+  return (if ((a > b)) a else b)
+}
+
+// ts: packages/layout/src/paint-dither.ts:101
+fun paintDither_absNum(v: Double): Double {
+  return (if ((v < 0.0)) (-v) else v)
+}
+
+// ts: packages/layout/src/paint-dither.ts:109
+fun paintDither_fma32(a: Double, b: Double, c: Double): Double {
+  val p: Double = (a * b)
+  val s: Double = (p + c)
+  val bb: Double = (s - p)
+  val e: Double = ((p - (s - bb)) + (c - bb))
+  val r: Double = paintDither_f32(s)
+  // ts: packages/layout/src/paint-dither.ts:115
+  if (((e == 0.0) || (r == s))) {
+    return r
+  }
+  val other: Double = ((2.0 * s) - r)
+  // ts: packages/layout/src/paint-dither.ts:117
+  if (((paintDither_f32(other) == other) && (other != r))) {
+    return (if ((e > 0.0)) paintDither_maxNum(r, other) else paintDither_minNum(r, other))
+  }
+  return r
+}
+
+// ts: packages/layout/src/paint-dither.ts:122
+fun paintDither_roundHalfEven(v: Double): Double {
+  val fl: Double = rtEasing_floorOf(v)
+  val diff: Double = (v - fl)
+  // ts: packages/layout/src/paint-dither.ts:125
+  if ((diff > 0.5)) {
+    return (fl + 1.0)
+  }
+  // ts: packages/layout/src/paint-dither.ts:126
+  if ((diff < 0.5)) {
+    return fl
+  }
+  return (if (((fl - (rtEasing_floorOf((fl / 2.0)) * 2.0)) == 0.0)) fl else (fl + 1.0))
+}
+
+// ts: packages/layout/src/paint-dither.ts:130
+fun paintDither_bit(v: Double, k: Double): Double {
+  var p: Double = 1.0
+  // ts: packages/layout/src/paint-dither.ts:132
+  run {
+    var i: Double = 0.0
+    while ((i < k)) {
+      p = (p * 2.0)
+      i += 1.0
+    }
+  }
+  return (rtEasing_floorOf((v / p)) - (2.0 * rtEasing_floorOf((v / (2.0 * p)))))
+}
+
+// ts: packages/layout/src/paint-dither.ts:137
+fun paintDither_ditherIndex(x: Double, y: Double): Double {
+  val x0: Double = paintDither_bit(x, 0.0)
+  val x1: Double = paintDither_bit(x, 1.0)
+  val x2: Double = paintDither_bit(x, 2.0)
+  val y0: Double = paintDither_absNum((x0 - paintDither_bit(y, 0.0)))
+  val y1: Double = paintDither_absNum((x1 - paintDither_bit(y, 1.0)))
+  val y2: Double = paintDither_absNum((x2 - paintDither_bit(y, 2.0)))
+  return ((((((32.0 * y0) + (16.0 * x0)) + (8.0 * y1)) + (4.0 * x1)) + (2.0 * y2)) + x2)
+}
+
+// ts: packages/layout/src/paint-dither.ts:148
+fun paintDither_ditherOffset(x: Double, y: Double): Double {
+  return paintDither_fma32(paintDither_ditherIndex(x, y), (2.0 / 128.0), (-63.0 / 128.0))
 }
