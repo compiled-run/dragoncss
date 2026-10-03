@@ -182,7 +182,8 @@ describe('EMS: CSS families and paint values', () => {
     const props = new Map<Longhand, ResolvedValue>([['font-size', v(10, 'px')], ['width', v(2, 'em')]]);
     computeLengths(props, 16, 16);
     expect([...props.entries()].map(([k, x]) => [k, x.value])).toEqual([['font-size', { kind: 'length', value: 10, unit: 'px' }], ['width', { kind: 'length', value: 20, unit: 'px' }]]);
-    // SIZE-ar: aspect-ratio is a longhand (box family, after max-height). TXT-W1: font-weight and font-style are two more.
-    expect((LONGHANDS as readonly string[]).length).toBe(69 + 2);
+    // SIZE-ar: aspect-ratio is a longhand (box family, after max-height). TXT-W1: font-weight and font-style are two more; TXT-W2:
+    // font-synthesis-weight, -style and -small-caps three more.
+    expect((LONGHANDS as readonly string[]).length).toBe(69 + 2 + 3);
   });
 });
