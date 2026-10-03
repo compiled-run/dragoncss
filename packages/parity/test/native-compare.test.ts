@@ -2,7 +2,7 @@
 // every layout case at every device DPR of each target validate and pass (a) and (d); every planted dump fault fails its check.
 import { describe, expect, it } from 'vitest';
 import type { LayoutRect } from '@dragon/layout';
-import { layout, measurerFor } from '@dragon/layout';
+import { layout } from '@dragon/layout';
 import { NO_FAULTS } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX, GATE_GLYPH_POSITION_DEVICE_PX } from '../src/compare.ts';
@@ -15,17 +15,15 @@ import type { DumpNode, NativeDump } from '../src/native-dump.ts';
 import { frameOf, validateNativeDump } from '../src/native-dump.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
 import { compileFixture } from '../src/pipeline.ts';
+import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 import type { GlyphBox, SampleBox } from '../src/samples.ts';
 import { generateGlyphSamples, generateSamples } from '../src/samples.ts';
 import type { NativeTarget } from '../src/targets.ts';
 import { layoutCaseIds, nativeTargets } from '../src/targets.ts';
 
 const all = layoutCases();
-const measurer = (() => {
-  const m = measurerFor(REFERENCE_PLATFORM);
-  if (m.kind !== 'ok') throw new Error(m.detail);
-  return m.measurer;
-})();
+// TXT1a-2: the engine the device mirrors measures every face through HarfBuzz.
+const measurer = referenceShapedMeasurer();
 
 const compiledCache = new Map<string, ReturnType<typeof compileFixture>['compiled']>();
 

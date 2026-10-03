@@ -6,8 +6,6 @@ import { launchChrome } from '../chrome.ts';
 import { FIXTURES } from '../fixtures.ts';
 import { FONT_FIXTURES } from '../fixture-groups/fonts.ts';
 import { liveFontAuthored, runFontFixture } from '../fonts-run.ts';
-import { TEXT_LATIN_FIXTURES } from '../fixture-groups/text-latin.ts';
-import { liveTextLatinOptions, runTextLatinFixture } from '../text-latin-run.ts';
 import type { CaseOutcome, FixtureOutcome } from '../pipeline.ts';
 import { liveAuthored, runFixture } from '../pipeline.ts';
 import { hostPlatform, requireReferencePlatform } from '../platform.ts';
@@ -22,8 +20,6 @@ try {
   for (const spec of FIXTURES) outcomes.push(await runFixture(spec, browser, { authored: liveAuthored(browser), faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' }));
   // TXT1-C: the web-only fonts fixtures, chrome-dual alone, under their stated reference.
   for (const f of FONT_FIXTURES) webOnly.push(...(await runFontFixture(f, browser, { authored: liveFontAuthored(browser, f) })));
-  // TXT1a-1: the text-latin registry, live at DPR 1: the engine lane on the engine projection, chrome-dual and the face check.
-  for (const f of TEXT_LATIN_FIXTURES) webOnly.push(...(await runTextLatinFixture(f, browser, liveTextLatinOptions(() => browser, f))));
 } finally {
   await browser.close();
 }

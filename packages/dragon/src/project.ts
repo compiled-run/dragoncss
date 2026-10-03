@@ -334,7 +334,7 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
 }
 
 /** The lowering's font refusal, reported for every laid-out text node of every case, whether or not another error blocks ios. */
-function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>, target: 'ios' | 'android', ahemDeclared: boolean, deferrals: Set<string>): void {
+function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>, target: 'ios' | 'android', ahemDeclared: boolean, deferrals: Set<string>, realFaceAt: (address: string) => boolean): void {
   const walk = (el: ResolvedElement): void => {
     const display = (el.props.get('display') as ResolvedValue).value;
     if (display.kind === 'keyword' && display.value === 'none') return;
@@ -345,6 +345,8 @@ function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: 
       }
       // Native draws its bundled Ahem, so an @font-face that declares Ahem for web would make the targets disagree: it blocks native.
       const problem = textFontProblem(c);
+      // TXT1a-2 (notes/T084-txt1a-2.md): native lays out a node whose font resolves to one real bundled face, as the engine does.
+      if (problem !== null && realFaceAt(c.node.address)) continue;
       const message = problem ?? (ahemDeclared ? `font-family Ahem on ${c.node.address} names the family an @font-face rule declares, while ${target} draws the bundled Ahem` : null);
       if (message === null) continue;
       const id = `${target}|${c.node.address}|font-family|${message}`;
@@ -656,7 +658,18 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
   walk(root, { weight: 400, style: 'normal' }, false);
 }
 
-type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[] };
+type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[]; realFaces: ReadonlyMap<string, EngineFace> };
+
+/**
+ * TXT1a-2: the faces of a case's nodes that resolve to one real bundled static face, as engine mode resolves them, by address;
+ * empty without fonts. A node in the family Ahem never reads it (it keeps AHEM_FACE).
+ */
+function realFacesOf(root: ResolvedElement, fonts: ProjectFonts | null, ua: UaDataset): Map<string, EngineFace> {
+  const out = new Map<string, EngineFace>();
+  if (fonts === null) return out;
+  for (const [address, face] of engineFacesOf(root, fonts, ua)) if (face.kind === 'face') out.set(address, face);
+  return out;
+}
 
 /** What checkCases has reported, shared by every band's pass so a diagnostic is reported once. */
 type Reported = { readonly contextual: Set<string>; readonly refused: Set<string>; readonly fonts: Set<string>; readonly fenced: Set<string>; readonly fontDeferrals: Set<string> };
@@ -685,15 +698,17 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   for (const c of linked.cases) {
     const resolved = resolveTree(c.root, rules, options.faults, { direction: options.direction, rootFont: options.rootFont, ua: options.ua });
     const computedAt = diagnostics.length;
-    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys);
+    const realFaces = realFacesOf(resolved, projectFonts, options.ua);
+    const realFaceAt = (address: string): boolean => realFaces.has(address);
+    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt);
     // The UA font-weight and font-style refusal is native-only: the engine resolves those faces (engine mode refuses synthesis).
     for (const d of diagnostics.slice(computedAt)) if (d.code === 'DRAGON_UNSUPPORTED_FONT') fontDeferrals.add(deferralKey(d));
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
-    for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared, fontDeferrals);
+    for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared, fontDeferrals, realFaceAt);
     if (projectFonts !== null) for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkSyntheticStyles(resolved, projectFonts, options.ua, t, diagnostics, fonts);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);
     const used = usedKeys(resolved, keys);
-    out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used });
+    out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used, realFaces });
     if (options.profiles === 'derive') continue;
     for (const u of used) {
       for (const t of targets) {
@@ -960,7 +975,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         checkValues(rules, targets, profiles, [], values, keys, scopeOf);
         diagnostics.splice(valuesAt, 0, ...values);
       }
-      cases = linked.cases.map((c) => ({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved: null, used: [] }));
+      cases = linked.cases.map((c) => ({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved: null, used: [], realFaces: new Map() }));
       bandCases = [{ band: null, cases }];
     } else if (options.profiles === 'enforce') {
       const values: Diagnostic[] = [];
@@ -999,7 +1014,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     for (const c of cases) {
       if (c.resolved === null) continue;
       try {
-        lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, { kind: 'native' }));
+        const real = c.realFaces;
+        lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} resolves to no real bundled face` } }));
       } catch (e) {
         if (!(e instanceof LoweringError)) throw e;
         const id = `${e.nodeId}|${e.property}|${e.message}`;

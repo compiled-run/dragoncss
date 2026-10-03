@@ -60,7 +60,7 @@ else {
           problems.push(`${c.id}: the reference compile gives no web output`);
           continue;
         }
-        const authored = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra);
+        const authored = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, c.authoredPrepare ?? undefined);
         const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(css.text, classOf), c.environment, c.computedExtra);
         const d = compareDual(authored, compiledCapture, colors, textColors, c.computedExtra);
         dual.push({ case: c.id, pass: d.pass, problems: d.problems });

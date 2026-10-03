@@ -16,6 +16,7 @@ import type { CheckResult, RgbaImage } from './native-compare.ts';
 import { checkPixels } from './native-compare.ts';
 import type { DumpSample } from './native-dump.ts';
 import { expectedEngine, referenceMeasurer } from './native-host.ts';
+import { shapedInk } from './text-shaper-host.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { GlyphBox, GlyphLine, ImageSize, SampleBox, SamplePoint, SampleResult } from './samples.ts';
@@ -285,13 +286,12 @@ function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: numb
 /**
  * The glyph lines of a program at a DPR, as the device places them: the pen starts at the line's absolute x and advances by
  * float32(size x advance / unitsPerEm) with size = platformFontSize(zoomFontSize(css size, DPR)); the baseline is the snapped line
- * top plus the engine's ascent. Each glyph's box is its font box scaled by size / unitsPerEm. Only Ahem is accepted.
+ * top plus the engine's ascent. Each Ahem glyph's box is its font box scaled by size / unitsPerEm; a real face's are its shaped
+ * glyphs' HarfBuzz extents (TXT1a-2).
  */
 export function glyphLines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): GlyphLine[] {
   const input = programInput(p, viewport, dpr);
   const sizes = cssFontSizes(input.root);
-  // The glyph rule's own refusal comes first: the engine's font-data measurer refuses a face other than Ahem too (TXT1a-1).
-  for (const [id, css] of sizes) if (css.family !== 'Ahem') throw new Error(`${id}: the glyph rule refuses the font family ${css.family}; glyph boxes are known for Ahem only`);
   const m = referenceMeasurer();
   const texts = engineTextLines(input, m);
   const boxes = ahemGlyphBoxes();
@@ -300,11 +300,18 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
   for (const t of texts) {
     const css = sizes.get(t.id);
     if (css === undefined) throw new Error(`no text leaf ${t.id}`);
-    if (css.family !== 'Ahem') throw new Error(`${t.id}: the glyph rule refuses the font family ${css.family}; glyph boxes are known for Ahem only`);
     const size = platformFontSize(zoomFontSize(css.size, dpr));
     const metrics = m.metrics(t.font);
     for (const [j, line] of t.lines.entries()) {
       const baseline = line.snapped.top + metrics.ascent / 64;
+      if (css.family !== 'Ahem') {
+        // TXT1a-2: a real face's glyph boxes are HarfBuzz's extents of the shaped line (text-shaper-host.ts shapedInk), from its left.
+        const x0 = line.rect.x / 64;
+        const ink = shapedInk(css.family, size, String.fromCodePoint(...line.cps));
+        const glyphs: GlyphBox[] = ink.flatMap((g) => (g === null ? [] : [{ left: x0 + g.left, right: x0 + g.right, top: baseline - g.top, bottom: baseline - g.bottom }]));
+        out.push({ id: `${t.id}:line${j}`, glyphs });
+        continue;
+      }
       let pen = 0;
       const glyphs: GlyphBox[] = [];
       for (const cp of line.cps) {

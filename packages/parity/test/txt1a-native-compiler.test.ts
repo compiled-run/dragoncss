@@ -1,0 +1,97 @@
+// TXT1a-2 phase C (notes/T084-txt1a-2.md, T084J): native lowering accepts the real bundled static faces engine mode accepts, and
+// refuses everything else as before: faces outside the manifest, variable faces, synthetic styles; non-Latin text stays refused by
+// the engine the device runs.
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import type { Compiled, Diagnostic, FrontEndResult } from 'dragon';
+import * as dragon from 'dragon';
+import type { LayoutInput } from '@dragon/layout';
+import { layout as engineLayout } from '@dragon/layout';
+import { fixtureInput } from '../src/cases.ts';
+import { layout } from '../src/fixture-groups/define.ts';
+import { withFontMapAssets } from '../src/fixture-groups/fonts.ts';
+import { FONT_REFERENCE_MAP } from '../src/font-reference.ts';
+import { ENVIRONMENT } from '../src/fixtures.ts';
+import { repoPath } from '../src/paths.ts';
+import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
+
+const LATO = 'sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251';
+
+const inputOf = (id: string): FrontEndResult => withFontMapAssets(fixtureInput(layout(id, ['ltr'], 'ahem')), FONT_REFERENCE_MAP);
+
+function compile(input: FrontEndResult): Compiled<'ios' | 'android' | 'web'> {
+  const project = dragon.createProjectWith(
+    { projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }, fonts: FONT_REFERENCE_MAP },
+    { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', platform: 'darwin-arm64', rootFont: 'ahem', foldViewport: ENVIRONMENT.viewport },
+  );
+  return project.compile(input);
+}
+
+const nativeErrors = (c: Compiled<string>): Diagnostic[] => c.diagnostics.filter((d) => d.severity === 'error' && (d.target === 'ios' || d.target === 'android' || d.target === null));
+
+function nativeInput(c: Compiled<string>): LayoutInput {
+  const p = dragon.nativeLayoutProjection(c, ENVIRONMENT, []);
+  if (p.kind !== 'ready') throw new Error(p.reason);
+  return p.input;
+}
+
+/** Every face family an engine input names. */
+function families(v: unknown, out = new Set<string>()): Set<string> {
+  if (Array.isArray(v)) for (const x of v) families(x, out);
+  else if (typeof v === 'object' && v !== null) {
+    const o = v as Record<string, unknown>;
+    if (typeof o['family'] === 'string' && typeof o['size'] === 'number') out.add(o['family']);
+    for (const x of Object.values(o)) families(x, out);
+  }
+  return out;
+}
+
+describe('TXT1a-2 phase C: native lowering of real bundled faces', () => {
+  it('lowers Lato for ios and android with the face id, with no font refusal and the engine projection equal to the native one', () => {
+    const c = compile(inputOf('text-latin-lato'));
+    expect(nativeErrors(c).map((d) => `${d.code}: ${d.message}`)).toEqual([]);
+    expect([c.outputs.ios.kind, c.outputs.android.kind]).toEqual(['analysis-only', 'analysis-only']);
+    const input = nativeInput(c);
+    expect([...families(input.root)].sort()).toEqual([LATO]);
+    expect(dragon.engineLayoutProjection(c, ENVIRONMENT, [])).toEqual(dragon.nativeLayoutProjection(c, ENVIRONMENT, []));
+    const r = engineLayout(input, referenceShapedMeasurer());
+    expect(r.kind).toBe('ok');
+  });
+
+  it('drops the UA font-weight refusal where a real bold face draws the text (Lato-Bold and Inter-Bold under h1 and h2)', () => {
+    const c = compile(inputOf('text-latin-faces'));
+    expect(nativeErrors(c).map((d) => `${d.code}: ${d.message}`)).toEqual([]);
+    expect(families(nativeInput(c).root).size).toBeGreaterThan(3);
+  });
+
+  it('keeps refusing a synthetic style on native, with DRAGON_SYNTHETIC_FONT_STYLE', () => {
+    const c = compile(inputOf('text-latin-synthetic'));
+    const codes = nativeErrors(c).map((d) => `${d.target} ${d.code}`);
+    expect(codes).toContain('ios DRAGON_SYNTHETIC_FONT_STYLE');
+    expect(codes).toContain('ios DRAGON_UNSUPPORTED_FONT');
+    expect(c.outputs.ios.kind).toBe('blocked');
+  });
+
+  it('keeps refusing a variable face on native with the existing font message', () => {
+    const input = inputOf('text-latin-variable');
+    const bytes = new Uint8Array(readFileSync(repoPath('docs/research/text-spike/fonts/Inter-VF.ttf')));
+    const swapped = { ...input, snapshot: { ...input.snapshot, assets: input.snapshot.assets.map((a) => (a.id === 'vendor/fonts/Inter/Inter-Regular.ttf' ? { ...a, bytes, hash: `sha256:${createHash('sha256').update(bytes).digest('hex')}` } : a)) } };
+    const c = compile(swapped);
+    expect(nativeErrors(c).some((d) => d.target === 'ios' && d.code === 'DRAGON_UNSUPPORTED_FONT' && /has no layout mapping \(expected Ahem/.test(d.message))).toBe(true);
+    expect(c.outputs.ios.kind).toBe('blocked');
+  });
+
+  it('keeps refusing a family that resolves to no bundled face (the platform system-ui), with the existing message', () => {
+    const c = compile(inputOf('fonts-platform'));
+    expect(nativeErrors(c).some((d) => d.target === 'ios' && d.code === 'DRAGON_UNSUPPORTED_FONT' && /^font-family: system-ui on .* has no layout mapping \(expected Ahem/.test(d.message))).toBe(true);
+    expect(c.outputs.ios.kind).toBe('blocked');
+  });
+
+  it('leaves non-Latin text to the engine the device runs, which refuses it with a typed code', () => {
+    const input = nativeInput(compile(inputOf('text-latin-words')));
+    const greek = JSON.parse(JSON.stringify(input).replace('Waves and wind over the quiet harbour', 'Κύματα και άνεμος')) as LayoutInput;
+    const r = engineLayout(greek, referenceShapedMeasurer());
+    expect(r.kind === 'unsupported' ? r.unsupported.code : r.kind).toBe('text-script');
+  });
+});

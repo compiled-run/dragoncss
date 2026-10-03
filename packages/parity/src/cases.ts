@@ -1,7 +1,10 @@
 // Parity cases (docs/api.md §7): one per reachable assignment of every fixture and environment, never deduplicated or factored.
 // HTML fixtures have one case per declared environment direction, rendered from the file itself; tree fixtures are rendered by the
 // parity-owned renderer, once per assignment in each environment direction.
+import type { Page } from 'playwright';
 import type { Assignment, Environment, FrontEndResult } from 'dragon';
+import { fontMapOf } from './fixture-groups/fonts.ts';
+import { fontReferencePrepare } from './font-reference.ts';
 import { compiledFixtureHtml, readHtmlFixture } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { directionSuffix, environmentsOf } from './fixtures.ts';
@@ -20,6 +23,11 @@ export type ParityCase = {
   readonly assignment: Assignment;
   readonly isInitial: boolean;
   readonly authoredHtml: string;
+  /**
+   * TXT1a-2: the stated font reference a fixture with a font map is captured under (fonts.ts MAPS), run on the authored page
+   * before it is read; null for every other fixture. The compiled document carries its own fonts (dragon.css assets).
+   */
+  readonly authoredPrepare: ((page: Page) => Promise<void>) | null;
   readonly compiledHtml: (css: string, classOf: ReadonlyMap<string, string>) => string;
 };
 
@@ -29,6 +37,8 @@ export function fixtureInput(spec: FixtureSpec): FrontEndResult {
 
 /** Every case of a layout fixture, from the source alone (not from Dragon's enumeration): environments outer, assignments inner. */
 export function casesOf(spec: FixtureSpec, input: FrontEndResult): ParityCase[] {
+  const map = fontMapOf(spec.id);
+  const authoredPrepare = map === undefined ? null : fontReferencePrepare(map);
   if (spec.format === 'html') {
     const { html } = readHtmlFixture(spec.id);
     return environmentsOf(spec).map((environment) => ({
@@ -40,6 +50,7 @@ export function casesOf(spec: FixtureSpec, input: FrontEndResult): ParityCase[] 
       assignment: [],
       isInitial: true,
       authoredHtml: html,
+      authoredPrepare,
       compiledHtml: (css: string, classOf: ReadonlyMap<string, string>) => compiledFixtureHtml(html, css, classOf),
     }));
   }
@@ -53,6 +64,7 @@ export function casesOf(spec: FixtureSpec, input: FrontEndResult): ParityCase[] 
     assignment,
     isInitial: index === model.initialIndex,
     authoredHtml: model.render(assignment, { kind: 'authored' }),
+    authoredPrepare,
     compiledHtml: (css: string, classOf: ReadonlyMap<string, string>) => model.render(assignment, { kind: 'compiled', classOf, css }),
   })));
 }

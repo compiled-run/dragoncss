@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { LayoutRect } from '@dragon/layout';
-import { layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
+import { layoutWithFaults, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
 import type { Compiled, Environment } from 'dragon';
 import { nativeLayoutProjection, NO_FAULTS } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
@@ -22,6 +22,8 @@ import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import { compileFixture } from './pipeline.ts';
 import { SAMPLE_RULES } from './samples.ts';
+import { isShapedInput, joinHyphenRects } from './text-latin-run.ts';
+import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import type { Compared, DeviceSet, FaultRow, LaneFailure, TrustRow } from './device-lanes.ts';
 import { DEVICE_CHECK_LANES, failuresByKind, laneFailures } from './device-lanes.ts';
 import type { DeviceEvidence } from './device-evidence.ts';
@@ -335,8 +337,8 @@ export type ReferenceRow = { readonly dpr: number; readonly role: 'shared' | 'ex
  * into a ts-reference dump, which must validate and pass (a) against Chrome at that DPR and (d) against the engine.
  */
 export function referenceProof(targets: readonly TargetConfig[]): { readonly target: NativeTarget; readonly rows: readonly ReferenceRow[] }[] {
-  const m = measurerFor(REFERENCE_PLATFORM);
-  if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
+  // TXT1a-2: the engine the device mirrors measures every face through HarfBuzz (native-host.ts referenceMeasurer).
+  const measurer = referenceShapedMeasurer();
   const compiled = new Map<string, Compiled<'ios' | 'web'>>();
   const compiledFor = (spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'web'> => {
     const key = `${spec.id} ${direction}`;
@@ -373,7 +375,7 @@ export function referenceProof(targets: readonly TargetConfig[]): { readonly tar
             failures.push(`${c.id}@${dpr}: layout input rejected`);
             continue;
           }
-          const out = layoutWithFaults(v.input, m.measurer, NO_ENGINE_FAULTS);
+          const out = layoutWithFaults(v.input, measurer, NO_ENGINE_FAULTS);
           if (out.kind !== 'ok') {
             failures.push(`${c.id}@${dpr}: LayoutUnsupported ${out.unsupported.code}`);
             continue;
@@ -386,7 +388,8 @@ export function referenceProof(targets: readonly TargetConfig[]): { readonly tar
             continue;
           }
           valid++;
-          const a = checkAgainstChrome(checked.dump, committedDprCapture(c.id, dpr));
+          const cap = committedDprCapture(c.id, dpr);
+          const a = checkAgainstChrome(checked.dump, isShapedInput(v.input) ? joinHyphenRects(cap) : cap);
           const d = checkAgainstEngine(checked.dump, boxes);
           chromeCompared += a.compared;
           engineCompared += d.compared;

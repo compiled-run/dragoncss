@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import type { DprChromeDeviation, EngineFaults, LayoutInput, LayoutRect } from '@dragon/layout';
 import { absoluteRects, dprChromeDeviations, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, snapEdges, validateLayoutInput } from '@dragon/layout';
+import { isShapedInput, joinHyphenRects } from './text-latin-run.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import type { Compiled, Environment } from 'dragon';
 import { iosLayoutProjection, NO_FAULTS } from 'dragon';
@@ -119,7 +120,8 @@ export function runDprCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, dpr
   if (!validated.ok) return { ...base, status: 'fail', reason: `layout input rejected: ${validated.errors.map((e) => `${e.path} ${e.code}`).join('; ')}` };
   const result = layoutWithFaults(validated.input, referenceShapedMeasurer(faults), faults);
   if (result.kind === 'unsupported') return { ...base, status: 'fail', reason: `LayoutUnsupported ${result.unsupported.code} at ${result.unsupported.nodeId}` };
-  const comparison = compareZoomedLayout(capture, absoluteRects(result.boxes), validated.input, env);
+  // TXT1a-2: a shaped case is compared against the capture with its generated hyphen rects joined (text-latin-run.ts).
+  const comparison = compareZoomedLayout(isShapedInput(validated.input) ? joinHyphenRects(capture) : capture, absoluteRects(result.boxes), validated.input, env);
   const compared = comparison.nodes.filter((n) => n.dragon !== null);
   const exact = compared.filter((n) => n.exactLu).length;
   const problems = [...comparison.problems];

@@ -1,0 +1,8 @@
+{
+  "case": "text-calibration-mono",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"p1:text0","lines":[[0,34],[34,49]]},
+    {"id":"p2:text0","lines":[[0,27],[27,40]]}
+  ]
+}

@@ -7,8 +7,8 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
-import type { LayoutInput, LayoutRect } from '@dragon/layout';
-import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, resolveBorder, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import type { LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
+import { layout, LU_PER_PX, NO_ENGINE_FAULTS, platformFontSize, resolveBorder, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
@@ -16,6 +16,7 @@ import { stateEmits } from './state-cases.ts';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
 import { layoutCases } from './dpr.ts';
+import { fontMapOf, withFontMapAssets } from './fixture-groups/fonts.ts';
 import { PROJECT_ID } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { ENVIRONMENT } from './fixtures.ts';
@@ -26,6 +27,7 @@ import type { NativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { NativeTarget } from './targets.ts';
+import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import { deviceDprs } from './targets.ts';
 
 export const BACKEND_OF: { readonly [T in NativeTarget]: NativeBackend } = { ios: 'uikit', android: 'android-views' };
@@ -43,8 +45,10 @@ export const nativeOut = (target: NativeTarget): string => repoPath(`packages/pa
 export function nativeCompile(spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'android'> {
   if (spec.kind !== 'layout') throw new Error(`${spec.id} is not a layout fixture`);
   // MQ-a: every native case runs in the parity environment's viewport, so its @media band is the one holding it.
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG } }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport });
-  return project.compile(fixtureInput(spec));
+  // TXT1a-2: a real-font fixture compiles with its font map and the map's vendored faces as assets, as pipeline.ts compileFixture does.
+  const fonts = fontMapOf(spec.id);
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG }, ...(fonts === undefined ? {} : { fonts }) }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport });
+  return project.compile(fonts === undefined ? fixtureInput(spec) : withFontMapAssets(fixtureInput(spec), fonts));
 }
 
 export type NativeCase = {
@@ -78,10 +82,9 @@ export function nativeCases(): readonly NativeCase[] {
   return out;
 }
 
-export function referenceMeasurer() {
-  const m = measurerFor(REFERENCE_PLATFORM);
-  if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
-  return m.measurer;
+/** The measurer the device mirrors: the engine's shaped measurer over the host's HarfBuzz, for Ahem and every bundled face (R2). */
+export function referenceMeasurer(): TextMeasurer {
+  return referenceShapedMeasurer();
 }
 
 /** The TS engine the expected dumps are projected with: the helpers the device runs translated, and the float a platform stores. */

@@ -8,6 +8,7 @@ import { DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
 import { DUMP_FAULTS } from './native-compare.ts';
 import { repoPath } from './paths.ts';
 import { SAMPLE_RULES } from './samples.ts';
+import { shapedCaseIds } from './text-latin-run.ts';
 
 export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels'] as const;
 export type LaneId = (typeof LANES)[number];
@@ -59,6 +60,16 @@ export function layoutCaseIds(): readonly string[] {
   return topLevel;
 }
 
+let vectorIds: readonly string[] | null = null;
+/** The layout case ids whose vectors are plain (no shape transcript): every layout case but the shaped ones (text-latin-run.ts). */
+export function vectorCaseIds(): readonly string[] {
+  if (vectorIds === null) {
+    const shaped = shapedCaseIds();
+    vectorIds = layoutCaseIds().filter((id) => !shaped.has(id));
+  }
+  return vectorIds;
+}
+
 const extraName = (dpr: number): string | null => EXTRA_DPRS.find((e) => e.dpr === dpr)?.name ?? null;
 
 function dprSet(dpr: number, ids: readonly string[]): CaseSet {
@@ -81,16 +92,18 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'p1', suite: 'library', cases: p1.cases['library'] ?? 0 },
     // ANIM-a2 (notes/T047 section 3.2): one rt case per rt vector record (timing, easing, hold and interpolation).
     { corpus: 'p1', suite: 'rt', cases: ['timing', 'easing', 'hold', 'interp'].reduce((n, f) => n + readJson<{ readonly records: readonly unknown[] }>(`packages/layout/rt-vectors/${f}.json`).records.length, 0) },
-    { corpus: 'extended', suite: 'engine-dpr', cases: layoutCaseIds().length * x.dprSets.length },
+    { corpus: 'extended', suite: 'engine-dpr', cases: vectorCaseIds().length * x.dprSets.length },
     { corpus: 'extended', suite: 'units-m2', cases: x.unitsPerFunction * x.unitsFunctions.length },
     { corpus: 'extended', suite: 'snap', cases: x.snapVectors + x.snapGenerated },
     // V1 value model (notes/T006): the values cases' snap vectors, the calc engine goldens, generated calc trees and calc units.
-    { corpus: 'extended', suite: 'snap-values', cases: layoutCaseIds().filter((id) => id.startsWith('values-')).length * x.dprSets.length },
+    { corpus: 'extended', suite: 'snap-values', cases: vectorCaseIds().filter((id) => id.startsWith('values-')).length * x.dprSets.length },
     { corpus: 'extended', suite: 'calc-goldens', cases: readdirSync(repoPath('packages/layout/vectors/calc')).filter((f) => f.endsWith('.json')).length },
     { corpus: 'extended', suite: 'engine-calc', cases: x.engineCalc },
     { corpus: 'extended', suite: 'units-calc', cases: x.calcUnitsPerFunction * x.calcUnitsFunctions.length },
     // INL1a: generated inline formatting contexts (corpus-dpr.ts engineInlineCases).
     { corpus: 'extended', suite: 'engine-inline', cases: x.engineInline },
+    // TXT1a-2: every shaped case's vector with its shape transcript, at DPR 1 and every DPR set (corpus-dpr.ts textLatinVectorCases).
+    { corpus: 'extended', suite: 'text-latin', cases: shapedCaseIds().size * (1 + x.dprSets.length) },
   ];
 }
 
@@ -99,7 +112,9 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
   const ids = layoutCaseIds();
   const where = lane === 'layout-vectors-host' ? 'host' : 'device';
   if (lane === 'layout-vectors-host' || lane === 'layout-vectors-device') {
-    return { lane, kind: 'vectors', where, sets: [{ dpr: 1, role: 'top-level', extra: null, ids }, ...DPRS.map((d) => dprSet(d, ids))], corpora: corpusSuites() };
+    // A shaped case's vectors are the text-latin suite's (they carry a shape transcript), not a vectors set's.
+    const vectors = vectorCaseIds();
+    return { lane, kind: 'vectors', where, sets: [{ dpr: 1, role: 'top-level', extra: null, ids: vectors }, ...DPRS.map((d) => dprSet(d, vectors))], corpora: corpusSuites() };
   }
   return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, ids)), corpora: [] };
 }

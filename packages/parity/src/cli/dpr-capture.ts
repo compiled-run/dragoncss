@@ -40,7 +40,7 @@ for (const dpr of DPRS) {
     let n = 0;
     for (const f of all) {
       for (const c of f.cases) {
-        const capture = await captureFixture(browser, c.id, c.authoredHtml, atDpr(c.environment, dpr));
+        const capture = await captureFixture(browser, c.id, c.authoredHtml, atDpr(c.environment, dpr), [], c.authoredPrepare ?? undefined);
         if (capture.devicePixelRatio !== dpr) throw new Error(`${c.id}: captured at DPR ${capture.devicePixelRatio}, not ${dpr}`);
         writeFileSync(expectedDprPath(c.id, dpr, platform), captureJson(capture));
         n++;

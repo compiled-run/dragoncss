@@ -221,3 +221,26 @@ export function referenceShapedMeasurer(faults: EngineFaults = NO_ENGINE_FAULTS,
   if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
   return m.measurer;
 }
+
+/** One shaped glyph's ink as a host reads it: its pen offset from the run start and its HarfBuzz extents, in px. */
+export type ShapedInk = { readonly x: number; readonly y: number; readonly left: number; readonly top: number; readonly right: number; readonly bottom: number } | null;
+
+/**
+ * The ink of a run of text in a registered face at an instance size, left to right: HarfBuzz shapes it as the engine does (Latin,
+ * left to right, chws on), the pen advances by the 16.16 advances summed in float, and each glyph's box is its extents at its
+ * offset; a glyph with no outline gives null.
+ */
+export function shapedInk(face: string, size: number, text: string): ShapedInk[] {
+  const font = fontAt(face, size);
+  const g = hb().shape(font, text, 0, text.length, { script: 'Latn', direction: 'ltr', language: REFERENCE_LANGUAGE, features: [{ tag: 'chws', value: 1, start: 0, end: 4294967295 }] });
+  const out: ShapedInk[] = [];
+  let pen = 0;
+  for (let i = 0; i < g.length; i += 7) {
+    const x = pen + (g[i + 4] as number) / 65536;
+    const y = (g[i + 5] as number) / 65536;
+    const e = hb().glyphExtents(font, g[i] as number);
+    out.push(e === undefined || e[2] === 0 || e[3] === 0 ? null : { x, y, left: x + e[0] / 65536, right: x + (e[0] + e[2]) / 65536, top: y + e[1] / 65536, bottom: y + (e[1] + e[3]) / 65536 });
+    pen = Math.fround(pen + Math.fround((g[i + 2] as number) / 65536));
+  }
+  return out;
+}

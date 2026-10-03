@@ -197,7 +197,18 @@
       "inline-baselines": [2,4],
       "inline-baselines-rtl": [2,4],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "text-latin-lato": [15,20],
+      "text-latin-punct": [16,26],
+      "text-latin-faces": [11,15],
+      "text-latin-flex": [5,5],
+      "text-latin-words": [13,13],
+      "text-latin-words-rtl": [13,13],
+      "text-latin-metrics": [5,5],
+      "text-ahem-fractional": [2,7],
+      "text-calibration-lato": [5,5],
+      "text-calibration-sans": [5,5],
+      "text-calibration-mono": [4,4]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -396,7 +407,18 @@
       "inline-baselines": [3,4],
       "inline-baselines-rtl": [3,4],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "text-latin-lato": [15,20],
+      "text-latin-punct": [17,26],
+      "text-latin-faces": [11,15],
+      "text-latin-flex": [5,5],
+      "text-latin-words": [13,13],
+      "text-latin-words-rtl": [13,13],
+      "text-latin-metrics": [5,5],
+      "text-ahem-fractional": [2,7],
+      "text-calibration-lato": [5,5],
+      "text-calibration-sans": [5,5],
+      "text-calibration-mono": [4,4]
     }
   },
   "android": {
@@ -597,7 +619,18 @@
       "inline-baselines": [2,4],
       "inline-baselines-rtl": [2,4],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "text-latin-lato": [15,20],
+      "text-latin-punct": [16,26],
+      "text-latin-faces": [11,15],
+      "text-latin-flex": [5,5],
+      "text-latin-words": [13,13],
+      "text-latin-words-rtl": [13,13],
+      "text-latin-metrics": [5,5],
+      "text-ahem-fractional": [2,7],
+      "text-calibration-lato": [5,5],
+      "text-calibration-sans": [5,5],
+      "text-calibration-mono": [4,4]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -796,7 +829,18 @@
       "inline-baselines": [3,4],
       "inline-baselines-rtl": [3,4],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "text-latin-lato": [15,20],
+      "text-latin-punct": [17,26],
+      "text-latin-faces": [11,15],
+      "text-latin-flex": [5,5],
+      "text-latin-words": [13,13],
+      "text-latin-words-rtl": [13,13],
+      "text-latin-metrics": [5,5],
+      "text-ahem-fractional": [2,7],
+      "text-calibration-lato": [5,5],
+      "text-calibration-sans": [5,5],
+      "text-calibration-mono": [4,4]
     },
     "2.625": {
       "text-ahem-single-line": [10,10],
@@ -995,7 +1039,18 @@
       "inline-baselines": [2,4],
       "inline-baselines-rtl": [2,4],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "text-latin-lato": [15,20],
+      "text-latin-punct": [17,26],
+      "text-latin-faces": [11,15],
+      "text-latin-flex": [5,5],
+      "text-latin-words": [13,13],
+      "text-latin-words-rtl": [13,13],
+      "text-latin-metrics": [5,5],
+      "text-ahem-fractional": [2,7],
+      "text-calibration-lato": [5,5],
+      "text-calibration-sans": [5,5],
+      "text-calibration-mono": [4,4]
     }
   }
 }
