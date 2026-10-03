@@ -6,7 +6,6 @@ import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
-import type { WebAnimations } from '../lower/anim-program.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import { familyListText } from '../css/values.ts';
 import { parseFamilyList } from '../fonts/family-list.ts';
@@ -90,6 +89,12 @@ export type WebFontContext = {
   readonly declared: ReadonlySet<string>;
   readonly rewrite: boolean;
   readonly prelude: (usedPinned: ReadonlySet<string>) => string;
+};
+
+/** T065 R15: an element's resolved transition and animation lines per case, and the used @keyframes (lower/anim-program.ts). */
+export type WebAnimations = {
+  readonly lines: (caseKey: string, address: string) => readonly string[];
+  readonly keyframes: string;
 };
 
 /**

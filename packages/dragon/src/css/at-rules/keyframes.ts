@@ -24,7 +24,8 @@ export type KeyframesSource = { readonly context: AtRuleContext; readonly base: 
 export type KeyframeDeclaration = { readonly property: Longhand; readonly value: CssValue; readonly span: Span; readonly valueSpan: Span; readonly text: string };
 
 /** One keyframe block: its offsets (a selector list gives several), its own easing, and its values in declaration order. */
-export type KeyframeBlock = { readonly offsets: readonly number[]; readonly easing: EasingValue | null; readonly values: readonly KeyframeDeclaration[]; readonly span: Span };
+/** labels: each selector as written (from, to or a percentage), for the web output. */
+export type KeyframeBlock = { readonly offsets: readonly number[]; readonly labels: readonly string[]; readonly easing: EasingValue | null; readonly values: readonly KeyframeDeclaration[]; readonly span: Span };
 
 /** span: the whole at-rule; preludeSpan: "@keyframes <name>", where the rule's own features are reported. */
 export type KeyframesRule = { readonly name: string; readonly span: Span; readonly preludeSpan: Span; readonly blocks: readonly KeyframeBlock[] };
@@ -95,6 +96,7 @@ export function parseKeyframesRules(sources: readonly KeyframesSource[], diagnos
         continue;
       }
       const offsets: number[] = [];
+      const labels: string[] = [];
       let dropped = false;
       for (const sel of list(r['prelude'] as CssNode, 'children')) {
         const o = offsetOf(sel);
@@ -104,10 +106,13 @@ export function parseKeyframesRules(sources: readonly KeyframesSource[], diagnos
         } else if (o === null) {
           diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(spanOf(sel, src.base)), message: `${generate(sel)} is not a keyframe selector (from, to or a percentage from 0% to 100%), so Chrome drops this keyframe block of @keyframes ${name}` }));
           dropped = true;
-        } else offsets.push(o);
+        } else {
+          offsets.push(o);
+          labels.push(generate(sel));
+        }
       }
       const parsed = parseBlock(r, src, name, diagnostics);
-      if (!dropped) blocks.push({ offsets, easing: parsed.easing, values: parsed.values, span });
+      if (!dropped) blocks.push({ offsets, labels, easing: parsed.easing, values: parsed.values, span });
     }
     const prelude = src.context.node['prelude'] as CssNode;
     const preludeSpan = { source: src.context.span.source, start: src.context.span.start, end: spanOf(prelude, src.base).end };

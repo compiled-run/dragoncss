@@ -137,7 +137,7 @@ function elementAnimation(address: string, lists: ReadonlyMap<AnimLonghand, read
     const named = item.kind === 'keyword' && item.value === 'none' ? [] : longhandsNamed(keywordOf(item));
     if (named === null) return;
     const timing: Listing = { mode: 'listed', delay: seconds(repeated(list('transition-delay'), i)), duration: seconds(repeated(list('transition-duration'), i)), easing: easingOf(repeated(list('transition-timing-function'), i)) };
-    // css_animations.cc 2611-2612: of repeated entries for one property, the last wins.
+    // T065 R5.9: of repeated entries for one property, the last wins.
     for (const p of named) listings.set(p, timing);
   });
   const names = list('animation-name');

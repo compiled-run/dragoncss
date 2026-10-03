@@ -12,6 +12,7 @@ import { admitted, animationKind } from '../css/animation-kinds.ts';
 import type { AnimItem, AnimLonghand, EasingValue } from '../css/properties/animation.ts';
 import { ANIM_LONGHANDS } from '../css/properties/animation.ts';
 import type { CssValue } from '../css/stylesheet.ts';
+import type { WebAnimations } from '../emit/web-css.ts';
 import type { Longhand } from '../css/properties.ts';
 
 export const ANIM_PROGRAM_VERSION = 'dragon.anim-program/1';
@@ -159,13 +160,6 @@ export function lowerAnimProgram(analysis: AnimationAnalysis, cases: readonly { 
 // authored name, so the compiled rendering computes the same longhands and runs the same animations as the authored one.
 
 
-export type WebAnimations = {
-  /** The declaration lines of one element in one case; empty where no animation longhand is declared. */
-  readonly lines: (caseKey: string, address: string) => readonly string[];
-  /** The @keyframes rules the cases use, in definition order. */
-  readonly keyframes: string;
-};
-
 const IDENT = /^-?[A-Za-z_][A-Za-z0-9_-]*$/;
 const nameText = (n: string): string => (IDENT.test(n) && !['none', 'initial', 'inherit', 'unset', 'default'].includes(n.toLowerCase()) ? n : JSON.stringify(n));
 
@@ -186,7 +180,7 @@ export function webAnimationsOf(analysis: AnimationAnalysis, valueText: (v: CssV
   const rules = [...analysis.keyframes.values()].filter((r) => used.has(r.name)).map((r) => {
     const blocks = r.blocks.map((b) => {
       const decls = [...b.values.map((v) => `${v.property}: ${valueText(v.value)};`), ...(b.easing === null ? [] : [`animation-timing-function: ${b.easing.text};`])];
-      return `  ${b.offsets.map((o) => `${Math.round(o * 1e9) / 1e7}%`).join(', ')} { ${decls.join(' ')} }`;
+      return `  ${b.labels.join(', ')} { ${decls.join(' ')} }`;
     });
     return `@keyframes ${nameText(r.name)} {\n${blocks.join('\n')}\n}`;
   });
