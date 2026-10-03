@@ -171,12 +171,16 @@ describe('lanes-host verdict', () => {
   });
 });
 
-describe('catch-up procedure (AGENTS.md step 2)', () => {
+describe('catch-up procedure (AGENTS.md steps 1 and 2)', () => {
   it('sets up the merge driver before the merge, so generated outputs never stop it', () => {
-    const step = readFileSync(repoPath('AGENTS.md'), 'utf8').split('\n').find((l) => l.startsWith('2. **Catch up'))!;
-    expect(step.indexOf('pnpm setup:git')).toBeGreaterThan(-1);
-    expect(step.indexOf('pnpm setup:git')).toBeLessThan(step.indexOf('git merge origin/master'));
-    expect(step.indexOf('git merge origin/master')).toBeLessThan(step.indexOf('pnpm regen'));
+    const lines = readFileSync(repoPath('AGENTS.md'), 'utf8').split('\n');
+    const branch = lines.find((l) => l.startsWith('1. **Branch.**'));
+    const verify = lines.find((l) => l.startsWith('2. **Verify on your base.**'));
+    expect(branch).toBeDefined();
+    expect(verify).toBeDefined();
+    const steps = `${branch}\n${verify}`;
+    expect(steps.indexOf('pnpm setup:git')).toBeGreaterThan(-1);
+    expect(steps.indexOf('pnpm setup:git')).toBeLessThan(steps.indexOf('Merge `origin/master` (then regen)'));
   });
 });
 
