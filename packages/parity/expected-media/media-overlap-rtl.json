@@ -23,7 +23,7 @@
    "band": 0,
    "pass": true,
    "boxesCompared": 5,
-   "valuesCompared": 355,
+   "valuesCompared": 370,
    "channelsCompared": 30,
    "problems": []
   },
@@ -33,7 +33,7 @@
    "band": 0,
    "pass": true,
    "boxesCompared": 5,
-   "valuesCompared": 355,
+   "valuesCompared": 370,
    "channelsCompared": 30,
    "problems": []
   },
@@ -43,7 +43,7 @@
    "band": 0,
    "pass": true,
    "boxesCompared": 5,
-   "valuesCompared": 355,
+   "valuesCompared": 370,
    "channelsCompared": 30,
    "problems": []
   },
@@ -53,7 +53,7 @@
    "band": 1,
    "pass": true,
    "boxesCompared": 5,
-   "valuesCompared": 355,
+   "valuesCompared": 370,
    "channelsCompared": 30,
    "problems": []
   },
@@ -63,7 +63,7 @@
    "band": 1,
    "pass": true,
    "boxesCompared": 5,
-   "valuesCompared": 355,
+   "valuesCompared": 370,
    "channelsCompared": 30,
    "problems": []
   },
@@ -73,7 +73,7 @@
    "band": 1,
    "pass": true,
    "boxesCompared": 5,
-   "valuesCompared": 355,
+   "valuesCompared": 370,
    "channelsCompared": 30,
    "problems": []
   },
@@ -83,7 +83,7 @@
    "band": 1,
    "pass": true,
    "boxesCompared": 5,
-   "valuesCompared": 355,
+   "valuesCompared": 370,
    "channelsCompared": 30,
    "problems": []
   },
@@ -93,7 +93,7 @@
    "band": 2,
    "pass": true,
    "boxesCompared": 5,
-   "valuesCompared": 355,
+   "valuesCompared": 370,
    "channelsCompared": 30,
    "problems": []
   },
@@ -103,7 +103,7 @@
    "band": 2,
    "pass": true,
    "boxesCompared": 5,
-   "valuesCompared": 355,
+   "valuesCompared": 370,
    "channelsCompared": 30,
    "problems": []
   }
