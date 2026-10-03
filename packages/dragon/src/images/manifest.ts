@@ -8,7 +8,9 @@ import type { ImageFaults } from './faults.ts';
 import { parseJpeg } from './jpeg.ts';
 import { naturalSize } from './natural-size.ts';
 import type { ImageHeader, NaturalSize } from './natural-size.ts';
-import { parsePng, pngColourRefusal } from './png.ts';
+import { zlibInflate } from './inflate.ts';
+import { decodePng, parsePng, pngColourRefusal, pngRawSize } from './png.ts';
+import type { PngFacts } from './png.ts';
 import { sniffImage } from './sniff.ts';
 import type { ImageFormat } from './sniff.ts';
 
@@ -155,13 +157,33 @@ const OTHER_FORMATS: Readonly<Record<Exclude<ImageFormat, 'png' | 'jpeg'>, Image
   gif: 'REPL-g', webp: 'REPL-g', avif: 'REPL-g', bmp: 'REPL-g', ico: 'REPL-g', svg: 'REPL-svg',
 };
 
+/** Android's RecordingCanvas refuses to draw a bitmap above 100 MiB (MAX_BITMAP_SIZE); ARGB_8888 is 4 bytes a pixel. */
+export const MAX_BITMAP_BYTES = 100 * 1024 * 1024;
+
+/**
+ * Why a PNG whose chunks parse still cannot be drawn: its bitmap is over the size Android draws, or its image data does not
+ * inflate and unfilter to the size IHDR declares. The device would fail at run time on such bytes, so the build refuses them
+ * (Macroscope 4169579864). The inflate stops at the declared size, so a small expansion bomb cannot exhaust the build
+ * (Macroscope 4170043800).
+ */
+function pngDecodeRefusal(bytes: Uint8Array, facts: PngFacts): ImageRefusal | null {
+  const bitmap = facts.width * facts.height * 4;
+  if (bitmap > MAX_BITMAP_BYTES) return { package: null, reason: `its ${facts.width} x ${facts.height} bitmap is ${bitmap} bytes, over the ${MAX_BITMAP_BYTES} bytes Android draws` };
+  try {
+    decodePng(bytes, (d) => zlibInflate(d, pngRawSize(facts)));
+    return null;
+  } catch (e) {
+    return { package: null, reason: `the PNG image data does not decode: ${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
 /** Why REPL-a cannot draw these bytes, with the owning package; null for an 8-bit sRGB or untagged PNG. */
 export function imageRefusal(bytes: Uint8Array, declaredType: string | null): ImageRefusal | null {
   const format = sniffImage(bytes, declaredType);
   if (format === null) return { package: null, reason: 'the bytes match no image format Chrome decodes' };
   if (format === 'png') {
     const p = parsePng(bytes);
-    return p.ok ? pngColourRefusal(p.facts) : { package: null, reason: `the PNG does not parse: ${p.reason}` };
+    return p.ok ? (pngColourRefusal(p.facts) ?? pngDecodeRefusal(bytes, p.facts)) : { package: null, reason: `the PNG does not parse: ${p.reason}` };
   }
   if (format === 'jpeg') {
     const j = parseJpeg(bytes);

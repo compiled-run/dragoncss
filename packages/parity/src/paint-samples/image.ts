@@ -27,13 +27,28 @@ export function flatAtImageEdge(b: ReplacedSamplesBox, x: number, y: number): bo
   return flatWithin(b, x, y, true);
 }
 
-function flatWithin(b: ReplacedSamplesBox, x: number, y: number, clampToImage: boolean): boolean {
+/** Whether a later box with an opaque background hides the device pixel, so the pixel shows that box, not the image. */
+export function coveredAt(b: ReplacedSamplesBox, x: number, y: number): boolean {
+  return b.cover.some((r) => x >= r.left && x < r.right && y >= r.top && y < r.bottom);
+}
+
+/**
+ * Whether a base rule's pixel must be dropped: inside the drawn image, not hidden by an opaque later box, on source content that
+ * is not flat. A pixel under a transparent later box still shows the image, so it is judged by the source alone.
+ */
+export function dropsBaseAt(b: ReplacedSamplesBox, x: number, y: number): boolean {
+  const d = b.paint.drawn;
+  if (b.image === null || d === null || x < d.x || y < d.y || x >= d.x + d.width || y >= d.y + d.height) return false;
+  return !coveredAt(b, x, y) && !flatWithin(b, x, y, false, false);
+}
+
+function flatWithin(b: ReplacedSamplesBox, x: number, y: number, clampToImage: boolean, underNoLaterBox = true): boolean {
   const img = b.image;
   const d = b.paint.drawn;
   if (img === null || d === null) return false;
   if (x < d.x || y < d.y || x >= d.x + d.width || y >= d.y + d.height) return false;
-  // A pixel a later box paints over shows that box, not the image.
-  if (b.later.some((r) => x >= r.left && x < r.right && y >= r.top && y < r.bottom)) return false;
+  // An image-flat point shows only the image: a later box, even a transparent one, may paint over it.
+  if (underNoLaterBox && b.later.some((r) => x >= r.left && x < r.right && y >= r.top && y < r.bottom)) return false;
   const dest = b.paint.dest;
   const sx = ((x + 0.5 - dest.x) * img.width) / dest.width;
   const sy = ((y + 0.5 - dest.y) * img.height) / dest.height;
@@ -59,7 +74,7 @@ function uniform(img: RgbaImage, x0: number, y0: number, x1: number, y1: number)
   return true;
 }
 
-/** The base rules, of any box, that touch a pixel inside a drawn image where the source is not flat. */
+/** The base rules, of any box, that touch a pixel inside a drawn image where the source is not flat and no opaque later box hides it. */
 const dropped = new WeakMap<PaintSampleContext, ReadonlySet<string>>();
 function droppedRules(ctx: PaintSampleContext): ReadonlySet<string> {
   const hit = dropped.get(ctx);
@@ -68,9 +83,7 @@ function droppedRules(ctx: PaintSampleContext): ReadonlySet<string> {
   const out = new Set<string>();
   for (const p of ctx.base) {
     for (const b of images) {
-      const d = b.paint.drawn as NonNullable<ReplacedSamplesBox['paint']['drawn']>;
-      const inImage = p.x >= d.x && p.y >= d.y && p.x < d.x + d.width && p.y < d.y + d.height;
-      if (inImage && !flatAt(b, p.x, p.y)) out.add(p.rule);
+      if (dropsBaseAt(b, p.x, p.y)) out.add(p.rule);
     }
   }
   dropped.set(ctx, out);
@@ -79,10 +92,11 @@ function droppedRules(ctx: PaintSampleContext): ReadonlySet<string> {
 
 const along = (lo: number, hi: number, f: number): number => Math.floor(lo + (hi - lo) * f);
 
-function imagePoints(ctx: PaintSampleContext): SamplePoint[] {
+/** The image module's points for replaced boxes in a raster of the given size (device px). */
+export function imagePointsOf(boxes: ReadonlyMap<string, ReplacedSamplesBox>, size: { readonly width: number; readonly height: number }): SamplePoint[] {
   const out: SamplePoint[] = [];
   const inset = SAMPLE_INSET_DEVICE_PX;
-  for (const [id, b] of replacedBoxes(ctx)) {
+  for (const [id, b] of boxes) {
     const d = b.paint.drawn;
     if (b.image === null || d === null) continue;
     // image-flat: a grid over the drawn part, inset from its edges, kept where the source is flat.
@@ -93,7 +107,8 @@ function imagePoints(ctx: PaintSampleContext): SamplePoint[] {
         const x = along(d.x, d.x + d.width, fx);
         const y = along(d.y, d.y + d.height, fy);
         if (x < d.x + inset || x + 1 > d.x + d.width - inset || y < d.y + inset || y + 1 > d.y + d.height - inset) continue;
-        if (x >= ctx.size.width || y >= ctx.size.height || seen.has(`${x},${y}`) || !flatAt(b, x, y)) continue;
+        // The drawn part may run past any edge of the raster (a negative object-position); only pixels inside it are sampled.
+        if (x < 0 || y < 0 || x >= size.width || y >= size.height || seen.has(`${x},${y}`) || !flatAt(b, x, y)) continue;
         seen.add(`${x},${y}`);
         out.push({ x, y, rule: `image-flat:${id}:${k++}` });
       }
@@ -120,7 +135,7 @@ function imagePoints(ctx: PaintSampleContext): SamplePoint[] {
           pts.push(s.horizontal ? [a, p] : [p, a]);
         }
         const inside = pts.slice(inset + 1);
-        return inside.every(([x, y]) => flatAtImageEdge(b, x, y)) && pts.every(([x, y]) => x >= 0 && y >= 0 && x < ctx.size.width && y < ctx.size.height) ? pts : null;
+        return inside.every(([x, y]) => flatAtImageEdge(b, x, y)) && pts.every(([x, y]) => x >= 0 && y >= 0 && x < size.width && y < size.height) ? pts : null;
       }).find((l) => l !== null);
       if (line === undefined || line === null) continue;
       for (const [x, y] of line) out.push({ x, y, rule: `edge:${id}:image-${s.side}` });
@@ -132,5 +147,5 @@ function imagePoints(ctx: PaintSampleContext): SamplePoint[] {
 export const IMAGE_SAMPLES: PaintSamples = {
   name: 'image',
   keep: (p, ctx) => !droppedRules(ctx).has(p.rule),
-  points: imagePoints,
+  points: (ctx) => imagePointsOf(replacedBoxes(ctx), ctx.size),
 };
