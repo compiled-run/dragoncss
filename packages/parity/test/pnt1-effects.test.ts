@@ -165,11 +165,14 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
       const e = sorted[k] as Entry;
       const n = e.node;
       if (e.outline) {
-        out.push(ringsOf(n));
+        if (hiddenPaint(n) === null) out.push(ringsOf(n));
         continue;
       }
       if (n.kind === 'text') {
-        out.push({ kind: 'text', node: n, glyphs: glyphsOf.get(n.id) ?? [] });
+        // A text run follows its element, through an anonymous box (T150a).
+        const parent = n.parent === null ? undefined : byNode.get(n.parent);
+        const owner = parent?.kind === 'anonymous' && parent.parent !== null ? byNode.get(parent.parent) : parent;
+        if (owner === undefined || hiddenPaint(owner) === null) out.push({ kind: 'text', node: n, glyphs: glyphsOf.get(n.id) ?? [] });
         continue;
       }
       const effects = n.facts['effects'] as { opacity: number } | undefined;
@@ -191,10 +194,18 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
 
 const inside = (x: number, y: number, l: number, t: number, r: number, b: number): boolean => x >= l && x < r && y >= t && y < b;
 
+/** T150a: a box with a visibility write paints none of its own decorations; the canvas background of html and body still paints. */
+function hiddenPaint(n: ProgramNode): { readonly canvas: boolean } | null {
+  const w = n.writes.find((x) => x.kind === 'visibility');
+  return w === undefined || w.kind !== 'visibility' ? null : { canvas: w.canvas };
+}
+
 /** The drawing ops of a box (a background rect, border sides); a box with both is one display item of several ops. */
 function boxOps(b: Box): { readonly count: number; readonly foldable: boolean } {
+  const hidden = hiddenPaint(b.node);
   const bg = b.node.writes.find((w) => w.kind === 'background-color');
-  const hasBg = bg !== undefined && bg.kind === 'background-color' && bg.color.alpha > 0;
+  const hasBg = bg !== undefined && bg.kind === 'background-color' && bg.color.alpha > 0 && (hidden === null || hidden.canvas);
+  if (hidden !== null) return { count: hasBg ? 1 : 0, foldable: hasBg };
   const styles = b.node.writes.find((w) => w.kind === 'border-styles');
   const borders = styles !== undefined && styles.kind === 'border-styles' ? styles.styles.filter((s, k) => s !== 'none' && s !== 'hidden' && (b.border[k] as number) > 0).length : 0;
   return { count: (hasBg ? 1 : 0) + borders, foldable: hasBg && borders === 0 };
@@ -265,12 +276,15 @@ function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: Re
 function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<string, Box>, alpha: number): Px {
   if (clippedOut(b.node, byId, cx, cy) || !insideRounded(cx, cy, b.l, b.t, b.r, b.b, b.radii === null ? null : b.radii.slice(0, 8))) return dst;
   let out = dst;
+  const hidden = hiddenPaint(b.node);
+  if (hidden !== null && !hidden.canvas) return dst;
   const bg = b.node.writes.find((w) => w.kind === 'background-color');
   if (bg !== undefined && bg.kind === 'background-color' && bg.color.alpha > 0) {
     // A folded translucent colour would take Skia's float alpha product, which the fixtures do not use.
     if (alpha !== 255 && bg.color.alpha !== 255) throw new Error(`${b.node.id}: the model folds opaque backgrounds only`);
     out = color32(out, bg.color, alpha === 255 ? bg.color.alpha : alpha);
   }
+  if (hidden !== null) return out;
   const [bt, br, bb, bl] = b.border as [number, number, number, number];
   if (insideRounded(cx, cy, b.l + bl, b.t + bt, b.r - br, b.b - bb, b.radii === null ? null : b.radii.slice(8, 16))) return out;
   const styles = b.node.writes.find((w) => w.kind === 'border-styles');
@@ -377,7 +391,7 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
 // cases with box shadows (the model draws no shadow rasters; pnt1-reference.test.ts proves them against Chrome), those with dashed
 // or dotted border sides, which the model does not draw, and rounded boxes with a border side next to a side without one (the model
 // does not split a corner between the outer and inner curves).
-const MODEL_OUT = ['var-logical', 'radius-borders', 'radius-clip', 'shadow-basic', 'shadow-rounded', 'shadow-inset', 'shadow-cascade', 'calib-shadow-blur', 'calib-shadow-colors'];
+const MODEL_OUT = ['var-logical', 'radius-borders', 'radius-clip', 'shadow-basic', 'shadow-rounded', 'shadow-inset', 'shadow-cascade', 'calib-shadow-blur', 'calib-shadow-colors', 'visibility-paint'];
 /** Why a program is outside the model, or null: a box shadow, a border side that is not solid, or a rounded box with mixed sides. */
 const outOfModel = (p: NativeProgram): string | null => {
   if (p.nodes.some((n) => n.writes.some((w) => w.kind === 'box-shadow'))) return 'box-shadow';
