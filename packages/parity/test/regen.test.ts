@@ -82,7 +82,7 @@ class World {
             written.add(p);
             this.t.delete(p);
           },
-          trace: (line) => trace.push(line),
+          trace: (line) => trace.push(...line.split('\n')),
         };
         await new Promise((r) => setTimeout(r, 1));
         const out = await this.impls[s.name]!(files);
@@ -342,7 +342,11 @@ describe('pnpm regen chain', () => {
     expect(await fails('X\t/r/tools\t["gradle","build"]')).toMatch(/ran gradle in tools\//);
     expect(await fails('R\t/r/node_modules/.pnpm/left-pad@1.0.0/node_modules/left-pad/index.js')).toMatch(/read installed package left-pad/);
     // Keyed files, the step's own data directory, files outside the repository and pnpm reading the manifests pass.
-    for (const ok of ['R\t/r/data/a/x', 'D\t/r/data/a', 'R\t/r/tools/lib.ts', 'R\t/etc/hosts', 'R\t/r/out/a', 'X\t/r\t["node","/r/tools/gen.ts"]']) expect(await fails(ok), ok).toBeNull();
+    for (const ok of ['R\t/r/data/a/x', 'D\t/r/data/a', 'R\t/r/tools/lib.ts', 'R\t/etc/hosts', 'R\t/r/out/a', 'X\t/r\t["node","/r/tools/gen.ts"]\nA\t/r\t["node","/r/tools/gen.ts"]']) expect(await fails(ok), ok).toBeNull();
+    // A Node child that never loaded the tracer, and a line the tracer cannot have written, fail closed.
+    expect(await fails('X\t/r\t["node","/r/tools/gen.ts"]')).toMatch(/1 traced processes for 1 Node children: a process ran without scripts\/regen-trace.ts/);
+    expect(await fails('Q\t/r/data/c')).toMatch(/unreadable trace line "Q\\t\/r\/data\/c"/);
+    expect(await fails('X\t/r\tnot json')).toMatch(/unreadable trace line/);
     const pnpmRead = (f: Files): void => (f.trace('A\t/r\t["node","/x/node_modules/pnpm/bin/pnpm.cjs","run"]'), f.trace('R\t/r/package.json'), f.set('out/a', 'A'));
     expect((await regen([CHAIN[0]!], opts, new World({ ...SOURCES, 'package.json': '{}' }, { gen: pnpmRead }).io())).error).toBeNull();
   });

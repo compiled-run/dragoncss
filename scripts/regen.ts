@@ -333,15 +333,31 @@ export function checkTrace(step: Step, inputs: Inputs, tree: Tree, lines: readon
     const missing = inside.filter((q) => !keyed(q));
     if (missing.length > 0) problems.add(`${how} ${p === '' ? '.' : p}/ (${missing.length} unkeyed files, such as ${missing.slice(0, 3).join(', ')})`);
   };
+  const argvOf = (text: string | undefined): string[] | null => {
+    try {
+      const v: unknown = JSON.parse(text ?? '');
+      return Array.isArray(v) && v.every((x) => typeof x === 'string') ? v : null;
+    } catch {
+      return null;
+    }
+  };
+  // Every Node process the step starts loads the tracer and names itself in an A line; one that did not was not traced.
+  let headers = 0;
+  let nodeChildren = 0;
   for (const line of lines) {
     if (line === '') continue;
-    const [kind, abs, extra] = line.split('\t') as [string, string, string | undefined];
-    if (kind === 'A') {
-      // A process header: the argv of the process whose lines follow.
-      isPnpm = /(^|\/)pnpm(\.c?js)?"?\]?$|\/pnpm\//.test(extra ?? '') || (extra ?? '').includes('pnpm.cjs');
+    const [kind, abs, extra] = line.split('\t') as [string, string | undefined, string | undefined];
+    if (!['A', 'R', 'D', 'P', 'G', 'X'].includes(kind) || abs === undefined || ((kind === 'A' || kind === 'X') && argvOf(extra) === null)) {
+      problems.add(`unreadable trace line ${JSON.stringify(line.slice(0, 200))}`);
       continue;
     }
-    if (abs === undefined) continue;
+    if (kind === 'A') {
+      // A process header: the argv of the process whose lines follow.
+      const argv = argvOf(extra)!;
+      isPnpm = /(^|\/)pnpm$/.test(argv[0] ?? '') || /\/pnpm\/(bin|dist)\/pnpm\.c?js$/.test(argv[1] ?? '');
+      headers++;
+      continue;
+    }
     const r = rel(abs);
     if (r === null) continue;
     const pkg = pkgOf(r);
@@ -361,9 +377,10 @@ export function checkTrace(step: Step, inputs: Inputs, tree: Tree, lines: readon
     } else if (kind === 'G') {
       if (!isPnpm) dir(r, `globbed ${extra ?? ''} in`);
     } else if (kind === 'X') {
-      const argv = JSON.parse(extra ?? '[]') as string[];
+      const argv = argvOf(extra)!;
       const cmd = argv[0] ?? '';
       const isNode = /(^|\/)(node|pnpm|npx|sh)$/.test(cmd);
+      if (/(^|\/)(node|pnpm|npx)$/.test(cmd)) nodeChildren++;
       if (!isNode && r !== '' && under(r).length > 0) dir(r, `ran ${cmd} in`);
       for (const w of argv.slice(1)) {
         if (isNode && !w.startsWith('/')) continue;
@@ -374,6 +391,7 @@ export function checkTrace(step: Step, inputs: Inputs, tree: Tree, lines: readon
       }
     }
   }
+  if (headers === 0 || headers < nodeChildren + (lines.some((l) => l.startsWith('A\t')) ? 1 : 0)) problems.add(`${headers} traced processes for ${nodeChildren} Node children: a process ran without scripts/regen-trace.ts`);
   return { problems: [...problems].sort(), readOwn };
 }
 
@@ -412,8 +430,12 @@ export function fileStore(dir: string): Store {
     put: (step, key, entry) => {
       mkdirSync(join(dir, step), { recursive: true });
       const tmp = `${path(step, key)}.${process.pid}.tmp`;
-      writeFileSync(tmp, `${JSON.stringify({ version: 2, ...entry })}\n`);
-      renameSync(tmp, path(step, key));
+      try {
+        writeFileSync(tmp, `${JSON.stringify({ version: 2, ...entry })}\n`);
+        renameSync(tmp, path(step, key));
+      } finally {
+        rmSync(tmp, { force: true });
+      }
     },
     latest: (step) => {
       const d = join(dir, step);
@@ -608,7 +630,14 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
             const ts = io.now();
             const files: Record<string, string | null> = { ...hit.outputs };
             for (const p of Object.keys(outputs)) if (!(p in hit.outputs)) files[p] = null;
-            if (io.restore(files)) {
+            let restored: boolean;
+            try {
+              restored = io.restore(files);
+            } catch (e) {
+              error = `${s.name}: restoring its recorded outputs failed: ${e instanceof Error ? e.message : String(e)}`;
+              break;
+            }
+            if (restored) {
               const after = io.snapshot();
               if (!sameMap(outputsOf(s, after), hit.outputs)) {
                 error = `${s.name}: restoring its recorded outputs left different files`;
@@ -799,7 +828,12 @@ async function main(): Promise<void> {
           if (settled) return;
           settled = true;
           out.end(note, () => {
-            const trace = readTrace(traceDir);
+            let trace: string[];
+            try {
+              trace = readTrace(traceDir);
+            } catch (e) {
+              trace = [`unreadable trace directory: ${e instanceof Error ? e.message : String(e)}`];
+            }
             rmSync(traceDir, { recursive: true, force: true });
             const touched = (paths: readonly string[]): Set<string> => new Set(paths.filter((p) => existsSync(join(root, p)) && statSync(join(root, p)).mtimeMs >= started - 1));
             done({ code, log: readFileSync(logFile, 'utf8'), trace, touched });
