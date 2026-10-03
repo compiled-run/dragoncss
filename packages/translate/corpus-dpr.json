@@ -35,7 +35,7 @@
     "calcToLu"
   ],
   "engineCalc": 4000,
-  "engineInline": 4500,
+  "engineInline": 6000,
   "snapGenerated": 20000,
   "snapVectors": 1353,
   "cases": {
@@ -48,7 +48,7 @@
     "calc-goldens": 17,
     "engine-calc": 4000,
     "units-calc": 50000,
-    "engine-inline": 4500,
+    "engine-inline": 6000,
     "text-latin": 124
   },
   "engineSplit": {
@@ -59,17 +59,17 @@
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "e56eda5ac50541bcd2c461ff22206fa2c2ea4a07a9916ab3bdb7b9de26f0f8ed",
-    "vectors-dpr": "c55ab851750e4a57a47938951a128b87cd6140924e45b4c956dac5cf858057f9",
-    "engine-dpr": "e910d1cbc21e3ae9da8464a4a2bd98fdac2fdc15260def847f9beb67bdbbe7fd",
+    "vectors-m2": "139d4bf98dd63d452504c5b9c5be39f77ddc78a9eceb6b6697ebaec399bb7df8",
+    "vectors-dpr": "b0c96137a541d5f1d3ab60ed5cf835d4fcd6486ae86b3577ee01f805ef94f3cc",
+    "engine-dpr": "246d03786aa971c2d6eed381a8a504eaf237b4abab18a6b6d45b2cb13b53bdbf",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
     "snap": "9b1c5eacd68b195aebd0595c7847498e54b57d9cfc1359cfbf7629fdef663315",
     "snap-values": "fdeb2cecd1521fdd06c93f68e8a53f0efd51bd155422bff8533ba0224e08b739",
-    "calc-goldens": "1c15b079192582866fbcf55c30cd4afa0a4239ad72bd4910e27b574626e456f6",
-    "engine-calc": "1ad165db27c05ccc0cce041c598d40d200b0d964279d515a0d2017eebaa185ea",
+    "calc-goldens": "2e7bca708d360a77abfe9e1b4f9d2e78bede98598cfd5913a7ad5bfa9a628029",
+    "engine-calc": "a822a72f8e0efeb474e963919b0ae00d3538be0cf0e35beebc48bb42424acccd",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50",
-    "engine-inline": "671ff910b2cc29952f600d765583dc5f76e957ae7f7ebd7ae0b8e04c8bbff1c6",
-    "text-latin": "d40e89153ef392f51593f91afa2615d38b84f325ea14f63aa932bb1da3d6d966"
+    "engine-inline": "c4e897c7c5ea6194236f6f9e7ac08f1682b4a714b3432db2373d37cf256b666b",
+    "text-latin": "3480b71285f76a637d8544d2372083b9f547806045744742a0fc99487d64ebeb"
   },
-  "digest": "4f6bce8a9fa9d489eafcaf5a7f682bf3ca049dfeab7b9abc3857070611b56852"
+  "digest": "75b6c3f4f35f0de6a8441a643d3701b43c8c11babfb3a3ea8eb28648df7b2668"
 }

@@ -541,7 +541,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }
@@ -696,7 +698,9 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         },
         {
          "kind": "inline",
@@ -843,7 +847,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           },
           {
            "kind": "inline",
@@ -990,7 +996,9 @@
               "kind": "normal"
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           }
@@ -1013,7 +1021,9 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -1168,7 +1178,9 @@
           "value": 1.5
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         },
         {
          "kind": "inline",
@@ -1317,7 +1329,9 @@
             "value": 1.5
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -1339,7 +1353,9 @@
           "value": 1.5
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         },
         {
          "kind": "br",
@@ -1376,7 +1392,9 @@
           "value": 1.5
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -1768,7 +1786,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           },
           {
            "kind": "inline",
@@ -1915,7 +1935,9 @@
               "kind": "normal"
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           }
@@ -2190,7 +2212,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           },
           {
            "kind": "inline",
@@ -2337,7 +2361,9 @@
               "kind": "normal"
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           }
@@ -2491,7 +2517,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           },
           {
            "kind": "inline",
@@ -2638,7 +2666,9 @@
               "kind": "normal"
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           }
@@ -2913,7 +2943,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -3065,7 +3097,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -3217,7 +3251,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }

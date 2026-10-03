@@ -533,7 +533,9 @@
             "value": 1.4
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -819,7 +821,9 @@
               "value": 1.4
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           },
@@ -973,7 +977,9 @@
               "value": 1.4
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           }

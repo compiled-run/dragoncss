@@ -414,7 +414,9 @@
           "value": 1.5
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -566,7 +568,9 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -720,7 +724,9 @@
           "value": 25
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -873,7 +879,9 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -1025,7 +1033,9 @@
           "kind": "normal"
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -1297,7 +1307,9 @@
             "value": 2
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -1451,7 +1463,9 @@
             "value": 2
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -1605,7 +1619,9 @@
             "value": 2
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }
@@ -1878,7 +1894,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -2030,7 +2048,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }

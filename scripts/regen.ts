@@ -87,6 +87,8 @@ export const MANUAL: readonly { readonly command: string; readonly outputs: read
   { command: 'pnpm run parity:glyph-calibration', outputs: ['packages/parity/expected-glyphs/darwin-arm64/**'] },
   { command: 'node scripts/gen-script-data.ts', outputs: ['packages/layout/src/script-data.ts'] },
   { command: 'packages/layout/test/fixtures/linebreak/capture/*.mjs', outputs: ['packages/layout/test/fixtures/linebreak/*.json'] },
+  // TXT2-a: the UAX #29 grapheme data from the pinned Unicode 16.0.0 files, and Chrome's Intl.Segmenter capture beside its script.
+  { command: 'pnpm run linebreak:gen; node --conditions=dragon-internal packages/layout/test/fixtures/grapheme/capture.mjs', outputs: ['packages/layout/src/grapheme-data.ts', 'packages/layout/test/fixtures/grapheme/*.json'] },
   { command: 'node scripts/gen-baseline-source-matrix.ts, node scripts/gen-granularity-fixtures.ts', outputs: ['packages/parity/generated/**'] },
   { command: 'node packages/parity/test/css-token-fuzz/generate.ts', outputs: ['packages/parity/test/css-token-fuzz/generated/**'] },
   { command: 'scripts/capture-grid-probe.ts, packages/parity/test/grid-fuzz/generate.ts', outputs: ['packages/dragon/test/data/grid-*.json'] },

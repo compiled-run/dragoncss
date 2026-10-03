@@ -1115,6 +1115,16 @@ type LineBuild = {
   forced: boolean;
   curItem: number;
   curOffset: number;
+  /**
+   * TXT2-a: break_anywhere_if_overflow_ for the line's text, override_break_anywhere_, and per item the break-character
+   * opportunities (grapheme cluster starts inside it) and whether one follows its end.
+   */
+  readonly anywhere: boolean;
+  readonly graphemes: readonly (readonly number[])[];
+  readonly graphemeAtEnd: readonly boolean[];
+  override: boolean;
+  readonly startItem: number;
+  readonly startOffset: number;
 };
 
 /** The state, read after a call that may change it. */
@@ -1130,8 +1140,11 @@ function textUnit(it: BreakItem, offset: number): number {
   return it.kind === 'text' && offset >= 0 && offset < it.result.end ? (it.item.units[offset] as number) : -1;
 }
 
-function itemBreakable(it: BreakItem, offset: number): boolean {
+function itemBreakable(b: LineBuild, index: number, offset: number): boolean {
+  const it = b.items[index] as BreakItem;
   if (it.kind !== 'text') return false;
+  // LineBreakType::kBreakCharacter under override_break_anywhere_ (line_breaker.cc:4536-4542): every grapheme cluster boundary.
+  if (b.override) return offset >= it.result.end ? (b.graphemeAtEnd[index] as boolean) : contains(b.graphemes[index] as readonly number[], offset, 0);
   if (offset >= it.result.end) return it.atEnd;
   return contains(it.opportunities, offset, 0);
 }
@@ -1180,7 +1193,7 @@ function breakText(b: LineBuild, r: MutableResult, availIn: number, availWithHyp
   let avail = availIn;
   const wrapped = it.offset + r.start !== 0 && it.offset + r.start === b.lineStart && !b.afterForced;
   while (true) {
-    const l = shapeLine(it.item, it.result, r.start, fromRaw(avail < 0 ? 0 : avail), wrapped, (o) => itemBreakable(it, o), !b.accurateEnd);
+    const l = shapeLine(it.item, it.result, r.start, fromRaw(avail < 0 ? 0 : avail), wrapped, (o) => itemBreakable(b, r.index, o), !b.accurateEnd);
     if (!l.ok) throw new BreakFailure(l.reason);
     let inline: number = l.width < 0 ? 0 : l.width;
     let hyphen = 0;
@@ -1201,7 +1214,7 @@ function breakText(b: LineBuild, r: MutableResult, availIn: number, availWithHyp
     r.width = fromRaw(inline);
     r.hyphen = fromRaw(hyphen);
     r.view = l.view;
-    r.canBreakAfter = l.end < it.result.end ? true : itemBreakable(it, it.result.end);
+    r.canBreakAfter = l.end < it.result.end ? true : itemBreakable(b, r.index, it.result.end);
     r.mayBreakInside = !l.overflow;
     return inline <= availWithHyphens;
   }
@@ -1316,6 +1329,18 @@ function handleOverflow(b: LineBuild): void {
       r.canBreakAfter = before.canBreakAfter;
       r.mayBreakInside = before.mayBreakInside;
     }
+  }
+  // line_breaker.cc:4182-4187, RetryAfterOverflow (:4226-4250): no break fits and overflow-wrap (or word-break: break-word) is set,
+  // so the whole line is broken again from its start with break-character opportunities.
+  if (b.anywhere && !b.override) {
+    b.override = true;
+    b.state = 'continue';
+    b.results = [];
+    b.position = 0;
+    b.leading = true;
+    b.curItem = b.startItem;
+    b.curOffset = b.startOffset;
+    return;
   }
   if (breakBefore > 0) {
     rewindOverflow(b, breakBefore);
@@ -1458,6 +1483,14 @@ function breakOneLine(b: LineBuild): BrokenLine {
  * ShapeLine reshaping the end of a line that breaks at a space. epsilon is LayoutUnit::AddEpsilon (AvailableWidthToFit).
  */
 export function breakItemLines(items: readonly BreakItem[], available: LU, wrap: boolean, accurateEnd: boolean, epsilon: boolean): BrokenLines {
+  return breakItemLinesWith(items, available, wrap, accurateEnd, epsilon, false, false, [], []);
+}
+
+/**
+ * TXT2-a: breakItemLines with overflow-wrap's anywhere-if-overflow (anywhere) and break-character from the line start
+ * (breakCharacter, min-content); graphemes and graphemeAtEnd give each item's break-character opportunities.
+ */
+export function breakItemLinesWith(items: readonly BreakItem[], available: LU, wrap: boolean, accurateEnd: boolean, epsilon: boolean, anywhere: boolean, breakCharacter: boolean, graphemes: readonly (readonly number[])[], graphemeAtEnd: readonly boolean[]): BrokenLines {
   const toFit: number = epsilon ? available + 1 : available;
   const lines: BrokenLine[] = [];
   let curItem = 0;
@@ -1468,6 +1501,7 @@ export function breakItemLines(items: readonly BreakItem[], available: LU, wrap:
       const b: LineBuild = {
         items, toFit, wrap, accurateEnd, afterForced, lineStart: lineOffsetOf(items, curItem, curOffset),
         results: [], position: 0, state: 'continue', leading: true, forced: false, curItem, curOffset,
+        anywhere, graphemes, graphemeAtEnd, override: breakCharacter, startItem: curItem, startOffset: curOffset,
       };
       const line = breakOneLine(b);
       if (line.results.length === 0) break;

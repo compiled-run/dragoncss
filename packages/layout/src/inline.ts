@@ -15,10 +15,11 @@ import { asciiPairBreaks } from './linebreak.ts';
 import { AHEM_FACE_ID, coveredIndex } from './text.ts';
 import { scriptCode, scriptExtensions, USCRIPT_COMMON, USCRIPT_INHERITED, USCRIPT_LATIN } from './script-data.ts';
 import type { BreakItem, BreakResult, BrokenLine } from './shaping.ts';
-import { breakItemLines } from './shaping.ts';
+import { breakItemLinesWith } from './shaping.ts';
 import type { FitFaults } from './linefit.ts';
 import { fitsAvailable, isHangingSpace } from './linefit.ts';
 import { unsupported } from './unsupported.ts';
+import { graphemeBreaksWith } from './grapheme.ts';
 import type { AtomicLayout } from './inline-box.ts';
 import { atomicContribution, isAtomicInline, layoutAtomic } from './inline-box.ts';
 
@@ -63,6 +64,16 @@ export type Ifc = {
   readonly shaped: boolean;
   /** For real-font text: the char items a line may start at (soft wrap opportunities), ascending. */
   readonly opportunityItems: readonly number[];
+  /**
+   * TXT2-a (css-text-3 §5.5, Blink LineBreaker::SetCurrentStyleForce): anywhere is break_anywhere_if_overflow_ in content mode
+   * (overflow-wrap anywhere or break-word, word-break: break-word); minAnywhere is break-character in min-content mode (overflow-wrap:
+   * anywhere, word-break: break-word). graphemes are the break-character boundaries (UAX #29 grapheme cluster starts), graphemeItems
+   * the char items they start at.
+   */
+  readonly anywhere: boolean;
+  readonly minAnywhere: boolean;
+  readonly graphemes: readonly Boundary[];
+  readonly graphemeItems: readonly number[];
 };
 
 /**
@@ -403,11 +414,25 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     if (first !== undefined && t.textWrapMode !== first.textWrapMode) {
       unsupported('mixed-text-wrap-mode', t.id, 'css-text-4 §5.1', `text runs with different text-wrap-mode in one formatting context of ${box.id}`);
     }
+    if (t.wordBreak !== 'normal' && t.wordBreak !== 'break-word') unsupported('word-break', t.id, 'css-text-3 §5.2', `word-break: ${t.wordBreak} on ${t.id} (TXT2-d)`);
+    if (first !== undefined && (t.overflowWrap !== first.overflowWrap || t.wordBreak !== first.wordBreak)) {
+      unsupported('mixed-text-wrap-mode', t.id, 'css-text-3 §5.2, §5.5', `text runs with different overflow-wrap or word-break in one formatting context of ${box.id}`);
+    }
   }
+  // Blink LineBreaker::SetCurrentStyleForce (line_breaker.cc:4495-4542). Planted faults: wordBreakBreakWordIgnored reads
+  // word-break: break-word as normal; anywhereMinContentIgnored keeps min-content's normal opportunities under anywhere;
+  // breakWordShrinksMinContent lets overflow-wrap: break-word break anywhere in min-content too.
+  const ow = first === undefined ? 'normal' : first.overflowWrap;
+  const breakWordBreak = first !== undefined && first.wordBreak === 'break-word' && !ctx.faults.wordBreakBreakWordIgnored;
+  const anywhere = ow !== 'normal' || breakWordBreak;
+  const minAnywhere = ((ow === 'anywhere' || breakWordBreak) && !ctx.faults.anywhereMinContentIgnored) || (ow === 'break-word' && ctx.faults.breakWordShrinksMinContent);
   const strut = box.strut;
   if (strut === null) throw new Error(`${box.id} has inline content and no strut; validateLayoutInput rejects this input`);
   const starts: number[] = [];
-  const boundaries = boundariesOf(ctx, box, items, first === undefined || first.textWrapMode === 'wrap', shaped, starts);
+  const wrap = first === undefined || first.textWrapMode === 'wrap';
+  const boundaries = boundariesOf(ctx, box, items, wrap, shaped, starts);
+  const graphemeItems: number[] = [];
+  const graphemes = wrap && (anywhere || minAnywhere) ? graphemeBoundariesOf(ctx, items, graphemeItems) : [];
   return {
     leaves: flat.leaves,
     boxes: flat.boxes,
@@ -424,7 +449,50 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     closeAt: flat.boxes.map((_, b) => tagIndex(items, b, 'close')),
     shaped,
     opportunityItems: [...starts].sort((x, y) => x - y),
+    anywhere: wrap && anywhere,
+    minAnywhere: wrap && minAnywhere,
+    graphemes,
+    graphemeItems,
   };
+}
+
+/**
+ * The break-character boundaries (UAX #29 extended grapheme cluster starts) of the text between <br>s, characters and atomic
+ * inlines (U+FFFC) alike, placed after the close tags that follow the cluster before them, as boundariesOf places soft ones.
+ * Planted fault graphemeClusterSplit breaks between every two code points.
+ */
+function graphemeBoundariesOf(ctx: Ctx, items: readonly Item[], startItems: number[]): Boundary[] {
+  const out: Boundary[] = [];
+  let run: number[] = [];
+  const flushRun = (): void => {
+    const breaks = graphemeBreaksWith(run.map((i) => (items[i] as Item).cp), ctx.faults.graphemeClusterSplit);
+    for (let p = 1; p < run.length; p++) {
+      if (!(breaks[p] as boolean)) continue;
+      out.push({ at: afterCloses(items, run[p - 1] as number), forced: false });
+      startItems.push(run[p] as number);
+    }
+    run = [];
+  };
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i] as Item;
+    if (it.kind === 'char' || it.kind === 'atomic') run.push(i);
+    else if (it.kind === 'br') flushRun();
+  }
+  flushRun();
+  return out;
+}
+
+/** Boundaries a and b merged in item order, one per place, a forced one winning (boundariesOf's rule). */
+function mergeBoundaries(a: readonly Boundary[], b: readonly Boundary[]): Boundary[] {
+  const ordered = [...a, ...b].sort((x, y) => (x.at !== y.at ? x.at - y.at : x.forced === y.forced ? 0 : x.forced ? -1 : 1));
+  const out: Boundary[] = [];
+  let lastAt = -1;
+  for (const x of ordered) {
+    if (x.at === lastAt) continue;
+    out.push(x);
+    lastAt = x.at;
+  }
+  return out;
 }
 
 /** Whether every code point is in R4's Latin scope: Script Latin, or Common or Inherited whose Script_Extensions hold Latin. */
@@ -903,6 +971,12 @@ function endsOf(ifc: Ifc): Boundary[] {
   return out;
 }
 
+/** min-content's boundaries: under break-character (Ifc minAnywhere) every grapheme boundary too (HandleTextForFastMinContent). */
+function minEndsOf(ifc: Ifc): Boundary[] {
+  if (!ifc.minAnywhere) return endsOf(ifc);
+  return mergeBoundaries(endsOf(ifc), ifc.graphemes);
+}
+
 // css-text-3 §5: greedy line breaking. A line takes segments between boundaries while they fit, and always its first; a forced
 // boundary ends it. A line fits when its width without the hanging spaces passes Blink's fit test (linefit.ts fitsAvailable: at
 // most the available width plus one LayoutUnit); the planted fault fitWithoutEpsilon drops that LayoutUnit. Items after the last
@@ -917,7 +991,10 @@ function breakLines(ctx: Ctx, ifc: Ifc, adv: readonly LU[], available: LU): Line
     if (glyph.ok) slack = glyph.measure.width;
   }
   const fit: FitFaults = { noEpsilon: ctx.faults.fitWithoutEpsilon, breakInsideWord: false };
-  const ends = endsOf(ifc);
+  // Planted fault breakAnywhereAlways: break-character opportunities from the start instead of only after an overflow.
+  const always = ifc.anywhere && ctx.faults.breakAnywhereAlways;
+  const ends = always ? mergeBoundaries(endsOf(ifc), ifc.graphemes) : endsOf(ifc);
+  const limit = add(available, slack);
   const lines: Line[] = [];
   let start = 0;
   let k = 0;
@@ -932,17 +1009,57 @@ function breakLines(ctx: Ctx, ifc: Ifc, adv: readonly LU[], available: LU): Line
     let end = (ends[k] as Boundary).at;
     let forced = (ends[k] as Boundary).forced;
     k++;
+    const firstEnd = end;
     while (!forced && k < ends.length) {
       const next = ends[k] as Boundary;
-      if (!fitsAvailable(toPx(width(ctx, ifc, adv, start, visibleEndOf(ifc, start, next.at))), add(available, slack), fit)) break;
+      if (!lineFits(ctx, ifc, adv, start, next.at, limit, fit)) {
+        // Planted fault emergencyBreakBeforeOpportunity: the next segment is broken at graphemes on this line instead of wrapping.
+        if (ifc.anywhere && ctx.faults.emergencyBreakBeforeOpportunity) {
+          const g = graphemeBreakIn(ctx, ifc, adv, start, end, next.at, limit, fit);
+          if (g > end) end = g;
+        }
+        break;
+      }
       end = next.at;
       forced = next.forced;
       k++;
+    }
+    // line_breaker.cc:4182-4187 with RetryAfterOverflow (:4226-4250): when the line's first segment overflows (no opportunity fits)
+    // and break_anywhere_if_overflow_ is set, the line is broken again at grapheme cluster boundaries; the last that fits ends
+    // it, or the first one when none does. The next line starts there, at the same boundaries as before.
+    if (ifc.anywhere && !always && end === firstEnd && !lineFits(ctx, ifc, adv, start, end, limit, fit)) {
+      const g = graphemeBreakIn(ctx, ifc, adv, start, start, end, limit, fit);
+      if (g > start) {
+        end = g;
+        forced = false;
+        k--;
+      }
     }
     lines.push({ start, end, visibleEnd: visibleEndOf(ifc, start, end), pieces: [] });
     start = end;
   }
   return lines;
+}
+
+/** Whether items [start, end) fit a line of the limit width without their hanging spaces (linefit.ts fitsAvailable). */
+function lineFits(ctx: Ctx, ifc: Ifc, adv: readonly LU[], start: number, end: number, limit: LU, fit: FitFaults): boolean {
+  return fitsAvailable(toPx(width(ctx, ifc, adv, start, visibleEndOf(ifc, start, end))), limit, fit);
+}
+
+/**
+ * The break-character end of a line from start that breaks inside items [from, to): the last grapheme boundary there that fits,
+ * or the first one after start when none fits and from is start (the overflowing first cluster stays on the line); else from.
+ */
+function graphemeBreakIn(ctx: Ctx, ifc: Ifc, adv: readonly LU[], start: number, from: number, to: number, limit: LU, fit: FitFaults): number {
+  let best = from;
+  let first = -1;
+  for (const g of ifc.graphemes) {
+    if (g.at <= from || g.at >= to) continue;
+    if (first < 0) first = g.at;
+    if (lineFits(ctx, ifc, adv, start, g.at, limit, fit)) best = g.at;
+  }
+  if (best === from && from === start && first >= 0) return first;
+  return best;
 }
 
 /** Whether ShapeLine must reshape a line end at a space (LineInfo::ComputeNeedsAccurateEndPosition): text-align off the start side. */
@@ -977,11 +1094,18 @@ function opportunityAt(ifc: Ifc, i: number): boolean {
 }
 
 /** The formatting context as LineBreaker items (shaping.ts BreakItem): one text item per leaf, its tags and <br>s; and their first item indices. */
-type ShapedItems = { readonly items: readonly BreakItem[]; readonly firstItem: readonly number[] };
+type ShapedItems = { readonly items: readonly BreakItem[]; readonly firstItem: readonly number[]; readonly graphemes: readonly (readonly number[])[]; readonly graphemeAtEnd: readonly boolean[] };
 
 function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
   const items: BreakItem[] = [];
   const firstItem: number[] = [];
+  // TXT2-a: each item's break-character opportunities (grapheme cluster starts inside it, and whether one follows its end).
+  const graphemes: (readonly number[])[] = [];
+  const graphemeAtEnd: boolean[] = [];
+  const graphemeAt = (i: number): boolean => {
+    for (const g of ifc.graphemeItems) if (g === i) return true;
+    return false;
+  };
   let offset = 0;
   let i = 0;
   while (i < ifc.items.length) {
@@ -1001,6 +1125,10 @@ function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
       if (next < 0) for (let j = i; j < ifc.items.length && (ifc.items[j] as Item).kind !== 'char'; j++) if ((ifc.items[j] as Item).kind === 'br') atEnd = false;
       items.push({ kind: 'text', item: s.item, result: s.result, opportunities: opps, atEnd, offset });
       firstItem.push(first);
+      const gs: number[] = [];
+      for (let o = 1; o < i - first; o++) if (graphemeAt(first + o)) gs.push(o);
+      graphemes.push(gs);
+      graphemeAtEnd.push(next >= 0 ? graphemeAt(next) : atEnd);
       offset = offset + (i - first);
       continue;
     }
@@ -1014,9 +1142,11 @@ function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
       offset++;
     }
     firstItem.push(i);
+    graphemes.push([]);
+    graphemeAtEnd.push(false);
     i++;
   }
-  return { items, firstItem };
+  return { items, firstItem, graphemes, graphemeAtEnd };
 }
 
 /** The item index of a LineBreaker position. */
@@ -1037,7 +1167,7 @@ function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): Li
   }
   const s = shapedItemsOf(ctx, ifc);
   const wrap = firstLeaf === undefined || firstLeaf.textWrapMode === 'wrap';
-  const r = breakItemLines(s.items, add(available, slack), wrap, needsAccurateEnd(ctx, box), !ctx.faults.fitWithoutEpsilon);
+  const r = breakItemLinesWith(s.items, add(available, slack), wrap, needsAccurateEnd(ctx, box), !ctx.faults.fitWithoutEpsilon, ifc.anywhere, ifc.anywhere && ctx.faults.breakAnywhereAlways, s.graphemes, s.graphemeAtEnd);
   if (!r.ok) unsupported('line-break', box.id, 'css-text-3 §5', r.reason);
   const lines: Line[] = [];
   let start = 0;
@@ -1378,7 +1508,7 @@ export function inlineIntrinsicSize(ctx: Ctx, box: LayoutBox, kind: 'min' | 'max
   const adv = ifc.atomics.map((a) => atomicContribution(ctx, a, kind));
   let widest = ZERO;
   let start = 0;
-  for (const b of endsOf(ifc)) {
+  for (const b of kind === 'min' ? minEndsOf(ifc) : endsOf(ifc)) {
     if (kind === 'max' && !b.forced) continue;
     const visible = visibleEndOf(ifc, start, b.at);
     widest = max(widest, kind === 'max' ? width(ctx, ifc, adv, start, visible) : cachedWidth(ctx, ifc, adv, start, visible));
@@ -1403,7 +1533,7 @@ function shapedIntrinsicSize(ctx: Ctx, box: LayoutBox, ifc: Ifc, kind: 'min' | '
     return widest;
   }
   let start = 0;
-  for (const b of endsOf(ifc)) {
+  for (const b of minEndsOf(ifc)) {
     const visible = visibleEndOf(ifc, start, b.at);
     let w = cachedWidth(ctx, ifc, [], start, visible);
     const lastChar = visible > start ? (ifc.items[visible - 1] as Item) : null;
