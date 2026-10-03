@@ -1138,7 +1138,7 @@ export function planBackground(bg: BackgroundPaint, faults: GradientFaults): Bac
   const oy = faults.layerOriginIgnored ? 0 : bg.layerY;
   if (floorOf(ox) !== ox || floorOf(oy) !== oy) return { originX: 0, originY: 0, left: 0, top: 0, right: 0, bottom: 0, color: [0, 0, 0, 0], colorLeft: 0, colorTop: 0, colorRight: 0, colorBottom: 0, layers: [], tileSize: bg.tileSize, modelled: false };
   // The box in its layer's space: whole device px moves keep every snap (LayoutUnit rounding is translation-exact in 64ths).
-  const box = { ...bg.box, x: bg.box.x - ox * 64 + (faults.offsetOne ? 64 : 0), y: bg.box.y - oy * 64 };
+  const box: BackgroundBox = { x: bg.box.x - ox * 64 + (faults.offsetOne ? 64 : 0), y: bg.box.y - oy * 64, width: bg.box.width, height: bg.box.height, borders: bg.box.borders, padding: bg.box.padding, obscures: bg.box.obscures };
   const snapped = snapLtrb(box.x, box.y, box.width, box.height);
   const layers: PlannedLayer[] = [];
   let modelled = true;
