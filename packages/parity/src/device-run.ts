@@ -6,7 +6,8 @@
 import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, rmSync, writeFileSync } from 'node:fs';
 import { freemem, homedir, tmpdir, totalmem } from 'node:os';
 import { dirname, join } from 'node:path';
-import type { SupportPlant } from 'dragon';
+import { isGlyphPlant } from 'dragon';
+import type { GlyphPlant, SupportPlant } from 'dragon';
 import type { GlyphPosition } from './native-compare.ts';
 import type { AndroidTools } from './native-host.ts';
 import { androidTools, HOST_BUNDLE } from './native-host.ts';
@@ -41,24 +42,26 @@ export const VECTOR_DEVICES: { readonly [T in NativeTarget]: string } = { ios: '
 /** The capture-trust cases (the three native:smoke cases), held on screen for the OS screenshot on every device. */
 export const TRUST_CASES: readonly string[] = ['color-border-sides', 'text-wrap-spaces', 'overflow-hidden-bfc'];
 /**
- * The raster plant case: every line has an x centre pair and a glyph-bottom scanline at every device DPR (T093 addendum F1).
+ * The glyph plants' case: every line has an x centre pair and a glyph-bottom scanline at every device DPR (T093 addendum F1).
  * text-wrap-spaces, the P5 case, stacks Ahem lines at line-height 1, so most of its line bottoms are seams.
  */
 export const PLANT_CASE = 'tree-projected-text#1';
-/** The glyph plants (T093), judged against the clean run on PLANT_CASE; every other support plant is a paint plant. */
-export type GlyphPlant = 'glyph-offset-1' | 'glyph-offset-y-1';
+/** The glyph plants (T093) are judged against the clean run on PLANT_CASE; every other support plant is a paint plant. */
+export { isGlyphPlant };
+export type { GlyphPlant };
 /** The paint plants: every support plant that is not a glyph plant. */
 export type PaintPlant = Exclude<SupportPlant, GlyphPlant>;
-export const isGlyphPlant = (p: SupportPlant): p is GlyphPlant => p === 'glyph-offset-1' || p === 'glyph-offset-y-1';
-/** The cases each paint plant runs on: the dash plants (P6a) run on the border-paint fixtures. */
+/** The cases each paint plant runs on: the dash plants (P6a) on the border-paint fixtures, the PNT1 plants on a case of their own group. */
 export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
+  'radius-square': ['radius-basic'],
 };
-/** The sample rules a paint plant's device-pixels failures must name: border bands and edges for the dash plants. */
+/** The sample rules a paint plant's device-pixels failures must name: border bands and edges, or radius points. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-phase-1': /^(border:|edge:)/,
   'dash-gap-unfitted': /^(border:|edge:)/,
+  'radius-square': /^radius:/,
 };
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };

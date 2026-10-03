@@ -9,7 +9,14 @@ import { resolveTree, valueToString } from '../src/analysis/resolve.ts';
 import type { LinkedElement } from '../src/analysis/link.ts';
 import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
+import { BACKGROUND_LAYERS_LONGHANDS, BACKGROUND_LAYERS_SHORTHANDS } from '../src/css/properties/background-layers.ts';
+import { EFFECTS_LONGHANDS, EFFECTS_SHORTHANDS } from '../src/css/properties/effects.ts';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../src/css/properties/grid.ts';
+import { OUTLINE_LONGHANDS, OUTLINE_SHORTHANDS } from '../src/css/properties/outline.ts';
+import { RADIUS_LONGHANDS, RADIUS_SHORTHANDS } from '../src/css/properties/radius.ts';
+import { SCROLLBAR_LONGHANDS, SCROLLBAR_SHORTHANDS } from '../src/css/properties/scrollbar.ts';
+import { SHADOW_LONGHANDS, SHADOW_SHORTHANDS } from '../src/css/properties/shadow.ts';
+import { TRANSFORM_LONGHANDS, TRANSFORM_SHORTHANDS } from '../src/css/properties/transform.ts';
 import { SHORTHAND_HANDLERS } from '../src/css/shorthands/index.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -39,13 +46,16 @@ const expanded = (property: string, value: string): string[] => {
 };
 
 describe('grid family: registry', () => {
-  it('twelve longhands and eight shorthands, appended after every other family', () => {
+  it('twelve longhands and eight shorthands, appended after every other family but the paint families', () => {
     expect([...GRID_LONGHANDS]).toEqual([
       'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow',
       'grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end', 'justify-items', 'justify-self',
     ]);
-    expect(LONGHANDS.slice(-GRID_LONGHANDS.length)).toEqual([...GRID_LONGHANDS]);
-    expect(SHORTHANDS.slice(-GRID_SHORTHANDS.length)).toEqual([...GRID_SHORTHANDS]);
+    // EMS registers the paint families last in every table; PNT1 fills radius.
+    const paint = [...RADIUS_LONGHANDS, ...SHADOW_LONGHANDS, ...EFFECTS_LONGHANDS, ...OUTLINE_LONGHANDS, ...TRANSFORM_LONGHANDS, ...BACKGROUND_LAYERS_LONGHANDS, ...SCROLLBAR_LONGHANDS];
+    expect(LONGHANDS.slice(-GRID_LONGHANDS.length - paint.length)).toEqual([...GRID_LONGHANDS, ...paint]);
+    const paintShorthands = [...RADIUS_SHORTHANDS, ...SHADOW_SHORTHANDS, ...EFFECTS_SHORTHANDS, ...OUTLINE_SHORTHANDS, ...TRANSFORM_SHORTHANDS, ...BACKGROUND_LAYERS_SHORTHANDS, ...SCROLLBAR_SHORTHANDS];
+    expect(SHORTHANDS.slice(-GRID_SHORTHANDS.length - paintShorthands.length)).toEqual([...GRID_SHORTHANDS, ...paintShorthands]);
     for (const p of GRID_LONGHANDS) {
       expect(INHERITED.has(p), p).toBe(false);
       expect(PROPERTY_ASPECTS[p], p).toEqual({ layout: true, paint: false });

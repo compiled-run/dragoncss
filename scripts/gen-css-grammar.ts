@@ -41,6 +41,9 @@ const SUBSET = [
 
   // Grid (css-grid-2), after the writing-mode family.
   ...GRID_LONGHANDS, ...GRID_SHORTHANDS,
+
+  // Paint families (PNT1), after grid.
+  'border-radius', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius',
 ] as const;
 
 /**

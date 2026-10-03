@@ -35,7 +35,9 @@ import { div, inputFor, text } from './helpers.ts';
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const CSS = 'body { margin: 0; font-family: Ahem; font-size: 10px; } .a { padding: 3px; border: 2px dashed red; background-color: #3366ff; overflow: hidden; }';
 const input = inputFor(CSS, (r) => [div(r, 'a', ['a'], [text(r, 't', 'AB'), div(r, 'b', [])])]);
-const STUBS = PAINT_MODULE_NAMES.filter((n) => n !== 'background' && n !== 'border' && n !== 'clip');
+/** The modules a package has filled (EMS moved background, border and clip; PNT1 fills radius); the rest are stubs. */
+const FILLED: readonly string[] = ['background', 'border', 'clip', 'radius'];
+const STUBS = PAINT_MODULE_NAMES.filter((n) => !FILLED.includes(n));
 
 function programs() {
   const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
@@ -52,7 +54,7 @@ describe('EMS: the paint registries', () => {
     expect(PAINT_VALUES.map((m) => m.name)).toEqual([...PAINT_MODULE_NAMES]);
   });
   it('the paint write kinds are the background, border and clip modules\' and every one has a vocabulary entry on both backends', () => {
-    expect(PAINT_EMITTERS.flatMap((m) => m.kinds)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip']);
+    expect(PAINT_EMITTERS.flatMap((m) => m.kinds)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'border-radius']);
     for (const m of PAINT_LOWERINGS) {
       for (const k of Object.keys(m.css)) {
         expect(isPaintKind(k), k).toBe(true);
@@ -60,7 +62,7 @@ describe('EMS: the paint registries', () => {
         for (const b of ['uikit', 'android-views'] as const) expect(VOCABULARY[b][k as keyof (typeof VOCABULARY)['uikit']]).toEqual((m.vocabulary[b] as Record<string, unknown>)[k]);
       }
     }
-    expect(Object.keys(VOCABULARY.uikit)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'font', 'text-color']);
+    expect(Object.keys(VOCABULARY.uikit)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'border-radius', 'font', 'text-color']);
     expect(isPaintKind('font')).toBe(false);
     expect(isPaintKind('text-color')).toBe(false);
   });
@@ -82,9 +84,9 @@ describe('EMS: the paint registries', () => {
       for (const b of ['uikit', 'android-views'] as const) expect(e?.native[b], name).toEqual({ boxMembers: '', file: null, stages: {}, afterLayout: null, applied: null, roundedPath: null, container: null });
       expect(PAINT_LOWERINGS.find((m) => m.name === name)?.css, name).toEqual({});
     }
-    // The border module (P6a) declares the two dash plants; every stub declares none.
-    expect(paintPlants().map((p) => p.name)).toEqual(['dash-phase-1', 'dash-gap-unfitted']);
-    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted']);
+    // The border module (P6a) declares the two dash plants, then radius (PNT1) its own, in registry order; every stub declares none.
+    expect(paintPlants().map((p) => p.name)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'radius-square']);
+    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted', 'radius-square']);
   });
 });
 
@@ -115,8 +117,8 @@ describe('EMS: programs', () => {
 
 describe('EMS: native support', () => {
   it('emits the stages file and one file per paint module with native code, under Support/Paint and views/paint', () => {
-    expect(SUPPORT_FILES.uikit).toEqual(['Support/DragonChecked.swift', 'Support/DragonFontTables.swift', 'Support/DragonViews.swift', 'Support/DragonBridge.swift', 'Support/DragonTree.swift', 'Support/DragonPaintStages.swift', 'Support/Paint/DragonPaintBackground.swift', 'Support/Paint/DragonPaintBorder.swift', 'Support/Paint/DragonPaintClip.swift', 'Support/DragonClock.swift', 'Support/DragonState.swift']);
-    expect(SUPPORT_FILES['android-views']).toEqual(['kotlin/dev/dragon/views/DragonChecked.kt', 'kotlin/dev/dragon/views/DragonFontTables.kt', 'kotlin/dev/dragon/views/DragonViews.kt', 'kotlin/dev/dragon/views/DragonBridge.kt', 'kotlin/dev/dragon/views/DragonTree.kt', 'kotlin/dev/dragon/views/DragonPaintStages.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBackground.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBorder.kt', 'kotlin/dev/dragon/views/paint/DragonPaintClip.kt', 'kotlin/dev/dragon/views/DragonClock.kt', 'kotlin/dev/dragon/views/DragonState.kt']);
+    expect(SUPPORT_FILES.uikit).toEqual(['Support/DragonChecked.swift', 'Support/DragonFontTables.swift', 'Support/DragonViews.swift', 'Support/DragonBridge.swift', 'Support/DragonTree.swift', 'Support/DragonPaintStages.swift', 'Support/Paint/DragonPaintBackground.swift', 'Support/Paint/DragonPaintBorder.swift', 'Support/Paint/DragonPaintClip.swift', 'Support/Paint/DragonPaintRadius.swift', 'Support/DragonClock.swift', 'Support/DragonState.swift']);
+    expect(SUPPORT_FILES['android-views']).toEqual(['kotlin/dev/dragon/views/DragonChecked.kt', 'kotlin/dev/dragon/views/DragonFontTables.kt', 'kotlin/dev/dragon/views/DragonViews.kt', 'kotlin/dev/dragon/views/DragonBridge.kt', 'kotlin/dev/dragon/views/DragonTree.kt', 'kotlin/dev/dragon/views/DragonPaintStages.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBackground.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBorder.kt', 'kotlin/dev/dragon/views/paint/DragonPaintClip.kt', 'kotlin/dev/dragon/views/paint/DragonPaintRadius.kt', 'kotlin/dev/dragon/views/DragonClock.kt', 'kotlin/dev/dragon/views/DragonState.kt']);
     for (const f of emitNativeSupport('android-views')) expect(f.text, f.path).toContain('\npackage dev.dragon.views\n');
   });
   it('applies a support plant only when its source text occurs exactly once across the support files', () => {
@@ -136,12 +138,13 @@ describe('EMS: native support', () => {
       expect(stagePainters(b, 'border')).toEqual(['dragonPaintBorderStage']);
       expect(body).toContain(`dragonPaintBorderStage(${args})`);
       expect(text.indexOf('dragonAfterLayoutBorder(v, shape, scale)')).toBeLessThan(text.indexOf('dragonAfterLayoutClip(v, shape, scale)'));
-      const applied = ['dragonAppliedBackground', 'dragonAppliedBorder', 'dragonAppliedClip'].map((f) => text.indexOf(`${f}(v)`));
+      const applied = ['dragonAppliedBackground', 'dragonAppliedBorder', 'dragonAppliedClip', 'dragonAppliedRadius'].map((f) => text.indexOf(`${f}(v)`));
       expect(applied.every((i) => i > 0)).toBe(true);
       expect([...applied].sort((x, y) => x - y)).toEqual(applied);
-      expect(text).toMatch(b === 'uikit' ? /return nil\n}/ : /: Path\? = null\n/);
+      // The radius module provides the rounded path hook (PNT1).
+      expect(text).toContain(b === 'uikit' ? 'return dragonRoundedPathRadius(v, shape, inner)' : ': Path? = dragonRoundedPathRadius(v, shape, inner)');
     }
-    expect(nativePaints('uikit').filter((m) => m.native.file !== null).map((m) => m.stem)).toEqual(['DragonPaintBackground', 'DragonPaintBorder', 'DragonPaintClip']);
+    expect(nativePaints('uikit').filter((m) => m.native.file !== null).map((m) => m.stem)).toEqual(['DragonPaintBackground', 'DragonPaintBorder', 'DragonPaintClip', 'DragonPaintRadius']);
   });
   it('keeps the case code on the modules\' public writers, which repaint when a runtime write changes them', () => {
     const swift = emitNativeSupport('uikit').map((f) => f.text).join('\n');
@@ -163,13 +166,15 @@ describe('EMS: native support', () => {
 
 describe('EMS: CSS families and paint values', () => {
   it('registers the seven paint families and the two shorthand files empty', () => {
-    for (const [name, fam] of [['RADIUS', radius], ['SHADOW', shadow], ['EFFECTS', effects], ['OUTLINE', outline], ['TRANSFORM', transform], ['BACKGROUND_LAYERS', backgroundLayers], ['SCROLLBAR', scrollbar]] as const) {
+    // PNT1 fills the radius family and its shorthand file.
+    expect(radius.RADIUS_LONGHANDS).toEqual(['border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius']);
+    expect(Object.keys(RADIUS_SHORTHANDS)).toEqual(['border-radius']);
+    for (const [name, fam] of [['SHADOW', shadow], ['EFFECTS', effects], ['OUTLINE', outline], ['TRANSFORM', transform], ['BACKGROUND_LAYERS', backgroundLayers], ['SCROLLBAR', scrollbar]] as const) {
       const f = fam as unknown as Record<string, unknown>;
       expect(f[`${name}_LONGHANDS`], name).toEqual([]);
       expect(f[`${name}_SHORTHANDS`], name).toEqual([]);
       expect(f[`${name}_ASPECTS`], name).toEqual({});
     }
-    expect(RADIUS_SHORTHANDS).toEqual({});
     expect(OUTLINE_SHORTHANDS).toEqual({});
     expect(Object.keys(SHORTHAND_HANDLERS).length).toBe(SHORTHANDS.length);
   });
@@ -181,7 +186,7 @@ describe('EMS: CSS families and paint values', () => {
     const props = new Map<Longhand, ResolvedValue>([['font-size', v(10, 'px')], ['width', v(2, 'em')]]);
     computeLengths(props, 16, 16);
     expect([...props.entries()].map(([k, x]) => [k, x.value])).toEqual([['font-size', { kind: 'length', value: 10, unit: 'px' }], ['width', { kind: 'length', value: 20, unit: 'px' }]]);
-    // SIZE-ar: aspect-ratio is a longhand (box family, after max-height).
-    expect((LONGHANDS as readonly string[]).length).toBe(69);
+    // SIZE-ar: aspect-ratio is a longhand (box family, after max-height); PNT1 adds its radius longhands.
+    expect((LONGHANDS as readonly string[]).length).toBe(73);
   });
 });
