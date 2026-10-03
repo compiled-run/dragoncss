@@ -60,16 +60,17 @@ export function deriveRows(target: ProfileTarget, cases: readonly CaseOutcome[])
 }
 
 /**
- * T065: the animation rows (context `animation`) from the frame cases that pass the host frame lanes (anim-report): web rows
- * are exact through chrome-dual at every sample; native rows are caveat until device-anim passes on the target, as native paint is.
+ * T065: the animation rows (context `animation`) from the frame cases that pass the host frame lanes (anim-report), web only:
+ * exact through chrome-dual at every sample. iOS and Android rows wait for the native animator and its device-anim lane, so
+ * no native output claims motion it does not run.
  */
 export function deriveAnimationRows(target: ProfileTarget, passing: readonly { readonly id: string; readonly features: readonly string[] }[]): ProfileRow[] {
+  if (target !== 'web') return [];
   const features = [...new Set(passing.flatMap((c) => c.features))].sort();
   return features.map((feature) => {
     const ids = passing.filter((c) => c.features.includes(feature)).map((c) => c.id);
     const valueSubset = feature.slice(feature.indexOf(':') + 1);
-    const lane = target === 'web' ? 'chrome-dual' : 'linux-dragon-layout';
-    return { feature, context: 'animation', status: target === 'web' ? 'exact' : 'caveat', proofs: [{ aspect: 'computed-value', lane, valueSubset, context: 'animation', cases: ids }] };
+    return { feature, context: 'animation', status: 'exact', proofs: [{ aspect: 'computed-value', lane: 'chrome-dual', valueSubset, context: 'animation', cases: ids }] };
   });
 }
 
