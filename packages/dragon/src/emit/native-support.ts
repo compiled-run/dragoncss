@@ -539,10 +539,9 @@ public final class DragonTree {
     // Visibility (T150): the run follows its element, through an anonymous box, which inherits the element's value.
     var owner = parent.flatMap { views[$0] as? DragonBoxView }
     if let o = owner, o.dragonKind == "anonymous" { owner = o.dragonParent.flatMap { views[$0] as? DragonBoxView } }
-    if let o = owner {
-      o.dragonTextLeaves.append(v)
-      v.isHidden = !o.dragonVisible
-    }
+    guard let o = owner else { fatalError("dragon: text \(id) has no built box \(parent ?? "nil") to take its visibility from") }
+    o.dragonTextLeaves.append(v)
+    v.isHidden = !o.dragonVisible
     return v
   }
 
@@ -1246,10 +1245,9 @@ class DragonTree(val context: Context) {
     // Visibility (T150): the run follows its element, through an anonymous box, which inherits the element's value.
     var owner = parent?.let { views[it] as? DragonBoxView }
     if (owner != null && owner.dragonKind == "anonymous") owner = owner.dragonParent?.let { views[it] as? DragonBoxView }
-    if (owner != null) {
-      owner.dragonTextLeaves.add(v)
-      v.visibility = if (owner.dragonVisible) android.view.View.VISIBLE else android.view.View.INVISIBLE
-    }
+    if (owner == null) throw IllegalStateException("dragon: text " + id + " has no built box " + parent + " to take its visibility from")
+    owner.dragonTextLeaves.add(v)
+    v.visibility = if (owner.dragonVisible) android.view.View.VISIBLE else android.view.View.INVISIBLE
     return v
   }
 

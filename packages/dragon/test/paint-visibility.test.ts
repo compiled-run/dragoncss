@@ -153,6 +153,8 @@ describe('visibility: emission', () => {
     it(`${backend}: hides a text view with its element (through an anonymous box) and never hides a box view`, () => {
       expect(all).toContain(ios ? 'if let o = owner, o.dragonKind == "anonymous" { owner = o.dragonParent.flatMap { views[$0] as? DragonBoxView } }' : 'if (owner != null && owner.dragonKind == "anonymous") owner = owner.dragonParent?.let { views[it] as? DragonBoxView }');
       expect(all).toContain(ios ? 'v.isHidden = !o.dragonVisible' : 'v.visibility = if (owner.dragonVisible) android.view.View.VISIBLE else android.view.View.INVISIBLE');
+      // A text view without a built box to follow fails the build instead of showing its runs.
+      expect(all).toContain(ios ? 'guard let o = owner else { fatalError("dragon: text \\(id) has no built box' : 'if (owner == null) throw IllegalStateException("dragon: text " + id + " has no built box "');
       // The writer hides the box view itself only in the subtree plant build.
       expect(all).toContain(ios ? 'if dragonVisibilityPlantSubtree { v.isHidden = !visible }' : 'if (DRAGON_VISIBILITY_PLANT_SUBTREE) v.visibility = if (visible) View.VISIBLE else View.INVISIBLE');
     });
