@@ -1,6 +1,7 @@
 // The four border sides: Dragon-owned paint on the box view (the border stage). Widths come from the engine at the device scale
 // through the after-layout hook; styles and colours are written by the case code through the view's public setters. A box with a
-// visible dashed or dotted side is drawn from the translated paint-dash.ts operations (Blink 145's side painter in device px).
+// visible dashed or dotted side, or only solid visible sides, is drawn from the translated paint-dash.ts operations (Blink 145's
+// side painter in device px, which joins same-colour sides without a miter); a box with a visible double side keeps the band painter.
 import type { PaintEmitter } from './types.ts';
 import { keywordLit, NO_NATIVE_PAINT, rgbaLit } from './types.ts';
 
@@ -15,8 +16,8 @@ const SWIFT = String.raw`import UIKit
 /// The planted dash faults: none, except in the dash-phase-1 and dash-gap-unfitted raster plant builds (P6a).
 public let dragonDashFaults = DashFaults(false, false)
 
-/// The border stage: a box with a visible dashed or dotted side is drawn by Blink's side painter (paint-dash.ts), every other box
-/// by the band painter.
+/// The border stage: a box with a visible dashed or dotted side, or only solid visible sides, is drawn by Blink's side painter
+/// (paint-dash.ts), every other box by the band painter.
 public func dragonPaintBorderStage(_ v: DragonBoxView, _ ctx: CGContext, _ shape: DragonBoxShape) {
   if dragonDrawBorderOps(ctx, shape, CGFloat(v.dragonScale), v.dragonBorderStyles, v.dragonBorderColors, v.dragonId) { return }
   dragonDrawBorders(ctx, v.bounds, v.dragonBorderWidths.map { CGFloat($0) }, v.dragonBorderStyles, v.dragonBorderColors)
@@ -44,8 +45,8 @@ func dragonPolygon(_ pts: [Double]) -> CGPath {
   return path
 }
 
-/// Draws the border operations of paint-dash.ts in device px (the box's absolute snapped edges) when a visible side is dashed
-/// or dotted; false for every other box.
+/// Draws the border operations of paint-dash.ts in device px (the box's absolute snapped edges) when paintDash_borderNeedsSidePainter
+/// routes the box there; false for every other box.
 public func dragonDrawBorderOps(_ ctx: CGContext, _ shape: DragonBoxShape, _ scale: CGFloat, _ styles: [String], _ colors: [DragonRGBA8], _ id: String) -> Bool {
   let widths = JsArray<Double>(shape.borders)
   let st = JsArray<JsString>(styles.map { JsString($0) })
@@ -98,7 +99,7 @@ public func dragonDrawBorderOps(_ ctx: CGContext, _ shape: DragonBoxShape, _ sca
   return true
 }
 
-/// The band painter for boxes without a visible dashed or dotted side: each side is the trapezoid between the outer and inner
+/// The band painter for boxes with a visible double side and no dashed or dotted one: each side is the trapezoid between the outer and inner
 /// edges (corners join on the diagonal); solid fills it, double fills its outer and inner thirds.
 public func dragonDrawBorders(_ ctx: CGContext, _ o: CGRect, _ w: [CGFloat], _ styles: [String], _ colors: [DragonRGBA8]) {
   let i = CGRect(x: o.minX + w[3], y: o.minY + w[0], width: o.width - w[3] - w[1], height: o.height - w[0] - w[2])
@@ -169,7 +170,7 @@ import kotlin.math.roundToInt
 /** The planted dash faults: none, except in the dash-phase-1 and dash-gap-unfitted raster plant builds (P6a). */
 val DRAGON_DASH_FAULTS = DashFaults(false, false)
 
-/** The border stage: a box with a visible dashed or dotted side is drawn by Blink's side painter (paint-dash.ts), every other box by the band painter. */
+/** The border stage: a box with a visible dashed or dotted side, or only solid visible sides, is drawn by Blink's side painter (paint-dash.ts), every other box by the band painter. */
 fun dragonPaintBorderStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShape) {
   if (dragonDrawBorderOps(canvas, shape, v.dragonBorderStyles, v.dragonBorderColors, v.dragonId)) return
   dragonDrawBorders(canvas, v.width.toFloat(), v.height.toFloat(), v.dragonBorderWidths, v.dragonBorderStyles, v.dragonBorderColors)
@@ -202,8 +203,8 @@ fun dragonPolygon(pts: List<Double>): Path {
 }
 
 /**
- * Draws the border operations of paint-dash.ts in device px (the box's absolute snapped edges) when a visible side is dashed or
- * dotted; false for every other box.
+ * Draws the border operations of paint-dash.ts in device px (the box's absolute snapped edges) when paintDash_borderNeedsSidePainter
+ * routes the box there; false for every other box.
  */
 fun dragonDrawBorderOps(canvas: Canvas, shape: DragonBoxShape, styles: Array<String>, colors: Array<DragonRGBA8>, id: String): Boolean {
   val widths = JsArray<Double>(shape.borders.toList())
@@ -242,7 +243,7 @@ fun dragonDrawBorderOps(canvas: Canvas, shape: DragonBoxShape, styles: Array<Str
 }
 
 /**
- * The band painter for boxes without a visible dashed or dotted side: each side is the trapezoid between the outer and inner edges
+ * The band painter for boxes with a visible double side and no dashed or dotted one: each side is the trapezoid between the outer and inner edges
  * (corners join on the diagonal); solid fills it, double fills its outer and inner thirds.
  */
 fun dragonDrawBorders(canvas: Canvas, w: Float, h: Float, widths: IntArray, styles: Array<String>, colors: Array<DragonRGBA8>) {

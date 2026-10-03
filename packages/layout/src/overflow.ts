@@ -3,7 +3,7 @@
 // core/layout/scrollable_overflow_calculator.h (AddChild, AddOverflow), and the inflow bounds of core/layout/box_fragment_builder.cc
 // lines 241-366. The scroll rect follows css-overflow-3 §2.2 and matches Chrome (ports.json reference:
 // core/paint/paint_layer_scrollable_area.cc lines 968-982). The layout itself is unchanged: this reads the input and the layout's boxes.
-import type { Direction, LayoutBox, LayoutInput } from './input.ts';
+import type { Direction, LayoutBox, LayoutInput, LayoutNode } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, fromCssPx, max, min, sub, ZERO } from './units.ts';
 import type { Edges } from './box.ts';
@@ -58,9 +58,9 @@ export function scrollMetrics(input: LayoutInput, measurer: TextMeasurer, viewpo
   return scrollMetricsWithFaults(input, measurer, viewportDirection, NO_ENGINE_FAULTS);
 }
 
-/** What the port reads about one box: its node, DOM parent, absolute border box and resolved edges. */
+/** What the port reads about one box: its node (a box or a replaced leaf), DOM parent, absolute border box and resolved edges. */
 type Node = {
-  readonly box: LayoutBox;
+  readonly box: LayoutNode;
   readonly parent: LayoutBox | null;
   readonly rect: LayoutRect;
   readonly border: Edges;
@@ -72,9 +72,9 @@ type Node = {
 type Index = {
   readonly ctx: Ctx;
   readonly nodes: Map<string, Node>;
-  readonly order: LayoutBox[];
+  readonly order: LayoutNode[];
   /** The absolutely positioned boxes by the id of their containing block ("" for the initial containing block). */
-  readonly oofByCb: Map<string, LayoutBox[]>;
+  readonly oofByCb: Map<string, LayoutNode[]>;
   readonly flows: Map<string, Flow>;
 };
 
@@ -110,7 +110,7 @@ function nodeOf(ix: Index, id: string): Node {
 function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>): Index {
   const ix: Index = { ctx, nodes: new Map(), order: [], oofByCb: new Map(), flows: new Map() };
   const icbWidth = fromCssPx(input.viewport.width);
-  const walk = (b: LayoutBox, parent: LayoutBox | null, cbInline: LU, positioned: LayoutBox | null): void => {
+  const walk = (b: LayoutNode, parent: LayoutBox | null, cbInline: LU, positioned: LayoutNode | null): void => {
     const rect = abs.get(b.id);
     if (rect === undefined) throw new Error(`no laid-out box ${b.id}`);
     const border = resolveBorder(b.style, ctx.devicePixelRatio);
@@ -120,8 +120,10 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>): In
     const content = clampNegativeToZero(sub(rect.width, sumEdges(border.left, border.right, padding.left, padding.right)));
     const paddingBoxWidth = clampNegativeToZero(sub(rect.width, add(border.left, border.right)));
     const nextPositioned = b.style.position === 'static' ? positioned : b;
+    // A replaced leaf has no children (its fallback content never renders).
+    if (b.kind === 'replaced') return;
     for (const k of b.children) {
-      if (k.kind !== 'box') continue;
+      if (k.kind !== 'box' && k.kind !== 'replaced') continue;
       if (isOutOfFlow(ctx, k)) {
         // CSS2 §10.1: the containing block is the padding box of the nearest positioned ancestor, or the initial one.
         const cb = nextPositioned;
@@ -139,13 +141,13 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>): In
   return ix;
 }
 
-function paddingBoxWidthOf(ix: Index, b: LayoutBox): LU {
+function paddingBoxWidthOf(ix: Index, b: LayoutNode): LU {
   const n = nodeOf(ix, b.id);
   return clampNegativeToZero(sub(n.rect.width, add(n.border.left, n.border.right)));
 }
 
 /** The gutter the planted fault gutterReserved takes from a scroll container, or 0. */
-function gutterOf(ix: Index, box: LayoutBox): LU {
+function gutterOf(ix: Index, box: LayoutNode): LU {
   return ix.ctx.faults.gutterReserved && isScrollContainer(box.style) ? fromCssPx(PLANTED_GUTTER_PX) : ZERO;
 }
 
@@ -249,9 +251,14 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
   };
   const sc = isScrollContainer(b.style);
   const c: Calc = { overflow: paddingRect, inflow: null, paddingRect, scrollContainer: sc, leftOverflow: directionOf(ix.ctx, b) === 'rtl' };
-  if (b.strut !== null) addLines(ix, n, c);
+  // A replaced leaf (CSS 2.2 §10.3.2) has no children: its scrollable overflow is its own padding box.
+  if (b.kind === 'replaced') return resultOf(ix, c, n.padding);
+  if (b.strut !== null) {
+    refuseLineLevelBoxes(b);
+    addLines(ix, n, b, c);
+  }
   for (const k of b.children) {
-    if (k.kind !== 'box' || isOutOfFlow(ix.ctx, k)) continue;
+    if ((k.kind !== 'box' && k.kind !== 'replaced') || isOutOfFlow(ix.ctx, k)) continue;
     const kn = nodeOf(ix, k.id);
     const dx = sub(kn.rect.x, n.rect.x);
     const dy = sub(kn.rect.y, n.rect.y);
@@ -275,7 +282,8 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
 function propagated(ix: Index, n: Node): OverflowRect {
   const own: OverflowRect = { x: ZERO, y: ZERO, width: n.rect.width, height: n.rect.height };
   const s = n.box.style;
-  if (isScrollContainer(s) || (s.overflowX === 'clip' && s.overflowY === 'clip')) return own;
+  // ScrollableOverflowForPropagation: a replaced box adds its border box (its content is never scrollable overflow).
+  if (n.box.kind === 'replaced' || isScrollContainer(s) || (s.overflowX === 'clip' && s.overflowY === 'clip')) return own;
   let child = overflowOf(ix, n);
   if (s.overflowX === 'clip') child = { x: ZERO, y: child.y, width: n.rect.width, height: child.height };
   if (s.overflowY === 'clip') child = { x: child.x, y: ZERO, width: child.width, height: n.rect.height };
@@ -285,12 +293,23 @@ function propagated(ix: Index, n: Node): OverflowRect {
 /** The PlacedLine fields addLines accounts for (R16): a new line item kind is added here with a Chrome metrics case, never skipped. */
 export const PLACED_LINE_FIELDS: readonly string[] = ['top', 'height', 'baseline', 'pieces', 'boxes', 'boxRects', 'breaks', 'breakRects'];
 
+/**
+ * R16: a box or replaced child of an inline formatting context (INL2's atomic inlines) is a line item addLines does not place, so
+ * the scrollable overflow refuses it rather than measuring it as a block child; whichever of OVFL and INL2 lands second adds it.
+ */
+export function refuseLineLevelBoxes(box: LayoutBox): void {
+  if (box.strut === null) return;
+  for (const k of box.children) {
+    if (k.kind === 'box' || k.kind === 'replaced') throw new OverflowRefusal(k.id, `an atomic inline in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL2)`);
+  }
+}
+
 /** The line boxes, text and inline box fragments of an inline formatting context (AddItemsInternal); lines are inflow children. */
-function addLines(ix: Index, n: Node, c: Calc): void {
+function addLines(ix: Index, n: Node, box: LayoutBox, c: Calc): void {
   const ox = add(n.border.left, n.padding.left);
   const oy = add(n.border.top, n.padding.top);
   const content = clampNegativeToZero(sub(n.rect.width, sumEdges(n.border.left, n.border.right, n.padding.left, n.padding.right)));
-  for (const line of placeLines(ix.ctx, n.box, content)) {
+  for (const line of placeLines(ix.ctx, box, content)) {
     let first = true;
     let l = ZERO;
     let r = ZERO;
@@ -388,8 +407,8 @@ type Flow = {
 };
 
 /** layoutContents' formattingContextRoot for a child of a block flow. */
-function isFcRoot(b: LayoutBox): boolean {
-  return b.style.display !== 'block' || isScrollContainer(b.style);
+function isFcRoot(b: LayoutNode): boolean {
+  return b.kind === 'replaced' || b.style.display !== 'block' || isScrollContainer(b.style);
 }
 
 function flowOf(ix: Index, n: Node): Flow {
@@ -403,8 +422,8 @@ function flowOf(ix: Index, n: Node): Flow {
 function readFlow(ix: Index, n: Node): Flow {
   const b = n.box;
   const ends: Map<string, EndStrut> = new Map();
-  if (b.style.display !== 'block' || b.strut !== null) {
-    const lines = b.strut === null ? 0 : placeLines(ix.ctx, b, contentWidthOf(n)).length;
+  if (b.kind === 'replaced' || b.style.display !== 'block' || b.strut !== null) {
+    const lines = b.kind === 'replaced' || b.strut === null ? 0 : placeLines(ix.ctx, b, contentWidthOf(n)).length;
     return { escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, cursor: ZERO, hasContent: lines > 0, ends };
   }
   const f = ix.ctx.faults;
@@ -417,7 +436,7 @@ function readFlow(ix: Index, n: Node): Flow {
   let seen = false;
   let escapeTop = EMPTY_STRUT;
   for (const k of b.children) {
-    if (k.kind !== 'box' || isOutOfFlow(ix.ctx, k)) continue;
+    if ((k.kind !== 'box' && k.kind !== 'replaced') || isOutOfFlow(ix.ctx, k)) continue;
     const kn = nodeOf(ix, k.id);
     const mt = resolveMarginWith(k.style.marginTop, cb, f).value;
     const mb = resolveMarginWith(k.style.marginBottom, cb, f).value;
@@ -452,7 +471,7 @@ type ChildMargins = { readonly escapeTop: Strut; readonly escapeBottom: Strut; r
 function readChild(ix: Index, n: Node): ChildMargins {
   const b = n.box;
   const none: ChildMargins = { escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
-  if (isFcRoot(b)) return none;
+  if (b.kind === 'replaced' || isFcRoot(b)) return none;
   const vbp = sumEdges(n.border.top, n.border.bottom, n.padding.top, n.padding.bottom);
   const r = flowOf(ix, n);
   const height = n.rect.height;
