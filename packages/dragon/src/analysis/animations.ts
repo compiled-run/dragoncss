@@ -199,14 +199,21 @@ export function keyframeValueOf(v: CssValue, fontSize: number, rootFontSize: num
   return animValueOf(v);
 }
 
-const pxOf = (v: CssValue): number => (v.kind === 'length' && v.unit === 'px' ? v.value : 16);
+/** A computed font size: computeLengths makes every font-size px, so anything else is a compiler error, not a default. */
+export function fontPx(v: CssValue): number {
+  if (v.kind === 'length' && v.unit === 'px') return v.value;
+  throw new Error(`a computed font-size is ${JSON.stringify(v)}, not px`);
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // The analysis.
 
 export type AnimationInput = {
   readonly cases: readonly { readonly key: string; readonly resolved: ResolvedElement | null }[];
+  /** The rules the cases were resolved with (the native band's). */
   readonly rules: readonly Rule[];
+  /** Every rule of every band: the support gate checks each declaration, as checkValues does, wherever it applies. */
+  readonly allRules: readonly Rule[];
   readonly keyframes: readonly KeyframesRule[];
   readonly faults: CompilerFaults;
   readonly knownProperty: KnownProperty;
@@ -252,7 +259,7 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
 
   // Context-free, as checkValues is for the milestone longhands: every animation declaration of every rule, and every
   // @keyframes rule, keys its features; a keyframe property without a writer is refused wherever a keyframe sets it (R13).
-  for (const rule of input.rules) {
+  for (const rule of input.allRules) {
     if (rule.selectors.every((sel) => sel.dropped)) continue;
     for (const d of rule.declarations) {
       for (const [p, list] of d.animation?.longhands ?? []) {
@@ -298,7 +305,7 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
             const kind = animationKind(v.property);
             animated.add(`${ea.address}|${v.property}`);
             if (!admitted(kind)) continue;
-            const value = keyframeValueOf(v.value, pxOf(valueAt(el, 'font-size').value), pxOf(valueAt(rootEl, 'font-size').value));
+            const value = keyframeValueOf(v.value, fontPx(valueAt(el, 'font-size').value), fontPx(valueAt(rootEl, 'font-size').value));
             if (kind.kind === 'color' && value.kind === 'keyword' && value.value === 'currentcolor') once(`kfcc|${v.span.start}`, refuse(v.valueSpan, `${v.property}: currentcolor in @keyframes ${a.name} is unsupported: a keyframe pair between currentcolor and a colour is not built yet (package ANIM-cc)`));
             const id = `${a.name}|${v.span.start}|${v.property}`;
             const text = JSON.stringify(value);

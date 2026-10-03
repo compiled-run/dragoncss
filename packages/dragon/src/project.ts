@@ -831,7 +831,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       diagnostics.push(...mergePasses(passes.map((p) => p.diagnostics)));
       cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
       // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
-      animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
+      animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
       if (options.profiles === 'enforce') gateAnimationFeatures(animation, targets, (t) => profileFor(profiles, t as KnownTarget), diagnostics);
       if (options.profiles === 'enforce') {
         const values: Diagnostic[] = [];

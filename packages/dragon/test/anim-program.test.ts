@@ -31,7 +31,7 @@ function program(css: string, child?: (r: SourceRef) => TreeNode[]) {
   const sources: KeyframesSource[] = [];
   const source = input.snapshot.sources[0] as { ref: SourceRef };
   const rules = parseStylesheet(css, { source: source.ref, start: 0, end: css.length }, { id: 's', owner: DOC, scope: 'document' }, 0, diagnostics, [], [], sources);
-  const analysis = analyzeAnimations({ cases, rules, keyframes: parseKeyframesRules(sources, diagnostics), faults: NO_FAULTS, knownProperty: () => true }, diagnostics);
+  const analysis = analyzeAnimations({ cases, rules, allRules: rules, keyframes: parseKeyframesRules(sources, diagnostics), faults: NO_FAULTS, knownProperty: () => true }, diagnostics);
   expect(diagnostics).toEqual([]);
   return lowerAnimProgram(analysis, cases);
 }

@@ -4,7 +4,7 @@
 // resolution per name); and the closure of writes an animated colour reaches each frame (R9: inheriting descendants and
 // currentcolor users). Records are per animation and slot, never per assignment pair (R20).
 import type { AnimationAnalysis, AnimationEntry, AnimValue, Listing } from '../analysis/animations.ts';
-import { animValueOf, keyframeValueOf, MAX_CLOSURE_WRITES, MAX_TRANSITION_SLOTS } from '../analysis/animations.ts';
+import { animValueOf, fontPx, keyframeValueOf, MAX_CLOSURE_WRITES, MAX_TRANSITION_SLOTS } from '../analysis/animations.ts';
 import type { ResolvedValue } from '../analysis/computed.ts';
 import type { ResolvedElement } from '../analysis/resolve.ts';
 import type { LengthRange } from '../css/animation-kinds.ts';
@@ -111,12 +111,11 @@ export function lowerAnimProgram(analysis: AnimationAnalysis, cases: readonly { 
       if (e.hasKeyframes && at !== undefined && !used.has(e.name)) used.set(e.name, { el: at.el, root: (cases[i] as { resolved: ResolvedElement }).resolved });
     }
   });
-  const px = (v: ResolvedValue): number => (v.value.kind === 'length' ? v.value.value : 16);
   const keyframes: KeyframeTable[] = [...used].map(([name, { el, root }]) => {
     const rule = analysis.keyframes.get(name);
     if (rule === undefined) throw new AnimProgramError(`@keyframes ${name} is used and not defined`);
-    const fontSize = px(el.props.get('font-size') as ResolvedValue);
-    const rootSize = px(root.props.get('font-size') as ResolvedValue);
+    const fontSize = fontPx((el.props.get('font-size') as ResolvedValue).value);
+    const rootSize = fontPx((root.props.get('font-size') as ResolvedValue).value);
     return {
       name,
       blocks: rule.blocks.map((b) => ({

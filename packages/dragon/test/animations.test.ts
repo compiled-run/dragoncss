@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { AnimItem, AnimLonghand } from '../src/css/properties/animation.ts';
 import { ANIM_INITIAL, ANIMATION_LONGHANDS, animationRefusal, parseAnimationDeclaration, parseAnimationValue, TRANSITION_LONGHANDS } from '../src/css/properties/animation.ts';
 import type { Diagnostic, DraftTree, FrontEndResult, SourceRef, TreeNode } from '../src/index.ts';
+import { fontPx } from '../src/analysis/animations.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import { div, DOC, eq, inputFor, not } from './helpers.ts';
 
@@ -242,5 +243,18 @@ describe('animation analysis', () => {
     expect(ds.every((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.target !== null && d.profile?.context === 'animation')).toBe(true);
     expect([...new Set(ds.map((d) => d.target))].sort()).toEqual(['ios', 'web']);
     expect(ds.map((d) => d.profile?.feature).filter((f, i, a) => a.indexOf(f) === i).sort()).toEqual(['animatable:color', 'animation-name:<custom-ident>', 'at-rule:@keyframes', 'transition-property:<custom-ident>']);
+  });
+});
+
+describe('animation analysis audit', () => {
+  it('gates a declaration in an @media band the native output is not resolved in, for web', () => {
+    const ds = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' })
+      .compile(stated('@media (min-width: 9999px) { .a { transition: color 1s; } }')).diagnostics;
+    expect(ds.filter((d) => d.profile?.context === 'animation').map((d) => [d.target, d.profile?.feature])).toEqual([['web', 'transition-property:<custom-ident>']]);
+  });
+
+  it('refuses a computed font size that is not px instead of assuming 16px', () => {
+    expect(fontPx({ kind: 'length', value: 12, unit: 'px' })).toBe(12);
+    expect(() => fontPx({ kind: 'length', value: 1, unit: 'em' })).toThrow(/not px/);
   });
 });
