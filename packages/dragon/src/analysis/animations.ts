@@ -369,6 +369,27 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
   return { cases, keyframes, features };
 }
 
+/**
+ * The web output writes one transition and animation list per element and case, in its base class; the @media blocks carry the
+ * milestone longhands only (emit/web-css.ts). So a transition or animation declaration in a rule that is not in every @media
+ * band, whose lists could differ between bands, is refused on web (package ANIM-mq). A native output resolves one band, the
+ * one its own analysis reads, so it is unaffected.
+ */
+export function refuseBandedAnimations(allRules: readonly Rule[], inEveryBand: (r: Rule) => boolean, diagnostics: Diagnostic[]): void {
+  for (const rule of allRules) {
+    if (inEveryBand(rule) || rule.selectors.every((sel) => sel.dropped)) continue;
+    for (const d of rule.declarations) {
+      if (d.animation === undefined) continue;
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: authored(d.valueSpan),
+        target: 'web',
+        message: `${d.property} inside @media is unsupported on web: transition and animation lists that differ between @media bands are not built yet (package ANIM-mq)`,
+        manual: 'Declare the transition or animation outside @media, the same at every viewport width.',
+      }));
+    }
+  }
+}
+
 function refuse(span: Span, message: string): Diagnostic {
   return diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), message, manual: 'Remove the declaration, or animate a colour or length property between values of one kind.' });
 }

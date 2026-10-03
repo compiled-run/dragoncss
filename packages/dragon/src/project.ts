@@ -17,7 +17,7 @@ import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
 import type { AnimationAnalysis } from './analysis/animations.ts';
-import { analyzeAnimations, gateAnimationFeatures } from './analysis/animations.ts';
+import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
 import { webAnimationsOf } from './lower/anim-program.ts';
 import { valueText } from './emit/web-css.ts';
 import * as cssTree from 'css-tree';
@@ -833,6 +833,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
       animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
       if (options.profiles === 'enforce') gateAnimationFeatures(animation, targets, (t) => profileFor(profiles, t as KnownTarget), diagnostics);
+      if ((targets as readonly string[]).includes('web')) refuseBandedAnimations(rules, (r) => bandRules.every((set) => set.has(r)), diagnostics);
       if (options.profiles === 'enforce') {
         const values: Diagnostic[] = [];
         // A target's messages list the contexts of the bands it is resolved in.
