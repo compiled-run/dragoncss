@@ -7,10 +7,13 @@ import { INHERITED, LONGHANDS } from '../src/css/properties.ts';
 import { properties, webrefVersion } from '../src/css/grammar.generated.ts';
 import { NO_FAULTS } from '../src/faults.ts';
 import { borderWidthKeywords, chromeVersion, computed, platform, userAgentLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
-import { referenceDataset } from '../src/ua/datasets.ts';
+import { referenceDataset, TEXT_FONT_LONGHANDS } from '../src/ua/datasets.ts';
 import { elementKeyComputed, elementKeyLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { phrasingKeyComputed, phrasingKeyLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import type { LinkedElement } from '../src/analysis/link.ts';
+
+/** The longhands the UA capture holds: all but font-weight and font-style, which datasets.ts supplies as html.css specified rows. */
+const CAPTURED_LONGHANDS = LONGHANDS.filter((p) => !(TEXT_FONT_LONGHANDS as readonly string[]).includes(p));
 
 describe('captured Chrome defaults and the webref grammar', () => {
   it('pin Chrome 145.0.7632.6 and @webref/css 8.7.5, captured on darwin-arm64', () => {
@@ -20,7 +23,7 @@ describe('captured Chrome defaults and the webref grammar', () => {
   });
   it('cover every longhand for every supported tag and an element with no UA rules', () => {
     for (const tag of Object.keys(computed) as (keyof typeof computed)[]) {
-      for (const p of LONGHANDS) expect(computed[tag][p], `${tag} ${p}`).toBeTypeOf('string');
+      for (const p of CAPTURED_LONGHANDS) expect(computed[tag][p], `${tag} ${p}`).toBeTypeOf('string');
       for (const p of LONGHANDS) expect(properties[p], p).toBeDefined();
     }
     expect(computed.div.display).toBe('block');
@@ -164,7 +167,7 @@ describe('UA longhands of the element keys (ELB-2)', () => {
       span: [],
     });
     for (const key of Object.keys(elementKeyComputed) as (keyof typeof elementKeyComputed)[]) {
-      for (const p of LONGHANDS) expect(elementKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');
+      for (const p of CAPTURED_LONGHANDS) expect(elementKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');
     }
   });
 });
@@ -175,7 +178,7 @@ describe('UA longhands of the phrasing keys (INL-U)', () => {
       br: [], strong: [], b: [], em: [], i: [], code: ['font-family'], small: ['font-size'], sub: ['font-size'], sup: ['font-size'], label: [],
     });
     for (const key of Object.keys(phrasingKeyComputed) as (keyof typeof phrasingKeyComputed)[]) {
-      for (const p of LONGHANDS) expect(phrasingKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');
+      for (const p of CAPTURED_LONGHANDS) expect(phrasingKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');
     }
   });
 });

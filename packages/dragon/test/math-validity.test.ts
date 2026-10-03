@@ -102,6 +102,16 @@ describe('math functions Chrome rejects are invalid CSS (T131)', () => {
     expect(r.declarations.map((d) => d.property)).toEqual(['--w', 'border-left-width']);
   });
 
+  it('font-weight takes a number calculation and font-style an angle one (TXT-W1): each valid kind passes, any other kind is dropped', () => {
+    expect(mathGrammarFor('font-weight')).toBe('number');
+    expect(mathGrammarFor('font-style')).toBe('angle');
+    expect(mathInvalidity('calc(250 + 0.3)', 'number')).toBeNull();
+    expect(mathInvalidity('calc(10deg + 5deg)', 'angle')).toBeNull();
+    expect(mathInvalidity('calc(10px)', 'number')).toBe('it resolves to a length, and the property takes a number');
+    expect(mathInvalidity('calc(10px)', 'angle')).toBe('it resolves to a length, and the property takes an angle');
+    expect(mathInvalidity('calc(10deg)', 'length-percentage')).toBe('it resolves to an angle, and the property takes a length or a percentage');
+  });
+
   it('each property takes the math grammar its webref syntax gives (a number, a length, a length-percentage or a number or length-percentage)', () => {
     // The value-level types a top-level calculation can stand for; function and colour types are opaque here.
     const OPEN = new Set(['line-width', 'box-size', 'length-percentage', 'bg-layer', 'final-bg-layer', 'bg-position', 'bg-size', 'position', 'position-three']);

@@ -126,16 +126,17 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
   // master pins hold exactly. INL1a: plus the INL1a stack's new cases (inline-breaks-*, the inline fixtures and inline-baselines;
   // the second term, as on the stack against master 7a363ac7b), every existing case unchanged. TXT1a-2 (T084J phase F): plus the
   // sum over the text-latin, Ahem fractional and text-calibration cases (the last term); a real face's glyph boxes are its shaped
-  // HarfBuzz extents (pixel-reference.ts glyphLines).
+  // HarfBuzz extents (pixel-reference.ts glyphLines). TXT-W1: plus the sum over the text-weight cases (the last term of each changed
+  // count); every existing case is unchanged.
   const DROPPED = {
     ios: {
-      2: { dropped: { edge: 1234 + 262 + 15, 'edge:glyph': 924 + 189 + 8, glyph: 31, clip: 4, border: 16, interior: 5 + 1, outside: 4 }, rescued: { edge: 1194 + 236 + 2 } },
-      3: { dropped: { edge: 1243 + 254 + 15, 'edge:glyph': 872 + 172 + 8, glyph: 25, border: 18, interior: 5 + 1, clip: 2, outside: 2 }, rescued: { edge: 1215 + 231 + 7, border: 18 } },
+      2: { dropped: { edge: 1234 + 262 + 15 + 3, 'edge:glyph': 924 + 189 + 8 + 8, glyph: 31, clip: 4, border: 16, interior: 5 + 1, outside: 4 }, rescued: { edge: 1194 + 236 + 2 + 1 } },
+      3: { dropped: { edge: 1243 + 254 + 15, 'edge:glyph': 872 + 172 + 8 + 6, glyph: 25, border: 18, interior: 5 + 1, clip: 2, outside: 2 }, rescued: { edge: 1215 + 231 + 7, border: 18 } },
     },
     android: {
-      2: { dropped: { edge: 1234 + 262 + 15, 'edge:glyph': 924 + 189 + 8, glyph: 31, clip: 4, border: 16, interior: 5 + 1, outside: 4 }, rescued: { edge: 1194 + 236 + 2 } },
-      3: { dropped: { edge: 1243 + 254 + 15, 'edge:glyph': 872 + 172 + 8, glyph: 25, border: 18, interior: 5 + 1, clip: 2, outside: 2 }, rescued: { edge: 1215 + 231 + 7, border: 18 } },
-      2.625: { dropped: { edge: 1207 + 260 + 15, 'edge:glyph': 901 + 189 + 8, glyph: 33, outside: 6 + 4 + 3, clip: 13, border: 16, interior: 5 + 1 }, rescued: { edge: 1071 + 194 + 8 } },
+      2: { dropped: { edge: 1234 + 262 + 15 + 3, 'edge:glyph': 924 + 189 + 8 + 8, glyph: 31, clip: 4, border: 16, interior: 5 + 1, outside: 4 }, rescued: { edge: 1194 + 236 + 2 + 1 } },
+      3: { dropped: { edge: 1243 + 254 + 15, 'edge:glyph': 872 + 172 + 8 + 6, glyph: 25, border: 18, interior: 5 + 1, clip: 2, outside: 2 }, rescued: { edge: 1215 + 231 + 7, border: 18 } },
+      2.625: { dropped: { edge: 1207 + 260 + 15, 'edge:glyph': 901 + 189 + 8 + 8, glyph: 33, outside: 6 + 4 + 3, clip: 13, border: 16, interior: 5 + 1 }, rescued: { edge: 1071 + 194 + 8 } },
     },
   } as const;
   const bottoms = JSON.parse(readFileSync(BOTTOM_SCANLINES_PATH(), 'utf8')) as BottomScanlines;

@@ -130,13 +130,14 @@ describe('b, strong, em and i in the element table (T133, R7)', () => {
         expect(ds.phrasingKeyUnmodelled[k], k).toEqual({ ltr: {}, rtl: {} });
         expect(ds.phrasingKeyForced[k], k).toEqual({ ltr: {}, rtl: {} });
         for (const p of LONGHANDS) expect(ds.phrasingKeyComputed[k][p], `${k} ${p}`).toBe(ds.computed['dragon-unstyled'][p]);
-        expect(textFontsOf(choice.dataset, k), k).toBe(ds.phrasingKeyTextFonts[k]);
+        // TXT-W1: the dataset holds the html.css specified value, whose properties are the captured row's (font-weight.test.ts).
+        expect(Object.keys(textFontsOf(choice.dataset, k)), k).toEqual(Object.keys(ds.phrasingKeyTextFonts[k]));
       }
-      expect(textFontsOf(choice.dataset, 'b')).toEqual({ 'font-weight': '700' });
+      expect(textFontsOf(choice.dataset, 'b')).toEqual({ 'font-weight': 'bolder' });
       expect(textFontsOf(choice.dataset, 'em')).toEqual({ 'font-style': 'italic' });
       // Only the supported phrasing tags gain a row; the captured tags keep theirs, and every other tag has none.
       for (const k of ['br', 'label', 'code', 'small', 'sub', 'sup']) expect(k in choice.dataset.userAgentTextFonts, k).toBe(k === 'br' || k === 'label');
-      expect(textFontsOf(choice.dataset, 'h1')).toBe(ds.userAgentTextFonts.h1);
+      expect(textFontsOf(choice.dataset, 'h1')).toEqual({ 'font-weight': 'bold' });
       expect(textFontsOf(choice.dataset, 'span')).toEqual({});
       expect(choice.dataset.computed).toBe(ds.computed);
     });

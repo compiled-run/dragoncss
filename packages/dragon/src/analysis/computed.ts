@@ -11,6 +11,9 @@ import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
 import { ratioValue } from '../css/values.ts';
 import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
+import { textFontsOf } from '../ua/datasets.ts';
+import type { TextFontValue } from '../fonts/weight.ts';
+import { computeFontStyle, computeTextFont, fontStyleCssValue, INITIAL_TEXT_FONT } from '../fonts/weight.ts';
 import type { Span } from '../types.ts';
 import type { Candidate } from './cascade.ts';
 import type { LinkedElement } from './link.ts';
@@ -65,7 +68,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   else if (only.type === 'Percentage') v = { kind: 'percentage', value: Number(only['value']) };
   else if (only.type === 'Number') {
     const n = Number(only['value']);
-    v = n === 0 && !['flex-grow', 'flex-shrink', 'order', 'line-height'].includes(property) ? { kind: 'length', value: 0, unit: CANONICAL_LENGTH_UNIT } : { kind: 'number', value: n };
+    v = n === 0 && !['flex-grow', 'flex-shrink', 'order', 'line-height', 'font-weight'].includes(property) ? { kind: 'length', value: 0, unit: CANONICAL_LENGTH_UNIT } : { kind: 'number', value: n };
   } else v = { kind: 'other', type: only.type, text };
   valueCache.set(key, v);
   return v;
@@ -203,6 +206,40 @@ export function computeJustifyItems(props: Map<Longhand, ResolvedValue>, parent:
   const inherited = parent === null ? null : (parent.get('justify-items') as ResolvedValue).value;
   const legacy = inherited !== null && inherited.kind === 'keyword' && inherited.value.startsWith('legacy ');
   props.set('justify-items', { ...v, value: legacy ? inherited : { kind: 'keyword', value: 'normal' } });
+}
+
+/**
+ * css-fonts-4 §2.2, §2.3 as Blink computes them (fonts/weight.ts): a font-weight or font-style no author declaration set takes the
+ * tag's specified html.css value (userAgentTextFonts: bold, bolder, italic) or else its parent's; then font-weight computes to a
+ * number (bolder and lighter against the parent's computed weight) and font-style to normal, italic or oblique <n>deg.
+ */
+export function computeFontStyleLonghands(tag: string, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, parent: ReadonlyMap<Longhand, ResolvedValue> | null, ua: UaDataset): void {
+  const none = { span: null, declaration: null, declared: null, losing: [] } as const;
+  const row = textFontsOf(ua, tag);
+  for (const p of ['font-weight', 'font-style'] as const) {
+    const text = row[p];
+    if (defaulted.has(p) && text !== undefined) props.set(p, { value: parseValueText(p, text), origin: 'user-agent', ...none });
+  }
+  const w = props.get('font-weight') as ResolvedValue;
+  const st = props.get('font-style') as ResolvedValue;
+  const specified = (v: ResolvedValue): CssValue | null => (v.origin === 'inherited' && parent !== null ? null : v.value);
+  const font = computeTextFont({ weight: specified(w), style: specified(st) }, parent === null ? INITIAL_TEXT_FONT : textFontOfProps(parent));
+  if (font === null) throw new Error(`font-weight ${valueToString(w.value)} or font-style ${valueToString(st.value)} has no computed value`);
+  props.set('font-weight', { ...w, value: { kind: 'number', value: font.weight } });
+  props.set('font-style', { ...st, value: fontStyleCssValue(font.style) });
+}
+
+/** The computed text font of resolved properties. */
+export function textFontOfProps(props: ReadonlyMap<Longhand, ResolvedValue>): TextFontValue {
+  const style = computeFontStyle((props.get('font-style') as ResolvedValue).value);
+  if (style === null) throw new Error('font-style is not computed');
+  return { weight: weightOf(props.get('font-weight') as ResolvedValue), style };
+}
+
+/** A computed font-weight's number. */
+export function weightOf(v: ResolvedValue): number {
+  if (v.value.kind !== 'number') throw new Error(`font-weight ${valueToString(v.value)} is not computed`);
+  return v.value.value;
 }
 
 // css-display-3 §2.7: the root element's display is blockified (Chrome reports block for html even under display: initial).

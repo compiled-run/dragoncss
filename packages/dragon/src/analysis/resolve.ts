@@ -10,7 +10,7 @@ import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeGridLengths, computeJustifyItems, computeLengths, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeJustifyItems, computeLengths, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 import type { Direction, DirectionContext } from './logical.ts';
@@ -152,7 +152,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     const tag = uaTagOf(el.tag);
     const none = { declaration: null, declared: null, losing: [] } as const;
     const fromParent = (p: Longhand): ResolvedValue => {
-      if (parent === null) return { value: parseValueText(p, environment.ua.computed.html[p] as string), origin: 'initial', span: null, ...none };
+      // The UA capture has no font-weight or font-style (datasets.ts TEXT_FONT_LONGHANDS); the root takes their initial value.
+      const rootValue = environment.ua.computed.html[p];
+      if (parent === null) return { value: rootValue === undefined ? initialValue(p, environment.ua) : parseValueText(p, rootValue), origin: 'initial', span: null, ...none };
       const pv = parent.props.get(p) as ResolvedValue;
       return { value: pv.value, origin: 'inherited', span: pv.span, ...none };
     };
@@ -204,6 +206,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     computeLengths(fontSize, parentFontSize, rootFontSize);
     props.set('font-size', fontSize.get('font-size') as ResolvedValue);
     applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent);
+    computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {

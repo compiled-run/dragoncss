@@ -81,29 +81,20 @@ describe('the refusals that stay', () => {
   it('Ahem text in b, strong, em or i keeps the UA-font refusal on ios and android, naming the tag, and is ready on web', () => {
     for (const [tag, set] of [['b', 'font-weight: 700'], ['strong', 'font-weight: 700'], ['em', 'font-style: italic'], ['i', 'font-style: italic']] as const) {
       const c = compile(retag(inputOf('inline-tags'), [['span', tag]]));
-      expect(listed(c), tag).toEqual([`android DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`, `ios DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`]);
+      expect(listed(c), tag).toEqual([`android DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`, `ios DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`]);
       expect(c.outputs.web.kind, tag).toBe('ready');
     }
   });
 
-  it('a tag inside an ancestor whose UA row sets the same property is refused on every target; a different property is not', () => {
-    const bold = compile(inputOf('reject-inline-tags-bold-in-heading'));
-    expect(errors(bold).filter((d) => d.code === 'DRAGON_UNSUPPORTED_ELEMENT').map((d) => [d.target, d.message])).toEqual([
-      [null, "<strong> s inside <h2> h: Chrome's captured font-weight: 700 for <strong> holds under a parent at the initial font-weight, and <h2> h sets font-weight: 700 from Chrome's user-agent stylesheet"],
-    ]);
-    const italic = compile(inputOf('reject-inline-tags-italic-in-italic'));
-    expect(errors(italic).filter((d) => d.code === 'DRAGON_UNSUPPORTED_ELEMENT').map((d) => d.message)).toEqual([
-      "<i> s inside <em> o: Chrome's captured font-style: italic for <i> holds under a parent at the initial font-style, and <em> o sets font-style: italic from Chrome's user-agent stylesheet",
-    ]);
-    // b inside strong, at any depth, and em inside address are the same refusal; em inside h2 and i inside b are not.
+  it('a tag inside an ancestor whose UA row sets the same property is accepted since TXT-W1 (html.css specified values: b in h2 is 900)', () => {
+    // Was refused by T133 (the captured computed rows held only under a normal parent); text-weight-nested-* are the Chrome cases.
     const nest = (outer: string, inner: string): string[] => {
-      const input = retag(inputOf('reject-inline-tags-italic-in-italic'), [['em', outer], ['i', inner]]);
-      return errors(compile(input)).filter((d) => d.code === 'DRAGON_UNSUPPORTED_ELEMENT').map((d) => d.message.split(':')[0] as string);
+      // inline-tags t1: <a t1a> holds <label t1l>; Ahem bold or italic text is refused on ios as DRAGON_UNSUPPORTED_FONT, not here.
+      const input = retag(inputOf('inline-tags'), [['a', outer], ['label', inner]]);
+      return errors(compile(input)).filter((d) => d.code === 'DRAGON_UNSUPPORTED_ELEMENT').map((d) => d.message);
     };
-    expect(nest('strong', 'b')).toEqual(['<b> s inside <strong> o']);
-    expect(nest('address', 'em')).toEqual(['<em> s inside <address> o']);
-    expect(nest('h2', 'em')).toEqual([]);
-    expect(nest('b', 'i')).toEqual([]);
-    expect(nest('em', 'b')).toEqual([]);
+    for (const [outer, inner] of [['strong', 'b'], ['address', 'em'], ['h2', 'em'], ['b', 'i'], ['em', 'b']] as const) expect(nest(outer, inner), `${inner} in ${outer}`).toEqual([]);
+    const bold = compile(inputOf('text-weight-nested-bold'));
+    expect(listed(bold)).toEqual([]);
   });
 });

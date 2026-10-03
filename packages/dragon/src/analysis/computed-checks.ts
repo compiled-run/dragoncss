@@ -10,9 +10,10 @@ import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
-import { textFontsOf } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
-import { UNSTYLED_TAGS, uaTagOf } from './elements.ts';
+import { uaTagOf } from './elements.ts';
+import { textFontOfProps } from './computed.ts';
+import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { environmentOf, valueToString } from './resolve.ts';
 
@@ -238,9 +239,8 @@ const BORDER_STYLES: readonly Longhand[] = ['border-top-style', 'border-right-st
 
 // css-cascade-5 §6.3: Chrome's UA defaults that the captured tables do not model. A tag inside an ancestor a UA rule keys on
 // (nested lists), display: list-item (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
-// minimum logical font size clamps, text that inherits a UA font-weight or font-style no longhand models (headings, address, b,
-// strong, em, i), and a phrasing tag whose text-font row was captured under a parent at the initial text font set inside an
-// ancestor whose UA row already sets that property.
+// minimum logical font size clamps, and text without a real bundled face whose computed font-weight or font-style Chrome draws
+// synthesized (Ahem under a heading, b, strong, em, i or address, or an author weight of 600 and up).
 function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
   const once = (id: string, push: () => void): void => {
     if (reported.has(id)) return;
@@ -252,7 +252,7 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     for (const t of targets) once(`${t}|ua-${what}|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' })));
   };
   // Chrome's FontSize::GetComputedSizeFromSpecifiedSize: the clamp applies unless an authored px size is in the chain.
-  const walk = (el: ResolvedElement, ancestors: readonly ResolvedElement[], parentAbsolute: boolean, fontTag: ResolvedElement | null, hidden: boolean): void => {
+  const walk = (el: ResolvedElement, ancestors: readonly ResolvedElement[], parentAbsolute: boolean, hidden: boolean): void => {
     const tag = el.element.tag;
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     const size = el.props.get('font-size') as ResolvedValue;
@@ -265,18 +265,6 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
         message: `<${tag}> ${el.element.address} inside <${ancestor.element.tag}> ${ancestor.element.address}: Chrome's user-agent stylesheet has a rule for <${tag}> inside <${keyed.join('>, <')}> (for example nested lists lose their block margins) that Dragon's captured defaults do not model`,
         manual: `Use a div in place of <${tag}> ${el.element.address}, or move it out of <${ancestor.element.tag}> ${ancestor.element.address}.`,
       })));
-    }
-    const own = textFontsOf(ua, tag);
-    if (UNSTYLED_TAGS.has(tag)) {
-      for (const [p, v] of Object.entries(own)) {
-        const setter = [...ancestors].reverse().find((a) => textFontsOf(ua, a.element.tag)[p] !== undefined);
-        if (setter === undefined) continue;
-        once(`ua-text-font|${el.element.address}|${p}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', {
-          origin: el.element.node.origin,
-          message: `<${tag}> ${el.element.address} inside <${setter.element.tag}> ${setter.element.address}: Chrome's captured ${p}: ${v} for <${tag}> holds under a parent at the initial ${p}, and <${setter.element.tag}> ${setter.element.address} sets ${p}: ${textFontsOf(ua, setter.element.tag)[p]} from Chrome's user-agent stylesheet`,
-          manual: `Use a span in place of <${tag}> ${el.element.address}, or move it out of <${setter.element.tag}> ${setter.element.address}.`,
-        })));
-      }
     }
     if (!here) {
       if (keywordOf(el.props.get('display') as ResolvedValue) === 'list-item') {
@@ -294,27 +282,42 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
         perTarget(el, 'font-size', `font-size: ${valueToString(size.value)} on <${tag}> ${el.element.address} comes from Chrome's user-agent stylesheet and is below Chrome's minimum logical font size (${ua.minimumLogicalFontSize}px), which Chrome clamps depending on the device pixel ratio`, `Set a px font-size on <${tag}> ${el.element.address} or one of its ancestors.`);
       }
     }
-    const fonts = Object.keys(own).length > 0 ? el : fontTag;
-    if (!here && fonts !== null) {
-      const row = textFontsOf(ua, fonts.element.tag);
-      const set = Object.entries(row).map(([p, v]) => `${p}: ${v}`).join('; ');
+    const synthetic = here ? [] : syntheticTextFont(el);
+    if (synthetic.length > 0) {
+      const chain = [...ancestors, el];
+      const sources = synthetic.map(({ property, text }) => {
+        const setter = [...chain].reverse().find((a) => (a.props.get(property) as ResolvedValue).origin !== 'inherited') ?? (chain[0] as ResolvedElement);
+        const origin = (setter.props.get(property) as ResolvedValue).origin;
+        const where = origin === 'user-agent' ? "Chrome's user-agent stylesheet" : origin === 'author' ? 'the author\'s style' : `its ${origin} value`;
+        return `${property}: ${text} from ${where} on <${setter.element.tag}> ${setter.element.address}`;
+      });
       for (const c of el.children) {
-        // TXT1a-2: a real bundled face at the UA weight and style draws it (synthesis is refused as DRAGON_SYNTHETIC_FONT_STYLE).
+        // TXT1a-2: a real bundled face at the computed weight and style draws it (synthesis is refused as DRAGON_SYNTHETIC_FONT_STYLE).
         if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
-        // Web draws the UA weight and style itself; every configured native target draws the regular face.
+        // Web synthesizes the bold or oblique itself; every configured native target draws the regular face.
         for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
           once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
             origin: c.node.node.origin,
             target: t,
-            message: `text ${c.node.address} inherits ${set} from Chrome's user-agent stylesheet on <${fonts.element.tag}> ${fonts.element.address}; Dragon has no font-weight or font-style, so ${t} would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`,
-            manual: `Put the text in a div outside <${fonts.element.tag}> ${fonts.element.address}; font-weight and font-style need the real-font text support.`,
+            message: `text ${c.node.address} inherits ${sources.join(', and ')}; ${t} draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`,
+            manual: `Give ${c.node.address} a font-weight below 600 and a font-style below oblique 14deg, or a font family with a bundled face of that weight and style.`,
           })));
         }
       }
     }
-    for (const c of el.children) if (c.kind === 'element') walk(c, [...ancestors, el], absolute, fonts, here);
+    for (const c of el.children) if (c.kind === 'element') walk(c, [...ancestors, el], absolute, here);
   };
-  walk(root, [], false, null, false);
+  walk(root, [], false, false);
+}
+
+/** The computed font-weight and font-style of an element that Chrome synthesizes over a single regular face (600 and up, slope 14 and up). */
+function syntheticTextFont(el: ResolvedElement): { readonly property: 'font-weight' | 'font-style'; readonly text: string }[] {
+  const out: { property: 'font-weight' | 'font-style'; text: string }[] = [];
+  const font = textFontOfProps(el.props);
+  if (font.weight >= 600) out.push({ property: 'font-weight', text: serializeFontWeight(font.weight) });
+  const slope = font.style.kind === 'italic' ? 14 : font.style.kind === 'oblique' ? font.style.degrees : 0;
+  if (slope >= 14) out.push({ property: 'font-style', text: serializeFontStyle(font.style) });
+  return out;
 }
 
 /** The support profile each target is checked against, or null when the profiles are not enforced. */

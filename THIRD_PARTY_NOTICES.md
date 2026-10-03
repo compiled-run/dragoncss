@@ -180,6 +180,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/blink/renderer/core/css/css_font_face_src_value.cc`: Copyright (C) 2007, 2010 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/css_font_face.cc`: Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/css_gradient_value.cc`: Copyright (C) 2008 Apple Inc.  All rights reserved.; Copyright (C) 2015 Google Inc. All rights reserved.
+- `third_party/blink/renderer/core/css/css_segmented_font_face.cc`: Copyright (C) 2008 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/css_unicode_range_value.cc`: Copyright (C) 2008 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/font_face_cache.cc`: Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/font_face_cache.h`: Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.
