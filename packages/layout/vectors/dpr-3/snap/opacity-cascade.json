@@ -1,0 +1,280 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 17664
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 17664
+  },
+  {
+   "id": "stage",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 17664
+  },
+  {
+   "id": "row1",
+   "parent": "stage",
+   "x": 3072,
+   "y": 1536,
+   "width": 70656,
+   "height": 6144
+  },
+  {
+   "id": "op-parent",
+   "parent": "row1",
+   "x": 0,
+   "y": 0,
+   "width": 6144,
+   "height": 6144
+  },
+  {
+   "id": "op-inherit",
+   "parent": "op-parent",
+   "x": 0,
+   "y": 0,
+   "width": 3072,
+   "height": 3072
+  },
+  {
+   "id": "sp1a",
+   "parent": "row1",
+   "x": 6144,
+   "y": 0,
+   "width": 3072,
+   "height": 6144
+  },
+  {
+   "id": "op-var",
+   "parent": "row1",
+   "x": 9216,
+   "y": 0,
+   "width": 6144,
+   "height": 6144
+  },
+  {
+   "id": "sp1b",
+   "parent": "row1",
+   "x": 15360,
+   "y": 0,
+   "width": 1536,
+   "height": 6144
+  },
+  {
+   "id": "op-calc",
+   "parent": "row1",
+   "x": 16896,
+   "y": 0,
+   "width": 6144,
+   "height": 6144
+  },
+  {
+   "id": "row2",
+   "parent": "stage",
+   "x": 3072,
+   "y": 9984,
+   "width": 70656,
+   "height": 6144
+  },
+  {
+   "id": "op-neg",
+   "parent": "row2",
+   "x": 0,
+   "y": 0,
+   "width": 6144,
+   "height": 6144
+  },
+  {
+   "id": "sp2a",
+   "parent": "row2",
+   "x": 6144,
+   "y": 0,
+   "width": 3072,
+   "height": 6144
+  },
+  {
+   "id": "op-big",
+   "parent": "row2",
+   "x": 9216,
+   "y": 0,
+   "width": 6144,
+   "height": 6144
+  },
+  {
+   "id": "sp2b",
+   "parent": "row2",
+   "x": 15360,
+   "y": 0,
+   "width": 1536,
+   "height": 6144
+  },
+  {
+   "id": "op-initial",
+   "parent": "row2",
+   "x": 16896,
+   "y": 0,
+   "width": 6144,
+   "height": 6144
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 276,
+   "width": 1200,
+   "height": 276
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 276,
+   "width": 1200,
+   "height": 276
+  },
+  {
+   "id": "stage",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 276,
+   "width": 1200,
+   "height": 276
+  },
+  {
+   "id": "row1",
+   "left": 48,
+   "top": 24,
+   "right": 1152,
+   "bottom": 120,
+   "width": 1104,
+   "height": 96
+  },
+  {
+   "id": "op-parent",
+   "left": 48,
+   "top": 24,
+   "right": 144,
+   "bottom": 120,
+   "width": 96,
+   "height": 96
+  },
+  {
+   "id": "op-inherit",
+   "left": 48,
+   "top": 24,
+   "right": 96,
+   "bottom": 72,
+   "width": 48,
+   "height": 48
+  },
+  {
+   "id": "sp1a",
+   "left": 144,
+   "top": 24,
+   "right": 192,
+   "bottom": 120,
+   "width": 48,
+   "height": 96
+  },
+  {
+   "id": "op-var",
+   "left": 192,
+   "top": 24,
+   "right": 288,
+   "bottom": 120,
+   "width": 96,
+   "height": 96
+  },
+  {
+   "id": "sp1b",
+   "left": 288,
+   "top": 24,
+   "right": 312,
+   "bottom": 120,
+   "width": 24,
+   "height": 96
+  },
+  {
+   "id": "op-calc",
+   "left": 312,
+   "top": 24,
+   "right": 408,
+   "bottom": 120,
+   "width": 96,
+   "height": 96
+  },
+  {
+   "id": "row2",
+   "left": 48,
+   "top": 156,
+   "right": 1152,
+   "bottom": 252,
+   "width": 1104,
+   "height": 96
+  },
+  {
+   "id": "op-neg",
+   "left": 48,
+   "top": 156,
+   "right": 144,
+   "bottom": 252,
+   "width": 96,
+   "height": 96
+  },
+  {
+   "id": "sp2a",
+   "left": 144,
+   "top": 156,
+   "right": 192,
+   "bottom": 252,
+   "width": 48,
+   "height": 96
+  },
+  {
+   "id": "op-big",
+   "left": 192,
+   "top": 156,
+   "right": 288,
+   "bottom": 252,
+   "width": 96,
+   "height": 96
+  },
+  {
+   "id": "sp2b",
+   "left": 288,
+   "top": 156,
+   "right": 312,
+   "bottom": 252,
+   "width": 24,
+   "height": 96
+  },
+  {
+   "id": "op-initial",
+   "left": 312,
+   "top": 156,
+   "right": 408,
+   "bottom": 252,
+   "width": 96,
+   "height": 96
+  }
+ ]
+}
