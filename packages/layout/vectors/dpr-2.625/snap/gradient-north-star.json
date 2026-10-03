@@ -8,7 +8,7 @@
    "x": 0,
    "y": 0,
    "width": 67200,
-   "height": 53760
+   "height": 8064
   },
   {
    "id": "body",
@@ -16,7 +16,7 @@
    "x": 0,
    "y": 0,
    "width": 67200,
-   "height": 53760
+   "height": 8064
   },
   {
    "id": "player",
@@ -24,21 +24,13 @@
    "x": 0,
    "y": 0,
    "width": 55776,
-   "height": 53760
-  },
-  {
-   "id": "record",
-   "parent": "player",
-   "x": 2688,
-   "y": 2688,
-   "width": 43008,
-   "height": 43008
+   "height": 8064
   },
   {
    "id": "time",
    "parent": "player",
    "x": 2688,
-   "y": 48384,
+   "y": 2688,
    "width": 50400,
    "height": 2688
   },
@@ -57,52 +49,43 @@
    "left": 0,
    "top": 0,
    "right": 1050,
-   "bottom": 840,
+   "bottom": 126,
    "width": 1050,
-   "height": 840
+   "height": 126
   },
   {
    "id": "body",
    "left": 0,
    "top": 0,
    "right": 1050,
-   "bottom": 840,
+   "bottom": 126,
    "width": 1050,
-   "height": 840
+   "height": 126
   },
   {
    "id": "player",
    "left": 0,
    "top": 0,
    "right": 872,
-   "bottom": 840,
+   "bottom": 126,
    "width": 872,
-   "height": 840
-  },
-  {
-   "id": "record",
-   "left": 42,
-   "top": 42,
-   "right": 714,
-   "bottom": 714,
-   "width": 672,
-   "height": 672
+   "height": 126
   },
   {
    "id": "time",
    "left": 42,
-   "top": 756,
+   "top": 42,
    "right": 830,
-   "bottom": 798,
+   "bottom": 84,
    "width": 788,
    "height": 42
   },
   {
    "id": "track",
    "left": 42,
-   "top": 756,
+   "top": 42,
    "right": 830,
-   "bottom": 798,
+   "bottom": 84,
    "width": 788,
    "height": 42
   }

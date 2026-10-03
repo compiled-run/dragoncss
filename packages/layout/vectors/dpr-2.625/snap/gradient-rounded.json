@@ -8,7 +8,7 @@
    "x": 0,
    "y": 0,
    "width": 67200,
-   "height": 31808
+   "height": 41600
   },
   {
    "id": "body",
@@ -16,7 +16,7 @@
    "x": 0,
    "y": 0,
    "width": 67200,
-   "height": 31808
+   "height": 41600
   },
   {
    "id": "row",
@@ -24,7 +24,7 @@
    "x": 0,
    "y": 0,
    "width": 69888,
-   "height": 31808
+   "height": 41600
   },
   {
    "id": "record",
@@ -57,6 +57,14 @@
    "y": 22848,
    "width": 15120,
    "height": 4032
+  },
+  {
+   "id": "ring",
+   "parent": "row",
+   "x": 33488,
+   "y": 22848,
+   "width": 17408,
+   "height": 17408
   }
  ],
  "output": [
@@ -65,27 +73,27 @@
    "left": 0,
    "top": 0,
    "right": 1050,
-   "bottom": 497,
+   "bottom": 650,
    "width": 1050,
-   "height": 497
+   "height": 650
   },
   {
    "id": "body",
    "left": 0,
    "top": 0,
    "right": 1050,
-   "bottom": 497,
+   "bottom": 650,
    "width": 1050,
-   "height": 497
+   "height": 650
   },
   {
    "id": "row",
    "left": 0,
    "top": 0,
    "right": 1092,
-   "bottom": 497,
+   "bottom": 650,
    "width": 1092,
-   "height": 497
+   "height": 650
   },
   {
    "id": "record",
@@ -122,6 +130,15 @@
    "bottom": 420,
    "width": 236,
    "height": 63
+  },
+  {
+   "id": "ring",
+   "left": 523,
+   "top": 357,
+   "right": 795,
+   "bottom": 629,
+   "width": 272,
+   "height": 272
   }
  ]
 }
