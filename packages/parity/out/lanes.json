@@ -252,8 +252,8 @@
         {
           "lane": "layout-vectors-device",
           "where": "device",
-          "state": "pass",
-          "reason": null,
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
           "sets": [
             {
               "dpr": 1,
@@ -339,125 +339,15 @@
           ],
           "caseListSha256": "042fecca96ff5d2b5d6c272eadcaf9b533321cdcb402d454ca2780452e875785",
           "totalCases": 615853,
-          "run": {
-            "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1); arm64-apple-ios15.0-simulator; simctl spawn on iPhone 17",
-            "suites": [
-              {
-                "corpus": "p1",
-                "suite": "vectors",
-                "declared": 258,
-                "total": 258,
-                "pass": 258
-              },
-              {
-                "corpus": "p1",
-                "suite": "units",
-                "declared": 320000,
-                "total": 320000,
-                "pass": 320000
-              },
-              {
-                "corpus": "p1",
-                "suite": "engine",
-                "declared": 20258,
-                "total": 20258,
-                "pass": 20258
-              },
-              {
-                "corpus": "p1",
-                "suite": "library",
-                "declared": 22000,
-                "total": 22000,
-                "pass": 22000
-              },
-              {
-                "corpus": "p1",
-                "suite": "rt",
-                "declared": 54588,
-                "total": 54588,
-                "pass": 54588
-              },
-              {
-                "corpus": "extended",
-                "suite": "vectors-m2",
-                "declared": 241,
-                "total": 241,
-                "pass": 241
-              },
-              {
-                "corpus": "extended",
-                "suite": "vectors-dpr",
-                "declared": 1497,
-                "total": 1497,
-                "pass": 1497
-              },
-              {
-                "corpus": "extended",
-                "suite": "engine-dpr",
-                "declared": 1497,
-                "total": 1497,
-                "pass": 1497
-              },
-              {
-                "corpus": "extended",
-                "suite": "units-m2",
-                "declared": 120000,
-                "total": 120000,
-                "pass": 120000
-              },
-              {
-                "corpus": "extended",
-                "suite": "snap",
-                "declared": 21281,
-                "total": 21281,
-                "pass": 21281
-              },
-              {
-                "corpus": "extended",
-                "suite": "snap-values",
-                "declared": 216,
-                "total": 216,
-                "pass": 216
-              },
-              {
-                "corpus": "extended",
-                "suite": "calc-goldens",
-                "declared": 17,
-                "total": 17,
-                "pass": 17
-              },
-              {
-                "corpus": "extended",
-                "suite": "engine-calc",
-                "declared": 4000,
-                "total": 4000,
-                "pass": 4000
-              },
-              {
-                "corpus": "extended",
-                "suite": "units-calc",
-                "declared": 50000,
-                "total": 50000,
-                "pass": 50000
-              }
-            ],
-            "digests": {
-              "p1": "512fea4ba8853f4b676fe63211b8d40a84286220b42cf805cf043e6805b032bb",
-              "extended": "f36ce1caef74cc66a57d83aaf6f0e71eaa55a27a00fad437996502b7171981c4"
-            }
-          },
+          "run": null,
           "device": null,
-          "evidence": {
-            "laneCode": "b0c24d85534e88edd4b302d8261e6ac01ec2f552fa22ba038d283d1023e5e2cc",
-            "referenceData": "b5831815e3cbb92d7f5c1997f7558f9ef053cfa9d88e8b85a237eff5474eb623",
-            "app": "970a9d6294d838067aa7b53868598cf034b621233b6641081646eded035d241b"
-          }
+          "evidence": null
         },
         {
           "lane": "device-frames",
           "where": "device",
-          "state": "pass",
-          "reason": null,
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
           "sets": [
             {
               "dpr": 2,
@@ -476,98 +366,14 @@
           "caseListSha256": "c842ebc664799cddffbd724685077ca710e0ee7b6d8b60f655348f4115d4f437",
           "totalCases": 998,
           "run": null,
-          "device": {
-            "sets": [
-              {
-                "dpr": 3,
-                "device": {
-                  "name": "iPhone 17",
-                  "target": "ios",
-                  "model": "iPhone 17",
-                  "os": "iOS 26.5; app: Version 26.5 (Build 23F77)",
-                  "build": "23F77",
-                  "profileScale": 3,
-                  "appScale": 3,
-                  "windowPx": [
-                    1206,
-                    2622
-                  ],
-                  "stagePx": [
-                    1206,
-                    2334
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    186
-                  ],
-                  "textScale": "UICTContentSizeCategoryL"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 102989,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "62d15c5a9d6c25eb794ac30b92899def3501e8746f0bf5d472a5180685bdcd54",
-                "failures": 0,
-                "failuresByKind": {}
-              },
-              {
-                "dpr": 2,
-                "device": {
-                  "name": "iPad (A16)",
-                  "target": "ios",
-                  "model": "iPad (A16)",
-                  "os": "iOS 26.5; app: Version 26.5 (Build 23F77)",
-                  "build": "23F77",
-                  "profileScale": 2,
-                  "appScale": 2,
-                  "windowPx": [
-                    1640,
-                    2360
-                  ],
-                  "stagePx": [
-                    1640,
-                    2246
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    64
-                  ],
-                  "textScale": "UICTContentSizeCategoryL"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 107413,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "e259845b8ffd889938ed78ac17f9ed88186c8b84c6673f20c6562d40f5efc9de",
-                "failures": 0,
-                "failuresByKind": {}
-              }
-            ],
-            "failuresByKind": {},
-            "firstFailures": [],
-            "trust": null
-          },
-          "evidence": {
-            "laneCode": "b0c24d85534e88edd4b302d8261e6ac01ec2f552fa22ba038d283d1023e5e2cc",
-            "referenceData": "b5831815e3cbb92d7f5c1997f7558f9ef053cfa9d88e8b85a237eff5474eb623",
-            "app": "970a9d6294d838067aa7b53868598cf034b621233b6641081646eded035d241b"
-          }
+          "device": null,
+          "evidence": null
         },
         {
           "lane": "device-applied",
           "where": "device",
-          "state": "pass",
-          "reason": null,
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
           "sets": [
             {
               "dpr": 2,
@@ -586,98 +392,14 @@
           "caseListSha256": "c842ebc664799cddffbd724685077ca710e0ee7b6d8b60f655348f4115d4f437",
           "totalCases": 998,
           "run": null,
-          "device": {
-            "sets": [
-              {
-                "dpr": 3,
-                "device": {
-                  "name": "iPhone 17",
-                  "target": "ios",
-                  "model": "iPhone 17",
-                  "os": "iOS 26.5; app: Version 26.5 (Build 23F77)",
-                  "build": "23F77",
-                  "profileScale": 3,
-                  "appScale": 3,
-                  "windowPx": [
-                    1206,
-                    2622
-                  ],
-                  "stagePx": [
-                    1206,
-                    2334
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    186
-                  ],
-                  "textScale": "UICTContentSizeCategoryL"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 102989,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "62d15c5a9d6c25eb794ac30b92899def3501e8746f0bf5d472a5180685bdcd54",
-                "failures": 0,
-                "failuresByKind": {}
-              },
-              {
-                "dpr": 2,
-                "device": {
-                  "name": "iPad (A16)",
-                  "target": "ios",
-                  "model": "iPad (A16)",
-                  "os": "iOS 26.5; app: Version 26.5 (Build 23F77)",
-                  "build": "23F77",
-                  "profileScale": 2,
-                  "appScale": 2,
-                  "windowPx": [
-                    1640,
-                    2360
-                  ],
-                  "stagePx": [
-                    1640,
-                    2246
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    64
-                  ],
-                  "textScale": "UICTContentSizeCategoryL"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 107413,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "e259845b8ffd889938ed78ac17f9ed88186c8b84c6673f20c6562d40f5efc9de",
-                "failures": 0,
-                "failuresByKind": {}
-              }
-            ],
-            "failuresByKind": {},
-            "firstFailures": [],
-            "trust": null
-          },
-          "evidence": {
-            "laneCode": "b0c24d85534e88edd4b302d8261e6ac01ec2f552fa22ba038d283d1023e5e2cc",
-            "referenceData": "b5831815e3cbb92d7f5c1997f7558f9ef053cfa9d88e8b85a237eff5474eb623",
-            "app": "970a9d6294d838067aa7b53868598cf034b621233b6641081646eded035d241b"
-          }
+          "device": null,
+          "evidence": null
         },
         {
           "lane": "device-lines",
           "where": "device",
-          "state": "pass",
-          "reason": null,
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
           "sets": [
             {
               "dpr": 2,
@@ -696,98 +418,14 @@
           "caseListSha256": "c842ebc664799cddffbd724685077ca710e0ee7b6d8b60f655348f4115d4f437",
           "totalCases": 998,
           "run": null,
-          "device": {
-            "sets": [
-              {
-                "dpr": 3,
-                "device": {
-                  "name": "iPhone 17",
-                  "target": "ios",
-                  "model": "iPhone 17",
-                  "os": "iOS 26.5; app: Version 26.5 (Build 23F77)",
-                  "build": "23F77",
-                  "profileScale": 3,
-                  "appScale": 3,
-                  "windowPx": [
-                    1206,
-                    2622
-                  ],
-                  "stagePx": [
-                    1206,
-                    2334
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    186
-                  ],
-                  "textScale": "UICTContentSizeCategoryL"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 102989,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "62d15c5a9d6c25eb794ac30b92899def3501e8746f0bf5d472a5180685bdcd54",
-                "failures": 0,
-                "failuresByKind": {}
-              },
-              {
-                "dpr": 2,
-                "device": {
-                  "name": "iPad (A16)",
-                  "target": "ios",
-                  "model": "iPad (A16)",
-                  "os": "iOS 26.5; app: Version 26.5 (Build 23F77)",
-                  "build": "23F77",
-                  "profileScale": 2,
-                  "appScale": 2,
-                  "windowPx": [
-                    1640,
-                    2360
-                  ],
-                  "stagePx": [
-                    1640,
-                    2246
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    64
-                  ],
-                  "textScale": "UICTContentSizeCategoryL"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 107413,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "e259845b8ffd889938ed78ac17f9ed88186c8b84c6673f20c6562d40f5efc9de",
-                "failures": 0,
-                "failuresByKind": {}
-              }
-            ],
-            "failuresByKind": {},
-            "firstFailures": [],
-            "trust": null
-          },
-          "evidence": {
-            "laneCode": "b0c24d85534e88edd4b302d8261e6ac01ec2f552fa22ba038d283d1023e5e2cc",
-            "referenceData": "b5831815e3cbb92d7f5c1997f7558f9ef053cfa9d88e8b85a237eff5474eb623",
-            "app": "970a9d6294d838067aa7b53868598cf034b621233b6641081646eded035d241b"
-          }
+          "device": null,
+          "evidence": null
         },
         {
           "lane": "device-pixels",
           "where": "device",
-          "state": "fail",
-          "reason": "57 failures (pixel 57)",
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
           "sets": [
             {
               "dpr": 2,
@@ -806,274 +444,8 @@
           "caseListSha256": "c842ebc664799cddffbd724685077ca710e0ee7b6d8b60f655348f4115d4f437",
           "totalCases": 998,
           "run": null,
-          "device": {
-            "sets": [
-              {
-                "dpr": 3,
-                "device": {
-                  "name": "iPhone 17",
-                  "target": "ios",
-                  "model": "iPhone 17",
-                  "os": "iOS 26.5; app: Version 26.5 (Build 23F77)",
-                  "build": "23F77",
-                  "profileScale": 3,
-                  "appScale": 3,
-                  "windowPx": [
-                    1206,
-                    2622
-                  ],
-                  "stagePx": [
-                    1206,
-                    2334
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    186
-                  ],
-                  "textScale": "UICTContentSizeCategoryL"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 102989,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "62d15c5a9d6c25eb794ac30b92899def3501e8746f0bf5d472a5180685bdcd54",
-                "failures": 28,
-                "failuresByKind": {
-                  "pixel": 28
-                }
-              },
-              {
-                "dpr": 2,
-                "device": {
-                  "name": "iPad (A16)",
-                  "target": "ios",
-                  "model": "iPad (A16)",
-                  "os": "iOS 26.5; app: Version 26.5 (Build 23F77)",
-                  "build": "23F77",
-                  "profileScale": 2,
-                  "appScale": 2,
-                  "windowPx": [
-                    1640,
-                    2360
-                  ],
-                  "stagePx": [
-                    1640,
-                    2246
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    64
-                  ],
-                  "textScale": "UICTContentSizeCategoryL"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 107413,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "e259845b8ffd889938ed78ac17f9ed88186c8b84c6673f20c6562d40f5efc9de",
-                "failures": 29,
-                "failuresByKind": {
-                  "pixel": 29
-                }
-              }
-            ],
-            "failuresByKind": {
-              "pixel": 57
-            },
-            "firstFailures": [
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block",
-                "dpr": 3,
-                "node": "interior:a1",
-                "kind": "pixel",
-                "detail": "interior:a1 at 108,33: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block",
-                "dpr": 3,
-                "node": "edge:a1:right",
-                "kind": "pixel",
-                "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block",
-                "dpr": 3,
-                "node": "edge:a1:bottom",
-                "kind": "pixel",
-                "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block",
-                "dpr": 3,
-                "node": "edge:a1:left",
-                "kind": "pixel",
-                "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block",
-                "dpr": 3,
-                "node": "edge:f1a:bottom",
-                "kind": "pixel",
-                "detail": "edge:f1a:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block-rtl",
-                "dpr": 3,
-                "node": "interior:a1",
-                "kind": "pixel",
-                "detail": "interior:a1 at 1152,33: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block-rtl",
-                "dpr": 3,
-                "node": "edge:a1:bottom",
-                "kind": "pixel",
-                "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block-rtl",
-                "dpr": 3,
-                "node": "edge:a1:left",
-                "kind": "pixel",
-                "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block-rtl",
-                "dpr": 3,
-                "node": "edge:f1a:bottom",
-                "kind": "pixel",
-                "detail": "edge:f1a:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block",
-                "dpr": 3,
-                "node": "interior:a6",
-                "kind": "pixel",
-                "detail": "interior:a6 at 84,402: native [204,204,204,255], Chrome [204,0,0,255] (channel delta limit 0)"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block",
-                "dpr": 3,
-                "node": "edge:a6:top",
-                "kind": "pixel",
-                "detail": "edge:a6:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block",
-                "dpr": 3,
-                "node": "edge:a6:right",
-                "kind": "pixel",
-                "detail": "edge:a6:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block",
-                "dpr": 3,
-                "node": "edge:a6:left",
-                "kind": "pixel",
-                "detail": "edge:a6:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block-rtl",
-                "dpr": 3,
-                "node": "interior:a6",
-                "kind": "pixel",
-                "detail": "interior:a6 at 1122,402: native [204,204,204,255], Chrome [204,0,0,255] (channel delta limit 0)"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block-rtl",
-                "dpr": 3,
-                "node": "edge:a6:top",
-                "kind": "pixel",
-                "detail": "edge:a6:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block-rtl",
-                "dpr": 3,
-                "node": "edge:a6:right",
-                "kind": "pixel",
-                "detail": "edge:a6:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block-rtl",
-                "dpr": 3,
-                "node": "edge:a6:left",
-                "kind": "pixel",
-                "detail": "edge:a6:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-scroll-container",
-                "dpr": 3,
-                "node": "edge:a1:right",
-                "kind": "pixel",
-                "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-scroll-container-rtl",
-                "dpr": 3,
-                "node": "interior:a1",
-                "kind": "pixel",
-                "detail": "interior:a1 at 300,135: native [255,255,255,255], Chrome [204,0,0,255] (channel delta limit 0)"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-scroll-container-rtl",
-                "dpr": 3,
-                "node": "edge:a1:top",
-                "kind": "pixel",
-                "detail": "edge:a1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              }
-            ],
-            "trust": [
-              {
-                "device": "iPhone 17",
-                "dpr": 3,
-                "cases": 3,
-                "points": 1171,
-                "mismatches": 0
-              },
-              {
-                "device": "iPad (A16)",
-                "dpr": 2,
-                "cases": 3,
-                "points": 1171,
-                "mismatches": 0
-              }
-            ]
-          },
-          "evidence": {
-            "laneCode": "b0c24d85534e88edd4b302d8261e6ac01ec2f552fa22ba038d283d1023e5e2cc",
-            "referenceData": "b5831815e3cbb92d7f5c1997f7558f9ef053cfa9d88e8b85a237eff5474eb623",
-            "app": "970a9d6294d838067aa7b53868598cf034b621233b6641081646eded035d241b"
-          }
+          "device": null,
+          "evidence": null
         }
       ],
       "referenceProof": [
@@ -1105,50 +477,50 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 159,
-              "caught": 159,
+              "applicable": 151,
+              "caught": 151,
               "uncaught": []
             },
             {
@@ -1166,50 +538,50 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 148,
-              "caught": 148,
+              "applicable": 143,
+              "caught": 143,
               "uncaught": []
             },
             {
@@ -1435,8 +807,8 @@
         {
           "lane": "layout-vectors-device",
           "where": "device",
-          "state": "pass",
-          "reason": null,
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
           "sets": [
             {
               "dpr": 1,
@@ -1522,125 +894,15 @@
           ],
           "caseListSha256": "042fecca96ff5d2b5d6c272eadcaf9b533321cdcb402d454ca2780452e875785",
           "totalCases": 615853,
-          "run": {
-            "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18; d8 --min-api 31; ART app_process on dragon-smoke (Android 16)",
-            "suites": [
-              {
-                "corpus": "p1",
-                "suite": "vectors",
-                "declared": 258,
-                "total": 258,
-                "pass": 258
-              },
-              {
-                "corpus": "p1",
-                "suite": "units",
-                "declared": 320000,
-                "total": 320000,
-                "pass": 320000
-              },
-              {
-                "corpus": "p1",
-                "suite": "engine",
-                "declared": 20258,
-                "total": 20258,
-                "pass": 20258
-              },
-              {
-                "corpus": "p1",
-                "suite": "library",
-                "declared": 22000,
-                "total": 22000,
-                "pass": 22000
-              },
-              {
-                "corpus": "p1",
-                "suite": "rt",
-                "declared": 54588,
-                "total": 54588,
-                "pass": 54588
-              },
-              {
-                "corpus": "extended",
-                "suite": "vectors-m2",
-                "declared": 241,
-                "total": 241,
-                "pass": 241
-              },
-              {
-                "corpus": "extended",
-                "suite": "vectors-dpr",
-                "declared": 1497,
-                "total": 1497,
-                "pass": 1497
-              },
-              {
-                "corpus": "extended",
-                "suite": "engine-dpr",
-                "declared": 1497,
-                "total": 1497,
-                "pass": 1497
-              },
-              {
-                "corpus": "extended",
-                "suite": "units-m2",
-                "declared": 120000,
-                "total": 120000,
-                "pass": 120000
-              },
-              {
-                "corpus": "extended",
-                "suite": "snap",
-                "declared": 21281,
-                "total": 21281,
-                "pass": 21281
-              },
-              {
-                "corpus": "extended",
-                "suite": "snap-values",
-                "declared": 216,
-                "total": 216,
-                "pass": 216
-              },
-              {
-                "corpus": "extended",
-                "suite": "calc-goldens",
-                "declared": 17,
-                "total": 17,
-                "pass": 17
-              },
-              {
-                "corpus": "extended",
-                "suite": "engine-calc",
-                "declared": 4000,
-                "total": 4000,
-                "pass": 4000
-              },
-              {
-                "corpus": "extended",
-                "suite": "units-calc",
-                "declared": 50000,
-                "total": 50000,
-                "pass": 50000
-              }
-            ],
-            "digests": {
-              "p1": "512fea4ba8853f4b676fe63211b8d40a84286220b42cf805cf043e6805b032bb",
-              "extended": "f36ce1caef74cc66a57d83aaf6f0e71eaa55a27a00fad437996502b7171981c4"
-            }
-          },
+          "run": null,
           "device": null,
-          "evidence": {
-            "laneCode": "b0c24d85534e88edd4b302d8261e6ac01ec2f552fa22ba038d283d1023e5e2cc",
-            "referenceData": "b5831815e3cbb92d7f5c1997f7558f9ef053cfa9d88e8b85a237eff5474eb623",
-            "app": "16f268b867567f40e15d54d2e498ffbe05316bbbc2a810b4dae5ad4eb6dbbe03"
-          }
+          "evidence": null
         },
         {
           "lane": "device-frames",
           "where": "device",
-          "state": "pass",
-          "reason": null,
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
           "sets": [
             {
               "dpr": 2,
@@ -1665,135 +927,14 @@
           "caseListSha256": "a5ffd10bc76730e851bc1e17b0019026b3323a89a1b5871fa0913c41f02ebdb4",
           "totalCases": 1497,
           "run": null,
-          "device": {
-            "sets": [
-              {
-                "dpr": 2,
-                "device": {
-                  "name": "dragon-320",
-                  "target": "android",
-                  "model": "Android SDK built for arm64 / dragon-320",
-                  "os": "Android 16 (API 36); app: Android 16 (API 36, BE2A.250530.026.D1)",
-                  "build": "BE2A.250530.026.D1",
-                  "profileScale": 2,
-                  "appScale": 2,
-                  "windowPx": [
-                    1080,
-                    2400
-                  ],
-                  "stagePx": [
-                    1080,
-                    2168
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    136
-                  ],
-                  "textScale": "1.0"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 107413,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "3e07682dea8a466159e09ff0270a5234bba53330e69de9c9385f78e9fbd5018c",
-                "failures": 0,
-                "failuresByKind": {}
-              },
-              {
-                "dpr": 2.625,
-                "device": {
-                  "name": "dragon-smoke",
-                  "target": "android",
-                  "model": "Android SDK built for arm64 / dragon-smoke",
-                  "os": "Android 16 (API 36); app: Android 16 (API 36, BE2A.250530.026.D1)",
-                  "build": "BE2A.250530.026.D1",
-                  "profileScale": 2.625,
-                  "appScale": 2.625,
-                  "windowPx": [
-                    1080,
-                    2400
-                  ],
-                  "stagePx": [
-                    1080,
-                    2138
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    136
-                  ],
-                  "textScale": "1.0"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 106558,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "ace2425208b4cacc3daed97330fa9e8c90ee45686527fedde9f31a6033e4ba6d",
-                "failures": 0,
-                "failuresByKind": {}
-              },
-              {
-                "dpr": 3,
-                "device": {
-                  "name": "dragon-480",
-                  "target": "android",
-                  "model": "Android SDK built for arm64 / dragon-480",
-                  "os": "Android 16 (API 36); app: Android 16 (API 36, BE2A.250530.026.D1)",
-                  "build": "BE2A.250530.026.D1",
-                  "profileScale": 3,
-                  "appScale": 3,
-                  "windowPx": [
-                    1440,
-                    3120
-                  ],
-                  "stagePx": [
-                    1440,
-                    2840
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    136
-                  ],
-                  "textScale": "1.0"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 102989,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "05cd2df72a7d7f75dd944441e26dd684cd19b33fb9beb47b4199916b817cc71f",
-                "failures": 0,
-                "failuresByKind": {}
-              }
-            ],
-            "failuresByKind": {},
-            "firstFailures": [],
-            "trust": null
-          },
-          "evidence": {
-            "laneCode": "b0c24d85534e88edd4b302d8261e6ac01ec2f552fa22ba038d283d1023e5e2cc",
-            "referenceData": "b5831815e3cbb92d7f5c1997f7558f9ef053cfa9d88e8b85a237eff5474eb623",
-            "app": "16f268b867567f40e15d54d2e498ffbe05316bbbc2a810b4dae5ad4eb6dbbe03"
-          }
+          "device": null,
+          "evidence": null
         },
         {
           "lane": "device-applied",
           "where": "device",
-          "state": "pass",
-          "reason": null,
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
           "sets": [
             {
               "dpr": 2,
@@ -1818,135 +959,14 @@
           "caseListSha256": "a5ffd10bc76730e851bc1e17b0019026b3323a89a1b5871fa0913c41f02ebdb4",
           "totalCases": 1497,
           "run": null,
-          "device": {
-            "sets": [
-              {
-                "dpr": 2,
-                "device": {
-                  "name": "dragon-320",
-                  "target": "android",
-                  "model": "Android SDK built for arm64 / dragon-320",
-                  "os": "Android 16 (API 36); app: Android 16 (API 36, BE2A.250530.026.D1)",
-                  "build": "BE2A.250530.026.D1",
-                  "profileScale": 2,
-                  "appScale": 2,
-                  "windowPx": [
-                    1080,
-                    2400
-                  ],
-                  "stagePx": [
-                    1080,
-                    2168
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    136
-                  ],
-                  "textScale": "1.0"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 107413,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "3e07682dea8a466159e09ff0270a5234bba53330e69de9c9385f78e9fbd5018c",
-                "failures": 0,
-                "failuresByKind": {}
-              },
-              {
-                "dpr": 2.625,
-                "device": {
-                  "name": "dragon-smoke",
-                  "target": "android",
-                  "model": "Android SDK built for arm64 / dragon-smoke",
-                  "os": "Android 16 (API 36); app: Android 16 (API 36, BE2A.250530.026.D1)",
-                  "build": "BE2A.250530.026.D1",
-                  "profileScale": 2.625,
-                  "appScale": 2.625,
-                  "windowPx": [
-                    1080,
-                    2400
-                  ],
-                  "stagePx": [
-                    1080,
-                    2138
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    136
-                  ],
-                  "textScale": "1.0"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 106558,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "ace2425208b4cacc3daed97330fa9e8c90ee45686527fedde9f31a6033e4ba6d",
-                "failures": 0,
-                "failuresByKind": {}
-              },
-              {
-                "dpr": 3,
-                "device": {
-                  "name": "dragon-480",
-                  "target": "android",
-                  "model": "Android SDK built for arm64 / dragon-480",
-                  "os": "Android 16 (API 36); app: Android 16 (API 36, BE2A.250530.026.D1)",
-                  "build": "BE2A.250530.026.D1",
-                  "profileScale": 3,
-                  "appScale": 3,
-                  "windowPx": [
-                    1440,
-                    3120
-                  ],
-                  "stagePx": [
-                    1440,
-                    2840
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    136
-                  ],
-                  "textScale": "1.0"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 102989,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "05cd2df72a7d7f75dd944441e26dd684cd19b33fb9beb47b4199916b817cc71f",
-                "failures": 0,
-                "failuresByKind": {}
-              }
-            ],
-            "failuresByKind": {},
-            "firstFailures": [],
-            "trust": null
-          },
-          "evidence": {
-            "laneCode": "b0c24d85534e88edd4b302d8261e6ac01ec2f552fa22ba038d283d1023e5e2cc",
-            "referenceData": "b5831815e3cbb92d7f5c1997f7558f9ef053cfa9d88e8b85a237eff5474eb623",
-            "app": "16f268b867567f40e15d54d2e498ffbe05316bbbc2a810b4dae5ad4eb6dbbe03"
-          }
+          "device": null,
+          "evidence": null
         },
         {
           "lane": "device-lines",
           "where": "device",
-          "state": "pass",
-          "reason": null,
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
           "sets": [
             {
               "dpr": 2,
@@ -1971,135 +991,14 @@
           "caseListSha256": "a5ffd10bc76730e851bc1e17b0019026b3323a89a1b5871fa0913c41f02ebdb4",
           "totalCases": 1497,
           "run": null,
-          "device": {
-            "sets": [
-              {
-                "dpr": 2,
-                "device": {
-                  "name": "dragon-320",
-                  "target": "android",
-                  "model": "Android SDK built for arm64 / dragon-320",
-                  "os": "Android 16 (API 36); app: Android 16 (API 36, BE2A.250530.026.D1)",
-                  "build": "BE2A.250530.026.D1",
-                  "profileScale": 2,
-                  "appScale": 2,
-                  "windowPx": [
-                    1080,
-                    2400
-                  ],
-                  "stagePx": [
-                    1080,
-                    2168
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    136
-                  ],
-                  "textScale": "1.0"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 107413,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "3e07682dea8a466159e09ff0270a5234bba53330e69de9c9385f78e9fbd5018c",
-                "failures": 0,
-                "failuresByKind": {}
-              },
-              {
-                "dpr": 2.625,
-                "device": {
-                  "name": "dragon-smoke",
-                  "target": "android",
-                  "model": "Android SDK built for arm64 / dragon-smoke",
-                  "os": "Android 16 (API 36); app: Android 16 (API 36, BE2A.250530.026.D1)",
-                  "build": "BE2A.250530.026.D1",
-                  "profileScale": 2.625,
-                  "appScale": 2.625,
-                  "windowPx": [
-                    1080,
-                    2400
-                  ],
-                  "stagePx": [
-                    1080,
-                    2138
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    136
-                  ],
-                  "textScale": "1.0"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 106558,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "ace2425208b4cacc3daed97330fa9e8c90ee45686527fedde9f31a6033e4ba6d",
-                "failures": 0,
-                "failuresByKind": {}
-              },
-              {
-                "dpr": 3,
-                "device": {
-                  "name": "dragon-480",
-                  "target": "android",
-                  "model": "Android SDK built for arm64 / dragon-480",
-                  "os": "Android 16 (API 36); app: Android 16 (API 36, BE2A.250530.026.D1)",
-                  "build": "BE2A.250530.026.D1",
-                  "profileScale": 3,
-                  "appScale": 3,
-                  "windowPx": [
-                    1440,
-                    3120
-                  ],
-                  "stagePx": [
-                    1440,
-                    2840
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    136
-                  ],
-                  "textScale": "1.0"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 102989,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "05cd2df72a7d7f75dd944441e26dd684cd19b33fb9beb47b4199916b817cc71f",
-                "failures": 0,
-                "failuresByKind": {}
-              }
-            ],
-            "failuresByKind": {},
-            "firstFailures": [],
-            "trust": null
-          },
-          "evidence": {
-            "laneCode": "b0c24d85534e88edd4b302d8261e6ac01ec2f552fa22ba038d283d1023e5e2cc",
-            "referenceData": "b5831815e3cbb92d7f5c1997f7558f9ef053cfa9d88e8b85a237eff5474eb623",
-            "app": "16f268b867567f40e15d54d2e498ffbe05316bbbc2a810b4dae5ad4eb6dbbe03"
-          }
+          "device": null,
+          "evidence": null
         },
         {
           "lane": "device-pixels",
           "where": "device",
-          "state": "fail",
-          "reason": "86 failures (pixel 86)",
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
           "sets": [
             {
               "dpr": 2,
@@ -2124,320 +1023,8 @@
           "caseListSha256": "a5ffd10bc76730e851bc1e17b0019026b3323a89a1b5871fa0913c41f02ebdb4",
           "totalCases": 1497,
           "run": null,
-          "device": {
-            "sets": [
-              {
-                "dpr": 2,
-                "device": {
-                  "name": "dragon-320",
-                  "target": "android",
-                  "model": "Android SDK built for arm64 / dragon-320",
-                  "os": "Android 16 (API 36); app: Android 16 (API 36, BE2A.250530.026.D1)",
-                  "build": "BE2A.250530.026.D1",
-                  "profileScale": 2,
-                  "appScale": 2,
-                  "windowPx": [
-                    1080,
-                    2400
-                  ],
-                  "stagePx": [
-                    1080,
-                    2168
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    136
-                  ],
-                  "textScale": "1.0"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 107413,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "3e07682dea8a466159e09ff0270a5234bba53330e69de9c9385f78e9fbd5018c",
-                "failures": 29,
-                "failuresByKind": {
-                  "pixel": 29
-                }
-              },
-              {
-                "dpr": 2.625,
-                "device": {
-                  "name": "dragon-smoke",
-                  "target": "android",
-                  "model": "Android SDK built for arm64 / dragon-smoke",
-                  "os": "Android 16 (API 36); app: Android 16 (API 36, BE2A.250530.026.D1)",
-                  "build": "BE2A.250530.026.D1",
-                  "profileScale": 2.625,
-                  "appScale": 2.625,
-                  "windowPx": [
-                    1080,
-                    2400
-                  ],
-                  "stagePx": [
-                    1080,
-                    2138
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    136
-                  ],
-                  "textScale": "1.0"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 106558,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "ace2425208b4cacc3daed97330fa9e8c90ee45686527fedde9f31a6033e4ba6d",
-                "failures": 29,
-                "failuresByKind": {
-                  "pixel": 29
-                }
-              },
-              {
-                "dpr": 3,
-                "device": {
-                  "name": "dragon-480",
-                  "target": "android",
-                  "model": "Android SDK built for arm64 / dragon-480",
-                  "os": "Android 16 (API 36); app: Android 16 (API 36, BE2A.250530.026.D1)",
-                  "build": "BE2A.250530.026.D1",
-                  "profileScale": 3,
-                  "appScale": 3,
-                  "windowPx": [
-                    1440,
-                    3120
-                  ],
-                  "stagePx": [
-                    1440,
-                    2840
-                  ],
-                  "rootOriginPx": [
-                    0,
-                    136
-                  ],
-                  "textScale": "1.0"
-                },
-                "cases": 499,
-                "dumps": 499,
-                "compared": {
-                  "a": 12607,
-                  "b": 39810,
-                  "c": 102989,
-                  "d": 12674,
-                  "breaks": 2018
-                },
-                "dumpsSha256": "05cd2df72a7d7f75dd944441e26dd684cd19b33fb9beb47b4199916b817cc71f",
-                "failures": 28,
-                "failuresByKind": {
-                  "pixel": 28
-                }
-              }
-            ],
-            "failuresByKind": {
-              "pixel": 86
-            },
-            "firstFailures": [
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block",
-                "dpr": 2,
-                "node": "interior:a1",
-                "kind": "pixel",
-                "detail": "interior:a1 at 72,22: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block",
-                "dpr": 2,
-                "node": "edge:a1:right",
-                "kind": "pixel",
-                "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block",
-                "dpr": 2,
-                "node": "edge:a1:bottom",
-                "kind": "pixel",
-                "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block",
-                "dpr": 2,
-                "node": "edge:a1:left",
-                "kind": "pixel",
-                "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block",
-                "dpr": 2,
-                "node": "edge:f1a:bottom",
-                "kind": "pixel",
-                "detail": "edge:f1a:bottom: edge at 5.000 device px, Chrome 3.000; exceeds 1 device px"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block-rtl",
-                "dpr": 2,
-                "node": "interior:a1",
-                "kind": "pixel",
-                "detail": "interior:a1 at 768,22: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block-rtl",
-                "dpr": 2,
-                "node": "edge:a1:bottom",
-                "kind": "pixel",
-                "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block-rtl",
-                "dpr": 2,
-                "node": "edge:a1:left",
-                "kind": "pixel",
-                "detail": "edge:a1:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-relative-block-rtl",
-                "dpr": 2,
-                "node": "edge:f1a:bottom",
-                "kind": "pixel",
-                "detail": "edge:f1a:bottom: edge at 5.000 device px, Chrome 3.000; exceeds 1 device px"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block",
-                "dpr": 2,
-                "node": "interior:a6",
-                "kind": "pixel",
-                "detail": "interior:a6 at 56,268: native [204,204,204,255], Chrome [204,0,0,255] (channel delta limit 0)"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block",
-                "dpr": 2,
-                "node": "edge:a6:top",
-                "kind": "pixel",
-                "detail": "edge:a6:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block",
-                "dpr": 2,
-                "node": "edge:a6:right",
-                "kind": "pixel",
-                "detail": "edge:a6:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block",
-                "dpr": 2,
-                "node": "edge:a6:left",
-                "kind": "pixel",
-                "detail": "edge:a6:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block-rtl",
-                "dpr": 2,
-                "node": "interior:a6",
-                "kind": "pixel",
-                "detail": "interior:a6 at 748,268: native [204,204,204,255], Chrome [204,0,0,255] (channel delta limit 0)"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block-rtl",
-                "dpr": 2,
-                "node": "edge:a6:top",
-                "kind": "pixel",
-                "detail": "edge:a6:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block-rtl",
-                "dpr": 2,
-                "node": "edge:a6:right",
-                "kind": "pixel",
-                "detail": "edge:a6:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-static-block-rtl",
-                "dpr": 2,
-                "node": "edge:a6:left",
-                "kind": "pixel",
-                "detail": "edge:a6:left: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-scroll-container",
-                "dpr": 2,
-                "node": "edge:a1:right",
-                "kind": "pixel",
-                "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-scroll-container-rtl",
-                "dpr": 2,
-                "node": "interior:a1",
-                "kind": "pixel",
-                "detail": "interior:a1 at 200,90: native [255,255,255,255], Chrome [204,0,0,255] (channel delta limit 0)"
-              },
-              {
-                "lane": "device-pixels",
-                "case": "position-absolute-scroll-container-rtl",
-                "dpr": 2,
-                "node": "edge:a1:top",
-                "kind": "pixel",
-                "detail": "edge:a1:top: Chrome shows an edge 3.000 device px along the scanline, the native capture none"
-              }
-            ],
-            "trust": [
-              {
-                "device": "dragon-320",
-                "dpr": 2,
-                "cases": 3,
-                "points": 1171,
-                "mismatches": 0
-              },
-              {
-                "device": "dragon-smoke",
-                "dpr": 2.625,
-                "cases": 3,
-                "points": 1211,
-                "mismatches": 0
-              },
-              {
-                "device": "dragon-480",
-                "dpr": 3,
-                "cases": 3,
-                "points": 1171,
-                "mismatches": 0
-              }
-            ]
-          },
-          "evidence": {
-            "laneCode": "b0c24d85534e88edd4b302d8261e6ac01ec2f552fa22ba038d283d1023e5e2cc",
-            "referenceData": "b5831815e3cbb92d7f5c1997f7558f9ef053cfa9d88e8b85a237eff5474eb623",
-            "app": "16f268b867567f40e15d54d2e498ffbe05316bbbc2a810b4dae5ad4eb6dbbe03"
-          }
+          "device": null,
+          "evidence": null
         }
       ],
       "referenceProof": [
@@ -2479,50 +1066,50 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 148,
-              "caught": 148,
+              "applicable": 143,
+              "caught": 143,
               "uncaught": []
             },
             {
@@ -2540,50 +1127,50 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 498,
-              "caught": 498,
+              "applicable": 478,
+              "caught": 478,
               "uncaught": []
             },
             {
@@ -2601,50 +1188,50 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 499,
-              "caught": 499,
+              "applicable": 479,
+              "caught": 479,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 159,
-              "caught": 159,
+              "applicable": 151,
+              "caught": 151,
               "uncaught": []
             },
             {
