@@ -82,7 +82,7 @@ const programsOf = (spec: (typeof FIXTURES)[number]) =>
 describe('PNT1 stacking facts (rt-hit.ts)', () => {
   const stacking = (FIXTURE_GROUPS.find((g) => g.id === 'stacking')?.fixtures ?? []).flatMap(programsOf);
   it('covers the three stacking fixtures in both directions', () => {
-    expect(stacking.map((s) => s.id)).toEqual(['stacking-basic', 'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-foreground', 'stacking-foreground-rtl']);
+    expect(stacking.map((s) => s.id)).toEqual(['stacking-basic', 'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-foreground', 'stacking-foreground-rtl', 'stacking-mix', 'stacking-mix-rtl']);
   });
   for (const { id, p } of stacking) {
     it(`${id}: every box has its paint-order index, stacking context, host and clip chain; the indices are a permutation`, () => {

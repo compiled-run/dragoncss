@@ -5,8 +5,9 @@
 // child, an absolute z-index box escaping an overflow clip that is not its containing block, and the music player's z-index 40
 // button over two later z-index 20 and 30 overlays (absolute here until POSX-f), and the foreground phase: text overflowing onto
 // later block backgrounds in the root and in a relative box, flex items painted atomically above a later block that overlaps them,
-// and a flex item's outline under the next item. Sample centres sit in the overlaps, so the device pixels compare the order. A
-// calculation that is not a whole number is refused.
+// and a flex item's outline under the next item; and text beside a later block child that overlaps it, in a flex item, a relative box
+// and an overflow clip, painted above that child's background (PNT1-MIX). Sample centres sit in the overlaps, so the device pixels
+// compare the order. A calculation that is not a whole number is refused.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject } from './define.ts';
 
@@ -15,5 +16,6 @@ export const STACKING: readonly FixtureSpec[] = [
   both('stacking-context'),
   both('stacking-escape'),
   both('stacking-foreground'),
+  both('stacking-mix'),
   reject('stacking-reject-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(3 / 2)', 'z-index: calc(3/2) is unsupported: the calculation is not a whole number'),
 ];
