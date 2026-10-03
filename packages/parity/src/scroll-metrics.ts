@@ -4,7 +4,7 @@
 // converted to the integers CSSOM View §4 reports, with Chrome 145.0.7632.6's two rounding formulas as measured (ports.json
 // references: core/dom/element.cc lines 2593-2935, core/layout/adjust_for_absolute_zoom.h lines 44-57).
 import { readFileSync } from 'node:fs';
-import type { Browser } from 'playwright';
+import type { Browser, Page } from 'playwright';
 import type { EngineFaults, LayoutBox, LayoutInput, LU } from '@dragon/layout';
 import { measurerFor, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
 import type { Compiled, Environment } from 'dragon';
@@ -34,6 +34,8 @@ export type ScrollCapture = {
   readonly platform: string;
   readonly devicePixelRatio: number;
   readonly direction: 'ltr' | 'rtl';
+  /** The scrollbar environment the capture checked (assertOverlayScrollbars); the reference is overlay. */
+  readonly scrollbars: 'overlay';
   /** The viewport first, then every element that is a scroll container in document order. */
   readonly records: readonly ScrollRecord[];
 };
@@ -58,6 +60,7 @@ export function scrollCases(): { readonly spec: FixtureSpec; readonly cases: rea
 export async function captureScrollMetrics(browser: Browser, caseId: string, html: string, env: Environment): Promise<ScrollCapture> {
   const page = await openPage(browser, html, env);
   try {
+    await assertOverlayScrollbars(page);
     const records = await page.evaluate(() => {
       const out: ScrollRecord[] = [];
       const scroller = document.scrollingElement;
@@ -77,7 +80,7 @@ export async function captureScrollMetrics(browser: Browser, caseId: string, htm
       }
       return out;
     });
-    return { case: caseId, chrome: CHROME_VERSION, platform: REFERENCE_PLATFORM, devicePixelRatio: env.devicePixelRatio, direction: env.direction, records };
+    return { case: caseId, chrome: CHROME_VERSION, platform: REFERENCE_PLATFORM, devicePixelRatio: env.devicePixelRatio, direction: env.direction, scrollbars: 'overlay', records };
   } finally {
     await page.context().close();
   }
@@ -90,13 +93,47 @@ export function scrollCaptureJson(c: ScrollCapture): string {
 const isRecordArray = (v: unknown): v is ScrollRecord[] =>
   Array.isArray(v) && v.every((r) => typeof r === 'object' && r !== null && typeof (r as ScrollRecord).id === 'string' && ['scrollWidth', 'scrollHeight', 'clientWidth', 'clientHeight'].every((k) => Number.isInteger((r as Record<string, unknown>)[k])));
 
-/** A committed capture, checked for its shape, its case and its DPR. */
+/** A capture's text, checked for its shape, its case, its DPR and its overlay scrollbar environment; where names it in errors. */
+export function parseScrollCapture(text: string, caseId: string, dpr: number, where: string): ScrollCapture {
+  const v = JSON.parse(text) as unknown;
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error(`${where} is not a scroll capture object`);
+  const o = v as Record<string, unknown>;
+  if (o['case'] !== caseId || o['devicePixelRatio'] !== dpr || o['chrome'] !== CHROME_VERSION || !isRecordArray(o['records'])) throw new Error(`${where} is not a scroll capture of ${caseId} at DPR ${dpr}`);
+  if (o['scrollbars'] !== 'overlay') throw new Error(`${where}: scrollbars is ${JSON.stringify(o['scrollbars'])}, not overlay (decisions.md, overlay-scrollbar rule)`);
+  if (o['records'][0]?.id !== 'viewport') throw new Error(`${caseId} at DPR ${dpr}: the first record is not the viewport`);
+  return o as unknown as ScrollCapture;
+}
+
+/** A committed capture (parseScrollCapture). */
 export function committedScrollCapture(caseId: string, dpr: number): ScrollCapture {
-  const v = JSON.parse(readFileSync(expectedScrollPath(caseId, dpr), 'utf8')) as Record<string, unknown>;
-  if (v['case'] !== caseId || v['devicePixelRatio'] !== dpr || v['chrome'] !== CHROME_VERSION || !isRecordArray(v['records'])) throw new Error(`${expectedScrollPath(caseId, dpr)} is not a scroll capture of ${caseId} at DPR ${dpr}`);
-  const records = v['records'];
-  if (records[0]?.id !== 'viewport') throw new Error(`${caseId} at DPR ${dpr}: the first record is not the viewport`);
-  return v as unknown as ScrollCapture;
+  const path = expectedScrollPath(caseId, dpr);
+  return parseScrollCapture(readFileSync(path, 'utf8'), caseId, dpr, path);
+}
+
+// ---------------------------------------------------------------- the scrollbar environment (R2)
+
+/**
+ * The overlay probe: Playwright adds --hide-scrollbars to every headless launch, yet scrollbar-gutter: stable still reserves a
+ * classic scrollbar's 15px under it, so a 100px probe keeps clientWidth 100 only where scrollbars overlay. all: initial and
+ * position: absolute keep the case's own rules and layout off the probe.
+ */
+export const OVERLAY_PROBE_STYLE = 'all:initial;position:absolute;left:0;top:0;display:block;overflow:auto;scrollbar-gutter:stable;width:100px;height:100px';
+
+export const CLASSIC_SCROLLBARS = 'capture environment has classic scrollbars (System Settings > Appearance > Show scroll bars, or a mouse attached); the reference is overlay (decisions.md, overlay-scrollbar rule)';
+
+/** Throws unless the probe, added to the page and removed again, measures clientWidth 100 (R2). Run before every capture. */
+export async function assertOverlayScrollbars(page: Pick<Page, 'evaluate'>): Promise<void> {
+  const width = await page.evaluate((style: string) => {
+    const probe = document.createElement('div');
+    probe.setAttribute('style', style);
+    document.documentElement.appendChild(probe);
+    try {
+      return probe.clientWidth;
+    } finally {
+      probe.remove();
+    }
+  }, OVERLAY_PROBE_STYLE);
+  if (width !== 100) throw new Error(`${CLASSIC_SCROLLBARS}: the probe measured clientWidth ${String(width)}, not 100`);
 }
 
 // ---------------------------------------------------------------- Blink's integer conversions
