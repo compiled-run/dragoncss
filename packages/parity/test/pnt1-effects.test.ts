@@ -66,7 +66,7 @@ describe('Chrome 145 composites opacity with Skia\'s getAlpha byte and the Color
 
 // ---------------------------------------------------------------- the model
 
-type Stacking = { paintOrder: number; clipChain: readonly string[]; layer: string; context: string | null };
+type Stacking = { paintOrder: number; clipChain: readonly string[]; layer: string; context: string | null; textPaintOrder: readonly number[] };
 type Item =
   | { readonly kind: 'box'; readonly box: Box }
   | { readonly kind: 'outline'; readonly box: Box; readonly rings: readonly number[]; readonly color: { r: number; g: number; b: number; alpha: number } }
@@ -81,12 +81,16 @@ const stackingOf = (n: ProgramNode): Stacking => {
 
 /**
  * Planted model faults the test must catch: the alpha ignored (alpha-ignored), tree order instead of the paint order (order-swap),
- * and outlines one device px to the right (outline-offset-1).
+ * outlines one device px to the right (outline-offset-1), and hosted text sorted beneath its host's flow children
+ * (foreground-under).
  */
-type ModelFaults = { readonly alphaIgnored: boolean; readonly treeOrder: boolean; readonly outlineShifted?: boolean };
+type ModelFaults = { readonly alphaIgnored: boolean; readonly treeOrder: boolean; readonly outlineShifted?: boolean; readonly foregroundUnder?: boolean };
 const NO_MODEL_FAULTS: ModelFaults = { alphaIgnored: false, treeOrder: false };
 
-/** The case's paint items in Appendix E order, each opacity context holding its subtree's items as a group. */
+/**
+ * The case's paint items in Appendix E order (the compiler's paint-order facts, text included: each paint root's block backgrounds,
+ * then its foreground), each opacity context holding its subtree's items as a group.
+ */
 function paintItems(p: NativeProgram, viewport: { width: number; height: number }, dpr: number, faults: ModelFaults = NO_MODEL_FAULTS): Item[] {
   const list = boxes(p, viewport, dpr);
   const byId = new Map(list.map((b) => [b.node.id, b]));
@@ -99,27 +103,48 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
   }
   const subtree = (n: ProgramNode): ProgramNode[] => [n, ...(children.get(n.id) ?? []).flatMap(subtree)];
   const byNode = new Map(p.nodes.map((n) => [n.id, n]));
-  // An outline paints in its paint layer L's outline phase: after L's foreground (L, the flow boxes whose layer is L, and the
-  // subtrees of L's negative z items), before L's other layer items; outlines of one layer in tree order (Blink PaintLayerPainter).
   const tree = new Map(p.nodes.map((x, k) => [x.id, k]));
-  const ownerOf = (n: ProgramNode): string => {
-    for (let x: ProgramNode | undefined = n; x !== undefined; x = x.parent === null ? undefined : byNode.get(x.parent)) if (x.parent === null || stackingOf(x).layer !== 'flow') return x.id;
-    throw new Error(`${n.id}: no paint layer`);
+  // A text leaf's Appendix E index is in its box's facts (textPaintOrder, in child order).
+  const textOrder = new Map<string, number>();
+  for (const n of p.nodes) {
+    if (n.kind === 'text') continue;
+    const texts = (children.get(n.id) ?? []).filter((c) => c.kind === 'text');
+    const at = stackingOf(n).textPaintOrder;
+    if (at.length !== texts.length) throw new Error(`${n.id}: ${texts.length} text leaves, ${at.length} text paint orders`);
+    texts.forEach((t, k) => textOrder.set(t.id, at[k] as number));
+  }
+  // foreground-under: a text leaf hosted out of its box sorts right after its host box, beneath the host's flow children.
+  const hostedText = new Map<string, string>();
+  for (const n of p.nodes) for (const w of n.writes) if (w.kind === 'paint-foreground') for (const e of w.entries) if (byNode.get(e.id)?.kind === 'text') hostedText.set(e.id, w.host);
+  const orderOf = (n: ProgramNode): number => {
+    if (n.kind !== 'text') return stackingOf(n).paintOrder;
+    const h = hostedText.get(n.id);
+    if (faults.foregroundUnder === true && h !== undefined) return stackingOf(byNode.get(h) as ProgramNode).paintOrder + 0.25 + (tree.get(n.id) as number) / (p.nodes.length + 1) / 8;
+    return textOrder.get(n.id) as number;
+  };
+  // An outline paints in its paint root L's outline phase: after L's background, flow content and foreground (and the subtrees of
+  // L's negative z items), before L's other layer items; outlines of one root in tree order (Blink PaintLayerPainter, and a flex
+  // item's atomic pass: BoxFragmentPainter::PaintAllPhasesAtomically).
+  const contentEnd = (layer: ProgramNode): number => {
+    let last = stackingOf(layer).paintOrder;
+    const visit = (x: ProgramNode): void => {
+      if (x.kind === 'text') {
+        last = Math.max(last, orderOf(x));
+        return;
+      }
+      const s = stackingOf(x);
+      if (x !== layer && (s.layer === 'positioned' || s.layer === 'positive')) return;
+      last = Math.max(last, s.paintOrder);
+      for (const c of children.get(x.id) ?? []) visit(c);
+    };
+    visit(layer);
+    return last;
   };
   const outlineKey = new Map<string, number>();
   for (const n of p.nodes) {
     const f = n.facts['outline'] as { layer: string } | undefined;
     if (f === undefined) continue;
-    const layer = byNode.get(f.layer) as ProgramNode;
-    let last = stackingOf(layer).paintOrder;
-    for (const x of p.nodes) {
-      if (x.kind === 'text') continue;
-      const s = stackingOf(x);
-      const foreground = s.layer === 'flow' && ownerOf(x) === f.layer;
-      const negative = subtree(layer).some((y) => y !== layer && stackingOf(y).layer === 'negative' && stackingOf(y).context === f.layer && subtree(y).includes(x));
-      if ((foreground || negative) && s.paintOrder > last) last = s.paintOrder;
-    }
-    outlineKey.set(n.id, last + 0.5 + (tree.get(n.id) as number) / (p.nodes.length + 1) / 2);
+    outlineKey.set(n.id, contentEnd(byNode.get(f.layer) as ProgramNode) + 0.5 + (tree.get(n.id) as number) / (p.nodes.length + 1) / 2);
   }
   const ringsOf = (n: ProgramNode): Item => {
     const w = n.writes.find((x) => x.kind === 'outline');
@@ -129,14 +154,11 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
     const shift = faults.outlineShifted === true ? 1 : 0;
     return { kind: 'outline', box: b, rings: outlineRings(b.l + shift, b.t, b.r + shift, b.b, radii, outlineWidthPx(w.width, dpr), outlineOffsetPx(w.offset, dpr), w.style === 'double'), color: w.color };
   };
-  const item = (n: ProgramNode): Item => (n.kind === 'text' ? { kind: 'text', node: n, glyphs: glyphsOf.get(n.id) ?? [] } : { kind: 'box', box: byId.get(n.id) as Box });
-  // A text leaf paints right after its box (a box's children are all boxes or all text leaves), so only boxes are sorted.
-  const withText = (n: ProgramNode): Item[] => [item(n), ...(children.get(n.id) ?? []).filter((c) => c.kind === 'text').map(item)];
   type Entry = { readonly node: ProgramNode; readonly outline: boolean };
   // skip: the group whose box its caller already holds (its outline still sorts here, among its members).
   const build = (nodes: readonly ProgramNode[], skip: string | null = null): Item[] => {
-    const rank = (x: Entry): number => (faults.treeOrder ? (tree.get(x.node.id) as number) + (x.outline ? 0.5 : 0) : x.outline ? (outlineKey.get(x.node.id) as number) : stackingOf(x.node).paintOrder);
-    const entries: Entry[] = nodes.filter((x) => x.kind !== 'text').flatMap((x) => [...(x.id === skip ? [] : [{ node: x, outline: false }]), ...(outlineKey.has(x.id) ? [{ node: x, outline: true }] : [])]);
+    const rank = (x: Entry): number => (faults.treeOrder ? (tree.get(x.node.id) as number) + (x.outline ? 0.5 : 0) : x.outline ? (outlineKey.get(x.node.id) as number) : orderOf(x.node));
+    const entries: Entry[] = nodes.flatMap((x) => [...(x.id === skip ? [] : [{ node: x, outline: false }]), ...(outlineKey.has(x.id) ? [{ node: x, outline: true }] : [])]);
     const sorted = entries.sort((a, b) => rank(a) - rank(b));
     const out: Item[] = [];
     for (let k = 0; k < sorted.length; k++) {
@@ -146,16 +168,20 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
         out.push(ringsOf(n));
         continue;
       }
+      if (n.kind === 'text') {
+        out.push({ kind: 'text', node: n, glyphs: glyphsOf.get(n.id) ?? [] });
+        continue;
+      }
       const effects = n.facts['effects'] as { opacity: number } | undefined;
       if (effects === undefined) {
-        out.push(...withText(n));
+        out.push({ kind: 'box', box: byId.get(n.id) as Box });
         continue;
       }
       const inside = new Set(subtree(n).map((x) => x.id));
       const members = sorted.filter((x) => inside.has(x.node.id));
       // A stacking context is atomic: its subtree (and its outlines) are contiguous in the paint order.
       if (sorted.slice(k, k + members.length).some((x) => !inside.has(x.node.id))) throw new Error(`${n.id}: its subtree is not contiguous in the paint order`);
-      out.push({ kind: 'group', box: byId.get(n.id) as Box, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), items: [...withText(n), ...build([...new Set(members.map((x) => x.node))], n.id)] });
+      out.push({ kind: 'group', box: byId.get(n.id) as Box, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), items: [{ kind: 'box', box: byId.get(n.id) as Box }, ...build([...new Set(members.map((x) => x.node))], n.id)] });
       k += members.length - 1;
     }
     return out;
@@ -295,7 +321,7 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the outline, opacity, stacking and color-scheme fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['outline-values', 'outline-solid', 'outline-double', 'color-scheme-basic', 'opacity-basic', 'opacity-cascade', 'stacking-basic', 'stacking-context', 'stacking-escape']);
+    expect(FIXTURES.map((f) => f.id)).toEqual(['outline-values', 'outline-solid', 'outline-double', 'color-scheme-basic', 'opacity-basic', 'opacity-cascade', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-foreground']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;
@@ -340,14 +366,31 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
         if (spec.id.startsWith('opacity-') || spec.id === 'stacking-context') expect(caught({ alphaIgnored: true, treeOrder: false }), 'alpha-ignored').toBe(true);
         if (spec.id.startsWith('stacking-')) expect(caught({ alphaIgnored: false, treeOrder: true }), 'order-swap').toBe(true);
         if (spec.id === 'outline-solid' || spec.id === 'outline-double') expect(caught({ alphaIgnored: false, treeOrder: false, outlineShifted: true }), 'outline-offset-1').toBe(true);
+        if (spec.id === 'stacking-foreground') expect(caught({ alphaIgnored: false, treeOrder: false, foregroundUnder: true }), 'foreground-under').toBe(true);
       });
     }
   }
 });
 
-// The cases of the rest of the corpus whose paint order PNT1 changes (every layer item gets a placement): the model in the Appendix E
-// order equals Chrome at every non-edge point. var-logical is left out by name: its dashed border sides are not in the model.
-const MODEL_OUT = ['var-logical'];
+// The cases of the rest of the corpus whose paint order PNT1 changes (every layer item and every hosted foreground gets a placement):
+// the model in the Appendix E order equals Chrome at every non-edge point. Left out, by name and checked to be exactly these: the
+// cases with box shadows (the model draws no shadow rasters; pnt1-reference.test.ts proves them against Chrome), those with dashed
+// or dotted border sides, which the model does not draw, and rounded boxes with a border side next to a side without one (the model
+// does not split a corner between the outer and inner curves).
+const MODEL_OUT = ['var-logical', 'radius-borders', 'radius-clip', 'shadow-basic', 'shadow-rounded', 'shadow-inset', 'shadow-cascade', 'calib-shadow-blur', 'calib-shadow-colors'];
+/** Why a program is outside the model, or null: a box shadow, a border side that is not solid, or a rounded box with mixed sides. */
+const outOfModel = (p: NativeProgram): string | null => {
+  if (p.nodes.some((n) => n.writes.some((w) => w.kind === 'box-shadow'))) return 'box-shadow';
+  for (const n of p.nodes) {
+    for (const w of n.writes) {
+      if (w.kind !== 'border-styles') continue;
+      const painted = w.styles.map((st) => st !== 'none' && st !== 'hidden');
+      if (w.styles.some((st, k) => painted[k] === true && st !== 'solid')) return 'border style';
+      if (n.writes.some((x) => x.kind === 'border-radius') && painted.some((x) => x) && painted.some((x) => !x)) return 'rounded mixed sides';
+    }
+  }
+  return null;
+};
 
 describe('PNT1 stacking: the corpus cases the placements reach paint in Chrome\'s order', () => {
   const reached = CORPUS.filter((f) => f.kind === 'layout' && !GROUPS.some((g) => FIXTURE_GROUPS.find((x) => x.id === g)?.fixtures.includes(f))).flatMap((spec) =>
@@ -355,12 +398,13 @@ describe('PNT1 stacking: the corpus cases the placements reach paint in Chrome\'
       const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
       if (r.kind !== 'ready') throw new Error(`${c.id}: ${r.reason}`);
       const p = r.programs.uikit;
-      return p.nodes.some((n) => n.writes.some((w) => w.kind === 'paint-order')) ? [{ spec, c, p }] : [];
+      return p.nodes.some((n) => n.writes.some((w) => w.kind === 'paint-order' || w.kind === 'paint-foreground')) ? [{ spec, c, p }] : [];
     }),
   );
   it('reaches the positioned, flex-abspos, context, phrasing and values cases', () => {
     expect(reached.length).toBeGreaterThan(80);
     expect(MODEL_OUT.every((id) => reached.some((r) => r.spec.id === id))).toBe(true);
+    expect([...new Set(reached.filter((r) => outOfModel(r.p) !== null).map((r) => r.spec.id))].sort()).toEqual([...MODEL_OUT].sort());
   });
   for (const { spec, c, p } of reached) {
     if (MODEL_OUT.includes(spec.id)) continue;
