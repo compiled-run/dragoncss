@@ -2,10 +2,11 @@
 // position's vouch locally, and lands them one PR at a time. Run in a clean, installed worktree of this repo.
 // Run with: pnpm train <build|check|land> [--from <k>] <branch>:<pr>:<clean-head-sha>...
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import {
   commitRegen,
   deviceRunProblems,
+  deviceRunWrote,
   failuresJson,
   isAncestor,
   LANES_JSON,
@@ -93,12 +94,12 @@ const fetchMembers = (members: Member[]): string[] =>
   });
 
 // The device run is judged on what it recorded, against the device evidence committed on the train's base.
-const judgeDevices = (base: string): void => {
+const judgeDevices = (base: string, startedMs: number): void => {
   const show = (path: string): unknown => JSON.parse(git(['show', `${base}:${path}`]).toString('utf8'));
   const local = (path: string): unknown => JSON.parse(readFileSync(path, 'utf8'));
   const before = parseDeviceEvidence(show(LANES_JSON), (t) => show(failuresJson(t)), `base ${base}`);
   const after = parseDeviceEvidence(local(LANES_JSON), (t) => local(failuresJson(t)), 'this run');
-  if (git(['status', '--porcelain=v1', '--', LANES_JSON]).toString('utf8').trim() === '') stop(`the device run did not rewrite ${LANES_JSON}`);
+  if (!deviceRunWrote(statSync(LANES_JSON).mtimeMs, startedMs)) stop(`the device run did not rewrite ${LANES_JSON}`);
   const lanes = spawnSync(LANES[0]!, LANES.slice(1), { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   // It exits 1 for master's failing lanes too; anything else, or no verdict line, means it did not judge the file.
   if (lanes.error || lanes.signal || (lanes.status !== 0 && lanes.status !== 1) || !/^parity:lanes: /m.test(lanes.stdout)) {
@@ -136,12 +137,14 @@ const buildPosition = (members: Member[], k: number, prev: string, tip: string, 
   const m = members[k - 1]!;
   console.log(`\n=== Position ${k}: ${m.branch} (#${m.pr}) at ${tip}${tip === m.clean ? '' : ` (an earlier position on clean head ${m.clean})`}`);
   mergeMember(git, prev, m, k, tip);
+  let deviceStarted = Number.POSITIVE_INFINITY;
   for (const step of POSITION_STEPS) {
     if (step === 'regen' || step === 'regen-after-devices') run([HEAVY, ...REGEN]);
     else if (step === 'typecheck') run(['pnpm', 'typecheck']);
-    else if (step === 'judge-devices') judgeDevices(base);
+    else if (step === 'judge-devices') judgeDevices(base, deviceStarted);
     else {
       // master's own lanes fail (device-pixels lists its failures), so the exit code says nothing; judge-devices decides.
+      deviceStarted = Date.now();
       const device = spawnSync(DEVICE, DEVICES, { stdio: 'inherit' });
       if (device.error || device.signal || (device.status !== 0 && device.status !== 1)) stop(`${DEVICES.join(' ')}: ${device.error?.message ?? device.signal ?? `exit ${device.status}`}`);
     }

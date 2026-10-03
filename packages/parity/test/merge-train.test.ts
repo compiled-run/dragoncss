@@ -6,6 +6,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   commitRegen,
   deviceRunProblems,
+  deviceRunWrote,
   isAncestor,
   type Member,
   mergeGate,
@@ -378,5 +379,18 @@ describe('the device run against the base\'s device evidence', () => {
     expect(() => parseDeviceEvidence(lanes({ ios: {} }), () => [], 't')).not.toThrow();
     expect(() => parseDeviceEvidence({ ...ok, targets: [...ok.targets, ...ok.targets] }, () => [], 't')).toThrow(/twice/);
     expect(staleLines('ios (device DPRs 2, 3):\nSTALE ios device-pixels: x\n  STALE not at line start\n')).toEqual(['ios device-pixels: x']);
+  });
+});
+
+// Train 1 rebuild (2026-10-03): position 1 merged #59's earlier position, whose lanes.json already held this tree's device run,
+// so the new run wrote identical bytes and a content check said it had not run.
+describe('whether the device run wrote lanes.json', () => {
+  it('goes by the file time against the run start, whatever the content', () => {
+    const start = Date.parse('2026-10-03T00:00:10.500Z');
+    expect(deviceRunWrote(start + 60_000, start)).toBe(true);
+    expect(deviceRunWrote(Date.parse('2026-10-03T00:00:10.000Z'), start)).toBe(true);
+    expect(deviceRunWrote(start - 5_000, start)).toBe(false);
+    expect(deviceRunWrote(start + 1, Number.POSITIVE_INFINITY)).toBe(false);
+    expect(deviceRunWrote(Number.NaN, start)).toBe(false);
   });
 });

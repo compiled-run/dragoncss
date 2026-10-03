@@ -327,6 +327,12 @@ export const deviceRunProblems = (base: DeviceEvidence, run: DeviceEvidence, sta
   return problems;
 };
 
+// Whether the device run wrote lanes.json: by its modification time, not its content, since a run of a tree whose evidence is
+// already committed (a member rebuilt from an earlier build's position) writes the same bytes. Filesystem times are kept to
+// the second on some systems, so the start is taken back one second.
+export const deviceRunWrote = (mtimeMs: number, startedMs: number): boolean =>
+  Number.isFinite(mtimeMs) && Number.isFinite(startedMs) && mtimeMs >= Math.floor(startedMs / 1000) * 1000 - 1000;
+
 /** `pnpm run parity:lanes` on the committed file prints one "STALE <why>" line per stale lane or evidence. */
 export const staleLines = (out: string): string[] => out.split('\n').filter((l) => l.startsWith('STALE ')).map((l) => l.slice(6));
 
