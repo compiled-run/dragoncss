@@ -133,11 +133,11 @@ describe('raster plants judged against the clean run (T093 ruling A)', () => {
   const ok = { hostErrors: [], frames: 0, lines: 0 };
   it('the constants and one axis per plant', () => {
     expect([PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, PLANT_MARGIN_DEVICE_PX]).toEqual([1, 0.05, 0.2]);
-    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted', 'radius-square', 'shadow-offset-1', 'alpha-ignored']);
+    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted', 'radius-square', 'shadow-offset-1', 'alpha-ignored', 'order-swap']);
     expect(SUPPORT_PLANTS.filter(isGlyphPlant)).toEqual(['glyph-offset-1', 'glyph-offset-y-1']);
-    expect(Object.keys(PLANT_CASES)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'radius-square', 'shadow-offset-1', 'alpha-ignored']);
-    expect(Object.keys(PLANT_RULES)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'radius-square', 'shadow-offset-1', 'alpha-ignored']);
-    expect(PLANT_LANES).toMatchObject({ 'alpha-ignored': 'device-applied', 'dash-phase-1': 'device-pixels' });
+    expect(Object.keys(PLANT_CASES)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'radius-square', 'shadow-offset-1', 'alpha-ignored', 'order-swap']);
+    expect(Object.keys(PLANT_RULES)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'radius-square', 'shadow-offset-1', 'alpha-ignored', 'order-swap']);
+    expect(PLANT_LANES).toMatchObject({ 'alpha-ignored': 'device-applied', 'order-swap': 'device-pixels', 'dash-phase-1': 'device-pixels' });
     expect(PLANT_AXIS).toEqual({ 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' });
   });
   it('each glyph plant changes one line of each backend support: its glyph offset constant from 0 to 1', () => {

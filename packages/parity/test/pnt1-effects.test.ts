@@ -1,13 +1,13 @@
-// PNT1 opacity on the host (T046 §2): the effects fixtures' points against the committed Chrome PNGs at every device DPR.
-// A paint model of Chrome 145's CPU raster predicts each sample: boxes, borders and glyphs painted in tree order (no fixture here
-// overlaps a later box; the stacking package adds Appendix E order), clipped by the overflow clips of their ancestors, and each
-// opacity group composited as Chrome does: a group whose only drawing (in the raster tile of the pixel) is one foldable draw has the alpha folded into it (Chromium
+// PNT1 opacity and stacking on the host (T046 §2): the effects fixtures' points against the committed Chrome PNGs at every device DPR.
+// A paint model of Chrome 145's CPU raster predicts each sample: boxes, borders and glyphs painted in the program's Appendix E order
+// (the stacking facts), clipped by the overflow clips of their containing-block chain, and each opacity group composited as Chrome
+// does: a group whose only drawing (in the raster tile of the pixel) is one foldable draw has the alpha folded into it (Chromium
 // 145.0.7632.6 cc/paint/paint_op_buffer_iterator.cc:13-146) and is blitted as a solid colour (Skia 2ab8add5
 // src/opts/SkBlitRow_opts.h:243-270 blit_row_color32: premultiplied colour + dst * (256 - a) >> 8); any other group is a layer
 // composited with blit_row_s32a_blend (src/core/SkBlitRow_D32.cpp:204-301, src/core/SkColorData.h:134-137 SkAlphaMulInv256:
 // (src * (a + 1) + dst * SkAlphaMulInv256(srcA, a + 1)) >> 8). The
 // alpha byte is paint.ts opacityAlpha8, the one the device uses. Every sample colour must equal Chrome's exactly, which proves the
-// group opacity and the alpha byte before any device runs. Chrome's composite is measured, not assumed: the first
+// paint order, the group opacity and the alpha byte before any device runs. Chrome's composite is measured, not assumed: the first
 // test fits the two blits and the byte against a captured sweep of opacities.
 import { describe, expect, it } from 'vitest';
 import { opacityAlpha8 } from '@dragon/layout';
@@ -16,7 +16,7 @@ import type { NativeProgram, ProgramNode } from 'dragon';
 import { nativePrograms } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { DPRS } from '../src/dpr.ts';
-import { FIXTURE_GROUPS } from '../src/fixtures.ts';
+import { FIXTURE_GROUPS, FIXTURES as CORPUS } from '../src/fixtures.ts';
 import { nativeCompile } from '../src/native-host.ts';
 import { casePoints, committedPixels, glyphLines } from '../src/pixel-reference.ts';
 import { ruleKind } from '../src/samples.ts';
@@ -66,16 +66,23 @@ describe('Chrome 145 composites opacity with Skia\'s getAlpha byte and the Color
 
 // ---------------------------------------------------------------- the model
 
+type Stacking = { paintOrder: number; clipChain: readonly string[] };
 type Item =
   | { readonly kind: 'box'; readonly box: Box }
   | { readonly kind: 'text'; readonly node: ProgramNode; readonly glyphs: readonly { left: number; top: number; right: number; bottom: number }[] }
   | { readonly kind: 'group'; readonly box: Box; readonly alpha8: number; readonly items: readonly Item[] };
 
-/** Planted model faults the test must catch: the alpha ignored (alpha-ignored). */
-type ModelFaults = { readonly alphaIgnored: boolean };
-const NO_MODEL_FAULTS: ModelFaults = { alphaIgnored: false };
+const stackingOf = (n: ProgramNode): Stacking => {
+  const s = n.facts['stacking'] as Stacking | undefined;
+  if (s === undefined) throw new Error(`${n.id}: no stacking facts`);
+  return s;
+};
 
-/** The case's paint items in tree order, each opacity context holding its subtree's items as a group. */
+/** Planted model faults the test must catch: the alpha ignored (alpha-ignored), and tree order instead of the paint order (order-swap). */
+type ModelFaults = { readonly alphaIgnored: boolean; readonly treeOrder: boolean };
+const NO_MODEL_FAULTS: ModelFaults = { alphaIgnored: false, treeOrder: false };
+
+/** The case's paint items in Appendix E order, each opacity context holding its subtree's items as a group. */
 function paintItems(p: NativeProgram, viewport: { width: number; height: number }, dpr: number, faults: ModelFaults = NO_MODEL_FAULTS): Item[] {
   const list = boxes(p, viewport, dpr);
   const byId = new Map(list.map((b) => [b.node.id, b]));
@@ -92,7 +99,7 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
   const withText = (n: ProgramNode): Item[] => [item(n), ...(children.get(n.id) ?? []).filter((c) => c.kind === 'text').map(item)];
   const build = (nodes: readonly ProgramNode[]): Item[] => {
     const tree = new Map(p.nodes.map((x, k) => [x.id, k]));
-    const rank = (x: ProgramNode): number => tree.get(x.id) as number;
+    const rank = (x: ProgramNode): number => (faults.treeOrder ? (tree.get(x.id) as number) : stackingOf(x).paintOrder);
     const sorted = nodes.filter((x) => x.kind !== 'text').sort((a, b) => rank(a) - rank(b));
     const out: Item[] = [];
     for (let k = 0; k < sorted.length; k++) {
@@ -104,7 +111,7 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
       }
       const inside = new Set(subtree(n).map((x) => x.id));
       const members = sorted.filter((x) => inside.has(x.id));
-      // An opacity group is atomic: its subtree is contiguous in the paint order.
+      // A stacking context is atomic: its subtree is contiguous in the paint order.
       if (sorted.slice(k, k + members.length).some((x) => !inside.has(x.id))) throw new Error(`${n.id}: its subtree is not contiguous in the paint order`);
       out.push({ kind: 'group', box: byId.get(n.id) as Box, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), items: [...withText(n), ...build(members.filter((x) => x !== n))] });
       k += members.length - 1;
@@ -145,9 +152,8 @@ function tileItems(items: readonly Item[], tile: Tile): { direct: Item[]; nested
 
 /** Whether a pixel centre is outside a clip that applies to the node: a text leaf is clipped by its box's chain and the box itself. */
 function clippedOut(n: ProgramNode, byId: ReadonlyMap<string, Box>, cx: number, cy: number): boolean {
-  // Every clipping ancestor clips: the effects fixtures hold no positioned box to escape one (the stacking package adds that).
-  const chain: string[] = [];
-  for (let at = n.parent === null ? undefined : byId.get(n.parent); at !== undefined; at = at.node.parent === null ? undefined : byId.get(at.node.parent)) if (at.node.clips) chain.push(at.node.id);
+  const parent = n.parent === null ? undefined : byId.get(n.parent);
+  const chain = n.kind !== 'text' ? stackingOf(n).clipChain : parent === undefined ? [] : [...(parent.node.clips ? [parent.node.id] : []), ...stackingOf(parent.node).clipChain];
   for (const id of chain) {
     const a = byId.get(id) as Box;
     if (!inside(cx, cy, a.l + (a.border[3] as number), a.t + (a.border[0] as number), a.r - (a.border[1] as number), a.b - (a.border[2] as number))) return true;
@@ -210,7 +216,7 @@ export function effectsModelAt(items: readonly Item[], byId: ReadonlyMap<string,
 
 // ---------------------------------------------------------------- the fixtures
 
-const GROUPS = ['opacity', 'color-scheme'];
+const GROUPS = ['opacity', 'stacking', 'color-scheme'];
 const FIXTURES = FIXTURE_GROUPS.filter((g) => GROUPS.includes(g.id)).flatMap((g) => g.fixtures).filter((f) => f.kind === 'layout');
 
 /** The mismatches of the model against the committed Chrome PNGs at every non-edge point of a program, and the points compared. */
@@ -235,8 +241,8 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 }
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
-  it('covers the opacity and color-scheme fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['color-scheme-basic', 'opacity-basic', 'opacity-cascade']);
+  it('covers the opacity, stacking and color-scheme fixtures', () => {
+    expect(FIXTURES.map((f) => f.id)).toEqual(['color-scheme-basic', 'opacity-basic', 'opacity-cascade', 'stacking-basic', 'stacking-context', 'stacking-escape']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;
@@ -278,8 +284,36 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
           const byId = new Map(boxes(p, c.environment.viewport, dpr).map((b) => [b.node.id, b]));
           return casePoints(p, c.environment.viewport, dpr).some((pt) => effectsModelAt(items, byId, pt.x, pt.y, dpr).join() !== effectsModelAt(planted, byId, pt.x, pt.y, dpr).join());
         });
-        if (spec.id.startsWith('opacity-')) expect(caught({ alphaIgnored: true }), 'alpha-ignored').toBe(true);
+        if (spec.id.startsWith('opacity-') || spec.id === 'stacking-context') expect(caught({ alphaIgnored: true, treeOrder: false }), 'alpha-ignored').toBe(true);
+        if (spec.id.startsWith('stacking-')) expect(caught({ alphaIgnored: false, treeOrder: true }), 'order-swap').toBe(true);
       });
     }
+  }
+});
+
+// The cases of the rest of the corpus whose paint order PNT1 changes (every layer item gets a placement): the model in the Appendix E
+// order equals Chrome at every non-edge point. var-logical is left out by name: its dashed border sides are not in the model.
+const MODEL_OUT = ['var-logical'];
+
+describe('PNT1 stacking: the corpus cases the placements reach paint in Chrome\'s order', () => {
+  const reached = CORPUS.filter((f) => f.kind === 'layout' && !GROUPS.some((g) => FIXTURE_GROUPS.find((x) => x.id === g)?.fixtures.includes(f))).flatMap((spec) =>
+    casesOf(spec, fixtureInput(spec)).flatMap((c) => {
+      const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+      if (r.kind !== 'ready') throw new Error(`${c.id}: ${r.reason}`);
+      const p = r.programs.uikit;
+      return p.nodes.some((n) => n.writes.some((w) => w.kind === 'paint-order')) ? [{ spec, c, p }] : [];
+    }),
+  );
+  it('reaches the positioned, flex-abspos, context, phrasing and values cases', () => {
+    expect(reached.length).toBeGreaterThan(80);
+    expect(MODEL_OUT.every((id) => reached.some((r) => r.spec.id === id))).toBe(true);
+  });
+  for (const { spec, c, p } of reached) {
+    if (MODEL_OUT.includes(spec.id)) continue;
+    it(`${c.id}`, () => {
+      const { problems, compared } = modelProblems(c.id, p, c.environment.viewport);
+      expect(problems).toEqual([]);
+      expect(compared).toBeGreaterThan(0);
+    });
   }
 });

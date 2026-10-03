@@ -45,7 +45,7 @@ const SUBSET = [
   // Paint families (PNT1), after grid.
   'border-radius', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius',
   'box-shadow',
-  'opacity', 'color-scheme',
+  'opacity', 'z-index', 'color-scheme',
   'outline', 'outline-color', 'outline-style', 'outline-width', 'outline-offset',
 ] as const;
 

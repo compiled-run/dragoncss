@@ -128,10 +128,11 @@ describe('border-radius: lowering and emission', () => {
       { percent: false, value: 16 }, { percent: false, value: 2 }, { percent: false, value: 16 }, { percent: false, value: 2 },
     ];
     expect(a?.writes.filter((w) => w.kind === 'border-radius')).toEqual([expect.objectContaining({ kind: 'border-radius', key: 'dragonRadius.radiiPx', technique: 'dragon-owned-paint', lengths })]);
-    expect(a?.facts).toEqual({ radius: { lengths } });
+    // Every box also carries the stacking facts (PNT1 stacking); only the radius facts are this module's.
+    expect(a?.facts['radius']).toEqual({ lengths });
     const b = p['android-views'].nodes.find((n) => n.id === 'b');
     expect(b?.writes.some((w) => w.kind === 'border-radius')).toBe(false);
-    expect(b?.facts).toEqual({});
+    expect(b?.facts['radius']).toBeUndefined();
   });
 
   it('emits the runtime writer on both backends and expects the clamped outer radii in device px', () => {

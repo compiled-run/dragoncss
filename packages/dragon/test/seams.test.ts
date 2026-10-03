@@ -36,7 +36,7 @@ describe('E2 seams: the property registry', () => {
       ...GRID_LONGHANDS,
       'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius',
       'box-shadow',
-      'opacity', 'color-scheme',
+      'opacity', 'z-index', 'color-scheme',
       'outline-color', 'outline-style', 'outline-width', 'outline-offset',
     ]);
   });
@@ -59,7 +59,7 @@ describe('E2 seams: the property registry', () => {
     expect(byRole('container')).toEqual(['direction', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap',
       'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow', 'justify-items']);
     expect(byRole('text')).toEqual(['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode']);
-    expect(byRole('paint')).toEqual(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius', 'box-shadow', 'opacity', 'color-scheme', 'outline-color', 'outline-style', 'outline-width', 'outline-offset']);
+    expect(byRole('paint')).toEqual(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius', 'box-shadow', 'opacity', 'z-index', 'color-scheme', 'outline-color', 'outline-style', 'outline-width', 'outline-offset']);
   });
   it('every shorthand has exactly one handler in shorthands/index.ts, and each sets only longhands', () => {
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());

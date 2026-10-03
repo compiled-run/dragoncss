@@ -21,16 +21,17 @@ import { SCROLL_LOWERING } from './scroll.ts';
 import { SCROLLBAR_LOWERING } from './scrollbar.ts';
 import type { ShadowWrite } from './shadow.ts';
 import { SHADOW_LOWERING } from './shadow.ts';
+import type { StackingWrite } from './stacking.ts';
 import { STACKING_LOWERING } from './stacking.ts';
 import { TRANSFORM_LOWERING } from './transform.ts';
 import type { BoxPaintContext, NativeBackend, PaintLowering, VocabularyEntry } from './types.ts';
 import { PAINT_MODULE_NAMES } from './types.ts';
 
 /** Every paint write kind; a module adds its write type here when it gains writes. */
-export type PaintWrite = BackgroundWrite | BorderWrite | ClipWrite | RadiusWrite | ShadowWrite | EffectsWrite;
+export type PaintWrite = BackgroundWrite | BorderWrite | ClipWrite | RadiusWrite | ShadowWrite | EffectsWrite | StackingWrite;
 export type PaintWriteKind = PaintWrite['kind'];
 
-export type AnyLowering = PaintLowering<PaintWrite> | PaintLowering<BackgroundWrite> | PaintLowering<BorderWrite> | PaintLowering<ClipWrite> | PaintLowering<RadiusWrite> | PaintLowering<ShadowWrite> | PaintLowering<EffectsWrite> | PaintLowering<never>;
+export type AnyLowering = PaintLowering<PaintWrite> | PaintLowering<BackgroundWrite> | PaintLowering<BorderWrite> | PaintLowering<ClipWrite> | PaintLowering<RadiusWrite> | PaintLowering<ShadowWrite> | PaintLowering<EffectsWrite> | PaintLowering<StackingWrite> | PaintLowering<never>;
 
 /** Registration point (EMS): the paint lowerings in PAINT_MODULE_NAMES order. */
 export const PAINT_LOWERINGS: readonly AnyLowering[] = [

@@ -158,6 +158,16 @@ describe('the generated runtime', () => {
       const painted = { ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), writes: [w as unknown as ProgramNode['writes'][number]] }]) };
       expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [painted]), scripts: [] }])).toThrow(`r: the state runtime cannot write ${w.kind} yet`);
     }
+    // A paint-order write (a positioned box, as in tree-position-toggle) is written through the stacking module's own writer.
+    const ordered = { ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), writes: [{ kind: 'paint-order', host: 'h', bucket: 1, rank: 2, index: 0 } as unknown as ProgramNode['writes'][number]] }]) };
+    const orderedText = (backend: 'uikit' | 'android-views'): string => emitStatePrograms(backend, [{ ...emit, program: { ...deriveStateProgram('uikit', [ordered]), backend }, scripts: [] }]).map((f) => f.text).join('\n');
+    expect(orderedText('uikit')).toContain('.paintOrder("h", 1, 2)');
+    expect(orderedText('android-views')).toContain('DragonStateWrite.PaintOrder("h", 1, 2)');
+    const support = (backend: 'uikit' | 'android-views'): string => orderedText(backend) + emitNativeSupport(backend).map((f) => f.text).join('\n');
+    expect(support('uikit')).toContain('case .paintOrder(let host, let bucket, let rank): dragonSetPaintOrder(t, v, host, bucket, rank)');
+    expect(support('android-views')).toContain('is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank)');
+    const fractional = { ...ordered, program: program(box('r', 10), [{ ...node('r', null, 1), writes: [{ kind: 'paint-order', host: 'h', bucket: 1, rank: 0.5, index: 0 } as unknown as ProgramNode['writes'][number]] }]) };
+    expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [fractional]), scripts: [] }])).toThrow('r: paint order bucket 1 or rank 0.5 is not an integer');
     const bare = { ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), kind: 'text', writes: [] }]) };
     expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [bare]), scripts: [] }])).toThrow(/r: a text node without a text run/);
     const weird = deriveStateProgram('uikit', [{ ...(CASES[0] as StateCase), assignment: [{ state: { instance: 'a*/b\nc', state: 'on' }, value: 'x' }] }]);

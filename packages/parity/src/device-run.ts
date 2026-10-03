@@ -60,6 +60,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'shadow-offset-1': ['calib-shadow-blur'],
   // opacity-basic's boxes (ids op-*) read back alpha 1 when the writer ignores it.
   'alpha-ignored': ['opacity-basic'],
+  // stacking-basic samples the interiors of overlapping boxes, whose colours swap when the layer items sort beneath the flow.
+  'order-swap': ['stacking-basic'],
 };
 /** What a paint plant's failures must name on its lane (PLANT_LANES): sample rules for device-pixels, node ids for device-applied. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
@@ -68,6 +70,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'radius-square': /^radius:/,
   'shadow-offset-1': /^shadow:/,
   'alpha-ignored': /^op-/,
+  'order-swap': /^interior:/,
 };
 /** The lane each paint plant must fail: device-pixels for paint, device-applied for a native property the readback sees. */
 export const PLANT_LANES: { readonly [P in PaintPlant]: 'device-pixels' | 'device-applied' } = {
@@ -76,6 +79,7 @@ export const PLANT_LANES: { readonly [P in PaintPlant]: 'device-pixels' | 'devic
   'radius-square': 'device-pixels',
   'shadow-offset-1': 'device-pixels',
   'alpha-ignored': 'device-applied',
+  'order-swap': 'device-pixels',
 };
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
