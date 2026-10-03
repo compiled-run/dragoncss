@@ -43,6 +43,35 @@ function checkOverflow(el: ResolvedElement, targets: readonly string[], diagnost
   }
 }
 
+const isScrollKeyword = (k: string): boolean => k === 'hidden' || k === 'auto' || k === 'scroll';
+const hasPercentage = (v: ResolvedValue): boolean => v.value.kind === 'percentage' || (v.value.kind === 'other' && v.value.text.includes('%'));
+
+/** css-overflow-3 §3.3: the element whose overflow the viewport takes (html when not visible, else body), which uses visible. */
+function propagatedFrom(root: ResolvedElement): ResolvedElement | null {
+  const visible = (el: ResolvedElement): boolean => keywordOf(el.props.get('overflow-x') as ResolvedValue) === 'visible' && keywordOf(el.props.get('overflow-y') as ResolvedValue) === 'visible';
+  if (!visible(root)) return root;
+  const body = root.children.find((c): c is ResolvedElement => c.kind === 'element' && c.element.tag === 'body');
+  return body !== undefined && !visible(body) ? body : null;
+}
+
+// OVFL-p: the engine's scrollable overflow (packages/layout/src/overflow.ts) does not decide a relative offset with a percentage
+// top or bottom inside a scroll container or on the root, so it is refused here, on every target as the other overflow refusals are.
+function checkPercentRelative(el: ResolvedElement, where: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (where === null || keywordOf(el.props.get('position') as ResolvedValue) !== 'relative') return;
+  for (const p of ['top', 'bottom'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (!hasPercentage(v)) continue;
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    const message = `position: relative with a percentage ${p} on ${el.element.address} ${where}: the scrollable overflow does not decide its basis yet (OVFL-p)`;
+    for (const t of targets) {
+      const id = `${t}|ovfl-p|${JSON.stringify(origin)}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin, target: t, message, manual: `Use a length for ${p} here, or move the offset outside the scroll container.` }));
+    }
+  }
+}
+
 const displayKeyword = (el: ResolvedElement): string => keywordOf(el.props.get('display') as ResolvedValue);
 const isInlineBox = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline';
 
@@ -338,18 +367,23 @@ function checkSubstitution(el: ResolvedElement, targets: readonly string[], diag
 /** Walks one resolved case and records the refusals above; reported deduplicates them across cases. Text in a display: none
  * subtree is never laid out (CSS2 §9.2.4), so only the overflow check reaches it. fonts keys a substituted font-family as usedKeys does. */
 export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext): void {
-  const walk = (el: ResolvedElement, hidden: boolean): void => {
+  const propagated = propagatedFrom(root);
+  // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     checkOverflow(el, targets, diagnostics, reported);
+    if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     if (!here) checkInlineLevel(el, targets, diagnostics, reported);
     if (!here) checkInline(el, targets, diagnostics, reported);
-    for (const c of el.children) if (c.kind === 'element') walk(c, here);
+    const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
+    const inner = el === root ? own : (own ?? scroller);
+    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner);
   };
-  walk(root, false);
+  walk(root, false, 'viewport');
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported);
 }
 

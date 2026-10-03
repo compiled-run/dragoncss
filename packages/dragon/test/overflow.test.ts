@@ -76,3 +76,26 @@ describe('OVFL compiler: viewport propagation (css-overflow-3 §3.3)', () => {
     expect(axes(root(one('.a { overflow: hidden; }')), 'a')).toEqual(['hidden', 'hidden']);
   });
 });
+
+describe('OVFL-p: a percentage relative offset the scrollable overflow does not decide is refused, never laid out', () => {
+  const refusals = (css: string): string[] => compile(one(css)).diagnostics.filter((d) => d.message.includes('OVFL-p')).map((d) => `${d.code} ${d.target}: ${d.message}`);
+
+  it('inside a scroll container, on top or bottom, a percentage or a calc with one, on every target', () => {
+    expect(refusals('.a { overflow: auto; } .b { position: relative; top: 10%; }')).toEqual([
+      'DRAGON_UNPROVEN_CONTEXT ios: position: relative with a percentage top on b inside the scroll container a: the scrollable overflow does not decide its basis yet (OVFL-p)',
+      'DRAGON_UNPROVEN_CONTEXT web: position: relative with a percentage top on b inside the scroll container a: the scrollable overflow does not decide its basis yet (OVFL-p)',
+    ]);
+    expect(refusals('.a { overflow: hidden; } .b { position: relative; bottom: calc(10% + 2px); }')).toHaveLength(2);
+  });
+
+  it('on the root, whose scroll container is the viewport', () => {
+    expect(refusals('html { position: relative; top: 5%; }')[0]).toContain('on html on the root (the viewport is its scroll container)');
+  });
+
+  it('a length offset, an offset outside every scroll container, and one under the element the viewport took its overflow from compile', () => {
+    expect(refusals('.a { overflow: auto; } .b { position: relative; top: 5px; }')).toEqual([]);
+    expect(refusals('.a { position: relative; top: 10%; } .b { position: relative; top: 10%; }')).toEqual([]);
+    expect(refusals('html { overflow: hidden; } .a { position: relative; top: 10%; }')).toEqual([]);
+    expect(refusals('.a { overflow: clip; } .b { position: relative; top: 10%; }')).toEqual([]);
+  });
+});

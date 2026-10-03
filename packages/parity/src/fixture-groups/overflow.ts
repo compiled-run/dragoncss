@@ -2,7 +2,7 @@
 // their scrollable overflow (css-overflow-3 §2.2), and viewport propagation from html or body (§3.3), which the compiler resolves.
 // Each layout case also has Chrome's scroll metrics in expected-scroll (scroll-metrics.ts).
 import type { FixtureSpec } from '../fixtures.ts';
-import { both, layout } from './define.ts';
+import { both, layout, reject } from './define.ts';
 
 export const OVERFLOW: readonly FixtureSpec[] = [
   // The BASE text of reject-overflow-single-axis: overflow-x hidden computes overflow-y to auto (§3.1).
@@ -19,4 +19,10 @@ export const OVERFLOW: readonly FixtureSpec[] = [
   // The music player's html, body and .App pattern: html propagates, so body stays a scroll container.
   both('viewport-prop-demo'),
   both('viewport-prop-document'),
+  // clip on both axes paints at the padding box; content that fits scrolls nothing; the demo's .App pair without propagation.
+  layout('overflow-clip-both'),
+  layout('overflow-auto-fits'),
+  both('overflow-hidden-x-auto-y'),
+  // OVFL-p: a percentage relative offset inside a scroll container is refused on native targets (overflow.ts does not decide it).
+  reject('reject-overflow-percent-relative', 'DRAGON_UNPROVEN_CONTEXT', '10%', 'position: relative with a percentage top on k inside the scroll container sc'),
 ];
