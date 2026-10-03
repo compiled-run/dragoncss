@@ -34,6 +34,8 @@ export function checkCaptured(raw: unknown): Captured[] {
 
 async function capture(page: Page, html: string): Promise<Captured[]> {
   await page.setContent(injected(html));
+  // The harness style loads Ahem as a web font; a capture before it loads measures the fallback font.
+  checkFontsLoaded(await page.evaluate('document.fonts.ready.then(() => document.fonts.status)'));
   return checkCaptured(await page.evaluate(`Array.from(document.querySelectorAll('[data-dragon-id]')).map((el) => {
     const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
@@ -41,6 +43,11 @@ async function capture(page: Page, html: string): Promise<Captured[]> {
     for (let i = 0; i < cs.length; i++) { const p = cs[i]; if (!p.startsWith('--')) computed.push([p, cs.getPropertyValue(p)]); }
     return { id: el.getAttribute('data-dragon-id'), box: [r.x, r.y, r.width, r.height], computed };
   })`));
+}
+
+/** A capture is taken only once every web font of the page has loaded (FontFaceSet status "loaded"). */
+export function checkFontsLoaded(status: unknown): void {
+  if (status !== 'loaded') throw new Error(`the page's fonts are ${JSON.stringify(status)}, not loaded, so a capture would measure a fallback font`);
 }
 
 /** Every difference between the two renderings; none means Chrome agrees with Dragon. */

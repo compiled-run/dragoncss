@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.c { width: 200px; font-size: 20px; line-height: 1; }
+.ib { display: inline-block; }
+.t { font-size: 10px; line-height: 15px; }
+.e { width: 20px; height: 30px; margin-bottom: 4px; }
+.ov { font-size: 10px; overflow: hidden; margin-bottom: 3px; }
+.pb { font-size: 10px; padding-bottom: 6px; }
+.blk { display: block; padding-bottom: 5px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="text" class="c">a<span data-dragon-id="text-ib" class="ib t">b<br data-dragon-id="text-br">c</span>d</div>
+<div data-dragon-id="empty" class="c">a<span data-dragon-id="empty-ib" class="ib e"></span>d</div>
+<div data-dragon-id="over" class="c">a<span data-dragon-id="over-ib" class="ib ov">b<br data-dragon-id="over-br">c</span>d</div>
+<div data-dragon-id="child" class="c">a<span data-dragon-id="child-ib" class="ib pb"><span data-dragon-id="child-blk" class="blk">b</span></span>d</div>
+</body>
+</html>

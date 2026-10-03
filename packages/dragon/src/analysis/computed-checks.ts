@@ -55,14 +55,20 @@ function checkOverflow(el: ResolvedElement, targets: readonly string[], diagnost
 
 const displayKeyword = (el: ResolvedElement): string => keywordOf(el.props.get('display') as ResolvedValue);
 const isInlineBox = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline';
+/** CSS2 §9.2.4: an atomic inline, an inline-block or inline-flex box (INL2a). */
+const isAtomic = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline-block' || displayKeyword(el) === 'inline-flex';
 
-/** One item of an inline formatting context in tree order: a text, the open or close of an inline box, or a <br> (CSS2 §9.2.2). */
-type IfcItem = { readonly kind: 'text'; readonly text: ResolvedText } | { readonly kind: 'open' | 'close' | 'br'; readonly el: ResolvedElement };
+/**
+ * One item of an inline formatting context in tree order: a text, the open or close of an inline box, a <br> (CSS2 §9.2.2), or an
+ * atomic inline (§9.2.4).
+ */
+type IfcItem = { readonly kind: 'text'; readonly text: ResolvedText } | { readonly kind: 'open' | 'close' | 'br' | 'atomic'; readonly el: ResolvedElement };
 
 /**
  * The inline formatting contexts whose block container is el (el is not itself an inline box): its maximal runs of inline-level
  * children, flattened through inline boxes. A block-level child ends a run (CSS2 §9.2.1.1); display: none children generate no box.
- * blockInInline receives each block-level box inside an inline box, which Dragon does not lay out.
+ * blockInInline receives each block-level box inside an inline box, which Dragon does not lay out, and each atomic inline there
+ * (INL2c), which is also an atomic item of the run.
  */
 function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElement, box: ResolvedElement) => void): IfcItem[][] {
   const runs: IfcItem[][] = [[]];
@@ -70,7 +76,10 @@ function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElem
     for (const c of box.children) {
       if (c.kind === 'text') out.push({ kind: 'text', text: c });
       else if (displayKeyword(c) === 'none') continue;
-      else if (!isInlineBox(c)) blockInInline(c, box);
+      else if (isAtomic(c)) {
+        out.push({ kind: 'atomic', el: c });
+        blockInInline(c, box);
+      } else if (!isInlineBox(c)) blockInInline(c, box);
       else if (c.element.tag === 'br') out.push({ kind: 'br', el: c });
       else {
         out.push({ kind: 'open', el: c });
@@ -83,6 +92,7 @@ function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElem
     const run = runs[runs.length - 1] as IfcItem[];
     if (c.kind === 'text') run.push({ kind: 'text', text: c });
     else if (displayKeyword(c) === 'none') continue;
+    else if (isAtomic(c)) run.push({ kind: 'atomic', el: c });
     else if (!isInlineBox(c)) runs.push([]);
     else if (c.element.tag === 'br') run.push({ kind: 'br', el: c });
     else {
@@ -127,13 +137,41 @@ function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set
       }
       if (zwsp !== null) report(zwsp, `U+200B ends the rtl inline content of ${el.element.address} (${zwsp.node.address}) and would take the paragraph direction (UAX #9 L1)`);
     }
+    checkRtlAtomics(el, run, diagnostics, reported);
+  }
+}
+
+// UAX #9 N1-N2 (the engine's checkRtlAtomics): an atomic inline is U+FFFC, a neutral; it keeps logical order between letters of its
+// paragraph, or alone in a paragraph without letters. Anywhere else in an rtl context it would be reordered, which is refused.
+function checkRtlAtomics(el: ResolvedElement, run: readonly IfcItem[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const paragraphs: IfcItem[][] = [[]];
+  for (const it of run) {
+    if (it.kind === 'br') paragraphs.push([]);
+    else (paragraphs[paragraphs.length - 1] as IfcItem[]).push(it);
+  }
+  const letter = /[A-Za-z]/u;
+  for (const items of paragraphs) {
+    const atomics = items.filter((it) => it.kind === 'atomic');
+    const letters = items.some((it) => it.kind === 'text' && letter.test(it.text.text));
+    if (atomics.length === 0 || (!letters && atomics.length === 1)) continue;
+    items.forEach((it, i) => {
+      if (it.kind !== 'atomic') return;
+      const before = items.slice(0, i).some((x) => x.kind === 'text' && letter.test(x.text.text));
+      const after = items.slice(i + 1).some((x) => x.kind === 'text' && letter.test(x.text.text));
+      if (before && after) return;
+      const origin = it.el.element.node.origin;
+      const id = `${it.el.element.address}|rtl-atomic`;
+      if (reported.has(id)) return;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_BIDI', { origin, message: `atomic inline ${it.el.element.address} in the rtl block ${el.element.address} has no letter on ${before ? 'its end' : 'its start'} side in its paragraph, so it would take the paragraph direction and be reordered (UAX #9 N1-N2)` }));
+    });
   }
 }
 
 // CSS2 §9.2.1.1, §9.4.2 and css-text-4 §5.1: what the inline formatting core does not lay out, refused for every target at the
 // element: a block-level box inside an inline box (block-in-inline), an inline box on the empty line after a context's last <br>,
 // and runs with different text-wrap-mode in one formatting context.
-function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
   if (isInlineBox(el)) return;
   const refuse = (at: ResolvedElement, what: string, message: string, manual: string): void => {
     for (const t of targets) {
@@ -143,10 +181,30 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: at.element.node.origin, target: t, message, manual, basis: 'computed-value' }));
     }
   };
-  const runs = inlineContexts(el, (child, box) =>
-    refuse(child, 'block-in-inline', `<${child.element.tag}> ${child.element.address} is block-level inside the inline box <${box.element.tag}> ${box.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon does not lay out`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}, or make ${box.element.address} a block.`),
-  );
+  // INL2c: an atomic inline inside an inline box, or beside text in a real face (Blink's LineBreaker for it is not ported).
+  const unproven = (at: ResolvedElement, what: string, message: string, manual: string): void => {
+    for (const t of targets) {
+      const id = `${t}|atomic-${what}|${at.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin: at.element.node.origin, target: t, message, manual }));
+    }
+  };
+  const runs = inlineContexts(el, (child, box) => {
+    if (isAtomic(child)) {
+      unproven(child, 'in-inline-box', `${displayKeyword(child)} <${child.element.tag}> ${child.element.address} is an atomic inline inside the inline box <${box.element.tag}> ${box.element.address}; atomic inlines are proven only directly in their block container (INL2c)`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}.`);
+      return;
+    }
+    refuse(child, 'block-in-inline', `<${child.element.tag}> ${child.element.address} is block-level inside the inline box <${box.element.tag}> ${box.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon does not lay out`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}, or make ${box.element.address} a block.`);
+  });
   for (const run of runs) {
+    const realText = run.find((it) => it.kind === 'text' && realFaceAt(it.text.node.address));
+    if (realText !== undefined && realText.kind === 'text') {
+      for (const it of run) {
+        if (it.kind !== 'atomic') continue;
+        unproven(it.el, 'beside-shaped-text', `${displayKeyword(it.el)} <${it.el.element.tag}> ${it.el.element.address} shares an inline formatting context of ${el.element.address} with text ${realText.text.node.address} in a real face; atomic inlines are proven only beside Ahem text (INL2c)`, `Put the text beside ${it.el.element.address} in its own block, or make ${it.el.element.address} a block.`);
+      }
+    }
     const lastBr = run.map((it) => it.kind).lastIndexOf('br');
     if (lastBr >= 0) {
       const after = run.slice(lastBr + 1);
@@ -194,7 +252,7 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
   };
   if (isRoot && keywordOf(el.props.get('position') as ResolvedValue) === 'absolute') refuse(el, `position: absolute on the root element ${el.element.address} is not supported in milestone 1`);
   // Inline content: text, or an inline box (INL1a), beside which the box would take a static position in the formatting context.
-  if (!el.children.some((c) => c.kind === 'text' || (displayKeyword(c) === 'inline'))) return;
+  if (!el.children.some((c) => c.kind === 'text' || displayKeyword(c) === 'inline' || isAtomic(c))) return;
   for (const c of el.children) {
     if (c.kind !== 'element' || keywordOf(c.props.get('display') as ResolvedValue) === 'none') continue;
     if (keywordOf(c.props.get('position') as ResolvedValue) !== 'absolute') continue;
@@ -374,7 +432,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     if (!here) checkInlineLevel(el, targets, diagnostics, reported);
-    if (!here) checkInline(el, targets, diagnostics, reported);
+    if (!here) checkInline(el, targets, diagnostics, reported, realFaceAt);
     for (const c of el.children) if (c.kind === 'element') walk(c, here);
   };
   walk(root, false);

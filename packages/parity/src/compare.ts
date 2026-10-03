@@ -25,7 +25,7 @@ export type NodeComparison = {
   readonly exactLu: boolean;
 };
 
-/** An anonymous box only Dragon has, and the Chrome-compared line fragments of the text inside it. */
+/** An anonymous box only Dragon has, and the Chrome-compared line fragments of the text and the atomic inlines inside it. */
 export type AnonymousBox = { readonly id: string; readonly lines: readonly string[] };
 
 export type Comparison = {
@@ -48,10 +48,14 @@ function dragonEdges(r: LayoutRect): { px: Edges; raw: Edges } {
   };
 }
 
-function anonymousBoxes(input: LayoutInput): Map<string, readonly string[]> {
-  const out = new Map<string, readonly string[]>();
+/** Each anonymous box's text leaf ids and its atomic inline children's ids (INL2a: inline-block and inline-flex boxes). */
+function anonymousBoxes(input: LayoutInput): Map<string, { readonly leaves: readonly string[]; readonly atomics: readonly string[] }> {
+  const out = new Map<string, { readonly leaves: readonly string[]; readonly atomics: readonly string[] }>();
   const walk = (b: LayoutBox): void => {
-    if (b.boxType === 'anonymous') out.set(b.id, b.children.filter((c) => c.kind === 'text').map((c) => c.id));
+    if (b.boxType === 'anonymous') {
+      const atomics = b.children.filter((c): c is LayoutBox => c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex')).map((c) => c.id);
+      out.set(b.id, { leaves: b.children.filter((c) => c.kind === 'text').map((c) => c.id), atomics });
+    }
     for (const c of b.children) if (c.kind === 'box') walk(c);
   };
   walk(input.root);
@@ -95,15 +99,17 @@ function anonymousComparison(absolute: ReadonlyMap<string, LayoutRect>, input: L
   const anonymous: AnonymousBox[] = [];
   for (const id of absolute.keys()) {
     if (seen.has(id)) continue;
-    const leaves = anonymousInput.get(id);
-    if (leaves === undefined) {
+    const held = anonymousInput.get(id);
+    if (held === undefined) {
       problems.push(`${id}: Dragon laid out a node Chrome does not have`);
       continue;
     }
+    const leaves = held.leaves;
     const lines = [...absolute.values()].filter((r) => r.parent !== null && leaves.includes(r.parent) && r.id.startsWith(`${r.parent}:line`)).map((r) => r.id);
-    const uncompared = lines.filter((l) => !seen.has(l));
-    if (lines.length === 0 || uncompared.length > 0) problems.push(`${id}: anonymous box whose text lines are not all compared with Chrome (${uncompared.join(', ') || 'no lines'})`);
-    anonymous.push({ id, lines });
+    // An anonymous box passes when it holds a compared text line or atomic inline and nothing it holds is uncompared.
+    const uncompared = [...lines, ...held.atomics].filter((l) => !seen.has(l));
+    if (lines.length + held.atomics.length === 0 || uncompared.length > 0) problems.push(`${id}: anonymous box whose text lines are not all compared with Chrome (${uncompared.join(', ') || 'no lines'})`);
+    anonymous.push({ id, lines: [...lines, ...held.atomics] });
   }
   return anonymous;
 }

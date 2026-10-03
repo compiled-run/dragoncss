@@ -24,6 +24,7 @@ export type TextContext =
   | `text-in-block/${DirectionFacet}`
   | `text-in-inline/${DirectionFacet}`
   | `text-beside-inline/${DirectionFacet}`
+  | `text-beside-atomic/${DirectionFacet}`
   | `text-in-anonymous-block/${DirectionFacet}`
   | `text-in-display-none/${DirectionFacet}`
   | `text-in-flex-item/${AxisFacet}/${DirectionFacet}`
@@ -33,6 +34,7 @@ export type BoxContext =
   | 'root'
   | 'block'
   | 'inline'
+  | 'atomic-inline'
   | 'flex-row'
   | 'flex-column'
   | 'display-none'
@@ -44,9 +46,10 @@ export type BoxContext =
 
 /**
  * The context an element's box takes part in: the root, or its parent's formatting context. inline: an inline box (CSS2 §9.2.2),
- * which takes part in its block container's inline formatting context.
+ * which takes part in its block container's inline formatting context; atomic-inline: an inline-block or inline-flex box (CSS2
+ * §9.2.4), which sits on a line of that context as one item and is sized by shrink-to-fit (§10.3.9).
  */
-export type ItemBase = 'root' | 'block' | 'flex-row' | 'flex-column' | 'display-none' | 'inline';
+export type ItemBase = 'root' | 'block' | 'flex-row' | 'flex-column' | 'display-none' | 'inline' | 'atomic-inline';
 
 /**
  * Row contexts. Item properties of a positioned box carry the positioning scheme: a relative box its parent's context and
@@ -72,6 +75,12 @@ export function directionFacet(el: ResolvedElement): DirectionFacet {
 
 const axisFacet = (flexContainer: ResolvedElement): AxisFacet => (keyword(flexContainer, 'flex-direction').startsWith('column') ? 'column' : 'row');
 
+/** Whether an element is a flex container: display flex, or inline-flex (an atomic inline, css-flexbox-1 §3). */
+const isFlexContainer = (el: ResolvedElement): boolean => keyword(el, 'display') === 'flex' || keyword(el, 'display') === 'inline-flex';
+
+/** Whether an element is an atomic inline: display inline-block or inline-flex after blockification (css-display-3 §2.7). */
+export const isAtomicInline = (el: ResolvedElement): boolean => keyword(el, 'display') === 'inline-block' || keyword(el, 'display') === 'inline-flex';
+
 /**
  * The formatting context of an element-level longhand, with the direction of the box whose algorithm consumes it. Item
  * properties: the context the element's box takes part in (root, block, flex-row, flex-column, or display-none under a hidden
@@ -85,11 +94,11 @@ export function formattingContext(property: Longhand, el: ResolvedElement, ances
   const parent = ancestors.length === 0 ? null : (ancestors[ancestors.length - 1] as ResolvedElement);
   if (role === 'container') {
     const own = directionFacet(el);
-    if (keyword(el, 'display') !== 'flex') return `not-flex-container/${own}`;
+    if (!isFlexContainer(el)) return `not-flex-container/${own}`;
     const single = keyword(el, 'flex-wrap') === 'nowrap';
     return `flex-${axisFacet(el)}-${single ? 'single' : 'multi'}-line/${own}`;
   }
-  const base: ItemBase = parent === null ? 'root' : keyword(parent, 'display') === 'none' ? 'display-none' : keyword(el, 'display') === 'inline' ? 'inline' : keyword(parent, 'display') === 'flex' ? `flex-${axisFacet(parent)}` : 'block';
+  const base: ItemBase = parent === null ? 'root' : keyword(parent, 'display') === 'none' ? 'display-none' : keyword(el, 'display') === 'inline' ? 'inline' : isAtomicInline(el) ? 'atomic-inline' : isFlexContainer(parent) ? `flex-${axisFacet(parent)}` : 'block';
   const dir = directionFacet(parent === null ? el : parent);
   const position = keyword(el, 'position');
   if (position === 'relative') return `relative-in-${base}/${dir}`;
@@ -111,15 +120,17 @@ export function textContext(el: ResolvedElement, parent: ResolvedElement | null)
   const dir = directionFacet(el);
   const display = keyword(el, 'display');
   if (display === 'none') return `text-in-display-none/${dir}`;
-  if (display === 'flex') return `text-as-anonymous-flex-item/${axisFacet(el)}/${dir}`;
+  if (isFlexContainer(el)) return `text-as-anonymous-flex-item/${axisFacet(el)}/${dir}`;
   // CSS2 §9.2.2: text in an inline box flows in the inline formatting context of the box's block container, and text beside an
   // inline box shares that context, whose line boxes the boxes size (§10.8): both are their own contexts, proven apart.
   if (display === 'inline' && parent !== null) return `text-in-inline/${dir}`;
+  // CSS2 §9.2.4: text beside an atomic inline shares the line boxes the atomic sizes, its own context (INL2a).
+  if (el.children.some((c) => c.kind === 'element' && isAtomicInline(c))) return `text-beside-atomic/${dir}`;
   if (el.children.some((c) => c.kind === 'element' && keyword(c, 'display') === 'inline')) return `text-beside-inline/${dir}`;
   // CSS2 §9.2.1.1: text beside block-level boxes is wrapped in an anonymous block.
   if (el.children.some((c) => c.kind === 'element' && keyword(c, 'display') !== 'none')) return `text-in-anonymous-block/${dir}`;
   // css-flexbox-1 §4.1: an absolutely positioned child of a flex container is not a flex item.
-  if (parent !== null && keyword(parent, 'display') === 'flex' && keyword(el, 'position') !== 'absolute') return `text-in-flex-item/${axisFacet(parent)}/${dir}`;
+  if (parent !== null && isFlexContainer(parent) && keyword(el, 'position') !== 'absolute') return `text-in-flex-item/${axisFacet(parent)}/${dir}`;
   return `text-in-block/${dir}`;
 }
 

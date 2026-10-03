@@ -214,7 +214,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
-    display: keyword<Display>(id, get, 'display', ['block', 'flex', 'inline']),
+    display: keyword<Display>(id, get, 'display', ['block', 'flex', 'inline', 'inline-block', 'inline-flex']),
     position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute']),
     top: inset(id, get, 'top', l),
     right: inset(id, get, 'right', l),
@@ -350,8 +350,11 @@ export function assertTextCarriesContainer(container: LayoutStyle, containerId: 
   }
 }
 
-/** CSS2 §9.2.2: inline-level content: text, and an element whose box is an inline box (display: inline, <br> included). */
-const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || displayOf(c) === 'inline';
+/** CSS2 §9.2.4: an atomic inline, an inline-block or inline-flex box among inline content (INL2a). */
+const isAtomic = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'element' && (displayOf(c) === 'inline-block' || displayOf(c) === 'inline-flex');
+
+/** CSS2 §9.2.2: inline-level content: text, an element whose box is an inline box (display: inline, <br> included), or an atomic inline. */
+const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || displayOf(c) === 'inline' || isAtomic(c);
 
 type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly mode: LowerMode };
 
@@ -370,11 +373,17 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
   }
   const kids = c.children.filter((k) => k.kind === 'text' || displayOf(k) !== 'none');
-  const block = kids.find((k) => !isInlineLevel(k));
+  const block = kids.find((k) => !isInlineLevel(k) || isAtomic(k));
   if (block !== undefined && block.kind === 'element') {
+    if (isAtomic(block)) throw new LoweringError(block.element.address, 'display', `atomic inline <${block.element.tag}> ${block.element.address} inside inline box ${id} is not laid out (INL2c)`);
     throw new LoweringError(block.element.address, 'display', `block-level <${block.element.tag}> ${block.element.address} inside inline box ${id} (CSS2 §9.2.1.1 block-in-inline) is not laid out`);
   }
   return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, l)) };
+}
+
+/** A block container's inline-level child: an atomic inline is a box among its inline content (INL2a), the rest lowerInline. */
+function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | InlineChild {
+  return isAtomic(c) ? lowerBox(c as ResolvedElement, l) : lowerInline(c, l);
 }
 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box inherits the inherited properties of its enclosing box and takes the
@@ -388,7 +397,7 @@ function anonymousBox(parent: ResolvedElement, id: string, items: readonly (Reso
   // Every non-inherited property of an anonymous box is its initial value.
   const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), l.faults, l.ua, { em: null, rem: null });
   for (const t of items) if (t.kind === 'text') assertTextCarriesContainer(style, id, t);
-  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), children: items.map((c) => lowerInline(c, l)) };
+  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), children: items.map((c) => lowerInlineLevel(c, l)) };
 }
 
 /**
@@ -411,7 +420,7 @@ function lowerBox(el: ResolvedElement, l: Lowerer): LayoutBox {
   const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
   const style = lowerStyle(el, l.faults, l.ua, l.rootFontSize);
   const inline = kids.filter(isInlineLevel);
-  const wrap = inline.length > 0 && (displayOf(el) === 'flex' || inline.length !== kids.length);
+  const wrap = inline.length > 0 && (displayOf(el) === 'flex' || displayOf(el) === 'inline-flex' || inline.length !== kids.length);
   const children: (LayoutBox | InlineChild)[] = [];
   let run: (ResolvedElement | ResolvedText)[] = [];
   let anon = 0;
@@ -430,9 +439,10 @@ function lowerBox(el: ResolvedElement, l: Lowerer): LayoutBox {
     }
     else {
       if (c.kind === 'text') assertTextCarriesContainer(style, id, c);
-      children.push(lowerInline(c, l));
+      children.push(lowerInlineLevel(c, l));
     }
   }
   flush();
-  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, children.some((c) => c.kind !== 'box'), l.mode), children };
+  const inlineContent = children.some((c) => c.kind !== 'box' || c.style.display === 'inline-block' || c.style.display === 'inline-flex');
+  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), children };
 }

@@ -21,6 +21,7 @@ import { NO_FONT_FAULTS, SHORTHAND_FAULTS, withFault } from '../../dragon/src/fo
 import type { FontFaults } from '../../dragon/src/fonts/faults.ts';
 import { layoutCases } from '../src/dpr.ts';
 import { FONT_SHORTHAND } from '../src/fixture-groups/font-shorthand.ts';
+import { ATOMIC_INLINE } from '../src/fixture-groups/atomic-inline.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
 import { repoPath } from '../src/paths.ts';
@@ -168,11 +169,14 @@ describe('the font-shorthand group', () => {
   });
 
   it('follows text-weight and adds exactly its own layout cases', () => {
-    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-2)).toEqual(['font-shorthand', 'text-decoration']);
+    // INL2a appends the atomic-inline group after text-decoration (rejects only); its cases follow these.
+    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-3)).toEqual(['font-shorthand', 'text-decoration', 'atomic-inline']);
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     const added = FONT_SHORTHAND.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
-    expect(ids.slice(-added.length)).toEqual(added);
-    expect(ids.length).toBe(514 + added.length);
+    const later = ATOMIC_INLINE.filter((f) => f.kind === 'layout').flatMap((f) => f.environments.map((d) => (d === 'rtl' ? `${f.id}-rtl` : f.id)));
+    expect(ids.slice(514, 514 + added.length)).toEqual(added);
+    expect(ids.slice(514 + added.length)).toEqual(later);
+    expect(ids.length).toBe(514 + added.length + later.length);
   });
 });
 

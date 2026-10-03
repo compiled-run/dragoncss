@@ -1,0 +1,15 @@
+{
+  "case": "atomic-inline-breaks",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"around:text0","data":"aaa","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"around:text1","data":"bbb","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"before:text0","data":"aaaa","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"before:text1","data":"bbb","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"space:text0","data":"aa ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"space:text1","data":" bb","lines":1,"units":[0,0,0],"blank":[0]},
+    {"id":"wrapped:text0","data":"aa ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"wrapped:text1","data":" bb cc dd","lines":3,"units":[0,0,0,0,1,1,1,2,2],"blank":[0,3,6]}
+  ]
+}
