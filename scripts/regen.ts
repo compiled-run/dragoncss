@@ -628,6 +628,15 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
       const after = io.snapshot();
       if (r.code !== 0 && !(job.step.verdict?.(r.code, r.log) ?? false)) {
         running.delete(name);
+        // Its partial outputs stay on disk; take them into the tree so the steps still running are not blamed for them.
+        const own = matcher(job.step.outputs);
+        const next = new Map(tree);
+        for (const p of changedPaths(tree, after).filter(own)) {
+          const b = after.get(p);
+          if (b === undefined) next.delete(p);
+          else next.set(p, b);
+        }
+        tree = next;
         const last = r.log.split('\n').slice(-40).join('\n');
         error ??= `${name} exited ${r.code}; the last lines of its output:\n${last}`;
         continue;

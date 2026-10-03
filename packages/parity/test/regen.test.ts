@@ -297,6 +297,23 @@ describe('pnpm regen chain', () => {
     expect(v.store.entries.size).toBe(0);
   });
 
+  it('lets the steps running beside a failed one finish and record, without blaming them for its partial outputs', async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => (release = r));
+    const w = new World(SOURCES, {
+      gen: (f) => (f.set('out/a', 'partial'), { code: 2, log: 'boom' }),
+      other: async (f) => {
+        await gate;
+        f.set('out/c', 'C');
+      },
+    });
+    const run = regen([CHAIN[0]!, CHAIN[2]!], { ...opts, jobs: 2 }, w.io());
+    setTimeout(release, 20);
+    const r = await run;
+    expect(r).toMatchObject({ ok: false, error: 'gen exited 2; the last lines of its output:\nboom', changed: ['out/a', 'out/c'] });
+    expect([...w.store.entries.keys()].map((k) => k.split('\0')[0])).toEqual(['other']);
+  });
+
   it('accepts a non-zero exit only when the step judges it a recorded verdict', async () => {
     const judge: Step = { ...CHAIN[0]!, verdict: (code, log) => code === 1 && log === 'all written\n' };
     const impl = (log: string): Impl => (f) => (f.set('out/a', 'A'), { code: 1, log });
