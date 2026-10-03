@@ -629,4 +629,17 @@ describe.runIf(process.env.DRAGON_REGEN_CHECK === '1')('pnpm regen --check on th
       writeFileSync(repoPath(file), original);
     }
   }, 3_600_000);
+
+  it('rebuilds byte-identical outputs with --force, which trusts no recorded entry', () => {
+    const outputs = (): Map<string, string> => {
+      const t = snapshotTree(repoPath('.'));
+      const own = (p: string): boolean => STEPS.some((s) => s.outputs.some((g) => matches(g, p)));
+      return new Map([...t].filter(([p]) => own(p)));
+    };
+    const before = outputs();
+    const forced = spawnSync('pnpm', ['-s', 'regen', '--force'], { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    expect(forced.status, forced.stdout + forced.stderr).toBe(0);
+    const after = outputs();
+    expect([...new Set([...before.keys(), ...after.keys()])].filter((p) => before.get(p) !== after.get(p))).toEqual([]);
+  }, 7_200_000);
 });
