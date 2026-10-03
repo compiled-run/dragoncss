@@ -51,7 +51,10 @@ describe('the gradient device plants', () => {
     expect(plantVerdict([f('device-pixels', 'pixel', 'gradient:right')], null, rule).caught).toBe(true);
     expect(plantVerdict([f('device-pixels', 'pixel', 'interior:right')], null, rule).caught).toBe(false);
     expect(plantVerdict([f('device-pixels', 'pixel', 'gradient:right'), f('device-frames', 'frame-chrome', 'right')], null, rule).caught).toBe(false);
-    expect(plantVerdict([f('device-pixels', 'pixel', 'interior:grad-group')], null, PLANT_RULES['gradient-unpremultiplied-upload']).caught).toBe(true);
+    // Retargeted from interior:grad-group: gradient-backdrop lost its opacity groups when R6(b) was refused, and the dormant plant
+    // (DORMANT_PLANTS) now names the gradient points of the R6(a) stacks it would darken once a translucent raster returns.
+    expect(plantVerdict([f('device-pixels', 'pixel', 'gradient:beneath')], null, PLANT_RULES['gradient-unpremultiplied-upload']).caught).toBe(true);
+    expect(plantVerdict([f('device-pixels', 'pixel', 'interior:beneath')], null, PLANT_RULES['gradient-unpremultiplied-upload']).caught).toBe(false);
   });
 });
 

@@ -68,7 +68,7 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'outline-offset-1': ['outline-solid'],
   // gradient-linear's gradient points (rule gradient:<id>) see a 1 device px shift of every raster.
   'gradient-offset-1': ['gradient-linear'],
-  // gradient-backdrop's translucent groups (ids grad-group*) paint translucent raster pixels, which an unpremultiplied upload darkens.
+  // Dormant (DORMANT_PLANTS): gradient-backdrop's stacks are the ones a translucent raster would come from once R6(b) or R6(c) returns.
   'gradient-unpremultiplied-upload': ['gradient-backdrop'],
   // visibility-paint's hidden boxes (ids hid-*) paint red when the writer is ignored; its visible children (kid-*) vanish when the
   // writer hides the box view itself.
@@ -86,7 +86,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'foreground-under': /^glyph:/,
   'outline-offset-1': /^(border|edge):[^:]+:outline-/,
   'gradient-offset-1': /^gradient:/,
-  'gradient-unpremultiplied-upload': /^interior:grad-group/,
+  'gradient-unpremultiplied-upload': /^gradient:/,
   'visibility-ignored': /^interior:hid-/,
   'visibility-subtree': /^interior:kid-/,
 };
@@ -105,6 +105,15 @@ export const PLANT_LANES: { readonly [P in PaintPlant]: 'device-pixels' | 'devic
   'visibility-ignored': 'device-pixels',
   'visibility-subtree': 'device-pixels',
 };
+/**
+ * Plants kept in the registry but not run, each with why no check can observe it now. bg2-reference.test.ts proves the reason
+ * (the plant's output equals the unplanted output on every case) and fails once the refusals that make it true are lifted while
+ * the plant is still listed here, so a dormant plant cannot stay dormant silently.
+ */
+export const DORMANT_PLANTS: { readonly [P in PaintPlant]?: string } = {
+  'gradient-unpremultiplied-upload': 'unobservable while R6(b) and R6(c) are refused: every supported raster pixel has alpha 0 or 255',
+};
+
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
 /** The axis each raster plant moves every glyph along, by PLANT_SHIFT_DEVICE_PX. */
