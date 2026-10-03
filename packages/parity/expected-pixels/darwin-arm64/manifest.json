@@ -507,7 +507,9 @@
         {"case":"text-ahem-fractional","width":800,"height":600,"sha256":"da8cfcd96527a7ae7a0fe8f6a507bf6ec3988cefb96fcb2ee8a2b3d86aa4a9b3"},
         {"case":"text-calibration-lato","width":800,"height":600,"sha256":"a29cde3e7e9c86335a806cb86d7049d7aafffab5d145fdb0b3b7f4af8a651c62"},
         {"case":"text-calibration-sans","width":800,"height":600,"sha256":"6cc9c633c6cedc100a6d2cb75797de7e00d381af9446f42a138a9a3260bff222"},
-        {"case":"text-calibration-mono","width":800,"height":600,"sha256":"da2fcd27498e6af07c250abc640cb89088de9c63b85e9918c198d1f44cf81af1"}
+        {"case":"text-calibration-mono","width":800,"height":600,"sha256":"da2fcd27498e6af07c250abc640cb89088de9c63b85e9918c198d1f44cf81af1"},
+        {"case":"inline-tags-faces","width":800,"height":600,"sha256":"2cb7adb1e331a1b32190c5029760aa44eab68a411d76088f237c19994cd831a7"},
+        {"case":"inline-tags-faces-rtl","width":800,"height":600,"sha256":"bc2f67c523a54eed965b168fc5685039ed1242d2dceb5beb32d77889407bb8bf"}
       ]
     },
     {
@@ -1014,7 +1016,9 @@
         {"case":"text-ahem-fractional","width":1200,"height":900,"sha256":"0af2b86750532eff6317721faee715b708112eaa621d797c2212787867a661ef"},
         {"case":"text-calibration-lato","width":1200,"height":900,"sha256":"1a6ec7f3a5e2de097b54809485231753efef929bb56198a38b63a99198a4870c"},
         {"case":"text-calibration-sans","width":1200,"height":900,"sha256":"ae3ceb81991480b4ed7ad63745cbe17231a435e44fba45120dfb1ec59e26be97"},
-        {"case":"text-calibration-mono","width":1200,"height":900,"sha256":"e9f8674bc844c3f9cfa53f587d4f1dcc71d3ffca40d2a34d0e3313d48e4de493"}
+        {"case":"text-calibration-mono","width":1200,"height":900,"sha256":"e9f8674bc844c3f9cfa53f587d4f1dcc71d3ffca40d2a34d0e3313d48e4de493"},
+        {"case":"inline-tags-faces","width":1200,"height":900,"sha256":"3dc50ce1f99d295196e0808ef33dd7b7abe203a18dee911966033d3b60d75547"},
+        {"case":"inline-tags-faces-rtl","width":1200,"height":900,"sha256":"84800709d71fb1f8880af92ecbb5fe6e8116ff7cf2a953a74a29511a11773e11"}
       ]
     },
     {
@@ -1521,7 +1525,9 @@
         {"case":"text-ahem-fractional","width":1050,"height":788,"sha256":"b1c206fae38c45ee7fc7305f3e4582a12b40ae77e18bf2e9f3b77ce53163aa7e"},
         {"case":"text-calibration-lato","width":1050,"height":788,"sha256":"916094f7b59ab4501883484e1cd77f2d560e34a3a09566fbfd36b3ebd1217ebd"},
         {"case":"text-calibration-sans","width":1050,"height":788,"sha256":"73c8c641bb5c4b700950544f42cbb7f2374b1eb54333859094fb62ab8d77d415"},
-        {"case":"text-calibration-mono","width":1050,"height":788,"sha256":"e8b2d8e975d6b103dae4398b76f3cffa880db6ea32d1b55d17a52d9b4ffc9ce7"}
+        {"case":"text-calibration-mono","width":1050,"height":788,"sha256":"e8b2d8e975d6b103dae4398b76f3cffa880db6ea32d1b55d17a52d9b4ffc9ce7"},
+        {"case":"inline-tags-faces","width":1050,"height":788,"sha256":"00b657d797c38fa9a9c5ab840a1061d7c14920ced94fd5e7a9c65d7f5e3435a4"},
+        {"case":"inline-tags-faces-rtl","width":1050,"height":788,"sha256":"a6e5d40d88b091b071c416b8bf37edb078dd47712825038c86f5ab2453a38561"}
       ]
     }
   ]

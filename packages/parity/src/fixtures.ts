@@ -20,6 +20,7 @@ import { UNITS } from './fixture-groups/units.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
+import { INLINE_TAGS } from './fixture-groups/inline-tags.ts';
 import { VALUES } from './fixture-groups/values.ts';
 
 /**
@@ -96,6 +97,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'values', fixtures: VALUES },
   { id: 'text-latin', fixtures: TEXT_LATIN },
   { id: 'text-calibration', fixtures: TEXT_CALIBRATION },
+  { id: 'inline-tags', fixtures: INLINE_TAGS },
 ];
 
 export const FIXTURES: readonly FixtureSpec[] = FIXTURE_GROUPS.flatMap((g) => g.fixtures);

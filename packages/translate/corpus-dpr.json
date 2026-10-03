@@ -49,7 +49,7 @@
     "engine-calc": 4000,
     "units-calc": 50000,
     "engine-inline": 3000,
-    "text-latin": 44
+    "text-latin": 52
   },
   "engineSplit": {
     "ok": 1464,
@@ -69,7 +69,7 @@
     "engine-calc": "fd25c463c7b20bec3a33f9cfeb84b530e91191fb0a3c99e0642e363b78f70f29",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50",
     "engine-inline": "68c9337ca17bdeb3c48e7424b16de8ad9f672beb1a2adf1614b1a206aab9f28e",
-    "text-latin": "7821f660bf16e946477b5e7c6ceb61f76c2604bf3c9df6625af71ee66923f8e4"
+    "text-latin": "f55cc6ffe868b6571f8970c6f608355aec6c0a9a07d4d8b623532d1b0d020b65"
   },
-  "digest": "bf7758310925a3d3e1d4e63aae557984ad83d9196fa9e72cd4d8dbbed1cb7d19"
+  "digest": "a37a7f0eea62941799d75c00b51c475dd47cce7d879c81abcee93440578c631b"
 }
