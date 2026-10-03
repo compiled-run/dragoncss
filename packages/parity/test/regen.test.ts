@@ -41,11 +41,10 @@ class World {
   ran: string[] = [];
   live = 0;
   maxLive = 0;
-  constructor(
-    files: Record<string, string>,
-    readonly impls: Record<string, Impl>,
-  ) {
+  readonly impls: Record<string, Impl>;
+  constructor(files: Record<string, string>, impls: Record<string, Impl>) {
     this.t = new Map(Object.entries(files));
+    this.impls = impls;
   }
   set(files: Record<string, string | null>): this {
     for (const [p, v] of Object.entries(files)) v === null ? this.t.delete(p) : this.t.set(p, v);
@@ -331,7 +330,11 @@ describe('pnpm regen chain', () => {
   });
 
   it('fails a step that edits one of its own inputs, recording nothing', async () => {
-    const w = new World(SOURCES, { ...IMPL, gen: (f) => (f.set('out/a', 'A'), w.set({ 'tools/lib.ts': 'export const f = 2;\n' }), undefined) });
+    const w: World = new World(SOURCES, {});
+    w.impls.gen = (f: Files): void => {
+      f.set('out/a', 'A');
+      w.set({ 'tools/lib.ts': 'export const f = 2;\n' });
+    };
     const r = await regen([CHAIN[0]!], opts, w.io());
     expect(r).toMatchObject({ ok: false, error: 'gen changed files outside its declared outputs: tools/lib.ts' });
     expect(w.store.entries.size).toBe(0);
