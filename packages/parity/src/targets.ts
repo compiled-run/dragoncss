@@ -7,6 +7,8 @@ import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
 import { DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
 import { DUMP_FAULTS } from './native-compare.ts';
 import { repoPath } from './paths.ts';
+import type { LayoutInput } from '../../layout/src/input.ts';
+import { hitRefusal } from '../../layout/src/rt-hit.ts';
 import { SAMPLE_RULES } from './samples.ts';
 
 export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels',
@@ -54,6 +56,21 @@ export const extendedManifest = (): ExtendedManifest => readJson<ExtendedManifes
 /** The milestone-1 case ids the P1 vectors suite reads, in order (corpus-m1-cases.json). */
 export const m1CaseIds = (): readonly string[] => readJson<{ readonly cases: readonly string[] }>('packages/translate/corpus-m1-cases.json').cases;
 
+let hitVectors: number | null = null;
+/** The layout vectors the P1 hit suite runs (translate corpus.ts hitCases): every one whose input rt-hit.ts hitRefusal accepts. */
+function hitVectorCount(): number {
+  if (hitVectors === null) {
+    let n = 0;
+    for (const d of ['', ...DPRS.map((x) => `/dpr-${x}`)]) {
+      for (const f of readdirSync(repoPath(`packages/layout/vectors${d}`)).filter((x) => x.endsWith('.json'))) {
+        if (hitRefusal(readJson<{ readonly input: LayoutInput }>(`packages/layout/vectors${d}/${f}`).input) === null) n++;
+      }
+    }
+    hitVectors = n;
+  }
+  return hitVectors;
+}
+
 let topLevel: readonly string[] | null = null;
 /** Every layout case id, in fixture order: the top-level vectors, and the ids of every DPR set. */
 export function layoutCaseIds(): readonly string[] {
@@ -83,8 +100,8 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'p1', suite: 'library', cases: p1.cases['library'] ?? 0 },
     // ANIM-a2 (notes/T047 section 3.2): one rt case per rt vector record (timing, easing, hold and interpolation).
     { corpus: 'p1', suite: 'rt', cases: ['timing', 'easing', 'hold', 'interp'].reduce((n, f) => n + readJson<{ readonly records: readonly unknown[] }>(`packages/layout/rt-vectors/${f}.json`).records.length, 0) },
-    // SELD-R1b (notes/T047 RT-9): one hit case per layout vector, top-level and at every DPR.
-    { corpus: 'p1', suite: 'hit', cases: ['', ...DPRS.map((d) => `/dpr-${d}`)].reduce((n, d) => n + readdirSync(repoPath(`packages/layout/vectors${d}`)).filter((f) => f.endsWith('.json')).length, 0) },
+    // SELD-R1b (notes/T047 RT-9): one hit case per layout vector, top-level and at every DPR, but those hitTableOf refuses (INL1a).
+    { corpus: 'p1', suite: 'hit', cases: hitVectorCount() },
     { corpus: 'extended', suite: 'engine-dpr', cases: layoutCaseIds().length * x.dprSets.length },
     { corpus: 'extended', suite: 'units-m2', cases: x.unitsPerFunction * x.unitsFunctions.length },
     { corpus: 'extended', suite: 'snap', cases: x.snapVectors + x.snapGenerated },
