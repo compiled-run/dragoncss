@@ -206,8 +206,9 @@ describe('the native refusals', () => {
 describe('BASE pins', () => {
   const git = (...args: string[]): string => execFileSync('git', args, { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 1 << 28 });
   it('the text-weight group follows BASE\'s groups and adds exactly its own layout cases', () => {
-    // TXT-W2 appends font-shorthand after it (font-shorthand.test.ts); TDEC-a text-decoration and INL2a atomic-inline after those.
-    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-4)).toEqual(['text-weight', 'font-shorthand', 'text-decoration', 'atomic-inline']);
+    // TXT-W2 appends font-shorthand after it (font-shorthand.test.ts); TDEC-a text-decoration, INL2a atomic-inline and TXT2-a
+    // text-wrap-break after those.
+    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-5)).toEqual(['text-weight', 'font-shorthand', 'text-decoration', 'atomic-inline', 'text-wrap-break']);
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     const added = TEXT_WEIGHT.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
     expect(ids.slice(502, 502 + added.length)).toEqual(added);
