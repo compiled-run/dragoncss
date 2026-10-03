@@ -95,7 +95,7 @@ public func dragonAfterLayoutGradient(_ v: DragonBoxView, _ shape: DragonBoxShap
     let lu = units_LU_PER_PX
     let obscures = (0..<4).map { k in p.obscures[k] == "always" || (p.obscures[k] == "double" && shape.borders[k] < 3) }
     let box = BackgroundBox(shape.lu[0], shape.lu[1], shape.lu[2], shape.lu[3], JsArray(shape.borders.map { $0 * lu }), JsArray(shape.padding), JsArray(obscures))
-    let paint = BackgroundPaint(box, p.color, JsString(p.colorClip), JsArray(p.layers), p.lastIsBottom, scale, try paintGradient_referenceTileSize(scale), p.layerX, p.layerY)
+    let paint = BackgroundPaint(box, p.color, JsString(p.colorClip), JsArray(p.layers), p.lastIsBottom, scale, try paintGradient_referenceTileSize(scale), p.layerX + shape.rootX / lu, p.layerY)
     let faults = try paintGradient_gradientFaults(JsString("none"))
     let plan = try paintGradient_planBackground(paint, faults)
     let left = dragonCheckedInt(plan.left, "\(v.dragonId) gradient left")
@@ -217,7 +217,7 @@ fun dragonAfterLayoutGradient(v: DragonBoxView, shape: DragonBoxShape, scale: Do
   }
   val obscures = (0 until 4).map { k -> p.obscures[k] == "always" || (p.obscures[k] == "double" && shape.borders[k] < 3.0) }
   val box = BackgroundBox(shape.lu[0], shape.lu[1], shape.lu[2], shape.lu[3], JsArray(shape.borders.map { it * units_LU_PER_PX }.toMutableList()), JsArray(shape.padding.toMutableList()), JsArray(obscures.toMutableList()))
-  val paint = BackgroundPaint(box, p.color, p.colorClip, JsArray(p.layers.toMutableList()), p.lastIsBottom, scale, paintGradient_referenceTileSize(scale), p.layerX, p.layerY)
+  val paint = BackgroundPaint(box, p.color, p.colorClip, JsArray(p.layers.toMutableList()), p.lastIsBottom, scale, paintGradient_referenceTileSize(scale), p.layerX + shape.rootX / units_LU_PER_PX, p.layerY)
   val faults = paintGradient_gradientFaults("none")
   val plan = paintGradient_planBackground(paint, faults)
   val left = dragonCheckedInt(plan.left, v.dragonId + " gradient left")

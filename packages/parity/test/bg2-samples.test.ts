@@ -6,6 +6,7 @@ import { plantVerdict } from '../src/device-lanes.ts';
 import { PLANT_CASES, PLANT_LANES, PLANT_RULES } from '../src/device-run.ts';
 import { BACKEND_OF, nativeCases } from '../src/native-host.ts';
 import { casePoints } from '../src/pixel-reference.ts';
+import { caseRootX, rootScrollX } from '../src/paint-samples/gradient.ts';
 
 const byId = (id: string) => {
   const n = nativeCases().find((c) => c.case.id === id);
@@ -52,4 +53,23 @@ describe('the gradient device plants', () => {
     expect(plantVerdict([f('device-pixels', 'pixel', 'gradient:right'), f('device-frames', 'frame-chrome', 'right')], null, rule).caught).toBe(false);
     expect(plantVerdict([f('device-pixels', 'pixel', 'interior:grad-group')], null, PLANT_RULES['gradient-unpremultiplied-upload']).caught).toBe(true);
   });
+});
+
+describe('the root scroller\'s contents origin (R4, rootScrollX)', () => {
+  const r = (id: string, parent: string | null, x: number) => ({ id, parent, x, y: 0, width: 64, height: 64 });
+  const boxes = [r('html', null, 0), r('body', 'html', 0), r('row', 'body', -2048), r('clip', 'body', 0), r('wide', 'clip', -4096)];
+  const abs = new Map(boxes.map((b) => [b.id, b] as const));
+  it('is the leftmost box no clipping box holds in rtl, and 0 in ltr', () => {
+    expect(rootScrollX(boxes as never, abs as never, () => false, true)).toBe(-4096);
+    expect(rootScrollX(boxes as never, abs as never, (id) => id === 'clip', true)).toBe(-2048);
+    expect(rootScrollX(boxes as never, abs as never, (id) => id === 'clip', false)).toBe(0);
+    // html and body never clip here: their overflow propagates to the viewport.
+    expect(rootScrollX(boxes as never, abs as never, (id) => id === 'body' || id === 'html', true)).toBe(-4096);
+  });
+  it('moves the root layer of gradient-rounded-rtl by its 16px overflow, at every device DPR, and of no ltr case', () => {
+    const n = byId('gradient-rounded-rtl');
+    for (const dpr of [2, 3, 2.625]) expect(caseRootX(n.programs[BACKEND_OF.ios], n.case.environment.viewport, dpr)).toBe(-16 * dpr);
+    const l = byId('gradient-rounded');
+    expect(caseRootX(l.programs[BACKEND_OF.ios], l.case.environment.viewport, 2)).toBe(0);
+  }, 600_000);
 });

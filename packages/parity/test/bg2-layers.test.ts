@@ -2,14 +2,18 @@
 // the shader matrix, is the one the compiler predicts. Every gradient case opens in Chrome 145 at DPR 2; CDP LayerTree lists the
 // composited layers with the DOM node each paints for. The compiler puts every box Dragon draws in the root scroller's layer
 // (gradientLayerOf, origin 0, 0, in the write), so no gradient box may own a layer of its own, and the root layer must start at the
-// page origin. The planted prediction (each box in a layer of its own) must be caught.
+// page origin. The planted prediction (each box in a layer of its own) must be caught. The root scroller's scrolling contents start
+// at its scroll origin: in a right-to-left document overflowing to the left, Chrome's contents layer is wider than the viewport by
+// that overflow, which must equal the origin the device computes (paint-samples/gradient.ts rootScrollX); the planted origin 0 must
+// be caught on a case that overflows.
 import type { CDPSession, Page } from 'playwright';
 import { describe, expect, it } from 'vitest';
 import { launchChrome, openPage } from '../src/chrome.ts';
 import { atDpr } from '../src/dpr.ts';
 import { BACKEND_OF, nativeCases } from '../src/native-host.ts';
+import { caseRootX } from '../src/paint-samples/gradient.ts';
 
-type Layer = { readonly layerId: string; readonly parentLayerId?: string; readonly backendNodeId?: number; readonly offsetX: number; readonly offsetY: number; readonly drawsContent: boolean };
+type Layer = { readonly layerId: string; readonly parentLayerId?: string; readonly backendNodeId?: number; readonly offsetX: number; readonly offsetY: number; readonly width?: number; readonly drawsContent: boolean };
 type Prediction = { readonly id: string; readonly origin: readonly [number, number] };
 
 /** The composited layers of the page once LayerTree has reported them; two frames make Chrome commit, and 20 s without a report fails. */
@@ -56,6 +60,7 @@ describe('BG2 R4: each gradient box rasters in the layer the compiler predicts (
     expect(cases.length).toBeGreaterThanOrEqual(10);
     const browser = await launchChrome(2);
     let boxes = 0;
+    let overflowing = 0;
     try {
       for (const n of cases) {
         const page = await openPage(browser, n.case.authoredHtml, atDpr(n.case.environment, 2));
@@ -71,6 +76,15 @@ describe('BG2 R4: each gradient box rasters in the layer the compiler predicts (
             const d = (await cdp.send('DOM.describeNode', { nodeId: q.nodeId })) as { node: { backendNodeId: number } };
             nodeOf.set(p.id, d.node.backendNodeId);
           }
+          // The root scroller's contents origin: in rtl, the contents layer's width beyond the viewport layer's is the overflow on the left.
+          const reasons = await Promise.all(found.map(async (l) => ((await cdp.send('LayerTree.compositingReasons', { layerId: l.layerId })) as { compositingReasonIds: string[] }).compositingReasonIds));
+          const contents = found.find((_l, k) => (reasons[k] as string[]).includes('RootScroller'));
+          const viewportLayer = found.find((_l, k) => (reasons[k] as string[]).includes('Viewport'));
+          if (contents === undefined || viewportLayer === undefined) throw new Error(`${n.case.id}: no root scroller contents or viewport layer`);
+          const chromeRootX = n.case.environment.direction === 'rtl' ? -((contents.width ?? 0) - (viewportLayer.width ?? 0)) : 0;
+          const predictedRootX = caseRootX(n.programs[BACKEND_OF.android], n.case.environment.viewport, 2);
+          expect(predictedRootX, `${n.case.id} root scroll origin`).toBe(chromeRootX);
+          if (chromeRootX !== 0) overflowing++;
           boxes += predictions.length;
           expect(layerProblems(found, nodeOf, predictions), n.case.id).toEqual([]);
           // The plant: predicting each box in a layer of its own at its page origin must be caught.
@@ -82,8 +96,10 @@ describe('BG2 R4: each gradient box rasters in the layer the compiler predicts (
     } finally {
       await browser.close();
     }
-    console.log(`bg2-layers: ${cases.length} cases, ${boxes} gradient boxes, all in the root layer as predicted`);
+    console.log(`bg2-layers: ${cases.length} cases, ${boxes} gradient boxes, all in the root layer as predicted; ${overflowing} rtl cases scrolled to their origin`);
     expect(boxes).toBeGreaterThan(50);
+    // The plant: the origin 0 on a case that overflows to the left must differ from Chrome's (gradient-rounded-rtl).
+    expect(overflowing).toBeGreaterThan(0);
   }, 1_800_000);
   it('reports a box Chrome composites apart from a root prediction', () => {
     const found: Layer[] = [{ layerId: 'r', offsetX: 0, offsetY: 0, drawsContent: true }, { layerId: 'a', parentLayerId: 'r', backendNodeId: 7, offsetX: 10, offsetY: 4, drawsContent: true }];

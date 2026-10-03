@@ -3,7 +3,7 @@
 // each linear slope folded from the measured libm table, R3), top first, and the origin of the composited layer it rasters in
 // (R4); the device rasterises them with the translated paint-gradient.ts at every layout. Nothing on the device parses CSS.
 import type { BoxItem, GradientSpec, LayerGeometrySpec, Obscures } from '../../analysis/paint-values/gradient.ts';
-import { gradientLayerOf, linearSlope, obscuresOf, resolvedLayers } from '../../analysis/paint-values/gradient.ts';
+import { bleedAvoidanceOf, gradientLayerOf, linearSlope, obscuresOf, resolvedLayers } from '../../analysis/paint-values/gradient.ts';
 import type { ResolvedValue } from '../../analysis/resolve.ts';
 import type { Rgba8 } from '../../css/color.ts';
 import type { ColorLonghand, Longhand } from '../../css/properties.ts';
@@ -29,7 +29,10 @@ export type GradientWrite = {
   readonly obscures: readonly Obscures[];
   /** The gradient layers, top first; layers whose image is none paint nothing and are left out. */
   readonly layers: readonly LoweredLayer[];
-  /** Whether the last gradient layer is the box's bottom layer (Blink paints a bottom border-box layer on a fast path). */
+  /**
+   * Whether the last gradient layer is the box's bottom layer and Blink may paint it on PaintFastBottomLayer: not when the box
+   * shrinks its background for bleed avoidance (CanUseBottomLayerFastPath; bleedAvoidanceOf 'shrink').
+   */
   readonly lastIsBottom: boolean;
   /** The composited layer's origin in page device px (R4): the root scroller's is (0, 0). */
   readonly layerOrigin: readonly [number, number];
@@ -69,6 +72,8 @@ export const GRADIENT_LOWERING: PaintLowering<GradientWrite> = {
       return obscuresOf(v.kind === 'keyword' ? v.value : '', colors[`border-${side}-color` as ColorLonghand]);
     });
     if (gradientLayerOf(el).kind !== 'root') throw new ProgramError(`${id}: a gradient box in a composited layer the native check refuses (BG2c)`);
-    return [{ kind: 'background-layers', color: colors['background-color'], colorClip: bottom.geometry.clip, obscures, layers: lowered, lastIsBottom: bottom.image.kind === 'gradient', layerOrigin: [0, 0] }];
+    const bleed = bleedAvoidanceOf(el);
+    if (bleed === 'layer') throw new ProgramError(`${id}: a rounded box whose background Chrome paints into a bleed-avoidance layer, which the native check refuses (BG2c)`);
+    return [{ kind: 'background-layers', color: colors['background-color'], colorClip: bottom.geometry.clip, obscures, layers: lowered, lastIsBottom: bottom.image.kind === 'gradient' && bleed !== 'shrink', layerOrigin: [0, 0] }];
   },
 };

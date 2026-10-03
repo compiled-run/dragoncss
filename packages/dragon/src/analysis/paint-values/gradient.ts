@@ -83,6 +83,7 @@ export const BG2_CONIC = 'BG2-c';
 export const BG2_URL = 'BG2-u';
 export const BG2_TILING = 'BG2-t';
 export const CALC_P = 'CALC-p';
+export const BG2_X = 'BG2-x';
 
 /** Splits the top-level tokens of a value into its comma-separated items (white space already removed). */
 export function commaItems(tokens: readonly CssNode[]): CssNode[][] {
@@ -641,6 +642,51 @@ export function boxWidths(el: ResolvedElement): BoxWidths {
   return { borders, padding: SIDE_NAMES.map((s) => px(`padding-${s}`)), obscures };
 }
 
+/**
+ * Blink's bleed avoidance for a box's background (BoxDecorationData::ComputeBleedAvoidance, core/paint/box_decoration_data.cc
+ * 23-70, Chromium BSD), for a box with a background image that is neither html nor painted in contents space. 'layer'
+ * (kBackgroundBleedClipLayer) clips to the rounded border and paints the background into a saveLayer: Skia sizes that layer to
+ * the anti-aliased clip's coverage bounds in each cc tile, and its origin starts the dither and the shader matrix (Chrome's
+ * snapshot command log shows save, clipRRect, saveLayer, the layers' drawRects, restore). 'shrink'
+ * (kBackgroundBleedShrinkBackground) turns off PaintFastBottomLayer for image layers (box_painter_base.cc CanUseBottomLayerFastPath).
+ * - A box with a border radius and a painted border (a side with a width and a style other than none or hidden): 'shrink' when
+ *   every side obscures the background edge (BorderEdge::ObscuresBackgroundEdge, core/style/border_edge.cc: an opaque colour and
+ *   a style other than hidden, dotted or dashed), else 'layer'.
+ * - A box with a border radius and no painted border: 'layer' when the background colour is not fully transparent or there is
+ *   more than one layer, since a gradient never occludes the layers under it (FillLayer::ImageIsOpaque needs an image size, and
+ *   StyleGeneratedImage::ImageSize returns the empty default object size).
+ * - Otherwise 'none'.
+ */
+export type BleedAvoidance = 'none' | 'shrink' | 'layer';
+export function bleedAvoidanceOf(el: ResolvedElement): BleedAvoidance {
+  const radius = RADIUS_LONGHANDS.some((p) => {
+    const c = cornerComponents((el.props.get(p) as ResolvedValue).value);
+    return c !== null && (c[0].value !== 0 || c[1].value !== 0);
+  });
+  if (!radius) return 'none';
+  const colors = usedColors(el);
+  const styleOf = (s: string): string => {
+    const v = (el.props.get(`border-${s}-style` as never) as ResolvedValue).value;
+    return v.kind === 'keyword' ? v.value : '';
+  };
+  if (boxWidths(el).borders.some((b) => b !== 0)) {
+    const obscure = SIDE_NAMES.every((s) => colors[`border-${s}-color`].alpha === 255 && styleOf(s) !== 'hidden' && styleOf(s) !== 'dotted' && styleOf(s) !== 'dashed');
+    return obscure ? 'shrink' : 'layer';
+  }
+  return colors['background-color'].alpha !== 0 || resolvedLayers(el).length > 1 ? 'layer' : 'none';
+}
+
+/** The properties whose value other than none transforms a subtree (css-transforms-1 and -2). */
+export const TRANSFORM_PROPERTIES = ['transform', 'translate', 'rotate', 'scale'] as const;
+
+/** Whether an element transforms its subtree: one of TRANSFORM_PROPERTIES has a value other than none. */
+export function transformsSubtree(el: ResolvedElement): boolean {
+  return TRANSFORM_PROPERTIES.some((p) => {
+    const v = el.props.get(p as unknown as Longhand);
+    return v !== undefined && !(v.value.kind === 'keyword' && v.value.value === 'none');
+  });
+}
+
 /** The layers of a resolved element (elementLayers over its props). */
 export function resolvedLayers(el: ResolvedElement): ElementLayer[] {
   return elementLayers((p) => (el.props.get(p) as ResolvedValue).value);
@@ -664,7 +710,8 @@ function refuse(el: ResolvedElement, at: ResolvedValue, targets: readonly string
     const id = `${t}|${key}|${el.element.address}`;
     if (reported.has(id)) continue;
     reported.add(id);
-    diagnostics.push(diagnostic(code, { origin, target: t, message, manual, basis: 'computed-value' }));
+    // An unproven context keeps the catalogue's why (its profile-row reason); only an unsupported value has a computed-value why.
+    diagnostics.push(code === 'DRAGON_UNSUPPORTED_VALUE' ? diagnostic(code, { origin, target: t, message, manual, basis: 'computed-value' }) : diagnostic(code, { origin, target: t, message, manual }));
   }
 }
 
@@ -672,10 +719,13 @@ function refuse(el: ResolvedElement, at: ResolvedValue, targets: readonly string
  * The element refusals of BG2. Every target: a gradient on html or body (it paints the canvas) or on an inline box (painted per
  * line fragment), which no target models yet (BG2c). The native targets only: a background colour clipped inside a border that
  * shows the backdrop (reported at background-clip); an angle off the measured grid or a corner (R3, BG2b); a layer Chrome would
- * tile (R8, BG2-t); a stack translucent over an unknown backdrop (R6, BG2c); a composited layer Dragon does not model (R4, BG2c).
+ * tile (R8, BG2-t); a rounded box whose background Chrome paints into a bleed-avoidance layer (BG2c); a stack translucent over
+ * an unknown backdrop (R6, BG2c); a composited layer Dragon does not model (R4, BG2c); a gradient in a transformed subtree (R13,
+ * BG2-x, refused for every gradient below an element whose transform is not the identity).
  */
 const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported) => {
   const native = targets.filter((t) => t !== 'web');
+  if (transformsSubtree(el)) refuseTransformed(el, el, native, diagnostics, reported);
   const clip = el.props.get('background-clip') as ResolvedValue | undefined;
   if (clip !== undefined && clip.declaration !== null) {
     const reason = colourClipRefusal(resolvedLayers(el), usedColors(el)['background-color'], boxWidths(el));
@@ -722,6 +772,10 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported) =
     refuse(el, image, native, 'background-layers-rounded-clip', `background-image on ${el.element.address}: a rounded box clips a padding-box or content-box layer to its inner rounded box, and the native targets clip the layers to the rounded border box only (${BG2C})`, 'Clip the background to the border box on a rounded box.', diagnostics, reported);
     return;
   }
+  if (bleedAvoidanceOf(el) === 'layer') {
+    refuse(el, image, native, 'background-layers-bleed-layer', `background-image on ${el.element.address}: Chrome paints the background of this rounded box into a bleed-avoidance layer (kBackgroundBleedClipLayer: a border radius with a border not every side of which is opaque and solid, or with a background colour or more than one layer), whose origin in each cc tile is the anti-aliased clip's coverage bounds; that origin starts the dither and the shader matrix, and the native targets do not model it (${BG2C})`, 'On a rounded box, give the gradient one layer over a transparent background-color, or a border whose every side is opaque and neither dotted, dashed nor hidden.', diagnostics, reported, 'DRAGON_UNPROVEN_CONTEXT');
+    return;
+  }
   const colors = usedColors(el);
   const opacity = opacityOf((el.props.get('opacity') as ResolvedValue).value) ?? 1;
   const translucent = translucencyRefusal(layers, colors['background-color'], colors.color, boxWidths(el), opacity);
@@ -734,6 +788,19 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported) =
     return;
   }
 };
+
+/**
+ * R13 (BG2-x): Chrome rasterises a gradient under a transform with the transform in the shader matrix, and a native transform of a
+ * bitmap Dragon already rasterised resamples it; every gradient in a subtree whose transform is not the identity is refused on the
+ * native targets, at its background-image, until BG2-x rasterises such layers in device space.
+ */
+function refuseTransformed(el: ResolvedElement, root: ResolvedElement, native: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const image = el.props.get('background-image') as ResolvedValue | undefined;
+  if (image !== undefined && resolvedLayers(el).some((l) => l.image.kind === 'gradient')) {
+    refuse(el, image, native, 'background-layers-transformed', `background-image on ${el.element.address}: the gradient is inside ${root.element.address}, whose transform is not the identity; Chrome rasterises it with the transform in the shader matrix, and the native targets would resample a bitmap drawn untransformed (${BG2_X})`, 'Remove the transform from the gradient box and its ancestors.', diagnostics, reported, 'DRAGON_UNPROVEN_CONTEXT');
+  }
+  for (const c of el.children) if (c.kind === 'element') refuseTransformed(c, root, native, diagnostics, reported);
+}
 
 /**
  * The layer longhands' em and rem lengths as px (R7, as PNT1 radius.ts computeComponent folds radii), and the absolute lengths of

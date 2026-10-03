@@ -1,12 +1,14 @@
 // BG2-a2 (notes/T074-bg2-spec.md): the typed reading of gradients and layer lists; the refusals, at parse time for every target
 // and in the element check for the native targets only (an angle off the measured grid and a corner, R3; tiling, R8; a translucent
-// stack, R6; a clipped colour); em, rem and absolute lengths folded to px (R7); and the slope the compiler folds from the measured
-// libm table (R3) and the layer it rasters in (R4).
+// stack, R6; a clipped colour; a rounded box Chrome paints into a bleed-avoidance layer; a gradient in a transformed subtree,
+// R13); em, rem and absolute lengths folded to px (R7); and the slope the compiler folds from the measured libm table (R3) and the
+// layer it rasters in (R4).
 import { parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { describe, expect, it } from 'vitest';
 import type { BoxWidths, ElementLayer, LayerGeometrySpec } from '../src/analysis/paint-values/gradient.ts';
-import { colourClipRefusal, commaItems, elementLayers, gradient, gradientLayerOf, imageItem, linearSlope, obscuresOf, position, positionAxisItem, repeatItem, tilingRefusal, translucencyRefusal, valueItems } from '../src/analysis/paint-values/gradient.ts';
+import { colourClipRefusal, commaItems, elementLayers, GRADIENT_VALUES, gradient, gradientLayerOf, imageItem, linearSlope, obscuresOf, position, positionAxisItem, repeatItem, tilingRefusal, transformsSubtree, translucencyRefusal, valueItems } from '../src/analysis/paint-values/gradient.ts';
+import type { Diagnostic } from '../src/types.ts';
 import type { CssValue } from '../src/css/values.ts';
 import { emitNativeSupport, SUPPORT_PLANTS } from '../src/emit/native-support.ts';
 import { GRADIENT_EMITTER, slopeBits } from '../src/emit/paint/gradient.ts';
@@ -198,8 +200,46 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
   });
   it('refuses a padding-box or content-box clip on a rounded box on ios and android (the raster takes the rounded border box only)', () => {
     expect(compile('border-radius: 6px; padding: 2px; background: linear-gradient(red, blue) padding-box white;')[0]).toContain('inner rounded box');
-    expect(compile('border-radius: 6px; background: linear-gradient(red, blue) white;')).toEqual([]);
+    expect(compile('border-radius: 6px; background: repeating-linear-gradient(red, blue 4px);')).toEqual([]);
     expect(compile('border-radius: 6px; padding: 2px; background: linear-gradient(red, blue) padding-box white;', { web: {} })).toEqual([]);
+  });
+  it('refuses a rounded box whose background Chrome paints into a bleed-avoidance layer, on ios and android only (BG2c)', () => {
+    const refused = (rule: string): string[] => compile(rule).filter((m) => m.includes('bleed-avoidance layer')).map((m) => m.split(' ').slice(0, 2).join(' '));
+    const both = ['DRAGON_UNPROVEN_CONTEXT android', 'DRAGON_UNPROVEN_CONTEXT ios'];
+    // No painted border: a background colour, or more than one layer (a gradient never occludes the layers beneath it).
+    expect(refused('border-radius: 6px; background: linear-gradient(red, blue) white;')).toEqual(both);
+    expect(refused('border-radius: 50%; background: radial-gradient(red, transparent), repeating-radial-gradient(red, blue 4px);')).toEqual(both);
+    expect(refused('border-top-left-radius: 0 4px; background: linear-gradient(red, blue) white;')).toEqual(both);
+    expect(refused('border-radius: 6px; background: linear-gradient(red, blue);')).toEqual([]);
+    expect(refused('background: linear-gradient(red, blue) white, linear-gradient(red, blue);')).toEqual([]);
+    // A painted border: every side must obscure the background edge (opaque, and not hidden, dotted or dashed).
+    expect(refused('border-radius: 6px; border: 2px solid #123; background: radial-gradient(red, transparent), linear-gradient(red, blue) white;')).toEqual([]);
+    expect(refused('border-radius: 6px; border: 4px double #123; background: linear-gradient(red, blue) white;')).toEqual([]);
+    // (A dashed or dotted side on a rounded box is PNT1b's refusal, and a repeating layer under a border that shows is BG2-t's.)
+    expect(refused('border-radius: 6px; border: 2px solid rgba(0, 0, 0, 0.5); background: linear-gradient(red, blue) no-repeat white;')).toEqual(both);
+    expect(refused('border-radius: 6px; border-bottom: 2px solid #123; color: rgba(0, 0, 0, 0.5); background: linear-gradient(red, blue) no-repeat;')).toEqual(both);
+    expect(refused('border-radius: 6px; border-bottom: 2px solid #123; background: linear-gradient(red, blue) no-repeat;')).toEqual([]);
+    expect(compile('border-radius: 6px; background: linear-gradient(red, blue) white;', { web: {} })).toEqual([]);
+  });
+  it('R13 (BG2-x): refuses every gradient in a subtree whose transform is not the identity, on the native targets', () => {
+    const v = (value: CssValue) => ({ value, origin: { kind: 'synthetic' }, span: null, declaration: null, declared: null, losing: [] });
+    const at = (address: string) => ({ address, tag: 'div', node: { origin: { kind: 'synthetic' } } });
+    const layered = (image: string) => [['background-image', v({ kind: 'other', text: image } as CssValue)], ['background-position-x', v({ kind: 'percentage', value: 0 } as CssValue)], ['background-position-y', v({ kind: 'percentage', value: 0 } as CssValue)], ['background-size', v({ kind: 'keyword', value: 'auto' } as CssValue)], ['background-repeat', v({ kind: 'keyword', value: 'repeat' } as CssValue)], ['background-origin', v({ kind: 'keyword', value: 'padding-box' } as CssValue)], ['background-clip', v({ kind: 'keyword', value: 'border-box' } as CssValue)]] as const;
+    const leaf = { kind: 'element', element: at('t/g'), props: new Map(layered('linear-gradient(red,blue)')), children: [] };
+    const plain = { kind: 'element', element: at('t/p'), props: new Map(layered('none')), children: [] };
+    const tree = (transform: CssValue | null) => ({ kind: 'element', element: at('t'), props: new Map(transform === null ? [] : [['transform', v(transform)]]), children: [{ kind: 'element', element: at('t/m'), props: new Map(), children: [leaf, plain] }] });
+    const run = (transform: CssValue | null): string[] => {
+      const out: Diagnostic[] = [];
+      const check = GRADIENT_VALUES.check;
+      if (check === null) throw new Error("the gradient module has no element check");
+      check(tree(transform) as never, ['ios', 'android', 'web'], out, new Set());
+      return out.map((d) => `${d.code} ${d.target} ${d.message.includes('BG2-x') && d.message.startsWith('background-image on t/g:') ? 'BG2-x' : d.message}`);
+    };
+    expect(run({ kind: 'other', text: 'translateX(-18%) rotate(8deg)' } as CssValue)).toEqual(['DRAGON_UNPROVEN_CONTEXT ios BG2-x', 'DRAGON_UNPROVEN_CONTEXT android BG2-x']);
+    expect(run({ kind: 'keyword', value: 'none' } as CssValue)).toEqual([]);
+    expect(run(null)).toEqual([]);
+    expect(transformsSubtree({ props: new Map([['rotate', v({ kind: 'other', text: '8deg' } as CssValue)]]) } as never)).toBe(true);
+    expect(transformsSubtree({ props: new Map([['scale', v({ kind: 'keyword', value: 'none' } as CssValue)]]) } as never)).toBe(false);
   });
   it('folds em and rem to px at computed-value time, and absolute lengths in positions and sizes, as Chrome 145 computes them (R7)', () => {
     const css = 'html { font-size: 20px; } body { margin: 0; } .a { width: 40px; height: 20px; font-size: 10px; background: radial-gradient(circle 2em at 1rem 0.5in, red 1em, blue) right 1em top 1rem / 2em auto no-repeat white; }';
@@ -281,6 +321,18 @@ describe('the gradient module: lowering and emission (BG2-a3)', () => {
     const kotlin = paintWriteLines('android-views', 'v', p.programs['android-views'].nodes.find((n) => n.id === 'a') as never, w);
     expect(kotlin.join('\n')).toContain('jsArrayOf<CssStop>(CssStop(StopColor(0.0, 170.0, 136.0, 255.0), "px", 0.0)');
     expect(GRADIENT_EMITTER.applied({} as never, 'uikit', w as never, 2, {} as never)).toEqual({ layers: 2, kinds: ['radial', 'linear'], slopes: ['00000000', slopeBits(linearSlope(35) as number)], origin: [0, 0], modelled: true });
+  });
+  it('turns off the fast bottom layer of a rounded box that shrinks its background for bleed avoidance (all sides obscure)', () => {
+    const lower = (rule: string) => {
+      const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`body { margin: 0; } .a { width: 40px; height: 20px; ${rule} }`, (r) => [div(r, 'a', ['a'])]));
+      expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message)).toEqual([]);
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      return p.programs.uikit.nodes.find((n) => n.id === 'a')?.writes.find((x) => x.kind === 'background-layers') as { lastIsBottom: boolean } | undefined;
+    };
+    expect(lower('border-radius: 6px; border: 2px solid #123; background: linear-gradient(red, blue) white;')?.lastIsBottom).toBe(false);
+    expect(lower('border: 2px solid #123; background: linear-gradient(red, blue) white;')?.lastIsBottom).toBe(true);
+    expect(lower('border-radius: 6px; background: linear-gradient(red, blue);')?.lastIsBottom).toBe(true);
   });
   it('registers the writer, the after-layout raster, the background-layers stage, the readback and the two plants; uploads never convert', () => {
     for (const [b, ext] of [['uikit', 'swift'], ['android-views', 'kt']] as const) {

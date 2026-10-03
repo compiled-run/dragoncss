@@ -6,7 +6,7 @@
 // pixels the background alone decides (backgroundOnly): the raster runs under borders and past rounded corners, where the border
 // stage and the rounded clip decide the pixel.
 import type { BackgroundLayer, BackgroundPaint, BackgroundPlan, GradientFaults, GradientImage, LayoutBox, LayoutRect } from '@dragon/layout';
-import { absoluteRects, backgroundPixelExact, backgroundRow, fromCssPx, layout, measurerFor, NO_ENGINE_FAULTS, NO_GRADIENT_FAULTS, planBackground, referenceTileSize, resolveBorder, resolvePadding, zoomInput } from '@dragon/layout';
+import { absoluteRects, backgroundPixelExact, LU_PER_PX, backgroundRow, fromCssPx, layout, measurerFor, NO_ENGINE_FAULTS, NO_GRADIENT_FAULTS, planBackground, referenceTileSize, resolveBorder, resolvePadding, zoomInput } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { programInput } from 'dragon';
 import { REFERENCE_PLATFORM } from '../platform.ts';
@@ -46,9 +46,50 @@ function paddings(root: LayoutBox, rects: ReadonlyMap<string, LayoutRect>, viewp
 }
 
 /**
+ * R4: where the root scroller's scrolling contents layer starts, in page LU on the x axis (0, or negative). Chrome puts it at the
+ * scroll origin: in a right-to-left document whose content overflows to the left, at the left edge of that overflow, which is the
+ * leftmost border box or line box no clipping box holds (a box whose overflow clips contributes its border box only; html and body
+ * never clip here, as their overflow propagates to the viewport). A left-to-right document cannot scroll to content on its left,
+ * so its origin is 0. DragonTree.apply computes the same on the device from the same engine output.
+ */
+export function rootScrollX(boxes: readonly LayoutRect[], abs: ReadonlyMap<string, LayoutRect>, clips: (id: string) => boolean, rtl: boolean): number {
+  if (!rtl) return 0;
+  const parent = new Map(boxes.map((b) => [b.id, b.parent] as const));
+  const depth = (id: string): number => {
+    let d = 0;
+    for (let p = parent.get(id) ?? null; p !== null; p = parent.get(p) ?? null) d++;
+    return d;
+  };
+  let min = 0;
+  for (const b of boxes) {
+    let held = false;
+    for (let p = b.parent; p !== null && !held; p = parent.get(p) ?? null) if (depth(p) >= 2 && clips(p)) held = true;
+    const a = abs.get(b.id);
+    if (!held && a !== undefined && a.x < min) min = a.x;
+  }
+  return min;
+}
+
+/** rootScrollX of a laid-out program in device px, with the program's clipping boxes. */
+function programRootX(p: NativeProgram, boxes: readonly LayoutRect[], abs: ReadonlyMap<string, LayoutRect>, rtl: boolean): number {
+  const clipping = new Set(p.nodes.filter((n) => n.clips).map((n) => n.id));
+  return rootScrollX(boxes, abs, (id) => clipping.has(id), rtl) / LU_PER_PX;
+}
+
+/** The root scroller's contents origin of a program at a DPR, in page device px on the x axis (rootScrollX), as the device has it. */
+export function caseRootX(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): number {
+  const m = measurerFor(REFERENCE_PLATFORM);
+  if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
+  const input = programInput(p, viewport, dpr);
+  const out = layout(input, m.measurer);
+  if (out.kind !== 'ok') throw new Error(`the engine refused the program at ${dpr}`);
+  return programRootX(p, out.boxes, absoluteRects(out.boxes), zoomInput(input, NO_ENGINE_FAULTS).root.style.direction === 'rtl');
+}
+
+/**
  * The background plans of every box of a program with gradient layers, at a DPR: the engine lays the program out, and each box's
- * unsnapped border box, device-px borders (as box.ts resolves them), paddings and the write's layers and layer origin give
- * BackgroundPaint, as DragonPaintGradient does on the device.
+ * unsnapped border box, device-px borders (as box.ts resolves them), paddings and the write's layers and layer origin (moved to
+ * the root scroll origin, rootScrollX) give BackgroundPaint, as DragonPaintGradient does on the device.
  */
 export function backgroundPlans(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number, borders: ReadonlyMap<string, readonly [number, number, number, number]>, faults: GradientFaults = NO_GRADIENT_FAULTS): NodePlan[] {
   const writes = p.nodes.flatMap((n) => n.writes.filter((w) => w.kind === 'background-layers').map((w) => ({ id: n.id, w: w as unknown as GradientWrite })));
@@ -62,6 +103,7 @@ export function backgroundPlans(p: NativeProgram, viewport: { readonly width: nu
   const rects = new Map(out.boxes.map((r) => [r.id, r] as const));
   const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
   const pads = paddings(zoomed.root, rects, zoomed.viewport.width, zoomed.devicePixelRatio);
+  const rootX = programRootX(p, out.boxes, abs, zoomed.root.style.direction === 'rtl');
   return writes.map(({ id, w }) => {
     const r = abs.get(id) as LayoutRect | undefined;
     const b = borders.get(id);
@@ -76,7 +118,7 @@ export function backgroundPlans(p: NativeProgram, viewport: { readonly width: nu
       lastIsBottom: w.lastIsBottom,
       zoom: dpr,
       tileSize: referenceTileSize(dpr),
-      layerX: w.layerOrigin[0],
+      layerX: w.layerOrigin[0] + rootX,
       layerY: w.layerOrigin[1],
     };
     return { id, plan: planBackground(paint, faults) };
