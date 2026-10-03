@@ -4,9 +4,9 @@
 
 | target | supported | refused | invalid | mismatch |
 |---|---:|---:|---:|---:|
-| web | 2297 (9.9%) | 20988 (90.1%) | 1 | 0 |
-| ios | 2297 (9.9%) | 20988 (90.1%) | 1 | 0 |
-| android | 2297 (9.9%) | 20988 (90.1%) | 1 | 0 |
+| web | 2336 (10.0%) | 20949 (90.0%) | 1 | 0 |
+| ios | 2336 (10.0%) | 20949 (90.0%) | 1 | 0 |
+| android | 2336 (10.0%) | 20949 (90.0%) | 1 | 0 |
 
 As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 and android 0 of 23286 utilities.
 
@@ -19,10 +19,10 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | spacing | 1308 | 973 / 335 / 0 / 0 | 973 / 335 / 0 / 0 | 973 / 335 / 0 / 0 |
 | sizing | 1015 | 899 / 116 / 0 / 0 | 899 / 116 / 0 / 0 | 899 / 116 / 0 / 0 |
 | typography | 261 | 21 / 240 / 0 / 0 | 21 / 240 / 0 / 0 | 21 / 240 / 0 / 0 |
-| colours | 14842 | 70 / 14772 / 0 / 0 | 70 / 14772 / 0 / 0 | 70 / 14772 / 0 / 0 |
+| colours | 14842 | 82 / 14760 / 0 / 0 | 82 / 14760 / 0 / 0 | 82 / 14760 / 0 / 0 |
 | backgrounds | 151 | 0 / 151 / 0 / 0 | 0 / 151 / 0 / 0 | 0 / 151 / 0 / 0 |
 | borders | 250 | 150 / 100 / 0 / 0 | 150 / 100 / 0 / 0 | 150 / 100 / 0 / 0 |
-| effects | 1178 | 0 / 1178 / 0 / 0 | 0 / 1178 / 0 / 0 | 0 / 1178 / 0 / 0 |
+| effects | 1178 | 27 / 1151 / 0 / 0 | 27 / 1151 / 0 / 0 | 27 / 1151 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 | 0 / 134 / 0 / 0 | 0 / 134 / 0 / 0 |
 | tables | 111 | 0 / 111 / 0 / 0 | 0 / 111 / 0 / 0 | 0 / 111 / 0 / 0 |
 | transitions-animation | 36 | 0 / 36 / 0 / 0 | 0 / 36 / 0 / 0 | 0 / 36 / 0 / 0 |
@@ -36,9 +36,9 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | blocked by | web | ios | android | families (web) |
 |---|---:|---:|---:|---:|
 | `property mask-image` | 6280 | 6280 | 6280 | 38 |
-| `value oklch()` | 4004 | 4004 | 4004 | 14 |
-| `property box-shadow` | 1489 | 1489 | 1489 | 8 |
+| `value oklch()` | 4576 | 4576 | 4576 | 16 |
 | `property background-image` | 964 | 964 | 964 | 8 |
+| `at-rule @supports` | 612 | 612 | 612 | 4 |
 | `property scrollbar-color` | 582 | 582 | 582 | 2 |
 | `unproven context top:<calc()>` | 468 | 468 | 468 | 8 |
 | `property translate` | 444 | 444 | 444 | 24 |
@@ -46,6 +46,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | `unproven context right:<calc()>` | 351 | 351 | 351 | 6 |
 | `profile margin-bottom:<calc()>` | 329 | 329 | 329 | 13 |
 | `property text-shadow` | 298 | 298 | 298 | 2 |
+| `value box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-o` | 298 | 298 | 298 | 2 |
 | `property accent-color` | 292 | 292 | 292 | 2 |
 | `property fill` | 292 | 292 | 292 | 2 |
 | `property stroke` | 292 | 292 | 292 | 2 |
@@ -74,4 +75,3 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | `property text-indent` | 70 | 70 | 70 | 4 |
 | `unproven context row-gap:<calc()>` | 64 | 64 | 64 | 2 |
 | `value calc()` | 52 | 52 | 52 | 4 |
-| `profile line-height:<refused calc()>` | 40 | 40 | 40 | 2 |
