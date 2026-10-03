@@ -81,7 +81,7 @@ describe('BG2 R4: each gradient box rasters in the layer the compiler predicts (
           const contents = found.find((_l, k) => (reasons[k] as string[]).includes('RootScroller'));
           const viewportLayer = found.find((_l, k) => (reasons[k] as string[]).includes('Viewport'));
           if (contents === undefined || viewportLayer === undefined) throw new Error(`${n.case.id}: no root scroller contents or viewport layer`);
-          const chromeRootX = n.case.environment.direction === 'rtl' ? -((contents.width ?? 0) - (viewportLayer.width ?? 0)) : 0;
+          const chromeRootX = n.case.environment.direction === 'rtl' ? (viewportLayer.width ?? 0) - (contents.width ?? 0) : 0;
           const predictedRootX = caseRootX(n.programs[BACKEND_OF.android], n.case.environment.viewport, 2);
           expect(predictedRootX, `${n.case.id} root scroll origin`).toBe(chromeRootX);
           if (chromeRootX !== 0) overflowing++;

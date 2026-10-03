@@ -10,14 +10,16 @@
 // paint order, the group opacity and the alpha byte before any device runs. Chrome's composite is measured, not assumed: the first
 // test fits the two blits and the byte against a captured sweep of opacities.
 import { describe, expect, it } from 'vitest';
-import { opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx } from '@dragon/layout';
+import { backgroundRow, NO_GRADIENT_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx } from '@dragon/layout';
+import type { BackgroundPlan } from '@dragon/layout';
 import { ccTileEnd, ccTileIndex, ccTileSize, ccTileStart } from '../../layout/src/paint-dither.ts';
 import type { NativeProgram, ProgramNode } from 'dragon';
-import { nativePrograms } from 'dragon';
+import { borderDevicePx, nativePrograms, programInput } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { DPRS } from '../src/dpr.ts';
 import { FIXTURE_GROUPS, FIXTURES as CORPUS } from '../src/fixtures.ts';
-import { nativeCompile } from '../src/native-host.ts';
+import { expectedEngine, nativeCompile } from '../src/native-host.ts';
+import { backgroundPlans } from '../src/paint-samples/gradient.ts';
 import { casePoints, committedPixels, glyphLines } from '../src/pixel-reference.ts';
 import { ruleKind } from '../src/samples.ts';
 import type { Box } from './paint-model.ts';
@@ -272,6 +274,22 @@ function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: Re
   return s32aBlend(dst, layer, it.alpha8);
 }
 
+/**
+ * The gradient rasters of the case and DPR being modelled (BG2): each box's plan from the translated reference (paint-gradient.ts),
+ * whose premultiplied pixel the device draws over the native background colour; bg2-reference.test.ts proves the raster against
+ * Chrome, and this model proves where it lands in the paint order.
+ */
+let gradientPlans = new Map<string, BackgroundPlan>();
+
+/** A box's gradient raster pixel at a device pixel, or null outside it. */
+function gradientPixel(id: string, x: number, y: number): Px | null {
+  const plan = gradientPlans.get(id);
+  if (plan === undefined || x < plan.left || x >= plan.right || y < plan.top || y >= plan.bottom) return null;
+  const row = backgroundRow(plan, y, NO_GRADIENT_FAULTS);
+  const k = (x - plan.left) * 4;
+  return [row[k] as number, row[k + 1] as number, row[k + 2] as number, row[k + 3] as number];
+}
+
 /** A box's background and solid border sides at a pixel centre, the background at a folded alpha when alpha is below 255. */
 function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<string, Box>, alpha: number): Px {
   if (clippedOut(b.node, byId, cx, cy) || !insideRounded(cx, cy, b.l, b.t, b.r, b.b, b.radii === null ? null : b.radii.slice(0, 8))) return dst;
@@ -283,6 +301,11 @@ function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<str
     // A folded translucent colour would take Skia's float alpha product, which the fixtures do not use.
     if (alpha !== 255 && bg.color.alpha !== 255) throw new Error(`${b.node.id}: the model folds opaque backgrounds only`);
     out = color32(out, bg.color, alpha === 255 ? bg.color.alpha : alpha);
+  }
+  const g = gradientPixel(b.node.id, Math.floor(cx), Math.floor(cy));
+  if (g !== null && (g[3] as number) > 0) {
+    if (alpha !== 255) throw new Error(`${b.node.id}: the model draws gradient rasters at full alpha only`);
+    out = s32aBlend(out, g, 255);
   }
   if (hidden !== null) return out;
   const [bt, br, bb, bl] = b.border as [number, number, number, number];
@@ -321,6 +344,7 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
     if (chrome === null) throw new Error(`${caseId}@${dpr}: no committed Chrome PNG`);
     const items = paintItems(p, viewport, dpr);
     const byId = new Map(boxes(p, viewport, dpr).map((b) => [b.node.id, b]));
+    gradientPlans = new Map(backgroundPlans(p, viewport, dpr, borderDevicePx(expectedEngine(), programInput(p, viewport, dpr))).map((q) => [q.id, q.plan] as const));
     for (const pt of casePoints(p, viewport, dpr)) {
       if (ruleKind(pt.rule) === 'edge') continue;
       compared++;

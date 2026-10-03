@@ -126,8 +126,9 @@ describe('layers (css-backgrounds-3 §2.2) and the build-time refusals', () => {
     expect(translucencyRefusal([layer('linear-gradient(red, transparent)'), layer('linear-gradient(red, blue)')], clear, red, widths({}), 1)).toBe(null);
     expect(translucencyRefusal([layer('linear-gradient(red, blue)', { repeatX: 'no-repeat' })], clear, red, widths({}), 1)).toContain('BG2c');
     expect(translucencyRefusal([layer('linear-gradient(red, transparent)'), layer('linear-gradient(red, blue)', { clip: 'padding-box' })], clear, red, widths({ borders: [1, 1, 1, 1] }), 1)).toContain('BG2c');
-    // R6(b): a box with opacity below 1 rasters into its own layer over transparent, as Dragon's group alpha does.
-    expect(translucencyRefusal([layer('linear-gradient(red, transparent)')], clear, red, widths({}), 0.5)).toBe(null);
+    // R6(b) is refused: Chrome's composite of a translucent raster under group alpha is not PNT1's group alpha (T074 stop_if).
+    expect(translucencyRefusal([layer('linear-gradient(red, transparent)')], clear, red, widths({}), 0.5)).toContain('R6 b');
+    expect(translucencyRefusal([layer('linear-gradient(red, transparent)')], red, red, widths({}), 0.5)).toBe(null);
   });
   it('refuses a colour clipped inside a border that shows the backdrop, which the native background colour would fill', () => {
     const grey = { r: 192, g: 192, b: 192, alpha: 255 };
@@ -189,14 +190,15 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
     expect(corner.map((m) => m.split(' ').slice(0, 2).join(' '))).toEqual(['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios']);
     expect(corner[1]).toContain('atan2');
   });
-  it('refuses tiling and a translucent stack on ios and android only, and accepts a translucent stack with opacity below 1', () => {
+  it('refuses tiling and a translucent stack on ios and android only, with or without an opacity below 1 (R6 b is refused)', () => {
     expect(compile('background: linear-gradient(red, blue) 0 0 / 10px 10px, white;')[0]).toContain('BG2-t');
     expect(compile('background: linear-gradient(red, blue) space, white;')[0]).toContain('BG2-t');
     expect(compile('background: linear-gradient(red, transparent);')[0]).toContain('BG2c');
-    expect(compile('background: linear-gradient(red, transparent); opacity: 0.5;')).toEqual([]);
+    // R6(b): Chrome's composite of the translucent raster under group alpha is not PNT1's (gradient-backdrop's groups differ by one).
+    expect(compile('background: linear-gradient(red, transparent); opacity: 0.5;')[0]).toContain('R6 b');
     expect(compile('background: linear-gradient(red, transparent);', { web: {} })).toEqual([]);
-    // (b) needs a clear colour: the native colour beneath the raster would composite a translucent one twice.
     expect(compile('background: linear-gradient(red, transparent) rgba(0, 0, 255, 0.5); opacity: 0.5;')[0]).toContain('BG2c');
+    expect(compile('background: linear-gradient(red, transparent) white; opacity: 0.5;')).toEqual([]);
   });
   it('refuses a padding-box or content-box clip on a rounded box on ios and android (the raster takes the rounded border box only)', () => {
     expect(compile('border-radius: 6px; padding: 2px; background: linear-gradient(red, blue) padding-box white;')[0]).toContain('inner rounded box');
