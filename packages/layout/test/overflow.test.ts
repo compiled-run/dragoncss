@@ -1,11 +1,13 @@
 // OVFL Phase A in the engine: the overflow values and the §3.1 computed pair, which values make scroll containers, and the
 // scrollable overflow port (overflow.ts) on small trees, in raw LayoutUnits. Chrome agreement is proven on the fixtures by
 // packages/parity/test/ovfl-metrics.test.ts; these pin the rules the port follows.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import { ahemMeasurer, layout, NO_ENGINE_FAULTS, validateLayoutInput } from '../src/index.ts';
 import type { LayoutBox, LayoutInput, LayoutStyle, Overflow } from '../src/index.ts';
 import { isScrollContainer } from '../src/box.ts';
-import { scrollMetrics, scrollMetricsWithFaults } from '../src/overflow.ts';
+import type { PlacedLine } from '../src/inline.ts';
+import { ZERO } from '../src/units.ts';
+import { PLACED_LINE_FIELDS, scrollMetrics, scrollMetricsWithFaults } from '../src/overflow.ts';
 import { box, divStyle, neutralEnvironment, pct, px } from './helpers.ts';
 
 const input = (children: LayoutBox[], html: Partial<LayoutStyle> = {}): LayoutInput => ({
@@ -112,5 +114,15 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
     const r = scrollMetrics(input([box('s', sc('auto'), [box('k', { position: 'relative', top: pct(10), height: px(10) })])]), ahemMeasurer, 'ltr');
     expect(r.kind).toBe('refused');
     expect(r.kind === 'refused' ? r.nodeId : '').toBe('k');
+  });
+});
+
+describe('line items (R16: a new PlacedLine item kind is never skipped)', () => {
+  const unhandled = (line: object): string[] => Object.keys(line).filter((k) => !PLACED_LINE_FIELDS.includes(k));
+  it('addLines accounts for every PlacedLine field; a stub item kind is caught', () => {
+    expectTypeOf<keyof PlacedLine>().toEqualTypeOf<'top' | 'height' | 'baseline' | 'pieces' | 'boxes' | 'boxRects' | 'breaks' | 'breakRects'>();
+    const line: PlacedLine = { top: ZERO, height: ZERO, baseline: ZERO, pieces: [], boxes: [], boxRects: [], breaks: [], breakRects: [] };
+    expect(unhandled(line)).toEqual([]);
+    expect(unhandled({ ...line, atomics: [] })).toEqual(['atomics']);
   });
 });

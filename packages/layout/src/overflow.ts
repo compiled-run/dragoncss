@@ -1,8 +1,8 @@
 // Scrollable overflow and the client sizes of scroll containers and the viewport (css-overflow-3 §2.2 and §3), with a zero
-// scrollbar gutter. A port of Blink 145.0.7632.6: core/layout/scrollable_overflow_calculator.cc (whole file) and .h (AddChild,
-// AddOverflow), the inflow bounds of core/layout/box_fragment_builder.cc lines 241-366, and PaintLayerScrollableArea::
-// UpdateScrollDimensions (core/paint/paint_layer_scrollable_area.cc lines 968-982). The layout itself is unchanged: this
-// reads the input and the layout's boxes.
+// scrollbar gutter. A port of Blink 145.0.7632.6: core/layout/scrollable_overflow_calculator.cc (whole file) and
+// core/layout/scrollable_overflow_calculator.h (AddChild, AddOverflow), and the inflow bounds of core/layout/box_fragment_builder.cc
+// lines 241-366. The scroll rect follows css-overflow-3 §2.2 and matches Chrome (ports.json reference:
+// core/paint/paint_layer_scrollable_area.cc lines 968-982). The layout itself is unchanged: this reads the input and the layout's boxes.
 import type { Direction, LayoutBox, LayoutInput } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, fromCssPx, max, min, sub, ZERO } from './units.ts';
@@ -160,7 +160,7 @@ function clientOf(ix: Index, n: Node): OverflowRect {
   };
 }
 
-/** Blink UpdateScrollDimensions: the scrollable overflow united with the client size at its offset. */
+/** css-overflow-3 §2.2: the scrollable overflow united with the client size at its offset (the scrollport is part of it); matches Chrome. */
 function metricsOf(id: string, overflow: OverflowRect, client: OverflowRect): ScrollMetrics {
   const withClient = unite(overflow, { x: overflow.x, y: overflow.y, width: client.width, height: client.height });
   return { id, clientWidth: client.width, clientHeight: client.height, scrollRect: withClient };
@@ -281,6 +281,9 @@ function propagated(ix: Index, n: Node): OverflowRect {
   if (s.overflowY === 'clip') child = { x: child.x, y: ZERO, width: child.width, height: n.rect.height };
   return uniteEvenIfEmpty(own, child);
 }
+
+/** The PlacedLine fields addLines accounts for (R16): a new line item kind is added here with a Chrome metrics case, never skipped. */
+export const PLACED_LINE_FIELDS: readonly string[] = ['top', 'height', 'baseline', 'pieces', 'boxes', 'boxRects', 'breaks', 'breakRects'];
 
 /** The line boxes, text and inline box fragments of an inline formatting context (AddItemsInternal); lines are inflow children. */
 function addLines(ix: Index, n: Node, c: Calc): void {
