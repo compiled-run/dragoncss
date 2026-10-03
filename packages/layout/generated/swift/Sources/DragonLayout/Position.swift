@@ -88,7 +88,7 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
       _i48 += 1
       // ts: packages/layout/src/position.ts:39
       if try ((k.kind == S.s_replaced) && position_isOutOfFlow(ctx, (k as! ReplacedLeaf))) {
-        try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s70, jsConcat(S.s89, (k as! ReplacedLeaf).id, S.s19))
+        try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s69, jsConcat(S.s88, (k as! ReplacedLeaf).id, S.s18))
       }
     }
   }
@@ -100,7 +100,7 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
   if try jsSome(box.children, { (k: any U_LayoutBox_ReplacedLeaf_TextLeaf) throws -> Bool in
     return ((k.kind == S.s_text) || (((k as! any U_LayoutBox_ReplacedLeaf).kind == S.s_box) && ((k as! LayoutBox).boxType == S.s_anonymous)))
 }) {
-    try unsupported_unsupported(S.s_abspos_in_inline, jsUnwrap(oof).id, S.s72, jsConcat(S.s88, jsUnwrap(oof).id, S.s7, box.id, S.s31))
+    try unsupported_unsupported(S.s_abspos_in_inline, jsUnwrap(oof).id, S.s71, jsConcat(S.s87, jsUnwrap(oof).id, S.s7, box.id, S.s30))
   }
 }
 
@@ -129,7 +129,7 @@ public func position_blockInset(_ box: any U_LayoutBox_ReplacedLeaf, _ v: any U_
   }
   // ts: packages/layout/src/position.ts:57
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s130, S.s247)
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s129, S.s248)
   }
   return try box_resolveLengthOrNull((v as! any U_LengthCalc_Percent_Px), nil, faults)
 }
