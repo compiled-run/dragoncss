@@ -25,6 +25,8 @@ describe('captured Chrome defaults and the webref grammar', () => {
     for (const tag of Object.keys(computed) as (keyof typeof computed)[]) {
       for (const p of CAPTURED_LONGHANDS) expect(computed[tag][p], `${tag} ${p}`).toBeTypeOf('string');
       for (const p of LONGHANDS) expect(properties[p], p).toBeDefined();
+      // The capture writes no uncaptured longhand (capture-ua-defaults.ts reads UNCAPTURED_LONGHANDS); the dataset supplies them.
+      for (const p of UNCAPTURED_LONGHANDS) expect(p in computed[tag], `${tag} ${p}`).toBe(false);
     }
     expect(computed.div.display).toBe('block');
     expect(computed.body['margin-top']).toBe('8px');
