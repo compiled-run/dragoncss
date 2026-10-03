@@ -23,6 +23,7 @@ import { layoutCases } from '../src/dpr.ts';
 import { FONT_SHORTHAND } from '../src/fixture-groups/font-shorthand.ts';
 import { ATOMIC_INLINE } from '../src/fixture-groups/atomic-inline.ts';
 import { TEXT_WRAP_BREAK } from '../src/fixture-groups/text-wrap-break.ts';
+import { VERTICAL_ALIGN } from '../src/fixture-groups/vertical-align.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
 import { repoPath } from '../src/paths.ts';
@@ -170,12 +171,12 @@ describe('the font-shorthand group', () => {
   });
 
   it('follows text-weight and adds exactly its own layout cases', () => {
-    // INL2a appends the atomic-inline group after text-decoration (rejects only), and TXT2-a text-wrap-break after it; their cases
-    // follow these.
-    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-4)).toEqual(['font-shorthand', 'text-decoration', 'atomic-inline', 'text-wrap-break']);
+    // INL2a appends the atomic-inline group after text-decoration (rejects only), TXT2-a text-wrap-break and INL2b vertical-align
+    // after it; their cases follow these.
+    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-5)).toEqual(['font-shorthand', 'text-decoration', 'atomic-inline', 'text-wrap-break', 'vertical-align']);
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     const added = FONT_SHORTHAND.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
-    const later = [...ATOMIC_INLINE, ...TEXT_WRAP_BREAK].filter((f) => f.kind === 'layout').flatMap((f) => f.environments.map((d) => (d === 'rtl' ? `${f.id}-rtl` : f.id)));
+    const later = [...ATOMIC_INLINE, ...TEXT_WRAP_BREAK, ...VERTICAL_ALIGN].filter((f) => f.kind === 'layout').flatMap((f) => f.environments.map((d) => (d === 'rtl' ? `${f.id}-rtl` : f.id)));
     expect(ids.slice(514, 514 + added.length)).toEqual(added);
     expect(ids.slice(514 + added.length)).toEqual(later);
     expect(ids.length).toBe(514 + added.length + later.length);
