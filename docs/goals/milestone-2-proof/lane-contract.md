@@ -61,8 +61,8 @@ Everything else is a default above, or a note in your receipt.
    batch one round into one push; reply `Fixed in <sha>` or why it's intentional in each thread.
    No regen or device run in a round unless the fix changes generator inputs.
 4. When `pr:review` exits 0, hand the PR to the landing driver (receipt with the clean head).
-   The driver does the catch-up, regen, device run, test, a Claude correctness review while Macroscope is
-   at its limit, and the merge.
+   The driver does the catch-up, regen, device run, test and merge. While Macroscope is at its limit, the PM
+   has a review agent write the precomputed review for each queued PR's clean head before the driver lands it.
 
 ## Spec authors (read-only)
 Write /tmp/specs/<task>.md:
