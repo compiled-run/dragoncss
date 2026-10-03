@@ -139,7 +139,7 @@ function foldsToPx(n: CssNode): boolean {
   return c !== undefined && (c.kind === 'absolute' || c.kind === 'font-relative');
 }
 
-/** Blink ComputeDegrees of an <angle> (math_extras.h Grad2deg, Rad2deg, Turn2deg in double); a unitless zero is 0deg. */
+/** Blink ComputeDegrees of an <angle> (WTF's Grad2deg, Rad2deg and Turn2deg, in double); a unitless zero is 0deg. */
 function angleDegrees(n: CssNode): number | null {
   if (n.type === 'Number' && Number(n['value']) === 0) return 0;
   if (n.type !== 'Dimension') return null;
