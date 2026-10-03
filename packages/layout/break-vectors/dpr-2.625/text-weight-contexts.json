@@ -1,0 +1,16 @@
+{
+  "case": "text-weight-contexts",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"ra:text0","lines":[[0,12]]},
+    {"id":"rb:text0","lines":[[0,16]]},
+    {"id":"ch:text0","lines":[[0,15]]},
+    {"id":"cb:text0","lines":[[0,18]]},
+    {"id":"arow:text0","lines":[[0,14]]},
+    {"id":"arb:text0","lines":[[0,9]]},
+    {"id":"acol:text0","lines":[[0,16]]},
+    {"id":"acb:text0","lines":[[0,11]]},
+    {"id":"pa:text0","lines":[[0,12]]},
+    {"id":"pb:text0","lines":[[0,9]]}
+  ]
+}

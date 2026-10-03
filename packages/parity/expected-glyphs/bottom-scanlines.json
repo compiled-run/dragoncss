@@ -210,7 +210,19 @@
       "text-calibration-sans": [5,5],
       "text-calibration-mono": [4,4],
       "inline-tags-faces": [16,16],
-      "inline-tags-faces-rtl": [16,16]
+      "inline-tags-faces-rtl": [16,16],
+      "text-weight-numeric": [19,19],
+      "text-weight-numeric-rtl": [19,19],
+      "text-weight-relative": [18,18],
+      "text-weight-relative-rtl": [18,18],
+      "text-weight-styles": [15,15],
+      "text-weight-styles-rtl": [15,15],
+      "text-weight-nested-bold": [5,5],
+      "text-weight-nested-bold-rtl": [5,5],
+      "text-weight-nested-italic": [3,3],
+      "text-weight-nested-italic-rtl": [3,3],
+      "text-weight-contexts": [10,10],
+      "text-weight-contexts-rtl": [10,10]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -422,7 +434,19 @@
       "text-calibration-sans": [5,5],
       "text-calibration-mono": [4,4],
       "inline-tags-faces": [16,16],
-      "inline-tags-faces-rtl": [16,16]
+      "inline-tags-faces-rtl": [16,16],
+      "text-weight-numeric": [19,19],
+      "text-weight-numeric-rtl": [19,19],
+      "text-weight-relative": [18,18],
+      "text-weight-relative-rtl": [18,18],
+      "text-weight-styles": [15,15],
+      "text-weight-styles-rtl": [15,15],
+      "text-weight-nested-bold": [5,5],
+      "text-weight-nested-bold-rtl": [5,5],
+      "text-weight-nested-italic": [3,3],
+      "text-weight-nested-italic-rtl": [3,3],
+      "text-weight-contexts": [10,10],
+      "text-weight-contexts-rtl": [10,10]
     }
   },
   "android": {
@@ -636,7 +660,19 @@
       "text-calibration-sans": [5,5],
       "text-calibration-mono": [4,4],
       "inline-tags-faces": [16,16],
-      "inline-tags-faces-rtl": [16,16]
+      "inline-tags-faces-rtl": [16,16],
+      "text-weight-numeric": [19,19],
+      "text-weight-numeric-rtl": [19,19],
+      "text-weight-relative": [18,18],
+      "text-weight-relative-rtl": [18,18],
+      "text-weight-styles": [15,15],
+      "text-weight-styles-rtl": [15,15],
+      "text-weight-nested-bold": [5,5],
+      "text-weight-nested-bold-rtl": [5,5],
+      "text-weight-nested-italic": [3,3],
+      "text-weight-nested-italic-rtl": [3,3],
+      "text-weight-contexts": [10,10],
+      "text-weight-contexts-rtl": [10,10]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -848,7 +884,19 @@
       "text-calibration-sans": [5,5],
       "text-calibration-mono": [4,4],
       "inline-tags-faces": [16,16],
-      "inline-tags-faces-rtl": [16,16]
+      "inline-tags-faces-rtl": [16,16],
+      "text-weight-numeric": [19,19],
+      "text-weight-numeric-rtl": [19,19],
+      "text-weight-relative": [18,18],
+      "text-weight-relative-rtl": [18,18],
+      "text-weight-styles": [15,15],
+      "text-weight-styles-rtl": [15,15],
+      "text-weight-nested-bold": [5,5],
+      "text-weight-nested-bold-rtl": [5,5],
+      "text-weight-nested-italic": [3,3],
+      "text-weight-nested-italic-rtl": [3,3],
+      "text-weight-contexts": [10,10],
+      "text-weight-contexts-rtl": [10,10]
     },
     "2.625": {
       "text-ahem-single-line": [10,10],
@@ -1060,7 +1108,19 @@
       "text-calibration-sans": [5,5],
       "text-calibration-mono": [4,4],
       "inline-tags-faces": [16,16],
-      "inline-tags-faces-rtl": [16,16]
+      "inline-tags-faces-rtl": [16,16],
+      "text-weight-numeric": [19,19],
+      "text-weight-numeric-rtl": [19,19],
+      "text-weight-relative": [18,18],
+      "text-weight-relative-rtl": [18,18],
+      "text-weight-styles": [15,15],
+      "text-weight-styles-rtl": [15,15],
+      "text-weight-nested-bold": [5,5],
+      "text-weight-nested-bold-rtl": [5,5],
+      "text-weight-nested-italic": [3,3],
+      "text-weight-nested-italic-rtl": [3,3],
+      "text-weight-contexts": [10,10],
+      "text-weight-contexts-rtl": [10,10]
     }
   }
 }

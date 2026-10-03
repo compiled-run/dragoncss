@@ -1,0 +1,17 @@
+{
+  "case": "text-weight-contexts",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"ra:text0","data":"Regular item","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"rb:text0","data":"Bold italic item","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"ch:text0","data":"Regular heading","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"cb:text0","data":"Light oblique item","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"arow:text0","data":"Anonymous bold","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"arb:text0","data":"Bold item","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"acol:text0","data":"Anonymous italic","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"acb:text0","data":"Italic item","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"pa:text0","data":"Light words ","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"pb:text0","data":"then bold","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}
