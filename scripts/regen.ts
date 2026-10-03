@@ -456,7 +456,9 @@ export function pruneStore(dir: string, maxAgeDays: number, now: number): number
     if (!statSync(d).isDirectory()) continue;
     for (const f of readdirSync(d)) {
       const p = join(d, f);
-      if (now - statSync(p).mtimeMs > maxAgeDays * 86_400_000) {
+      // Another regen may rename or prune the same entry meanwhile.
+      const st = statSync(p, { throwIfNoEntry: false });
+      if (st !== undefined && now - st.mtimeMs > maxAgeDays * 86_400_000) {
         rmSync(p, { force: true });
         n++;
       }
