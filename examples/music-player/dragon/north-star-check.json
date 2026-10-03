@@ -107,13 +107,13 @@
   "contextProbe": {
    "rounds": 1,
    "blankedRules": 9,
-   "blankedDeclarations": 52,
+   "blankedDeclarations": 50,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 331,
-  "errors": 330,
+  "diagnostics": 329,
+  "errors": 328,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [android]": 25,
@@ -126,7 +126,7 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 11,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 49,
+   "DRAGON_UNSUPPORTED_PROPERTY": 47,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
    "DRAGON_UNSUPPORTED_VALUE": 3,
    "DRAGON_UNSUPPORTED_VALUE [android]": 29,
@@ -140,7 +140,7 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 23,
      "DRAGON_UNSUPPORTED_AT_RULE": 1,
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
-     "DRAGON_UNSUPPORTED_PROPERTY": 49,
+     "DRAGON_UNSUPPORTED_PROPERTY": 47,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 30
     },
@@ -155,7 +155,7 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 49,
+     "DRAGON_UNSUPPORTED_PROPERTY": 47,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 32
     },
@@ -170,7 +170,7 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 49,
+     "DRAGON_UNSUPPORTED_PROPERTY": 47,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 32
     },
@@ -180,11 +180,11 @@
    }
   },
   "declarations": 291,
-  "supportedBothTargets": 184,
-  "supportedWeb": 195,
-  "supportedIos": 184,
-  "supportedAndroid": 184,
-  "supportPercent": 63.2,
+  "supportedBothTargets": 185,
+  "supportedWeb": 196,
+  "supportedIos": 185,
+  "supportedAndroid": 185,
+  "supportPercent": 63.6,
   "elements": 62,
   "supportedElements": 45,
   "tags": {
@@ -267,8 +267,8 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 140,
-   "B-unwrapped": 137,
+   "A-authored": 138,
+   "B-unwrapped": 135,
    "C-context": 196
   }
  },
@@ -638,12 +638,10 @@
    "atRule": null,
    "property": "color-scheme",
    "value": "dark",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 20,
@@ -2553,7 +2551,6 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -4129,26 +4126,6 @@
  ],
  "diagnostics": [
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@560-578|color-scheme is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 560,
-    "end": 578,
-    "line": 31,
-    "column": 2,
-    "text": "color-scheme: dark"
-   },
-   "message": "color-scheme is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -5448,26 +5425,6 @@
     "text": ":focus"
    },
    "message": ":focus depends on user interaction or document state, which a later package models as runtime state",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5416-5429|outline is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 5416,
-    "end": 5429,
-    "line": 306,
-    "column": 2,
-    "text": "outline: none"
-   },
-   "message": "outline is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",

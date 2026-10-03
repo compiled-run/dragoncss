@@ -1,0 +1,280 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 5888
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 5888
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 5888
+  },
+  {
+   "id": "o-none",
+   "parent": "row",
+   "x": 1024,
+   "y": 1024,
+   "width": 3158,
+   "height": 3840
+  },
+  {
+   "id": "o-zero",
+   "parent": "row",
+   "x": 5206,
+   "y": 1024,
+   "width": 3157,
+   "height": 3840
+  },
+  {
+   "id": "o-thick",
+   "parent": "row",
+   "x": 9387,
+   "y": 1024,
+   "width": 3158,
+   "height": 3840
+  },
+  {
+   "id": "o-styled",
+   "parent": "row",
+   "x": 13569,
+   "y": 1024,
+   "width": 3157,
+   "height": 3840
+  },
+  {
+   "id": "o-em",
+   "parent": "row",
+   "x": 17750,
+   "y": 1024,
+   "width": 3158,
+   "height": 3840
+  },
+  {
+   "id": "o-cur",
+   "parent": "row",
+   "x": 21932,
+   "y": 1024,
+   "width": 3157,
+   "height": 3840
+  },
+  {
+   "id": "o-hex",
+   "parent": "row",
+   "x": 26113,
+   "y": 1024,
+   "width": 3158,
+   "height": 3840
+  },
+  {
+   "id": "o-rgba",
+   "parent": "row",
+   "x": 30295,
+   "y": 1024,
+   "width": 3157,
+   "height": 3840
+  },
+  {
+   "id": "o-neg",
+   "parent": "row",
+   "x": 34476,
+   "y": 1024,
+   "width": 3157,
+   "height": 3840
+  },
+  {
+   "id": "o-parent",
+   "parent": "row",
+   "x": 38657,
+   "y": 1024,
+   "width": 3157,
+   "height": 3840
+  },
+  {
+   "id": "o-inherit",
+   "parent": "o-parent",
+   "x": 0,
+   "y": 0,
+   "width": 1280,
+   "height": 1280
+  },
+  {
+   "id": "o-outset",
+   "parent": "row",
+   "x": 42838,
+   "y": 1024,
+   "width": 3157,
+   "height": 3840
+  },
+  {
+   "id": "o-var",
+   "parent": "row",
+   "x": 47019,
+   "y": 1024,
+   "width": 3157,
+   "height": 3840
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 92,
+   "width": 800,
+   "height": 92
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 92,
+   "width": 800,
+   "height": 92
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 92,
+   "width": 800,
+   "height": 92
+  },
+  {
+   "id": "o-none",
+   "left": 16,
+   "top": 16,
+   "right": 65,
+   "bottom": 76,
+   "width": 49,
+   "height": 60
+  },
+  {
+   "id": "o-zero",
+   "left": 81,
+   "top": 16,
+   "right": 131,
+   "bottom": 76,
+   "width": 50,
+   "height": 60
+  },
+  {
+   "id": "o-thick",
+   "left": 147,
+   "top": 16,
+   "right": 196,
+   "bottom": 76,
+   "width": 49,
+   "height": 60
+  },
+  {
+   "id": "o-styled",
+   "left": 212,
+   "top": 16,
+   "right": 261,
+   "bottom": 76,
+   "width": 49,
+   "height": 60
+  },
+  {
+   "id": "o-em",
+   "left": 277,
+   "top": 16,
+   "right": 327,
+   "bottom": 76,
+   "width": 50,
+   "height": 60
+  },
+  {
+   "id": "o-cur",
+   "left": 343,
+   "top": 16,
+   "right": 392,
+   "bottom": 76,
+   "width": 49,
+   "height": 60
+  },
+  {
+   "id": "o-hex",
+   "left": 408,
+   "top": 16,
+   "right": 457,
+   "bottom": 76,
+   "width": 49,
+   "height": 60
+  },
+  {
+   "id": "o-rgba",
+   "left": 473,
+   "top": 16,
+   "right": 523,
+   "bottom": 76,
+   "width": 50,
+   "height": 60
+  },
+  {
+   "id": "o-neg",
+   "left": 539,
+   "top": 16,
+   "right": 588,
+   "bottom": 76,
+   "width": 49,
+   "height": 60
+  },
+  {
+   "id": "o-parent",
+   "left": 604,
+   "top": 16,
+   "right": 653,
+   "bottom": 76,
+   "width": 49,
+   "height": 60
+  },
+  {
+   "id": "o-inherit",
+   "left": 604,
+   "top": 16,
+   "right": 624,
+   "bottom": 36,
+   "width": 20,
+   "height": 20
+  },
+  {
+   "id": "o-outset",
+   "left": 669,
+   "top": 16,
+   "right": 719,
+   "bottom": 76,
+   "width": 50,
+   "height": 60
+  },
+  {
+   "id": "o-var",
+   "left": 735,
+   "top": 16,
+   "right": 784,
+   "bottom": 76,
+   "width": 49,
+   "height": 60
+  }
+ ]
+}
