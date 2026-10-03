@@ -424,6 +424,27 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/css/resolver/style_adjuster.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "css-text-decor-3 §2.1 and Chrome observation (the decoration capture)",
+        "proof": [
+          "packages/dragon/test/text-decoration.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2006, 2007 Nicholas Shanks (webkit@nickshanks.com); Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Apple Inc.; Copyright (C) 2007 Alexey Proskuryakov <ap@webkit.org>; Copyright (C) 2007, 2008 Eric Seidel <eric@webkit.org>; Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved.; Copyright (c) 2011, Code Aurora Forum. All rights reserved.; Copyright (C) Research In Motion Limited 2011. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "145b9f59f970e8b9905158689f64dd9639fa332e384b2944098f53f02134c911",
+      "headerSha256": "89795ec37fef027a53d436c1807a3c465568c534dfb376741989067889822ead",
+      "ranges": [
+        { "lines": "1-1323", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/text-decoration.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/resolver/style_builder_converter.cc",
       "licence": "bsd-google",
       "noticeText": "header-bsd-4",
@@ -930,6 +951,21 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/paint/text_decoration_info.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "c758d1462f480e99f6e3ed10dc73861d477ae69813b7338a98102a8529a0f017",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "205-255", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/text-decoration.ts", "symbol": "AppliedDecoration", "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/style/border_edge.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -962,6 +998,7 @@
         { "lines": "2568-2585", "symbol": null, "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/text-decoration.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/units.ts", "symbol": "lineHeightFromNumber", "use": "reference" }
       ]
     },

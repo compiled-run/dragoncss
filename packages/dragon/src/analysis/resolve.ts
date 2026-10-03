@@ -12,6 +12,7 @@ import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeJustifyItems, computeLengths, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
+import { applyAnyLink } from './text-decoration.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import type { CustomProperties } from './variables.ts';
@@ -207,6 +208,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     props.set('font-size', fontSize.get('font-size') as ResolvedValue);
     applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent);
     computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua);
+    applyAnyLink(el, props, defaulted, environment.ua);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {

@@ -22,6 +22,7 @@ import type { FontFaults } from '../../dragon/src/fonts/faults.ts';
 import { layoutCases } from '../src/dpr.ts';
 import { FONT_SHORTHAND } from '../src/fixture-groups/font-shorthand.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
+import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
 import { repoPath } from '../src/paths.ts';
 
 const SOURCE = { uri: 'dragon-source://test/font.css', revision: 'r1', hash: 'sha256:0' };
@@ -140,9 +141,10 @@ describe('font-synthesis on native', () => {
 });
 
 describe('the font-shorthand group', () => {
-  it('every capture of TXT-W1 (txt-w1-v2 53699e28b) is unchanged but for the font-synthesis keys', () => {
+  it('every capture of TXT-W1 (txt-w1-v2 53699e28b) is unchanged but for the keys added since', () => {
     const W1 = '53699e28b';
-    const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps'];
+    // TDEC-a adds the decoration longhands after TXT-W2.
+    const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS];
     const root = repoPath('.');
     const paths = execFileSync('git', ['ls-tree', '-r', '--name-only', W1, '--', 'packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'], { cwd: root, encoding: 'utf8', maxBuffer: 1 << 28 }).split('\n').filter((p) => p.endsWith('.json'));
     expect(paths.length).toBeGreaterThan(1500);
@@ -159,14 +161,14 @@ describe('the font-shorthand group', () => {
       const before = JSON.parse(blobs.subarray(nl + 1, nl + 1 + size).toString('utf8')) as { nodes?: { computed: Record<string, string> | null }[] };
       at = nl + 1 + size + 1;
       const now = JSON.parse(readFileSync(repoPath(p), 'utf8')) as { nodes?: { computed: Record<string, string> | null }[] };
-      if ((now.nodes ?? []).some((n) => n.computed !== null && ADDED.some((k) => n.computed?.[k] === undefined))) differ.push(`${p}: a node lacks a font-synthesis key`);
+      if ((now.nodes ?? []).some((n) => n.computed !== null && ADDED.some((k) => n.computed?.[k] === undefined))) differ.push(`${p}: a node lacks an added key`);
       if (strip(now) !== strip(before)) differ.push(p);
     }
     expect(differ).toEqual([]);
   });
 
-  it('is appended last and adds exactly its own layout cases', () => {
-    expect(FIXTURE_GROUPS[FIXTURE_GROUPS.length - 1]?.id).toBe('font-shorthand');
+  it('follows text-weight and adds exactly its own layout cases', () => {
+    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-2)).toEqual(['font-shorthand', 'text-decoration']);
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     const added = FONT_SHORTHAND.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
     expect(ids.slice(-added.length)).toEqual(added);
