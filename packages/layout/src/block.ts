@@ -3,7 +3,6 @@ import type { Direction, LayoutBox, LayoutNode, LayoutStyle } from './input.ts';
 import type { LU } from './units.ts';
 import { add, divInt, max, min, sub, ZERO } from './units.ts';
 import type { Edges, Frag, HeightBasis, OutOfFlow, Placed, Point } from './box.ts';
-import { inlineTextLeaves } from './box.ts';
 import {
   blockMinMaxWith,
   borderBoxFromSpecified,
@@ -96,6 +95,16 @@ export type EngineFaults = {
   readonly breakAfterSolidus: boolean;
   /** No break between '-' and a digit, as UAX #14 LB25 does (linebreak.ts noHyphenDigitBreak). */
   readonly noHyphenDigitBreak: boolean;
+  /** The line box height comes from the strut only: inline boxes add no ascent or descent (CSS2 §10.8.1). */
+  readonly lineHeightIgnoresInlineBoxes: boolean;
+  /** An inline box's half-leading is not floored to a whole px (Chrome deviation half-leading-floor off for inline boxes only). */
+  readonly halfLeadingUnflooredPerBox: boolean;
+  /** A <br> forces no break. */
+  readonly brIgnored: boolean;
+  /** Every inline box boundary inside text is a soft wrap opportunity. */
+  readonly breakAtBoxBoundary: boolean;
+  /** A leaf's content area starts at its line top instead of the baseline minus its ascent. */
+  readonly fragmentFromLineTop: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -133,6 +142,11 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   fitWithoutEpsilon: false,
   breakAfterSolidus: false,
   noHyphenDigitBreak: false,
+  lineHeightIgnoresInlineBoxes: false,
+  halfLeadingUnflooredPerBox: false,
+  brIgnored: false,
+  breakAtBoxBoundary: false,
+  fragmentFromLineTop: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
@@ -324,11 +338,13 @@ type FlowResult = {
 // baseline is the first line box's, or the first in-flow child's that has one.
 function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   const kids = box.children;
-  const texts = inlineTextLeaves(box);
-  if (texts !== null) {
-    const r = layoutInline(ctx, box, texts, a.contentWidth, a.origin);
-    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: true, baseline: r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline), outOfFlow: [] };
+  if (box.strut !== null) {
+    // CSS2 §9.2.1.1: the compiler wraps inline content beside block boxes in anonymous boxes; validateLayoutInput rejects anything else.
+    const r = layoutInline(ctx, box, a.contentWidth, a.origin);
+    // CSS2 §9.4.2: a formatting context with no line boxes (only empty inline boxes) is empty, so margins collapse through it.
+    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: r.lines > 0, baseline: r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline), outOfFlow: [] };
   }
+  if (kids.some((k) => k.kind !== 'box' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
   const direction = directionOf(ctx, box);
   const placed: Placed[] = [];
   let strut = EMPTY_STRUT;

@@ -81,11 +81,11 @@ fun environment_boxNeedsEnvironment(b: LayoutBox, faults: EngineFaults): Boolean
   }
   // ts: packages/layout/src/environment.ts:151
   run {
-    val _a6 = b.children
-    var _i6 = 0
-    while (_i6 < _a6.size) {
-      val c: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a6[_i6]
-      _i6++
+    val _a5 = b.children
+    var _i5 = 0
+    while (_i5 < _a5.size) {
+      val c: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a5[_i5]
+      _i5++
       // ts: packages/layout/src/environment.ts:152
       if (jsStrEq(c.kind, "box")) {
         // ts: packages/layout/src/environment.ts:153
@@ -127,11 +127,11 @@ fun environment_inlineNeedsEnvironment(c: U_InlineBox_LineBreak_TextLeaf, faults
   }
   // ts: packages/layout/src/environment.ts:170
   run {
-    val _a7 = (c as InlineBox).children
-    var _i7 = 0
-    while (_i7 < _a7.size) {
-      val k: U_InlineBox_LineBreak_TextLeaf = _a7[_i7]
-      _i7++
+    val _a6 = (c as InlineBox).children
+    var _i6 = 0
+    while (_i6 < _a6.size) {
+      val k: U_InlineBox_LineBreak_TextLeaf = _a6[_i6]
+      _i6++
       // ts: packages/layout/src/environment.ts:170
       if (environment_inlineNeedsEnvironment(k, faults)) {
         return true
@@ -159,11 +159,11 @@ fun environment_styleNeedsEnvironment(s: LayoutStyle): Boolean {
   val kinds: JsArray<String> = jsArrayOf<String>(s.top.kind, s.right.kind, s.bottom.kind, s.left.kind, s.width.kind, s.height.kind, s.minWidth.kind, s.minHeight.kind, s.maxWidth.kind, s.maxHeight.kind, s.marginTop.kind, s.marginRight.kind, s.marginBottom.kind, s.marginLeft.kind, s.paddingTop.kind, s.paddingRight.kind, s.paddingBottom.kind, s.paddingLeft.kind, s.borderTopWidth.kind, s.borderRightWidth.kind, s.borderBottomWidth.kind, s.borderLeftWidth.kind, s.flexBasis.kind, s.rowGap.kind, s.columnGap.kind, s.verticalAlign.kind)
   // ts: packages/layout/src/environment.ts:189
   run {
-    val _a8 = kinds
-    var _i8 = 0
-    while (_i8 < _a8.size) {
-      val k: String = _a8[_i8]
-      _i8++
+    val _a7 = kinds
+    var _i7 = 0
+    while (_i7 < _a7.size) {
+      val k: String = _a7[_i7]
+      _i7++
       // ts: packages/layout/src/environment.ts:189
       if (jsStrEq(k, "calc")) {
         return true
@@ -544,11 +544,11 @@ fun environment_leafPx(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_Cal
 fun environment_nanIn(values: JsArray<Double>): Double? {
   // ts: packages/layout/src/environment.ts:475
   run {
-    val _a9 = values
-    var _i9 = 0
-    while (_i9 < _a9.size) {
-      val v: Double = _a9[_i9]
-      _i9++
+    val _a8 = values
+    var _i8 = 0
+    while (_i8 < _a8.size) {
+      val v: Double = _a8[_i8]
+      _i8++
       // ts: packages/layout/src/environment.ts:475
       if ((v).isNaN()) {
         return v
@@ -621,11 +621,11 @@ fun environment_computeDouble(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProd
       var m: Double = jsUnwrap(jsAt(values, 0.0))
       // ts: packages/layout/src/environment.ts:524
       run {
-        val _a10 = values
-        var _i10 = 0
-        while (_i10 < _a10.size) {
-          val v: Double = _a10[_i10]
-          _i10++
+        val _a9 = values
+        var _i9 = 0
+        while (_i9 < _a9.size) {
+          val v: Double = _a9[_i9]
+          _i9++
           m = units_doubleMinStep(m, v)
         }
       }
@@ -643,11 +643,11 @@ fun environment_computeDouble(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProd
       var m: Double = jsUnwrap(jsAt(values, 0.0))
       // ts: packages/layout/src/environment.ts:532
       run {
-        val _a11 = values
-        var _i11 = 0
-        while (_i11 < _a11.size) {
-          val v: Double = _a11[_i11]
-          _i11++
+        val _a10 = values
+        var _i10 = 0
+        while (_i10 < _a10.size) {
+          val v: Double = _a10[_i10]
+          _i10++
           m = units_doubleMaxStep(m, v)
         }
       }
@@ -696,11 +696,11 @@ fun environment_hasLength(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_
     "sum", "product", "min", "max" -> {
       // ts: packages/layout/src/environment.ts:573
       run {
-        val _a12 = (e as U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
-        var _i12 = 0
-        while (_i12 < _a12.size) {
-          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a12[_i12]
-          _i12++
+        val _a11 = (e as U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
+        var _i11 = 0
+        while (_i11 < _a11.size) {
+          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a11[_i11]
+          _i11++
           // ts: packages/layout/src/environment.ts:573
           if (environment_hasLength(t)) {
             return true
@@ -898,11 +898,11 @@ fun environment_toCalcExpression(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcP
       var simple: Boolean = true
       // ts: packages/layout/src/environment.ts:712
       run {
-        val _a13 = terms
-        var _i13 = 0
-        while (_i13 < _a13.size) {
-          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a13[_i13]
-          _i13++
+        val _a12 = terms
+        var _i12 = 0
+        while (_i12 < _a12.size) {
+          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a12[_i12]
+          _i12++
           // ts: packages/layout/src/environment.ts:712
           if ((!environment_isSimplePixels(t))) {
             simple = false
@@ -1052,11 +1052,11 @@ fun environment_calcDependencies(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcP
     "sum", "product", "min", "max" -> {
       // ts: packages/layout/src/environment.ts:833
       run {
-        val _a14 = (e as U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
-        var _i14 = 0
-        while (_i14 < _a14.size) {
-          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a14[_i14]
-          _i14++
+        val _a13 = (e as U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
+        var _i13 = 0
+        while (_i13 < _a13.size) {
+          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a13[_i13]
+          _i13++
           environment_calcDependencies(t, out)
         }
       }
@@ -1079,11 +1079,11 @@ fun environment_boxDependencies(b: LayoutBox, out: DependencyFlags): Unit {
   }
   // ts: packages/layout/src/environment.ts:846
   run {
-    val _a15 = b.children
-    var _i15 = 0
-    while (_i15 < _a15.size) {
-      val c: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a15[_i15]
-      _i15++
+    val _a14 = b.children
+    var _i14 = 0
+    while (_i14 < _a14.size) {
+      val c: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a14[_i14]
+      _i14++
       // ts: packages/layout/src/environment.ts:847
       if (jsStrEq(c.kind, "box")) {
         environment_boxDependencies((c as LayoutBox), out)
@@ -1106,11 +1106,11 @@ fun environment_inlineDependencies(c: U_InlineBox_LineBreak_TextLeaf, out: Depen
   environment_styleDependencies((c as InlineBox).style, out)
   // ts: packages/layout/src/environment.ts:857
   run {
-    val _a16 = (c as InlineBox).children
-    var _i16 = 0
-    while (_i16 < _a16.size) {
-      val k: U_InlineBox_LineBreak_TextLeaf = _a16[_i16]
-      _i16++
+    val _a15 = (c as InlineBox).children
+    var _i15 = 0
+    while (_i15 < _a15.size) {
+      val k: U_InlineBox_LineBreak_TextLeaf = _a15[_i15]
+      _i15++
       environment_inlineDependencies(k, out)
     }
   }

@@ -108,11 +108,11 @@ public func environment_boxNeedsEnvironment(_ b: LayoutBox, _ faults: EngineFaul
   }
   // ts: packages/layout/src/environment.ts:151
   do {
-    let _a6 = b.children
-    var _i6 = 0
-    while _i6 < _a6.items.count {
-      let c: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a6.items[_i6]
-      _i6 += 1
+    let _a5 = b.children
+    var _i5 = 0
+    while _i5 < _a5.items.count {
+      let c: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a5.items[_i5]
+      _i5 += 1
       // ts: packages/layout/src/environment.ts:152
       if (c.kind == S.s_box) {
         // ts: packages/layout/src/environment.ts:153
@@ -154,11 +154,11 @@ public func environment_inlineNeedsEnvironment(_ c: any U_InlineBox_LineBreak_Te
   }
   // ts: packages/layout/src/environment.ts:170
   do {
-    let _a7 = (c as! InlineBox).children
-    var _i7 = 0
-    while _i7 < _a7.items.count {
-      let k: any U_InlineBox_LineBreak_TextLeaf = _a7.items[_i7]
-      _i7 += 1
+    let _a6 = (c as! InlineBox).children
+    var _i6 = 0
+    while _i6 < _a6.items.count {
+      let k: any U_InlineBox_LineBreak_TextLeaf = _a6.items[_i6]
+      _i6 += 1
       // ts: packages/layout/src/environment.ts:170
       if try environment_inlineNeedsEnvironment(k, faults) {
         return true
@@ -186,11 +186,11 @@ public func environment_styleNeedsEnvironment(_ s: LayoutStyle) throws -> Bool {
   let kinds: JsArray<JsString> = JsArray<JsString>([s.top.kind, s.right.kind, s.bottom.kind, s.left.kind, s.width.kind, s.height.kind, s.minWidth.kind, s.minHeight.kind, s.maxWidth.kind, s.maxHeight.kind, s.marginTop.kind, s.marginRight.kind, s.marginBottom.kind, s.marginLeft.kind, s.paddingTop.kind, s.paddingRight.kind, s.paddingBottom.kind, s.paddingLeft.kind, s.borderTopWidth.kind, s.borderRightWidth.kind, s.borderBottomWidth.kind, s.borderLeftWidth.kind, s.flexBasis.kind, s.rowGap.kind, s.columnGap.kind, s.verticalAlign.kind])
   // ts: packages/layout/src/environment.ts:189
   do {
-    let _a8 = kinds
-    var _i8 = 0
-    while _i8 < _a8.items.count {
-      let k: JsString = _a8.items[_i8]
-      _i8 += 1
+    let _a7 = kinds
+    var _i7 = 0
+    while _i7 < _a7.items.count {
+      let k: JsString = _a7.items[_i7]
+      _i7 += 1
       // ts: packages/layout/src/environment.ts:189
       if (k == S.s_calc) {
         return true
@@ -547,7 +547,7 @@ public func environment_leafPx(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_C
   case S.s_env:
     return try units_zoomCssPx(((e as! EnvLength).value * environment_safeAreaInset((e as! EnvLength).side, env)), z)
   case S.s_font_percent, S.s_font_calc:
-    throw JsError(message: jsConcat(S.s66, (e as! any U_FontCalc_FontPercent).kind, S.s19))
+    throw JsError(message: jsConcat(S.s74, (e as! any U_FontCalc_FontPercent).kind, S.s22))
   default:
     return nil
   }
@@ -557,11 +557,11 @@ public func environment_leafPx(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_C
 public func environment_nanIn(_ values: JsArray<Double>) throws -> Double? {
   // ts: packages/layout/src/environment.ts:475
   do {
-    let _a9 = values
-    var _i9 = 0
-    while _i9 < _a9.items.count {
-      let v: Double = _a9.items[_i9]
-      _i9 += 1
+    let _a8 = values
+    var _i8 = 0
+    while _i8 < _a8.items.count {
+      let v: Double = _a8.items[_i8]
+      _i8 += 1
       // ts: packages/layout/src/environment.ts:475
       if (v).isNaN {
         return v
@@ -628,11 +628,11 @@ public func environment_computeDouble(_ e: any U_CalcClamp_CalcInvert_CalcMax_Ca
     var m: Double = try jsUnwrap(jsAt(values, 0.0))
     // ts: packages/layout/src/environment.ts:524
     do {
-      let _a10 = values
-      var _i10 = 0
-      while _i10 < _a10.items.count {
-        let v: Double = _a10.items[_i10]
-        _i10 += 1
+      let _a9 = values
+      var _i9 = 0
+      while _i9 < _a9.items.count {
+        let v: Double = _a9.items[_i9]
+        _i9 += 1
         try m = units_doubleMinStep(m, v)
       }
     }
@@ -649,11 +649,11 @@ public func environment_computeDouble(_ e: any U_CalcClamp_CalcInvert_CalcMax_Ca
     var m: Double = try jsUnwrap(jsAt(values, 0.0))
     // ts: packages/layout/src/environment.ts:532
     do {
-      let _a11 = values
-      var _i11 = 0
-      while _i11 < _a11.items.count {
-        let v: Double = _a11.items[_i11]
-        _i11 += 1
+      let _a10 = values
+      var _i10 = 0
+      while _i10 < _a10.items.count {
+        let v: Double = _a10.items[_i10]
+        _i10 += 1
         try m = units_doubleMaxStep(m, v)
       }
     }
@@ -695,11 +695,11 @@ public func environment_hasLength(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMi
   case S.s_sum, S.s_product, S.s_min, S.s_max:
     // ts: packages/layout/src/environment.ts:573
     do {
-      let _a12 = (e as! any U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
-      var _i12 = 0
-      while _i12 < _a12.items.count {
-        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a12.items[_i12]
-        _i12 += 1
+      let _a11 = (e as! any U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
+      var _i11 = 0
+      while _i11 < _a11.items.count {
+        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a11.items[_i11]
+        _i11 += 1
         // ts: packages/layout/src/environment.ts:573
         if try environment_hasLength(t) {
           return true
@@ -884,11 +884,11 @@ public func environment_toCalcExpression(_ e: any U_CalcClamp_CalcInvert_CalcMax
     var simple: Bool = true
     // ts: packages/layout/src/environment.ts:712
     do {
-      let _a13 = terms
-      var _i13 = 0
-      while _i13 < _a13.items.count {
-        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a13.items[_i13]
-        _i13 += 1
+      let _a12 = terms
+      var _i12 = 0
+      while _i12 < _a12.items.count {
+        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a12.items[_i12]
+        _i12 += 1
         // ts: packages/layout/src/environment.ts:712
         if try (!environment_isSimplePixels(t)) {
           simple = false
@@ -1026,11 +1026,11 @@ public func environment_calcDependencies(_ e: any U_CalcClamp_CalcInvert_CalcMax
   case S.s_sum, S.s_product, S.s_min, S.s_max:
     // ts: packages/layout/src/environment.ts:833
     do {
-      let _a14 = (e as! any U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
-      var _i14 = 0
-      while _i14 < _a14.items.count {
-        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a14.items[_i14]
-        _i14 += 1
+      let _a13 = (e as! any U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
+      var _i13 = 0
+      while _i13 < _a13.items.count {
+        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a13.items[_i13]
+        _i13 += 1
         try environment_calcDependencies(t, out)
       }
     }
@@ -1051,11 +1051,11 @@ public func environment_boxDependencies(_ b: LayoutBox, _ out: DependencyFlags) 
   }
   // ts: packages/layout/src/environment.ts:846
   do {
-    let _a15 = b.children
-    var _i15 = 0
-    while _i15 < _a15.items.count {
-      let c: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a15.items[_i15]
-      _i15 += 1
+    let _a14 = b.children
+    var _i14 = 0
+    while _i14 < _a14.items.count {
+      let c: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a14.items[_i14]
+      _i14 += 1
       // ts: packages/layout/src/environment.ts:847
       if (c.kind == S.s_box) {
         try environment_boxDependencies((c as! LayoutBox), out)
@@ -1078,11 +1078,11 @@ public func environment_inlineDependencies(_ c: any U_InlineBox_LineBreak_TextLe
   try environment_styleDependencies((c as! InlineBox).style, out)
   // ts: packages/layout/src/environment.ts:857
   do {
-    let _a16 = (c as! InlineBox).children
-    var _i16 = 0
-    while _i16 < _a16.items.count {
-      let k: any U_InlineBox_LineBreak_TextLeaf = _a16.items[_i16]
-      _i16 += 1
+    let _a15 = (c as! InlineBox).children
+    var _i15 = 0
+    while _i15 < _a15.items.count {
+      let k: any U_InlineBox_LineBreak_TextLeaf = _a15.items[_i15]
+      _i15 += 1
       try environment_inlineDependencies(k, out)
     }
   }

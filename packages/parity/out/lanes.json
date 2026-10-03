@@ -135,10 +135,15 @@
               "corpus": "extended",
               "suite": "units-calc",
               "cases": 50000
+            },
+            {
+              "corpus": "extended",
+              "suite": "engine-inline",
+              "cases": 3000
             }
           ],
-          "caseListSha256": "ba8bddfe1be16842fb0de1b9c10e64325ae9bc7d89a08bd931c2388f0502a45d",
-          "totalCases": 615623,
+          "caseListSha256": "5c6ae76524748d23340f18dd80318bf9ca6041867b47e2d3c5088f609cadf2fe",
+          "totalCases": 618623,
           "run": {
             "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
             "suites": [
@@ -239,11 +244,18 @@
                 "declared": 50000,
                 "total": 50000,
                 "pass": 50000
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-inline",
+                "declared": 3000,
+                "total": 3000,
+                "pass": 3000
               }
             ],
             "digests": {
-              "p1": "ea84cefac37906c692e06a47a61be38c4cd847fdbfa9c9ccac9dffbed853f4fb",
-              "extended": "73646f34b2c8c29517fea7bc09f996ac1d5e9a3c95efa2420353b8bb12cf8fcf"
+              "p1": "64bc82482d2a5499461dfe191a2d13e941bc1f3e1d7ef31737ec01e08c5ea886",
+              "extended": "a51c36052585ef6f4cc6762f15ace25a712870855e393335e147174075bb1e93"
             }
           },
           "device": null,
@@ -335,10 +347,15 @@
               "corpus": "extended",
               "suite": "units-calc",
               "cases": 50000
+            },
+            {
+              "corpus": "extended",
+              "suite": "engine-inline",
+              "cases": 3000
             }
           ],
-          "caseListSha256": "ba8bddfe1be16842fb0de1b9c10e64325ae9bc7d89a08bd931c2388f0502a45d",
-          "totalCases": 615623,
+          "caseListSha256": "5c6ae76524748d23340f18dd80318bf9ca6041867b47e2d3c5088f609cadf2fe",
+          "totalCases": 618623,
           "run": null,
           "device": null,
           "evidence": null
@@ -690,10 +707,15 @@
               "corpus": "extended",
               "suite": "units-calc",
               "cases": 50000
+            },
+            {
+              "corpus": "extended",
+              "suite": "engine-inline",
+              "cases": 3000
             }
           ],
-          "caseListSha256": "ba8bddfe1be16842fb0de1b9c10e64325ae9bc7d89a08bd931c2388f0502a45d",
-          "totalCases": 615623,
+          "caseListSha256": "5c6ae76524748d23340f18dd80318bf9ca6041867b47e2d3c5088f609cadf2fe",
+          "totalCases": 618623,
           "run": {
             "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18",
             "suites": [
@@ -794,11 +816,18 @@
                 "declared": 50000,
                 "total": 50000,
                 "pass": 50000
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-inline",
+                "declared": 3000,
+                "total": 3000,
+                "pass": 3000
               }
             ],
             "digests": {
-              "p1": "ea84cefac37906c692e06a47a61be38c4cd847fdbfa9c9ccac9dffbed853f4fb",
-              "extended": "73646f34b2c8c29517fea7bc09f996ac1d5e9a3c95efa2420353b8bb12cf8fcf"
+              "p1": "64bc82482d2a5499461dfe191a2d13e941bc1f3e1d7ef31737ec01e08c5ea886",
+              "extended": "a51c36052585ef6f4cc6762f15ace25a712870855e393335e147174075bb1e93"
             }
           },
           "device": null,
@@ -890,10 +919,15 @@
               "corpus": "extended",
               "suite": "units-calc",
               "cases": 50000
+            },
+            {
+              "corpus": "extended",
+              "suite": "engine-inline",
+              "cases": 3000
             }
           ],
-          "caseListSha256": "ba8bddfe1be16842fb0de1b9c10e64325ae9bc7d89a08bd931c2388f0502a45d",
-          "totalCases": 615623,
+          "caseListSha256": "5c6ae76524748d23340f18dd80318bf9ca6041867b47e2d3c5088f609cadf2fe",
+          "totalCases": 618623,
           "run": null,
           "device": null,
           "evidence": null

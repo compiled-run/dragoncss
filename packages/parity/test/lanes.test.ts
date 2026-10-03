@@ -163,7 +163,7 @@ describe('lane states', () => {
     expect(judgeHost(ios, parseNativeOutput(text(null, p1)))).toMatchObject({ state: 'pass', reason: null, toolchain: 'Swift version 6.4' });
     expect(judgeHost(ios, parseNativeOutput(text('snap', p1)))).toMatchObject({ state: 'fail', reason: expect.stringContaining('extended/snap -/-, declared') });
     // The V1 suites are parsed and judged too: a dropped V1 suite line fails the host lane.
-    for (const v1 of ['snap-values', 'calc-goldens', 'engine-calc', 'units-calc']) {
+    for (const v1 of ['snap-values', 'calc-goldens', 'engine-calc', 'units-calc', 'engine-inline']) {
       expect(judgeHost(ios, parseNativeOutput(text(v1, p1))), v1).toMatchObject({ state: 'fail', reason: expect.stringContaining(`extended/${v1} -/-, declared`) });
     }
     // The ANIM-a2 rt suite is parsed and judged too: a dropped rt line fails the host lane.
@@ -248,7 +248,8 @@ describe('host suite lines (T125)', () => {
   ].join('\n');
   it('a suite line the manifest does not declare is parsed and fails judgeHost, whatever its name', () => {
     expect(judgeHost(ios, parseNativeOutput(text([])))).toMatchObject({ state: 'pass', reason: null });
-    for (const name of ['engine-inline', 'new suite 2', 'x']) {
+    // engine-inline is declared since INL1a, so the undeclared names are made up.
+    for (const name of ['engine-other', 'new suite 2', 'x']) {
       const parsed = parseNativeOutput(text([`${name} 3000/3000`]));
       expect(parsed?.suites.some((s) => s.corpus === 'extended' && s.suite === name), name).toBe(true);
       expect(judgeHost(ios, parsed), name).toMatchObject({ state: 'fail', reason: expect.stringContaining(`extended/${name} is not a declared suite`) });

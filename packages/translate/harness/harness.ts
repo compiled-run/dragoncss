@@ -783,7 +783,8 @@ const FAULT_KEYS: readonly string[] = [
   'wrapReverseBaselineSpec', 'initialLineWidthZoomed', 'calcPercentPlainOrder', 'calcDoubleEval', 'calcNoNonNegClamp',
   'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled', 'lhUnsnapped',
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
-  'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak',
+  'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak', 'lineHeightIgnoresInlineBoxes',
+  'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -824,6 +825,11 @@ function decodeFaults(v: JsonValue): EngineFaults {
     fitWithoutEpsilon: b('fitWithoutEpsilon'),
     breakAfterSolidus: b('breakAfterSolidus'),
     noHyphenDigitBreak: b('noHyphenDigitBreak'),
+    lineHeightIgnoresInlineBoxes: b('lineHeightIgnoresInlineBoxes'),
+    halfLeadingUnflooredPerBox: b('halfLeadingUnflooredPerBox'),
+    brIgnored: b('brIgnored'),
+    breakAtBoxBoundary: b('breakAtBoxBoundary'),
+    fragmentFromLineTop: b('fragmentFromLineTop'),
   };
 }
 

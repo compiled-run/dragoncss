@@ -34,7 +34,7 @@ public final class FlexResult {
 }
 
 // ts: packages/layout/src/flex.ts:74
-public final class Item {
+public final class Flex_Item {
   public let box: any U_LayoutBox_ReplacedLeaf
   public let margin: Edges
   public let pad: Edges
@@ -91,10 +91,10 @@ public final class Item {
 
 // ts: packages/layout/src/flex.ts:104
 public final class Flex_Line {
-  public let items: JsArray<Item>
+  public let items: JsArray<Flex_Item>
   public var cross: Double
   public var flowOffset: Double
-  public init(_ items: JsArray<Item>, _ cross: Double, _ flowOffset: Double) {
+  public init(_ items: JsArray<Flex_Item>, _ cross: Double, _ flowOffset: Double) {
     self.items = items
     self.cross = cross
     self.flowOffset = flowOffset
@@ -165,14 +165,14 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
   let absolute: JsArray<LayoutBox> = JsArray<LayoutBox>([])
   // ts: packages/layout/src/flex.ts:139
   do {
-    let _a17 = box.children
-    var _i17 = 0
-    while _i17 < _a17.items.count {
-      let k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a17.items[_i17]
-      _i17 += 1
+    let _a16 = box.children
+    var _i16 = 0
+    while _i16 < _a16.items.count {
+      let k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a16.items[_i16]
+      _i16 += 1
       // ts: packages/layout/src/flex.ts:141
       if ((k.kind != S.s_box) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) {
-        throw JsError(message: jsConcat((k as! any U_InlineBox_LineBreak_TextLeaf).id, S.s11, box.id, S.s51))
+        throw JsError(message: jsConcat((k as! any U_InlineBox_LineBreak_TextLeaf).id, S.s13, box.id, S.s56))
       }
       // ts: packages/layout/src/flex.ts:144
       if try (((k as! any U_LayoutBox_ReplacedLeaf).kind == S.s_box) && position_isOutOfFlow(ctx, (k as! LayoutBox))) {
@@ -191,16 +191,16 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
   let singleLine: Bool = (s.flexWrap == S.s_nowrap)
   let itemHeightBasis: any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite = try ((a.definiteInnerHeight == nil) ? (HeightBasis_indefinite(S.s_indefinite) as any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite) : ((a.sizeIsFlexDependent ? (HeightBasis_flexDependent(S.s_flex_dependent) as any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite) : (HeightBasis_definite(S.s_definite, jsUnwrap(a.definiteInnerHeight)) as any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite)) as any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite))
   var mainInner: Double? = (isRow ? (a.contentWidth as Double?) : (a.definiteInnerHeight as Double?))
-  let items: JsArray<Item> = try jsMap(ordered, { (b: any U_LayoutBox_ReplacedLeaf) throws -> Item in
+  let items: JsArray<Flex_Item> = try jsMap(ordered, { (b: any U_LayoutBox_ReplacedLeaf) throws -> Flex_Item in
     return try flex_buildItem(ctx, box, b, axes, a, mainInner, crossInner, singleLine, itemHeightBasis)
 })
   // ts: packages/layout/src/flex.ts:160
   if (mainInner == nil) {
     // ts: packages/layout/src/flex.ts:161
     if (!singleLine) {
-      try unsupported_unsupported(S.s_flex_wrap_indefinite_main, box.id, S.s109, S.s193)
+      try unsupported_unsupported(S.s_flex_wrap_indefinite_main, box.id, S.s119, S.s208)
     }
-    let hypo: Double = try units_add(units_sum(jsMap(items, { (i: Item) throws -> Double in
+    let hypo: Double = try units_add(units_sum(jsMap(items, { (i: Flex_Item) throws -> Double in
     return try flex_outerHypothetical(i)
 })), flex_gapsFor(jsLength(items), mainGap))
     try mainInner = box_constrain(hypo, a.innerHeightMinMax)
@@ -208,23 +208,23 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
   let lines: JsArray<Flex_Line> = try flex_collectLines(items, jsUnwrap(mainInner), mainGap, singleLine)
   // ts: packages/layout/src/flex.ts:168
   do {
-    let _a18 = lines
-    var _i18 = 0
-    while _i18 < _a18.items.count {
-      let line: Flex_Line = _a18.items[_i18]
-      _i18 += 1
+    let _a17 = lines
+    var _i17 = 0
+    while _i17 < _a17.items.count {
+      let line: Flex_Line = _a17.items[_i17]
+      _i17 += 1
       try flex_resolveFlexibleLengths(line.items, jsUnwrap(mainInner), mainGap)
     }
   }
-  let hypoFrag: JsObjectMap<Item, Frag> = JsObjectMap<Item, Frag>()
-  let hypoCross: JsObjectMap<Item, Double> = JsObjectMap<Item, Double>()
+  let hypoFrag: JsObjectMap<Flex_Item, Frag> = JsObjectMap<Flex_Item, Frag>()
+  let hypoCross: JsObjectMap<Flex_Item, Double> = JsObjectMap<Flex_Item, Double>()
   // ts: packages/layout/src/flex.ts:173
   do {
-    let _a19 = items
-    var _i19 = 0
-    while _i19 < _a19.items.count {
-      let item: Item = _a19.items[_i19]
-      _i19 += 1
+    let _a18 = items
+    var _i18 = 0
+    while _i18 < _a18.items.count {
+      let item: Flex_Item = _a18.items[_i18]
+      _i18 += 1
       let leaf: any U_LayoutBox_ReplacedLeaf = item.box
       // ts: packages/layout/src/flex.ts:175
       if (leaf.kind == S.s_replaced) {
@@ -251,24 +251,24 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
     }
   }
   // ts: packages/layout/src/flex.ts:203
-  func crossOf(_ i: Item) throws -> Double {
+  func crossOf(_ i: Flex_Item) throws -> Double {
     return try jsUnwrap(hypoCross.get(i))
   }
   // ts: packages/layout/src/flex.ts:204
-  func participates(_ i: Item) throws -> Bool {
+  func participates(_ i: Flex_Item) throws -> Bool {
     return (((i.align == S.s_baseline) && (!i.autoCrossStart)) && (!i.autoCrossEnd))
   }
   // ts: packages/layout/src/flex.ts:205
-  func baselineOf(_ i: Item) throws -> ItemBaseline {
+  func baselineOf(_ i: Flex_Item) throws -> ItemBaseline {
     return try flex_itemBaseline(ctx, i, axes, (isRow ? (jsUnwrap(hypoFrag.get(i)) as Frag?) : (nil as Frag?)), crossOf(i))
   }
   // ts: packages/layout/src/flex.ts:209
   do {
-    let _a20 = lines
-    var _i20 = 0
-    while _i20 < _a20.items.count {
-      let line: Flex_Line = _a20.items[_i20]
-      _i20 += 1
+    let _a19 = lines
+    var _i19 = 0
+    while _i19 < _a19.items.count {
+      let line: Flex_Line = _a19.items[_i19]
+      _i19 += 1
       // ts: packages/layout/src/flex.ts:210
       if (singleLine && (crossInner != nil)) {
         try line.cross = jsUnwrap(crossInner)
@@ -279,11 +279,11 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
       var toEnd: Double = units_ZERO
       // ts: packages/layout/src/flex.ts:217
       do {
-        let _a21 = line.items
-        var _i21 = 0
-        while _i21 < _a21.items.count {
-          let i: Item = _a21.items[_i21]
-          _i21 += 1
+        let _a20 = line.items
+        var _i20 = 0
+        while _i20 < _a20.items.count {
+          let i: Flex_Item = _a20.items[_i20]
+          _i20 += 1
           // ts: packages/layout/src/flex.ts:218
           if try (isRow && participates(i)) {
             let b: ItemBaseline = try baselineOf(i)
@@ -317,20 +317,20 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
   var containerBaseline: Double? = nil
   let baselineLine: Double = ((axes.wrapReverse && (!ctx.faults.wrapReverseBaselineSpec)) ? (jsLength(lines) - 1.0) : 0.0)
   try jsForEachI(lines, { (line: Flex_Line, lineIndex: Double) throws -> Void in
-    let flowItems: JsArray<Item> = (axes.reverse ? jsReverse(jsCopy(line.items)) : line.items)
+    let flowItems: JsArray<Flex_Item> = (axes.reverse ? jsReverse(jsCopy(line.items)) : line.items)
     let n: Double = jsLength(flowItems)
-    let used: Double = try units_add(units_sum(jsMap(flowItems, { (i: Item) throws -> Double in
+    let used: Double = try units_add(units_sum(jsMap(flowItems, { (i: Flex_Item) throws -> Double in
     return try units_add(units_add(i.target, i.mainBp), i.mainMargins)
 })), flex_gapsFor(n, mainGap))
     let free: Double = try units_sub(jsUnwrap(mainInner), used)
     var autoCount: Double = 0.0
     // ts: packages/layout/src/flex.ts:253
     do {
-      let _a22 = flowItems
-      var _i22 = 0
-      while _i22 < _a22.items.count {
-        let i: Item = _a22.items[_i22]
-        _i22 += 1
+      let _a21 = flowItems
+      var _i21 = 0
+      while _i21 < _a21.items.count {
+        let i: Flex_Item = _a21.items[_i21]
+        _i21 += 1
         autoCount += ((i.autoMainStart ? 1.0 : 0.0) + (i.autoMainEnd ? 1.0 : 0.0))
       }
     }
@@ -351,11 +351,11 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
     var groupCount: Double = 0.0
     // ts: packages/layout/src/flex.ts:266
     do {
-      let _a23 = flowItems
-      var _i23 = 0
-      while _i23 < _a23.items.count {
-        let i: Item = _a23.items[_i23]
-        _i23 += 1
+      let _a22 = flowItems
+      var _i22 = 0
+      while _i22 < _a22.items.count {
+        let i: Flex_Item = _a22.items[_i22]
+        _i22 += 1
         // ts: packages/layout/src/flex.ts:267
         if try (!participates(i)) {
           continue
@@ -367,7 +367,7 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
     let crossStartAtPhysicalStart: Bool = (isRow ? (!axes.wrapReverse) : (axes.ltr != axes.wrapReverse))
     let groupBaseline: Double = try (crossStartAtPhysicalStart ? groupToStart : units_sub(line.cross, groupToStart))
     var cursor: Double = units_ZERO
-    try jsForEachI(flowItems, { (item: Item, k: Double) throws -> Void in
+    try jsForEachI(flowItems, { (item: Flex_Item, k: Double) throws -> Void in
     // ts: packages/layout/src/flex.ts:275
     if item.autoMainStart {
       try cursor = units_add(cursor, autoShare())
@@ -445,12 +445,12 @@ public func flex_ownBaseline(_ frag: Frag) throws -> Double {
 }
 
 // ts: packages/layout/src/flex.ts:357
-public func flex_baselineFault(_ ctx: Ctx, _ item: Item) throws -> Double {
+public func flex_baselineFault(_ ctx: Ctx, _ item: Flex_Item) throws -> Double {
   return try (ctx.faults.baselineFromBorderTop ? units_add(item.bor.top, item.pad.top) : units_ZERO)
 }
 
 // ts: packages/layout/src/flex.ts:367
-public func flex_itemBaseline(_ ctx: Ctx, _ item: Item, _ axes: Axes, _ frag: Frag?, _ crossSize: Double) throws -> ItemBaseline {
+public func flex_itemBaseline(_ ctx: Ctx, _ item: Flex_Item, _ axes: Axes, _ frag: Frag?, _ crossSize: Double) throws -> ItemBaseline {
   let m: Edges = item.margin
   // ts: packages/layout/src/flex.ts:369
   if axes.isRow {
@@ -473,7 +473,7 @@ public func flex_gapValue(_ box: LayoutBox, _ v: any U_LengthCalc_NormalValue_Pe
   }
   // ts: packages/layout/src/flex.ts:383
   if try box_hasPercent((v as! any U_LengthCalc_Percent_Px)) {
-    try unsupported_unsupported(S.s_percent_gap, box.id, S.s106, S.s215)
+    try unsupported_unsupported(S.s_percent_gap, box.id, S.s116, S.s232)
   }
   return try box_resolveLength((v as! any U_LengthCalc_Percent_Px), units_ZERO, faults)
 }
@@ -516,13 +516,13 @@ public func flex_effectiveAlign(_ ctx: Ctx, _ container: LayoutBox, _ item: any 
 }
 
 // ts: packages/layout/src/flex.ts:423
-public func flex_stretchesCross(_ item: Item, _ isRow: Bool) throws -> Bool {
+public func flex_stretchesCross(_ item: Flex_Item, _ isRow: Bool) throws -> Bool {
   let size: any U_Auto_LengthCalc_Percent_Px = (isRow ? (item.box.style.height as any U_Auto_LengthCalc_Percent_Px) : (item.box.style.width as any U_Auto_LengthCalc_Percent_Px))
   return (((size.kind == S.s_auto) && (!item.autoCrossStart)) && (!item.autoCrossEnd))
 }
 
 // ts: packages/layout/src/flex.ts:429
-public func flex_buildItem(_ ctx: Ctx, _ container: LayoutBox, _ box: any U_LayoutBox_ReplacedLeaf, _ axes: Axes, _ a: FlexArgs, _ mainInner: Double?, _ crossInner: Double?, _ singleLine: Bool, _ heightBasis: any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite) throws -> Item {
+public func flex_buildItem(_ ctx: Ctx, _ container: LayoutBox, _ box: any U_LayoutBox_ReplacedLeaf, _ axes: Axes, _ a: FlexArgs, _ mainInner: Double?, _ crossInner: Double?, _ singleLine: Bool, _ heightBasis: any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite) throws -> Flex_Item {
   let s: LayoutStyle = box.style
   let isRow: Bool = axes.isRow
   let cbInline: Double = a.contentWidth
@@ -598,12 +598,12 @@ public func flex_buildItem(_ ctx: Ctx, _ container: LayoutBox, _ box: any U_Layo
   let basis: any U_Auto_ContentValue_LengthCalc_Percent_Px = s.flexBasis
   // ts: packages/layout/src/flex.ts:529
   if (basis.kind == S.s_content) {
-    try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s108, S.s144)
+    try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s118, S.s155)
   } else if ((basis as! any U_Auto_LengthCalc_Percent_Px).kind != S.s_auto) {
     let resolved: Double? = try box_resolveLengthOrNull((basis as! any U_LengthCalc_Percent_Px), mainInner, ctx.faults)
     // ts: packages/layout/src/flex.ts:533
     if (resolved == nil) {
-      try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s108, S.s214)
+      try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s118, S.s231)
     }
     try base = box_contentBox(box_borderBoxFromSpecified(jsUnwrap(resolved), mainBp, s.boxSizing), mainBp)
   } else {
@@ -635,7 +635,7 @@ public func flex_buildItem(_ ctx: Ctx, _ container: LayoutBox, _ box: any U_Layo
   }
   let mainMinMax: MinMax = MinMax(minMain, maxMain)
   let hypothetical: Double = try box_constrain(base, mainMinMax)
-  return try Item(box, margin, pad, bor, mainStart.value, mainEnd.value, crossStart.value, mainStart.auto, mainEnd.auto, crossStart.auto, crossEnd.auto, mainBp, crossBp, units_add(mainStart.value, mainEnd.value), units_add(crossStart.value, crossEnd.value), s.flexGrow, s.flexShrink, base, hypothetical, mainMinMax, align, columnCross, leafSpace, false, hypothetical)
+  return try Flex_Item(box, margin, pad, bor, mainStart.value, mainEnd.value, crossStart.value, mainStart.auto, mainEnd.auto, crossStart.auto, crossEnd.auto, mainBp, crossBp, units_add(mainStart.value, mainEnd.value), units_add(crossStart.value, crossEnd.value), s.flexGrow, s.flexShrink, base, hypothetical, mainMinMax, align, columnCross, leafSpace, false, hypothetical)
 }
 
 // ts: packages/layout/src/flex.ts:592
@@ -648,7 +648,7 @@ public func flex_percentMainHeight(_ box: any U_LayoutBox_ReplacedLeaf, _ basis:
   if ((basis as! any U_HeightBasis_definite_HeightBasis_flexDependent).kind == S.s_definite) {
     return (basis as! HeightBasis_definite).value
   }
-  try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s110, jsConcat(prop, S.s22))
+  try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s120, jsConcat(prop, S.s25))
 }
 
 // ts: packages/layout/src/flex.ts:599
@@ -663,36 +663,36 @@ public func flex_mainSizeContent(_ box: any U_LayoutBox_ReplacedLeaf, _ v: any U
 }
 
 // ts: packages/layout/src/flex.ts:614
-public func flex_outerHypothetical(_ i: Item) throws -> Double {
+public func flex_outerHypothetical(_ i: Flex_Item) throws -> Double {
   return try units_add(units_add(i.hypothetical, i.mainBp), i.mainMargins)
 }
 
 // ts: packages/layout/src/flex.ts:618
-public func flex_outerBase(_ i: Item) throws -> Double {
+public func flex_outerBase(_ i: Flex_Item) throws -> Double {
   return try units_add(units_add(i.base, i.mainBp), i.mainMargins)
 }
 
 // ts: packages/layout/src/flex.ts:623
-public func flex_collectLines(_ items: JsArray<Item>, _ mainInner: Double, _ gap: Double, _ singleLine: Bool) throws -> JsArray<Flex_Line> {
+public func flex_collectLines(_ items: JsArray<Flex_Item>, _ mainInner: Double, _ gap: Double, _ singleLine: Bool) throws -> JsArray<Flex_Line> {
   // ts: packages/layout/src/flex.ts:624
   if singleLine {
     return JsArray<Flex_Line>([Flex_Line(jsCopy(items), units_ZERO, units_ZERO)])
   }
   let lines: JsArray<Flex_Line> = JsArray<Flex_Line>([])
-  var current: JsArray<Item> = JsArray<Item>([])
+  var current: JsArray<Flex_Item> = JsArray<Flex_Item>([])
   var used: Double = units_ZERO
   // ts: packages/layout/src/flex.ts:628
   do {
-    let _a24 = items
-    var _i24 = 0
-    while _i24 < _a24.items.count {
-      let item: Item = _a24.items[_i24]
-      _i24 += 1
+    let _a23 = items
+    var _i23 = 0
+    while _i23 < _a23.items.count {
+      let item: Flex_Item = _a23.items[_i23]
+      _i23 += 1
       let outer: Double = try flex_outerHypothetical(item)
       // ts: packages/layout/src/flex.ts:630
       if try ((jsLength(current) > 0.0) && (units_add(used, outer) > mainInner)) {
         _ = jsPush(lines, Flex_Line(current, units_ZERO, units_ZERO))
-        current = JsArray<Item>([])
+        current = JsArray<Flex_Item>([])
         used = units_ZERO
       }
       _ = jsPush(current, item)
@@ -707,7 +707,7 @@ public func flex_collectLines(_ items: JsArray<Item>, _ mainInner: Double, _ gap
 }
 
 // ts: packages/layout/src/flex.ts:643
-public func flex_resolveFlexibleLengths(_ items: JsArray<Item>, _ mainInner: Double, _ gap: Double) throws -> Void {
+public func flex_resolveFlexibleLengths(_ items: JsArray<Flex_Item>, _ mainInner: Double, _ gap: Double) throws -> Void {
   let gaps: Double = try flex_gapsFor(jsLength(items), gap)
   let sumHypothetical: Double = try units_add(units_sum(jsMap(items, flex_outerHypothetical)), gaps)
   let sumBase: Double = try units_add(units_sum(jsMap(items, flex_outerBase)), gaps)
@@ -717,11 +717,11 @@ public func flex_resolveFlexibleLengths(_ items: JsArray<Item>, _ mainInner: Dou
   var totalWeighted: Double = units_FACTOR_ZERO
   // ts: packages/layout/src/flex.ts:651
   do {
-    let _a25 = items
-    var _i25 = 0
-    while _i25 < _a25.items.count {
-      let i: Item = _a25.items[_i25]
-      _i25 += 1
+    let _a24 = items
+    var _i24 = 0
+    while _i24 < _a24.items.count {
+      let i: Flex_Item = _a24.items[_i24]
+      _i24 += 1
       i.frozen = false
       try totalGrow = units_factorAdd(totalGrow, i.grow)
       try totalShrink = units_factorAdd(totalShrink, i.shrink)
@@ -730,14 +730,14 @@ public func flex_resolveFlexibleLengths(_ items: JsArray<Item>, _ mainInner: Dou
   }
   var remaining: Double = try units_sub(mainInner, sumBase)
   // ts: packages/layout/src/flex.ts:658
-  func freeze(_ list: JsArray<Item>) throws -> Void {
+  func freeze(_ list: JsArray<Flex_Item>) throws -> Void {
     // ts: packages/layout/src/flex.ts:659
     do {
-      let _a26 = list
-      var _i26 = 0
-      while _i26 < _a26.items.count {
-        let i: Item = _a26.items[_i26]
-        _i26 += 1
+      let _a25 = list
+      var _i25 = 0
+      while _i25 < _a25.items.count {
+        let i: Flex_Item = _a25.items[_i25]
+        _i25 += 1
         try remaining = units_sub(remaining, units_sub(i.target, i.base))
         try totalGrow = units_factorSubClampZero(totalGrow, i.grow)
         try totalShrink = units_factorSubClampZero(totalShrink, i.shrink)
@@ -746,14 +746,14 @@ public func flex_resolveFlexibleLengths(_ items: JsArray<Item>, _ mainInner: Dou
       }
     }
   }
-  let inflexible: JsArray<Item> = JsArray<Item>([])
+  let inflexible: JsArray<Flex_Item> = JsArray<Flex_Item>([])
   // ts: packages/layout/src/flex.ts:669
   do {
-    let _a27 = items
-    var _i27 = 0
-    while _i27 < _a27.items.count {
-      let i: Item = _a27.items[_i27]
-      _i27 += 1
+    let _a26 = items
+    var _i26 = 0
+    while _i26 < _a26.items.count {
+      let i: Flex_Item = _a26.items[_i26]
+      _i26 += 1
       let factor: Double = (growing ? i.grow : i.shrink)
       // ts: packages/layout/src/flex.ts:671
       if (((factor == 0.0) || (growing && (i.base > i.hypothetical))) || ((!growing) && (i.base < i.hypothetical))) {
@@ -767,7 +767,7 @@ public func flex_resolveFlexibleLengths(_ items: JsArray<Item>, _ mainInner: Dou
   // ts: packages/layout/src/flex.ts:680
   do {
     while true {
-      let unfrozen: JsArray<Item> = try jsFilter(items, { (i: Item) throws -> Bool in
+      let unfrozen: JsArray<Flex_Item> = try jsFilter(items, { (i: Flex_Item) throws -> Bool in
     return (!i.frozen)
 })
       // ts: packages/layout/src/flex.ts:682
@@ -787,13 +787,13 @@ public func flex_resolveFlexibleLengths(_ items: JsArray<Item>, _ mainInner: Dou
       var growLeft: Double = totalGrow
       var weightLeft: Double = totalWeighted
       var totalViolation: Double = units_ZERO
-      let minViolations: JsArray<Item> = JsArray<Item>([])
-      let maxViolations: JsArray<Item> = JsArray<Item>([])
+      let minViolations: JsArray<Flex_Item> = JsArray<Flex_Item>([])
+      let maxViolations: JsArray<Flex_Item> = JsArray<Flex_Item>([])
       // ts: packages/layout/src/flex.ts:695
       do {
         var k: Double = (jsLength(unfrozen) - 1.0)
         while (k >= 0.0) {
-          let i: Item = try jsUnwrap(jsAt(unfrozen, k))
+          let i: Flex_Item = try jsUnwrap(jsAt(unfrozen, k))
           var extra: Double = units_ZERO
           // ts: packages/layout/src/flex.ts:698
           if try ((((shareLeft > 0.0) && growing) && (units_factorValue(growLeft) > 0.0)) && units_isFiniteFactorSum(growLeft)) {
@@ -833,7 +833,7 @@ public func flex_abs(_ v: Double) throws -> Double {
 }
 
 // ts: packages/layout/src/flex.ts:724
-public func flex_stretchedCrossSize(_ item: Item, _ lineCross: Double, _ isRow: Bool, _ percentBasis: any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, _ faults: EngineFaults) throws -> Double {
+public func flex_stretchedCrossSize(_ item: Flex_Item, _ lineCross: Double, _ isRow: Bool, _ percentBasis: any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, _ faults: EngineFaults) throws -> Double {
   let s: LayoutStyle = item.box.style
   let minProp: any U_Auto_LengthCalc_Percent_Px = (isRow ? (s.minHeight as any U_Auto_LengthCalc_Percent_Px) : (s.minWidth as any U_Auto_LengthCalc_Percent_Px))
   let maxProp: any U_LengthCalc_NoneValue_Percent_Px = (isRow ? (s.maxHeight as any U_LengthCalc_NoneValue_Percent_Px) : (s.maxWidth as any U_LengthCalc_NoneValue_Percent_Px))
@@ -852,7 +852,7 @@ public func flex_stretchedCrossSize(_ item: Item, _ lineCross: Double, _ isRow: 
 }
 
 // ts: packages/layout/src/flex.ts:744
-public func flex_crossAxisOffset(_ item: Item, _ available: Double, _ axes: Axes) throws -> Double {
+public func flex_crossAxisOffset(_ item: Flex_Item, _ available: Double, _ axes: Axes) throws -> Double {
   // ts: packages/layout/src/flex.ts:745
   if (item.autoCrossStart || item.autoCrossEnd) {
     // ts: packages/layout/src/flex.ts:749
@@ -929,7 +929,7 @@ public func flex_alignContent(_ box: LayoutBox, _ axes: Axes, _ lines: JsArray<F
   let v: JsString = box.style.alignContent
   // ts: packages/layout/src/flex.ts:804
   if (v == S.s_baseline) {
-    try unsupported_unsupported(S.s_flex_baseline, box.id, S.s107, S.s77)
+    try unsupported_unsupported(S.s_flex_baseline, box.id, S.s117, S.s85)
   }
   let flowLines: JsArray<Flex_Line> = (axes.wrapReverse ? jsReverse(jsCopy(lines)) : lines)
   let n: Double = jsLength(flowLines)
@@ -958,11 +958,11 @@ public func flex_alignContent(_ box: LayoutBox, _ axes: Axes, _ lines: JsArray<F
     let extra: Double = try units_divInt(free, n)
     // ts: packages/layout/src/flex.ts:820
     do {
-      let _a28 = flowLines
-      var _i28 = 0
-      while _i28 < _a28.items.count {
-        let l: Flex_Line = _a28.items[_i28]
-        _i28 += 1
+      let _a27 = flowLines
+      var _i27 = 0
+      while _i27 < _a27.items.count {
+        let l: Flex_Line = _a27.items[_i27]
+        _i27 += 1
         try l.cross = units_add(l.cross, extra)
       }
     }

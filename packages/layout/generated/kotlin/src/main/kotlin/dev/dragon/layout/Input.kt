@@ -279,7 +279,7 @@ class ReplacedLeaf(
   val objectFit: String,
   val objectPositionX: U_Percent_Px,
   val objectPositionY: U_Percent_Px,
-) : U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf, U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf, U_LayoutBox_LineBreak_ReplacedLeaf, U_LayoutBox_ReplacedLeaf
+) : U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf, U_LayoutBox_ReplacedLeaf
 
 // ts: packages/layout/src/input.ts:287
 class InlineBox(
@@ -289,7 +289,7 @@ class InlineBox(
   override val font: FontSpec,
   override val lineHeight: U_LineHeightCalc_NormalValue_NumberValue_Percent_Px,
   val children: JsArray<U_InlineBox_LineBreak_TextLeaf>,
-) : U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf, U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak, U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak_TextLeaf
+) : U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak, U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak_TextLeaf
 
 // ts: packages/layout/src/input.ts:297
 class LineBreak(
@@ -297,7 +297,7 @@ class LineBreak(
   override val id: String,
   override val font: FontSpec,
   override val lineHeight: U_LineHeightCalc_NormalValue_NumberValue_Percent_Px,
-) : U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf, U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak, U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak_TextLeaf, U_LayoutBox_LineBreak_ReplacedLeaf
+) : U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak, U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf, U_InlineBox_LineBreak_TextLeaf
 
 // ts: packages/layout/src/input.ts:303
 class LineStrut(
@@ -313,7 +313,7 @@ class LayoutBox(
   override val style: LayoutStyle,
   val strut: LineStrut?,
   val children: JsArray<U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf>,
-) : U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf, U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_LayoutBox_LineBreak_ReplacedLeaf, U_LayoutBox_ReplacedLeaf
+) : U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf, U_LayoutBox_ReplacedLeaf
 
 // ts: packages/layout/src/input.ts:319
 class Viewport(

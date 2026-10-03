@@ -1,7 +1,7 @@
 // INL1a R5 input model: inline boxes, line breaks, the container strut and vertical-align (input.ts). The validator checks their
-// shape; the engine lays out text leaves only until the inline core lands, so it refuses an inline box or a <br> with a typed code.
+// shape, and the environment pass zooms them; inline-box.test.ts lays them out.
 import { describe, expect, it } from 'vitest';
-import { ahemMeasurer, layout, NO_ENGINE_FAULTS, validateLayoutInput, zoomInput } from '../src/index.ts';
+import { NO_ENGINE_FAULTS, validateLayoutInput, zoomInput } from '../src/index.ts';
 import type { InlineChild, LayoutBox, LayoutInput } from '../src/index.ts';
 import { ahemFont, box, br, divStyle, neutralEnvironment, px, span, text } from './helpers.ts';
 
@@ -63,20 +63,7 @@ describe('the validator for inline content (R5)', () => {
   });
 });
 
-describe('until the inline core lands, the engine lays out text leaves only', () => {
-  const code = (kids: InlineChild[]): string | null => {
-    const r = layout(input(box('root', {}, [box('c', { width: px(100) }, kids)])), ahemMeasurer);
-    return r.kind === 'unsupported' ? `${r.unsupported.code} ${r.unsupported.nodeId}` : null;
-  };
-  it('refuses an inline box or a <br> with the inline-box code, naming it', () => {
-    expect(code([text('t', 'XX'), span('s', [text('u', 'YY')])])).toBe('inline-box s');
-    expect(code([text('t', 'XX'), br('b'), text('u', 'YY')])).toBe('inline-box b');
-    expect(code([text('t', 'XX')])).toBeNull();
-  });
-  it('refuses them in intrinsic sizing too (a shrink-to-fit flex item)', () => {
-    const r = layout(input(box('root', {}, [box('row', { display: 'flex', width: px(100) }, [box('i', {}, [text('t', 'XX'), br('b')])])])), ahemMeasurer);
-    expect(r.kind === 'unsupported' ? r.unsupported.code : null).toBe('inline-box');
-  });
+describe('the environment pass over inline content', () => {
   it('the environment pass zooms the strut and vertical-align, and resolves a vertical-align calculation', () => {
     const calc = { kind: 'calc', expr: { kind: 'sum', terms: [{ kind: 'px', value: 1 }, { kind: 'px', value: 1 }] }, range: 'all' } as const;
     const root = box('root', { verticalAlign: px(3) }, [box('c', { verticalAlign: calc }, [text('t', 'XX')])]);

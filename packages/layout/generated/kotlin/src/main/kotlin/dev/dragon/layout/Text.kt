@@ -155,11 +155,11 @@ fun text_fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMeasurer 
     var glyphs: Double = 0.0
     // ts: packages/layout/src/text.ts:117
     run {
-      val _a53 = jsCodePoints(text)
-      var _i53 = 0
-      while (_i53 < _a53.size) {
-        val ch: String = _a53[_i53]
-        _i53++
+      val _a62 = jsCodePoints(text)
+      var _i62 = 0
+      while (_i62 < _a62.size) {
+        val ch: String = _a62[_i62]
+        _i62++
         val cp: Double = jsUnwrap(jsCodePointAt0(ch))
         val advance: Double = text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:120
@@ -176,11 +176,11 @@ fun text_fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMeasurer 
     var through: Double = 0.0
     // ts: packages/layout/src/text.ts:130
     run {
-      val _a54 = jsCodePoints(text)
-      var _i54 = 0
-      while (_i54 < _a54.size) {
-        val ch: String = _a54[_i54]
-        _i54++
+      val _a63 = jsCodePoints(text)
+      var _i63 = 0
+      while (_i63 < _a63.size) {
+        val ch: String = _a63[_i63]
+        _i63++
         val cp: Double = jsUnwrap(jsCodePointAt0(ch))
         val advance: Double = text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:133
