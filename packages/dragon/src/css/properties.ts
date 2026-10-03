@@ -12,6 +12,7 @@ import { OVERFLOW_ASPECTS, OVERFLOW_CONTAINER, OVERFLOW_INHERITED, OVERFLOW_LONG
 import { POSITION_ASPECTS, POSITION_CONTAINER, POSITION_INHERITED, POSITION_LONGHANDS, POSITION_SHORTHANDS, POSITION_TEXT_ROLE } from './properties/position.ts';
 import { TEXT_DECORATION_ASPECTS, TEXT_DECORATION_CONTAINER, TEXT_DECORATION_INHERITED, TEXT_DECORATION_LONGHANDS, TEXT_DECORATION_SHORTHANDS, TEXT_DECORATION_TEXT_ROLE } from './properties/text-decoration.ts';
 import { TEXT_FAMILY_ASPECTS, TEXT_FAMILY_CONTAINER, TEXT_FAMILY_INHERITED, TEXT_FAMILY_LONGHANDS, TEXT_FAMILY_SHORTHANDS, TEXT_FAMILY_TEXT_ROLE } from './properties/text.ts';
+import { TEXT_WRAP_ASPECTS, TEXT_WRAP_CONTAINER, TEXT_WRAP_INHERITED, TEXT_WRAP_LONGHANDS, TEXT_WRAP_SHORTHANDS, TEXT_WRAP_TEXT_ROLE } from './properties/text-wrap.ts';
 import { WRITING_MODE_ASPECTS, WRITING_MODE_CONTAINER, WRITING_MODE_INHERITED, WRITING_MODE_LONGHANDS, WRITING_MODE_SHORTHANDS, WRITING_MODE_TEXT_ROLE } from './properties/writing-mode.ts';
 // Paint families (EMS seams, notes/T046-paint-spec.md §3 item 4): empty until their packages fill them.
 import { RADIUS_ASPECTS, RADIUS_CONTAINER, RADIUS_INHERITED, RADIUS_LONGHANDS, RADIUS_SHORTHANDS, RADIUS_TEXT_ROLE } from './properties/radius.ts';
@@ -40,6 +41,9 @@ export const LONGHANDS = [
   // Grid (css-grid-2) goes after the writing-mode family in every table below.
   ...GRID_LONGHANDS,
 
+  // TXT2-a (css-text-3 §5): after the grid family and before the paint families in every table below.
+  ...TEXT_WRAP_LONGHANDS,
+
   // The paint families (EMS seams) go last in every table below.
   ...RADIUS_LONGHANDS,
   ...SHADOW_LONGHANDS,
@@ -66,6 +70,8 @@ export const SHORTHANDS = [
 
   ...GRID_SHORTHANDS,
 
+  ...TEXT_WRAP_SHORTHANDS,
+
   ...RADIUS_SHORTHANDS,
   ...SHADOW_SHORTHANDS,
   ...EFFECTS_SHORTHANDS,
@@ -91,6 +97,8 @@ export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([
 
   ...GRID_INHERITED,
 
+  ...TEXT_WRAP_INHERITED,
+
   ...RADIUS_INHERITED,
   ...SHADOW_INHERITED,
   ...EFFECTS_INHERITED,
@@ -104,7 +112,7 @@ export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([
  * The inherited text properties every resolved text node carries itself (goal.md principle 3), each with an inherited Origin,
  * so the lowering reads only the text node.
  */
-export const TEXT_LONGHANDS = ['font-family', 'font-size', 'line-height', 'color', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'direction'] as const satisfies readonly Longhand[];
+export const TEXT_LONGHANDS = ['font-family', 'font-size', 'line-height', 'color', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'direction', 'overflow-wrap', 'word-break', 'letter-spacing'] as const satisfies readonly Longhand[];
 
 export type TextLonghand = (typeof TEXT_LONGHANDS)[number];
 
@@ -142,6 +150,8 @@ export const PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {
 
   ...GRID_ASPECTS,
 
+  ...TEXT_WRAP_ASPECTS,
+
   ...RADIUS_ASPECTS,
   ...SHADOW_ASPECTS,
   ...EFFECTS_ASPECTS,
@@ -168,6 +178,8 @@ const CONTAINER_LONGHANDS: readonly Longhand[] = [
 
   ...GRID_CONTAINER,
 
+  ...TEXT_WRAP_CONTAINER,
+
   ...RADIUS_CONTAINER,
   ...SHADOW_CONTAINER,
   ...EFFECTS_CONTAINER,
@@ -189,6 +201,8 @@ const TEXT_ROLE_LONGHANDS: readonly Longhand[] = [
   ...WRITING_MODE_TEXT_ROLE,
 
   ...GRID_TEXT_ROLE,
+
+  ...TEXT_WRAP_TEXT_ROLE,
 
   ...RADIUS_TEXT_ROLE,
   ...SHADOW_TEXT_ROLE,

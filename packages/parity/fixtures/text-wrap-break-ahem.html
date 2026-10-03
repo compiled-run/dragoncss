@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w45 { width: 45px; }
+.w60 { width: 60px; }
+.any { overflow-wrap: anywhere; }
+.bw { overflow-wrap: break-word; }
+.wbw { word-break: break-word; }
+.nw { white-space: nowrap; }
+.ls { letter-spacing: 0; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="any" class="w45 any">aaaaaaaaaa bb</div>
+<div data-dragon-id="bw" class="w45 bw">aaaaaaaaaa bb</div>
+<div data-dragon-id="wbw" class="w45 wbw">aaaaaaaaaa bb</div>
+<div data-dragon-id="early" class="w60 any">aa bbbbbbbbbb cc</div>
+<div data-dragon-id="nowrap" class="w45 any nw">aaaaaaaaaa bb</div>
+<div data-dragon-id="box" class="w45 any">aaa<span data-dragon-id="box-s">bbbbbbbbb</span> cc</div>
+<div data-dragon-id="ls" class="w45 ls">aa bb cc</div>
+<div data-dragon-id="inherit" class="any"><div data-dragon-id="inherit-c" class="w45">aaaaaaaaaa</div></div>
+</body>
+</html>

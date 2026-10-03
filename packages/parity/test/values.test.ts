@@ -34,10 +34,11 @@ describe('values group registration (fixture-groups/values.ts)', () => {
     // vector before the values ones.
     // TDEC-a's text-decoration group holds rejects only, so it adds no case.
     // INL2a appends atomic-inline after them; its plain vectors sort before the values- ones (m2VectorCases puts values last).
-    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-8)).toEqual(['values', 'text-latin', 'text-calibration', 'inline-tags', 'text-weight', 'font-shorthand', 'text-decoration', 'atomic-inline']);
-    for (const f of FIXTURE_GROUPS.slice(-1).flatMap((g) => g.fixtures)) expect(f.id < 'values-', f.id).toBe(true);
+    // TXT2-a appends text-wrap-break after atomic-inline; its plain vectors also sort before the values- ones.
+    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-9)).toEqual(['values', 'text-latin', 'text-calibration', 'inline-tags', 'text-weight', 'font-shorthand', 'text-decoration', 'atomic-inline', 'text-wrap-break']);
+    for (const f of FIXTURE_GROUPS.slice(-2).flatMap((g) => g.fixtures)) expect(f.id < 'values-', f.id).toBe(true);
     const shaped = shapedCaseIds();
-    for (const g of FIXTURE_GROUPS.slice(-7, -1)) for (const f of g.fixtures) for (const id of layoutCaseIds().filter((x) => x === f.id || x === `${f.id}-rtl`)) expect(shaped.has(id), id).toBe(true);
+    for (const g of FIXTURE_GROUPS.slice(-8, -2)) for (const f of g.fixtures) for (const id of layoutCaseIds().filter((x) => x === f.id || x === `${f.id}-rtl`)) expect(shaped.has(id), id).toBe(true);
     for (const f of VALUES) expect(f.id.startsWith('values-'), f.id).toBe(true);
     for (const f of LAYOUT) expect(f.kind === 'layout' && f.environments, f.id).toEqual(['ltr', 'rtl']);
     expect(LAYOUT.length).toBeGreaterThanOrEqual(25);

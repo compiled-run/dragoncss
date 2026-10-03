@@ -41,6 +41,9 @@ const SUBSET = [
 
   // Grid (css-grid-2), after the writing-mode family.
   ...GRID_LONGHANDS, ...GRID_SHORTHANDS,
+
+  // TXT2-a (css-text-3 §5.2, §5.5, §8.2), after the grid family.
+  'overflow-wrap', 'word-break', 'letter-spacing',
 ] as const;
 
 /**

@@ -292,6 +292,8 @@ export function featureOf(property: Longhand, v: CssValue, fonts?: FamilyKeyCont
     const support = familySupport(list, fonts.map, fonts.declared);
     if (support !== null && support.kind === 'resolved') return support.key;
   }
+  // TXT2-a (PM ruling 2026-10-03): letter-spacing is proven only at 0, so a zero length keys its own value subset; part b widens it.
+  if (property === 'letter-spacing' && (v.kind === 'length' || v.kind === 'number') && v.value === 0) return 'letter-spacing:0';
   switch (v.kind) {
     case 'keyword':
       return `${property}:${v.value}`;

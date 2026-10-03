@@ -15,6 +15,7 @@ import { launchChrome } from '../src/chrome.ts';
 import { compareLayout } from '../src/compare.ts';
 import { atDpr, committedDprCapture, layoutCases, runDprCase } from '../src/dpr.ts';
 import { ATOMIC_INLINE } from '../src/fixture-groups/atomic-inline.ts';
+import { TEXT_WRAP_BREAK } from '../src/fixture-groups/text-wrap-break.ts';
 import { layout as layoutFixture } from '../src/fixture-groups/define.ts';
 import { fontMapOf, withFontMapAssets } from '../src/fixture-groups/fonts.ts';
 import type { FixtureSpec } from '../src/fixtures.ts';
@@ -138,8 +139,12 @@ const specOf = (id: string): FixtureSpec => {
 /** The INL2a atomic-inline group's case ids (fixture-groups/atomic-inline.ts), which follow the text-latin cases. */
 /** The atomic-inline cases in a real face (atomic-inline-lato, ltr and rtl): shaped like the text-latin cases. */
 const ATOMIC_SHAPED_IDS: readonly string[] = ['atomic-inline-lato', 'atomic-inline-lato-rtl'];
-const SHAPED_IDS: readonly string[] = [...NEW_IDS, ...TAG_IDS, ...ATOMIC_SHAPED_IDS];
+/** TXT2-a: the text-wrap-break group's case ids (fixture-groups/text-wrap-break.ts), which follow the atomic-inline cases. */
+/** The text-wrap-break cases in a real face (text-wrap-break-lato, ltr and rtl): shaped like the text-latin cases. */
+const WRAP_SHAPED_IDS: readonly string[] = ['text-wrap-break-lato', 'text-wrap-break-lato-rtl'];
+const SHAPED_IDS: readonly string[] = [...NEW_IDS, ...TAG_IDS, ...ATOMIC_SHAPED_IDS, ...WRAP_SHAPED_IDS];
 const ATOMIC_IDS: readonly string[] = ATOMIC_INLINE.flatMap((f) => (f.kind === 'layout' ? f.environments.map((d) => (d === 'rtl' ? `${f.id}-rtl` : f.id)) : []));
+const WRAP_IDS: readonly string[] = TEXT_WRAP_BREAK.flatMap((f) => (f.kind === 'layout' ? f.environments.map((d) => (d === 'rtl' ? `${f.id}-rtl` : f.id)) : []));
 const caseOf = (id: string, direction: 'ltr' | 'rtl' = 'ltr'): ParityCase => {
   const spec = specOf(id);
   const c = casesOf(spec, compileFixture(spec).input).find((x) => x.environment.direction === direction);
@@ -158,10 +163,10 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
   it('keeps every BASE layout case first and in order, and adds exactly the text-latin, Ahem fractional and calibration cases, then the T133 tag cases', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     // BASE is INL1a part C2 (inl1a-lowering afec4d619), whose FIXTURES hold 489 layout cases.
-    expect(ids.length).toBe(489 + NEW_IDS.length + TAG_IDS.length + ATOMIC_IDS.length);
+    expect(ids.length).toBe(489 + NEW_IDS.length + TAG_IDS.length + ATOMIC_IDS.length + WRAP_IDS.length);
     expect(createHash('sha256').update(ids.slice(0, 489).join('\n')).digest('hex')).toBe('86cc089d0638ce8d86330503821b1b10e97b97b1756f2a46964ae7dbf3c81a58');
-    // INL2a appends the atomic-inline group after them.
-    expect(ids.slice(489)).toEqual([...NEW_IDS, ...TAG_IDS, ...ATOMIC_IDS]);
+    // INL2a appends the atomic-inline group after them, and TXT2-a the text-wrap-break group after those.
+    expect(ids.slice(489)).toEqual([...NEW_IDS, ...TAG_IDS, ...ATOMIC_IDS, ...WRAP_IDS]);
   });
 
   it('derives the shaped cases from the compiled input alone: every new case, and no BASE case', () => {
@@ -176,7 +181,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
       expect(c.authoredPrepare, id).not.toBeNull();
       // The authored documents need no font URL inlining (fonts-run.ts authoredFontHtml is the identity on them).
       expect(authoredFontHtml(c.authoredHtml), id).toBe(c.authoredHtml);
-      if (fixture !== 'text-ahem-fractional' && !ATOMIC_SHAPED_IDS.includes(id)) expect(expectedFacesOf(fixture), id).not.toBeNull();
+      if (fixture !== 'text-ahem-fractional' && !ATOMIC_SHAPED_IDS.includes(id) && !WRAP_SHAPED_IDS.includes(id)) expect(expectedFacesOf(fixture), id).not.toBeNull();
     }
     expect(expectedFacesOf('text-ahem-fractional')).toBeNull();
     for (const f of FIXTURES) if (!SHAPED_IDS.includes(f.id) && f.kind === 'layout') expect(caseOf(f.id, f.environments[0]).authoredPrepare, f.id).toBeNull();
@@ -214,7 +219,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
         }
       }
     }
-    expect(compared).toBe((489 + NEW_IDS.length + TAG_IDS.length + ATOMIC_IDS.length) * 4);
+    expect(compared).toBe((489 + NEW_IDS.length + TAG_IDS.length + ATOMIC_IDS.length + WRAP_IDS.length) * 4);
   });
 
   it('DRAGON_SYNTHETIC_FONT_STYLE fires on no FIXTURES case', () => {

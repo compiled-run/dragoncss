@@ -231,6 +231,12 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
     if (first !== undefined && other !== undefined) {
       refuse(el, 'mixed-wrap', `text-wrap-mode ${wrapOf(first)} (${first.node.address}) and ${wrapOf(other)} (${other.node.address}) in one inline formatting context of ${el.element.address} (css-text-4 §5.1), which Dragon does not lay out`, `Give all the text of ${el.element.address} the same white-space.`);
     }
+    // TXT2-a: the engine reads overflow-wrap and word-break once per inline formatting context (inline.ts buildIfc).
+    const breakOf = (t: ResolvedText): string => `${keywordOf(t.props.get('overflow-wrap') as ResolvedValue)}/${keywordOf(t.props.get('word-break') as ResolvedValue)}`;
+    const otherBreak = first === undefined ? undefined : texts.find((t) => breakOf(t) !== breakOf(first));
+    if (first !== undefined && otherBreak !== undefined) {
+      refuse(el, 'mixed-break', `overflow-wrap/word-break ${breakOf(first)} (${first.node.address}) and ${breakOf(otherBreak)} (${otherBreak.node.address}) in one inline formatting context of ${el.element.address} (css-text-3 §5.2, §5.5), which Dragon does not lay out`, `Give all the text of ${el.element.address} the same overflow-wrap and word-break.`);
+    }
   }
 }
 
@@ -380,6 +386,21 @@ function syntheticTextFont(el: ResolvedElement): { readonly property: 'font-weig
   return out;
 }
 
+// TXT2-a (css-text-3 §8.2): letter-spacing is accepted as normal or a zero length; any other length changes advances, which is TXT2-b.
+function checkLetterSpacing(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const v = el.props.get('letter-spacing') as ResolvedValue;
+  if (v.declaration === null || v.declared === null) return;
+  const d = v.declared;
+  if ((d.kind === 'keyword' && d.value === 'normal') || ((d.kind === 'length' || d.kind === 'number') && d.value === 0)) return;
+  const span = v.declaration.valueSpan;
+  for (const t of targets) {
+    const id = `${t}|letter-spacing|${span.source.uri}|${span.start}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), target: t, message: `letter-spacing: ${valueToString(d)} on ${el.element.address} spaces glyphs apart, which Dragon does not lay out yet (TXT2-b); only normal and 0 are supported`, manual: 'Remove letter-spacing, or set it to normal or 0.', basis: 'computed-value' }));
+  }
+}
+
 /** The support profile each target is checked against, or null when the profiles are not enforced. */
 export type ProfileOf = ((target: string) => SupportProfile) | null;
 
@@ -433,6 +454,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     if (!here) checkInlineLevel(el, targets, diagnostics, reported);
     if (!here) checkInline(el, targets, diagnostics, reported, realFaceAt);
+    checkLetterSpacing(el, targets, diagnostics, reported);
     for (const c of el.children) if (c.kind === 'element') walk(c, here);
   };
   walk(root, false);
