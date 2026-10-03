@@ -321,7 +321,7 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the outline, opacity, stacking and color-scheme fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['outline-values', 'outline-solid', 'outline-double', 'color-scheme-basic', 'opacity-basic', 'opacity-cascade', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-foreground']);
+    expect(FIXTURES.map((f) => f.id)).toEqual(['outline-values', 'outline-solid', 'outline-double', 'color-scheme-basic', 'opacity-basic', 'opacity-cascade', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-foreground', 'stacking-flex-order']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;

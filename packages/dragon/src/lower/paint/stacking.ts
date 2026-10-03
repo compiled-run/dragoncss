@@ -183,8 +183,9 @@ export function stackingOf(root: StackNode): Stacking {
       backgrounds(c);
     }
   };
-  // Flex items in order-modified document order (stable on flexOrder); every other child list in tree order.
-  const paintKids = (b: Info): Info[] => kids(b).map((c, k) => ({ c, k })).sort((x, y) => (x.c.atomic && y.c.atomic ? x.c.node.flexOrder - y.c.node.flexOrder : 0) || x.k - y.k).map((x) => x.c);
+  // Flex items in order-modified document order: one total key (flexOrder, then tree index) for every child, so a layer item
+  // between ordered items cannot break the sort; outside a flex container every flexOrder is 0, which keeps tree order.
+  const paintKids = (b: Info): Info[] => kids(b).map((c, k) => ({ c, k })).sort((x, y) => x.c.node.flexOrder - y.c.node.flexOrder || x.k - y.k).map((x) => x.c);
   const foreground = (b: Info): void => {
     for (const c of paintKids(b)) {
       if (c.item) continue;

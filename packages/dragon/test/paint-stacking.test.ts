@@ -121,7 +121,10 @@ describe('Appendix E paint order', () => {
     expect(s.foreground.get('after')).toEqual({ host: 'html', entries: [{ id: 'after:t', rank: 6, index: 4 }] });
     expect(s.facts.get('i1')).toMatchObject({ atomic: true, layer: 'flow', host: 'html' });
     // A flex item with a z-index is a layer item, not atomic.
-    expect(stackingOf(n('html', {}, n('flex', {}, n('i', { atomic: true, z: 1 })))).facts.get('i')).toMatchObject({ atomic: false, layer: 'positive' });
+    expect(stackingOf(n('html', {}, n('flex', {}, n('i', { atomic: true, z: 1 })))).facts.get('i')).toMatchObject({ atomic: false, layer: 'positive' });    // A relative flex item between two ordered items does not break the order (Claude review on #87): b (order 0) paints before a (order 1).
+    const mixed = stackingOf(n('html', {}, n('flex', {}, n('a', { atomic: true, flexOrder: 1 }), n('rel', { position: 'relative', flexOrder: 0 }), n('b', { atomic: true }))));
+    expect(mixed.order.indexOf('b')).toBeLessThan(mixed.order.indexOf('a'));
+    expect(mixed.order).toEqual(['html', 'flex', 'b', 'a', 'rel']);
   });
   it('a clip that is not a paint root hosts its foreground in its own place, flagged foregroundClip (Chrome paints it after the root\'s later backgrounds)', () => {
     const s = stackingOf(n('html', {}, n('clip', { clips: true }, n('b', {}, t('b:t')), n('c', {})), n('d', {})));
