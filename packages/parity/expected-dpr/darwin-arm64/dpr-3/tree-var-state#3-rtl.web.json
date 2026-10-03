@@ -99,7 +99,8 @@
         "outline-color": "rgb(0, 0, 0)",
         "outline-style": "none",
         "outline-width": "0px",
-        "outline-offset": "0px"
+        "outline-offset": "0px",
+        "visibility": "visible"
       }
     },
     {
@@ -191,7 +192,8 @@
         "outline-color": "rgb(34, 34, 34)",
         "outline-style": "none",
         "outline-width": "0px",
-        "outline-offset": "0px"
+        "outline-offset": "0px",
+        "visibility": "visible"
       }
     },
     {
@@ -283,7 +285,8 @@
         "outline-color": "rgb(34, 34, 34)",
         "outline-style": "none",
         "outline-width": "0px",
-        "outline-offset": "0px"
+        "outline-offset": "0px",
+        "visibility": "visible"
       }
     },
     {
@@ -375,7 +378,8 @@
         "outline-color": "rgb(34, 34, 34)",
         "outline-style": "none",
         "outline-width": "0px",
-        "outline-offset": "0px"
+        "outline-offset": "0px",
+        "visibility": "visible"
       }
     },
     {
@@ -467,7 +471,8 @@
         "outline-color": "rgb(34, 34, 34)",
         "outline-style": "none",
         "outline-width": "0px",
-        "outline-offset": "0px"
+        "outline-offset": "0px",
+        "visibility": "visible"
       }
     },
     {
@@ -559,7 +564,8 @@
         "outline-color": "rgb(34, 34, 34)",
         "outline-style": "none",
         "outline-width": "0px",
-        "outline-offset": "0px"
+        "outline-offset": "0px",
+        "visibility": "visible"
       }
     },
     {
@@ -651,7 +657,8 @@
         "outline-color": "rgb(238, 238, 238)",
         "outline-style": "none",
         "outline-width": "0px",
-        "outline-offset": "0px"
+        "outline-offset": "0px",
+        "visibility": "visible"
       }
     },
     {
