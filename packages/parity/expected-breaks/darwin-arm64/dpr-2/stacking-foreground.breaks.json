@@ -1,0 +1,10 @@
+{
+  "case": "stacking-foreground",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"fg-short:text0","data":"XXXX XX","lines":1,"units":[0,0,0,0,0,0,0],"blank":[]},
+    {"id":"fg-inner:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"fg-item:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}
