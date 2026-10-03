@@ -10,7 +10,7 @@ import type { AnimFaults } from '../src/anim-cases.ts';
 import { NO_ANIM_FAULTS } from '../src/anim-cases.ts';
 import type { AnimCase } from '../src/anim-cases.ts';
 import { animCasesOf, animFixtures, frameScript, parseFrames, runFrameScript, simulator } from '../src/anim-cases.ts';
-import { animCaseReport, animReport } from '../src/frame-capture.ts';
+import { animCaseReport, animReport, committedFrames } from '../src/frame-capture.ts';
 import { canonicalJsonText } from '../src/state-cases.ts';
 import { ANIMATION_CONTEXT, deriveAnimationRows } from '../src/profile-rows.ts';
 
@@ -116,6 +116,23 @@ describe('host frame lanes (R18)', () => {
     it(`${Object.keys({ ...anim, ...rt }).join(', ')} fails ${id}'s frame lanes`, () => {
       const r = animCaseReport(byFixture(id), [1], { ...rtEasing.NO_RT_FAULTS, ...rt }, { ...NO_ANIM_FAULTS, ...anim });
       expect(r.failures.length).toBeGreaterThan(0);
+    });
+  }
+
+  // Planted capture faults: chrome-dual is judged over every authored sample, so a short, empty or shifted compiled capture fails.
+  const compiledAs = (edit: (samples: NonNullable<ReturnType<typeof committedFrames>>['samples']) => NonNullable<ReturnType<typeof committedFrames>>['samples']): typeof committedFrames => (id, rendering, dpr) => {
+    const f = committedFrames(id, rendering, dpr);
+    return f === null || rendering !== 'compiled' ? f : { ...f, samples: edit(f.samples) };
+  };
+  for (const [name, edit] of [
+    ['a short compiled capture', (s) => s.slice(0, s.length - 1)],
+    ['an empty compiled capture', () => []],
+    ['a compiled capture shifted in time', (s) => s.map((x) => ({ ...x, at: x.at + 1 }))],
+  ] as const satisfies readonly (readonly [string, Parameters<typeof compiledAs>[0]])[]) {
+    it(`${name} fails chrome-dual`, () => {
+      const c = byFixture('anim-color-all');
+      expect(animCaseReport(c, [1]).failures).toEqual([]);
+      expect(animCaseReport(c, [1], rtEasing.NO_RT_FAULTS, NO_ANIM_FAULTS, compiledAs(edit)).failures.some((f) => f.includes('chrome-dual'))).toBe(true);
     });
   }
 

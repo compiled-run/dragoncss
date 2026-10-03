@@ -173,7 +173,7 @@ const STRING_COMPARED = (p: string): boolean => p === 'color' || p.endsWith('-co
 export type AnimReport = { readonly cases: number; readonly samples: number; readonly values: number; readonly boxes: number; readonly dual: number; readonly settles: number; readonly failures: readonly string[]; readonly passingCases: readonly string[] };
 
 /** One frame case's host lanes; the failures name the case, DPR, sample time and what differs. */
-export function animCaseReport(c: AnimCase, dprs: readonly number[] = [1, 2, 2.625, 3], faults: rtEasing.RtFaults = rtEasing.NO_RT_FAULTS, anim: AnimFaults = NO_ANIM_FAULTS): Omit<AnimReport, 'cases' | 'passingCases'> {
+export function animCaseReport(c: AnimCase, dprs: readonly number[] = [1, 2, 2.625, 3], faults: rtEasing.RtFaults = rtEasing.NO_RT_FAULTS, anim: AnimFaults = NO_ANIM_FAULTS, frames: typeof committedFrames = committedFrames): Omit<AnimReport, 'cases' | 'passingCases'> {
   const failures: string[] = [];
   const steps = frameScript(c);
   const dumps = runFrameScript(c, steps, faults, anim);
@@ -185,7 +185,7 @@ export function animCaseReport(c: AnimCase, dprs: readonly number[] = [1, 2, 2.6
   let settles = 0;
   const trig = { sin: Math.sin, cos: Math.cos };
   for (const dpr of dprs) {
-    const cap = committedFrames(c.id, 'authored', dpr);
+    const cap = frames(c.id, 'authored', dpr);
     if (cap === null) {
       failures.push(`${c.id} DPR ${dpr}: no committed frame capture (pnpm run parity:anim-capture)`);
       continue;
@@ -230,13 +230,15 @@ export function animCaseReport(c: AnimCase, dprs: readonly number[] = [1, 2, 2.6
       }
     });
     if (dpr === 1) {
-      const compiled = committedFrames(c.id, 'compiled', 1);
+      const compiled = frames(c.id, 'compiled', 1);
       if (compiled === null) failures.push(`${c.id}: no committed compiled-rendering capture (chrome-dual)`);
       else {
-        compiled.samples.forEach((s, i) => {
+        // Judged over every authored sample: a short, empty or stale compiled capture fails rather than proving its prefix.
+        if (compiled.steps !== cap.steps || compiled.samples.length !== cap.samples.length) failures.push(`${c.id}: chrome-dual: the compiled capture has ${compiled.samples.length} samples of ${compiled.steps} steps, the authored one ${cap.samples.length} of ${cap.steps}`);
+        cap.samples.forEach((a, i) => {
           dual++;
-          const a = cap.samples[i];
-          if (a === undefined || canonicalJsonText(s.nodes) !== canonicalJsonText(a.nodes)) failures.push(`${c.id} t=${s.at}: chrome-dual: the compiled rendering differs from the authored one`);
+          const s = compiled.samples[i];
+          if (s === undefined || s.at !== a.at || canonicalJsonText(s.nodes) !== canonicalJsonText(a.nodes)) failures.push(`${c.id} t=${a.at}: chrome-dual: the compiled rendering differs from the authored one`);
         });
       }
     }
