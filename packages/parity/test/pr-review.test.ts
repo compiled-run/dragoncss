@@ -6,6 +6,9 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   ALREADY_REVIEWED,
   NO_CODE_REVIEWED,
+  reviewExit,
+  SPENDING_LIMIT,
+  spendingLimitWaived,
   type Git,
   type Ignore,
   ignoreAt,
@@ -145,33 +148,33 @@ describe('pr-review wait loop and verdict', () => {
     const runs = [ci(null), skipped];
     expect(verdictOf(skipped, ok)).toBe('passed');
     expect(settled(runs, ok)).toBe(false);
-    expect(outcome(runs, ok)).toEqual({ pending: ['checks'], failed: [] });
+    expect(outcome(runs, ok)).toEqual({ pending: ['checks'], failed: [], unreviewed: false });
   });
 
   it('passes a vouched skip once CI is green', () => {
     const runs = [ci('success'), skipped];
     expect(settled(runs, ok)).toBe(true);
-    expect(outcome(runs, ok)).toEqual({ pending: [], failed: [] });
+    expect(outcome(runs, ok)).toEqual({ pending: [], failed: [], unreviewed: false });
   });
 
   it('fails an unvouched skip, and a skip nobody judged', () => {
     for (const v of [no, new Map<string, Vouch>()]) {
       expect(verdictOf(skipped, v)).toBe('failed');
       expect(settled([ci(null), skipped], v)).toBe(true);
-      expect(outcome([ci('success'), skipped], v)).toEqual({ pending: [], failed: [skipped.name] });
+      expect(outcome([ci('success'), skipped], v)).toEqual({ pending: [], failed: [skipped.name], unreviewed: false });
     }
   });
 
   it('ends the wait on a genuine failure', () => {
     const runs = [ci('failure'), run(null, null)];
     expect(settled(runs, ok)).toBe(true);
-    expect(outcome(runs, ok)).toEqual({ pending: [run(null, null).name], failed: ['checks'] });
+    expect(outcome(runs, ok)).toEqual({ pending: [run(null, null).name], failed: ['checks'], unreviewed: false });
   });
 
   it('keeps waiting until the correctness check exists, and reports it as not started', () => {
     expect(settled([ci('success')], ok)).toBe(false);
     expect(settled([], ok)).toBe(false);
-    expect(outcome([ci('success')], ok)).toEqual({ pending: ['Macroscope - Correctness Check'], failed: [] });
+    expect(outcome([ci('success')], ok)).toEqual({ pending: ['Macroscope - Correctness Check'], failed: [], unreviewed: false });
   });
 });
 
@@ -453,5 +456,47 @@ describe('regenOnlyProblems on a scratch repository', () => {
     expect(regenOnlyProblems(git, sha('e'), ignore)).toEqual([expect.any(String)]);
     const garbage: Git = (args) => (args[0] === 'rev-list' ? Buffer.from(`${sha('a')} ${sha('b')}\n`) : Buffer.from('nonsense'));
     expect(regenOnlyProblems(garbage, sha('a'), ignore)).not.toEqual([]);
+  });
+});
+
+// Owner directive (2026-10-02): "When it hits limit that's fine you just dont do the review".
+describe('the Macroscope spending-limit waiver', () => {
+  const ci = (conclusion: string | null): CheckRun => run(conclusion, null, 'checks');
+  const limit = (name: string, title: string | null = SPENDING_LIMIT): CheckRun => run('skipped', title, name);
+  const all = [limit('Macroscope - Correctness Check'), limit('Macroscope - Proof guard'), limit('Macroscope - Approvability Check')];
+
+  it('passes when every Macroscope check carries the exact title and CI passed, and reports it as unreviewed', () => {
+    expect(SPENDING_LIMIT).toBe('Monthly spending limit reached (workspace setting).');
+    const runs = [ci('success'), ...all];
+    expect(spendingLimitWaived(runs)).toBe(true);
+    expect(settled(runs, new Map())).toBe(true);
+    expect(outcome(runs, new Map())).toEqual({ pending: [], failed: [], unreviewed: true });
+    expect(reviewExit(outcome(runs, new Map()), 0)).toBe(0);
+  });
+
+  it('still waits for CI and fails on failed CI', () => {
+    expect(settled([ci(null), ...all], new Map())).toBe(false);
+    expect(outcome([ci(null), ...all], new Map())).toEqual({ pending: ['checks'], failed: [], unreviewed: true });
+    expect(reviewExit(outcome([ci('failure'), ...all], new Map()), 0)).toBe(1);
+  });
+
+  it('fails on a near-miss title or a mixed result', () => {
+    for (const title of ['Monthly spending limit reached (workspace setting)', 'monthly spending limit reached (workspace setting).', 'Per-review cost limit exceeded (workspace setting).']) {
+      const runs = [ci('success'), limit('Macroscope - Correctness Check', title), ...all.slice(1)];
+      expect(spendingLimitWaived(runs), title).toBe(false);
+      expect(outcome(runs, new Map()).failed, title).toEqual(['Macroscope - Correctness Check']);
+    }
+    // The correctness check carries it but the proof guard ran (or the reverse): not every Macroscope check hit the limit.
+    const mixed = [ci('success'), all[0]!, run('success', 'Proof guard: no issues found', 'Macroscope - Proof guard'), all[2]!];
+    expect(spendingLimitWaived(mixed)).toBe(false);
+    expect(reviewExit(outcome(mixed, new Map()), 0)).toBe(1);
+    const reverse = [ci('success'), run('skipped', 'Per-review cost limit exceeded (workspace setting).'), ...all.slice(1)];
+    expect(reviewExit(outcome(reverse, new Map()), 0)).toBe(1);
+    expect(spendingLimitWaived([ci('success'), limit('Macroscope - Proof guard')])).toBe(false);
+    expect(spendingLimitWaived([ci('success'), { ...all[0]!, conclusion: 'neutral' }])).toBe(false);
+  });
+
+  it('never clears an unanswered finding from an earlier commit', () => {
+    expect(reviewExit(outcome([ci('success'), ...all], new Map()), 1)).toBe(1);
   });
 });

@@ -18,8 +18,10 @@ import {
   parseReviewCommentPages,
   type PatchId,
   patchIdOver,
+  reviewExit,
   settled,
   skipScope,
+  SPENDING_LIMIT,
   type Vouch,
   vouchForSkip,
 } from './pr-review-vouch.ts';
@@ -141,7 +143,12 @@ const open = comments.filter((c) => c.in_reply_to_id === undefined && isMacrosco
 console.log(`\nUnanswered Macroscope findings: ${open.length}`);
 for (const c of open) console.log(`\n--- ${c.path}:${c.line ?? '?'} (comment ${c.id})\n${c.html_url}\n${c.body.trim()}`);
 
-const { pending, failed } = outcome(runs, vouches);
+const result = outcome(runs, vouches);
+const { pending, failed } = result;
+if (result.unreviewed) {
+  console.log(`\n!!! UNREVIEWED: Macroscope spending limit. Every Macroscope check of ${sha} was skipped with "${SPENDING_LIMIT}"; the owner's`);
+  console.log('!!! standing directive (2026-10-02) lets this commit land without a Macroscope review once CI passes and every finding is answered.');
+}
 if (pending.length > 0) console.log(`\nStill running: ${pending.join(', ')}`);
 if (failed.length > 0) console.log(`\nFailed: ${failed.join(', ')}`);
-process.exit(pending.length + failed.length + open.length > 0 ? 1 : 0);
+process.exit(reviewExit(result, open.length));
