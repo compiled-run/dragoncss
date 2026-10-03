@@ -114,7 +114,9 @@ function lengthPct(n: CssNode, what: string): Item<LengthPct> {
     if (c === undefined) return no(n, `${what} in ${unit} is not a length`);
     if (c.kind === 'viewport') return no(n, `${what} in a viewport unit would need the device viewport on the native side (${CALC_P})`);
     if (c.kind === 'refused') return no(n, `${what}: ${c.reason}`);
-    // Folded to px against the element's font sizes by GRADIENT_VALUES.compute; until then it stands as its px-per-unit.
+    // An absolute unit is px times its ratio; em and rem fold to px against the element's font sizes in GRADIENT_VALUES.compute
+    // (valueItems refuses one left unfolded), and stand as their number until then.
+    if (c.kind === 'absolute') return ok({ unit: 'px', value: Number(n['value']) * c.pxPer });
     return ok({ unit: 'px', value: Number(n['value']) });
   }
   if (n.type === 'Function') return no(n, `${what} as ${asciiLower(String(n['name']))}() is not supported: Dragon draws background and gradient geometry from lengths and percentages (${CALC_P})`);
@@ -133,10 +135,10 @@ function eachNode(root: CssNode, f: (n: CssNode) => void): void {
 }
 
 /** Whether a length token still needs folding to px (an em, rem or absolute unit). */
-function foldsToPx(n: CssNode): boolean {
+function foldsToPx(n: CssNode, absolute: boolean): boolean {
   if (n.type !== 'Dimension') return false;
   const c = unitEntry(normalizeUnit(String(n['unit'])))?.conversion;
-  return c !== undefined && (c.kind === 'absolute' || c.kind === 'font-relative');
+  return c !== undefined && (c.kind === 'font-relative' || (absolute && c.kind === 'absolute'));
 }
 
 /** Blink ComputeDegrees of an <angle> (WTF's Grad2deg, Rad2deg and Turn2deg, in double); a unitless zero is 0deg. */
@@ -455,7 +457,7 @@ export function valueItems(v: CssValue): CssNode[][] {
   const node = parse(text, { context: 'value' });
   canonicalizeEscapes(node);
   eachNode(node, (n) => {
-    if (foldsToPx(n)) throw new Error(`a background layer value reached the lowering with ${generate(n)}, which computed values fold to px`);
+    if (foldsToPx(n, false)) throw new Error(`a background layer value reached the lowering with ${generate(n)}, which computed values fold to px`);
   });
   const items = commaItems(children(node));
   textCache.set(text, items);
@@ -735,15 +737,19 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported) =
   refuse(el, image, native, 'background-layers-native', `background-image on ${el.element.address}: the native targets draw gradient layers from BG2-a3 on`, 'Compile for web, or wait for BG2-a3.', diagnostics, reported);
 };
 
-/** The layer longhands' em, rem and absolute lengths as px (R7, as PNT1 radius.ts computeComponent folds radii). */
+/**
+ * The layer longhands' em and rem lengths as px (R7, as PNT1 radius.ts computeComponent folds radii), and the absolute lengths of
+ * positions and sizes, as Chrome 145 computes them; a gradient keeps its absolute lengths as written, as Chrome serializes it.
+ */
 function foldLayerLengths(v: ResolvedValue, property: BackgroundLayerLonghand, ctx: PaintValueContext): ResolvedValue | null {
   const text = v.value.kind === 'other' ? v.value.text : null;
   if (text === null) return null;
   const node = parse(text, { context: 'value' });
   let changed = false;
   let unknown = false;
+  const absolute = property !== 'background-image';
   eachNode(node, (n) => {
-    if (!foldsToPx(n)) return;
+    if (!foldsToPx(n, absolute)) return;
     const unit = normalizeUnit(String(n['unit']));
     if ((unit === 'em' && ctx.em === null) || (unit === 'rem' && ctx.rem === null)) {
       unknown = true;

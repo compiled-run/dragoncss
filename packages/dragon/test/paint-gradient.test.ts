@@ -60,6 +60,8 @@ describe('gradient syntax (css-images-3 §3)', () => {
   it('accepts negative stops and space and round at parse time; the native check refuses space and round (BG2-t)', () => {
     expect(ok(gradient(fn('linear-gradient(red -5px, blue)'))).stops[0]).toEqual({ color: { kind: 'rgba', value: { r: 255, g: 0, b: 0, alpha: 255 } }, unit: 'px', value: -5 });
     expect(ok(repeatItem(tokens('space round')))).toEqual({ x: 'space', y: 'round' });
+    // An absolute unit reads as px times its ratio (Chrome keeps it as written in a gradient's computed value).
+    expect(ok(gradient(fn('linear-gradient(red 0.1in, blue 12pt)'))).stops.map((s) => [s.unit, s.value])).toEqual([['px', 0.1 * 96], ['px', 12 * (96 / 72)]]);
   });
   it('refuses what Dragon does not draw on any target, naming the package that lifts it', () => {
     expect(reason(imageItem(tokens('url(a.png)')))).toContain('BG2-u');
@@ -199,11 +201,12 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
     expect(compile('border-radius: 6px; background: linear-gradient(red, blue) white;')).toEqual(pending);
     expect(compile('border-radius: 6px; padding: 2px; background: linear-gradient(red, blue) padding-box white;', { web: {} })).toEqual([]);
   });
-  it('folds em, rem and absolute lengths to px at computed-value time (R7)', () => {
+  it('folds em and rem to px at computed-value time, and absolute lengths in positions and sizes, as Chrome 145 computes them (R7)', () => {
     const css = 'html { font-size: 20px; } body { margin: 0; } .a { width: 40px; height: 20px; font-size: 10px; background: radial-gradient(circle 2em at 1rem 0.5in, red 1em, blue) right 1em top 1rem / 2em auto no-repeat white; }';
     const c = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, (r) => [div(r, 'a', ['a'])]));
     expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message)).toEqual([]);
-    expect(explainOne(c, 'web', 'a', 'background-image').value).toBe('radial-gradient(circle 20px at 20px 48px,red 10px,blue)');
+    // A gradient keeps an absolute length as written, as Chrome 145 serializes it (0.5in), and reads it as px times its ratio.
+    expect(explainOne(c, 'web', 'a', 'background-image').value).toBe('radial-gradient(circle 20px at 20px 0.5in,red 10px,blue)');
     expect(explainOne(c, 'web', 'a', 'background-position-x').value).toBe('right 10px');
     expect(explainOne(c, 'web', 'a', 'background-position-y').value).toBe('top 20px');
     expect(explainOne(c, 'web', 'a', 'background-size').value).toBe('20px auto');
