@@ -24,8 +24,8 @@ import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-re
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
-/** The commit this branch was cut from (inl1a-tags, T133); its outputs are BASE. */
-const BASE = '1730a3c07';
+/** The commit this branch was cut from (inl1a-tags-v2, T133 on INL1a part C2); its outputs are BASE. */
+const BASE = '398c8bc16';
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -200,7 +200,7 @@ describe('BASE pins', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     const added = TEXT_WEIGHT.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
     expect(ids.slice(-added.length)).toEqual(added);
-    expect(ids.length).toBe(490 + added.length);
+    expect(ids.length).toBe(502 + added.length);
   });
   it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
     const changed = git('diff', '--name-status', BASE, '--', 'packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels')
