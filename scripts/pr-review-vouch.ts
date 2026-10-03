@@ -3,6 +3,10 @@ import { type IgnoreFile, parseIgnoreFile } from './macroscope-ignore.ts';
 export const CORRECTNESS = 'Macroscope - Correctness Check';
 export const DIFF_UNCHANGED = 'Diff unchanged';
 export const ALREADY_REVIEWED = 'All code in this push has already been reviewed.';
+// Macroscope's skip when every file changed since its last review is one it does not review (ignored or binary).
+export const NO_CODE_REVIEWED = 'No code objects were reviewed.';
+// Owner directive (2026-10-02): a commit Macroscope skips for its monthly spending limit may land unreviewed.
+export const SPENDING_LIMIT = 'Monthly spending limit reached (workspace setting).';
 
 export type CheckRun = { name: string; status: string; conclusion: string | null; html_url: string; output?: { title: string | null } };
 export type ReviewComment = {
@@ -96,12 +100,13 @@ export const correctnessSucceeded = (runs: CheckRun[]): boolean => {
   return own.length > 0 && own.every((r) => r.status === 'completed' && r.conclusion === 'success');
 };
 
-// Which diff a skip is vouched on: "Diff unchanged" on the whole three-dot diff, "already reviewed" on the paths
-// .macroscope/ignore.md leaves to review. Any other skip title is no review.
+// Which diff a skip is vouched on: "Diff unchanged" on the whole three-dot diff, "already reviewed" and "no code objects
+// reviewed" on the paths .macroscope/ignore.md leaves to review. Any other skip title is no review.
 export type DiffScope = 'all paths' | 'reviewed paths';
 export const skipScope = (run: CheckRun): DiffScope | null => {
   if (run.name !== CORRECTNESS || run.status !== 'completed' || run.conclusion !== 'skipped') return null;
-  return run.output?.title === DIFF_UNCHANGED ? 'all paths' : run.output?.title === ALREADY_REVIEWED ? 'reviewed paths' : null;
+  const title = run.output?.title;
+  return title === DIFF_UNCHANGED ? 'all paths' : title === ALREADY_REVIEWED || title === NO_CODE_REVIEWED ? 'reviewed paths' : null;
 };
 export const isVouchableSkip = (run: CheckRun): boolean => skipScope(run) !== null;
 
@@ -116,7 +121,7 @@ export const vouchForSkip = (run: CheckRun, head: PatchId, earlier: Earlier[]): 
   if (scope === null) {
     return {
       ok: false,
-      reason: `correctness check is ${run.status}/${run.conclusion ?? 'none'} (${run.output?.title ?? 'no title'}), not skipped as "${DIFF_UNCHANGED}" or "${ALREADY_REVIEWED}"`,
+      reason: `correctness check is ${run.status}/${run.conclusion ?? 'none'} (${run.output?.title ?? 'no title'}), not skipped as "${DIFF_UNCHANGED}", "${ALREADY_REVIEWED}" or "${NO_CODE_REVIEWED}"`,
     };
   }
   if ('error' in head) return { ok: false, reason: `head: ${head.error}` };
@@ -177,24 +182,45 @@ export const parseBlobBatch = (out: Buffer, shas: string[]): Map<string, Buffer>
 // Git's own test for binary content: a NUL byte in the first 8000 bytes.
 export const isBinaryBlob = (content: Buffer): boolean => content.subarray(0, 8000).includes(0);
 
-// The one verdict every path of pr-review.ts uses. `vouches` maps a vouchable skip's html_url to its vouch.
+// The spending-limit waiver applies only when every Macroscope check of the commit was skipped with exactly that title.
+const isMacroscopeCheck = (run: CheckRun): boolean => run.name.startsWith('Macroscope - ');
+const limitSkipped = (run: CheckRun): boolean => run.status === 'completed' && run.conclusion === 'skipped' && run.output?.title === SPENDING_LIMIT;
+export const spendingLimitWaived = (runs: CheckRun[]): boolean => {
+  const macroscope = runs.filter(isMacroscopeCheck);
+  return macroscope.some((r) => r.name === CORRECTNESS) && macroscope.every(limitSkipped);
+};
+
+// The one verdict every path of pr-review.ts uses. `vouches` maps a vouchable skip's html_url to its vouch; `waived` is
+// spendingLimitWaived over the commit's runs.
 export type Verdict = 'pending' | 'passed' | 'failed';
-export const verdictOf = (run: CheckRun, vouches: ReadonlyMap<string, Vouch>): Verdict => {
+export const verdictOf = (run: CheckRun, vouches: ReadonlyMap<string, Vouch>, waived = false): Verdict => {
   if (run.status !== 'completed') return 'pending';
-  if (run.name === CORRECTNESS) return run.conclusion === 'success' || vouches.get(run.html_url)?.ok === true ? 'passed' : 'failed';
+  if (run.name === CORRECTNESS) {
+    if (waived && limitSkipped(run)) return 'passed';
+    return run.conclusion === 'success' || vouches.get(run.html_url)?.ok === true ? 'passed' : 'failed';
+  }
   return ['success', 'neutral', 'skipped'].includes(run.conclusion ?? '') ? 'passed' : 'failed';
 };
 
 // Macroscope's correctness review starts only after CI passes, so a green CI alone is not "done"; a failed check ends the wait.
-export const settled = (runs: CheckRun[], vouches: ReadonlyMap<string, Vouch>): boolean =>
-  runs.some((r) => verdictOf(r, vouches) === 'failed') ||
-  (runs.length > 0 && runs.every((r) => verdictOf(r, vouches) !== 'pending') && runs.some((r) => r.name === CORRECTNESS));
-
-export const outcome = (runs: CheckRun[], vouches: ReadonlyMap<string, Vouch>): { pending: string[]; failed: string[] } => {
-  const pending = runs.filter((r) => verdictOf(r, vouches) === 'pending').map((r) => r.name);
-  if (!runs.some((r) => r.name === CORRECTNESS)) pending.push(CORRECTNESS);
-  return { pending, failed: runs.filter((r) => verdictOf(r, vouches) === 'failed').map((r) => r.name) };
+export const settled = (runs: CheckRun[], vouches: ReadonlyMap<string, Vouch>): boolean => {
+  const waived = spendingLimitWaived(runs);
+  return (
+    runs.some((r) => verdictOf(r, vouches, waived) === 'failed') ||
+    (runs.length > 0 && runs.every((r) => verdictOf(r, vouches, waived) !== 'pending') && runs.some((r) => r.name === CORRECTNESS))
+  );
 };
+
+export const outcome = (runs: CheckRun[], vouches: ReadonlyMap<string, Vouch>): { pending: string[]; failed: string[]; unreviewed: boolean } => {
+  const waived = spendingLimitWaived(runs);
+  const pending = runs.filter((r) => verdictOf(r, vouches, waived) === 'pending').map((r) => r.name);
+  if (!runs.some((r) => r.name === CORRECTNESS)) pending.push(CORRECTNESS);
+  return { pending, failed: runs.filter((r) => verdictOf(r, vouches, waived) === 'failed').map((r) => r.name), unreviewed: waived };
+};
+
+// pr:review's exit: 0 only with nothing pending, nothing failed and no unanswered finding (from any commit of the PR).
+export const reviewExit = (o: { pending: string[]; failed: string[] }, unansweredFindings: number): 0 | 1 =>
+  o.pending.length + o.failed.length + unansweredFindings > 0 ? 1 : 0;
 
 // The git side, with git passed in so tests can run it on a scratch repository. Every failure becomes a PatchId error.
 // Git output is bytes; text is decoded as strict UTF-8, so nothing is changed or dropped before it is hashed.
