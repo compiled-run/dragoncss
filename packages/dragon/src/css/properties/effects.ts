@@ -1,7 +1,7 @@
-// opacity (css-color-4 §14.1) and color-scheme (css-color-adjust-1 §2), with Chrome 145's parsing: opacity is a number or a
-// percentage, kept as written and clamped to [0, 1] at computed-value time; color-scheme is normal, or light, dark and custom idents
-// with at most one only, which Chrome serializes last (light and dark lowercase, custom idents as written). z-index joins this
-// family with the stacking package.
+// opacity (css-color-4 §14.1), z-index (CSS2 §9.9.1, css-position-3) and color-scheme (css-color-adjust-1 §2), with Chrome 145's
+// parsing: opacity is a number or a percentage, kept as written and clamped to [0, 1] at computed-value time; z-index is auto or
+// an integer, clamped to the 32-bit range at parse time as Chrome does; color-scheme is normal, or light, dark and custom idents
+// with at most one only, which Chrome serializes last (light and dark lowercase, custom idents as written).
 import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
@@ -13,7 +13,7 @@ import type { PropertyAspect } from '../properties.ts';
 import type { LonghandValue, ParsedValue } from '../stylesheet.ts';
 import type { CssValue } from '../values.ts';
 
-export const EFFECTS_LONGHANDS = ['opacity', 'color-scheme'] as const;
+export const EFFECTS_LONGHANDS = ['opacity', 'z-index', 'color-scheme'] as const;
 export const EFFECTS_SHORTHANDS = [] as const;
 export const EFFECTS_INHERITED: readonly (typeof EFFECTS_LONGHANDS)[number][] = ['color-scheme'];
 export const EFFECTS_CONTAINER: readonly (typeof EFFECTS_LONGHANDS)[number][] = [];
@@ -21,11 +21,17 @@ export const EFFECTS_TEXT_ROLE: readonly (typeof EFFECTS_LONGHANDS)[number][] = 
 
 export const EFFECTS_ASPECTS: { readonly [P in (typeof EFFECTS_LONGHANDS)[number]]: PropertyAspect } = {
   opacity: { layout: false, paint: true },
+  'z-index': { layout: false, paint: true },
   'color-scheme': { layout: false, paint: true },
 };
 
+/** The CssValue type of an integer z-index; its text is the clamped integer. */
+export const Z_INDEX_INTEGER = 'integer';
 /** The CssValue type of a color-scheme list; its text is Chrome's serialization. */
 export const COLOR_SCHEME_LIST = 'color-scheme-list';
+
+const INT_MIN = -2147483648;
+const INT_MAX = 2147483647;
 
 const single = (property: string, value: CssValue): ParsedValue => ({ kind: 'ok', longhands: [{ property, value, explicit: true } as LonghandValue] });
 
@@ -59,6 +65,40 @@ export function opacityOf(v: CssValue): number | null {
   const n = v.kind === 'number' ? v.value : v.kind === 'percentage' ? v.value / 100 : null;
   if (n === null || !Number.isFinite(n)) return null;
   return n < 0 ? 0 : n > 1 ? 1 : n;
+}
+
+const Z_FIX = 'Write z-index as auto or an integer.';
+
+/** Chrome clamps an integer outside the 32-bit range to its bounds when it parses it. */
+const clampInt = (n: number): number => (n < INT_MIN ? INT_MIN : n > INT_MAX ? INT_MAX : n);
+
+/** An integer z-index value. */
+export const zIndexValue = (n: number): CssValue => ({ kind: 'other', type: Z_INDEX_INTEGER, text: String(n === 0 ? 0 : n) });
+
+/** CSS2 §9.9.1: auto or an <integer>; a calculation must give a whole number (Chrome rounds others, which Dragon refuses). */
+export function parseZIndex(tokens: readonly CssNode[], base: Span): ParsedValue {
+  if (tokens.length !== 1) return { kind: 'invalid', reason: 'z-index is auto or one integer' };
+  const t = tokens[0] as CssNode;
+  if (t.type === 'Identifier' && asciiLower(String(t['name'])) === 'auto') return single('z-index', { kind: 'keyword', value: 'auto' });
+  if (t.type === 'Number') {
+    const text = String(t['value']);
+    if (!/^[+-]?\d+$/.test(text)) return { kind: 'invalid', reason: 'z-index takes an integer' };
+    return single('z-index', zIndexValue(clampInt(Number(text))));
+  }
+  const calc = numberCalc('z-index', t, base, Z_FIX);
+  if (calc === null) return { kind: 'invalid', reason: 'z-index is auto or one integer' };
+  if (!('value' in calc)) return calc;
+  if (!Number.isInteger(calc.value)) return refuse('z-index', t, base, 'the calculation is not a whole number, which Chrome rounds and Dragon does not', Z_FIX);
+  return single('z-index', zIndexValue(clampInt(calc.value)));
+}
+
+/** The z-index of a computed value: null for auto, else the integer. */
+export function zIndexOf(v: CssValue): number | null {
+  if (v.kind === 'keyword' && v.value === 'auto') return null;
+  if (v.kind !== 'other' || v.type !== Z_INDEX_INTEGER) throw new Error(`z-index ${JSON.stringify(v)} is neither auto nor an integer`);
+  const n = Number(v.text);
+  if (!Number.isInteger(n)) throw new Error(`z-index ${v.text} is not an integer`);
+  return n;
 }
 
 /** The idents a color-scheme ident list may not hold (css-color-adjust-1 §2: normal, default and the CSS-wide keywords). */
@@ -137,5 +177,6 @@ export function usedColorSchemeOf(s: ColorScheme, prefersDark: boolean): 'light'
 /** The value parsers of the effects longhands (the paint value hook, css/paint-parsers.ts). */
 export const EFFECTS_VALUE_PARSERS: { readonly [P in (typeof EFFECTS_LONGHANDS)[number]]: (tokens: readonly CssNode[], base: Span) => ParsedValue } = {
   opacity: parseOpacity,
+  'z-index': parseZIndex,
   'color-scheme': parseColorScheme,
 };

@@ -94,7 +94,8 @@ describe('box-shadow: lowering and emission', () => {
       { inset: true, x: 1, y: 2, blur: 0, spread: 0, color: { r: 10, g: 20, b: 30, alpha: 255 } },
     ];
     expect(a?.writes.filter((w) => w.kind === 'box-shadow')).toEqual([expect.objectContaining({ kind: 'box-shadow', key: 'dragonShadow.shadows', technique: 'dragon-owned-paint', shadows })]);
-    expect(a?.facts).toEqual({ shadow: { shadows } });
+    // Every box also carries the stacking facts (PNT1 stacking); only the shadow facts are this module's.
+    expect(a?.facts['shadow']).toEqual({ shadows });
     const b = p['android-views'].nodes.find((n) => n.id === 'b');
     expect(b?.writes.some((w) => w.kind === 'box-shadow')).toBe(false);
   });

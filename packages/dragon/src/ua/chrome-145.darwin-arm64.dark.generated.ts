@@ -89,6 +89,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "body": {
     "align-content": "normal",
@@ -171,6 +172,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "div": {
     "align-content": "normal",
@@ -253,6 +255,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "p": {
     "align-content": "normal",
@@ -335,6 +338,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "h1": {
     "align-content": "normal",
@@ -417,6 +421,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "h2": {
     "align-content": "normal",
@@ -499,6 +504,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "h3": {
     "align-content": "normal",
@@ -581,6 +587,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "h4": {
     "align-content": "normal",
@@ -663,6 +670,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "h5": {
     "align-content": "normal",
@@ -745,6 +753,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "h6": {
     "align-content": "normal",
@@ -827,6 +836,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "section": {
     "align-content": "normal",
@@ -909,6 +919,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "article": {
     "align-content": "normal",
@@ -991,6 +1002,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "header": {
     "align-content": "normal",
@@ -1073,6 +1085,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "footer": {
     "align-content": "normal",
@@ -1155,6 +1168,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "nav": {
     "align-content": "normal",
@@ -1237,6 +1251,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "main": {
     "align-content": "normal",
@@ -1319,6 +1334,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "aside": {
     "align-content": "normal",
@@ -1401,6 +1417,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "ul": {
     "align-content": "normal",
@@ -1483,6 +1500,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "ol": {
     "align-content": "normal",
@@ -1565,6 +1583,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "li": {
     "align-content": "normal",
@@ -1647,6 +1666,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "blockquote": {
     "align-content": "normal",
@@ -1729,6 +1749,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "figure": {
     "align-content": "normal",
@@ -1811,6 +1832,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "figcaption": {
     "align-content": "normal",
@@ -1893,6 +1915,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "address": {
     "align-content": "normal",
@@ -1975,6 +1998,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "hr": {
     "align-content": "normal",
@@ -2057,6 +2081,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "dl": {
     "align-content": "normal",
@@ -2139,6 +2164,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "dt": {
     "align-content": "normal",
@@ -2221,6 +2247,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "dd": {
     "align-content": "normal",
@@ -2303,6 +2330,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "dragon-unstyled": {
     "align-content": "normal",
@@ -2385,6 +2413,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
 };
 
@@ -2630,6 +2659,7 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "input": {
     "align-content": "normal",
@@ -2712,6 +2742,7 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "input[type=range]": {
     "align-content": "normal",
@@ -2794,6 +2825,7 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "a": {
     "align-content": "normal",
@@ -2876,6 +2908,7 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "a[href]": {
     "align-content": "normal",
@@ -2958,6 +2991,7 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "img": {
     "align-content": "normal",
@@ -3040,6 +3074,7 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "span": {
     "align-content": "normal",
@@ -3122,6 +3157,7 @@ export const elementKeyComputed: { readonly [K in ElementKey]: { readonly [prope
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
 };
 
@@ -3360,6 +3396,7 @@ export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [pro
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "img[src]": {
     "align-content": "normal",
@@ -3442,6 +3479,7 @@ export const replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [pro
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
 };
 
@@ -3581,6 +3619,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "strong": {
     "align-content": "normal",
@@ -3663,6 +3702,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "b": {
     "align-content": "normal",
@@ -3745,6 +3785,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "em": {
     "align-content": "normal",
@@ -3827,6 +3868,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "i": {
     "align-content": "normal",
@@ -3909,6 +3951,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "code": {
     "align-content": "normal",
@@ -3991,6 +4034,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "small": {
     "align-content": "normal",
@@ -4073,6 +4117,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "sub": {
     "align-content": "normal",
@@ -4155,6 +4200,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "sup": {
     "align-content": "normal",
@@ -4237,6 +4283,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
   "label": {
     "align-content": "normal",
@@ -4319,6 +4366,7 @@ export const phrasingKeyComputed: { readonly [K in PhrasingKey]: { readonly [pro
     "top": "auto",
     "white-space-collapse": "collapse",
     "width": "auto",
+    "z-index": "auto",
   },
 };
 
