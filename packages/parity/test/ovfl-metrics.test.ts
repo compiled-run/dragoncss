@@ -11,7 +11,7 @@ import type { WebCapture } from '../src/capture.ts';
 import { committedDprCapture, runDprCase } from '../src/dpr.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import type { ScrollRecord } from '../src/scroll-metrics.ts';
-import { adjustInt, adjustLayoutUnitRound, assertOverlayScrollbars, CLASSIC_SCROLLBARS, committedScrollCapture, compiledScrollFixture, engineScrollRecords, expectedScrollDir, OVERLAY_PROBE_STYLE, parseScrollCapture, SCROLL_DPRS, scrollCases, scrollProblems, viewportDirectionOf } from '../src/scroll-metrics.ts';
+import { adjustInt, adjustLayoutUnitRound, assertOverlayScrollbars, CLASSIC_SCROLLBARS, committedScrollCapture, compiledScrollFixture, engineScrollRecords, expectedScrollDir, OVERLAY_PROBE_STYLE, parseScrollCapture, SCROLL_DPRS, SCROLLBAR_ARGS, scrollCases, scrollProblems, viewportDirectionOf } from '../src/scroll-metrics.ts';
 import { CHROME_VERSION } from '../src/chrome.ts';
 
 const all = scrollCases();
@@ -175,12 +175,13 @@ describe('the capture environment (R2: overlay scrollbars only)', () => {
   });
 
   it('every committed capture records overlay scrollbars, and a capture without them is refused', () => {
-    const capture = { case: 'c', chrome: CHROME_VERSION, platform: 'p', devicePixelRatio: 2, direction: 'ltr', scrollbars: 'overlay', records: [{ id: 'viewport', scrollWidth: 1, scrollHeight: 1, clientWidth: 1, clientHeight: 1 }] };
+    const capture = { case: 'c', chrome: CHROME_VERSION, platform: 'p', devicePixelRatio: 2, direction: 'ltr', scrollbars: 'overlay', scrollbarArgs: '-AppleShowScrollBars WhenScrolling', records: [{ id: 'viewport', scrollWidth: 1, scrollHeight: 1, clientWidth: 1, clientHeight: 1 }] };
     expect(parseScrollCapture(JSON.stringify(capture), 'c', 2, 'x').scrollbars).toBe('overlay');
     expect(() => parseScrollCapture(JSON.stringify({ ...capture, scrollbars: 'classic' }), 'c', 2, 'x')).toThrow('scrollbars is "classic", not overlay');
     const { scrollbars: _s, ...without } = capture;
     expect(() => parseScrollCapture(JSON.stringify(without), 'c', 2, 'x')).toThrow('scrollbars is undefined, not overlay');
+    expect(() => parseScrollCapture(JSON.stringify({ ...capture, scrollbarArgs: '' }), 'c', 2, 'x')).toThrow('scrollbarArgs is ""');
     expect(() => parseScrollCapture('[]', 'c', 2, 'x')).toThrow('not a scroll capture object');
-    for (const dpr of SCROLL_DPRS) for (const f of all) for (const c of f.cases) expect(committedScrollCapture(c.id, dpr).scrollbars).toBe('overlay');
+    for (const dpr of SCROLL_DPRS) for (const f of all) for (const c of f.cases) expect(committedScrollCapture(c.id, dpr)).toMatchObject({ scrollbars: 'overlay', scrollbarArgs: SCROLLBAR_ARGS.join(' ') });
   });
 });

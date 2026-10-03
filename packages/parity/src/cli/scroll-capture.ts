@@ -1,12 +1,11 @@
 // Captures Chrome's scroll metrics of every overflow and viewport-prop case at DPR 1, 2, 3 and 2.625 (one launch per DPR under
-// chromeArgsAt, with the zoom guard before and after, each page checked for overlay scrollbars first) into
+// chromeArgsAt and SCROLLBAR_ARGS, with the zoom guard before and after, each page checked for overlay scrollbars first) into
 // packages/parity/expected-scroll/<platform>/dpr-<N>/<case>.scroll.json.
 // Run with: pnpm run parity:scroll-capture
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { launchChrome } from '../chrome.ts';
 import { atDpr, zoomGuard } from '../dpr.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
-import { captureScrollMetrics, expectedScrollDir, expectedScrollPath, SCROLL_DPRS, scrollCaptureJson, scrollCases } from '../scroll-metrics.ts';
+import { captureScrollMetrics, expectedScrollDir, launchOverlayChrome, expectedScrollPath, SCROLL_DPRS, scrollCaptureJson, scrollCases } from '../scroll-metrics.ts';
 
 const platform = hostPlatform();
 if (platform !== REFERENCE_PLATFORM) throw new Error(`scroll captures are taken on the reference platform ${REFERENCE_PLATFORM}, not ${platform}`);
@@ -14,7 +13,7 @@ const cases = scrollCases().flatMap((f) => f.cases);
 console.log(`parity:scroll-capture: ${cases.length} cases per DPR; DPRs ${SCROLL_DPRS.join(', ')}`);
 for (const dpr of SCROLL_DPRS) {
   const dir = expectedScrollDir(dpr, platform);
-  const browser = await launchChrome(dpr);
+  const browser = await launchOverlayChrome(dpr);
   try {
     if (dpr !== 1) await zoomGuard(browser, dpr);
     // Every case is captured before the committed files are replaced, so a failed run leaves them as they were.

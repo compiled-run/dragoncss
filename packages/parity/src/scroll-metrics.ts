@@ -3,7 +3,10 @@
 // packages/parity/expected-scroll/<platform>/dpr-<N>/<case>.scroll.json, and the engine's (packages/layout/src/overflow.ts)
 // converted to the integers CSSOM View §4 reports, with Chrome 145.0.7632.6's two rounding formulas as measured (ports.json
 // references: core/dom/element.cc lines 2593-2935, core/layout/adjust_for_absolute_zoom.h lines 44-57).
-import { readFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
+import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
 import type { EngineFaults, LayoutBox, LayoutInput, LU } from '@dragon/layout';
 import { measurerFor, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
@@ -12,7 +15,7 @@ import { iosLayoutProjection, NO_FAULTS } from 'dragon';
 import type { ScrollMetrics } from '../../layout/src/overflow.ts';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import type { ParityCase } from './cases.ts';
-import { CHROME_VERSION, openPage } from './chrome.ts';
+import { CHROME_VERSION, chromeArgsAt, openPage, PLAYWRIGHT_VERSION } from './chrome.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { dprLabel, layoutCases } from './dpr.ts';
 import { repoPath } from './paths.ts';
@@ -36,6 +39,8 @@ export type ScrollCapture = {
   readonly direction: 'ltr' | 'rtl';
   /** The scrollbar environment the capture checked (assertOverlayScrollbars); the reference is overlay. */
   readonly scrollbars: 'overlay';
+  /** The macOS defaults arguments Chrome was launched with (launchOverlayChrome). */
+  readonly scrollbarArgs: string;
   /** The viewport first, then every element that is a scroll container in document order. */
   readonly records: readonly ScrollRecord[];
 };
@@ -80,7 +85,7 @@ export async function captureScrollMetrics(browser: Browser, caseId: string, htm
       }
       return out;
     });
-    return { case: caseId, chrome: CHROME_VERSION, platform: REFERENCE_PLATFORM, devicePixelRatio: env.devicePixelRatio, direction: env.direction, scrollbars: 'overlay', records };
+    return { case: caseId, chrome: CHROME_VERSION, platform: REFERENCE_PLATFORM, devicePixelRatio: env.devicePixelRatio, direction: env.direction, scrollbars: 'overlay', scrollbarArgs: SCROLLBAR_ARGS.join(' '), records };
   } finally {
     await page.context().close();
   }
@@ -100,6 +105,7 @@ export function parseScrollCapture(text: string, caseId: string, dpr: number, wh
   const o = v as Record<string, unknown>;
   if (o['case'] !== caseId || o['devicePixelRatio'] !== dpr || o['chrome'] !== CHROME_VERSION || !isRecordArray(o['records'])) throw new Error(`${where} is not a scroll capture of ${caseId} at DPR ${dpr}`);
   if (o['scrollbars'] !== 'overlay') throw new Error(`${where}: scrollbars is ${JSON.stringify(o['scrollbars'])}, not overlay (decisions.md, overlay-scrollbar rule)`);
+  if (o['scrollbarArgs'] !== SCROLLBAR_ARGS.join(' ')) throw new Error(`${where}: scrollbarArgs is ${JSON.stringify(o['scrollbarArgs'])}, not ${JSON.stringify(SCROLLBAR_ARGS.join(' '))}`);
   if (o['records'][0]?.id !== 'viewport') throw new Error(`${caseId} at DPR ${dpr}: the first record is not the viewport`);
   return o as unknown as ScrollCapture;
 }
@@ -120,6 +126,43 @@ export function committedScrollCapture(caseId: string, dpr: number): ScrollCaptu
 export const OVERLAY_PROBE_STYLE = 'all:initial;position:absolute;left:0;top:0;display:block;overflow:auto;scrollbar-gutter:stable;width:100px;height:100px';
 
 export const CLASSIC_SCROLLBARS = 'capture environment has classic scrollbars (System Settings > Appearance > Show scroll bars, or a mouse attached); the reference is overlay (decisions.md, overlay-scrollbar rule)';
+
+/**
+ * NSUserDefaults argument-domain pair that makes this Chrome process use overlay scrollbars whatever the machine's setting or
+ * mouse; it changes no system setting. Playwright refuses a launch argument that does not start with "-", so a wrapper script
+ * appends the pair when it execs the headless shell Playwright would launch.
+ */
+export const SCROLLBAR_ARGS: readonly string[] = ['-AppleShowScrollBars', 'WhenScrolling'];
+
+/** The chromium-headless-shell executable Playwright launches by default (its registry). */
+function headlessShellPath(): string {
+  const own = createRequire(import.meta.url);
+  const pw = createRequire(own.resolve('playwright'));
+  const core = pw.resolve('playwright-core');
+  const { registry } = pw(core.replace(/index\.js$/, 'lib/server/registry/index.js')) as { registry: { findExecutable(n: string): { executablePath(): string | undefined } | undefined } };
+  const path = registry.findExecutable('chromium-headless-shell')?.executablePath();
+  if (path === undefined) throw new Error(`Playwright ${PLAYWRIGHT_VERSION} names no chromium-headless-shell executable`);
+  return path;
+}
+
+/** launchChrome (chrome.ts) with SCROLLBAR_ARGS; the wrapper directory is removed once Chrome has started or failed to. */
+export async function launchOverlayChrome(forceDeviceScaleFactor: number): Promise<Browser> {
+  const dir = mkdtempSync(`${tmpdir()}/dragon-scroll-chrome-`);
+  try {
+    const wrapper = `${dir}/chrome`;
+    const quoted = (a: string): string => `'${a.replaceAll("'", "'\\''")}'`;
+    writeFileSync(wrapper, `#!/bin/sh\nexec ${quoted(headlessShellPath())} "$@" ${SCROLLBAR_ARGS.map(quoted).join(' ')}\n`);
+    chmodSync(wrapper, 0o755);
+    const browser = await chromium.launch({ executablePath: wrapper, args: [...chromeArgsAt(forceDeviceScaleFactor)] });
+    if (browser.version() !== CHROME_VERSION) {
+      await browser.close();
+      throw new Error(`Chrome must be ${CHROME_VERSION} (Playwright ${PLAYWRIGHT_VERSION}), got ${browser.version()}`);
+    }
+    return browser;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
 
 /** Throws unless the probe, added to the page and removed again, measures clientWidth 100 (R2). Run before every capture. */
 export async function assertOverlayScrollbars(page: Pick<Page, 'evaluate'>): Promise<void> {
