@@ -175,7 +175,10 @@ describe('EMS: CSS families and paint values', () => {
     expect(effects.EFFECTS_LONGHANDS).toEqual(['opacity', 'z-index', 'color-scheme']);
     expect(outline.OUTLINE_LONGHANDS).toEqual(['outline-color', 'outline-style', 'outline-width', 'outline-offset']);
     expect(Object.keys(OUTLINE_SHORTHANDS)).toEqual(['outline']);
-    for (const [name, fam] of [['TRANSFORM', transform], ['BACKGROUND_LAYERS', backgroundLayers], ['SCROLLBAR', scrollbar]] as const) {
+    // BG2 fills the background-layers family: its eight longhands and background-position.
+    expect(backgroundLayers.BACKGROUND_LAYERS_LONGHANDS).toEqual(['background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip']);
+    expect(backgroundLayers.BACKGROUND_LAYERS_SHORTHANDS).toEqual(['background-position']);
+    for (const [name, fam] of [['TRANSFORM', transform], ['SCROLLBAR', scrollbar]] as const) {
       const f = fam as unknown as Record<string, unknown>;
       expect(f[`${name}_LONGHANDS`], name).toEqual([]);
       expect(f[`${name}_SHORTHANDS`], name).toEqual([]);
@@ -191,7 +194,7 @@ describe('EMS: CSS families and paint values', () => {
     const props = new Map<Longhand, ResolvedValue>([['font-size', v(10, 'px')], ['width', v(2, 'em')]]);
     computeLengths(props, 16, 16);
     expect([...props.entries()].map(([k, x]) => [k, x.value])).toEqual([['font-size', { kind: 'length', value: 10, unit: 'px' }], ['width', { kind: 'length', value: 20, unit: 'px' }]]);
-    // SIZE-ar: aspect-ratio is a longhand (box family, after max-height); PNT1 adds its radius and shadow longhands, then outline (4), color-scheme (1), opacity and z-index (2); T150a adds visibility (1).
-    expect((LONGHANDS as readonly string[]).length).toBe(82);
+    // SIZE-ar: aspect-ratio is a longhand (box family, after max-height); PNT1 adds its radius and shadow longhands, then outline (4), color-scheme (1), opacity and z-index (2); T150a adds visibility (1); BG2 the eight layer longhands.
+    expect((LONGHANDS as readonly string[]).length).toBe(90);
   });
 });
