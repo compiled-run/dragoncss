@@ -48,7 +48,7 @@ export function animationFinished(a: RunningAnimation): boolean {
 
 /** CSSTimingData::GetRepeated: the list repeats to cover the index. */
 export function repeatedPaused(list: readonly boolean[], i: number): boolean {
-  if (list.length === 0) return false;
+  if (list.length === 0) throw new Error('an animation play-state list is never empty');
   const k = i - floorOf(i / list.length) * list.length;
   const v = list[k];
   return v === undefined ? false : v;
@@ -161,7 +161,8 @@ export function composeAnimations(list: readonly RunningAnimation[], rules: read
     const rule = ruleNamed(rules, a.name);
     if (rule === null) continue;
     const v = sampleKeyframeEffect(a.timing, a.held.seconds, groupFromRule(rule.keyframes, a.timing.easing), value, range, faults);
-    if (v !== null && !v.refused) value = v.value;
+    if (v !== null && v.refused) throw new Error(`@keyframes ${a.name} has values that do not interpolate`);
+    if (v !== null) value = v.value;
   }
   return value;
 }

@@ -89,6 +89,14 @@ export function sampleTransition(t: RunningTransition, range: ValueRange, faults
   return interpolateValueInRange(t.from, t.to, p, range, faults);
 }
 
+/** The transition's value now, or null without progress. The compiler refuses pairs that do not interpolate, so one throws. */
+export function transitionValue(t: RunningTransition, range: ValueRange, faults: RtFaults): AnimatedValue | null {
+  const v = sampleTransition(t, range, faults);
+  if (v === null) return null;
+  if (v.refused) throw new Error('a transition between values that do not interpolate reached the runtime');
+  return v.value;
+}
+
 function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
 }
@@ -107,8 +115,8 @@ export function updateTransition(running: RunningTransition | null, change: Tran
     if (valuesEqual(change.after, active.to)) return active;
     if (valuesEqual(change.after, active.reversingAdjustedStart)) interrupted = active;
     // CalculateBeforeChangeStyle: the old base with the running transition sampled at its current time.
-    const now = sampleTransition(active, change.range, faults);
-    if (now !== null && !now.refused) before = now.value;
+    const now = transitionValue(active, change.range, faults);
+    if (now !== null) before = now;
   }
   if (change.listing.mode === 'initial') return null;
   if (valuesEqual(before, change.after)) return null;
@@ -184,8 +192,8 @@ export function runTransitionScript(states: readonly TransitionState[], range: V
     let durationMs: number | null = null;
     if (running !== null) {
       durationMs = running.timing.duration * 1000;
-      const now = sampleTransition(running, range, faults);
-      if (now !== null && !now.refused) value = now.value;
+      const now = transitionValue(running, range, faults);
+      if (now !== null) value = now;
     }
     out.push({ value, durationMs });
   }

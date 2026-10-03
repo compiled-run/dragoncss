@@ -90,30 +90,37 @@ function animMismatches(faults: RtFaults): Record<string, number> {
   const n = { advance: 0, keyframes: 0, transitions: 0, animations: 0 };
   for (const [i, want] of advance.records) {
     let h = HELD_ZERO;
-    (advance.sequences[i] ?? []).forEach((d, k) => {
+    const deltas = advance.sequences[i];
+    if (deltas === undefined || deltas.length !== want.length) throw new Error(`advance record ${i} does not match its sequence`);
+    deltas.forEach((d, k) => {
       h = advanceHeld(h, d, faults);
       if (bits(h.seconds * 1000) !== want[k]) n.advance++;
     });
   }
   for (const [i, t, progress, value] of keyframes.records) {
-    const c = keyframes.cases[i] as KeyframeCase;
+    const c = keyframes.cases[i];
+    if (c === undefined) throw new Error(`keyframes record names case ${i}, which does not exist`);
     const timing = seconds(c.timing);
     const p = computeSecondsTiming({ ...timing, easing: LINEAR }, t / 1000, faults).progress;
     const v = sampleKeyframeEffect(timing, t / 1000, groupFromRule(ruleOf(c.rule), timing.easing), c.underlying.v, c.range, faults);
     if (bits(p) !== progress || (v === null ? show(c.underlying.v) : v.refused ? 'refused' : show(v.value)) !== value) n.keyframes++;
   }
   for (const [i, readings] of transitions.records) {
-    const c = transitions.cases[i] as TransitionCase;
+    const c = transitions.cases[i];
+    if (c === undefined) throw new Error(`transitions record names case ${i}, which does not exist`);
     const states = c.states.map((s) => ({ value: s.value.v, listing: { ...s.listing, easing: easingFromSpec(s.listing.easing) } }));
+    if (readings.length !== c.steps.length) throw new Error(`transition record ${i} has ${readings.length} readings for ${c.steps.length} steps`);
     runTransitionScript(states, c.range, stepsOf(c.steps), faults).forEach((r, k) => {
       if (JSON.stringify([show(r.value), r.durationMs === null ? null : bits(r.durationMs)]) !== JSON.stringify(readings[k])) n.transitions++;
     });
   }
   for (const [i, readings] of animations.records) {
-    const c = animations.cases[i] as AnimationCase;
+    const c = animations.cases[i];
+    if (c === undefined) throw new Error(`animations record names case ${i}, which does not exist`);
     const names = new Set(c.rules.map((r) => r.name));
     const states = c.states.map((s) => ({ base: s.base.v, entries: s.entries.map((e) => ({ name: e.name, hasKeyframes: names.has(e.name), paused: e.paused, timing: seconds(e.timing) })) }));
     const rules = c.rules.map((r) => ({ name: r.name, keyframes: ruleOf(r.rule) }));
+    if (readings.length !== c.steps.length) throw new Error(`animation record ${i} has ${readings.length} readings for ${c.steps.length} steps`);
     runAnimationScript(states, rules, c.range, stepsOf(c.steps), faults).forEach((r, k) => {
       if (JSON.stringify([r.names, r.currentTimesMs.map(bits), r.playStates, show(r.value)]) !== JSON.stringify(readings[k])) n.animations++;
     });

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { AnimationEntry, KeyframesRule, RunningAnimation } from '../src/rt-animations.ts';
 import { advanceAnimation, animationFinished, repeatedPaused, runAnimationScript, stackOrder, updateAnimations } from '../src/rt-animations.ts';
 import { LINEAR, NO_RT_FAULTS } from '../src/rt-easing.ts';
+import type { RuleKeyframe } from '../src/rt-keyframes.ts';
 import type { AnimatedValue } from '../src/rt-interpolate.ts';
 import { lengthPx, serializeValue, TRANSPARENT, ZERO_PX } from '../src/rt-interpolate.ts';
 import type { SecondsTiming } from '../src/rt-timing.ts';
@@ -49,7 +50,7 @@ describe('updateAnimations', () => {
     expect(ms(adv(done, 100))).toEqual([2100]);
     expect(repeatedPaused([true, false], 3)).toBe(false);
     expect(repeatedPaused([true, false], 2)).toBe(true);
-    expect(repeatedPaused([], 0)).toBe(false);
+    expect(() => repeatedPaused([], 0)).toThrow(/never empty/);
   });
 
   it('puts started and then updated animations on top right after a style change event, else keeps list order', () => {
@@ -73,7 +74,9 @@ describe('runAnimationScript', () => {
     expect(r.map((x) => show(x.value))).toEqual(['100px', '25px', '25px']);
   });
 
-  it('refuses a state index outside its states', () => {
+  it('refuses a state index outside its states, and keyframes whose values do not interpolate', () => {
     expect(() => runAnimationScript([{ base: px(5), entries: [] }], rules, 'all', [step('state', 1)], NO_RT_FAULTS)).toThrow(/outside its 1 states/);
+    const mixed = { name: 'up', keyframes: [{ ...(rule('up', 0, 1).keyframes[0] as RuleKeyframe), value: { ...BASE, kind: 'opacity' as const } }, rule('up', 0, 1).keyframes[1] as RuleKeyframe] };
+    expect(() => runAnimationScript([{ base: px(5), entries: [entry('up', 1)] }], [mixed], 'all', [], NO_RT_FAULTS)).toThrow(/@keyframes up has values that do not interpolate/);
   });
 });

@@ -718,14 +718,19 @@ function compareAnim(cap: AnimCapture): { counts: Record<string, number>; failur
   const failures: string[] = [];
   const counts: Record<string, number> = { advance: 0, keyframes: 0, transitions: 0, animations: 0 };
   const seqs = advanceSequences();
+  if (cap.advance.length !== seqs.length) failures.push(`advance: chrome ran ${cap.advance.length} of ${seqs.length} sequences`);
   cap.advance.forEach((got, i) => {
     const want = referenceAdvance(seqs[i] as number[]);
+    if (got.length !== want.length) failures.push(`advance ${i}: chrome read ${got.length} of ${want.length} steps`);
     got.forEach((g, k) => {
       counts.advance = (counts.advance ?? 0) + 1;
       if (g !== want[k]) failures.push(`advance ${i} step ${k}: chrome ${g}, reference ${want[k]}`);
     });
   });
   const kcases = keyframeCases();
+  const samples = kcases.reduce((n, c) => n + c.times.length, 0);
+  if (cap.keyframes.length !== samples) failures.push(`keyframes: chrome read ${cap.keyframes.length} of ${samples} samples`);
+  if (cap.transitions.length !== transitionCases().length || cap.animations.length !== animationCases().length) failures.push('chrome ran a different number of transition or animation scripts');
   for (const r of cap.keyframes) {
     counts.keyframes = (counts.keyframes ?? 0) + 1;
     const c = kcases[r.case] as KeyframeCase;
@@ -736,6 +741,7 @@ function compareAnim(cap: AnimCapture): { counts: Record<string, number>; failur
   for (const r of cap.transitions) {
     const c = tcases[r.case] as TransitionCase;
     const want = referenceTransitions(c);
+    if (r.readings.length !== want.length) failures.push(`transitions ${c.id}: chrome read ${r.readings.length} of ${want.length} steps`);
     r.readings.forEach((g, k) => {
       counts.transitions = (counts.transitions ?? 0) + 1;
       if (JSON.stringify(g) !== JSON.stringify(want[k])) failures.push(`transitions ${c.id} step ${k}: chrome ${JSON.stringify(g)}, reference ${JSON.stringify(want[k])}`);
@@ -745,6 +751,7 @@ function compareAnim(cap: AnimCapture): { counts: Record<string, number>; failur
   for (const r of cap.animations) {
     const c = acases[r.case] as AnimationCase;
     const want = referenceAnimations(c);
+    if (r.readings.length !== want.length) failures.push(`animations ${c.id}: chrome read ${r.readings.length} of ${want.length} steps`);
     r.readings.forEach((g, k) => {
       counts.animations = (counts.animations ?? 0) + 1;
       if (JSON.stringify(g) !== JSON.stringify(want[k])) failures.push(`animations ${c.id} step ${k}: chrome ${JSON.stringify(g)}, reference ${JSON.stringify(want[k])}`);

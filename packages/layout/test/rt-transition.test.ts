@@ -126,6 +126,11 @@ describe('held time and scripts', () => {
     expect(() => runTransitionScript(states, 'all', [{ kind: 'state', state: 2, deltaMs: 0 }], NO_RT_FAULTS)).toThrow(/outside its 2 states/);
   });
 
+  it('a running transition between values that do not interpolate throws rather than show the old value', () => {
+    const t = updateTransition(null, change(px(0), px(100), listed(1)), NO_RT_FAULTS) as RunningTransition;
+    expect(() => updateTransition({ ...t, to: op(1) }, change(px(100), px(50), listed(1)), NO_RT_FAULTS)).toThrow(/do not interpolate/);
+  });
+
   it('valuesEqual compares kind and every field', () => {
     expect(valuesEqual(px(1), op(1))).toBe(false);
     const red = { ...BASE, kind: 'color' as const, color: legacyColorFromCss(255, 0, 0, 1) };
