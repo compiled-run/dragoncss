@@ -81,8 +81,12 @@ export async function openPage(browser: Browser, html: string, env: PageEnvironm
 
 /**
  * T065 R2: openPage for a frame fixture, with every animation held by the frozen document timeline (CDP
- * Animation.setPlaybackRate 0 before the content loads), so a frame capture moves time only by setting currentTime.
+ * Animation.setPlaybackRate 0 before the content loads), so a frame capture moves time only by setting currentTime. The page
+ * navigates to a fresh document (a routed URL) rather than setContent: setContent rewrites about:blank, whose timeline ran
+ * before the rate was set, so it froze at a few milliseconds instead of 0.
  */
+const FROZEN_URL = 'http://dragon.test/frame';
+
 export async function openFrozenPage(browser: Browser, html: string, env: PageEnvironment): Promise<Page> {
   const context = await browser.newContext({ viewport: { width: env.viewport.width, height: env.viewport.height }, deviceScaleFactor: env.devicePixelRatio });
   const page = await context.newPage();
@@ -91,7 +95,8 @@ export async function openFrozenPage(browser: Browser, html: string, env: PageEn
   await cdp.send('Animation.setPlaybackRate', { playbackRate: 0 });
   const injected = html.replace(/<head>/i, `<head><style data-dragon-harness>${harnessStyle(env)}</style>`);
   if (injected === html) throw new Error('fixture HTML has no <head>');
-  await page.setContent(injected);
+  await page.route(FROZEN_URL, (r) => r.fulfill({ contentType: 'text/html; charset=utf-8', body: injected }));
+  await page.goto(FROZEN_URL);
   await page.evaluate(async () => {
     await document.fonts.load('10px Ahem');
     await document.fonts.ready;
