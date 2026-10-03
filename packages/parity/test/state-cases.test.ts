@@ -5,7 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import type { NativeCase } from '../src/native-host.ts';
 import { emitCases, hostSources } from '../src/native-host.ts';
-import { NO_FAULTS, webStateModule, webStateProgram } from 'dragon';
+import { hitFacts, NO_FAULTS, webStateModule, webStateProgram } from 'dragon';
+import { programHitTable, tapTarget } from '../src/hit-capture.ts';
 import { assertDistinctCaseIds, checkStates, deriveScripts, runScript, SCRIPT_FRAME_MS, stateEmits, stateGroups, stateProgramOf, webClassTables } from '../src/state-cases.ts';
 import { deviceDprs } from '../src/targets.ts';
 
@@ -46,7 +47,17 @@ describe('the state programs of every tree fixture with states', () => {
       expect(s.steps.filter((x) => x.kind === 'advance').every((x) => x.kind === 'advance' && x.ms === SCRIPT_FRAME_MS)).toBe(true);
       expect(runScript(sp, s.steps).map((d) => d.assignment)).toEqual([s.ends]);
     }
-    expect(() => runScript(sp, [{ kind: 'tap', x: 1, y: 1 }])).toThrow(/SELD-R1b/);
+    expect(() => runScript(sp, [{ kind: 'tap', x: 1, y: 1 }])).toThrow(/needs a tap handler/);
+    // A tap dispatches through the hit table of the live program (the host half of RT-9 tap dispatch).
+    const n = g.cases[sp.initial] as NativeCase;
+    const facts = hitFacts(n.compiled, n.case.assignment);
+    if (facts === null) throw new Error(`${n.case.id}: no hit facts`);
+    const handler = (p: Parameters<NonNullable<Parameters<typeof runScript>[3]>>[0], _a: number, x: number, y: number): string | null => tapTarget(programHitTable(p, facts, n.case.environment.viewport, 1), x, y);
+    // Every dump, not only the first: a tap is recorded with the next dump and adds no dump of its own.
+    expect(runScript(sp, [{ kind: 'tap', x: 64, y: 64 }, { kind: 'dump' }], NO_FAULTS, handler).map((d) => d.taps)).toEqual([[null]]);
+    expect(runScript(sp, [{ kind: 'tap', x: 64, y: 64 }, { kind: 'tap', x: 64, y: 64 }, { kind: 'dump' }, { kind: 'dump' }], NO_FAULTS, handler).map((d) => d.taps)).toEqual([[null, null], []]);
+    // A tap after the last dump would be recorded nowhere; the run refuses it.
+    expect(() => runScript(sp, [{ kind: 'dump' }, { kind: 'tap', x: 64, y: 64 }], NO_FAULTS, handler)).toThrow(/after the last dump/);
   });
 });
 

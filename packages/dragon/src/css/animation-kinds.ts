@@ -89,6 +89,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   'grid-column-end': DISCRETE,
   'justify-items': DISCRETE,
   'justify-self': DISCRETE,
+  'pointer-events': DISCRETE,
 };
 
 /** ANIM-b1 admits colour and length (R1, R13): kinds with an rt interpolator and a runtime writer on every target. */

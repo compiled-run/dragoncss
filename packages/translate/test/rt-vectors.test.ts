@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runLibraryCase } from '../harness/harness.ts';
 import { lockText } from '../src/check.ts';
-import { buildCorpus, RT_VECTORS_DIR, rtCases } from '../src/corpus.ts';
+import { buildCorpus, hitCases, hitExpected, RT_VECTORS_DIR, rtCases } from '../src/corpus.ts';
 import { engineFiles, engineRoots, LAYOUT_SRC, lowerAll } from '../src/generate.ts';
 
 type Rec = readonly (string | number | null)[];
@@ -49,8 +49,8 @@ describe('rt suite (ANIM-a2)', () => {
   const corpus = buildCorpus();
   const rt = corpus.suites.find((s) => s.name === 'rt');
 
-  it('is the last P1 suite, in library mode, one line per rt vector record', () => {
-    expect(corpus.suites.map((s) => s.name)).toEqual(['vectors', 'units', 'engine', 'library', 'rt']);
+  it('is the last P1 suite before SELD-R1b\'s hit suite, in library mode, one line per rt vector record', () => {
+    expect(corpus.suites.map((s) => s.name)).toEqual(['vectors', 'units', 'engine', 'library', 'rt', 'hit']);
     expect(rt?.mode).toBe('library');
     const n = ['timing.json', 'easing.json', 'hold.json', 'interp.json', 'advance.json', 'keyframes.json', 'transitions.json', 'animations.json'].reduce((k, f) => k + records(f).length, 0);
     expect(n).toBe(36785 + 10439 + 903 + 6461 + 7 + 740 + 20 + 7);
@@ -149,5 +149,21 @@ describe('rt suite (ANIM-a2)', () => {
     for (const f of ['rt-easing.ts', 'rt-timing.ts', 'rt-interpolate.ts', 'rt-keyframes.ts', 'rt-transition.ts', 'rt-animations.ts']) expect(files.has(`packages/layout/src/${f}`), f).toBe(true);
     expect((JSON.parse(lockText(corpus)) as { cases: Record<string, number> }).cases['rt']).toBe(rt?.lines.length);
     expect(JSON.parse(readFileSync(join(RT_VECTORS_DIR, '../../translate/corpus.json'), 'utf8'))).toEqual(JSON.parse(lockText(corpus)));
+  }, 120_000);
+});
+
+describe('hit suite (SELD-R1b)', () => {
+  // The expected results are the TypeScript harness's own answers; a reference that threw or refused its line would be matched by
+  // a native that fails the same way, so every hit expected result must be an answer.
+  it('builds expected results only from answers, refusing a line the reference threw on or refused', () => {
+    const lines = hitCases();
+    const expected = hitExpected(lines);
+    expect(expected.length).toBe(lines.length);
+    expect(expected.every((e) => e.startsWith('["ok",'))).toBe(true);
+    const first = JSON.parse(lines[0] as string) as unknown[];
+    const noFacts = JSON.stringify([first[0], first[1], first[2], []]);
+    expect(runLibraryCase(noFacts)).toBe('["threw"]');
+    expect(() => hitExpected([lines[0] as string, noFacts])).toThrow(/hit case 1: the TypeScript reference answered \["threw"\]/);
+    expect(() => hitExpected([JSON.stringify(['rt-hit', first[1], first[2]])])).toThrow(/hit case 0: the TypeScript reference answered \["harness-error"/);
   }, 120_000);
 });

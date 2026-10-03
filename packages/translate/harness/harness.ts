@@ -97,6 +97,8 @@ import type { EffectTimingSpec, FillMode, PlaybackDirection, SecondsTiming } fro
 import { advanceHeld, computeSecondsTiming, computeTiming, currentTimeAt, HELD_ZERO, seekPaused } from '../../layout/src/rt-timing.ts';
 import type { ScriptStep, TransitionListing, TransitionState } from '../../layout/src/rt-transition.ts';
 import { runTransitionScript } from '../../layout/src/rt-transition.ts';
+import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit.ts';
+import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
@@ -735,6 +737,7 @@ const FAULT_KEYS: readonly string[] = [
   'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled', 'lhUnsnapped',
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
   'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak',
+  'orderHalfEven', 'orderUnclamped',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -775,6 +778,8 @@ function decodeFaults(v: JsonValue): EngineFaults {
     fitWithoutEpsilon: b('fitWithoutEpsilon'),
     breakAfterSolidus: b('breakAfterSolidus'),
     noHyphenDigitBreak: b('noHyphenDigitBreak'),
+    orderHalfEven: b('orderHalfEven'),
+    orderUnclamped: b('orderUnclamped'),
   };
 }
 
@@ -1109,6 +1114,9 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
       return rtTransitionsResult(a);
     case 'rt-animations':
       return rtAnimationsResult(a);
+    // hit suite (SELD-R1b, T047 RT-9): the hit table, derived grid and answers of a layout vector's input.
+    case 'rt-hit':
+      return rtHitResult(a);
     default:
       return fail(`unknown operation ${op}`);
   }
@@ -1511,4 +1519,30 @@ function rtAnimationsResult(a: readonly JsonValue[]): string {
     out += `${i > 0 ? ',' : ''}[[${names}],[${times}],[${plays}],${q(rtShow(r.value, a, 5))}]`;
   });
   return `[${out}]`;
+}
+
+// ---------------------------------------------------------------- hit suite (SELD-R1b, T047 RT-9)
+
+const HIT_TABLE_CLEAN: HitTableFaults = { pointerEventsNotInherited: false };
+const HIT_CLEAN: HitFaults = { ignorePointerEventsNone: false, reversedOrder: false };
+
+/** A hit read: [op, platform, input, facts] -> the run-length encoded answers at every point of the input's derived grid. */
+function rtHitResult(a: readonly JsonValue[]): string {
+  if (a.length !== 4) return fail('rt-hit: expected [op, platform, input, facts]');
+  const platform = str(item(a, 1, '$'), '$[1]');
+  const input = decodeInput(item(a, 2, '$'));
+  const facts = new Map<string, HitFact>();
+  arr(item(a, 3, '$'), '$[3]').forEach((f, i) => {
+    const path = `$[3][${i.toString(16)}]`;
+    const g = arr(f, path);
+    if (g.length !== 4) return fail(`${path}: expected [id, pointerEvents, inherited, activation]`);
+    const pe = str(item(g, 1, path), path);
+    if (pe !== 'auto' && pe !== 'none') return fail(`${path}: pointer-events ${pe} is not auto or none`);
+    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path) });
+  });
+  const m = measurerFor(platform);
+  if (m.kind !== 'ok') return fail(`rt-hit: no measurer for ${platform}`);
+  const t = hitTableOf(input, m.measurer, facts, HIT_TABLE_CLEAN);
+  const zoom = input.devicePixelRatio * 64;
+  return q(hitRuns(t, hitGrid(t, input.viewport.width * zoom, input.viewport.height * zoom), HIT_CLEAN));
 }
