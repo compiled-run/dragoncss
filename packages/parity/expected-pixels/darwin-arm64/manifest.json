@@ -504,7 +504,9 @@
         {"case":"values-calc-length-max","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
         {"case":"values-calc-length-max-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
         {"case":"values-order-calc-round","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
-        {"case":"values-order-calc-round-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"}
+        {"case":"values-order-calc-round-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
+        {"case":"values-length-saturation","width":800,"height":600,"sha256":"24f6380e069b434a4cc4434c2a1c5c86518c8c7ff1398ef78f33e93d2f7943c6"},
+        {"case":"values-length-saturation-rtl","width":800,"height":600,"sha256":"a863b8cc1a51175ee663a15d8ac37331ce2a8bc0372843b0229da49f80ba613d"}
       ]
     },
     {
@@ -1008,7 +1010,9 @@
         {"case":"values-calc-length-max","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
         {"case":"values-calc-length-max-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
         {"case":"values-order-calc-round","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
-        {"case":"values-order-calc-round-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"}
+        {"case":"values-order-calc-round-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
+        {"case":"values-length-saturation","width":1200,"height":900,"sha256":"54d03137cdf15e9ef3602aca4556387ccb7255d70ef16efb44e2f47acffeed0a"},
+        {"case":"values-length-saturation-rtl","width":1200,"height":900,"sha256":"c4991333c3a6a3c24589e49fb1bd7a664ab7b9984352e43211664277e96deb8e"}
       ]
     },
     {
@@ -1512,7 +1516,9 @@
         {"case":"values-calc-length-max","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
         {"case":"values-calc-length-max-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
         {"case":"values-order-calc-round","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
-        {"case":"values-order-calc-round-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"}
+        {"case":"values-order-calc-round-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
+        {"case":"values-length-saturation","width":1050,"height":788,"sha256":"9daa334d0b1d0c29bd1dbb64f581d3661de32f2e49a53a08d0a3f3cb3ad1eba0"},
+        {"case":"values-length-saturation-rtl","width":1050,"height":788,"sha256":"dd9a932d6a35c6352b0ac19ae037c4c517fe3f31a95b58a861c36fe49a8ea1eb"}
       ]
     }
   ]

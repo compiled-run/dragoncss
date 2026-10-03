@@ -193,6 +193,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
         forcedHeightDefinite: false,
         heightBasis: itemHeightBasis,
         formattingContextRoot: true,
+        bfcLineOffset: ZERO,
       });
       hypoFrag.set(item, r.frag);
       hypoCross.set(item, r.frag.height);
@@ -299,6 +300,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
           forcedHeightDefinite: isRow ? stretchDefinite : containerMainDefinite || hasAspectRatio(node.style),
           heightBasis: itemHeightBasis,
           formattingContextRoot: true,
+          bfcLineOffset: ZERO,
         });
       const crossPos = add(linePhysical, crossInLine);
       const at: Placed = {
@@ -514,6 +516,7 @@ function buildItem(
         forcedHeightDefinite: false,
         heightBasis,
         formattingContextRoot: true,
+        bfcLineOffset: ZERO,
       });
       contentSized = contentBox(r.frag.height, vbp);
     }
@@ -613,6 +616,7 @@ function columnIntrinsicBlockSize(ctx: Ctx, box: LayoutBox, cbInline: LU, border
     forcedHeightDefinite: false,
     heightBasis,
     formattingContextRoot: true,
+    bfcLineOffset: ZERO,
   });
   return contentBox(r.frag.height, vbp);
 }
@@ -907,7 +911,7 @@ function ratioFlexMain(ctx: Ctx, box: LayoutBox, isRow: boolean, columnCross: LU
   const fromRatio = blockFromRatio(s, hbp, vbp, columnCross);
   // The content height without the ratio (Blink LayoutResult::IntrinsicBlockSize).
   const plain: LayoutBox = { kind: 'box', id: box.id, boxType: box.boxType, style: { ...s, aspectRatio: { kind: 'auto' } }, children: box.children };
-  const r = layoutContents(ctx, plain, { cbInline, borderBoxWidth: columnCross, forcedBorderBoxHeight: null, forcedHeightDefinite: false, heightBasis: { kind: 'indefinite' }, formattingContextRoot: true });
+  const r = layoutContents(ctx, plain, { cbInline, borderBoxWidth: columnCross, forcedBorderBoxHeight: null, forcedHeightDefinite: false, heightBasis: { kind: 'indefinite' }, formattingContextRoot: true, bfcLineOffset: ZERO });
   const inlineMm: MinMax = {
     min: s.minWidth.kind === 'auto' ? hbp : borderBoxFromSpecified(resolveLength(s.minWidth, cbInline, ctx.faults), hbp, s.boxSizing),
     max: s.maxWidth.kind === 'none' ? null : borderBoxFromSpecified(resolveLength(s.maxWidth, cbInline, ctx.faults), hbp, s.boxSizing),
