@@ -64,7 +64,8 @@ describe('native targets', () => {
     for (const l of ['device-frames', 'device-applied', 'device-lines', 'device-pixels']) {
       const a = lane(ios, l);
       const b = lane(android, l);
-      expect(a?.sets.map((s) => [s.dpr, s.ids.length])).toEqual(SHARED_DPRS.map((d) => [d, ids.length]));
+      // TXT1a-2: the device cases are every layout case but the shaped ones, which the device runtime draws only from phase R on.
+      expect(a?.sets.map((s) => [s.dpr, s.ids.length])).toEqual(SHARED_DPRS.map((d) => [d, vectorCaseIds().length]));
       expect(b?.sets.filter((s) => s.role === 'shared')).toEqual(a?.sets);
       expect(b?.sets.filter((s) => s.role === 'extra').map((s) => [s.dpr, s.extra])).toEqual(EXTRA_DPRS.map((e) => [e.dpr, e.name]));
     }
@@ -88,11 +89,13 @@ describe('native targets', () => {
     expect(android.projection).toBe(nativeLayoutProjection);
     expect(ios.projection).toBe(android.projection);
   });
-  it('iosLayoutProjection output deep-equals nativeLayoutProjection output for every case, at DPR 1 and every DPR', () => {
+  it('iosLayoutProjection output deep-equals nativeLayoutProjection output for every device case, at DPR 1 and every DPR', () => {
     let n = 0;
+    const device = new Set(vectorCaseIds());
     for (const f of layoutCases()) {
       const compiled = new Map((['ltr', 'rtl'] as const).map((d) => [d, compileFixture(f.spec, NO_FAULTS, 'enforce', d).compiled]));
       for (const c of f.cases) {
+        if (!device.has(c.id)) continue;
         const comp = compiled.get(c.environment.direction);
         for (const dpr of [1, ...DPRS]) {
           const env = atDpr(c.environment, dpr);
@@ -103,7 +106,7 @@ describe('native targets', () => {
         }
       }
     }
-    expect(n).toBe(ids.length * (1 + DPRS.length));
+    expect(n).toBe(vectorCaseIds().length * (1 + DPRS.length));
   });
 });
 

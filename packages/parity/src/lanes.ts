@@ -31,7 +31,7 @@ import { deviceEvidence, evidenceProblems } from './device-evidence.ts';
 import type { DeviceRecord } from './device-run.ts';
 import { TRUST_CASES } from './device-run.ts';
 import type { CaseSet, LaneConfig, LaneId, NativeTarget, TargetConfig } from './targets.ts';
-import { declaredLane, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, NATIVE_TARGETS, p1Manifest } from './targets.ts';
+import { declaredLane, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, NATIVE_TARGETS, p1Manifest, vectorCaseIds } from './targets.ts';
 
 export type LaneState = 'pass' | 'fail' | 'blocked (owner tooling)' | 'not run';
 
@@ -333,7 +333,7 @@ export async function runHostLane(t: TargetConfig, opts: HostOptions = {}): Prom
 export type ReferenceRow = { readonly dpr: number; readonly role: 'shared' | 'extra'; readonly cases: number; readonly valid: number; readonly chrome: number; readonly engine: number; readonly chromeCompared: number; readonly engineCompared: number; readonly failures: readonly string[] };
 
 /**
- * For every layout case at every device DPR of each target: the TS engine through the target's projection, snapped by snapRect
+ * For every device case at every device DPR of each target: the TS engine through the target's projection, snapped by snapRect
  * into a ts-reference dump, which must validate and pass (a) against Chrome at that DPR and (d) against the engine.
  */
 export function referenceProof(targets: readonly TargetConfig[]): { readonly target: NativeTarget; readonly rows: readonly ReferenceRow[] }[] {
@@ -350,6 +350,8 @@ export function referenceProof(targets: readonly TargetConfig[]): { readonly tar
     return c;
   };
   const all = layoutCases();
+  // The device cases (targets.ts vectorCaseIds): a shaped case is not drawn on devices until TXT1a-2 phase R.
+  const device = new Set(vectorCaseIds());
   return targets.map((t) => ({
     target: t.target,
     rows: t.dprs.map((dpr): ReferenceRow => {
@@ -362,6 +364,7 @@ export function referenceProof(targets: readonly TargetConfig[]): { readonly tar
       let cases = 0;
       for (const f of all) {
         for (const c of f.cases) {
+          if (!device.has(c.id)) continue;
           cases++;
           const comp = compiledFor(f.spec, c.environment.direction);
           const env = atDpr(c.environment, dpr);

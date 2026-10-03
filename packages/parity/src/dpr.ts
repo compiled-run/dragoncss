@@ -8,7 +8,7 @@ import { absoluteRects, dprChromeDeviations, layoutWithFaults, measurerFor, NO_E
 import { isShapedInput, joinHyphenRects } from './text-latin-run.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import type { Compiled, Environment } from 'dragon';
-import { iosLayoutProjection, NO_FAULTS } from 'dragon';
+import { engineLayoutProjection, NO_FAULTS } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { casesOf } from './cases.ts';
@@ -114,7 +114,7 @@ function referenceMeasurer() {
 export function runDprCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, dpr: number, capture: WebCapture, faults: EngineFaults = NO_ENGINE_FAULTS, projectionOf: Projection | null = null): DprCaseOutcome {
   const env = atDpr(c.environment, dpr);
   const base = { id: c.id, dpr, comparison: null, exact: 0, nodes: 0, vector: null };
-  const projection = (projectionOf ?? iosLayoutProjection)(compiled, env, c.assignment);
+  const projection = (projectionOf ?? engineLayoutProjection)(compiled, env, c.assignment);
   if (projection.kind === 'blocked') return { ...base, status: 'fail', reason: `ios projection blocked: ${projection.reason}` };
   const validated = validateLayoutInput(JSON.parse(JSON.stringify(projection.input)));
   if (!validated.ok) return { ...base, status: 'fail', reason: `layout input rejected: ${validated.errors.map((e) => `${e.path} ${e.code}`).join('; ')}` };

@@ -7,7 +7,7 @@
 import type { Browser, Page } from 'playwright';
 import type { EngineFaults, GlyphShaper, LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
 import { layout, measurerFor, NO_ENGINE_FAULTS, shapedMeasurerFor } from '@dragon/layout';
-import { iosLayoutProjection, NO_FAULTS } from 'dragon';
+import { engineLayoutProjection, NO_FAULTS } from 'dragon';
 import type { CapturedNode, WebCapture } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
@@ -244,7 +244,7 @@ export function shapedCaseIds(): ReadonlySet<string> {
         compiled = compileFixture(f.spec, NO_FAULTS, 'derive', c.environment.direction).compiled;
         byDirection.set(c.environment.direction, compiled);
       }
-      const p = iosLayoutProjection(compiled, c.environment, c.assignment);
+      const p = engineLayoutProjection(compiled, c.environment, c.assignment);
       if (p.kind === 'ready' && isShapedInput(p.input)) out.add(c.id);
     }
   }

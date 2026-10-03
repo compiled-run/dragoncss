@@ -25,6 +25,7 @@ import { FONT_REFERENCE_MAP } from '../src/font-reference.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import { NO_FAULTS } from 'dragon';
 import * as tl from '../src/text-latin-run.ts';
+import { vectorCaseIds } from '../src/targets.ts';
 import { repoPath } from '../src/paths.ts';
 import { ahemFaceId, faceIdOf, fontDataOf, hostShaper, referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 
@@ -176,16 +177,29 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
     expect(boxesOf(layout(p.input, reference.measurer))).not.toEqual(boxesOf(layout(p.input, referenceShapedMeasurer())));
   });
 
-  it('lowers every new case for ios and android in the derive compile (native draws the real faces)', () => {
+  it('refuses every new real-face case on ios and android until TXT1a-2 phase R, and lowers it for the engine lane', () => {
+    // The device runtime measures and draws only the bundled Ahem (emit/native-support.ts DragonBridge.measurer), so native keeps
+    // TXT1a-1's deferred font refusal and the engine lane lowers the case in engine mode; the Ahem fractional case lowers natively
+    // but is shaped, so it is no device case either (targets.ts vectorCaseIds).
     for (const id of NEW_IDS) {
-      const c = derived(id.replace(/-rtl$/, ''), id.endsWith('-rtl') ? 'rtl' : 'ltr');
-      expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.target} ${d.code}: ${d.message}`), id).toEqual([]);
-      expect(c.outputs.ios.kind, id).toBe('analysis-only');
+      const direction = id.endsWith('-rtl') ? 'rtl' : 'ltr';
+      const c = derived(id.replace(/-rtl$/, ''), direction);
+      const env = caseOf(id.replace(/-rtl$/, ''), direction).environment;
+      expect(dragon.engineLayoutProjection(c, env, []).kind, id).toBe('ready');
+      if (id === 'text-ahem-fractional') {
+        expect(c.outputs.ios.kind, id).toBe('analysis-only');
+        continue;
+      }
+      expect(c.diagnostics.filter((d) => d.severity === 'error' && d.target !== 'web').map((d) => `${d.target} ${d.code}`).filter((x) => !/^(ios|android) DRAGON_UNSUPPORTED_(FONT|VALUE)$/.test(x)), id).toEqual([]);
+      expect([c.outputs.ios.kind, dragon.nativeLayoutProjection(c, env, []).kind], id).toEqual(['blocked', 'blocked']);
     }
+    const device = new Set(vectorCaseIds());
+    expect(NEW_IDS.filter((id) => device.has(id))).toEqual([]);
   });
 
-  it('gives every FIXTURES case the native projection as its engine projection, at every DPR', () => {
+  it('gives every FIXTURES case native lowers the native projection as its engine projection, at every DPR', () => {
     let compared = 0;
+    let engineOnly = 0;
     for (const { spec, cases } of layoutCases()) {
       const byDirection = new Map<string, ReturnType<typeof compileFixture>['compiled']>();
       for (const c of cases) {
@@ -196,12 +210,20 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
         }
         for (const dpr of [1, 2, 3, 2.625]) {
           const env = atDpr(c.environment, dpr);
-          expect(dragon.engineLayoutProjection(compiled, env, c.assignment), `${c.id} at DPR ${dpr}`).toEqual(dragon.nativeLayoutProjection(compiled, env, c.assignment));
+          const native = dragon.nativeLayoutProjection(compiled, env, c.assignment);
+          if (native.kind === 'blocked') {
+            engineOnly++;
+            expect(NEW_IDS, c.id).toContain(c.id);
+            expect(dragon.engineLayoutProjection(compiled, env, c.assignment).kind, `${c.id} at DPR ${dpr}`).toBe('ready');
+            continue;
+          }
+          expect(dragon.engineLayoutProjection(compiled, env, c.assignment), `${c.id} at DPR ${dpr}`).toEqual(native);
           compared++;
         }
       }
     }
-    expect(compared).toBe((489 + NEW_IDS.length) * 4);
+    // The 10 real-face cases are native-refused (engine only); every other case, the Ahem fractional one too, lowers natively.
+    expect([compared, engineOnly]).toEqual([(489 + 1) * 4, (NEW_IDS.length - 1) * 4]);
   });
 
   it('DRAGON_SYNTHETIC_FONT_STYLE fires on no FIXTURES case', () => {
@@ -226,7 +248,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
   });
 
   it('refuses text outside the Latin scope with a typed code, which planted fault latinCheckSkipped changes', () => {
-    const p = dragon.nativeLayoutProjection(derived('text-latin-words'), ENVIRONMENT, []);
+    const p = dragon.engineLayoutProjection(derived('text-latin-words'), ENVIRONMENT, []);
     if (p.kind !== 'ready') throw new Error(p.reason);
     const greek = JSON.parse(JSON.stringify(p.input).replace('Waves and wind over the quiet harbour', 'Κύματα και άνεμος')) as LayoutInput;
     const r = layout(greek, referenceShapedMeasurer());
@@ -267,7 +289,7 @@ describe('TXT1a-2 phase F: the shaped checks catch every shaping plant', () => {
       if (b === null) throw new Error(`no committed breaks of ${c.id} at DPR ${dpr}`);
       return tl.breakProblems(c.id, dpr, r.vector.input, b, ef).problems.length > 0;
     }
-    const p = dragon.iosLayoutProjection(compiled, c.environment, c.assignment);
+    const p = dragon.engineLayoutProjection(compiled, c.environment, c.assignment);
     if (p.kind !== 'ready') throw new Error(p.reason);
     const out = layoutWithFaults(p.input, referenceShapedMeasurer(ef), ef);
     if (out.kind !== 'ok') return true;

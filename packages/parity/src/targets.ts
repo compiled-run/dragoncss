@@ -109,14 +109,14 @@ export function corpusSuites(): readonly CorpusSuite[] {
 
 /** The declared lane: vectors lanes hold every top-level and DPR vector plus the corpora; device lanes the cases at the device DPRs. */
 export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
-  const ids = layoutCaseIds();
   const where = lane === 'layout-vectors-host' ? 'host' : 'device';
   if (lane === 'layout-vectors-host' || lane === 'layout-vectors-device') {
     // A shaped case's vectors are the text-latin suite's (they carry a shape transcript), not a vectors set's.
     const vectors = vectorCaseIds();
     return { lane, kind: 'vectors', where, sets: [{ dpr: 1, role: 'top-level', extra: null, ids: vectors }, ...DPRS.map((d) => dprSet(d, vectors))], corpora: corpusSuites() };
   }
-  return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, ids)), corpora: [] };
+  // TXT1a-2: a shaped case is not a device case until phase R gives the device runtime its shaper (the device measures only Ahem).
+  return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, vectorCaseIds())), corpora: [] };
 }
 
 function targetConfig(target: NativeTarget): TargetConfig {
