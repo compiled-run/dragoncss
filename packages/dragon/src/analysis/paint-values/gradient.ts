@@ -721,9 +721,30 @@ function refuse(el: ResolvedElement, at: ResolvedValue, targets: readonly string
  * an unknown backdrop (R6, BG2c); a composited layer Dragon does not model (R4, BG2c); a gradient in a transformed subtree (R13,
  * BG2-x, refused for every gradient below an element whose transform is not the identity).
  */
+/**
+ * The first length of a layer longhand's computed value that compute left unfolded (an em or rem whose font size is not known at
+ * compile time, e.g. under font-size: larger), as its text, or null. The layers are read only when every length is px.
+ */
+export function unfoldedLength(v: CssValue): string | null {
+  const text = v.kind === 'other' ? v.text : null;
+  if (text === null) return null;
+  let found: string | null = null;
+  eachNode(parse(text, { context: 'value' }), (n) => {
+    if (found === null && foldsToPx(n, false)) found = generate(n);
+  });
+  return found;
+}
+
 const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported) => {
   const native = targets.filter((t) => t !== 'web');
   if (transformsSubtree(el)) refuseTransformed(el, el, native, diagnostics, reported);
+  for (const p of BACKGROUND_LAYERS_LONGHANDS) {
+    const v = el.props.get(p as Longhand);
+    const length = v === undefined ? null : unfoldedLength(v.value);
+    if (v === undefined || length === null) continue;
+    refuse(el, v, targets, `background-layers-unfolded-${p}`, `${p} on ${el.element.address}: ${length} is relative to a font size Dragon does not know at compile time, so the layer cannot be computed (${CALC_P})`, 'Give the element (or its root, for rem) a font-size in px, or write the length in px.', diagnostics, reported);
+    return;
+  }
   const clip = el.props.get('background-clip') as ResolvedValue | undefined;
   if (clip !== undefined && clip.declaration !== null) {
     const reason = colourClipRefusal(resolvedLayers(el), usedColors(el)['background-color'], boxWidths(el));

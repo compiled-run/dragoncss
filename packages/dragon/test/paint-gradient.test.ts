@@ -243,6 +243,14 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
     expect(transformsSubtree({ props: new Map([['rotate', v({ kind: 'other', text: '8deg' } as CssValue)]]) } as never)).toBe(true);
     expect(transformsSubtree({ props: new Map([['scale', v({ kind: 'keyword', value: 'none' } as CssValue)]]) } as never)).toBe(false);
   });
+  it('refuses an em or rem a layer longhand keeps unfolded (no font size at compile time) on every target, instead of crashing', () => {
+    for (const rule of ['font-size: larger; background: linear-gradient(red 1em, blue);', 'font-size: larger; background: linear-gradient(red, blue); background-position-x: 1em;', 'font-size: 5vw; background: radial-gradient(circle 2em, red, blue);']) {
+      const out = compile(rule);
+      expect(out.map((m) => m.split(' ').slice(0, 2).join(' ')), rule).toEqual(['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web']);
+      expect(out[0], rule).toContain('font size Dragon does not know at compile time');
+    }
+    expect(compile('font-size: 10px; background: linear-gradient(red 1em, blue);', { web: {} })).toEqual([]);
+  });
   it('folds em and rem to px at computed-value time, and absolute lengths in positions and sizes, as Chrome 145 computes them (R7)', () => {
     const css = 'html { font-size: 20px; } body { margin: 0; } .a { width: 40px; height: 20px; font-size: 10px; background: radial-gradient(circle 2em at 1rem 0.5in, red 1em, blue) right 1em top 1rem / 2em auto no-repeat white; }';
     const c = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, (r) => [div(r, 'a', ['a'])]));
