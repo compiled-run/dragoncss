@@ -87,21 +87,21 @@ fun layout_flatten(frag: Frag, parent: String?, x: Double, y: Double, parentX: D
   out.absolute.set(frag.id, AbsoluteRect(absX, absY, frag.width, frag.height))
   // ts: packages/layout/src/layout.ts:78
   run {
-    val _a51 = frag.outOfFlow
-    var _i51 = 0
-    while (_i51 < _a51.size) {
-      val oof: OutOfFlow = _a51[_i51]
-      _i51++
+    val _a63 = frag.outOfFlow
+    var _i63 = 0
+    while (_i63 < _a63.size) {
+      val oof: OutOfFlow = _a63[_i63]
+      _i63++
       jsPush(out.pending, Pending(oof, frag.id, absX, absY))
     }
   }
   // ts: packages/layout/src/layout.ts:79
   run {
-    val _a52 = frag.children
-    var _i52 = 0
-    while (_i52 < _a52.size) {
-      val c: Placed = _a52[_i52]
-      _i52++
+    val _a64 = frag.children
+    var _i64 = 0
+    while (_i64 < _a64.size) {
+      val c: Placed = _a64[_i64]
+      _i64++
       layout_flatten(c.frag, frag.id, c.x, c.y, absX, absY, out)
     }
   }
@@ -114,11 +114,11 @@ fun layout_parents(root: LayoutBox): JsStringMap<LayoutBox> {
   fun walk(b: LayoutBox): Unit {
     // ts: packages/layout/src/layout.ts:86
     run {
-      val _a53 = b.children
-      var _i53 = 0
-      while (_i53 < _a53.size) {
-        val c: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a53[_i53]
-        _i53++
+      val _a65 = b.children
+      var _i65 = 0
+      while (_i65 < _a65.size) {
+        val c: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a65[_i65]
+        _i65++
         // ts: packages/layout/src/layout.ts:87
         if (!jsStrEq(c.kind, "box")) {
           continue
@@ -189,11 +189,11 @@ fun layout_absoluteRects(boxes: JsArray<LayoutRect>): JsStringMap<LayoutRect> {
   val abs: JsStringMap<LayoutRect> = JsStringMap<LayoutRect>()
   // ts: packages/layout/src/layout.ts:145
   run {
-    val _a54 = boxes
-    var _i54 = 0
-    while (_i54 < _a54.size) {
-      val b: LayoutRect = _a54[_i54]
-      _i54++
+    val _a66 = boxes
+    var _i66 = 0
+    while (_i66 < _a66.size) {
+      val b: LayoutRect = _a66[_i66]
+      _i66++
       val parent: LayoutRect? = (if ((b.parent == null)) null else abs.get(jsUnwrap(b.parent)))
       val px0: Double = (if ((parent == null)) 0.0 else jsUnwrap(parent).x)
       val py0: Double = (if ((parent == null)) 0.0 else jsUnwrap(parent).y)

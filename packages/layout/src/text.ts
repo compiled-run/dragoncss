@@ -1,5 +1,6 @@
 // Text measurement is injected. The Ahem measurer is pure: it models the WPT Ahem v1.50 metrics without reading the font.
 import type { TextFont } from './input.ts';
+import type { ShapedItem } from './shaping.ts';
 import type { LU } from './units.ts';
 import { cachedRangeWidth, fontMetricPx, glyphBoundsMetricPx, platformFontSize, roundFontMetricHalfUpToWholePx, roundFontMetricToWholePx, textAdvanceAt, ZERO } from './units.ts';
 
@@ -23,6 +24,8 @@ export interface TextMeasurer {
   measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult;
   /** The float x-height, cap height and advance of 0 of the font instance (fontMetricLengths). */
   lengths(font: TextFont): FontLengths;
+  /** The text shaped as one text item with HarfBuzz (shaping.ts), which real-font line breaking reads; the Ahem font data has none. */
+  shaped(text: string, font: TextFont): ShapedItem;
 }
 
 const ZWSP = 0x200b;
@@ -111,6 +114,7 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
   return {
     // Blink SimpleFontData rounds ascent and descent of the platform-size font to whole px; a zero line gap stays ZERO.
     metrics(font: TextFont): FontMetrics {
+      if (font.family !== AHEM_FACE_ID) throw new Error(`the font data measurer measures the bundled Ahem, not ${font.family}`);
       return {
         ascent: round(fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.ascent)),
         descent: round(fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.descent)),
@@ -119,6 +123,7 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
     },
     // css-fonts-4 §5: every covered glyph advances its whole-em advance; anything else is not an Ahem glyph.
     measure(text: string, font: TextFont): MeasureResult {
+      if (font.family !== AHEM_FACE_ID) return { ok: false, reason: `the font data measurer measures the bundled Ahem, not ${font.family}` };
       let glyphs = 0;
       for (const ch of text) {
         const cp = ch.codePointAt(0) as number;
@@ -130,6 +135,7 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
     },
     // Blink shapes the whole item; a character's cached position is the ceiled advance sum before it (units.ts cachedRangeWidth).
     measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
+      if (font.family !== AHEM_FACE_ID) return { ok: false, reason: `the font data measurer measures the bundled Ahem, not ${font.family}` };
       let k = 0;
       let before = 0;
       let through = 0;
@@ -144,7 +150,11 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
       return { ok: true, measure: { width: cachedRangeWidth(before, through, instanceSize(font.size)) } };
     },
     lengths(font: TextFont): FontLengths {
+      if (font.family !== AHEM_FACE_ID) throw new Error(`the font data measurer measures the bundled Ahem, not ${font.family}`);
       return fontMetricLengths(data, instanceSize(font.size));
+    },
+    shaped(text: string, font: TextFont): ShapedItem {
+      return { ok: false, reason: `the font data measurer does not shape ${font.family}; real-font text needs the shaped measurer` };
     },
   };
 }
