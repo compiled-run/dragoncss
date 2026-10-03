@@ -184,7 +184,9 @@
       "inline-breaks-fit": [2,11],
       "inline-breaks-fit-rtl": [2,11],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "values-calc-flex-column-auto-min": [1,1],
+      "values-calc-flex-column-auto-min-rtl": [1,1]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -370,7 +372,9 @@
       "inline-breaks-fit": [2,11],
       "inline-breaks-fit-rtl": [2,11],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "values-calc-flex-column-auto-min": [1,1],
+      "values-calc-flex-column-auto-min-rtl": [1,1]
     }
   },
   "android": {
@@ -558,7 +562,9 @@
       "inline-breaks-fit": [2,11],
       "inline-breaks-fit-rtl": [2,11],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "values-calc-flex-column-auto-min": [1,1],
+      "values-calc-flex-column-auto-min-rtl": [1,1]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -744,7 +750,9 @@
       "inline-breaks-fit": [2,11],
       "inline-breaks-fit-rtl": [2,11],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "values-calc-flex-column-auto-min": [1,1],
+      "values-calc-flex-column-auto-min-rtl": [1,1]
     },
     "2.625": {
       "text-ahem-single-line": [10,10],
@@ -930,7 +938,9 @@
       "inline-breaks-fit": [2,11],
       "inline-breaks-fit-rtl": [2,11],
       "values-calc-intrinsic": [4,4],
-      "values-calc-intrinsic-rtl": [4,4]
+      "values-calc-intrinsic-rtl": [4,4],
+      "values-calc-flex-column-auto-min": [1,1],
+      "values-calc-flex-column-auto-min-rtl": [1,1]
     }
   }
 }
