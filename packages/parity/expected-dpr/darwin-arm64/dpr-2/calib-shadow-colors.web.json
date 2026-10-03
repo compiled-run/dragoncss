@@ -92,7 +92,12 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
-        "box-shadow": "none"
+        "box-shadow": "none",
+        "color-scheme": "normal",
+        "outline-color": "rgb(0, 0, 0)",
+        "outline-style": "none",
+        "outline-width": "0px",
+        "outline-offset": "0px"
       }
     },
     {
@@ -177,7 +182,12 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
-        "box-shadow": "none"
+        "box-shadow": "none",
+        "color-scheme": "normal",
+        "outline-color": "rgb(0, 0, 0)",
+        "outline-style": "none",
+        "outline-width": "0px",
+        "outline-offset": "0px"
       }
     },
     {
@@ -262,7 +272,12 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
-        "box-shadow": "none"
+        "box-shadow": "none",
+        "color-scheme": "normal",
+        "outline-color": "rgb(0, 0, 0)",
+        "outline-style": "none",
+        "outline-width": "0px",
+        "outline-offset": "0px"
       }
     },
     {
@@ -347,7 +362,12 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
-        "box-shadow": "rgba(0, 0, 0, 0.5) 0px 4px 10px 0px"
+        "box-shadow": "rgba(0, 0, 0, 0.5) 0px 4px 10px 0px",
+        "color-scheme": "normal",
+        "outline-color": "rgb(0, 0, 0)",
+        "outline-style": "none",
+        "outline-width": "0px",
+        "outline-offset": "0px"
       }
     },
     {
@@ -432,7 +452,12 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
-        "box-shadow": "rgba(255, 255, 255, 0.3) 0px 4px 10px 0px"
+        "box-shadow": "rgba(255, 255, 255, 0.3) 0px 4px 10px 0px",
+        "color-scheme": "normal",
+        "outline-color": "rgb(0, 0, 0)",
+        "outline-style": "none",
+        "outline-width": "0px",
+        "outline-offset": "0px"
       }
     },
     {
@@ -517,7 +542,12 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
-        "box-shadow": "rgba(200, 30, 90, 0.784) 0px 4px 10px 0px"
+        "box-shadow": "rgba(200, 30, 90, 0.784) 0px 4px 10px 0px",
+        "color-scheme": "normal",
+        "outline-color": "rgb(0, 0, 0)",
+        "outline-style": "none",
+        "outline-width": "0px",
+        "outline-offset": "0px"
       }
     },
     {
@@ -602,7 +632,12 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
-        "box-shadow": "rgba(10, 200, 40, 0.1) 0px 4px 10px 0px"
+        "box-shadow": "rgba(10, 200, 40, 0.1) 0px 4px 10px 0px",
+        "color-scheme": "normal",
+        "outline-color": "rgb(0, 0, 0)",
+        "outline-style": "none",
+        "outline-width": "0px",
+        "outline-offset": "0px"
       }
     },
     {
@@ -687,7 +722,12 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
-        "box-shadow": "rgb(250, 190, 20) 0px 4px 10px 0px"
+        "box-shadow": "rgb(250, 190, 20) 0px 4px 10px 0px",
+        "color-scheme": "normal",
+        "outline-color": "rgb(0, 0, 0)",
+        "outline-style": "none",
+        "outline-width": "0px",
+        "outline-offset": "0px"
       }
     },
     {
@@ -772,7 +812,12 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
-        "box-shadow": "none"
+        "box-shadow": "none",
+        "color-scheme": "normal",
+        "outline-color": "rgb(0, 0, 0)",
+        "outline-style": "none",
+        "outline-width": "0px",
+        "outline-offset": "0px"
       }
     },
     {
@@ -857,7 +902,12 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
-        "box-shadow": "rgba(0, 0, 0, 0.5) 0px 4px 10px 0px"
+        "box-shadow": "rgba(0, 0, 0, 0.5) 0px 4px 10px 0px",
+        "color-scheme": "normal",
+        "outline-color": "rgb(0, 0, 0)",
+        "outline-style": "none",
+        "outline-width": "0px",
+        "outline-offset": "0px"
       }
     },
     {
@@ -942,7 +992,12 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
-        "box-shadow": "rgba(255, 255, 255, 0.3) 0px 4px 10px 0px"
+        "box-shadow": "rgba(255, 255, 255, 0.3) 0px 4px 10px 0px",
+        "color-scheme": "normal",
+        "outline-color": "rgb(0, 0, 0)",
+        "outline-style": "none",
+        "outline-width": "0px",
+        "outline-offset": "0px"
       }
     },
     {
@@ -1027,7 +1082,12 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
-        "box-shadow": "rgba(200, 30, 90, 0.784) 0px 4px 10px 0px"
+        "box-shadow": "rgba(200, 30, 90, 0.784) 0px 4px 10px 0px",
+        "color-scheme": "normal",
+        "outline-color": "rgb(0, 0, 0)",
+        "outline-style": "none",
+        "outline-width": "0px",
+        "outline-offset": "0px"
       }
     },
     {
@@ -1112,7 +1172,12 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
-        "box-shadow": "rgba(10, 200, 40, 0.1) 0px 4px 10px 0px"
+        "box-shadow": "rgba(10, 200, 40, 0.1) 0px 4px 10px 0px",
+        "color-scheme": "normal",
+        "outline-color": "rgb(0, 0, 0)",
+        "outline-style": "none",
+        "outline-width": "0px",
+        "outline-offset": "0px"
       }
     },
     {
@@ -1197,7 +1262,12 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
-        "box-shadow": "rgb(250, 190, 20) 0px 4px 10px 0px"
+        "box-shadow": "rgb(250, 190, 20) 0px 4px 10px 0px",
+        "color-scheme": "normal",
+        "outline-color": "rgb(0, 0, 0)",
+        "outline-style": "none",
+        "outline-width": "0px",
+        "outline-offset": "0px"
       }
     }
   ]
