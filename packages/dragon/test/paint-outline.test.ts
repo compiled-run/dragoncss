@@ -3,11 +3,14 @@
 // colour as currentcolor, em offsets to px), the refusals, and the native refusal of an outline that paints (T115 part B).
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
+import { OUTLINE_EMITTER } from '../src/emit/paint/outline.ts';
+import { holdsOnlyText } from '../src/lower/paint/outline.ts';
+import type { LayoutNode } from '@dragon/layout';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { Targets } from '../src/types.ts';
-import { div, expectCatalogued, explainOne, inputFor } from './helpers.ts';
+import { div, expectCatalogued, explainOne, inputFor, text } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/outline.css', revision: 'r1', hash: 'sha256:0' };
 const LONGHANDS = ['outline-color', 'outline-style', 'outline-width', 'outline-offset'];
@@ -78,21 +81,73 @@ describe('outline: parse and computed values (Chrome 145 getComputedStyle)', () 
   });
 });
 
-describe('outline: the native targets do not draw outlines yet', () => {
+describe('outline: the native targets draw solid and double outlines', () => {
   const targets: Targets = { ios: { minimum: '15.0' }, web: {} };
-  it('an outline that paints is refused on ios at the style declaration and compiles for web', () => {
-    for (const css of ['outline: 2px solid red', 'outline-style: dashed', 'outline: auto 0']) {
+  it('a dotted, dashed, 3D or auto outline is refused on ios at the style declaration and compiles for web', () => {
+    for (const css of ['outline: 2px dashed red', 'outline-style: dotted', 'outline: 3px groove', 'outline: auto 0']) {
       const c = compile(`.a { height: 10px; ${css}; }`, targets);
       const errs = c.diagnostics.filter((d) => d.severity === 'error');
       expect(errs.map((d) => [d.code, d.target]), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
-      expect(errs[0]?.message, css).toMatch(/^a has an outline \(outline-style [a-z]+\); ios does not draw outlines yet/);
+      expect(errs[0]?.message, css).toMatch(/; ios draws solid and double outlines only \(PNT1\)$/);
       expectCatalogued(errs);
     }
   });
-  it('outline: none, a zero width and a style of none with any width paint nothing, so they compile everywhere', () => {
-    for (const css of ['outline: none', 'outline: 0 solid red', 'outline-width: 5px; outline-offset: 3px']) {
-      const c = compile(`.a { height: 10px; ${css}; }`, targets);
-      expect(c.diagnostics.filter((d) => d.severity === 'error'), css).toEqual([]);
+  it('a negative offset on a box that clips its overflow is refused on ios; solid and double outlines otherwise compile everywhere', () => {
+    const c = compile('.a { height: 10px; overflow: hidden; outline: 2px solid red; outline-offset: -1px; }', targets);
+    expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message)).toEqual([expect.stringMatching(/^a has a solid outline with a negative offset and clips its overflow/)]);
+    for (const css of ['outline: none', 'outline: 0 solid red', 'outline-width: 5px; outline-offset: 3px', 'outline: 2px solid red', 'outline: 6px double blue; outline-offset: -2px', 'overflow: hidden; outline: 1px solid; outline-offset: 2px']) {
+      const ok = compile(`.a { height: 10px; ${css}; }`, targets);
+      expect(ok.diagnostics.filter((d) => d.severity === 'error'), css).toEqual([]);
     }
+  });
+});
+
+describe('outline: lowering and emission', () => {
+  const programs = (css: string, body: Parameters<typeof inputFor>[1] = (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])]) => {
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`body { margin: 0; color: rgb(10, 20, 30); font-size: 20px; } ${css}`, body));
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    return p.programs;
+  };
+  it('a solid or double outline is one write with its px values, colour, radii and host; none, zero widths and transparent get none', () => {
+    const p = programs('.a { height: 20px; outline: 0.2em double currentcolor; outline-offset: 1.5px; border-radius: 4px; } .b { height: 5px; outline: 3px solid transparent; }');
+    const a = p.uikit.nodes.find((n) => n.id === 'a');
+    const w = a?.writes.find((x) => x.kind === 'outline');
+    expect(w).toEqual(expect.objectContaining({ kind: 'outline', key: 'dragonOutline.rings', technique: 'dragon-owned-paint', style: 'double', width: 4, offset: 1.5, color: { r: 10, g: 20, b: 30, alpha: 255 }, host: 'html', css: ['outline-color', 'outline-style', 'outline-width', 'outline-offset'] }));
+    expect((w as { radii: unknown }).radii).toHaveLength(8);
+    expect(a?.facts['outline']).toEqual({ style: 'double', width: 4, offset: 1.5, host: 'html', layer: 'html' });
+    expect(p.uikit.nodes.find((n) => n.id === 'b')?.writes.some((x) => x.kind === 'outline')).toBe(false);
+  });
+  it('an outline paints in its own view when its box is a layer item, and under the nearest clip otherwise', () => {
+    const p = programs('.a { height: 20px; overflow: hidden; } .b { height: 5px; outline: 2px solid red; } .c { position: relative; height: 5px; outline: 2px solid red; }', (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])]), div(r, 'c', ['c'])]);
+    const host = (id: string): unknown => (p.uikit.nodes.find((n) => n.id === id)?.writes.find((x) => x.kind === 'outline') as { host?: string } | undefined)?.host;
+    expect([host('b'), host('c')]).toEqual(['a', 'c']);
+  });
+  it('a layer box holding text paints its outline in its own host view, right after itself', () => {
+    const p = programs('.c { position: relative; height: 20px; font-family: Ahem; font-size: 10px; outline: 2px solid red; }', (r) => [div(r, 'c', ['c'], [text(r, 'ct', 'XX')])]);
+    const w = p.uikit.nodes.find((n) => n.id === 'c')?.writes.find((x) => x.kind === 'outline');
+    expect(w).toEqual(expect.objectContaining({ host: 'html', after: true }));
+  });
+  it('emits the runtime writer on both backends', () => {
+    const p = programs('.a { height: 20px; outline: 3px solid rgb(1, 2, 3); outline-offset: -2px; }');
+    const a = p.uikit.nodes.find((n) => n.id === 'a');
+    const w = a?.writes.find((x) => x.kind === 'outline');
+    if (w === undefined || w.kind !== 'outline') throw new Error('no outline write');
+    expect(OUTLINE_EMITTER.lines.uikit('v1', a as never, w)).toEqual([`  dragonSetOutline(t, v1, "html", ${w.rank}, false, false, 3.0, -2.0, DragonRGBA8(1, 2, 3, 255))`]);
+    expect(OUTLINE_EMITTER.lines['android-views']('v1', a as never, w)).toEqual([`  dragonSetOutline(t, v1, "html", ${w.rank}, false, false, 3.0, -2.0, DragonRGBA8(1, 2, 3, 255))`]);
+  });
+});
+
+describe('the outline of a box that holds only text (painted after its text)', () => {
+  it('needs children that are all text runs: a box with a replaced leaf (REPL-a), a box child or no child, and a replaced leaf itself, do not', () => {
+    const t = { kind: 'text', id: 't' } as unknown as LayoutNode;
+    const img = { kind: 'replaced', id: 'i' } as unknown as LayoutNode;
+    const box = (children: LayoutNode[]): LayoutNode => ({ kind: 'box', id: 'b', children }) as unknown as LayoutNode;
+    expect(holdsOnlyText(box([t, t]))).toBe(true);
+    expect(holdsOnlyText(box([t, img]))).toBe(false);
+    expect(holdsOnlyText(box([img]))).toBe(false);
+    expect(holdsOnlyText(box([box([])]))).toBe(false);
+    expect(holdsOnlyText(box([]))).toBe(false);
+    expect(holdsOnlyText(img)).toBe(false);
   });
 });

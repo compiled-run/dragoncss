@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { constrainCornerRadii, hasRoundedCorner, innerCornerRadii, NO_RADIUS_FAULTS, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../src/paint-radius.ts';
+import { constrainCornerRadii, hasRoundedCorner, innerCornerRadii, NO_RADIUS_FAULTS, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../src/paint-radius.ts';
 
 const px = (value: number) => ({ percent: false, value });
 const pct = (value: number) => ({ percent: true, value });
@@ -61,7 +61,37 @@ describe('paint-radius vectors', () => {
     const v = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'paint-vectors', 'radius', 'vectors.json'), 'utf8')) as { feature: string; lines: string[] };
     expect(v.feature).toBe('radius');
     const names = new Set(v.lines.map((l) => (JSON.parse(l) as string[])[0]));
-    expect([...names].sort()).toEqual(['paint:radius:constrainCornerRadii', 'paint:radius:hasRoundedCorner', 'paint:radius:innerCornerRadii', 'paint:radius:radiiRenderable', 'paint:radius:radiusComponent', 'paint:radius:resolveCornerRadii', 'paint:radius:roundedShape']);
+    expect([...names].sort()).toEqual(['paint:radius:constrainCornerRadii', 'paint:radius:hasRoundedCorner', 'paint:radius:innerCornerRadii', 'paint:radius:outlineOffsetPx', 'paint:radius:outlineRings', 'paint:radius:outlineWidthPx', 'paint:radius:radiiRenderable', 'paint:radius:radiusComponent', 'paint:radius:resolveCornerRadii', 'paint:radius:roundedShape']);
     expect(v.lines.length).toBeGreaterThanOrEqual(90);
+  });
+});
+
+describe('outline geometry (Chrome 145 measured at DPR 2, 3 and 2.625)', () => {
+  it('snaps a width as a border width and truncates an offset toward zero', () => {
+    expect([0, 0.3, 1.3, 1.5, 2.4].map((w) => outlineWidthPx(w, 2))).toEqual([0, 1, 2, 3, 4]);
+    expect([0.3, 1.5, 3.7].map((w) => outlineWidthPx(w, 2.625))).toEqual([1, 3, 9]);
+    expect([2.6, 1.4, 0.3, -1, -1.4, -2.5].map((o) => outlineOffsetPx(o, 2))).toEqual([5, 2, 0, -2, -2, -5]);
+    expect([outlineOffsetPx(-1.4, 3), outlineOffsetPx(-1.4, 2.625), outlineOffsetPx(1.4, 2.625)]).toEqual([-4, -3, 3]);
+  });
+  it('places a solid ring at offset + width outside the box, clamping a negative offset at half the box', () => {
+    const square = [0, 0, 0, 0, 0, 0, 0, 0];
+    // A 16 css px box at DPR 2 (device 24-56): 1px at -2.5px is device px 27 and 28 inside its left edge.
+    expect(outlineRings(24, 24, 56, 56, square, 2, -5, false).slice(0, 8)).toEqual([27, 27, 53, 53, 29, 29, 51, 51]);
+    expect(outlineRings(24, 24, 56, 56, square, 3, 2, false).slice(0, 8)).toEqual([19, 19, 61, 61, 22, 22, 58, 58]);
+    // The offset is clamped at minus half the size per axis (int division): a 5 x 6 box keeps a 1 x 0 rect at -40.
+    expect(outlineRings(3, 3, 8, 9, square, 2, -40, false).slice(0, 8)).toEqual([3, 4, 8, 8, 5, 6, 6, 6]);
+    expect(outlineRings(24, 24, 56, 56, square, 0, 2, false)).toEqual([]);
+  });
+  it('paints a double outline as two bands of round(width / 3), and a width of 2 or less as solid', () => {
+    const square = [0, 0, 0, 0, 0, 0, 0, 0];
+    expect(outlineRings(24, 24, 56, 56, square, 4, 0, true).filter((_, k) => k % 24 < 8)).toEqual([20, 20, 60, 60, 21, 21, 59, 59, 23, 23, 57, 57, 24, 24, 56, 56]);
+    expect(outlineRings(24, 24, 56, 56, square, 2, 0, true)).toHaveLength(24);
+    expect(outlineRings(24, 24, 56, 56, square, 5, 0, true).filter((_, k) => k % 24 < 8)).toEqual([19, 19, 61, 61, 21, 21, 59, 59, 22, 22, 58, 58, 24, 24, 56, 56]);
+  });
+  it('outsets each positive radius by its sides\' outsets and keeps square corners square', () => {
+    const r = outlineRings(0, 0, 100, 50, [10, 0, 10, 10, 6, 0, 6, 6], 4, 2, false);
+    expect(r.slice(8, 16)).toEqual([16, 0, 16, 16, 12, 0, 12, 12]);
+    expect(r.slice(16, 24)).toEqual([12, 0, 12, 12, 8, 0, 8, 8]);
+    expect(outlineRings(0, 0, 100, 50, [10, 10, 10, 10, 6, 6, 6, 6], 4, -9, false).slice(16, 24)).toEqual([1, 1, 1, 1, 0, 0, 0, 0]);
   });
 });

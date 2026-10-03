@@ -83,5 +83,18 @@ for (const radii of RAW) {
 out.push(line('constrainCornerRadii', [...(RAW[1] as number[]), 100, 50, 1, 0]));
 out.push(line('innerCornerRadii', [...(RAW[0] as number[]), 2, 3, 4, 5, 100, 50, 0, 1]));
 out.push(line('innerCornerRadii', [...(RAW[2] as number[]), 30, 30, 30, 30, 100, 50, 0, 0]));
+// Outlines (PNT1): widths and offsets across the device ratios, and rings of solid and double outlines on square and rounded boxes,
+// with positive, zero and negative offsets (the half-size clamp on a small box included).
+for (const dpr of DPRS) {
+  for (const w of [0, 0.3, 0.5, 1, 1.3, 1.5, 2.4, 3, 3.7, 5.6]) out.push(line('outlineWidthPx', [w, dpr]));
+  for (const o of [-2.5, -1.4, -1, -0.3, 0, 0.3, 0.5, 1.4, 2.6]) out.push(line('outlineOffsetPx', [o, dpr]));
+}
+for (const radii of [[0, 0, 0, 0, 0, 0, 0, 0], ...RAW]) {
+  for (const [l, t, rr, b] of [[10, 20, 106, 84], [3, 3, 8, 9]] as const) {
+    for (const [w, o] of [[6, 0], [6, 4], [3, -2], [12, -40], [2, 1], [9, 3]] as const) {
+      for (const dbl of [0, 1]) out.push(line('outlineRings', [l, t, rr, b, ...radii, w, o, dbl]));
+    }
+  }
+}
 writeFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'packages', 'layout', 'paint-vectors', 'radius', 'inputs.jsonl'), `${out.join('\n')}\n`);
 console.log(`radius inputs: ${out.length} cases`);

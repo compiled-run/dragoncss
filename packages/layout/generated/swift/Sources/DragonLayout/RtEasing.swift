@@ -229,7 +229,7 @@ public func rtEasing_splineAt(_ b: CubicBezier, _ i: Double) throws -> Double {
   let v: Double? = jsAt(b.spline, i)
   // ts: packages/layout/src/rt-easing.ts:131
   if (v == nil) {
-    throw JsError(message: jsConcat(S.s298, jsNumberToString(i), S.s29))
+    throw JsError(message: jsConcat(S.s299, jsNumberToString(i), S.s29))
   }
   return try jsUnwrap(v)
 }
@@ -379,7 +379,7 @@ public func rtEasing_cubicBezierEasing(_ x1: Double, _ y1: Double, _ x2: Double,
 public func rtEasing_stepsEasing(_ n: Double, _ position: JsString) throws -> Easing {
   // ts: packages/layout/src/rt-easing.ts:219
   if (((!jsIsInteger(n)) || (n < 1.0)) || ((position == S.s_jump_none) && (n < 2.0))) {
-    throw JsError(message: jsConcat(S.s304, jsNumberToString(n), S.s45, position, S.s41))
+    throw JsError(message: jsConcat(S.s305, jsNumberToString(n), S.s45, position, S.s41))
   }
   return Easing(S.s_steps, nil, n, position)
 }

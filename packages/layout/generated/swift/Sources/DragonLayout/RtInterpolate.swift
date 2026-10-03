@@ -957,7 +957,7 @@ public func rtInterpolate_channel(_ v: Double) throws -> JsString {
 // ts: packages/layout/src/rt-interpolate.ts:590
 public func rtInterpolate_serializeColor(_ c: LegacyColor) throws -> JsString {
   let opaque: Bool = (c.alpha >= 1.0)
-  let head: JsString = try jsConcat(jsConcat(jsConcat(jsConcat(jsConcat((opaque ? S.s272 : S.s273), rtInterpolate_channel(c.r)), S.s45), rtInterpolate_channel(c.g)), S.s45), rtInterpolate_channel(c.b))
+  let head: JsString = try jsConcat(jsConcat(jsConcat(jsConcat(jsConcat((opaque ? S.s273 : S.s274), rtInterpolate_channel(c.r)), S.s45), rtInterpolate_channel(c.g)), S.s45), rtInterpolate_channel(c.b))
   // ts: packages/layout/src/rt-interpolate.ts:593
   if opaque {
     return jsConcat(head, S.s40)

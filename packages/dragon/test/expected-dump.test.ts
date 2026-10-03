@@ -2,7 +2,7 @@
 // are RGBA8; border widths come from the engine at the device scale (initial widths are 3 device px, R5); the clip is the padding
 // box; both backends cover the same CSS longhands on every node; the digest is the sha256 of the canonical expected dump.
 import { describe, expect, it } from 'vitest';
-import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, opacityAlpha8, platformFontSize, resolveBorder, roundedShape, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, resolveBorder, roundedShape, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { ExpectedEngine } from '../src/internal.ts';
 import { appliedKeyMap, createProjectWith, cssCoverage, expectedDigest, expectedDump, nativePrograms, NO_FAULTS } from '../src/internal.ts';
 import { div, inputFor } from './helpers.ts';
@@ -12,7 +12,7 @@ const input = inputFor(CSS, (r) => [div(r, 'long', ['long']), div(r, 'thin', ['t
 const m = measurerFor('darwin-arm64');
 if (m.kind !== 'ok') throw new Error(m.code);
 const VIEW = { width: 400, height: 300 };
-const engine: ExpectedEngine = { layout, measurer: m.measurer, snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround, paint: { roundedShape, opacityAlpha8 } };
+const engine: ExpectedEngine = { layout, measurer: m.measurer, snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround, paint: { roundedShape, opacityAlpha8, outlineRings, outlineWidthPx, outlineOffsetPx } };
 
 function programs() {
   const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
