@@ -1,0 +1,1005 @@
+{
+ "schema": "dragon-frames-capture/1",
+ "case": "anim-branch@400x300",
+ "chrome": "145.0.7632.6",
+ "rendering": "authored",
+ "devicePixelRatio": 3,
+ "direction": "ltr",
+ "viewport": {
+  "width": 400,
+  "height": 300
+ },
+ "steps": 41,
+ "samples": [
+  {
+   "at": 0,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 0,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 0,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 0,
+     "computed": {}
+    }
+   ]
+  },
+  {
+   "at": 0,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 0,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 0,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 0,
+     "computed": {}
+    }
+   ]
+  },
+  {
+   "at": 200,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 0,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 0,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 0,
+     "computed": {}
+    }
+   ]
+  },
+  {
+   "at": 200,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 10,
+     "computed": {
+      "width": "60px",
+      "background-color": "rgb(255, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 201,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 10,
+     "computed": {
+      "width": "60px",
+      "background-color": "rgb(255, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 450,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 10,
+     "computed": {
+      "width": "60px",
+      "background-color": "rgb(191, 0, 64)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 600,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 10,
+     "computed": {
+      "width": "60px",
+      "background-color": "rgb(153, 0, 102)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 600,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 10,
+     "computed": {
+      "width": "60px",
+      "background-color": "rgb(153, 0, 102)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 601,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 59.94791793823242,
+     "height": 10,
+     "computed": {
+      "width": "59.9479px",
+      "background-color": "rgb(153, 0, 102)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 700,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 55,
+     "height": 10,
+     "computed": {
+      "width": "55px",
+      "background-color": "rgb(128, 0, 128)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 800,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 50,
+     "height": 10,
+     "computed": {
+      "width": "50px",
+      "background-color": "rgb(102, 0, 153)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 950,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 42.5,
+     "height": 10,
+     "computed": {
+      "width": "42.5px",
+      "background-color": "rgb(64, 0, 191)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 1100,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 35,
+     "height": 10,
+     "computed": {
+      "width": "35px",
+      "background-color": "rgb(26, 0, 230)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 1199,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 30.046875,
+     "height": 10,
+     "computed": {
+      "width": "30.0469px",
+      "background-color": "rgb(0, 0, 255)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 1200,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 10,
+     "computed": {
+      "width": "30px",
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 1201,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 29.947917938232422,
+     "height": 10,
+     "computed": {
+      "width": "29.9479px",
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 1599,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10.046875,
+     "height": 10,
+     "computed": {
+      "width": "10.0469px",
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 1600,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 10,
+     "computed": {
+      "width": "10px",
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 1601,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 10,
+     "computed": {
+      "width": "10px",
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 1800,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 10,
+     "computed": {
+      "width": "10px",
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 1801,
+   "settle": true,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "host",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 10,
+     "computed": {}
+    },
+    {
+     "id": "made",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 10,
+     "computed": {
+      "width": "10px",
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    }
+   ]
+  }
+ ]
+}

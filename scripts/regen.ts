@@ -50,7 +50,7 @@ export const STEPS: readonly Step[] = [
   { name: 'ua', argv: pnpm('ua:capture'), outputs: ['packages/dragon/src/ua/*.generated.ts'], readsLater: ['profile-rows'] },
   { name: 'capture', argv: pnpm('parity:capture'), outputs: ['packages/parity/expected/darwin-arm64/**', 'packages/parity/emitted/**', 'packages/parity/expected-fonts/**'], readsLater: ['profile-rows'] },
   // profile:rows also writes the committed native lanes verdict (P6a, T075J) from lanes.json, which lanes-host writes later.
-  { name: 'profile-rows', argv: pnpm('profile:rows'), outputs: ['packages/dragon/src/profiles/ios.ts', 'packages/dragon/src/profiles/android.ts', 'packages/dragon/src/profiles/web.ts', 'packages/dragon/src/profiles/native-lanes.ts'], readsLater: ['lanes-host'] },
+  { name: 'profile-rows', argv: pnpm('profile:rows'), outputs: ['packages/dragon/src/profiles/ios.ts', 'packages/dragon/src/profiles/android.ts', 'packages/dragon/src/profiles/web.ts', 'packages/dragon/src/profiles/native-lanes.ts'], readsLater: ['lanes-host', 'anim-capture'] },
   { name: 'dpr-capture', argv: pnpm('parity:dpr-capture'), outputs: ['packages/parity/expected-dpr/**'] },
   { name: 'hit-capture', argv: pnpm('parity:hit-capture'), outputs: ['packages/parity/expected-hit/*.hit.json'] },
   { name: 'vectors', argv: pnpm('layout:vectors'), outputs: ['packages/layout/vectors/*.json'] },
@@ -59,6 +59,7 @@ export const STEPS: readonly Step[] = [
   { name: 'break-vectors', argv: pnpm('layout:break-vectors'), outputs: ['packages/layout/break-vectors/**'] },
   { name: 'break-capture', argv: pnpm('parity:break-capture'), outputs: ['packages/parity/expected-breaks/**'] },
   { name: 'pixel-capture', argv: pnpm('parity:pixel-capture'), outputs: ['packages/parity/expected-pixels/**'] },
+  { name: 'anim-capture', argv: pnpm('parity:anim-capture'), outputs: ['packages/parity/expected-frames/**'] },
   // EMS: each paint feature's vectors from its committed inputs.jsonl through the TypeScript harness (units mode).
   { name: 'paint-vectors', argv: pnpm('layout:paint-vectors'), outputs: ['packages/layout/paint-vectors/*/vectors.json'] },
   { name: 'native-gen', argv: pnpm('native:gen'), outputs: ['packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'] },

@@ -160,6 +160,8 @@ export type InternalRecord = {
   readonly linked: Linked | null;
   /** The font context font-family feature keys were resolved against. */
   readonly fonts: FamilyKeyContext;
+  /** T065: the transitions and animations of the native band's cases, null when the analysis did not run. */
+  readonly animation: AnimationAnalysis | null;
 };
 
 const records = new WeakMap<object, InternalRecord>();
@@ -957,6 +959,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       profiles: { web: profiles.web, ios: profiles.ios, android: profileFor(profiles, 'android') },
       linked,
       fonts: fonts === null ? NO_FONTS : fonts.keys,
+      animation,
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,

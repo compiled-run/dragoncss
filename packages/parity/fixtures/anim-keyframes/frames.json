@@ -1,0 +1,29 @@
+{
+ "schema": "dragon-frames/1",
+ "directions": [
+  "ltr"
+ ],
+ "viewports": [
+  [
+   400,
+   300
+  ]
+ ],
+ "phases": [
+  {
+   "span": 900
+  },
+  {
+   "span": 900,
+   "set": [
+    [
+     "wide",
+     true
+    ]
+   ]
+  },
+  {
+   "span": 700
+  }
+ ]
+}

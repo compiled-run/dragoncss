@@ -1,0 +1,2 @@
+.g { width: 10px; height: 6px; background-color: rgb(0, 0, 0); transition: width 1s ease, background-color 1s ease; }
+.g.on { width: 210px; background-color: rgb(250, 200, 0); }

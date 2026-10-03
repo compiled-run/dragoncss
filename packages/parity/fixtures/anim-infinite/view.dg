@@ -1,0 +1,5 @@
+<div loop
+x: [false, true] = false
+component App
+<html>
+<body>
