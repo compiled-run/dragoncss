@@ -1,7 +1,8 @@
 // Paint order on the native tree (T046 §1, lower/paint/stacking.ts): the case code writes each layer item's host, bucket and rank
 // through dragonSetPaintOrder, which hosts the view under its layer's view (DragonTree.host, used when the tree places frames) and
 // stores its sort key. After every layout of a box, its host view's children are put in paint order: flow children (bucket 0) keep
-// their tree order, the layer items follow by bucket and rank (z < 0 first), and a box's shadow companion stays directly beneath it.
+// their tree order, outline views follow them (in tree order), the layer items follow by bucket and rank (z < 0 first), and a box's
+// shadow companion stays directly beneath it.
 // Only child order changes: zPosition, translationZ and elevation are never used. The readback is the live host and the view's
 // index among the host's box views.
 import type { PaintEmitter } from './types.ts';
@@ -59,12 +60,19 @@ public func dragonSortPaintOrder(_ c: UIView) {
   var companions: [ObjectIdentifier: DragonBoxView] = [:]
   var keyed = false
   for s in subs {
+    if s is DragonOutlineView { keyed = true }
     guard let b = s as? DragonBoxView else { continue }
     if b.dragonPaintBucket != 0 { keyed = true }
     if let sv = b.dragonShadowView { companions[ObjectIdentifier(sv)] = b }
   }
   if !keyed { return }
   func key(_ s: UIView, _ i: Int) -> [Int] {
+    // An outline (PNT1 outline) paints after the flow children, before the layer items, in tree order; one that follows its box sorts
+    // right after it.
+    if let o = s as? DragonOutlineView {
+      if let a = o.after { return [a.dragonPaintBucket, a.dragonPaintRank, 2, i] }
+      return [0, 1, o.rank, i]
+    }
     guard let b = dragonPaintOwner(s, companions), b.dragonPaintBucket != 0 else { return [0, 0, 0, i] }
     let bucket = dragonOrderPlantSwapped ? -3 + b.dragonPaintBucket : b.dragonPaintBucket
     return [bucket, b.dragonPaintRank, s === b ? 1 : 0, i]
@@ -126,6 +134,7 @@ fun dragonSortPaintOrder(c: ViewGroup) {
   val companions = HashMap<View, DragonBoxView>()
   var keyed = false
   for (s in subs) {
+    if (s is DragonOutlineView) keyed = true
     if (s !is DragonBoxView) continue
     if (s.dragonPaintBucket != 0) keyed = true
     val sv = s.dragonShadowView
@@ -133,6 +142,13 @@ fun dragonSortPaintOrder(c: ViewGroup) {
   }
   if (!keyed) return
   fun key(s: View, i: Int): IntArray {
+    // An outline (PNT1 outline) paints after the flow children, before the layer items, in tree order; one that follows its box sorts
+    // right after it.
+    if (s is DragonOutlineView) {
+      val a = s.after
+      if (a != null) return intArrayOf(a.dragonPaintBucket, a.dragonPaintRank, 2, i)
+      return intArrayOf(0, 1, s.rank, i)
+    }
     val b = (s as? DragonBoxView) ?: companions[s]
     if (b == null || b.dragonPaintBucket == 0) return intArrayOf(0, 0, 0, i)
     val bucket = if (DRAGON_ORDER_PLANT_SWAPPED) -3 + b.dragonPaintBucket else b.dragonPaintBucket

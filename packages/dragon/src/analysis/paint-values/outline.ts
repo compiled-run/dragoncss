@@ -6,8 +6,11 @@ import type { ResolvedValue } from '../computed.ts';
 import type { PaintCheck, PaintValues } from './types.ts';
 
 /**
- * An outline that paints (auto, or a style other than none with a width above 0) is refused on the native targets until the outline painter
- * lands (T115 part B); outline: none and a zero width paint nothing, so they compile. The web target paints outlines itself.
+ * The native targets draw solid and double outlines (lower/paint/outline.ts). An outline in another style is refused there: dotted
+ * and dashed take P6a's fitted side painter, groove, ridge, inset and outset its 3D colours, and auto is Chrome's focus ring. A solid
+ * or double outline with a negative offset on an overflow: hidden box is refused too: when the box paints its own outline, the view
+ * sits above the clip and would cover the box's positioned children, which Blink paints above it. outline: none and a zero width paint
+ * nothing, so they compile. The web target paints every outline itself.
  */
 const checkOutline: PaintCheck = (el, targets, diagnostics, reported) => {
   const style = el.props.get('outline-style') as ResolvedValue;
@@ -15,7 +18,12 @@ const checkOutline: PaintCheck = (el, targets, diagnostics, reported) => {
   if (style.value.kind !== 'keyword' || style.value.value === 'none') return;
   // auto is the focus ring, whose width is Chrome's own, so it paints at any outline-width.
   if (style.value.value !== 'auto' && width.kind === 'length' && width.value === 0) return;
+  const drawn = style.value.value === 'solid' || style.value.value === 'double';
+  const offset = (el.props.get('outline-offset') as ResolvedValue).value;
+  const clips = keywordOf(el, 'overflow-x') === 'hidden';
+  if (drawn && !(clips && offset.kind === 'length' && offset.value < 0)) return;
   const origin = style.declaration === null ? el.element.node.origin : authored(style.declaration.valueSpan);
+  const why = drawn ? `has a ${style.value.value} outline with a negative offset and clips its overflow, so its native outline view could cover positioned children Blink paints above it` : style.value.value === 'auto' ? "has outline-style auto, Chrome's focus ring" : `has a ${style.value.value} outline, which needs P6a's border side painter`;
   for (const t of targets) {
     if (t === 'web') continue;
     const id = `${t}|outline|${el.element.address}`;
@@ -24,11 +32,16 @@ const checkOutline: PaintCheck = (el, targets, diagnostics, reported) => {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
       origin,
       target: t,
-      message: `${el.element.address} has an outline (outline-style ${style.value.value}); ${t} does not draw outlines yet (PNT1's outline painter, T115 part B)`,
-      manual: 'Use outline: none, or a border or box-shadow ring, until the native outline lands.',
+      message: `${el.element.address} ${why}; ${t} draws solid and double outlines only (PNT1)`,
+      manual: 'Use a solid or double outline, or outline: none.',
       basis: 'computed-value',
     }));
   }
+};
+
+const keywordOf = (el: { readonly props: ReadonlyMap<string, ResolvedValue> }, p: string): string => {
+  const v = el.props.get(p as never)?.value;
+  return v !== undefined && v.kind === 'keyword' ? v.value : '';
 };
 
 export const OUTLINE_VALUES: PaintValues = {

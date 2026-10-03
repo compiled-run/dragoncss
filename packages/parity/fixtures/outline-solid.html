@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.stage { display: flex; flex-wrap: wrap; column-gap: 28px; row-gap: 28px; padding: 16px; background-color: rgb(236, 240, 244); }
+.b { width: 44px; height: 32px; background-color: rgb(40, 90, 200); }
+.o1 { outline: 3px solid rgb(220, 30, 30); }
+.o2 { outline: 4px solid rgb(30, 150, 60); outline-offset: 3px; }
+.o3 { border-radius: 10px; outline: 3px solid rgb(200, 0, 200); outline-offset: 2px; }
+.o4 { outline: 1px solid rgb(0, 0, 0); outline-offset: 1px; }
+.o5 { outline: 3px solid rgb(250, 160, 0); outline-offset: -6px; }
+.o6 { border: 2px solid rgb(0, 0, 0); outline: 2.5px solid rgb(0, 120, 120); outline-offset: 1.4px; }
+.col { width: 60px; }
+.p { height: 24px; background-color: rgb(250, 230, 120); outline: 4px solid rgb(120, 0, 160); outline-offset: 2px; }
+.q { height: 24px; background-color: rgb(60, 60, 60); }
+.clip { width: 60px; height: 40px; overflow: hidden; background-color: rgb(250, 250, 250); }
+.inner { width: 30px; height: 20px; margin: 4px; background-color: rgb(200, 60, 60); outline: 6px solid rgb(20, 20, 120); }
+.rel { position: relative; width: 50px; height: 30px; background-color: rgb(150, 200, 250); outline: 4px solid rgb(250, 60, 120); }
+.over { position: relative; top: -20px; left: 30px; width: 40px; height: 30px; background-color: rgb(30, 30, 30); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="o1" class="b o1"></div>
+<div data-dragon-id="o2" class="b o2"></div>
+<div data-dragon-id="o3" class="b o3"></div>
+<div data-dragon-id="o4" class="b o4"></div>
+<div data-dragon-id="o5" class="b o5"></div>
+<div data-dragon-id="o6" class="b o6"></div>
+<div data-dragon-id="col" class="col"><div data-dragon-id="p" class="p"></div><div data-dragon-id="q" class="q"></div></div>
+<div data-dragon-id="clip" class="clip"><div data-dragon-id="inner" class="inner"></div></div>
+<div data-dragon-id="pos" class="col"><div data-dragon-id="rel" class="rel"></div><div data-dragon-id="over" class="over"></div></div>
+</div>
+</body>
+</html>

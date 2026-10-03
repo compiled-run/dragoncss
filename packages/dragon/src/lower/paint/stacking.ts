@@ -61,6 +61,11 @@ export type Stacking = {
   readonly native: readonly string[];
   /** Layer items with an integer z-index that stay under a clip, with the clip. */
   readonly clipped: readonly { readonly id: string; readonly clip: string }[];
+  /**
+   * Where each box's outline paints (PNT1 outline): the box itself when it is a layer item or the root, else its nearest ancestor
+   * that is one or that clips it; with the paint layer (the nearest layer item or root, itself included) and the tree index.
+   */
+  readonly outlines: ReadonlyMap<string, { readonly host: string; readonly layer: string; readonly rank: number }>;
 };
 
 type Info = {
@@ -228,7 +233,16 @@ export function stackingOf(root: StackNode): Stacking {
       underClip: underClip.has(i.node.id),
     });
   }
-  return { facts, writes, order, native, clipped };
+  const outlines = new Map<string, { host: string; layer: string; rank: number }>();
+  for (const i of all) {
+    if (i.node.text) continue;
+    let host: Info = i;
+    if (i.parent !== null && !i.item) for (let a: Info | null = i.parent; a !== null; a = a.parent) if (a.parent === null || a.item || a.node.clips) { host = a; break; }
+    let layer: Info = i;
+    if (i.parent !== null && !i.item) for (let a: Info | null = i.parent; a !== null; a = a.parent) if (a.parent === null || a.item) { layer = a; break; }
+    outlines.set(i.node.id, { host: host.node.id, layer: layer.node.id, rank: i.index });
+  }
+  return { facts, writes, order, native, clipped, outlines };
 }
 
 // ---------------------------------------------------------------- the lowering
@@ -278,6 +292,13 @@ function caseStacking(box: LayoutNode, el: ResolvedElement | null): Stacking {
   }
   if (current === null || !current.stacking.facts.has(box.id)) throw new ProgramError(`${box.id}: the stacking lowering did not see this box's root first`);
   return current.stacking;
+}
+
+/** Where a box of the case being lowered paints its outline (Stacking.outlines); the outline module runs after this one. */
+export function outlinePlacement(boxId: string): { readonly host: string; readonly layer: string; readonly rank: number } {
+  const o = current?.stacking.outlines.get(boxId);
+  if (o === undefined) throw new ProgramError(`${boxId}: the stacking lowering has no outline placement for this box`);
+  return o;
 }
 
 const STACKING_PAINT = 'Dragon computes CSS2 Appendix E paint order at compile time: a positioned box or stacking context is hosted under the view its layer paints in (its stacking context, or its nearest positioned z-index auto ancestor there) and sorted after the flow children by layer and rank; sibling order is native child order (no zPosition, translationZ or elevation)';
