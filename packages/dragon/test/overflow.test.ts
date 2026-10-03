@@ -4,9 +4,9 @@
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import type { FrontEndResult } from '../src/index.ts';
-import { createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, iosLayoutProjection, iosProfile, NO_FAULTS, PROFILE_NOTES, querySupport, webProfile } from '../src/internal.ts';
 import type { CompilerFaults } from '../src/faults.ts';
-import { div, inputFor, spanTextOf, text } from './helpers.ts';
+import { DOC, div, inputFor, spanTextOf, text } from './helpers.ts';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
 const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, rootFont: 'ua-default', direction: 'ltr' } as const;
@@ -97,5 +97,32 @@ describe('OVFL-p: a percentage relative offset the scrollable overflow does not 
     expect(refusals('.a { position: relative; top: 10%; } .b { position: relative; top: 10%; }')).toEqual([]);
     expect(refusals('html { overflow: hidden; } .a { position: relative; top: 10%; }')).toEqual([]);
     expect(refusals('.a { overflow: clip; } .b { position: relative; top: 10%; }')).toEqual([]);
+  });
+});
+
+describe('R3: the web overflow claims carry the overlay-scrollbar environment limit', () => {
+  const web = webProfile.rows.filter((r) => /^overflow-[xy]:/.test(r.feature));
+  const scrolling = web.filter((r) => /:(auto|scroll)$/.test(r.feature));
+
+  it('every web overflow auto and scroll row carries the PROFILE_NOTES note; hidden, clip and visible reserve no gutter and carry none', () => {
+    expect(scrolling.length).toBeGreaterThan(0);
+    for (const r of scrolling) expect(r.note, `${r.feature}@${r.context}`).toBe(PROFILE_NOTES.overlayScrollbars);
+    for (const r of web.filter((x) => !scrolling.includes(x))) expect(r.note, `${r.feature}@${r.context}`).toBeUndefined();
+    expect(PROFILE_NOTES.overlayScrollbars).toContain('15px');
+    for (const r of [...iosProfile.rows, ...webProfile.rows.filter((x) => !/^overflow-[xy]:/.test(x.feature))]) expect(r.note, `${r.feature}@${r.context}`).toBeUndefined();
+  });
+
+  it('explain and querySupport state the note on web, and not on ios', () => {
+    const c = compile(one('.a { overflow: auto; height: 5px; }'));
+    const at = (target: 'web' | 'ios') => {
+      const r = c.explain({ target, at: { node: 'a', instance: DOC }, property: 'overflow-y' });
+      if (r.kind !== 'found') throw new Error(JSON.stringify(r));
+      return r.cases[0]?.support;
+    };
+    expect(at('web')).toMatchObject({ feature: 'overflow-y:auto', note: PROFILE_NOTES.overlayScrollbars });
+    expect(at('ios')?.note).toBeUndefined();
+    const q = querySupport({ kind: 'possibilities', target: { kind: 'web' }, css: 'overflow-y: scroll' });
+    if (q.kind !== 'needs-context') throw new Error(q.kind);
+    for (const cand of q.candidates) expect(cand.note).toBe(PROFILE_NOTES.overlayScrollbars);
   });
 });
