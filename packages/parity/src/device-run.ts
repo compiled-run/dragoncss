@@ -56,12 +56,15 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
   'radius-square': ['radius-basic'],
+  // calib-shadow-blur's small blurs change the sampled shadow pixels under a 1 device px shift.
+  'shadow-offset-1': ['calib-shadow-blur'],
 };
-/** The sample rules a paint plant's device-pixels failures must name: border bands and edges, or radius points. */
+/** The sample rules a paint plant's device-pixels failures must name: border bands and edges, radius or shadow points. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-phase-1': /^(border:|edge:)/,
   'dash-gap-unfitted': /^(border:|edge:)/,
   'radius-square': /^radius:/,
+  'shadow-offset-1': /^shadow:/,
 };
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };

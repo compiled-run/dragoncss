@@ -7,7 +7,7 @@
 // right, or down), and judges the plant against the clean run (judgeGlyphPlant): both hosts finished; the clean run has no
 // device-pixels failure; on the plant's axis every line's glyph position (the x centre, or the bottom edge) fails the position
 // check by PLANT_MARGIN_DEVICE_PX or more and moved PLANT_SHIFT_DEVICE_PX within the spread; and device-frames and device-lines
-// pass in both runs. A paint plant (P6a dash, PNT1 radius) runs its cases (PLANT_CASES) once with the planted app: device-pixels must fail on its
+// pass in both runs. A paint plant (P6a dash, PNT1 radius and shadow) runs its cases (PLANT_CASES) once with the planted app: device-pixels must fail on its
 // sample rules (PLANT_RULES) while device-frames and device-lines pass (plantVerdict).
 import { SUPPORT_PLANTS } from 'dragon';
 import type { SupportPlant } from 'dragon';

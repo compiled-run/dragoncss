@@ -51,11 +51,11 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   const paint = LONGHANDS.filter((p) => PROPERTY_ROLE[p] === 'paint');
   it('(i) paint holds exactly for the aspect-table longhands with a paint aspect and no layout aspect', () => {
     for (const p of LONGHANDS) expect(PROPERTY_ROLE[p] === 'paint', p).toBe(!PROPERTY_ASPECTS[p].layout && PROPERTY_ASPECTS[p].paint);
-    expect([...paint].sort()).toEqual(['background-color', 'border-bottom-color', 'border-bottom-left-radius', 'border-bottom-right-radius', 'border-left-color', 'border-right-color', 'border-top-color', 'border-top-left-radius', 'border-top-right-radius', 'color']);
+    expect([...paint].sort()).toEqual(['background-color', 'border-bottom-color', 'border-bottom-left-radius', 'border-bottom-right-radius', 'border-left-color', 'border-right-color', 'border-top-color', 'border-top-left-radius', 'border-top-right-radius', 'box-shadow', 'color']);
   });
   it('(ii) a paint longhand never reaches the layout input: two elements that differ only in it lower to identical styles', () => {
     // Two different values of each paint longhand: colours for the colour longhands, radii for the corner radii (PNT1).
-    const values = (p: string): [string, string] => (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
+    const values = (p: string): [string, string] => (p.endsWith('-radius') ? ['4px', '30% 2px'] : p === 'box-shadow' ? ['1px 2px #102030', 'inset 0 0 4px 1px rgba(200, 100, 50, 0.5)'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
     for (const p of paint) {
       const [va, vb] = values(p);
       const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
