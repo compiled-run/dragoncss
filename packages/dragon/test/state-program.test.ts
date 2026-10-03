@@ -183,7 +183,7 @@ describe('the generated runtime', () => {
   });
 
   it('refuses a tap until hit testing lands, a bad step and a duplicate script id', () => {
-    expect(() => emitStatePrograms('uikit', [{ ...emit, scripts: [{ ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'tap', x: 1, y: 1 }] }] }])).toThrow(/SELD-R1b/);
+    expect(() => emitStatePrograms('uikit', [{ ...emit, scripts: [{ ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'tap', x: 1, y: 1 }] }] }])).toThrow(/device hit runtime/);
     expect(() => emitStatePrograms('uikit', [{ ...emit, scripts: [{ ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'advance', ms: -1 }] }] }])).toThrow(/finite, non-negative/);
     expect(() => emitStatePrograms('uikit', [{ ...emit, scripts: [{ ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'set', state: 'doc#open', value: 'x' }] }] }])).toThrow(/no value "x"/);
     expect(() => emitStatePrograms('uikit', [emit, emit])).toThrow(/share an id/);

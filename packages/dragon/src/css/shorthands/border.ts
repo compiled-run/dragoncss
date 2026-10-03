@@ -4,7 +4,7 @@ import type { Longhand } from '../properties.ts';
 import { SIDES } from '../properties.ts';
 import type { LonghandValue } from '../stylesheet.ts';
 import type { CssValue } from '../values.ts';
-import { kw, LINE_STYLES, LINE_WIDTH_KEYWORDS } from '../values.ts';
+import { isMathValue, kw, LINE_STYLES, LINE_WIDTH_KEYWORDS } from '../values.ts';
 import type { ShorthandHandler } from './shared.ts';
 import { explicit, fourSides, implicit } from './shared.ts';
 
@@ -24,7 +24,7 @@ function border(sides: readonly (typeof SIDES)[number][]): ShorthandHandler {
       let style: CssValue | null = null;
       let color: CssValue | null = null;
       for (const v of values) {
-        if (v.kind === 'length' || (v.kind === 'keyword' && LINE_WIDTH_KEYWORDS.has(v.value))) width = v;
+        if (v.kind === 'length' || isMathValue(v) || (v.kind === 'keyword' && LINE_WIDTH_KEYWORDS.has(v.value))) width = v;
         else if (v.kind === 'keyword' && LINE_STYLES.has(v.value)) style = v;
         else color = v;
       }
