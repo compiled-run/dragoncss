@@ -8,8 +8,8 @@ import type { BoxShape } from '../src/index.ts';
 
 const layout = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FEATURES = ['radius', 'shadow', 'gradient', 'transform', 'dash', 'scrollbar'];
-/** The seams a package has filled: dash by P6a (paint-dash.ts, its index.ts line and its vectors). */
-const FILLED = ['dash'];
+/** The seams a package has filled: dash by P6a, radius and shadow by PNT1 (each paint-<feature>.ts, its index.ts lines and its vectors). */
+const FILLED = ['dash', 'radius', 'shadow'];
 const STUBS = FEATURES.filter((f) => !FILLED.includes(f));
 
 describe('EMS: engine paint seams', () => {
@@ -26,6 +26,10 @@ describe('EMS: engine paint seams', () => {
     const lines = readFileSync(join(layout, 'src/index.ts'), 'utf8').split('\n').filter((l) => l.includes("'./paint"));
     expect(lines).toEqual([
       "export type { BoxShape } from './paint.ts';",
+      "export type { RadiusFaults, RadiusLength } from './paint-radius.ts';",
+      "export { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from './paint-radius.ts';",
+      "export type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from './paint-shadow.ts';",
+      "export { insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver } from './paint-shadow.ts';",
       "export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';",
       "export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from './paint-dash.ts';",
     ]);

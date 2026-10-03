@@ -149,7 +149,7 @@ describe('negative checks', () => {
 describe('(c) pixel samples against synthetic images', () => {
   const W = 60;
   const H = 40;
-  const box: SampleBox = { id: 'b', left: 10, top: 10, right: 50, bottom: 30, border: { top: 0, right: 0, bottom: 0, left: 0 }, radius: 0, clips: false };
+  const box: SampleBox = { id: 'b', left: 10, top: 10, right: 50, bottom: 30, border: { top: 0, right: 0, bottom: 0, left: 0 }, radius: 0, clips: false, size: [40, 20] };
   const BLUE = [51, 102, 255, 255];
   const WHITE = [255, 255, 255, 255];
   /** A white image with the blue box; coverage in [0, 1] of the left edge column when a fractional edge is drawn. */
