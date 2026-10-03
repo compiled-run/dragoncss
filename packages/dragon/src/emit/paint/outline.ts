@@ -1,8 +1,9 @@
 // Outlines on the native tree (T046 §1, lower/paint/outline.ts): the case code writes a box's solid or double outline through
 // dragonSetOutline with its host. After every layout the translated paint-radius.ts outlineRings gives the rings at the device
 // scale (Blink's snapped width and truncated offset, the radii outset), and a DragonOutlineView in the host's container (the box's
-// own view when it is its paint layer, its clip view's owner otherwise) draws them with an even-odd fill; the stacking sort puts it
-// after the host's flow children and before its layer items, in tree order. The readback is the live host and the rings in device px
+// own view when it is its paint root, the host's clip view or the host otherwise) draws them with an even-odd fill; the stacking
+// sort, which runs whenever a view joins a container, puts it after the host's flow children and foreground and before its layer
+// items, in tree order. The readback is the live host and the rings in device px
 // from the root (the view's live position plus its rings).
 import { nativeString } from './stacking.ts';
 import type { PaintEmitter } from './types.ts';
@@ -40,8 +41,6 @@ public final class DragonOutlineView: UIView {
   public var color = DragonRGBA8(0, 0, 0, 0)
   public var scaleFactor: Double = 1
   public var rank = 0
-  /// The box this outline paints right after, in its host's view (lower/paint/outline.ts after), or nil.
-  public weak var after: DragonBoxView? = nil
   public init() {
     super.init(frame: .zero)
     isOpaque = false
@@ -70,7 +69,7 @@ public final class DragonOutlineView: UIView {
 
 /// The outline write of a box (runtime writer): its host, rank, style, width and offset in css px and colour; every after-layout
 /// hook then re-applies the paint.
-public func dragonSetOutline(_ t: DragonTree, _ v: DragonBoxView, _ host: String, _ rank: Int, _ after: Bool, _ double: Bool, _ width: Double, _ offset: Double, _ color: DragonRGBA8) {
+public func dragonSetOutline(_ t: DragonTree, _ v: DragonBoxView, _ host: String, _ rank: Int, _ double: Bool, _ width: Double, _ offset: Double, _ color: DragonRGBA8) {
   if !(width > 0) || !offset.isFinite || rank < 0 { fatalError("dragon: \(v.dragonId): outline width \(width), offset \(offset) or rank \(rank) is out of range") }
   v.dragonOutlineHost = host
   v.dragonOutlineDouble = double
@@ -80,7 +79,6 @@ public func dragonSetOutline(_ t: DragonTree, _ v: DragonBoxView, _ host: String
   let o = v.dragonOutlineView ?? DragonOutlineView()
   o.rank = rank
   o.color = color
-  o.after = after ? v : nil
   v.dragonOutlineView = o
   dragonAfterLayout(v, v.dragonShape, v.dragonScale)
 }
@@ -88,7 +86,7 @@ public func dragonSetOutline(_ t: DragonTree, _ v: DragonBoxView, _ host: String
 /// The container an outline paints in: the box's own view when the box is its host, else the host's container (its clip view
 /// when it clips), and that container's origin in device px from the root.
 private func dragonOutlineContainer(_ v: DragonBoxView) -> (UIView, Double, Double)? {
-  if v.dragonOutlineHost == v.dragonId && v.dragonOutlineView?.after == nil { return (v, v.dragonShape.edges[0], v.dragonShape.edges[1]) }
+  if v.dragonOutlineHost == v.dragonId { return (v, v.dragonShape.edges[0], v.dragonShape.edges[1]) }
   guard let h = v.dragonOutlineTree?.node(v.dragonOutlineHost) as? DragonBoxView else { return nil }
   let e = h.dragonShape.edges
   if let c = h.dragonClipView { return (c, e[0] + h.dragonShape.borders[3], e[1] + h.dragonShape.borders[0]) }
@@ -185,8 +183,6 @@ class DragonOutlineView(ctx: Context) : DragonGroup(ctx) {
   var rings = DoubleArray(0)
   var color = DragonRGBA8(0, 0, 0, 0)
   var rank = 0
-  /** The box this outline paints right after, in its host's view (lower/paint/outline.ts after), or null. */
-  var after: DragonBoxView? = null
   private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
   override fun onDraw(canvas: Canvas) {
     super.onDraw(canvas)
@@ -208,7 +204,7 @@ class DragonOutlineView(ctx: Context) : DragonGroup(ctx) {
  * The outline write of a box (runtime writer): its host, rank, style, width and offset in css px and colour; every after-layout
  * hook then re-applies the paint.
  */
-fun dragonSetOutline(t: DragonTree, v: DragonBoxView, host: String, rank: Int, after: Boolean, double: Boolean, width: Double, offset: Double, color: DragonRGBA8) {
+fun dragonSetOutline(t: DragonTree, v: DragonBoxView, host: String, rank: Int, double: Boolean, width: Double, offset: Double, color: DragonRGBA8) {
   if (!(width > 0.0) || !offset.isFinite() || rank < 0) throw IllegalStateException("dragon: " + v.dragonId + ": outline width " + width + ", offset " + offset + " or rank " + rank + " is out of range")
   v.dragonOutlineHost = host
   v.dragonOutlineDouble = double
@@ -218,7 +214,6 @@ fun dragonSetOutline(t: DragonTree, v: DragonBoxView, host: String, rank: Int, a
   val o = v.dragonOutlineView ?: DragonOutlineView(v.context)
   o.rank = rank
   o.color = color
-  o.after = if (after) v else null
   v.dragonOutlineView = o
   dragonAfterLayout(v, v.dragonShape, v.dragonOutlineScale)
 }
@@ -228,7 +223,7 @@ fun dragonSetOutline(t: DragonTree, v: DragonBoxView, host: String, rank: Int, a
  * it clips), and that container's origin in device px from the root.
  */
 private fun dragonOutlineContainer(v: DragonBoxView): Triple<ViewGroup, Double, Double>? {
-  if (v.dragonOutlineHost == v.dragonId && v.dragonOutlineView?.after == null) return Triple(v, v.dragonShape.edges[0], v.dragonShape.edges[1])
+  if (v.dragonOutlineHost == v.dragonId) return Triple(v, v.dragonShape.edges[0], v.dragonShape.edges[1])
   val h = v.dragonOutlineTree?.node(v.dragonOutlineHost) as? DragonBoxView ?: return null
   val e = h.dragonShape.edges
   val c = h.dragonClipView
@@ -292,8 +287,8 @@ export const OUTLINE_EMITTER: PaintEmitter<'outline'> = {
   name: 'outline',
   kinds: ['outline'],
   lines: {
-    uikit: (v, _n, w) => [`  dragonSetOutline(t, ${v}, ${nativeString('swift', w.host)}, ${int(w.rank, 'rank')}, ${w.after ? 'true' : 'false'}, ${w.style === 'double' ? 'true' : 'false'}, ${num(w.width, 'width')}, ${num(w.offset, 'offset')}, ${rgbaLit(w.color)})`],
-    'android-views': (v, _n, w) => [`  dragonSetOutline(t, ${v}, ${nativeString('kotlin', w.host)}, ${int(w.rank, 'rank')}, ${w.after ? 'true' : 'false'}, ${w.style === 'double' ? 'true' : 'false'}, ${num(w.width, 'width')}, ${num(w.offset, 'offset')}, ${rgbaLit(w.color)})`],
+    uikit: (v, _n, w) => [`  dragonSetOutline(t, ${v}, ${nativeString('swift', w.host)}, ${int(w.rank, 'rank')}, ${w.style === 'double' ? 'true' : 'false'}, ${num(w.width, 'width')}, ${num(w.offset, 'offset')}, ${rgbaLit(w.color)})`],
+    'android-views': (v, _n, w) => [`  dragonSetOutline(t, ${v}, ${nativeString('kotlin', w.host)}, ${int(w.rank, 'rank')}, ${w.style === 'double' ? 'true' : 'false'}, ${num(w.width, 'width')}, ${num(w.offset, 'offset')}, ${rgbaLit(w.color)})`],
   },
   applied: (e, _b, w, dpr, g) => {
     const b = g.box;

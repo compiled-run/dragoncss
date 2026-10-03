@@ -5,8 +5,6 @@ import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import { OUTLINE_EMITTER } from '../src/emit/paint/outline.ts';
-import { holdsOnlyText } from '../src/lower/paint/outline.ts';
-import type { LayoutNode } from '@dragon/layout';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { Targets } from '../src/types.ts';
@@ -123,31 +121,24 @@ describe('outline: lowering and emission', () => {
     const host = (id: string): unknown => (p.uikit.nodes.find((n) => n.id === id)?.writes.find((x) => x.kind === 'outline') as { host?: string } | undefined)?.host;
     expect([host('b'), host('c')]).toEqual(['a', 'c']);
   });
-  it('a layer box holding text paints its outline in its own host view, right after itself', () => {
+  it('a layer box holding text paints its outline in its own view (the sort on every added view puts it after the text)', () => {
     const p = programs('.c { position: relative; height: 20px; font-family: Ahem; font-size: 10px; outline: 2px solid red; }', (r) => [div(r, 'c', ['c'], [text(r, 'ct', 'XX')])]);
     const w = p.uikit.nodes.find((n) => n.id === 'c')?.writes.find((x) => x.kind === 'outline');
-    expect(w).toEqual(expect.objectContaining({ host: 'html', after: true }));
+    expect(w).toEqual(expect.objectContaining({ host: 'c' }));
+    expect(w).not.toHaveProperty('after');
+  });
+  it('a flex item paints its outline in its own atomic pass, and a box inside it in the flex item\'s view', () => {
+    const p = programs('.f { display: flex; } .i { width: 30px; height: 20px; outline: 2px solid red; } .k { height: 5px; outline: 1px solid blue; }', (r) => [div(r, 'f', ['f'], [div(r, 'i', ['i'], [div(r, 'k', ['k'])])])]);
+    const of = (id: string) => p.uikit.nodes.find((n) => n.id === id)?.facts['outline'];
+    expect(of('i')).toMatchObject({ host: 'i', layer: 'i' });
+    expect(of('k')).toMatchObject({ host: 'i', layer: 'i' });
   });
   it('emits the runtime writer on both backends', () => {
     const p = programs('.a { height: 20px; outline: 3px solid rgb(1, 2, 3); outline-offset: -2px; }');
     const a = p.uikit.nodes.find((n) => n.id === 'a');
     const w = a?.writes.find((x) => x.kind === 'outline');
     if (w === undefined || w.kind !== 'outline') throw new Error('no outline write');
-    expect(OUTLINE_EMITTER.lines.uikit('v1', a as never, w)).toEqual([`  dragonSetOutline(t, v1, "html", ${w.rank}, false, false, 3.0, -2.0, DragonRGBA8(1, 2, 3, 255))`]);
-    expect(OUTLINE_EMITTER.lines['android-views']('v1', a as never, w)).toEqual([`  dragonSetOutline(t, v1, "html", ${w.rank}, false, false, 3.0, -2.0, DragonRGBA8(1, 2, 3, 255))`]);
-  });
-});
-
-describe('the outline of a box that holds only text (painted after its text)', () => {
-  it('needs children that are all text runs: a box with a replaced leaf (REPL-a), a box child or no child, and a replaced leaf itself, do not', () => {
-    const t = { kind: 'text', id: 't' } as unknown as LayoutNode;
-    const img = { kind: 'replaced', id: 'i' } as unknown as LayoutNode;
-    const box = (children: LayoutNode[]): LayoutNode => ({ kind: 'box', id: 'b', children }) as unknown as LayoutNode;
-    expect(holdsOnlyText(box([t, t]))).toBe(true);
-    expect(holdsOnlyText(box([t, img]))).toBe(false);
-    expect(holdsOnlyText(box([img]))).toBe(false);
-    expect(holdsOnlyText(box([box([])]))).toBe(false);
-    expect(holdsOnlyText(box([]))).toBe(false);
-    expect(holdsOnlyText(img)).toBe(false);
+    expect(OUTLINE_EMITTER.lines.uikit('v1', a as never, w)).toEqual([`  dragonSetOutline(t, v1, "html", ${w.rank}, false, 3.0, -2.0, DragonRGBA8(1, 2, 3, 255))`]);
+    expect(OUTLINE_EMITTER.lines['android-views']('v1', a as never, w)).toEqual([`  dragonSetOutline(t, v1, "html", ${w.rank}, false, 3.0, -2.0, DragonRGBA8(1, 2, 3, 255))`]);
   });
 });

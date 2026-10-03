@@ -53,6 +53,7 @@ public enum DragonStateWrite {
   case borderColors([DragonRGBA8])
   case clip
   case paintOrder(String, Int, Int)
+  case foreground(String, [String], [Int])
   case text(String, String, DragonRGBA8)
 }
 
@@ -160,6 +161,7 @@ public final class DragonStateMachine {
         case .borderColors(let c): v.dragonBorderColors = c
         case .clip: v.dragonEnableClip()
         case .paintOrder(let host, let bucket, let rank): dragonSetPaintOrder(t, v, host, bucket, rank)
+        case .foreground(let host, let ids, let ranks): dragonSetForeground(t, v, host, ids, ranks)
         case .text: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
@@ -248,6 +250,7 @@ sealed class DragonStateWrite {
   class BorderColors(val c: Array<DragonRGBA8>) : DragonStateWrite()
   object Clip : DragonStateWrite()
   class PaintOrder(val host: String, val bucket: Int, val rank: Int) : DragonStateWrite()
+  class Foreground(val host: String, val ids: List<String>, val ranks: IntArray) : DragonStateWrite()
   class Text(val text: String, val family: String, val color: DragonRGBA8) : DragonStateWrite()
 }
 
@@ -350,6 +353,7 @@ class DragonStateMachine(
           is DragonStateWrite.BorderColors -> v.dragonBorderColors = w.c
           is DragonStateWrite.Clip -> v.dragonEnableClip()
           is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank)
+          is DragonStateWrite.Foreground -> dragonSetForeground(t, v, w.host, w.ids, w.ranks)
           is DragonStateWrite.Text -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }
@@ -446,6 +450,13 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'paint-order': {
         if (!Number.isInteger(w.bucket) || !Number.isInteger(w.rank)) throw new StateEmitError(`${n.id}: paint order bucket ${w.bucket} or rank ${w.rank} is not an integer`);
         writes.push(lang === 'swift' ? `.paintOrder(${q(w.host)}, ${w.bucket}, ${w.rank})` : `DragonStateWrite.PaintOrder(${q(w.host)}, ${w.bucket}, ${w.rank})`);
+        break;
+      }
+      case 'paint-foreground': {
+        if (w.entries.length === 0 || w.entries.some((e) => !Number.isInteger(e.rank) || e.rank < 0)) throw new StateEmitError(`${n.id}: a paint-foreground write with no entries or a rank that is not a non-negative integer`);
+        const ids = w.entries.map((e) => q(e.id)).join(', ');
+        const ranks = w.entries.map((e) => String(e.rank)).join(', ');
+        writes.push(lang === 'swift' ? `.foreground(${q(w.host)}, [${ids}], [${ranks}])` : `DragonStateWrite.Foreground(${q(w.host)}, listOf(${ids}), intArrayOf(${ranks}))`);
         break;
       }
       case 'font': {

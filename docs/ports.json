@@ -673,6 +673,7 @@
       "fileSha256": "b0ea68654c62d2ca1d73d801ffca395901aa37e51569281266fc9ef87a9e892c",
       "headerSha256": "bb164409c6a3593ec3b8bb889d907af0efb2e323920ac00bd35aa1f81101ab72",
       "ranges": [
+        { "lines": "694-799", "symbol": "FlexLayoutAlgorithm::BuildSpaceForLayout", "source": "located" },
         { "lines": "1581-1583", "symbol": null, "source": "cited" },
         { "lines": "1581-1591", "symbol": "ApplyReversals", "source": "located" },
         { "lines": "1759-1763", "symbol": null, "source": "cited" },
@@ -680,6 +681,7 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" },
+        { "file": "packages/dragon/src/lower/paint/stacking.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" }
       ]
     },

@@ -168,6 +168,17 @@ describe('the generated runtime', () => {
     expect(support('android-views')).toContain('is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank)');
     const fractional = { ...ordered, program: program(box('r', 10), [{ ...node('r', null, 1), writes: [{ kind: 'paint-order', host: 'h', bucket: 1, rank: 0.5, index: 0 } as unknown as ProgramNode['writes'][number]] }]) };
     expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [fractional]), scripts: [] }])).toThrow('r: paint order bucket 1 or rank 0.5 is not an integer');
+    // A paint-foreground write (a hosted foreground, as the state fixtures' flex items carry) goes through dragonSetForeground.
+    const fg = (entries: readonly { id: string; rank: number; index: number }[]): StateCase => ({ ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), writes: [{ kind: 'paint-foreground', host: 'h', entries } as unknown as ProgramNode['writes'][number]] }]) });
+    const fgText = (backend: 'uikit' | 'android-views', c: StateCase): string => emitStatePrograms(backend, [{ ...emit, program: { ...deriveStateProgram('uikit', [c]), backend }, scripts: [] }]).map((f) => f.text).join('\n') + emitNativeSupport(backend).map((f) => f.text).join('\n');
+    const two = fg([{ id: 'r', rank: 0, index: 1 }, { id: 'r:text0', rank: 3, index: 2 }]);
+    expect(fgText('uikit', two)).toContain('.foreground("h", ["r", "r:text0"], [0, 3])');
+    expect(fgText('android-views', two)).toContain('DragonStateWrite.Foreground("h", listOf("r", "r:text0"), intArrayOf(0, 3))');
+    expect(fgText('uikit', two)).toContain('case .foreground(let host, let ids, let ranks): dragonSetForeground(t, v, host, ids, ranks)');
+    expect(fgText('android-views', two)).toContain('is DragonStateWrite.Foreground -> dragonSetForeground(t, v, w.host, w.ids, w.ranks)');
+    for (const bad of [fg([]), fg([{ id: 'r', rank: 1.5, index: 0 }]), fg([{ id: 'r', rank: -1, index: 0 }])]) {
+      expect(() => fgText('uikit', bad)).toThrow('r: a paint-foreground write with no entries or a rank that is not a non-negative integer');
+    }
     const bare = { ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), kind: 'text', writes: [] }]) };
     expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [bare]), scripts: [] }])).toThrow(/r: a text node without a text run/);
     const weird = deriveStateProgram('uikit', [{ ...(CASES[0] as StateCase), assignment: [{ state: { instance: 'a*/b\nc', state: 'on' }, value: 'x' }] }]);
