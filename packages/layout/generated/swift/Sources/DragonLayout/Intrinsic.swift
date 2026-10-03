@@ -14,16 +14,16 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ box: LayoutBox, _
   if try jsSome(kids, { (k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf) throws -> Bool in
     return ((k.kind != S.s_box) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced))
 }) {
-    throw JsError(message: jsConcat(box.id, S.s63))
+    throw JsError(message: jsConcat(box.id, S.s70))
   }
   var widest: Double = units_ZERO
   // ts: packages/layout/src/intrinsic.ts:23
   do {
-    let _a61 = kids
-    var _i61 = 0
-    while _i61 < _a61.items.count {
-      let k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a61.items[_i61]
-      _i61 += 1
+    let _a68 = kids
+    var _i68 = 0
+    while _i68 < _a68.items.count {
+      let k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a68.items[_i68]
+      _i68 += 1
       // ts: packages/layout/src/intrinsic.ts:23
       if try (((k.kind == S.s_box) || ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind == S.s_replaced)) && (!position_isOutOfFlow(ctx, (k as! any U_LayoutBox_ReplacedLeaf)))) {
         try widest = units_max(widest, intrinsic_inlineContribution(ctx, (k as! any U_LayoutBox_ReplacedLeaf), kind))
@@ -84,18 +84,18 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
   let isRow: Bool = ((s.flexDirection == S.s_row) || (s.flexDirection == S.s_row_reverse))
   // ts: packages/layout/src/intrinsic.ts:58
   if ((!isRow) && (s.flexWrap != S.s_nowrap)) {
-    try unsupported_unsupported(S.s_flex_intrinsic_wrap_column, box.id, S.s348, S.s416)
+    try unsupported_unsupported(S.s_flex_intrinsic_wrap_column, box.id, S.s363, S.s433)
   }
   // ts: packages/layout/src/intrinsic.ts:59
   if ((!isRow) || ((kind == S.s_min) && (s.flexWrap != S.s_nowrap))) {
     var widest: Double = units_ZERO
     // ts: packages/layout/src/intrinsic.ts:61
     do {
-      let _a62 = contributions
-      var _i62 = 0
-      while _i62 < _a62.items.count {
-        let c: Double = _a62.items[_i62]
-        _i62 += 1
+      let _a69 = contributions
+      var _i69 = 0
+      while _i69 < _a69.items.count {
+        let c: Double = _a69.items[_i69]
+        _i69 += 1
         try widest = units_max(widest, c)
       }
     }
@@ -104,7 +104,7 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
   let gap: any U_LengthCalc_NormalValue_Percent_Px = s.columnGap
   // ts: packages/layout/src/intrinsic.ts:65
   if try ((gap.kind != S.s_normal) && box_hasPercent((gap as! any U_LengthCalc_Percent_Px))) {
-    try unsupported_unsupported(S.s_percent_gap, box.id, S.s343, S.s464)
+    try unsupported_unsupported(S.s_percent_gap, box.id, S.s358, S.s481)
   }
   let gapLu: Double = try ((gap.kind == S.s_normal) ? units_ZERO : box_resolveLength((gap as! any U_LengthCalc_Percent_Px), units_ZERO, ctx.faults))
   let gaps: Double = try ((jsLength(items) > 1.0) ? units_mulInt(gapLu, (jsLength(items) - 1.0)) : units_ZERO)
