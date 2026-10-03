@@ -40,6 +40,7 @@ export const VALUES: readonly FixtureSpec[] = [
   both('values-calc-border-shorthand'),
   both('values-calc-length-max'),
   both('values-order-calc-round'),
+  both('values-length-saturation'),
   reject('values-reject-env', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + env(safe-area-inset-top))', 'width: calc(10px + env(safe-area-inset-top)) /* env() reads the safe-area insets'),
   reject('values-reject-sized-viewport', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 5svh)', 'height: calc(10px + 5svh) /* svh is a small, large or dynamic viewport unit'),
   reject('values-reject-font-metric', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1px + 3ex)', 'height: calc(1px + 3ex) /* ex is measured from the primary font'),
