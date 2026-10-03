@@ -424,6 +424,21 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/css/properties/longhands/longhands_custom.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "48152331fba45415d91fd8b8cb07c16e24e9e0c0e2b4bfab72e6a0531ba0af0b",
+      "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
+      "ranges": [
+        { "lines": "10742-10753", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_OVERRIDES", "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/resolver/style_adjuster.cc",
       "licence": "lgpl",
       "ruling": {
@@ -747,6 +762,23 @@
       ],
       "dragon": [
         { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/inline_box_state.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "cb091e4b509a7aa1f44078ceeaa69131b7155d6d94768cbf5f31aa05ac3a510b",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "449-468", "symbol": null, "source": "cited" },
+        { "lines": "1137-1355", "symbol": null, "source": "cited" },
+        { "lines": "1359-1418", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/inline.ts", "symbol": "LineAlign", "use": "port" }
       ]
     },
     {
