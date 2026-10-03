@@ -761,7 +761,8 @@
         { "lines": "1245-1251", "symbol": null, "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/inline.ts", "symbol": "OBJECT", "use": "reference" }
+        { "file": "packages/layout/src/inline.ts", "symbol": "OBJECT", "use": "reference" },
+        { "file": "packages/dragon/src/analysis/resolve.ts", "symbol": "ATOMIC_RUN", "use": "reference" }
       ]
     },
     {
