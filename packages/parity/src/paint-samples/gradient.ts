@@ -65,7 +65,8 @@ export function rootScrollX(boxes: readonly LayoutRect[], abs: ReadonlyMap<strin
     let held = false;
     for (let p = b.parent; p !== null && !held; p = parent.get(p) ?? null) if (depth(p) >= 2 && clips(p)) held = true;
     const a = abs.get(b.id);
-    if (!held && a !== undefined && a.x < min) min = a.x;
+    if (a === undefined) throw new Error(`${b.id}: no absolute rect for the root scroll origin`);
+    if (!held && a.x < min) min = a.x;
   }
   return min;
 }

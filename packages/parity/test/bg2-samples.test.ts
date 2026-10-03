@@ -68,6 +68,8 @@ describe('the root scroller\'s contents origin (R4, rootScrollX)', () => {
     expect(rootScrollX(boxes as never, abs as never, (id) => id === 'clip', false)).toBe(0);
     // html and body never clip here: their overflow propagates to the viewport.
     expect(rootScrollX(boxes as never, abs as never, (id) => id === 'body' || id === 'html', true)).toBe(-4096);
+    // A box without an absolute rect is a broken engine output, never a box that cannot overflow.
+    expect(() => rootScrollX(boxes as never, new Map([...abs].filter(([id]) => id !== 'row')) as never, () => false, true)).toThrow('row: no absolute rect');
   });
   it('moves the root layer of gradient-rounded-rtl by its 16px overflow, at every device DPR, and of no ltr case', () => {
     const n = byId('gradient-rounded-rtl');
