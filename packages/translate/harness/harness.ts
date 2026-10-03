@@ -1128,6 +1128,13 @@ const RT_NO_FAULTS: RtFaults = {
   rotateViaMatrix: false,
   colorUnpremultiplied: false,
   holdTimeLost: false,
+  heldTimeShortcut: false,
+  noReversalShortening: false,
+  perKeyframeEasingIgnored: false,
+  nameChangeKeepsAnimation: false,
+  pauseLosesPhase: false,
+  pauseClockRuns: false,
+  nonNegativeUnclamped: false,
 };
 
 /**

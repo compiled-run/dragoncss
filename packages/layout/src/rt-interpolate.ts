@@ -648,3 +648,27 @@ export function serializeValue(v: AnimatedValue, boxWidth: number, boxHeight: nu
   if (v.kind === 'color') return serializeColor(v.color);
   return serializeTransform(v.ops, boxWidth, boxHeight, trig);
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Value ranges (T065 R13; Chrome measurement M26): InterpolableLength::CreateLength clamps a px or % result of a
+// non-negative property (padding, width, height, min/max sizes, gaps) at 0. Margins and insets take every value.
+
+export type ValueRange = 'all' | 'non-negative';
+
+/** A length-percentage property at progress, clamped to its value range; a mixed calc() keeps its range for use time. */
+export function interpolateLengthInRange(from: LengthValue, to: LengthValue, progress: number, range: ValueRange, faults: RtFaults): LengthValue {
+  const clamp = range === 'non-negative' && !faults.nonNegativeUnclamped;
+  const hasPercentage = from.kind !== 'px' || to.kind !== 'px';
+  const pixels = blendDouble(from.px, to.px, progress);
+  const percentage = blendDouble(from.percent, to.percent, progress);
+  if (pixels !== 0 && hasPercentage) return { kind: 'calc', px: froundOf(pixels), percent: froundOf(percentage) };
+  if (hasPercentage) return { kind: 'percent', px: 0, percent: froundOf(clamp && percentage < 0 ? 0 : percentage) };
+  return { kind: 'px', px: froundOf(clamp && pixels < 0 ? 0 : pixels), percent: 0 };
+}
+
+/** interpolateValue with the property's value range applied to lengths (opacity and colour channels always clamp). */
+export function interpolateValueInRange(from: AnimatedValue, to: AnimatedValue, progress: number, range: ValueRange, faults: RtFaults): InterpolatedValue {
+  if (from.kind !== 'length' || to.kind !== 'length') return interpolateValue(from, to, progress, faults);
+  const length = interpolateLengthInRange(from.length, to.length, progress, range, faults);
+  return { refused: false, value: { kind: 'length', number: 0, length, color: TRANSPARENT, ops: [] } };
+}
