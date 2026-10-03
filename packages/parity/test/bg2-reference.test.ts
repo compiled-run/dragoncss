@@ -4,7 +4,8 @@
 // paint-samples/gradient.ts backgroundOnly), at DPR 2, 3 and 2.625. The measured maximum per-channel difference is printed and must not
 // exceed the gradient allowance (allowances/gradient.ts, GATE_CHANNEL_DELTA: no allowance, R2). Planted faults, each a Chrome
 // behaviour the reference must model, must each make some pixel differ: the libm table ignored (R3, fdlibm slopes), unpremultiplied
-// stops, no dither, the page origin for a composited layer (R4), the single-tile models swapped (R5) and an obscuring border ignored.
+// stops, no dither, the page origin for a composited layer (R4), the single-tile models swapped (R5), an obscuring border ignored
+// and the root scroll origin of a right-to-left page ignored (R4).
 import { backgroundPixelExact, backgroundRow, gradientFaults } from '@dragon/layout';
 import type { GradientFaults } from '@dragon/layout';
 import { borderDevicePx, programInput } from 'dragon';
@@ -13,7 +14,7 @@ import { GRADIENT_CHANNEL_DELTA } from '../src/allowances/gradient.ts';
 import { GATE_CHANNEL_DELTA } from '../src/compare.ts';
 import { DPRS } from '../src/dpr.ts';
 import { expectedEngine, nativeCases } from '../src/native-host.ts';
-import { backgroundOnly, backgroundPlans } from '../src/paint-samples/gradient.ts';
+import { backgroundOnly, backgroundPlans, caseRootX } from '../src/paint-samples/gradient.ts';
 import { linearSlope } from '../../dragon/src/analysis/paint-values/gradient.ts';
 import type { NativeProgram } from 'dragon';
 import { caseBoxes, committedPixels } from '../src/pixel-reference.ts';
@@ -33,17 +34,24 @@ function withFdlibmSlopes(p: NativeProgram): NativeProgram {
   return { ...p, nodes };
 }
 
+/** The program with each write's layer origin moved back by the root scroll origin, which cancels it (the rootScrollIgnored plant). */
+function withRootScrollIgnored(p: NativeProgram, rootX: number): NativeProgram {
+  const nodes = p.nodes.map((n) => ({ ...n, writes: n.writes.map((w) => (w.kind === 'background-layers' ? ({ ...w, layerOrigin: [-rootX, 0] } as unknown as typeof w) : w)) }));
+  return { ...p, nodes };
+}
+
 /** Every exact painted pixel of every gradient box of every case, at every DPR, against the committed Chrome PNG. */
-function compareAll(faults: GradientFaults, libmTableIgnored = false): { tally: Tally; cases: number; boxes: number } {
+function compareAll(faults: GradientFaults, libmTableIgnored = false, rootScrollIgnored = false): { tally: Tally; cases: number; boxes: number } {
   const tally: Tally = { pixels: 0, differing: 0, maxDelta: 0, first: null };
   let cases = 0;
   let boxes = 0;
   const engine = expectedEngine();
   for (const n of nativeCases()) {
-    const program = libmTableIgnored ? withFdlibmSlopes(n.programs['android-views']) : n.programs['android-views'];
-    if (!program.nodes.some((node) => node.writes.some((w) => w.kind === 'background-layers'))) continue;
+    const base = libmTableIgnored ? withFdlibmSlopes(n.programs['android-views']) : n.programs['android-views'];
+    if (!base.nodes.some((node) => node.writes.some((w) => w.kind === 'background-layers'))) continue;
     cases++;
     for (const dpr of DPRS) {
+      const program = rootScrollIgnored ? withRootScrollIgnored(base, caseRootX(base, n.case.environment.viewport, dpr)) : base;
       const chrome = committedPixels(n.case.id, dpr);
       if (chrome === null) throw new Error(`${n.case.id}: no committed Chrome PNG at DPR ${dpr} (pnpm run parity:pixel-capture)`);
       const viewport = n.case.environment.viewport;
@@ -90,6 +98,11 @@ describe('BG2 reference raster against Chrome 145 (host stage of the two-stage p
       expect(tally.differing).toBeGreaterThan(0);
     }, 600_000);
   }
+  it('catches the rootScrollIgnored plant: the root layer of a right-to-left page overflowing to the left starts at its scroll origin (R4)', () => {
+    const { tally } = compareAll(gradientFaults('none'), false, true);
+    console.log(`bg2-reference --plant rootScrollIgnored: ${tally.differing} of ${tally.pixels} pixels differ, max ${tally.maxDelta}`);
+    expect(tally.differing).toBeGreaterThan(0);
+  }, 600_000);
   it('catches the libmTableIgnored plant: fdlibm slopes move Chrome pixels on the table\'s angles (R3)', () => {
     const { tally } = compareAll(gradientFaults('none'), true);
     console.log(`bg2-reference --plant libmTableIgnored: ${tally.differing} of ${tally.pixels} pixels differ, max ${tally.maxDelta}`);
