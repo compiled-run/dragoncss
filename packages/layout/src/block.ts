@@ -95,6 +95,10 @@ export type EngineFaults = {
   readonly breakAfterSolidus: boolean;
   /** No break between '-' and a digit, as UAX #14 LB25 does (linebreak.ts noHyphenDigitBreak). */
   readonly noHyphenDigitBreak: boolean;
+  /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
+  readonly orderHalfEven: boolean;
+  /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
+  readonly orderUnclamped: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -132,6 +136,8 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   fitWithoutEpsilon: false,
   breakAfterSolidus: false,
   noHyphenDigitBreak: false,
+  orderHalfEven: false,
+  orderUnclamped: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
