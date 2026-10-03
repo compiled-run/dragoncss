@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 20px; color: rgb(20, 20, 120); }
+.stage { width: 360px; padding-top: 10px; }
+.flex { display: flex; height: 70px; background-color: rgb(200, 230, 250); }
+.item { width: 120px; background-color: rgb(250, 230, 120); color: rgb(150, 30, 30); }
+.rel { position: relative; width: 200px; margin-top: 10px; background-color: rgb(230, 230, 230); }
+.clip { overflow: hidden; width: 200px; height: 40px; margin-top: 10px; background-color: rgb(250, 220, 180); color: rgb(20, 110, 40); }
+.over { height: 30px; margin-top: -15px; background-color: rgb(90, 160, 250); }
+.over2 { height: 30px; margin-top: -15px; background-color: rgb(200, 120, 200); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="mx-flex" class="flex"><div data-dragon-id="mx-item" class="item">XX<div data-dragon-id="mx-item-over" class="over"></div>XXX</div></div>
+<div data-dragon-id="mx-rel" class="rel">XXXX<div data-dragon-id="mx-rel-over" class="over2"></div></div>
+<div data-dragon-id="mx-clip" class="clip">XXX<div data-dragon-id="mx-clip-over" class="over"></div></div>
+</div>
+</body>
+</html>

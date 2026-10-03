@@ -330,33 +330,47 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
   return lowerBox(root, faults, ua, rootFontSizeOf(root));
 }
 
+/** A child of an element's box: an element box, an anonymous box "<element>:anon<k>" around a maximal text sequence, or a text leaf. */
+export type BoxChild =
+  | { readonly kind: 'element'; readonly el: ResolvedElement }
+  | { readonly kind: 'anonymous'; readonly id: string; readonly texts: readonly ResolvedText[] }
+  | { readonly kind: 'text'; readonly text: ResolvedText };
+
 /**
- * The layout tree of one resolved element that generates a box. Text beside element boxes, or directly in a flex container, is
- * wrapped in anonymous boxes "<element>:anon<k>", one per maximal text sequence; display: none children are omitted, so they never
- * split a text sequence. The engine never creates boxes.
+ * The box children of a resolved element. Text beside element boxes, or directly in a flex container, is wrapped in anonymous boxes
+ * "<element>:anon<k>", one per maximal text sequence; display: none children are omitted, so they never split a text sequence. The
+ * layout tree and the stacking check (analysis/paint-values/stacking.ts) both read it, so their trees cannot differ.
  */
-function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null): LayoutBox {
-  const id = el.element.address;
+export function boxChildren(el: ResolvedElement): BoxChild[] {
   const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
-  const style = lowerStyle(el, faults, ua, rootFontSize);
   const wrap = kids.some((c) => c.kind === 'text') && (displayOf(el) === 'flex' || kids.some((c) => c.kind === 'element'));
-  const children: (LayoutBox | TextLeaf)[] = [];
+  const out: BoxChild[] = [];
   let run: ResolvedText[] = [];
   let anon = 0;
   const flush = (): void => {
-    if (run.length > 0) children.push(anonymousBox(el, `${id}:anon${anon++}`, run, faults, ua));
+    if (run.length > 0) out.push({ kind: 'anonymous', id: `${el.element.address}:anon${anon++}`, texts: run });
     run = [];
   };
   for (const c of kids) {
     if (c.kind === 'element') {
       flush();
-      children.push(lowerBox(c, faults, ua, rootFontSize));
+      out.push({ kind: 'element', el: c });
     } else if (wrap) run.push(c);
-    else {
-      assertTextCarriesContainer(style, id, c);
-      children.push(lowerText(c));
-    }
+    else out.push({ kind: 'text', text: c });
   }
   flush();
+  return out;
+}
+
+/** The layout tree of one resolved element that generates a box (its children are boxChildren's). The engine never creates boxes. */
+function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null): LayoutBox {
+  const id = el.element.address;
+  const style = lowerStyle(el, faults, ua, rootFontSize);
+  const children = boxChildren(el).map((c): LayoutBox | TextLeaf => {
+    if (c.kind === 'element') return lowerBox(c.el, faults, ua, rootFontSize);
+    if (c.kind === 'anonymous') return anonymousBox(el, c.id, c.texts, faults, ua);
+    assertTextCarriesContainer(style, id, c.text);
+    return lowerText(c.text);
+  });
   return { kind: 'box', id, boxType: 'element', style, children };
 }

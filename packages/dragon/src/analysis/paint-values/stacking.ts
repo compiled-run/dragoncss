@@ -8,7 +8,8 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import { usedColors } from '../../lower/paint/colors.ts';
 import { shadowedIn } from './effects.ts';
 import type { ResolvedValue } from '../computed.ts';
-import type { ResolvedElement } from '../resolve.ts';
+import type { ResolvedElement, ResolvedText } from '../resolve.ts';
+import { boxChildren } from '../../lower/ios-layout.ts';
 import type { PaintCheck, PaintValues } from './types.ts';
 
 const keyword = (el: ResolvedElement, p: 'display' | 'position' | 'overflow-x'): string => {
@@ -24,9 +25,12 @@ function flexOrderOf(el: ResolvedElement): number {
   return v.value;
 }
 
-/** The stacking tree of a resolved document: display: none subtrees generate no boxes; text is never positioned. */
+/**
+ * The stacking tree of a resolved document, with the layout tree's boxes (boxChildren): display: none subtrees generate no boxes,
+ * text beside element boxes or in a flex container sits in an anonymous box (a flex item there), and text is never positioned.
+ */
 export function resolvedStackTree(root: ResolvedElement): StackNode {
-  let texts = 0;
+  const text = (t: ResolvedText): StackNode => ({ id: t.node.address, position: 'static', z: null, opacity: 1, clips: false, text: true, atomic: false, flexOrder: 0, blank: isBlank(t.text), children: [] });
   const node = (el: ResolvedElement, parentFlex: boolean): StackNode => {
     const position = keyword(el, 'position');
     const z = zIndexOf((el.props.get('z-index') as ResolvedValue).value);
@@ -43,9 +47,11 @@ export function resolvedStackTree(root: ResolvedElement): StackNode {
       atomic: parentFlex && position !== 'absolute' && position !== 'fixed',
       blank: false,
       flexOrder: parentFlex ? flexOrderOf(el) : 0,
-      children: el.children.flatMap((c): StackNode[] => {
-        if (c.kind === 'text') return [{ id: `${el.element.address}:text#${texts++}`, position: 'static', z: null, opacity: 1, clips: false, text: true, atomic: false, flexOrder: 0, blank: isBlank(c.text), children: [] }];
-        return keyword(c, 'display') === 'none' ? [] : [node(c, flex)];
+      children: boxChildren(el).map((c): StackNode => {
+        if (c.kind === 'element') return node(c.el, flex);
+        if (c.kind === 'text') return text(c.text);
+        // An anonymous box takes every non-inherited property's initial value: static, z-index auto, opacity 1, visible, order 0.
+        return { id: c.id, position: 'static', z: null, opacity: 1, clips: false, text: false, atomic: flex, flexOrder: 0, blank: false, children: c.texts.map(text) };
       }),
     };
   };

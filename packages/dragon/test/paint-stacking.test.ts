@@ -206,6 +206,19 @@ describe('stacking: lowering and emission', () => {
     expect(STACKING_EMITTER.applied({} as never, 'uikit', fa, 2, { border: [0, 0, 0, 0], box: {} as never, size: [0, 0], fontSize: null })).toEqual(['html', e.index]);
     expect(() => STACKING_EMITTER.lines.uikit('v2', a as never, { ...fa, entries: [] })).toThrow(/no entries/);
   });
+  it('PNT1-MIX: a flex item, a relative box and a clip mixing text with a block child compile, the text hosted after the block', () => {
+    const p = programs('body { font-family: Ahem; font-size: 10px; } .s { display: flex; } .r { position: relative; } .c { overflow: hidden; height: 30px; } .q { height: 10px; margin-top: -5px; background-color: rgb(1, 2, 3); }', (r) => [
+      div(r, 's', ['s'], [div(r, 'm', [], [text(r, 'mt', 'XX'), div(r, 'mq', ['q'])])]),
+      div(r, 'rel', ['r'], [text(r, 'rt', 'XX'), div(r, 'rq', ['q'])]),
+      div(r, 'clip', ['c'], [text(r, 'ct', 'XX'), div(r, 'cq', ['q'])]),
+    ]);
+    const fg = (id: string) => p.uikit.nodes.find((x) => x.id === id)?.writes.flatMap((w) => (w.kind === 'paint-foreground' ? [[w.host, w.entries.map((e) => [e.id, e.index])]] : []));
+    // The text sits in an anonymous box, hosted under its box after the block child (one box view before it: the block).
+    expect(fg('m:anon0')).toEqual([['m', [['m:text0', 2]]]]);
+    expect(fg('rel:anon0')).toEqual([['rel', [['rel:text0', 2]]]]);
+    expect(fg('clip:anon0')).toEqual([['clip', [['clip:text0', 2]]]]);
+    expect(fg('m')).toEqual([['html', [['m', 1]]]]);
+  });
   it('escapes host ids exactly as native-support.ts stringLit does', () => {
     for (const s of ['a/b', 'x:anon0', 'q"\\$', 'é', '😀', '\n']) for (const lang of ['swift', 'kotlin'] as const) expect(nativeString(lang, s), `${lang} ${s}`).toBe(stringLit(lang, s));
   });

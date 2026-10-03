@@ -10,6 +10,9 @@ import { TEXT_LONGHANDS } from './css/properties.ts';
 import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
 import { colorChannels, lowerNativePrograms, ProgramError, usedColors } from './lower/native-program.ts';
 import { rootFontSizeOf } from './lower/ios-layout.ts';
+import type { StackNode } from './lower/paint/stacking.ts';
+import { layoutStackTree } from './lower/paint/stacking.ts';
+import { resolvedStackTree } from './analysis/paint-values/stacking.ts';
 import type { InternalCase } from './project.ts';
 import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
@@ -248,6 +251,24 @@ export function nativePrograms(compiled: object, assignment: Assignment): Native
     throw e;
   }
 }
+
+/**
+ * PNT1-MIX: the two stacking trees of one case, the stacking check's (from the resolved tree) and the lowering's (from the native
+ * layout tree); they must be equal, or the check judges a different paint order from the one the device gets.
+ */
+export function stackTrees(compiled: object, assignment: Assignment): { readonly resolved: StackNode; readonly layout: StackNode } | string {
+  const c = caseOf(compiled, assignment);
+  if (typeof c === 'string') return c;
+  if (c.nativeLowered === null || c.resolved === null) return 'the case has no native lowering';
+  const elements = new Map<string, ResolvedElement>();
+  const walk = (e: ResolvedElement): void => {
+    elements.set(e.element.address, e);
+    for (const k of e.children) if (k.kind === 'element') walk(k);
+  };
+  walk(c.resolved);
+  return { resolved: resolvedStackTree(c.resolved), layout: layoutStackTree(c.nativeLowered, elements) };
+}
+export type { StackNode } from './lower/paint/stacking.ts';
 
 // SELD-R1a (notes/T047-runtime-spec.md §3.3): the state program, its runtime reference and the generated state runtime.
 export type { LayoutChange, LayoutVariant, StateCase, StateDelta, StateFaults, StateProgram, StateVariable } from './lower/state-program.ts';
