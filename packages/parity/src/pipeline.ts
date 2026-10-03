@@ -4,7 +4,7 @@
 import type { Browser } from 'playwright';
 import type { EngineFaults, LayoutInput, LayoutRect, LayoutUnsupported } from '@dragon/layout';
 import { absoluteRects, layoutWithFaults, validateLayoutInput } from '@dragon/layout';
-import type { Assignment, CompilerFaults, Compiled, Diagnostic, Environment, FrontEndResult, Origin, Scalar, TextTopologyEntry } from 'dragon';
+import type { Assignment, CompilerFaults, Compiled, Diagnostic, Environment, FrontEndResult, LayoutProjection, Origin, Scalar, TextTopologyEntry } from 'dragon';
 import { compiledCases, compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, textTopology, WEB_CSS_PATH, webClassMap } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { captureFixture } from './capture.ts';
@@ -250,15 +250,18 @@ export function topologyProblems(declared: TreeExpectation, input: FrontEndResul
   return problems;
 }
 
-async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss: string | null, browser: Browser, opts: RunOptions): Promise<CaseOutcome> {
+/** The engine lane's projection of a case: the ios projection, or engineLayoutProjection for the text-latin registry (TXT1a-1). */
+export type Projection = (compiled: object, environment: Environment, assignment: Assignment) => LayoutProjection;
+
+export async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss: string | null, browser: Browser, opts: RunOptions, projectionOf: Projection | null = null): Promise<CaseOutcome> {
   const features = { ios: compiledFeatures(compiled, 'ios', c.assignment), web: compiledFeatures(compiled, 'web', c.assignment) };
   const topology = textTopology(compiled, c.assignment);
   const base = { id: c.id, fixture: c.fixture, index: c.index, direction: c.environment.direction, assignment: c.assignment, isInitial: c.isInitial, features, unsupported: null, comparison: null, dual: null, vector: null, topology, textLines: [] };
   const notRun = { 'linux-dragon-layout': 'not-run', 'chrome-dual': 'not-run' } as const;
   const fail = (reason: string): CaseOutcome => ({ ...base, lanes: notRun, status: 'fail', reason });
-  const projection = iosLayoutProjection(compiled, c.environment, c.assignment);
+  const projection = (projectionOf ?? iosLayoutProjection)(compiled, c.environment, c.assignment);
   const errors = compiled.diagnostics.map((d) => `${d.code} ${d.message}`).join('; ');
-  if (compiled.outputs.ios.kind === 'blocked' || projection.kind === 'blocked') return fail(`ios output blocked: ${projection.kind === 'blocked' ? projection.reason : ''} ${errors}`);
+  if ((projectionOf === null && compiled.outputs.ios.kind === 'blocked') || projection.kind === 'blocked') return fail(`ios output blocked: ${projection.kind === 'blocked' ? projection.reason : ''} ${errors}`);
   if (webCss === null) return fail(`web output not ready: ${errors}`);
   const authored = await opts.authored(c);
 
