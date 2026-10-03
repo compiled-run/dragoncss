@@ -14,6 +14,7 @@ import { FOREIGN_VIEW_LOWERING } from './foreign-view.ts';
 import { GRADIENT_LOWERING } from './gradient.ts';
 import { IMAGE_LOWERING } from './image.ts';
 import { OUTLINE_LOWERING } from './outline.ts';
+import type { RadiusWrite } from './radius.ts';
 import { RADIUS_LOWERING } from './radius.ts';
 import { SCROLL_LOWERING } from './scroll.ts';
 import { SCROLLBAR_LOWERING } from './scrollbar.ts';
@@ -24,10 +25,10 @@ import type { BoxPaintContext, NativeBackend, PaintLowering, VocabularyEntry } f
 import { PAINT_MODULE_NAMES } from './types.ts';
 
 /** Every paint write kind; a module adds its write type here when it gains writes. */
-export type PaintWrite = BackgroundWrite | BorderWrite | ClipWrite;
+export type PaintWrite = BackgroundWrite | BorderWrite | ClipWrite | RadiusWrite;
 export type PaintWriteKind = PaintWrite['kind'];
 
-export type AnyLowering = PaintLowering<PaintWrite> | PaintLowering<BackgroundWrite> | PaintLowering<BorderWrite> | PaintLowering<ClipWrite> | PaintLowering<never>;
+export type AnyLowering = PaintLowering<PaintWrite> | PaintLowering<BackgroundWrite> | PaintLowering<BorderWrite> | PaintLowering<ClipWrite> | PaintLowering<RadiusWrite> | PaintLowering<never>;
 
 /** Registration point (EMS): the paint lowerings in PAINT_MODULE_NAMES order. */
 export const PAINT_LOWERINGS: readonly AnyLowering[] = [

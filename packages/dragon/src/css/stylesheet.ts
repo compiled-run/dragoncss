@@ -8,6 +8,7 @@ import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
 import type { AtRuleContext, RuleCondition } from './at-rules.ts';
 import { handleAtRule, refuseAtRule } from './at-rules.ts';
+import { PAINT_VALUE_PARSERS } from './paint-parsers.ts';
 import { asciiLower, canonicalizeEscapes, decodeName, preprocessInput, trimValue } from './escapes.ts';
 import { GRID_VALUE_PROPERTIES, parseGridValue } from './grid-values.ts';
 import { webrefLexer } from './lexer.ts';
@@ -383,6 +384,9 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   }
   // css-grid-2 and justify-*: multi-token values, with the checks Chrome makes beyond the grammar (grid-values.ts).
   if (!wide && GRID_VALUE_PROPERTIES.has(property)) return parseGridValue(property, tokens, base);
+  // Paint families (PNT1): multi-token paint values, with the checks Chrome makes beyond the grammar (css/paint-parsers.ts).
+  const paint = wide ? undefined : PAINT_VALUE_PARSERS.get(property);
+  if (paint !== undefined) return paint(tokens, base);
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
   const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
   const values: CssValue[] = baseline === null ? [] : [baseline];

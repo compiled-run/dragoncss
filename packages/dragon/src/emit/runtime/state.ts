@@ -448,6 +448,9 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'border-widths':
       case 'text-color':
         break;
+      case 'border-radius':
+        // The state runtime has no writer for these yet (PNT1 paints them from the program); a case script would drop them.
+        throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;

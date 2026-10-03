@@ -13,6 +13,7 @@ import type { UaDataset } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
+import { PAINT_VALUES } from './paint-values/index.ts';
 import { environmentOf, valueToString } from './resolve.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
@@ -252,6 +253,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     if (!here) checkInlineLevel(el, targets, diagnostics, reported);
+    // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
+    if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported);
     for (const c of el.children) if (c.kind === 'element') walk(c, here);
   };
   walk(root, false);

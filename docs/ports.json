@@ -885,6 +885,7 @@
         { "lines": "2006-2437", "symbol": "ClipBorderSidePolygon", "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": "checkRoundedBorderStyles", "use": "reference" },
         { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
       ]

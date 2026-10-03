@@ -133,13 +133,13 @@ describe('raster plants judged against the clean run (T093 ruling A)', () => {
   const ok = { hostErrors: [], frames: 0, lines: 0 };
   it('the constants and one axis per plant', () => {
     expect([PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, PLANT_MARGIN_DEVICE_PX]).toEqual([1, 0.05, 0.2]);
-    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted']);
+    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted', 'radius-square']);
     expect(SUPPORT_PLANTS.filter(isGlyphPlant)).toEqual(['glyph-offset-1', 'glyph-offset-y-1']);
-    expect(Object.keys(PLANT_CASES)).toEqual(['dash-phase-1', 'dash-gap-unfitted']);
-    expect(Object.keys(PLANT_RULES)).toEqual(['dash-phase-1', 'dash-gap-unfitted']);
+    expect(Object.keys(PLANT_CASES)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'radius-square']);
+    expect(Object.keys(PLANT_RULES)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'radius-square']);
     expect(PLANT_AXIS).toEqual({ 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' });
   });
-  it('each plant changes one line of each backend support: its glyph offset constant from 0 to 1', () => {
+  it('each glyph plant changes one line of each backend support: its glyph offset constant from 0 to 1', () => {
     for (const backend of ['uikit', 'android-views'] as const) {
       const clean = emitNativeSupport(backend).flatMap((f) => f.text.split('\n'));
       for (const plant of SUPPORT_PLANTS.filter(isGlyphPlant)) {
