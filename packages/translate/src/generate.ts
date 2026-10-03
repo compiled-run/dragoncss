@@ -56,6 +56,9 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     // The one pixel-snap rule (native-strategy.md section 3.3): native lanes snap engine rects to device px with it.
     { file: at('snap.ts'), name: 'snapEdges' },
     { file: at('snap.ts'), name: 'snapRect' },
+    // OVFL: scroll containers' client sizes and scrollable overflow, which the native scroll views are sized by.
+    { file: at('overflow.ts'), name: 'scrollMetrics' },
+    { file: at('overflow.ts'), name: 'scrollMetricsWithFaults' },
   ];
   const program = createProgram(files);
   const units = program.getSourceFile(at('units.ts')) as ts.SourceFile;

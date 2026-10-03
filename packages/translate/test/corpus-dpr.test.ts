@@ -45,7 +45,7 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
     expect(x.digest).toBe(extendedLockedDigest());
     expect(buildExtendedCorpus().digest).toBe(x.digest);
     // V1 appends its own suites; the values group's vectors are appended to the P2b suites after every earlier line.
-    expect(x.suites.map((s) => s.name)).toEqual(['vectors-m2', 'vectors-dpr', 'engine-dpr', 'units-m2', 'snap', 'snap-values', 'calc-goldens', 'engine-calc', 'units-calc', 'engine-inline']);
+    expect(x.suites.map((s) => s.name)).toEqual(['vectors-m2', 'vectors-dpr', 'engine-dpr', 'units-m2', 'snap', 'snap-values', 'calc-goldens', 'engine-calc', 'units-calc', 'engine-inline', 'engine-overflow']);
     const top = topLevelVectorFiles().length;
     expect(top).toBeGreaterThanOrEqual(261);
     const firstValues = x.m2Vectors.findIndex((v) => v.file.startsWith(VALUES_PREFIX));
@@ -64,6 +64,7 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
     expect(n['engine-calc']).toBe(CALC_SPEC.engineCalc);
     expect(n['units-calc']).toBe(CALC_SPEC.unitsPerFunction * UNITS_CALC_FUNCTIONS.length);
     expect(n['engine-inline']).toBe(3000);
+    expect(n['engine-overflow']).toBe(3000);
     expect(x.engineSplit.threw + x.engineSplit.harnessError).toBe(0);
   });
 

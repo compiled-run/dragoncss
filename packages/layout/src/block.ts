@@ -105,6 +105,10 @@ export type EngineFaults = {
   readonly breakAtBoxBoundary: boolean;
   /** A leaf's content area starts at its line top instead of the baseline minus its ascent. */
   readonly fragmentFromLineTop: boolean;
+  /** A scroll container reserves a classic 15px scrollbar gutter at its inline end and block end (overflow.ts). */
+  readonly gutterReserved: boolean;
+  /** A scroll container's scrollable overflow leaves out its end padding after the in-flow content (overflow.ts). */
+  readonly overflowIgnoresPadding: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -147,6 +151,8 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   brIgnored: false,
   breakAtBoxBoundary: false,
   fragmentFromLineTop: false,
+  gutterReserved: false,
+  overflowIgnoresPadding: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
