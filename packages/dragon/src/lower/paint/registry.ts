@@ -25,14 +25,16 @@ import { SHADOW_LOWERING } from './shadow.ts';
 import type { StackingWrite } from './stacking.ts';
 import { STACKING_LOWERING } from './stacking.ts';
 import { TRANSFORM_LOWERING } from './transform.ts';
+import type { VisibilityWrite } from './visibility.ts';
+import { VISIBILITY_LOWERING } from './visibility.ts';
 import type { BoxPaintContext, NativeBackend, PaintLowering, VocabularyEntry } from './types.ts';
 import { PAINT_MODULE_NAMES } from './types.ts';
 
 /** Every paint write kind; a module adds its write type here when it gains writes. */
-export type PaintWrite = BackgroundWrite | BorderWrite | ClipWrite | RadiusWrite | ShadowWrite | EffectsWrite | StackingWrite | OutlineWrite;
+export type PaintWrite = BackgroundWrite | BorderWrite | ClipWrite | RadiusWrite | ShadowWrite | EffectsWrite | StackingWrite | OutlineWrite | VisibilityWrite;
 export type PaintWriteKind = PaintWrite['kind'];
 
-export type AnyLowering = PaintLowering<PaintWrite> | PaintLowering<BackgroundWrite> | PaintLowering<BorderWrite> | PaintLowering<ClipWrite> | PaintLowering<RadiusWrite> | PaintLowering<ShadowWrite> | PaintLowering<EffectsWrite> | PaintLowering<StackingWrite> | PaintLowering<OutlineWrite> | PaintLowering<never>;
+export type AnyLowering = PaintLowering<PaintWrite> | PaintLowering<BackgroundWrite> | PaintLowering<BorderWrite> | PaintLowering<ClipWrite> | PaintLowering<RadiusWrite> | PaintLowering<ShadowWrite> | PaintLowering<EffectsWrite> | PaintLowering<StackingWrite> | PaintLowering<OutlineWrite> | PaintLowering<VisibilityWrite> | PaintLowering<never>;
 
 /** Registration point (EMS): the paint lowerings in PAINT_MODULE_NAMES order. */
 export const PAINT_LOWERINGS: readonly AnyLowering[] = [
@@ -52,6 +54,7 @@ export const PAINT_LOWERINGS: readonly AnyLowering[] = [
   IMAGE_LOWERING,
   FOREIGN_VIEW_LOWERING,
   CONTROL_LOWERING,
+  VISIBILITY_LOWERING,
 ];
 
 /**

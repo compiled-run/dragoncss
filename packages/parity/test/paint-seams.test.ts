@@ -22,7 +22,7 @@ const ctx = (): PaintSampleContext => ({ program: { version: 'v', backend: 'uiki
 describe('EMS: paint samples', () => {
   it('registers every module once in the paint registry order, each a stub for now', () => {
     expect(PAINT_SAMPLES.map((m) => m.name)).toEqual([...PAINT_SAMPLE_MODULES]);
-    expect([...PAINT_SAMPLE_MODULES]).toEqual(['background', 'border', 'clip', 'radius', 'shadow', 'effects', 'stacking', 'outline', 'transform', 'gradient', 'scroll', 'fixed', 'scrollbar', 'image', 'foreign-view', 'control']);
+    expect([...PAINT_SAMPLE_MODULES]).toEqual(['background', 'border', 'clip', 'radius', 'shadow', 'effects', 'stacking', 'outline', 'transform', 'gradient', 'scroll', 'fixed', 'scrollbar', 'image', 'foreign-view', 'control', 'visibility']);
   });
   it('keeps the base points unchanged, in order, when no module adds or suppresses one', () => {
     const c = ctx();

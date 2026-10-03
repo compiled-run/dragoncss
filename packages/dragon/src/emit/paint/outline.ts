@@ -80,6 +80,7 @@ public func dragonSetOutline(_ t: DragonTree, _ v: DragonBoxView, _ host: String
   o.rank = rank
   o.color = color
   v.dragonOutlineView = o
+  dragonVisibilityCompanion(o, v)
   dragonAfterLayout(v, v.dragonShape, v.dragonScale)
 }
 
@@ -215,6 +216,7 @@ fun dragonSetOutline(t: DragonTree, v: DragonBoxView, host: String, rank: Int, d
   o.rank = rank
   o.color = color
   v.dragonOutlineView = o
+  dragonVisibilityCompanion(o, v)
   dragonAfterLayout(v, v.dragonShape, v.dragonOutlineScale)
 }
 

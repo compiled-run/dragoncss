@@ -63,6 +63,7 @@ public func dragonSetShadows(_ t: DragonTree, _ v: DragonBoxView, _ shadows: [Sh
   if v.dragonShadowView == nil && shadows.contains(where: { !$0.inset }) {
     let s = DragonShadowView()
     v.dragonShadowView = s
+    dragonVisibilityCompanion(s, v)
     t.companion(v.dragonId, s)
   }
   dragonAfterLayout(v, v.dragonShape, v.dragonScale)
@@ -82,14 +83,14 @@ public func dragonShadowAncestors(_ v: DragonBoxView) -> [DragonBoxView] {
   return chain
 }
 
-/// The backdrop of a box's shadows: each DOM ancestor box's background over its (rounded) border box, outermost first, then the
+/// The backdrop of a box's shadows: each DOM ancestor box's shown background over its (rounded) border box, outermost first, then the
 /// box's own when own is set (the inset shadows); the white root is beneath.
 public func dragonShadowBackdrop(_ v: DragonBoxView, own: Bool) -> [BackdropFill] {
   let chain = dragonShadowAncestors(v) + (own ? [v] : [])
   var out: [BackdropFill] = []
   for b in chain {
     let c = b.dragonBackgroundColor
-    if c.a == 0 { continue }
+    if c.a == 0 || !(b.dragonVisible || b.dragonVisibilityCanvas) { continue }
     let e = b.dragonShape.edges
     out.append(BackdropFill(e[0], e[1], e[2], e[3], JsArray(b.dragonShape.radii), Double(c.r), Double(c.g), Double(c.b), Double(c.a)))
   }
@@ -220,6 +221,7 @@ fun dragonSetShadows(t: DragonTree, v: DragonBoxView, shadows: Array<ShadowInput
   if (v.dragonShadowView == null && shadows.any { !it.inset }) {
     val s = DragonShadowView(v.context)
     v.dragonShadowView = s
+    dragonVisibilityCompanion(s, v)
     t.companion(v.dragonId, s)
   }
   dragonAfterLayout(v, v.dragonShape, v.dragonShadowScale)
@@ -240,7 +242,7 @@ fun dragonShadowAncestors(v: DragonBoxView): List<DragonBoxView> {
 }
 
 /**
- * The backdrop of a box's shadows: each DOM ancestor box's background over its (rounded) border box, outermost first, then the
+ * The backdrop of a box's shadows: each DOM ancestor box's shown background over its (rounded) border box, outermost first, then the
  * box's own when own is set (the inset shadows); the white root is beneath.
  */
 fun dragonShadowBackdrop(v: DragonBoxView, own: Boolean): MutableList<BackdropFill> {
@@ -249,7 +251,7 @@ fun dragonShadowBackdrop(v: DragonBoxView, own: Boolean): MutableList<BackdropFi
   val out = ArrayList<BackdropFill>()
   for (b in chain) {
     val c = b.dragonBackgroundColor
-    if (c.a == 0) continue
+    if (c.a == 0 || !(b.dragonVisible || b.dragonVisibilityCanvas)) continue
     val e = b.dragonShape.edges
     out.add(BackdropFill(e[0], e[1], e[2], e[3], JsArray(b.dragonShape.radii.toMutableList()), c.r.toDouble(), c.g.toDouble(), c.b.toDouble(), c.a.toDouble()))
   }

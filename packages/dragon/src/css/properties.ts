@@ -20,6 +20,7 @@ import { OUTLINE_ASPECTS, OUTLINE_CONTAINER, OUTLINE_INHERITED, OUTLINE_LONGHAND
 import { TRANSFORM_ASPECTS, TRANSFORM_CONTAINER, TRANSFORM_INHERITED, TRANSFORM_LONGHANDS, TRANSFORM_SHORTHANDS, TRANSFORM_TEXT_ROLE } from './properties/transform.ts';
 import { BACKGROUND_LAYERS_ASPECTS, BACKGROUND_LAYERS_CONTAINER, BACKGROUND_LAYERS_INHERITED, BACKGROUND_LAYERS_LONGHANDS, BACKGROUND_LAYERS_SHORTHANDS, BACKGROUND_LAYERS_TEXT_ROLE } from './properties/background-layers.ts';
 import { SCROLLBAR_ASPECTS, SCROLLBAR_CONTAINER, SCROLLBAR_INHERITED, SCROLLBAR_LONGHANDS, SCROLLBAR_SHORTHANDS, SCROLLBAR_TEXT_ROLE } from './properties/scrollbar.ts';
+import { VISIBILITY_ASPECTS, VISIBILITY_CONTAINER, VISIBILITY_INHERITED, VISIBILITY_LONGHANDS, VISIBILITY_SHORTHANDS, VISIBILITY_TEXT_ROLE } from './properties/visibility.ts';
 
 /** What a longhand affects: layout (box geometry) and paint (pixels). */
 export type PropertyAspect = { readonly layout: boolean; readonly paint: boolean };
@@ -46,6 +47,7 @@ export const LONGHANDS = [
   ...TRANSFORM_LONGHANDS,
   ...BACKGROUND_LAYERS_LONGHANDS,
   ...SCROLLBAR_LONGHANDS,
+  ...VISIBILITY_LONGHANDS,
 ] as const;
 
 export type Longhand = (typeof LONGHANDS)[number];
@@ -70,6 +72,7 @@ export const SHORTHANDS = [
   ...TRANSFORM_SHORTHANDS,
   ...BACKGROUND_LAYERS_SHORTHANDS,
   ...SCROLLBAR_SHORTHANDS,
+  ...VISIBILITY_SHORTHANDS,
 ] as const;
 
 export type Shorthand = (typeof SHORTHANDS)[number];
@@ -94,6 +97,7 @@ export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([
   ...TRANSFORM_INHERITED,
   ...BACKGROUND_LAYERS_INHERITED,
   ...SCROLLBAR_INHERITED,
+  ...VISIBILITY_INHERITED,
 ]);
 
 /**
@@ -144,6 +148,7 @@ export const PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {
   ...TRANSFORM_ASPECTS,
   ...BACKGROUND_LAYERS_ASPECTS,
   ...SCROLLBAR_ASPECTS,
+  ...VISIBILITY_ASPECTS,
 };
 
 /** The role of a longhand in its row key (M2): which formatting context, if any, the row names. */
@@ -169,6 +174,7 @@ const CONTAINER_LONGHANDS: readonly Longhand[] = [
   ...TRANSFORM_CONTAINER,
   ...BACKGROUND_LAYERS_CONTAINER,
   ...SCROLLBAR_CONTAINER,
+  ...VISIBILITY_CONTAINER,
 ];
 const TEXT_ROLE_LONGHANDS: readonly Longhand[] = [
   ...POSITION_TEXT_ROLE,
@@ -190,6 +196,7 @@ const TEXT_ROLE_LONGHANDS: readonly Longhand[] = [
   ...TRANSFORM_TEXT_ROLE,
   ...BACKGROUND_LAYERS_TEXT_ROLE,
   ...SCROLLBAR_TEXT_ROLE,
+  ...VISIBILITY_TEXT_ROLE,
 ];
 
 /**

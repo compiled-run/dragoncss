@@ -38,6 +38,8 @@ describe('E2 seams: the property registry', () => {
       'box-shadow',
       'opacity', 'z-index', 'color-scheme',
       'outline-color', 'outline-style', 'outline-width', 'outline-offset',
+      // T150a appends the visibility family after the EMS paint families.
+      'visibility',
     ]);
   });
   it('SHORTHANDS keeps its order', () => {
@@ -54,12 +56,12 @@ describe('E2 seams: the property registry', () => {
   });
   it('PROPERTY_ASPECTS keys follow LONGHANDS, and INHERITED and PROPERTY_ROLE are unchanged', () => {
     expect(Object.keys(PROPERTY_ASPECTS)).toEqual([...LONGHANDS]);
-    expect([...INHERITED]).toEqual(['direction', 'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'color-scheme']);
+    expect([...INHERITED]).toEqual(['direction', 'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'color-scheme', 'visibility']);
     const byRole = (r: string): string[] => LONGHANDS.filter((p) => PROPERTY_ROLE[p] === r);
     expect(byRole('container')).toEqual(['direction', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap',
       'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow', 'justify-items']);
     expect(byRole('text')).toEqual(['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode']);
-    expect(byRole('paint')).toEqual(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius', 'box-shadow', 'opacity', 'z-index', 'color-scheme', 'outline-color', 'outline-style', 'outline-width', 'outline-offset']);
+    expect(byRole('paint')).toEqual(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius', 'box-shadow', 'opacity', 'z-index', 'color-scheme', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', 'visibility']);
   });
   it('every shorthand has exactly one handler in shorthands/index.ts, and each sets only longhands', () => {
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());
@@ -233,7 +235,8 @@ describe('EMS seams: the paint families (notes/T046-paint-spec.md §3 item 4)', 
       const start = text.indexOf(block);
       const body = text.slice(start, Math.min(...['\n]', '\n}'].map((e) => text.indexOf(e, start)).filter((i) => i > 0)));
       const fams = [...body.matchAll(/\.\.\.([A-Z_]+?)_(?:LONGHANDS|SHORTHANDS|INHERITED|ASPECTS|CONTAINER|TEXT_ROLE),/g)].map((m) => m[1]);
-      expect(fams.slice(-8), block).toEqual(['GRID', 'RADIUS', 'SHADOW', 'EFFECTS', 'OUTLINE', 'TRANSFORM', 'BACKGROUND_LAYERS', 'SCROLLBAR']);
+      // T150a appends the visibility family after the EMS paint families.
+      expect(fams.slice(-9), block).toEqual(['GRID', 'RADIUS', 'SHADOW', 'EFFECTS', 'OUTLINE', 'TRANSFORM', 'BACKGROUND_LAYERS', 'SCROLLBAR', 'VISIBILITY']);
     }
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());
   });
