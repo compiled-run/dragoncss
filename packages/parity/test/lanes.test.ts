@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { iosLayoutProjection, nativeLayoutProjection, NO_FAULTS } from 'dragon';
+import { iosLayoutProjection, nativeLayoutProjection } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from '../src/compare.ts';
 import { atDpr, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from '../src/dpr.ts';
 import { declaredLayoutCaseCount, groupFixtures, MILESTONE_1_LAYOUT_CASES } from '../src/case-count.ts';
@@ -12,7 +12,7 @@ import type { HostRun, KotlinLookup, LaneFault } from '../src/lanes.ts';
 import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, lanesFile, lanesJsonText, laneSources, notPassed, parseNativeOutput, plantLaneFault, readLanesFile, runHostLane, staleLanes, toleranceLiterals } from '../src/lanes.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
 import { repoPath } from '../src/paths.ts';
-import { compileFixture } from '../src/pipeline.ts';
+import { enforcedCompile } from '../src/pipeline.ts';
 import { SAMPLE_RULES } from '../src/samples.ts';
 import type { NativeTarget, TargetConfig } from '../src/targets.ts';
 import { corpusSuites, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest } from '../src/targets.ts';
@@ -84,22 +84,22 @@ describe('native targets', () => {
     expect(android.projection).toBe(nativeLayoutProjection);
     expect(ios.projection).toBe(android.projection);
   });
-  it('iosLayoutProjection output deep-equals nativeLayoutProjection output for every case, at DPR 1 and every DPR', () => {
-    let n = 0;
-    for (const f of layoutCases()) {
-      const compiled = new Map((['ltr', 'rtl'] as const).map((d) => [d, compileFixture(f.spec, NO_FAULTS, 'enforce', d).compiled]));
+  // One test per fixture, so the corpus's compiles are spread over tests rather than held to one test's timeout.
+  describe('iosLayoutProjection output deep-equals nativeLayoutProjection output for every case, at DPR 1 and every DPR', () => {
+    it('the fixture tests below cover every case at DPR 1 and every DPR', () => {
+      expect(layoutCases().reduce((n, f) => n + f.cases.length * (1 + DPRS.length), 0)).toBe(ids.length * (1 + DPRS.length));
+    });
+    it.each(layoutCases().map((f) => [f.spec.id, f] as const))('%s', (_id, f) => {
       for (const c of f.cases) {
-        const comp = compiled.get(c.environment.direction);
+        const comp = enforcedCompile(f.spec, c.environment.direction);
         for (const dpr of [1, ...DPRS]) {
           const env = atDpr(c.environment, dpr);
-          const native = nativeLayoutProjection(comp as object, env, c.assignment);
+          const native = nativeLayoutProjection(comp, env, c.assignment);
           expect(native.kind, c.id).toBe('ready');
-          expect(iosLayoutProjection(comp as object, env, c.assignment)).toEqual(native);
-          n++;
+          expect(iosLayoutProjection(comp, env, c.assignment)).toEqual(native);
         }
       }
-    }
-    expect(n).toBe(ids.length * (1 + DPRS.length));
+    });
   });
 });
 
