@@ -450,6 +450,7 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
         break;
       case 'border-radius':
       case 'box-shadow':
+      case 'opacity':
         // The state runtime has no writer for these yet (PNT1 paints them from the program); a case script would drop them.
         throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
       default: {

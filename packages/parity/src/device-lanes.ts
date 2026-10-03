@@ -326,13 +326,14 @@ export function trustFailuresOf(rows: readonly TrustRow[], dpr: number, device: 
 }
 
 /**
- * A paint plant's verdict on its cases: caught only when the host finished, device-pixels failed on one of the plant's sample
- * rules, and device-frames and device-lines have no failure (pixels see what (d) cannot).
+ * A paint plant's verdict on its cases: caught only when the host finished, the plant's lane failed on one of its rules (a pixel
+ * failure on a sample rule for device-pixels, any failure on a node for device-applied), and device-frames and device-lines have
+ * no failure (the plant changes what (d) cannot see).
  */
-export function plantVerdict(failures: readonly LaneFailure[], hostError: string | null, rule: RegExp): { readonly caught: boolean; readonly pixels: number; readonly inked: number; readonly frames: number; readonly lines: number } {
-  const of = (lane: DeviceCheckLane): LaneFailure[] => failures.filter((f) => f.lane === lane);
+export function plantVerdict(failures: readonly LaneFailure[], hostError: string | null, rule: RegExp, lane: 'device-pixels' | 'device-applied' = 'device-pixels'): { readonly caught: boolean; readonly pixels: number; readonly inked: number; readonly frames: number; readonly lines: number } {
+  const of = (l: DeviceCheckLane): LaneFailure[] => failures.filter((f) => f.lane === l);
   const pixels = of('device-pixels');
-  const inked = pixels.filter((f) => f.kind === 'pixel' && rule.test(f.node ?? '')).length;
+  const inked = of(lane).filter((f) => (lane === 'device-applied' || f.kind === 'pixel') && rule.test(f.node ?? '')).length;
   const frames = of('device-frames').length;
   const lines = of('device-lines').length;
   return { caught: hostError === null && inked > 0 && frames === 0 && lines === 0, pixels: pixels.length, inked, frames, lines };

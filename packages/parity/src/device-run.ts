@@ -58,13 +58,24 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'radius-square': ['radius-basic'],
   // calib-shadow-blur's small blurs change the sampled shadow pixels under a 1 device px shift.
   'shadow-offset-1': ['calib-shadow-blur'],
+  // opacity-basic's boxes (ids op-*) read back alpha 1 when the writer ignores it.
+  'alpha-ignored': ['opacity-basic'],
 };
-/** The sample rules a paint plant's device-pixels failures must name: border bands and edges, radius or shadow points. */
+/** What a paint plant's failures must name on its lane (PLANT_LANES): sample rules for device-pixels, node ids for device-applied. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-phase-1': /^(border:|edge:)/,
   'dash-gap-unfitted': /^(border:|edge:)/,
   'radius-square': /^radius:/,
   'shadow-offset-1': /^shadow:/,
+  'alpha-ignored': /^op-/,
+};
+/** The lane each paint plant must fail: device-pixels for paint, device-applied for a native property the readback sees. */
+export const PLANT_LANES: { readonly [P in PaintPlant]: 'device-pixels' | 'device-applied' } = {
+  'dash-phase-1': 'device-pixels',
+  'dash-gap-unfitted': 'device-pixels',
+  'radius-square': 'device-pixels',
+  'shadow-offset-1': 'device-pixels',
+  'alpha-ignored': 'device-applied',
 };
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };

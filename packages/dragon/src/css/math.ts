@@ -622,7 +622,8 @@ export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or
 
 // aspect-ratio: each <ratio> part is a <number [0,∞]> (css-sizing-4 §5.1), so a math function in it resolves to a number.
 const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio']);
-const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex']);
+/** opacity is <number> | <percentage> (css-color-4 §3.2); Chrome resolves a calculation in it as a number or a percentage. */
+const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity']);
 /** Properties whose syntax is a plain <length> without being a line width (css-ui-4 §3.4 outline-offset). */
 const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset']);
 

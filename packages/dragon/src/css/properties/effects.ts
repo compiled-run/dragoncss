@@ -1,22 +1,26 @@
-// color-scheme (css-color-adjust-1 §2), with Chrome 145's parsing: normal, or light, dark and custom idents with at most one only,
-// which Chrome serializes last (light and dark lowercase, custom idents as written). opacity and z-index join this family with the
-// stacking package.
+// opacity (css-color-4 §14.1) and color-scheme (css-color-adjust-1 §2), with Chrome 145's parsing: opacity is a number or a
+// percentage, kept as written and clamped to [0, 1] at computed-value time; color-scheme is normal, or light, dark and custom idents
+// with at most one only, which Chrome serializes last (light and dark lowercase, custom idents as written). z-index joins this
+// family with the stacking package.
+import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Span } from '../../types.ts';
 import { spanOf } from '../ast.ts';
 import { asciiLower, decodeName } from '../escapes.ts';
+import { foldNumber, parseMath, V1_MATH_FUNCTIONS } from '../math.ts';
 import type { PropertyAspect } from '../properties.ts';
 import type { LonghandValue, ParsedValue } from '../stylesheet.ts';
 import type { CssValue } from '../values.ts';
 
-export const EFFECTS_LONGHANDS = ['color-scheme'] as const;
+export const EFFECTS_LONGHANDS = ['opacity', 'color-scheme'] as const;
 export const EFFECTS_SHORTHANDS = [] as const;
 export const EFFECTS_INHERITED: readonly (typeof EFFECTS_LONGHANDS)[number][] = ['color-scheme'];
 export const EFFECTS_CONTAINER: readonly (typeof EFFECTS_LONGHANDS)[number][] = [];
 export const EFFECTS_TEXT_ROLE: readonly (typeof EFFECTS_LONGHANDS)[number][] = [];
 
 export const EFFECTS_ASPECTS: { readonly [P in (typeof EFFECTS_LONGHANDS)[number]]: PropertyAspect } = {
+  opacity: { layout: false, paint: true },
   'color-scheme': { layout: false, paint: true },
 };
 
@@ -24,6 +28,38 @@ export const EFFECTS_ASPECTS: { readonly [P in (typeof EFFECTS_LONGHANDS)[number
 export const COLOR_SCHEME_LIST = 'color-scheme-list';
 
 const single = (property: string, value: CssValue): ParsedValue => ({ kind: 'ok', longhands: [{ property, value, explicit: true } as LonghandValue] });
+
+function refuse(property: string, t: CssNode, base: Span, why: string, manual: string): ParsedValue {
+  return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${why}`, manual }) };
+}
+
+/** A number calculation folded now (css-values-4 §10), or the refusal; null for a token that is not a math function. */
+function numberCalc(property: string, t: CssNode, base: Span, manual: string): { readonly value: number } | ParsedValue | null {
+  if (t.type !== 'Function' || !V1_MATH_FUNCTIONS.has(asciiLower(String(t['name'])))) return null;
+  const parsed = parseMath(generate(t), { type: 'number' });
+  if (!parsed.ok) return refuse(property, t, base, parsed.reason, manual);
+  return { value: foldNumber(parsed.node) };
+}
+
+const OPACITY_FIX = 'Write opacity as a number or a percentage, or a calc() of numbers.';
+
+/** css-color-4 §14.1: <opacity-value> is a number or a percentage; any value parses, and the computed value is clamped. */
+export function parseOpacity(tokens: readonly CssNode[], base: Span): ParsedValue {
+  if (tokens.length !== 1) return { kind: 'invalid', reason: 'opacity is one number or percentage' };
+  const t = tokens[0] as CssNode;
+  if (t.type === 'Number') return single('opacity', { kind: 'number', value: Number(t['value']) });
+  if (t.type === 'Percentage') return single('opacity', { kind: 'percentage', value: Number(t['value']) });
+  const calc = numberCalc('opacity', t, base, OPACITY_FIX);
+  if (calc === null) return { kind: 'invalid', reason: 'opacity is one number or percentage' };
+  return 'value' in calc ? single('opacity', { kind: 'number', value: calc.value }) : calc;
+}
+
+/** The computed opacity of a declared value: the number, or the percentage / 100, clamped to [0, 1]; null for any other value. */
+export function opacityOf(v: CssValue): number | null {
+  const n = v.kind === 'number' ? v.value : v.kind === 'percentage' ? v.value / 100 : null;
+  if (n === null || !Number.isFinite(n)) return null;
+  return n < 0 ? 0 : n > 1 ? 1 : n;
+}
 
 /** The idents a color-scheme ident list may not hold (css-color-adjust-1 §2: normal, default and the CSS-wide keywords). */
 const RESERVED = new Set(['normal', 'default', 'inherit', 'initial', 'unset', 'revert', 'revert-layer']);
@@ -100,5 +136,6 @@ export function usedColorSchemeOf(s: ColorScheme, prefersDark: boolean): 'light'
 
 /** The value parsers of the effects longhands (the paint value hook, css/paint-parsers.ts). */
 export const EFFECTS_VALUE_PARSERS: { readonly [P in (typeof EFFECTS_LONGHANDS)[number]]: (tokens: readonly CssNode[], base: Span) => ParsedValue } = {
+  opacity: parseOpacity,
   'color-scheme': parseColorScheme,
 };
