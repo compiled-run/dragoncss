@@ -991,6 +991,13 @@ function valueOrigin(root: ResolvedElement, address: string, p: Longhand, chrome
   return { kind: 'builtin', dataset: `@webref/css ${webrefVersion} initial`, entry: p };
 }
 
+/** explain's support entry: the row's status, with its environment note when the row has one. */
+function supportOfRow(profile: SupportProfile, feature: string, context: string): ExplainedCase['support'] {
+  const row = profile.rows.find((r) => r.feature === feature && r.context === context);
+  const status = statusOf(profile, feature, context);
+  return row?.note === undefined ? { feature, context, status } : { feature, context, status, note: row.note };
+}
+
 function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>, chromeVersion: string): ExplainResult<K> {
   const target = q.target as string;
   if (!(target in a.report.targets)) {
@@ -1031,7 +1038,7 @@ function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>, chromeV
       cascade: v.origin,
       origin: valueOrigin(c.resolved, address, p, chromeVersion),
       losing: v.losing.map((d) => ({ origin: authored(d.span), reason: 'lower specificity or earlier in the style order' })),
-      support: used === null || used === undefined ? null : { feature: used.feature, context: used.context, status: statusOf(profile, used.feature, used.context) },
+      support: used === null || used === undefined ? null : supportOfRow(profile, used.feature, used.context),
     });
   }
   if (out.length === 0) return { kind: 'not-found', reason: `no ${q.property} on ${address} in any matching case` };

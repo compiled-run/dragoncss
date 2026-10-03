@@ -442,6 +442,27 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/dom/element.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "CSSOM View §4 (scrollWidth, scrollHeight, clientWidth, clientHeight) and Chrome observation (two rounding formulas)",
+        "proof": [
+          "packages/parity/test/ovfl-metrics.test.ts#Blink integer conversions"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012, 2013 Apple Inc.",
+      "fileSha256": "8246d1d6996ce777b7f3d557551fe8321954fac953f7e50e3557b311b077c4a6",
+      "headerSha256": "ed55e617785b61f79196c68e539589529f5d351f974e0d26e9e82509e500e59a",
+      "ranges": [
+        { "lines": "2593-2935", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/parity/src/scroll-metrics.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/frame/local_frame_view.cc",
       "licence": "lgpl",
       "ruling": {
@@ -582,6 +603,27 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/range-value.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/adjust_for_absolute_zoom.h",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "CSSOM View §4 and Chrome observation (two rounding formulas)",
+        "proof": [
+          "packages/parity/test/ovfl-metrics.test.ts#Blink integer conversions"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2000 Lars Knoll (knoll@kde.org); Copyright (C) 2003, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All; Copyright (C) 2006 Graham Dennis (graham.dennis@gmail.com)",
+      "fileSha256": "89b4a63b863604b0dac7416843e9f9b9590363f389d75971d2ae937db3ebf5f9",
+      "headerSha256": "efcda54144b7f80aeac0ea2b8441812ee1603c4a5609b9e7cd2c493f44a66444",
+      "ranges": [
+        { "lines": "44-57", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/parity/src/scroll-metrics.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -958,7 +1000,8 @@
         "class": "A",
         "basis": "css-overflow-3 §2.2 (the scrollport is part of the scrollable overflow) and Chrome observation (one unite with the client size)",
         "proof": [
-          "packages/layout/test/overflow.test.ts"
+          "packages/layout/test/overflow.test.ts",
+          "packages/parity/test/ovfl-metrics.test.ts"
         ]
       },
       "licencePhrase": "GNU Lesser General Public License",
