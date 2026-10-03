@@ -1,8 +1,8 @@
 // Scroll metrics (OVFL, notes/T046-paint-spec.md §5.8): Chrome's scrollWidth, scrollHeight, clientWidth and clientHeight of every
 // scroll container and of the viewport (document.scrollingElement), captured under chromeArgsAt at DPR 1, 2, 3 and 2.625 into
 // packages/parity/expected-scroll/<platform>/dpr-<N>/<case>.scroll.json, and the engine's (packages/layout/src/overflow.ts)
-// converted to the same integers the way Blink 145.0.7632.6 converts them (core/dom/element.cc lines 2593-2935,
-// core/layout/adjust_for_absolute_zoom.h lines 44-57, PaintLayerScrollableArea::PixelSnappedContentsSize).
+// converted to the integers CSSOM View §4 reports, with Chrome 145.0.7632.6's two rounding formulas as measured (ports.json
+// references: core/dom/element.cc lines 2593-2935, core/layout/adjust_for_absolute_zoom.h lines 44-57).
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import type { EngineFaults, LayoutBox, LayoutInput, LU } from '@dragon/layout';
