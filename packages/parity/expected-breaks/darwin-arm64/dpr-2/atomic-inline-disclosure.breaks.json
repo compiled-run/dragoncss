@@ -1,0 +1,10 @@
+{
+  "case": "atomic-inline-disclosure",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"text:text0","data":"Demo music streams","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"terms:text0","data":"Terms","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"privacy:text0","data":"Privacy","lines":1,"units":[0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

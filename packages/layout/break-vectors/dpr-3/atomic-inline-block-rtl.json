@@ -1,0 +1,19 @@
+{
+  "case": "atomic-inline-block-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"text:text0","lines":[[0,1]]},
+    {"id":"text-ib:text0","lines":[[0,1]]},
+    {"id":"text-ib:text1","lines":[[0,1]]},
+    {"id":"text:text1","lines":[[0,1]]},
+    {"id":"empty:text0","lines":[[0,1]]},
+    {"id":"empty:text1","lines":[[0,1]]},
+    {"id":"over:text0","lines":[[0,1]]},
+    {"id":"over-ib:text0","lines":[[0,1]]},
+    {"id":"over-ib:text1","lines":[[0,1]]},
+    {"id":"over:text1","lines":[[0,1]]},
+    {"id":"child:text0","lines":[[0,1]]},
+    {"id":"child-blk:text0","lines":[[0,1]]},
+    {"id":"child:text1","lines":[[0,1]]}
+  ]
+}

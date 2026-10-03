@@ -1,0 +1,13 @@
+{
+  "case": "atomic-inline-shrink-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"short-ib:text0","data":"aa bb","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"wrap-ib:text0","data":"aa bb cc","lines":3,"units":[0,0,0,1,1,1,2,2],"blank":[2,5]},
+    {"id":"min-ib:text0","data":"aaa b","lines":2,"units":[0,0,0,0,1],"blank":[3]},
+    {"id":"margins:text0","data":"x","lines":1,"units":[0],"blank":[]},
+    {"id":"margins:text1","data":"y","lines":1,"units":[0],"blank":[]},
+    {"id":"margins-ib:text0","data":"aa bb","lines":1,"units":[0,0,0,0,0],"blank":[]}
+  ]
+}
