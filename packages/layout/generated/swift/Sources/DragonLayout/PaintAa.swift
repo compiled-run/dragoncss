@@ -1946,11 +1946,11 @@ public func paintAa_insertionSort(_ xs: JsArray<EdgeCell>, _ left: Double, _ cou
   // ts: packages/layout/src/paint-aa.ts:1460
   do {
     var next: Double = (left + 1.0)
-    loop11: while (next <= right) {
-      loop11_body: do {
+    loop14: while (next <= right) {
+      loop14_body: do {
         // ts: packages/layout/src/paint-aa.ts:1461
         if try (!paintAa_edgeLess(paintAa_edgeAt(xs, next).e, paintAa_edgeAt(xs, (next - 1.0)).e)) {
-          break loop11_body
+          break loop14_body
         }
         let insert: Edge = try paintAa_edgeAt(xs, next).e
         var hole: Double = next

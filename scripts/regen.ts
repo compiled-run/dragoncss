@@ -47,6 +47,8 @@ export function lanesVerdict(code: number, log: string): boolean {
 export const STEPS: readonly Step[] = [
   { name: 'grammar', argv: pnpm('grammar:gen'), outputs: ['packages/dragon/src/css/grammar.generated.ts'] },
   { name: 'notices', argv: pnpm('notices:gen'), outputs: ['THIRD_PARTY_NOTICES.md'] },
+  // BG2 R3: the capture host's tanf, sinf and cosf where they differ from fdlibm (a probe, like a Chrome capture).
+  { name: 'libm', argv: pnpm('libm:capture'), outputs: ['packages/dragon/src/paint-data/libm-darwin-arm64.generated.ts'] },
   { name: 'ua', argv: pnpm('ua:capture'), outputs: ['packages/dragon/src/ua/*.generated.ts'], readsLater: ['profile-rows'] },
   { name: 'capture', argv: pnpm('parity:capture'), outputs: ['packages/parity/expected/darwin-arm64/**', 'packages/parity/emitted/**', 'packages/parity/expected-fonts/**'], readsLater: ['profile-rows'] },
   // profile:rows also writes the committed native lanes verdict (P6a, T075J) from lanes.json, which lanes-host writes later.
@@ -83,6 +85,7 @@ export const MANUAL: readonly { readonly command: string; readonly outputs: read
   // A paint package's vector inputs are written by its test from the input list it pins (paint-dash.test.ts dashVectorInputs);
   // the test fails when the committed file differs, and the paint-vectors step reads it.
   { command: 'DRAGON_WRITE_DASH_INPUTS=1 npx vitest run packages/layout/test/paint-dash.test.ts', outputs: ['packages/layout/paint-vectors/dash/inputs.jsonl'] },
+  { command: 'none: the gradient paint-vector cases, written by hand with the engine they test (BG2)', outputs: ['packages/layout/paint-vectors/gradient/inputs.jsonl'] },
   { command: 'pnpm run rt:oracle', outputs: ['packages/layout/rt-oracle/**', 'packages/layout/rt-vectors/**'] },
   { command: 'pnpm run parity:glyph-calibration', outputs: ['packages/parity/expected-glyphs/darwin-arm64/**'] },
   { command: 'node scripts/gen-script-data.ts', outputs: ['packages/layout/src/script-data.ts'] },

@@ -169,10 +169,16 @@
       "fileSha256": "e0c34ef496c8b9b6dc51720898f563888b4e721a55daa403a0b3628d836f642b",
       "headerSha256": "b20999bab6461f66d0a5d95f159f1aea8d7160988be022b49353ef0d67f0a8f5",
       "ranges": [
-        { "lines": "1249-1321", "symbol": "EndPointsFromAngle", "source": "located" }
+        { "lines": "646-827", "symbol": "CSSGradientValue::AddStops", "source": "cited" },
+        { "lines": "1249-1321", "symbol": "EndPointsFromAngle", "source": "located" },
+        { "lines": "1338-1432", "symbol": "CSSLinearGradientValue::CreateGradient", "source": "cited" },
+        { "lines": "1867-1964", "symbol": "CSSRadialGradientValue::CreateGradient", "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/paint-dither.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/paint-dither.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "endPointsFromAngle", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "gradientDesc", "use": "port" }
       ]
     },
     {
@@ -877,6 +883,26 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/paint/background_image_geometry.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "ad5f47d531f64f0e8a298e28e46b786933d5a3bdacbc89f64c0c5680f2ed6c1e",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "97-189", "symbol": "BackgroundImageGeometry::SetNoRepeatX", "source": "located" },
+        { "lines": "205-328", "symbol": "BackgroundImageGeometry::ComputeDestRectAdjustments", "source": "located" },
+        { "lines": "397-701", "symbol": "BackgroundImageGeometry::Calculate", "source": "located" },
+        { "lines": "774-782", "symbol": "BackgroundImageGeometry::ComputePhase", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "layerPlacement", "use": "port" },
+        { "file": "packages/layout/test/paint-gradient.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/paint/box_border_painter.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -907,6 +933,24 @@
         { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/paint-radius.ts", "symbol": "outlineRings", "use": "port" },
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/box_painter_base.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "bb6718a8cb3885693a35ec51b14cae7c44ab1f26d518e27fab4ca077d3bd9995",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "623-687", "symbol": "OptimizeToSingleTileDraw", "source": "located" },
+        { "lines": "707-779", "symbol": "DrawTiledBackground", "source": "located" },
+        { "lines": "932-1046", "symbol": "PaintFastBottomLayer", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "layerPlacement", "use": "port" }
       ]
     },
     {
@@ -2059,6 +2103,42 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/platform/graphics/gradient_generated_image.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-8",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2008, 2009, 2010, 2012 Apple Inc. All rights reserved.",
+      "fileSha256": "ca65f03ca812321cce26012699947520c9c55eb20c028cfd21cd3b551f32e94c",
+      "headerSha256": "3e9da34b8b4a0461e81596b0b1f06f6353e2f308151027f6f89520e1c8171c25",
+      "ranges": [
+        { "lines": "33-60", "symbol": "GradientGeneratedImage::Draw", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "planBackground", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkMatrix.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "1b16a608613ccc7afd2341804b41fa9047af576c3896cbe10493063bbd0450cc",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "101-160", "symbol": "SkMatrix::computeTypeMask", "source": "located" },
+        { "lines": "285-317", "symbol": "SkMatrix::postTranslate", "source": "located" },
+        { "lines": "406-454", "symbol": "SkMatrix::setSinCos", "source": "located" },
+        { "lines": "559-599", "symbol": "SkMatrix::Rect2Rect", "source": "located" },
+        { "lines": "615-684", "symbol": "SkMatrix::setConcat", "source": "located" },
+        { "lines": "745-881", "symbol": "SkMatrix::invert", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "ui/gfx/geometry/cubic_bezier.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -2153,9 +2233,23 @@
       "cited": [
         "stdint.h"
       ],
-      "source": "the C standard library header, included by Dragon's C header",
+      "source": "the C standard library header, included by Dragon's C header and the libm probe",
       "files": [
-        "packages/text-shaper/include/dragon_hb.h"
+        "packages/text-shaper/include/dragon_hb.h",
+        "scripts/capture-libm.ts"
+      ]
+    },
+    {
+      "cited": [
+        "math.h",
+        "stdio.h",
+        "string.h",
+        "mach-o/dyld.h",
+        "mach-o/loader.h"
+      ],
+      "source": "the C standard library and macOS dyld headers, included by the libm probe scripts/capture-libm.ts compiles on the capture host",
+      "files": [
+        "scripts/capture-libm.ts"
       ]
     }
   ],

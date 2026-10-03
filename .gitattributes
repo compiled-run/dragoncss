@@ -3,6 +3,7 @@
 # packages/parity/test/regen.test.ts keeps this list equal to the regen steps' outputs.
 packages/dragon/src/css/grammar.generated.ts merge=dragon-generated
 THIRD_PARTY_NOTICES.md merge=dragon-generated
+packages/dragon/src/paint-data/libm-darwin-arm64.generated.ts merge=dragon-generated
 packages/dragon/src/ua/*.generated.ts merge=dragon-generated
 packages/parity/expected/darwin-arm64/** merge=dragon-generated
 packages/parity/emitted/** merge=dragon-generated

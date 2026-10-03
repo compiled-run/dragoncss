@@ -8,8 +8,8 @@ import type { BoxShape } from '../src/index.ts';
 
 const layout = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FEATURES = ['radius', 'shadow', 'gradient', 'transform', 'dash', 'scrollbar'];
-/** The seams a package has filled: dash by P6a, radius and shadow by PNT1 (each paint-<feature>.ts, its index.ts lines and its vectors). */
-const FILLED = ['dash', 'radius', 'shadow'];
+/** The seams a package has filled: dash by P6a, radius and shadow by PNT1, gradient by BG2 (each paint-<feature>.ts, its index.ts lines and its vectors). */
+const FILLED = ['dash', 'radius', 'shadow', 'gradient'];
 const STUBS = FEATURES.filter((f) => !FILLED.includes(f));
 /** The functions paint.ts exports (PNT1 effects: Skia's paint alpha byte of an opacity, which the device and the host share). */
 const PAINT_FUNCTIONS = ['opacityAlpha8'];
@@ -37,6 +37,8 @@ describe('EMS: engine paint seams', () => {
       "export { insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver } from './paint-shadow.ts';",
       "export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';",
       "export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from './paint-dash.ts';",
+      "export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';",
+      "export { backgroundPixelExact, backgroundRow, gradientFaults, NO_GRADIENT_FAULTS, planBackground, referenceTileSize } from './paint-gradient.ts';",
     ]);
   });
   it('every feature no package has filled has an empty paint-vectors suite', () => {

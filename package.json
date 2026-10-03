@@ -11,6 +11,7 @@
     "setup:git": "git config merge.dragon-generated.name 'keep this side; pnpm regen rebuilds it' && git config merge.dragon-generated.driver true",
     "grammar:gen": "node scripts/gen-css-grammar.ts",
     "ua:capture": "node --conditions=dragon-internal scripts/capture-ua-defaults.ts",
+    "libm:capture": "node scripts/capture-libm.ts",
     "parity:capture": "node --conditions=dragon-internal packages/parity/src/cli/capture.ts",
     "parity:report": "node --conditions=dragon-internal packages/parity/src/cli/report.ts",
     "layout:vectors": "node --conditions=dragon-internal packages/parity/src/cli/vectors.ts",

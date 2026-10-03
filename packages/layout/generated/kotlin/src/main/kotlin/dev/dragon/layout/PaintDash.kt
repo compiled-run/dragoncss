@@ -220,12 +220,12 @@ fun paintDash_borderNeedsSidePainter(widths: JsArray<Double>, styles: JsArray<St
   // ts: packages/layout/src/paint-dash.ts:143
   run {
     var side: Double = 0.0
-    loop3@ while ((side < 4.0)) {
-      loop3_body@ do {
+    loop6@ while ((side < 4.0)) {
+      loop6_body@ do {
         val e: DashEdge = paintDash_makeEdge(widths, styles, colors, side)
         // ts: packages/layout/src/paint-dash.ts:145
         if ((!paintDash_shouldRender(e))) {
-          break@loop3_body
+          break@loop6_body
         }
         // ts: packages/layout/src/paint-dash.ts:146
         if (paintDash_isDottedOrDashed(e.style)) {
@@ -337,11 +337,11 @@ fun paintDash_opacityGroups(p: DashPainter): JsArray<DashOpacityGroup> {
       // ts: packages/layout/src/paint-dash.ts:231
       run {
         var side: Double = 0.0
-        loop8@ while ((side < 4.0)) {
-          loop8_body@ do {
+        loop11@ while ((side < 4.0)) {
+          loop11_body@ do {
             // ts: packages/layout/src/paint-dash.ts:232
             if ((!paintDash_shouldRender(paintDash_edgeAt(p.edges, side)))) {
-              break@loop8_body
+              break@loop11_body
             }
             var before: Double = 0.0
             // ts: packages/layout/src/paint-dash.ts:234
