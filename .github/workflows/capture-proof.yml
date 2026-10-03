@@ -18,8 +18,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Standard (free) arm64 runners only. macos-26 is the OS the references were taken on; macos-15 is the spike's target.
-        os: [macos-15, macos-26]
+        # Standard (free) arm64 runners only, never -xlarge. macos-26 is the reference OS; xcode-27 (macOS 27, Xcode 27.0 27A266a,
+        # the local Mac's Xcode) is the image the iOS lanes and a full regen with the Swift host lane would need.
+        os: [macos-15, macos-26, xcode-27]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
