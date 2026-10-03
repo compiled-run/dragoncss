@@ -531,7 +531,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           },
           {
            "kind": "text",
@@ -550,7 +552,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -823,7 +827,9 @@
               "value": 1.5
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           },
@@ -977,7 +983,9 @@
               "value": 1.5
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           }
