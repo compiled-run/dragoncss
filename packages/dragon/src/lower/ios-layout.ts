@@ -12,6 +12,7 @@ import type {
   FlexWrap,
   FontSpec,
   GapValue,
+  InlineChild,
   InsetValue,
   JustifyContent,
   LayoutBox,
@@ -213,7 +214,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
-    display: keyword<Display>(id, get, 'display', ['block', 'flex']),
+    display: keyword<Display>(id, get, 'display', ['block', 'flex', 'inline']),
     position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute']),
     top: inset(id, get, 'top', l),
     right: inset(id, get, 'right', l),
@@ -328,17 +329,45 @@ export function assertTextCarriesContainer(container: LayoutStyle, containerId: 
   }
 }
 
+/** CSS2 §9.2.2: inline-level content: text, and an element whose box is an inline box (display: inline, <br> included). */
+const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || displayOf(c) === 'inline';
+
+type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null };
+
+/**
+ * One piece of inline content (CSS2 §9.2.2): a text leaf, a <br> as a LineBreak, or an inline box with its own font and
+ * line-height (the strut it adds to every line it is on, §10.8.1). A block-level box inside an inline box (block-in-inline) is
+ * refused. Text in an inline box is laid out with its block container's text-align and direction, so only the container's text
+ * carries them (C5).
+ */
+function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild {
+  if (c.kind === 'text') return lowerText(c);
+  const id = c.element.address;
+  const own = lowerFont(id, (p) => (c.props.get(p) as ResolvedValue).value);
+  if (c.element.tag === 'br') {
+    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' };
+    return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
+  }
+  const kids = c.children.filter((k) => k.kind === 'text' || displayOf(k) !== 'none');
+  const block = kids.find((k) => !isInlineLevel(k));
+  if (block !== undefined && block.kind === 'element') {
+    throw new LoweringError(block.element.address, 'display', `block-level <${block.element.tag}> ${block.element.address} inside inline box ${id} (CSS2 §9.2.1.1 block-in-inline) is not laid out`);
+  }
+  return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, l)) };
+}
+
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box inherits the inherited properties of its enclosing box and takes the
-// initial value of every other property; it is block-level (a block container, blockified as a flex item).
-function anonymousBox(parent: ResolvedElement, id: string, texts: readonly ResolvedText[], faults: CompilerFaults, ua: UaDataset): LayoutBox {
+// initial value of every other property; it is block-level (a block container, blockified as a flex item). It holds a maximal run
+// of inline-level content: text, inline boxes and <br>s.
+function anonymousBox(parent: ResolvedElement, id: string, items: readonly (ResolvedElement | ResolvedText)[], l: Lowerer): LayoutBox {
   // Every length an anonymous box takes is an initial value, never a calculation, so it reads no font size.
   const values = new Map<Longhand, CssValue>();
-  for (const p of LONGHANDS) values.set(p, INHERITED.has(p) ? (parent.props.get(p) as ResolvedValue).value : initialValue(p, ua));
+  for (const p of LONGHANDS) values.set(p, INHERITED.has(p) ? (parent.props.get(p) as ResolvedValue).value : initialValue(p, l.ua));
   values.set('display', { kind: 'keyword', value: 'block' });
   // Every non-inherited property of an anonymous box is its initial value.
-  const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), faults, ua, { em: null, rem: null });
-  for (const t of texts) assertTextCarriesContainer(style, id, t);
-  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, texts.length > 0), children: texts.map(lowerText) };
+  const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), l.faults, l.ua, { em: null, rem: null });
+  for (const t of items) if (t.kind === 'text') assertTextCarriesContainer(style, id, t);
+  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0), children: items.map((c) => lowerInline(c, l)) };
 }
 
 /**
@@ -348,36 +377,41 @@ function anonymousBox(parent: ResolvedElement, id: string, texts: readonly Resol
 export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset): LayoutBox {
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
   // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
-  return lowerBox(root, faults, ua, rootFontSizeOf(root));
+  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root) });
 }
 
 /**
- * The layout tree of one resolved element that generates a box. Text beside element boxes, or directly in a flex container, is
- * wrapped in anonymous boxes "<element>:anon<k>", one per maximal text sequence; display: none children are omitted, so they never
- * split a text sequence. The engine never creates boxes.
+ * The layout tree of one resolved element that generates a box. Inline-level content (text, inline boxes, <br>s) beside block-level
+ * boxes, or directly in a flex container, is wrapped in anonymous boxes "<element>:anon<k>", one per maximal run; display: none
+ * children are omitted, so they never split a run. The engine never creates boxes.
  */
-function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null): LayoutBox {
+function lowerBox(el: ResolvedElement, l: Lowerer): LayoutBox {
   const id = el.element.address;
   const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
-  const style = lowerStyle(el, faults, ua, rootFontSize);
-  const wrap = kids.some((c) => c.kind === 'text') && (displayOf(el) === 'flex' || kids.some((c) => c.kind === 'element'));
-  const children: (LayoutBox | TextLeaf)[] = [];
-  let run: ResolvedText[] = [];
+  const style = lowerStyle(el, l.faults, l.ua, l.rootFontSize);
+  const inline = kids.filter(isInlineLevel);
+  const wrap = inline.length > 0 && (displayOf(el) === 'flex' || inline.length !== kids.length);
+  const children: (LayoutBox | InlineChild)[] = [];
+  let run: (ResolvedElement | ResolvedText)[] = [];
   let anon = 0;
   const flush = (): void => {
-    if (run.length > 0) children.push(anonymousBox(el, `${id}:anon${anon++}`, run, faults, ua));
+    if (run.length > 0) children.push(anonymousBox(el, `${id}:anon${anon++}`, run, l));
     run = [];
   };
   for (const c of kids) {
-    if (c.kind === 'element') {
+    if (!isInlineLevel(c)) {
       flush();
-      children.push(lowerBox(c, faults, ua, rootFontSize));
-    } else if (wrap) run.push(c);
+      children.push(lowerBox(c as ResolvedElement, l));
+    } else if (wrap) {
+      if (l.faults.inlineWrapperPerElement && c.kind === 'element') flush();
+      run.push(c);
+      if (l.faults.inlineWrapperPerElement && c.kind === 'element') flush();
+    }
     else {
-      assertTextCarriesContainer(style, id, c);
-      children.push(lowerText(c));
+      if (c.kind === 'text') assertTextCarriesContainer(style, id, c);
+      children.push(lowerInline(c, l));
     }
   }
   flush();
-  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, children.some((c) => c.kind === 'text')), children };
+  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, children.some((c) => c.kind !== 'box')), children };
 }

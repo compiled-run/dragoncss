@@ -2,7 +2,8 @@
 // the refusal of inline-level boxes, and the two planted faults.
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import type { LayoutBox } from '@dragon/layout';
+import { createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/internal.ts';
 import type { CompilerFaults } from '../src/faults.ts';
 import type { Longhand } from '../src/css/properties.ts';
 import { LONGHANDS } from '../src/css/properties.ts';
@@ -21,6 +22,7 @@ import { referenceDataset } from '../src/ua/datasets.ts';
 import { DOC, inputFor, staticClass, text } from './helpers.ts';
 
 const SRC: SourceRef = { uri: 's.css', revision: 'r', hash: 'h' };
+const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
 const ORIGIN: Origin = { kind: 'unlocated', reason: 'test' };
 
 const project = (faults: CompilerFaults = NO_FAULTS) =>
@@ -159,8 +161,7 @@ describe('blockification in the resolver', () => {
     expect(displayOf((r) => [el(r, 'c', 'div', ['f'], [el(r, 'b', 'span', ['if'], [el(r, 's', 'span')])])], 's')).toBe('block');
   });
   it('an inline box (display: inline, INL1a) is not refused, an atomic inline is refused on every target, and display: none subtrees are not laid out', () => {
-    // INL1a part C1: analysis lets the inline box through; it has no lowering until part C2, so the ios output refuses it there.
-    expect(codes((r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', [], [text(r, 't', 'X')])])])).toEqual(['DRAGON_LOWERING_FAILED ios display: inline on s has no layout mapping (expected block | flex)']);
+    expect(codes((r) => [el(r, 'c', 'div', [], [el(r, 's', 'span', [], [text(r, 't', 'X')])])])).toEqual([]);
     // An author's inline-block or inline-flex in a block container: an atomic inline (INL2), refused on ios and web by the
     // committed support profiles, with both outputs blocked.
     for (const cls of ['ib', 'if']) {
@@ -176,12 +177,19 @@ describe('blockification in the resolver', () => {
     expect(codes((r) => [el(r, 'c', 'div', ['f'], [el(r, 's', 'label', [], [text(r, 't', 'X')])])])).toEqual([]);
     expect(project().compile(inputFor(`${FONT} .n { display: none; }`, (r) => [el(r, 'c', 'div', ['n'], [el(r, 's', 'span')])])).diagnostics).toEqual([]);
   });
-  it('blockifySkipped leaves a flex item inline: an inline box, which the ios lowering refuses until INL1a part C2 lowers it', () => {
-    const faults = { ...NO_FAULTS, blockifySkipped: true };
+  it('blockifySkipped leaves a flex item inline, so the lowered input has an inline box in an anonymous flex item where unfaulted it has a block', () => {
     const tree = (r: SourceRef) => [el(r, 'c', 'div', ['f'], [el(r, 's', 'span', [], [text(r, 't', 'X')])])];
-    expect(displayOf(tree, 's', faults)).toBe('inline');
-    expect(codes(tree)).toEqual([]);
-    expect(codes(tree, faults)).toEqual(['DRAGON_LOWERING_FAILED ios display: inline on s has no layout mapping (expected block | flex)']);
+    const flexChildren = (faults: CompilerFaults): unknown => {
+      const p = iosLayoutProjection(project(faults).compile(inputFor(FONT, tree)), ENV, []);
+      if (p.kind !== 'ready') throw new Error(`projection blocked: ${p.reason}`);
+      const find = (b: LayoutBox): LayoutBox | null => (b.id === 'c' ? b : b.children.flatMap((k) => (k.kind === 'box' ? [find(k)] : [])).find((x) => x !== null) ?? null);
+      const c = find(p.input.root);
+      if (c === null) throw new Error('no flex container c');
+      const shape = (k: LayoutBox['children'][number]): unknown => (k.kind === 'box' ? { box: k.id, display: k.style.display, children: k.children.map(shape) } : { [k.kind]: k.id, ...(k.kind === 'inline' ? { children: k.children.map(shape) } : {}) });
+      return c.children.map(shape);
+    };
+    expect(flexChildren(NO_FAULTS)).toEqual([{ box: 's', display: 'block', children: [{ text: 's:text0' }] }]);
+    expect(flexChildren({ ...NO_FAULTS, blockifySkipped: true })).toEqual([{ box: 'c:anon0', display: 'block', children: [{ inline: 's', children: [{ text: 's:text0' }] }] }]);
   });
   it('a parent that was not blockified first is an error, not a silent in-flow child', () => {
     const props = (display: string) => new Map<Longhand, ResolvedValue>([['display', { value: parseValueText('display', display), origin: 'author', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue], ['position', { value: parseValueText('position', 'static'), origin: 'initial', span: null, declaration: null, declared: null, losing: [] } as ResolvedValue]]);

@@ -15980,7 +15980,7 @@
     "css/css-flexbox/flex-container-min-content-002.tentative.html": {"missing":"DRAGON_UNSUPPORTED_PROPERTY:vertical-align: top","status":"not-runnable"},
     "css/css-flexbox/flex-cross-size-border-box-001.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-flexbox/flex-direction-column-001-visual.html": {"missing":"kind:other","status":"not-runnable"},
-    "css/css-flexbox/flex-direction-column-overlap-001.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNPROVEN_CONTEXT:font-size:<length-px>","status":"not-runnable"},
+    "css/css-flexbox/flex-direction-column-overlap-001.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNPROVEN_CONTEXT:position:relative","status":"not-runnable"},
     "css/css-flexbox/flex-direction-column-reverse-001-visual.html": {"missing":"kind:other","status":"not-runnable"},
     "css/css-flexbox/flex-direction-column-reverse-002-visual.html": {"missing":"kind:other","status":"not-runnable"},
     "css/css-flexbox/flex-direction-column-reverse.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},

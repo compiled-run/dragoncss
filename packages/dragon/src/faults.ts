@@ -51,6 +51,10 @@ export type CompilerFaults = {
   readonly stateDeltaDropped: boolean;
   /** The generated state setters never lay out again, even when the engine input changes (SELD-R1a). */
   readonly setterSkipsRelayout: boolean;
+  /** The lowering turns a <br> into a text leaf holding one space instead of a line break (INL1a). */
+  readonly brAsSpace: boolean;
+  /** Each inline-level child beside block-level boxes gets its own anonymous box instead of one per maximal run (CSS2 §9.2.1.1). */
+  readonly inlineWrapperPerElement: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false, blockifySkipped: false, inlineFlexToBlock: false, sumOrderSwapped: false, dropExplicitZeroPercent: false, mediaConditionIgnored: false, mediaBandOffByOne: false, stateDeltaDropped: false, setterSkipsRelayout: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false, blockifySkipped: false, inlineFlexToBlock: false, sumOrderSwapped: false, dropExplicitZeroPercent: false, mediaConditionIgnored: false, mediaBandOffByOne: false, stateDeltaDropped: false, setterSkipsRelayout: false, brAsSpace: false, inlineWrapperPerElement: false };
