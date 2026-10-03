@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.stage { display: flex; flex-wrap: wrap; column-gap: 16px; row-gap: 16px; padding: 16px; background-color: rgb(40, 60, 80); }
+.g { width: 32px; height: 32px; }
+.colour { background: linear-gradient(rgba(255, 0, 0, 0.5), transparent) rgb(250, 220, 60); }
+.beneath { background: linear-gradient(90deg, rgba(255, 255, 255, 0.4), transparent), repeating-linear-gradient(45deg, #222 0 4px, #ddd 4px 8px); }
+.grad-group { background: linear-gradient(rgba(255, 0, 0, 0.8), rgba(0, 0, 255, 0.3)); opacity: 0.6; }
+.grad-group-radial { background: radial-gradient(circle, #fa0, transparent 70%); opacity: 0.5; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="colour" class="g colour"></div>
+<div data-dragon-id="beneath" class="g beneath"></div>
+<div data-dragon-id="grad-group" class="g grad-group"></div>
+<div data-dragon-id="grad-group-radial" class="g grad-group-radial"></div>
+</div>
+</body>
+</html>

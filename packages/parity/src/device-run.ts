@@ -66,6 +66,10 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'foreground-under': ['stacking-foreground'],
   // outline-solid's ring points and scanlines (rules border:<id>:outline-* and edge:<id>:outline-*) see a 1 device px shift.
   'outline-offset-1': ['outline-solid'],
+  // gradient-linear's gradient points (rule gradient:<id>) see a 1 device px shift of every raster.
+  'gradient-offset-1': ['gradient-linear'],
+  // gradient-backdrop's translucent groups (ids grad-group*) paint translucent raster pixels, which an unpremultiplied upload darkens.
+  'gradient-unpremultiplied-upload': ['gradient-backdrop'],
   // visibility-paint's hidden boxes (ids hid-*) paint red when the writer is ignored; its visible children (kid-*) vanish when the
   // writer hides the box view itself.
   'visibility-ignored': ['visibility-paint'],
@@ -81,6 +85,8 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'order-swap': /^interior:/,
   'foreground-under': /^glyph:/,
   'outline-offset-1': /^(border|edge):[^:]+:outline-/,
+  'gradient-offset-1': /^gradient:/,
+  'gradient-unpremultiplied-upload': /^interior:grad-group/,
   'visibility-ignored': /^interior:hid-/,
   'visibility-subtree': /^interior:kid-/,
 };
@@ -94,6 +100,8 @@ export const PLANT_LANES: { readonly [P in PaintPlant]: 'device-pixels' | 'devic
   'order-swap': 'device-pixels',
   'foreground-under': 'device-pixels',
   'outline-offset-1': 'device-pixels',
+  'gradient-offset-1': 'device-pixels',
+  'gradient-unpremultiplied-upload': 'device-pixels',
   'visibility-ignored': 'device-pixels',
   'visibility-subtree': 'device-pixels',
 };

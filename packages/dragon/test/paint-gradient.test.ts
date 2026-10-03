@@ -8,7 +8,10 @@ import { describe, expect, it } from 'vitest';
 import type { BoxWidths, ElementLayer, LayerGeometrySpec } from '../src/analysis/paint-values/gradient.ts';
 import { colourClipRefusal, commaItems, elementLayers, gradient, gradientLayerOf, imageItem, linearSlope, obscuresOf, position, positionAxisItem, repeatItem, tilingRefusal, translucencyRefusal, valueItems } from '../src/analysis/paint-values/gradient.ts';
 import type { CssValue } from '../src/css/values.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { emitNativeSupport, SUPPORT_PLANTS } from '../src/emit/native-support.ts';
+import { GRADIENT_EMITTER, slopeBits } from '../src/emit/paint/gradient.ts';
+import { paintWriteLines } from '../src/emit/paint/registry.ts';
+import { createProjectWith, nativePrograms, NO_FAULTS } from '../src/internal.ts';
 import { TANF_DIFFS } from '../src/paint-data/libm-darwin-arm64.generated.ts';
 import type { Targets } from '../src/types.ts';
 import { div, explainOne, inputFor } from './helpers.ts';
@@ -171,12 +174,9 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
     const c = createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, (r) => [div(r, 'a', ['a'])]));
     return c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.target ?? 'all'} ${d.message.replace(/^background-image on a: /, '')}`);
   };
-  // BG2-a2 has no native lowering yet: a stack that passes every native check is refused on ios and android until BG2-a3.
-  const pending = ['DRAGON_UNSUPPORTED_VALUE android the native targets draw gradient layers from BG2-a3 on', 'DRAGON_UNSUPPORTED_VALUE ios the native targets draw gradient layers from BG2-a3 on'];
-  it('compiles an opaque angled stack on the grid for web, and the native targets wait for BG2-a3', () => {
-    expect(compile('background: linear-gradient(110deg, red, blue);')).toEqual(pending);
-    expect(compile('background: linear-gradient(12.34deg, red, blue), red;')).toEqual(pending);
-    expect(compile('background: linear-gradient(110deg, red, blue);', { web: {} })).toEqual([]);
+  it('compiles an opaque angled stack on the grid for every target', () => {
+    expect(compile('background: linear-gradient(110deg, red, blue);')).toEqual([]);
+    expect(compile('background: linear-gradient(12.34deg, red, blue), red;')).toEqual([]);
   });
   it('refuses an angle off the 0.01deg grid and a corner on ios and android only (BG2b)', () => {
     const off = compile('background: linear-gradient(1rad, red, blue);');
@@ -191,14 +191,14 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
     expect(compile('background: linear-gradient(red, blue) 0 0 / 10px 10px, white;')[0]).toContain('BG2-t');
     expect(compile('background: linear-gradient(red, blue) space, white;')[0]).toContain('BG2-t');
     expect(compile('background: linear-gradient(red, transparent);')[0]).toContain('BG2c');
-    expect(compile('background: linear-gradient(red, transparent); opacity: 0.5;')).toEqual(pending);
+    expect(compile('background: linear-gradient(red, transparent); opacity: 0.5;')).toEqual([]);
     expect(compile('background: linear-gradient(red, transparent);', { web: {} })).toEqual([]);
     // (b) needs a clear colour: the native colour beneath the raster would composite a translucent one twice.
     expect(compile('background: linear-gradient(red, transparent) rgba(0, 0, 255, 0.5); opacity: 0.5;')[0]).toContain('BG2c');
   });
   it('refuses a padding-box or content-box clip on a rounded box on ios and android (the raster takes the rounded border box only)', () => {
     expect(compile('border-radius: 6px; padding: 2px; background: linear-gradient(red, blue) padding-box white;')[0]).toContain('inner rounded box');
-    expect(compile('border-radius: 6px; background: linear-gradient(red, blue) white;')).toEqual(pending);
+    expect(compile('border-radius: 6px; background: linear-gradient(red, blue) white;')).toEqual([]);
     expect(compile('border-radius: 6px; padding: 2px; background: linear-gradient(red, blue) padding-box white;', { web: {} })).toEqual([]);
   });
   it('folds em and rem to px at computed-value time, and absolute lengths in positions and sizes, as Chrome 145 computes them (R7)', () => {
@@ -255,5 +255,49 @@ describe('R3: the linear slope from the measured table', () => {
   });
   it('R4: every compiled box rasters in the root layer', () => {
     expect(gradientLayerOf({} as never)).toEqual({ kind: 'root' });
+  });
+});
+
+describe('the gradient module: lowering and emission (BG2-a3)', () => {
+  const css = 'body { margin: 0; font-family: Ahem; font-size: 10px; color: #0a8; } .a { width: 40px; height: 20px; border: 2px solid #123; padding: 3px; background: radial-gradient(circle at 25% 75%, currentcolor 0 3px, transparent 4px), linear-gradient(35deg, #2f4f66, #a57c5b) padding-box padding-box #fff; }';
+  const compile = () => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, (r) => [div(r, 'a', ['a'])]));
+  it('lowers a box\'s gradient layers into one write, top first, with currentcolor resolved, the slope folded and the root layer origin', () => {
+    const c = compile();
+    expect(c.diagnostics.map((d) => `${d.code} ${d.target ?? ''} ${d.message}`)).toEqual([]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const w = p.programs.uikit.nodes.find((n) => n.id === 'a')?.writes.find((x) => x.kind === 'background-layers');
+    expect(w).toMatchObject({ key: 'dragonBackgroundLayers', technique: 'dragon-owned-paint', color: { r: 255, g: 255, b: 255, alpha: 255 }, colorClip: 'padding-box', obscures: ['always', 'always', 'always', 'always'], layerOrigin: [0, 0] });
+    if (w === undefined || w.kind !== 'background-layers') throw new Error('no write');
+    expect(w.layers.map((l) => [l.gradient.radial, l.geometry.clip])).toEqual([[true, 'border-box'], [false, 'padding-box']]);
+    expect(w.layers[0]?.gradient.stops[0]?.color).toEqual({ r: 0, g: 0xaa, b: 0x88, alpha: 255 });
+    // 35deg is a table angle: the slope is the capture host's tanf, not fdlibm's.
+    expect(w.layers[1]?.gradient.slope).toBe(linearSlope(35));
+    expect(w.layers[1]?.gradient.slope).not.toBe(linearSlope(35, { libmTableIgnored: true }));
+    const swift = paintWriteLines('uikit', 'v', p.programs.uikit.nodes.find((n) => n.id === 'a') as never, w);
+    expect(swift[0]).toBe('  dragonSetBackgroundLayers(v, DragonGradientLayers(color: StopColor(255.0, 255.0, 255.0, 255.0), colorClip: "padding-box", obscures: ["always", "always", "always", "always"], layers: [');
+    expect(swift.join('\n')).toContain(`JsString("angle"), 35.0, ${linearSlope(35)}, JsString("none")`);
+    expect(swift.at(-1)).toBe('  ], lastIsBottom: true, layerX: 0.0, layerY: 0.0))');
+    const kotlin = paintWriteLines('android-views', 'v', p.programs['android-views'].nodes.find((n) => n.id === 'a') as never, w);
+    expect(kotlin.join('\n')).toContain('jsArrayOf<CssStop>(CssStop(StopColor(0.0, 170.0, 136.0, 255.0), "px", 0.0)');
+    expect(GRADIENT_EMITTER.applied({} as never, 'uikit', w as never, 2, {} as never)).toEqual({ layers: 2, kinds: ['radial', 'linear'], slopes: ['00000000', slopeBits(linearSlope(35) as number)], origin: [0, 0], modelled: true });
+  });
+  it('registers the writer, the after-layout raster, the background-layers stage, the readback and the two plants; uploads never convert', () => {
+    for (const [b, ext] of [['uikit', 'swift'], ['android-views', 'kt']] as const) {
+      const files = emitNativeSupport(b);
+      const stages = files.find((f) => f.path.endsWith(`DragonPaintStages.${ext}`))?.text ?? '';
+      expect(stages).toContain(b === 'uikit' ? '  // background-layers\n  dragonPaintGradientStage(v, ctx, shape)' : '  // background-layers\n  dragonPaintGradientStage(v, canvas, shape)');
+      expect(stages).toContain('dragonAfterLayoutGradient(v, shape, scale)');
+      expect(stages).toContain('dragonAppliedGradient(v)');
+      const own = files.find((f) => f.path.endsWith(`DragonPaintGradient.${ext}`))?.text ?? '';
+      expect(own).toContain('paintGradient_planBackground(paint, faults)');
+      if (b === 'uikit') expect(own).toContain('public let dragonGradientPlantAlpha = CGImageAlphaInfo.premultipliedLast');
+      else {
+        expect(own).toContain('bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(bytes))');
+        expect(own).toContain('canvas.drawBitmap(b, (r.left - shape.edges[0] + DRAGON_GRADIENT_PLANT_DEVICE_PX).toFloat(), (r.top - shape.edges[1]).toFloat(), null)');
+      }
+    }
+    expect(SUPPORT_PLANTS).toContain('gradient-offset-1');
+    expect(SUPPORT_PLANTS).toContain('gradient-unpremultiplied-upload');
   });
 });

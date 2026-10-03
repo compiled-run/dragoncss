@@ -733,8 +733,6 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported) =
     refuse(el, image, native, 'background-layers-layer', `background-image on ${el.element.address}: the box rasters in a composited layer Dragon does not model (${BG2C})`, 'Remove the compositing reason.', diagnostics, reported, 'DRAGON_UNPROVEN_CONTEXT');
     return;
   }
-  // Until BG2-a3's lowering, the native programs carry no gradient write, so nothing would draw the layers.
-  refuse(el, image, native, 'background-layers-native', `background-image on ${el.element.address}: the native targets draw gradient layers from BG2-a3 on`, 'Compile for web, or wait for BG2-a3.', diagnostics, reported);
 };
 
 /**

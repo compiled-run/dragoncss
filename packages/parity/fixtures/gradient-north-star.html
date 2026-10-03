@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-size: 16px; }
+.player { display: flex; flex-direction: column; row-gap: 16px; padding: 16px; width: 300px; background-color: #0b0d12; }
+.record {
+	align-items: center;
+	aspect-ratio: 1;
+	background:
+		radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),
+		repeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px);
+	border-radius: 50%;
+	display: flex;
+	justify-content: center;
+	overflow: hidden;
+	position: relative;
+	width: 16rem;
+}
+.time { display: flex; }
+.track {
+	background: linear-gradient(to right, #2f4f66, #a57c5b);
+	border-radius: 1rem;
+	flex: 1 1 auto;
+	height: 1rem;
+	min-width: 0;
+	overflow: hidden;
+	position: relative;
+}
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="player" class="player">
+<div data-dragon-id="record" class="record"></div>
+<div data-dragon-id="time" class="time"><div data-dragon-id="track" class="track"></div></div>
+</div>
+</body>
+</html>
