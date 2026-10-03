@@ -59,6 +59,8 @@ export type ElementAnimation = {
   readonly otherwise: 'unlisted' | 'initial';
   readonly listings: ReadonlyMap<Longhand, Listing>;
   readonly animations: readonly AnimationEntry[];
+  /** The computed list of every animation longhand (the web output writes them). */
+  readonly lists: ReadonlyMap<AnimLonghand, readonly AnimItem[]>;
   /** The declarations that set its animation longhands, for diagnostics. */
   readonly declarations: readonly Declaration[];
 };
@@ -130,7 +132,8 @@ function elementAnimation(address: string, lists: ReadonlyMap<AnimLonghand, read
   const declared = [...winners.keys()].some((p) => p.startsWith('transition-'));
   const listings = new Map<Longhand, Listing>();
   const properties = list('transition-property');
-  properties.forEach((item, i) => {
+  // The initial `all 0s` lists nothing: with no transition longhand declared, every property takes the 'initial' mode.
+  if (declared) properties.forEach((item, i) => {
     const named = item.kind === 'keyword' && item.value === 'none' ? [] : longhandsNamed(keywordOf(item));
     if (named === null) return;
     const timing: Listing = { mode: 'listed', delay: seconds(repeated(list('transition-delay'), i)), duration: seconds(repeated(list('transition-duration'), i)), easing: easingOf(repeated(list('transition-timing-function'), i)) };
@@ -155,7 +158,7 @@ function elementAnimation(address: string, lists: ReadonlyMap<AnimLonghand, read
       easing: easingOf(repeated(list('animation-timing-function'), i)),
     };
   });
-  return { address, declared, otherwise: declared ? 'unlisted' : 'initial', listings, animations, declarations: [...new Set([...winners.values()].map((w) => w.declaration))] };
+  return { address, declared, otherwise: declared ? 'unlisted' : 'initial', listings, animations, lists, declarations: [...new Set([...winners.values()].map((w) => w.declaration))] };
 }
 
 /** One case's element animations, walking the resolved tree with the linked chain the selectors match against. */

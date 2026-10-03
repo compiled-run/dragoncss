@@ -51,7 +51,8 @@ function nameOf(prelude: CssNode | null | undefined): string | null {
 }
 
 /** At the top level a @keyframes with a valid name and a block is accepted; inside a conditional group it waits for MQ-R. */
-export const keyframesAtRule: AtRuleHandler = (at) => {
+// A function declaration, so at-rules.ts can register it while the two modules import each other.
+export function keyframesAtRule(at: AtRuleContext): ReturnType<AtRuleHandler> {
   const block = at.node['block'] as CssNode | null | undefined;
   if (at.where === 'the stylesheet' && block !== null && block !== undefined && nameOf(at.node['prelude'] as CssNode | null | undefined) !== null) return { kind: 'keyframes', context: at };
   const message = at.where.startsWith('@')
@@ -60,7 +61,7 @@ export const keyframesAtRule: AtRuleHandler = (at) => {
       ? `@keyframes ${at.prelude ?? ''} is not a valid @keyframes rule: the name must be an identifier other than none, or a string, and the rule needs a block`
       : `@${at.name} in ${at.where} is not supported in milestone 1`;
   return { kind: 'refuse', diagnostic: diagnostic('DRAGON_UNSUPPORTED_AT_RULE', { origin: authored(at.span), message }) };
-};
+}
 
 /** A keyframe selector's offset (from, to or a percentage in [0, 100]), 'range' for a timeline range selector, or null. */
 function offsetOf(sel: CssNode): number | 'range' | null {

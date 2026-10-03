@@ -16,7 +16,10 @@ import { inDomain, validateInput } from './analysis/input.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
+import type { AnimationAnalysis } from './analysis/animations.ts';
 import { analyzeAnimations, gateAnimationFeatures } from './analysis/animations.ts';
+import { webAnimationsOf } from './lower/anim-program.ts';
+import { valueText } from './emit/web-css.ts';
 import * as cssTree from 'css-tree';
 import type { KeyframesSource } from './css/at-rules/keyframes.ts';
 import { parseKeyframesRules } from './css/at-rules/keyframes.ts';
@@ -747,6 +750,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   let fonts: ProjectFonts | null = null;
   // MQ-a: every band's cases, band 0 first (one entry for a sheet without @media), and the band the native output comes from.
   let bandCases: { readonly band: Band | null; readonly cases: CaseResult[] }[] = [];
+  let animation: AnimationAnalysis | null = null;
   let bands: Bands | null = null;
   let nativeBand = 0;
   const valid = configDiagnostics.length === 0 ? validateInput(input, config.projectId, diagnostics) : null;
@@ -827,7 +831,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       diagnostics.push(...mergePasses(passes.map((p) => p.diagnostics)));
       cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
       // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
-      const animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
+      animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
       if (options.profiles === 'enforce') gateAnimationFeatures(animation, targets, (t) => profileFor(profiles, t as KnownTarget), diagnostics);
       if (options.profiles === 'enforce') {
         const values: Diagnostic[] = [];
@@ -925,7 +929,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     else {
       const webFonts = fonts === null || !fonts.used ? null : webFontsOf(fonts, options.faults);
       const [base, ...extra] = bandCases.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement })) }));
-      web = emitWebCss((base as { cases: { key: string; root: ResolvedElement }[] }).cases, digest, webFonts === null ? null : webFonts.context, extra);
+      web = emitWebCss((base as { cases: { key: string; root: ResolvedElement }[] }).cases, digest, webFonts === null ? null : webFonts.context, extra, animation === null ? null : webAnimationsOf(animation, valueText));
       outputs[key] = { kind: 'ready', digest, files: web.files, assets: webFonts === null ? [] : webFonts.assets() };
     }
   }

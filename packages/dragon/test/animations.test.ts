@@ -4,7 +4,9 @@ import { parse } from 'css-tree';
 import { describe, expect, it } from 'vitest';
 import type { AnimItem, AnimLonghand } from '../src/css/properties/animation.ts';
 import { ANIM_INITIAL, ANIMATION_LONGHANDS, animationRefusal, parseAnimationDeclaration, parseAnimationValue, TRANSITION_LONGHANDS } from '../src/css/properties/animation.ts';
-import type { Diagnostic } from '../src/types.ts';
+import type { Diagnostic, DraftTree, FrontEndResult, SourceRef, TreeNode } from '../src/index.ts';
+import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { div, DOC, eq, inputFor, not } from './helpers.ts';
 
 const CHROME: readonly (readonly [string, string, readonly string[] | null])[] = [
   ["transition", "margin-right 0.5s ease", ["normal", "0s", "0.5s", "margin-right", "ease"]],
@@ -177,5 +179,68 @@ describe('animation and transition parsing', () => {
     expect(declare('transition', 'var(--t)')).toBe('DRAGON_UNSUPPORTED_VALUE ANIM-v');
     expect(declare('transition', 'color 1s 1s 1s')).toBe('DRAGON_CSS_INVALID_VALUE ');
     expect(declare('transition', 'color 1s')).toBe('ok');
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The analysis over reachable states (T065 §1 refusals that need the states, R13, R12, R11).
+
+/** A document with one free boolean state `open`: element a has class a, plus class on while open; element b has class b. */
+function stated(css: string, extra: (r: SourceRef) => TreeNode[] = () => []): FrontEndResult {
+  const input = inputFor(css, (r) => {
+    const d = div(r, 'a', ['a']);
+    const on = { value: [{ when: eq('open', true), value: { owner: DOC, sheet: 's', name: 'on' } }, { when: not(eq('open', true)), value: null }], origin: d.origin };
+    return [{ ...d, classes: [...d.classes, on] }, div(r, 'b', ['b']), ...extra(r)];
+  });
+  const tree = input.tree as DraftTree;
+  const root = tree.components[0] as DraftTree['components'][number];
+  return { ...input, tree: { ...tree, components: [{ ...root, states: [{ id: 'open', domain: [false, true], initial: false, origin: root.origin }] }] } };
+}
+
+const compile = (css: string, profiles: 'derive' | 'enforce' = 'derive', extra?: (r: SourceRef) => TreeNode[]): readonly Diagnostic[] =>
+  createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles, direction: 'ltr' }).compile(stated(css, extra)).diagnostics;
+const packages = (ds: readonly Diagnostic[]): string[] => ds.flatMap((d) => (/\(package ([A-Za-z-]+)\)/.exec(d.message)?.[1] ?? []));
+
+describe('animation analysis', () => {
+  it('admits colour and length transitions and infinite animations, and leaves discrete pairs alone', () => {
+    const css = `.a { color: rgb(0, 0, 0); width: 10px; display: block; transition: all 1s; } .a.on { color: rgb(9, 9, 9); width: 20px; display: flex; }
+      .b { animation: k 2s infinite; } @keyframes k { from { margin-left: 1px } to { margin-left: 5px } }`;
+    expect(compile(css)).toEqual([]);
+  });
+
+  it('refuses a transition a state pair would start on a property without a writer, and not one that never changes (R13, ANIM-p)', () => {
+    expect(packages(compile('.a { border-top-width: 1px; border-top-style: solid; transition: border-top-width 1s; } .a.on { border-top-width: 3px; }'))).toEqual(['ANIM-p']);
+    expect(compile('.a { border-top-width: 1px; border-top-style: solid; transition: border-top-width 1s; } .a.on { width: 3px; }')).toEqual([]);
+    expect(packages(compile('.b { animation: k 1s; } @keyframes k { to { flex-grow: 2 } }'))).toEqual(['ANIM-p']);
+  });
+
+  it('refuses a transitioned property an animation also sets (R12, ANIM-o) and a currentcolor pair (ANIM-cc)', () => {
+    expect(packages(compile('.a { color: rgb(0, 0, 0); transition: color 1s; animation: k 1s infinite; } .a.on { color: rgb(9, 9, 9); } @keyframes k { to { color: rgb(1, 1, 1) } }'))).toEqual(['ANIM-o']);
+    expect(packages(compile('.a { border-top-color: currentcolor; transition: all 1s; } .a.on { border-top-color: rgb(9, 9, 9); }'))).toEqual(['ANIM-cc']);
+  });
+
+  it('refuses a finite animation whose timing changes between states (R11, ANIM-t), and not an infinite one', () => {
+    expect(packages(compile('.a { animation: k 1s 2; } .a.on { animation-duration: 2s; } @keyframes k { to { width: 5px } }'))).toEqual(['ANIM-t']);
+    expect(compile('.a { animation: k 1s infinite; } .a.on { animation-duration: 2s; } @keyframes k { to { width: 5px } }')).toEqual([]);
+  });
+
+  it('refuses one @keyframes that resolves differently on two elements (ANIM-v)', () => {
+    expect(packages(compile('.a, .b { animation: k 1s infinite; } .b { font-size: 20px; } @keyframes k { to { width: 2em } }'))).toEqual(['ANIM-v']);
+    expect(compile('.a, .b { animation: k 1s infinite; } @keyframes k { to { width: 2em } }')).toEqual([]);
+  });
+
+  it('warns, and compiles nothing, for a name without @keyframes and a transition-property that is not a property (M14)', () => {
+    const ds = compile('.a { animation: nosuch 1s; transition: foo 1s; }');
+    expect(ds.map((d) => [d.code, d.severity, d.message.split(',')[0]])).toEqual([
+      ['DRAGON_ANIMATION_NO_EFFECT', 'warning', 'transition-property foo is not a CSS property'],
+      ['DRAGON_ANIMATION_NO_EFFECT', 'warning', 'animation-name nosuch on a names no @keyframes rule'],
+    ]);
+  });
+
+  it('gates every animation declaration and @keyframes per target in the animation context until a frame lane proves it', () => {
+    const ds = compile('.a { transition: color 1s; } .b { animation: k 1s; } @keyframes k { to { color: rgb(1, 2, 3) } }', 'enforce');
+    expect(ds.every((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.target !== null && d.profile?.context === 'animation')).toBe(true);
+    expect([...new Set(ds.map((d) => d.target))].sort()).toEqual(['ios', 'web']);
+    expect(ds.map((d) => d.profile?.feature).filter((f, i, a) => a.indexOf(f) === i).sort()).toEqual(['animatable:color', 'animation-name:<custom-ident>', 'at-rule:@keyframes', 'transition-property:<custom-ident>']);
   });
 });
