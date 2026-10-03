@@ -1,0 +1,155 @@
+# CI-OFFLOAD step 1: are the Chrome captures that regen takes on the local Mac reproduced byte for byte by a GitHub-hosted macOS
+# arm64 runner? Runs parity:capture, parity:dpr-capture and parity:pixel-capture (scripts/regen.ts steps capture, dpr-capture,
+# pixel-capture) in this job's checkout, then compares every output with the committed reference. It never commits anything.
+# Any difference, or a capture that fails, uploads the differing outputs and the report as artifacts and fails the job.
+name: capture-proof
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/capture-proof.yml
+permissions:
+  contents: read
+concurrency:
+  group: capture-proof-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  capture:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Standard (free) arm64 runners only. macos-26 is the OS the references were taken on; macos-15 is the spike's target.
+        os: [macos-15, macos-26]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Scratch directory for the report and the differing outputs
+        run: echo "PROOF=$RUNNER_TEMP/capture-proof" >> "$GITHUB_ENV"
+      - name: Set up pnpm 10.33.2
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      # The local Mac runs Node 24.15.0; package.json requires >=24.
+      - name: Set up Node 24.15.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      # packages/parity/src/chrome.ts: Playwright 1.58.2, chromium-1208, Chrome 145.0.7632.6 (launchChrome refuses any other).
+      - name: Install Playwright 1.58.2 Chromium
+        run: |
+          test "$(pnpm --filter @dragon/parity exec playwright --version)" = "Version 1.58.2"
+          pnpm --filter @dragon/parity exec playwright install chromium
+          ls "$HOME/Library/Caches/ms-playwright"
+      # Fonts: Ahem and the vendored faces (vendor/fonts) are injected as data: URLs, so only the system fonts Chrome falls back
+      # to come from the OS. Their hashes are recorded so a mismatch can be traced to a font difference.
+      - name: Record the environment
+        run: |
+          mkdir -p "$PROOF"
+          {
+            echo "runner: ${{ matrix.os }}"
+            sw_vers
+            uname -m
+            echo "cpus: $(sysctl -n hw.ncpu); memory: $(sysctl -n hw.memsize)"
+            sysctl -n machdep.cpu.brand_string || true
+            system_profiler SPDisplaysDataType 2>/dev/null | sed -n '1,20p' || true
+            node --version
+            pnpm --version
+            echo "system fonts (sha256):"
+            shasum -a 256 /System/Library/Fonts/*.tt[cf] | sort -k2
+          } | tee "$PROOF/environment.txt"
+      - name: parity:capture
+        id: capture
+        continue-on-error: true
+        run: |
+          start=$(date +%s)
+          pnpm run parity:capture 2>&1 | tee "$PROOF/capture.log"
+          echo "capture: $(( $(date +%s) - start )) s" | tee -a "$PROOF/timings.txt"
+      - name: parity:dpr-capture
+        id: dpr
+        continue-on-error: true
+        run: |
+          start=$(date +%s)
+          pnpm run parity:dpr-capture 2>&1 | tee "$PROOF/dpr-capture.log"
+          echo "dpr-capture: $(( $(date +%s) - start )) s" | tee -a "$PROOF/timings.txt"
+      - name: parity:pixel-capture
+        id: pixel
+        continue-on-error: true
+        run: |
+          start=$(date +%s)
+          pnpm run parity:pixel-capture 2>&1 | tee "$PROOF/pixel-capture.log"
+          echo "pixel-capture: $(( $(date +%s) - start )) s" | tee -a "$PROOF/timings.txt"
+      - name: Compare with the committed references byte for byte
+        id: compare
+        env:
+          OUTCOMES: capture=${{ steps.capture.outcome }} dpr-capture=${{ steps.dpr.outcome }} pixel-capture=${{ steps.pixel.outcome }}
+        run: |
+          cat > "$PROOF/compare.mts" <<'EOF'
+          // Every file under the capture outputs, as written by this run, against the committed blob: equal bytes or a mismatch.
+          // PNG mismatches also get a pixel count and the largest channel delta; JSON and CSS mismatches get their git diff.
+          import { execFileSync } from 'node:child_process';
+          import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+          import { dirname, join } from 'node:path';
+          const ws = process.env.GITHUB_WORKSPACE!;
+          const proof = process.env.PROOF!;
+          const { decodePng } = await import(join(ws, 'packages/parity/src/pixel-reference.ts'));
+          const ROOTS = ['packages/parity/expected/darwin-arm64', 'packages/parity/emitted', 'packages/parity/expected-fonts', 'packages/parity/expected-dpr', 'packages/parity/expected-pixels'];
+          const git = (...a: string[]): string => execFileSync('git', ['-C', ws, ...a], { encoding: 'utf8', maxBuffer: 1 << 28 });
+          const committed = git('ls-files', '-z', '--', ...ROOTS).split('\0').filter(Boolean);
+          // Modified, added (untracked) and deleted files under the roots; -uall lists every untracked file.
+          const status = git('status', '--porcelain=v1', '-z', '-uall', '--', ...ROOTS).split('\0').filter(Boolean);
+          const changed = new Map<string, string>(status.map((r) => [r.slice(3), r.slice(0, 2).trim()]));
+          const group = (p: string): string => dirname(p);
+          const groups = new Map<string, { files: number; match: number; mismatch: string[] }>();
+          const g = (p: string) => groups.get(group(p)) ?? (groups.set(group(p), { files: 0, match: 0, mismatch: [] }), groups.get(group(p))!);
+          for (const p of committed) { const e = g(p); e.files++; if (changed.has(p)) e.mismatch.push(p); else e.match++; }
+          for (const [p, s] of changed) if (s === '??') g(p).mismatch.push(p);
+          const lines: string[] = ['| outputs | committed files | byte-identical | differ |', '|---|---:|---:|---:|'];
+          for (const [k, e] of [...groups].sort()) lines.push(`| ${k} | ${e.files} | ${e.match} | ${e.mismatch.length} |`);
+          const details: string[] = [];
+          for (const [k, e] of [...groups].sort()) {
+            for (const p of e.mismatch) {
+              const state = changed.get(p)!;
+              const out = join(proof, 'captured', p);
+              const ref = join(proof, 'committed', p);
+              mkdirSync(dirname(out), { recursive: true });
+              mkdirSync(dirname(ref), { recursive: true });
+              if (existsSync(join(ws, p))) copyFileSync(join(ws, p), out);
+              let refBytes: Buffer | null = null;
+              if (state !== '??') { refBytes = execFileSync('git', ['-C', ws, 'show', `HEAD:${p}`], { maxBuffer: 1 << 28 }); writeFileSync(ref, refBytes); }
+              if (p.endsWith('.png') && refBytes !== null && existsSync(join(ws, p))) {
+                const a = decodePng(refBytes);
+                const b = decodePng(readFileSync(join(ws, p)));
+                if (a.width !== b.width || a.height !== b.height) { details.push(`${p}: size ${a.width}x${a.height} committed, ${b.width}x${b.height} captured`); continue; }
+                let px = 0; let max = 0;
+                for (let i = 0; i < a.data.length; i += 4) {
+                  let d = 0;
+                  for (let c = 0; c < 4; c++) d = Math.max(d, Math.abs(a.data[i + c] - b.data[i + c]));
+                  if (d > 0) px++;
+                  max = Math.max(max, d);
+                }
+                details.push(`${p}: ${px} of ${a.width * a.height} pixels differ, largest channel delta ${max}`);
+              } else details.push(`${p}: ${state === '??' ? 'not committed (new)' : state === 'D' ? 'not written by the capture' : 'bytes differ'}`);
+            }
+          }
+          const mismatches = [...groups.values()].reduce((n, e) => n + e.mismatch.length, 0);
+          const report = [`## capture-proof on ${process.env.RUNNER_OS_LABEL}`, '', `Capture steps: ${process.env.OUTCOMES}`, '', ...lines, '', `${mismatches} file(s) differ.`, '', ...details.slice(0, 400).map((d) => `- ${d}`)].join('\n');
+          writeFileSync(join(proof, 'report.md'), `${report}\n${details.length > 400 ? `\n(${details.length - 400} more in mismatches.txt)\n` : ''}`);
+          writeFileSync(join(proof, 'mismatches.txt'), `${details.join('\n')}\n`);
+          writeFileSync(join(proof, 'diff.patch'), git('diff', '--', ...ROOTS, ':(exclude,glob)**/*.png'));
+          if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${report.split('\n').slice(0, 120).join('\n')}\n`);
+          console.log(report.split('\n').slice(0, 60).join('\n'));
+          process.exitCode = mismatches === 0 && !/failure/.test(process.env.OUTCOMES ?? '') ? 0 : 1;
+          EOF
+          RUNNER_OS_LABEL='${{ matrix.os }}' node --conditions=dragon-internal "$PROOF/compare.mts"
+      - name: Upload the report and differing outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capture-proof-${{ matrix.os }}
+          path: ${{ runner.temp }}/capture-proof
+          if-no-files-found: warn
