@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
   ALREADY_REVIEWED,
+  NO_CODE_REVIEWED,
   type Git,
   type Ignore,
   ignoreAt,
@@ -189,6 +190,16 @@ describe('vouchForSkip on "already reviewed"', () => {
       expect(vouchForSkip(run('skipped', title), { id: PATCH }, earlier)).toMatchObject({ ok: false });
     }
     expect(vouchForSkip(run('neutral', ALREADY_REVIEWED), { id: PATCH }, earlier)).toMatchObject({ ok: false });
+  });
+
+  it('treats "No code objects were reviewed." (train 1, #59 at 2d47e5d) under the same reviewed-paths guard', () => {
+    const none = run('skipped', NO_CODE_REVIEWED);
+    expect(NO_CODE_REVIEWED).toBe('No code objects were reviewed.');
+    expect(vouchForSkip(none, { id: PATCH }, earlier)).toEqual({ ok: true, sha: sha('a'), patchId: PATCH, scope: 'reviewed paths' });
+    expect(vouchForSkip(none, { id: sha('1') }, earlier)).toMatchObject({ ok: false, reason: expect.stringContaining('over reviewed paths') });
+    expect(vouchForSkip(none, { id: PATCH }, [])).toMatchObject({ ok: false });
+    expect(vouchForSkip(run('skipped', 'No code objects were reviewed'), { id: PATCH }, earlier)).toMatchObject({ ok: false });
+    expect(vouchForSkip(run('neutral', NO_CODE_REVIEWED), { id: PATCH }, earlier)).toMatchObject({ ok: false });
   });
 
   it('counts the skip as passed only when vouched', () => {

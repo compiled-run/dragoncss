@@ -2,14 +2,20 @@
 // position's vouch locally, and lands them one PR at a time. Run in a clean, installed worktree of this repo.
 // Run with: pnpm train <build|check|land> [--from <k>] <branch>:<pr>:<clean-head-sha>...
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import {
   commitRegen,
+  deviceRunProblems,
+  failuresJson,
   isAncestor,
+  LANES_JSON,
   type Member,
   mergeGate,
+  memberTip,
   mergeMember,
   parseArgs,
+  POSITION_STEPS,
+  parseDeviceEvidence,
   parseLsRemote,
   parsePrState,
   planPositions,
@@ -17,6 +23,7 @@ import {
   predictPosition,
   prProblems,
   type PrState,
+  staleLines,
   treeMatches,
 } from './merge-train-lib.ts';
 import { checkSha, type Git, ignoreAt, regenOnlyProblems } from './pr-review-vouch.ts';
@@ -25,6 +32,7 @@ const HEAVY = '/tmp/heavy-lease.sh';
 const DEVICE = '/tmp/device-lease.sh';
 const REGEN = ['pnpm', 'regen'];
 const DEVICES = ['pnpm', 'run', 'parity:devices'];
+const LANES = ['pnpm', '-s', 'run', 'parity:lanes'];
 
 class Stop extends Error {}
 const stop = (why: string): never => {
@@ -71,20 +79,41 @@ const requireLeases = (): void => {
   for (const lease of [HEAVY, DEVICE]) if (!existsSync(lease)) stop(`${lease} is missing; heavy and device steps run only under the machine leases`);
 };
 
-// The clean heads must be the PR branches' current heads, so the pushes later are fast-forwards of reviewed commits.
-const fetchMembers = (members: Member[]): void => {
-  for (const m of members) {
+// Each PR branch must be at its clean head, or at a position an earlier build of the train pushed on top of it (memberTip);
+// the new position merges that head, so the push at landing is a fast-forward.
+const fetchMembers = (members: Member[]): string[] =>
+  members.map((m) => {
     const at = remoteHead(m.branch);
-    if (at !== m.clean) stop(`origin/${m.branch} is at ${at}, not the recorded clean head ${m.clean}`);
     git(['fetch', '--quiet', 'origin', `refs/heads/${m.branch}`]);
+    try {
+      return memberTip(git, m, at);
+    } catch (error) {
+      return stop(`origin/${m.branch} is at ${at}, not at the recorded clean head ${m.clean}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  });
+
+// The device run is judged on what it recorded, against the device evidence committed on the train's base.
+const judgeDevices = (base: string): void => {
+  const show = (path: string): unknown => JSON.parse(git(['show', `${base}:${path}`]).toString('utf8'));
+  const local = (path: string): unknown => JSON.parse(readFileSync(path, 'utf8'));
+  const before = parseDeviceEvidence(show(LANES_JSON), (t) => show(failuresJson(t)), `base ${base}`);
+  const after = parseDeviceEvidence(local(LANES_JSON), (t) => local(failuresJson(t)), 'this run');
+  if (git(['status', '--porcelain=v1', '--', LANES_JSON]).toString('utf8').trim() === '') stop(`the device run did not rewrite ${LANES_JSON}`);
+  const lanes = spawnSync(LANES[0]!, LANES.slice(1), { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  // It exits 1 for master's failing lanes too; anything else, or no verdict line, means it did not judge the file.
+  if (lanes.error || lanes.signal || (lanes.status !== 0 && lanes.status !== 1) || !/^parity:lanes: /m.test(lanes.stdout)) {
+    stop(`${LANES.join(' ')} did not judge the committed lanes: ${lanes.error?.message ?? lanes.signal ?? `exit ${lanes.status}`}\n${lanes.stderr}`);
   }
+  const problems = deviceRunProblems(before, after, staleLines(lanes.stdout));
+  if (problems.length > 0) stop(`the device run differs from the device evidence on ${base}:\n  ${problems.join('\n  ')}`);
+  console.log(`Device run: every lane passes or fails as on ${base}, with no failure it does not list`);
 };
 
 const build = (members: Member[], from: number): void => {
   requireClean();
   requireLeases();
   const master = fetchMaster();
-  fetchMembers(members);
+  const tips = fetchMembers(members);
   const reused = from > 1 ? planPositions(git, members, trainHeads(from - 1)) : null;
   if (reused && !isAncestor(git, reused.base, master)) stop(`train/1's base ${reused.base} is not in origin/master; rebuild from 1`);
   let prev = reused ? reused.positions.at(-1)!.head : master;
@@ -93,7 +122,8 @@ const build = (members: Member[], from: number): void => {
   const start = branch === 'HEAD' ? gitText(['rev-parse', 'HEAD']) : branch;
   let k = from;
   try {
-    for (; k <= members.length; k++) prev = buildPosition(members, k, prev);
+    const base = reused ? reused.base : master;
+    for (; k <= members.length; k++) prev = buildPosition(members, k, prev, tips[k - 1]!, base);
   } catch (error) {
     const at = gitText(['rev-parse', 'HEAD']);
     throw new Stop(`position ${k}: ${error instanceof Error ? error.message : String(error)}\n(worktree left detached at ${at} for inspection; it was on ${start})`);
@@ -102,14 +132,21 @@ const build = (members: Member[], from: number): void => {
   console.log(`\nBuilt train/1..${members.length}. Next: pnpm train check ${members.map((m) => `${m.branch}:${m.pr}:${m.clean}`).join(' ')}`);
 };
 
-const buildPosition = (members: Member[], k: number, prev: string): string => {
+const buildPosition = (members: Member[], k: number, prev: string, tip: string, base: string): string => {
   const m = members[k - 1]!;
-  console.log(`\n=== Position ${k}: ${m.branch} (#${m.pr}) at ${m.clean}`);
-  mergeMember(git, prev, m, k);
-  run([HEAVY, ...REGEN]);
-  run(['pnpm', 'typecheck']);
-  run([DEVICE, ...DEVICES]);
-  const head = commitRegen(git, k, m, [REGEN.join(' '), DEVICES.join(' ')]);
+  console.log(`\n=== Position ${k}: ${m.branch} (#${m.pr}) at ${tip}${tip === m.clean ? '' : ` (an earlier position on clean head ${m.clean})`}`);
+  mergeMember(git, prev, m, k, tip);
+  for (const step of POSITION_STEPS) {
+    if (step === 'regen' || step === 'regen-after-devices') run([HEAVY, ...REGEN]);
+    else if (step === 'typecheck') run(['pnpm', 'typecheck']);
+    else if (step === 'judge-devices') judgeDevices(base);
+    else {
+      // master's own lanes fail (device-pixels lists its failures), so the exit code says nothing; judge-devices decides.
+      const device = spawnSync(DEVICE, DEVICES, { stdio: 'inherit' });
+      if (device.error || device.signal || (device.status !== 0 && device.status !== 1)) stop(`${DEVICES.join(' ')}: ${device.error?.message ?? device.signal ?? `exit ${device.status}`}`);
+    }
+  }
+  const head = commitRegen(git, k, m, [REGEN.join(' '), DEVICES.join(' '), REGEN.join(' ')]);
   const ignore = ignoreAt(git, head);
   if ('error' in ignore) return stop(ignore.error);
   const problems = regenOnlyProblems(git, head, ignore);
@@ -159,9 +196,9 @@ const land = (members: Member[], from: number): void => {
     }
     requireMasterAt(prev, k === 1 ? 'the train base' : `position ${k - 1}`);
     const pr = prState(m);
-    const problems = prProblems(pr, m, head, remoteHead(m.branch));
+    const problems = prProblems(pr, m, head, remoteHead(m.branch), plan.positions[k - 1]!.tip);
     if (problems.length > 0) stop(problems.join('\n'));
-    // A plain push: git refuses anything but a fast-forward of the clean head.
+    // A plain push: git refuses anything but a fast-forward of the PR head (the clean head or an earlier build's position).
     if (pr.headOid !== head) run(['git', 'push', 'origin', `${head}:refs/heads/${m.branch}`]);
     run(['pnpm', '-s', 'pr:review', String(m.pr), '--wait']);
     // Re-read right before merging: the PR may have been retargeted or master moved during the review wait.

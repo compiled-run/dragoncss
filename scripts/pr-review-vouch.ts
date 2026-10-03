@@ -3,6 +3,8 @@ import { type IgnoreFile, parseIgnoreFile } from './macroscope-ignore.ts';
 export const CORRECTNESS = 'Macroscope - Correctness Check';
 export const DIFF_UNCHANGED = 'Diff unchanged';
 export const ALREADY_REVIEWED = 'All code in this push has already been reviewed.';
+// Macroscope's skip when every file changed since its last review is one it does not review (ignored or binary).
+export const NO_CODE_REVIEWED = 'No code objects were reviewed.';
 
 export type CheckRun = { name: string; status: string; conclusion: string | null; html_url: string; output?: { title: string | null } };
 export type ReviewComment = {
@@ -96,12 +98,13 @@ export const correctnessSucceeded = (runs: CheckRun[]): boolean => {
   return own.length > 0 && own.every((r) => r.status === 'completed' && r.conclusion === 'success');
 };
 
-// Which diff a skip is vouched on: "Diff unchanged" on the whole three-dot diff, "already reviewed" on the paths
-// .macroscope/ignore.md leaves to review. Any other skip title is no review.
+// Which diff a skip is vouched on: "Diff unchanged" on the whole three-dot diff, "already reviewed" and "no code objects
+// reviewed" on the paths .macroscope/ignore.md leaves to review. Any other skip title is no review.
 export type DiffScope = 'all paths' | 'reviewed paths';
 export const skipScope = (run: CheckRun): DiffScope | null => {
   if (run.name !== CORRECTNESS || run.status !== 'completed' || run.conclusion !== 'skipped') return null;
-  return run.output?.title === DIFF_UNCHANGED ? 'all paths' : run.output?.title === ALREADY_REVIEWED ? 'reviewed paths' : null;
+  const title = run.output?.title;
+  return title === DIFF_UNCHANGED ? 'all paths' : title === ALREADY_REVIEWED || title === NO_CODE_REVIEWED ? 'reviewed paths' : null;
 };
 export const isVouchableSkip = (run: CheckRun): boolean => skipScope(run) !== null;
 
@@ -116,7 +119,7 @@ export const vouchForSkip = (run: CheckRun, head: PatchId, earlier: Earlier[]): 
   if (scope === null) {
     return {
       ok: false,
-      reason: `correctness check is ${run.status}/${run.conclusion ?? 'none'} (${run.output?.title ?? 'no title'}), not skipped as "${DIFF_UNCHANGED}" or "${ALREADY_REVIEWED}"`,
+      reason: `correctness check is ${run.status}/${run.conclusion ?? 'none'} (${run.output?.title ?? 'no title'}), not skipped as "${DIFF_UNCHANGED}", "${ALREADY_REVIEWED}" or "${NO_CODE_REVIEWED}"`,
     };
   }
   if ('error' in head) return { ok: false, reason: `head: ${head.error}` };

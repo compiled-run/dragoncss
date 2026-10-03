@@ -103,7 +103,8 @@ const vouchFor = (run: CheckRun, head: string): Vouch => {
 };
 
 // A skipped correctness review (for example over the per-review cost limit) is no review, so it never counts as passed,
-// except a "Diff unchanged" or "already reviewed" skip that vouchForSkip ties to an earlier reviewed commit with the same patch id.
+// except a "Diff unchanged", "already reviewed" or "no code objects reviewed" skip that vouchForSkip ties to an earlier reviewed
+// commit with the same patch id.
 // Vouches are judged on every poll, before settled(), so the wait loop and the final verdict read the same verdictOf.
 const vouches = new Map<string, Vouch>();
 const judge = (rs: CheckRun[]): Map<string, Vouch> => {
