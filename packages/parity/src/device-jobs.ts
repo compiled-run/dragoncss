@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { DeviceOutcome, RunLog } from './device-lanes.ts';
-import { afterRelease } from './device-lanes.ts';
+import { afterRelease, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE } from './device-lanes.ts';
 import type { DeviceHandle, DeviceSpec } from './device-run.ts';
 import { spawnChild } from './device-exec.ts';
 import { boot, DEVICE_MATRIX, release } from './device-run.ts';
@@ -64,6 +64,8 @@ export function parseOutcome(text: string, device: string): DeviceOutcome {
   if (!isObj(v)) throw new Error(`${device}: the device outcome is not an object`);
   if (v['device'] !== device) problems.push(`device ${JSON.stringify(v['device'])}`);
   // The batch set, and SELD-R1b's script (device-states) and hit (device-hit) sets: each checked the same way.
+  // Each set's failures belong to its own lanes: a lane record counts only its lane's failures, so a stray one would go uncounted.
+  const lanesOf: { readonly [name: string]: readonly string[] } = { set: DEVICE_CHECK_LANES, states: [STATE_LANE], hits: [HIT_LANE] };
   const checkSet = (name: string, set: unknown): void => {
     if (set === null) return;
     if (!isObj(set)) {
@@ -76,6 +78,12 @@ export function parseOutcome(text: string, device: string): DeviceOutcome {
     const compared = set['compared'];
     if (!isObj(compared) || JSON.stringify(Object.keys(compared)) !== JSON.stringify(['a', 'b', 'c', 'd', 'breaks']) || !Object.values(compared).every((n) => typeof n === 'number')) problems.push(`${name}.compared is not the five check counts`);
     if (!Array.isArray(set['failures']) || !set['failures'].every((f) => isObj(f) && typeof f['lane'] === 'string' && typeof f['kind'] === 'string')) problems.push(`${name}.failures is not a failure list`);
+    else {
+      const lanes = lanesOf[name] ?? [];
+      const stray = [...new Set(set['failures'].map((f) => (f as { lane: string }).lane).filter((l) => !lanes.includes(l)))];
+      const named = lanes.length > 1 ? `${lanes.slice(0, -1).join(', ')} or ${lanes[lanes.length - 1]}` : lanes.join('');
+      for (const l of stray) problems.push(`${name}.failures holds a failure of lane ${l}, not ${named}`);
+    }
     if (!Array.isArray(set['faults']) || !set['faults'].every((f) => isObj(f) && typeof f['applicable'] === 'number' && typeof f['caught'] === 'number' && Array.isArray(f['uncaught']))) problems.push(`${name}.faults is not a fault row list`);
   };
   const set = v['set'];
