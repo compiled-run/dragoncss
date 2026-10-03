@@ -49,3 +49,5 @@ export type { EnvironmentDependencies } from './environment.ts';
 export { environmentDependencies, resolveEnvironment } from './environment.ts';
 export type { FontLengths } from './text.ts';
 export { fontMetricLengths } from './text.ts';
+// Form controls (FORM-a): the range thumb offset and default track length, and the button's block centring shift.
+export { buttonContentShift, controlAsBox, SLIDER_DEFAULT_TRACK_LENGTH, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, zoomTrackLength } from './controls.ts';

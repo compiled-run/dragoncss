@@ -23,7 +23,7 @@ function lowered(input: FrontEndResult, faults = NO_FAULTS): LayoutBox {
 function find(b: LayoutBox, id: string): LayoutBox | TextLeaf | undefined {
   if (b.id === id) return b;
   for (const c of b.children) {
-    if (c.id === id && c.kind !== 'replaced') return c;
+    if (c.id === id && c.kind !== 'replaced' && c.kind !== 'control') return c;
     if (c.kind === 'box') {
       const hit = find(c, id);
       if (hit !== undefined) return hit;

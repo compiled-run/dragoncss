@@ -3,7 +3,7 @@
 // the device scale (border widths, the padding-box clip, the text instance size) come from the TS engine with the same helpers
 // the generated code runs on the device through the translated engine. The digest of an expected dump is embedded in the
 // generated code, keyed by case and DPR. The compiler core imports the engine for types only, so the host passes the TS engine in.
-import type { Edges, EngineFaults, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, ObjectRect, ReplacedLeaf, ReplacedPaint, SnappedRect, TextMeasurer } from '@dragon/layout';
+import type { ControlBox, Edges, EngineFaults, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, ObjectRect, ReplacedLeaf, ReplacedPaint, SnappedRect, TextMeasurer } from '@dragon/layout';
 import { canonicalJson, sha256Hex } from '../digest.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { NativeBackend, NativeProgram, ProgramNode, ProgramWrite } from '../lower/native-program.ts';
@@ -89,9 +89,9 @@ export function programInput(p: NativeProgram, viewport: { readonly width: numbe
 export function resolvedFontSizes(engine: ExpectedEngine, input: LayoutInput): Map<string, number> {
   const zoomed = engine.zoomInput(input, engine.noFaults);
   const out = new Map<string, number>();
-  const walk = (b: LayoutBox): void => {
+  const walk = (b: LayoutBox | ControlBox): void => {
     for (const c of b.children) {
-      if (c.kind === 'box') walk(c);
+      if (c.kind === 'box' || c.kind === 'control') walk(c);
       else if (c.kind === 'text') out.set(c.id, c.font.size);
     }
   };
@@ -104,11 +104,11 @@ export function borderDevicePx(engine: ExpectedEngine, input: LayoutInput): Map<
   const zoomed = engine.zoomInput(input, engine.noFaults);
   const lu = engine.luPerPx;
   const out = new Map<string, readonly [number, number, number, number]>();
-  const walk = (b: LayoutBox): void => {
+  const walk = (b: LayoutBox | ControlBox): void => {
     const e = engine.resolveBorder(b.style, zoomed.devicePixelRatio);
     out.set(b.id, [e.top / lu, e.right / lu, e.bottom / lu, e.left / lu]);
     for (const c of b.children) {
-      if (c.kind === 'box') walk(c);
+      if (c.kind === 'box' || c.kind === 'control') walk(c);
       else if (c.kind === 'replaced') {
         const r = engine.resolveBorder(c.style, zoomed.devicePixelRatio);
         out.set(c.id, [r.top / lu, r.right / lu, r.bottom / lu, r.left / lu]);
@@ -140,10 +140,10 @@ export function replacedGeometries(engine: ExpectedEngine, input: LayoutInput, b
     const pad = engine.resolvePadding(style, cb);
     return r.width - bor.left - bor.right - pad.left - pad.right;
   };
-  const walk = (b: LayoutBox, cb: number): void => {
+  const walk = (b: LayoutBox | ControlBox, cb: number): void => {
     const inner = contentWidth(b.id, b.style, cb);
     for (const c of b.children) {
-      if (c.kind === 'box') walk(c, inner);
+      if (c.kind === 'box' || c.kind === 'control') walk(c, inner);
       else if (c.kind === 'replaced') {
         const r = abs.get(c.id);
         if (r === undefined) throw new Error(`no laid-out box ${c.id}`);

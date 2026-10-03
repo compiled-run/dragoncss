@@ -7,8 +7,8 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from 'playwright';
-import type { Ctx, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextLeaf, TextMeasurer } from '@dragon/layout';
-import { absoluteRects, fromCssPx, layout, NO_ENGINE_FAULTS, placeLines, resolveBorder, resolvePadding, snapEdges, zoomInput } from '@dragon/layout';
+import type { ControlBox, Ctx, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextLeaf, TextMeasurer } from '@dragon/layout';
+import { absoluteRects, controlAsBox, fromCssPx, layout, NO_ENGINE_FAULTS, placeLines, resolveBorder, resolvePadding, snapEdges, zoomInput } from '@dragon/layout';
 import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
@@ -43,6 +43,7 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
     for (const c of b.children) {
       zParent.set(c.id, b.id);
       if (c.kind === 'box') walk(c);
+      else if (c.kind === 'control') walk(controlAsBox(c));
       else if (c.kind === 'replaced') replaced.add(c.id);
     }
   };
@@ -310,9 +311,9 @@ export function checkDumpBreaks(dump: NativeDump, v: BreakVector): BreakResult {
 /** The text of every leaf of an engine input, by id. */
 export function leafTexts(root: LayoutBox): Map<string, string> {
   const out = new Map<string, string>();
-  const walk = (b: LayoutBox): void => {
+  const walk = (b: LayoutBox | ControlBox): void => {
     for (const c of b.children) {
-      if (c.kind === 'box') walk(c);
+      if (c.kind === 'box' || c.kind === 'control') walk(c);
       else if (c.kind === 'text') out.set(c.id, c.text);
     }
   };
@@ -342,15 +343,16 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
   var zBoxes: [String: LayoutBox] = [:]
   var zParent: [String: String] = [:]
   var replaced: Set<String> = []
-  func walk(_ b: LayoutBox) {
+  func walk(_ b: LayoutBox) throws {
     zBoxes[b.id.description] = b
     for c in b.children.items {
-      if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
+      if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; try walk(cb) }
+      else if let cc = c as? ControlBox { zParent[cc.id.description] = b.id.description; try walk(try controls_controlAsBox(cc)) }
       else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
       else if let rl = c as? ReplacedLeaf { replaced.insert(rl.id.description) }
     }
   }
-  walk(zoomed.root)
+  try walk(zoomed.root)
   var rects: [String: LayoutRect] = [:]
   var order: [String] = []
   for r in boxes where !dragonIsLine(r) { rects[r.id.description] = r; order.append(r.id.description) }
@@ -419,6 +421,7 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
     zBoxes[b.id] = b
     for (c in b.children) {
       if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) }
+      else if (c is ControlBox) { zParent[c.id] = b.id; walk(controls_controlAsBox(c)) }
       else if (c is TextLeaf) zParent[c.id] = b.id
       else if (c is ReplacedLeaf) replaced.add(c.id)
     }

@@ -267,16 +267,39 @@ export type ReplacedLeaf = {
   readonly objectPositionY: ObjectPositionValue;
 };
 
-/** A box-level child: an element or anonymous box, or a replaced leaf. */
-export type LayoutNode = LayoutBox | ReplacedLeaf;
+/**
+ * What a form control's box does beyond a plain box (FORM-a, Blink 145):
+ * - range: the input[type=range] flex container, whose intrinsic content inline size is defaultInlineSize CSS px (the compiler
+ *   writes 129, Chrome's measured default track length; the engine zooms it like a px length);
+ * - slider-thumb: the thumb, which its block container's layout moves along the inline axis by ratio x (content width - thumb
+ *   width), ratio being the input's (value - min) / (max - min) in [0, 1] (AdjustSliderThumbInlineOffset);
+ * - button-block: a block button, whose in-flow contents are centred safely in the block axis (AlignBlockContent).
+ */
+export type ControlKind =
+  | { readonly kind: 'range'; readonly defaultInlineSize: number }
+  | { readonly kind: 'slider-thumb'; readonly ratio: number }
+  | { readonly kind: 'button-block' };
 
-/** Children are either all boxes and replaced leaves or all text leaves: the compiler wraps mixed text in anonymous boxes. */
+/** A form control's box: a box with the same fields as LayoutBox plus its control facts. */
+export type ControlBox = {
+  readonly kind: 'control';
+  readonly id: string;
+  readonly boxType: BoxType;
+  readonly style: LayoutStyle;
+  readonly control: ControlKind;
+  readonly children: readonly (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf)[];
+};
+
+/** A box-level child: an element or anonymous box, a form control's box, or a replaced leaf. */
+export type LayoutNode = LayoutBox | ControlBox | ReplacedLeaf;
+
+/** Children are either all boxes, control boxes and replaced leaves or all text leaves: the compiler wraps mixed text in anonymous boxes. */
 export type LayoutBox = {
   readonly kind: 'box';
   readonly id: string;
   readonly boxType: BoxType;
   readonly style: LayoutStyle;
-  readonly children: readonly (LayoutBox | TextLeaf | ReplacedLeaf)[];
+  readonly children: readonly (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf)[];
 };
 
 /** The initial containing block in CSS px. */
