@@ -502,7 +502,9 @@
         {"case":"values-calc-border-shorthand","width":800,"height":600,"sha256":"397180d765e50bbf0a4f1e2c33c9b8e9884de4996c5b4a91a4c3a4fa605f63b7"},
         {"case":"values-calc-border-shorthand-rtl","width":800,"height":600,"sha256":"4375f7d36e0c1c87bc1a812cbd4bf62f58728155d0d88b847ddd923ab2da888e"},
         {"case":"values-calc-length-max","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
-        {"case":"values-calc-length-max-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"}
+        {"case":"values-calc-length-max-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
+        {"case":"values-order-calc-round","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
+        {"case":"values-order-calc-round-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"}
       ]
     },
     {
@@ -1004,7 +1006,9 @@
         {"case":"values-calc-border-shorthand","width":1200,"height":900,"sha256":"fa2e88b6792350d04d36f7f2817ed2892aad471e453d376e0124174aec6bfcf2"},
         {"case":"values-calc-border-shorthand-rtl","width":1200,"height":900,"sha256":"1a4985550512b6f95b3c05593b21f77dd680deeaaf1581398a81ff154bc5cce4"},
         {"case":"values-calc-length-max","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
-        {"case":"values-calc-length-max-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"}
+        {"case":"values-calc-length-max-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
+        {"case":"values-order-calc-round","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
+        {"case":"values-order-calc-round-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"}
       ]
     },
     {
@@ -1506,7 +1510,9 @@
         {"case":"values-calc-border-shorthand","width":1050,"height":788,"sha256":"e1bc8d72934303c197de7f8bb70ca18bd06a2fa344609fd7a9518c6597c6273b"},
         {"case":"values-calc-border-shorthand-rtl","width":1050,"height":788,"sha256":"a057895e679f4afc7cdbd2818ce3c3e90908f2cf948f808e7d08c9cd2c86644f"},
         {"case":"values-calc-length-max","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
-        {"case":"values-calc-length-max-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"}
+        {"case":"values-calc-length-max-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
+        {"case":"values-order-calc-round","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
+        {"case":"values-order-calc-round-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"}
       ]
     }
   ]

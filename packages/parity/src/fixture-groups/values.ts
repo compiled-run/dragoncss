@@ -39,6 +39,7 @@ export const VALUES: readonly FixtureSpec[] = [
   both('values-calc-contexts-root-min-max'),
   both('values-calc-border-shorthand'),
   both('values-calc-length-max'),
+  both('values-order-calc-round'),
   reject('values-reject-env', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + env(safe-area-inset-top))', 'width: calc(10px + env(safe-area-inset-top)) /* env() reads the safe-area insets'),
   reject('values-reject-sized-viewport', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 5svh)', 'height: calc(10px + 5svh) /* svh is a small, large or dynamic viewport unit'),
   reject('values-reject-font-metric', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1px + 3ex)', 'height: calc(1px + 3ex) /* ex is measured from the primary font'),
@@ -52,6 +53,6 @@ export const VALUES: readonly FixtureSpec[] = [
   reject('values-reject-percent-gap', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 5%)', 'row-gap: calc(10px + 5%) /* a percentage in this property needs percentage gaps'),
   reject('values-reject-calc-line-height', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1 + 1)', 'line-height: calc(1 + 1) /* a calculation in line-height reaches the font and line metrics'),
   reject('values-reject-calc-font-size', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 1px)', 'font-size: calc(10px + 1px) /* a calculation in font-size reaches the font and line metrics'),
-  reject('values-reject-order-fraction', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1.5)', 'order: calc(1.5) /* order takes an integer, and this calculation is not a whole number'),
+  reject('values-reject-order-fraction', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1 / 0)', 'order: calc(1/0) /* it divides by zero or produces an infinite or NaN value'),
   reject('values-reject-border-shorthand', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1px * 2px / 1px) solid #000', 'border-left-width: calc(1px*2px/1px) /* it multiplies two lengths, which is typed arithmetic'),
 ];

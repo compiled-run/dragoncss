@@ -64,13 +64,17 @@ const PLANTED: readonly { readonly fault: string; readonly kind: 'engine' | 'com
   { fault: 'divideDirect', kind: 'engine', fixture: 'values-calc-divide', dpr: 1, failure: 'exact', nodes: ['b'] },
   { fault: 'calcLeafUnzoomed', kind: 'engine', fixture: 'values-calc-em-fractional', dpr: 3, failure: 'gate', nodes: ['a', 'b', 'c', 'd'] },
   { fault: 'viewportUnitsUnceiled', kind: 'engine', fixture: 'values-viewport-units', dpr: 2.625, failure: 'exact', nodes: ['a', 'b', 'c', 'd', 'e', 'f', 'g'] },
+  // T130: a tie in a non-integer order (calc(-1.5), calc(0.5), calc(2.5), calc(2147483646.5), min, max, var()) moves its item.
+  { fault: 'orderHalfEven', kind: 'engine', fixture: 'values-order-calc-round', dpr: 1, failure: 'gate', nodes: ['p2x', 'p3x', 'p5x', 'p16x', 'p19x', 'p20x', 'p24x'] },
+  // T130: an order beyond the int range (calc(±3e9), calc(±1e300), calc(2147483647.5), a 3000000000 literal) no longer ties.
+  { fault: 'orderUnclamped', kind: 'engine', fixture: 'values-order-calc-round', dpr: 1, failure: 'gate', nodes: ['p11x', 'p12x', 'p13x', 'p14x', 'p15x', 'p25x'] },
   { fault: 'sumOrderSwapped', kind: 'compiler', fixture: 'values-calc-sum-order', dpr: 1, failure: 'exact', nodes: ['a', 'b', 'c'] },
   { fault: 'dropExplicitZeroPercent', kind: 'compiler', fixture: 'values-calc-zero-percent-height', dpr: 1, failure: 'gate', nodes: ['z'] },
 ];
 
-describe('planted value-model faults: 8 engine and 2 compiler faults each fail their named values fixture', () => {
-  it('names every fault once: the 8 V1 engine faults and the 2 compiler faults', () => {
-    expect(PLANTED.filter((p) => p.kind === 'engine').map((p) => p.fault).sort()).toEqual(['calcDoubleEval', 'calcLeafUnzoomed', 'calcNoNonNegClamp', 'calcPercentIndefiniteAsLength', 'calcPercentPlainOrder', 'clampMaxWins', 'divideDirect', 'viewportUnitsUnceiled']);
+describe('planted value-model faults: 10 engine and 2 compiler faults each fail their named values fixture', () => {
+  it('names every fault once: the 8 V1 engine faults, the 2 T130 order faults and the 2 compiler faults', () => {
+    expect(PLANTED.filter((p) => p.kind === 'engine').map((p) => p.fault).sort()).toEqual(['calcDoubleEval', 'calcLeafUnzoomed', 'calcNoNonNegClamp', 'calcPercentIndefiniteAsLength', 'calcPercentPlainOrder', 'clampMaxWins', 'divideDirect', 'orderHalfEven', 'orderUnclamped', 'viewportUnitsUnceiled']);
     expect(PLANTED.filter((p) => p.kind === 'compiler').map((p) => p.fault).sort()).toEqual(['dropExplicitZeroPercent', 'sumOrderSwapped']);
     expect(Object.keys(NO_ENGINE_FAULTS)).toEqual(expect.arrayContaining(PLANTED.filter((p) => p.kind === 'engine').map((p) => p.fault)));
     expect(Object.keys(NO_FAULTS)).toEqual(expect.arrayContaining(PLANTED.filter((p) => p.kind === 'compiler').map((p) => p.fault)));
@@ -185,6 +189,43 @@ describe('getComputedStyle serializes the calculation css/math.ts rebuilds from 
       }
     }
     expect(compared).toBeGreaterThanOrEqual(12);
+  });
+});
+
+/** Chrome's order serialization: printf %g, six significant digits (2147483647 is 2.14748e+09). */
+function printfG(x: number): string {
+  if (x !== 0 && (Math.abs(x) >= 1e6 || Math.abs(x) < 1e-4)) {
+    const [m, e] = x.toExponential(5).split('e') as [string, string];
+    const exp = Number(e);
+    return `${m.replace(/\.?0+$/, '')}e${exp < 0 ? '-' : '+'}${String(Math.abs(exp)).padStart(2, '0')}`;
+  }
+  return String(Number(x.toPrecision(6)));
+}
+
+describe('T130: the engine rounds a non-integer order as Chrome computes it (half toward +infinity, then the int range)', () => {
+  const f = spec('values-order-calc-round');
+  it('every item of values-order-calc-round has the engine-resolved order getComputedStyle reports, in both directions', () => {
+    let compared = 0;
+    for (const c of casesOf(f, fixtureInput(f))) {
+      const p = iosLayoutProjection(compileFixture(f, NO_FAULTS, 'enforce', c.environment.direction).compiled, c.environment, c.assignment);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      const resolved = boxes(zoomInput(p.input as LayoutInput, NO_ENGINE_FAULTS).root);
+      for (const n of committed(c, 1).nodes) {
+        if (!/^p\d+[lxh]$/.test(n.id)) continue;
+        const b = resolved.get(n.id);
+        if (b === undefined || n.computed === null) throw new Error(`${c.id} ${n.id}: no engine box or no computed style`);
+        expect(printfG(b.style.order), `${c.id} ${n.id}`).toBe(String(n.computed['order']));
+        compared++;
+      }
+    }
+    expect(compared).toBe(2 * 25 * 3);
+  });
+  it('the compiler sends a calculation unrounded, so only the engine rounds it', () => {
+    const c = casesOf(f, fixtureInput(f))[0] as ParityCase;
+    const p = iosLayoutProjection(compileFixture(f, NO_FAULTS, 'enforce', c.environment.direction).compiled, c.environment, c.assignment);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const sent = boxes(p.input.root as LayoutBox);
+    expect(['p1x', 'p2x', 'p9x', 'p15x', 'p23x', 'p25x'].map((id) => (sent.get(id) as LayoutBox).style.order)).toEqual([1.5, -1.5, 0.49999999999999994, 2147483647.5, 1.5, 3000000000]);
   });
 });
 

@@ -97,8 +97,8 @@ export function toValue(node: CssNode, property: string): CssValue {
 
 /**
  * A css-values-4 §10 math function (css/math.ts). A number calculation (flex-grow, flex-shrink, order, or a number in the flex
- * shorthand) is folded to its number now; a length calculation keeps its text, with feature key <calc()>, <min()>, <max()> or
- * <clamp()>, and is lowered per element (lower/ios-layout.ts). A calculation V1 refuses keeps its text with the reason as a
+ * shorthand) is folded to its number now, order unrounded (the engine rounds it, environment.ts); a length calculation keeps its
+ * text, with feature key <calc()>, <min()>, <max()> or <clamp()>, and is lowered per element (lower/ios-layout.ts). A calculation V1 refuses keeps its text with the reason as a
  * comment and the feature type "refused <name>()", which no profile row supports, so the declaration is refused with the reason.
  */
 export const REFUSED_MATH_PREFIX = 'refused ';
@@ -119,7 +119,6 @@ function mathValue(node: CssNode, name: string, property: string): CssValue {
   if (context.type === 'number') {
     const folded = foldNumber(parsed.node);
     const value = property === 'flex-grow' || property === 'flex-shrink' ? nonNegative(folded) : folded;
-    if (property === 'order' && !Number.isInteger(value)) return refused('order takes an integer, and this calculation is not a whole number');
     return { kind: 'number', value };
   }
   return { kind: 'other', type: `${name}()`, text };

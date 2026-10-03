@@ -67,6 +67,7 @@ import {
   lineHeightNumberPx,
   lineHeightPercentPx,
   metricLeafPx,
+  orderInteger,
   specifiedFontSize,
   fontMetricPx,
   platformFontSize,
@@ -144,13 +145,14 @@ export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
  */
 function boxNeedsEnvironment(b: LayoutBox, faults: EngineFaults): boolean {
   if (styleNeedsEnvironment(b.style)) return true;
+  if (resolveOrder(b.style.order, faults) !== b.style.order) return true;
   for (const c of b.children) {
     if (c.kind === 'box') {
       if (boxNeedsEnvironment(c, faults)) return true;
       continue;
     }
     if (c.kind === 'replaced') {
-      if (styleNeedsEnvironment(c.style)) return true;
+      if (styleNeedsEnvironment(c.style) || resolveOrder(c.style.order, faults) !== c.style.order) return true;
       continue;
     }
     const f = c.font;
@@ -232,9 +234,15 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     borderBottomWidth: resolveBorderWidth(s.borderBottomWidth, env),
     borderLeftWidth: resolveBorderWidth(s.borderLeftWidth, env),
     flexBasis: resolveBasis(s.flexBasis, env),
+    order: resolveOrder(s.order, env.faults),
     rowGap: resolveGap(s.rowGap, env),
     columnGap: resolveGap(s.columnGap, env),
   };
+}
+
+/** order: a math function's number rounded half toward +infinity and clamped to int; an integer in range is itself. */
+function resolveOrder(order: number, faults: EngineFaults): number {
+  return orderInteger(order, faults.orderHalfEven, faults.orderUnclamped);
 }
 
 function zoomPx(v: Px, z: number): Px {
