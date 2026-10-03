@@ -133,6 +133,18 @@ export type EngineFaults = {
   readonly noBreakAroundAtomic: boolean;
   /** An atomic inline with an auto width fills the available width instead of shrinking to fit (CSS2 §10.3.9). */
   readonly atomicShrinkToFitIgnored: boolean;
+  /** overflow-wrap: anywhere and word-break: break-word leave min-content at its normal opportunities (css-text-3 §5.5). */
+  readonly anywhereMinContentIgnored: boolean;
+  /** overflow-wrap: break-word breaks anywhere in min-content too (Blink applies it in content mode only). */
+  readonly breakWordShrinksMinContent: boolean;
+  /** Break-character opportunities fall between every two code points instead of grapheme clusters (UAX #29). */
+  readonly graphemeClusterSplit: boolean;
+  /** overflow-wrap breaks at grapheme boundaries from the start instead of only when a line overflows. */
+  readonly breakAnywhereAlways: boolean;
+  /** An overflowing segment is broken at graphemes on the current line even though an earlier opportunity fits. */
+  readonly emergencyBreakBeforeOpportunity: boolean;
+  /** word-break: break-word is laid out as normal. */
+  readonly wordBreakBreakWordIgnored: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -189,6 +201,12 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   atomicMarginExcluded: false,
   noBreakAroundAtomic: false,
   atomicShrinkToFitIgnored: false,
+  anywhereMinContentIgnored: false,
+  breakWordShrinksMinContent: false,
+  graphemeClusterSplit: false,
+  breakAnywhereAlways: false,
+  emergencyBreakBeforeOpportunity: false,
+  wordBreakBreakWordIgnored: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };

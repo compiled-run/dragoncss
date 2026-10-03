@@ -146,6 +146,8 @@ export const textLeafSchema = obj({
   lineHeight: lineHeightSchema,
   whiteSpaceCollapse: lit('collapse'),
   textWrapMode: lit('wrap', 'nowrap'),
+  overflowWrap: lit('normal', 'break-word', 'anywhere'),
+  wordBreak: lit('normal', 'break-all', 'keep-all', 'break-word', 'auto-phrase'),
 });
 
 /** A replaced leaf (input.ts ReplacedLeaf); its style is checked as a box style. */

@@ -23,7 +23,7 @@ Every field is required and there are no defaults: the compiler writes every val
 - `style` has all 43 `LayoutStyle` fields. `verticalAlign` is `{ kind: "keyword", value }` for a CSS2 §10.8.1 keyword, a length, a percentage or a calculation; the compiler writes `baseline`. Lengths are tagged `{ kind: "px", value }` (CSS px), `{ kind: "percent", value }` (100 is the whole basis), or keywords such as `{ kind: "auto" }`, `{ kind: "none" }`, `{ kind: "normal" }` and `{ kind: "content" }`, as each field allows. Enumerations are strings; flexGrow, flexShrink and order are numbers.
 - `aspectRatio` is `{ kind: "auto" }`, or Blink's layout ratio `{ kind: "ratio" | "auto-ratio", width, height }` in raw LayoutUnit values (positive integers; `auto-ratio` is `auto && <ratio>`, which sizes the content box). A percentage height, min-height or max-height beside a ratio is refused.
 - The four border widths also take `{ kind: "device-px", value }`: an initial line width (no width declared, or a border shorthand that omits it), which Chrome keeps in device px at every pixel ratio (rule R5 below).
-- A text leaf is `{ kind: "text", id: "<element>:text<k>", text, font, lineHeight, whiteSpaceCollapse: "collapse", textWrapMode }`. The text is already collapsed, and the leaf carries every inherited text property itself. `font` is `{ family: "Ahem", size, specifiedSize, absoluteSize }`: `specifiedSize` is the specified font size as a calculation leaf or tree at zoom 1 (below), `absoluteSize` is false for a size derived through `em` or `%` from a keyword size (Chrome's 6px minimum logical font size applies to it), and `size` is the computed size the compiler found at the reference environment, which the environment pass recomputes. `lineHeight` is `normal`, a `number`, `px`, a `percent` of the font size, or a `calc`.
+- A text leaf is `{ kind: "text", id: "<element>:text<k>", text, font, lineHeight, whiteSpaceCollapse: "collapse", textWrapMode, overflowWrap, wordBreak }` (overflowWrap `normal`, `break-word` or `anywhere`; wordBreak `normal` or `break-word`, the rest refused). The text is already collapsed, and the leaf carries every inherited text property itself. `font` is `{ family: "Ahem", size, specifiedSize, absoluteSize }`: `specifiedSize` is the specified font size as a calculation leaf or tree at zoom 1 (below), `absoluteSize` is false for a size derived through `em` or `%` from a keyword size (Chrome's 6px minimum logical font size applies to it), and `size` is the computed size the compiler found at the reference environment, which the environment pass recomputes. `lineHeight` is `normal`, a `number`, `px`, a `percent` of the font size, or a `calc`.
 - Ids are unique. Parents come before children, and children are in document order. `order` and the reverse flex directions are applied by the engine, never by reordering the input.
 
 ## Output (`LayoutRect[]`)
@@ -333,7 +333,9 @@ Input:
        "kind": "normal"
       },
       "whiteSpaceCollapse": "collapse",
-      "textWrapMode": "wrap"
+      "textWrapMode": "wrap",
+      "overflowWrap": "normal",
+      "wordBreak": "normal"
      }
     ]
    }

@@ -87,7 +87,7 @@ export function br(id: string, over: Partial<Omit<LineBreak, 'kind' | 'id'>> = {
 
 /** A 10px Ahem text leaf, already collapsed, with the inherited text properties the compiler writes onto it. */
 export function text(id: string, value: string, over: Partial<TextLeaf> = {}): TextLeaf {
-  return { kind: 'text', id, text: value, font: ahemFont(10), lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', ...over };
+  return { kind: 'text', id, text: value, font: ahemFont(10), lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', overflowWrap: 'normal', wordBreak: 'normal', ...over };
 }
 
 export const px = (value: number) => ({ kind: 'px', value }) as const;
