@@ -313,7 +313,7 @@ export function checkTrace(step: Step, inputs: Inputs, tree: Tree, lines: readon
     const i = p.lastIndexOf('node_modules/');
     if (i < 0) return null;
     const rest = p.slice(i + 'node_modules/'.length).split('/');
-    if (rest[0] === '.pnpm' || rest[0] === '.bin' || rest[0] === '.cache' || rest[0] === '.modules.yaml' || rest[0] === undefined || rest[0] === '') return null;
+    if (rest[0] === undefined || rest[0] === '' || rest[0].startsWith('.')) return null;
     return rest[0].startsWith('@') ? `${rest[0]}/${rest[1]}` : rest[0];
   };
   // A process pnpm runs to start the script reads the workspace manifests; the script texts are keyed instead.
@@ -354,7 +354,7 @@ export function checkTrace(step: Step, inputs: Inputs, tree: Tree, lines: readon
     if (kind === 'A') {
       // A process header: the argv of the process whose lines follow.
       const argv = argvOf(extra)!;
-      isPnpm = /(^|\/)pnpm$/.test(argv[0] ?? '') || /\/pnpm\/(bin|dist)\/pnpm\.c?js$/.test(argv[1] ?? '');
+      isPnpm = [argv[0], argv[1]].some((a) => /(^|\/)pnpm(\.c?js)?$/.test(a ?? ''));
       headers++;
       continue;
     }
@@ -692,7 +692,8 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
     io.log(`pass ${pass}: ${secs(io.now() - tp)}, ${passChanged.length} files changed`);
     if (passChanged.length === 0 && (pass > 1 || first === 0)) {
       const changed = changedPaths(start, tree);
-      io.log(`fixed point after ${pass} passes, ${ran} steps run, ${secs(io.now() - t0)}${ran === 0 ? ': nothing to do' : ''}`);
+      const restored = records.filter((x) => x.action === 'restored').length;
+      io.log(`fixed point after ${pass} passes, ${ran} steps run, ${restored} restored, ${secs(io.now() - t0)}${ran + restored === 0 ? ': nothing to do' : ''}`);
       return { ok: true, changed, ran, passes: pass, error: null, records };
     }
   }
@@ -763,44 +764,13 @@ export function restoreBlobs(root: string, files: Readonly<Record<string, string
   return true;
 }
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-  const opts: { force: boolean; check: boolean; from: string | null; jobs: number; explain: boolean } = { force: false, check: false, from: null, jobs: Number(process.env.DRAGON_REGEN_JOBS ?? DEFAULT_JOBS), explain: false };
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i];
-    if (a === '--force') opts.force = true;
-    else if (a === '--check') opts.check = true;
-    else if (a === '--explain') opts.explain = true;
-    else if (a === '--from' && i + 1 < args.length && !args[i + 1]!.startsWith('--')) opts.from = args[++i]!;
-    else if (a === '--jobs' && i + 1 < args.length && /^[1-9]\d*$/.test(args[i + 1]!)) opts.jobs = Number(args[++i]!);
-    else {
-      console.error(`regen: unknown argument ${JSON.stringify(a)}; usage: pnpm regen [--check] [--force] [--from <step>] [--jobs <n>] [--explain]`);
-      process.exit(2);
-    }
-  }
-  if (!Number.isInteger(opts.jobs) || opts.jobs < 1) {
-    console.error(`regen: DRAGON_REGEN_JOBS must be a positive integer, not ${JSON.stringify(process.env.DRAGON_REGEN_JOBS)}`);
-    process.exit(2);
-  }
-  const root = git(['rev-parse', '--show-toplevel']).trim();
+/** The Io of a working tree: steps run as processes under the tracer, the cache in storeDir, step output in logDir. */
+export function localIo(root: string, storeDir: string, logDir: string): Io {
   const roots = [...new Set([root, realpathSync(root)])];
-  const logDir = join(root, 'node_modules/.cache/dragon-regen');
-  mkdirSync(logDir, { recursive: true });
-  const storeDir = join(resolve(root, git(['-C', root, 'rev-parse', '--git-common-dir']).trim()), 'dragon-regen', 'v2');
-  mkdirSync(storeDir, { recursive: true });
-  const pruned = pruneStore(storeDir, 30, Date.now());
-  if (pruned > 0) console.log(`regen: pruned ${pruned} cache entries older than 30 days`);
-  let driver = '';
-  try {
-    driver = git(['-C', root, 'config', '--get', 'merge.dragon-generated.driver']).trim();
-  } catch {
-    // Unset: git config exits 1.
-  }
-  if (driver !== 'true') console.log('regen: run pnpm setup:git once so merges keep generated files instead of stopping on them');
   const tracer = join(root, TRACER);
   const machine = JSON.stringify({ platform: process.platform, arch: process.arch, node: process.version });
   const texts = new Map<string, string>();
-  const io: Io = {
+  return {
     snapshot: () => snapshotTree(root),
     context: (tree) => {
       const read = (p: string): string => {
@@ -852,6 +822,42 @@ async function main(): Promise<void> {
     log: (line) => console.log(`regen: ${line}`),
     now: () => Date.now(),
   };
+}
+
+async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  const opts: { force: boolean; check: boolean; from: string | null; jobs: number; explain: boolean } = { force: false, check: false, from: null, jobs: Number(process.env.DRAGON_REGEN_JOBS ?? DEFAULT_JOBS), explain: false };
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === '--force') opts.force = true;
+    else if (a === '--check') opts.check = true;
+    else if (a === '--explain') opts.explain = true;
+    else if (a === '--from' && i + 1 < args.length && !args[i + 1]!.startsWith('--')) opts.from = args[++i]!;
+    else if (a === '--jobs' && i + 1 < args.length && /^[1-9]\d*$/.test(args[i + 1]!)) opts.jobs = Number(args[++i]!);
+    else {
+      console.error(`regen: unknown argument ${JSON.stringify(a)}; usage: pnpm regen [--check] [--force] [--from <step>] [--jobs <n>] [--explain]`);
+      process.exit(2);
+    }
+  }
+  if (!Number.isInteger(opts.jobs) || opts.jobs < 1) {
+    console.error(`regen: DRAGON_REGEN_JOBS must be a positive integer, not ${JSON.stringify(process.env.DRAGON_REGEN_JOBS)}`);
+    process.exit(2);
+  }
+  const root = git(['rev-parse', '--show-toplevel']).trim();
+  const logDir = join(root, 'node_modules/.cache/dragon-regen');
+  mkdirSync(logDir, { recursive: true });
+  const storeDir = join(resolve(root, git(['-C', root, 'rev-parse', '--git-common-dir']).trim()), 'dragon-regen', 'v2');
+  mkdirSync(storeDir, { recursive: true });
+  const pruned = pruneStore(storeDir, 30, Date.now());
+  if (pruned > 0) console.log(`regen: pruned ${pruned} cache entries older than 30 days`);
+  let driver = '';
+  try {
+    driver = git(['-C', root, 'config', '--get', 'merge.dragon-generated.driver']).trim();
+  } catch {
+    // Unset: git config exits 1.
+  }
+  if (driver !== 'true') console.log('regen: run pnpm setup:git once so merges keep generated files instead of stopping on them');
+  const io = localIo(root, storeDir, logDir);
   const r = await regen(STEPS, opts, io);
   writeFileSync(join(logDir, 'last-run.json'), `${JSON.stringify(r.records, null, 1)}\n`);
   if (r.error !== null) console.error(`regen: FAILED: ${r.error}`);
