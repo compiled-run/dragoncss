@@ -2,13 +2,16 @@
 // (paint-gradient.ts) rasterises exactly, inside a layer and two device px clear of every edge of the painted area, with rule
 // gradient:<box>. Check (c) compares the device capture with Chrome's pixels there at GRADIENT_CHANNEL_DELTA. The reference
 // equals Chrome at every such pixel (bg2-reference.test.ts), and the device runs the same code translated, so a device pixel
-// that differs is a device fault. backgroundPlans is the same plan the device builds, for the host reference test.
+// that differs is a device fault. backgroundPlans is the same plan the device builds, for the host reference test. Both keep to the
+// pixels the background alone decides (backgroundOnly): the raster runs under borders and past rounded corners, where the border
+// stage and the rounded clip decide the pixel.
 import type { BackgroundLayer, BackgroundPaint, BackgroundPlan, GradientFaults, GradientImage, LayoutBox, LayoutRect } from '@dragon/layout';
 import { absoluteRects, backgroundPixelExact, backgroundRow, fromCssPx, layout, measurerFor, NO_ENGINE_FAULTS, NO_GRADIENT_FAULTS, planBackground, referenceTileSize, resolveBorder, resolvePadding, zoomInput } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { programInput } from 'dragon';
 import { REFERENCE_PLATFORM } from '../platform.ts';
-import type { SamplePoint } from '../samples.ts';
+import type { SampleBox, SamplePoint } from '../samples.ts';
+import { boxRadii, clearInside, nearArc, rectArcs } from './radius.ts';
 import type { PaintSampleContext, PaintSamples } from './types.ts';
 
 type Rgba = { readonly r: number; readonly g: number; readonly b: number; readonly alpha: number };
@@ -80,6 +83,31 @@ export function backgroundPlans(p: NativeProgram, viewport: { readonly width: nu
   });
 }
 
+/**
+ * Whether Chrome's pixel at (x, y) is the background of box id alone: inside the box's inner border edge (the border paints over
+ * the background under it), at least one device px clear inside each of its rounded corners' arcs, outer and padding-edge (the
+ * rounded clip is antialiased there), and clear of every other rounded box's arcs.
+ */
+export function backgroundOnly(program: NativeProgram, boxes: readonly SampleBox[], dpr: number): (id: string, x: number, y: number) => boolean {
+  const byId = new Map(boxes.map((b) => [b.id, b] as const));
+  const rounded = boxes.flatMap((b) => {
+    const r = boxRadii(program, b, dpr);
+    if (r === null) return [];
+    const il = b.left + b.border.left;
+    const it = b.top + b.border.top;
+    const ir = Math.max(il, b.right - b.border.right);
+    const ib = Math.max(it, b.bottom - b.border.bottom);
+    return [{ id: b.id, arcs: [...rectArcs(b.left, b.top, b.right, b.bottom, r.slice(0, 8)), ...rectArcs(il, it, ir, ib, r.slice(8, 16))] }];
+  });
+  return (id, x, y) => {
+    const b = byId.get(id);
+    if (b === undefined) return false;
+    if (x < b.left + b.border.left || x >= b.right - b.border.right || y < b.top + b.border.top || y >= b.bottom - b.border.bottom) return false;
+    for (const rb of rounded) for (const a of rb.arcs) if (rb.id === id ? !clearInside(a, x, y, 1) : nearArc(a, x, y, 1)) return false;
+    return true;
+  };
+}
+
 /** Columns and rows of the candidate grid in each gradient box. */
 const GRID = [5, 3] as const;
 /** Sample geometry, as samples.ts SAMPLE_INSET_DEVICE_PX: a point stays this far from any edge of the painted area. */
@@ -89,6 +117,7 @@ const INSET = 2;
 export function gradientPoints(ctx: PaintSampleContext): SamplePoint[] {
   const borders = new Map(ctx.boxes.map((b) => [b.id, [b.border.top, b.border.right, b.border.bottom, b.border.left] as [number, number, number, number]]));
   const out: SamplePoint[] = [];
+  const only = backgroundOnly(ctx.program, ctx.boxes, ctx.dpr);
   for (const { id, plan } of backgroundPlans(ctx.program, ctx.viewport, ctx.dpr, borders)) {
     const rows = new Map<number, readonly number[]>();
     const row = (y: number): readonly number[] => {
@@ -98,7 +127,7 @@ export function gradientPoints(ctx: PaintSampleContext): SamplePoint[] {
       rows.set(y, r);
       return r;
     };
-    const painted = (x: number, y: number): boolean => x >= plan.left && x < plan.right && y >= plan.top && y < plan.bottom && row(y)[(x - plan.left) * 4 + 3] === 255 && backgroundPixelExact(plan, x, y);
+    const painted = (x: number, y: number): boolean => x >= plan.left && x < plan.right && y >= plan.top && y < plan.bottom && row(y)[(x - plan.left) * 4 + 3] === 255 && backgroundPixelExact(plan, x, y) && only(id, x, y);
     const [cols, rowsN] = GRID;
     for (let j = 0; j < rowsN; j++) {
       for (let i = 0; i < cols; i++) {

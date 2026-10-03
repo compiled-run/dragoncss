@@ -1,6 +1,7 @@
 // BG2 two-stage paint proof, host stage (notes/T074-bg2-spec.md §7 item 3): the TS reference raster of every gradient box
 // (paint-gradient.ts, the code the device runs translated) against the committed Chrome 145 screenshots, at every pixel a
-// gradient layer paints exactly, at DPR 2, 3 and 2.625. The measured maximum per-channel difference is printed and must not
+// gradient layer paints exactly and the background alone decides in Chrome (inside the inner border edge, clear of rounded arcs:
+// paint-samples/gradient.ts backgroundOnly), at DPR 2, 3 and 2.625. The measured maximum per-channel difference is printed and must not
 // exceed the gradient allowance (allowances/gradient.ts, GATE_CHANNEL_DELTA: no allowance, R2). Planted faults, each a Chrome
 // behaviour the reference must model, must each make some pixel differ: the libm table ignored (R3, fdlibm slopes), unpremultiplied
 // stops, no dither, the page origin for a composited layer (R4), the single-tile models swapped (R5) and an obscuring border ignored.
@@ -12,10 +13,10 @@ import { GRADIENT_CHANNEL_DELTA } from '../src/allowances/gradient.ts';
 import { GATE_CHANNEL_DELTA } from '../src/compare.ts';
 import { DPRS } from '../src/dpr.ts';
 import { expectedEngine, nativeCases } from '../src/native-host.ts';
-import { backgroundPlans } from '../src/paint-samples/gradient.ts';
+import { backgroundOnly, backgroundPlans } from '../src/paint-samples/gradient.ts';
 import { linearSlope } from '../../dragon/src/analysis/paint-values/gradient.ts';
 import type { NativeProgram } from 'dragon';
-import { committedPixels } from '../src/pixel-reference.ts';
+import { caseBoxes, committedPixels } from '../src/pixel-reference.ts';
 
 type Tally = { pixels: number; differing: number; maxDelta: number; first: string | null };
 
@@ -47,13 +48,15 @@ function compareAll(faults: GradientFaults, libmTableIgnored = false): { tally: 
       if (chrome === null) throw new Error(`${n.case.id}: no committed Chrome PNG at DPR ${dpr} (pnpm run parity:pixel-capture)`);
       const viewport = n.case.environment.viewport;
       const borders = borderDevicePx(engine, programInput(program, viewport, dpr));
+      // Chrome's border and rounded clip decide the pixels under a border and near or past a rounded corner, not the background.
+      const only = backgroundOnly(program, caseBoxes(program, viewport, dpr), dpr);
       for (const { id, plan } of backgroundPlans(program, viewport, dpr, borders, faults)) {
         boxes++;
         for (let y = plan.top; y < plan.bottom; y++) {
           const row = backgroundRow(plan, y, faults);
           for (let x = plan.left; x < plan.right; x++) {
             const k = (x - plan.left) * 4;
-            if (row[k + 3] !== 255 || !backgroundPixelExact(plan, x, y) || x < 0 || y < 0 || x >= chrome.width || y >= chrome.height) continue;
+            if (row[k + 3] !== 255 || !backgroundPixelExact(plan, x, y) || !only(id, x, y) || x < 0 || y < 0 || x >= chrome.width || y >= chrome.height) continue;
             tally.pixels++;
             const i = (y * chrome.width + x) * 4;
             let d = 0;
