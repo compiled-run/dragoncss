@@ -93,7 +93,7 @@ export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
   'font-feature-values': refuseAtRule,
   'font-palette-values': refuseAtRule,
   import: refuseAtRule,
-  keyframes: (at) => keyframesAtRule(at),
+  keyframes: keyframesAtRule,
   layer: refuseAtRule,
   media: mediaAtRule,
   namespace: refuseAtRule,

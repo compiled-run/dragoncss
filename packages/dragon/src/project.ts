@@ -16,6 +16,10 @@ import { inDomain, validateInput } from './analysis/input.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
+import { analyzeAnimations, gateAnimationFeatures } from './analysis/animations.ts';
+import * as cssTree from 'css-tree';
+import type { KeyframesSource } from './css/at-rules/keyframes.ts';
+import { parseKeyframesRules } from './css/at-rules/keyframes.ts';
 import { resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
 import { ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
 import { emitNativeSupport, supportDigest } from './emit/native-support.ts';
@@ -730,6 +734,9 @@ function profileText(profile: SupportProfile): CanonicalText {
   return t;
 }
 
+/** A property name css-tree's default lexer knows (the MDN data it bundles): its css-tree.d.ts declares only what the parser uses. */
+const isKnownProperty = (name: string): boolean => (cssTree as unknown as { readonly lexer: { getProperty(n: string): unknown } }).lexer.getProperty(name) !== null;
+
 function analyze<K extends string>(config: { projectId: string; targets: object; fonts?: unknown }, configDiagnostics: readonly Diagnostic[], options: Resolved, input: FrontEndResult): Analysis<K> {
   const targets = Object.keys(config.targets).filter((k): k is KnownTarget => (KNOWN_TARGETS as readonly string[]).includes(k)).sort();
   const diagnostics: Diagnostic[] = [...configDiagnostics];
@@ -747,6 +754,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const rules: Rule[] = [];
     const enclosed: EnclosedRules[] = [];
     const fontFaces: AtRuleContext[] = [];
+    const keyframeSources: KeyframesSource[] = [];
     let order = 0;
     for (const useId of valid.document.styles) {
       const use = valid.styles.get(useId);
@@ -756,11 +764,13 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       dependencies.push({ kind: 'stylesheet', uri: src.ref.uri, hash: src.ref.hash });
       const sheet = { id: use.id, owner: valid.styleOwner.get(use.id) as string, scope: use.scope.kind };
       const before = enclosed.length;
-      const parsed = parseStylesheet(src.text.slice(use.css.start, use.css.end), use.css, sheet, order, diagnostics, enclosed, fontFaces);
+      const parsed = parseStylesheet(src.text.slice(use.css.start, use.css.end), use.css, sheet, order, diagnostics, enclosed, fontFaces, keyframeSources);
       for (const r of [...parsed, ...enclosed.slice(before).flatMap((e) => e.rules)]) for (const d of r.declarations) order = Math.max(order, d.order + 1);
       rules.push(...parsed);
     }
     for (const s of [...valid.sources.values()].sort((a, b) => (a.ref.uri < b.ref.uri ? -1 : a.ref.uri > b.ref.uri ? 1 : 0))) dependencies.push({ kind: 'source', uri: s.ref.uri, hash: s.ref.hash });
+    // T065: the @keyframes blocks parse with the stylesheet, so their refusals come whether or not the analysis runs.
+    const keyframesRules = parseKeyframesRules(keyframeSources, diagnostics);
     const conditions = conditionsOf(rules);
     const partition = conditions.length === 0 ? null : band(conditions.map((c) => c.list));
     if (partition !== null && partition.kind === 'refused') {
@@ -816,6 +826,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       bandCases = passes.map((p) => p.result);
       diagnostics.push(...mergePasses(passes.map((p) => p.diagnostics)));
       cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
+      // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
+      const animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
+      if (options.profiles === 'enforce') gateAnimationFeatures(animation, targets, (t) => profileFor(profiles, t as KnownTarget), diagnostics);
       if (options.profiles === 'enforce') {
         const values: Diagnostic[] = [];
         // A target's messages list the contexts of the bands it is resolved in.

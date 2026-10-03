@@ -26,7 +26,8 @@ export type KeyframeDeclaration = { readonly property: Longhand; readonly value:
 /** One keyframe block: its offsets (a selector list gives several), its own easing, and its values in declaration order. */
 export type KeyframeBlock = { readonly offsets: readonly number[]; readonly easing: EasingValue | null; readonly values: readonly KeyframeDeclaration[]; readonly span: Span };
 
-export type KeyframesRule = { readonly name: string; readonly span: Span; readonly blocks: readonly KeyframeBlock[] };
+/** span: the whole at-rule; preludeSpan: "@keyframes <name>", where the rule's own features are reported. */
+export type KeyframesRule = { readonly name: string; readonly span: Span; readonly preludeSpan: Span; readonly blocks: readonly KeyframeBlock[] };
 
 /** Chrome 145's properties with valid_for_keyframe: false (css_properties.json5; animation-kinds.test.ts checks the list). */
 export const NOT_VALID_FOR_KEYFRAME: readonly string[] = [
@@ -87,6 +88,7 @@ export function parseKeyframesRules(sources: readonly KeyframesSource[], diagnos
     const blocks: KeyframeBlock[] = [];
     for (const r of list(block, 'children')) {
       const span = spanOf(r, src.base);
+      if (r.type === 'Raw' && /^[\s;]*$/.test(String(r['value']))) continue;
       if (r.type !== 'Rule') {
         diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(span), message: `CSS ${r.type} in @keyframes ${name} is not a keyframe block` }));
         continue;
@@ -106,7 +108,9 @@ export function parseKeyframesRules(sources: readonly KeyframesSource[], diagnos
       const parsed = parseBlock(r, src, name, diagnostics);
       if (!dropped) blocks.push({ offsets, easing: parsed.easing, values: parsed.values, span });
     }
-    out.push({ name, span: src.context.span, blocks });
+    const prelude = src.context.node['prelude'] as CssNode;
+    const preludeSpan = { source: src.context.span.source, start: src.context.span.start, end: spanOf(prelude, src.base).end };
+    out.push({ name, span: src.context.span, preludeSpan, blocks });
   }
   return out;
 }
@@ -116,6 +120,8 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
   const values: KeyframeDeclaration[] = [];
   for (const d of list(rule['block'] as CssNode, 'children')) {
     const span = spanOf(d, src.base);
+    // css-syntax-3 §5.4: a lone ";" or white space is no declaration.
+    if (d.type === 'Raw' && /^[\s;]*$/.test(String(d['value']))) continue;
     if (d.type !== 'Declaration') {
       diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(span), message: `CSS ${d.type} in a keyframe block of @keyframes ${name} is not a declaration` }));
       continue;
@@ -127,7 +133,9 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
     const text = generate(valueNode);
     const source = src.text.slice(valueSpan.start - src.base.start, valueSpan.end - src.base.start);
     const refuse = (code: 'DRAGON_UNSUPPORTED_PROPERTY' | 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_IMPORTANT' | 'DRAGON_CSS_INVALID_VALUE', message: string, at: Span = span): void => {
-      diagnostics.push(diagnostic(code, { origin: authored(at), message }));
+      // A property or !important refusal fixes by deleting the declaration (its catalogue fix is an edit).
+      const edits = code === 'DRAGON_UNSUPPORTED_PROPERTY' || code === 'DRAGON_UNSUPPORTED_IMPORTANT' ? { edits: [{ span, replacement: '' }] } : {};
+      diagnostics.push(diagnostic(code, { origin: authored(at), message, ...edits }));
     };
     if (d['important'] !== false) {
       refuse('DRAGON_UNSUPPORTED_IMPORTANT', `!important on ${property} in @keyframes ${name}: Chrome ignores it inside @keyframes, so the declaration has no effect`);
