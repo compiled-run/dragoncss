@@ -4,7 +4,7 @@
 // fails its own fixture's frame lanes.
 import { describe, expect, it } from 'vitest';
 import { rtEasing, rtInterpolate } from '@dragon/layout';
-import { stateKey } from 'dragon';
+import { androidProfile, animationFeatures, iosProfile, stateKey, webProfile } from 'dragon';
 import type { SlotListing } from 'dragon';
 import type { AnimFaults } from '../src/anim-cases.ts';
 import { NO_ANIM_FAULTS } from '../src/anim-cases.ts';
@@ -12,6 +12,7 @@ import type { AnimCase } from '../src/anim-cases.ts';
 import { animCasesOf, animFixtures, frameScript, parseFrames, runFrameScript, simulator } from '../src/anim-cases.ts';
 import { animCaseReport, animReport } from '../src/frame-capture.ts';
 import { canonicalJsonText } from '../src/state-cases.ts';
+import { ANIMATION_CONTEXT, deriveAnimationRows } from '../src/profile-rows.ts';
 
 const cases = animFixtures().flatMap(animCasesOf);
 const byFixture = (id: string): AnimCase => {
@@ -124,4 +125,49 @@ describe('host frame lanes (R18)', () => {
     const a = runFrameScript(c, s).map((d) => [...d.frame].map(([k, v]) => `${k}=${show(v)}`).join(' '));
     expect(runFrameScript(c, s).map((d) => [...d.frame].map(([k, v]) => `${k}=${show(v)}`).join(' '))).toEqual(a);
   });
+});
+
+// The parity.test.ts row checks (M1, M2/M3, the report links), for the animation rows, whose proofs are frame cases: parity.test.ts
+// checks the layout rows only (its layoutRows), so each check it applies to a layout row is applied here to an animation row.
+describe('animation rows (profile:rows from the frame lanes)', () => {
+  const report = animReport();
+  const passing = cases.filter((c) => report.passingCases.includes(c.id)).map((c) => ({ id: c.id, features: animationFeatures(c.compiled) }));
+  const rowsOf = (rows: readonly { readonly context: string }[]) => rows.filter((r) => r.context === ANIMATION_CONTEXT);
+
+  it('are exactly what profile:rows derives from the passing frame cases, per target (iOS and Android none until device-anim, 3b)', () => {
+    expect(rowsOf(webProfile.rows)).toEqual(deriveAnimationRows('web', passing));
+    expect(rowsOf(iosProfile.rows)).toEqual(deriveAnimationRows('ios', passing));
+    expect(rowsOf(androidProfile.rows)).toEqual(deriveAnimationRows('android', passing));
+    expect(rowsOf(iosProfile.rows)).toEqual([]);
+    expect(rowsOf(androidProfile.rows)).toEqual([]);
+  }, 600_000);
+
+  it('name exactly the passing frame cases that use their key, and every key a passing frame case uses has a row (M1)', () => {
+    const rows = webProfile.rows.filter((r) => r.context === ANIMATION_CONTEXT);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.status, row.feature).toBe('exact');
+      expect(row.proofs.length, row.feature).toBe(1);
+      for (const proof of row.proofs) {
+        expect([proof.aspect, proof.lane, proof.valueSubset, proof.context], row.feature).toEqual(['computed-value', 'chrome-dual', row.feature.slice(row.feature.indexOf(':') + 1), ANIMATION_CONTEXT]);
+        expect(proof.cases, row.feature).toEqual(passing.filter((c) => c.features.includes(row.feature)).map((c) => c.id));
+        expect(proof.cases.length, row.feature).toBeGreaterThan(0);
+      }
+    }
+    const keys = new Set(rows.map((r) => r.feature));
+    for (const c of passing) for (const f of c.features) expect(keys.has(f), `${f} used by ${c.id} has no row`).toBe(true);
+  }, 600_000);
+
+  it('link every proof case to a frame case that passes its lanes at every DPR and direction (the report links)', () => {
+    const ids = new Set(cases.map((c) => c.id));
+    // An animation key has no direction facet: the values it proves are computed values, which do not depend on direction; the
+    // boxes they move are compared per case, and the frame fixtures that move boxes run in both directions (anim-layout-margin).
+    expect(cases.some((c) => c.direction === 'rtl')).toBe(true);
+    for (const row of webProfile.rows.filter((r) => r.context === ANIMATION_CONTEXT)) {
+      for (const id of row.proofs.flatMap((p) => p.cases)) {
+        expect(ids.has(id), id).toBe(true);
+        expect(report.passingCases.includes(id), id).toBe(true);
+      }
+    }
+  }, 600_000);
 });
