@@ -8,6 +8,7 @@ import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtR
 import type { AtRuleContext } from '../src/css/at-rules.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../src/css/properties/grid.ts';
+import { TEXT_WRAP_LONGHANDS } from '../src/css/properties/text-wrap.ts';
 import { LOGICAL_SHORTHANDS } from '../src/css/properties/logical.ts';
 import { SHORTHAND_HANDLERS } from '../src/css/shorthands/index.ts';
 import type { Declaration, EnclosedRules } from '../src/css/stylesheet.ts';
@@ -36,6 +37,8 @@ describe('E2 seams: the property registry', () => {
       'background-color',
       // GRID G0 appends its family (test/grid.test.ts pins GRID_LONGHANDS).
       ...GRID_LONGHANDS,
+      // TXT2-a appends overflow-wrap, word-break and letter-spacing after the grid family.
+      ...TEXT_WRAP_LONGHANDS,
     ]);
   });
   it('SHORTHANDS keeps its order', () => {
@@ -51,11 +54,11 @@ describe('E2 seams: the property registry', () => {
   });
   it('PROPERTY_ASPECTS keys follow LONGHANDS, and INHERITED and PROPERTY_ROLE are unchanged', () => {
     expect(Object.keys(PROPERTY_ASPECTS)).toEqual([...LONGHANDS]);
-    expect([...INHERITED]).toEqual(['direction', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'text-underline-offset', 'text-underline-position', 'text-decoration-skip-ink']);
+    expect([...INHERITED]).toEqual(['direction', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'text-underline-offset', 'text-underline-position', 'text-decoration-skip-ink', 'overflow-wrap', 'word-break', 'letter-spacing']);
     const byRole = (r: string): string[] => LONGHANDS.filter((p) => PROPERTY_ROLE[p] === r);
     expect(byRole('container')).toEqual(['direction', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap',
       'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow', 'justify-items']);
-    expect(byRole('text')).toEqual(['font-size', 'font-family', 'font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode']);
+    expect(byRole('text')).toEqual(['font-size', 'font-family', 'font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'overflow-wrap', 'word-break', 'letter-spacing']);
     expect(byRole('paint')).toEqual(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color',
       'text-decoration-line', 'text-decoration-style', 'text-decoration-color', 'text-decoration-thickness', 'text-underline-offset', 'text-underline-position', 'text-decoration-skip-ink', 'background-color']);
   });

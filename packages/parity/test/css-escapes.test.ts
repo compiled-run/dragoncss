@@ -401,6 +401,7 @@ describe('CSS escapes: Dragon decodes as Chrome 145 does', () => {
     // font-synthesis and its longhands, 151 more; TDEC-a adds text-decoration and its longhands, 966 more (each judged above; a
     // word's spellings depend on its seed, which its place in the subset sets, so the counts are this base's: 25, 153 and 966 on the
     // old inl1a-compiler base).
-    expect({ twins: twinSeen.length, edges: edges.length, selectors: selectorSeen.length }).toEqual({ twins: 13782 + 27 + 151 + 966, edges: 89, selectors: 59 });
+    // TXT2-a: overflow-wrap, word-break and letter-spacing, their keywords and names (+31 on the old base).
+    expect({ twins: twinSeen.length, edges: edges.length, selectors: selectorSeen.length }).toEqual({ twins: 13782 + 27 + 151 + 966 + 31, edges: 89, selectors: 59 });
   }, 300_000);
 });

@@ -29,6 +29,8 @@ import type {
   TextAlign,
   TextLeaf,
   TextWrapMode,
+  OverflowWrap,
+  WordBreak,
 } from '@dragon/layout';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
@@ -313,7 +315,7 @@ function lowerFont(id: string, get: (p: TextLonghand) => CssValue, mode: LowerMo
 }
 
 // goal.md principle 3: the text node carries its inherited text styles, so the lowering reads the text node and never its parent.
-function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
+function lowerText(t: ResolvedText, mode: LowerMode, faults: CompilerFaults): TextLeaf {
   const id = t.node.address;
   const get = (p: TextLonghand): CssValue => (t.props.get(p) as ResolvedValue).value;
   const { font, lineHeight } = lowerFont(id, get, mode);
@@ -321,8 +323,13 @@ function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
   if (collapse.kind !== 'keyword' || collapse.value !== 'collapse') fail(id, 'white-space-collapse', collapse, 'collapse');
   const wrap = get('text-wrap-mode');
   if (wrap.kind !== 'keyword' || (wrap.value !== 'wrap' && wrap.value !== 'nowrap')) return fail(id, 'text-wrap-mode', wrap, 'wrap | nowrap');
-  // overflow-wrap and word-break are registered with the compiler part of TXT2-a; until then every text takes their initial values.
-  return { kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: wrap.value as TextWrapMode, overflowWrap: 'normal', wordBreak: 'normal' };
+  const ow = get('overflow-wrap');
+  if (ow.kind !== 'keyword' || (ow.value !== 'normal' && ow.value !== 'break-word' && ow.value !== 'anywhere')) return fail(id, 'overflow-wrap', ow, 'normal | break-word | anywhere');
+  const wb = get('word-break');
+  if (wb.kind !== 'keyword' || !['normal', 'break-all', 'keep-all', 'break-word', 'auto-phrase'].includes(wb.value)) return fail(id, 'word-break', wb, 'normal | break-all | keep-all | break-word | auto-phrase');
+  // Planted fault overflowWrapNotInherited: the text takes overflow-wrap's initial value, not its parent's.
+  const overflowWrap: OverflowWrap = faults.overflowWrapNotInherited ? 'normal' : (ow.value as OverflowWrap);
+  return { kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: wrap.value as TextWrapMode, overflowWrap, wordBreak: wb.value as WordBreak };
 }
 
 /**
@@ -366,7 +373,7 @@ type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readon
  * carries them (C5).
  */
 function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild {
-  if (c.kind === 'text') return lowerText(c, l.mode);
+  if (c.kind === 'text') return lowerText(c, l.mode, l.faults);
   const id = c.element.address;
   const own = lowerFont(id, (p) => (c.props.get(p) as ResolvedValue).value, l.mode);
   if (c.element.tag === 'br') {

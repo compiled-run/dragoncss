@@ -67,8 +67,9 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
     expect(n['engine-inline']).toBe(INLINE_SPEC.engineInline + INLINE_SPEC.atomicInline + INLINE_SPEC.wrapInline);
     expect(INLINE_SPEC.engineInline).toBe(3000);
     // TXT1a-2: 11 shaped cases, T133: 2 (inline-tags-faces ltr and rtl) and TXT-W1: 12 (text-weight-*) and TXT-W2: 4 (font-shorthand-*), at DPR 1, 2, 3 and 2.625,
-    // each with its shape transcript. INL2a: plus atomic-inline-lato (ltr and rtl).
-    expect(n['text-latin']).toBe((11 + 2 + 12 + 4 + 2) * 4);
+    // each with its shape transcript. INL2a: plus atomic-inline-lato (ltr and rtl). TXT2-a: plus
+    // text-wrap-break-lato (ltr and rtl).
+    expect(n['text-latin']).toBe((11 + 2 + 12 + 4 + 2 + 2) * 4);
     expect(x.engineSplit.threw + x.engineSplit.harnessError).toBe(0);
   });
 

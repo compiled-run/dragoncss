@@ -26,6 +26,7 @@ import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
 import { VALUES } from './fixture-groups/values.ts';
 import { ATOMIC_INLINE } from './fixture-groups/atomic-inline.ts';
+import { TEXT_WRAP_BREAK } from './fixture-groups/text-wrap-break.ts';
 
 /**
  * The reference environment of every case in this lane (docs/api.md §7, §10.1): an input to the projection, the engine and Chrome.
@@ -106,6 +107,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'font-shorthand', fixtures: FONT_SHORTHAND },
   { id: 'text-decoration', fixtures: TEXT_DECORATION },
   { id: 'atomic-inline', fixtures: ATOMIC_INLINE },
+  { id: 'text-wrap-break', fixtures: TEXT_WRAP_BREAK },
 ];
 
 export const FIXTURES: readonly FixtureSpec[] = FIXTURE_GROUPS.flatMap((g) => g.fixtures);

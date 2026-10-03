@@ -85,12 +85,12 @@ describe('MF4: whitespace-only text never has an empty address', () => {
 
 describe('text nodes carry their inherited text styles (goal.md principle 3)', () => {
   const input = inputFor(`${FONT} .p { line-height: 1.5; text-align: center; color: #102030; white-space: nowrap; }`, (r) => [div(r, 'p', ['p'], [text(r, 't', 'XX XX')])]);
-  it('each of the eight text properties has an Origin of kind inherited naming the insertion parent', () => {
+  it('each of the eleven text properties has an Origin of kind inherited naming the insertion parent', () => {
     const c = derive().compile(input);
     const topo = textTopology(c, []);
     expect(topo?.map((t) => t.address)).toEqual(['p:text0']);
     const t = (topo ?? [])[0];
-    expect(Object.keys(t?.inherited ?? {}).sort()).toEqual(['color', 'direction', 'font-family', 'font-size', 'line-height', 'text-align', 'text-wrap-mode', 'white-space-collapse']);
+    expect(Object.keys(t?.inherited ?? {}).sort()).toEqual(['color', 'direction', 'font-family', 'font-size', 'letter-spacing', 'line-height', 'overflow-wrap', 'text-align', 'text-wrap-mode', 'white-space-collapse', 'word-break']);
     for (const o of Object.values(t?.inherited ?? {})) expect(o).toMatchObject({ kind: 'inherited', element: 'p' });
     expect(t?.inherited['font-size']).toMatchObject({ kind: 'inherited', element: 'p', from: { kind: 'inherited', element: 'body', from: { kind: 'authored' } } });
     expect(t?.context).toBe('text-in-block/ltr');
