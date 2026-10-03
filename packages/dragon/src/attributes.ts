@@ -36,6 +36,9 @@ export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } =
   // FORM-a A3: a button's type (button, submit, reset, or an invalid value, which is submit) changes only its activation
   // behaviour; Chrome's UA rules for button do not read it (HTML §15.5.3; parity fixture controls-button-type).
   button: ['type'],
+  // FORM-a A4: an input's type picks its control (only range is laid out, computed-checks.ts refuses the others); min, max, value
+  // and step give the range's value, which places its thumb (forms/range-value.ts, the controls-range fixtures).
+  input: ['type', 'min', 'max', 'value', 'step'],
 };
 
 /** The package that owns the rendering effect of a refused attribute. */

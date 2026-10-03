@@ -3,6 +3,7 @@
 // longhands are the one exception: they are written when any of them is not auto. Auto is their initial value and no Chrome UA
 // rule sets them on a supported tag (ua.test.ts), so leaving them out gives the same computed values.
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
+import { rangePartOf } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
@@ -20,6 +21,20 @@ export type WebEmit = {
 };
 
 export const WEB_CSS_PATH = 'dragon.css';
+
+/** The track and thumb of range input el (analysis/resolve.ts), with the pseudo-element that styles each. */
+function rangeStyledParts(el: ResolvedElement): { readonly pseudo: string; readonly el: ResolvedElement }[] {
+  const out: { pseudo: string; el: ResolvedElement }[] = [];
+  let at: ResolvedElement = el;
+  for (;;) {
+    const next = at.children.find((c): c is ResolvedElement => c.kind === 'element' && rangePartOf(c) !== undefined);
+    if (next === undefined) return out;
+    const part = (rangePartOf(next) as { part: string | null }).part;
+    if (part === 'track') out.push({ pseudo: '-webkit-slider-runnable-track', el: next });
+    if (part === 'thumb') out.push({ pseudo: '-webkit-slider-thumb', el: next });
+    at = next;
+  }
+}
 
 /** CSS2 §9.3.2 box offsets, written only when one of them is not auto. */
 export const INSET_LONGHANDS: readonly (typeof LONGHANDS)[number][] = ['top', 'right', 'bottom', 'left'];
@@ -125,16 +140,23 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       if (other === undefined) throw new Error(`case ${c.key} is not resolved in the band ${b.condition}`);
       return byAddress(other.root);
     });
-    const visit = (el: ResolvedElement): void => {
-      const insets = writesInsets(el);
-      const decls = LONGHANDS.filter((p) => insets || !INSET_LONGHANDS.includes(p)).map((p) => declLine(el, p));
-      // Every longhand whose value in the band differs from the first band's (an inset left out there is auto, its value).
-      const diffs = inBands.map((m) => {
+    // Every longhand whose value in a band differs from the first band's (an inset left out there is auto, its value).
+    const bandDiffs = (el: ResolvedElement): string[][] =>
+      inBands.map((m) => {
         const other = m.get(el.element.address);
         if (other === undefined) throw new Error(`${el.element.address} is not resolved in every band`);
         return LONGHANDS.map((p) => declLine(other, p)).filter((line, k) => line !== declLine(el, LONGHANDS[k] as (typeof LONGHANDS)[number]));
       });
-      const variant = `${el.element.address}\u0000${decls.join('\n')}${diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(diffs)}` : ''}`;
+    const visit = (el: ResolvedElement): void => {
+      const insets = writesInsets(el);
+      const decls = LONGHANDS.filter((p) => insets || !INSET_LONGHANDS.includes(p)).map((p) => declLine(el, p));
+      const diffs = bandDiffs(el);
+      // FORM-a A4: a range's track and thumb are styled through their pseudo-elements on the input's class (in every band); its
+      // container takes only UA and inherited values, which the input's own rules reproduce.
+      const parts = rangePartOf(el)?.part === null
+        ? rangeStyledParts(el).map((p) => ({ pseudo: p.pseudo, decls: LONGHANDS.filter((q) => writesInsets(p.el) || !INSET_LONGHANDS.includes(q)).map((q) => declLine(p.el, q)), diffs: bandDiffs(p.el) }))
+        : [];
+      const variant = `${el.element.address}\u0000${decls.join('\n')}${diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(diffs)}` : ''}${parts.map((p) => `\u0000${p.pseudo}\u0000${p.decls.join('\n')}\u0000${JSON.stringify(p.diffs)}`).join('')}`;
       let cls = variants.get(variant);
       if (cls === undefined) {
         cls = `dg${variants.size}`;
@@ -143,9 +165,15 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         diffs.forEach((d, k) => {
           if (d.length > 0) (bandRules[k] as string[]).push(`.${cls} {\n${d.join('\n')}\n}`);
         });
+        for (const p of parts) {
+          rules.push(`.${cls}::${p.pseudo} {\n${p.decls.join('\n')}\n}`);
+          p.diffs.forEach((d, k) => {
+            if (d.length > 0) (bandRules[k] as string[]).push(`.${cls}::${p.pseudo} {\n${d.join('\n')}\n}`);
+          });
+        }
       }
       map.set(el.element.address, cls);
-      for (const ch of el.children) if (ch.kind === 'element') visit(ch);
+      for (const ch of el.children) if (ch.kind === 'element' && (rangePartOf(ch)?.part ?? null) === null) visit(ch);
     };
     visit(c.root);
   }

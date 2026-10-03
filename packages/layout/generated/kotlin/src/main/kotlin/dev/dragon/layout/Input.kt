@@ -278,13 +278,13 @@ class ReplacedLeaf(
 class ControlKind_range(
   override val kind: String,
   val defaultInlineSize: Double,
-) : U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb
+) : U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb, U_ControlKind_range_ControlKind_sliderThumb
 
 // ts: packages/layout/src/input.ts:280
 class ControlKind_sliderThumb(
   override val kind: String,
   val ratio: Double,
-) : U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb, U_ControlKind_buttonBlock_ControlKind_sliderThumb
+) : U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb, U_ControlKind_buttonBlock_ControlKind_sliderThumb, U_ControlKind_range_ControlKind_sliderThumb
 
 // ts: packages/layout/src/input.ts:281
 class ControlKind_buttonBlock(

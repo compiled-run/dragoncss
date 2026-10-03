@@ -9,7 +9,7 @@ import type { ControlBox, LayoutBox } from '@dragon/layout';
 import { compiledCases, iosLayoutProjection, WEB_CSS_PATH } from 'dragon';
 import { internalRecord } from '../../dragon/src/project.ts';
 import type { ResolvedElement, ResolvedValue } from '../../dragon/src/analysis/resolve.ts';
-import { valueToString } from '../../dragon/src/analysis/resolve.ts';
+import { rangePartOf, valueToString } from '../../dragon/src/analysis/resolve.ts';
 import { appearanceDisplay, parseValueText } from '../../dragon/src/analysis/computed.ts';
 import { referenceDataset, uaRows } from '../../dragon/src/ua/datasets.ts';
 import type { UaDataset } from '../../dragon/src/ua/datasets.ts';
@@ -41,7 +41,7 @@ const body = (css: string): string => css.split('\n').slice(1).join('\n');
 describe('FORM-a A3 identity: every case that predates the button package is unchanged', () => {
   it('covers every earlier layout fixture, and the controls group adds only its own', () => {
     expect(earlier.length).toBeGreaterThan(200);
-    expect(FIXTURES.filter((f) => f.kind === 'layout' && controlIds.has(f.id)).length).toBe(5);
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && controlIds.has(f.id)).length).toBe(7);
   });
 
   it('no earlier element is a control, and every one computes appearance: none, so the display adjustment leaves it alone', () => {
@@ -108,6 +108,48 @@ describe('FORM-a A3 identity: every case that predates the button package is unc
   });
 });
 
+// FORM-a A4: the range package leaves every case that predates it as A3 left it, the A3 button cases included: none holds a range
+// input or part, each lowers to its committed vector input with no range or thumb control box, and emits its committed web body
+// (the committed vectors and emitted CSS of these cases are byte-identical to A3, git diff form-a3 in the receipt).
+describe('FORM-a A4 identity: every case that predates the range package is unchanged', () => {
+  const beforeA4 = FIXTURES.filter((f) => f.kind === 'layout' && !f.id.startsWith('controls-range-'));
+  const rangeBoxes = (b: LayoutBox | ControlBox): number => b.children.reduce((n, c) => n + (c.kind === 'control' && c.control.kind !== 'button-block' ? 1 : 0) + (c.kind === 'box' || c.kind === 'control' ? rangeBoxes(c) : 0), 0);
+  it('covers every earlier layout fixture, the A3 controls cases included', () => {
+    expect(beforeA4.filter((f) => controlIds.has(f.id)).length).toBe(5);
+    expect(FIXTURES.filter((f) => f.id.startsWith('controls-range-')).length).toBe(2);
+  });
+  it('no earlier case resolves a range, lowers a range or thumb box, or changes its vector input or web body', () => {
+    const off: string[] = [];
+    let vectors = 0;
+    for (const spec of beforeA4) {
+      const input = fixtureInput(spec);
+      for (const env of environmentsOf(spec)) {
+        const { compiled } = compileFixture(spec, undefined, 'enforce', env.direction);
+        const record = internalRecord(compiled);
+        if (record === undefined) throw new Error(`${spec.id}: no internal record`);
+        for (const c of record.cases) if (c.resolved !== null) for (const el of elements(c.resolved)) if (rangePartOf(el) !== undefined) off.push(`${spec.id} ${el.element.address}: a range or range part`);
+        const web = compiled.outputs.web;
+        const css = web.kind === 'ready' ? web.files.find((f) => f.path === WEB_CSS_PATH) : undefined;
+        if (css !== undefined && existsSync(emittedPath(spec.id, env.direction)) && body(css.text) !== body(readFileSync(emittedPath(spec.id, env.direction), 'utf8'))) off.push(`${spec.id} ${env.direction}: web body differs`);
+        for (const c of casesOf(spec, input).filter((k) => k.environment.direction === env.direction)) {
+          const path = repoPath(`packages/layout/vectors/${c.id}.json`);
+          if (!existsSync(path)) continue;
+          const p = iosLayoutProjection(compiled, c.environment, c.assignment);
+          if (p.kind !== 'ready') {
+            off.push(`${c.id}: no layout projection`);
+            continue;
+          }
+          vectors++;
+          if (JSON.stringify(p.input) !== JSON.stringify((JSON.parse(readFileSync(path, 'utf8')) as { input: unknown }).input)) off.push(`${c.id}: layout input differs`);
+          if (rangeBoxes(p.input.root) > 0) off.push(`${c.id}: holds a range or thumb box`);
+        }
+      }
+    }
+    expect(off).toEqual([]);
+    expect(vectors).toBeGreaterThan(400);
+  });
+});
+
 // The A3 helpers the fixtures exercise end to end, checked on their edges.
 describe('FORM-a A3 helpers', () => {
   const v = (property: 'display' | 'appearance', text: string): ResolvedValue => ({ value: parseValueText(property, text), origin: 'author', span: null, declaration: null, declared: null, losing: [] });
@@ -124,13 +166,17 @@ describe('FORM-a A3 helpers', () => {
     }
   });
 
-  it("the button key reads html.css's display: inline-block as a declared UA value, and refuses any other forced row", () => {
+  it("the control keys read html.css's display: inline-block as a declared UA value, keep their other forced rows, and refuse a key without it", () => {
     const ua = referenceDataset();
     const rows = uaRows(ua, 'button');
     expect(rows.forced).toEqual({ ltr: {}, rtl: {} });
     expect(rows.declared.ltr['display']).toBe('inline-block');
     expect(rows.longhands).toContain('display');
-    const extra: UaDataset = { ...ua, userAgentForced: { ...ua.userAgentForced, button: { ltr: { display: 'inline-block', 'overflow-x': 'clip' }, rtl: { display: 'inline-block' } } } };
+    // A4: the plain input key keeps Chrome's forced overflow: clip; input[type=range] has only the display row.
+    expect(uaRows(ua, 'input').forced).toEqual({ ltr: { 'overflow-x': 'clip', 'overflow-y': 'clip' }, rtl: { 'overflow-x': 'clip', 'overflow-y': 'clip' } });
+    expect(uaRows(ua, 'input[type=range]').forced).toEqual({ ltr: {}, rtl: {} });
+    expect(uaRows(ua, 'input[type=range]').declared.rtl['display']).toBe('inline-block');
+    const extra: UaDataset = { ...ua, userAgentForced: { ...ua.userAgentForced, button: { ltr: { 'overflow-x': 'clip' }, rtl: { display: 'inline-block' } } } };
     expect(() => uaRows(extra, 'button')).toThrow("the button key's forced rows");
     const missing: UaDataset = { ...ua, userAgentForced: {} };
     expect(() => uaRows(missing, 'button')).toThrow('no forced rows for the button key');

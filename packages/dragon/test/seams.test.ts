@@ -166,11 +166,12 @@ describe('E2 seams: every at-rule but @media is still refused', () => {
       const { diagnostics, enclosed } = run(text);
       return { text, diagnostics, enclosed };
     }));
-    // The selectors package added Compound.pseudos and Selector.anchor, and TREE added Compound.ids and Selector.dropped: every
-    // selector here must carry the defaults ([], null, [] and false), and without them the runs are byte-identical to the 4c1331c pin.
+    // The selectors package added Compound.pseudos and Selector.anchor, TREE added Compound.ids and Selector.dropped, and FORM-a A4
+    // Selector.pseudoElement: every selector here must carry the defaults ([], null, [], false and null), and without them the
+    // runs are byte-identical to the 4c1331c pin.
     const added: unknown[] = [];
     const strip = (v: unknown): unknown => JSON.parse(JSON.stringify(v, (k, x: unknown) => {
-      if (k === 'pseudos' || k === 'anchor' || k === 'ids' || k === 'dropped') {
+      if (k === 'pseudos' || k === 'anchor' || k === 'ids' || k === 'dropped' || k === 'pseudoElement') {
         added.push(x);
         return undefined;
       }

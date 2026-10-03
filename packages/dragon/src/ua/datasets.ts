@@ -40,7 +40,7 @@ export type UaDataset = {
 };
 
 /** The element keys of the form controls Dragon lays out (FORM-a). */
-export type ControlKey = Extract<ElementKey, 'button'>;
+export type ControlKey = Extract<ElementKey, 'button' | 'input' | 'input[type=range]'>;
 
 /** A row key of the UA dataset: a captured tag, a replaced key (REPL-0) or a control key (FORM-a). */
 export type UaKey = CapturedTag | ReplacedKey | ControlKey;
@@ -62,21 +62,23 @@ function isReplacedKey(key: UaKey): key is ReplacedKey {
 }
 
 function isControlKey(key: UaKey): key is ControlKey {
-  return key === 'button';
+  return key === 'button' || key === 'input' || key === 'input[type=range]';
 }
 
 /**
  * A control key's rows. Its forced display (inline-block) is Chrome's html.css `display: inline-block` on the control, which the
  * ELB-2 reference records as forced because the reference's appearance adjustment hides it; an author display wins over it
- * (probed in Chrome 145, packages/parity/fixtures/controls-button-display.html), so it is a declared UA value here, and
- * analysis/computed.ts applies the appearance adjustment itself. Any other forced row is an error.
+ * (probed in Chrome 145, packages/parity/fixtures/controls-button-type.html and the range fixtures), so it is a declared UA value
+ * here, and analysis/computed.ts applies the appearance adjustment itself. Its other forced rows (input's overflow: clip) stay
+ * forced. A key without the display: inline-block row is an error.
  */
 function controlRows(ua: UaDataset, key: ControlKey): UaRows {
   const forced = ua.userAgentForced[key];
   if (forced === undefined) throw new Error(`no forced rows for the ${key} key`);
+  const rest = { ltr: { ...forced.ltr }, rtl: { ...forced.rtl } };
   for (const dir of ['ltr', 'rtl'] as const) {
-    const rows = Object.keys(forced[dir]);
-    if (rows.some((p) => p !== 'display') || forced[dir]['display'] !== 'inline-block') throw new Error(`the ${key} key's forced rows are ${JSON.stringify(forced)}, not Chrome's display: inline-block`);
+    if (forced[dir]['display'] !== 'inline-block') throw new Error(`the ${key} key's forced rows are ${JSON.stringify(forced)}, without Chrome's display: inline-block`);
+    delete rest[dir]['display'];
   }
   const declared = ua.elementKeyDeclared[key];
   return {
@@ -85,7 +87,7 @@ function controlRows(ua: UaDataset, key: ControlKey): UaRows {
     declared: { ltr: { ...declared.ltr, display: 'inline-block' }, rtl: { ...declared.rtl, display: 'inline-block' } },
     contexts: ua.elementKeyContexts[key],
     textFonts: ua.elementKeyTextFonts[key],
-    forced: NO_FORCED,
+    forced: rest,
   };
 }
 

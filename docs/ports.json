@@ -499,6 +499,7 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/range-value.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/lower/ios-layout.ts", "symbol": "lowerBox", "use": "reference" },
         { "file": "packages/layout/src/controls.ts", "symbol": null, "use": "reference" }
       ]
     },

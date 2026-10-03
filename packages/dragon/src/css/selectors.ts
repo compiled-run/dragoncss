@@ -37,6 +37,9 @@ export type Compound = {
   readonly pseudos: readonly PseudoClass[];
 };
 export type Specificity = readonly [number, number, number];
+/** The range parts an author selector can style (FORM-a A4): ::-webkit-slider-thumb and ::-webkit-slider-runnable-track. */
+export type RangePart = 'thumb' | 'track';
+const RANGE_PSEUDO_ELEMENTS: Readonly<Record<string, RangePart>> = { '-webkit-slider-thumb': 'thumb', '-webkit-slider-runnable-track': 'track' };
 /**
  * Right-to-left: parts[0] is the subject; each later part is joined to the previous by its combinator. anchor: in a :has()
  * argument, the combinator joining the leftmost compound to the :has() element (Selectors-4 §3.4 relative selectors); else null.
@@ -45,6 +48,8 @@ export type Selector = {
   readonly parts: readonly { readonly compound: Compound; readonly combinator: Combinator | null }[];
   readonly specificity: Specificity;
   readonly anchor: Combinator | null;
+  /** The range part the selector styles (its subject compound ends with the pseudo-element), or null for an element selector. */
+  readonly pseudoElement: RangePart | null;
   /**
    * The rule's selector list holds a selector Chrome 145 does not parse, so Chrome drops the whole rule: this selector never
    * matches (the planted fault invalidSelectorListKept keeps it).
@@ -79,7 +84,8 @@ function maxSpecificity(selectors: readonly Selector[], firstArgumentOfIs: boole
  * the planted fault idSpecificityAsClass (an id counts in the class column).
  */
 export function specificityOf(sel: Selector, firstArgumentOfIs = false, idAsClass = false): Specificity {
-  let total = ZERO;
+  // Selectors-4 §17: a pseudo-element counts as a type selector.
+  let total: Specificity = sel.pseudoElement === null ? ZERO : [0, 0, 1];
   for (const { compound: c } of sel.parts) {
     const ids = c.ids.length;
     total = add(total, [idAsClass ? 0 : ids, c.classes.length + c.attributes.length + (idAsClass ? ids : 0), c.tag === null ? 0 : 1]);
@@ -95,7 +101,7 @@ export function specificityOf(sel: Selector, firstArgumentOfIs = false, idAsClas
 
 type Refuse = (node: CssNode, message: string, manual?: string) => void;
 /** forgiving: inside an :is() or :where() argument list; drop: records a selector Chrome 145 does not parse. */
-type Context = { readonly insideHas: boolean; readonly forgiving: boolean; readonly drop: (node: CssNode, text: string) => void };
+type Context = { readonly insideHas: boolean; readonly forgiving: boolean; readonly nested: boolean; readonly drop: (node: CssNode, text: string) => void };
 
 /**
  * A selector Chrome 145 does not parse (selector-validity.generated.ts). Outside :is() and :where() Chrome drops the whole rule,
@@ -170,7 +176,7 @@ function parsePseudoClass(part: CssNode, ctx: Context, refuse: Refuse): PseudoCl
       refuse(part, `${text} is invalid: only :nth-child() and :nth-last-child() take "of S" (Selectors-4 §14.4)`);
       return null;
     }
-    const of = ofNode === null ? null : parseList(ofNode, null, ctx, refuse);
+    const of = ofNode === null ? null : parseList(ofNode, null, { ...ctx, nested: true }, refuse);
     if (of === undefined) return null;
     return { kind: 'nth', a: ab.a, b: ab.b, fromEnd: nth.fromEnd, ofType: nth.ofType, of };
   }
@@ -190,7 +196,7 @@ function parsePseudoClass(part: CssNode, ctx: Context, refuse: Refuse): PseudoCl
       return null;
     }
     const forgiving = name === 'is' || name === 'where' ? true : ctx.forgiving;
-    const inner = parseList(argList, name === 'has' ? ' ' : null, { ...ctx, insideHas: ctx.insideHas || name === 'has', forgiving }, refuse);
+    const inner = parseList(argList, name === 'has' ? ' ' : null, { ...ctx, insideHas: ctx.insideHas || name === 'has', forgiving, nested: true }, refuse);
     if (inner === undefined) return null;
     if (name === 'has') return { kind: 'has', selectors: inner };
     if (name === 'not') return { kind: 'not', selectors: inner };
@@ -226,7 +232,14 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
   let pending: Combinator | null = null;
   let anchor: Combinator | null = relative;
   let ok = true;
+  let pseudoElement: RangePart | null = null;
   for (const part of list(sel, 'children')) {
+    if (pseudoElement !== null) {
+      // Nothing may follow the range pseudo-element: Chrome allows only user-action pseudo-classes there, which are runtime state.
+      ok = false;
+      refuse(part, `"${generate(part)}" after ${generate(sel)}'s range pseudo-element is not supported`, 'End the selector with ::-webkit-slider-thumb or ::-webkit-slider-runnable-track.');
+      break;
+    }
     if (part.type === 'Combinator') {
       const name = String(part['name']);
       if (!COMBINATORS.has(name)) {
@@ -274,9 +287,15 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
       if (p === null) ok = false;
       else current.pseudos.push(p);
     } else if (part.type === 'PseudoElementSelector') {
-      ok = false;
       const name = asciiLower(String(part['name']));
+      const rangePart = part['children'] === null ? RANGE_PSEUDO_ELEMENTS[name] : undefined;
+      if (rangePart !== undefined && !ctx.nested) {
+        pseudoElement = rangePart;
+        continue;
+      }
+      ok = false;
       if (part['children'] === null && PSEUDO_ELEMENT_VALID[name]?.valid === false) chromeInvalid(part, generate(part), ctx, refuse);
+      else if (rangePart !== undefined) refuse(part, `pseudo-element ${generate(part)} inside a selector argument is not supported`, 'Write the pseudo-element at the end of a top-level selector.');
       else refuse(part, `pseudo-element ${generate(part)} is not supported: pseudo-elements generate boxes Dragon does not build yet (${pseudoElementOwner(name)})`, 'Style a real element instead of the pseudo-element.');
     } else {
       ok = false;
@@ -289,7 +308,7 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
     compound: c.compound as Compound,
     combinator: i === 0 ? null : (all[i - 1] as { combinator: Combinator | null }).combinator,
   }));
-  const partial: Selector = { parts, specificity: ZERO, anchor: relative === null ? null : anchor, dropped: false };
+  const partial: Selector = { parts, specificity: ZERO, anchor: relative === null ? null : anchor, pseudoElement, dropped: false };
   return { ...partial, specificity: specificityOf(partial) };
 }
 
@@ -336,7 +355,7 @@ export function parseSelectorList(prelude: CssNode, base: Span, use: SheetUse, d
     ok = false;
     refusals.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin: authored(spanOf(node, base)), message, manual }));
   };
-  const ctx: Context = { insideHas: false, forgiving: false, drop: (node, text) => drops.push({ node, text }) };
+  const ctx: Context = { insideHas: false, forgiving: false, nested: false, drop: (node, text) => drops.push({ node, text }) };
   for (const sel of list(prelude, 'children')) {
     const s = parseComplex(sel, null, ctx, refuse);
     if (s === null) continue;

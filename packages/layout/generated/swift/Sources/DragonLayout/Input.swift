@@ -478,7 +478,7 @@ public final class ReplacedLeaf: U_ControlBox_LayoutBox_ReplacedLeaf, U_ControlB
 }
 
 // ts: packages/layout/src/input.ts:279
-public final class ControlKind_range: U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb {
+public final class ControlKind_range: U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb, U_ControlKind_range_ControlKind_sliderThumb {
   public let kind: JsString
   public let defaultInlineSize: Double
   public init(_ kind: JsString, _ defaultInlineSize: Double) {
@@ -488,7 +488,7 @@ public final class ControlKind_range: U_ControlKind_buttonBlock_ControlKind_rang
 }
 
 // ts: packages/layout/src/input.ts:280
-public final class ControlKind_sliderThumb: U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb, U_ControlKind_buttonBlock_ControlKind_sliderThumb {
+public final class ControlKind_sliderThumb: U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb, U_ControlKind_buttonBlock_ControlKind_sliderThumb, U_ControlKind_range_ControlKind_sliderThumb {
   public let kind: JsString
   public let ratio: Double
   public init(_ kind: JsString, _ ratio: Double) {

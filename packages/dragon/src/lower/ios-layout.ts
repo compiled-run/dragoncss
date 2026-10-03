@@ -42,6 +42,9 @@ import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath, V1_MATH_FUNCTIONS } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { isControlTag } from '../analysis/elements/controls.ts';
+import { rangePartOf } from '../analysis/resolve.ts';
+import { rangeRatio } from '../forms/range-value.ts';
+import { RANGE_NONE_THUMB } from '../forms/ua-shadow.generated.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
 import type { ImageNaturals } from '../images/compile.ts';
 
@@ -408,6 +411,17 @@ function lowerBox(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, ro
   }
   flush();
   // FORM-a: a block button centres its contents (Blink AlignBlockContent); a flex button is the plain flex container it is.
-  if (isControlTag(el.element.tag) && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, children };
+  if (el.element.tag === 'button' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, children };
+  const range = rangePartOf(el);
+  if (range !== undefined && range.part === null) {
+    // A range is a flex container whatever its display (range_input_type.cc CreateLayoutObject); its default track length is
+    // FORM-0's captured width of an appearance: none thumb in an auto-width range (the track's content width).
+    return { kind: 'control', id, boxType: 'element', style: { ...style, display: 'flex' }, control: { kind: 'range', defaultInlineSize: RANGE_NONE_THUMB.width }, children };
+  }
+  if (range !== undefined && range.part === 'thumb') {
+    const a = range.host.attributes;
+    const ratio = rangeRatio({ min: a.get('min') ?? null, max: a.get('max') ?? null, step: a.get('step') ?? null, value: a.get('value') ?? null });
+    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'slider-thumb', ratio }, children };
+  }
   return { kind: 'box', id, boxType: 'element', style, children };
 }

@@ -1,7 +1,7 @@
 // Selector matching over the linked tree (selectors are parsed in css/selectors.ts). Each case tree is fixed, so every
 // structural match (siblings, :nth-*, :empty, :has()) is decided at build time; state-dependent children are already
 // enumerated into one tree per reachable assignment by link.ts.
-import type { AttributeTest, Compound, PseudoClass, Selector, Specificity } from '../css/selectors.ts';
+import type { AttributeTest, Compound, PseudoClass, RangePart, Selector, Specificity } from '../css/selectors.ts';
 import { specificityOf } from '../css/selectors.ts';
 import type { Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
@@ -200,7 +200,16 @@ function hasMatches(rule: Rule, sel: Selector, anchorPath: Path, faults: Compile
 export function selectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], index: number, part: number, faults: CompilerFaults): boolean {
   if (index < 0 || chain[index] === undefined) return false;
   if (sel.dropped && !faults.invalidSelectorListKept) return false;
+  // A range pseudo-element selector styles the part, never the element (cascade.ts runs it per part).
+  if (sel.pseudoElement !== null) return false;
   return matchFrom(rule, sel, chain.slice(0, index + 1), part, faults, () => true);
+}
+
+/** Matches a range pseudo-element selector against the range part rangePart of the input chain[chain.length - 1]. */
+export function partSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], rangePart: RangePart, faults: CompilerFaults): boolean {
+  if (chain.length === 0 || sel.pseudoElement !== rangePart) return false;
+  if (sel.dropped && !faults.invalidSelectorListKept) return false;
+  return matchFrom(rule, sel, chain, 0, faults, () => true);
 }
 
 /**

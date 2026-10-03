@@ -291,9 +291,9 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
   const mr = resolveMarginWith(s.marginRight, cbInline, ctx.faults);
   const specified = resolveInlineLengthWith(s.width, cbInline, ctx.faults);
   const stretched = sub(sub(cbInline, ml.value), mr.value);
-  // A block button's auto width fits its content (block_layout_algorithm.cc:3341-3352: a form control is never stretched by its
-  // block container), measured in Chrome 145 (packages/parity/fixtures/controls-button-width*.html).
-  const fits = node.kind === 'control' && node.control.kind === 'button-block';
+  // A block button's or range's auto width fits its content (block_layout_algorithm.cc:3341-3352: a form control is never stretched
+  // by its block container), measured in Chrome 145 (packages/parity/fixtures/controls-button-block.html, controls-range-block.html).
+  const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range');
   const auto = fits ? min(add(intrinsicContentInlineSize(ctx, node, 'max'), hbp), max(add(intrinsicContentInlineSize(ctx, node, 'min'), hbp), stretched)) : stretched;
   const raw = specified === null ? auto : borderBoxFromSpecified(specified, hbp, s.boxSizing);
   const width = specified === null && hasAspectRatio(s) ? ratioBlockLevelInlineSize(ctx, box, cbInline, raw) : max(constrain(raw, inlineMinMaxWith(s, cbInline, hbp, ctx.faults)), hbp);
