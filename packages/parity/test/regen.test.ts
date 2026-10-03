@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compilePattern, matchSegments, parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
-import { commandOf, type Context, type Entry, fileStore, type Io, lanesVerdict, MANUAL, MERGE_BY_HAND, parseEntry, pruneStore, regen, restoreBlobs, shared, snapshotTree, STEPS, type Step, stepInputs, type Store, type Tree } from '../../../scripts/regen.ts';
+import { checkTrace, commandOf, type Context, type Entry, fileStore, type Io, lanesVerdict, MANUAL, MERGE_BY_HAND, parseEntry, pruneStore, regen, restoreBlobs, shared, snapshotTree, STEPS, type Step, stepInputs, type Store, type Tree } from '../../../scripts/regen.ts';
 import { importClosure, lockClosure, parseLock, workspaceOf } from '../../../scripts/regen-inputs.ts';
 import { repoPath } from '../src/paths.ts';
 
@@ -445,6 +445,22 @@ snapshots:
     const base = key({});
     for (const [p, v] of Object.entries({ 'packages/b/src/y.ts': '2', 'packages/a/fixtures/sub/two.html': '2', 'packages/a/data/d.json': '2', 'packages/a/data/new.json': '1', 'packages/b/package.json': '{"name":"b","exports":"./src/x.ts"}', 'pnpm-lock.yaml': LOCK.replace('sha512-y', 'sha512-Y') })) expect(key({ [p]: v }), p).not.toBe(base);
     for (const [p, v] of Object.entries({ 'packages/b/src/unused.ts': '2', 'packages/a/src/types.ts': '2', 'packages/a/out/x': '1', 'README.md': '1', 'pnpm-lock.yaml': LOCK.replace('sha512-z', 'sha512-Z') })) expect(key({ [p]: v }), p).toBe(base);
+  });
+
+  it('keys a listed directory on the names directly inside it, not on their content', () => {
+    const step: Step = { name: 'a', argv: ['node', 'packages/a/src/lazy.ts'], outputs: ['packages/a/out/*.json'], lists: ['packages/a/out'] };
+    const key = (over: Record<string, string>): string => {
+      const { ctx } = tree({ ...files, 'packages/a/out/x.json': '1', 'packages/a/out/sub/y.json': '1', ...over });
+      return stepInputs(step, ctx, shared(ctx)).key;
+    };
+    const base = key({});
+    expect(key({ 'packages/a/out/sub/y.json': '2', 'packages/a/out/sub/z.json': '1', 'packages/a/out/x.json': '2' })).toBe(base);
+    expect(key({ 'packages/a/out/new.json': '1' })).not.toBe(base);
+    expect(key({ 'packages/a/out/dir/z.json': '1' })).not.toBe(base);
+    const { tree: t, ctx } = tree({ ...files, 'packages/a/out/x.json': '1', 'packages/a/out/sub/y.json': '1' });
+    const ins = stepInputs(step, ctx, shared(ctx));
+    expect(checkTrace(step, ins, t, ['A\t/r\t["node"]', 'D\t/r/packages/a/out'], ['/r']).problems).toEqual([]);
+    expect(checkTrace({ ...step, lists: [] }, ins, t, ['A\t/r\t["node"]', 'D\t/r/packages/a/out'], ['/r']).problems).toEqual(['listed packages/a/out/ (1 unkeyed files, such as packages/a/out/sub/y.json)']);
   });
 
   it('every regen step resolves its command and imports on this tree', () => {

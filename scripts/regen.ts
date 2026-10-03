@@ -26,6 +26,8 @@ export type Step = {
   readonly outputs: readonly string[];
   /** Tree files the step reads as data (fixtures, case lists, other steps' outputs), beyond the import closure of its code. */
   readonly reads?: readonly string[];
+  /** Directories the step lists without reading every file below them: the names directly inside each are inputs. */
+  readonly lists?: readonly string[];
   /** Modules the step imports by a computed path: their import closures are inputs too. */
   readonly imports?: readonly string[];
   /** Installed packages the step reads as files rather than importing them. */
@@ -70,7 +72,7 @@ export const STEPS: readonly Step[] = [
     reads: [FIXTURES, FONTS, 'packages/parity/expected/**', 'packages/parity/expected-*/**', 'packages/parity/out/*.json', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'],
   },
   { name: 'dpr-capture', argv: pnpm('parity:dpr-capture'), outputs: ['packages/parity/expected-dpr/**'], reads: [FIXTURES, FONTS] },
-  { name: 'vectors', argv: pnpm('layout:vectors'), outputs: ['packages/layout/vectors/*.json'], reads: [FIXTURES, FONTS, 'packages/parity/expected/**', 'packages/layout/vectors/**'] },
+  { name: 'vectors', argv: pnpm('layout:vectors'), outputs: ['packages/layout/vectors/*.json'], reads: [FIXTURES, FONTS, 'packages/parity/expected/**'], lists: ['packages/layout/vectors'] },
   { name: 'dpr-vectors', argv: pnpm('layout:dpr-vectors'), outputs: ['packages/layout/vectors/dpr-*/**'], reads: [FIXTURES, 'packages/parity/expected-dpr/**'] },
   { name: 'break-vectors', argv: pnpm('layout:break-vectors'), outputs: ['packages/layout/break-vectors/**'], reads: [FIXTURES] },
   { name: 'break-capture', argv: pnpm('parity:break-capture'), outputs: ['packages/parity/expected-breaks/**'], reads: [FIXTURES, FONTS, 'packages/layout/break-vectors/**'] },
@@ -242,11 +244,19 @@ export function stepInputs(step: Step, ctx: Context, sh: Shared): Inputs {
   const own = matcher(step.outputs);
   const blobs: Record<string, string> = {};
   for (const p of [...files].sort()) if (!own(p)) blobs[p] = ctx.tree.get(p)!;
-  const facts = JSON.stringify({ argv: step.argv, scripts: cmd.scripts, outputs: step.outputs, reads: step.reads ?? [], imports: step.imports ?? [], packages: step.packages ?? [], env: (step.env ?? []).map((k) => [k, ctx.env[k] ?? null]), machine: ctx.machine });
+  const listings = (step.lists ?? []).map((d) => `${d}\0${listing(ctx.tree, d).join('\0')}`);
+  const facts = JSON.stringify({ argv: step.argv, scripts: cmd.scripts, outputs: step.outputs, reads: step.reads ?? [], lists: listings, imports: step.imports ?? [], packages: step.packages ?? [], env: (step.env ?? []).map((k) => [k, ctx.env[k] ?? null]), machine: ctx.machine });
   const h = createHash('sha256').update(facts).update('\0');
   for (const [p, b] of Object.entries(blobs)) h.update(p).update('\0').update(b).update('\0');
   for (const l of lock.key) h.update(l).update('\0');
   return { key: h.digest('hex'), files, packages: lock.names, blobs };
+}
+
+/** The names directly inside a tree directory: its files and the directories that have files. */
+export function listing(tree: Tree, dir: string): string[] {
+  const names = new Set<string>();
+  for (const p of tree.keys()) if (p.startsWith(`${dir}/`)) names.add(p.slice(dir.length + 1).split('/')[0]!);
+  return [...names].sort();
 }
 
 /** The tree's files matching a step's outputs, path -> blob. */
@@ -340,7 +350,7 @@ export function checkTrace(step: Step, inputs: Inputs, tree: Tree, lines: readon
     }
     if (kind === 'R') file(r, 'read');
     else if (kind === 'D') {
-      if (tree.has(r)) continue;
+      if (tree.has(r) || (step.lists ?? []).includes(r)) continue;
       if (under(r).every((q) => own(q))) continue;
       if (!isPnpm) dir(r, 'listed');
     } else if (kind === 'P') {
