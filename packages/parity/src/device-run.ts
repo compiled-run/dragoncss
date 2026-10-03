@@ -66,6 +66,10 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'foreground-under': ['stacking-foreground'],
   // outline-solid's ring points and scanlines (rules border:<id>:outline-* and edge:<id>:outline-*) see a 1 device px shift.
   'outline-offset-1': ['outline-solid'],
+  // visibility-paint's hidden boxes (ids hid-*) paint red when the writer is ignored; its visible children (kid-*) vanish when the
+  // writer hides the box view itself.
+  'visibility-ignored': ['visibility-paint'],
+  'visibility-subtree': ['visibility-paint'],
 };
 /** What a paint plant's failures must name on its lane (PLANT_LANES): sample rules for device-pixels, node ids for device-applied. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
@@ -77,6 +81,8 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'order-swap': /^interior:/,
   'foreground-under': /^glyph:/,
   'outline-offset-1': /^(border|edge):[^:]+:outline-/,
+  'visibility-ignored': /^interior:hid-/,
+  'visibility-subtree': /^interior:kid-/,
 };
 /** The lane each paint plant must fail: device-pixels for paint, device-applied for a native property the readback sees. */
 export const PLANT_LANES: { readonly [P in PaintPlant]: 'device-pixels' | 'device-applied' } = {
@@ -88,6 +94,8 @@ export const PLANT_LANES: { readonly [P in PaintPlant]: 'device-pixels' | 'devic
   'order-swap': 'device-pixels',
   'foreground-under': 'device-pixels',
   'outline-offset-1': 'device-pixels',
+  'visibility-ignored': 'device-pixels',
+  'visibility-subtree': 'device-pixels',
 };
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };

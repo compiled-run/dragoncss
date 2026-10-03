@@ -21,6 +21,7 @@ import { SCROLLBAR_EMITTER } from './scrollbar.ts';
 import { SHADOW_EMITTER } from './shadow.ts';
 import { STACKING_EMITTER } from './stacking.ts';
 import { TRANSFORM_EMITTER } from './transform.ts';
+import { VISIBILITY_EMITTER } from './visibility.ts';
 import type { NativePaint, PaintEmitter, PaintPlant, PaintStage } from './types.ts';
 import { PAINT_STAGES } from './types.ts';
 
@@ -42,6 +43,7 @@ export const PAINT_EMITTERS: readonly PaintEmitter<string>[] = [
   IMAGE_EMITTER,
   FOREIGN_VIEW_EMITTER,
   CONTROL_EMITTER,
+  VISIBILITY_EMITTER,
 ] as readonly PaintEmitter<string>[];
 
 if (PAINT_EMITTERS.map((m) => m.name).join() !== PAINT_MODULE_NAMES.join()) throw new Error('the paint emitter registry is not in PAINT_MODULE_NAMES order');
@@ -99,7 +101,7 @@ export function soleHook(backend: NativeBackend, hook: 'roundedPath' | 'containe
 }
 
 /** The names of the paint modules' raster plants; a module adds its plant names here. */
-export type PaintPlantName = 'dash-phase-1' | 'dash-gap-unfitted' | 'radius-square' | 'shadow-offset-1' | 'alpha-ignored' | 'order-swap' | 'foreground-under' | 'outline-offset-1';
+export type PaintPlantName = 'dash-phase-1' | 'dash-gap-unfitted' | 'radius-square' | 'shadow-offset-1' | 'alpha-ignored' | 'order-swap' | 'foreground-under' | 'outline-offset-1' | 'visibility-ignored' | 'visibility-subtree';
 
 /** Every raster plant the paint modules declare, in registry order. */
 export function paintPlants(): readonly PaintPlant[] {

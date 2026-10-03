@@ -474,6 +474,9 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'outline':
         // The state runtime has no writer for PNT1's writes yet (they are painted from the program); a case script would drop them.
         throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
+      case 'visibility':
+        // T150a: a state record holds no visibility write; T150b adds the setter on the device-states lane.
+        throw new StateEmitError(`${n.id}: visibility ${w.value} in a state program has no state-node write (T150b adds it)`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;

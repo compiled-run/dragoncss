@@ -100,6 +100,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -193,6 +194,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -286,6 +288,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -379,6 +382,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -502,6 +506,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -625,6 +630,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -748,6 +754,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -871,6 +878,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -984,6 +992,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1107,6 +1116,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1220,6 +1230,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1333,6 +1344,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1426,6 +1438,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1519,6 +1532,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1612,6 +1626,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1705,6 +1720,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1828,6 +1844,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1951,6 +1968,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2044,6 +2062,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2137,6 +2156,7 @@
         "outline-style": "none",
         "outline-width": "0px",
         "outline-offset": "0px",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     }

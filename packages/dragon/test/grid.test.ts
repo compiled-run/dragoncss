@@ -52,7 +52,7 @@ describe('grid family: registry', () => {
       'grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end', 'justify-items', 'justify-self',
     ]);
     // EMS registers the paint families last in every table; PNT1 fills radius and shadow.
-    const paint = [...RADIUS_LONGHANDS, ...SHADOW_LONGHANDS, ...EFFECTS_LONGHANDS, ...OUTLINE_LONGHANDS, ...TRANSFORM_LONGHANDS, ...BACKGROUND_LAYERS_LONGHANDS, ...SCROLLBAR_LONGHANDS];
+    const paint = [...RADIUS_LONGHANDS, ...SHADOW_LONGHANDS, ...EFFECTS_LONGHANDS, ...OUTLINE_LONGHANDS, ...TRANSFORM_LONGHANDS, ...BACKGROUND_LAYERS_LONGHANDS, ...SCROLLBAR_LONGHANDS, 'visibility'];
     expect(LONGHANDS.slice(-GRID_LONGHANDS.length - paint.length)).toEqual([...GRID_LONGHANDS, ...paint]);
     const paintShorthands = [...RADIUS_SHORTHANDS, ...SHADOW_SHORTHANDS, ...EFFECTS_SHORTHANDS, ...OUTLINE_SHORTHANDS, ...TRANSFORM_SHORTHANDS, ...BACKGROUND_LAYERS_SHORTHANDS, ...SCROLLBAR_SHORTHANDS];
     expect(SHORTHANDS.slice(-GRID_SHORTHANDS.length - paintShorthands.length)).toEqual([...GRID_SHORTHANDS, ...paintShorthands]);

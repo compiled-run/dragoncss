@@ -18,9 +18,10 @@ public func dragonBackground(_ v: DragonBoxView, _ c: DragonRGBA8) {
   dragonShadowBackdropChanged(v)
 }
 
-/// A square box keeps UIView.backgroundColor; a rounded box turns it off and the background stage fills the rounded border box.
+/// A square box keeps UIView.backgroundColor; a rounded box turns it off and the background stage fills the rounded border box. A
+/// box that is not visible (T150) shows neither, unless its background is the canvas's, which shows square.
 public func dragonSyncBackground(_ v: DragonBoxView) {
-  if dragonRoundedPath(v, v.dragonShape, inner: false) == nil {
+  if v.dragonVisible ? dragonRoundedPath(v, v.dragonShape, inner: false) == nil : v.dragonVisibilityCanvas {
     v.backgroundColor = dragonUIColor(v.dragonBackgroundColor)
   } else {
     v.backgroundColor = nil
@@ -46,7 +47,7 @@ public func dragonAfterLayoutBackground(_ v: DragonBoxView, _ shape: DragonBoxSh
 
 /// The readback of the background module: the live backgroundColor as sRGB RGBA8, or the colour a rounded box paints.
 public func dragonAppliedBackground(_ v: DragonBoxView) -> DumpJsonObject {
-  if v.backgroundColor == nil && dragonRoundedPath(v, v.dragonShape, inner: false) != nil { return [("backgroundColor", dragonRGBAJson(v.dragonBackgroundColor))] }
+  if v.backgroundColor == nil && (!v.dragonVisible || dragonRoundedPath(v, v.dragonShape, inner: false) != nil) { return [("backgroundColor", dragonRGBAJson(v.dragonBackgroundColor))] }
   return [("backgroundColor", dragonColorJson(v.backgroundColor))]
 }
 `;
@@ -72,9 +73,12 @@ fun dragonBackground(v: DragonBoxView, c: DragonRGBA8) {
   dragonShadowBackdropChanged(v)
 }
 
-/** A square box keeps a native ColorDrawable; a rounded box turns it off and the background stage fills the rounded border box. */
+/**
+ * A square box keeps a native ColorDrawable; a rounded box turns it off and the background stage fills the rounded border box. A box
+ * that is not visible (T150) shows neither, unless its background is the canvas's, which shows square.
+ */
 fun dragonSyncBackground(v: DragonBoxView) {
-  v.background = if (dragonRoundedPath(v, v.dragonShape, false) == null) ColorDrawable(dragonArgb(v.dragonBackgroundColor)) else null
+  v.background = if (if (v.dragonVisible) dragonRoundedPath(v, v.dragonShape, false) == null else v.dragonVisibilityCanvas) ColorDrawable(dragonArgb(v.dragonBackgroundColor)) else null
   v.invalidate()
 }
 
@@ -96,7 +100,7 @@ fun dragonAfterLayoutBackground(v: DragonBoxView, shape: DragonBoxShape, scale: 
 /** The readback of the background module: the live ColorDrawable colour, or the colour a rounded box paints. */
 fun dragonAppliedBackground(v: DragonBoxView): List<Pair<String, DumpJson>> {
   val bg = v.background
-  if (bg == null && dragonRoundedPath(v, v.dragonShape, false) != null) return listOf(Pair("background.color", dragonRGBAJson(v.dragonBackgroundColor)))
+  if (bg == null && (!v.dragonVisible || dragonRoundedPath(v, v.dragonShape, false) != null)) return listOf(Pair("background.color", dragonRGBAJson(v.dragonBackgroundColor)))
   return listOf(Pair("background.color", if (bg is ColorDrawable) dragonColorJson(bg.color) else DumpJson.Null))
 }
 `;

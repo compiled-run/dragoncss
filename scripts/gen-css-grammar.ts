@@ -47,6 +47,7 @@ const SUBSET = [
   'box-shadow',
   'opacity', 'z-index', 'color-scheme',
   'outline', 'outline-color', 'outline-style', 'outline-width', 'outline-offset',
+  'visibility',
 ] as const;
 
 /**

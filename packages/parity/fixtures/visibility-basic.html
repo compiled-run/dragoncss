@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; }
+.stage { display: flex; flex-direction: column; row-gap: 8px; padding: 8px 16px; background-color: rgb(236, 240, 244); }
+.b { width: 60px; height: 20px; background-color: rgb(40, 90, 200); border: 3px solid rgb(20, 20, 20); }
+.wrap { padding: 4px; background-color: rgb(250, 200, 60); border: 3px solid rgb(120, 40, 20); }
+.hid { visibility: hidden; }
+.col { visibility: collapse; }
+.vis { visibility: visible; }
+.inh { visibility: inherit; }
+.ini { visibility: initial; }
+.uns { visibility: unset; }
+.var { --v: hidden; visibility: var(--v); }
+.k { width: 40px; height: 10px; background-color: rgb(30, 160, 80); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="hid-a" class="b hid"></div>
+<div data-dragon-id="hid-c" class="b col"></div>
+<div data-dragon-id="hid-v" class="b var"></div>
+<div data-dragon-id="hid-p" class="wrap hid"><div data-dragon-id="hid-inh" class="k"></div><div data-dragon-id="kid-vis" class="k vis"></div><div data-dragon-id="hid-explicit" class="k inh"></div><div data-dragon-id="hid-unset" class="k uns"></div><div data-dragon-id="kid-initial" class="k ini"></div></div>
+<div data-dragon-id="hid-n1" class="wrap col"><div data-dragon-id="kid-n2" class="wrap vis"><div data-dragon-id="hid-n3" class="wrap hid"><div data-dragon-id="kid-n4" class="k vis"></div></div></div></div>
+<div data-dragon-id="kid-p" class="wrap"><div data-dragon-id="hid-k" class="k hid"></div><div data-dragon-id="kid-k" class="k"></div></div>
+</div>
+</body>
+</html>

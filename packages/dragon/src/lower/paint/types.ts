@@ -20,7 +20,7 @@ export class ProgramError extends Error {}
 
 /** The module names, in the one registry order (lowering, emission, paint values, samples and support files all use it). */
 export const PAINT_MODULE_NAMES = [
-  'background', 'border', 'clip', 'radius', 'shadow', 'effects', 'stacking', 'outline', 'transform', 'gradient', 'scroll', 'fixed', 'scrollbar', 'image', 'foreign-view', 'control',
+  'background', 'border', 'clip', 'radius', 'shadow', 'effects', 'stacking', 'outline', 'transform', 'gradient', 'scroll', 'fixed', 'scrollbar', 'image', 'foreign-view', 'control', 'visibility',
 ] as const;
 export type PaintModuleName = (typeof PAINT_MODULE_NAMES)[number];
 
