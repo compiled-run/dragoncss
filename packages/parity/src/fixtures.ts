@@ -1,5 +1,6 @@
 // The parity corpus. Every fixture is attempted in every run; none carries its own tolerance.
 import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeResetLonghand } from 'dragon';
+import { ANIMATIONS } from './fixture-groups/animations.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
@@ -90,6 +91,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'border-paint', fixtures: BORDER_PAINT },
   { id: 'sizing-ratio', fixtures: SIZING },
   { id: 'inline', fixtures: INLINE },
+  { id: 'animations', fixtures: ANIMATIONS },
   // values stays last: the extended corpus keys its vectors on the values- prefix (values.test.ts).
   { id: 'values', fixtures: VALUES },
 ];
