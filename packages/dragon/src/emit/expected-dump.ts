@@ -8,6 +8,7 @@ import { canonicalJson, sha256Hex } from '../digest.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { NativeBackend, NativeProgram, ProgramNode, ProgramWrite } from '../lower/native-program.ts';
 import { isPaintKind, paintAppliedValue } from './paint/registry.ts';
+import type { PaintEngine } from './paint/types.ts';
 
 export type JsonValue = null | boolean | number | string | readonly JsonValue[] | { readonly [k: string]: JsonValue };
 
@@ -39,13 +40,15 @@ export type ExpectedEngine = {
   readonly platformFontSize: (px: number) => number;
   readonly zoomFontSize: (px: number, zoom: number) => number;
   readonly float32: (x: number) => number;
+  /** The TS paint references (paint-*.ts) whose translations the device runs. */
+  readonly paint: PaintEngine;
 };
 
 /**
- * The device values of one node at one scale, from the engine: border widths in whole device px, the snapped border box, and a
- * text run's computed font size in device px from the resolved input (null for a box).
+ * The device values of one node at one scale, from the engine: border widths in whole device px, the snapped border box, the
+ * layout border-box size before snapping, and a text run's computed font size in device px from the resolved input (null for a box).
  */
-export type NodeGeometry = { readonly border: readonly [number, number, number, number]; readonly box: SnappedRect; readonly fontSize: number | null };
+export type NodeGeometry = { readonly border: readonly [number, number, number, number]; readonly box: SnappedRect; readonly size: readonly [number, number]; readonly fontSize: number | null };
 
 const rgba = (c: { r: number; g: number; b: number; alpha: number }): number[] => [c.r, c.g, c.b, c.alpha];
 
@@ -129,7 +132,7 @@ export function expectedDump(p: NativeProgram, caseId: string, viewport: { reado
     if (isLine(r)) return;
     const n = byId.get(r.id);
     if (n === undefined) throw new Error(`${caseId}@${dpr}: the engine laid out ${r.id}, which the program does not have`);
-    const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box: snapped[i] as SnappedRect, fontSize: fontSizes.get(r.id) ?? null };
+    const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box: snapped[i] as SnappedRect, size: [r.width / engine.luPerPx, r.height / engine.luPerPx], fontSize: fontSizes.get(r.id) ?? null };
     const applied: { [key: string]: JsonValue } = {};
     for (const w of n.writes) applied[w.key] = appliedValue(engine, p.backend, w, dpr, g);
     nodes.push({ id: n.id, kind: n.kind, native: n.native, applied });

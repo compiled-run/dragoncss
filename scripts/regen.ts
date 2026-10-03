@@ -58,6 +58,8 @@ export const STEPS: readonly Step[] = [
   { name: 'break-capture', argv: pnpm('parity:break-capture'), outputs: ['packages/parity/expected-breaks/**'] },
   { name: 'pixel-capture', argv: pnpm('parity:pixel-capture'), outputs: ['packages/parity/expected-pixels/**'] },
   // EMS: each paint feature's vectors from its committed inputs.jsonl through the TypeScript harness (units mode).
+  // PNT1: the radius and shadow paint-vector inputs, from their generators (the dash inputs come from paint-dash.test, MANUAL).
+  { name: 'paint-inputs', argv: ['sh', '-c', 'node scripts/gen-paint-inputs-radius.ts && node scripts/gen-paint-inputs-shadow.ts'], outputs: ['packages/layout/paint-vectors/radius/inputs.jsonl', 'packages/layout/paint-vectors/shadow/inputs.jsonl'] },
   { name: 'paint-vectors', argv: pnpm('layout:paint-vectors'), outputs: ['packages/layout/paint-vectors/*/vectors.json'] },
   { name: 'native-gen', argv: pnpm('native:gen'), outputs: ['packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'] },
   { name: 'north-star', argv: pnpm('north-star:check'), outputs: ['examples/music-player/dragon/north-star-check.json'] },
@@ -80,7 +82,7 @@ export const MANUAL: readonly { readonly command: string; readonly outputs: read
   { command: 'pnpm run north-star:capture', outputs: ['examples/*/chrome/**'] },
   // A paint package's vector inputs are written by its test from the input list it pins (paint-dash.test.ts dashVectorInputs);
   // the test fails when the committed file differs, and the paint-vectors step reads it.
-  { command: 'DRAGON_WRITE_DASH_INPUTS=1 npx vitest run packages/layout/test/paint-dash.test.ts', outputs: ['packages/layout/paint-vectors/*/inputs.jsonl'] },
+  { command: 'DRAGON_WRITE_DASH_INPUTS=1 npx vitest run packages/layout/test/paint-dash.test.ts', outputs: ['packages/layout/paint-vectors/dash/inputs.jsonl'] },
   { command: 'pnpm run rt:oracle', outputs: ['packages/layout/rt-oracle/**', 'packages/layout/rt-vectors/**'] },
   { command: 'pnpm run parity:glyph-calibration', outputs: ['packages/parity/expected-glyphs/darwin-arm64/**'] },
   { command: 'node scripts/gen-script-data.ts', outputs: ['packages/layout/src/script-data.ts'] },

@@ -16,6 +16,7 @@ const TITLES: [RegExp, string][] = [
   [/^skia-bsd$/, 'Skia: BSD 3-Clause (the Skia LICENSE file)'],
   [/^header-bsd-\d+$/, 'Chromium files with a BSD licence in their own header'],
   [/^rapidhash-bsd-2$/, 'rapidhash: BSD 2-Clause'],
+  [/^adobe-bsd-2$/, 'Blink geometry by Adobe Systems: BSD 2-Clause (in the file header)'],
   [/^fdlibm-sun$/, 'fdlibm (in V8): the Sun Microsystems notice'],
 ];
 
