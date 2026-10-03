@@ -1,0 +1,10 @@
+{
+  "case": "stacking-mix-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"mx-item:text0","lines":[[0,2]]},
+    {"id":"mx-item:text1","lines":[[0,3]]},
+    {"id":"mx-rel:text0","lines":[[0,4]]},
+    {"id":"mx-clip:text0","lines":[[0,3]]}
+  ]
+}
