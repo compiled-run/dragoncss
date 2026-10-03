@@ -145,11 +145,11 @@ public let inline_SOLIDUS: Double = 47.0
 public func inline_isRtlSafe(_ text: JsString) throws -> Bool {
   // ts: packages/layout/src/inline.ts:64
   do {
-    let _a27 = jsCodePoints(text)
-    var _i27 = 0
-    while _i27 < _a27.items.count {
-      let ch: JsString = _a27.items[_i27]
-      _i27 += 1
+    let _a28 = jsCodePoints(text)
+    var _i28 = 0
+    while _i28 < _a28.items.count {
+      let ch: JsString = _a28.items[_i28]
+      _i28 += 1
       let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
       let letter: Bool = (((cp >= 65.0) && (cp <= 90.0)) || ((cp >= 97.0) && (cp <= 122.0)))
       // ts: packages/layout/src/inline.ts:67
@@ -165,11 +165,11 @@ public func inline_isRtlSafe(_ text: JsString) throws -> Bool {
 public func inline_checkRtlText(_ box: LayoutBox, _ leaves: JsArray<TextLeaf>) throws -> Void {
   // ts: packages/layout/src/inline.ts:83
   do {
-    let _a28 = leaves
-    var _i28 = 0
-    while _i28 < _a28.items.count {
-      let t: TextLeaf = _a28.items[_i28]
-      _i28 += 1
+    let _a29 = leaves
+    var _i29 = 0
+    while _i29 < _a29.items.count {
+      let t: TextLeaf = _a29.items[_i29]
+      _i29 += 1
       // ts: packages/layout/src/inline.ts:84
       if try (!inline_isRtlSafe(t.text)) {
         try unsupported_unsupported(S.s_bidi_neutral, t.id, S.s61, jsConcat(S.s260, box.id, S.s9))
@@ -204,11 +204,11 @@ public func inline_buildRun(_ ctx: Ctx, _ box: LayoutBox, _ leaves: JsArray<Text
   }
   // ts: packages/layout/src/inline.ts:99
   do {
-    let _a29 = leaves
-    var _i29 = 0
-    while _i29 < _a29.items.count {
-      let t: TextLeaf = _a29.items[_i29]
-      _i29 += 1
+    let _a30 = leaves
+    var _i30 = 0
+    while _i30 < _a30.items.count {
+      let t: TextLeaf = _a30.items[_i30]
+      _i30 += 1
       let m: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(t.text, inline_leafFont(t))
       // ts: packages/layout/src/inline.ts:101
       if (!m.ok) {
@@ -225,11 +225,11 @@ public func inline_buildRun(_ ctx: Ctx, _ box: LayoutBox, _ leaves: JsArray<Text
     var at: Double = 0.0
     // ts: packages/layout/src/inline.ts:109
     do {
-      let _a30 = jsCodePoints(t.text)
-      var _i30 = 0
-      while _i30 < _a30.items.count {
-        let ch: JsString = _a30.items[_i30]
-        _i30 += 1
+      let _a31 = jsCodePoints(t.text)
+      var _i31 = 0
+      while _i31 < _a31.items.count {
+        let ch: JsString = _a31.items[_i31]
+        _i31 += 1
         _ = try jsPush(chars, Inline_Char(leaf, jsPostInc(&at, 1), ch, jsUnwrap(jsCodePointAt0(ch))))
       }
     }
@@ -275,11 +275,11 @@ public func inline_ahemOpportunities(_ box: LayoutBox, _ cps: JsArray<Double>, _
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/inline.ts:150
   do {
-    let _a31 = cps
-    var _i31 = 0
-    while _i31 < _a31.items.count {
-      let cp: Double = _a31.items[_i31]
-      _i31 += 1
+    let _a32 = cps
+    var _i32 = 0
+    while _i32 < _a32.items.count {
+      let cp: Double = _a32.items[_i32]
+      _i32 += 1
       // ts: packages/layout/src/inline.ts:150
       if try (text_coveredIndex(cp) < 0.0) {
         try unsupported_unsupported(S.s_line_break, box.id, S.s111, jsConcat(S.s58, jsToUpperCase(jsToStringRadix16(cp)), S.s13))
@@ -386,11 +386,11 @@ public func inline_segments(_ run: Run) throws -> JsArray<Segment> {
   var start: Double = 0.0
   // ts: packages/layout/src/inline.ts:212
   do {
-    let _a32 = run.opportunities
-    var _i32 = 0
-    while _i32 < _a32.items.count {
-      let at: Double = _a32.items[_i32]
-      _i32 += 1
+    let _a33 = run.opportunities
+    var _i33 = 0
+    while _i33 < _a33.items.count {
+      let at: Double = _a33.items[_i33]
+      _i33 += 1
       _ = jsPush(out, Segment(start, at))
       start = at
     }
@@ -467,11 +467,11 @@ public func inline_breakLines(_ ctx: Ctx, _ run: Run, _ available: Double) throw
   var end: Double = -1.0
   // ts: packages/layout/src/inline.ts:273
   do {
-    let _a33 = try inline_segments(run)
-    var _i33 = 0
-    while _i33 < _a33.items.count {
-      let seg: Segment = _a33.items[_i33]
-      _i33 += 1
+    let _a34 = try inline_segments(run)
+    var _i34 = 0
+    while _i34 < _a34.items.count {
+      let seg: Segment = _a34.items[_i34]
+      _i34 += 1
       // ts: packages/layout/src/inline.ts:274
       if (start < 0.0) {
         start = seg.start
@@ -556,18 +556,18 @@ public func inline_layoutInline(_ ctx: Ctx, _ box: LayoutBox, _ leaves: JsArray<
 })
   // ts: packages/layout/src/inline.ts:351
   do {
-    let _a34 = lines
-    var _i34 = 0
-    while _i34 < _a34.items.count {
-      let line: PlacedLine = _a34.items[_i34]
-      _i34 += 1
+    let _a35 = lines
+    var _i35 = 0
+    while _i35 < _a35.items.count {
+      let line: PlacedLine = _a35.items[_i35]
+      _i35 += 1
       // ts: packages/layout/src/inline.ts:352
       do {
-        let _a35 = line.pieces
-        var _i35 = 0
-        while _i35 < _a35.items.count {
-          let p: LinePiece = _a35.items[_i35]
-          _i35 += 1
+        let _a36 = line.pieces
+        var _i36 = 0
+        while _i36 < _a36.items.count {
+          let p: LinePiece = _a36.items[_i36]
+          _i36 += 1
           _ = try jsPush(jsUnwrap(jsAt(pieces, p.leaf)), Piece(p.x, p.top, p.width, units_add(p.ascent, p.descent)))
         }
       }
@@ -587,11 +587,11 @@ public func inline_layoutInline(_ ctx: Ctx, _ box: LayoutBox, _ leaves: JsArray<
     var bottom: Double = try units_add(jsUnwrap(firstPiece).y, jsUnwrap(firstPiece).height)
     // ts: packages/layout/src/inline.ts:364
     do {
-      let _a36 = own
-      var _i36 = 0
-      while _i36 < _a36.items.count {
-        let p: Piece = _a36.items[_i36]
-        _i36 += 1
+      let _a37 = own
+      var _i37 = 0
+      while _i37 < _a37.items.count {
+        let p: Piece = _a37.items[_i37]
+        _i37 += 1
         try left = units_min(left, p.x)
         try top = units_min(top, p.y)
         try right = units_max(right, units_add(p.x, p.width))
@@ -619,11 +619,11 @@ public func inline_inlineIntrinsicSize(_ ctx: Ctx, _ box: LayoutBox, _ leaves: J
   var widest: Double = units_ZERO
   // ts: packages/layout/src/inline.ts:385
   do {
-    let _a37 = try inline_segments(run)
-    var _i37 = 0
-    while _i37 < _a37.items.count {
-      let seg: Segment = _a37.items[_i37]
-      _i37 += 1
+    let _a38 = try inline_segments(run)
+    var _i38 = 0
+    while _i38 < _a38.items.count {
+      let seg: Segment = _a38.items[_i38]
+      _i38 += 1
       try widest = units_max(widest, inline_cachedWidth(ctx, run, seg.start, inline_trimEnd(run, seg.start, seg.end)))
     }
   }
