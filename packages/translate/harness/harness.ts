@@ -608,7 +608,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   const f = (k: string): JsonValue => field(o, k, path);
   const p = (k: string): string => `${path}.${k}`;
   return {
-    display: lit(f('display'), ['block', 'flex', 'inline'], p('display')) as Display,
+    display: lit(f('display'), ['block', 'flex', 'inline', 'inline-block', 'inline-flex'], p('display')) as Display,
     position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
@@ -798,6 +798,7 @@ const FAULT_KEYS: readonly string[] = [
   'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
   'advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing',
   'metricRoundingSwapped', 'latinCheckSkipped',
+  'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -851,6 +852,12 @@ function decodeFaults(v: JsonValue): EngineFaults {
     softHyphenWidthMissing: b('softHyphenWidthMissing'),
     metricRoundingSwapped: b('metricRoundingSwapped'),
     latinCheckSkipped: b('latinCheckSkipped'),
+    inlineBlockFirstBaseline: b('inlineBlockFirstBaseline'),
+    overflowBaselineIgnored: b('overflowBaselineIgnored'),
+    inlineFlexLastBaseline: b('inlineFlexLastBaseline'),
+    atomicMarginExcluded: b('atomicMarginExcluded'),
+    noBreakAroundAtomic: b('noBreakAroundAtomic'),
+    atomicShrinkToFitIgnored: b('atomicShrinkToFitIgnored'),
   };
 }
 

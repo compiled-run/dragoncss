@@ -121,6 +121,18 @@ export type EngineFaults = {
   readonly metricRoundingSwapped: boolean;
   /** Text outside Latin, Common and Inherited is shaped instead of refused (R4). */
   readonly latinCheckSkipped: boolean;
+  /** An inline-block's baseline is its first baseline instead of its last line box's (CSS2 §10.8.1). */
+  readonly inlineBlockFirstBaseline: boolean;
+  /** A scroll container inline-block keeps its content baseline instead of its bottom margin edge (CSS2 §10.8.1). */
+  readonly overflowBaselineIgnored: boolean;
+  /** An inline-flex box's baseline is its last item's instead of the flex container's first baseline (css-flexbox-1 §8.5). */
+  readonly inlineFlexLastBaseline: boolean;
+  /** An atomic inline's margins take no space: its border box is its advance and its line height contribution. */
+  readonly atomicMarginExcluded: boolean;
+  /** No soft wrap opportunity before or after an atomic inline (Blink line_breaker.cc allows both). */
+  readonly noBreakAroundAtomic: boolean;
+  /** An atomic inline with an auto width fills the available width instead of shrinking to fit (CSS2 §10.3.9). */
+  readonly atomicShrinkToFitIgnored: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -171,6 +183,12 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   softHyphenWidthMissing: false,
   metricRoundingSwapped: false,
   latinCheckSkipped: false,
+  inlineBlockFirstBaseline: false,
+  overflowBaselineIgnored: false,
+  inlineFlexLastBaseline: false,
+  atomicMarginExcluded: false,
+  noBreakAroundAtomic: false,
+  atomicShrinkToFitIgnored: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
@@ -201,6 +219,10 @@ export type ContentsResult = {
   /** Margins of descendants that adjoin this box's bottom margin. */
   readonly escapeBottom: Strut;
   readonly collapseThrough: boolean;
+  /** The last baseline from the border-box top (INL2a, inline-block baselines), or null when the box has none. */
+  readonly lastBaseline: LU | null;
+  /** The id of the flex container whose last baseline would decide lastBaseline, or '' when none does (Dragon refuses that case). */
+  readonly lastBaselineFlex: string;
 };
 
 /** A set of adjoining vertical margins, kept as Blink NGMarginStrut does: the largest positive and the most negative. */
@@ -263,7 +285,7 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
     });
     const height = fromRatio !== null ? ratioFinalBlockSize(box, fromRatio, add(r.contentHeight, vbp), minMax) : fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
     const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
-    return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
+    return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: box.id };
   }
 
   const canCollapseTop = !a.formattingContextRoot && bor.top === 0 && pad.top === 0;
@@ -285,11 +307,11 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
   const baseline = clampScrollBaseline(box, r.baseline, height);
   const collapseThrough = !a.formattingContextRoot && !r.hasContent && height === 0 && vbp === 0;
   if (collapseThrough) {
-    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough };
+    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex };
   }
   // Chrome deviation min-max-end-margin: when min-height or max-height changes the height, the end margins neither escape nor count.
   const escapeBottom = bottomAdjoins && (height === add(intrinsic, vbp) || ctx.faults.minMaxEndMarginSpec) ? r.endStrut : EMPTY_STRUT;
-  return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow }, escapeTop: r.escapeTop, escapeBottom, collapseThrough };
+  return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow }, escapeTop: r.escapeTop, escapeBottom, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex };
 }
 
 export type BlockLevelResult = {
@@ -356,6 +378,9 @@ type FlowResult = {
   /** The first baseline relative to the border-box top, or null. */
   readonly baseline: LU | null;
   readonly outOfFlow: readonly OutOfFlow[];
+  /** The last baseline relative to the border-box top, and the flex container that would decide it instead (ContentsResult). */
+  readonly lastBaseline: LU | null;
+  readonly lastBaselineFlex: string;
 };
 
 // CSS2 §9.4.1 and §8.3.1: stacks block-level children, collapsing adjoining vertical margins. css-align-3 §9.1: the first
@@ -366,7 +391,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     // CSS2 §9.2.1.1: the compiler wraps inline content beside block boxes in anonymous boxes; validateLayoutInput rejects anything else.
     const r = layoutInline(ctx, box, a.contentWidth, a.origin);
     // CSS2 §9.4.2: a formatting context with no line boxes (only empty inline boxes) is empty, so margins collapse through it.
-    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: r.lines > 0, baseline: r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline), outOfFlow: [] };
+    const last = r.lastBaseline === null ? null : add(a.origin.y, r.lastBaseline);
+    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: r.lines > 0, baseline: r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline), outOfFlow: [], lastBaseline: last, lastBaselineFlex: '' };
   }
   if (kids.some((k) => k.kind !== 'box' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
   const direction = directionOf(ctx, box);
@@ -376,6 +402,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   let seen = false;
   let escapeTop = EMPTY_STRUT;
   let baseline: LU | null = null;
+  let lastBaseline: LU | null = null;
+  let lastBaselineFlex = '';
   const outOfFlow: OutOfFlow[] = [];
   for (const kid of kids) {
     if (kid.kind !== 'box' && kid.kind !== 'replaced') continue;
@@ -397,7 +425,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       // CSS 2.2 §10.3.4 and §10.6.2: a block-level replaced box sizes itself and never collapses through (replaced.ts).
       const frag = layoutReplacedInFlow(ctx, kid, a.contentWidth, a.childBasis);
       inline = placeBlockLevel(ctx, kid.style, a.contentWidth, direction, frag.width);
-      c = { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
+      // A replaced box has no line boxes, so it gives an inline-block no last baseline (CSS2 §10.8.1).
+      c = { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: '' };
     } else {
       inline = blockLevelInlineSize(ctx, kid, a.contentWidth, direction);
       c = layoutContents(ctx, kid, {
@@ -428,13 +457,25 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     }
     const at: Placed = { frag: c.frag, x: add(a.origin.x, inline.marginLeft), y: add(a.origin.y, y) };
     if (baseline === null && c.frag.baseline !== null) baseline = add(at.y, c.frag.baseline);
+    // Blink's last baseline (block_layout_algorithm.cc:3622-3647, measured in notes/T059-inl2.md): the last in-flow child with
+    // one; a scroll container child gives its bottom margin edge, and a flex child's last baseline is not modelled.
+    if (isScrollContainer(kid.style)) {
+      lastBaseline = add(add(at.y, c.frag.height), inline.marginBottom);
+      lastBaselineFlex = '';
+    } else if (c.lastBaselineFlex !== '') {
+      lastBaseline = null;
+      lastBaselineFlex = c.lastBaselineFlex;
+    } else if (c.lastBaseline !== null) {
+      lastBaseline = add(at.y, c.lastBaseline);
+      lastBaselineFlex = '';
+    }
     // CSS2 §9.4.3: a relative offset moves the box after layout; the flow, margins and baselines keep its in-flow position.
     const offset = relativeOffsetWith(kid, a.contentWidth, a.childBasis, direction, ctx.faults);
     placed.push({ frag: at.frag, x: add(at.x, offset.dx), y: add(at.y, offset.dy) });
     if (ctx.faults.relativeShiftsFlow && !c.collapseThrough) cursor = add(cursor, offset.dy);
   }
-  if (!seen && a.canCollapseTop) return { cursor: ZERO, placed, escapeTop: strut, endStrut: EMPTY_STRUT, hasContent: false, baseline, outOfFlow };
-  return { cursor, placed, escapeTop, endStrut: strut, hasContent: seen, baseline, outOfFlow };
+  if (!seen && a.canCollapseTop) return { cursor: ZERO, placed, escapeTop: strut, endStrut: EMPTY_STRUT, hasContent: false, baseline, outOfFlow, lastBaseline, lastBaselineFlex };
+  return { cursor, placed, escapeTop, endStrut: strut, hasContent: seen, baseline, outOfFlow, lastBaseline, lastBaselineFlex };
 }
 
 export type { Edges };

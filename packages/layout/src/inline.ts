@@ -7,7 +7,7 @@ import type { FontSpec, InlineBox, InlineChild, LayoutBox, LineBreak, LineHeight
 import type { LU } from './units.ts';
 import { add, divInt, floorToWholePx, fromFloatRound, fromRaw, lineHeightFromNumber, max, min, sub, toPx, ZERO } from './units.ts';
 import type { Frag, Placed, Point } from './box.ts';
-import { resolveBorder } from './box.ts';
+import { hasPercent, resolveBorder } from './box.ts';
 import type { Ctx } from './block.ts';
 import { directionOf } from './block.ts';
 import type { LineBreakFaults } from './linebreak.ts';
@@ -19,17 +19,22 @@ import { breakItemLines } from './shaping.ts';
 import type { FitFaults } from './linefit.ts';
 import { fitsAvailable, isHangingSpace } from './linefit.ts';
 import { unsupported } from './unsupported.ts';
+import type { AtomicLayout } from './inline-box.ts';
+import { atomicContribution, isAtomicInline, layoutAtomic } from './inline-box.ts';
 
 const SPACE = 0x20;
 const ZWSP = 0x200b;
 const HYPHEN_MINUS = 0x2d;
 const SOLIDUS = 0x2f;
+/** U+FFFC OBJECT REPLACEMENT CHARACTER: an atomic inline's item in the break text (Blink inline_items_builder.cc:1245-1251). */
+const OBJECT = 0xfffc;
 
 /**
- * One item of the formatting context in tree order: a code point of a leaf, the open or close tag of an inline box, or a <br>.
- * box is the innermost inline box holding the item (-1 for the root), or for a tag the box it opens or closes.
+ * One item of the formatting context in tree order: a code point of a leaf, the open or close tag of an inline box, a <br>, or an
+ * atomic inline (U+FFFC; atom is its index). box is the innermost inline box holding the item (-1 for the root), or for a tag the
+ * box it opens or closes.
  */
-type Item = { readonly kind: 'char' | 'open' | 'close' | 'br'; readonly leaf: number; readonly at: number; readonly ch: string; readonly cp: number; readonly box: number; readonly br: number };
+type Item = { readonly kind: 'char' | 'open' | 'close' | 'br' | 'atomic'; readonly leaf: number; readonly at: number; readonly ch: string; readonly cp: number; readonly box: number; readonly br: number; readonly atom: number };
 
 /** The ascent and descent a box or the strut adds around the baseline with its half-leadings (CSS2 §10.8.1), and its font's A and D. */
 type BoxMetrics = { readonly above: LU; readonly below: LU; readonly ascent: LU; readonly descent: LU };
@@ -43,6 +48,8 @@ export type Ifc = {
   /** The index of each box's parent box, or -1 for the root. */
   readonly boxParent: readonly number[];
   readonly brs: readonly LineBreak[];
+  /** The atomic inlines (inline-block and inline-flex boxes), in tree order. */
+  readonly atomics: readonly LayoutBox[];
   readonly items: readonly Item[];
   readonly boundaries: readonly Boundary[];
   readonly strut: BoxMetrics;
@@ -105,6 +112,9 @@ export type PlacedLine = {
   readonly breakRects: readonly Rect[];
 };
 
+/** A line box with the atomic inlines on it, by index into the formatting context's atomics, and their border boxes. */
+type AtomicLine = { readonly line: PlacedLine; readonly atomics: readonly number[]; readonly atomicRects: readonly Rect[] };
+
 /** UAX #9: in an rtl paragraph these code points keep logical order without reordering (strong L letters, space, U+200B). */
 export function isRtlSafe(text: string): boolean {
   for (const ch of text) {
@@ -141,6 +151,40 @@ function checkRtlText(box: LayoutBox, leaves: readonly TextLeaf[], items: readon
     zwsp = -1;
   }
   if (zwsp >= 0) unsupported('bidi-neutral', (leaves[zwsp] as TextLeaf).id, 'UAX #9 L1', `U+200B in the whitespace that ends the rtl paragraph of ${box.id} would take the paragraph direction`);
+  checkRtlAtomics(box, items);
+}
+
+/** Whether a code point is a strong left-to-right letter of the rtl-safe set (A-Z, a-z). */
+function isLetter(cp: number): boolean {
+  return (cp >= 0x41 && cp <= 0x5a) || (cp >= 0x61 && cp <= 0x7a);
+}
+
+// UAX #9 N1, N2: an atomic inline is U+FFFC, a neutral. Between letters in its paragraph (between <br>s) it resolves left-to-right
+// with them, so the line keeps logical order; alone in a paragraph without letters it is the only item, so order cannot matter.
+// Anywhere else it takes the paragraph's direction and would be reordered, which is refused.
+function checkRtlAtomics(box: LayoutBox, items: readonly Item[]): void {
+  let start = 0;
+  for (let i = 0; i <= items.length; i++) {
+    if (i < items.length && (items[i] as Item).kind !== 'br') continue;
+    let letters = 0;
+    let atomics = 0;
+    for (let j = start; j < i; j++) {
+      const it = items[j] as Item;
+      if (it.kind === 'atomic') atomics++;
+      else if (it.kind === 'char' && isLetter(it.cp)) letters++;
+    }
+    for (let j = start; j < i; j++) {
+      const it = items[j] as Item;
+      if (it.kind !== 'atomic') continue;
+      if (letters === 0 && atomics === 1) continue;
+      let before = false;
+      let after = false;
+      for (let k = start; k < j; k++) if ((items[k] as Item).kind === 'char' && isLetter((items[k] as Item).cp)) before = true;
+      for (let k = j + 1; k < i; k++) if ((items[k] as Item).kind === 'char' && isLetter((items[k] as Item).cp)) after = true;
+      if (!before || !after) unsupported('bidi-neutral', box.id, 'UAX #9 N1-N2', `an atomic inline in the rtl paragraph of ${box.id} without a letter on both sides would take the paragraph direction`);
+    }
+    start = i + 1;
+  }
 }
 
 /** The text leaves of a block container's inline formatting context, in tree order (the leaf indices of LinePiece). */
@@ -152,7 +196,7 @@ export function inlineLeaves(box: LayoutBox): TextLeaf[] {
       else if (k.kind === 'inline') walk(k.children);
     }
   };
-  walk(inlineChildren(box));
+  walk(inlineContent(box));
   return out;
 }
 
@@ -167,7 +211,7 @@ export function inlineBoxes(box: LayoutBox): InlineBox[] {
       }
     }
   };
-  walk(inlineChildren(box));
+  walk(inlineContent(box));
   return out;
 }
 
@@ -180,15 +224,22 @@ export function inlineBreaks(box: LayoutBox): LineBreak[] {
       else if (k.kind === 'inline') walk(k.children);
     }
   };
-  walk(inlineChildren(box));
+  walk(inlineContent(box));
   return out;
 }
 
-/** A block container's children as inline content; validateLayoutInput rejects boxes beside inline content. */
-function inlineChildren(box: LayoutBox): InlineChild[] {
+/** A block container's inline content without its atomic inlines. */
+function inlineContent(box: LayoutBox): InlineChild[] {
   const out: InlineChild[] = [];
+  for (const c of box.children) if (c.kind !== 'box' && c.kind !== 'replaced') out.push(c);
+  return out;
+}
+
+/** A block container's children as inline content; validateLayoutInput rejects block-level boxes beside inline content. */
+function inlineChildren(box: LayoutBox): (InlineChild | LayoutBox)[] {
+  const out: (InlineChild | LayoutBox)[] = [];
   for (const c of box.children) {
-    if (c.kind === 'box' || c.kind === 'replaced') throw new Error(`${box.id} mixes boxes and inline content; validateLayoutInput rejects this input`);
+    if ((c.kind === 'box' && !isAtomicInline(c)) || c.kind === 'replaced') throw new Error(`${box.id} mixes boxes and inline content; validateLayoutInput rejects this input`);
     out.push(c);
   }
   return out;
@@ -249,7 +300,29 @@ function checkInlineBox(ctx: Ctx, b: InlineBox): void {
 }
 
 /** Collects the formatting context's leaves, boxes (with their parents), <br>s and items in tree order. */
-type Flat = { readonly leaves: TextLeaf[]; readonly boxes: InlineBox[]; readonly boxParent: number[]; readonly brs: LineBreak[]; readonly items: Item[] };
+type Flat = { readonly leaves: TextLeaf[]; readonly boxes: InlineBox[]; readonly boxParent: number[]; readonly brs: LineBreak[]; readonly atomics: LayoutBox[]; readonly items: Item[] };
+
+// INL2a scope: an atomic inline's line is laid out without its block container's height (the native runtime places lines the same
+// way), so a percentage block size, which would resolve against a definite one (CSS2 §10.5), is refused; and so is a relatively
+// positioned atomic inline, as INL1a refuses a relatively positioned inline box.
+function checkAtomic(a: LayoutBox): void {
+  const s = a.style;
+  if (s.position !== 'static') unsupported('inline-box-position', a.id, 'CSS2 §9.4.3', `a ${s.position} atomic inline ${a.id}`);
+  const percent = (s.height.kind !== 'auto' && hasPercent(s.height)) || (s.minHeight.kind !== 'auto' && hasPercent(s.minHeight)) || (s.maxHeight.kind !== 'none' && hasPercent(s.maxHeight));
+  if (percent) unsupported('percent-height-flex', a.id, 'CSS2 §10.5', `a percentage block size on atomic inline ${a.id}, whose line boxes do not read their block container's height`);
+}
+
+/** The block container's children: atomic inlines become U+FFFC items, and inline content is flattened (flatten). */
+function flattenTop(ctx: Ctx, kids: readonly (InlineChild | LayoutBox)[], out: Flat): void {
+  for (const k of kids) {
+    if (k.kind === 'box') {
+      checkAtomic(k);
+      const atom = out.atomics.length;
+      out.atomics.push(k);
+      out.items.push({ kind: 'atomic', leaf: -1, at: -1, ch: '\ufffc', cp: OBJECT, box: -1, br: -1, atom });
+    } else flatten(ctx, [k], -1, out);
+  }
+}
 
 function flatten(ctx: Ctx, kids: readonly InlineChild[], parent: number, out: Flat): void {
   for (const k of kids) {
@@ -257,19 +330,19 @@ function flatten(ctx: Ctx, kids: readonly InlineChild[], parent: number, out: Fl
       const leaf = out.leaves.length;
       out.leaves.push(k);
       let at = 0;
-      for (const ch of k.text) out.items.push({ kind: 'char', leaf, at: at++, ch, cp: ch.codePointAt(0) as number, box: parent, br: -1 });
+      for (const ch of k.text) out.items.push({ kind: 'char', leaf, at: at++, ch, cp: ch.codePointAt(0) as number, box: parent, br: -1, atom: -1 });
     } else if (k.kind === 'br') {
       const br = out.brs.length;
       out.brs.push(k);
-      out.items.push({ kind: 'br', leaf: -1, at: -1, ch: '', cp: -1, box: parent, br });
+      out.items.push({ kind: 'br', leaf: -1, at: -1, ch: '', cp: -1, box: parent, br, atom: -1 });
     } else {
       checkInlineBox(ctx, k);
       const b = out.boxes.length;
       out.boxes.push(k);
       out.boxParent.push(parent);
-      out.items.push({ kind: 'open', leaf: -1, at: -1, ch: '', cp: -1, box: b, br: -1 });
+      out.items.push({ kind: 'open', leaf: -1, at: -1, ch: '', cp: -1, box: b, br: -1, atom: -1 });
       flatten(ctx, k.children, b, out);
-      out.items.push({ kind: 'close', leaf: -1, at: -1, ch: '', cp: -1, box: b, br: -1 });
+      out.items.push({ kind: 'close', leaf: -1, at: -1, ch: '', cp: -1, box: b, br: -1, atom: -1 });
     }
   }
 }
@@ -286,7 +359,7 @@ function within(boxParent: readonly number[], inner: number, b: number): boolean
 
 /** Whether an item is content that shows or ends a line: a character that does not hang, or a <br>. */
 function isContent(it: Item): boolean {
-  return it.kind === 'br' || (it.kind === 'char' && !isHangingSpace(it.cp));
+  return it.kind === 'br' || it.kind === 'atomic' || (it.kind === 'char' && !isHangingSpace(it.cp));
 }
 
 /** The first (or, with last, the last) index of an item that is content of box b, or -1. */
@@ -309,14 +382,21 @@ function tagIndex(items: readonly Item[], b: number, kind: 'open' | 'close'): nu
 
 /** Flattens the formatting context into items and resolves its boxes' metrics. */
 export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
-  const flat: Flat = { leaves: [], boxes: [], boxParent: [], brs: [], items: [] };
-  flatten(ctx, inlineChildren(box), -1, flat);
+  const flat: Flat = { leaves: [], boxes: [], boxParent: [], brs: [], atomics: [], items: [] };
+  flattenTop(ctx, inlineChildren(box), flat);
   const items = flat.items;
   if (directionOf(ctx, box) === 'rtl') checkRtlText(box, flat.leaves, items);
   const first = flat.leaves[0];
   let shaped = false;
   for (const t of flat.leaves) if (t.font.family !== AHEM_FACE_ID) shaped = true;
   if (shaped) checkShapedText(ctx, box, flat.leaves, items);
+  // INL2a scope: Blink's LineBreaker for real-font text (shaping.ts) has no atomic item here (INL2c).
+  const atom = flat.atomics[0];
+  if (shaped && atom !== undefined) {
+    for (const t of flat.leaves) {
+      if (t.font.family !== AHEM_FACE_ID) unsupported('atomic-beside-shaped-text', t.id, 'CSS2 §9.2.4', `text ${t.id} in a real face shares the inline formatting context of ${box.id} with atomic inline ${atom.id} (INL2c)`);
+    }
+  }
   for (const t of flat.leaves) {
     const m = ctx.measurer.measure(t.text, fontOf(t.font));
     if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
@@ -333,6 +413,7 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     boxes: flat.boxes,
     boxParent: flat.boxParent,
     brs: flat.brs,
+    atomics: flat.atomics,
     items,
     boundaries,
     strut: metricsOf(ctx, box.id, strut.font, strut.lineHeight, false),
@@ -414,7 +495,7 @@ function boundariesOf(ctx: Ctx, box: LayoutBox, items: readonly Item[], wrap: bo
   let run: number[] = [];
   for (let i = 0; i < items.length; i++) {
     const it = items[i] as Item;
-    if (it.kind === 'char') run.push(i);
+    if (it.kind === 'char' || it.kind === 'atomic') run.push(i);
     else if (it.kind === 'br' && !ctx.faults.brIgnored) {
       addSoftBoundaries(ctx, box, items, run, wrap, shaped, out, starts);
       run = [];
@@ -453,7 +534,36 @@ function opportunities(ctx: Ctx, box: LayoutBox, cps: readonly number[], wrap: b
     return out;
   }
   const faults: LineBreakFaults = { breakAfterSolidus: ctx.faults.breakAfterSolidus, noHyphenDigitBreak: ctx.faults.noHyphenDigitBreak };
-  return shaped ? latinOpportunities(box, cps, wrap, faults) : ahemOpportunities(box, cps, wrap, faults);
+  if (shaped) return latinOpportunities(box, cps, wrap, faults);
+  return atomicOpportunities(box, cps, wrap, ctx.faults.noBreakAroundAtomic, faults);
+}
+
+/**
+ * Soft wrap opportunities of a run holding atomic inlines (U+FFFC): the text between them is broken on its own, and an
+ * atomic allows a break before and after it (Blink line_breaker.cc:1127-1150, :1174-1210; INL-P f5-break-around), except
+ * before a space, which hangs (after-space-run), and before U+200B (UAX #14 LB7). Planted fault noBreakAroundAtomic drops them.
+ */
+function atomicOpportunities(box: LayoutBox, cps: readonly number[], wrap: boolean, noBreak: boolean, faults: LineBreakFaults): number[] {
+  const out: number[] = [];
+  let start = 0;
+  for (let i = 0; i <= cps.length; i++) {
+    if (i < cps.length && (cps[i] as number) !== OBJECT) continue;
+    const seg: number[] = [];
+    for (let j = start; j < i; j++) seg.push(cps[j] as number);
+    for (const p of ahemOpportunities(box, seg, wrap, faults)) out.push(start + p);
+    start = i + 1;
+  }
+  if (!wrap || noBreak) return out;
+  for (let i = 1; i < cps.length; i++) {
+    const cur = cps[i] as number;
+    const last = cps[i - 1] as number;
+    if (cur !== OBJECT && last !== OBJECT) continue;
+    if (cur === SPACE || cur === ZWSP) continue;
+    let seen = false;
+    for (const p of out) if (p === i) seen = true;
+    if (!seen) out.push(i);
+  }
+  return out.sort((x, y) => x - y);
 }
 
 /**
@@ -719,17 +829,21 @@ function isAsciiAlphanumeric(cp: number): boolean {
 function visibleEndOf(ifc: Ifc, start: number, end: number): number {
   for (let i = end - 1; i >= start; i--) {
     const it = ifc.items[i] as Item;
-    if (it.kind === 'char' && !isHangingSpace(it.cp)) return i + 1;
+    if ((it.kind === 'char' && !isHangingSpace(it.cp)) || it.kind === 'atomic') return i + 1;
   }
   return start;
 }
 
-/** The advance of the characters in items [start, end): each leaf's piece is measured as one run (Blink shapes per text item). */
-function width(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
+/**
+ * The advance of the characters and atomic inlines in items [start, end): each leaf's piece is measured as one run (Blink shapes per
+ * text item), and atomic k advances adv[k].
+ */
+function width(ctx: Ctx, ifc: Ifc, adv: readonly LU[], start: number, end: number): LU {
   let total = ZERO;
   let i = start;
   while (i < end) {
     const it = ifc.items[i] as Item;
+    if (it.kind === 'atomic') total = add(total, adv[it.atom] as LU);
     if (it.kind !== 'char') {
       i++;
       continue;
@@ -749,11 +863,12 @@ function width(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
  * (line_breaker.cc HandleTextForFastMinContent): each leaf is one text item, and each leaf's piece is ShapeResult::CachedWidth of
  * its range in the leaf, the difference of the item's ceiled character positions.
  */
-function cachedWidth(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
+function cachedWidth(ctx: Ctx, ifc: Ifc, adv: readonly LU[], start: number, end: number): LU {
   let total = ZERO;
   let i = start;
   while (i < end) {
     const first = ifc.items[i] as Item;
+    if (first.kind === 'atomic') total = add(total, adv[first.atom] as LU);
     if (first.kind !== 'char') {
       i++;
       continue;
@@ -768,9 +883,15 @@ function cachedWidth(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
   return total;
 }
 
-/** Whether items [start, end) hold a character or a <br>: a line without either is empty and makes no line box (Blink IsEmptyLine). */
+/**
+ * Whether items [start, end) hold a character, a <br> or an atomic inline: a line without any is empty and makes no line box
+ * (Blink IsEmptyLine).
+ */
 function hasContent(ifc: Ifc, start: number, end: number): boolean {
-  for (let i = start; i < end; i++) if ((ifc.items[i] as Item).kind === 'char' || (ifc.items[i] as Item).kind === 'br') return true;
+  for (let i = start; i < end; i++) {
+    const k = (ifc.items[i] as Item).kind;
+    if (k === 'char' || k === 'br' || k === 'atomic') return true;
+  }
   return false;
 }
 
@@ -787,7 +908,7 @@ function endsOf(ifc: Ifc): Boundary[] {
 // most the available width plus one LayoutUnit); the planted fault fitWithoutEpsilon drops that LayoutUnit. Items after the last
 // <br> without a character make no line (Blink IsEmptyLine); an inline box that would start there is refused, as where Blink
 // puts it is not measured. A context without any character or <br> has no line at all (INL-P f1-empty-root).
-function breakLines(ctx: Ctx, ifc: Ifc, available: LU): Line[] {
+function breakLines(ctx: Ctx, ifc: Ifc, adv: readonly LU[], available: LU): Line[] {
   // Planted fault breakOffByOne: a line accepts one more glyph advance than fits, so breaks land one glyph late.
   const firstLeaf = ifc.leaves[0];
   let slack = ZERO;
@@ -813,7 +934,7 @@ function breakLines(ctx: Ctx, ifc: Ifc, available: LU): Line[] {
     k++;
     while (!forced && k < ends.length) {
       const next = ends[k] as Boundary;
-      if (!fitsAvailable(toPx(width(ctx, ifc, start, visibleEndOf(ifc, start, next.at))), add(available, slack), fit)) break;
+      if (!fitsAvailable(toPx(width(ctx, ifc, adv, start, visibleEndOf(ifc, start, next.at))), add(available, slack), fit)) break;
       end = next.at;
       forced = next.forced;
       k++;
@@ -952,8 +1073,8 @@ function piecesOf(ifc: Ifc, s: ShapedItems, bl: BrokenLine): ShapedPiece[] {
  * The advance of items [start, end) of a line: an Ahem line measures its leaf pieces (width); a real-font line sums the inline
  * sizes of its text results there, a result cut at its hanging trailing space taking its size without it.
  */
-function spanWidth(ctx: Ctx, ifc: Ifc, line: Line, start: number, end: number): LU {
-  if (!ifc.shaped) return width(ctx, ifc, start, end);
+function spanWidth(ctx: Ctx, ifc: Ifc, adv: readonly LU[], line: Line, start: number, end: number): LU {
+  if (!ifc.shaped) return width(ctx, ifc, adv, start, end);
   let total = ZERO;
   for (const p of line.pieces) {
     if (p.from < start || p.from >= end) continue;
@@ -990,16 +1111,16 @@ function boxOnLine(ifc: Ifc, b: number, start: number, end: number): boolean {
 }
 
 /** The x of the pen before item i of a line, from the content-box left: tags and hanging spaces advance nothing. */
-function penAt(ctx: Ctx, ifc: Ifc, line: Line, offset: LU, i: number): LU {
-  return add(offset, spanWidth(ctx, ifc, line, line.start, i < line.visibleEnd ? i : line.visibleEnd));
+function penAt(ctx: Ctx, ifc: Ifc, adv: readonly LU[], line: Line, offset: LU, i: number): LU {
+  return add(offset, spanWidth(ctx, ifc, adv, line, line.start, i < line.visibleEnd ? i : line.visibleEnd));
 }
 
 /**
  * The x of a <br> at item i: after the line's content, at the paragraph level, so in rtl at the line-left end of the content
  * (UAX #9 L1, INL-P f2-*).
  */
-function breakX(ctx: Ctx, ifc: Ifc, line: Line, offset: LU, rtl: boolean, i: number): LU {
-  return rtl ? offset : penAt(ctx, ifc, line, offset, i);
+function breakX(ctx: Ctx, ifc: Ifc, adv: readonly LU[], line: Line, offset: LU, rtl: boolean, i: number): LU {
+  return rtl ? offset : penAt(ctx, ifc, adv, line, offset, i);
 }
 
 /** The first <br> inside box b (between its tags) within items [start, end), or -1 when a visible character comes first or there is none. */
@@ -1025,12 +1146,22 @@ export function placeLines(ctx: Ctx, box: LayoutBox, available: LU): PlacedLine[
 }
 
 export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): PlacedLine[] {
-  const lines = ifc.shaped ? breakShapedLines(ctx, box, ifc, available) : breakLines(ctx, ifc, available);
+  return placeAtomicLines(ctx, box, ifc, layoutAtomics(ctx, ifc, available), available).map((l) => l.line);
+}
+
+/** Lays out the atomic inlines of a formatting context whose content box is available wide (CSS2 §10.3.9). */
+function layoutAtomics(ctx: Ctx, ifc: Ifc, available: LU): AtomicLayout[] {
+  return ifc.atomics.map((a) => layoutAtomic(ctx, a, available));
+}
+
+function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly AtomicLayout[], available: LU): AtomicLine[] {
+  const adv = atoms.map((a) => a.advance);
+  const lines = ifc.shaped ? breakShapedLines(ctx, box, ifc, available) : breakLines(ctx, ifc, adv, available);
   const rtl = directionOf(ctx, box) === 'rtl';
-  const out: PlacedLine[] = [];
+  const out: AtomicLine[] = [];
   let top = ZERO;
   for (const line of lines) {
-    const offset = alignOffset(ctx, box, sub(available, spanWidth(ctx, ifc, line, line.start, line.visibleEnd)));
+    const offset = alignOffset(ctx, box, sub(available, spanWidth(ctx, ifc, adv, line, line.start, line.visibleEnd)));
     const on: number[] = [];
     for (let b = 0; b < ifc.boxes.length; b++) if (boxOnLine(ifc, b, line.start, line.end)) on.push(b);
     // CSS2 §10.8.1 with baseline alignment: the strut and every inline box on the line add their ascent and descent with their
@@ -1043,9 +1174,18 @@ export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU)
         below = max(below, (ifc.boxMetrics[b] as BoxMetrics).below);
       }
     }
+    // An atomic inline adds its margin box around its baseline (Blink logical_line_builder.cc:470-532).
+    const onAtoms: number[] = [];
+    for (let j = line.start; j < line.end; j++) {
+      const it = ifc.items[j] as Item;
+      if (it.kind !== 'atomic') continue;
+      onAtoms.push(j);
+      above = max(above, (atoms[it.atom] as AtomicLayout).above);
+      below = max(below, (atoms[it.atom] as AtomicLayout).below);
+    }
     const baseline = add(top, above);
     const height = add(above, below);
-    const endX = penAt(ctx, ifc, line, offset, line.visibleEnd);
+    const endX = penAt(ctx, ifc, adv, line, offset, line.visibleEnd);
     const pieces: LinePiece[] = [];
     let i = line.start;
     while (i < line.visibleEnd) {
@@ -1062,7 +1202,7 @@ export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU)
       const m = ctx.measurer.metrics(fontOf(t.font));
       // Planted fault fragmentFromLineTop: the leaf's content area starts at the line top instead of its baseline minus its ascent.
       const pieceTop = ctx.faults.fragmentFromLineTop ? top : sub(baseline, m.ascent);
-      pieces.push({ leaf: it.leaf, start: it.at, visibleEnd: it.at + (i - from), end: it.at + (through - from), x: penAt(ctx, ifc, line, offset, from), width: spanWidth(ctx, ifc, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent });
+      pieces.push({ leaf: it.leaf, start: it.at, visibleEnd: it.at + (i - from), end: it.at + (through - from), x: penAt(ctx, ifc, adv, line, offset, from), width: spanWidth(ctx, ifc, adv, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent });
     }
     // A <br>'s content area is its parent box's (Blink places the control item with the parent's text top and height).
     const breaks: number[] = [];
@@ -1072,7 +1212,7 @@ export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU)
       if (it.kind !== 'br') continue;
       const p = it.box < 0 ? ifc.strut : (ifc.boxMetrics[it.box] as BoxMetrics);
       breaks.push(it.br);
-      breakRects.push({ x: breakX(ctx, ifc, line, offset, rtl, j), y: sub(baseline, p.ascent), width: ZERO, height: add(p.ascent, p.descent) });
+      breakRects.push({ x: breakX(ctx, ifc, adv, line, offset, rtl, j), y: sub(baseline, p.ascent), width: ZERO, height: add(p.ascent, p.descent) });
     }
     // An inline box's fragment spans its content on the line over its own content area (INL-P f1-*): from its open tag, or the
     // line start when it continues, to its close tag, or the end of the line's content when it continues. A box whose only
@@ -1082,23 +1222,35 @@ export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU)
       const bm = ifc.boxMetrics[b] as BoxMetrics;
       const open = ifc.openAt[b] as number;
       const close = ifc.closeAt[b] as number;
-      let left = open >= line.start ? penAt(ctx, ifc, line, offset, open) : offset;
-      let right = close < line.end ? penAt(ctx, ifc, line, offset, close) : endX;
+      let left = open >= line.start ? penAt(ctx, ifc, adv, line, offset, open) : offset;
+      let right = close < line.end ? penAt(ctx, ifc, adv, line, offset, close) : endX;
       const br = onlyBreakIn(ifc, b, line.start, line.end);
       if (br >= 0) {
-        left = breakX(ctx, ifc, line, offset, rtl, br);
+        left = breakX(ctx, ifc, adv, line, offset, rtl, br);
         right = left;
       }
       boxRects.push({ x: left, y: sub(baseline, bm.ascent), width: sub(right, left), height: add(bm.ascent, bm.descent) });
     }
-    out.push({ top, height, baseline, pieces, boxes: on, boxRects, breaks, breakRects });
+    // An atomic inline's border box: after its margin at the pen, its margin-box top above the baseline by its ascent.
+    const atomics: number[] = [];
+    const atomicRects: Rect[] = [];
+    for (const j of onAtoms) {
+      const it = ifc.items[j] as Item;
+      const a = atoms[it.atom] as AtomicLayout;
+      atomics.push(it.atom);
+      atomicRects.push({ x: add(penAt(ctx, ifc, adv, line, offset, j), a.marginLeft), y: add(sub(baseline, a.above), a.marginTop), width: a.frag.width, height: a.frag.height });
+    }
+    out.push({ line: { top, height, baseline, pieces, boxes: on, boxRects, breaks, breakRects }, atomics, atomicRects });
     top = add(top, height);
   }
   return out;
 }
 
-/** firstBaseline: the first line box's baseline from the content-box top (CSS2 §10.8.1), or null with no line boxes. */
-export type InlineResult = { readonly height: LU; readonly placed: readonly Placed[]; readonly firstBaseline: LU | null; readonly lines: number };
+/**
+ * firstBaseline and lastBaseline: the first and last line boxes' baselines from the content-box top (CSS2 §10.8.1), or null with no
+ * line boxes.
+ */
+export type InlineResult = { readonly height: LU; readonly placed: readonly Placed[]; readonly firstBaseline: LU | null; readonly lastBaseline: LU | null; readonly lines: number };
 
 /** Chrome's getBoundingClientRect of a list of rects (gfx::RectF::Union): an empty accumulation takes the next rect, an empty rect adds nothing. */
 function boundingOf(rects: readonly Rect[]): Rect {
@@ -1141,8 +1293,9 @@ function unionOf(rects: readonly Rect[]): Rect {
 /** The fragments of the formatting context, keyed by id, in the order placeFragments reads them. */
 type Fragments = { readonly placed: Map<string, Placed> };
 
-/** Adds each leaf's, box's and <br>'s fragment of the lines to out, keyed by id. */
-function collectFragments(ifc: Ifc, lines: readonly PlacedLine[], origin: Point, startX: LU, out: Fragments): void {
+/** Adds each leaf's, box's, <br>'s and atomic inline's fragment of the lines to out, keyed by id. */
+function collectFragments(ifc: Ifc, atoms: readonly AtomicLayout[], atomicLines: readonly AtomicLine[], origin: Point, startX: LU, out: Fragments): void {
+  const lines = atomicLines.map((l) => l.line);
   ifc.leaves.forEach((t, li) => {
     const rects: Rect[] = [];
     for (const line of lines) for (const p of line.pieces) if (p.leaf === li) rects.push({ x: p.x, y: p.top, width: p.width, height: add(p.ascent, p.descent) });
@@ -1165,6 +1318,16 @@ function collectFragments(ifc: Ifc, lines: readonly PlacedLine[], origin: Point,
     }
     if (!out.placed.has(br.id)) throw new Error(`${br.id} is on no line`);
   });
+  ifc.atomics.forEach((a, ai) => {
+    for (const line of atomicLines) {
+      for (let j = 0; j < line.atomics.length; j++) {
+        if ((line.atomics[j] as number) !== ai) continue;
+        const r = line.atomicRects[j] as Rect;
+        out.placed.set(a.id, { frag: (atoms[ai] as AtomicLayout).frag, x: add(origin.x, r.x), y: add(origin.y, r.y) });
+      }
+    }
+    if (!out.placed.has(a.id)) throw new Error(`${a.id} is on no line`);
+  });
 }
 
 /** The fragments of kids and their descendants in tree order; a leaf with no fragment is skipped. */
@@ -1176,6 +1339,16 @@ function placeFragments(kids: readonly InlineChild[], fragments: Fragments, out:
   }
 }
 
+/** placeFragments over a block container's children, atomic inlines included. */
+function placeTopFragments(kids: readonly (InlineChild | LayoutBox)[], fragments: Fragments, out: Placed[]): void {
+  for (const k of kids) {
+    if (k.kind === 'box') {
+      const p = fragments.placed.get(k.id);
+      if (p !== undefined) out.push(p);
+    } else placeFragments([k], fragments, out);
+  }
+}
+
 // CSS2 §10.8 and css-text-3 §5: lays out the formatting context in the line boxes of placeLines. Every leaf, inline box and <br>
 // becomes a fragment of the container, in tree order: a leaf covers its per-line pieces (<leaf>:line<j>) with their union, and a
 // leaf with nothing visible on any line has none; an inline box covers its per-line fragments (<box>:line<j>) with Chrome's
@@ -1183,14 +1356,17 @@ function placeFragments(kids: readonly InlineChild[], fragments: Fragments, out:
 // content box's start edge (INL-P f1-empty-root).
 export function layoutInline(ctx: Ctx, box: LayoutBox, available: LU, origin: Point): InlineResult {
   const ifc = buildIfc(ctx, box);
-  const lines = placeIfcLines(ctx, box, ifc, available);
+  const atoms = layoutAtomics(ctx, ifc, available);
+  // Without atomic inlines the lines are placeIfcLines' own, the function the native runtime and the break vectors call.
+  const atomicLines = atoms.length === 0 ? placeIfcLines(ctx, box, ifc, available).map((line): AtomicLine => ({ line, atomics: [], atomicRects: [] })) : placeAtomicLines(ctx, box, ifc, atoms, available);
+  const lines = atomicLines.map((l) => l.line);
   const fragments: Fragments = { placed: new Map() };
-  collectFragments(ifc, lines, origin, directionOf(ctx, box) === 'rtl' ? available : ZERO, fragments);
+  collectFragments(ifc, atoms, atomicLines, origin, directionOf(ctx, box) === 'rtl' ? available : ZERO, fragments);
   const placed: Placed[] = [];
-  placeFragments(inlineChildren(box), fragments, placed);
+  placeTopFragments(inlineChildren(box), fragments, placed);
   const last = lines[lines.length - 1];
   const first = lines[0];
-  return { height: last === undefined ? ZERO : add(last.top, last.height), placed, firstBaseline: first === undefined ? null : first.baseline, lines: lines.length };
+  return { height: last === undefined ? ZERO : add(last.top, last.height), placed, firstBaseline: first === undefined ? null : first.baseline, lastBaseline: last === undefined ? null : last.baseline, lines: lines.length };
 }
 
 // css-sizing-3 §5.1 with css-text-3 §5: max-content breaks only at <br>s, so it is the widest forced line; min-content takes every
@@ -1198,12 +1374,14 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, available: LU, origin: Po
 export function inlineIntrinsicSize(ctx: Ctx, box: LayoutBox, kind: 'min' | 'max'): LU {
   const ifc = buildIfc(ctx, box);
   if (ifc.shaped) return shapedIntrinsicSize(ctx, box, ifc, kind);
+  // css-sizing-3 §5.2: an atomic inline contributes its margin box at the same kind of size.
+  const adv = ifc.atomics.map((a) => atomicContribution(ctx, a, kind));
   let widest = ZERO;
   let start = 0;
   for (const b of endsOf(ifc)) {
     if (kind === 'max' && !b.forced) continue;
     const visible = visibleEndOf(ifc, start, b.at);
-    widest = max(widest, kind === 'max' ? width(ctx, ifc, start, visible) : cachedWidth(ctx, ifc, start, visible));
+    widest = max(widest, kind === 'max' ? width(ctx, ifc, adv, start, visible) : cachedWidth(ctx, ifc, adv, start, visible));
     start = b.at;
   }
   return widest;
@@ -1221,13 +1399,13 @@ function shapedIntrinsicSize(ctx: Ctx, box: LayoutBox, ifc: Ifc, kind: 'min' | '
   let widest = ZERO;
   if (kind === 'max') {
     const lines = breakShapedLines(ctx, box, ifc, fromRaw(NEARLY_MAX_RAW));
-    for (const line of lines) widest = max(widest, spanWidth(ctx, ifc, line, line.start, line.visibleEnd));
+    for (const line of lines) widest = max(widest, spanWidth(ctx, ifc, [], line, line.start, line.visibleEnd));
     return widest;
   }
   let start = 0;
   for (const b of endsOf(ifc)) {
     const visible = visibleEndOf(ifc, start, b.at);
-    let w = cachedWidth(ctx, ifc, start, visible);
+    let w = cachedWidth(ctx, ifc, [], start, visible);
     const lastChar = visible > start ? (ifc.items[visible - 1] as Item) : null;
     if (lastChar !== null && lastChar.kind === 'char' && lastChar.cp === 0xad && !b.forced && !ctx.faults.softHyphenWidthMissing) {
       const t = ifc.leaves[lastChar.leaf] as TextLeaf;

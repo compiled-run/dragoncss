@@ -359,8 +359,11 @@ export function unitsCalcCases(): string[] {
 
 // ---------------------------------------------------------------- inline formatting (INL1a)
 
-/** engine-inline: generated inline formatting contexts, appended after every earlier suite so their inputs do not move. */
-export const INLINE_SPEC = { engineInline: 3000 } as const;
+/**
+ * engine-inline: generated inline formatting contexts, appended after every earlier suite so their inputs do not move. INL2a
+ * appends atomicInline contexts with inline-block and inline-flex boxes after the INL1a ones, so those keep their inputs.
+ */
+export const INLINE_SPEC = { engineInline: 3000, atomicInline: 1500 } as const;
 
 /** The INL1a engine faults engine-inline draws from. */
 const INLINE_FAULT_NAMES: readonly (keyof EngineFaults)[] = [
@@ -475,6 +478,138 @@ export function engineInlineCases(): string[] {
     const faults = r.chance(0.2) ? { ...NO_ENGINE_FAULTS, [r.pick(INLINE_FAULT_NAMES)]: true } : NO_ENGINE_FAULTS;
     out.push(JSON.stringify({ platform: 'darwin-arm64', faults, input }));
   }
+  return [...out, ...atomicInlineCases()];
+}
+
+/** The INL2a engine faults the atomic contexts draw from. */
+const ATOMIC_FAULT_NAMES: readonly (keyof EngineFaults)[] = [
+  'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
+  'lineHeightIgnoresInlineBoxes', 'breakOffByOne', 'fitWithoutEpsilon',
+];
+
+/**
+ * Generated inline formatting contexts with atomic inlines (INL2a): Ahem text, inline boxes and <br>s beside inline-block boxes
+ * (empty and sized, or holding text, <br>s or block children, with margins, padding, borders and overflow: hidden) and inline-flex
+ * boxes (rows and columns of text items), collapsed as the compiler collapses them, at every DPR, some with a planted fault.
+ */
+function atomicInlineCases(): string[] {
+  const r = new Rng(EXTENDED_SPEC.seed * 71);
+  const out: string[] = [];
+  let n = 0;
+  const len = (vs: readonly number[]): Json => ({ kind: 'px', value: r.pick(vs) });
+  while (out.length < INLINE_SPEC.atomicInline) {
+    const rtl = r.chance(0.3);
+    const direction = rtl ? 'rtl' : 'ltr';
+    let ids = 0;
+    let afterSpace = true;
+    const word = (): string => {
+      let w = '';
+      const k = 1 + r.int(5);
+      for (let i = 0; i < k; i++) w += r.pick([...'abcXYZ']);
+      return w;
+    };
+    const textLeaf = (size: number, lh: Json, words: number): Json => {
+      let text = '';
+      for (let i = 0; i < words; i++) {
+        if (!afterSpace && (i > 0 || r.chance(0.5))) text += ' ';
+        text += word();
+        afterSpace = false;
+      }
+      if (r.chance(0.3)) {
+        text += ' ';
+        afterSpace = true;
+      }
+      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' };
+    };
+    // A box's own inline content, collapsed: it starts a context of its own.
+    const ownText = (size: number, lh: Json): Json[] => {
+      afterSpace = true;
+      const t = textLeaf(size, lh, 1 + r.int(3));
+      t['text'] = (t['text'] as string).replace(/ +$/, '');
+      return [t];
+    };
+    const decorated = (style: Json): Json => {
+      const s: Json = { ...style };
+      if (r.chance(0.4)) for (const k of ['marginLeft', 'marginRight', 'marginTop', 'marginBottom']) s[k] = len([0, 2, 5, 7, 0.5]);
+      if (r.chance(0.3)) for (const k of ['paddingLeft', 'paddingRight', 'paddingTop', 'paddingBottom']) s[k] = len([0, 1, 3, 6]);
+      if (r.chance(0.2)) for (const k of ['borderLeftWidth', 'borderRightWidth', 'borderTopWidth', 'borderBottomWidth']) s[k] = len([0, 1, 2]);
+      if (r.chance(0.15)) {
+        s['overflowX'] = 'hidden';
+        s['overflowY'] = 'hidden';
+      }
+      if (r.chance(0.3)) s['width'] = len([10, 15, 30, 55]);
+      if (r.chance(0.3)) s['height'] = len([0, 10, 25, 40]);
+      return s;
+    };
+    const atomic = (size: number, lh: Json): Json => {
+      const id = `a${ids++}`;
+      const own = r.chance(0.5) ? r.pick([8, 10, 13, 20]) : size;
+      const ownLh = r.chance(0.5) ? inlineLineHeight(r) : lh;
+      let node: Json;
+      if (r.chance(0.6)) {
+        const pick = r.next();
+        const kids: Json[] = pick < 0.3 ? [] : pick < 0.8 ? ownText(own, ownLh) : [
+          { kind: 'box', id: `${id}k0`, boxType: 'element', style: { ...INLINE_STYLE, display: 'block', direction, paddingBottom: len([0, 3, 5]) }, strut: { font: inlineFont(own), lineHeight: ownLh }, children: ownText(own, ownLh) },
+          { kind: 'box', id: `${id}k1`, boxType: 'element', style: { ...INLINE_STYLE, display: 'block', direction, height: len([0, 4]) }, strut: null, children: [] },
+        ];
+        if (pick >= 0.3 && pick < 0.8 && r.chance(0.3)) kids.push({ kind: 'br', id: `${id}br`, font: inlineFont(own), lineHeight: ownLh }, ...ownText(own, ownLh));
+        node = { kind: 'box', id, boxType: 'element', style: decorated({ ...INLINE_STYLE, display: 'inline-block', direction }), strut: kids.some((k) => k['kind'] !== 'box') ? { font: inlineFont(own), lineHeight: ownLh } : null, children: kids };
+      } else {
+        const items: Json[] = [];
+        const count = r.int(4);
+        for (let i = 0; i < count; i++) items.push({ kind: 'box', id: `${id}i${i}`, boxType: 'element', style: { ...INLINE_STYLE, display: 'block', direction, paddingTop: len([0, 2, 7, 9]) }, strut: { font: inlineFont(own), lineHeight: ownLh }, children: ownText(own, ownLh) });
+        const flex = { ...INLINE_STYLE, display: 'inline-flex', direction, flexDirection: r.pick(['row', 'column']), alignItems: r.pick(['normal', 'baseline', 'center', 'flex-start']), justifyContent: r.pick(['normal', 'center']) };
+        node = { kind: 'box', id, boxType: 'element', style: decorated(flex), strut: null, children: items };
+      }
+      afterSpace = false;
+      return node;
+    };
+    const size = r.pick([10, 10, 12.5, 16, 20]);
+    const lh = inlineLineHeight(r);
+    const kids: Json[] = [];
+    const count = 1 + r.int(5);
+    // In rtl an atomic inline needs a letter on both sides in its paragraph (UAX #9), so rtl contexts open and close with text.
+    if (rtl) kids.push(textLeaf(size, lh, 1));
+    for (let i = 0; i < count; i++) {
+      const pick = r.next();
+      if (pick < 0.4) kids.push(atomic(size, lh));
+      else if (pick < 0.75) kids.push(textLeaf(size, lh, 1 + r.int(2)));
+      else if (pick < 0.85 && !rtl) {
+        kids.push({ kind: 'br', id: `b${ids++}`, font: inlineFont(size), lineHeight: lh });
+        afterSpace = true;
+      } else {
+        const own = r.pick([8, 13, 20]);
+        const ownLh = r.chance(0.5) ? inlineLineHeight(r) : lh;
+        kids.push({ kind: 'inline', id: `s${ids++}`, style: { ...INLINE_STYLE, direction }, font: inlineFont(own), lineHeight: ownLh, children: [textLeaf(own, ownLh, 1 + r.int(2))] });
+      }
+    }
+    if (rtl) kids.push(textLeaf(size, lh, 1));
+    const trim = (items: Json[]): boolean => {
+      for (let i = items.length - 1; i >= 0; i--) {
+        const c = items[i] as Json;
+        if (c['kind'] === 'br' || c['kind'] === 'box') return true;
+        if (c['kind'] === 'inline') {
+          if (trim(c['children'] as Json[])) return true;
+          continue;
+        }
+        c['text'] = (c['text'] as string).replace(/ +$/, '');
+        if (c['text'] !== '') return true;
+      }
+      return false;
+    };
+    trim(kids);
+    const dropEmpty = (items: Json[]): Json[] => items.filter((c) => c['kind'] !== 'text' || c['text'] !== '').map((c) => (c['kind'] === 'inline' ? { ...c, children: dropEmpty(c['children'] as Json[]) } : c));
+    const children = dropEmpty(kids).filter((c) => c['kind'] !== 'inline' || (c['children'] as Json[]).length > 0);
+    const containerStyle = { ...INLINE_STYLE, display: 'block', direction, width: { kind: 'px', value: 20 + r.int(180) }, textAlign: r.pick(['start', 'end', 'left', 'right', 'center']) };
+    const container: Json = { kind: 'box', id: 'c', boxType: 'element', style: containerStyle, strut: { font: inlineFont(size), lineHeight: lh }, children };
+    const root: Json = { kind: 'box', id: 'root', boxType: 'element', style: { ...INLINE_STYLE, display: r.chance(0.2) ? 'flex' : 'block', direction }, strut: null, children: [container] };
+    const input: Json = { viewport: { width: 400, height: 300 }, devicePixelRatio: r.pick([1, 2, 3, 2.625]), viewportUnits: { small: { width: 400, height: 300 }, large: { width: 400, height: 300 }, dynamic: { width: 400, height: 300 } }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16, root };
+    n++;
+    const v = validateLayoutInput(input);
+    if (!v.ok) throw new Error(`engine-inline atomic: generated input ${n} is invalid: ${JSON.stringify(v.errors)}`);
+    const faults = r.chance(0.25) ? { ...NO_ENGINE_FAULTS, [r.pick(ATOMIC_FAULT_NAMES)]: true } : NO_ENGINE_FAULTS;
+    out.push(JSON.stringify({ platform: 'darwin-arm64', faults, input }));
+  }
   return out;
 }
 
@@ -557,7 +692,7 @@ export function extendedLockText(c: ExtendedCorpus): string {
     calcUnitsPerFunction: CALC_SPEC.unitsPerFunction,
     calcUnitsFunctions: UNITS_CALC_FUNCTIONS,
     engineCalc: CALC_SPEC.engineCalc,
-    engineInline: INLINE_SPEC.engineInline,
+    engineInline: INLINE_SPEC.engineInline + INLINE_SPEC.atomicInline,
     snapGenerated: EXTENDED_SPEC.snapGenerated,
     snapVectors: c.snapVectors.length,
     cases: Object.fromEntries(c.suites.map((s) => [s.name, s.lines.length])),

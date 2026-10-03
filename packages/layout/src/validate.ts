@@ -79,7 +79,7 @@ const alignItemsValues = [
 ] as const;
 
 export const styleSchema = obj({
-  display: lit('block', 'flex', 'inline'),
+  display: lit('block', 'flex', 'inline', 'inline-block', 'inline-flex'),
   position: lit('static', 'relative', 'absolute'),
   top: inset,
   right: inset,
@@ -188,7 +188,8 @@ export type ValidationErrorCode =
   | 'leaf-font'
   | 'anonymous-shape'
   | 'block-in-inline'
-  | 'strut';
+  | 'strut'
+  | 'atomic-in-inline-box';
 
 export type ValidationError = { readonly path: string; readonly code: ValidationErrorCode; readonly message: string };
 
@@ -442,7 +443,8 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     if (kids === null) return;
     kids.forEach((child: unknown, i: number) => {
       checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null);
-      if (isRecord(child) && !isInlineLevel(child)) errors.push({ path: `${path}.children[${i}]`, code: 'block-in-inline', message: 'an inline box holds only inline-level content (CSS2 §9.2.1.1 block-in-inline is not supported)' });
+      if (isAtomic(child)) errors.push({ path: `${path}.children[${i}]`, code: 'atomic-in-inline-box', message: 'an atomic inline sits directly in its block container; inside an inline box it is not supported (INL2c)' });
+      else if (isRecord(child) && !isInlineLevel(child)) errors.push({ path: `${path}.children[${i}]`, code: 'block-in-inline', message: 'an inline box holds only inline-level content (CSS2 §9.2.1.1 block-in-inline is not supported)' });
     });
     checkLeafFonts(kids, value['font'], value['lineHeight'], path, errors);
     return;
@@ -467,6 +469,9 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   checkFields(value, { id: str, boxType: lit('element', 'anonymous'), style: styleSchema }, path, errors, ['kind', 'children', 'strut']);
   const style = value['style'];
   if (isRecord(style) && style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a box is block or flex; an inline box has kind inline' });
+  // css-display-3 §2.7: the root and an absolutely positioned box are blockified, so an atomic inline is in flow among inline content.
+  if (isAtomic(value) && isRecord(style) && style['position'] === 'absolute') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an absolutely positioned box is blockified: it is never inline-block or inline-flex' });
+  if (isAtomic(value) && parentId === null) errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'the root box is blockified: it is never inline-block or inline-flex' });
   const children = childrenOf(value, path, errors);
   if (children === null) return;
   children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null));
@@ -492,7 +497,10 @@ function childrenOf(value: Record<string, unknown>, path: string, errors: Valida
   return children;
 }
 
-const isInlineLevel = (c: unknown): boolean => isRecord(c) && (c['kind'] === 'text' || c['kind'] === 'inline' || c['kind'] === 'br');
+/** An atomic inline (CSS2 §9.2.4): a box with display inline-block or inline-flex. */
+const isAtomic = (c: unknown): boolean => isRecord(c) && c['kind'] === 'box' && isRecord(c['style']) && (c['style']['display'] === 'inline-block' || c['style']['display'] === 'inline-flex');
+
+const isInlineLevel = (c: unknown): boolean => isRecord(c) && (c['kind'] === 'text' || c['kind'] === 'inline' || c['kind'] === 'br' || isAtomic(c));
 
 /** A value as JSON with every object's keys sorted, so two fonts compare equal whatever their key order. */
 function canonicalOf(v: unknown): string {
@@ -531,11 +539,11 @@ function checkStrut(box: Record<string, unknown>, children: readonly unknown[], 
   else if (isRecord(strut)) checkLeafFonts(children, strut['font'], strut['lineHeight'], path, errors);
 }
 
-/** The text leaves of an inline formatting context in tree order, with null marking each line break. */
+/** The text leaves and atomic inlines of an inline formatting context in tree order, with null marking each line break. */
 function inlineTexts(children: readonly unknown[], out: (Record<string, unknown> | null)[]): void {
   for (const c of children) {
     if (!isRecord(c)) continue;
-    if (c['kind'] === 'text') out.push(c);
+    if (c['kind'] === 'text' || isAtomic(c)) out.push(c);
     else if (c['kind'] === 'br') out.push(null);
     else if (c['kind'] === 'inline' && Array.isArray(c['children'])) inlineTexts(c['children'], out);
   }
@@ -672,14 +680,15 @@ function checkInlineContent(box: Record<string, unknown>, children: readonly unk
   }
   const runs: (Record<string, unknown> | null)[] = [];
   inlineTexts(children, runs);
-  const texts = runs.filter((t): t is Record<string, unknown> => t !== null);
+  const texts = runs.filter((t): t is Record<string, unknown> => t !== null && t['kind'] === 'text');
   const strings = texts.map((t) => t['text']).filter((t): t is string => typeof t === 'string');
   if (strings.length !== texts.length || !texts.every((t) => t['whiteSpaceCollapse'] === 'collapse')) return;
   // The text between line breaks, each piece joined across leaves and inline boxes.
   const segments: string[] = [''];
   for (const t of runs) {
     if (t === null) segments.push('');
-    else segments[segments.length - 1] += t['text'] as string;
+    // An atomic inline is U+FFFC in the content (css-text-3 §4.1.1: it is not white space).
+    else segments[segments.length - 1] += t['kind'] === 'text' ? (t['text'] as string) : '\ufffc';
   }
   const last = segments[segments.length - 1] as string;
   const bad = strings.some((t) => t === '') || segments.some((g) => UNCOLLAPSED.test(g) || g.startsWith(' ')) || last.endsWith(' ');
