@@ -984,12 +984,16 @@
         { "lines": "3283-3304", "symbol": null, "source": "cited" },
         { "lines": "2799-2804", "symbol": null, "source": "cited" },
         { "lines": "2054-2169", "symbol": null, "source": "cited" },
-        { "lines": "197-213", "symbol": null, "source": "cited" }
+        { "lines": "197-213", "symbol": null, "source": "cited" },
+        { "lines": "3622-3647", "symbol": null, "source": "cited" },
+        { "lines": "1448-1451", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/range-geometry.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" },
-        { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" }
+        { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" },
+        { "file": "packages/layout/src/block.ts", "symbol": "layoutBlockFlow", "use": "reference" },
+        { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "reference" }
       ]
     },
     {
@@ -1038,13 +1042,15 @@
         { "lines": "1945-1946", "symbol": null, "source": "cited" },
         { "lines": "1078-1084", "symbol": null, "source": "cited" },
         { "lines": "914-923", "symbol": null, "source": "cited" },
-        { "lines": "1117-1120", "symbol": null, "source": "cited" }
+        { "lines": "1117-1120", "symbol": null, "source": "cited" },
+        { "lines": "80-142", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" },
         { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/flex.ts", "symbol": "buildItem", "use": "port" },
-        { "file": "packages/layout/src/flex.ts", "symbol": "columnIntrinsicBlockSize", "use": "port" }
+        { "file": "packages/layout/src/flex.ts", "symbol": "columnIntrinsicBlockSize", "use": "port" },
+        { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "reference" }
       ]
     },
     {
@@ -1229,6 +1235,22 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/inline/inline_items_builder.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "805b10c4a648d6aa60e6c6a4728dbae3bfd525a0a037a00ba15c30c37fafa2eb",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "1245-1251", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/inline.ts", "symbol": "OBJECT", "use": "reference" },
+        { "file": "packages/dragon/src/analysis/resolve.ts", "symbol": "ATOMIC_RUN", "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/hit_test_location.cc",
       "licence": "lgpl",
       "ruling": {
@@ -1267,7 +1289,8 @@
         { "file": "packages/layout/src/inline.ts", "symbol": "cachedWidth", "use": "port" },
         { "file": "packages/layout/src/shaping.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/units.ts", "symbol": "cachedRangeWidth", "use": "port" },
-        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/layout/src/block.ts", "symbol": "EngineFaults", "use": "reference" }
       ]
     },
     {
@@ -1284,6 +1307,21 @@
       "dragon": [
         { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "faceMetrics", "use": "port" },
         { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/logical_line_builder.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "e1cc39574dc536b34a8ece86d6411d922aed016c1e25e668513fe4a2fbe45a72",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "470-532", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/inline.ts", "symbol": "placeAtomicLines", "use": "reference" }
       ]
     },
     {
@@ -1424,6 +1462,21 @@
         { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/replaced.ts", "symbol": "replacedContribution", "use": "port" },
         { "file": "packages/layout/src/replaced.ts", "symbol": "replacedSize", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/physical_box_fragment.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "5f42fb0bd905865e0989c8c1f50391772ae950a3f12f5e623ee17e2f41d566a5",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "167-172", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "reference" }
       ]
     },
     {
