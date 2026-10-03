@@ -524,8 +524,7 @@ const rtRuleLine = (r: RtRuleJson): unknown[] => r.map((k) => [bitsHex(k.offset)
 const rtStepsLine = (s: RtStepsJson): unknown[] => s.map(([k, n]) => [k, bitsHex(n)]);
 
 /**
- * The rt suite: one library-mode line per rt vector record, in file order: timing.json, easing.json, hold.json, interp.json,
- * then the ANIM-b files.
+ * The rt suite: one library-mode line per rt vector record, in file order: timing.json, easing.json, hold.json, then interp.json.
  * Every number is its bit pattern. The expected results are the translated harness in TypeScript; rt-vectors.test.ts in this
  * package proves they are the vectors' records.
  */

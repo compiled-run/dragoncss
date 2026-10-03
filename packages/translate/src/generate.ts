@@ -62,9 +62,17 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
   for (const st of units.statements) {
     if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('units.ts'), name: st.name.text });
   }
-  // ANIM-a2 (T047 RT-12): the rt timing and interpolation reference; ANIM-b1 (T065): the transition, keyframe and animation
-  // list ports; paint roots (EMS, RT-13 style): the paint seam files. Every exported function of these files is an entry point.
-  for (const f of ['rt-easing.ts', 'rt-timing.ts', 'rt-interpolate.ts', 'rt-keyframes.ts', 'rt-transition.ts', 'rt-animations.ts', ...PAINT_ROOT_FILES]) {
+  // ANIM-a2 (T047 RT-12): the rt timing and interpolation reference; paint roots (EMS, RT-13 style): the paint seam files. Every
+  // exported function of these files is an entry point.
+  for (const f of ['rt-easing.ts', 'rt-timing.ts', 'rt-interpolate.ts', ...PAINT_ROOT_FILES]) {
+    const sf = program.getSourceFile(at(f));
+    if (sf === undefined) throw new Error(`the root file ${f} is not an engine file`);
+    for (const st of sf.statements) {
+      if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at(f), name: st.name.text });
+    }
+  }
+  // ANIM-b1 (T065): the transition update, keyframe sampling and animation list ports, roots the same way.
+  for (const f of ['rt-keyframes.ts', 'rt-transition.ts', 'rt-animations.ts']) {
     const sf = program.getSourceFile(at(f));
     if (sf === undefined) throw new Error(`the root file ${f} is not an engine file`);
     for (const st of sf.statements) {
