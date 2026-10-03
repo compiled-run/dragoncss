@@ -316,7 +316,7 @@ export function checkTrace(step: Step, inputs: Inputs, tree: Tree, lines: readon
     if (rest[0] === undefined || rest[0] === '' || rest[0].startsWith('.')) return null;
     return rest[0].startsWith('@') ? `${rest[0]}/${rest[1]}` : rest[0];
   };
-  // A process pnpm runs to start the script reads the workspace manifests; the script texts are keyed instead.
+  // pnpm, starting the script, reads the workspace manifests; the script texts are keyed instead.
   const PNPM_FILES = new Set(['package.json', 'pnpm-workspace.yaml', 'pnpm-lock.yaml', '.npmrc']);
   let isPnpm = false;
   const file = (p: string, how: string): void => {
@@ -325,7 +325,7 @@ export function checkTrace(step: Step, inputs: Inputs, tree: Tree, lines: readon
       if (how === 'read') readOwn = true;
       return;
     }
-    if (isPnpm && PNPM_FILES.has(p)) return;
+    if (isPnpm && (PNPM_FILES.has(p) || p.endsWith('/package.json'))) return;
     if (!inputs.files.has(p)) problems.add(`${how} ${p}`);
   };
   const dir = (p: string, how: string): void => {
@@ -354,7 +354,8 @@ export function checkTrace(step: Step, inputs: Inputs, tree: Tree, lines: readon
     if (kind === 'A') {
       // A process header: the argv of the process whose lines follow.
       const argv = argvOf(extra)!;
-      isPnpm = [argv[0], argv[1]].some((a) => /(^|\/)pnpm(\.c?js)?$/.test(a ?? ''));
+      // pnpm's own process (its bin, or its dist files for a worker thread).
+      isPnpm = [argv[0], argv[1]].some((a) => /(^|\/)pnpm(\.c?js)?$|\/node_modules\/pnpm\/dist\//.test(a ?? ''));
       headers++;
       continue;
     }

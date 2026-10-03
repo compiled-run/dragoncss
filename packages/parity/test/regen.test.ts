@@ -347,9 +347,9 @@ describe('pnpm regen chain', () => {
     expect(await fails('X\t/r\t["node","/r/tools/gen.ts"]')).toMatch(/1 traced processes for 1 Node children: a process ran without scripts\/regen-trace.ts/);
     expect(await fails('Q\t/r/data/c')).toMatch(/unreadable trace line "Q\\t\/r\/data\/c"/);
     expect(await fails('X\t/r\tnot json')).toMatch(/unreadable trace line/);
-    for (const bin of ['/x/node_modules/pnpm/bin/pnpm.cjs', '/x/.local/state/fnm_multishells/1_2/bin/pnpm']) {
-      const pnpmRead = (f: Files): void => (f.trace(`A\t/r\t["/x/bin/node","${bin}","-s","run","gen"]`), f.trace('R\t/r/package.json'), f.trace('R\t/r/node_modules/.pnpm-workspace-state-v1.json'), f.set('out/a', 'A'));
-      expect((await regen([CHAIN[0]!], opts, new World({ ...SOURCES, 'package.json': '{}' }, { gen: pnpmRead }).io())).error, bin).toBeNull();
+    for (const bin of ['/x/node_modules/pnpm/bin/pnpm.cjs', '/x/.local/state/fnm_multishells/1_2/bin/pnpm', '/x/lib/node_modules/pnpm/dist/worker.js']) {
+      const pnpmRead = (f: Files): void => (f.trace(`A\t/r\t["/x/bin/node","${bin}","-s","run","gen"]`), f.trace('R\t/r/package.json'), f.trace('P\t/r/tools/package.json'), f.trace('R\t/r/node_modules/.pnpm-workspace-state-v1.json'), f.set('out/a', 'A'));
+      expect((await regen([CHAIN[0]!], opts, new World({ ...SOURCES, 'package.json': '{}', 'tools/package.json': '{}' }, { gen: pnpmRead }).io())).error, bin).toBeNull();
     }
     // The same read by the step's own process is an input it must declare.
     const ownRead = (f: Files): void => (f.trace('R\t/r/package.json'), f.set('out/a', 'A'));
