@@ -133,9 +133,10 @@ describe('CI, base, worktree and quiet decisions', () => {
     expect(ciState([ci('completed', 'skipped')]).state).toBe('failure');
   });
 
-  it('retargets review/* and landed parents to master, and fails on a parent still open', () => {
+  it('retargets a landed parent (or its review/* copy) to master, and fails on a parent still open', () => {
     expect(baseAction('master', null)).toBe('ready');
-    expect(baseAction('review/x', false)).toBe('retarget');
+    expect(baseAction('review/x', true)).toBe('retarget');
+    expect(baseAction('review/x', false)).toEqual({ fail: expect.stringMatching(/land its parent first/) });
     expect(baseAction('feat/parent', true)).toBe('retarget');
     expect(baseAction('feat/parent', false)).toEqual({ fail: expect.stringMatching(/land its parent first/) });
     expect(baseAction('gone', null)).toEqual({ fail: expect.stringMatching(/no longer exists/) });

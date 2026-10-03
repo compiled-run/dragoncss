@@ -116,12 +116,13 @@ export const ciState = (runs: CheckRun[]): CiState => {
   return ci.every((r) => r.status === 'completed') ? { state: 'success' } : { state: 'pending' };
 };
 
-// What to do with a PR's base before landing: master is ready; a review/* copy or a parent branch already in master is
-// retargeted to master (GitHub has not moved it); a parent that has not landed is a failure.
+// What to do with a PR's base before landing: master is ready; a parent branch (or its review/* copy) whose head is already in
+// master is retargeted to master (GitHub has not moved it); a parent that has not landed is a failure, since landing the child
+// would carry the parent's commits in with it.
 export type BaseAction = 'ready' | 'retarget' | { fail: string };
 export const baseAction = (base: string, baseInMaster: boolean | null): BaseAction => {
   if (base === 'master') return 'ready';
-  if (base.startsWith('review/') || baseInMaster === true) return 'retarget';
+  if (baseInMaster === true) return 'retarget';
   return { fail: baseInMaster === null ? `PR targets ${base}, which no longer exists and is not master` : `PR targets ${base}, whose changes are not in master yet; land its parent first` };
 };
 
