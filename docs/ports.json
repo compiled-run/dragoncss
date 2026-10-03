@@ -661,11 +661,16 @@
         { "lines": "1581-1583", "symbol": null, "source": "cited" },
         { "lines": "1581-1591", "symbol": "ApplyReversals", "source": "located" },
         { "lines": "1759-1763", "symbol": null, "source": "cited" },
-        { "lines": "1945-1946", "symbol": null, "source": "cited" }
+        { "lines": "1945-1946", "symbol": null, "source": "cited" },
+        { "lines": "1078-1084", "symbol": null, "source": "cited" },
+        { "lines": "914-923", "symbol": null, "source": "cited" },
+        { "lines": "1117-1120", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" },
-        { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/flex.ts", "symbol": "buildItem", "use": "port" },
+        { "file": "packages/layout/src/flex.ts", "symbol": "columnIntrinsicBlockSize", "use": "port" }
       ]
     },
     {
