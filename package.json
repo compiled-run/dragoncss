@@ -26,6 +26,7 @@
     "pr:review": "node scripts/pr-review.ts",
     "train": "node scripts/merge-train.ts",
     "land": "node scripts/land.ts",
+    "land:review-lookup": "node --conditions=dragon-internal scripts/land-review-lookup.ts",
     "evidence:stamp": "node --conditions=dragon-internal scripts/evidence-stamp.ts",
     "layout:subset": "node packages/translate/src/cli/subset.ts",
     "linebreak:gen": "node scripts/gen-linebreak-data.ts",

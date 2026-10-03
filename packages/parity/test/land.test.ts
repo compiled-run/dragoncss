@@ -21,6 +21,7 @@ import {
   REVIEW_PROMPT,
   type ReviewRecord,
   reviewedPatch,
+  reviewerEnv,
   reviewVerdict,
   runQueue,
   runReviewer,
@@ -33,6 +34,7 @@ import { commitRegen, type Member, memberTip, mergeMember, predictPosition, tipP
 import { parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
 import { type CheckRun, type Git, ignoreAt, regenOnlyProblems } from '../../../scripts/pr-review-vouch.ts';
 import { parseLanesForStamp, stampProblems } from '../../../scripts/evidence-stamp.ts';
+import { lookupReview } from '../../../scripts/land-review-lookup.ts';
 import { deviceEvidence } from '../src/device-evidence.ts';
 import { LANES_JSON, type LanesFile } from '../src/lanes.ts';
 import { repoPath } from '../src/paths.ts';
@@ -440,5 +442,64 @@ describe('pnpm evidence:stamp --compare', () => {
     expect(() => parseLanesForStamp({}, 'x')).toThrow(/not \{ targets/);
     expect(() => parseLanesForStamp({ targets: [{ target: 'ios', lanes: [{ lane: 'device-frames', where: 'device', state: 'pass', caseListSha256: 'x', evidence: { app: 1 } }] }] }, 'x')).toThrow(/evidence/);
     expect(() => parseLanesForStamp({ targets: [{ target: 'ios', lanes: [{ lane: 'device-frames' }] }] }, 'x')).toThrow(/lane is not/);
+  });
+});
+
+describe('the precomputed review lookup (the default reviewer)', () => {
+  const dir = tempDir();
+  const head = sha('e');
+  const write = (pr: number, body: unknown): void => writeFileSync(join(dir, `${pr}.json`), typeof body === 'string' ? body : JSON.stringify(body));
+  // The real script, run the way the driver runs it: through sh, prompt on stdin, PR and clean head in the environment.
+  const command = `node --conditions=dragon-internal '${repoPath('scripts/land-review-lookup.ts')}'`;
+  const gate = (pr: number, cleanHead = head) => {
+    const saved: ReviewRecord[] = [];
+    const verdict = claudeReviewGate({
+      pr,
+      head: sha('f'),
+      // Larger than a pipe buffer, so the lookup must drain stdin for the driver's write to succeed.
+      patch: PATCH + PATCH.split('diff --git').slice(1, 2).map((s) => `diff --git${s.replace('scripts/tool.ts', 'scripts/big.ts').replace('+export const a = 2;\n', `${'+export const big = 1;\n'.repeat(4000)}`)}`).join(''),
+      ignored: (p) => IGNORE.matches(p),
+      command,
+      review: (input) => runReviewer(command, input, dir, 60_000, { ...reviewerEnv(pr, cleanHead), LAND_REVIEW_PRECOMPUTED_DIR: dir }),
+      save: (r) => saved.push(r),
+    });
+    return { verdict, saved };
+  };
+
+  it('passes a review of this PR at its clean head with no findings', () => {
+    write(21, { pr: 21, head, findings: [] });
+    const { verdict, saved } = gate(21);
+    expect(verdict).toEqual({ pass: true, findings: [], note: 'no findings' });
+    expect(saved[0]!.stdout.trim()).toBe('{"findings":[]}');
+  });
+
+  it('stops on a Medium finding', () => {
+    write(22, { pr: 22, head, findings: [finding('medium')] });
+    expect(gate(22).verdict).toMatchObject({ pass: false, reason: '1 finding(s) of Medium severity or higher', findings: [{ severity: 'medium' }] });
+  });
+
+  it('fails closed on a missing file, a stale head, another PR and malformed JSON', () => {
+    const missing = gate(23);
+    expect(missing.verdict).toMatchObject({ pass: false, reason: expect.stringMatching(/exit 1: land-review-lookup: no precomputed review/) });
+    write(24, { pr: 24, head: sha('0'), findings: [] });
+    expect(gate(24).verdict).toMatchObject({ pass: false, reason: expect.stringMatching(/the review is stale/) });
+    write(25, { pr: 26, head, findings: [] });
+    expect(gate(25).verdict).toMatchObject({ pass: false, reason: expect.stringMatching(/reviews PR 26, not #25/) });
+    write(27, '{"pr": 27, "head": "');
+    expect(gate(27).verdict).toMatchObject({ pass: false, reason: expect.stringMatching(/is not JSON/) });
+    write(28, { pr: 28, head, findings: [finding('urgent')] });
+    expect(gate(28).verdict).toMatchObject({ pass: false, reason: expect.stringMatching(/severity "urgent"/) });
+  });
+
+  it('checks its inputs', () => {
+    const ok = JSON.stringify({ pr: 3, head, findings: [] });
+    expect(lookupReview(ok, 'p', '3', head)).toEqual({ ok: true, output: '{"findings":[]}' });
+    expect(lookupReview(ok, 'p', undefined, head)).toMatchObject({ ok: false, error: expect.stringMatching(/LAND_REVIEW_PR/) });
+    expect(lookupReview(ok, 'p', '3', 'abc1234')).toMatchObject({ ok: false, error: expect.stringMatching(/LAND_REVIEW_HEAD/) });
+    expect(lookupReview(null, 'p', '3', head)).toMatchObject({ ok: false, error: expect.stringMatching(/no precomputed review/) });
+    expect(lookupReview(JSON.stringify({ pr: 3, head: head.slice(0, 12), findings: [] }), 'p', '3', head)).toMatchObject({ ok: false, error: expect.stringMatching(/not a full sha/) });
+    expect(lookupReview(JSON.stringify({ pr: '3', head, findings: [] }), 'p', '3', head)).toMatchObject({ ok: false });
+    expect(lookupReview(JSON.stringify({ pr: 3, head, findings: [], verdict: 'pass' }), 'p', '3', head)).toMatchObject({ ok: false, error: expect.stringMatching(/exactly/) });
+    expect(lookupReview(JSON.stringify({ pr: 3, head }), 'p', '3', head)).toMatchObject({ ok: false });
   });
 });

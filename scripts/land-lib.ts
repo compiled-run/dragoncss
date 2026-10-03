@@ -43,8 +43,9 @@ export type LandArgs = { queue: string; dryRun: boolean };
 export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   queue file: one <branch>:<pr>:<clean-head> per line, landed in order ("#" comments and blank lines ignored)
   environment: LAND_WORKTREE (driver worktree, default /tmp/dragon-land), LAND_STATUS (/tmp/land.status), LAND_LOG (/tmp/land.log),
-  LAND_REVIEW_CMD (the Claude reviewer, default ${JSON.stringify('claude -p')}; reads the prompt on stdin, prints JSON), LAND_REVIEW_DIR
-  (/tmp/land-reviews), LAND_CI_WAIT and LAND_CI_APPEAR (seconds, default 5400 and 900)`;
+  LAND_REVIEW_CMD (the reviewer: reads the prompt on stdin, gets LAND_REVIEW_PR and LAND_REVIEW_HEAD, prints JSON; default the main
+  checkout's scripts/land-review-lookup.ts, which prints the review a review agent precomputed in LAND_REVIEW_PRECOMPUTED_DIR,
+  default /tmp/land-reviews/precomputed), LAND_REVIEW_DIR (/tmp/land-reviews), LAND_CI_WAIT and LAND_CI_APPEAR (seconds, default 5400 and 900)`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;
@@ -233,9 +234,11 @@ export const parseReview = (stdout: string): ReviewParse => {
 };
 
 export type ReviewerRun = { status: number | null; signal: string | null; stdout: string; stderr: string; error?: string };
-// Runs the reviewer command through sh, with the prompt on stdin, in `cwd` (the driver worktree at the PR head).
-export const runReviewer = (command: string, input: string, cwd: string, timeoutMs: number): ReviewerRun => {
-  const r = spawnSync('/bin/sh', ['-c', command], { cwd, input, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 });
+// Runs the reviewer command through sh, with the prompt on stdin, in `cwd` (the driver worktree at the PR head), with
+// LAND_REVIEW_PR and LAND_REVIEW_HEAD (the queue line's clean head) in its environment.
+export const reviewerEnv = (pr: number, cleanHead: string): Record<string, string> => ({ LAND_REVIEW_PR: String(pr), LAND_REVIEW_HEAD: cleanHead });
+export const runReviewer = (command: string, input: string, cwd: string, timeoutMs: number, extraEnv: Record<string, string> = {}): ReviewerRun => {
+  const r = spawnSync('/bin/sh', ['-c', command], { cwd, input, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, ...extraEnv } });
   return { status: r.status, signal: r.signal, stdout: r.stdout ?? '', stderr: r.stderr ?? '', ...(r.error ? { error: r.error.message } : {}) };
 };
 

@@ -26,6 +26,7 @@ import {
   backoffMs,
   type ReviewRecord,
   runQueue,
+  reviewerEnv,
   runReviewer,
   statusText,
   withRetry,
@@ -61,7 +62,7 @@ const WT = env['LAND_WORKTREE'] ?? '/tmp/dragon-land';
 const STATUS = env['LAND_STATUS'] ?? '/tmp/land.status';
 const LOG = env['LAND_LOG'] ?? '/tmp/land.log';
 const REVIEW_DIR = env['LAND_REVIEW_DIR'] ?? '/tmp/land-reviews';
-const REVIEW_CMD = env['LAND_REVIEW_CMD'] ?? 'claude -p';
+let REVIEW_CMD = '';
 const REVIEW_TIMEOUT_MS = 40 * 60_000;
 const seconds = (name: string, fallback: number): number => {
   const v = env[name];
@@ -397,7 +398,7 @@ const publish = (
 
   let claude = 'not needed (Macroscope reviewed)';
   if (isUnreviewed(reviewOut)) {
-    log(`  Macroscope is at its spending limit; Claude correctness review (${REVIEW_CMD})`);
+    log(`  Macroscope is at its spending limit; Claude correctness review of clean head ${p.clean} (${REVIEW_CMD})`);
     const ignore = ignoreAt(git, p.head);
     if ('error' in ignore) throw new LandFailure('claude-review', ignore.error);
     mkdirSync(REVIEW_DIR, { recursive: true });
@@ -407,7 +408,7 @@ const publish = (
       patch: prDiff(e.pr, p.master, p.head),
       ignored: (path) => ignore.file.matches(path),
       command: REVIEW_CMD,
-      review: (input) => runReviewer(REVIEW_CMD, input, WT, REVIEW_TIMEOUT_MS),
+      review: (input) => runReviewer(REVIEW_CMD, input, WT, REVIEW_TIMEOUT_MS, reviewerEnv(e.pr, p.clean)),
       save: (r: ReviewRecord) => writeFileSync(join(REVIEW_DIR, `${e.pr}.json`), `${JSON.stringify(r, null, 2)}\n`),
     });
     const saved = join(REVIEW_DIR, `${e.pr}.json`);
@@ -535,6 +536,8 @@ const main = (): number => {
   CI_WAIT_S = seconds('LAND_CI_WAIT', 5400);
   CI_APPEAR_S = seconds('LAND_CI_APPEAR', 900);
   MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
+  // The default reviewer is the main checkout's lookup script, never the PR's own copy in the driver worktree.
+  REVIEW_CMD = env['LAND_REVIEW_CMD'] ?? `node --conditions=dragon-internal '${join(MAIN, 'scripts/land-review-lookup.ts')}'`;
   REPO = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']).trim();
   if (!/^[\w.-]+\/[\w.-]+$/.test(REPO)) throw new Error(`land: gh repo view printed ${JSON.stringify(REPO)}`);
   const entries = parseQueue(readFileSync(args.queue, 'utf8'));
