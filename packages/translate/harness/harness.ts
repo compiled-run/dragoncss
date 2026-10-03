@@ -96,6 +96,8 @@ import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.t
 import { constrainCornerRadii, hasRoundedCorner, innerCornerRadii, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
 import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from '../../layout/src/paint-shadow.ts';
 import { backdropAt, blurredCoverage, encodeOver, insetShadowLayer, insetShadowLayerOver, outerShadowLayer, outerShadowLayerOver, platformOver, shapeCoverage, shapeType, spreadShape } from '../../layout/src/paint-shadow.ts';
+import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
+import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
 export class HarnessError extends Error {
@@ -1043,6 +1045,8 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
   }
   if (name === 'paint:shadow:platformOver') return `["ok",${h(platformOver(arg(a, 1), arg(a, 2), arg(a, 3)))}]`;
   if (name === 'paint:shadow:encodeOver') return numList(encodeOver(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7)));
+  const gradient = gradientResult(name, a);
+  if (gradient !== null) return gradient;
   return null;
 }
 
@@ -1069,6 +1073,147 @@ function commaList(parts: readonly string[]): string {
   let out = '';
   for (const x of parts) out = out === '' ? x : `${out},${x}`;
   return out;
+}
+
+// ---------------------------------------------------------------- paint suite: gradient (BG2)
+
+function gradLength(v: JsonValue, path: string): LengthPct {
+  const o = obj(v, ['unit', 'value'], path);
+  return { unit: lit(field(o, 'unit', path), ['percent', 'px'], `${path}.unit`) as 'percent' | 'px', value: numField(o, 'value', path) };
+}
+
+function gradColor(v: JsonValue, path: string): StopColor {
+  const o = obj(v, ['r', 'g', 'b', 'alpha'], path);
+  return { r: numField(o, 'r', path), g: numField(o, 'g', path), b: numField(o, 'b', path), alpha: numField(o, 'alpha', path) };
+}
+
+function gradStop(v: JsonValue, path: string): CssStop {
+  const o = obj(v, ['color', 'unit', 'value'], path);
+  return { color: gradColor(field(o, 'color', path), `${path}.color`), unit: lit(field(o, 'unit', path), ['auto', 'percent', 'px'], `${path}.unit`) as 'auto' | 'percent' | 'px', value: numField(o, 'value', path) };
+}
+
+const GRADIENT_KEYS: readonly string[] = ['radial', 'repeating', 'direction', 'angleDeg', 'slope', 'sideX', 'sideY', 'circle', 'extent', 'radiusX', 'radiusY', 'centerX', 'centerY', 'stops'];
+
+function gradImage(v: JsonValue, path: string): GradientImage {
+  const o = obj(v, GRADIENT_KEYS, path);
+  const stops: CssStop[] = [];
+  arr(field(o, 'stops', path), `${path}.stops`).forEach((s, i) => {
+    stops.push(gradStop(s, `${path}.stops[${i}]`));
+  });
+  if (stops.length < 2) fail(`${path}.stops: a gradient has at least two stops`);
+  return {
+    radial: bool(field(o, 'radial', path), `${path}.radial`),
+    repeating: bool(field(o, 'repeating', path), `${path}.repeating`),
+    direction: lit(field(o, 'direction', path), ['default', 'angle', 'side'], `${path}.direction`) as 'default' | 'angle' | 'side',
+    angleDeg: numField(o, 'angleDeg', path),
+    slope: numField(o, 'slope', path),
+    sideX: lit(field(o, 'sideX', path), ['none', 'left', 'right'], `${path}.sideX`) as 'none' | 'left' | 'right',
+    sideY: lit(field(o, 'sideY', path), ['none', 'top', 'bottom'], `${path}.sideY`) as 'none' | 'top' | 'bottom',
+    circle: bool(field(o, 'circle', path), `${path}.circle`),
+    extent: lit(field(o, 'extent', path), ['closest-side', 'closest-corner', 'farthest-side', 'farthest-corner', 'explicit'], `${path}.extent`) as 'closest-side' | 'closest-corner' | 'farthest-side' | 'farthest-corner' | 'explicit',
+    radiusX: gradLength(field(o, 'radiusX', path), `${path}.radiusX`),
+    radiusY: gradLength(field(o, 'radiusY', path), `${path}.radiusY`),
+    centerX: gradLength(field(o, 'centerX', path), `${path}.centerX`),
+    centerY: gradLength(field(o, 'centerY', path), `${path}.centerY`),
+    stops,
+  };
+}
+
+function gradSize(v: JsonValue, path: string): SizeComponent {
+  const o = obj(v, ['unit', 'value'], path);
+  return { unit: lit(field(o, 'unit', path), ['auto', 'percent', 'px'], `${path}.unit`) as 'auto' | 'percent' | 'px', value: numField(o, 'value', path) };
+}
+
+const BOXES: readonly string[] = ['border-box', 'padding-box', 'content-box'];
+
+function gradGeometry(v: JsonValue, path: string): LayerGeometry {
+  const o = obj(v, ['sizeKind', 'sizeX', 'sizeY', 'positionX', 'positionY', 'repeatX', 'repeatY', 'origin', 'clip'], path);
+  return {
+    sizeKind: lit(field(o, 'sizeKind', path), ['length', 'cover', 'contain'], `${path}.sizeKind`) as 'length' | 'cover' | 'contain',
+    sizeX: gradSize(field(o, 'sizeX', path), `${path}.sizeX`),
+    sizeY: gradSize(field(o, 'sizeY', path), `${path}.sizeY`),
+    positionX: gradLength(field(o, 'positionX', path), `${path}.positionX`),
+    positionY: gradLength(field(o, 'positionY', path), `${path}.positionY`),
+    repeatX: lit(field(o, 'repeatX', path), ['repeat', 'no-repeat'], `${path}.repeatX`) as RepeatKeyword,
+    repeatY: lit(field(o, 'repeatY', path), ['repeat', 'no-repeat'], `${path}.repeatY`) as RepeatKeyword,
+    origin: lit(field(o, 'origin', path), BOXES, `${path}.origin`) as BoxKeyword,
+    clip: lit(field(o, 'clip', path), BOXES, `${path}.clip`) as BoxKeyword,
+  };
+}
+
+function gradNumbers(v: JsonValue, n: number, path: string): number[] {
+  const out: number[] = [];
+  const items = arr(v, path);
+  if (items.length !== n) fail(`${path}: expected ${n} numbers`);
+  items.forEach((x, i) => {
+    out.push(num(x, `${path}[${i}]`));
+  });
+  return out;
+}
+
+function gradPaint(v: JsonValue, path: string): BackgroundPaint {
+  const o = obj(v, ['box', 'color', 'colorClip', 'layers', 'lastIsBottom', 'zoom', 'tileSize', 'layerX', 'layerY'], path);
+  const b = obj(field(o, 'box', path), ['x', 'y', 'width', 'height', 'borders', 'padding', 'obscures'], `${path}.box`);
+  const obscures: boolean[] = [];
+  arr(field(b, 'obscures', path), `${path}.box.obscures`).forEach((x, i) => {
+    obscures.push(bool(x, `${path}.box.obscures[${i}]`));
+  });
+  if (obscures.length !== 4) fail(`${path}.box.obscures: expected 4 flags`);
+  const layers: BackgroundLayer[] = [];
+  arr(field(o, 'layers', path), `${path}.layers`).forEach((l, i) => {
+    const lo = obj(l, ['geometry', 'image'], `${path}.layers[${i}]`);
+    layers.push({ geometry: gradGeometry(field(lo, 'geometry', path), `${path}.layers[${i}].geometry`), image: gradImage(field(lo, 'image', path), `${path}.layers[${i}].image`) });
+  });
+  return {
+    box: { x: numField(b, 'x', path), y: numField(b, 'y', path), width: numField(b, 'width', path), height: numField(b, 'height', path), borders: gradNumbers(field(b, 'borders', path), 4, `${path}.box.borders`), padding: gradNumbers(field(b, 'padding', path), 4, `${path}.box.padding`), obscures },
+    color: gradColor(field(o, 'color', path), `${path}.color`),
+    colorClip: lit(field(o, 'colorClip', path), BOXES, `${path}.colorClip`) as BoxKeyword,
+    layers,
+    lastIsBottom: bool(field(o, 'lastIsBottom', path), `${path}.lastIsBottom`),
+    zoom: numField(o, 'zoom', path),
+    tileSize: numField(o, 'tileSize', path),
+    layerX: numField(o, 'layerX', path),
+    layerY: numField(o, 'layerY', path),
+  };
+}
+
+/** The gradient suite: the exact arithmetic, Blink's gradient descriptor, and whole background rows; null for other names. */
+function gradientResult(name: string, a: readonly JsonValue[]): string | null {
+  switch (name) {
+    case 'paint:gradient:sqrtF64':
+      return `["ok",${h(sqrtF64(arg(a, 1)))}]`;
+    case 'paint:gradient:hypotF32':
+      return `["ok",${h(hypotF32(arg(a, 1), arg(a, 2)))}]`;
+    case 'paint:gradient:fma64':
+      return `["ok",${h(fma64(arg(a, 1), arg(a, 2), arg(a, 3)))}]`;
+    case 'paint:gradient:gradientDesc': {
+      const d = gradientDesc(gradImage(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3), arg(a, 4));
+      let out = `["ok",${d.modelled ? 'true' : 'false'},${h(d.p0x)},${h(d.p0y)},${h(d.p1x)},${h(d.p1y)},${h(d.r0)},${h(d.r1)},${h(d.aspect)},[`;
+      for (let i = 0; i < d.offsets.length; i++) {
+        const c = d.colors[i];
+        if (c === undefined) return fail('a stop without a colour');
+        out += `${i > 0 ? ',' : ''}[${h(d.offsets[i] as number)},${h(c.r)},${h(c.g)},${h(c.b)},${h(c.a)}]`;
+      }
+      return `${out}]]`;
+    }
+    case 'paint:gradient:backgroundRow': {
+      // A whole row, reduced to its length, sum and position-weighted sum (exact integers) and its first 32 values.
+      const plan = planBackground(gradPaint(item(a, 1, '$'), '$[1]'), gradientFaults('none'));
+      const row = backgroundRow(plan, arg(a, 2), gradientFaults('none'));
+      let sum = 0;
+      let weighted = 0;
+      let head = '';
+      for (let i = 0; i < row.length; i++) {
+        const x = row[i] as number;
+        sum += x;
+        weighted += (i + 1) * x;
+        if (i < 32) head += `${i > 0 ? ',' : ''}${h(x)}`;
+      }
+      return `["ok",${plan.modelled ? 'true' : 'false'},${h(plan.left)},${h(plan.right)},${h(row.length)},${h(sum)},${h(weighted)},[${head}]]`;
+    }
+    default:
+      return null;
+  }
 }
 
 /** One units case: ["name", arg bits...] in, the result bits out. */
