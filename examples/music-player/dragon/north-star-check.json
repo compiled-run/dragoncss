@@ -112,8 +112,8 @@
   }
  },
  "summary": {
-  "diagnostics": 284,
-  "errors": 283,
+  "diagnostics": 280,
+  "errors": 279,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [android]": 25,
@@ -131,7 +131,7 @@
    "DRAGON_UNSUPPORTED_VALUE": 3,
    "DRAGON_UNSUPPORTED_VALUE [android]": 33,
    "DRAGON_UNSUPPORTED_VALUE [ios]": 33,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 31
+   "DRAGON_UNSUPPORTED_VALUE [web]": 27
   },
   "perTarget": {
    "web": {
@@ -142,7 +142,7 @@
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
      "DRAGON_UNSUPPORTED_PROPERTY": 58,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 34
+     "DRAGON_UNSUPPORTED_VALUE": 30
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -181,7 +181,7 @@
   },
   "declarations": 291,
   "supportedBothTargets": 175,
-  "supportedWeb": 186,
+  "supportedWeb": 188,
   "supportedIos": 175,
   "supportedAndroid": 175,
   "supportPercent": 60.1,
@@ -267,9 +267,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 151,
-   "B-unwrapped": 148,
-   "C-context": 138
+   "A-authored": 149,
+   "B-unwrapped": 146,
+   "C-context": 136
   }
  },
  "features": {
@@ -3631,7 +3631,7 @@
    "atRule": null,
    "property": "text-decoration-color",
    "value": "rgba(167, 175, 189, 0.45)",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
@@ -3645,7 +3645,7 @@
    "atRule": null,
    "property": "text-underline-offset",
    "value": "0.2rem",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
@@ -6174,26 +6174,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@7905-7930|text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 7905,
-    "end": 7930,
-    "line": 461,
-    "column": 25,
-    "text": "rgba(167, 175, 189, 0.45)"
-   },
-   "message": "text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -6218,26 +6198,6 @@
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 7956,
-    "end": 7962,
-    "line": 462,
-    "column": 25,
-    "text": "0.2rem"
-   },
-   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is supported",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
    "location": {
     "kind": "css",
     "start": 7956,
@@ -8612,7 +8572,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@7554-7561|column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@7554-7561|column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-multi-line/ltr, flex-row-multi-line/rtl, flex-row-single-line/ltr); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -8624,14 +8584,14 @@
     "column": 7,
     "text": "0.65rem"
    },
-   "message": "column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
+   "message": "column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-multi-line/ltr, flex-row-multi-line/rtl, flex-row-single-line/ltr); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@7554-7561|row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@7554-7561|row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-multi-line/ltr, flex-row-multi-line/rtl, flex-row-single-line/ltr); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -8643,7 +8603,7 @@
     "column": 7,
     "text": "0.65rem"
    },
-   "message": "row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
+   "message": "row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-multi-line/ltr, flex-row-multi-line/rtl, flex-row-single-line/ltr); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -8745,25 +8705,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@7905-7930|text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is proven in paint/ltr",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 7905,
-    "end": 7930,
-    "line": 461,
-    "column": 25,
-    "text": "rgba(167, 175, 189, 0.45)"
-   },
-   "message": "text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is proven in paint/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is proven in paint/ltr",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -8787,25 +8728,6 @@
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 7956,
-    "end": 7962,
-    "line": 462,
-    "column": 25,
-    "text": "0.2rem"
-   },
-   "message": "text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is proven in paint/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@7956-7962|text-underline-offset: 0.2rem is unsupported (support profile m1-s5); no text-underline-offset value is proven in paint/ltr",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
    "location": {
     "kind": "css",
     "start": 7956,

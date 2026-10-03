@@ -51,3 +51,4 @@ export { AHEM_FACE_ID, AHEM_SHA256 } from './text.ts';
 export { shapedMeasurerFor, shapingFaultsOf } from './platform.ts';
 export type { GlyphShaper, HanKerningFontData, ShapedFace, ShapingFaults } from './shaping.ts';
 export { FEATURE_STRIDE, GLYPH_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_HAN_KERNING, NO_SHAPING_FAULTS } from './shaping.ts';
+export * as textDecoration from './text-decoration.ts';
