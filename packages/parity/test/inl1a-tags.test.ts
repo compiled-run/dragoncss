@@ -78,10 +78,10 @@ describe('the refusals that stay', () => {
     expect(c.outputs.ios.kind).toBe('blocked');
   });
 
-  it('Ahem text in b, strong, em or i keeps the UA-font refusal on ios, naming the tag, and is ready on web', () => {
+  it('Ahem text in b, strong, em or i keeps the UA-font refusal on ios and android, naming the tag, and is ready on web', () => {
     for (const [tag, set] of [['b', 'font-weight: 700'], ['strong', 'font-weight: 700'], ['em', 'font-style: italic'], ['i', 'font-style: italic']] as const) {
       const c = compile(retag(inputOf('inline-tags'), [['span', tag]]));
-      expect(listed(c), tag).toEqual([`ios DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`]);
+      expect(listed(c), tag).toEqual([`android DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; Dragon has no font-weight or font-style, so android would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`, `ios DRAGON_UNSUPPORTED_FONT: text s:text0 inherits ${set} from Chrome's user-agent stylesheet on <${tag}> s; Dragon has no font-weight or font-style, so ios would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`]);
       expect(c.outputs.web.kind, tag).toBe('ready');
     }
   });
