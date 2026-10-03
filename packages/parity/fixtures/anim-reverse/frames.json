@@ -1,0 +1,68 @@
+{
+ "schema": "dragon-frames/1",
+ "directions": [
+  "ltr"
+ ],
+ "viewports": [
+  [
+   400,
+   300
+  ]
+ ],
+ "phases": [
+  {
+   "span": 250,
+   "set": [
+    [
+     "mode",
+     "b"
+    ]
+   ]
+  },
+  {
+   "span": 300,
+   "set": [
+    [
+     "mode",
+     "a"
+    ]
+   ]
+  },
+  {
+   "span": 200,
+   "set": [
+    [
+     "mode",
+     "c"
+    ]
+   ]
+  },
+  {
+   "span": 300,
+   "set": [
+    [
+     "mode",
+     "b"
+    ]
+   ]
+  },
+  {
+   "span": 100,
+   "set": [
+    [
+     "mode",
+     "n"
+    ]
+   ]
+  },
+  {
+   "span": 1200,
+   "set": [
+    [
+     "mode",
+     "a"
+    ]
+   ]
+  }
+ ]
+}

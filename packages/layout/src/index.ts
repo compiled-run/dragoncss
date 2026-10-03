@@ -47,3 +47,10 @@ export type { EnvironmentDependencies } from './environment.ts';
 export { environmentDependencies, resolveEnvironment } from './environment.ts';
 export type { FontLengths } from './text.ts';
 export { fontMetricLengths } from './text.ts';
+// ANIM-b1 (T065): the rt roots the runtime animator's TypeScript reference runs (emit/runtime/anim.ts), namespaced.
+export * as rtEasing from './rt-easing.ts';
+export * as rtTiming from './rt-timing.ts';
+export * as rtInterpolate from './rt-interpolate.ts';
+export * as rtKeyframes from './rt-keyframes.ts';
+export * as rtTransition from './rt-transition.ts';
+export * as rtAnimations from './rt-animations.ts';

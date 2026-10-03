@@ -1,0 +1,96 @@
+{
+ "sources": [
+  "view.dg",
+  "doc.css",
+  "view.css"
+ ],
+ "modules": [
+  {
+   "id": "view",
+   "source": "view.dg"
+  }
+ ],
+ "styles": [
+  {
+   "id": "doc",
+   "file": "doc.css",
+   "scope": "document"
+  },
+  {
+   "id": "view",
+   "file": "view.css",
+   "scope": "App"
+  }
+ ],
+ "document": {
+  "root": "App",
+  "documentElement": "html",
+  "styles": [
+   "doc",
+   "view"
+  ]
+ },
+ "components": [
+  {
+   "id": "App",
+   "module": "view",
+   "at": "component App",
+   "states": [
+    {
+     "id": "run",
+     "domain": [
+      false,
+      true
+     ],
+     "initial": false,
+     "at": "run: [false, true] = false"
+    }
+   ],
+   "root": [
+    {
+     "el": "html",
+     "id": "html",
+     "at": "<html>",
+     "children": [
+      {
+       "el": "body",
+       "id": "body",
+       "at": "<body>",
+       "children": [
+        {
+         "el": "div",
+         "id": "rec",
+         "at": "<div rec",
+         "class": [
+          "view.rec",
+          {
+           "choice": [
+            {
+             "when": [
+              "run",
+              true
+             ],
+             "class": "view.run"
+            },
+            {
+             "when": {
+              "not": [
+               "run",
+               true
+              ]
+             },
+             "class": null
+            }
+           ],
+           "at": "{run === true ? 'run' : ''}"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
