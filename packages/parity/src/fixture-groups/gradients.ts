@@ -22,6 +22,8 @@ export const GRADIENTS: readonly FixtureSpec[] = [
   layout('gradient-units'),
   both('bg-geometry'),
   layout('gradient-north-star'),
+  // Percentage padding on absolutely positioned boxes resolves against the containing block's padding box (or the initial one).
+  both('gradient-abspos'),
   reject('reject-gradient-hint', 'DRAGON_UNSUPPORTED_VALUE', '30%', 'background: "30%" is unsupported: colour hints'),
   reject('reject-gradient-fixed', 'DRAGON_UNSUPPORTED_VALUE', 'fixed', 'background: "fixed" is unsupported: background-attachment: fixed'),
   reject('reject-gradient-root', 'DRAGON_UNSUPPORTED_VALUE', 'linear-gradient(#fff, #ccc)', 'background-image on '),

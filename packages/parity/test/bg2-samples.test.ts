@@ -6,7 +6,10 @@ import { plantVerdict } from '../src/device-lanes.ts';
 import { PLANT_CASES, PLANT_LANES, PLANT_RULES } from '../src/device-run.ts';
 import { BACKEND_OF, nativeCases } from '../src/native-host.ts';
 import { casePoints } from '../src/pixel-reference.ts';
-import { caseRootX, rootScrollX } from '../src/paint-samples/gradient.ts';
+import { caseRootX, paddings, rootScrollX } from '../src/paint-samples/gradient.ts';
+import { layout, measurerFor, NO_ENGINE_FAULTS, zoomInput } from '@dragon/layout';
+import { programInput } from 'dragon';
+import { REFERENCE_PLATFORM } from '../src/platform.ts';
 
 const byId = (id: string) => {
   const n = nativeCases().find((c) => c.case.id === id);
@@ -76,5 +79,24 @@ describe('the root scroller\'s contents origin (R4, rootScrollX)', () => {
     for (const dpr of [2, 3, 2.625]) expect(caseRootX(n.programs[BACKEND_OF.ios], n.case.environment.viewport, dpr)).toBe(-16 * dpr);
     const l = byId('gradient-rounded');
     expect(caseRootX(l.programs[BACKEND_OF.ios], l.case.environment.viewport, 2)).toBe(0);
+  }, 600_000);
+});
+
+describe('the paddings a gradient raster takes (paint-samples/gradient.ts paddings, DragonTree.apply on the device)', () => {
+  it('resolve an absolutely positioned box\'s percentages against its containing block\'s padding box, or the initial one', () => {
+    const n = byId('gradient-abspos');
+    const p = n.programs[BACKEND_OF.android];
+    const input = programInput(p, n.case.environment.viewport, 2);
+    const m = measurerFor(REFERENCE_PLATFORM);
+    if (m.kind !== 'ok') throw new Error(m.detail);
+    const out = layout(input, m.measurer);
+    if (out.kind !== 'ok') throw new Error('the engine refused gradient-abspos');
+    const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
+    const pads = paddings(zoomed.root, new Map(out.boxes.map((r) => [r.id, r] as const)), zoomed.viewport.width, 2);
+    // .rel's padding box is 240 CSS px (480 device px): 10% is 48 device px. .flow is in flow: 10% of .rel's 200px content box.
+    expect(pads.get('abs')).toEqual([48 * 64, 48 * 64, 48 * 64, 48 * 64]);
+    expect(pads.get('flow')).toEqual([40 * 64, 40 * 64, 40 * 64, 40 * 64]);
+    // .abs-icb has no positioned ancestor: the initial containing block, the 400px viewport (800 device px).
+    expect(pads.get('abs-icb')).toEqual([40 * 64, 16 * 64, 40 * 64, 16 * 64]);
   }, 600_000);
 });

@@ -351,6 +351,10 @@ describe('the gradient module: lowering and emission (BG2-a3)', () => {
       expect(stages).toContain(b === 'uikit' ? '  // background-layers\n  dragonPaintGradientStage(v, ctx, shape)' : '  // background-layers\n  dragonPaintGradientStage(v, canvas, shape)');
       expect(stages).toContain('dragonAfterLayoutGradient(v, shape, scale)');
       expect(stages).toContain('dragonAppliedGradient(v)');
+      // The paddings the raster takes resolve as the engine resolves them: an abspos box against its containing block's padding box.
+      const tree = files.map((f) => f.text).join('\n');
+      expect(tree).toContain(b === 'uikit' ? 'let pad = try box_resolvePadding(zs, try paddingBasis(id))' : 'val pad = box_resolvePadding(zs, paddingBasis(id))');
+      expect(tree).toContain(b === 'uikit' ? 'if z.position.description != "absolute"' : 'if (z.position != "absolute")');
       const own = files.find((f) => f.path.endsWith(`DragonPaintGradient.${ext}`))?.text ?? '';
       expect(own).toContain('paintGradient_planBackground(paint, faults)');
       if (b === 'uikit') expect(own).toContain('public let dragonGradientPlantAlpha = CGImageAlphaInfo.premultipliedLast');

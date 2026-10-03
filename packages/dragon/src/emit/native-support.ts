@@ -616,6 +616,19 @@ public final class DragonTree {
       contentCache[id] = w
       return w
     }
+    // BG2: what a box's percentage paddings resolve against, as the engine does: an in-flow box's parent's content width; an
+    // absolutely positioned box's containing block (CSS2 §10.1), the padding box of its nearest positioned ancestor or the
+    // initial containing block (layout.ts containingBlock).
+    func paddingBasis(_ id: String) throws -> Double {
+      guard let z = zStyles[id] else { fatalError("dragon: no zoomed box \(id)") }
+      if z.position.description != "absolute" { return try zParent[id].map { try contentWidth($0) } ?? units_fromCssPx(zoomed.viewport.width) }
+      var at = zParent[id]
+      while let a = at, let st = zStyles[a], st.position.description == "static" { at = zParent[a] }
+      guard let a = at else { return units_fromCssPx(zoomed.viewport.width) }
+      guard let st = zStyles[a], let r = rects[a] else { fatalError("dragon: the containing block \(a) of \(id) is not placed") }
+      let bor = try box_resolveBorder(st, zoomed.devicePixelRatio)
+      return r.width - bor.left - bor.right
+    }
     for (i, r) in boxes.enumerated() {
       if DragonTree.isLine(r) { continue }
       let id = r.id.description
@@ -648,7 +661,7 @@ public final class DragonTree {
         bv.dragonScale = s
         // BG2: the unsnapped border box and the paddings (percentages of the containing block's content width), in LU.
         guard let a = abs.get(r.id) else { fatalError("dragon: no absolute rect for \(id)") }
-        let pad = try box_resolvePadding(zs, try zParent[id].map { try contentWidth($0) } ?? units_fromCssPx(zoomed.viewport.width))
+        let pad = try box_resolvePadding(zs, try paddingBasis(id))
         bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px, size: [r.width / lu, r.height / lu], lu: [a.x, a.y, a.width, a.height], padding: [pad.top, pad.right, pad.bottom, pad.left], rootX: rootX)
         dragonAfterLayout(bv, bv.dragonShape, s)
         bv.setNeedsDisplay()
@@ -1346,6 +1359,20 @@ class DragonTree(val context: Context) {
       contentCache[id] = w
       return w
     }
+    // BG2: what a box's percentage paddings resolve against, as the engine does: an in-flow box's parent's content width; an
+    // absolutely positioned box's containing block (CSS2 §10.1), the padding box of its nearest positioned ancestor or the
+    // initial containing block (layout.ts containingBlock).
+    fun paddingBasis(id: String): Double {
+      val z = zStyles[id] ?: throw IllegalStateException("dragon: no zoomed box " + id)
+      if (z.position != "absolute") { val p = zParent[id]; return if (p != null) contentWidth(p) else units_fromCssPx(zoomed.viewport.width) }
+      var at = zParent[id]
+      while (at != null && zStyles[at]?.position == "static") at = zParent[at]
+      if (at == null) return units_fromCssPx(zoomed.viewport.width)
+      val st = zStyles[at] ?: throw IllegalStateException("dragon: no zoomed box " + at)
+      val r = rects[at] ?: throw IllegalStateException("dragon: the containing block " + at + " of " + id + " is not placed")
+      val bor = box_resolveBorder(st, zoomed.devicePixelRatio)
+      return r.width - bor.left - bor.right
+    }
     for (i in boxes.indices) {
       val r = boxes[i]
       if (isLine(r)) continue
@@ -1382,8 +1409,7 @@ class DragonTree(val context: Context) {
         borders[id] = px
         // BG2: the unsnapped border box and the paddings (percentages of the containing block's content width), in LU.
         val a = abs.get(r.id) ?: throw IllegalStateException("dragon: no absolute rect for " + id)
-        val zp = zParent[id]
-        val pad = box_resolvePadding(zs, if (zp != null) contentWidth(zp) else units_fromCssPx(zoomed.viewport.width))
+        val pad = box_resolvePadding(zs, paddingBasis(id))
         v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px, DoubleArray(8), doubleArrayOf(r.width / lu, r.height / lu), doubleArrayOf(a.x, a.y, a.width, a.height), doubleArrayOf(pad.top, pad.right, pad.bottom, pad.left), rootX)
         dragonAfterLayout(v, v.dragonShape, scale)
         v.invalidate()

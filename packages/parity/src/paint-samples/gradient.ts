@@ -29,19 +29,24 @@ export type NodePlan = { readonly id: string; readonly plan: BackgroundPlan };
 
 /**
  * The paddings of every box of the zoomed engine input in LU (top, right, bottom, left), each against its containing block's
- * content width, as DragonTree.apply resolves them on the device.
+ * width, as the engine resolves them and DragonTree.apply does on the device: an in-flow box's parent's content width; an
+ * absolutely positioned box's containing block (CSS2 §10.1), the padding box of its nearest positioned ancestor or the initial
+ * containing block (layout.ts containingBlock, position.ts layoutAbsolute).
  */
-function paddings(root: LayoutBox, rects: ReadonlyMap<string, LayoutRect>, viewportWidth: number, dpr: number): Map<string, readonly number[]> {
+export function paddings(root: LayoutBox, rects: ReadonlyMap<string, LayoutRect>, viewportWidth: number, dpr: number): Map<string, readonly number[]> {
   const out = new Map<string, readonly number[]>();
-  const walk = (b: LayoutBox, cb: number): void => {
+  const icb = fromCssPx(viewportWidth);
+  const walk = (b: LayoutBox, cb: number, positioned: number): void => {
     const r = rects.get(b.id);
-    const pad = resolvePadding(b.style, cb as never);
+    const basis = b.style.position === 'absolute' ? positioned : cb;
+    const pad = resolvePadding(b.style, basis as never);
     out.set(b.id, [pad.top, pad.right, pad.bottom, pad.left]);
     const bor = resolveBorder(b.style, dpr);
     const content = r === undefined ? cb : r.width - bor.left - bor.right - pad.left - pad.right;
-    for (const c of b.children) if (c.kind === 'box') walk(c, content);
+    const paddingBox = r === undefined ? positioned : r.width - bor.left - bor.right;
+    for (const c of b.children) if (c.kind === 'box') walk(c, content, b.style.position === 'static' ? positioned : paddingBox);
   };
-  walk(root, fromCssPx(viewportWidth));
+  walk(root, icb, icb);
   return out;
 }
 

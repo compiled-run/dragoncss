@@ -33,7 +33,7 @@ if (before === undefined) throw new Error('no longhand before background-image i
 /** The declaration each emitted rule holds right before the eight. */
 const ANCHOR = `  ${before}: `;
 /** The fixtures BG2-a3 adds (fixture-groups/gradients.ts). */
-const NEW_FIXTURES: readonly string[] = ['gradient-linear', 'gradient-radial', 'bg-layers', 'gradient-fractional', 'calib-gradient-ramps', 'gradient-angles', 'gradient-rounded', 'gradient-backdrop', 'gradient-units', 'bg-geometry', 'gradient-north-star'];
+const NEW_FIXTURES: readonly string[] = ['gradient-linear', 'gradient-radial', 'bg-layers', 'gradient-fractional', 'calib-gradient-ramps', 'gradient-angles', 'gradient-rounded', 'gradient-backdrop', 'gradient-units', 'bg-geometry', 'gradient-north-star', 'gradient-abspos'];
 /** The background shorthand fixtures spell out initial components (left top, 0% 0% / auto, ...): their emitted rules keep the
  * authored form, and their captures prove each computes to the initial value, so only the declarations' presence is checked. */
 const SPELLED_OUT = ['background-shorthand-colors', 'background-shorthand-cascade', 'background-important'];
