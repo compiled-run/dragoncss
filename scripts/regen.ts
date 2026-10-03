@@ -82,6 +82,7 @@ export const MANUAL: readonly { readonly command: string; readonly outputs: read
   // the test fails when the committed file differs, and the paint-vectors step reads it.
   { command: 'DRAGON_WRITE_DASH_INPUTS=1 npx vitest run packages/layout/test/paint-dash.test.ts', outputs: ['packages/layout/paint-vectors/*/inputs.jsonl'] },
   { command: 'pnpm run rt:oracle', outputs: ['packages/layout/rt-oracle/**', 'packages/layout/rt-vectors/**'] },
+  { command: 'node scripts/capture-interpolable.ts', outputs: ['packages/dragon/test/data/chrome-145-interpolable.json'] },
   { command: 'pnpm run parity:glyph-calibration', outputs: ['packages/parity/expected-glyphs/darwin-arm64/**'] },
   { command: 'node scripts/gen-script-data.ts', outputs: ['packages/layout/src/script-data.ts'] },
   { command: 'packages/layout/test/fixtures/linebreak/capture/*.mjs', outputs: ['packages/layout/test/fixtures/linebreak/*.json'] },
