@@ -496,7 +496,18 @@
         {"case":"values-calc-em-fractional","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
         {"case":"values-calc-em-fractional-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
         {"case":"values-calc-flex-factors","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
-        {"case":"values-calc-flex-factors-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"}
+        {"case":"values-calc-flex-factors-rtl","width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
+        {"case":"text-latin-lato","width":800,"height":600,"sha256":"28a80fae38d6fe0cfa479f612ad526e778efec9cf58334a212cf0d4e71624164"},
+        {"case":"text-latin-punct","width":800,"height":600,"sha256":"e0a2c0df8c0afb3c9c52b909bce68e15f9413ea3bac666ffee88aeff6a67424d"},
+        {"case":"text-latin-faces","width":800,"height":600,"sha256":"75b26f3c7aa240f21748b3570d79eda2662ae2522e54a415e0582d3e0055be26"},
+        {"case":"text-latin-flex","width":800,"height":600,"sha256":"55afb34a9898370b611553ee2202e57cf208595948fe20bd2af3eafce7c36e8b"},
+        {"case":"text-latin-words","width":800,"height":600,"sha256":"adc1a8d5ac8e64db0363a590c6b99d6bf6024f38f77e9915d0f54a8ae667616e"},
+        {"case":"text-latin-words-rtl","width":800,"height":600,"sha256":"692a50fe562adf636f49a3f5e05c73def29f59d3414b7bb9de5e80be166159cd"},
+        {"case":"text-latin-metrics","width":800,"height":600,"sha256":"1a42e15ddf5e96720748318eef3aa1ee2bb323fc4e549467b44ca6bd65718df7"},
+        {"case":"text-ahem-fractional","width":800,"height":600,"sha256":"da8cfcd96527a7ae7a0fe8f6a507bf6ec3988cefb96fcb2ee8a2b3d86aa4a9b3"},
+        {"case":"text-calibration-lato","width":800,"height":600,"sha256":"a29cde3e7e9c86335a806cb86d7049d7aafffab5d145fdb0b3b7f4af8a651c62"},
+        {"case":"text-calibration-sans","width":800,"height":600,"sha256":"6cc9c633c6cedc100a6d2cb75797de7e00d381af9446f42a138a9a3260bff222"},
+        {"case":"text-calibration-mono","width":800,"height":600,"sha256":"da2fcd27498e6af07c250abc640cb89088de9c63b85e9918c198d1f44cf81af1"}
       ]
     },
     {
@@ -992,7 +1003,18 @@
         {"case":"values-calc-em-fractional","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
         {"case":"values-calc-em-fractional-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
         {"case":"values-calc-flex-factors","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
-        {"case":"values-calc-flex-factors-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"}
+        {"case":"values-calc-flex-factors-rtl","width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
+        {"case":"text-latin-lato","width":1200,"height":900,"sha256":"43f397514f6949a3dae023feaa5b8c63a5aea044c8284014635795161c481b7b"},
+        {"case":"text-latin-punct","width":1200,"height":900,"sha256":"a953f9577b2ecca8e522141feba2989a9966d2e8d454439ba26a1a94ae34af4b"},
+        {"case":"text-latin-faces","width":1200,"height":900,"sha256":"3fcd5797468165ede9377d30db09cdbdb686b5683a9905935dfc5b667f331c16"},
+        {"case":"text-latin-flex","width":1200,"height":900,"sha256":"51b82410924141e70c6387bba7894ce4f71d695a7e2b0f6dc98af67dd90d9624"},
+        {"case":"text-latin-words","width":1200,"height":900,"sha256":"9f9f65912238d22e5556315e9fade1b92f00f7796a94d3697f8a9039ed9eb072"},
+        {"case":"text-latin-words-rtl","width":1200,"height":900,"sha256":"d52d661ee5c8a1a0407c2734df8e949b392e5aa46855bc8f55956904b1413650"},
+        {"case":"text-latin-metrics","width":1200,"height":900,"sha256":"3877ab6f7ae37e0f0d0bed7248e1712112c1953d7e8af6c481628a047e389d93"},
+        {"case":"text-ahem-fractional","width":1200,"height":900,"sha256":"0af2b86750532eff6317721faee715b708112eaa621d797c2212787867a661ef"},
+        {"case":"text-calibration-lato","width":1200,"height":900,"sha256":"1a6ec7f3a5e2de097b54809485231753efef929bb56198a38b63a99198a4870c"},
+        {"case":"text-calibration-sans","width":1200,"height":900,"sha256":"ae3ceb81991480b4ed7ad63745cbe17231a435e44fba45120dfb1ec59e26be97"},
+        {"case":"text-calibration-mono","width":1200,"height":900,"sha256":"e9f8674bc844c3f9cfa53f587d4f1dcc71d3ffca40d2a34d0e3313d48e4de493"}
       ]
     },
     {
@@ -1488,7 +1510,18 @@
         {"case":"values-calc-em-fractional","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
         {"case":"values-calc-em-fractional-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
         {"case":"values-calc-flex-factors","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
-        {"case":"values-calc-flex-factors-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"}
+        {"case":"values-calc-flex-factors-rtl","width":1050,"height":788,"sha256":"8a765f3859ab63bee6abfe59efd7561800fcccbaf460c92c40f8a68317059aa5"},
+        {"case":"text-latin-lato","width":1050,"height":788,"sha256":"f478add2ab353426c1ea90d6049edaabe0192b61e7a7f9973ebc1387c6324807"},
+        {"case":"text-latin-punct","width":1050,"height":788,"sha256":"602ed38d3a66a56298112dbedf25dbe7b487f2d66dacfeca67e438d67859a4d1"},
+        {"case":"text-latin-faces","width":1050,"height":788,"sha256":"f2945cccba9cf021a4135034a5d9c07594725ffc67bb36b8dddef231f9edef4a"},
+        {"case":"text-latin-flex","width":1050,"height":788,"sha256":"f733e2a9fb07e802247584abec9599537aef4418dfde616f892d8b1097ec2f01"},
+        {"case":"text-latin-words","width":1050,"height":788,"sha256":"924a3a50a1c8fe9f93e304608201b681314b15a2067250449fd19d703f119bee"},
+        {"case":"text-latin-words-rtl","width":1050,"height":788,"sha256":"f7ffbdf9f5829aedae1182d37e0b0696d342e8c283658d33712025e034446e7b"},
+        {"case":"text-latin-metrics","width":1050,"height":788,"sha256":"d2699b78d626241f44f2a5c0527342f5366bab51ba3e6c24b8dae32e4d0874a5"},
+        {"case":"text-ahem-fractional","width":1050,"height":788,"sha256":"b1c206fae38c45ee7fc7305f3e4582a12b40ae77e18bf2e9f3b77ce53163aa7e"},
+        {"case":"text-calibration-lato","width":1050,"height":788,"sha256":"916094f7b59ab4501883484e1cd77f2d560e34a3a09566fbfd36b3ebd1217ebd"},
+        {"case":"text-calibration-sans","width":1050,"height":788,"sha256":"73c8c641bb5c4b700950544f42cbb7f2374b1eb54333859094fb62ab8d77d415"},
+        {"case":"text-calibration-mono","width":1050,"height":788,"sha256":"e8b2d8e975d6b103dae4398b76f3cffa880db6ea32d1b55d17a52d9b4ffc9ce7"}
       ]
     }
   ]
