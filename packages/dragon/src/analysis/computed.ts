@@ -12,7 +12,7 @@ import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.t
 import { ratioValue } from '../css/values.ts';
 import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
 import { textFontsOf } from '../ua/datasets.ts';
-import type { TextFontValue } from '../fonts/weight.ts';
+import type { SynthesisAllowed, TextFontValue } from '../fonts/weight.ts';
 import { computeFontStyle, computeTextFont, fontStyleCssValue, INITIAL_TEXT_FONT } from '../fonts/weight.ts';
 import type { Span } from '../types.ts';
 import type { Candidate } from './cascade.ts';
@@ -227,6 +227,12 @@ export function computeFontStyleLonghands(tag: string, props: Map<Longhand, Reso
   if (font === null) throw new Error(`font-weight ${valueToString(w.value)} or font-style ${valueToString(st.value)} has no computed value`);
   props.set('font-weight', { ...w, value: { kind: 'number', value: font.weight } });
   props.set('font-style', { ...st, value: fontStyleCssValue(font.style) });
+}
+
+/** Whether Chrome may synthesize bold and oblique for an element (font-synthesis-weight and -style). */
+export function synthesisAllowedOf(props: ReadonlyMap<Longhand, ResolvedValue>): SynthesisAllowed {
+  const on = (p: Longhand): boolean => valueToString((props.get(p) as ResolvedValue).value) !== 'none';
+  return { weight: on('font-synthesis-weight'), style: on('font-synthesis-style') };
 }
 
 /** The computed text font of resolved properties. */

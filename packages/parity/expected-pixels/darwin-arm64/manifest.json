@@ -521,7 +521,11 @@
         {"case":"text-weight-nested-italic","width":800,"height":600,"sha256":"85f0eb747eac4a6b9e695b5fbb02e113e5c5489c3f1fe6e13e64a100ba93dd18"},
         {"case":"text-weight-nested-italic-rtl","width":800,"height":600,"sha256":"e63db4676246538fe2de7675721a995e8b8b6e9e4a178ead1855b753d8a1bda8"},
         {"case":"text-weight-contexts","width":800,"height":600,"sha256":"fa7ae91b9f7ed712e6c9742fdc8b49b562bb1ec352e3d1c85f09c646cbb24faa"},
-        {"case":"text-weight-contexts-rtl","width":800,"height":600,"sha256":"1ee4b98c87ed7295e427f2ce028ded54afdd7a7dbcae90791d88bad31b3dd66d"}
+        {"case":"text-weight-contexts-rtl","width":800,"height":600,"sha256":"1ee4b98c87ed7295e427f2ce028ded54afdd7a7dbcae90791d88bad31b3dd66d"},
+        {"case":"font-shorthand-faces","width":800,"height":600,"sha256":"e7a8d864105c84bf50ed7e152571327f472e3f20b3c5f7983fe10ee2f26a89f3"},
+        {"case":"font-shorthand-faces-rtl","width":800,"height":600,"sha256":"62e9b07ddb78c075f2977d2010f6113531cc13ba5f3e2b12c39711d2fa600b61"},
+        {"case":"font-shorthand-synthesis","width":800,"height":600,"sha256":"d70752bbee375233379fe6f18fa30cbeef7b262692c202eee30730af7384181c"},
+        {"case":"font-shorthand-synthesis-rtl","width":800,"height":600,"sha256":"add4a4312208d216fead71d2ec77697c7077c1b1a24a7c49b9ef3ee40e7ca81b"}
       ]
     },
     {
@@ -1042,7 +1046,11 @@
         {"case":"text-weight-nested-italic","width":1200,"height":900,"sha256":"6d6511a7d93e6c1adf155a1a314bcd52a901e1b266579d1d4701ea1e414083c4"},
         {"case":"text-weight-nested-italic-rtl","width":1200,"height":900,"sha256":"b2beed3ccdce4c3838dbe78cba79d699eb26637806e6b6516b016de55ac019eb"},
         {"case":"text-weight-contexts","width":1200,"height":900,"sha256":"117c88946421596d81a19680c57a37b4aa10506bdcbb4bd30b7f91749921d051"},
-        {"case":"text-weight-contexts-rtl","width":1200,"height":900,"sha256":"29082e3a7227cbe55b3b4c69ec840d3a87db0baaf08ecfbd0f51658d0c1c339a"}
+        {"case":"text-weight-contexts-rtl","width":1200,"height":900,"sha256":"29082e3a7227cbe55b3b4c69ec840d3a87db0baaf08ecfbd0f51658d0c1c339a"},
+        {"case":"font-shorthand-faces","width":1200,"height":900,"sha256":"1ff4287dd6a2bbbd3bb90bcc7005c7743e21c58a43e221fb5c2ee418ad54fe77"},
+        {"case":"font-shorthand-faces-rtl","width":1200,"height":900,"sha256":"4dcb98a3b5792025c734e93e6c2a5f17c79d538f2d3918255bd843bdcb6f9194"},
+        {"case":"font-shorthand-synthesis","width":1200,"height":900,"sha256":"f1d4231cc9700769779ada8d09131f3ad8b824b3d4acabd74384967efb4155de"},
+        {"case":"font-shorthand-synthesis-rtl","width":1200,"height":900,"sha256":"d27e80c202f8a3c4e61aebb539e52ca32e1cf18e2cc5421dadc7359958b02f13"}
       ]
     },
     {
@@ -1563,7 +1571,11 @@
         {"case":"text-weight-nested-italic","width":1050,"height":788,"sha256":"5dc241abd48b7de9d12a6b161867e5eccac667a149a93d7bf8d00ef221fcadcf"},
         {"case":"text-weight-nested-italic-rtl","width":1050,"height":788,"sha256":"94473f00d13c1df4683f0754e58bb6552bd4a8b966d11ca8790f2f60b1114eed"},
         {"case":"text-weight-contexts","width":1050,"height":788,"sha256":"dedca9d546f7444a4051e166e9cdf5c24f10f3c8079b25ba24edb149f0e2182d"},
-        {"case":"text-weight-contexts-rtl","width":1050,"height":788,"sha256":"642259f5c0bb24ccb7b06b9ecc5f13d032897d359d335d409396831493a1a5df"}
+        {"case":"text-weight-contexts-rtl","width":1050,"height":788,"sha256":"642259f5c0bb24ccb7b06b9ecc5f13d032897d359d335d409396831493a1a5df"},
+        {"case":"font-shorthand-faces","width":1050,"height":788,"sha256":"f3c96e8b32b8898e3b3dd3a09a4d4c02c68e35c6d47fc0431eecdd06c3052608"},
+        {"case":"font-shorthand-faces-rtl","width":1050,"height":788,"sha256":"0242055911d57fc88bda86b58435cc8404752fbf9d577ad7b481c0407e4e6b6a"},
+        {"case":"font-shorthand-synthesis","width":1050,"height":788,"sha256":"d9b592d94d04f472edcca07b80b7fa5219e01aa3da225ed5a693e200288aabce"},
+        {"case":"font-shorthand-synthesis-rtl","width":1050,"height":788,"sha256":"c8df5560448ade5af4094691711ca2b2d26e920cf0a48cffd711eafcd7653147"}
       ]
     }
   ]

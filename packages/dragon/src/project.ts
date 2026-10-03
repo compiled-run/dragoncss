@@ -31,9 +31,9 @@ import type { EntryResolution, FontMapError } from './fonts/font-map.ts';
 import type { FontSelectionRequest } from './fonts/selection.ts';
 import { foldFamily } from './fonts/selection.ts';
 import { synthesisTraits } from './fonts/metrics.ts';
-import type { TextFontValue } from './fonts/weight.ts';
+import type { SynthesisAllowed, TextFontValue } from './fonts/weight.ts';
 import { requestOf, serializeFontStyle, serializeFontWeight, synthesisOf } from './fonts/weight.ts';
-import { textFontOfProps } from './analysis/computed.ts';
+import { synthesisAllowedOf, textFontOfProps } from './analysis/computed.ts';
 import { fenceVariableInstance } from './fonts/variable-fence.ts';
 import type { VariableFontRefusal } from './fonts/variable-fence.ts';
 import { collectFontFaces, familySupport, pinnedFacesOf, projectFonts, renderedFaces, webFontOutput } from './fonts/wire.ts';
@@ -365,9 +365,9 @@ function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: 
 }
 
 /** The text font of an element: its computed font-weight and font-style (analysis/computed.ts, fonts/weight.ts). */
-type TextFont = TextFontValue;
+type TextFont = TextFontValue & { readonly synthesis: SynthesisAllowed };
 
-const textFontOf = (el: ResolvedElement): TextFont => textFontOfProps(el.props);
+const textFontOf = (el: ResolvedElement): TextFont => ({ ...textFontOfProps(el.props), synthesis: synthesisAllowedOf(el.props) });
 
 const describeFont = (font: TextFont): string => `font-weight ${serializeFontWeight(font.weight)} and font-style ${serializeFontStyle(font.style)}`;
 
@@ -375,8 +375,8 @@ const describeFont = (font: TextFont): string => `font-weight ${serializeFontWei
  * Why Chrome would draw a face synthesized (fonts/weight.ts synthesisOf), or null. Where the face file has the bold or italic trait,
  * Chrome suppresses that synthesis (font_custom_platform_data.cc:286-287); no Chrome case proves what it then draws, so it is refused.
  */
-function syntheticStyle(face: DeclaredFace, request: FontSelectionRequest): string | null {
-  const synthetic = synthesisOf(face.capabilities, request);
+function syntheticStyle(face: DeclaredFace, request: FontSelectionRequest, allowed: SynthesisAllowed): string | null {
+  const synthetic = synthesisOf(face.capabilities, request, undefined, allowed);
   if (synthetic === null || face.source === null) return synthetic;
   const traits = synthesisTraits(face.source.font);
   if (synthetic === 'synthetic bold' ? traits.bold : traits.italic) return `${synthetic} that Chrome suppresses because the face file has the ${synthetic === 'synthetic bold' ? 'bold' : 'italic'} trait, which Dragon does not model`;
@@ -397,7 +397,7 @@ function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string,
   const face = (rendered[0] as { face: DeclaredFace }).face;
   if (face.source === null) return { kind: 'refused', reason: 'its face has no bytes' };
   if (face.source.font.variable) return { kind: 'refused', reason: 'it resolves to a variable face, which TXT1b proves' };
-  const synthetic = syntheticStyle(face, request);
+  const synthetic = syntheticStyle(face, request, font.synthesis);
   if (synthetic !== null) return { kind: 'refused', reason: `Chrome would draw it in ${synthetic} (DRAGON_SYNTHETIC_FONT_STYLE)` };
   return { kind: 'face', id: `sha256:${sha256HexBytes(face.source.bytes)}` };
 }
@@ -439,7 +439,7 @@ function checkSyntheticStyles(root: ResolvedElement, fonts: ProjectFonts, target
       if (support === null || support.kind !== 'resolved') continue;
       const request = requestOf(own.weight, own.style);
       for (const { family: name, face } of renderedFaces(bundledFaces(fonts), support.resolutions, c.text, request)) {
-        const synthetic = syntheticStyle(face, request);
+        const synthetic = syntheticStyle(face, request, own.synthesis);
         if (synthetic === null) continue;
         const text = synthetic === 'synthetic bold' || synthetic === 'synthetic oblique'
           ? `text ${c.node.address} in ${name} at ${describeFont(own)} would be drawn in ${synthetic}: no bundled ${name} face has that ${synthetic === 'synthetic bold' ? 'weight' : 'style'}, and ${target} cannot reproduce Skia's synthetic style`

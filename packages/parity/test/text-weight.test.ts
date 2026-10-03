@@ -195,25 +195,27 @@ describe('the native refusals', () => {
 
 describe('BASE pins', () => {
   const git = (...args: string[]): string => execFileSync('git', args, { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 1 << 28 });
-  it('the text-weight group is appended last and adds exactly its own layout cases', () => {
-    expect(FIXTURE_GROUPS[FIXTURE_GROUPS.length - 1]?.id).toBe('text-weight');
+  it('the text-weight group follows BASE\'s groups and adds exactly its own layout cases', () => {
+    // TXT-W2 appends font-shorthand after it (font-shorthand.test.ts).
+    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-2)).toEqual(['text-weight', 'font-shorthand']);
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     const added = TEXT_WEIGHT.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
-    expect(ids.slice(-added.length)).toEqual(added);
-    expect(ids.length).toBe(502 + added.length);
+    expect(ids.slice(502, 502 + added.length)).toEqual(added);
   });
   it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
     const changed = git('diff', '--name-status', BASE, '--', 'packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels')
       .split('\n').filter((l) => l !== '' && !l.startsWith('A\t') && !/expected-pixels\/darwin-arm64\/manifest\.json$/.test(l));
     expect(changed).toEqual([]);
   });
-  it('every existing capture equals BASE once font-weight and font-style are removed from its computed values', () => {
+  /** The computed keys added since BASE: TXT-W1's font-weight and font-style, then TXT-W2's font-synthesis longhands. */
+  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps'];
+  it('every existing capture equals BASE once the computed keys added since are removed', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = git('ls-tree', '-r', '--name-only', BASE, '--', ...dirs).split('\n').filter((p) => p.endsWith('.json'));
     expect(paths.length).toBeGreaterThan(1500);
     const strip = (json: unknown): unknown => {
       const c = json as { nodes?: { computed: Record<string, string> | null }[] };
-      for (const n of c.nodes ?? []) if (n.computed !== null) { delete n.computed['font-weight']; delete n.computed['font-style']; }
+      for (const n of c.nodes ?? []) if (n.computed !== null) for (const k of ADDED_KEYS) delete n.computed[k];
       return c;
     };
     const blobs = execFileSync('git', ['cat-file', '--batch'], { cwd: repoPath('.'), input: paths.map((p) => `${BASE}:${p}`).join('\n'), maxBuffer: 1 << 30 });
@@ -225,7 +227,7 @@ describe('BASE pins', () => {
       const before = JSON.parse(blobs.subarray(nl + 1, nl + 1 + size).toString('utf8')) as unknown;
       at = nl + 1 + size + 1;
       const now = JSON.parse(readFileSync(repoPath(p), 'utf8')) as { nodes?: { computed: Record<string, string> | null }[] };
-      for (const n of now.nodes ?? []) if (n.computed !== null && (n.computed['font-weight'] === undefined || n.computed['font-style'] === undefined)) differ.push(`${p}: a node lacks the two keys`);
+      for (const n of now.nodes ?? []) if (n.computed !== null && ADDED_KEYS.some((k) => n.computed?.[k] === undefined)) differ.push(`${p}: a node lacks an added key`);
       if (JSON.stringify(strip(now)) !== JSON.stringify(strip(before))) differ.push(p);
     }
     expect(differ).toEqual([]);

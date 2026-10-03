@@ -125,7 +125,9 @@ const NEW_IDS = [
 /** T133 (fixture-groups/inline-tags.ts): b, strong, em and i over real faces, appended after the TXT1a-2 cases. */
 const TAG_IDS = ['inline-tags-faces', 'inline-tags-faces-rtl',
   // TXT-W1 (fixture-groups/text-weight.ts), appended after them.
-  ...['numeric', 'relative', 'styles', 'nested-bold', 'nested-italic', 'contexts'].flatMap((n) => [`text-weight-${n}`, `text-weight-${n}-rtl`])];
+  ...['numeric', 'relative', 'styles', 'nested-bold', 'nested-italic', 'contexts'].flatMap((n) => [`text-weight-${n}`, `text-weight-${n}-rtl`]),
+  // TXT-W2 (fixture-groups/font-shorthand.ts), appended after them.
+  ...['faces', 'synthesis'].flatMap((n) => [`font-shorthand-${n}`, `font-shorthand-${n}-rtl`])];
 
 const specOf = (id: string): FixtureSpec => {
   const f = FIXTURES.find((x) => x.id === id);

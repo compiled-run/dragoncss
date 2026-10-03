@@ -1,0 +1,17 @@
+{
+  "case": "font-shorthand-faces",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"a:text0","data":"Size and family only","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"b:text0","data":"Italic bold with line height","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"c:text0","data":"Lato bold from a list","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"d:text0","data":"Light with a number line height","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"e:text0","data":"Oblique semibold","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"f:text0","data":"Lato bold","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"g:text0","data":"Line height in em","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"h:text0","data":"Inherited font","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"i:text0","data":"Bolder than bold","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"j:text0","data":"Relative size","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

@@ -222,7 +222,11 @@
       "text-weight-nested-italic": [3,3],
       "text-weight-nested-italic-rtl": [3,3],
       "text-weight-contexts": [10,10],
-      "text-weight-contexts-rtl": [10,10]
+      "text-weight-contexts-rtl": [10,10],
+      "font-shorthand-faces": [10,10],
+      "font-shorthand-faces-rtl": [10,10],
+      "font-shorthand-synthesis": [7,7],
+      "font-shorthand-synthesis-rtl": [7,7]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -446,7 +450,11 @@
       "text-weight-nested-italic": [3,3],
       "text-weight-nested-italic-rtl": [3,3],
       "text-weight-contexts": [10,10],
-      "text-weight-contexts-rtl": [10,10]
+      "text-weight-contexts-rtl": [10,10],
+      "font-shorthand-faces": [10,10],
+      "font-shorthand-faces-rtl": [10,10],
+      "font-shorthand-synthesis": [7,7],
+      "font-shorthand-synthesis-rtl": [7,7]
     }
   },
   "android": {
@@ -672,7 +680,11 @@
       "text-weight-nested-italic": [3,3],
       "text-weight-nested-italic-rtl": [3,3],
       "text-weight-contexts": [10,10],
-      "text-weight-contexts-rtl": [10,10]
+      "text-weight-contexts-rtl": [10,10],
+      "font-shorthand-faces": [10,10],
+      "font-shorthand-faces-rtl": [10,10],
+      "font-shorthand-synthesis": [7,7],
+      "font-shorthand-synthesis-rtl": [7,7]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -896,7 +908,11 @@
       "text-weight-nested-italic": [3,3],
       "text-weight-nested-italic-rtl": [3,3],
       "text-weight-contexts": [10,10],
-      "text-weight-contexts-rtl": [10,10]
+      "text-weight-contexts-rtl": [10,10],
+      "font-shorthand-faces": [10,10],
+      "font-shorthand-faces-rtl": [10,10],
+      "font-shorthand-synthesis": [7,7],
+      "font-shorthand-synthesis-rtl": [7,7]
     },
     "2.625": {
       "text-ahem-single-line": [10,10],
@@ -1120,7 +1136,11 @@
       "text-weight-nested-italic": [3,3],
       "text-weight-nested-italic-rtl": [3,3],
       "text-weight-contexts": [10,10],
-      "text-weight-contexts-rtl": [10,10]
+      "text-weight-contexts-rtl": [10,10],
+      "font-shorthand-faces": [10,10],
+      "font-shorthand-faces-rtl": [10,10],
+      "font-shorthand-synthesis": [7,7],
+      "font-shorthand-synthesis-rtl": [7,7]
     }
   }
 }
