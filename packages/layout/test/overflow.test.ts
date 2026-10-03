@@ -3,14 +3,14 @@
 // packages/parity/test/ovfl-metrics.test.ts; these pin the rules the port follows.
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { ahemMeasurer, layout, NO_ENGINE_FAULTS, validateLayoutInput } from '../src/index.ts';
-import type { LayoutBox, LayoutInput, LayoutStyle, Overflow } from '../src/index.ts';
+import type { LayoutBox, LayoutInput, LayoutStyle, Overflow, ReplacedLeaf } from '../src/index.ts';
 import { isScrollContainer } from '../src/box.ts';
 import type { PlacedLine } from '../src/inline.ts';
 import { ZERO } from '../src/units.ts';
-import { PLACED_LINE_FIELDS, scrollMetrics, scrollMetricsWithFaults } from '../src/overflow.ts';
-import { box, divStyle, neutralEnvironment, pct, px } from './helpers.ts';
+import { OverflowRefusal, PLACED_LINE_FIELDS, refuseLineLevelBoxes, scrollMetrics, scrollMetricsWithFaults } from '../src/overflow.ts';
+import { box, divStyle, neutralEnvironment, pct, px, text } from './helpers.ts';
 
-const input = (children: LayoutBox[], html: Partial<LayoutStyle> = {}): LayoutInput => ({
+const input = (children: (LayoutBox | ReplacedLeaf)[], html: Partial<LayoutStyle> = {}): LayoutInput => ({
   viewport: { width: 400, height: 300 },
   devicePixelRatio: 1,
   ...neutralEnvironment({ width: 400, height: 300 }),
@@ -124,5 +124,26 @@ describe('line items (R16: a new PlacedLine item kind is never skipped)', () => 
     const line: PlacedLine = { top: ZERO, height: ZERO, baseline: ZERO, pieces: [], boxes: [], boxRects: [], breaks: [], breakRects: [] };
     expect(unhandled(line)).toEqual([]);
     expect(unhandled({ ...line, atomics: [] })).toEqual(['atomics']);
+  });
+});
+
+describe('replaced leaves and line-level boxes (pre-landing review of #96)', () => {
+  const replaced = (id: string, style: Partial<LayoutStyle>): ReplacedLeaf => ({ kind: 'replaced', id, style: { ...divStyle, ...style }, natural: { kind: 'image', width: 160, height: 80 }, defaultWidth: 300, defaultHeight: 150, objectFit: 'fill', objectPositionX: { kind: 'percent', value: 50 }, objectPositionY: { kind: 'percent', value: 50 } });
+  it('a replaced child adds its border box to its scroll container: a 100x200 image in a 100x50 auto box scrolls 200 high', () => {
+    const img = replaced('img', { display: 'block', width: px(100), height: px(200) });
+    expect(size(input([box('s', sc('auto', { height: px(50) }), [img])]), 's')).toEqual([lu(100), lu(200), lu(100), lu(50)]);
+  });
+
+  it('a replaced child takes part in the in-flow bounds: its margins and the end padding count', () => {
+    const img = replaced('img', { display: 'block', width: px(30), height: px(150), marginBottom: px(7), marginLeft: px(5) });
+    expect(size(input([box('s', sc('auto', pad(10)), [img])]), 's')).toEqual([lu(120), lu(10 + 150 + 7 + 10), lu(120), lu(120)]);
+  });
+
+  it('an atomic inline (a box child of an inline formatting context) is refused as an OverflowRefusal, never a plain error', () => {
+    const ifc = box('s', sc('auto'), [text('t', 'XX')]);
+    expect(() => refuseLineLevelBoxes(ifc)).not.toThrow();
+    const atomic = { ...ifc, children: [...ifc.children, box('k', { width: px(10), height: px(10) })] };
+    expect(() => refuseLineLevelBoxes(atomic)).toThrow(OverflowRefusal);
+    expect(() => refuseLineLevelBoxes(atomic)).toThrow('an atomic inline in the inline formatting context of s');
   });
 });

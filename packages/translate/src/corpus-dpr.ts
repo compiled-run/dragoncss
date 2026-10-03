@@ -494,7 +494,7 @@ const OVERFLOW_PAIRS: readonly (readonly [string, string])[] = [
 
 /**
  * Generated scroll containers (OVFL): block and flex boxes with random overflow pairs, sizes, padding, borders and margins (negative
- * ones included), relative and absolutely positioned children, nested containers and Ahem text, in both directions at every DPR,
+ * ones included), relative and absolutely positioned children, block-level replaced leaves, nested containers and Ahem text, in both directions at every DPR,
  * some with an OVFL planted fault. Each line carries viewportDirection, so the harness also runs scrollMetrics.
  */
 export function engineOverflowCases(): string[] {
@@ -558,9 +558,33 @@ export function engineOverflowCases(): string[] {
       }
       const kids: Json[] = [];
       const count = r.int(4);
-      for (let i = 0; i < count; i++) kids.push(box(depth + 1, display === 'flex'));
+      for (let i = 0; i < count; i++) kids.push(r.chance(0.15) ? replacedLeaf() : box(depth + 1, display === 'flex'));
       return { kind: 'box', id, boxType: 'element', style, strut: null, children: kids };
     };
+    // A block-level replaced leaf (REPL-a): its border box, margins and relative offset count in its scroll container.
+    const replacedLeaf = (): Json => ({
+      kind: 'replaced',
+      id: `n${ids++}`,
+      style: {
+        ...INLINE_STYLE,
+        display: 'block',
+        position: r.chance(0.2) ? 'relative' : 'static',
+        top: r.chance(0.5) ? pxv(r.pick([4, -6])) : { kind: 'auto' },
+        width: len([20, 64, 150]),
+        height: len([10, 40, 120]),
+        marginTop: pxv(r.pick([0, 3, -4])),
+        marginBottom: pxv(r.pick([0, 5, -8])),
+        marginLeft: pxv(r.pick([0, 2])),
+        paddingRight: pxv(r.pick([0, 3])),
+        borderBottomWidth: pxv(r.pick([0, 2])),
+      },
+      natural: { kind: 'image', width: r.pick([160, 40, 64]), height: r.pick([80, 64]) },
+      defaultWidth: 300,
+      defaultHeight: 150,
+      objectFit: 'fill',
+      objectPositionX: { kind: 'percent', value: 50 },
+      objectPositionY: { kind: 'percent', value: 50 },
+    });
     const container = box(0, false);
     const root: Json = { kind: 'box', id: 'root', boxType: 'element', style: { ...INLINE_STYLE, display: 'block', direction }, strut: null, children: [container] };
     const input: Json = { viewport: { width: 400, height: 300 }, devicePixelRatio: r.pick([1, 2, 3, 2.625]), viewportUnits: { small: { width: 400, height: 300 }, large: { width: 400, height: 300 }, dynamic: { width: 400, height: 300 } }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16, root };
