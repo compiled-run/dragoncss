@@ -201,6 +201,13 @@ describe('the paint plant verdict', () => {
     expect(plantVerdict([hit, f('device-lines', 'break-mismatch', 'w1:text0')], null, shadow).caught).toBe(false);
     expect(plantVerdict([], null, shadow).caught).toBe(false);
   });
+  it('an applied-value plant is caught on device-applied failures of its nodes, of any kind', () => {
+    const alpha = PLANT_RULES['alpha-ignored'];
+    const applied = { lane: 'device-applied' as DeviceCheckLane, case: 'opacity-basic', dpr: 3, node: 'op-1', kind: 'applied-mismatch' as FailureKind, detail: 'x' };
+    expect(plantVerdict([applied], null, alpha, 'device-applied')).toMatchObject({ caught: true, inked: 1 });
+    expect(plantVerdict([applied], null, alpha).caught).toBe(false);
+    expect(plantVerdict([{ ...applied, node: 'w1' }], null, alpha, 'device-applied').caught).toBe(false);
+  });
 });
 
 describe('capture trust', () => {

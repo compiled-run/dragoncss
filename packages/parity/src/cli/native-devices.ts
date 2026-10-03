@@ -7,14 +7,14 @@
 // right, or down), and judges the plant against the clean run (judgeGlyphPlant): both hosts finished; the clean run has no
 // device-pixels failure; on the plant's axis every line's glyph position (the x centre, or the bottom edge) fails the position
 // check by PLANT_MARGIN_DEVICE_PX or more and moved PLANT_SHIFT_DEVICE_PX within the spread; and device-frames and device-lines
-// pass in both runs. A paint plant (P6a dash, PNT1 radius and shadow) runs its cases (PLANT_CASES) once with the planted app: device-pixels must fail on its
-// sample rules (PLANT_RULES) while device-frames and device-lines pass (plantVerdict).
+// pass in both runs. A paint plant (P6a dash, PNT1 radius and shadow) runs its cases (PLANT_CASES) once with the planted app: its lane (PLANT_LANES) must fail on
+// its rules (PLANT_RULES) while device-frames and device-lines pass (plantVerdict).
 import { SUPPORT_PLANTS } from 'dragon';
 import type { SupportPlant } from 'dragon';
 import { GATE_GLYPH_POSITION_DEVICE_PX } from '../compare.ts';
 import { caseReference, dumpFile, evaluateCase, plantVerdict, readDump } from '../device-lanes.ts';
 import type { DeviceSpec } from '../device-run.ts';
-import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, isGlyphPlant, judgeGlyphPlant, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, recordProblems, release, runApp } from '../device-run.ts';
+import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, isGlyphPlant, judgeGlyphPlant, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, PLANT_LANES, PLANT_RULES, recordProblems, release, runApp } from '../device-run.ts';
 import { glyphPositions } from '../native-compare.ts';
 import { validateNativeDump } from '../native-dump.ts';
 import { existsSync, readFileSync } from 'node:fs';
@@ -94,8 +94,8 @@ if (!isGlyphPlant(plant)) {
         return evaluateCase(target, n, dpr, raw, caseReference(target, n, dpr)).failures;
       });
       for (const f of all) log(`${target} ${spec.name} @${dpr} ${plant}: ${f.case} ${f.lane} ${f.kind} ${f.node ?? ''}: ${f.detail}`);
-      const v = plantVerdict(all, r.error, PLANT_RULES[plant]);
-      log(`${target} ${spec.name} @${dpr} ${plant} on ${PLANT_CASES[plant].join(', ')}: device-pixels ${v.pixels} failures (${v.inked} on ${PLANT_RULES[plant].source} rules); device-frames ${v.frames}, device-lines ${v.lines} failures${r.error === null ? '' : '; the host did not finish'}: plant ${v.caught ? 'CAUGHT' : 'NOT CAUGHT'}`);
+      const v = plantVerdict(all, r.error, PLANT_RULES[plant], PLANT_LANES[plant]);
+      log(`${target} ${spec.name} @${dpr} ${plant} on ${PLANT_CASES[plant].join(', ')}: device-pixels ${v.pixels} failures (${v.inked} ${PLANT_LANES[plant]} failures on ${PLANT_RULES[plant].source}); device-frames ${v.frames}, device-lines ${v.lines} failures${r.error === null ? '' : '; the host did not finish'}: plant ${v.caught ? 'CAUGHT' : 'NOT CAUGHT'}`);
       if (!v.caught) failures++;
     } finally {
       await release(h);

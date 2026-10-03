@@ -34,6 +34,8 @@ export type NativePaint = {
  */
 export type PaintEngine = {
   /** paint-radius.ts roundedShape: the outer then the padding-edge radii of a snapped border box and its layout size, in device px. */
+  /** paint.ts opacityAlpha8: Skia's paint alpha byte of an opacity. */
+  readonly opacityAlpha8: (opacity: number) => number;
   readonly roundedShape: (left: number, top: number, right: number, bottom: number, layoutWidth: number, layoutHeight: number, borders: readonly number[], lengths: readonly { readonly percent: boolean; readonly value: number }[], dpr: number, faults: { readonly radiusUnclamped: boolean; readonly innerRadiusNotReduced: boolean }) => number[];
 };
 

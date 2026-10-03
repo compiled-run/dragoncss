@@ -51,12 +51,12 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   const paint = LONGHANDS.filter((p) => PROPERTY_ROLE[p] === 'paint');
   it('(i) paint holds exactly for the aspect-table longhands with a paint aspect and no layout aspect', () => {
     for (const p of LONGHANDS) expect(PROPERTY_ROLE[p] === 'paint', p).toBe(!PROPERTY_ASPECTS[p].layout && PROPERTY_ASPECTS[p].paint);
-    expect([...paint].sort()).toEqual(['background-color', 'border-bottom-color', 'border-bottom-left-radius', 'border-bottom-right-radius', 'border-left-color', 'border-right-color', 'border-top-color', 'border-top-left-radius', 'border-top-right-radius', 'box-shadow', 'color', 'color-scheme', 'outline-color', 'outline-offset', 'outline-style', 'outline-width']);
+    expect([...paint].sort()).toEqual(['background-color', 'border-bottom-color', 'border-bottom-left-radius', 'border-bottom-right-radius', 'border-left-color', 'border-right-color', 'border-top-color', 'border-top-left-radius', 'border-top-right-radius', 'box-shadow', 'color', 'color-scheme', 'opacity', 'outline-color', 'outline-offset', 'outline-style', 'outline-width']);
   });
   it('(ii) a paint longhand never reaches the layout input: two elements that differ only in it lower to identical styles', () => {
     // Two different values of each paint longhand: colours for the colour longhands, radii for the corner radii, and each PNT1
-    // color-scheme and outline longhand's own values (a solid outline style with a zero width, which paints nothing natively).
-    const own: { readonly [p: string]: [string, string] } = { 'color-scheme': ['light', 'dark only'], 'outline-style': ['none', 'solid; outline-width: 0'], 'outline-width': ['0', '4px'], 'outline-offset': ['0', '3px'] };
+    // effects and outline longhand's own values (a solid outline style with a zero width, which paints nothing natively).
+    const own: { readonly [p: string]: [string, string] } = { opacity: ['0.5', '0.25'], 'color-scheme': ['light', 'dark only'], 'outline-style': ['none', 'solid; outline-width: 0'], 'outline-width': ['0', '4px'], 'outline-offset': ['0', '3px'] };
     const values = (p: string): [string, string] => own[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : p === 'box-shadow' ? ['1px 2px #102030', 'inset 0 0 4px 1px rgba(200, 100, 50, 0.5)'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
     for (const p of paint) {
       const [va, vb] = values(p);

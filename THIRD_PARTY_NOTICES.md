@@ -10,6 +10,7 @@ Those files are under the licences below, with the copyright lines from their he
 ## Chromium: BSD 3-Clause (the Chromium LICENSE file) (chromium-bsd)
 
 - `cc/layers/tile_size_calculator.cc`: Copyright 2019 The Chromium Authors
+- `cc/paint/paint_op_buffer_iterator.cc`: Copyright 2017 The Chromium Authors
 - `cc/trees/layer_tree_settings.cc`: Copyright 2011 The Chromium Authors
 - `third_party/blink/renderer/core/animation/timing_calculations.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/animation/timing.cc`: Copyright 2014 The Chromium Authors
@@ -77,11 +78,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Skia: BSD 3-Clause (the Skia LICENSE file) (skia-bsd)
 
+- `third_party/skia/include/core/SkPaint.h`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/base/SkTSort.h`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkAnalyticEdge.cpp`: Copyright 2006 The Android Open Source Project
+- `third_party/skia/src/core/SkBlitRow_D32.cpp`: Copyright 2011 Google Inc.
 - `third_party/skia/src/core/SkBlitter_A8.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkBlurMask.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkBlurMaskFilterImpl.cpp`: Copyright 2006 The Android Open Source Project
+- `third_party/skia/src/core/SkColorData.h`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkDraw.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkEdgeBuilder.cpp`: Copyright 2011 Google Inc.
 - `third_party/skia/src/core/SkFont.cpp`: Copyright 2014 Google Inc.
@@ -95,6 +99,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/core/SkScan_AntiPath.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkStrikeSpec.cpp`: Copyright 2019 The Android Open Source Project
 - `third_party/skia/src/core/SkStroke.cpp`: Copyright 2008 The Android Open Source Project
+- `third_party/skia/src/opts/SkBlitRow_opts.h`: Copyright 2015 Google Inc.
 - `third_party/skia/src/opts/SkRasterPipeline_opts.h`: Copyright 2018 Google Inc.
 - `third_party/skia/src/ports/SkScalerContext_mac_ct.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/shaders/gradients/SkGradientBaseShader.cpp`: Copyright 2022 Google LLC

@@ -100,6 +100,12 @@ function crispSide(ops: readonly BorderOp[], x: number, y: number): number | nul
 const writeOf = <K extends ProgramWrite['kind']>(p: NativeProgram, id: string, kind: K): (ProgramWrite & { kind: K }) | undefined =>
   p.nodes.find((n) => n.id === id)?.writes.find((w) => w.kind === kind) as (ProgramWrite & { kind: K }) | undefined;
 
+/** Whether the node or one of its ancestors has an opacity write (an opacity below 1). */
+function inOpacityGroup(p: NativeProgram, id: string): boolean {
+  for (let at: string | null = id; at !== null; at = p.nodes.find((n) => n.id === at)?.parent ?? null) if (writeOf(p, at, 'opacity') !== undefined) return true;
+  return false;
+}
+
 /** The opaque background under a box's border: its own background colour or the nearest ancestor's, else the white canvas. */
 function backgroundOf(p: NativeProgram, id: string): number[] {
   for (let at: string | null = id; at !== null; at = p.nodes.find((n) => n.id === at)?.parent ?? null) {
@@ -271,6 +277,9 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     // A rounded box is drawn by PNT1's rounded border painter, never by the side painter this file judges (paint-dash.ts models no
     // radii); the radius oracle compares those borders.
     if (writeOf(p, n.id, 'border-radius') !== undefined) continue;
+    // A border inside an opacity group (an opacity write on the box or an ancestor) is composited with the group's alpha, which this
+    // reference does not model; pnt1-effects.test compares those pixels against Chrome.
+    if (inOpacityGroup(p, n.id)) continue;
     if (mode.preT116 && !st.styles.some((s, k) => (s === 'dashed' || s === 'dotted') && (w[k] as number) > 0 && co.colors[k]?.alpha !== 0)) continue;
     boxes++;
     const ops = borderPaintOps(b.left, b.top, b.right, b.bottom, w, st.styles, colors, faults);
