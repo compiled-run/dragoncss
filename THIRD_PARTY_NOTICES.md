@@ -24,9 +24,12 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/line_flexer.cc`: Copyright 2024 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/fragment_item.cc`: Copyright 2019 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/inline_items_builder.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/logical_line_builder.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/length_utils.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/physical_box_fragment.h`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/text_decoration_offset.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/paint/box_border_painter.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/core/paint/contoured_border_geometry.cc`: Copyright 2020 The Chromium Authors
