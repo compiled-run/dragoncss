@@ -39,7 +39,7 @@ const body = (css: string): string => css.split('\n').slice(1).join('\n');
 describe('REPL-a identity: every case that predates the replaced package is unchanged', () => {
   it('covers every earlier layout fixture in each of its environments', () => {
     expect(earlier.length).toBeGreaterThan(200);
-    expect(FIXTURES.filter((f) => f.kind === 'layout' && replacedIds.has(f.id)).length).toBe(5);
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && replacedIds.has(f.id)).length).toBe(6);
   });
 
   it('resolves object-fit and object-position to their initial values, from no declaration, on every element', () => {

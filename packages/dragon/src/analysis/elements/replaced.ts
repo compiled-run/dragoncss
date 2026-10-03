@@ -62,3 +62,55 @@ export function presentationalHints(tag: string, attributes: ReadonlyMap<string,
   if (tag === 'img' && w !== null && h !== null && w.kind === 'length' && h.kind === 'length') out.set('aspect-ratio', { kind: 'ratio', auto: true, width: w.value, height: h.value });
   return out;
 }
+
+// RFC 3986 §3: an absolute https URI. The host is a DNS name (letters, digits, - and _ in dot-separated labels) or an IPv6
+// literal in brackets, the only place brackets appear; a port is 0-65535; a % always starts a two-hex-digit escape (Foundation
+// and Android read a malformed one differently); a fragment holds no second #.
+const PCT = '%[0-9A-Fa-f]{2}';
+const UNRESERVED_SUB = "A-Za-z0-9\\-._~!$&'()*+,;=";
+const PCHAR = `(?:[${UNRESERVED_SUB}:@]|${PCT})`;
+const USERINFO = `(?:[${UNRESERVED_SUB}:]|${PCT})*`;
+const HTTPS_URI = new RegExp(`^https://(?:${USERINFO}@)?(?:\\[([0-9A-Fa-f:.]+)\\]|[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]+)*\\.?)(?::([0-9]{1,5}))?(?:/${PCHAR}*)*(?:\\?(?:${PCHAR}|[/?])*)?(?:#(?:${PCHAR}|[/?])*)?$`, 'i');
+
+/** RFC 3986 §3.2.2 IPv6address: eight 16-bit hex groups, or fewer around one ::, the last two optionally a dotted IPv4. */
+function isIpv6(text: string): boolean {
+  const v4 = /^(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+  let groups = 8;
+  let body = text;
+  const tail = body.lastIndexOf(':');
+  if (body.includes('.')) {
+    if (!v4.test(body.slice(tail + 1))) return false;
+    body = `${body.slice(0, tail + 1)}0:0`;
+  }
+  const halves = body.split('::');
+  if (halves.length > 2) return false;
+  const parts = (h: string): string[] | null => (h === '' ? [] : h.split(':').every((g) => /^[0-9A-Fa-f]{1,4}$/.test(g)) ? h.split(':') : null);
+  const left = parts(halves[0] as string);
+  const right = halves.length === 2 ? parts(halves[1] as string) : [];
+  if (left === null || right === null) return false;
+  const count = left.length + right.length;
+  return halves.length === 2 ? count < groups : count === groups;
+}
+
+/**
+ * An iframe src as the URL its web view loads (HTML strips leading and trailing ASCII white space), or null when it is not an
+ * absolute https URI with a valid host and port. Plain http is refused: App Transport Security on iOS and the cleartext default
+ * on Android (API 28+) block it in an app build.
+ */
+export function iframeSrcUrl(text: string): string | null {
+  const t = text.replace(/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, '');
+  const m = HTTPS_URI.exec(t);
+  if (m === null) return null;
+  if (m[1] !== undefined && !isIpv6(m[1])) return null;
+  if (m[2] !== undefined && Number(m[2]) > 65535) return null;
+  return t;
+}
+
+/**
+ * Why an iframe src cannot compile, or null (R9: the slot's web view loads src). Native code has no document URL to resolve a
+ * relative src against, and a normal app build loads only https documents, so the src must be an absolute https URL.
+ */
+export function iframeSrcRefusal(tag: string, name: string, text: string): string | null {
+  if (tag !== 'iframe' || name !== 'src' || iframeSrcUrl(text) !== null) return null;
+  return 'a native web view loads only a well-formed absolute https URL (RFC 3986; it has no document URL to resolve a relative one against, and an app build blocks plain http)';
+}

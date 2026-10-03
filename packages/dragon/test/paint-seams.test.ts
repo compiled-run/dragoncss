@@ -29,13 +29,14 @@ import type { AnyLowering } from '../src/lower/paint/registry.ts';
 import { checkPaintLowerings, PAINT_LOWERINGS } from '../src/lower/paint/registry.ts';
 import type { PaintLowering } from '../src/lower/paint/types.ts';
 import { PAINT_MODULE_NAMES } from '../src/lower/paint/types.ts';
-import { createProjectWith, nativePrograms, NO_FAULTS, VOCABULARY, WRITE_CSS } from '../src/internal.ts';
-import { div, inputFor, text } from './helpers.ts';
+import type { ElementNode } from '../src/internal.ts';
+import { createProjectWith, emitAndroidViewsCases, emitUikitCases, nativePrograms, NO_FAULTS, VOCABULARY, WRITE_CSS } from '../src/internal.ts';
+import { always, div, inputFor, text } from './helpers.ts';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const CSS = 'body { margin: 0; font-family: Ahem; font-size: 10px; } .a { padding: 3px; border: 2px dashed red; background-color: #3366ff; overflow: hidden; }';
 const input = inputFor(CSS, (r) => [div(r, 'a', ['a'], [text(r, 't', 'AB'), div(r, 'b', [])])]);
-const STUBS = PAINT_MODULE_NAMES.filter((n) => n !== 'background' && n !== 'border' && n !== 'clip');
+const STUBS = PAINT_MODULE_NAMES.filter((n) => n !== 'background' && n !== 'border' && n !== 'clip' && n !== 'image' && n !== 'foreign-view');
 
 function programs() {
   const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
@@ -51,8 +52,9 @@ describe('EMS: the paint registries', () => {
     expect(PAINT_EMITTERS.map((m) => m.name)).toEqual([...PAINT_MODULE_NAMES]);
     expect(PAINT_VALUES.map((m) => m.name)).toEqual([...PAINT_MODULE_NAMES]);
   });
-  it('the paint write kinds are the background, border and clip modules\' and every one has a vocabulary entry on both backends', () => {
-    expect(PAINT_EMITTERS.flatMap((m) => m.kinds)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip']);
+  it('the paint write kinds are the background, border, clip, image and foreign-view modules\' and every one has a vocabulary entry on both backends', () => {
+    // REPL-a fills the image and foreign-view modules.
+    expect(PAINT_EMITTERS.flatMap((m) => m.kinds)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'replaced-image', 'foreign-view']);
     for (const m of PAINT_LOWERINGS) {
       for (const k of Object.keys(m.css)) {
         expect(isPaintKind(k), k).toBe(true);
@@ -60,7 +62,7 @@ describe('EMS: the paint registries', () => {
         for (const b of ['uikit', 'android-views'] as const) expect(VOCABULARY[b][k as keyof (typeof VOCABULARY)['uikit']]).toEqual((m.vocabulary[b] as Record<string, unknown>)[k]);
       }
     }
-    expect(Object.keys(VOCABULARY.uikit)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'font', 'text-color']);
+    expect(Object.keys(VOCABULARY.uikit)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'replaced-image', 'foreign-view', 'font', 'text-color']);
     expect(isPaintKind('font')).toBe(false);
     expect(isPaintKind('text-color')).toBe(false);
   });
@@ -83,8 +85,9 @@ describe('EMS: the paint registries', () => {
       expect(PAINT_LOWERINGS.find((m) => m.name === name)?.css, name).toEqual({});
     }
     // The border module (P6a) declares the two dash plants; every stub declares none.
-    expect(paintPlants().map((p) => p.name)).toEqual(['dash-phase-1', 'dash-gap-unfitted']);
-    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted']);
+    // REPL-a: the image module's raster plant moves every image 1 device px right.
+    expect(paintPlants().map((p) => p.name)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'image-offset-1']);
+    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted', 'image-offset-1']);
   });
 });
 
@@ -115,8 +118,8 @@ describe('EMS: programs', () => {
 
 describe('EMS: native support', () => {
   it('emits the stages file and one file per paint module with native code, under Support/Paint and views/paint', () => {
-    expect(SUPPORT_FILES.uikit).toEqual(['Support/DragonChecked.swift', 'Support/DragonFontTables.swift', 'Support/DragonViews.swift', 'Support/DragonBridge.swift', 'Support/DragonTree.swift', 'Support/DragonPaintStages.swift', 'Support/Paint/DragonPaintBackground.swift', 'Support/Paint/DragonPaintBorder.swift', 'Support/Paint/DragonPaintClip.swift', 'Support/DragonClock.swift', 'Support/DragonState.swift']);
-    expect(SUPPORT_FILES['android-views']).toEqual(['kotlin/dev/dragon/views/DragonChecked.kt', 'kotlin/dev/dragon/views/DragonFontTables.kt', 'kotlin/dev/dragon/views/DragonViews.kt', 'kotlin/dev/dragon/views/DragonBridge.kt', 'kotlin/dev/dragon/views/DragonTree.kt', 'kotlin/dev/dragon/views/DragonPaintStages.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBackground.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBorder.kt', 'kotlin/dev/dragon/views/paint/DragonPaintClip.kt', 'kotlin/dev/dragon/views/DragonClock.kt', 'kotlin/dev/dragon/views/DragonState.kt']);
+    expect(SUPPORT_FILES.uikit).toEqual(['Support/DragonChecked.swift', 'Support/DragonFontTables.swift', 'Support/DragonViews.swift', 'Support/DragonBridge.swift', 'Support/DragonTree.swift', 'Support/DragonPaintStages.swift', 'Support/Paint/DragonPaintBackground.swift', 'Support/Paint/DragonPaintBorder.swift', 'Support/Paint/DragonPaintClip.swift', 'Support/Paint/DragonPaintImage.swift', 'Support/Paint/DragonPaintForeignView.swift', 'Support/DragonClock.swift', 'Support/DragonState.swift']);
+    expect(SUPPORT_FILES['android-views']).toEqual(['kotlin/dev/dragon/views/DragonChecked.kt', 'kotlin/dev/dragon/views/DragonFontTables.kt', 'kotlin/dev/dragon/views/DragonViews.kt', 'kotlin/dev/dragon/views/DragonBridge.kt', 'kotlin/dev/dragon/views/DragonTree.kt', 'kotlin/dev/dragon/views/DragonPaintStages.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBackground.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBorder.kt', 'kotlin/dev/dragon/views/paint/DragonPaintClip.kt', 'kotlin/dev/dragon/views/paint/DragonPaintImage.kt', 'kotlin/dev/dragon/views/paint/DragonPaintForeignView.kt', 'kotlin/dev/dragon/views/DragonClock.kt', 'kotlin/dev/dragon/views/DragonState.kt']);
     for (const f of emitNativeSupport('android-views')) expect(f.text, f.path).toContain('\npackage dev.dragon.views\n');
   });
   it('applies a support plant only when its source text occurs exactly once across the support files', () => {
@@ -133,7 +136,8 @@ describe('EMS: native support', () => {
       const text = emitNativeSupport(b).find((f) => f.path === file)?.text ?? '';
       const body = text.slice(text.indexOf('dragonPaintBox('), text.indexOf('Registration point (EMS): after every layout'));
       expect(body.match(/\/\/ [a-z-]+/g)).toEqual(PAINT_STAGES.map((s) => `// ${s}`));
-      expect(stagePainters(b, 'border')).toEqual(['dragonPaintBorderStage']);
+      // REPL-a: the image stage paints after the border, in registry order (CSS2 Appendix E: replaced content after the border).
+      expect(stagePainters(b, 'border')).toEqual(['dragonPaintBorderStage', 'dragonPaintImageStage']);
       expect(body).toContain(`dragonPaintBorderStage(${args})`);
       expect(text.indexOf('dragonAfterLayoutBorder(v, shape, scale)')).toBeLessThan(text.indexOf('dragonAfterLayoutClip(v, shape, scale)'));
       const applied = ['dragonAppliedBackground', 'dragonAppliedBorder', 'dragonAppliedClip'].map((f) => text.indexOf(`${f}(v)`));
@@ -141,7 +145,7 @@ describe('EMS: native support', () => {
       expect([...applied].sort((x, y) => x - y)).toEqual(applied);
       expect(text).toMatch(b === 'uikit' ? /return nil\n}/ : /: Path\? = null\n/);
     }
-    expect(nativePaints('uikit').filter((m) => m.native.file !== null).map((m) => m.stem)).toEqual(['DragonPaintBackground', 'DragonPaintBorder', 'DragonPaintClip']);
+    expect(nativePaints('uikit').filter((m) => m.native.file !== null).map((m) => m.stem)).toEqual(['DragonPaintBackground', 'DragonPaintBorder', 'DragonPaintClip', 'DragonPaintImage', 'DragonPaintForeignView']);
   });
   it('keeps the case code on the modules\' public writers, which repaint when a runtime write changes them', () => {
     const swift = emitNativeSupport('uikit').map((f) => f.text).join('\n');
@@ -183,5 +187,71 @@ describe('EMS: CSS families and paint values', () => {
     expect([...props.entries()].map(([k, x]) => [k, x.value])).toEqual([['font-size', { kind: 'length', value: 10, unit: 'px' }], ['width', { kind: 'length', value: 20, unit: 'px' }]]);
     // SIZE-ar's aspect-ratio and REPL-a's object-fit and object-position are longhands.
     expect((LONGHANDS as readonly string[]).length).toBe(71);
+  });
+});
+
+describe('REPL-a foreign view: the iframe src literal (author input in emitted Swift and Kotlin)', () => {
+  it('escapes exactly as native-support.ts stringLit does, on quotes, backslashes, $, controls, non-ASCII and astral characters', async () => {
+    const { srcLit } = await import('../src/emit/paint/foreign-view.ts');
+    const { stringLit } = await import('../src/emit/native-support.ts');
+    const srcs = ['https://example.com/a?b=1&c=2', 'a"b', 'a\\b', '${x}', '\\(x)', 'tab\there', 'nl\nhere', '\u0000\u007f', 'café', ' ', 'emoji 😀', ''];
+    for (const s of srcs) {
+      expect(srcLit(s, 'uikit'), s).toBe(stringLit('swift', s));
+      expect(srcLit(s, 'android-views'), s).toBe(stringLit('kotlin', s));
+    }
+    expect(srcLit('a"b\\$', 'android-views')).toBe('"a\\"b\\\\\\$"');
+    expect(srcLit(null, 'uikit')).toBe('nil');
+    expect(srcLit(null, 'android-views')).toBe('null');
+  });
+});
+
+describe('REPL-a foreign view: a production build loads the iframe src (R9)', () => {
+  // A src with a $ (a Kotlin template character) and & and ?, padded with white space that HTML strips.
+  const SRC = 'https://example.com/embed/x?autoplay=1&t=$1';
+  const iframeInput = inputFor('body { margin: 0; } .v { display: block; width: 320px; height: 180px; border: 0; }', (r) => {
+    const el = div(r, 'v', ['v']);
+    return [{ ...el, tag: 'iframe', attributes: [{ name: 'src', value: [{ when: always, value: ` ${SRC}\n` }], origin: el.origin }] } as ElementNode];
+  });
+  const compiled = () => {
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(iframeInput);
+    expect(c.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    return p.programs;
+  };
+  /** The body of a top-level Swift or Kotlin function in an emitted file, from its signature to the closing brace in column 0. */
+  const body = (text: string, signature: string): string => {
+    const at = text.indexOf(signature);
+    expect(at, signature).toBeGreaterThan(-1);
+    return text.slice(at, text.indexOf('\n}\n', at));
+  };
+
+  it('lowers the src, passes it to dragonSetForeignView, and the shipped support loads it: only a lane host clears the flag', () => {
+    const p = compiled();
+    const one = { id: 'iframe', fixture: 'iframe', direction: 'ltr' as const, compilerDigest: 'd', viewport: { width: 400, height: 300 }, expectedDigests: [] };
+    for (const b of ['uikit', 'android-views'] as const) {
+      expect(p[b].nodes.find((n) => n.id === 'v')?.writes.find((w) => w.kind === 'foreign-view'), b).toMatchObject({ src: SRC });
+    }
+    const swiftCase = emitUikitCases([{ ...one, program: p.uikit }]).map((f) => f.text).join('\n');
+    const kotlinCase = emitAndroidViewsCases([{ ...one, program: p['android-views'] }]).map((f) => f.text).join('\n');
+    expect(swiftCase).toMatch(/dragonSetForeignView\(v\d+, src: "https:\/\/example\.com\/embed\/x\?autoplay=1&t=\$1"\)/);
+    expect(kotlinCase).toMatch(/dragonSetForeignView\(v\d+, "https:\/\/example\.com\/embed\/x\?autoplay=1&t=\\\$1"\)/);
+    // The support files are what a ready native output ships (project.ts nativeOutputState); none of them, and no case file,
+    // clears the flag, so the web view loads the src it was given.
+    const swift = emitNativeSupport('uikit').map((f) => f.text).join('\n');
+    const kotlin = emitNativeSupport('android-views').map((f) => f.text).join('\n');
+    for (const [name, t] of [['swift', swift], ['kotlin', kotlin], ['swift cases', swiftCase], ['kotlin cases', kotlinCase]] as const) {
+      expect(t.match(/dragonForeignViewLoadsSrc\s*=/g)?.length ?? 0, name).toBe(name.endsWith('cases') ? 0 : 1);
+    }
+    expect(swift).toContain('\npublic var dragonForeignViewLoadsSrc = true\n');
+    expect(kotlin).toContain('\nvar dragonForeignViewLoadsSrc = true\n');
+    const swiftSet = body(swift, 'public func dragonSetForeignView(_ v: DragonBoxView, src: String?) {');
+    expect(swiftSet).toContain('let target = dragonForeignViewLoadsSrc ? src : nil');
+    expect(swiftSet).toContain('guard let url = URL(string: target ?? "about:blank")');
+    expect(swiftSet.match(/\.load\(/g)).toEqual(['.load(']);
+    expect(swiftSet).toContain('web.load(URLRequest(url: url))');
+    const kotlinSet = body(kotlin, 'fun dragonSetForeignView(v: DragonBoxView, src: String?) {');
+    expect(kotlinSet.match(/\.load[A-Za-z]*\(/g)).toEqual(['.loadUrl(']);
+    expect(kotlinSet).toContain('web.loadUrl(if (dragonForeignViewLoadsSrc && src != null) src else "about:blank")');
   });
 });

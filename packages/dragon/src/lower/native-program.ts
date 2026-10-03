@@ -118,7 +118,7 @@ type NodePaint = {
   readonly facts: Readonly<Record<string, unknown>>;
 };
 
-function sharedPaint(root: LayoutBox, resolved: ResolvedElement): NodePaint[] {
+function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>): NodePaint[] {
   const elements = new Map<string, ResolvedElement>();
   const texts = new Map<string, ResolvedText>();
   const walk = (el: ResolvedElement): void => {
@@ -136,7 +136,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement): NodePaint[] {
     if (!anonymous && el === null) throw new ProgramError(`${b.id}: no resolved element for the layout box`);
     const own = el === null ? enclosingColor : usedColors(el).color;
     const facts: Record<string, unknown> = {};
-    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts });
+    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images });
     out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: clipsChildren(b), text: null, writes, facts });
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
     if (b.kind === 'replaced') return;
@@ -183,8 +183,8 @@ function toBackend(backend: NativeBackend, root: LayoutBox, rootFontSize: number
 }
 
 /** Both backends' programs of one case, from one shared layout tree and one paint lowering. */
-export function lowerNativePrograms(root: LayoutBox, resolved: ResolvedElement): { readonly [B in NativeBackend]: NativeProgram } {
-  const paint = sharedPaint(root, resolved);
+export function lowerNativePrograms(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>): { readonly [B in NativeBackend]: NativeProgram } {
+  const paint = sharedPaint(root, resolved, images);
   const rootFontSize = rootFontSizeOf(resolved);
   return { uikit: toBackend('uikit', root, rootFontSize, paint), 'android-views': toBackend('android-views', root, rootFontSize, paint) };
 }

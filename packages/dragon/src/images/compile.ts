@@ -4,7 +4,7 @@
 import type { ResolvedElement } from '../analysis/resolve.ts';
 import { diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Origin } from '../types.ts';
-import { buildImageManifest, manifestDigestInput } from './manifest.ts';
+import { buildImageManifest, manifestDigestInput, resolveImageSource } from './manifest.ts';
 import type { ImageAssetMap, ImageEntry } from './manifest.ts';
 import type { NaturalSize } from './natural-size.ts';
 
@@ -20,6 +20,8 @@ export type ImageNaturals = ReadonlyMap<string, NaturalSize>;
 
 export type CompiledImages = {
   readonly naturals: ImageNaturals;
+  /** The bytes of each drawable image src, which the native image paint embeds (lower/paint/image.ts). */
+  readonly bytes: ReadonlyMap<string, Uint8Array>;
   /** The value the compilation digest takes under images, or null when the project has no images and no images option. */
   readonly digestInput: unknown;
 };
@@ -74,6 +76,7 @@ export function compileImages(roots: readonly ResolvedElement[], images: ImageAs
     diagnostics.push(diagnostic(code, { origin: attributeOrigin(u.el, 'src'), message, ...(manual === undefined ? {} : { manual }) }));
   };
   const naturals = new Map<string, NaturalSize>();
+  const bytes = new Map<string, Uint8Array>();
   for (const u of uses) {
     const where = `<img> ${u.el.element.address}`;
     if (u.src === null) {
@@ -96,8 +99,28 @@ export function compileImages(roots: readonly ResolvedElement[], images: ImageAs
     }
     if (e.naturalSize === null) throw new Error(`${where}: an accepted image has no natural size`);
     naturals.set(u.src, e.naturalSize);
+    const resolved = resolveImageSource(u.src, usable, read);
+    if (resolved.kind !== 'data' && resolved.kind !== 'mapped') throw new Error(`${where}: an accepted src no longer resolves`);
+    bytes.set(u.src, resolved.bytes);
   }
   const used = [...entries.values()].sort((a, b) => (a.src < b.src ? -1 : a.src > b.src ? 1 : 0));
   const digestInput = used.length === 0 && images === undefined ? null : { map: Object.fromEntries(Object.entries(map).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))), manifest: manifestDigestInput({ version: 1, images: used }) };
-  return { naturals, digestInput };
+  return { naturals, bytes, digestInput };
+}
+
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+/** RFC 4648 base64 with padding, for the image bytes the native case code embeds. */
+export function base64Encode(bytes: Uint8Array): string {
+  let out = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const a = bytes[i] as number;
+    const b = i + 1 < bytes.length ? (bytes[i + 1] as number) : 0;
+    const c = i + 2 < bytes.length ? (bytes[i + 2] as number) : 0;
+    const n = (a << 16) | (b << 8) | c;
+    out += (B64[(n >> 18) & 63] as string) + (B64[(n >> 12) & 63] as string);
+    out += i + 1 < bytes.length ? (B64[(n >> 6) & 63] as string) : '=';
+    out += i + 2 < bytes.length ? (B64[n & 63] as string) : '=';
+  }
+  return out;
 }

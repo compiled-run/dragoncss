@@ -26,17 +26,14 @@ export const NEUTRAL_ATTRIBUTES: readonly NeutralAttribute[] = [
 ];
 
 /**
- * Attributes a replaced element renders, which REPL-a handles (HTML §4.8.3, §4.8.5, §15.4.5): an img src gives the image bytes,
- * width and height are presentational hints (analysis/elements/replaced.ts), and alt renders nothing for an image that decodes,
- * which every accepted image does. An iframe src is the web view's document, which Phase B's foreign view loads; until then it
- * is refused (IFRAME_SRC_OWNER), not dropped.
+ * Attributes a replaced element renders, which REPL-a handles (HTML §4.8.3, §4.8.5, §15.4.5): src gives the image bytes or the
+ * document the iframe's web view loads (an absolute https URL, analysis/elements/replaced.ts iframeSrcRefusal), width and
+ * height are presentational hints, and alt renders nothing for an image that decodes, which every accepted image does.
  */
 export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } = {
   img: ['src', 'alt', 'width', 'height'],
-  iframe: ['width', 'height'],
+  iframe: ['src', 'width', 'height'],
 };
-
-const IFRAME_SRC_OWNER = 'REPL-a Phase B (the iframe web view loads src; Phase A lays out an empty slot)';
 
 /** The package that owns the rendering effect of a refused attribute. */
 const OWNERS: Readonly<Record<string, string>> = {
@@ -68,7 +65,6 @@ export function neutralAttribute(tag: string, name: string): NeutralAttribute | 
 export function attributeRefusal(tag: string, name: string): string | null {
   if (neutralAttribute(tag, name) !== undefined) return null;
   if (Object.hasOwn(HANDLED_ATTRIBUTES, tag) && (HANDLED_ATTRIBUTES[tag] as readonly string[]).includes(name)) return null;
-  if (tag === 'iframe' && name === 'src') return `its rendering effect belongs to ${IFRAME_SRC_OWNER}`;
   const owner = (Object.hasOwn(OWNERS, name) ? OWNERS[name] : undefined) ?? ((name === 'rel' || name === 'target') ? 'the inline and link package INL1 (on a hyperlink it changes link behaviour)' : null);
   return owner === null
     ? 'its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)'

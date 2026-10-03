@@ -8,7 +8,8 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpat
 import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
 import type { LayoutInput, LayoutRect } from '@dragon/layout';
-import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, resolveBorder, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import type { LU } from '@dragon/layout';
+import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, replacedPaint, resolveBorder, resolvePadding, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
@@ -86,7 +87,7 @@ export function referenceMeasurer() {
 
 /** The TS engine the expected dumps are projected with: the helpers the device runs translated, and the float a platform stores. */
 export function expectedEngine(): ExpectedEngine {
-  return { layout, measurer: referenceMeasurer(), snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround };
+  return { layout, measurer: referenceMeasurer(), snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround };
 }
 
 const emitted = new Map<NativeTarget, EmitCase[]>();
@@ -166,6 +167,8 @@ func dragonWrite(_ path: String, _ text: String) {
 /// inside the safe area, and writes one dump per case, the bridge record and the device record into DRAGON_OUT.
 func dragonRun(window: UIWindow, host: UIView) {
   UIView.setAnimationsEnabled(false)
+  // R9: lane and test hosts never load network content; every iframe web view loads about:blank.
+  dragonForeignViewLoadsSrc = false
   let env = ProcessInfo.processInfo.environment
   guard let out = env["DRAGON_OUT"] else { fatalError("dragon host: DRAGON_OUT is not set") }
   // --dragon-cases wins over a run file left in the container by an earlier run.
@@ -305,6 +308,7 @@ import dev.dragon.views.DragonBridge
 import dev.dragon.views.DragonRun
 import dev.dragon.views.DragonStateMount
 import dev.dragon.views.DragonTree
+import dev.dragon.views.dragonForeignViewLoadsSrc
 import dev.dragon.views.dragonReadRun
 import dev.dragon.views.dragonSamples
 import java.io.File
@@ -327,6 +331,8 @@ class DragonActivity : Activity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    // R9: lane and test hosts never load network content; every iframe web view loads about:blank.
+    dragonForeignViewLoadsSrc = false
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     frame.setBackgroundColor(0xffffffff.toInt())
     frame.setOnApplyWindowInsetsListener { v, insets ->

@@ -2,7 +2,7 @@
 // Every reachable assignment is resolved, checked and lowered as its own case; nothing is deduplicated (docs/api.md §7).
 import type { LayoutBox } from '@dragon/layout';
 import { attributeRefusal } from './attributes.ts';
-import { dimensionRefusal } from './analysis/elements/replaced.ts';
+import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
 import type { CompiledImages } from './images/compile.ts';
 import type { ImageAssetMap } from './images/manifest.ts';
@@ -157,6 +157,8 @@ export type InternalRecord = {
   readonly linked: Linked | null;
   /** The font context font-family feature keys were resolved against. */
   readonly fonts: FamilyKeyContext;
+  /** REPL-a: the bytes of every drawable image src, for the native image paint. */
+  readonly images: ReadonlyMap<string, Uint8Array>;
 };
 
 const records = new WeakMap<object, InternalRecord>();
@@ -277,8 +279,11 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
           diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${refusal}`, manual: 'Remove the attribute, or keep only rendering-neutral attributes (id, data-*, aria-*, role, title, ui-*); select state with a class or an attribute.' }));
         }
         for (const c of a.value) {
-          const bad = c.value === null ? null : dimensionRefusal(n.tag, a.name, c.value);
-          if (bad !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${bad}`, manual: 'Give the attribute a width or height in CSS px, or set the size in CSS.' }));
+          if (c.value === null) continue;
+          const dimension = dimensionRefusal(n.tag, a.name, c.value);
+          if (dimension !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${dimension}`, manual: 'Give the attribute a width or height in CSS px, or set the size in CSS.' }));
+          const src = iframeSrcRefusal(n.tag, a.name, c.value);
+          if (src !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${src}`, manual: 'Give the iframe an absolute https URL.' }));
         }
       }
       checkTemplates(n.children, diagnostics);
@@ -958,6 +963,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       profiles: { web: profiles.web, ios: profiles.ios, android: profileFor(profiles, 'android') },
       linked,
       fonts: fonts === null ? NO_FONTS : fonts.keys,
+      images: images === null ? new Map() : images.bytes,
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,

@@ -45,6 +45,34 @@ class FlexItemSpace(
   val fixedBlock: Double?,
 )
 
+// ts: packages/layout/src/replaced.ts:356
+class ObjectRect(
+  val x: Double,
+  val y: Double,
+  val width: Double,
+  val height: Double,
+)
+
+// ts: packages/layout/src/replaced.ts:359
+class ObjectPosition(
+  val x: U_LengthCalc_Percent_Px,
+  val y: U_LengthCalc_Percent_Px,
+)
+
+// ts: packages/layout/src/replaced.ts:362
+class ObjectSize(
+  val width: Double,
+  val height: Double,
+)
+
+// ts: packages/layout/src/replaced.ts:416
+class PixelRect(
+  val x: Double,
+  val y: Double,
+  val width: Double,
+  val height: Double,
+)
+
 // ts: packages/layout/src/replaced.ts:54
 fun replaced_replacedAspectRatio(s: LayoutStyle, natural: NaturalSizing): LayoutRatio? {
   val r: U_AspectRatioValue_autoRatio_AspectRatioValue_ratio_Auto = s.aspectRatio
@@ -355,4 +383,107 @@ fun replaced_replacedContribution(ctx: Ctx, leaf: ReplacedLeaf, kind: String): D
     return bp.inline
   }
   return box_borderBoxFromSpecified(box_resolveLength((s.minWidth as U_LengthCalc_Percent_Px), units_ZERO, ctx.faults), bp.inline, s.boxSizing)
+}
+
+// ts: packages/layout/src/replaced.ts:365
+fun replaced_fitToRatio(width: Double, height: Double, ratio: LayoutRatio, grow: Boolean): ObjectSize {
+  val constrainedHeight: Double = units_mulDiv(width, ratio.height, ratio.width)
+  // ts: packages/layout/src/replaced.ts:367
+  if (((grow && (constrainedHeight < height)) || ((!grow) && (constrainedHeight > height)))) {
+    return ObjectSize(units_mulDiv(height, ratio.width, ratio.height), height)
+  }
+  return ObjectSize(width, constrainedHeight)
+}
+
+// ts: packages/layout/src/replaced.ts:377
+fun replaced_concreteObjectSize(content: ObjectRect, natural: NaturalSizing, fit: String): ObjectSize? {
+  val sized: Boolean = ((((natural.width != null) && (natural.height != null)) && (jsUnwrap(natural.width) > 0.0)) && (jsUnwrap(natural.height) > 0.0))
+  // ts: packages/layout/src/replaced.ts:379
+  if (((!sized) && (natural.ratio == null))) {
+    return null
+  }
+  val box: ObjectSize = ObjectSize(content.width, content.height)
+  val ratio: LayoutRatio? = natural.ratio
+  // ts: packages/layout/src/replaced.ts:382
+  fun contain(): ObjectSize {
+    return (if ((ratio == null)) box else replaced_fitToRatio(box.width, box.height, jsUnwrap(ratio), false))
+  }
+  // ts: packages/layout/src/replaced.ts:383
+  fun naturalSize(): ObjectSize {
+    return (if (sized) ObjectSize(jsUnwrap(natural.width), jsUnwrap(natural.height)) else contain())
+  }
+  // ts: packages/layout/src/replaced.ts:384
+  when (fit) {
+    "fill" -> {
+      return box
+    }
+    "contain" -> {
+      return contain()
+    }
+    "cover" -> {
+      return (if ((ratio == null)) box else replaced_fitToRatio(box.width, box.height, jsUnwrap(ratio), true))
+    }
+    "none" -> {
+      return naturalSize()
+    }
+    "scale-down" -> {
+      val c: ObjectSize = contain()
+      val n: ObjectSize = naturalSize()
+      return (if ((n.width < c.width)) n else c)
+    }
+    else -> {
+    }
+  }
+  jsUnreachable()
+}
+
+// ts: packages/layout/src/replaced.ts:407
+fun replaced_objectFitRect(content: ObjectRect, natural: NaturalSizing, fit: String, position: ObjectPosition, faults: EngineFaults): ObjectRect {
+  val size: ObjectSize? = replaced_concreteObjectSize(content, natural, fit)
+  // ts: packages/layout/src/replaced.ts:409
+  if ((size == null)) {
+    return content
+  }
+  val x: Double = box_resolveLength(position.x, units_sub(content.width, jsUnwrap(size).width), faults)
+  val y: Double = box_resolveLength(position.y, units_sub(content.height, jsUnwrap(size).height), faults)
+  return ObjectRect(units_add(content.x, x), units_add(content.y, y), jsUnwrap(size).width, jsUnwrap(size).height)
+}
+
+// ts: packages/layout/src/replaced.ts:419
+fun replaced_snapSize(size: Double, location: Double): Double {
+  val result: Double = (units_snapEdge(units_add(location, size)) - units_snapEdge(location))
+  // ts: packages/layout/src/replaced.ts:421
+  if (((result == 0.0) && ((size > 4.0) || (size < -4.0)))) {
+    return (if ((size > 0.0)) 1.0 else -1.0)
+  }
+  return result
+}
+
+// ts: packages/layout/src/replaced.ts:426
+fun replaced_pixelSnappedRect(r: ObjectRect): PixelRect {
+  return PixelRect(units_snapEdge(r.x), units_snapEdge(r.y), replaced_snapSize(r.width, r.x), replaced_snapSize(r.height, r.y))
+}
+
+// ts: packages/layout/src/replaced.ts:434
+fun replaced_drawnObjectRect(dest: ObjectRect, content: ObjectRect): PixelRect? {
+  val d: PixelRect = replaced_pixelSnappedRect(dest)
+  // ts: packages/layout/src/replaced.ts:436
+  if (((d.width <= 0.0) || (d.height <= 0.0))) {
+    return null
+  }
+  val inside: Boolean = ((((dest.x >= content.x) && (dest.y >= content.y)) && (units_add(dest.x, dest.width) <= units_add(content.x, content.width))) && (units_add(dest.y, dest.height) <= units_add(content.y, content.height)))
+  // ts: packages/layout/src/replaced.ts:438
+  if (inside) {
+    return d
+  }
+  val c: PixelRect = replaced_pixelSnappedRect(content)
+  val x0: Double = (if ((c.x > d.x)) c.x else d.x)
+  val y0: Double = (if ((c.y > d.y)) c.y else d.y)
+  val x1: Double = (if (((c.x + c.width) < (d.x + d.width))) (c.x + c.width) else (d.x + d.width))
+  val y1: Double = (if (((c.y + c.height) < (d.y + d.height))) (c.y + c.height) else (d.y + d.height))
+  // ts: packages/layout/src/replaced.ts:444
+  if (((x1 <= x0) || (y1 <= y0))) {
+    return null
+  }
+  return PixelRect(x0, y0, (x1 - x0), (y1 - y0))
 }

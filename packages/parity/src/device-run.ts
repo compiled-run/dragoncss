@@ -50,15 +50,17 @@ export type GlyphPlant = 'glyph-offset-1' | 'glyph-offset-y-1';
 /** The paint plants: every support plant that is not a glyph plant. */
 export type PaintPlant = Exclude<SupportPlant, GlyphPlant>;
 export const isGlyphPlant = (p: SupportPlant): p is GlyphPlant => p === 'glyph-offset-1' || p === 'glyph-offset-y-1';
-/** The cases each paint plant runs on: the dash plants (P6a) run on the border-paint fixtures. */
+/** The cases each paint plant runs on: the dash plants (P6a) run on the border-paint fixtures, the image plant (REPL-a) on the replaced fixtures whose images are drawn. */
 export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
+  'image-offset-1': ['replaced-block', 'replaced-fit'],
 };
 /** The sample rules a paint plant's device-pixels failures must name: border bands and edges for the dash plants. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-phase-1': /^(border:|edge:)/,
   'dash-gap-unfitted': /^(border:|edge:)/,
+  'image-offset-1': /^(image-flat:|edge:)/,
 };
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
