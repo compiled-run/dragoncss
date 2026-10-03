@@ -23,6 +23,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/block_node.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/line_flexer.cc`: Copyright 2024 The Chromium Authors
+- `third_party/blink/renderer/core/layout/geometry/writing_mode_converter.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/fragment_item.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
@@ -185,6 +186,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/blink/renderer/core/css/font_face_cache.h`: Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/font_family.cc`: Copyright (C) 2004, 2008 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/platform/graphics/gradient.cc`: Copyright (C) 2006, 2007, 2008, 2010 Apple Inc. All rights reserved.; Copyright (C) 2007 Alp Toker <alp@atoker.com>; Copyright (C) 2013 Google Inc. All rights reserved.
+- `third_party/blink/renderer/platform/wtf/math_extras.h`: Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
 
 ```
 Redistribution and use in source and binary forms, with or without
