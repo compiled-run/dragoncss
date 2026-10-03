@@ -12,7 +12,7 @@ import { NO_ENGINE_FAULTS } from './block.ts';
 import { resolveBorder } from './box.ts';
 import { placeLines } from './inline.ts';
 import { fromRaw } from './units.ts';
-import type { LayoutBox, LayoutInput, TextLeaf } from './input.ts';
+import type { LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
 import type { LayoutRect } from './layout.ts';
 import { absoluteRects, layout, zoomInput } from './layout.ts';
 import { floorOf, roundOf } from './rt-easing.ts';
@@ -368,6 +368,8 @@ type TableState = {
   readonly abs: Map<string, LayoutRect>;
   readonly boxes: readonly LayoutRect[];
   readonly zoomed: Map<string, LayoutBox>;
+  /** The zoomed style of each replaced leaf, by id. */
+  readonly zoomedReplaced: Map<string, LayoutStyle>;
   readonly ctx: EngineCtx;
   readonly facts: ReadonlyMap<string, HitFact>;
   readonly faults: HitTableFaults;
@@ -385,10 +387,11 @@ function zoomedBox(s: TableState, id: string): LayoutBox {
   return b;
 }
 
-function indexZoomed(m: Map<string, LayoutBox>, b: LayoutBox): void {
+function indexZoomed(m: Map<string, LayoutBox>, r: Map<string, LayoutStyle>, b: LayoutBox): void {
   m.set(b.id, b);
   for (const c of b.children) {
-    if (c.kind === 'box') indexZoomed(m, c);
+    if (c.kind === 'box') indexZoomed(m, r, c);
+    else if (c.kind === 'replaced') r.set(c.id, c.style);
   }
 }
 
@@ -406,7 +409,7 @@ function fragmentOrders(s: TableState, container: LayoutBox): Map<string, number
   const flow = row && container.style.direction === 'rtl' ? -1 : 1;
   const inFlow = new Map<string, boolean>();
   for (const c of container.children) {
-    if (c.kind === 'box' && c.style.position !== 'absolute') inFlow.set(c.id, true);
+    if ((c.kind === 'box' || c.kind === 'replaced') && c.style.position !== 'absolute') inFlow.set(c.id, true);
   }
   const lines: LayoutRect[][] = [];
   let lo = 0;
@@ -584,16 +587,40 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe,
   }, b.id, act);
   const leaves: TextLeaf[] = [];
-  const kids: LayoutBox[] = [];
+  let kids = 0;
   for (const c of b.children) {
     if (c.kind === 'text') leaves.push(c);
-    else if (c.kind === 'replaced') throw new HitError(`${c.id} is a replaced element, which the hit table does not model yet`);
-    else kids.push(c);
+    else kids++;
   }
-  if (leaves.length > 0 && kids.length > 0) throw new HitError(`${b.id} mixes text and boxes; the compiler wraps text in anonymous boxes`);
+  if (leaves.length > 0 && kids > 0) throw new HitError(`${b.id} mixes text and boxes; the compiler wraps text in anonymous boxes`);
   if (leaves.length > 0) inlineNodes(s, b, i, own, pe, leaves);
   const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : null;
-  for (const c of kids) boxNodes(s, c, i, childOrders, own, pe);
+  for (const c of b.children) {
+    if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe);
+    else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders);
+  }
+}
+
+/**
+ * A replaced element (img, iframe; REPL-a): a box with no descendants, hit on its border box. Blink hit-tests a block-level
+ * replaced box like any block child (BoxFragmentPainter::HitTestBlockChildren; a flex item is painted atomically), and a point
+ * inside an iframe's content box returns the iframe element itself to the outer document's elementFromPoint.
+ */
+function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Map<string, number> | null): void {
+  const f = s.facts.get(c.id);
+  if (f === undefined) throw new HitError(`no hit facts for replaced element ${c.id}`);
+  const pe = s.faults.pointerEventsNotInherited && f.inherited ? 'auto' : f.pointerEvents;
+  const r = rectOf(s, c.id);
+  const style = s.zoomedReplaced.get(c.id);
+  if (style === undefined) throw new HitError(`no zoomed replaced element ${c.id}`);
+  const border = resolveBorder(style, s.ctx.devicePixelRatio);
+  const order = orders === null ? undefined : orders.get(c.id);
+  pushNode(s, {
+    kind: 'box', parent, target: s.nodes.length, x: r.x, y: r.y, width: r.width, height: r.height, clips: c.style.overflowX === 'hidden',
+    borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: c.style.position !== 'static',
+    absolute: c.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order, line: -1,
+    inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe,
+  }, c.id, f.activation);
 }
 
 /** The hit table of an engine input at its device scale, from the engine's own layout of it and the compiler's hit facts. */
@@ -602,8 +629,9 @@ export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: Re
   if (out.kind !== 'ok') throw new HitError(`the engine refused the input (${out.unsupported.code} at ${out.unsupported.nodeId})`);
   const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
   const zmap = new Map<string, LayoutBox>();
-  indexZoomed(zmap, zoomed.root);
-  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS }, facts, faults };
+  const rmap = new Map<string, LayoutStyle>();
+  indexZoomed(zmap, rmap, zoomed.root);
+  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS }, facts, faults };
   boxNodes(s, input.root, -1, null, -1, 'auto');
   return { nodes: s.nodes, ids: s.ids, activation: s.activation };
 }

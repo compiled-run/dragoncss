@@ -104,17 +104,43 @@ describe('pointer-events and plants', () => {
   });
 });
 
-// REPL-a (master) puts replaced leaves in the layout tree; the hit table has no replaced node yet, so it refuses one by name.
-describe('hitTableOf refuses a replaced element', () => {
-  it('throws HitError naming the replaced leaf instead of treating it as a box', async () => {
+// REPL-a: a replaced leaf (img, iframe) is a hit target on its border box, with no descendants. Blink hit-tests a block-level
+// replaced box like any block child and a flex item atomically; the outer document's elementFromPoint returns the iframe itself.
+describe('hitTableOf hit-tests a replaced element as a childless box', () => {
+  const setup = async (display: 'block' | 'flex', pe: 'auto' | 'none' = 'auto') => {
     const { hitTableOf } = await import('../src/rt-hit.ts');
     const { ahemMeasurer } = await import('../src/index.ts');
     const { box, divStyle, neutralEnvironment, px } = await import('./helpers.ts');
-    const img = { kind: 'replaced', id: 'img', style: { ...divStyle, display: 'block' }, natural: { kind: 'image', width: 20, height: 10 }, defaultWidth: 300, defaultHeight: 150, objectFit: 'fill', objectPositionX: px(0), objectPositionY: px(0) } as const;
-    const root = { ...box('html', { width: px(100) }), children: [img] } as unknown as Parameters<typeof hitTableOf>[0]['root'];
+    const leaf = (id: string, w: number) => ({ kind: 'replaced', id, style: { ...divStyle, display: 'block', width: px(w), height: px(10), borderTopWidth: px(2), borderTopStyle: 'solid' }, natural: { kind: 'image', width: 20, height: 10 }, defaultWidth: 300, defaultHeight: 150, objectFit: 'fill', objectPositionX: px(0), objectPositionY: px(0) }) as const;
+    const parent = { ...box('p', { display, width: px(100) }), children: [leaf('a', 40), box('d', { width: px(30), height: px(10) }), leaf('b', 20)] };
+    const root = { ...box('html', { width: px(100) }), children: [parent] } as unknown as Parameters<typeof hitTableOf>[0]['root'];
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
-    const facts = new Map([['html', { pointerEvents: 'auto', inherited: true, activation: false }], ['img', { pointerEvents: 'auto', inherited: true, activation: false }]]) as unknown as Parameters<typeof hitTableOf>[2];
-    expect(() => hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS)).toThrow(new HitError('img is a replaced element, which the hit table does not model yet'));
+    const fact = (p: 'auto' | 'none', inherited: boolean) => ({ pointerEvents: p, inherited, activation: false });
+    const facts = new Map([['html', fact('auto', true)], ['p', fact('auto', true)], ['a', fact(pe, false)], ['d', fact('auto', true)], ['b', fact('auto', true)]]) as unknown as Parameters<typeof hitTableOf>[2];
+    return hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+  };
+
+  it('lists each replaced leaf in tree order as its own target, with its border, and answers points inside it', async () => {
+    const { hitTest } = await import('../src/rt-hit.ts');
+    for (const display of ['block', 'flex'] as const) {
+      const t = await setup(display);
+      expect(t.ids, display).toEqual(['html', 'p', 'a', 'd', 'b']);
+      const a = t.nodes[2] as HitNode;
+      expect([a.kind, a.target, a.parent, a.borderTop / PX, a.width / PX, a.height / PX], display).toEqual(['box', 2, 1, 2, 40, 12]);
+      // A flex item is painted atomically, in its order; a block child is not.
+      expect(t.nodes.slice(2).map((n) => [n.atomic, n.order]), display).toEqual(display === 'flex' ? [[true, 0], [true, 1], [true, 2]] : [[false, 0], [false, 0], [false, 0]]);
+      const b = t.nodes[4] as HitNode;
+      expect(t.ids[hitTest(t.nodes, a.x + 5 * PX, a.y + 5 * PX, NO_HIT_FAULTS)], display).toBe('a');
+      expect(t.ids[hitTest(t.nodes, b.x + 5 * PX, b.y + 5 * PX, NO_HIT_FAULTS)], display).toBe('b');
+    }
+  });
+
+  it('honours pointer-events: none on a replaced element, so the point falls through to its parent', async () => {
+    const { hitTest } = await import('../src/rt-hit.ts');
+    const t = await setup('block', 'none');
+    const a = t.nodes[2] as HitNode;
+    expect(a.pointerEvents).toBe('none');
+    expect(t.ids[hitTest(t.nodes, a.x + 5 * PX, a.y + 5 * PX, NO_HIT_FAULTS)]).toBe('p');
   });
 });
 
