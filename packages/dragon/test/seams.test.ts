@@ -34,6 +34,8 @@ describe('E2 seams: the property registry', () => {
       'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'background-color',
       // GRID G0 appends its family (test/grid.test.ts pins GRID_LONGHANDS).
       ...GRID_LONGHANDS,
+      // PNT2: the transform family, appended in its registered family position.
+      'transform', 'transform-origin', 'will-change',
     ]);
   });
   it('SHORTHANDS keeps its order', () => {
@@ -53,7 +55,7 @@ describe('E2 seams: the property registry', () => {
     expect(byRole('container')).toEqual(['direction', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap',
       'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow', 'justify-items']);
     expect(byRole('text')).toEqual(['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode']);
-    expect(byRole('paint')).toEqual(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color']);
+    expect(byRole('paint')).toEqual(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color', 'transform', 'transform-origin', 'will-change']);
   });
   it('every shorthand has exactly one handler in shorthands/index.ts, and each sets only longhands', () => {
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());
