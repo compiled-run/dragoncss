@@ -1,0 +1,10 @@
+{
+  "case": "hit-order-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"t:text0","lines":[[0,3],[3,5]]},
+    {"id":"f2:text0","lines":[[0,8]]},
+    {"id":"f1:text0","lines":[[0,2]]},
+    {"id":"g1:text0","lines":[[0,9]]}
+  ]
+}
