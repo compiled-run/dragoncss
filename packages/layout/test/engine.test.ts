@@ -119,3 +119,46 @@ describe('engine refuses what milestone 1 does not support yet', () => {
   });
 });
 
+
+// css-flexbox-1 §4.5 (T128): a column item's content size suggestion is measured with its own height treated as auto.
+describe('column flex automatic minimum size ignores the item height', () => {
+  const heights = (r: LayoutResult, ids: string[]): number[] => {
+    if (r.kind !== 'ok') throw new Error('unsupported');
+    return ids.map((id) => r.boxes.find((b) => b.id === id)?.height ?? -1);
+  };
+  it('empty 11px items shrink below 11px (values-calc-flex-column-auto-min, c1)', () => {
+    const r = run(box('root', {}, [box('c', { display: 'flex', flexDirection: 'column', width: px(100), height: px(30) }, [
+      box('a', { height: px(11) }),
+      box('b', { height: px(11) }),
+      box('d', { height: px(11) }),
+    ])]));
+    expect(heights(r, ['a', 'b', 'd'])).toEqual([640, 640, 640]);
+  });
+  it('an item stops at its content height (c2)', () => {
+    const r = run(box('root', {}, [box('c', { display: 'flex', flexDirection: 'column', width: px(100), height: px(10) }, [
+      box('a', { height: px(20) }, [box('k', { height: px(6) })]),
+      box('b', { height: px(20) }),
+    ])]));
+    expect(heights(r, ['a', 'b'])).toEqual([384, 256]);
+  });
+  it('a percentage height child of a sized column item returns percent-height-flex', () => {
+    const r = run(box('root', {}, [box('c', { display: 'flex', flexDirection: 'column', width: px(100), height: px(10) }, [
+      box('a', { height: px(20) }, [box('k', { minHeight: pct(50) })]),
+    ])]));
+    expect(r.kind === 'unsupported' && r.unsupported.code).toBe('percent-height-flex');
+  });
+  it('a percentage height replaced child of a sized column item returns percent-height-flex too (Macroscope 4164309445)', async () => {
+    const { divStyle } = await import('./helpers.ts');
+    const img = { kind: 'replaced', id: 'k', style: { ...divStyle, display: 'block', height: pct(50) }, natural: { kind: 'image', width: 10, height: 30 }, defaultWidth: 300, defaultHeight: 150, objectFit: 'fill', objectPositionX: px(0), objectPositionY: px(0) };
+    const item = { ...box('a', { height: px(20) }), children: [img] } as unknown as LayoutBox;
+    const r = run(box('root', {}, [box('c', { display: 'flex', flexDirection: 'column', width: px(100), height: px(10) }, [item])]));
+    expect(r.kind === 'unsupported' && r.unsupported.code).toBe('percent-height-flex');
+  });
+  it('a percentage flex-basis child of a sized row flex item is not a height and lays out', () => {
+    const r = run(box('root', {}, [box('c', { display: 'flex', flexDirection: 'column', width: px(100), height: px(4) }, [
+      box('a', { display: 'flex', height: px(20) }, [box('k', { flexBasis: pct(33), height: px(4) })]),
+      box('b', { height: px(20) }),
+    ])]));
+    expect(heights(r, ['a', 'b'])).toEqual([256, 0]);
+  });
+});
