@@ -166,7 +166,7 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
     const want = rasterSize(n.case.environment.viewport, dpr);
     const c = checkCasePixels(dump.pixels.samples, ref.points, ref.pixels, want, { width: dump.pixels.width, height: dump.pixels.height });
     compared.c += c.compared;
-    for (const p of c.problems) fail('device-pixels', /raster rule/.test(p) ? 'raster-size' : 'pixel', p, /^([a-z]+:\S+?)(?: at |: )/.exec(p)?.[1] ?? null);
+    for (const p of c.problems) fail('device-pixels', /raster rule/.test(p) ? 'raster-size' : 'pixel', p, pixelProblemNode(p));
     const img = ref.pixels;
     passingSamples = dump.pixels.samples.flatMap((s, i) => {
       // A rule no generator emits is already a (c) failure (the points do not match); it is never a passing sample.
@@ -344,6 +344,12 @@ export function plantVerdict(failures: readonly LaneFailure[], hostError: string
   const frames = of('device-frames').length;
   const lines = of('device-lines').length;
   return { caught: hostError === null && inked > 0 && frames === 0 && lines === 0, pixels: pixels.length, inked, frames, lines };
+}
+
+/** The sample rule a pixel problem names ("image-flat:a1:0 at 80,40: ...", "edge:a1:right: ..."), or null for a case-level one. */
+const PROBLEM_RULE = new RegExp(`^((?:${SAMPLE_RULES.join('|')}):\\S+?)(?: at |: )`);
+export function pixelProblemNode(problem: string): string | null {
+  return PROBLEM_RULE.exec(problem)?.[1] ?? null;
 }
 
 /** Whether a sample rule string names one of SAMPLE_RULES (ruleKind throws on any other). */

@@ -405,17 +405,10 @@ class DragonActivity : Activity() {
       tree.apply(c.input(scale), bridge.measurer, scale, bridge)
       frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
     }
-    // Settle on explicit signals: the root laid out and drawn, two more frame callbacks, then compositor copies of the window until
-    // two consecutive copies are equal (a copy of a frame before the tree was presented differs from the next one).
-    var drawnAt = -1
-    fun settle(frames: Int) {
-      Choreographer.getInstance().postFrameCallback {
-        if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty) drawnAt = frames
-        if (drawnAt < 0 || frames < drawnAt + 2) {
-          if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")
-          settle(frames + 1)
-          return@postFrameCallback
-        }
+    // Settle on explicit signals: the root laid out and drawn, two more frame callbacks, a frame holding the drawn tree committed to
+    // the display, then compositor copies of the window until two consecutive copies are equal.
+    fun capture() {
+      run {
         val t1 = SystemClock.elapsedRealtimeNanos()
         deviceRecord(tree)
         val at = IntArray(2)
@@ -475,6 +468,21 @@ class DragonActivity : Activity() {
           }
         }
         copy(0)
+      }
+    }
+    var drawnAt = -1
+    fun settle(frames: Int) {
+      Choreographer.getInstance().postFrameCallback {
+        if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty) drawnAt = frames
+        if (drawnAt < 0 || frames < drawnAt + 2) {
+          if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")
+          settle(frames + 1)
+          return@postFrameCallback
+        }
+        // The tree's draw is recorded on the UI thread, but RenderThread may present it frames later (texture uploads of decoded
+        // images): copy only after a frame holding the drawn tree was committed to the display.
+        tree.root.viewTreeObserver.registerFrameCommitCallback { main.post { capture() } }
+        tree.root.invalidate()
       }
     }
     settle(1)
