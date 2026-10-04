@@ -6,6 +6,8 @@
 # once on the converged tree, and that tree is committed. Never pushes master, a protected branch, the default branch or a fork;
 # never force-pushes (a branch that moved meanwhile makes the push fail).
 # A push made with GITHUB_TOKEN starts no workflow, so the push job dispatches ci.yml on the branch for the new commit's checks.
+# Every push to master runs the same chain without pushing ("warm"): Actions caches made in a pull request are visible only to
+# that pull request, while master's are visible to every branch, so master's run keeps the regen cache warm for all of them.
 name: regen-on-ci
 on:
   workflow_dispatch:
@@ -16,6 +18,8 @@ on:
         type: string
   pull_request:
     types: [labeled]
+  push:
+    branches: [master]
 permissions:
   contents: read
 concurrency:
@@ -23,11 +27,12 @@ concurrency:
   cancel-in-progress: false
 jobs:
   resolve:
-    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'regen'
+    if: github.event_name != 'pull_request' || github.event.label.name == 'regen'
     runs-on: ubuntu-latest
     outputs:
       branch: ${{ steps.r.outputs.branch }}
       sha: ${{ steps.r.outputs.sha }}
+      mode: ${{ steps.r.outputs.mode }}
     steps:
       - name: Resolve and refuse unsafe branches
         id: r
@@ -40,6 +45,11 @@ jobs:
           PR_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            { echo "branch=master"; echo "sha=$GITHUB_SHA"; echo "mode=warm"; } >> "$GITHUB_OUTPUT"
+            echo "regen-on-ci: warming the regen cache on master at $GITHUB_SHA (nothing is pushed)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then branch=$DISPATCH_BRANCH; else branch=$PR_BRANCH
             [ "$PR_REPO" = "$REPO" ] || { echo "::error::the pull request comes from $PR_REPO, not $REPO; regen-on-ci pushes only to this repository"; exit 1; }
           fi
@@ -50,8 +60,7 @@ jobs:
           [ "$(jq -r .protected <<<"$info")" = false ] || { echo "::error::refusing to push to the protected branch $branch"; exit 1; }
           sha=$(jq -r .commit.sha <<<"$info")
           if [ "$GITHUB_EVENT_NAME" = pull_request ] && [ "$sha" != "$PR_SHA" ]; then echo "::error::$branch moved from the labelled head $PR_SHA to $sha; label again"; exit 1; fi
-          echo "branch=$branch" >> "$GITHUB_OUTPUT"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          { echo "branch=$branch"; echo "sha=$sha"; echo "mode=push"; } >> "$GITHUB_OUTPUT"
           echo "regen-on-ci: $branch at $sha" >> "$GITHUB_STEP_SUMMARY"
   chrome-1:
     needs: resolve
@@ -105,9 +114,26 @@ jobs:
     if: always() && needs.converge.result == 'success'
     uses: ./.github/workflows/regen-on-ci-round.yml
     with: { runner: macos-26, side: chrome, args: '--only tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: '${{ needs.converge.outputs.last }}', name: sweep }
+  warm-check:
+    needs: [resolve, sweep]
+    if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'warm'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the sweep round
+        uses: actions/download-artifact@v4
+        with:
+          name: sweep
+          path: ${{ runner.temp }}/last
+      - name: Master must already be at a fixed point
+        run: |
+          if [ -s "$RUNNER_TEMP/last/outputs.patch" ]; then
+            echo "::error::master at ${{ needs.resolve.outputs.sha }} is not at a fixed point: regen on CI changed files (artifact sweep)"
+            exit 1
+          fi
+          echo "regen-on-ci: master at ${{ needs.resolve.outputs.sha }} is at a fixed point; the regen cache is warm" >> "$GITHUB_STEP_SUMMARY"
   push:
     needs: [resolve, sweep]
-    if: always() && needs.sweep.result == 'success'
+    if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
