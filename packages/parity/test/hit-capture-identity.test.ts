@@ -59,10 +59,13 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(files).toBeGreaterThan(Object.keys(manifest.files).length);
   });
 
-  it('holds only SELD-R1b fixtures\' files beyond the base', () => {
+  it('holds files beyond the base only for fixtures the base does not have: SELD-R1b\'s, and those of the stacks merged after it', () => {
+    // INL1a (merged forward into inl1a-lowering) and the text stack add fixtures of their own; no file is added to a base fixture.
+    const caseOf = (p: string): string => (p.split('/').pop() as string).replace(/\.(web\.json|json|css)$/, '').replace(/-rtl$/, '');
+    const baseCases = new Set(Object.keys(manifest.files).map(caseOf));
     const extra = IDENTITY_ROOTS.flatMap(walk).filter((p) => (p.endsWith('.json') || p.endsWith('.css')) && manifest.files[p] === undefined);
-    expect(extra.filter((p) => !IDENTITY_NEW.test(p))).toEqual([]);
-    expect(extra.length).toBeGreaterThan(0);
+    expect(extra.filter((p) => baseCases.has(caseOf(p)))).toEqual([]);
+    expect(extra.filter((p) => IDENTITY_NEW.test(p)).length).toBeGreaterThan(0);
   });
 
   it('catches a byte that differs beyond the key', () => {
